@@ -1,0 +1,19 @@
+schema_version: 1
+name: output-loading-flow
+version: 0.8.0
+title: "Output Loading Flow"
+description: >
+  Frontend skill для separate fast Apply/zone contracts, local zone preloaders,
+  backend readiness/success/error state и explicit user-action priority.
+language: ru
+audience: [assistant]
+priority: 0.75
+when-to-use:
+  - "Нужно реализовать frontend polling графиков или outputs после Apply"
+  - "Нужно показать readiness/error/loading состояния активной зоны"
+when-not:
+  - "Нужно реализовать backend calculation queue или cache"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

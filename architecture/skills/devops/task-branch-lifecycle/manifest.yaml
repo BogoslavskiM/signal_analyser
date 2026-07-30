@@ -1,0 +1,21 @@
+schema_version: 1
+name: task-branch-lifecycle
+version: 0.1.0
+title: "Task Branch Lifecycle"
+description: >
+  Git-процедура DevOps для обязательной проверки чистоты репозитория,
+  переиспользования или создания neuro-ветки, выборочного commit и push после
+  локальных тестов без Playwright.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Начинается задача с изменением репозитория"
+  - "Агенты запросили commit и push"
+when-not:
+  - "Нужно влить принятую задачу в dev"
+requires-tools:
+  - "Git"
+requires-products: []
+reference-files: []
+extends: null

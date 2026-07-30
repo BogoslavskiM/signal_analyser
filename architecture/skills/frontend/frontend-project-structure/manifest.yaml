@@ -1,0 +1,23 @@
+schema_version: 1
+name: frontend-project-structure
+version: 1.0.0
+title: "Frontend Project Structure"
+description: >
+  Frontend skill для типовой структуры Vue 3 global приложения без bundler:
+  раздельные JS/CSS/HTML каталоги, module registration, минимальный root app,
+  локальный font, theme.css, общий tooltip, application toolbar, отдельные
+  zones, controls, dialogs, object export forms и страницы multi-page
+  элементов.
+language: ru
+audience: [assistant]
+priority: 0.9
+when-to-use:
+  - "Нужно создать frontend типового Genie-приложения"
+  - "Нужно добавить или выделить zone, control, dialog либо страницу multi-page элемента"
+  - "Нужно уменьшить app.js и зарегистрировать frontend-модули"
+when-not:
+  - "Нужно только изменить локальный стиль существующего элемента"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

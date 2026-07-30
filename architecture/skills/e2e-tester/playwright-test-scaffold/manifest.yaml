@@ -1,0 +1,24 @@
+schema_version: 1
+name: playwright-test-scaffold
+version: 0.3.0
+title: "Playwright Test Scaffold"
+description: >
+  Переносимый scaffold интеграционных тестов Genie-приложения: Chrome CDP,
+  vpnp wrapper, non-fail-fast runner, feature flags по frontend skills,
+  stable data-testid contract, запуск по URL или текущей browser tab, базовые
+  helpers и русский coverage map без зависимости тестов от deployment.
+language: ru
+audience: [assistant]
+priority: 0.9
+when-to-use:
+  - "В новом Genie-приложении нужно создать test/playwright"
+  - "Нужно подключить E2E tests по составу frontend skills"
+when-not:
+  - "Playwright scaffold уже существует и нужен только новый сценарий"
+  - "Нужно исправить product source"
+requires-tools: []
+requires-products:
+  - "Chrome с CDP"
+  - "vpnp google для devhub"
+reference-files: []
+extends: null

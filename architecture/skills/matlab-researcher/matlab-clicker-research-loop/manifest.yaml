@@ -1,0 +1,26 @@
+schema_version: 1
+name: matlab-clicker-research-loop
+version: 0.1.0
+title: "MATLAB Clicker Research Loop"
+description: >
+  Bootstrap и автономный цикл MATLAB Researcher через системный
+  matlab_clicker: динамическая загрузка server-side skills, полное смысловое
+  покрытие приложения, сохранение сценариев через API и потоковый E2E handoff.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Architect запросил исследование MATLAB-приложения"
+  - "Другому агенту нужен reference-сценарий или уточнение поведения MATLAB"
+when-not:
+  - "Нужно написать тест или исправить Genie-приложение"
+  - "Нужно изменить matlab_clicker"
+requires-tools:
+  - "Системная утилита matlab_clicker"
+  - "HTTP client"
+  - "Vision tool для локальных screenshots"
+requires-products:
+  - "MATLAB"
+  - "matlab_clicker API"
+reference-files: []
+extends: null

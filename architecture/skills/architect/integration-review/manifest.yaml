@@ -1,0 +1,19 @@
+schema_version: 1
+name: integration-review
+version: 0.1.0
+title: "Integration Review"
+description: >
+  Интеграционная проверка архитектора после cross-role изменений: ownership,
+  перенесённые пути, команды проверки, документация и остаточные handoff.
+language: ru
+audience: [assistant]
+priority: 0.75
+when-to-use:
+  - "Изменение затронуло несколько ролей или архитектурные правила"
+  - "Нужно проверить перенос файлов, команды и ownership"
+when-not:
+  - "Нужно писать продуктовый backend/frontend код"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

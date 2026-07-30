@@ -1,0 +1,22 @@
+schema_version: 1
+name: object-export-dialog
+version: 0.2.0
+title: "Object Export Dialog"
+description: >
+  Наследуемый frontend skill для optional object export operations: backend
+  availability/defaults, always-visible selector, explicit operation forms,
+  field validation и global export flow.
+language: ru
+audience: [assistant]
+priority: 0.85
+when-to-use:
+  - "Нужно показать доступные способы экспорта выбранных domain objects"
+  - "Нужны explicit forms для workspace, script, JLD2 или Engee model"
+  - "Defaults export dialog зависят от текущего state приложения"
+when-not:
+  - "Нужно экспортировать полную сессию"
+  - "Нужно сформировать математическое содержимое экспортируемого объекта"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: dialog-system

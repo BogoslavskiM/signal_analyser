@@ -1,0 +1,20 @@
+schema_version: 1
+name: ui-contract-change
+version: 0.7.0
+title: "UI Contract Change"
+description: >
+  Frontend skill для typed settings controls, full inspector table payload,
+  backend validation errors, inspector bulk selection, optional headers,
+  stable selectors, API client, UI state и frontend contract tests.
+language: ru
+audience: [assistant]
+priority: 0.7
+when-to-use:
+  - "Нужно изменить frontend поведение или UI contract"
+  - "Нужно обновить settings fields, inspector table, JS/CSS/HTML или API client"
+when-not:
+  - "Нужно изменить backend API semantics"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

@@ -1,0 +1,19 @@
+schema_version: 1
+name: task-documentation
+version: 0.1.0
+title: "Task Documentation"
+description: >
+  Правила ведения долговременной архитектурной памяти: task-файлы, reports,
+  backlog и project notes для будущих агентов.
+language: ru
+audience: [assistant]
+priority: 0.6
+when-to-use:
+  - "Нужно сохранить архитектурное решение, отчёт или backlog"
+  - "Нужно оформить результат задачи для будущих агентов"
+when-not:
+  - "Достаточно краткого ответа в чат без долговременной памяти"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

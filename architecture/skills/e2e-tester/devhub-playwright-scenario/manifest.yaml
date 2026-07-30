@@ -1,0 +1,26 @@
+schema_version: 1
+name: devhub-playwright-scenario
+version: 1.3.0
+title: "Devhub Playwright Scenario"
+description: >
+  Универсальная процедура разработки и стабилизации Playwright/devhub
+  сценариев поверх готового scaffold: feature flags, stable data-testid,
+  observable waits, bounded retries, прямые handoff MATLAB Researcher,
+  arbitrary reference artifacts и полный E2E-отчёт без зависимости тестов от
+  deployment.
+language: ru
+audience: [assistant]
+priority: 0.9
+when-to-use:
+  - "Нужно добавить или стабилизировать пользовательский Playwright сценарий"
+  - "Нужно покрыть композицию frontend skills в devhub"
+  - "Нужно автоматизировать внешний reference scenario, включая MATLAB"
+when-not:
+  - "В приложении ещё нет Playwright scaffold"
+  - "Нужно исправить product source или написать unit/API test"
+requires-tools: []
+requires-products:
+  - "Доступное Genie-приложение или его открытая browser tab"
+  - "Chrome с CDP"
+reference-files: []
+extends: playwright-test-scaffold

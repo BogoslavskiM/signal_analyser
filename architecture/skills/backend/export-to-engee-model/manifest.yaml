@@ -1,0 +1,20 @@
+schema_version: 1
+name: export-to-engee-model
+version: 0.1.0
+title: "Export to Engee Model"
+description: >
+  Backend skill для применения prepared model description через публичный
+  engee.* API и сохранения валидного .engee без прямой записи binary format.
+language: ru
+audience: [assistant]
+priority: 0.85
+when-to-use:
+  - "Нужно экспортировать подготовленную схему в Engee model"
+  - "Нужно создать и сохранить валидный .engee через public API"
+when-not:
+  - "Нужно спроектировать topology или вычислить block parameters"
+  - "Engee runtime недоступен"
+requires-tools: []
+requires-products: [engee]
+reference-files: []
+extends: null

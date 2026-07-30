@@ -1,0 +1,22 @@
+schema_version: 1
+name: file-browser-dialog
+version: 0.3.0
+title: "File Browser Dialog"
+description: >
+  Frontend skill и JS/CSS/HTML bundle для server-side file browser: directory
+  и single-file modes, root boundary, structured entries, sorting, targets,
+  busy state и dialog stacking.
+language: ru
+audience: [assistant]
+priority: 0.85
+when-to-use:
+  - "Нужно выбрать server-side директорию или файл"
+  - "File browser должен открыться поверх save/import dialog"
+  - "Нужна навигация по backend root с фильтром расширений"
+when-not:
+  - "Нужен native browser file input или upload"
+  - "Нужны rename, delete, create directory или multi-select"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

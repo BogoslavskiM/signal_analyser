@@ -1,0 +1,23 @@
+schema_version: 1
+name: engee-contract-testing
+version: 0.1.0
+title: "Engee Contract Testing"
+description: >
+  Tester skill для обязательного исследования через Engee MCP и полного
+  контрактного тестирования реально используемых функций Engee: критические
+  сценарии, hard environment failures, cleanup и агрегированный отчёт без
+  runtime logs.
+language: ru
+audience: [assistant]
+priority: 0.95
+when-to-use:
+  - "Нужно проверить контракт Engee-функций, используемых приложением"
+  - "Нужно исследовать Engee function через MCP и закрепить Julia tests"
+  - "Нужен подробный отчёт по критическим Engee scenarios"
+when-not:
+  - "Нужно проверить только предметную математику без Engee contract"
+  - "Нужен Playwright пользовательский сценарий"
+requires-tools: [engee_mind]
+requires-products: [engee]
+reference-files: []
+extends: null

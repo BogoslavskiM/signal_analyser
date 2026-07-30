@@ -1,0 +1,22 @@
+schema_version: 1
+name: merge-accepted-task
+version: 0.1.0
+title: "Merge Accepted Task"
+description: >
+  Squash merge явно принятой пользователем neuro-ветки в dev по handoff
+  Architect, push, удаление feature-ветки и обязательный deployment dev.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Architect подтвердил явное принятие задачи пользователем"
+  - "Нужно влить neuro-ветку в dev и задеплоить dev"
+when-not:
+  - "Нет явного handoff Architect"
+requires-tools:
+  - "Git"
+  - "Engee MCP или Engee plugin с eval_command"
+requires-products:
+  - "Engee"
+reference-files: []
+extends: engee-environment-deployment

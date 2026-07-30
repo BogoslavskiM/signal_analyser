@@ -1,0 +1,25 @@
+schema_version: 1
+name: engee-environment-deployment
+version: 0.1.0
+title: "Engee Environment Deployment"
+description: >
+  Deployment Genie-приложения в dev или prod через Engee MCP/plugin: clone или
+  fast-forward update, условная остановка backend, запуск с постоянным файлом
+  логов и возврат URL с диагностикой.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Нужно задеплоить Genie-приложение в dev или prod"
+  - "Нужно обновить существующую копию проекта в Engee"
+when-not:
+  - "Не прошли локальные тесты или отсутствует push"
+  - "Нужно выполнить Playwright-сценарий"
+requires-tools:
+  - "Engee MCP или Engee plugin с eval_command"
+  - "Git в Engee environment"
+requires-products:
+  - "Engee"
+reference-files:
+  - "https://engee.com/helpcenter/stable/ru/feature/genie-functions.html"
+extends: task-branch-lifecycle

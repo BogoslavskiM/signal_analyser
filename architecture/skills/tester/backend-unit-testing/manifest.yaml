@@ -1,0 +1,23 @@
+schema_version: 1
+name: backend-unit-testing
+version: 0.1.0
+title: "Backend Unit Testing"
+description: >
+  Tester skill для Julia unit tests domain/state logic: структура текущего
+  test/back, fresh objects, normal/boundary/invalid cases, controlled thread
+  synchronization, regression tests и coverage report без обязательного
+  порога.
+language: ru
+audience: [assistant]
+priority: 0.9
+when-to-use:
+  - "Нужно создать или изменить backend unit tests"
+  - "Нужно проверить Julia domain functions, structures или state helpers"
+  - "Нужен regression test backend bug"
+when-not:
+  - "Нужно проверить API route или Engee contract"
+  - "Нужен Playwright сценарий"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

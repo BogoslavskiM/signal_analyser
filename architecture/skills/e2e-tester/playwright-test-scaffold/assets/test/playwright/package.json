@@ -1,0 +1,10 @@
+{
+  "name": "genie-app-playwright-tests",
+  "private": true,
+  "scripts": {
+    "test": "node run_playwright_tests.js"
+  },
+  "devDependencies": {
+    "playwright-core": "1.62.0"
+  }
+}

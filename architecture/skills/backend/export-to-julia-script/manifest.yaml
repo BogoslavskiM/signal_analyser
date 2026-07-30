@@ -1,0 +1,21 @@
+schema_version: 1
+name: export-to-julia-script
+version: 0.1.0
+title: "Export to Julia Script"
+description: >
+  Backend skill для генерации воспроизводимого .jl из подготовленного domain
+  description: dependencies, safe source generation, atomic write и execution
+  round-trip.
+language: ru
+audience: [assistant]
+priority: 0.8
+when-to-use:
+  - "Нужно экспортировать готовое описание объекта в воспроизводимый Julia script"
+  - "Нужно проверить parse, clean execution и round-trip"
+when-not:
+  - "Нужно вычислить domain parameters"
+  - "Нужен JLD2 или Engee model"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

@@ -1,0 +1,22 @@
+schema_version: 1
+name: style-system
+version: 0.3.0
+title: "Style System"
+description: >
+  Frontend skill для светлой визуальной системы типового Genie-приложения:
+  локальный Roboto, CSS tokens, общие controls и состояния, используемые
+  SVG-символы, tooltip, scrollbars, fixed canvas без responsive-перестройки
+  зон и границы стилей предметных модулей.
+language: ru
+audience: [assistant]
+priority: 0.9
+when-to-use:
+  - "Нужно создать или выровнять общие стили Genie-приложения"
+  - "Нужны CSS tokens, общие controls, states, icons или fixed canvas"
+when-not:
+  - "Нужно выбрать пропорции и содержимое зон"
+  - "Нужно реализовать предметную frontend-логику"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

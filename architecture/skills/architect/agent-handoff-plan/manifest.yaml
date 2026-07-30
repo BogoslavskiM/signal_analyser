@@ -1,0 +1,19 @@
+schema_version: 1
+name: agent-handoff-plan
+version: 0.5.0
+title: "Agent Handoff Plan"
+description: >
+  Правила архитектора для передачи задач role-owned агентам, включая DevOps и
+  MATLAB Researcher: owner, scope, contracts, acceptance, verification и risks.
+language: ru
+audience: [assistant]
+priority: 0.8
+when-to-use:
+  - "Архитектор должен передать работу backend/frontend/tester/e2e/DevOps/MATLAB Researcher агенту"
+  - "Задача пересекает несколько ownership-зон и её нужно разделить"
+when-not:
+  - "Агент уже внутри своей роли и реализует локальную задачу"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

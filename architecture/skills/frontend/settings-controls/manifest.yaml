@@ -1,0 +1,23 @@
+schema_version: 1
+name: settings-controls
+version: 0.3.0
+title: "Settings Controls"
+description: >
+  Frontend skill для типизированных scalar controls панели настроек:
+  numeric input, string, searchable enum, checkbox, readonly, metadata,
+  validation errors, warnings, units, сворачиваемые группы и готовый
+  JS/CSS/HTML template bundle.
+language: ru
+audience: [assistant]
+priority: 0.9
+when-to-use:
+  - "Нужно реализовать панель настроек Genie-приложения"
+  - "Нужно создать типизированный scalar control по backend metadata"
+  - "Нужно отобразить validation error или warning поля"
+when-not:
+  - "Нужно реализовать массив или другой составной control"
+  - "Нужно реализовать backend settings state"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null

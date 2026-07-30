@@ -1,0 +1,92 @@
+.graph-output-zone {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  background: var(--surface, #fff);
+}
+
+.graph-output-canvas {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.graph-output-grid {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.graph-output-frame,
+.graph-output-plot,
+.graph-output-plot .js-plotly-plot,
+.graph-output-plot .plot-container,
+.graph-output-plot .svg-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.graph-output-frame {
+  padding: 14px 16px;
+  background: var(--surface, #fff);
+}
+
+.graph-output-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--surface-muted, #f5f7f8);
+  color: var(--text-primary, #24292d);
+  text-align: center;
+}
+
+.graph-output-spinner {
+  width: 64px;
+  height: 64px;
+  border: 5px solid rgba(27, 132, 184, 0.22);
+  border-top-color: #1b84b8;
+  border-radius: 50%;
+  animation: graph-output-spinner-rotate 800ms linear infinite;
+}
+
+.graph-output-error {
+  color: var(--danger-text, #a12622);
+  background: var(--danger-surface, #fff5f4);
+}
+
+.graph-output-controls {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.graph-output-controls:disabled {
+  opacity: 0.64;
+}
+
+.graph-output-plot .modebar,
+.graph-output-plot .modebar-group {
+  background: rgba(255, 255, 255, 0.94) !important;
+}
+
+@keyframes graph-output-spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,8 @@
+.DS_Store
+Manifest.toml
+.git-credentials.local
+*.log
+tmp/
+coverage/
+node_modules/
+

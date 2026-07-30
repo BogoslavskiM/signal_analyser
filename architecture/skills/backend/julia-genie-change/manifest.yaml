@@ -1,0 +1,20 @@
+schema_version: 1
+name: julia-genie-change
+version: 0.2.0
+title: "Julia Genie Change"
+description: >
+  Backend skill для локальных изменений Julia/Genie-кода: modules, helpers,
+  API, signal math, save/import, generated scripts, backend tests и обязательные
+  frontend/tester contract handoffs.
+language: ru
+audience: [assistant]
+priority: 0.7
+when-to-use:
+  - "Нужно изменить Julia backend приложения"
+  - "Нужно добавить или исправить helper, route, model, save/import или generated script"
+when-not:
+  - "Нужно только поменять frontend JS/CSS/HTML"
+requires-tools: []
+requires-products: []
+reference-files: []
+extends: null
