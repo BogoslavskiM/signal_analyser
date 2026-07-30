@@ -37,6 +37,28 @@ route("/api/status", method = GET) do
     api_json(status_payload())
 end
 
+route("/api/state", method = GET) do
+    try
+        api_json(signal_analyser_snapshot(SIGNAL_ANALYSER_STATE))
+    catch err
+        api_error_response("Не удалось получить состояние Signal Analyser", err; status = 500)
+    end
+end
+
+route("/api/view", method = POST) do
+    try
+        api_json(apply_signal_analyser_view!(SIGNAL_ANALYSER_STATE, jsonpayload()))
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)
+        else
+            api_error_response("Не удалось обновить состояние Signal Analyser", err; status = 500)
+        end
+    end
+end
+
 route("/api/example", method = GET) do
     try
         api_json(example_payload())
@@ -44,4 +66,3 @@ route("/api/example", method = GET) do
         api_error_response("Failed to build example payload", err; status = 500)
     end
 end
-

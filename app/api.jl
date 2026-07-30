@@ -23,6 +23,32 @@ function api_error_response(action::AbstractString, err; status::Int = 400)
     ); status = status)
 end
 
+function signal_analyser_validation_response(err::SignalAnalyserValidationError)
+    api_json(Dict(
+        "ok" => false,
+        "code" => "invalid_request",
+        "error" => Dict(
+            "code" => "invalid_request",
+            "message" => err.message,
+            "fields" => err.fields,
+        ),
+    ); status = 422)
+end
+
+function signal_analyser_stale_response(state::SignalAnalyserState, err::SignalAnalyserStaleStateError)
+    current = signal_analyser_snapshot(state)
+    api_json(Dict(
+        "ok" => false,
+        "code" => "stale_state",
+        "error" => Dict(
+            "code" => "stale_state",
+            "message" => sprint(showerror, err),
+        ),
+        "state" => current,
+        "current" => current,
+    ); status = 409)
+end
+
 function status_payload()
     Dict(
         "ok" => true,
@@ -30,4 +56,3 @@ function status_payload()
         "ready" => EXAMPLE_APP_STATE["ready"],
     )
 end
-
