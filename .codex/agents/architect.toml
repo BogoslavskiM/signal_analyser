@@ -2,7 +2,7 @@
 # Source model level: high
 name = "architect"
 description = "Coordinates strict multi-agent work and owns project workflow rules."
-model = "gpt-5.6"
+model = "gpt-5.6-sol"
 developer_instructions = """
 Source role: architecture/agents/roles/architect.toml
 

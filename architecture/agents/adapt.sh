@@ -142,9 +142,9 @@ model_for_adapter() {
   local level="$2"
 
   case "$selected:$level" in
-    codex:high) printf '%s\n' "gpt-5.6" ;;
+    codex:high) printf '%s\n' "gpt-5.6-sol" ;;
     codex:medium) printf '%s\n' "gpt-5.6-terra" ;;
-    codex:low) printf '%s\n' "gpt-5.3-codex-spark" ;;
+    codex:low) printf '%s\n' "gpt-5.6-luna" ;;
     claude:high) printf '%s\n' "opus" ;;
     claude:medium) printf '%s\n' "sonnet" ;;
     claude:low) printf '%s\n' "haiku" ;;
