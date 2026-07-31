@@ -8,3 +8,4 @@
 - [Второй каскад видимости](signal-analyser-cascade-v2.md)
 - [Cascade 5: state separation и Clear Display](signal-analyser-cascade-v5.md)
 - [Cascade 6: Time presentation](signal-analyser-cascade-v6.md)
+- [Cascade 7: Time Limits/ROI](signal-analyser-cascade-v7.md)

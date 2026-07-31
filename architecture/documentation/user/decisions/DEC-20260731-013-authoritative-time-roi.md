@@ -48,3 +48,11 @@ zoom/pan synchronization, Spectrum ROI и Y Limits остаются отдель
   https://www.mathworks.com/help/signal/ug/measure-signals.html
 - MathWorks Customize Signal Analyzer:
   https://www.mathworks.com/help/signal/ug/customize-signal-analyzer.html
+
+## Реализация и проверка
+
+Решение реализовано в локальном checkpoint `1b7864b`. Typed limits/ROI,
+absolute Statistics/Peaks mapping, short-ROI capability guard, lifecycle и
+atomic errors подтверждены backend 719/719; frontend 2/2 и Playwright static
+contract подтверждают commit/rollback/range/page behavior. Runtime deployment
+и real EngeeDSP target path остаются отдельными gates.

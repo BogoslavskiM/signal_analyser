@@ -57,6 +57,13 @@
    преобразуется тем же affine scale analysis-source trace без clipping; raw
    peak может оказаться вне `[0,1]`, если его sample отсутствует в bounded
    trace. Peak `time_s` остаётся абсолютным backend coordinate.
+9. Для Time Limits `L=(t_min,t_max)` определяется inclusive raw ROI
+   `I={k | t_min <= k/f_s <= t_max}`. Он обязан содержать хотя бы один sample.
+   Statistics вычисляются только по `I`, но extrema возвращают абсолютные
+   `sample_index=k` и `time_s=k/f_s`; mean равен `|I|⁻¹ Σ[k∈I] y[k]`.
+   Для Peaks query хранит `sample_offset=min(I)`: локальный Engee `Xpk`
+   переводится как `sample_index=sample_offset+Xpk-1`. ROI из одного или двух
+   samples имеет typed enabled empty Peaks и не вызывает provider.
 
 ## Defaults
 
@@ -78,9 +85,11 @@ spectral estimate делегирован EngeeDSP.
 сохраняет строгий порядок minimum, maximum, mean и согласован с revision и
 selected signal.
 
-Peaks query требует не менее трёх конечных raw samples и положительную конечную
-`f_s`. Provider arrays имеют одинаковую длину; locations уникальны, находятся
-в сигнале и следуют occurrence order; width/prominence неотрицательны и
+Time Limits конечны, строго упорядочены, лежат внутри `[0,(N-1)/f_s]` и
+содержат raw sample. Peaks provider query требует не менее трёх конечных ROI
+samples и положительную конечную `f_s`; более короткий valid ROI обрабатывается
+до создания query. Provider arrays имеют одинаковую длину; locations уникальны,
+находятся в ROI и следуют occurrence order; width/prominence неотрицательны и
 конечны. Typed snapshot согласован с revision, active Display, selected signal
 и capability flag. Любая ошибка проверяется до публикации mutation/cache.
 
@@ -95,8 +104,8 @@ revision mutation.
 
 - `test/back/lib/signal_analyser_service_test.jl`: orientation, dB conversion,
   finite values, persistence range, plots, multi-trace payload, raw statistics
-  и atomic invalid-selection/Peaks provider/Clear regressions; полный gate 649/649
-  PASS.
+  и atomic invalid-selection/Peaks provider/Clear/Time ROI regressions; полный
+  интегрированный gate 719/719 PASS.
 - `test/engee/engee_package_contract_tests.jl`: реальный contract
   `power`/`spectrogram`/`persistence`, two-sided axes и matrix shapes. Локально
   пакет не discoverable; повторный read-only prod runtime contract PASS для
@@ -107,8 +116,8 @@ revision mutation.
   options и safe errors; evidence matrix 16/16 PASS.
 - Compiled lazy adapter pattern `Base.require` + `Base.invokelatest` повторён на
   prod MIND и вернул expected `Ypk=[1,2,3]`, `Xpk=[2,4,8]` без world-age error.
-- Cascade 6 frontend static/behavior 2/2 и Playwright syntax/support PASS;
-  backend regression остаётся 649/649.
+- Cascade 7 frontend static/behavior 2/2 и Playwright syntax/support PASS;
+  backend regression и additive ROI matrix — 719/719.
 
 ## Источники и наблюдаемые различия
 

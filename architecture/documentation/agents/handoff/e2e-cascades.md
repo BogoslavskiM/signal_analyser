@@ -180,3 +180,14 @@ affine mapping, Time-only marker mode, page restoration, empty/non-Time
 disablement and deterministic cleanup.
 verification: All JS syntax, support contract, runner help and diff PASS.
 runtime: Not run; canonical target remains authentication/deployment-blocked.
+
+## Cascade 7 Time Limits static contract — 2026-07-31
+
+goal: Prepare a deterministic runtime scenario for ROI commit and lifecycle.
+changes: Added `time_limits.test.js`, selectors/feature registration and exact
+root/display envelope assertions. Scenario covers draft no-request, one commit,
+same host/source, Plotly range, Measurements/Peaks revision/absolute positions,
+equal no-op, nested 422 rollback, source preserve/reset, Display A/B,
+non-Time, Clear/null/re-add and cleanup.
+verification: All JS syntax, support contract, runner help and diff PASS.
+runtime: Not run; authenticated deployed target is still required.

@@ -143,3 +143,21 @@ must apply the same affine scale without clipping and keep backend `time_s`.
 risk: `AnalysedSignal` itself does not reject non-finite construction; future
 import adapters need a separate typed finite-value invariant. C6 renders a
 stable frontend invalid-data state and does not change Backend for this risk.
+
+## Cascade 7 authoritative Time Limits/ROI — 2026-07-31
+
+goal: Add typed page-local Time Limits and use them as the common raw ROI for
+Measurements and Peaks without a new endpoint.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_service.jl`.
+contracts: Strict `{min_s,max_s,units:"s"}`; inclusive raw samples; absolute
+measurement/peak coordinates; query sample offset; 1–2 sample enabled Peaks is
+typed empty/no-provider; source preserve/reset; Clear/re-add/new/inactive
+lifecycle; validation/provider failure before publication.
+changes: Added `SignalTimeLimits`, `SignalOrdinateRoi`, `SignalTimeRoiService`,
+Display invariant and service/API mappers. Full-state carried limits are
+distinguished from genuine invalid edits on analysis-source change.
+verification: Julia parse/diff PASS; integrated backend 719/719 PASS.
+risks: Real EngeeDSP ROI call remains a target gate. A future one-sample import
+needs an explicit duration/limits contract.
+follow-ups: Runtime on accepted deployment; no dependency or fallback added.

@@ -146,3 +146,29 @@
   linked Display не получил диапазон; populated Link Time остаётся unknown.
 - Evidence принят для отдельного Cascade 7, а не смешан с локальными C6
   presentation controls.
+
+## 2026-07-31 — Cascade 7 authoritative Time Limits/ROI
+
+- `implemented`: typed page-local seconds limits в root/display snapshot и
+  существующем revision-safe `/api/view`; отдельный endpoint не создан.
+- Statistics вычисляются по inclusive raw ROI с абсолютными indices/time;
+  Peaks использует exact subset и sample offset, а valid 1–2 sample ROI не
+  вызывает provider.
+- Source preserve/reset, Clear/null, first re-add/full, new/inactive Display,
+  +1/no-op и atomic 422/provider paths закрыты локальными tests.
+- Frontend добавляет draft-only Min/Max, один commit request, exact inline 422
+  rollback и Plotly range без slicing исходных traces.
+- `verified locally`: backend 719/719, frontend 2/2, Playwright static/support,
+  architecture skill/vanilla validators и diff/parse PASS.
+- Visual-spec PNG перенесены в versioned client assets с SHA-256.
+- Product/test checkpoint `1b7864b`; runtime E2E, push и deployment не
+  выполнялись.
+
+## 2026-07-31 — MATLAB Normalize/Markers delta
+
+- SA-UI-009 подтвердил Normalize rendering 0..1 с raw Statistics и markers на
+  каждом из 15 samples; Time-only controls восстанавливаются при re-add view.
+- Normalize наблюдался display-local. Show Markers в MATLAB R2024b проявился
+  cross-display и мог переключаться из empty display.
+- Продукт сохраняет page-local Show Markers как явное portable decision; этот
+  delta не переписывает уже проверенный Cascade 6 задним числом.

@@ -118,3 +118,13 @@ per-Display restore, new defaults, disabled non-Time/empty controls, no API or
 revision changes, persistent host/react and invalid-data purge/error state.
 verification: Frontend 2/2 and backend 649/649 PASS; diff PASS.
 follow-ups: Runtime Playwright after authenticated deployment.
+
+## Cascade 7 verification — 2026-07-31
+
+coverage: Strict typed limits and API 422 envelope; inclusive raw ROI absolute
+extrema/time/mean; 1–2 sample Peaks zero-provider; >=3 exact subset/offset;
+revision no-op/+1; carried source preserve/reset; Clear/re-add/new/inactive;
+invalid/provider atomicity; frontend exact nested inline error rollback.
+verification: Integrated backend 719/719, frontend 2/2 and diff PASS.
+risks: Real EngeeDSP execution remains target-only; provider seam verifies the
+exact delegated query and mapping.

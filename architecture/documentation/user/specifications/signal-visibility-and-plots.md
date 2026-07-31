@@ -31,6 +31,11 @@
   controls только для непустого Time. Они не вызывают API и не меняют revision;
   preference восстанавливается при возврате на страницу. Каждый обычный trace
   нормализуется отдельно, а markers показывают bounded sample points.
+- Непустой Display хранит authoritative Time Limits в секундах. Поля Min/Max
+  коммитятся через `/api/view`, задают `Plotly.xaxis.range`, а Statistics и
+  Peaks пересчитываются по тому же inclusive raw ROI. Пустой Display имеет
+  `time_limits=null`; invalid edit показывает inline 422 и восстанавливает
+  последнее authoritative значение.
 - Overflow menu активного Display содержит доступное действие Clear Display.
   Пустая страница показывает явные empty states графика, Measurements и Peaks;
   тот же graph host сохраняется, а stale Plotly traces очищаются.
@@ -44,9 +49,12 @@
 одновременные analysis/legacy aliases обязаны совпадать. У непустого Display
 analysis source входит в membership; после его удаления backend выбирает
 первый remaining member в каноническом порядке. Первый re-add в пустой Display
-становится source. Additive boolean `peaks_enabled` управляет time-domain Peaks;
-Clear всегда выключает его. Новый endpoint не создаётся. Stale revision,
-validation или provider failure не меняют state.
+становится source. Additive object `time_limits={min_s,max_s,units:"s"}`
+управляет page-local ROI, а boolean `peaks_enabled` — time-domain Peaks; Clear
+передаёт null и всегда выключает Peaks. При смене source прежний range
+сохраняется, если допустим для нового сигнала, иначе сбрасывается на полный.
+Новый endpoint не создаётся. Stale revision, validation или provider failure
+не меняют state.
 
 Snapshot добавляет non-null `row_selected_signal`, nullable root
 `analysis_signal` и `displays[].analysis_signal`; root/display
@@ -59,6 +67,12 @@ Authoritative snapshot всегда содержит `peaks` с полями `en
 Disabled state имеет пустой `items` и не загружает EngeeDSP. Peak item содержит
 stable `id`, zero-based `sample_index`, `time_s`, `value`, `width_samples` и
 `prominence`.
+
+Root и каждый Display snapshot содержат `time_limits`. Measurements используют
+все raw samples с `min_s <= k/f_s <= max_s` до plot bounding и сохраняют
+абсолютные zero-based позиции. Enabled Peaks для ROI из 1–2 отсчётов возвращает
+typed empty result без вызова provider; для более длинного ROI provider получает
+точный subset и absolute starting offset.
 
 ## Наблюдения MATLAB Signal Analyzer
 
@@ -86,6 +100,13 @@ minimum `-2` в `12 s`, maximum `3` в `5 s`, расчётный oracle mean р�
 Попытки включить Median и открыть Peaks settings не дали надёжно подтверждённой
 смены состояния и потому не считаются наблюдаемым контрактом.
 
+SA-UI-008 подтвердил page-local Time Limits, inclusive пересчёт Statistics и
+last-valid rollback. SA-UI-009 подтвердил raw Statistics при нормализованном
+графике, 0..1 rendering с небольшим axis padding, markers на каждом sample и
+Time-only доступность controls. В MATLAB R2024b Show Markers проявился как
+cross-display state; продукт сохраняет ранее принятое per-Display поведение как
+явное portable product decision.
+
 ## Code anchors и проверки
 
 - `lib/services/signal_analyser_service.jl`:
@@ -101,7 +122,7 @@ minimum `-2` в `12 s`, maximum `3` в `5 s`, расчётный oracle mean р�
   `GlobalSignalSelection`, `SignalDisplayMembership`, explicit analysis source
   и nullable `SignalMeasurementsSnapshot`/`SignalPeaksSnapshot` invariants.
 - `public/js/app.js`: Display queue/revision mutation, local bottom tabs,
-  measurement rows, Time presentation controls и Plotly rendering.
+  measurement rows, Time presentation/limits controls и Plotly rendering.
 - `public/js/vendor/plotly-cartesian-3.1.0.min.js`: vendored official npm
   artifact; SHA-256 `c462b40a1a542e16c3533f97d39fbbb91af4f5267f3cbf23bd70d785efc44c38`.
 - `test/back/lib/signal_analyser_service_test.jl` и
@@ -113,10 +134,13 @@ minimum `-2` в `12 s`, maximum `3` в `5 s`, расчётный oracle mean р�
   support PASS; `peaks_p0.test.js` добавляет revision/scope/table/marker
   contract; `clear_display.test.js` добавляет Clear/re-add/state-separation
   contract; `time_presentation.test.js` добавляет Normalize/Show Markers.
+  `time_limits.test.js` добавляет ROI, 422 rollback, page lifecycle и absolute
+  Peaks coordinates.
   Runtime требует authenticated target.
 
 Связано с [DEC-20260731-009](../decisions/DEC-20260731-009-display-pages.md),
 [DEC-20260731-010](../decisions/DEC-20260731-010-local-only-plotly.md) и
 [DEC-20260731-011](../decisions/DEC-20260731-011-lazy-engeedsp-peaks.md),
-[DEC-20260731-012](../decisions/DEC-20260731-012-display-selection-separation.md) и
+[DEC-20260731-012](../decisions/DEC-20260731-012-display-selection-separation.md),
+[DEC-20260731-013](../decisions/DEC-20260731-013-authoritative-time-roi.md) и
 [traceability](../traceability/signal-analyser-cascades.md).

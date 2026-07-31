@@ -248,3 +248,19 @@ surface clearer inline validation.
 uncertainty: Link propagation between two populated Displays and repeated
 equal-extrema tie behavior remain unconfirmed.
 next_task: SA-UI-009 Normalize Y Axis/Show Markers is active.
+
+## Autonomous cycle 2 scenario SA-UI-009 — 2026-07-31
+
+goal: Observe Normalize Y Axis and Show Markers scope/restoration in MATLAB
+Signal Analyzer R2024b.
+system_path: `/Users/makar/work/matlab_clicker/research_output/signal-analyzer-reference-scenarios/scenarios/SA-UI-009-normalize-y-markers-scope-restoration.md`.
+sha256: `4771e34016a7740d29e9b2c0c0f000a92019613f83605f521516309da232a968`.
+observed: Normalize rendered raw extrema as 0/1 with auto Y -0.05..1.05 while
+Statistics remained raw. Fifteen hollow markers matched fifteen samples.
+Normalize was display-local/restored; Show Markers behaved cross-display and an
+empty display could switch it. Spectrum-only removed Time controls.
+portable_behavior: Normalize visible data only, raw analysis invariance,
+actual-sample markers, Time-only availability and state restoration.
+product_decision: Keep existing page-local Show Markers for deterministic
+Display ownership instead of copying R2024b global asymmetry.
+next_task: SA-UI-010 selectable Statistics and ROI.

@@ -3,10 +3,10 @@
 > Внутренняя active-task запись. Клиентский статус опубликован в
 > [`../../user/reports/`](../../user/reports/README.md).
 
-Status: active-cascade-7-p0-autonomous-cycle-2
+Status: cascade-7-verified-cascade-8-research-active
 Owner: Architect  
 Branch: `neuro_signal_analyser_cascade`  
-Architecture checkpoint: local Cascade 4 documentation checkpoint (see git history)
+Architecture checkpoint: C7 product/test `1b7864b`; C7 documentation pending local checkpoint
 
 ## Goal
 
@@ -171,10 +171,13 @@ multi-layout editor.
 - Measurements use the inclusive full-raw ROI before plot bounding. Extrema
   retain absolute zero-based sample indices and absolute `time_s`; mean uses
   only ROI samples. Snapshot shape/units/order stay unchanged.
-- Enabled Peaks calls EngeeDSP only on the inclusive full-raw ROI. Typed query
-  carries the absolute starting sample offset; returned locations map back to
-  absolute sample index/time. Disabled/empty paths remain lazy. Provider error
-  aborts the limit mutation atomically.
+- Enabled Peaks with at least three ROI samples calls EngeeDSP only on the
+  inclusive full-raw ROI. Typed query carries the absolute starting sample
+  offset; returned locations map back to absolute sample index/time. A valid
+  one/two-sample ROI returns typed enabled empty Peaks without a provider call
+  because the proven Engee function rejects inputs shorter than three; this is
+  a capability guard, not a fallback. Disabled/empty paths remain lazy.
+  Provider error aborts the limit mutation atomically.
 - Frontend adds editable `time-min-input`/`time-max-input` in seconds for
   nonempty Time Display, exact authoritative values and accessible inline
   `time-limits-error`. A committed change sends one serialized `/api/view`;
@@ -205,16 +208,16 @@ replacement-thread на каноническую роль.
 
 | Canonical role | Replacement session | Current task | Next queued task | Blocker | Last handoff/status |
 | --- | --- | --- | --- | --- | --- |
-| Backend | `/root/backend_cycle` | completed standby | implement frozen C7 ROI domain/API | none | C6 read-only compatibility audit; backend 649/649 |
-| Frontend | `/root/frontend_cycle` | completed standby | implement frozen C7 Time Limits UI | none | C6 local Normalize/Markers complete; front 2/2 |
-| Tester | `/root/tester_cycle` | completed standby | C7 ROI contract matrix | local EngeeDSP unavailable | C6 front 2/2; backend 649/649; Engee matrix 16/16 |
-| E2E Tester | `/root/e2e_cycle` | completed standby | C7 Time Limits static scenario | runtime auth/deployment | C6 Time presentation syntax/support complete |
-| DevOps | `/root/devops_cycle` | completed standby | C6 documentation checkpoint; later authorized push | external transmission approval | product C6 checkpoint `f546195`; no push/deploy/merge |
-| MATLAB Researcher | `/root/matlab_cycle` | SA-UI-009 Normalize Y/Show Markers | next bounded observed delta | none | SA-UI-008 saved; page-local ROI/statistics and invalid rollback confirmed |
+| Backend | `/root/backend_cycle` | completed standby | next frozen C8 backend slice | none | C7 typed ROI complete; integrated backend 719/719 |
+| Frontend | `/root/frontend_cycle` | completed standby | next frozen C8 UI slice | none | C7 Time Limits UI complete; front 2/2 |
+| Tester | `/root/tester_c7_matrix` | completed standby | next frozen C8 test matrix | local EngeeDSP unavailable | C7 backend 719/719; front 2/2 |
+| E2E Tester | `/root/e2e_cycle` | completed standby | next research-confirmed scenario | runtime auth/deployment | C7 Time Limits static contract complete |
+| DevOps | `/root/devops_cycle` | completed standby | documentation checkpoint; later authorized push | external transmission approval | C7 product/test checkpoint `1b7864b`; no push/deploy/merge |
+| MATLAB Researcher | `/root/matlab_cycle` | SA-UI-010 selectable Statistics/ROI | SA-UI-011 settings persistence | none | SA-UI-009 saved; raw Statistics and control scope confirmed |
 
 DevOps gate evidence: branch `neuro_signal_analyser_cascade`, product/test HEAD
-`f546195`, no product/test changes remain outside the checkpoint, no conflicts,
-upstream divergence `0 behind / 14 ahead`. Architecture documentation remains
+`1b7864b`, no product/test changes remain outside the checkpoint, no conflicts,
+upstream divergence `0 behind / 16 ahead`. Architecture documentation remains
 a separate pending checkpoint. Unpushed commits do not block implementation;
 future checkpoints stage only explicit completed handoff files. No merge into
 `dev` is authorized without a new explicit user acceptance handoff.
@@ -222,12 +225,13 @@ future checkpoints stage only explicit completed handoff files. No merge into
 ## Verification
 
 - Julia parse changed backend: PASS.
-- Backend: current full gate 649/649 assertions PASS, including typed OOP
-  measurements/Peaks, provider rollback, state separation, empty Display,
-  recovery, inactive preservation and atomic invalid-raw selection.
+- Backend: current full gate 719/719 assertions PASS, including typed OOP
+  measurements/Peaks, inclusive Time ROI, provider offset/short-ROI guard,
+  preserve/reset, empty Display and atomic failure paths.
 - Frontend static/behavior: 2/2 files PASS.
 - E2E support contract and syntax checks: PASS.
 - Cascade 5 Clear Display E2E syntax/support/runner-help: PASS; runtime pending.
+- Cascade 7 Time Limits E2E syntax/support/runner-help: PASS; runtime pending.
 - Runtime E2E: fresh-profile CDP attachment PASS, but canonical target redirects
   to `account/login`; product specs require an authenticated retained PTY/tab.
 - Local EngeeDSP contract: FAIL because `EngeeDSP` is absent in the local
@@ -258,6 +262,11 @@ Cascade 6 Time presentation is locally committed as `f546195`: frontend 2/2,
 unchanged backend 649/649 and Playwright syntax/support/runner-help PASS. It is
 not pushed/deployed; runtime Time presentation E2E remains blocked on the same
 authenticated target prerequisite.
+
+Cascade 7 Time Limits/ROI is locally committed as `1b7864b`: backend 719/719,
+frontend 2/2, Playwright syntax/support/runner-help and architecture validators
+PASS. It is not pushed/deployed; real EngeeDSP and runtime interaction remain
+target gates.
 
 EngeeDSP ambiguity is not an unconditional second-deploy blocker: on the same
 target, deployment may proceed only after the UUID/preload/import and target
@@ -291,15 +300,16 @@ attempt budget and are not claimed. SA-UI-006 additionally confirms that
 checkbox membership and measurements remap with active display while row
 selection remains independent and inactive-display plots persist. Product
 Display add/close/fallback still follows project contracts, not MATLAB grid.
-SA-UI-008 is saved; SA-UI-009 is active.
+SA-UI-008 and SA-UI-009 are saved; SA-UI-010 is active.
 
 SA-UI-007 then confirmed that Clear Display can leave the active MATLAB display
 with zero memberships while preserving inactive plots and global signal
 inventory; active statistics disappear. Re-add was not confirmed after bounded
 attempts. Cascade 5 now implements the accepted product-model response under
 DEC-012; deterministic first re-add remains a product decision rather than a
-MATLAB-observed claim. SA-UI-008 then established Time ROI evidence; SA-UI-009
-is active.
+MATLAB-observed claim. SA-UI-008 established Time ROI evidence. SA-UI-009 then
+confirmed 0..1 normalization with raw Statistics and sample markers; its
+cross-display marker scope remains a MATLAB R2024b delta. SA-UI-010 is active.
 
 ## Dated runtime correction 2026-07-31 — Cascade 2 complete
 

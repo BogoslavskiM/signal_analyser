@@ -145,3 +145,14 @@ state: `data-normalize-y` and `data-show-markers` are exposed on root/host; no
 API request or revision mutation occurs.
 verification: JS syntax/diff and frontend 2/2 PASS; checkpoint `f546195`.
 risks: Runtime evidence awaits an authenticated deployment.
+
+## Cascade 7 Time Limits UI — 2026-07-31
+
+goal: Commit page-local seconds limits without replacing the graph host or
+mutating backend traces.
+changes: Added exact Min/Max inputs, per-Display drafts/errors, Enter/blur/change
+dedupe, canonical `/api/view` field, 409 retry and canonical nested 422 rollback.
+Time uses `xaxis.range`; non-Time/empty disables controls and preserves state.
+CSS adds compact responsive, focus, disabled and error states.
+verification: JS syntax/diff and frontend 2/2 PASS.
+risks: Runtime interaction awaits authenticated deployment.
