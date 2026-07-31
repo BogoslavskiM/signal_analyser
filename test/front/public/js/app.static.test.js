@@ -19,6 +19,11 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
     assert(html.includes(`data-testid="${id}"`), `missing stable Display UI selector ${id}`)
   );
   assert((html.match(/data-testid="active-plot-host"/g) || []).length === 1, "each active Display must own one graph host");
+  assert(/data-testid="active-plot-host"[^>]*role="region"[^>]*aria-labelledby="display-plot-title"/.test(html), "the active graph host must expose its labelled region semantics");
+  assert(/data-bottom-tab="signals"[^>]*role="tab"[^>]*aria-controls="bottom-panel-signals"[^>]*aria-selected="true"[^>]*tabindex="0"/.test(html), "Signals must initialize as the sole roving-tabindex tab");
+  assert(/data-bottom-tab="measurements"[^>]*role="tab"[^>]*aria-controls="measurements-panel"[^>]*aria-selected="false"[^>]*tabindex="-1"/.test(html), "Measurements must initialize outside the tab sequence");
+  assert(/id="bottom-panel-signals"[^>]*role="tabpanel"[^>]*aria-labelledby="signal-panel-tab-signals"/.test(html), "Signals panel must be labelled by its tab");
+  assert(/id="measurements-panel"[^>]*role="tabpanel"[^>]*aria-labelledby="signal-panel-tab-measurements"/.test(html), "Measurements panel must be labelled by its tab");
   assert(!html.includes("plot-grid") && !html.includes("layout-chooser"), "MVP must not render a multi-layout plot grid");
   assert(html.includes("data-signal-rows") && app.includes("data-signal-visibility"), "signal list must contain per-signal checkbox controls at runtime");
   assert(/<script\b[^>]*src=["']\.\/js\/api\.js["']/.test(html) && /<script\b[^>]*src=["']\.\/js\/app\.js["']/.test(html), "Genie-relative API and app scripts must be registered");
@@ -44,5 +49,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(app.includes("loadPlotlyScript(localPlotlyUrl())"), "Plotly recovery must address only the pinned local artifact");
   assert(!/https?:\/\/|cdn\./i.test(app), "Plotly runtime must not load a CDN asset");
   assert(app.includes("activeBottomTab") && !app.includes("api.bottom"), "bottom Signals/Measurements tabs must remain frontend-local state");
+  ["ArrowLeft", "ArrowRight", "Home", "End"].forEach((key) => assert(app.includes(`"${key}"`), `bottom tab keyboard navigation must support ${key}`));
+  assert(app.includes('tab.setAttribute("tabindex", selected ? "0" : "-1")') && app.includes("target.focus()"), "bottom tabs must apply roving tabindex and move focus to the selected tab");
   assert(!/grid-template-(?:columns|rows)\s*:\s*repeat\(2/i.test(css), "MVP styling must not retain a fixed four-plot grid");
 };

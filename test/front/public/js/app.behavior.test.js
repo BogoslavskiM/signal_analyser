@@ -55,7 +55,7 @@ function node(attrs) {
     classList: { toggle() {}, contains() { return false; } },
     setAttribute(k, v) { attributes[k] = String(v); }, getAttribute(k) { return attributes[k] || null; },
     addEventListener(k, fn) { this.listeners[k] = fn; },
-    closest() { return null; }, matches() { return false; },
+    focus() { this.focused = true; }, closest() { return null; }, matches() { return false; },
   };
 }
 
@@ -251,4 +251,20 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(localTabRequests.length === 1 && localTabRequests[0].url === "./api/state", "opening Measurements must not make a backend request");
   assert(localTabs.e.signals.hidden === true && localTabs.e.measurements.hidden === false, "Measurements tab must swap only local panels");
   assert(localTabs.e.measurementsBottomTab.getAttribute("aria-selected") === "true", "Measurements tab must expose its local selected state accessibly");
+
+  const keyboardTabs = await boot((url) => Promise.resolve(response(200, initial)));
+  function key(tab, key) {
+    let prevented = false;
+    keyboardTabs.e.bottomTabs.listeners.keydown({ key, target: { closest(selector) { return selector === "[data-bottom-tab]" ? tab : null; } }, preventDefault() { prevented = true; } });
+    return prevented;
+  }
+  assert(key(keyboardTabs.e.signalBottomTab, "ArrowRight"), "supported bottom-tab key navigation must prevent browser default");
+  assert(keyboardTabs.e.measurementsBottomTab.getAttribute("aria-selected") === "true" && keyboardTabs.e.measurementsBottomTab.getAttribute("tabindex") === "0" && keyboardTabs.e.measurementsBottomTab.focused === true, "ArrowRight must select, focus and tab-enable Measurements");
+  assert(keyboardTabs.e.signals.hidden === true && keyboardTabs.e.measurements.hidden === false, "ArrowRight must switch labelled tabpanels locally");
+  assert(key(keyboardTabs.e.measurementsBottomTab, "ArrowRight"), "ArrowRight must wrap from the last tab");
+  assert(keyboardTabs.e.signalBottomTab.getAttribute("aria-selected") === "true" && keyboardTabs.e.signalBottomTab.getAttribute("tabindex") === "0", "wrapped ArrowRight must restore Signals as the roving tab");
+  assert(key(keyboardTabs.e.signalBottomTab, "End"), "End must be handled by the tablist");
+  assert(keyboardTabs.e.measurementsBottomTab.getAttribute("aria-selected") === "true", "End must select the final tab");
+  assert(key(keyboardTabs.e.measurementsBottomTab, "Home"), "Home must be handled by the tablist");
+  assert(keyboardTabs.e.signalBottomTab.getAttribute("aria-selected") === "true", "Home must select the first tab");
 };

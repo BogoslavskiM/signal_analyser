@@ -77,6 +77,38 @@ async function localTabSwitch(page, config, assert, log, tabName) {
     `${tabName} must be a local UI switch without any API request: ${JSON.stringify(requests)}`);
 }
 
+async function localKeyboardTabSwitch(page, config, assert, log, key, expectedTabName) {
+  const target = measurementLocator(page, config, expectedTabName);
+  const panel = measurementLocator(page, config, "panel");
+  const requests = [];
+  const onRequest = function (request) {
+    if (isApiRequestUrl(request)) requests.push(`${request.method()} ${request.url()}`);
+  };
+  const startedAt = Date.now();
+  page.on("request", onRequest);
+  try {
+    await page.keyboard.press(key);
+    if (expectedTabName === "measurementsTab") {
+      await panel.waitFor({ state: "visible", timeout: 30000 });
+    } else {
+      await page.waitForFunction(function (testId) {
+        const element = document.querySelector(`[data-testid="${testId}"]`);
+        return !element || element.offsetParent === null;
+      }, config.app.testIds.measurements.panel, { timeout: 30000 });
+    }
+    await page.evaluate(function () { return Promise.resolve(); });
+  } finally {
+    page.off("request", onRequest);
+  }
+  performanceLog(log, `local keyboard ${key} to ${expectedTabName}`, Date.now() - startedAt, undefined,
+    requests.length ? "unexpected API request" : "local-only");
+  assert(await tabIsActive(target), `${key} must activate ${expectedTabName}`);
+  assert(await target.evaluate(function (element) { return document.activeElement === element; }),
+    `${key} must move roving tab focus to ${expectedTabName}`);
+  assert(requests.length === 0,
+    `${key} bottom-tab navigation must not make an API request: ${JSON.stringify(requests)}`);
+}
+
 function assertStatistics(assert, snapshot, signalName) {
   assert(text(snapshot.signalName) === signalName,
     `selected-signal label must exactly equal ${JSON.stringify(signalName)}, got ${JSON.stringify(snapshot.signalName)}`);
@@ -90,6 +122,7 @@ function assertStatistics(assert, snapshot, signalName) {
     return `measurement-row-${statistic}`;
   })), `statistics UI order must preserve authoritative items order: ${JSON.stringify(snapshot.table.domRowIds)}`);
 
+  const valuesByStatistic = {};
   STATISTICS.forEach(function (statistic) {
     const row = snapshot.table.rows.find(function (candidate) { return candidate.statistic === statistic; });
     assert(row && row.id === `measurement-row-${statistic}`,
@@ -99,9 +132,15 @@ function assertStatistics(assert, snapshot, signalName) {
       `${statistic} must expose raw label, finite value, units and time cells: ${JSON.stringify(row.values)}`);
     assert(Number.isFinite(parseFinite(row.values[1])),
       `${statistic} value must be finite: ${JSON.stringify(row.values[1])}`);
+    valuesByStatistic[statistic] = parseFinite(row.values[1]);
     assert(text(row.values[2]), `${statistic} units must be non-empty`);
     assert(text(row.values[3]), `${statistic} time must be non-empty`);
   });
+
+  assert(valuesByStatistic.minimum <= valuesByStatistic.maximum,
+    `raw minimum must not exceed maximum: ${JSON.stringify(valuesByStatistic)}`);
+  assert(valuesByStatistic.mean >= valuesByStatistic.minimum && valuesByStatistic.mean <= valuesByStatistic.maximum,
+    `raw mean must lie within minimum and maximum: ${JSON.stringify(valuesByStatistic)}`);
 }
 
 async function restoreInitialVisibility(page, config, initialRows, originalSelectedId, log) {
@@ -160,6 +199,15 @@ async function testMeasurementsStatistics({ appUrl, assert, config, log, page, s
       const current = selected(await signalRowsState(page, config));
       assert(current && current.checked, "Measurements scope requires a selected visible signal");
       assertStatistics(assert, await measurementSnapshotState(page, config), current.name);
+    });
+
+    await step("navigate bottom tabs by keyboard without API mutation", async function () {
+      await localTabSwitch(page, config, assert, log, "signalsTab");
+      await measurementLocator(page, config, "signalsTab").focus();
+      await localKeyboardTabSwitch(page, config, assert, log, "ArrowRight", "measurementsTab");
+      await localKeyboardTabSwitch(page, config, assert, log, "ArrowLeft", "signalsTab");
+      await localKeyboardTabSwitch(page, config, assert, log, "End", "measurementsTab");
+      await localKeyboardTabSwitch(page, config, assert, log, "Home", "signalsTab");
     });
 
     await step("row selection refreshes local Measurements scope", async function () {

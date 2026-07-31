@@ -38,9 +38,16 @@ async function plotTraceNames(page, config) {
 
 async function assertExactlyOneActiveHost(page, config, assert) {
   const host = page.locator(testIdSelector(config.app.testIds.activePlotHost));
+  const title = page.locator(testIdSelector(config.app.testIds.displayPlotTitle));
   assert(await host.count() === 1,
     "the active Display must expose exactly one stable active Plotly host");
   assert(await host.isVisible(), "the one active Plotly host must be visible");
+  assert(await host.getAttribute("role") === "region",
+    "the active Plotly host must expose the labelled region role");
+  assert(await title.getAttribute("id") === "display-plot-title",
+    "the active plot title must provide the stable aria-labelledby target");
+  assert(await host.getAttribute("aria-labelledby") === "display-plot-title",
+    "the active Plotly host must be labelled by the active plot title");
 }
 
 async function signalRows(page) {
