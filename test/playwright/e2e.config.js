@@ -11,6 +11,14 @@ module.exports = {
       shell: "app-shell",
       displayTabs: "display-tabs",
       addDisplay: "add-display",
+      displayOverflowTrigger: "display-overflow-trigger",
+      displayOverflowMenu: "display-overflow-menu",
+      clearDisplayAction: "clear-display-action",
+      emptyDisplay: {
+        plot: "empty-display-plot-state",
+        measurements: "empty-display-measurements-state",
+        peaks: "empty-display-peaks-state",
+      },
       displayCanvas: "display-canvas",
       displayPlotTitle: "display-plot-title",
       activePlotHost: "active-plot-host",
@@ -85,6 +93,7 @@ module.exports = {
     // statistics; the bottom-tab switch itself remains entirely local.
     "measurements-statistics": true,
     "peaks": true,
+    "clear-display": true,
     "inspector-ui": true,
     "multi-page-element": true,
     "graph-output-zone": true,

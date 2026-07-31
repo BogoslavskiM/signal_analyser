@@ -213,7 +213,6 @@ end
     @test success["active_plot"] == "spectrum"
     @test success["selected_signal"] == second_name
     @test success["visible_signals"] == [first_name, second_name]
-    @test [signal["visible"] for signal in success["signals"]] == [true, true]
     @test [trace["name"] for trace in success["plot_payload"]["time_traces"]] == [first_name, second_name]
     @test [trace["color"] for trace in success["plot_payload"]["time_traces"]] == ["#2563eb", "#dc2626"]
     @test [trace["name"] for trace in success["plot_payload"]["spectrum_traces"]] == [first_name, second_name]
@@ -224,21 +223,18 @@ end
         state,
         Dict(
             "state_revision" => 1,
-            "selected_signal" => second_name,
             "visible_signals" => [first_name],
         ),
     )
     @test fallback["state_revision"] == 2
     @test fallback["selected_signal"] == first_name
     @test fallback["visible_signals"] == [first_name]
-    @test [signal["visible"] for signal in fallback["signals"]] == [true, false]
 end
 
 @testset "Signal Analyser API view validation rejects malformed visibility payloads" begin
     for (payload, field) in (
         (Dict("state_revision" => 0, "visible_signals" => nothing), "visible_signals"),
         (Dict("state_revision" => 0, "visible_signals" => "Гармонический сигнал"), "visible_signals"),
-        (Dict("state_revision" => 0, "visible_signals" => Any[]), "visible_signals"),
         (Dict("state_revision" => 0, "visible_signals" => ["Гармонический сигнал", 1]), "visible_signals"),
         (Dict("state_revision" => 0, "visible_signals" => ["Гармонический сигнал", "Гармонический сигнал"]), "visible_signals"),
         (Dict("state_revision" => 0, "visible_signals" => ["Гармонический сигнал", "missing"]), "visible_signals"),
@@ -286,9 +282,85 @@ end
 
     fallback = SA_API.apply_signal_analyser_view!(
         state,
-        Dict("state_revision" => 1, "selected_signal" => "api-complex", "visible_signals" => ["api-real"]),
+        Dict("state_revision" => 1, "visible_signals" => ["api-real"]),
     )
     @test fallback["state_revision"] == 2
     @test fallback["selected_signal"] == "api-real"
     assert_api_snapshot_measurements(fallback, state.signals[1])
+end
+
+@testset "Cascade 5 API accepts empty Display membership and separates aliases" begin
+    SA_API.reset_pspectrum_double!()
+    state = SA_API.default_signal_analyser_state()
+    first_name, second_name = [signal.name for signal in state.signals]
+
+    row_selected = SA_API.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "row_selected_signal" => second_name,
+        "analysis_signal" => first_name,
+    ))
+    @test row_selected["state_revision"] == 1
+    @test row_selected["row_selected_signal"] == second_name
+    @test row_selected["analysis_signal"] == first_name == row_selected["selected_signal"]
+    @test row_selected["visible_signals"] == [first_name, second_name]
+
+    cleared = SA_API.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 1,
+        "row_selected_signal" => second_name,
+        "analysis_signal" => nothing,
+        "selected_signal" => nothing,
+        "visible_signals" => String[],
+        "peaks_enabled" => false,
+    ))
+    @test cleared["state_revision"] == 2
+    @test cleared["row_selected_signal"] == second_name
+    @test cleared["analysis_signal"] === nothing
+    @test cleared["selected_signal"] === nothing
+    @test cleared["visible_signals"] == String[]
+    @test cleared["measurements"] == Dict(
+        "state_revision" => 2,
+        "signal_name" => nothing,
+        "ordinate" => nothing,
+        "units" => Dict("time" => "s", "value" => "1"),
+        "items" => Any[],
+    )
+    @test cleared["peaks"] == Dict(
+        "enabled" => false,
+        "state_revision" => 2,
+        "display_id" => "display-1",
+        "signal_name" => nothing,
+        "ordinate" => nothing,
+        "units" => Dict("value" => "1", "time" => "s", "width" => "samples", "prominence" => "1"),
+        "items" => Any[],
+    )
+    @test cleared["plot_payload"]["time_traces"] == Any[]
+    @test cleared["plot_payload"]["spectrum_traces"] == Any[]
+    @test all(cleared["plots"][key]["type"] == "heatmap" && cleared["plots"][key]["x"] == Any[] && cleared["plots"][key]["y"] == Any[] && cleared["plots"][key]["z"] == Any[] for key in ("spectrogram", "persistence"))
+
+    no_op = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 2, "visible_signals" => String[]))
+    @test no_op["state_revision"] == 2
+
+    before_conflict = SA_API.signal_analyser_snapshot(state)
+    conflict = try
+        SA_API.apply_signal_analyser_view!(state, Dict(
+            "state_revision" => 2,
+            "analysis_signal" => first_name,
+            "selected_signal" => second_name,
+        ))
+        nothing
+    catch caught
+        caught
+    end
+    @test conflict isa SA_API.SignalAnalyserValidationError
+    @test haskey(conflict.fields, "analysis_signal") || haskey(conflict.fields, "selected_signal")
+    @test SA_API.signal_analyser_snapshot(state) == before_conflict
+
+    stale = try
+        SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "visible_signals" => [first_name]))
+        nothing
+    catch caught
+        caught
+    end
+    @test stale isa SA_API.SignalAnalyserStaleStateError
+    @test SA_API.signal_analyser_snapshot(state) == before_conflict
 end

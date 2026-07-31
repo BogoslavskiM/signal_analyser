@@ -45,13 +45,12 @@ function assert_trace(trace, signal_name, color)
     @test SA.all_finite(trace["y"])
 end
 
-function assert_visibility(snapshot, visible_names, selected_name)
+function assert_visibility(snapshot, visible_names, analysis_name)
     @test snapshot["visible_signals"] == visible_names
-    @test snapshot["selected_signal"] == selected_name
-    @test [signal["name"] for signal in snapshot["signals"] if signal["visible"]] == visible_names
-    @test selected_name in visible_names
+    @test snapshot["analysis_signal"] == analysis_name
+    @test snapshot["selected_signal"] == analysis_name
     @test snapshot["plot_payload"]["visible_signals"] == visible_names
-    @test snapshot["plot_payload"]["selected_signal"] == selected_name
+    @test snapshot["plot_payload"]["selected_signal"] == analysis_name
 end
 
 function p0_measurement_state()
@@ -104,18 +103,21 @@ end
     state = SA.default_signal_analyser_state()
     snapshot = SA.signal_analyser_snapshot(state)
 
-    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "selected_signal", "visible_signals", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
+    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
     @test snapshot["active_display_id"] == "display-1"
     @test snapshot["displays"] == [Dict(
         "id" => "display-1",
         "name" => "Display 1",
         "active_plot" => "time",
+        "analysis_signal" => "Гармонический сигнал",
         "selected_signal" => "Гармонический сигнал",
         "visible_signals" => ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"],
         "peaks_enabled" => false,
     )]
     @test snapshot["state_revision"] == 0
     @test snapshot["active_plot"] == "time"
+    @test snapshot["row_selected_signal"] == "Гармонический сигнал"
+    @test snapshot["analysis_signal"] == "Гармонический сигнал"
     @test snapshot["selected_signal"] == "Гармонический сигнал"
     @test snapshot["visible_signals"] == ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"]
     @test [signal["name"] for signal in snapshot["signals"]] == ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"]
@@ -217,6 +219,7 @@ end
         "id" => "display-2",
         "name" => "Display 2",
         "active_plot" => "time",
+        "analysis_signal" => first_name,
         "selected_signal" => first_name,
         "visible_signals" => [first_name, second_name],
         "peaks_enabled" => false,
@@ -368,7 +371,6 @@ end
         Dict("state_revision" => 0, "active_plot" => "surface"),
         Dict("state_revision" => 0, "selected_signal" => "missing"),
         Dict("state_revision" => 0, "visible_signals" => "Гармонический сигнал"),
-        Dict("state_revision" => 0, "visible_signals" => String[]),
         Dict("state_revision" => 0, "visible_signals" => ["Гармонический сигнал", 1]),
         Dict("state_revision" => 0, "visible_signals" => ["Гармонический сигнал", "Гармонический сигнал"]),
         Dict("state_revision" => 0, "visible_signals" => ["Гармонический сигнал", "missing"]),
@@ -426,14 +428,11 @@ end
         state,
         Dict(
             "state_revision" => 0,
-            "selected_signal" => first_name,
             "visible_signals" => [second_name],
         ),
     )
     @test hidden_selected["state_revision"] == 1
     assert_visibility(hidden_selected, [second_name], second_name)
-    @test hidden_selected["signals"][1]["visible"] === false
-    @test hidden_selected["signals"][2]["visible"] === true
     @test [trace["name"] for trace in hidden_selected["plot_payload"]["time_traces"]] == [second_name]
     @test [trace["name"] for trace in hidden_selected["plot_payload"]["spectrum_traces"]] == [second_name]
     @test hidden_selected["plot_payload"]["spectrogram"]["signal"] == second_name
@@ -527,7 +526,7 @@ end
 
     fallback = SA.apply_signal_analyser_view!(
         state,
-        Dict("state_revision" => 1, "selected_signal" => "raw-complex", "visible_signals" => ["raw-real"]),
+        Dict("state_revision" => 1, "visible_signals" => ["raw-real"]),
     )
     @test fallback["state_revision"] == 2
     @test fallback["selected_signal"] == "raw-real"
@@ -564,13 +563,14 @@ function state_publication_fingerprint(state)
         revision = state.view.state_revision,
         active_display_id = state.active_display_id,
         active_plot = state.view.active_plot,
-        selected_signal = state.view.selected_signal,
+        row_selected_signal = state.row_selection.signal_name,
+        analysis_signal = state.view.selected_signal,
         displays = [
             (
                 id = display.id,
                 active_plot = display.active_plot,
-                selected_signal = display.selected_signal,
-                visible_signals = copy(display.visible_signals),
+                analysis_signal = SA.signal_analyser_display_analysis_name(display),
+                visible_signals = SA.signal_analyser_display_members(display),
                 peaks_enabled = display.peaks_enabled,
             )
             for display in state.displays
@@ -655,4 +655,132 @@ end
     empty = SA.apply_signal_analyser_view!(empty_state, Dict("state_revision" => 0, "peaks_enabled" => true))
     @test empty["peaks"]["enabled"] === true
     @test empty["peaks"]["items"] == Any[]
+end
+
+function assert_empty_display_snapshot(snapshot)
+    @test snapshot["analysis_signal"] === nothing
+    @test snapshot["selected_signal"] === nothing
+    @test snapshot["visible_signals"] == String[]
+    @test snapshot["plot_payload"]["selected_signal"] === nothing
+    @test snapshot["plot_payload"]["visible_signals"] == String[]
+    @test snapshot["plot_payload"]["time_traces"] == Any[]
+    @test snapshot["plot_payload"]["spectrum_traces"] == Any[]
+    for key in ("time", "spectrum")
+        @test snapshot["plots"][key]["type"] == "line"
+        @test snapshot["plots"][key]["x"] == Any[]
+        @test snapshot["plots"][key]["y"] == Any[]
+    end
+    for key in ("spectrogram", "persistence")
+        @test snapshot["plots"][key]["type"] == "heatmap"
+        @test snapshot["plots"][key]["x"] == Any[]
+        @test snapshot["plots"][key]["y"] == Any[]
+        @test snapshot["plots"][key]["z"] == Any[]
+        @test snapshot["plot_payload"][key]["type"] == "heatmap"
+        @test snapshot["plot_payload"][key]["signal"] === nothing
+    end
+    @test snapshot["measurements"] == Dict(
+        "state_revision" => snapshot["state_revision"],
+        "signal_name" => nothing,
+        "ordinate" => nothing,
+        "units" => Dict("time" => "s", "value" => "1"),
+        "items" => Any[],
+    )
+    @test snapshot["peaks"] == Dict(
+        "enabled" => false,
+        "state_revision" => snapshot["state_revision"],
+        "display_id" => snapshot["active_display_id"],
+        "signal_name" => nothing,
+        "ordinate" => nothing,
+        "units" => Dict("value" => "1", "time" => "s", "width" => "samples", "prominence" => "1"),
+        "items" => Any[],
+    )
+end
+
+@testset "Cascade 5 separates rows, membership and analysis lifecycle" begin
+    SA.reset_pspectrum_double!()
+    names = ["raw-real", "raw-complex"]
+    provider = FakePeaksProvider(SA.SignalPeaksQuery[], SA.SignalPeaksProviderResult([9.0], [2], [1.0], [3.0], 1100), nothing)
+    base = p0_measurement_state()
+    state = SA.SignalAnalyserState(base.signals, base.view, Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = provider)
+
+    initial = SA.signal_analyser_snapshot(state)
+    @test initial["row_selected_signal"] == names[1]
+    @test initial["analysis_signal"] == names[1] == initial["selected_signal"]
+
+    independent_canonical = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "row_selected_signal" => names[2],
+        "analysis_signal" => names[1],
+    ))
+    @test independent_canonical["state_revision"] == 1
+    @test independent_canonical["row_selected_signal"] == names[2]
+    @test independent_canonical["analysis_signal"] == names[1]
+    @test independent_canonical["visible_signals"] == names
+
+    enabled = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "peaks_enabled" => true))
+    @test enabled["state_revision"] == 2
+    @test length(provider.calls) == 1
+
+    clear = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 2, "visible_signals" => String[]))
+    @test clear["state_revision"] == 3
+    @test clear["row_selected_signal"] == names[2]
+    @test clear["displays"][1]["peaks_enabled"] === false
+    @test length(provider.calls) == 1
+    assert_empty_display_snapshot(clear)
+
+    no_op_clear = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 3, "visible_signals" => String[], "analysis_signal" => nothing, "selected_signal" => nothing))
+    @test no_op_clear["state_revision"] == 3
+    @test length(provider.calls) == 1
+
+    recovered = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 3, "visible_signals" => [names[2]]))
+    @test recovered["state_revision"] == 4
+    @test recovered["row_selected_signal"] == names[2]
+    assert_visibility(recovered, [names[2]], names[2])
+    @test recovered["displays"][1]["peaks_enabled"] === false
+    @test length(provider.calls) == 1
+
+    before_conflict = SA.signal_analyser_snapshot(state)
+    conflict = try
+        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "analysis_signal" => names[1], "selected_signal" => names[2]))
+        nothing
+    catch caught
+        caught
+    end
+    @test conflict isa SA.SignalAnalyserValidationError
+    @test haskey(conflict.fields, "analysis_signal") || haskey(conflict.fields, "selected_signal")
+    @test SA.signal_analyser_snapshot(state) == before_conflict
+
+    stale = try
+        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 3, "visible_signals" => String[]))
+        nothing
+    catch caught
+        caught
+    end
+    @test stale isa SA.SignalAnalyserStaleStateError
+    @test SA.signal_analyser_snapshot(state) == before_conflict
+end
+
+@testset "Cascade 5 Clear Display preserves inactive pages and seeded creation" begin
+    SA.reset_pspectrum_double!()
+    state = SA.default_signal_analyser_state()
+    names = [signal.name for signal in state.signals]
+    created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))
+    @test created["active_display_id"] == "display-2"
+    @test created["displays"][2]["visible_signals"] == names
+    @test created["displays"][2]["analysis_signal"] == names[1]
+
+    first = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "select", "display_id" => "display-1"))
+    cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 2, "visible_signals" => String[]))
+    assert_empty_display_snapshot(cleared)
+    second = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-2"))
+    @test second["visible_signals"] == names
+    @test second["analysis_signal"] == names[1]
+    @test second["displays"][1]["visible_signals"] == String[]
+    @test second["displays"][1]["analysis_signal"] === nothing
+
+    restored_first = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 4, "operation" => "select", "display_id" => "display-1"))
+    restored = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [names[1]]))
+    @test restored["analysis_signal"] == names[1]
+    @test restored["displays"][2]["visible_signals"] == names
+    @test restored["displays"][2]["analysis_signal"] == names[1]
 end

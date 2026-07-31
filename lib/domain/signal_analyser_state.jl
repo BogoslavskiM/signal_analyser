@@ -90,25 +90,32 @@ end
 
 struct SignalMeasurementsSnapshot
     state_revision::Int
-    signal_name::String
-    ordinate::SignalMeasurementOrdinate
+    signal_name::Union{Nothing,String}
+    ordinate::Union{Nothing,SignalMeasurementOrdinate}
     units::SignalMeasurementUnits
-    items::NTuple{3,SignalMeasurementItem}
+    items::Tuple{Vararg{SignalMeasurementItem}}
 
     function SignalMeasurementsSnapshot(
         state_revision::Int,
-        signal_name::AbstractString,
-        ordinate::SignalMeasurementOrdinate,
+        signal_name::Union{Nothing,AbstractString},
+        ordinate::Union{Nothing,SignalMeasurementOrdinate},
         units::SignalMeasurementUnits,
-        items::NTuple{3,SignalMeasurementItem},
+        items::Tuple{Vararg{SignalMeasurementItem}},
     )
         state_revision >= 0 || throw(ArgumentError("Ревизия snapshot не может быть отрицательной"))
-        isempty(signal_name) && throw(ArgumentError("Имя сигнала snapshot не может быть пустым"))
-        kinds = map(item -> item.kind, items)
-        kinds == (MINIMUM_MEASUREMENT, MAXIMUM_MEASUREMENT, MEAN_MEASUREMENT) || throw(ArgumentError(
-            "Измерения snapshot должны идти в порядке minimum, maximum, mean",
+        signal_name === nothing || isempty(signal_name) && throw(ArgumentError("Имя сигнала snapshot не может быть пустым"))
+        (signal_name === nothing) == (ordinate === nothing) || throw(ArgumentError(
+            "Имя сигнала и ordinate measurements snapshot должны одновременно иметь значение или быть null",
         ))
-        new(state_revision, String(signal_name), ordinate, units, items)
+        kinds = map(item -> item.kind, items)
+        if signal_name === nothing
+            isempty(items) || throw(ArgumentError("Пустой measurements snapshot не может содержать items"))
+        else
+            kinds == (MINIMUM_MEASUREMENT, MAXIMUM_MEASUREMENT, MEAN_MEASUREMENT) || throw(ArgumentError(
+                "Измерения snapshot должны идти в порядке minimum, maximum, mean",
+            ))
+        end
+        new(state_revision, signal_name === nothing ? nothing : String(signal_name), ordinate, units, items)
     end
 end
 
@@ -117,6 +124,7 @@ struct SignalMeasurementsService end
 
 signal_measurement_ordinate_name(ordinate::SignalMeasurementOrdinate)::String =
     SIGNAL_MEASUREMENT_ORDINATE_NAMES[ordinate]
+signal_measurement_ordinate_name(::Nothing) = nothing
 signal_measurement_metadata(kind::SignalMeasurementKind) = SIGNAL_MEASUREMENT_ITEM_METADATA[kind]
 
 abstract type AbstractPeaksProvider end
@@ -261,8 +269,8 @@ struct SignalPeaksSnapshot
     enabled::Bool
     state_revision::Int
     display_id::String
-    signal_name::String
-    ordinate::SignalMeasurementOrdinate
+    signal_name::Union{Nothing,String}
+    ordinate::Union{Nothing,SignalMeasurementOrdinate}
     units::SignalPeaksUnits
     items::Tuple{Vararg{SignalPeakItem}}
 
@@ -270,21 +278,34 @@ struct SignalPeaksSnapshot
         enabled::Bool,
         state_revision::Int,
         display_id::AbstractString,
-        signal_name::AbstractString,
-        ordinate::SignalMeasurementOrdinate,
+        signal_name::Union{Nothing,AbstractString},
+        ordinate::Union{Nothing,SignalMeasurementOrdinate},
         units::SignalPeaksUnits,
         items::AbstractVector{SignalPeakItem},
     )
         state_revision >= 0 || throw(ArgumentError("Ревизия peaks snapshot не может быть отрицательной"))
         isempty(display_id) && throw(ArgumentError("Идентификатор Display peaks snapshot не может быть пустым"))
-        isempty(signal_name) && throw(ArgumentError("Имя сигнала peaks snapshot не может быть пустым"))
+        signal_name === nothing || isempty(signal_name) && throw(ArgumentError("Имя сигнала peaks snapshot не может быть пустым"))
+        (signal_name === nothing) == (ordinate === nothing) || throw(ArgumentError(
+            "Имя сигнала и ordinate peaks snapshot должны одновременно иметь значение или быть null",
+        ))
         peak_items = collect(items)
         !enabled && !isempty(peak_items) && throw(ArgumentError("Выключенный peaks snapshot не может содержать items"))
+        signal_name === nothing && enabled && throw(ArgumentError("Пустой peaks snapshot не может быть enabled"))
+        signal_name === nothing && !isempty(peak_items) && throw(ArgumentError("Пустой peaks snapshot не может содержать items"))
         indices = [item.sample_index for item in peak_items]
         issorted(indices) && allunique(indices) || throw(ArgumentError(
             "Peaks items должны быть уникальными и следовать в порядке появления",
         ))
-        new(enabled, state_revision, String(display_id), String(signal_name), ordinate, units, Tuple(peak_items))
+        new(
+            enabled,
+            state_revision,
+            String(display_id),
+            signal_name === nothing ? nothing : String(signal_name),
+            ordinate,
+            units,
+            Tuple(peak_items),
+        )
     end
 end
 
@@ -296,37 +317,87 @@ end
 SignalPeaksService(provider::P) where {P<:AbstractPeaksProvider} =
     SignalPeaksService{P}(provider, SignalMeasurementsService())
 
+struct GlobalSignalSelection
+    signal_name::String
+
+    function GlobalSignalSelection(signal_name::AbstractString)
+        isempty(signal_name) && throw(ArgumentError("Имя глобально выбранного сигнала не может быть пустым"))
+        new(String(signal_name))
+    end
+end
+
+struct SignalDisplayMembership
+    signal_names::Tuple{Vararg{String}}
+
+    function SignalDisplayMembership(signal_names::AbstractVector{<:AbstractString})
+        names = String.(signal_names)
+        all(name -> !isempty(name), names) || throw(ArgumentError("Имена membership не могут быть пустыми"))
+        allunique(names) || throw(ArgumentError("Имена membership не должны повторяться"))
+        new(Tuple(names))
+    end
+end
+
+abstract type AbstractSignalAnalysisSource end
+
+struct NoSignalAnalysisSource <: AbstractSignalAnalysisSource end
+
+struct SignalAnalysisSource <: AbstractSignalAnalysisSource
+    signal_name::String
+
+    function SignalAnalysisSource(signal_name::AbstractString)
+        isempty(signal_name) && throw(ArgumentError("Имя analysis source не может быть пустым"))
+        new(String(signal_name))
+    end
+end
+
+signal_analysis_name(::NoSignalAnalysisSource) = nothing
+signal_analysis_name(source::SignalAnalysisSource) = source.signal_name
+
+function signal_analysis_source(signal_name::Union{Nothing,AbstractString})::AbstractSignalAnalysisSource
+    signal_name === nothing ? NoSignalAnalysisSource() : SignalAnalysisSource(signal_name)
+end
+
 mutable struct SignalAnalyserViewState
     state_revision::Int
     active_plot::SignalAnalyserPlot
-    selected_signal::String
+    selected_signal::Union{Nothing,String}
 end
 
 mutable struct SignalAnalyserDisplayState
     id::String
     name::String
     active_plot::SignalAnalyserPlot
-    selected_signal::String
-    visible_signals::Vector{String}
+    membership::SignalDisplayMembership
+    analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource}
     peaks_enabled::Bool
 
     function SignalAnalyserDisplayState(
         id::AbstractString,
         name::AbstractString,
         active_plot::SignalAnalyserPlot,
-        selected_signal::AbstractString,
-        visible_signals::AbstractVector{<:AbstractString},
+        membership::SignalDisplayMembership,
+        analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
         peaks_enabled::Bool,
     )
+        analysis_name = signal_analysis_name(analysis_source)
+        isempty(membership.signal_names) == (analysis_name === nothing) || throw(ArgumentError(
+            "Analysis source должен отсутствовать только у пустого Display",
+        ))
+        analysis_name === nothing || analysis_name in membership.signal_names || throw(ArgumentError(
+            "Analysis source должен входить в membership Display",
+        ))
         peaks_enabled && active_plot != TIME_PLOT && throw(ArgumentError(
             "Поиск пиков доступен только для Time plot",
+        ))
+        peaks_enabled && analysis_name === nothing && throw(ArgumentError(
+            "Поиск пиков требует analysis source",
         ))
         new(
             String(id),
             String(name),
             active_plot,
-            String(selected_signal),
-            String.(visible_signals),
+            membership,
+            analysis_source,
             peaks_enabled,
         )
     end
@@ -336,30 +407,50 @@ SignalAnalyserDisplayState(
     id::AbstractString,
     name::AbstractString,
     active_plot::SignalAnalyserPlot,
-    selected_signal::AbstractString,
+    selected_signal::Union{Nothing,AbstractString},
     visible_signals::AbstractVector{<:AbstractString},
 ) = SignalAnalyserDisplayState(id, name, active_plot, selected_signal, visible_signals, false)
 
-function signal_analyser_set_display_view!(
-    display::SignalAnalyserDisplayState,
+function SignalAnalyserDisplayState(
+    id::AbstractString,
+    name::AbstractString,
     active_plot::SignalAnalyserPlot,
-    selected_signal::AbstractString,
+    selected_signal::Union{Nothing,AbstractString},
     visible_signals::AbstractVector{<:AbstractString},
     peaks_enabled::Bool,
 )
-    peaks_enabled && active_plot != TIME_PLOT && throw(ArgumentError(
-        "Поиск пиков доступен только для Time plot",
-    ))
-    display.active_plot = active_plot
-    display.selected_signal = String(selected_signal)
-    display.visible_signals = String.(visible_signals)
-    display.peaks_enabled = peaks_enabled
+    SignalAnalyserDisplayState(
+        id,
+        name,
+        active_plot,
+        SignalDisplayMembership(visible_signals),
+        signal_analysis_source(selected_signal),
+        peaks_enabled,
+    )
+end
+
+signal_analyser_display_members(display::SignalAnalyserDisplayState)::Vector{String} =
+    collect(display.membership.signal_names)
+signal_analyser_display_analysis_name(display::SignalAnalyserDisplayState) =
+    signal_analysis_name(display.analysis_source)
+
+function signal_analyser_publish_display_state!(
+    display::SignalAnalyserDisplayState,
+    prospective::SignalAnalyserDisplayState,
+)
+    display.id == prospective.id || throw(ArgumentError("Нельзя опубликовать состояние другого Display"))
+    display.name = prospective.name
+    display.active_plot = prospective.active_plot
+    display.membership = prospective.membership
+    display.analysis_source = prospective.analysis_source
+    display.peaks_enabled = prospective.peaks_enabled
     nothing
 end
 
 mutable struct SignalAnalyserState{P<:AbstractPeaksProvider}
     signals::Vector{AnalysedSignal}
     view::SignalAnalyserViewState
+    row_selection::GlobalSignalSelection
     displays::Vector{SignalAnalyserDisplayState}
     active_display_id::String
     next_display_number::Int
@@ -377,17 +468,30 @@ function SignalAnalyserState(
     ;
     peaks_provider::AbstractPeaksProvider = EngeeDSPPeaksProvider(),
 )
+    isempty(signals) && throw(ArgumentError("Signal Analyser требует хотя бы один сигнал в global inventory"))
+    known_names = [signal.name for signal in signals]
     visible_signals = [signal.name for signal in signals if signal.visible]
+    row_selected_signal = view.selected_signal === nothing ? first(known_names) : view.selected_signal
+    row_selected_signal in known_names || throw(ArgumentError("Глобально выбранный сигнал отсутствует в inventory"))
+    analysis_name = if view.selected_signal !== nothing && view.selected_signal in visible_signals
+        view.selected_signal
+    elseif isempty(visible_signals)
+        nothing
+    else
+        first(visible_signals)
+    end
     display = SignalAnalyserDisplayState(
         "display-1",
         "Display 1",
         view.active_plot,
-        view.selected_signal,
+        analysis_name,
         visible_signals,
     )
+    view.selected_signal = analysis_name
     SignalAnalyserState(
         signals,
         view,
+        GlobalSignalSelection(row_selected_signal),
         SignalAnalyserDisplayState[display],
         display.id,
         2,
@@ -477,4 +581,15 @@ function signal_by_name(state::SignalAnalyserState, name::AbstractString)::Analy
     index = findfirst(signal -> signal.name == name, state.signals)
     index === nothing && throw(ArgumentError("Сигнал не найден: $name"))
     state.signals[index]
+end
+
+function signal_analyser_publish_row_selection!(
+    state::SignalAnalyserState,
+    selection::GlobalSignalSelection,
+)
+    any(signal -> signal.name == selection.signal_name, state.signals) || throw(ArgumentError(
+        "Глобально выбранный сигнал отсутствует в inventory",
+    ))
+    state.row_selection = selection
+    nothing
 end

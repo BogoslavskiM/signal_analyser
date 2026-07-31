@@ -12,15 +12,17 @@ function flush() {
 }
 function response(status, payload) { return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(payload) }; }
 
-function snapshot(revision, activeId, displayDefinitions) {
+function snapshot(revision, activeId, displayDefinitions, rowSelectedSignal) {
   const definitions = displayDefinitions || [
-    { id: "display-1", name: "Display 1", active_plot: "time", selected_signal: A, visible_signals: [A, B] },
+    { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B] },
   ];
   const active = definitions.find((definition) => definition.id === (activeId || definitions[0].id)) || definitions[0];
-  const selected = active.selected_signal;
+  const selected = active.analysis_signal !== undefined ? active.analysis_signal : active.selected_signal;
   return {
     state_revision: revision,
     active_display_id: activeId || definitions[0].id,
+    row_selected_signal: rowSelectedSignal === undefined ? (selected || A) : rowSelectedSignal,
+    analysis_signal: selected,
     displays: definitions,
     signals: [
       { name: A, color: "#2563eb", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Вещественный" },
@@ -48,6 +50,17 @@ function snapshot(revision, activeId, displayDefinitions) {
   };
 }
 
+function emptySnapshot(revision, rowSelectedSignal) {
+  const result = snapshot(revision, "display-1", [
+    { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: null, selected_signal: null, visible_signals: [] },
+  ], rowSelectedSignal);
+  result.plot_payload = { analysis_signal: null, selected_signal: null, visible_signals: [], time_traces: [], spectrum_traces: [], spectrogram: { type: "heatmap", signal: null, x: [], y: [], z: [] }, persistence: { type: "heatmap", signal: null, x: [], y: [], z: [] } };
+  result.plots = { time: { type: "line", x: [], y: [], x_label: "Time", y_label: "Amplitude" }, spectrum: { type: "line", x: [], y: [] }, spectrogram: result.plot_payload.spectrogram, persistence: result.plot_payload.persistence };
+  result.measurements = { state_revision: revision, signal_name: null, ordinate: null, units: { value: "1", time: "s" }, items: [] };
+  result.peaks = { enabled: false, state_revision: revision, display_id: "display-1", signal_name: null, ordinate: null, units: { value: "1", time: "s", width: "samples", prominence: "1" }, items: [] };
+  return result;
+}
+
 function node(attrs) {
   const attributes = Object.assign({}, attrs || {});
   return {
@@ -63,7 +76,7 @@ function environment(fetch, options) {
   const e = {
     root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(),
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
-    legend: node(), normalize: node(), markers: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), statisticsAction: node(), peaksAction: node(),
+    legend: node(), normalize: node(), markers: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
@@ -75,6 +88,7 @@ function environment(fetch, options) {
     "[data-testid='show-legend-checkbox']": e.legend, "[data-testid='normalize-y-checkbox']": e.normalize,
     "[data-testid='show-markers-checkbox']": e.markers, "[data-panel-fields]": e.fields, "[data-signal-count]": e.count,
     "[data-signal-rows]": e.rows, "[data-testid='toggle-all-signals']": e.toggleAll,
+    "[data-testid='display-overflow-trigger']": e.overflowTrigger, "[data-testid='display-overflow-menu']": e.overflowMenu, "[data-testid='clear-display-action']": e.clearDisplayAction,
     "[data-testid='signal-statistics-action']": e.statisticsAction, "[data-testid='find-peaks-action']": e.peaksAction,
     "[role='tablist'][aria-label='Данные анализатора']": e.bottomTabs, "[data-testid='bottom-panel-signals']": e.signals,
     "[data-testid='measurements-panel']": e.measurements, "[data-measurements-content]": e.measurementContent,
@@ -85,12 +99,7 @@ function environment(fetch, options) {
   const plotly = { react(host, data, layout) { calls.push({ plot: true, host, data, layout }); return Promise.resolve(); } };
   const scriptOutcomes = (options && options.scriptOutcomes || []).slice();
   const document = {
-    querySelector(selector) {
-      if (selector === "[data-bottom-tab='signals']") return e.signalBottomTab;
-      if (selector === "[data-bottom-tab='measurements']") return e.measurementsBottomTab;
-      if (selector === "[data-bottom-tab='peaks']") return e.peaksBottomTab;
-      return selectors[selector] || null;
-    },
+    querySelector(selector) { return selectors[selector] || null; },
     querySelectorAll(selector) { return selector === "[data-bottom-tab]" ? [e.signalBottomTab, e.measurementsBottomTab, e.peaksBottomTab] : []; },
     createElement(tag) {
       if (tag !== "script") return node();
@@ -129,6 +138,7 @@ function tabTarget(id) { return { closest(selector) { return selector === "[data
 function addTarget() { return { closest(selector) { return selector === "[data-testid='add-display']" ? {} : null; } }; }
 function closeTarget(id) { return { closest(selector) { return selector === "[data-close-display]" ? { dataset: { closeDisplay: id } } : null; } }; }
 function checkboxTarget(name, checked) { return { checked, dataset: { signalVisibility: name }, closest(selector) { return selector === "[data-signal-visibility]" ? this : null; }, matches() { return true; } }; }
+function rowTarget(name) { return { closest(selector) { return selector === "[data-signal]" ? { dataset: { signal: name } } : null; }, matches() { return false; } }; }
 
 module.exports = async function testDisplayBehavior(assert) {
   const initial = snapshot(0);
@@ -250,7 +260,7 @@ module.exports = async function testDisplayBehavior(assert) {
   await flush();
   const view = visibility.find((call) => call.url === "./api/view");
   assert(view, "per-display checkbox must update the active display through /api/view");
-  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", selected_signal: B, visible_signals: [B], peaks_enabled: false }), "hiding selected signal must send complete active-page membership, fallback selection and Peaks state");
+  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], peaks_enabled: false }), "hiding the analysis source must retain global row selection, use canonical visible fallback and disable Peaks");
 
   const localTabRequests = [];
   const localTabs = await boot((url, options) => {
@@ -272,6 +282,45 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(statistics.e.signals.hidden === true && statistics.e.measurements.hidden === false && statistics.e.peaksPanel.hidden === true, "Signal statistics must locally show Measurements and hide Signals/Peaks panels");
   assert(statistics.e.measurementsBottomTab.getAttribute("aria-selected") === "true" && statistics.e.measurementsBottomTab.getAttribute("tabindex") === "0", "Signal statistics must make Measurements the accessible roving tab");
   assert(statistics.e.measurementsBottomTab.focused === true, "Signal statistics must transfer focus to Measurements when the tab supports focus");
+
+  const rowRequests = [];
+  const memberRow = await boot((url, options) => {
+    rowRequests.push({ url, options });
+    return Promise.resolve(response(200, url === "./api/state" ? initial : snapshot(1, "display-1", undefined, B)));
+  });
+  memberRow.e.rows.listeners.click({ target: rowTarget(B) });
+  await flush();
+  assert(JSON.stringify(JSON.parse(rowRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], peaks_enabled: false }), "a member row click must atomically row-select and make that member the analysis source");
+  assert(memberRow.e.rows.innerHTML.includes("signal-row-") && memberRow.e.rows.innerHTML.includes(B), "the selected member row must be rendered from authoritative row and analysis state");
+
+  const uncheckedRequests = [];
+  const singleMember = snapshot(0, "display-1", [{ id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A] }], A);
+  const uncheckedRow = await boot((url, options) => {
+    uncheckedRequests.push({ url, options });
+    return Promise.resolve(response(200, url === "./api/state" ? singleMember : snapshot(1, "display-1", [{ id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A] }], B)));
+  });
+  uncheckedRow.e.rows.listeners.click({ target: rowTarget(B) });
+  await flush();
+  assert(JSON.stringify(JSON.parse(uncheckedRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], peaks_enabled: false }), "an unchecked row click must change only global row selection and preserve page membership/source");
+
+  const clearRequests = [];
+  const clear = await boot((url, options) => {
+    clearRequests.push({ url, options });
+    return Promise.resolve(response(200, url === "./api/state" ? initial : emptySnapshot(1, A)));
+  });
+  const clearHost = clear.e.host;
+  clearHost.data = [{ name: A }];
+  clearHost._fullData = [{ name: A }];
+  clearHost.calcdata = [[{ x: 0, y: 1 }]];
+  clear.e.overflowTrigger.listeners.click();
+  assert(clearRequests.length === 1 && clear.e.overflowMenu.hidden === false && clear.e.overflowTrigger.getAttribute("aria-expanded") === "true", "Display overflow must open Clear Display locally and accessibly without a request");
+  clear.e.clearDisplayAction.listeners.click();
+  await flush();
+  assert(JSON.stringify(JSON.parse(clearRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], peaks_enabled: false }), "Clear Display must send the revisioned empty active-page state through /api/view");
+  assert(clear.e.overflowMenu.hidden === true && clear.e.overflowTrigger.getAttribute("aria-expanded") === "false", "Clear Display must close its menu after activation");
+  assert(clear.e.host === clearHost && clear.e.host.innerHTML.includes("empty-display-plot-state") && clear.e.host.dataset.plotReady === "false", "an empty authoritative page must retain its one graph host while clearing stale rendering");
+  assert((!clear.e.host.data || clear.e.host.data.length === 0) && (!clear.e.host._fullData || clear.e.host._fullData.length === 0) && (!clear.e.host.calcdata || clear.e.host.calcdata.length === 0), "an empty Display must purge stale Plotly data from the persistent graph host");
+  assert(clear.e.measurementContent.innerHTML.includes("empty-display-measurements-state") && clear.e.peaksContent.innerHTML.includes("empty-display-peaks-state"), "an empty authoritative page must render typed empty analysis panels locally");
 
   const keyboardTabs = await boot((url) => Promise.resolve(response(200, initial)));
   function key(tab, key) {
@@ -300,7 +349,7 @@ module.exports = async function testDisplayBehavior(assert) {
   peaks.e.peaksAction.listeners.click();
   await flush();
   const peakView = peakRequests.find((call) => call.url === "./api/view");
-  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", selected_signal: A, visible_signals: [A, B], peaks_enabled: true }), "Find Peaks must use the existing revisioned /api/view request with an additive boolean only");
+  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], peaks_enabled: true }), "Find Peaks must use the existing revisioned /api/view request with canonical source state and an additive boolean only");
   assert(peaks.e.peaksAction.getAttribute("aria-pressed") === "true" && peaks.e.peaksBottomTab.hidden === false && peaks.e.peaksPanel.hidden === false, "an enabled authoritative Peaks snapshot must press the action and open the local Peaks tab/panel");
   assert(peaks.e.peaksContent.innerHTML.includes("peak-row-peak-2") && peaks.e.peaksContent.innerHTML.includes("data-sample-index='2'"), "the Peaks table must render backend item fields without a client-side peak calculation");
   const marker = peaks.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");

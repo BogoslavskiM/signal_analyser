@@ -3,6 +3,8 @@ import Statistics
 const SIGNAL_ANALYSER_VIEW_FIELDS = Set([
     "state_revision",
     "active_plot",
+    "row_selected_signal",
+    "analysis_signal",
     "selected_signal",
     "visible_signals",
     "peaks_enabled",
@@ -88,6 +90,61 @@ function signal_analyser_panel_payload(
     )
 end
 
+function signal_analyser_empty_plots()::Dict{String,Any}
+    Dict{String,Any}(
+        "time" => Dict{String,Any}(
+            "type" => "line",
+            "x" => Float64[],
+            "y" => Float64[],
+            "x_label" => "Время, с",
+            "y_label" => "Амплитуда",
+        ),
+        "spectrum" => Dict{String,Any}(
+            "type" => "line",
+            "x" => Float64[],
+            "y" => Float64[],
+            "x_label" => "Частота, Гц",
+            "y_label" => "Мощность, дБ",
+            "method" => "welch",
+        ),
+        "spectrogram" => Dict{String,Any}(
+            "type" => "heatmap",
+            "x" => Float64[],
+            "y" => Float64[],
+            "z" => Vector{Vector{Float64}}(),
+            "x_label" => "Время, с",
+            "y_label" => "Частота, Гц",
+            "color_label" => "Мощность, дБ",
+        ),
+        "persistence" => Dict{String,Any}(
+            "type" => "heatmap",
+            "x" => Float64[],
+            "y" => Float64[],
+            "z" => Vector{Vector{Float64}}(),
+            "x_label" => "Частота, Гц",
+            "y_label" => "Мощность, дБ",
+            "color_label" => "Встречаемость, %",
+        ),
+    )
+end
+
+function signal_analyser_empty_panel_payload(active_plot::SignalAnalyserPlot)::Dict{String,Any}
+    title = if active_plot == TIME_PLOT
+        "Время"
+    elseif active_plot == SPECTRUM_PLOT
+        "Спектр"
+    elseif active_plot == SPECTROGRAM_PLOT
+        "Спектрограмма"
+    else
+        "Спектр персистентности"
+    end
+    Dict{String,Any}(
+        "title" => title,
+        "active_plot" => signal_analyser_plot_name(active_plot),
+        "fields" => Dict{String,Any}[],
+    )
+end
+
 function signal_analyser_cached_plots!(state::SignalAnalyserState, signal::AnalysedSignal)::Dict{String,Any}
     get!(state.plot_cache, signal.name) do
         signal_analyser_plots(signal)
@@ -134,12 +191,14 @@ function signal_analyser_active_display(state::SignalAnalyserState)::SignalAnaly
 end
 
 function signal_analyser_display_payload(display::SignalAnalyserDisplayState)::Dict{String,Any}
+    analysis_name = signal_analyser_display_analysis_name(display)
     Dict{String,Any}(
         "id" => display.id,
         "name" => display.name,
         "active_plot" => signal_analyser_plot_name(display.active_plot),
-        "selected_signal" => display.selected_signal,
-        "visible_signals" => copy(display.visible_signals),
+        "selected_signal" => analysis_name,
+        "analysis_signal" => analysis_name,
+        "visible_signals" => signal_analyser_display_members(display),
         "peaks_enabled" => display.peaks_enabled,
     )
 end
@@ -159,7 +218,7 @@ function signal_analyser_sync_active_display!(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
 )
-    visible_set = Set(display.visible_signals)
+    visible_set = Set(display.membership.signal_names)
     signals = [
         signal_analyser_with_visibility(signal, signal.name in visible_set)
         for signal in state.signals
@@ -167,7 +226,7 @@ function signal_analyser_sync_active_display!(
     state.signals = signals
     state.active_display_id = display.id
     state.view.active_plot = display.active_plot
-    state.view.selected_signal = display.selected_signal
+    state.view.selected_signal = signal_analyser_display_analysis_name(display)
     nothing
 end
 
@@ -204,6 +263,31 @@ function signal_analyser_multi_trace_payload(
         "spectrum_traces" => spectrum_traces,
         "spectrogram" => signal_analyser_plot_for_payload(selected_plots["spectrogram"], selected_signal),
         "persistence" => signal_analyser_plot_for_payload(selected_plots["persistence"], selected_signal),
+    )
+end
+
+function signal_analyser_multi_trace_payload(
+    ::SignalAnalyserState,
+    ::Nothing,
+    visible_names::Vector{String},
+)::Dict{String,Any}
+    isempty(visible_names) || throw(ArgumentError("Пустой analysis source допустим только для пустого Display"))
+    plots = signal_analyser_empty_plots()
+    spectrogram = copy(plots["spectrogram"])
+    spectrogram["signal"] = nothing
+    spectrogram["name"] = ""
+    spectrogram["color"] = ""
+    persistence = copy(plots["persistence"])
+    persistence["signal"] = nothing
+    persistence["name"] = ""
+    persistence["color"] = ""
+    Dict{String,Any}(
+        "selected_signal" => nothing,
+        "visible_signals" => String[],
+        "time_traces" => Dict{String,Any}[],
+        "spectrum_traces" => Dict{String,Any}[],
+        "spectrogram" => spectrogram,
+        "persistence" => persistence,
     )
 end
 
@@ -256,6 +340,20 @@ function signal_measurements_snapshot(
             ),
             SignalMeasurementItem(MEAN_MEASUREMENT, Statistics.mean(ordinate), nothing),
         ),
+    )
+end
+
+function signal_measurements_snapshot(
+    ::SignalMeasurementsService,
+    state_revision::Int,
+    ::Nothing,
+)::SignalMeasurementsSnapshot
+    SignalMeasurementsSnapshot(
+        state_revision,
+        nothing,
+        nothing,
+        SignalMeasurementUnits("1", "s"),
+        (),
     )
 end
 
@@ -319,8 +417,20 @@ function signal_peaks_snapshot(
     service::SignalPeaksService,
     state_revision::Int,
     display::SignalAnalyserDisplayState,
-    signal::AnalysedSignal,
+    signal::Union{Nothing,AnalysedSignal},
 )::SignalPeaksSnapshot
+    if signal === nothing
+        display.peaks_enabled && throw(ArgumentError("Пустой Display не может иметь enabled Peaks"))
+        return SignalPeaksSnapshot(
+            false,
+            state_revision,
+            display.id,
+            nothing,
+            nothing,
+            SignalPeaksUnits(),
+            SignalPeakItem[],
+        )
+    end
     ordinate_kind = signal.is_complex ? MAGNITUDE_ORDINATE : REAL_ORDINATE
     units = SignalPeaksUnits()
     if !display.peaks_enabled
@@ -425,13 +535,14 @@ function signal_analyser_snapshot_unlocked(
     measurements::SignalMeasurementsSnapshot,
     peaks::SignalPeaksSnapshot,
 )::Dict{String,Any}
-    signal = signal_by_name(state, state.view.selected_signal)
     active_display = signal_analyser_active_display(state)
+    analysis_name = signal_analyser_display_analysis_name(active_display)
+    signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
     measurements.state_revision == state.view.state_revision || throw(ArgumentError(
         "Ревизия measurements не совпадает с ревизией state snapshot",
     ))
-    measurements.signal_name == signal.name || throw(ArgumentError(
-        "Сигнал measurements не совпадает с selected signal state snapshot",
+    measurements.signal_name == analysis_name || throw(ArgumentError(
+        "Сигнал measurements не совпадает с analysis source state snapshot",
     ))
     peaks.state_revision == state.view.state_revision || throw(ArgumentError(
         "Ревизия peaks не совпадает с ревизией state snapshot",
@@ -439,38 +550,43 @@ function signal_analyser_snapshot_unlocked(
     peaks.display_id == active_display.id || throw(ArgumentError(
         "Display peaks не совпадает с active Display state snapshot",
     ))
-    peaks.signal_name == signal.name || throw(ArgumentError(
-        "Сигнал peaks не совпадает с selected signal state snapshot",
+    peaks.signal_name == analysis_name || throw(ArgumentError(
+        "Сигнал peaks не совпадает с analysis source state snapshot",
     ))
     peaks.enabled == active_display.peaks_enabled || throw(ArgumentError(
         "Статус peaks не совпадает с active Display state snapshot",
     ))
-    plots = signal_analyser_cached_plots!(state, signal)
+    plots = signal === nothing ? signal_analyser_empty_plots() : signal_analyser_cached_plots!(state, signal)
     visible_names = signal_analyser_visible_signal_names(state)
     Dict{String,Any}(
         "state_revision" => state.view.state_revision,
         "active_display_id" => state.active_display_id,
         "displays" => [signal_analyser_display_payload(display) for display in state.displays],
         "active_plot" => signal_analyser_plot_name(state.view.active_plot),
-        "selected_signal" => state.view.selected_signal,
+        "row_selected_signal" => state.row_selection.signal_name,
+        "analysis_signal" => analysis_name,
+        "selected_signal" => analysis_name,
         "visible_signals" => visible_names,
         "signals" => [signal_analyser_signal_payload(item) for item in state.signals],
         "plots" => plots,
         "plot_payload" => signal_analyser_multi_trace_payload(state, signal, visible_names),
         "measurements" => signal_measurements_payload(measurements),
         "peaks" => signal_peaks_payload(peaks),
-        "panel" => signal_analyser_panel_payload(state.view.active_plot, signal, plots),
+        "panel" => signal === nothing ?
+            signal_analyser_empty_panel_payload(state.view.active_plot) :
+            signal_analyser_panel_payload(state.view.active_plot, signal, plots),
     )
 end
 
 function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{String,Any}
-    signal = signal_by_name(state, state.view.selected_signal)
+    display = signal_analyser_active_display(state)
+    analysis_name = signal_analyser_display_analysis_name(display)
+    signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
     measurements = signal_measurements_snapshot(
         state.measurements_service,
         state.view.state_revision,
         signal,
     )
-    display = signal_analyser_active_display(state)
     peaks = signal_peaks_snapshot(
         state.peaks_service,
         state.view.state_revision,
@@ -510,11 +626,6 @@ function signal_analyser_validate_visible_signals!(
         field_errors["visible_signals"] = "Требуется массив имён сигналов"
         return nothing
     end
-    if isempty(value)
-        field_errors["visible_signals"] = "Нужно оставить видимым хотя бы один сигнал"
-        return nothing
-    end
-
     requested_names = String[]
     seen = Set{String}()
     for item in value
@@ -569,19 +680,51 @@ function validate_signal_analyser_view_payload(
         end
     end
 
-    has_selected_signal = signal_analyser_payload_contains(data, "selected_signal")
-    selected_signal_value = signal_analyser_payload_value(data, "selected_signal")
-    requested_signal = display.selected_signal
-    if has_selected_signal
-        if selected_signal_value isa AbstractString && any(signal -> signal.name == selected_signal_value, state.signals)
-            requested_signal = String(selected_signal_value)
+    known_names = Set(signal.name for signal in state.signals)
+
+    has_row_selected_signal = signal_analyser_payload_contains(data, "row_selected_signal")
+    row_selected_signal_value = signal_analyser_payload_value(data, "row_selected_signal")
+    requested_row_selected_signal = state.row_selection.signal_name
+    if has_row_selected_signal
+        if row_selected_signal_value isa AbstractString && String(row_selected_signal_value) in known_names
+            requested_row_selected_signal = String(row_selected_signal_value)
         else
-            field_errors["selected_signal"] = "Неизвестное имя сигнала"
+            field_errors["row_selected_signal"] = "Неизвестное имя сигнала"
         end
     end
 
+    has_analysis_signal = signal_analyser_payload_contains(data, "analysis_signal")
+    analysis_signal_value = signal_analyser_payload_value(data, "analysis_signal")
+    validated_analysis_signal = nothing
+    if has_analysis_signal
+        if analysis_signal_value === nothing
+            validated_analysis_signal = nothing
+        elseif analysis_signal_value isa AbstractString && String(analysis_signal_value) in known_names
+            validated_analysis_signal = String(analysis_signal_value)
+        else
+            field_errors["analysis_signal"] = "Требуется null или имя сигнала из inventory"
+        end
+    end
+
+    has_selected_signal = signal_analyser_payload_contains(data, "selected_signal")
+    selected_signal_value = signal_analyser_payload_value(data, "selected_signal")
+    validated_selected_signal = nothing
+    if has_selected_signal
+        if selected_signal_value === nothing
+            validated_selected_signal = nothing
+        elseif selected_signal_value isa AbstractString && String(selected_signal_value) in known_names
+            validated_selected_signal = String(selected_signal_value)
+        else
+            field_errors["selected_signal"] = "Требуется null или имя сигнала из inventory"
+        end
+    end
+    if has_analysis_signal && has_selected_signal && !isequal(validated_analysis_signal, validated_selected_signal)
+        field_errors["analysis_signal"] = "analysis_signal и selected_signal должны совпадать"
+        field_errors["selected_signal"] = "selected_signal и analysis_signal должны совпадать"
+    end
+
     has_visible_signals = signal_analyser_payload_contains(data, "visible_signals")
-    visible_names = copy(display.visible_signals)
+    visible_names = signal_analyser_display_members(display)
     if has_visible_signals
         validated_visible_names = signal_analyser_validate_visible_signals!(
             field_errors,
@@ -591,6 +734,28 @@ function validate_signal_analyser_view_payload(
         validated_visible_names === nothing || (visible_names = validated_visible_names)
     end
 
+
+    explicit_analysis = has_analysis_signal || has_selected_signal
+    explicit_analysis_name = has_analysis_signal ? validated_analysis_signal : validated_selected_signal
+    current_analysis_name = signal_analyser_display_analysis_name(display)
+    requested_analysis_name = if isempty(visible_names)
+        explicit_analysis && explicit_analysis_name !== nothing && (field_errors["analysis_signal"] = "Пустой Display не имеет analysis source")
+        nothing
+    elseif explicit_analysis
+        if explicit_analysis_name === nothing
+            field_errors["analysis_signal"] = "Analysis source может быть null только у пустого Display"
+            current_analysis_name in visible_names ? current_analysis_name : first(visible_names)
+        elseif !(explicit_analysis_name in visible_names)
+            field_errors["analysis_signal"] = "Analysis source должен входить в membership Display"
+            current_analysis_name in visible_names ? current_analysis_name : first(visible_names)
+        else
+            explicit_analysis_name
+        end
+    elseif current_analysis_name in visible_names
+        current_analysis_name
+    else
+        first(visible_names)
+    end
 
     has_peaks_enabled = signal_analyser_payload_contains(data, "peaks_enabled")
     peaks_enabled_value = signal_analyser_payload_value(data, "peaks_enabled")
@@ -602,7 +767,9 @@ function validate_signal_analyser_view_payload(
             field_errors["peaks_enabled"] = "Требуется boolean"
         end
     end
-    if requested_plot != TIME_PLOT
+    if isempty(visible_names)
+        requested_peaks_enabled = false
+    elseif requested_plot != TIME_PLOT
         if has_peaks_enabled && requested_peaks_enabled
             field_errors["peaks_enabled"] = "Поиск пиков доступен только для Time plot"
         else
@@ -611,13 +778,18 @@ function validate_signal_analyser_view_payload(
     end
 
     isempty(field_errors) || throw(SignalAnalyserValidationError("Некорректный запрос отображения", field_errors))
-    requested_signal in visible_names || (requested_signal = first(visible_names))
+    prospective_display = SignalAnalyserDisplayState(
+        display.id,
+        display.name,
+        requested_plot,
+        requested_analysis_name,
+        visible_names,
+        requested_peaks_enabled,
+    )
     (
         revision = Int(revision_value),
-        active_plot = requested_plot,
-        selected_signal = requested_signal,
-        visible_signals = visible_names,
-        peaks_enabled = requested_peaks_enabled,
+        row_selection = GlobalSignalSelection(requested_row_selected_signal),
+        display = prospective_display,
     )
 end
 
@@ -630,47 +802,39 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         ))
 
         display = signal_analyser_active_display(state)
-        current_visible = display.visible_signals
-        changed = requested.active_plot != display.active_plot ||
-            requested.selected_signal != display.selected_signal ||
-            requested.visible_signals != current_visible ||
-            requested.peaks_enabled != display.peaks_enabled
+        prospective_display = requested.display
+        prospective_members = signal_analyser_display_members(prospective_display)
+        prospective_analysis_name = signal_analyser_display_analysis_name(prospective_display)
+        changed = requested.row_selection.signal_name != state.row_selection.signal_name ||
+            prospective_display.active_plot != display.active_plot ||
+            prospective_display.membership.signal_names != display.membership.signal_names ||
+            !isequal(prospective_analysis_name, signal_analyser_display_analysis_name(display)) ||
+            prospective_display.peaks_enabled != display.peaks_enabled
 
         # Build every payload affected by the request before publishing the
         # mutation so a runtime DSP failure cannot leave state half-applied.
         prepared_plots = signal_analyser_prepared_plots(
             state,
-            unique(vcat(requested.visible_signals, [requested.selected_signal])),
+            prospective_members,
         )
         next_revision = state.view.state_revision + (changed ? 1 : 0)
+        prospective_signal = prospective_analysis_name === nothing ? nothing :
+            signal_by_name(state, prospective_analysis_name)
         prepared_measurements = signal_measurements_snapshot(
             state.measurements_service,
             next_revision,
-            signal_by_name(state, requested.selected_signal),
-        )
-        prepared_display = SignalAnalyserDisplayState(
-            display.id,
-            display.name,
-            requested.active_plot,
-            requested.selected_signal,
-            requested.visible_signals,
-            requested.peaks_enabled,
+            prospective_signal,
         )
         prepared_peaks = signal_peaks_snapshot(
             state.peaks_service,
             next_revision,
-            prepared_display,
-            signal_by_name(state, requested.selected_signal),
+            prospective_display,
+            prospective_signal,
         )
         if changed
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
-            signal_analyser_set_display_view!(
-                display,
-                requested.active_plot,
-                requested.selected_signal,
-                requested.visible_signals,
-                requested.peaks_enabled,
-            )
+            signal_analyser_publish_display_state!(display, prospective_display)
+            signal_analyser_publish_row_selection!(state, requested.row_selection)
             signal_analyser_sync_active_display!(state, display)
             state.view.state_revision += 1
         else
@@ -730,7 +894,15 @@ function validate_signal_analyser_display_payload(
 end
 
 function signal_analyser_display_plot_names(display::SignalAnalyserDisplayState)::Vector{String}
-    unique(vcat(display.visible_signals, [display.selected_signal]))
+    signal_analyser_display_members(display)
+end
+
+function signal_analyser_display_analysis_signal(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::Union{Nothing,AnalysedSignal}
+    analysis_name = signal_analyser_display_analysis_name(display)
+    analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
 end
 
 function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{String,Any}
@@ -757,13 +929,13 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
-                signal_by_name(state, display.selected_signal),
+                signal_analyser_display_analysis_signal(state, display),
             )
             prepared_peaks = signal_peaks_snapshot(
                 state.peaks_service,
                 state.view.state_revision + 1,
                 display,
-                signal_by_name(state, display.selected_signal),
+                signal_analyser_display_analysis_signal(state, display),
             )
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             push!(state.displays, display)
@@ -780,13 +952,13 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 prepared_measurements = signal_measurements_snapshot(
                     state.measurements_service,
                     state.view.state_revision + 1,
-                    signal_by_name(state, display.selected_signal),
+                    signal_analyser_display_analysis_signal(state, display),
                 )
                 prepared_peaks = signal_peaks_snapshot(
                     state.peaks_service,
                     state.view.state_revision + 1,
                     display,
-                    signal_by_name(state, display.selected_signal),
+                    signal_analyser_display_analysis_signal(state, display),
                 )
                 signal_analyser_publish_prepared_plots!(state, prepared_plots)
                 signal_analyser_sync_active_display!(state, display)
@@ -795,13 +967,13 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 prepared_measurements = signal_measurements_snapshot(
                     state.measurements_service,
                     state.view.state_revision,
-                    signal_by_name(state, display.selected_signal),
+                    signal_analyser_display_analysis_signal(state, display),
                 )
                 prepared_peaks = signal_peaks_snapshot(
                     state.peaks_service,
                     state.view.state_revision,
                     display,
-                    signal_by_name(state, display.selected_signal),
+                    signal_analyser_display_analysis_signal(state, display),
                 )
             end
         else
@@ -823,13 +995,13 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
-                signal_by_name(state, next_active_display.selected_signal),
+                signal_analyser_display_analysis_signal(state, next_active_display),
             )
             prepared_peaks = signal_peaks_snapshot(
                 state.peaks_service,
                 state.view.state_revision + 1,
                 next_active_display,
-                signal_by_name(state, next_active_display.selected_signal),
+                signal_analyser_display_analysis_signal(state, next_active_display),
             )
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             state.displays = remaining_displays

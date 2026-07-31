@@ -372,6 +372,8 @@ async function signalRowsState(page, config) {
     return elements.map(function (row) {
       const checkbox = checkboxState(row);
       const state = visibilityState(row);
+      const rowSelected = row.getAttribute("data-row-selected");
+      const displayMembership = row.getAttribute("data-display-membership");
       const swatch = row.querySelector(".color-swatch");
       const style = swatch ? window.getComputedStyle(swatch) : null;
       return {
@@ -382,11 +384,13 @@ async function signalRowsState(page, config) {
         id: row.getAttribute("data-testid") || "",
         label: checkbox && checkbox.getAttribute("aria-label") || "",
         name: row.getAttribute("data-signal") || "",
-        selected: row.getAttribute("aria-pressed") === "true",
+        rowSelected: rowSelected === "true",
+        displayMembership: displayMembership === "true",
+        selected: rowSelected == null ? row.getAttribute("aria-pressed") === "true" : rowSelected === "true",
         stateTestId: state && state.getAttribute("data-testid") || "",
         visibilityText: state && (state.textContent || "").trim() || "",
         visible: row.getAttribute("data-visible") === "true",
-        checked: Boolean(checkbox && checkbox.checked),
+        checked: displayMembership == null ? Boolean(checkbox && checkbox.checked) : displayMembership === "true",
       };
     });
   }, {

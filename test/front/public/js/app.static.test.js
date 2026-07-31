@@ -38,12 +38,18 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(api.includes('request("./api/displays", {'), "Display lifecycle API must use ./api/displays");
   assert((api.match(/method: "POST"/g) || []).length >= 2, "view and displays mutations must POST JSON");
 
-  ["active_display_id", "displays", "visible_signals", "selected_signal", "displayMutation", "addDisplay", "selectDisplay", "closeDisplay", "pendingAction"].forEach((term) =>
+  ["active_display_id", "displays", "visible_signals", "row_selected_signal", "analysis_signal", "selected_signal", "displayMutation", "addDisplay", "selectDisplay", "closeDisplay", "pendingAction"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Display state contract term ${term}`)
   );
   assert(app.includes('displayMutation("create"') && app.includes('displayMutation("select"') && app.includes('displayMutation("close"'), "frontend must emit create/select/close Display operations");
   assert(app.includes("data-testid='close-display-"), "close controls must have stable per-display test IDs");
   assert(app.includes("data-signal-visibility") && app.includes("visible_signals"), "checkbox actions must update active Display membership");
+  assert(/data-testid="display-overflow-trigger"[^>]*aria-haspopup="menu"[^>]*aria-controls="display-overflow-menu"/.test(html), "Display overflow must expose the accessible Clear Display menu trigger");
+  assert(/data-testid="display-overflow-menu"[^>]*role="menu"[^>]*hidden/.test(html), "Display overflow menu must start hidden");
+  assert(/data-testid="clear-display-action"[^>]*role="menuitem"/.test(html), "Clear Display must be a semantic menu action");
+  ["row_selected_signal", "analysis_signal", "clear-display-action", "display-overflow-trigger"].forEach((term) =>
+    assert(app.includes(term), `frontend must preserve Cascade 5 state/control term ${term}`)
+  );
   assert(app.includes("payload.current") && app.includes("status===409"), "stale API responses must canonicalize from the authoritative snapshot");
   assert(app.includes("moduleName") && app.includes("window.Plotly"), "the local Plotly UMD moduleName export must normalize before rendering");
   assert(app.includes("loadPlotlyScript(localPlotlyUrl())"), "Plotly recovery must address only the pinned local artifact");

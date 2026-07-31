@@ -34,6 +34,12 @@ assert.equal(config.app.testIds.plotHostPrefix, "plot-host-");
 assert.equal(config.app.testIds.plotErrorState, "plot-error-state");
 assert.equal(config.app.testIds.findPeaksAction, "find-peaks-action");
 assert.equal(config.app.testIds.signalStatisticsAction, "signal-statistics-action");
+assert.equal(config.app.testIds.displayOverflowTrigger, "display-overflow-trigger");
+assert.equal(config.app.testIds.displayOverflowMenu, "display-overflow-menu");
+assert.equal(config.app.testIds.clearDisplayAction, "clear-display-action");
+assert.equal(config.app.testIds.emptyDisplay.plot, "empty-display-plot-state");
+assert.equal(config.app.testIds.emptyDisplay.measurements, "empty-display-measurements-state");
+assert.equal(config.app.testIds.emptyDisplay.peaks, "empty-display-peaks-state");
 assert.equal(config.app.testIds.measurements.signalsTab, "signal-panel-tab-signals");
 assert.equal(config.app.testIds.measurements.measurementsTab, "signal-panel-tab-measurements");
 assert.equal(config.app.testIds.measurements.panel, "measurements-panel");
@@ -47,6 +53,7 @@ assert.equal(config.app.testIds.peaks.tab, "peaks-panel-tab");
 assert.equal(config.app.testIds.peaks.table, "peaks-table");
 assert.equal(config.app.testIds.peaks.rowPrefix, "peak-row-");
 assert.equal(config.features.peaks, true);
+assert.equal(config.features["clear-display"], true);
 assert.deepEqual(Object.keys(config.app.testIds.plotCards).sort(), [
   "persistence",
   "spectrogram",
