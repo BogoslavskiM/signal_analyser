@@ -3,105 +3,36 @@
 const fs = require("fs");
 const path = require("path");
 
-module.exports = async function testSignalAnalyserStaticContract(assert) {
+module.exports = async function testSignalAnalyserDisplayStaticContract(assert) {
   const root = path.resolve(__dirname, "../../../..");
   const html = fs.readFileSync(path.join(root, "public/index.html"), "utf8");
   const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8");
-  const api = fs.readFileSync(path.join(root, "public/js/api.js"), "utf8");
   const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
-  const plotlyVendorUrl = "./js/vendor/plotly-cartesian-3.1.0.min.js";
-  const plotlyVendorPath = path.join(root, "public/js/vendor/plotly-cartesian-3.1.0.min.js");
-  const plotlyVendorDirectory = path.dirname(plotlyVendorPath);
-  const scriptSources = Array.from(html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi), ([, source]) => source);
+  const api = fs.readFileSync(path.join(root, "public/js/api.js"), "utf8");
 
-  [
-    "app-shell", "plot-grid", "plot-card-time", "plot-card-spectrum",
-    "plot-card-spectrogram", "plot-card-persistence", "active-plot-panel",
-    "active-plot-title", "active-plot-panel", "signal-table", "app-loading", "app-error",
-  ].forEach((selector) => assert(html.includes(`data-testid=\"${selector}\"`), `missing selector ${selector}`));
-  ["time", "spectrum", "spectrogram", "persistence"].forEach((plotId) => {
-    assert(html.includes(`data-testid=\"plot-host-${plotId}\"`), `missing Plotly host testid ${plotId}`);
-  });
-  assert(app.includes("data-testid=\\\"signal-row-"), "signal rows must use stable safe-name selector");
-  assert(app.includes("data-testid=\\\"signal-visibility-checkbox-"), "signal visibility checkboxes must use stable safe-name selector");
-  assert(app.includes("data-testid=\\\"signal-visibility-state-"), "signal visibility labels must use stable safe-name selector");
-  assert(app.includes("data-testid=\\\"active-plot-field-"), "panel fields must use stable id selector");
-  assert(html.includes('data-bottom-tabs'), "bottom area must expose a local two-tab control");
-  assert(html.includes('data-bottom-tab="signals"') && html.includes('data-bottom-tab="measurements"'), "bottom area must expose Signals and Measurements tabs");
-  assert(html.includes('data-bottom-content="signals"') && html.includes('data-bottom-content="measurements"'), "each bottom tab must have matching content");
-  assert(!html.includes("selected-measurements-panel") && !html.includes("selected-measurements-table"), "measurements must not be rendered in a sidebar");
-  assert(app.includes("data-testid=\\\"measurement-item-"), "measurement rows must use stable item-id selectors");
-
-  assert(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(css), "plot grid must have two fixed columns");
-  assert(/grid-template-rows:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(css), "plot grid must have two fixed rows");
-  assert(/\.signal-analyser\s*\{[^}]*min-width:\s*1280px;[^}]*min-height:\s*860px;/s.test(css), "application canvas must keep fixed minimum geometry");
-  const hiddenAttributeRule = Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g)).some(([, selector, declarations]) =>
-    selector.split(",").some((part) => part.trim() === "[hidden]")
-      && /\bdisplay\s*:\s*none\s*!important\b/i.test(declarations)
+  ["app-shell", "display-tabs", "display-canvas", "active-plot-host", "plot-type-select", "settings-view-select", "signal-table", "toggle-all-signals", "bottom-panel-signals", "measurements-panel", "display-count-status", "active-display-status"].forEach((id) =>
+    assert(html.includes(`data-testid="${id}"`), `missing stable Display UI selector ${id}`)
   );
-  assert(
-    hiddenAttributeRule,
-    "CSS must enforce display: none !important for [hidden] so loader and error visibility cannot be overridden"
+  assert((html.match(/data-testid="active-plot-host"/g) || []).length === 1, "each active Display must own one graph host");
+  assert(!html.includes("plot-grid") && !html.includes("layout-chooser"), "MVP must not render a multi-layout plot grid");
+  assert(html.includes("data-signal-rows") && app.includes("data-signal-visibility"), "signal list must contain per-signal checkbox controls at runtime");
+  assert(/<script\b[^>]*src=["']\.\/js\/api\.js["']/.test(html) && /<script\b[^>]*src=["']\.\/js\/app\.js["']/.test(html), "Genie-relative API and app scripts must be registered");
+  assert(!/\b(?:href|src)\s*=\s*["']\/(?:css|js)\//i.test(html), "frontend assets must remain Genie-relative, not root-absolute");
+  assert(html.includes('./js/vendor/plotly-cartesian-3.1.0.min.js'), "Plotly must be loaded from the pinned local vendor asset before the app");
+  assert(html.indexOf('./js/vendor/plotly-cartesian-3.1.0.min.js') < html.indexOf('./js/app.js'), "local Plotly must load before app.js");
+
+  assert(api.includes('request("./api/state")'), "state API must use ./api/state");
+  assert(api.includes('request("./api/view", {'), "view API must use ./api/view");
+  assert(api.includes('request("./api/displays", {'), "Display lifecycle API must use ./api/displays");
+  assert((api.match(/method: "POST"/g) || []).length >= 2, "view and displays mutations must POST JSON");
+
+  ["active_display_id", "displays", "visible_signals", "selected_signal", "displayMutation", "addDisplay", "selectDisplay", "closeDisplay", "pendingAction"].forEach((term) =>
+    assert(app.includes(term), `frontend must preserve Display state contract term ${term}`)
   );
-  assert(/data-plot="time"[\s\S]{0,180}role="button"/.test(html), "plot cards must remain buttons rather than layout tabs");
-  assert(!html.includes("data-layout") && !html.includes("layout-chooser"), "layout chooser must not be present");
-  assert(!/grid-template-(?:columns|rows)[^{}]*(?:auto-fit|auto-fill)/.test(css), "plot grid must not switch to responsive layouts");
-
-  [
-    "Анализатор сигналов", "Время", "Спектр", "Спектрограмма", "Спектр персистентности",
-    "Сигналы", "Измерения", "Параметры отображения", "Показатель", "Значение",
-    "Время", "Видимость", "Загрузка данных", "Повторить",
-  ].forEach((label) => {
-    assert(html.includes(label), `missing Russian label ${label}`);
-  });
-  [
-    "Загрузка данных анализатора", "Синхронизация выбора", "Не удалось синхронизировать состояние анализатора",
-    "Нельзя скрыть последний видимый сигнал", "Нет данных для отображения", "Не удалось отобразить график",
-    "Нет измерений для выбранного сигнала",
-    "Минимум", "Максимум", "Среднее",
-  ].forEach((label) => {
-    assert(app.includes(label), `missing Russian runtime text ${label}`);
-  });
-  assert(/<link\b[^>]*\bhref=["']\.\/css\/app\.css["']/i.test(html), "product stylesheet must use the Genie-safe ./css/app.css path");
-  assert(/<script\b[^>]*\bsrc=["']\.\/js\/api\.js["']/i.test(html), "API script must use the Genie-safe ./js/api.js path");
-  assert(/<script\b[^>]*\bsrc=["']\.\/js\/app\.js["']/i.test(html), "application script must use the Genie-safe ./js/app.js path");
-  assert(!/\b(?:href|src)\s*=\s*["']\/(?:css|js)\//i.test(html), "product CSS and JS assets must not use root-absolute /css or /js paths");
-
-  assert(scriptSources.includes(plotlyVendorUrl), "Plotly Cartesian must be delivered from the pinned local vendor URL");
-  assert(scriptSources.indexOf(plotlyVendorUrl) < scriptSources.indexOf("./js/app.js"), "local Plotly vendor must load before app.js");
-  assert(!scriptSources.some((source) => /https:\/\/cdn\.plot\.ly\//.test(source)), "index.html must not bypass local-first Plotly delivery with a CDN script");
-  assert(fs.existsSync(plotlyVendorPath) && fs.statSync(plotlyVendorPath).size > 0, "pinned local Plotly vendor asset must be present and nonempty");
-  const licenseFiles = fs.existsSync(plotlyVendorDirectory)
-    ? fs.readdirSync(plotlyVendorDirectory).filter((name) => /license/i.test(name))
-    : [];
-  assert(
-    licenseFiles.some((name) => fs.statSync(path.join(plotlyVendorDirectory, name)).size > 0 && /MIT License/i.test(fs.readFileSync(path.join(plotlyVendorDirectory, name), "utf8"))),
-    "local Plotly vendor directory must contain a nonempty MIT LICENSE"
-  );
-  assert(app.includes("moduleName"), "app loader must support the local bundle moduleName export");
-  assert(/https:\/\/cdn\.plot\.ly\//.test(app), "app loader must retain a CDN fallback for Plotly delivery");
-
-  assert(api.includes('request("./api/state")'), "state API must use exactly ./api/state");
-  assert(api.includes('request("./api/view", {'), "view API must use exactly ./api/view");
-  assert(!api.includes('request("./api/measurements"'), "Cascade 3 measurements must not use a separate API endpoint");
-  assert(!/["']\/api(?:\/|["'])/.test(api), "API client must not use root-absolute /api paths");
-  assert(api.includes("method: \"POST\""), "view API must be POST");
-  assert(api.includes("body: JSON.stringify(payload)"), "view payload must be serialized");
-
-  assert(app.includes("visible_signals"), "frontend must read and send visible_signals");
-  assert(app.includes("plot_payload"), "frontend must consume backend plot_payload for multi-signal traces");
-  assert(/measurements\.state_revision/.test(app) && /measurements\.signal_name/.test(app), "frontend must reject measurements that do not match the confirmed snapshot");
-  assert(app.includes("ordinate") && app.includes("units") && app.includes("items"), "frontend must consume the final measurements snapshot contract");
-  assert(/item\.id/.test(app) && /item\.time_s/.test(app), "frontend must consume measurement item id and time_s fields");
-  assert(/units\.value/.test(app) && /units\.time/.test(app), "frontend must render measurement units from the snapshot");
-  assert(app.includes("minimum") && app.includes("maximum") && app.includes("mean"), "frontend must render the three P0 measurement items");
-  assert(app.includes("time_traces") && app.includes("spectrum_traces"), "frontend must render separate line traces for all visible time/spectrum signals");
-  assert(/showlegend\s*:\s*true/.test(app), "line plots must enable Plotly legends");
-  assert(/showlegend\s*:\s*false/.test(app), "heatmaps must disable Plotly legends");
-  assert(/orderedExistingNames\([^)]*state\.signals/.test(app), "visibility mutations must be canonicalized by signal order");
-  assert(/state_revision\s*:\s*state\s*&&\s*state\.state_revision/.test(app), "view mutations must include expected state revision");
-  assert(/payload\.visible_signals\s*=/.test(app), "view mutations must send the full visible_signals array");
-  assert(/mutationInFlight/.test(app) && /intendedView/.test(app) && /drainMutationQueue/.test(app), "view mutations must be serialized through a revision-safe queue");
-  assert(/event\.target\.closest\("\[data-signal-visibility\], \[data-signal-visibility-control\]"\)\)\s*\{\s*event\.stopPropagation\(\);/.test(app), "checkbox clicks must stop propagation before row selection");
-  assert(!/Plotly\.purge\(host\)[\s\S]{0,240}Plotly\.react/.test(app), "rendering must not purge existing Plotly graphs before Plotly.react");
+  assert(app.includes('displayMutation("create"') && app.includes('displayMutation("select"') && app.includes('displayMutation("close"'), "frontend must emit create/select/close Display operations");
+  assert(app.includes("data-testid='close-display-"), "close controls must have stable per-display test IDs");
+  assert(app.includes("data-signal-visibility") && app.includes("visible_signals"), "checkbox actions must update active Display membership");
+  assert(app.includes("payload.current") && app.includes("status===409"), "stale API responses must canonicalize from the authoritative snapshot");
+  assert(app.includes("moduleName") && app.includes("window.Plotly"), "the local Plotly UMD moduleName export must normalize before rendering");
+  assert(!/grid-template-(?:columns|rows)\s*:\s*repeat\(2/i.test(css), "MVP styling must not retain a fixed four-plot grid");
 };

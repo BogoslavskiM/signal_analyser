@@ -55,18 +55,75 @@ end
     routes_source = SA_API.source("app", "routes.jl")
     state_routes = collect(eachmatch(r"route\(\"/api/state\", method = GET\)", routes_source))
     view_routes = collect(eachmatch(r"route\(\"/api/view\", method = POST\)", routes_source))
+    display_routes = collect(eachmatch(r"route\(\"/api/displays\", method = POST\)", routes_source))
     measurement_routes = collect(eachmatch(r"route\(\"/api/measurements\"", routes_source))
 
     @test length(state_routes) == 1
     @test length(view_routes) == 1
+    @test length(display_routes) == 1
     @test isempty(measurement_routes)
     @test occursin("api_json(signal_analyser_snapshot(SIGNAL_ANALYSER_STATE))", routes_source)
     @test occursin("api_json(apply_signal_analyser_view!(SIGNAL_ANALYSER_STATE, jsonpayload()))", routes_source)
+    @test occursin("api_json(apply_signal_analyser_display!(SIGNAL_ANALYSER_STATE, jsonpayload()))", routes_source)
     @test !occursin("signal_analyser_measurements", routes_source)
     @test occursin("\"visible_signals\"", SA_API.source("lib", "services", "signal_analyser_service.jl"))
     @test occursin("signal_analyser_validation_response(err)", routes_source)
     @test occursin("signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)", routes_source)
     @test !occursin("signal_analyser_unavailable_response", routes_source)
+end
+
+@testset "Signal Analyser API Display payload contract" begin
+    SA_API.reset_pspectrum_double!()
+    state = SA_API.default_signal_analyser_state()
+    first_name, second_name = [signal.name for signal in state.signals]
+
+    created = SA_API.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))
+    @test created["state_revision"] == 1
+    @test created["active_display_id"] == "display-2"
+    @test [display["id"] for display in created["displays"]] == ["display-1", "display-2"]
+
+    changed = SA_API.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 1,
+        "active_plot" => "persistence",
+        "selected_signal" => second_name,
+        "visible_signals" => [second_name],
+    ))
+    @test changed["state_revision"] == 2
+
+    selected = SA_API.apply_signal_analyser_display!(state, Dict(
+        "state_revision" => 2,
+        "operation" => "select",
+        "display_id" => "display-1",
+    ))
+    @test selected["state_revision"] == 3
+    @test selected["active_display_id"] == "display-1"
+    @test selected["active_plot"] == "time"
+    @test selected["selected_signal"] == first_name
+    @test selected["visible_signals"] == [first_name, second_name]
+
+    stale_response = SA_API.signal_analyser_stale_response(
+        state,
+        SA_API.SignalAnalyserStaleStateError(2, 3),
+    )
+    @test stale_response.status == 409
+    @test stale_response.body["code"] == "stale_state"
+    @test stale_response.body["current"]["active_display_id"] == "display-1"
+    @test length(stale_response.body["current"]["displays"]) == 2
+
+    before_invalid = SA_API.signal_analyser_snapshot(state)
+    invalid = try
+        SA_API.apply_signal_analyser_display!(state, Dict(
+            "state_revision" => 3,
+            "operation" => "close",
+            "display_id" => "missing",
+        ))
+        nothing
+    catch caught
+        caught
+    end
+    @test invalid isa SA_API.SignalAnalyserValidationError
+    @test haskey(invalid.fields, "display_id")
+    @test SA_API.signal_analyser_snapshot(state) == before_invalid
 end
 
 @testset "Signal Analyser API error envelopes" begin

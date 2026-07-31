@@ -4,424 +4,196 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-const HARMONIC = "Гармонический сигнал";
-const CHIRP = "Комплексный ЛЧМ-сигнал";
+const A = "Гармонический сигнал";
+const B = "Комплексный ЛЧМ-сигнал";
 
 function flush() {
-  return Promise.resolve().then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve())
-    .then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve());
+  return Promise.resolve().then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve());
 }
+function response(status, payload) { return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(payload) }; }
 
-function response(status, payload) {
-  return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(payload) };
-}
-
-const RAW_TIME = [0, 0.1, 0.2];
-const RAW_REAL = [-2, 3, -2];
-const RAW_MAGNITUDE = [5, 13, 5];
-
-function linePlot(y, method, x) {
-  const plot = { type: "line", x: x || [0, 1], y, x_label: "x", y_label: "y" };
-  if (method) plot.method = method;
-  return plot;
-}
-
-function heatmapPlot(z) {
-  return { type: "heatmap", x: [0, 1], y: [0, 1], z, x_label: "x", y_label: "y", color_label: "z" };
-}
-
-function trace(name, color, y, method, x) {
-  const item = linePlot(y, method, x);
-  item.name = name;
-  item.signal = name;
-  item.color = color;
-  return item;
-}
-
-function statistic(values, times, reducer) {
-  const value = reducer === "min" ? Math.min(...values) : Math.max(...values);
-  const index = values.findIndex((item) => item === value);
-  return { value, time_s: times[index], sample_index: index };
-}
-
-function measurementPayload(revision, selectedSignal) {
-  const isChirp = selectedSignal === CHIRP;
-  const values = isChirp ? RAW_MAGNITUDE : RAW_REAL;
-  const min = statistic(values, RAW_TIME, "min");
-  const max = statistic(values, RAW_TIME, "max");
-  return {
-    state_revision: revision,
-    signal_name: selectedSignal,
-    ordinate: isChirp ? "magnitude" : "real",
-    units: { time: "s", value: "1" },
-    items: [
-      { id: "minimum", label: "Минимум", value: min.value, time_s: min.time_s, sample_index: min.sample_index },
-      { id: "maximum", label: "Максимум", value: max.value, time_s: max.time_s, sample_index: max.sample_index },
-      { id: "mean", label: "Среднее", value: values.reduce((sum, value) => sum + value, 0) / values.length, time_s: null, sample_index: null },
-    ],
-  };
-}
-
-function snapshot(revision, activePlot, selectedSignal, visibleNames) {
-  const visible = visibleNames || [HARMONIC, CHIRP];
-  const allSignals = [
-    { name: HARMONIC, color: "#2563eb", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Вещественный", visible: visible.includes(HARMONIC) },
-    { name: CHIRP, color: "#dc2626", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Комплексный", visible: visible.includes(CHIRP) },
+function snapshot(revision, activeId, displayDefinitions) {
+  const definitions = displayDefinitions || [
+    { id: "display-1", name: "Display 1", active_plot: "time", selected_signal: A, visible_signals: [A, B] },
   ];
-  const selectedColor = selectedSignal === CHIRP ? "#dc2626" : "#2563eb";
-  const selectedY = selectedSignal === CHIRP ? RAW_MAGNITUDE : RAW_REAL;
-  const timeTraces = [
-    trace(HARMONIC, "#2563eb", RAW_REAL, undefined, RAW_TIME),
-    trace(CHIRP, "#dc2626", RAW_MAGNITUDE, undefined, RAW_TIME),
-  ].filter((item) => visible.includes(item.name));
-  const spectrumTraces = [
-    trace(HARMONIC, "#2563eb", [10, 11], "welch"),
-    trace(CHIRP, "#dc2626", [12, 13], "welch"),
-  ].filter((item) => visible.includes(item.name));
-  const selectedSpectrogram = Object.assign(heatmapPlot(selectedSignal === CHIRP ? [[5, 6], [7, 8]] : [[1, 2], [3, 4]]), { name: selectedSignal, signal: selectedSignal, color: selectedColor });
-  const selectedPersistence = Object.assign(heatmapPlot(selectedSignal === CHIRP ? [[9, 10], [11, 12]] : [[2, 3], [4, 5]]), { name: selectedSignal, signal: selectedSignal, color: selectedColor });
   return {
     state_revision: revision,
-    active_plot: activePlot,
-    selected_signal: selectedSignal,
-    visible_signals: visible,
-    signals: allSignals,
-    plots: {
-      time: linePlot(selectedY, undefined, RAW_TIME),
-      spectrum: linePlot(selectedSignal === CHIRP ? [12, 13] : [10, 11], "welch"),
-      spectrogram: heatmapPlot(selectedSignal === CHIRP ? [[5, 6], [7, 8]] : [[1, 2], [3, 4]]),
-      persistence: heatmapPlot(selectedSignal === CHIRP ? [[9, 10], [11, 12]] : [[2, 3], [4, 5]]),
-    },
+    active_display_id: activeId || definitions[0].id,
+    displays: definitions,
+    signals: [
+      { name: A, color: "#2563eb", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Вещественный" },
+      { name: B, color: "#dc2626", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Комплексный" },
+    ],
+    plots: { time: { type: "line", x: [0, .1], y: [0, 1], x_label: "Time", y_label: "Amplitude" } },
     plot_payload: {
-      selected_signal: selectedSignal,
-      visible_signals: visible,
-      time_traces: timeTraces,
-      spectrum_traces: spectrumTraces,
-      spectrogram: selectedSpectrogram,
-      persistence: selectedPersistence,
+      time_traces: [
+        { name: A, signal: A, x: [0, .1], y: [0, 1] },
+        { name: B, signal: B, x: [0, .1], y: [1, 0] },
+      ],
     },
-    measurements: measurementPayload(revision, selectedSignal),
-    panel: { title: "Параметры отображения", active_plot: activePlot, fields: [{ id: "method", label: "Метод оценки", type: "text", value: "Welch", unit: "", readonly: true }] },
+    panel: { fields: [] },
+    measurements: { state_revision: revision, signal_name: A, items: [] },
   };
 }
 
-function element(attributes, options) {
-  const attrs = Object.assign({}, attributes || {});
-  const classes = new Set((options && options.classes) || []);
-  const node = {
-    hidden: Boolean(options && options.hidden), textContent: "", innerHTML: "", className: "", clientWidth: 320, clientHeight: 180,
-    children: [], parentNode: null,
-    listeners: {},
-    classList: {
-      toggle(name, enabled) { if (enabled) classes.add(name); else classes.delete(name); },
-      contains(name) { return classes.has(name); },
-    },
-    setAttribute(name, value) { attrs[name] = String(value); },
-    getAttribute(name) { return Object.prototype.hasOwnProperty.call(attrs, name) ? attrs[name] : null; },
-    addEventListener(name, callback) { this.listeners[name] = callback; },
-    appendChild(child) { child.parentNode = this; this.children.push(child); return child; },
-    removeChild(child) {
-      const index = this.children.indexOf(child);
-      if (index >= 0) this.children.splice(index, 1);
-      child.parentNode = null;
-      return child;
-    },
-    querySelectorAll(selector) {
-      if (selector !== ".plot-placeholder") return [];
-      return this.children.filter((child) => String(child.className || "").split(/\s+/).includes("plot-placeholder"));
-    },
-    closest() { return null; },
+function node(attrs) {
+  const attributes = Object.assign({}, attrs || {});
+  return {
+    hidden: false, textContent: "", innerHTML: "", checked: false, value: "", dataset: {}, listeners: {}, clientWidth: 800, clientHeight: 400,
+    classList: { toggle() {}, contains() { return false; } },
+    setAttribute(k, v) { attributes[k] = String(v); }, getAttribute(k) { return attributes[k] || null; },
+    addEventListener(k, fn) { this.listeners[k] = fn; },
+    closest() { return null; }, matches() { return false; },
   };
-  return node;
 }
 
-function makeEnvironment(fetch, options) {
-  const elements = {
-    root: element({ "data-testid": "app-shell" }),
-    loading: element({ "data-testid": "app-loading" }, { hidden: true }),
-    loadingText: element({ "data-loading-text": "" }),
-    error: element({ "data-testid": "app-error" }, { hidden: true }),
-    errorText: element({ "data-error-text": "" }),
-    title: element({ "data-testid": "active-plot-title" }),
-    panelFields: element({ "data-panel-fields": "" }),
-    bottomTabs: element({ "data-bottom-tabs": "" }),
-    signalsTab: element({ "data-bottom-tab": "signals" }),
-    measurementsTab: element({ "data-bottom-tab": "measurements" }),
-    signalsContent: element({ "data-bottom-content": "signals" }),
-    measurementsContent: element({ "data-bottom-content": "measurements" }, { hidden: true }),
-    measurementsRows: element({ "data-measurement-rows": "" }),
-    measurementsState: element({ "data-measurement-state": "" }),
-    count: element({ "data-signal-count": "" }),
-    rows: element({ "data-signal-rows": "" }),
-    grid: element({ "data-testid": "plot-grid" }),
-    retry: element({ "data-retry": "" }),
+function environment(fetch, options) {
+  const e = {
+    root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(),
+    tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
+    legend: node(), normalize: node(), markers: node(), fields: node(), count: node(), rows: node(), toggleAll: node(),
+    bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
   };
-  const cards = {};
-  const hosts = {};
-  ["time", "spectrum", "spectrogram", "persistence"].forEach((id) => {
-    cards[id] = element({ "data-plot": id });
-    hosts[id] = element({ "data-plot-host": id });
-    const placeholder = element();
-    placeholder.className = "plot-placeholder";
-    const existingGraph = element({}, { classes: ["js-plotly-plot"] });
-    existingGraph.className = "js-plotly-plot";
-    hosts[id].appendChild(placeholder);
-    hosts[id].appendChild(existingGraph);
-    hosts[id].existingGraph = existingGraph;
-  });
-  const selectorMap = {
-    "[data-testid='app-shell']": elements.root,
-    "[data-testid='app-loading']": elements.loading,
-    "[data-loading-text]": elements.loadingText,
-    "[data-testid='app-error']": elements.error,
-    "[data-error-text]": elements.errorText,
-    "[data-testid='active-plot-title']": elements.title,
-    "[data-panel-fields]": elements.panelFields,
-    "[data-bottom-tabs]": elements.bottomTabs,
-    "[data-bottom-tab='signals']": elements.signalsTab,
-    "[data-bottom-tab='measurements']": elements.measurementsTab,
-    "[data-bottom-content='signals']": elements.signalsContent,
-    "[data-bottom-content='measurements']": elements.measurementsContent,
-    "[data-measurement-rows]": elements.measurementsRows,
-    "[data-measurement-state]": elements.measurementsState,
-    "[data-signal-count]": elements.count,
-    "[data-signal-rows]": elements.rows,
-    "[data-testid='plot-grid']": elements.grid,
-    "[data-retry]": elements.retry,
+  const selectors = {
+    "[data-testid='app-shell']": e.root, "[data-testid='app-loading']": e.loading, "[data-loading-text]": e.loadingText,
+    "[data-testid='app-error']": e.error, "[data-error-text]": e.errorText, "[data-testid='display-tabs']": e.tabs,
+    "[data-testid='active-plot-host']": e.host, "[data-testid='display-plot-title']": e.title,
+    "[data-testid='plot-type-select']": e.plotSelect, "[data-testid='settings-view-select']": e.settingsSelect,
+    "[data-testid='show-legend-checkbox']": e.legend, "[data-testid='normalize-y-checkbox']": e.normalize,
+    "[data-testid='show-markers-checkbox']": e.markers, "[data-panel-fields]": e.fields, "[data-signal-count]": e.count,
+    "[data-signal-rows]": e.rows, "[data-testid='toggle-all-signals']": e.toggleAll,
+    "[role='tablist'][aria-label='Данные анализатора']": e.bottomTabs, "[data-testid='bottom-panel-signals']": e.signals,
+    "[data-testid='measurements-panel']": e.measurements, "[data-measurements-content]": e.measurementContent,
+    "[data-retry]": e.retry, "[data-testid='display-count-status']": e.displayCount, "[data-testid='active-display-status']": e.activeStatus,
   };
-  ["time", "spectrum", "spectrogram", "persistence"].forEach((id) => {
-    selectorMap[`[data-plot='${id}']`] = cards[id];
-    selectorMap[`[data-plot-host='${id}']`] = hosts[id];
-  });
-  const document = {
-    head: { appendChild() { throw new Error("Plotly CDN must not be requested when Plotly is mocked"); } },
-    querySelector(selector) { return selectorMap[selector] || null; },
-    querySelectorAll(selector) { return selector === "[data-plot-host]" ? Object.values(hosts) : []; },
-    createElement() { return element(); },
-  };
-  const plotlyCalls = [];
-  const window = {
-    fetch,
-    Plotly: {
-      react(host, data, layout, config) {
-        plotlyCalls.push({ host, data, layout, config, placeholderCount: host.querySelectorAll(".plot-placeholder").length });
-        return Promise.resolve();
-      },
-      purge() {},
-    },
-    addEventListener() {},
-  };
-  if (options && options.moduleNameOnly) {
-    window.moduleName = window.Plotly;
-    delete window.Plotly;
-  }
-  return { window, document, elements, cards, hosts, plotlyCalls };
-}
-
-function clickCard(environment, id) {
-  const card = environment.cards[id];
-  card.closest = (selector) => selector === "[data-plot]" ? card : null;
-  environment.elements.grid.listeners.click({ target: card });
-}
-
-function clickSignal(environment, name) {
-  const row = element({ "data-signal": name });
-  row.closest = (selector) => selector === "[data-signal]" ? row : null;
-  environment.elements.rows.listeners.click({ target: row });
-}
-
-function clickPanelTab(environment, id) {
-  const tab = id === "signals" ? environment.elements.signalsTab : environment.elements.measurementsTab;
-  tab.closest = (selector) => selector === "[data-bottom-tab]" ? tab : null;
-  if (!environment.elements.bottomTabs.listeners.click) return false;
-  environment.elements.bottomTabs.listeners.click({ target: tab });
-  return true;
-}
-
-function keyPanelTab(environment, id, key) {
-  const tab = id === "signals" ? environment.elements.signalsTab : environment.elements.measurementsTab;
-  let prevented = false;
-  if (!environment.elements.bottomTabs.listeners.keydown) return false;
-  tab.closest = (selector) => selector === "[data-bottom-tab]" ? tab : null;
-  environment.elements.bottomTabs.listeners.keydown({ target: tab, key, preventDefault() { prevented = true; } });
-  return prevented;
-}
-
-function visibilityCheckbox(name, checked) {
-  const checkbox = element({ "data-signal-visibility": name });
-  checkbox.checked = checked;
-  checkbox.closest = (selector) => {
-    if (selector.includes("[data-signal-visibility]")) return checkbox;
-    return null;
-  };
-  return checkbox;
-}
-
-function latestPlotlyCall(environment, id) {
-  return environment.plotlyCalls.filter((call) => call.host === environment.hosts[id]).pop();
+  const calls = [];
+  const plotly = { react(host, data, layout) { calls.push({ plot: true, host, data, layout }); return Promise.resolve(); } };
+  const window = { fetch(url, options) { calls.push({ url, options: options || {} }); return fetch(url, options || {}); }, addEventListener() {}, Plotly: plotly };
+  if (options && options.moduleNameOnly) { window.moduleName = plotly; delete window.Plotly; }
+  const document = { querySelector(selector) { return selectors[selector] || null; }, querySelectorAll(selector) { return selector === "[data-bottom-tab]" ? [] : []; } };
+  return { e, window, document, calls };
 }
 
 async function boot(fetch, options) {
-  const environment = makeEnvironment(fetch, options);
-  const context = { window: environment.window, document: environment.document, Promise, Intl, console };
+  const env = environment(fetch, options);
   const root = path.resolve(__dirname, "../../../..");
+  const context = { window: env.window, document: env.document, Promise, console };
   vm.runInNewContext(fs.readFileSync(path.join(root, "public/js/api.js"), "utf8"), context, { filename: "api.js" });
   vm.runInNewContext(fs.readFileSync(path.join(root, "public/js/app.js"), "utf8"), context, { filename: "app.js" });
   await flush();
-  return environment;
+  return env;
 }
 
-module.exports = async function testSignalAnalyserBehavior(assert) {
-  const initialRequests = [];
-  const initial = snapshot(1, "time", HARMONIC);
-  const initialEnvironment = await boot((url, options) => {
-    initialRequests.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, initial));
-    return Promise.resolve(response(200, snapshot(2, "spectrum", HARMONIC)));
-  });
-  assert(initialRequests.length === 1 && initialRequests[0].url === "./api/state", "initialization must issue exactly one GET ./api/state");
-  assert(!initialRequests[0].options.method, "state request must not set a mutation method");
-  assert(initialEnvironment.cards.time.classList.contains("is-active"), "initial active card must be marked");
-  assert(initialEnvironment.elements.rows.innerHTML.includes("signal-row is-selected"), "initial selected signal row must be marked");
-  assert(initialEnvironment.elements.panelFields.innerHTML.includes("active-plot-field-method"), "panel field selector must be rendered from field id");
-  assert(initialEnvironment.elements.signalsTab.getAttribute("aria-selected") === "true", "Signals bottom tab must be active initially");
-  assert(initialEnvironment.elements.measurementsTab.getAttribute("aria-selected") === "false", "measurements tab must be inactive initially");
-  assert(clickPanelTab(initialEnvironment, "measurements"), "bottom tab click handler must be registered");
-  assert(initialRequests.length === 1, "switching to measurements tab must be local and must not call the API");
-  assert(initialEnvironment.elements.measurementsTab.getAttribute("aria-selected") === "true", "click must activate measurements tab");
-  assert(initialEnvironment.elements.measurementsContent.hidden === false && initialEnvironment.elements.signalsContent.hidden === true, "click must swap the two bottom tab contents");
-  assert(initialEnvironment.elements.measurementsRows.innerHTML.includes("data-testid=\"measurement-item-minimum\""), "measurements tab must render a stable minimum item testid");
-  assert(initialEnvironment.elements.measurementsRows.innerHTML.includes("data-testid=\"measurement-item-maximum\""), "measurements tab must render a stable maximum item testid");
-  assert(initialEnvironment.elements.measurementsRows.innerHTML.includes("data-testid=\"measurement-item-mean\""), "measurements tab must render a stable mean item testid");
-  assert(initialEnvironment.elements.measurementsRows.innerHTML.includes(HARMONIC) && initialEnvironment.elements.measurementsRows.innerHTML.includes("real"), "measurements tab must render the matching selected raw-sample result");
-  assert(initialEnvironment.elements.measurementsRows.innerHTML.includes("Минимум") && initialEnvironment.elements.measurementsRows.innerHTML.includes("Среднее"), "measurements tab must render Russian statistic labels");
-  assert(initialEnvironment.elements.panelFields.innerHTML.includes("active-plot-field-method"), "switching bottom tabs must leave the settings sidebar content unchanged");
-  assert(keyPanelTab(initialEnvironment, "measurements", "ArrowLeft"), "bottom tab keyboard navigation must prevent default");
-  assert(initialEnvironment.elements.signalsTab.getAttribute("aria-selected") === "true", "ArrowLeft must return selection to Signals tab");
+function tabTarget(id) { return { closest(selector) { return selector === "[data-display-id]" ? { dataset: { displayId: id } } : null; } }; }
+function addTarget() { return { closest(selector) { return selector === "[data-testid='add-display']" ? {} : null; } }; }
+function closeTarget(id) { return { closest(selector) { return selector === "[data-close-display]" ? { dataset: { closeDisplay: id } } : null; } }; }
+function checkboxTarget(name, checked) { return { checked, dataset: { signalVisibility: name }, closest(selector) { return selector === "[data-signal-visibility]" ? this : null; }, matches() { return true; } }; }
 
-  const mismatch = snapshot(1, "time", HARMONIC);
-  mismatch.measurements = Object.assign({}, mismatch.measurements, { state_revision: 0, signal_name: CHIRP });
-  const mismatchEnvironment = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? mismatch : mismatch)));
-  assert(clickPanelTab(mismatchEnvironment, "measurements"), "mismatch environment must register bottom tab click handler");
-  assert(mismatchEnvironment.elements.measurementsRows.innerHTML === "", "mismatched measurements must not render stale item values");
-  assert(mismatchEnvironment.elements.measurementsState.textContent.includes("Нет измерений"), "mismatched measurements must render the empty state");
-  assert(initialEnvironment.plotlyCalls.length >= 4, "all four plots must be rendered through Plotly");
-  ["time", "spectrum", "spectrogram", "persistence"].forEach((id) => {
-    assert(initialEnvironment.hosts[id].querySelectorAll(".plot-placeholder").length === 0, `${id} placeholder must be removed after Plotly ready`);
-    assert(initialEnvironment.hosts[id].existingGraph.parentNode === initialEnvironment.hosts[id], `${id} existing Plotly graph child must not be destroyed`);
-    assert(latestPlotlyCall(initialEnvironment, id).placeholderCount === 0, `${id} placeholder must be removed before Plotly.react`);
-  });
-  const timeCall = latestPlotlyCall(initialEnvironment, "time");
-  const spectrumCall = latestPlotlyCall(initialEnvironment, "spectrum");
-  const spectrogramCall = latestPlotlyCall(initialEnvironment, "spectrogram");
-  const persistenceCall = latestPlotlyCall(initialEnvironment, "persistence");
-  assert(JSON.stringify(timeCall.data.map((item) => item.name)) === JSON.stringify([HARMONIC, CHIRP]), "time plot must render one trace for every visible signal");
-  assert(JSON.stringify(timeCall.data.map((item) => item.line.color)) === JSON.stringify(["#2563eb", "#dc2626"]), "time traces must keep signal colors");
-  assert(timeCall.data.every((item) => item.showlegend === true), "time traces must show the legend");
-  assert(JSON.stringify(spectrumCall.data.map((item) => item.name)) === JSON.stringify([HARMONIC, CHIRP]), "spectrum plot must render one trace for every visible signal");
-  assert(spectrumCall.layout.showlegend === true, "spectrum plot must enable legend");
-  assert(spectrogramCall.data.length === 1 && spectrogramCall.data[0].type === "heatmap" && spectrogramCall.layout.showlegend === false, "spectrogram must render one selected-signal heatmap");
-  assert(persistenceCall.data.length === 1 && persistenceCall.data[0].type === "heatmap" && persistenceCall.layout.showlegend === false, "persistence must render one selected-signal heatmap");
-
-  const moduleNameEnvironment = await boot(
-    (url) => Promise.resolve(response(200, url === "./api/state" ? initial : snapshot(2, "time", HARMONIC))),
-    { moduleNameOnly: true }
-  );
-  assert(moduleNameEnvironment.window.Plotly === moduleNameEnvironment.window.moduleName, "local bundle moduleName export must normalize to window.Plotly before rendering");
-  assert(moduleNameEnvironment.plotlyCalls.length >= 4, "moduleName-normalized Plotly must render all plots without loading CDN fallback");
-
-  const queueRequests = [];
-  let resolveFirst;
-  let resolveSecond;
-  const queueInitial = snapshot(0, "time", HARMONIC);
-  const queueEnvironment = await boot((url, options) => {
-    queueRequests.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, queueInitial));
-    if (!resolveFirst) return new Promise((resolve) => { resolveFirst = resolve; });
-    return new Promise((resolve) => { resolveSecond = resolve; });
-  });
-  clickCard(queueEnvironment, "spectrum");
-  await flush();
-  assert(queueRequests.length === 2, "first intent must send one view request");
-  assert(queueRequests[1].url === "./api/view" && queueRequests[1].options.method === "POST", "selection must use POST ./api/view");
-  assert(JSON.stringify(JSON.parse(queueRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "spectrum", selected_signal: HARMONIC, visible_signals: [HARMONIC, CHIRP] }), "first view request must serialize revision and complete target");
-  clickCard(queueEnvironment, "persistence");
-  clickSignal(queueEnvironment, CHIRP);
-  await flush();
-  assert(queueRequests.length === 2, "only one view mutation may be in flight");
-  resolveFirst(response(200, snapshot(1, "spectrum", HARMONIC)));
-  await flush();
-  const queuedLatestIntent = queueRequests.length === 3;
-  if (queuedLatestIntent) {
-    const queuedPayload = JSON.parse(queueRequests[2].options.body);
-    assert(JSON.stringify(queuedPayload) === JSON.stringify({ state_revision: 1, active_plot: "persistence", selected_signal: CHIRP, visible_signals: [HARMONIC, CHIRP] }), "queued mutation must retain the latest plot and signal intent");
-    resolveSecond(response(200, snapshot(2, "persistence", CHIRP)));
-    await flush();
-    assert(queueEnvironment.cards.persistence.classList.contains("is-active"), "server-confirmed card must become active");
-    assert(queueEnvironment.elements.rows.innerHTML.includes(CHIRP) && queueEnvironment.elements.rows.innerHTML.includes("signal-row is-selected"), "server-confirmed selected row must be marked");
-    assert(clickPanelTab(queueEnvironment, "measurements"), "queue environment must register bottom tab click handler");
-    assert(queueEnvironment.elements.measurementsRows.innerHTML.includes(CHIRP), "server-confirmed row selection must refresh selected measurements");
-    assert(queueEnvironment.elements.measurementsRows.innerHTML.includes("magnitude"), "complex selection must refresh the matching ordinate");
-  }
-
-  const visibilityRequests = [];
-  let resolveVisibilityFirst;
-  let resolveVisibilitySecond;
-  const visibilityEnvironment = await boot((url, options) => {
-    visibilityRequests.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, snapshot(0, "time", HARMONIC)));
-    if (!resolveVisibilityFirst) return new Promise((resolve) => { resolveVisibilityFirst = resolve; });
-    return new Promise((resolve) => { resolveVisibilitySecond = resolve; });
-  });
-  const checkbox = visibilityCheckbox(HARMONIC, false);
-  let stoppedClick = false;
-  visibilityEnvironment.elements.rows.listeners.click({ target: checkbox, stopPropagation() { stoppedClick = true; } });
-  await flush();
-  assert(stoppedClick, "visibility checkbox click must stop propagation");
-  assert(visibilityRequests.length === 1, "visibility checkbox click must not select the row or call the API");
-  assert(clickPanelTab(visibilityEnvironment, "measurements"), "visibility environment must register bottom tab click handler");
-  assert(visibilityEnvironment.elements.measurementsRows.innerHTML.includes(HARMONIC), "visibility checkbox click must leave selected measurements unchanged");
-  let stoppedChange = false;
-  visibilityEnvironment.elements.rows.listeners.change({ target: checkbox, stopPropagation() { stoppedChange = true; } });
-  await flush();
-  assert(stoppedChange, "visibility checkbox change must stop propagation");
-  assert(visibilityRequests.length === 2, "visibility change must enqueue one API mutation");
-  assert(JSON.stringify(JSON.parse(visibilityRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", selected_signal: CHIRP, visible_signals: [CHIRP] }), "hiding selected signal must send fallback selected and full visible list");
-  const restoreCheckbox = visibilityCheckbox(HARMONIC, true);
-  visibilityEnvironment.elements.rows.listeners.change({ target: restoreCheckbox, stopPropagation() {} });
-  await flush();
-  assert(visibilityRequests.length === 2, "second visibility change must wait while first mutation is in flight");
-  resolveVisibilityFirst(response(200, snapshot(1, "time", CHIRP, [CHIRP])));
-  await flush();
-  assert(visibilityRequests.length === 3, "queued visibility change must run after the first response");
-  assert(visibilityEnvironment.elements.measurementsRows.innerHTML.includes(CHIRP), "fallback visibility response must refresh selected measurements");
-  assert(JSON.stringify(JSON.parse(visibilityRequests[2].options.body)) === JSON.stringify({ state_revision: 1, active_plot: "time", selected_signal: CHIRP, visible_signals: [HARMONIC, CHIRP] }), "queued visibility mutation must use the server-confirmed revision and canonical visible order");
-  resolveVisibilitySecond(response(200, snapshot(2, "time", CHIRP, [HARMONIC, CHIRP])));
-  await flush();
-
-  const staleRequests = [];
-  const staleCurrent = snapshot(7, "time", HARMONIC);
-  const staleEnvironment = await boot((url, options) => {
-    staleRequests.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, initial));
-    return Promise.resolve(response(409, { ok: false, current: staleCurrent }));
-  });
-  clickCard(staleEnvironment, "spectrum");
-  await flush();
-  assert(staleRequests.filter((request) => request.url === "./api/view").length === 2, "409 with current snapshot must retry once and no more");
-  assert(JSON.parse(staleRequests[2].options.body).state_revision === 7, "single retry must use the revision from current");
-  assert(staleEnvironment.elements.error.hidden === false, "a second stale response must be visible as an error");
-
-  let failedGet = true;
-  const errorEnvironment = await boot((url) => {
-    if (failedGet) return Promise.resolve(response(500, { error: "failure" }));
+module.exports = async function testDisplayBehavior(assert) {
+  const initial = snapshot(0);
+  const requests = [];
+  const env = await boot((url, options) => {
+    requests.push({ url, options });
     return Promise.resolve(response(200, initial));
   });
-  assert(errorEnvironment.elements.error.hidden === false, "GET failure must show app error");
-  assert(errorEnvironment.elements.loading.hidden === true && errorEnvironment.elements.root.getAttribute("aria-busy") === "false", "GET failure must clear loading state");
-  failedGet = false;
-  errorEnvironment.elements.retry.listeners.click();
+  assert(requests.length === 1 && requests[0].url === "./api/state", "startup must request the authoritative state once");
+  assert(env.e.tabs.innerHTML.includes("display-tab-display-1"), "initial snapshot must render the active display tab");
+  assert(env.e.tabs.innerHTML.includes("add-display"), "display workspace must render the add page control");
+  const plots = env.calls.filter((call) => call.plot);
+  assert(plots.length === 1, "one Display page must render exactly one graph host");
+  assert(JSON.stringify(plots[0].data.map((trace) => trace.name)) === JSON.stringify([A, B]), "the active graph must include every checked signal independently");
+  const rowIds = Array.from(env.e.rows.innerHTML.matchAll(/data-testid='signal-checkbox-([^']+)'/g), (match) => match[1]);
+  assert(rowIds.length === 2 && new Set(rowIds).size === 2, "Cyrillic signal names must receive collision-free checkbox test IDs");
+
+  const umd = await boot((url) => Promise.resolve(response(200, initial)), { moduleNameOnly: true });
+  assert(umd.window.Plotly === umd.window.moduleName, "local Plotly UMD moduleName export must normalize to window.Plotly");
+  assert(umd.calls.some((call) => call.plot), "UMD-normalized local Plotly must render the active graph without CDN loading");
+
+  const displayCalls = [];
+  const created = snapshot(1, "display-2", [
+    { id: "display-1", name: "Display 1", active_plot: "spectrum", selected_signal: B, visible_signals: [B] },
+    { id: "display-2", name: "Display 2", active_plot: "time", selected_signal: A, visible_signals: [A, B] },
+  ]);
+  const selected = snapshot(2, "display-1", created.displays);
+  const lifecycle = await boot((url, options) => {
+    displayCalls.push({ url, options });
+    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    const payload = JSON.parse(options.body);
+    return Promise.resolve(response(200, payload.operation === "create" ? created : selected));
+  });
+  lifecycle.e.tabs.listeners.click({ target: addTarget() });
   await flush();
-  assert(errorEnvironment.elements.error.hidden === true, "successful retry must clear app error");
-  assert(queuedLatestIntent, "latest queued intent must run after the in-flight mutation even from state_revision 0");
+  assert(displayCalls[1].url === "./api/displays", "add Display must use POST ./api/displays");
+  assert(JSON.stringify(JSON.parse(displayCalls[1].options.body)) === JSON.stringify({ state_revision: 0, operation: "create" }), "add Display must send current revision and create operation only");
+  assert(lifecycle.e.tabs.innerHTML.includes("display-tab-display-2"), "created display must be selected and rendered");
+  lifecycle.e.tabs.listeners.click({ target: tabTarget("display-1") });
+  await flush();
+  assert(JSON.stringify(JSON.parse(displayCalls[2].options.body)) === JSON.stringify({ state_revision: 1, operation: "select", display_id: "display-1" }), "select Display must use confirmed revision and display id");
+  assert(lifecycle.e.title.textContent === "Spectrum", "selecting a page must restore its graph type");
+  lifecycle.e.tabs.listeners.click({ target: closeTarget("display-1") });
+  await flush();
+  assert(JSON.parse(displayCalls[3].options.body).operation === "close", "close control must request the close operation");
+
+  let resolveFirst;
+  const queued = [];
+  const queue = await boot((url, options) => {
+    queued.push({ url, options });
+    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    return new Promise((resolve) => { resolveFirst = resolve; });
+  });
+  queue.e.tabs.listeners.click({ target: addTarget() });
+  await flush();
+  queue.e.tabs.listeners.click({ target: addTarget() });
+  await flush();
+  assert(queued.filter((call) => call.url === "./api/displays").length === 1, "only the first display request may be in flight");
+  resolveFirst(response(200, created));
+  await flush();
+  assert(queued.filter((call) => call.url === "./api/displays").length === 2, "a second user action during a request must be serialized after the confirmed revision");
+  assert(JSON.parse(queued[2].options.body).state_revision === 1, "queued Display mutation must use the confirmed revision");
+
+  let viewAttempt = 0;
+  const stale = [];
+  const staleReplay = await boot((url, options) => {
+    stale.push({ url, options });
+    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    viewAttempt += 1;
+    if (viewAttempt === 1) return Promise.resolve(response(409, { current: snapshot(7) }));
+    return Promise.resolve(response(200, snapshot(8, "display-1", [{ id: "display-1", name: "Display 1", active_plot: "spectrum", selected_signal: A, visible_signals: [A, B] }])));
+  });
+  staleReplay.e.plotSelect.value = "spectrum";
+  staleReplay.e.plotSelect.listeners.change({ target: staleReplay.e.plotSelect });
+  await flush();
+  const staleViews = stale.filter((call) => call.url === "./api/view");
+  assert(staleViews.length === 2, "a stale view mutation must replay exactly once from payload.current");
+  assert(JSON.parse(staleViews[1].options.body).state_revision === 7, "stale replay must use the authoritative current revision");
+
+  let displayAttempt = 0;
+  const staleDisplay = [];
+  const displayReplay = await boot((url, options) => {
+    staleDisplay.push({ url, options });
+    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    displayAttempt += 1;
+    if (displayAttempt === 1) return Promise.resolve(response(409, { current: snapshot(4) }));
+    return Promise.resolve(response(200, snapshot(5, "display-2", [
+      { id: "display-1", name: "Display 1", active_plot: "time", selected_signal: A, visible_signals: [A, B] },
+      { id: "display-2", name: "Display 2", active_plot: "time", selected_signal: A, visible_signals: [A, B] },
+    ])));
+  });
+  displayReplay.e.tabs.listeners.click({ target: addTarget() });
+  await flush();
+  const staleDisplays = staleDisplay.filter((call) => call.url === "./api/displays");
+  assert(staleDisplays.length === 2, "a stale Display lifecycle mutation must replay exactly once");
+  assert(JSON.parse(staleDisplays[1].options.body).state_revision === 4, "Display replay must use the authoritative current revision");
+
+  const visibility = [];
+  const selection = await boot((url, options) => {
+    visibility.push({ url, options });
+    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    return Promise.resolve(response(200, snapshot(1, "display-1", [{ id: "display-1", name: "Display 1", active_plot: "time", selected_signal: B, visible_signals: [B] }])));
+  });
+  selection.e.rows.listeners.change({ target: checkboxTarget(A, false) });
+  await flush();
+  const view = visibility.find((call) => call.url === "./api/view");
+  assert(view, "per-display checkbox must update the active display through /api/view");
+  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", selected_signal: B, visible_signals: [B] }), "hiding selected signal must send complete active-page membership and fallback selection");
 };

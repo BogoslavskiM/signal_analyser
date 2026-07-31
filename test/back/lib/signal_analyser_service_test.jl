@@ -92,7 +92,15 @@ end
     state = SA.default_signal_analyser_state()
     snapshot = SA.signal_analyser_snapshot(state)
 
-    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_plot", "selected_signal", "visible_signals", "signals", "plots", "plot_payload", "measurements", "panel"])
+    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "selected_signal", "visible_signals", "signals", "plots", "plot_payload", "measurements", "panel"])
+    @test snapshot["active_display_id"] == "display-1"
+    @test snapshot["displays"] == [Dict(
+        "id" => "display-1",
+        "name" => "Display 1",
+        "active_plot" => "time",
+        "selected_signal" => "Гармонический сигнал",
+        "visible_signals" => ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"],
+    )]
     @test snapshot["state_revision"] == 0
     @test snapshot["active_plot"] == "time"
     @test snapshot["selected_signal"] == "Гармонический сигнал"
@@ -150,6 +158,150 @@ end
     no_op = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 2, "active_plot" => "spectrum", "selected_signal" => second_name))
     @test no_op["state_revision"] == 2
     @test state.view.state_revision == 2
+end
+
+@testset "Signal Analyser Display pages keep independent view state" begin
+    SA.reset_pspectrum_double!()
+    state = SA.default_signal_analyser_state()
+    first_name, second_name = [signal.name for signal in state.signals]
+
+    created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))
+    @test created["state_revision"] == 1
+    @test created["active_display_id"] == "display-2"
+    @test [display["id"] for display in created["displays"]] == ["display-1", "display-2"]
+    @test created["displays"][2] == Dict(
+        "id" => "display-2",
+        "name" => "Display 2",
+        "active_plot" => "time",
+        "selected_signal" => first_name,
+        "visible_signals" => [first_name, second_name],
+    )
+
+    configured_second = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 1,
+        "active_plot" => "spectrum",
+        "selected_signal" => second_name,
+        "visible_signals" => [second_name],
+    ))
+    @test configured_second["state_revision"] == 2
+    @test configured_second["active_display_id"] == "display-2"
+    @test configured_second["active_plot"] == "spectrum"
+    @test configured_second["visible_signals"] == [second_name]
+
+    selected_first = SA.apply_signal_analyser_display!(state, Dict(
+        "state_revision" => 2,
+        "operation" => "select",
+        "display_id" => "display-1",
+    ))
+    @test selected_first["state_revision"] == 3
+    @test selected_first["active_display_id"] == "display-1"
+    @test selected_first["active_plot"] == "time"
+    @test selected_first["selected_signal"] == first_name
+    @test selected_first["visible_signals"] == [first_name, second_name]
+
+    restored_second = SA.apply_signal_analyser_display!(state, Dict(
+        "state_revision" => 3,
+        "operation" => "select",
+        "display_id" => "display-2",
+    ))
+    @test restored_second["state_revision"] == 4
+    @test restored_second["active_display_id"] == "display-2"
+    @test restored_second["active_plot"] == "spectrum"
+    @test restored_second["selected_signal"] == second_name
+    @test restored_second["visible_signals"] == [second_name]
+    @test [trace["name"] for trace in restored_second["plot_payload"]["time_traces"]] == [second_name]
+end
+
+@testset "Signal Analyser Display page lifecycle is revision-safe and atomic" begin
+    SA.reset_pspectrum_double!()
+    state = SA.default_signal_analyser_state()
+    initial = SA.signal_analyser_snapshot(state)
+
+    for invalid_payload in (
+        Dict{String,Any}(),
+        Dict("state_revision" => 0.0, "operation" => "create"),
+        Dict("state_revision" => true, "operation" => "create"),
+        Dict("state_revision" => 0, "operation" => "unknown"),
+        Dict("state_revision" => 0, "operation" => "create", "display_id" => "display-1"),
+        Dict("state_revision" => 0, "operation" => "select"),
+        Dict("state_revision" => 0, "operation" => "close", "display_id" => "missing"),
+        Dict("state_revision" => 0, "operation" => "create", "extra" => true),
+    )
+        err = try
+            SA.apply_signal_analyser_display!(state, invalid_payload)
+            nothing
+        catch caught
+            caught
+        end
+        @test err isa SA.SignalAnalyserValidationError
+        @test !isempty(err.fields)
+        @test SA.signal_analyser_snapshot(state) == initial
+    end
+
+    cannot_close_last = try
+        SA.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "close", "display_id" => "display-1"))
+        nothing
+    catch caught
+        caught
+    end
+    @test cannot_close_last isa SA.SignalAnalyserValidationError
+    @test haskey(cannot_close_last.fields, "operation")
+    @test SA.signal_analyser_snapshot(state) == initial
+
+    first_created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))
+    stale = try
+        SA.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "select", "display_id" => "display-1"))
+        nothing
+    catch caught
+        caught
+    end
+    @test stale isa SA.SignalAnalyserStaleStateError
+    @test SA.signal_analyser_snapshot(state) == first_created
+
+    state = SA.default_signal_analyser_state()
+    snapshot = SA.signal_analyser_snapshot(state)
+    for number in 2:5
+        snapshot = SA.apply_signal_analyser_display!(state, Dict("state_revision" => snapshot["state_revision"], "operation" => "create"))
+        @test snapshot["active_display_id"] == "display-$number"
+    end
+    @test length(snapshot["displays"]) == 5
+    @test [display["id"] for display in snapshot["displays"]] == ["display-1", "display-2", "display-3", "display-4", "display-5"]
+
+    closed = SA.apply_signal_analyser_display!(state, Dict("state_revision" => snapshot["state_revision"], "operation" => "close", "display_id" => "display-4"))
+    @test closed["active_display_id"] == "display-5"
+    @test [display["id"] for display in closed["displays"]] == ["display-1", "display-2", "display-3", "display-5"]
+    @test closed["state_revision"] == snapshot["state_revision"] + 1
+
+    closed_active = SA.apply_signal_analyser_display!(state, Dict("state_revision" => closed["state_revision"], "operation" => "close", "display_id" => "display-5"))
+    @test closed_active["active_display_id"] == "display-3"
+    @test [display["id"] for display in closed_active["displays"]] == ["display-1", "display-2", "display-3"]
+
+    # Closing a non-active page must not change focus.  If the active first page
+    # is closed, there is no left neighbour, so focus moves to the right page.
+    preserved_active = SA.apply_signal_analyser_display!(state, Dict(
+        "state_revision" => closed_active["state_revision"],
+        "operation" => "select",
+        "display_id" => "display-2",
+    ))
+    @test preserved_active["active_display_id"] == "display-2"
+    after_nonactive_close = SA.apply_signal_analyser_display!(state, Dict(
+        "state_revision" => preserved_active["state_revision"],
+        "operation" => "close",
+        "display_id" => "display-3",
+    ))
+    @test after_nonactive_close["active_display_id"] == "display-2"
+    selected_first = SA.apply_signal_analyser_display!(state, Dict(
+        "state_revision" => after_nonactive_close["state_revision"],
+        "operation" => "select",
+        "display_id" => "display-1",
+    ))
+    after_first_close = SA.apply_signal_analyser_display!(state, Dict(
+        "state_revision" => selected_first["state_revision"],
+        "operation" => "close",
+        "display_id" => "display-1",
+    ))
+    @test after_first_close["active_display_id"] == "display-2"
+    @test [display["id"] for display in after_first_close["displays"]] == ["display-2"]
 end
 
 @testset "Signal Analyser view validation and atomicity" begin
