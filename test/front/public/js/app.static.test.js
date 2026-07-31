@@ -51,5 +51,14 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(app.includes("activeBottomTab") && !app.includes("api.bottom"), "bottom Signals/Measurements tabs must remain frontend-local state");
   ["ArrowLeft", "ArrowRight", "Home", "End"].forEach((key) => assert(app.includes(`"${key}"`), `bottom tab keyboard navigation must support ${key}`));
   assert(app.includes('tab.setAttribute("tabindex", selected ? "0" : "-1")') && app.includes("target.focus()"), "bottom tabs must apply roving tabindex and move focus to the selected tab");
+  assert(/data-testid="find-peaks-action"[^>]*aria-pressed="false"[^>]*aria-controls="peaks-panel"/.test(html), "Find Peaks must expose a controlled capability toggle");
+  assert(/data-testid="peaks-panel-tab"[^>]*data-bottom-tab="peaks"[^>]*role="tab"[^>]*aria-controls="peaks-panel"[^>]*hidden/.test(html), "the local Peaks tab must start hidden and retain tab semantics");
+  assert(/id="peaks-panel"[^>]*role="tabpanel"[^>]*aria-labelledby="peaks-panel-tab"[^>]*hidden/.test(html), "the Peaks table panel must be labelled by its local tab");
+  ["peaks_enabled", "peaksBusyDisplayId", "peaksFor", "peakMarkerTrace", "find-peaks-action"].forEach((term) =>
+    assert(app.includes(term), `frontend must preserve the authoritative Peaks contract term ${term}`)
+  );
+  assert(!api.includes("./api/peaks") && !/findpeaks\s*\(/i.test(app), "frontend must not create a Peaks endpoint or calculate peaks in JavaScript");
+  assert(app.includes("p.items.map") && app.includes("item.time_s") && app.includes("item.value"), "peak markers must consume backend-provided peak items only");
+  assert(!/https?:\/\/|cdn\./i.test(app), "Peaks integration must not add a CDN dependency");
   assert(!/grid-template-(?:columns|rows)\s*:\s*repeat\(2/i.test(css), "MVP styling must not retain a fixed four-plot grid");
 };

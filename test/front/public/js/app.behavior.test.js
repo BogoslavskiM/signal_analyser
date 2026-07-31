@@ -63,9 +63,9 @@ function environment(fetch, options) {
   const e = {
     root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(),
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
-    legend: node(), normalize: node(), markers: node(), fields: node(), count: node(), rows: node(), toggleAll: node(),
+    legend: node(), normalize: node(), markers: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), peaksAction: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
-    signalBottomTab: node(), measurementsBottomTab: node(),
+    signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
   const selectors = {
     "[data-testid='app-shell']": e.root, "[data-testid='app-loading']": e.loading, "[data-loading-text]": e.loadingText,
@@ -75,8 +75,10 @@ function environment(fetch, options) {
     "[data-testid='show-legend-checkbox']": e.legend, "[data-testid='normalize-y-checkbox']": e.normalize,
     "[data-testid='show-markers-checkbox']": e.markers, "[data-panel-fields]": e.fields, "[data-signal-count]": e.count,
     "[data-signal-rows]": e.rows, "[data-testid='toggle-all-signals']": e.toggleAll,
+    "[data-testid='find-peaks-action']": e.peaksAction,
     "[role='tablist'][aria-label='Данные анализатора']": e.bottomTabs, "[data-testid='bottom-panel-signals']": e.signals,
     "[data-testid='measurements-panel']": e.measurements, "[data-measurements-content]": e.measurementContent,
+    "[data-testid='peaks-panel']": e.peaksPanel, "[data-peaks-content]": e.peaksContent,
     "[data-retry]": e.retry, "[data-testid='display-count-status']": e.displayCount, "[data-testid='active-display-status']": e.activeStatus,
   };
   const calls = [];
@@ -84,7 +86,7 @@ function environment(fetch, options) {
   const scriptOutcomes = (options && options.scriptOutcomes || []).slice();
   const document = {
     querySelector(selector) { return selectors[selector] || null; },
-    querySelectorAll(selector) { return selector === "[data-bottom-tab]" ? [e.signalBottomTab, e.measurementsBottomTab] : []; },
+    querySelectorAll(selector) { return selector === "[data-bottom-tab]" ? [e.signalBottomTab, e.measurementsBottomTab, e.peaksBottomTab] : []; },
     createElement(tag) {
       if (tag !== "script") return node();
       return { src: "", async: false, onload: null, onerror: null };
@@ -98,8 +100,11 @@ function environment(fetch, options) {
   const window = { fetch(url, options) { calls.push({ url, options: options || {} }); return fetch(url, options || {}); }, addEventListener() {}, Plotly: plotly };
   e.signalBottomTab.dataset.bottomTab = "signals";
   e.measurementsBottomTab.dataset.bottomTab = "measurements";
+  e.peaksBottomTab.dataset.bottomTab = "peaks";
+  e.peaksBottomTab.hidden = true;
   e.signalBottomTab.classList = { toggle(on) { this.on = on; }, contains() { return false; } };
   e.measurementsBottomTab.classList = { toggle(on) { this.on = on; }, contains() { return false; } };
+  e.peaksBottomTab.classList = { toggle(on) { this.on = on; }, contains() { return false; } };
   if (options && options.moduleNameOnly) { window.moduleName = plotly; delete window.Plotly; }
   if (options && options.plotlyAbsent) delete window.Plotly;
   return { e, window, document, calls };
@@ -240,7 +245,7 @@ module.exports = async function testDisplayBehavior(assert) {
   await flush();
   const view = visibility.find((call) => call.url === "./api/view");
   assert(view, "per-display checkbox must update the active display through /api/view");
-  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", selected_signal: B, visible_signals: [B] }), "hiding selected signal must send complete active-page membership and fallback selection");
+  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", selected_signal: B, visible_signals: [B], peaks_enabled: false }), "hiding selected signal must send complete active-page membership, fallback selection and Peaks state");
 
   const localTabRequests = [];
   const localTabs = await boot((url, options) => {
@@ -267,4 +272,21 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(keyboardTabs.e.measurementsBottomTab.getAttribute("aria-selected") === "true", "End must select the final tab");
   assert(key(keyboardTabs.e.measurementsBottomTab, "Home"), "Home must be handled by the tablist");
   assert(keyboardTabs.e.signalBottomTab.getAttribute("aria-selected") === "true", "Home must select the first tab");
+
+  const peaksEnabled = snapshot(1);
+  peaksEnabled.displays[0].peaks_enabled = true;
+  peaksEnabled.peaks = { enabled: true, state_revision: 1, display_id: "display-1", signal_name: A, ordinate: "real", units: { value: "1", time: "s", width: "samples", prominence: "1" }, items: [{ id: "peak-2", value: 5, time_s: .2, sample_index: 2, width_samples: 1.5, prominence: 4 }] };
+  const peakRequests = [];
+  const peaks = await boot((url, options) => {
+    peakRequests.push({ url, options });
+    return Promise.resolve(response(200, url === "./api/state" ? initial : peaksEnabled));
+  });
+  peaks.e.peaksAction.listeners.click();
+  await flush();
+  const peakView = peakRequests.find((call) => call.url === "./api/view");
+  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", selected_signal: A, visible_signals: [A, B], peaks_enabled: true }), "Find Peaks must use the existing revisioned /api/view request with an additive boolean only");
+  assert(peaks.e.peaksAction.getAttribute("aria-pressed") === "true" && peaks.e.peaksBottomTab.hidden === false && peaks.e.peaksPanel.hidden === false, "an enabled authoritative Peaks snapshot must press the action and open the local Peaks tab/panel");
+  assert(peaks.e.peaksContent.innerHTML.includes("peak-row-peak-2") && peaks.e.peaksContent.innerHTML.includes("data-sample-index='2'"), "the Peaks table must render backend item fields without a client-side peak calculation");
+  const marker = peaks.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");
+  assert(marker && JSON.stringify(marker.x) === JSON.stringify([.2]) && JSON.stringify(marker.y) === JSON.stringify([5]) && marker.meta.display_id === "display-1", "marker traces must use only authoritative backend peak items and scope");
 };

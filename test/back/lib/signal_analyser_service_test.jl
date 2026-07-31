@@ -2,6 +2,18 @@ using Test
 
 const SA = Main.AppTestContext
 
+mutable struct FakePeaksProvider <: SA.AbstractPeaksProvider
+    calls::Vector{SA.SignalPeaksQuery}
+    result::SA.SignalPeaksProviderResult
+    failure::Union{Nothing,Exception}
+end
+
+function SA.signal_peaks_detect(provider::FakePeaksProvider, query::SA.SignalPeaksQuery)
+    push!(provider.calls, query)
+    isnothing(provider.failure) || throw(provider.failure)
+    provider.result
+end
+
 function assert_line_plot(plot)
     @test plot["type"] == "line"
     @test !isempty(plot["x"])
@@ -92,7 +104,7 @@ end
     state = SA.default_signal_analyser_state()
     snapshot = SA.signal_analyser_snapshot(state)
 
-    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "selected_signal", "visible_signals", "signals", "plots", "plot_payload", "measurements", "panel"])
+    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "selected_signal", "visible_signals", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
     @test snapshot["active_display_id"] == "display-1"
     @test snapshot["displays"] == [Dict(
         "id" => "display-1",
@@ -100,6 +112,7 @@ end
         "active_plot" => "time",
         "selected_signal" => "Гармонический сигнал",
         "visible_signals" => ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"],
+        "peaks_enabled" => false,
     )]
     @test snapshot["state_revision"] == 0
     @test snapshot["active_plot"] == "time"
@@ -160,6 +173,37 @@ end
     @test state.view.state_revision == 2
 end
 
+@testset "Signal Analyser Peaks use an injected provider over full raw samples" begin
+    fake = FakePeaksProvider(
+        SA.SignalPeaksQuery[],
+        SA.SignalPeaksProviderResult([7.0, 11.0], [2, 1051], [1.5, 2.0], [4.0, 6.0], 1100),
+        nothing,
+    )
+    base = p0_measurement_state()
+    state = SA.SignalAnalyserState(base.signals, base.view, Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = fake)
+    disabled = SA.signal_analyser_snapshot(state)
+    @test isempty(fake.calls)
+    @test disabled["peaks"] == Dict("enabled" => false, "state_revision" => 0, "display_id" => "display-1", "signal_name" => "raw-real", "ordinate" => "real", "units" => Dict("value" => "1", "time" => "s", "width" => "samples", "prominence" => "1"), "items" => Any[])
+
+    enabled = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "peaks_enabled" => true))
+    @test length(fake.calls) == 1
+    @test length(fake.calls[1].values) == 1100
+    @test fake.calls[1].ordinate == SA.REAL_ORDINATE
+    @test length(enabled["plots"]["time"]["y"]) <= 1024
+    @test enabled["peaks"]["enabled"] === true
+    @test enabled["peaks"]["state_revision"] == enabled["state_revision"] == 1
+    @test enabled["peaks"]["items"] == [
+        Dict("id" => "peak-1", "value" => 7.0, "sample_index" => 1, "time_s" => 0.001, "width_samples" => 1.5, "prominence" => 4.0),
+        Dict("id" => "peak-1050", "value" => 11.0, "sample_index" => 1050, "time_s" => 1.05, "width_samples" => 2.0, "prominence" => 6.0),
+    ]
+    @test enabled["displays"][1]["peaks_enabled"] === true
+
+    disabled_again = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "active_plot" => "spectrum"))
+    @test disabled_again["peaks"]["enabled"] === false
+    @test disabled_again["displays"][1]["peaks_enabled"] === false
+    @test length(fake.calls) == 1
+end
+
 @testset "Signal Analyser Display pages keep independent view state" begin
     SA.reset_pspectrum_double!()
     state = SA.default_signal_analyser_state()
@@ -175,6 +219,7 @@ end
         "active_plot" => "time",
         "selected_signal" => first_name,
         "visible_signals" => [first_name, second_name],
+        "peaks_enabled" => false,
     )
 
     configured_second = SA.apply_signal_analyser_view!(state, Dict(
@@ -526,6 +571,7 @@ function state_publication_fingerprint(state)
                 active_plot = display.active_plot,
                 selected_signal = display.selected_signal,
                 visible_signals = copy(display.visible_signals),
+                peaks_enabled = display.peaks_enabled,
             )
             for display in state.displays
         ],
@@ -565,4 +611,48 @@ end
     ))
     @test state_publication_fingerprint(state) == display_baseline
     @test SA.signal_analyser_snapshot(state) == display_baseline_snapshot
+end
+
+@testset "Signal Analyser Peaks provider failures and display scope are atomic" begin
+    result = SA.SignalPeaksProviderResult([9.0], [2], [1.0], [3.0], 1100)
+    fake = FakePeaksProvider(SA.SignalPeaksQuery[], result, nothing)
+    base = p0_measurement_state()
+    state = SA.SignalAnalyserState(base.signals, base.view, Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = fake)
+    before = SA.signal_analyser_snapshot(state)
+    fingerprint = state_publication_fingerprint(state)
+    fake.failure = ArgumentError("provider failure")
+    @test_throws ArgumentError SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "peaks_enabled" => true))
+    @test state_publication_fingerprint(state) == fingerprint
+    @test SA.signal_analyser_snapshot(state) == before
+
+    fake.failure = nothing
+    complex_enabled = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "selected_signal" => "raw-complex", "peaks_enabled" => true))
+    @test fake.calls[end].ordinate == SA.MAGNITUDE_ORDINATE
+    @test collect(fake.calls[end].values) == Float64.(abs.(state.signals[2].values))
+    @test complex_enabled["peaks"]["signal_name"] == "raw-complex"
+    @test complex_enabled["peaks"]["items"][1]["sample_index"] == 1
+
+    selected_change_before = state_publication_fingerprint(state)
+    fake.failure = ArgumentError("provider failure on selected signal")
+    @test_throws ArgumentError SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "selected_signal" => "raw-real"))
+    @test state_publication_fingerprint(state) == selected_change_before
+    fake.failure = nothing
+
+    created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "create"))
+    @test created["active_display_id"] == "display-2"
+    @test created["displays"][1]["peaks_enabled"] === true
+    @test created["displays"][2]["peaks_enabled"] === false
+    first = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))
+    @test first["peaks"]["display_id"] == "display-1"
+    @test first["peaks"]["enabled"] === true
+    second = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-2"))
+    @test second["peaks"]["display_id"] == "display-2"
+    @test second["peaks"]["enabled"] === false
+
+    empty_fake = FakePeaksProvider(SA.SignalPeaksQuery[], SA.SignalPeaksProviderResult(Float64[], Int[], Float64[], Float64[], 1100), nothing)
+    empty_base = p0_measurement_state()
+    empty_state = SA.SignalAnalyserState(empty_base.signals, empty_base.view, Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = empty_fake)
+    empty = SA.apply_signal_analyser_view!(empty_state, Dict("state_revision" => 0, "peaks_enabled" => true))
+    @test empty["peaks"]["enabled"] === true
+    @test empty["peaks"]["items"] == Any[]
 end

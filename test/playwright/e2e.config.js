@@ -15,6 +15,7 @@ module.exports = {
       displayPlotTitle: "display-plot-title",
       activePlotHost: "active-plot-host",
       plotErrorState: "plot-error-state",
+      findPeaksAction: "find-peaks-action",
       plotTypeSelect: "plot-type-select",
       settingsViewSelect: "settings-view-select",
       toggleAllSignals: "toggle-all-signals",
@@ -53,6 +54,16 @@ module.exports = {
           mean: "measurement-row-mean",
         },
       },
+      peaks: {
+        tab: "peaks-panel-tab",
+        panel: "peaks-panel",
+        signalName: "peaks-signal-name",
+        table: "peaks-table",
+        loading: "peaks-loading-state",
+        error: "peaks-error-state",
+        empty: "peaks-empty-state",
+        rowPrefix: "peak-row-",
+      },
     },
     api: {
       state: "/api/state",
@@ -72,6 +83,7 @@ module.exports = {
     // Cascade 3 P0: authoritative state snapshots expose selected-visible raw
     // statistics; the bottom-tab switch itself remains entirely local.
     "measurements-statistics": true,
+    "peaks": true,
     "inspector-ui": true,
     "multi-page-element": true,
     "graph-output-zone": true,

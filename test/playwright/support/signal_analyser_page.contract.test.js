@@ -32,6 +32,7 @@ assert.equal(config.app.testIds.signalVisibilityCheckboxPrefix, "signal-visibili
 assert.equal(config.app.testIds.signalVisibilityStatePrefix, "signal-visibility-state-");
 assert.equal(config.app.testIds.plotHostPrefix, "plot-host-");
 assert.equal(config.app.testIds.plotErrorState, "plot-error-state");
+assert.equal(config.app.testIds.findPeaksAction, "find-peaks-action");
 assert.equal(config.app.testIds.measurements.signalsTab, "signal-panel-tab-signals");
 assert.equal(config.app.testIds.measurements.measurementsTab, "signal-panel-tab-measurements");
 assert.equal(config.app.testIds.measurements.panel, "measurements-panel");
@@ -41,6 +42,10 @@ assert.equal(config.app.testIds.measurements.rows.minimum, "measurement-row-mini
 assert.equal(config.app.testIds.measurements.rows.maximum, "measurement-row-maximum");
 assert.equal(config.app.testIds.measurements.rows.mean, "measurement-row-mean");
 assert.equal(config.features["measurements-statistics"], true);
+assert.equal(config.app.testIds.peaks.tab, "peaks-panel-tab");
+assert.equal(config.app.testIds.peaks.table, "peaks-table");
+assert.equal(config.app.testIds.peaks.rowPrefix, "peak-row-");
+assert.equal(config.features.peaks, true);
 assert.deepEqual(Object.keys(config.app.testIds.plotCards).sort(), [
   "persistence",
   "spectrogram",

@@ -57,11 +57,13 @@ end
     view_routes = collect(eachmatch(r"route\(\"/api/view\", method = POST\)", routes_source))
     display_routes = collect(eachmatch(r"route\(\"/api/displays\", method = POST\)", routes_source))
     measurement_routes = collect(eachmatch(r"route\(\"/api/measurements\"", routes_source))
+    peaks_routes = collect(eachmatch(r"route\(\"/api/peaks\"", routes_source))
 
     @test length(state_routes) == 1
     @test length(view_routes) == 1
     @test length(display_routes) == 1
     @test isempty(measurement_routes)
+    @test isempty(peaks_routes)
     @test occursin("api_json(signal_analyser_snapshot(SIGNAL_ANALYSER_STATE))", routes_source)
     @test occursin("api_json(apply_signal_analyser_view!(SIGNAL_ANALYSER_STATE, jsonpayload()))", routes_source)
     @test occursin("api_json(apply_signal_analyser_display!(SIGNAL_ANALYSER_STATE, jsonpayload()))", routes_source)
@@ -70,6 +72,31 @@ end
     @test occursin("signal_analyser_validation_response(err)", routes_source)
     @test occursin("signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)", routes_source)
     @test !occursin("signal_analyser_unavailable_response", routes_source)
+end
+
+@testset "Signal Analyser API Peaks boolean view contract" begin
+    SA_API.reset_pspectrum_double!()
+    state = SA_API.default_signal_analyser_state()
+    before = SA_API.signal_analyser_snapshot(state)
+    for payload in (
+        Dict("state_revision" => 0, "peaks_enabled" => 1),
+        Dict("state_revision" => 0, "peaks_enabled" => "true"),
+        Dict("state_revision" => 0, "peaks_enabled" => nothing),
+        Dict("state_revision" => 0, "peaks_enabled" => false, "unexpected" => true),
+    )
+        err = try SA_API.apply_signal_analyser_view!(state, payload) catch caught; caught end
+        @test err isa SA_API.SignalAnalyserValidationError
+        @test haskey(err.fields, haskey(payload, "unexpected") ? "body" : "peaks_enabled")
+        @test SA_API.signal_analyser_snapshot(state) == before
+    end
+    no_op = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "peaks_enabled" => false))
+    @test no_op["state_revision"] == 0
+    stale = try SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "peaks_enabled" => false)) catch caught; caught end
+    @test stale isa SA_API.SignalAnalyserStaleStateError
+    @test SA_API.signal_analyser_snapshot(state) == before
+    non_time = try SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "active_plot" => "spectrum", "peaks_enabled" => true)) catch caught; caught end
+    @test non_time isa SA_API.SignalAnalyserValidationError
+    @test haskey(non_time.fields, "peaks_enabled")
 end
 
 @testset "Signal Analyser API Display payload contract" begin
