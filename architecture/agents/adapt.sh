@@ -274,7 +274,10 @@ bootstrap_markdown() {
 - Read the active role file from architecture/agents/roles/*.toml.
 - Treat architecture/ as source of truth.
 - Do not edit outside the active role owns paths.
-- Return a handoff instead of crossing role boundaries.
+- Return a structured handoff with goal, scope, contracts, changes,
+  verification, risks, and follow-ups instead of crossing role boundaries.
+- Only Architect persists role handoffs and continuous task/report/backlog
+  memory under architecture/documentation/.
 EOF
 }
 
@@ -315,6 +318,12 @@ $(bootstrap_markdown)
 - Reporting: \`$(workflow_value reporting)\`
 - Handoff policy: \`$(workflow_value handoff_policy)\`
 - Strict boundaries: \`$(toml_bool_value "$MANIFEST_PATH" strict_boundaries)\`
+
+## Agent Identity
+
+- Every status and handoff starts with \`ROLE: <canonical role label>\`.
+- Refer to participants only by canonical role label plus agent ID/session.
+- Never use runtime-generated random nicknames as participant identity.
 
 $(role_summary_markdown "$selected")
 
@@ -370,6 +379,13 @@ $description
 - Resolved model for $(adapter_tool "$selected"): \`$model\`
 - Binding: \`$binding\`
 
+## Canonical Identity
+
+- Reporting name: \`$label\`
+- Required prefix: \`ROLE: $label\`
+- Participant references: canonical role label plus agent ID/session only;
+  runtime-generated random nicknames are forbidden.
+
 ## Owns
 
 $(toml_array_markdown "$file" owns)
@@ -410,8 +426,9 @@ EOF
 role_toml() {
   local file="$1"
   local selected="$2"
-  local name description model_level model
+  local name label description model_level model
   name="$(toml_value "$file" name)"
+  label="$(toml_value "$file" label)"
   description="$(toml_value "$file" description | sed 's/"/\\"/g')"
   model_level="$(toml_value "$file" model_level)"
   model="$(model_for_adapter "$selected" "$model_level")"
@@ -433,6 +450,12 @@ $(toml_array_markdown "$file" read_only)
 
 Forbidden paths:
 $(toml_array_markdown "$file" forbidden)
+
+Canonical identity:
+- Reporting name: $label
+- Every status and handoff starts with: ROLE: $label
+- Refer to participants only by canonical role label plus agent ID/session.
+- Never use runtime-generated random nicknames.
 
 Verification:
 $(toml_array_markdown "$file" verification)

@@ -1,11 +1,12 @@
 schema_version: 1
 name: matlab-clicker-research-loop
-version: 0.1.0
+version: 0.2.0
 title: "MATLAB Clicker Research Loop"
 description: >
-  Bootstrap и автономный цикл MATLAB Researcher через системный
-  matlab_clicker: динамическая загрузка server-side skills, полное смысловое
-  покрытие приложения, сохранение сценариев через API и потоковый E2E handoff.
+  Постоянный цикл MATLAB Researcher: official MathWorks internet research
+  формирует карту направлений, а системный matlab_clicker дополняет её
+  фактическими undocumented UI/default/state/workflow наблюдениями, сохраняет
+  сценарии через API и передаёт product/E2E handoff.
 language: ru
 audience: [assistant]
 priority: 1.0
@@ -16,6 +17,7 @@ when-not:
   - "Нужно написать тест или исправить Genie-приложение"
   - "Нужно изменить matlab_clicker"
 requires-tools:
+  - "Обычный internet research вне MATLAB"
   - "Системная утилита matlab_clicker"
   - "HTTP client"
   - "Vision tool для локальных screenshots"

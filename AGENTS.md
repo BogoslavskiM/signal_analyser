@@ -23,7 +23,10 @@ bash architecture/agents/adapt.sh --adapter=codex
 - Read the active role file from architecture/agents/roles/*.toml.
 - Treat architecture/ as source of truth.
 - Do not edit outside the active role owns paths.
-- Return a handoff instead of crossing role boundaries.
+- Return a structured handoff with goal, scope, contracts, changes,
+  verification, risks, and follow-ups instead of crossing role boundaries.
+- Only Architect persists role handoffs and continuous task/report/backlog
+  memory under architecture/documentation/.
 
 ## Workflow
 
@@ -31,6 +34,12 @@ bash architecture/agents/adapt.sh --adapter=codex
 - Reporting: `chat-first`
 - Handoff policy: `handoff-instead-of-crossing-boundaries`
 - Strict boundaries: `true`
+
+## Agent Identity
+
+- Every status and handoff starts with `ROLE: <canonical role label>`.
+- Refer to participants only by canonical role label plus agent ID/session.
+- Never use runtime-generated random nicknames as participant identity.
 
 ## Roles
 
