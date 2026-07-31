@@ -79,8 +79,18 @@ Owner: Architect
   renderer Log floor and exact dB/Linear relationship. SA-GRAPH-004 should
   bound the complex-signal/Log behavior before the next contract freeze.
 - Candidate Cascade 10 must choose one coherent slice. Preferred next slice is
-  editable Frequency Limits plus explicit Log-floor presentation; RBW/window,
-  actual RBW, manual units and Spectrogram/Persistence remain separate.
+  editable Frequency Limits only. The existing implicit Plotly Log rendering
+  remains unchanged; no new floor field/value is invented. RBW/window, actual
+  RBW, manual units and Spectrogram/Persistence remain separate.
+- Prod Engee C10 probe is complete: valid limits produce a new 4096-point grid,
+  partial outside clips, full outside rejects, complex negative/cross/positive
+  ranges work, and N=2 works. Remaining blockers are MATLAB observed lifecycle,
+  requested-vs-effective state and heterogeneous multi-trace policy.
+- DEC-016 resolves the C10 product policy: requested explicit limits must be
+  fully inside the analysis-source topology, secondary traces use intersection,
+  invalid source changes reset Auto, and requested/effective metadata remain
+  separate. SA-GRAPH-004 is a documented partial blocker, not a contract gate.
+  Implementation, local verification and a C10 checkpoint are now active.
 
 - SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
   researches Spectrum defaults/units for a future separately frozen slice.

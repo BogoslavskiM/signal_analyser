@@ -334,3 +334,74 @@ product_result: Evidence consumed into frozen Cascade 9 and DEC-015; product
 implementation and runtime verification are pending.
 next_task_candidates: Bounded settings persistence and complex/log behavior,
 without reopening in-app documentation or Add-On Explorer.
+
+## Autonomous cycle scenarios SA-GRAPH-002/003 — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: historical `/root/matlab_cycle`; evidence consumed by replacement
+coordination in `/root/matlab_c10_complex_log`.
+goal: Preserve exact Frequency Scale and Spectrum dB/Linear transitions before
+the Frequency Limits contract is frozen.
+source_evidence:
+- `SA-GRAPH-002-frequency-log-zero-bound-linear-restoration`, system path
+  `/Users/makar/work/matlab_clicker/research_output/signal-analyzer-reference-scenarios/scenarios/SA-GRAPH-002-frequency-log-zero-bound-linear-restoration.md`,
+  SHA-256 `464122ad97bdff115d9a1ea933de30dd903b734b6a08d30d89283b01620a6b71`.
+- `SA-GRAPH-003-spectrum-db-linear-power-restoration`, system path
+  `/Users/makar/work/matlab_clicker/research_output/signal-analyzer-reference-scenarios/scenarios/SA-GRAPH-003-spectrum-db-linear-power-restoration.md`,
+  SHA-256 `03c9818bbd2e8b5e8cc8d7b0d2d47b141666754f6d4f9f61804bee042d4ecf38`.
+docs_sources: Official public MathWorks Explore Signals, Signal Analyzer,
+`pspectrum` and Spectrum Computation pages were used outside MATLAB. Help,
+Documentation UI, Learn and Add-On Explorer were not opened.
+documented_direction: Signal Analyzer offers Linear/Log frequency scale, does
+not support Log for complex spectra, defaults Spectrum to dB and uses
+`10*log10(power)` for the dB representation.
+clicker_setup: Both durable scenarios used bounded native GUI actions and
+screenshot verification. Neither typed Command Window text. The input
+indicator remained ABC, MATLAB stayed open and the original state was restored.
+observed_undocumented_behavior: For the real `Fs=1 Hz`, period-five cosine,
+switching Linear to Log retained Min `0` and Max `0.5` without error; the
+renderer alone selected an unexposed positive plotting floor. Returning to
+Linear restored the zero-origin axis. Clearing Spectrum in dB changed the
+label to `Power Spectrum` and exposed peak power `0.5`; re-enabling dB restored
+approximately `-3.0103 dB` at the same frequency and preserved frequency state.
+docs_vs_app_delta: Public docs do not describe zero-bound Log rendering or the
+exact unchecked y-axis label. The app does not expose a numeric Log floor.
+product_tasks: Preserve stored zero limits across Linear/Log; keep the current
+implicit positive Plotly render floor; do not invent a floor field; preserve
+the same provider power under dB/Linear presentation.
+e2e_scenarios: Zero-bound Log succeeds without rewriting fields; returning to
+Linear restores zero; dB/Linear preserves limits/peak frequency while `0.5`
+maps to approximately `-3.0103 dB`.
+
+## SA-GRAPH-004 partial attempt and bounded blocker — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c10_complex_log`, replacement for unavailable
+`/root/matlab_cycle`; status interrupted after the bounded mutation guard.
+goal: Observe complex centered-spectrum frequency limits and Log eligibility.
+docs_sources: Official public MathWorks Explore Signals and `pspectrum` pages
+confirm centered two-sided complex spectra and unsupported Log scale. MATLAB
+Help and Add-On Explorer were not used.
+clicker_setup: Server bootstrap and `/health` initially succeeded. A real
+Spectrum was safely switched Linear to Log with Min `0`, Max `0.5` preserved.
+Command Window complex-signal creation followed the required intended cycle:
+focus, pre-input Enter, English/ASCII, type, visual verify, execution Enter.
+The clicker repeatedly dropped or truncated the tail before execution;
+corrupted text was cleared and no damaged command ran. Subsequent `/run`
+failed while activating MATLAB by AppleScript. Mutations then stopped.
+observed_undocumented_behavior: Only the already durable real zero-bound Log
+behavior was reconfirmed. No complex F min/F max values, disabled control or
+runtime rejection was observed, and no SA-GRAPH-004 scenario was saved.
+internal_artifacts: Passive diagnostics remain at
+`/private/tmp/sa-c10-real-spectrum-log-before-complex.png` and
+`/private/tmp/sa-c10-timeout-passive.png`. They are internal transient
+evidence, not client documentation or numeric oracles.
+docs_vs_app_delta: Complex behavior remains documentation-directed rather than
+newly GUI-observed. This does not block the existing portable complex/Log rule.
+product_tasks: Freeze Frequency Limits from official docs, provider evidence
+and explicit product policy. Retry SA-GRAPH-004 only after clicker health is
+restored; do not claim MATLAB-observed complex field lifecycle.
+e2e_scenarios: No direct MATLAB scenario handoff is available. Product E2E may
+test the frozen contract but labels complex/Log parity as docs-derived.
+next_task_candidates: Recover clicker health without closing MATLAB, then retry
+the bounded complex scenario or continue with SA-GRAPH-005 Frequency Units.

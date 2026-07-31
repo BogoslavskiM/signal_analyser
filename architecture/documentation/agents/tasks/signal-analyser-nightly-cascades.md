@@ -491,7 +491,79 @@ separate documentation freeze, and MATLAB Researcher is the next active lane.
 
 ### Next cascade candidate
 
-Run SA-GRAPH-004 for complex-signal/Log behavior and freeze one coherent C10
-slice. Preferred candidate is editable Frequency Limits plus explicit Log-floor
-presentation. RBW/window, actual RBW, manual units and Spectrogram/Persistence
-remain outside scope until separately researched and accepted.
+Run SA-GRAPH-004 for complex-signal/Log behavior, then a bounded Frequency
+Limits lifecycle scenario, and freeze one coherent C10 slice. Preferred
+candidate is editable Frequency Limits only; existing implicit Plotly Log
+rendering remains unchanged. RBW/window, actual RBW, manual units and
+Spectrogram/Persistence remain outside scope until separately researched and
+accepted.
+
+## Cascade 10 discovery started — 2026-08-01
+
+Status: `research-and-read-only-gap-analysis`; no C10 product/test changes.
+
+- MATLAB Researcher `/root/matlab_c10_complex_log` replaces the unavailable
+  prior `/root/matlab_cycle` and owns bounded SA-GRAPH-004 complex/Log research.
+  Official docs are external-only; Help/Add-On are forbidden; the full
+  per-command Enter/layout/visual guard is required.
+- Backend `/root/backend_cycle` inventories a minimal typed Frequency Limits
+  contract and unresolved provider/cache/topology decisions, read-only.
+- Frontend `/root/frontend_c9_replacement` inventories the smallest three-tab
+  vanilla UI surface and exact Backend dependencies, read-only.
+- Tester `/root/tester_cycle` builds a classified red matrix, read-only.
+- E2E Tester `/root/e2e_c9_replacement` waits for the direct saved MATLAB
+  scenario handoff; no C10 spec is implemented before contract freeze.
+- DevOps `/root/devops_c9_freeze` is completed standby; next eligible work is a
+  future explicit C10 checkpoint. Push/deploy/merge remain unauthorized.
+
+Exit of discovery is not implementation: Architect must reconcile observed
+MATLAB behavior, official docs, Engee provider evidence and product portability
+into a new ADR before role-owned code changes begin.
+
+### C10 Engee provider evidence
+
+Prod probe record:
+[`frequency-limits-engeedsp-contract-probe-20260801.md`](../reports/frequency-limits-engeedsp-contract-probe-20260801.md).
+`FrequencyLimits` changes the 4096-point provider grid to exact requested
+endpoints; partial external ranges clip to topology bounds, fully external
+ranges reject, and real/complex/narrow/two-sample cases are now isolated. This
+resolves cache inclusion and eliminates post-hoc cropping as an equivalent
+implementation. Requested-vs-effective persistence and heterogeneous Display
+policy remain Architect decisions after MATLAB evidence.
+
+## Cascade 10 contract freeze — 2026-08-01
+
+Status: `contract-frozen`; implementation not started at this checkpoint.
+
+[DEC-20260801-016](../../user/decisions/DEC-20260801-016-frequency-limits.md)
+freezes one narrow slice: Auto/explicit Frequency Limits in the existing
+per-Display Spectrum settings. The full strict object now has four keys;
+explicit limits are validated inside the analysis-source topology, preserved
+as requested intent, included in provider query/cache identity and intersected
+per secondary trace. Backend publishes requested/effective metadata; frontend
+adds only F min/F max fields and no Log-floor control.
+
+MATLAB SA-GRAPH-002/003 durable evidence was consumed. SA-GRAPH-004 remains a
+bounded partial attempt because clicker focus/typing failed before a complex
+signal was created; no complex UI observation is claimed. Official MathWorks
+direction and the already implemented product complex/Log rule remain the
+contract basis. Prod EngeeDSP evidence resolves provider semantics.
+
+### Frozen role handoffs
+
+- Backend `/root/backend_cycle`: implement typed limits, lifecycle,
+  source/secondary topology policy, query/cache/provider wiring and exact
+  payload metadata using Backend OOP/domain/service boundaries.
+- Frontend `/root/frontend_c9_replacement`: implement two native fields,
+  draft/commit/no-op/rollback/409 behavior and metadata-driven Auto values in
+  the existing Display Spectrum section.
+- Tester `/root/tester_cycle`: implement the frozen unit/API/frontend matrix,
+  including strict shape, validation, lifecycle, provider calls and no frontend
+  DSP.
+- E2E Tester `/root/e2e_c9_replacement`: implement a static Playwright user
+  scenario with stable IDs, exact request/revision evidence, A/B/Clear/re-add,
+  real zero-bound Log and exact cleanup. Runtime remains separately gated.
+- DevOps `/root/devops_c9_freeze`: standby until explicit completed file lists
+  and verification are available for a local C10 checkpoint; no push/deploy.
+- MATLAB Researcher `/root/matlab_c10_complex_log`: interrupted standby after
+  bounded blocker; next work requires recovered clicker health.
