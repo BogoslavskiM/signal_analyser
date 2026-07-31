@@ -74,15 +74,28 @@ function node(attrs) {
 
 function environment(fetch, options) {
   const e = {
-    root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(),
+    root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(), settingsTabs: node(), statisticsControls: node(), statisticsError: node(),
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
     legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
+  e.displaySettingsTab = node(); e.displaySettingsTab.dataset.settingsTab = "display";
+  e.timeSettingsTab = node(); e.timeSettingsTab.dataset.settingsTab = "time";
+  e.statisticsSettingsTab = node(); e.statisticsSettingsTab.dataset.settingsTab = "measurements";
+  e.settingsTabNodes = [e.displaySettingsTab, e.timeSettingsTab, e.statisticsSettingsTab];
+  e.displaySettingsPanel = node(); e.displaySettingsPanel.dataset.settingsPanel = "display";
+  e.timeSettingsPanel = node(); e.timeSettingsPanel.dataset.settingsPanel = "time";
+  e.measurementsSettingsPanel = node(); e.measurementsSettingsPanel.dataset.settingsPanel = "measurements";
+  e.settingsPanels = [e.displaySettingsPanel, e.timeSettingsPanel, e.measurementsSettingsPanel];
+  e.settingsTabs.querySelectorAll = (selector) => selector === "[data-settings-tab]" ? e.settingsTabNodes : [];
+  e.statisticsOptions = ["minimum", "maximum", "mean", "median", "peak_to_peak", "rms"].map((value) => {
+    const option = node(); option.value = value; option.type = "checkbox"; return option;
+  });
+  e.statisticsControls.querySelectorAll = (selector) => selector === "input[type='checkbox']" ? e.statisticsOptions : selector === "input[type='checkbox']:checked" ? e.statisticsOptions.filter((option) => option.checked) : [];
   const selectors = {
     "[data-testid='app-shell']": e.root, "[data-testid='app-loading']": e.loading, "[data-loading-text]": e.loadingText,
-    "[data-testid='app-error']": e.error, "[data-error-text]": e.errorText, "[data-testid='display-tabs']": e.tabs,
+    "[data-testid='app-error']": e.error, "[data-error-text]": e.errorText, ".settings-tabs": e.settingsTabs, "[data-testid='statistics-controls']": e.statisticsControls, "[data-testid='statistics-selection-error']": e.statisticsError, "[data-testid='display-tabs']": e.tabs,
     "[data-testid='active-plot-host']": e.host, "[data-testid='display-plot-title']": e.title,
     "[data-testid='plot-type-select']": e.plotSelect, "[data-testid='settings-view-select']": e.settingsSelect,
     "[data-testid='show-legend-checkbox']": e.legend, "[data-testid='normalize-y-checkbox']": e.normalize,
@@ -101,7 +114,12 @@ function environment(fetch, options) {
   const scriptOutcomes = (options && options.scriptOutcomes || []).slice();
   const document = {
     querySelector(selector) { return selectors[selector] || null; },
-    querySelectorAll(selector) { return selector === "[data-bottom-tab]" ? [e.signalBottomTab, e.measurementsBottomTab, e.peaksBottomTab] : []; },
+    querySelectorAll(selector) {
+      if (selector === "[data-bottom-tab]") return [e.signalBottomTab, e.measurementsBottomTab, e.peaksBottomTab];
+      if (selector === "[data-settings-tab]") return e.settingsTabNodes;
+      if (selector === "[data-settings-panel]") return e.settingsPanels;
+      return [];
+    },
     createElement(tag) {
       if (tag !== "script") return node();
       return { src: "", async: false, onload: null, onerror: null };
@@ -261,7 +279,7 @@ module.exports = async function testDisplayBehavior(assert) {
   await flush();
   const view = visibility.find((call) => call.url === "./api/view");
   assert(view, "per-display checkbox must update the active display through /api/view");
-  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], time_limits: null, peaks_enabled: false }), "hiding the analysis source must retain global row selection, use canonical visible fallback and disable Peaks");
+  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], peaks_enabled: false }), "hiding the analysis source must retain global row selection, preserve default Statistics and disable Peaks");
 
   const localTabRequests = [];
   const localTabs = await boot((url, options) => {
@@ -283,6 +301,40 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(statistics.e.signals.hidden === true && statistics.e.measurements.hidden === false && statistics.e.peaksPanel.hidden === true, "Signal statistics must locally show Measurements and hide Signals/Peaks panels");
   assert(statistics.e.measurementsBottomTab.getAttribute("aria-selected") === "true" && statistics.e.measurementsBottomTab.getAttribute("tabindex") === "0", "Signal statistics must make Measurements the accessible roving tab");
   assert(statistics.e.measurementsBottomTab.focused === true, "Signal statistics must transfer focus to Measurements when the tab supports focus");
+  assert(statistics.e.displaySettingsPanel.hidden === true && statistics.e.timeSettingsPanel.hidden === true && statistics.e.measurementsSettingsPanel.hidden === false, "Signal statistics must open the complete Measurements settings tabpanel, hiding the Display and Time sections");
+  assert(statistics.e.statisticsSettingsTab.getAttribute("aria-selected") === "true" && statistics.e.statisticsSettingsTab.getAttribute("tabindex") === "0", "Measurements settings tab must become the accessible roving-tab target");
+  let settingsPrevented = false;
+  statistics.e.settingsTabs.listeners.keydown({ key: "ArrowLeft", target: { closest(selector) { return selector === "[data-settings-tab]" ? statistics.e.statisticsSettingsTab : null; } }, preventDefault() { settingsPrevented = true; } });
+  assert(settingsPrevented && statistics.e.timeSettingsPanel.hidden === false && statistics.e.measurementsSettingsPanel.hidden === true && statistics.e.timeSettingsTab.focused === true, "settings ArrowLeft must move roving focus and reveal exactly the Time section");
+
+  const statsDefinition = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B], measurement_kinds: ["minimum", "maximum", "mean"] };
+  const statsInitial = snapshot(0, "display-1", [statsDefinition], A);
+  const statsCommittedDefinition = Object.assign({}, statsDefinition, { measurement_kinds: ["minimum", "maximum", "mean", "median"] });
+  const statsCommitted = snapshot(1, "display-1", [statsCommittedDefinition], A);
+  statsCommitted.measurements.items = statsCommitted.measurements.items.concat([{ id: "median", label: "Медиана", value: 1, time_s: null, sample_index: null }]);
+  const statsSelectionRequests = [];
+  const statsSelection = await boot((url, options) => {
+    statsSelectionRequests.push({ url, options });
+    return Promise.resolve(response(200, url === "./api/state" ? statsInitial : statsCommitted));
+  });
+  assert(statsSelection.e.statisticsOptions.slice(0, 3).every((option) => option.checked) && statsSelection.e.statisticsOptions.slice(3).every((option) => !option.checked), "Measurements settings must render default checked kinds in canonical order");
+  const medianOption = statsSelection.e.statisticsOptions[3];
+  medianOption.checked = true;
+  statsSelection.e.statisticsControls.listeners.change({ target: { closest(selector) { return selector === "input[type='checkbox']" ? medianOption : null; } } });
+  await flush();
+  const statsView = statsSelectionRequests.find((call) => call.url === "./api/view");
+  assert(statsView && JSON.stringify(JSON.parse(statsView.options.body).measurement_kinds) === JSON.stringify(["minimum", "maximum", "mean", "median"]), "a Statistics checkbox must issue one canonical full measurement_kinds view request");
+  assert(statsSelection.e.statisticsOptions[3].checked === true, "authoritative Statistics response must retain the newly selected checkbox");
+
+  const rejectedStatistics = await boot((url) => {
+    if (url === "./api/state") return Promise.resolve(response(200, statsInitial));
+    return Promise.resolve(response(422, { ok: false, code: "invalid_request", error: { code: "invalid_request", message: "Некорректный запрос отображения", fields: { measurement_kinds: "Недопустимый набор показателей" } } }));
+  });
+  const rejectedMedian = rejectedStatistics.e.statisticsOptions[3];
+  rejectedMedian.checked = true;
+  rejectedStatistics.e.statisticsControls.listeners.change({ target: { closest(selector) { return selector === "input[type='checkbox']" ? rejectedMedian : null; } } });
+  await flush();
+  assert(rejectedStatistics.e.statisticsOptions.slice(0, 3).every((option) => option.checked) && rejectedStatistics.e.statisticsOptions[3].checked === false && rejectedStatistics.e.statisticsError.hidden === false && rejectedStatistics.e.statisticsError.textContent === "Недопустимый набор показателей", "nested payload.error.fields.measurement_kinds must roll back authoritative checks and render its exact inline error");
 
   const rowRequests = [];
   const memberRow = await boot((url, options) => {
@@ -291,7 +343,7 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   memberRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
-  assert(JSON.stringify(JSON.parse(rowRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], time_limits: null, peaks_enabled: false }), "a member row click must atomically row-select and make that member the analysis source");
+  assert(JSON.stringify(JSON.parse(rowRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], peaks_enabled: false }), "a member row click must atomically row-select, make that member the analysis source and preserve default Statistics");
   assert(memberRow.e.rows.innerHTML.includes("signal-row-") && memberRow.e.rows.innerHTML.includes(B), "the selected member row must be rendered from authoritative row and analysis state");
 
   const uncheckedRequests = [];
@@ -302,7 +354,7 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   uncheckedRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
-  assert(JSON.stringify(JSON.parse(uncheckedRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], time_limits: null, peaks_enabled: false }), "an unchecked row click must change only global row selection and preserve page membership/source");
+  assert(JSON.stringify(JSON.parse(uncheckedRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], peaks_enabled: false }), "an unchecked row click must change only global row selection and preserve page membership/source/Statistics");
 
   const clearRequests = [];
   const clear = await boot((url, options) => {
@@ -317,7 +369,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(clearRequests.length === 1 && clear.e.overflowMenu.hidden === false && clear.e.overflowTrigger.getAttribute("aria-expanded") === "true", "Display overflow must open Clear Display locally and accessibly without a request");
   clear.e.clearDisplayAction.listeners.click();
   await flush();
-  assert(JSON.stringify(JSON.parse(clearRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], time_limits: null, peaks_enabled: false }), "Clear Display must send the revisioned empty active-page state through /api/view");
+  assert(JSON.stringify(JSON.parse(clearRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], peaks_enabled: false }), "Clear Display must preserve Statistics preference in the revisioned empty active-page state");
   assert(clear.e.overflowMenu.hidden === true && clear.e.overflowTrigger.getAttribute("aria-expanded") === "false", "Clear Display must close its menu after activation");
   assert(clear.e.host === clearHost && clear.e.host.innerHTML.includes("empty-display-plot-state") && clear.e.host.dataset.plotReady === "false", "an empty authoritative page must retain its one graph host while clearing stale rendering");
   assert((!clear.e.host.data || clear.e.host.data.length === 0) && (!clear.e.host._fullData || clear.e.host._fullData.length === 0) && (!clear.e.host.calcdata || clear.e.host.calcdata.length === 0), "an empty Display must purge stale Plotly data from the persistent graph host");
@@ -487,7 +539,7 @@ module.exports = async function testDisplayBehavior(assert) {
   peaks.e.peaksAction.listeners.click();
   await flush();
   const peakView = peakRequests.find((call) => call.url === "./api/view");
-  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], time_limits: null, peaks_enabled: true }), "Find Peaks must use the existing revisioned /api/view request with canonical source state and an additive boolean only");
+  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], peaks_enabled: true }), "Find Peaks must use the existing revisioned /api/view request with canonical source and Statistics state plus its additive boolean");
   assert(peaks.e.peaksAction.getAttribute("aria-pressed") === "true" && peaks.e.peaksBottomTab.hidden === false && peaks.e.peaksPanel.hidden === false, "an enabled authoritative Peaks snapshot must press the action and open the local Peaks tab/panel");
   assert(peaks.e.peaksContent.innerHTML.includes("peak-row-peak-2") && peaks.e.peaksContent.innerHTML.includes("data-sample-index='2'"), "the Peaks table must render backend item fields without a client-side peak calculation");
   const marker = peaks.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");

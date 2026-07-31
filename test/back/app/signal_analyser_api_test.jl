@@ -238,6 +238,53 @@ end
     @test accepted["time_limits"] == Dict("min_s" => 0.0, "max_s" => 0.1, "units" => "s")
 end
 
+@testset "Cascade 8 API measurement_kinds is strict, canonical and atomic" begin
+    SA_API.reset_pspectrum_double!()
+    state = SA_API.default_signal_analyser_state()
+    baseline = SA_API.signal_analyser_snapshot(state)
+    @test baseline["measurement_kinds"] == ["minimum", "maximum", "mean"]
+    for invalid_kinds in (
+        nothing,
+        "minimum",
+        ["minimum", "minimum"],
+        ["minimum", "unknown"],
+        ["minimum", 1],
+    )
+        err = try
+            SA_API.apply_signal_analyser_view!(state, Dict(
+                "state_revision" => 0, "measurement_kinds" => invalid_kinds,
+            ))
+            nothing
+        catch caught
+            caught
+        end
+        @test err isa SA_API.SignalAnalyserValidationError
+        @test Set(keys(err.fields)) == Set(["measurement_kinds"])
+        envelope = SA_API.signal_analyser_validation_response(err)
+        @test envelope.status == 422
+        @test envelope.body["error"]["fields"] == err.fields
+        @test SA_API.signal_analyser_snapshot(state) == baseline
+    end
+
+    canonical = SA_API.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0, "measurement_kinds" => ["rms", "minimum", "median"],
+    ))
+    @test canonical["state_revision"] == 1
+    @test canonical["measurement_kinds"] == ["minimum", "median", "rms"]
+    preserved_when_absent = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1))
+    @test preserved_when_absent["state_revision"] == 1
+    @test preserved_when_absent["measurement_kinds"] == canonical["measurement_kinds"]
+    stale = try
+        SA_API.apply_signal_analyser_view!(state, Dict(
+            "state_revision" => 0, "measurement_kinds" => String[],
+        ))
+        nothing
+    catch caught
+        caught
+    end
+    @test stale isa SA_API.SignalAnalyserStaleStateError
+end
+
 @testset "Signal Analyser API view payload contract" begin
     SA_API.reset_pspectrum_double!()
     state = SA_API.default_signal_analyser_state()

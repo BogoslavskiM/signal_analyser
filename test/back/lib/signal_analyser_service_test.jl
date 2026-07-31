@@ -103,7 +103,7 @@ end
     state = SA.default_signal_analyser_state()
     snapshot = SA.signal_analyser_snapshot(state)
 
-    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
+    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
     @test snapshot["active_display_id"] == "display-1"
     @test snapshot["displays"] == [Dict(
         "id" => "display-1",
@@ -113,6 +113,7 @@ end
         "selected_signal" => "Гармонический сигнал",
         "visible_signals" => ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"],
         "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
+        "measurement_kinds" => ["minimum", "maximum", "mean"],
         "peaks_enabled" => false,
     )]
     @test snapshot["state_revision"] == 0
@@ -120,6 +121,7 @@ end
     @test snapshot["row_selected_signal"] == "Гармонический сигнал"
     @test snapshot["analysis_signal"] == "Гармонический сигнал"
     @test snapshot["time_limits"] == Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s")
+    @test snapshot["measurement_kinds"] == ["minimum", "maximum", "mean"]
     @test snapshot["selected_signal"] == "Гармонический сигнал"
     @test snapshot["visible_signals"] == ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"]
     @test [signal["name"] for signal in snapshot["signals"]] == ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"]
@@ -225,6 +227,7 @@ end
         "selected_signal" => first_name,
         "visible_signals" => [first_name, second_name],
         "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
+        "measurement_kinds" => ["minimum", "maximum", "mean"],
         "peaks_enabled" => false,
     )
 
@@ -949,4 +952,92 @@ end
     @test created["time_limits"] == Dict("min_s" => 0.0, "max_s" => 1.0, "units" => "s")
     returned = SA.apply_signal_analyser_display!(lifecycle, Dict("state_revision" => 7, "operation" => "select", "display_id" => "display-1"))
     @test returned["time_limits"] == readded["time_limits"]
+end
+
+@testset "Cascade 8 selectable measurement kinds are canonical ROI statistics" begin
+    signal = SA.AnalysedSignal(
+        "statistics-real", "#111111", 10.0,
+        ComplexF64[-2, 10, 2, -2, 4], false, true,
+    )
+    state = SA.SignalAnalyserState(
+        SA.AnalysedSignal[signal], SA.SignalAnalyserViewState(0, SA.TIME_PLOT, signal.name),
+        Dict{String,Dict{String,Any}}(), ReentrantLock(),
+    )
+    initial = SA.signal_analyser_snapshot(state)
+    @test initial["measurement_kinds"] == ["minimum", "maximum", "mean"]
+    @test initial["displays"][1]["measurement_kinds"] == ["minimum", "maximum", "mean"]
+
+    all_kinds = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        # Request order is intentionally noncanonical: the wire/snapshot order is fixed.
+        "measurement_kinds" => ["rms", "peak_to_peak", "median", "mean", "maximum", "minimum"],
+    ))
+    @test all_kinds["state_revision"] == 1
+    @test all_kinds["measurement_kinds"] == ["minimum", "maximum", "mean", "median", "peak_to_peak", "rms"]
+    @test all_kinds["displays"][1]["measurement_kinds"] == all_kinds["measurement_kinds"]
+    items = all_kinds["measurements"]["items"]
+    @test [item["id"] for item in items] == all_kinds["measurement_kinds"]
+    @test [item["value"] for item in items][1:5] == [-2.0, 10.0, 2.4, 2.0, 12.0]
+    @test items[6]["value"] ≈ sqrt(128 / 5)
+    @test items[1]["sample_index"] == 0 && items[1]["time_s"] == 0.0 # first of tied minima
+    @test items[2]["sample_index"] == 1 && items[2]["time_s"] == 0.1
+    @test all(item -> item["sample_index"] === nothing && item["time_s"] === nothing, items[3:end])
+    no_op = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 1, "measurement_kinds" => reverse(all_kinds["measurement_kinds"]),
+    ))
+    @test no_op["state_revision"] == 1
+
+    empty = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "measurement_kinds" => String[]))
+    @test empty["state_revision"] == 2
+    @test empty["measurement_kinds"] == String[]
+    @test empty["measurements"]["signal_name"] == signal.name
+    @test empty["measurements"]["ordinate"] == "real"
+    @test empty["measurements"]["items"] == Any[]
+
+    created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "create"))
+    @test created["active_display_id"] == "display-2"
+    @test created["measurement_kinds"] == ["minimum", "maximum", "mean"]
+    @test created["displays"][1]["measurement_kinds"] == String[] # inactive preference is untouched
+    first = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-1"))
+    @test first["measurement_kinds"] == String[]
+    cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => String[]))
+    @test cleared["measurement_kinds"] == String[]
+    @test cleared["measurements"]["signal_name"] === nothing
+    @test cleared["measurements"]["items"] == Any[]
+    readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [signal.name]))
+    @test readded["measurement_kinds"] == String[]
+    @test readded["measurements"]["signal_name"] == signal.name
+    @test readded["measurements"]["items"] == Any[]
+end
+
+@testset "Cascade 8 metric edge mathematics and ordinate provenance" begin
+    service = SA.SignalMeasurementsService()
+    all_selection = SA.SignalMeasurementSelection(collect(SA.SIGNAL_MEASUREMENT_CANONICAL_KINDS))
+    even = SA.AnalysedSignal("even", "#111111", 10.0, ComplexF64[1, 10, 2, 7], false, true)
+    even_snapshot = SA.signal_measurements_snapshot(service, 0, even, SA.SignalTimeLimits(0, 0.3), all_selection)
+    @test [item.value for item in even_snapshot.items] ≈ [1.0, 10.0, 5.0, 4.5, 9.0, sqrt(154 / 4)]
+    @test all(item -> item.position === nothing, even_snapshot.items[3:end])
+
+    complex_signal = SA.AnalysedSignal("complex", "#222222", 10.0, ComplexF64[3 + 4im, 5 + 12im, 8 + 15im], true, true)
+    complex_snapshot = SA.signal_measurements_snapshot(service, 0, complex_signal, SA.SignalTimeLimits(0, 0.2), all_selection)
+    @test complex_snapshot.ordinate == SA.MAGNITUDE_ORDINATE
+    @test [item.value for item in complex_snapshot.items] ≈ [5.0, 17.0, 35 / 3, 13.0, 12.0, sqrt(483 / 3)]
+    @test complex_snapshot.items[1].position.sample_index == 0
+    @test complex_snapshot.items[2].position.sample_index == 2
+
+    # The scale-normalized RMS implementation must remain finite where direct
+    # squaring of finite Float64 samples would overflow.
+    huge = SA.AnalysedSignal("huge", "#333333", 10.0, ComplexF64[floatmax(Float64) / 2, -floatmax(Float64) / 2], false, true)
+    rms_selection = SA.SignalMeasurementSelection([SA.RMS_MEASUREMENT])
+    huge_snapshot = SA.signal_measurements_snapshot(service, 0, huge, SA.SignalTimeLimits(0, 0.1), rms_selection)
+    @test isfinite(only(huge_snapshot.items).value)
+    @test only(huge_snapshot.items).value == floatmax(Float64) / 2
+
+    # Empty selection never resolves raw data: invalid samples cannot turn a
+    # selected-empty Measurements request into a hidden validation/DSP call.
+    invalid = SA.AnalysedSignal("invalid-empty", "#444444", 10.0, ComplexF64[NaN, 1], false, true)
+    empty_snapshot = SA.signal_measurements_snapshot(service, 0, invalid, SA.SignalTimeLimits(0, 0.1), SA.SignalMeasurementSelection(SA.SignalMeasurementKind[]))
+    @test empty_snapshot.signal_name == invalid.name
+    @test empty_snapshot.ordinate == SA.REAL_ORDINATE
+    @test isempty(empty_snapshot.items)
 end

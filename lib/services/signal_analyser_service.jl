@@ -8,6 +8,7 @@ const SIGNAL_ANALYSER_VIEW_FIELDS = Set([
     "selected_signal",
     "visible_signals",
     "time_limits",
+    "measurement_kinds",
     "peaks_enabled",
 ])
 const SIGNAL_ANALYSER_DISPLAY_FIELDS = Set(["state_revision", "operation", "display_id"])
@@ -35,6 +36,12 @@ function signal_time_limits_payload(limits::SignalTimeLimits)::Dict{String,Any}
 end
 
 signal_time_limits_payload(::Nothing) = nothing
+
+function signal_measurement_selection_payload(
+    selection::SignalMeasurementSelection,
+)::Vector{String}
+    [signal_measurement_metadata(kind).id for kind in selection.kinds]
+end
 
 function signal_analyser_panel_field(
     id::AbstractString,
@@ -212,6 +219,7 @@ function signal_analyser_display_payload(display::SignalAnalyserDisplayState)::D
         "analysis_signal" => analysis_name,
         "visible_signals" => signal_analyser_display_members(display),
         "time_limits" => signal_time_limits_payload(display.time_limits),
+        "measurement_kinds" => signal_measurement_selection_payload(display.measurement_selection),
         "peaks_enabled" => display.peaks_enabled,
     )
 end
@@ -308,7 +316,7 @@ function signal_measurement_ordinates(
     ::SignalTimeRoiService,
     signal::AnalysedSignal,
 )::Tuple{SignalMeasurementOrdinate,Vector{Float64}}
-    ordinate_kind = signal.is_complex ? MAGNITUDE_ORDINATE : REAL_ORDINATE
+    ordinate_kind = signal_measurement_ordinate(signal)
     ordinate = ordinate_kind == MAGNITUDE_ORDINATE ? Float64.(abs.(signal.values)) : Float64.(real.(signal.values))
     isempty(ordinate) && throw(ArgumentError("Сигнал не содержит отсчётов"))
     all(isfinite, ordinate) || throw(ArgumentError("Сигнал содержит нечисловые отсчёты"))
@@ -317,6 +325,9 @@ function signal_measurement_ordinates(
     ))
     ordinate_kind, ordinate
 end
+
+signal_measurement_ordinate(signal::AnalysedSignal)::SignalMeasurementOrdinate =
+    signal.is_complex ? MAGNITUDE_ORDINATE : REAL_ORDINATE
 
 signal_measurement_ordinates(service::SignalMeasurementsService, signal::AnalysedSignal) =
     signal_measurement_ordinates(service.roi_service, signal)
@@ -392,41 +403,111 @@ function signal_measurements_snapshot(
     state_revision::Int,
     signal::AnalysedSignal,
     limits::SignalTimeLimits,
+    selection::SignalMeasurementSelection,
 )::SignalMeasurementsSnapshot
+    if isempty(selection.kinds)
+        return SignalMeasurementsSnapshot(
+            state_revision,
+            signal.name,
+            signal_measurement_ordinate(signal),
+            SignalMeasurementUnits("1", "s"),
+            (),
+        )
+    end
+
     roi = signal_ordinate_roi(service, signal, limits)
     ordinate = collect(roi.values)
-    minimum_index = argmin(ordinate)
-    maximum_index = argmax(ordinate)
-    minimum_sample_index = roi.sample_offset + minimum_index - 1
-    maximum_sample_index = roi.sample_offset + maximum_index - 1
+    needs_extrema = signal_measurement_selected(selection, MINIMUM_MEASUREMENT) ||
+        signal_measurement_selected(selection, MAXIMUM_MEASUREMENT) ||
+        signal_measurement_selected(selection, PEAK_TO_PEAK_MEASUREMENT)
+    minimum_index = needs_extrema ? argmin(ordinate) : nothing
+    maximum_index = needs_extrema ? argmax(ordinate) : nothing
+    mean_value = signal_measurement_selected(selection, MEAN_MEASUREMENT) ?
+        Statistics.mean(ordinate) : nothing
+    rms_value = signal_measurement_selected(selection, RMS_MEASUREMENT) ?
+        signal_measurement_rms(service, ordinate) : nothing
+    peak_to_peak_value = signal_measurement_selected(selection, PEAK_TO_PEAK_MEASUREMENT) ?
+        ordinate[maximum_index::Int] - ordinate[minimum_index::Int] : nothing
+    median_value = signal_measurement_selected(selection, MEDIAN_MEASUREMENT) ?
+        Statistics.median!(ordinate) : nothing
+
+    items = SignalMeasurementItem[]
+    for kind in selection.kinds
+        if kind == MINIMUM_MEASUREMENT || kind == MAXIMUM_MEASUREMENT
+            ordinate_index = kind == MINIMUM_MEASUREMENT ? minimum_index::Int : maximum_index::Int
+            sample_index = roi.sample_offset + ordinate_index - 1
+            push!(
+                items,
+                SignalMeasurementItem(
+                    kind,
+                    roi.values[ordinate_index],
+                    SignalMeasurementPosition(
+                        sample_index,
+                        sample_index / roi.sample_rate_hz,
+                    ),
+                ),
+            )
+        elseif kind == MEAN_MEASUREMENT
+            push!(items, SignalMeasurementItem(kind, mean_value::Float64, nothing))
+        elseif kind == MEDIAN_MEASUREMENT
+            push!(items, SignalMeasurementItem(kind, median_value::Float64, nothing))
+        elseif kind == PEAK_TO_PEAK_MEASUREMENT
+            push!(items, SignalMeasurementItem(kind, peak_to_peak_value::Float64, nothing))
+        elseif kind == RMS_MEASUREMENT
+            push!(items, SignalMeasurementItem(kind, rms_value::Float64, nothing))
+        else
+            throw(ArgumentError("Неподдерживаемый вид измерения"))
+        end
+    end
 
     SignalMeasurementsSnapshot(
         state_revision,
         signal.name,
         roi.ordinate,
         SignalMeasurementUnits("1", "s"),
-        (
-            SignalMeasurementItem(
-                MINIMUM_MEASUREMENT,
-                ordinate[minimum_index],
-                SignalMeasurementPosition(
-                    minimum_sample_index,
-                    minimum_sample_index / roi.sample_rate_hz,
-                ),
-            ),
-            SignalMeasurementItem(
-                MAXIMUM_MEASUREMENT,
-                ordinate[maximum_index],
-                SignalMeasurementPosition(
-                    maximum_sample_index,
-                    maximum_sample_index / roi.sample_rate_hz,
-                ),
-            ),
-            SignalMeasurementItem(MEAN_MEASUREMENT, Statistics.mean(ordinate), nothing),
-        ),
+        Tuple(items),
     )
 end
 
+function signal_measurement_rms(
+    ::SignalMeasurementsService,
+    ordinate::AbstractVector{<:Real},
+)::Float64
+    scale = maximum(abs, ordinate)
+    scale == 0.0 && return 0.0
+    scale * sqrt(Statistics.mean(value -> abs2(value / scale), ordinate))
+end
+
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
+    state_revision::Int,
+    signal::AnalysedSignal,
+    limits::SignalTimeLimits,
+)::SignalMeasurementsSnapshot
+    signal_measurements_snapshot(
+        service,
+        state_revision,
+        signal,
+        limits,
+        SignalMeasurementSelection(),
+    )
+end
+
+
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
+    state_revision::Int,
+    signal::AnalysedSignal,
+    selection::SignalMeasurementSelection,
+)::SignalMeasurementsSnapshot
+    signal_measurements_snapshot(
+        service,
+        state_revision,
+        signal,
+        signal_full_time_limits(service, signal),
+        selection,
+    )
+end
 
 function signal_measurements_snapshot(
     service::SignalMeasurementsService,
@@ -445,6 +526,7 @@ function signal_measurements_snapshot(
     ::SignalMeasurementsService,
     state_revision::Int,
     ::Nothing,
+    ::SignalMeasurementSelection,
 )::SignalMeasurementsSnapshot
     SignalMeasurementsSnapshot(
         state_revision,
@@ -455,6 +537,24 @@ function signal_measurements_snapshot(
     )
 end
 
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
+    state_revision::Int,
+    signal::Nothing,
+)::SignalMeasurementsSnapshot
+    signal_measurements_snapshot(service, state_revision, signal, SignalMeasurementSelection())
+end
+
+
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
+    state_revision::Int,
+    signal::Nothing,
+    limits::Nothing,
+    selection::SignalMeasurementSelection,
+)::SignalMeasurementsSnapshot
+    signal_measurements_snapshot(service, state_revision, signal, selection)
+end
 
 function signal_measurements_snapshot(
     service::SignalMeasurementsService,
@@ -462,7 +562,7 @@ function signal_measurements_snapshot(
     signal::Nothing,
     limits::Nothing,
 )::SignalMeasurementsSnapshot
-    signal_measurements_snapshot(service, state_revision, signal)
+    signal_measurements_snapshot(service, state_revision, signal, limits, SignalMeasurementSelection())
 end
 
 function signal_peaks_detect(
@@ -666,6 +766,10 @@ function signal_analyser_snapshot_unlocked(
     measurements.signal_name == analysis_name || throw(ArgumentError(
         "Сигнал measurements не совпадает с analysis source state snapshot",
     ))
+    expected_measurement_kinds = analysis_name === nothing ? () : active_display.measurement_selection.kinds
+    Tuple(item.kind for item in measurements.items) == expected_measurement_kinds || throw(ArgumentError(
+        "Состав measurements не совпадает с preference active Display",
+    ))
     peaks.state_revision == state.view.state_revision || throw(ArgumentError(
         "Ревизия peaks не совпадает с ревизией state snapshot",
     ))
@@ -690,6 +794,7 @@ function signal_analyser_snapshot_unlocked(
         "selected_signal" => analysis_name,
         "visible_signals" => visible_names,
         "time_limits" => signal_time_limits_payload(active_display.time_limits),
+        "measurement_kinds" => signal_measurement_selection_payload(active_display.measurement_selection),
         "signals" => [signal_analyser_signal_payload(item) for item in state.signals],
         "plots" => plots,
         "plot_payload" => signal_analyser_multi_trace_payload(state, signal, visible_names),
@@ -710,6 +815,7 @@ function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{Str
         state.view.state_revision,
         signal,
         display.time_limits,
+        display.measurement_selection,
     )
     peaks = signal_peaks_snapshot(
         state.peaks_service,
@@ -817,6 +923,44 @@ function signal_analyser_validate_time_limits!(
         end
         rethrow()
     end
+end
+
+function signal_analyser_validate_measurement_kinds!(
+    field_errors::Dict{String,String},
+    value,
+)::Union{Nothing,SignalMeasurementSelection}
+    if !(value isa AbstractVector)
+        field_errors["measurement_kinds"] = "Требуется массив идентификаторов измерений"
+        return nothing
+    end
+
+    requested_kinds = SignalMeasurementKind[]
+    seen_ids = Set{String}()
+    for item in value
+        if !(item isa AbstractString)
+            field_errors["measurement_kinds"] = "Все идентификаторы измерений должны быть строками"
+            return nothing
+        end
+        item_id = String(item)
+        if item_id in seen_ids
+            field_errors["measurement_kinds"] = "Идентификаторы измерений не должны повторяться"
+            return nothing
+        end
+        push!(seen_ids, item_id)
+        kind_index = findfirst(SIGNAL_MEASUREMENT_CANONICAL_KINDS) do kind
+            signal_measurement_metadata(kind).id == item_id
+        end
+        if kind_index === nothing
+            valid_ids = [
+                signal_measurement_metadata(kind).id
+                for kind in SIGNAL_MEASUREMENT_CANONICAL_KINDS
+            ]
+            field_errors["measurement_kinds"] = "Допустимо: $(join(valid_ids, ", "))"
+            return nothing
+        end
+        push!(requested_kinds, SIGNAL_MEASUREMENT_CANONICAL_KINDS[kind_index])
+    end
+    SignalMeasurementSelection(requested_kinds)
 end
 
 function validate_signal_analyser_view_payload(
@@ -988,6 +1132,17 @@ function validate_signal_analyser_view_payload(
         end
     end
 
+    has_measurement_kinds = signal_analyser_payload_contains(data, "measurement_kinds")
+    requested_measurement_selection = display.measurement_selection
+    if has_measurement_kinds
+        validated_measurement_selection = signal_analyser_validate_measurement_kinds!(
+            field_errors,
+            signal_analyser_payload_value(data, "measurement_kinds"),
+        )
+        validated_measurement_selection === nothing ||
+            (requested_measurement_selection = validated_measurement_selection)
+    end
+
     has_peaks_enabled = signal_analyser_payload_contains(data, "peaks_enabled")
     peaks_enabled_value = signal_analyser_payload_value(data, "peaks_enabled")
     requested_peaks_enabled = display.peaks_enabled
@@ -1016,6 +1171,7 @@ function validate_signal_analyser_view_payload(
         requested_analysis_name,
         visible_names,
         requested_time_limits,
+        requested_measurement_selection,
         requested_peaks_enabled,
     )
     (
@@ -1042,6 +1198,7 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             prospective_display.membership.signal_names != display.membership.signal_names ||
             !isequal(prospective_analysis_name, signal_analyser_display_analysis_name(display)) ||
             !isequal(prospective_display.time_limits, display.time_limits) ||
+            prospective_display.measurement_selection != display.measurement_selection ||
             prospective_display.peaks_enabled != display.peaks_enabled
 
         # Build every payload affected by the request before publishing the
@@ -1058,6 +1215,7 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             next_revision,
             prospective_signal,
             prospective_display.time_limits,
+            prospective_display.measurement_selection,
         )
         prepared_peaks = signal_peaks_snapshot(
             state.peaks_service,
@@ -1168,6 +1326,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 state.view.state_revision + 1,
                 signal_analyser_display_analysis_signal(state, display),
                 display.time_limits,
+                display.measurement_selection,
             )
             prepared_peaks = signal_peaks_snapshot(
                 state.peaks_service,
@@ -1192,6 +1351,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                     state.view.state_revision + 1,
                     signal_analyser_display_analysis_signal(state, display),
                     display.time_limits,
+                    display.measurement_selection,
                 )
                 prepared_peaks = signal_peaks_snapshot(
                     state.peaks_service,
@@ -1208,6 +1368,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                     state.view.state_revision,
                     signal_analyser_display_analysis_signal(state, display),
                     display.time_limits,
+                    display.measurement_selection,
                 )
                 prepared_peaks = signal_peaks_snapshot(
                     state.peaks_service,
@@ -1237,6 +1398,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 state.view.state_revision + 1,
                 signal_analyser_display_analysis_signal(state, next_active_display),
                 next_active_display.time_limits,
+                next_active_display.measurement_selection,
             )
             prepared_peaks = signal_peaks_snapshot(
                 state.peaks_service,

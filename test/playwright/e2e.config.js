@@ -31,6 +31,10 @@ module.exports = {
       timeMinInput: "time-min-input",
       timeMaxInput: "time-max-input",
       timeLimitsError: "time-limits-error",
+      statisticsSettingsTab: "statistics-settings-tab",
+      statisticsControls: "statistics-controls",
+      statisticsOptionPrefix: "statistics-option-",
+      statisticsSelectionError: "statistics-selection-error",
       plotTypeSelect: "plot-type-select",
       settingsViewSelect: "settings-view-select",
       toggleAllSignals: "toggle-all-signals",
@@ -83,6 +87,7 @@ module.exports = {
     api: {
       state: "/api/state",
       view: "/api/view",
+      displays: "/api/displays",
     },
     // Signal rows are buttons; selection is their native pressed state.
     selectedState: ["aria-pressed"],
@@ -102,6 +107,7 @@ module.exports = {
     "clear-display": true,
     "time-presentation": true,
     "time-limits": true,
+    "selectable-statistics": true,
     "inspector-ui": true,
     "multi-page-element": true,
     "graph-output-zone": true,

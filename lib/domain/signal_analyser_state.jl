@@ -81,7 +81,24 @@ struct SignalTimeRoiService end
     MINIMUM_MEASUREMENT
     MAXIMUM_MEASUREMENT
     MEAN_MEASUREMENT
+    MEDIAN_MEASUREMENT
+    PEAK_TO_PEAK_MEASUREMENT
+    RMS_MEASUREMENT
 end
+
+const SIGNAL_MEASUREMENT_CANONICAL_KINDS = (
+    MINIMUM_MEASUREMENT,
+    MAXIMUM_MEASUREMENT,
+    MEAN_MEASUREMENT,
+    MEDIAN_MEASUREMENT,
+    PEAK_TO_PEAK_MEASUREMENT,
+    RMS_MEASUREMENT,
+)
+const SIGNAL_MEASUREMENT_DEFAULT_KINDS = (
+    MINIMUM_MEASUREMENT,
+    MAXIMUM_MEASUREMENT,
+    MEAN_MEASUREMENT,
+)
 
 const SIGNAL_MEASUREMENT_ORDINATE_NAMES = Dict(
     REAL_ORDINATE => "real",
@@ -92,7 +109,41 @@ const SIGNAL_MEASUREMENT_ITEM_METADATA = Dict(
     MINIMUM_MEASUREMENT => (id = "minimum", label = "Минимум"),
     MAXIMUM_MEASUREMENT => (id = "maximum", label = "Максимум"),
     MEAN_MEASUREMENT => (id = "mean", label = "Среднее"),
+    MEDIAN_MEASUREMENT => (id = "median", label = "Медиана"),
+    PEAK_TO_PEAK_MEASUREMENT => (id = "peak_to_peak", label = "Размах"),
+    RMS_MEASUREMENT => (id = "rms", label = "СКЗ"),
 )
+
+"""Canonical, duplicate-free per-Display Statistics preference."""
+struct SignalMeasurementSelection
+    kinds::Tuple{Vararg{SignalMeasurementKind}}
+
+    function SignalMeasurementSelection(kinds::Tuple{Vararg{SignalMeasurementKind}})
+        length(unique(kinds)) == length(kinds) || throw(ArgumentError(
+            "Виды измерений не должны повторяться",
+        ))
+        canonical_kinds = Tuple(
+            kind for kind in SIGNAL_MEASUREMENT_CANONICAL_KINDS
+            if kind in kinds
+        )
+        length(canonical_kinds) == length(kinds) || throw(ArgumentError(
+            "Выбран неподдерживаемый вид измерения",
+        ))
+        new(canonical_kinds)
+    end
+end
+
+SignalMeasurementSelection() = SignalMeasurementSelection(SIGNAL_MEASUREMENT_DEFAULT_KINDS)
+SignalMeasurementSelection(kinds::AbstractVector{SignalMeasurementKind}) =
+    SignalMeasurementSelection(Tuple(kinds))
+
+Base.:(==)(left::SignalMeasurementSelection, right::SignalMeasurementSelection) =
+    left.kinds == right.kinds
+Base.isequal(left::SignalMeasurementSelection, right::SignalMeasurementSelection) = left == right
+Base.hash(selection::SignalMeasurementSelection, seed::UInt) = hash(selection.kinds, seed)
+
+signal_measurement_selected(selection::SignalMeasurementSelection, kind::SignalMeasurementKind)::Bool =
+    kind in selection.kinds
 
 struct SignalMeasurementPosition
     sample_index::Int
@@ -118,10 +169,12 @@ struct SignalMeasurementItem
         position::Union{Nothing,SignalMeasurementPosition},
     )
         isfinite(value) || throw(ArgumentError("Значение измерения должно быть конечным числом"))
-        if kind == MEAN_MEASUREMENT
-            position === nothing || throw(ArgumentError("Среднее значение не имеет позиции отсчёта"))
-        else
+        if kind == MINIMUM_MEASUREMENT || kind == MAXIMUM_MEASUREMENT
             position === nothing && throw(ArgumentError("Экстремум должен иметь позицию отсчёта"))
+        else
+            position === nothing || throw(ArgumentError(
+                "Неэкстремальное измерение не имеет позиции отсчёта",
+            ))
         end
         new(kind, Float64(value), position)
     end
@@ -161,8 +214,9 @@ struct SignalMeasurementsSnapshot
         if signal_name === nothing
             isempty(items) || throw(ArgumentError("Пустой measurements snapshot не может содержать items"))
         else
-            kinds == (MINIMUM_MEASUREMENT, MAXIMUM_MEASUREMENT, MEAN_MEASUREMENT) || throw(ArgumentError(
-                "Измерения snapshot должны идти в порядке minimum, maximum, mean",
+            canonical_kinds = SignalMeasurementSelection(kinds).kinds
+            kinds == canonical_kinds || throw(ArgumentError(
+                "Измерения snapshot должны идти в каноническом порядке",
             ))
         end
         new(state_revision, signal_name === nothing ? nothing : String(signal_name), ordinate, units, items)
@@ -447,6 +501,7 @@ mutable struct SignalAnalyserDisplayState
     membership::SignalDisplayMembership
     analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource}
     time_limits::Union{Nothing,SignalTimeLimits}
+    measurement_selection::SignalMeasurementSelection
     peaks_enabled::Bool
 
     function SignalAnalyserDisplayState(
@@ -456,6 +511,7 @@ mutable struct SignalAnalyserDisplayState
         membership::SignalDisplayMembership,
         analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
         time_limits::Union{Nothing,SignalTimeLimits},
+        measurement_selection::SignalMeasurementSelection,
         peaks_enabled::Bool,
     )
         analysis_name = signal_analysis_name(analysis_source)
@@ -481,9 +537,53 @@ mutable struct SignalAnalyserDisplayState
             membership,
             analysis_source,
             time_limits,
+            measurement_selection,
             peaks_enabled,
         )
     end
+end
+
+function SignalAnalyserDisplayState(
+    id::AbstractString,
+    name::AbstractString,
+    active_plot::SignalAnalyserPlot,
+    membership::SignalDisplayMembership,
+    analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
+    time_limits::Union{Nothing,SignalTimeLimits},
+    peaks_enabled::Bool,
+)
+    SignalAnalyserDisplayState(
+        id,
+        name,
+        active_plot,
+        membership,
+        analysis_source,
+        time_limits,
+        SignalMeasurementSelection(),
+        peaks_enabled,
+    )
+end
+
+function SignalAnalyserDisplayState(
+    id::AbstractString,
+    name::AbstractString,
+    active_plot::SignalAnalyserPlot,
+    selected_signal::Union{Nothing,AbstractString},
+    visible_signals::AbstractVector{<:AbstractString},
+    time_limits::Union{Nothing,SignalTimeLimits},
+    measurement_selection::SignalMeasurementSelection,
+    peaks_enabled::Bool,
+)
+    SignalAnalyserDisplayState(
+        id,
+        name,
+        active_plot,
+        SignalDisplayMembership(visible_signals),
+        signal_analysis_source(selected_signal),
+        time_limits,
+        measurement_selection,
+        peaks_enabled,
+    )
 end
 
 function SignalAnalyserDisplayState(
@@ -499,9 +599,10 @@ function SignalAnalyserDisplayState(
         id,
         name,
         active_plot,
-        SignalDisplayMembership(visible_signals),
-        signal_analysis_source(selected_signal),
+        selected_signal,
+        visible_signals,
         time_limits,
+        SignalMeasurementSelection(),
         peaks_enabled,
     )
 end
@@ -521,6 +622,7 @@ function signal_analyser_publish_display_state!(
     display.membership = prospective.membership
     display.analysis_source = prospective.analysis_source
     display.time_limits = prospective.time_limits
+    display.measurement_selection = prospective.measurement_selection
     display.peaks_enabled = prospective.peaks_enabled
     nothing
 end

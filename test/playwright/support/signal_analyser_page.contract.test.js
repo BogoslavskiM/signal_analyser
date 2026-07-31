@@ -40,6 +40,10 @@ assert.equal(config.app.testIds.showMarkersCheckbox, "show-markers-checkbox");
 assert.equal(config.app.testIds.timeMinInput, "time-min-input");
 assert.equal(config.app.testIds.timeMaxInput, "time-max-input");
 assert.equal(config.app.testIds.timeLimitsError, "time-limits-error");
+assert.equal(config.app.testIds.statisticsSettingsTab, "statistics-settings-tab");
+assert.equal(config.app.testIds.statisticsControls, "statistics-controls");
+assert.equal(config.app.testIds.statisticsOptionPrefix, "statistics-option-");
+assert.equal(config.app.testIds.statisticsSelectionError, "statistics-selection-error");
 assert.equal(config.app.testIds.displayOverflowTrigger, "display-overflow-trigger");
 assert.equal(config.app.testIds.displayOverflowMenu, "display-overflow-menu");
 assert.equal(config.app.testIds.clearDisplayAction, "clear-display-action");
@@ -62,6 +66,7 @@ assert.equal(config.features.peaks, true);
 assert.equal(config.features["clear-display"], true);
 assert.equal(config.features["time-presentation"], true);
 assert.equal(config.features["time-limits"], true);
+assert.equal(config.features["selectable-statistics"], true);
 assert.deepEqual(Object.keys(config.app.testIds.plotCards).sort(), [
   "persistence",
   "spectrogram",

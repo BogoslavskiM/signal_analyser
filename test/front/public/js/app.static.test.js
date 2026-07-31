@@ -80,6 +80,32 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   ["time_limits", "time-min-input", "time-max-input", "time-limits-error"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Cascade 7 Time Limits term ${term}`)
   );
+  ["measurement_kinds", "statistics-settings-tab", "statistics-controls", "statistics-selection-error", "statistics-option-minimum", "statistics-option-maximum", "statistics-option-mean", "statistics-option-median", "statistics-option-peak_to_peak", "statistics-option-rms"].forEach((term) =>
+    assert(html.includes(term) || app.includes(term), `frontend must preserve Cascade 8 selectable Statistics term ${term}`)
+  );
+  assert(/data-testid="statistics-controls"[^>]*role="group"/.test(html), "Statistics controls must expose an accessible native-checkbox group");
+  assert((html.match(/data-testid="statistics-option-/g) || []).length === 6, "Statistics settings must expose exactly six stable metric controls");
+  assert(app.includes("MEASUREMENT_KINDS") && app.includes("measurementKinds") && app.includes("measurementKindsCommit"), "Statistics must be canonicalized and revisioned by frontend state rather than calculated locally");
+  assert(app.includes("measurementKindsErrors") && app.includes("fields.measurement_kinds"), "nested measurement_kinds validation errors must have a dedicated inline rollback path");
+  assert((app.match(/function renderStatisticsControls\(/g) || []).length === 1, "Statistics settings must have exactly one render function");
+  assert((app.match(/function render\(/g) || []).length === 1, "frontend must retain exactly one render declaration");
+  assert(!app.includes("function bindStatisticsShortcut("), "Statistics shortcut must not retain a dead duplicate binding path");
+  [
+    ["display-settings-tab", "display-settings-panel"],
+    ["time-settings-tab", "time-settings-panel"],
+    ["statistics-settings-tab", "measurements-settings-panel"],
+  ].forEach(([tab, panel]) => {
+    assert(new RegExp(`id="${tab}"[^>]*role="tab"[^>]*aria-controls="${panel}"`).test(html), `${tab} must own an accessible settings tab`);
+    assert(new RegExp(`id="${panel}"[^>]*role="tabpanel"[^>]*aria-labelledby="${tab}"`).test(html), `${panel} must be the labelled panel for its settings tab`);
+  });
+  assert((html.match(/data-settings-panel=/g) || []).length === 3 && (html.match(/data-settings-tab=/g) || []).length === 3, "settings must expose exactly three tab/panel sections");
+  assert(app.includes("[data-settings-panel]") && app.includes("panel.hidden = panel.dataset.settingsPanel !== activeSettingsTab"), "settings navigation must hide whole sections rather than only individual controls");
+  assert(app.includes("bindSettingsKeyboard") && app.includes("ArrowLeft") && app.includes("ArrowRight") && app.includes('tabindex", on ? "0" : "-1"'), "settings tabs must support roving keyboard navigation");
+  assert(/<section id="statistics-controls"[^>]*data-testid="statistics-controls"(?![^>]*\bhidden\b)/.test(html), "Statistics controls must not carry a literal hidden attribute once their Measurements tabpanel is selected");
+  const displayPanelAt = html.indexOf('id="display-settings-panel"');
+  const timePanelAt = html.indexOf('id="time-settings-panel"');
+  const analysisAt = html.indexOf('data-display-settings-actions');
+  assert(displayPanelAt >= 0 && analysisAt > displayPanelAt && analysisAt < timePanelAt, "Analysis actions must belong exclusively to the Display settings panel");
   assert(!/https?:\/\/|cdn\./i.test(app), "Peaks integration must not add a CDN dependency");
   assert(!/grid-template-(?:columns|rows)\s*:\s*repeat\(2/i.test(css), "MVP styling must not retain a fixed four-plot grid");
 };
