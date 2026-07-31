@@ -3,7 +3,7 @@
 > Внутренняя active-task запись. Клиентский статус опубликован в
 > [`../../user/reports/`](../../user/reports/README.md).
 
-Status: active-cascade-5-p0-autonomous-cycle-2
+Status: active-cascade-7-p0-autonomous-cycle-2
 Owner: Architect  
 Branch: `neuro_signal_analyser_cascade`  
 Architecture checkpoint: local Cascade 4 documentation checkpoint (see git history)
@@ -121,6 +121,70 @@ multi-layout editor.
 - Не входят: MATLAB grid/docking, rename/reorder pages и интерпретация
   unconfirmed MATLAB re-add как observed behavior.
 
+## Contract шестого каскада P0 Time presentation controls — 2026-07-31
+
+- Official MathWorks `Customize Signal Analyzer` defines `Normalize Y Axis` as
+  independent normalization of each Time signal to `[0,1]` and `Show Markers`
+  as sample-point markers on a Time plot. These are presentation controls, not
+  backend signal transformations.
+- Both controls are frontend-local, per-Display and revision-neutral: they make
+  no API request, do not mutate snapshot arrays/cache and restore when the user
+  returns to a Display. New Display defaults remain off.
+- Controls are enabled only for a nonempty Time Display. Non-Time and empty
+  states disable them without losing the stored per-Display preference.
+- Normalize maps each ordinary signal trace independently as
+  `(y-min(y))/(max(y)-min(y))`; a finite constant trace maps to zeros. It clones
+  trace arrays and never mutates backend payload. Peak marker y-coordinates are
+  mapped with the same extrema as their analysis-source trace so annotations
+  remain aligned.
+- Show Markers changes ordinary Time traces to `lines+markers` at the provided
+  bounded sample points. It does not create frontend peak detection and does
+  not alter the dedicated Peaks marker trace.
+- Repeated toggles preserve the single Plotly host and use `Plotly.react`.
+  Empty/non-finite trace data yields a stable UI error/empty state rather than
+  publishing corrupted values.
+- P0 excludes persistence to backend/save-import, arbitrary axis limits,
+  cursors, marker styling and normalization of Spectrum/heatmaps.
+- Required local gates: frontend behavior/static, no-request/revision E2E
+  contract, host identity, exact `[0,1]`/constant/Peak alignment and all
+  previous backend 649/649 regressions.
+
+## Contract седьмого каскада P0 Time Limits/ROI — 2026-07-31
+
+- Official MathWorks measurement docs state that Statistics and Peaks use
+  current Time Limits. SA-UI-008 observed inclusive 3..9 and 4..6 ROI
+  recomputation, valid 0..14 boundaries, invalid ordered limits rollback and
+  page locality. Link Time between populated pages remains out of scope.
+- Typed per-Display nullable `time_limits` has finite `min_s < max_s`. It is
+  null only for an empty Display; a nonempty page defaults to the complete
+  analysis-source range. Root and `displays[]` expose exact
+  `{min_s,max_s,units:"s"}`; `/api/view` accepts the same canonical object.
+- Explicit limits must lie within the prospective analysis-source duration and
+  include at least one raw sample. Invalid type/order/bounds/empty ROI returns
+  field-level 422 and preserves revision, Display, cache, measurements, Peaks
+  and plot state. The product uses visible inline validation rather than
+  MATLAB's silent rollback.
+- Source/membership lifecycle: unchanged source preserves limits; changing
+  source preserves them when valid for the new source, otherwise resets to that
+  source's full range. Clear sets limits null; first re-add/new Display uses
+  full range. Inactive Display limits are preserved.
+- Measurements use the inclusive full-raw ROI before plot bounding. Extrema
+  retain absolute zero-based sample indices and absolute `time_s`; mean uses
+  only ROI samples. Snapshot shape/units/order stay unchanged.
+- Enabled Peaks calls EngeeDSP only on the inclusive full-raw ROI. Typed query
+  carries the absolute starting sample offset; returned locations map back to
+  absolute sample index/time. Disabled/empty paths remain lazy. Provider error
+  aborts the limit mutation atomically.
+- Frontend adds editable `time-min-input`/`time-max-input` in seconds for
+  nonempty Time Display, exact authoritative values and accessible inline
+  `time-limits-error`. A committed change sends one serialized `/api/view`;
+  local typing alone does not. Plotly Time layout uses `xaxis.range` without
+  slicing/mutating backend trace arrays; Statistics/Peaks consume returned ROI.
+- Each actual limits change increments revision once; equal values are no-op.
+  Stale retry follows the existing queue. Switching Display restores its limits.
+- Excluded: Link Time groups, unit conversion, cursor-defined ROI, zoom/pan
+  event synchronization, Spectrum recomputation and arbitrary Y limits.
+
 ## Persistent role heartbeat — 2026-07-31
 
 | Canonical role | Persistent agent ID | Current task | Next queued task | Blocker | Last handoff/status |
@@ -141,16 +205,16 @@ replacement-thread на каноническую роль.
 
 | Canonical role | Replacement session | Current task | Next queued task | Blocker | Last handoff/status |
 | --- | --- | --- | --- | --- | --- |
-| Backend | `/root/backend_cycle` | completed standby | audit next frozen domain/API delta | none | C5 typed selection/membership/source and empty payloads; backend 649/649 |
-| Frontend | `/root/frontend_cycle` | completed standby | runtime Clear corrections if evidence fails | authenticated deployed target | accessible Clear, state separation and no-stale empty host; front 2/2 |
-| Tester | `/root/tester_cycle` | completed standby | rerun after next product/research handoff | local EngeeDSP unavailable | backend 649/649; front 2/2; Engee matrix 16/16 |
-| E2E Tester | `/root/e2e_cycle` | completed standby | run Clear/Peaks scenarios on authenticated deployed target | canonical URL redirects to login; retained PTY required | Clear syntax/support contract complete; no runtime product spec run |
-| DevOps | `/root/devops_cycle` | completed standby | documentation checkpoint; later authorized push | external transmission approval | product C5 checkpoint `8d480ac`; no push/deploy/merge |
-| MATLAB Researcher | `/root/matlab_cycle` | SA-UI-008 Time Limits locality/linkage | next bounded observed delta | none | SA-UI-007 partial saved; active-only clear/preservation confirmed, re-add unconfirmed |
+| Backend | `/root/backend_cycle` | completed standby | implement frozen C7 ROI domain/API | none | C6 read-only compatibility audit; backend 649/649 |
+| Frontend | `/root/frontend_cycle` | completed standby | implement frozen C7 Time Limits UI | none | C6 local Normalize/Markers complete; front 2/2 |
+| Tester | `/root/tester_cycle` | completed standby | C7 ROI contract matrix | local EngeeDSP unavailable | C6 front 2/2; backend 649/649; Engee matrix 16/16 |
+| E2E Tester | `/root/e2e_cycle` | completed standby | C7 Time Limits static scenario | runtime auth/deployment | C6 Time presentation syntax/support complete |
+| DevOps | `/root/devops_cycle` | completed standby | C6 documentation checkpoint; later authorized push | external transmission approval | product C6 checkpoint `f546195`; no push/deploy/merge |
+| MATLAB Researcher | `/root/matlab_cycle` | SA-UI-009 Normalize Y/Show Markers | next bounded observed delta | none | SA-UI-008 saved; page-local ROI/statistics and invalid rollback confirmed |
 
 DevOps gate evidence: branch `neuro_signal_analyser_cascade`, product/test HEAD
-`8d480ac`, no product/test changes remain outside the checkpoint, no conflicts,
-upstream divergence `0 behind / 12 ahead`. Architecture documentation remains
+`f546195`, no product/test changes remain outside the checkpoint, no conflicts,
+upstream divergence `0 behind / 14 ahead`. Architecture documentation remains
 a separate pending checkpoint. Unpushed commits do not block implementation;
 future checkpoints stage only explicit completed handoff files. No merge into
 `dev` is authorized without a new explicit user acceptance handoff.
@@ -190,6 +254,11 @@ verified by backend 649/649, frontend 2/2, Playwright static gates and catalog/
 vanilla/documentation validators. It is not pushed or deployed; runtime Clear
 E2E remains authentication/deployment-blocked.
 
+Cascade 6 Time presentation is locally committed as `f546195`: frontend 2/2,
+unchanged backend 649/649 and Playwright syntax/support/runner-help PASS. It is
+not pushed/deployed; runtime Time presentation E2E remains blocked on the same
+authenticated target prerequisite.
+
 EngeeDSP ambiguity is not an unconditional second-deploy blocker: on the same
 target, deployment may proceed only after the UUID/preload/import and target
 contract preflight passes. A failed preflight blocks deployment. No blind
@@ -222,14 +291,15 @@ attempt budget and are not claimed. SA-UI-006 additionally confirms that
 checkbox membership and measurements remap with active display while row
 selection remains independent and inactive-display plots persist. Product
 Display add/close/fallback still follows project contracts, not MATLAB grid.
-SA-UI-007 is saved; SA-UI-008 is active.
+SA-UI-008 is saved; SA-UI-009 is active.
 
 SA-UI-007 then confirmed that Clear Display can leave the active MATLAB display
 with zero memberships while preserving inactive plots and global signal
 inventory; active statistics disappear. Re-add was not confirmed after bounded
 attempts. Cascade 5 now implements the accepted product-model response under
 DEC-012; deterministic first re-add remains a product decision rather than a
-MATLAB-observed claim. SA-UI-008 is active.
+MATLAB-observed claim. SA-UI-008 then established Time ROI evidence; SA-UI-009
+is active.
 
 ## Dated runtime correction 2026-07-31 — Cascade 2 complete
 

@@ -127,3 +127,22 @@
   findpeaks matrix 16/16 сохраняет статус PASS.
 - `not deployed`: runtime scenario ждёт authenticated target и отдельное
   разрешение на внешний push/deploy.
+
+## 2026-07-31 — Cascade 6 Time presentation
+
+- `implemented`: frontend-local per-Display Normalize Y и Show Markers только
+  для непустого Time; каждый trace нормализуется независимо, constant — zero.
+- Peaks marker использует тот же source-affine transform без clipping; invalid
+  Time data имеет стабильный error state и не попадает в Plotly.
+- `verified locally`: frontend 2/2, backend regression 649/649, Playwright
+  syntax/support/runner-help и architecture validators PASS.
+- Product/test checkpoint `f546195`; push/deploy/runtime E2E не выполнялись.
+
+## 2026-07-31 — MATLAB Time Limits evidence
+
+- SA-UI-008 подтвердил page-local Time ROI и пересчёт Statistics: 3..9 и 4..6
+  дали ожидаемые разные extrema; допустимы полные границы 0..14.
+- Invalid ordered limits без dialog восстановили last-valid state. Пустой
+  linked Display не получил диапазон; populated Link Time остаётся unknown.
+- Evidence принят для отдельного Cascade 7, а не смешан с локальными C6
+  presentation controls.

@@ -231,3 +231,20 @@ verification: Backend 649/649, frontend 2/2 and Clear Display Playwright
 syntax/support/runner-help PASS. Runtime remains undeployed.
 next_task: SA-UI-008 Time Limits locality/linkage continues independently; do
 not reopen Add-On Explorer or use in-app documentation.
+
+## Autonomous cycle 2 scenario SA-UI-008 — 2026-07-31
+
+goal: Determine Time Limits locality, statistics recomputation, boundaries,
+invalid transactions and empty-display Link Time behavior.
+system_path: `/Users/makar/work/matlab_clicker/research_output/signal-analyzer-reference-scenarios/scenarios/SA-UI-008-time-limits-statistics-local-link.md`.
+sha256: `ce7eeb83b43a2aaaae4cbc3df094cf76c6037e2ae165f3b309c7bd4adb73d5c0`.
+observed: Right Display 3..9 produced min `-0.80902` at `8`, max `1` at `5`;
+4..6 produced min `0.30902` at `4`, max `1` at `5`. Boundary 0..14 was
+accepted. Invalid Min 15/Max 14 and Min 0/Max -1 silently restored last valid
+state without dialog. Link Time did not propagate to an empty left Display.
+portable_behavior: Limits are page-local by default and recompute Statistics
+over the current ROI; invalid ordering preserves last valid state. Product may
+surface clearer inline validation.
+uncertainty: Link propagation between two populated Displays and repeated
+equal-extrema tie behavior remain unconfirmed.
+next_task: SA-UI-009 Normalize Y Axis/Show Markers is active.

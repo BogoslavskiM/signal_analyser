@@ -51,6 +51,12 @@
    `width_samples=Wpk`, `prominence=Ppk`. Default occurrence order и first
    sample flat plateau сохраняются. Peak ID равен `peak-<sample_index>`.
    Вычисление выполняется только при `peaks_enabled=true`; fallback отсутствует.
+8. Time presentation normalization выполняется только над копией каждого
+   bounded trace: `y_norm=(y-min(y))/(max(y)-min(y))`; finite constant trace
+   отображается нулями. Backend samples/snapshot не меняются. Peak value
+   преобразуется тем же affine scale analysis-source trace без clipping; raw
+   peak может оказаться вне `[0,1]`, если его sample отсутствует в bounded
+   trace. Peak `time_s` остаётся абсолютным backend coordinate.
 
 ## Defaults
 
@@ -101,6 +107,8 @@ revision mutation.
   options и safe errors; evidence matrix 16/16 PASS.
 - Compiled lazy adapter pattern `Base.require` + `Base.invokelatest` повторён на
   prod MIND и вернул expected `Ypk=[1,2,3]`, `Xpk=[2,4,8]` без world-age error.
+- Cascade 6 frontend static/behavior 2/2 и Playwright syntax/support PASS;
+  backend regression остаётся 649/649.
 
 ## Источники и наблюдаемые различия
 

@@ -109,3 +109,12 @@ findpeaks evidence matrix remains 16/16 PASS. Required local Engee package gate
 fails because EngeeDSP is not installed and is not represented as skipped.
 risks: Engee-enabled target gate and runtime UI remain external prerequisites.
 follow-ups: Rerun the same contracts on an accepted deployed target.
+
+## Cascade 6 verification — 2026-07-31
+
+coverage: Independent exact `[0,1]`, constant-zero, immutable source arrays,
+unclipped affine Peaks with unchanged time, Time-only ordinary markers,
+per-Display restore, new defaults, disabled non-Time/empty controls, no API or
+revision changes, persistent host/react and invalid-data purge/error state.
+verification: Frontend 2/2 and backend 649/649 PASS; diff PASS.
+follow-ups: Runtime Playwright after authenticated deployment.

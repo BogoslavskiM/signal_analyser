@@ -130,3 +130,16 @@ risks: Runtime application behavior remains undeployed/authentication-blocked;
 local EngeeDSP package discovery remains unavailable.
 follow-ups: Stand by for runtime/backend defect triage after an authorized
 deployment; do not infer row/source coupling at the API layer.
+
+## Cascade 6 read-only backend audit — 2026-07-31
+
+goal: Prove frontend-local Time normalization/markers need no backend delta.
+findings: Time traces are named/colored finite Float64 arrays bounded to 1024;
+Peaks uses the same ordinate convention over full raw samples and identifies
+the analysis source. Empty payloads are already typed and lazy. Backend/API,
+cache and revision remain unchanged; regression 649/649 PASS.
+bounded_raw_note: A raw Peak can fall outside bounded trace extrema. Frontend
+must apply the same affine scale without clipping and keep backend `time_s`.
+risk: `AnalysedSignal` itself does not reject non-finite construction; future
+import adapters need a separate typed finite-value invariant. C6 renders a
+stable frontend invalid-data state and does not change Backend for this risk.

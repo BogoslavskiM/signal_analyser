@@ -169,3 +169,14 @@ PASS. Runtime intentionally not run without an authenticated deployed target.
 risks: DOM/Plotly/network behavior is prepared, not yet observed in prod.
 follow-ups: Run `signal_analyser/clear_display` after the exact product SHA is
 available and preserve timing/setup evidence.
+
+## Cascade 6 Time presentation static contract — 2026-07-31
+
+goal: Exercise revision-neutral Normalize Y/Show Markers across Display pages.
+changes: Added `time_presentation.test.js`, stable control/invalid-state IDs and
+feature registration. Scenario validates zero API/revision, single host/react,
+per-trace normalization, constant zero, source immutability, raw/bounded Peak
+affine mapping, Time-only marker mode, page restoration, empty/non-Time
+disablement and deterministic cleanup.
+verification: All JS syntax, support contract, runner help and diff PASS.
+runtime: Not run; canonical target remains authentication/deployment-blocked.

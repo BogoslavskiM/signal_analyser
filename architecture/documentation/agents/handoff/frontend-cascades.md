@@ -131,3 +131,17 @@ verification: JS syntax and diff PASS; frontend 2/2 PASS including persistent
 host/no-stale Plotly state.
 risks: Runtime keyboard/Plotly evidence awaits authenticated deployed target.
 follow-ups: Run the prepared Clear Display E2E after authorized deployment.
+
+## Cascade 6 Time presentation controls — 2026-07-31
+
+goal: Correct existing Normalize Y/Show Markers controls as local per-Display
+Time presentation.
+changes: Each ordinary Time trace is cloned and normalized independently to
+`[0,1]`; constants become zero. Peaks markers use the analysis-source affine
+scale without clipping. Ordinary markers use `lines+markers` only on Time.
+Non-Time/empty disables controls while preserving preferences. Invalid visible
+Time y renders `plot-invalid-data-state`, purges the same host and skips react.
+state: `data-normalize-y` and `data-show-markers` are exposed on root/host; no
+API request or revision mutation occurs.
+verification: JS syntax/diff and frontend 2/2 PASS; checkpoint `f546195`.
+risks: Runtime evidence awaits an authenticated deployment.

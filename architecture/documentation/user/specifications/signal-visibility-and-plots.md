@@ -27,6 +27,10 @@
   При успехе открывается локальная вкладка Peaks с backend-provided table и
   marker trace. Переход на другой тип графика выключает Peaks; thresholds,
   sorting, settings и Label Peaks в текущий срез не входят.
+- `Normalize Y axis` и `Show markers` — локальные per-Display presentation
+  controls только для непустого Time. Они не вызывают API и не меняют revision;
+  preference восстанавливается при возврате на страницу. Каждый обычный trace
+  нормализуется отдельно, а markers показывают bounded sample points.
 - Overflow menu активного Display содержит доступное действие Clear Display.
   Пустая страница показывает явные empty states графика, Measurements и Peaks;
   тот же graph host сохраняется, а stale Plotly traces очищаются.
@@ -97,7 +101,7 @@ minimum `-2` в `12 s`, maximum `3` в `5 s`, расчётный oracle mean р�
   `GlobalSignalSelection`, `SignalDisplayMembership`, explicit analysis source
   и nullable `SignalMeasurementsSnapshot`/`SignalPeaksSnapshot` invariants.
 - `public/js/app.js`: Display queue/revision mutation, local bottom tabs,
-  measurement rows и Plotly rendering.
+  measurement rows, Time presentation controls и Plotly rendering.
 - `public/js/vendor/plotly-cartesian-3.1.0.min.js`: vendored official npm
   artifact; SHA-256 `c462b40a1a542e16c3533f97d39fbbb91af4f5267f3cbf23bd70d785efc44c38`.
 - `test/back/lib/signal_analyser_service_test.jl` и
@@ -108,7 +112,8 @@ minimum `-2` в `12 s`, maximum `3` в `5 s`, расчётный oracle mean р�
   `measurements_statistics.test.js`, `plotly_local_delivery.test.js`: syntax и
   support PASS; `peaks_p0.test.js` добавляет revision/scope/table/marker
   contract; `clear_display.test.js` добавляет Clear/re-add/state-separation
-  contract. Runtime требует authenticated target.
+  contract; `time_presentation.test.js` добавляет Normalize/Show Markers.
+  Runtime требует authenticated target.
 
 Связано с [DEC-20260731-009](../decisions/DEC-20260731-009-display-pages.md),
 [DEC-20260731-010](../decisions/DEC-20260731-010-local-only-plotly.md) и

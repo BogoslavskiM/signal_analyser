@@ -15,8 +15,10 @@ Owner: Architect
 2. Cascade 4 P0 per-Display Peaks is implemented and locally committed as
    `d9fbcd9`: existing `/api/view`, typed lazy Engee adapter, additive snapshot,
    table and backend markers; no endpoint/fallback. Extended settings stay later.
-3. Later additive slice: display-local Normalize Y, global markers/cursors and
-   dependent controls.
+3. Cascade 6 Time `Normalize Y Axis`/`Show Markers` is implemented and committed
+   at `f546195`; runtime remains pending. Cascade 7 is active for authoritative
+   per-Display Time Limits with ROI Statistics/Peaks. Link groups, cursors, unit
+   conversion and persistence to save/import remain later slices.
 4. Cascade 5 state separation/Clear Display is implemented and committed at
    `8d480ac`: global row selection, nullable page analysis source, empty
    membership, deterministic recovery and no-provider empty payloads. Runtime
@@ -85,5 +87,6 @@ Owner: Architect
   remains governed by DEC-009 rather than MATLAB grid geometry.
 - SA-UI-007 confirms active-only clear, zero membership, statistics removal and
   preservation of inactive plots/global inventory. Re-add is unconfirmed.
-- SA-UI-008 Time Limits locality/linkage is active. Product Clear recovery is an
-  explicit DEC-012 decision and is not attributed to unconfirmed MATLAB re-add.
+- SA-UI-008 is saved and consumed into the frozen Cascade 7 Time Limits/ROI
+  contract. SA-UI-009 Normalize Y/Show Markers is active. Product Clear
+  recovery remains an explicit DEC-012 decision, not observed MATLAB re-add.
