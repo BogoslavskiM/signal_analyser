@@ -16,6 +16,18 @@ const SA_API = Main.AppTestContext
     @test occursin("signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)", routes_source)
 end
 
+@testset "Pinned Plotly vendor static route contract" begin
+    routes_source = SA_API.source("app", "routes.jl")
+    expected_vendor_file = "plotly-cartesian-3.1.0.min.js"
+    frontend_contract_source = read(joinpath(@__DIR__, "..", "..", "front", "public", "js", "app.static.test.js"), String)
+    vendor_routes = collect(eachmatch(r"route\(\"/js/vendor/:file\", method = GET\)", routes_source))
+
+    @test length(vendor_routes) == 1
+    @test occursin("public_file(\"js\", \"vendor\", basename(String(params(:file))))", routes_source)
+    @test occursin("serve_file(public_path(parts...))", routes_source)
+    @test occursin("const plotlyVendorUrl = \"./js/vendor/$expected_vendor_file\"", frontend_contract_source)
+end
+
 @testset "Signal Analyser API error envelopes" begin
     validation = SA_API.SignalAnalyserValidationError(
         "Некорректный запрос отображения",

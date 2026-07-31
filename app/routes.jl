@@ -25,6 +25,10 @@ route("/js/ui_blocks/:file", method = GET) do
     public_file("js", "ui_blocks", basename(String(params(:file))))
 end
 
+route("/js/vendor/:file", method = GET) do
+    public_file("js", "vendor", basename(String(params(:file))))
+end
+
 route("/icons/:file", method = GET) do
     public_file("icons", basename(String(params(:file))))
 end
