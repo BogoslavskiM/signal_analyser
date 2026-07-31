@@ -1,7 +1,7 @@
 # SPEC-SA-UI-001: видимость, выбор и графики сигналов
 
 Статус: `implemented`, локально `verified`, текущие каскады не `deployed`
-Дата актуальности: 2026-07-31
+Дата актуальности: 2026-08-01
 
 ## Интерфейс
 
@@ -44,6 +44,13 @@
   панель результатов. На пустом Display controls disabled без потери checked
   preference; на непустом non-Time Display они доступны, потому что
   authoritative Time ROI сохраняется. Frontend не вычисляет показатели.
+- Внутри вкладки Display для непустого Spectrum находится отдельная секция
+  Spectrum, не создающая четвёртую вкладку. Каждый Display независимо хранит
+  Scale (`dB`/`Linear`), Frequency scale (`Linear`/`Log`) и Leakage `[0,1]`;
+  defaults равны `dB`, `Linear`, `0.5`. Изменение отправляется только по
+  `change`, целиком и через существующую revision queue. Log недоступен, пока
+  в membership есть комплексный сигнал. Normalize Y остаётся локальным
+  presentation control и не меняет Spectrum payload/revision.
 - Overflow menu активного Display содержит доступное действие Clear Display.
   Пустая страница показывает явные empty states графика, Measurements и Peaks;
   тот же graph host сохраняется, а stale Plotly traces очищаются.
@@ -73,6 +80,15 @@ Display получает первые три ID, а пустой массив д
 revision, равный набор является no-op. Clear Display сохраняет preference,
 первый re-add пересчитывает сохранённый набор, неактивные страницы не меняются.
 
+Additive `spectrum_settings` — строгий полный объект
+`{scale:"db|linear",frequency_scale:"linear|log",leakage:number}`. Отсутствие
+объекта сохраняет preference; missing/extra keys, неверные enum/type,
+non-finite или Leakage вне `[0,1]` дают field-level 422 без частичной mutation.
+Фактическое изменение даёт одну revision, равное значение является no-op.
+Clear сохраняет настройки, новый Display получает defaults, а страницы A/B
+независимы. Запрос Log и добавление комплексного member в уже Log-настроенный
+Display отвергаются атомарно.
+
 Snapshot добавляет non-null `row_selected_signal`, nullable root
 `analysis_signal` и `displays[].analysis_signal`; root/display
 `selected_signal` остаётся совместимым alias. Пустой Display возвращает пустые
@@ -98,6 +114,14 @@ Root и каждый Display snapshot также содержат ordered `measu
 на непустой странице сохраняет signal/ordinate/units и возвращает `items=[]`,
 не материализуя ROI. Пустой Display сохраняет null signal/ordinate и не теряет
 сам preference.
+
+Root и каждый Display snapshot содержат canonical `spectrum_settings`.
+Spectrum вычисляется заново по inclusive raw Time ROI каждого видимого сигнала:
+короткий сигнал пересекается со своим временным доменом без padding/resampling.
+Ноль пересекающихся отсчётов даёт пустой trace, один — typed empty без provider,
+два и более передаются EngeeDSP. Вещественный результат one-sided
+`0..Nyquist`, комплексный — centered two-sided. Frequency scale меняет только
+Plotly `xaxis.type`, raw frequency/power arrays остаются backend-owned.
 
 ## Наблюдения MATLAB Signal Analyzer
 
@@ -138,6 +162,15 @@ page-local выбор и независимые defaults пустой новой
 приняты по официальной документации и проверяемой реализации, а не выводятся
 frontend из отображаемой таблицы.
 
+SA-GRAPH-001 подтвердил для Spectrum единицы Hz, вещественную ось `0..0.5` при
+`Fs=1`, включённый dB, среднее положение Leakage и пересчёт от Time ROI;
+Normalize не менял спектральный результат. SA-GRAPH-002 показал, что Log
+сохраняет введённый минимум `0`, а renderer применяет собственный положительный
+предел без изменения сохранённых полей. SA-GRAPH-003 подтвердил переключение
+dB/Linear: peak около `-3.0103 dB` соответствует linear power `0.5`. Page-local
+ownership Spectrum settings остаётся переносимым product decision, а не
+неподтверждённым MATLAB claim.
+
 ## Code anchors и проверки
 
 - `lib/services/signal_analyser_service.jl`:
@@ -156,6 +189,12 @@ frontend из отображаемой таблицы.
   `SignalMeasurementSelection` и расширенный measurement-kind contract.
 - `lib/services/signal_analyser_service.jl`: strict selection validation,
   canonical ordering и selected-only raw ROI statistics.
+- `lib/domain/signal_analyser_state.jl`: `SignalSpectrumSettings`,
+  `SignalTimeSampleRange`, `SignalSpectrumQuery`, `SignalSpectrumData`, typed
+  provider/service и cache key.
+- `lib/services/signal_analyser_service.jl`: strict Spectrum validation,
+  per-signal ROI intersection, EngeeDSP provider preparation и atomic cache
+  publication; `lib/services/signal_analyser_math.jl` — presentation scale.
 - `public/js/app.js`: Display queue/revision mutation, local bottom tabs,
   measurement rows, functional settings tabs, statistics checkbox mutation,
   Time presentation/limits controls и Plotly rendering.
@@ -172,7 +211,9 @@ frontend из отображаемой таблицы.
   contract; `time_presentation.test.js` добавляет Normalize/Show Markers.
   `time_limits.test.js` добавляет ROI, 422 rollback, page lifecycle и absolute
   Peaks coordinates; `selectable_statistics.test.js` добавляет page-local
-  selection, Clear/re-add, ROI и cleanup contract.
+  selection, Clear/re-add, ROI и cleanup contract;
+  `spectrum_settings_roi.test.js` добавляет defaults, exact mutations,
+  one-sided axis, complex-safe Log, A/B, Clear/re-add и полный cleanup.
   Runtime требует authenticated target.
 
 Связано с [DEC-20260731-009](../decisions/DEC-20260731-009-display-pages.md),
@@ -180,5 +221,6 @@ frontend из отображаемой таблицы.
 [DEC-20260731-011](../decisions/DEC-20260731-011-lazy-engeedsp-peaks.md),
 [DEC-20260731-012](../decisions/DEC-20260731-012-display-selection-separation.md),
 [DEC-20260731-013](../decisions/DEC-20260731-013-authoritative-time-roi.md),
-[DEC-20260731-014](../decisions/DEC-20260731-014-selectable-statistics.md) и
+[DEC-20260731-014](../decisions/DEC-20260731-014-selectable-statistics.md),
+[DEC-20260801-015](../decisions/DEC-20260801-015-spectrum-roi-default-settings.md) и
 [traceability](../traceability/signal-analyser-cascades.md).

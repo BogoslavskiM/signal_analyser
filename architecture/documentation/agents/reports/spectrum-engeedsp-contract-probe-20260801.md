@@ -4,6 +4,11 @@ Status: verified prod capability evidence; Cascade 9 implementation not started
 Owner: Architect
 Environment: Engee MIND prod, `EngeeDSP` `0.72.0`
 
+Correction 2026-08-01: Cascade 9 subsequently implemented and locally frozen
+at `b53d79622dbe926316915d7c55668432434bcc07`. The original status line is the
+report-time state; this append-only correction does not claim deployment or
+runtime E2E.
+
 ## Задача
 
 Проверить минимальный публичный контракт `EngeeDSP.Functions.pspectrum`, который

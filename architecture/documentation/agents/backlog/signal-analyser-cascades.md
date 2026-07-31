@@ -21,6 +21,9 @@ Owner: Architect
    `1b7864b`, locally verified 719/719 + front 2/2. Cascade 8 selectable
    per-Display Statistics is implemented and locally verified at backend
    789/789 + frontend 2/2 and committed locally as `0fc70fd`.
+   Cascade 9 per-Display Spectrum settings and authoritative Spectrum ROI are
+   implemented and locally verified at backend 867/867 + frontend 2/2 and
+   committed locally as `b53d796`.
    Link groups, cursors, unit conversion and persistence to save/import remain
    later slices.
 4. Cascade 5 state separation/Clear Display is implemented and committed at
@@ -71,6 +74,13 @@ Owner: Architect
    and issues no CDN request.
 
 ## MATLAB research backlog
+
+- SA-GRAPH-001/002/003 are consumed by Cascade 9: defaults/units/ROI,
+  renderer Log floor and exact dB/Linear relationship. SA-GRAPH-004 should
+  bound the complex-signal/Log behavior before the next contract freeze.
+- Candidate Cascade 10 must choose one coherent slice. Preferred next slice is
+  editable Frequency Limits plus explicit Log-floor presentation; RBW/window,
+  actual RBW, manual units and Spectrogram/Persistence remain separate.
 
 - SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
   researches Spectrum defaults/units for a future separately frozen slice.

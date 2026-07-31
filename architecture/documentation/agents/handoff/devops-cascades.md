@@ -150,3 +150,21 @@ EngeeDSP absence remains a target-preflight constraint rather than a C8
 Statistics failure.
 follow-ups: Commit only the explicit completed documentation handoff. External
 transfer stays separate.
+
+## Cascade 9 product/test commit-freeze — 2026-08-01
+
+replacement: `/root/devops_c9_freeze` was created for the bounded local freeze
+because the previously recorded `/root/devops_cycle` thread was not available
+in the active orchestration tree.
+goal: Commit exactly the completed C9 product/test paths without external
+transfer or deployment.
+scope: 15 explicit Backend, Frontend, Tester and E2E files.
+changes: Local commit `b53d79622dbe926316915d7c55668432434bcc07`,
+message `feat: добавить настройки Spectrum по Time ROI`.
+verification: Backend rerun PASS, 867/867; frontend 2/2; exact staged list and
+diff checks PASS. Backend confirmed the implementation frozen before staging.
+risks: Local EngeeDSP contract remains unavailable in this environment; prod
+evidence is documented. Runtime E2E remains pending.
+follow-ups: Separate Architect documentation checkpoint. Push/deploy/merge only
+after separate authority; none was performed.
+next_task_candidates: Target preflight and deployment only after authorization.

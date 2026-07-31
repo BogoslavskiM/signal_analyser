@@ -1,15 +1,17 @@
 # MATH-SA-001: вычисления Signal Analyser
 
-Статус: `implemented`; unit/API `verified`; Engee target contract первой версии
-`verified`; второй каскад не `deployed`  
-Дата актуальности: 2026-07-31
+Статус: `implemented`; unit/API и prod Engee provider contract `verified`;
+текущий каскад не `deployed`
+Дата актуальности: 2026-08-01
 
 ## Символы и единицы
 
 - `N` — число отсчётов; `f_s` — частота дискретизации, Гц.
 - `x[n]` — входной сигнал, вещественный либо комплексный.
 - `t[n]` — время, с; частотные оси — Гц; power scale — дБ.
-- Все spectral representations вызываются как two-sided (`TwoSided=true`).
+- Spectrum для real вызывается one-sided (`TwoSided=false`), для complex —
+  centered two-sided (`TwoSided=true`). Spectrogram/Persistence сохраняют
+  прежний two-sided contract.
 
 ## Реализованные формулы и algorithms
 
@@ -19,10 +21,15 @@
    `lib/domain/signal_analyser_state.jl::signal_time_values`,
    `::signal_duration_s`;
    `lib/services/signal_analyser_math.jl::signal_analyser_time_plot`.
-2. Spectrum вызывает `EngeeDSP.Functions.pspectrum` с representation `power`,
-   `FrequencyResolution = 8 f_s/N`, `TwoSided=true`. Returned power переводится
-   как `P_dB = 10 log10(max(|P|, eps(Float64)))`. Code anchor:
-   `signal_analyser_spectrum_plot`, `signal_analyser_power_db`.
+2. Spectrum берёт raw subset `x[k]`, где
+   `I_s={k | t_min <= k/f_s <= t_max}` пересечён с временным доменом каждого
+   видимого сигнала, и вызывает только `EngeeDSP.Functions.pspectrum` с
+   representation `power`, `Leakage=λ`, без forced `FrequencyResolution`.
+   Для real передаётся `TwoSided=false`, для complex — `true`. Linear выдача
+   равна raw power `P`; dB равна `P_dB=10 log10(P)`. Frequency scale — только
+   presentation metadata. Code anchors: `SignalSpectrumQuery`,
+   `SignalSpectrumService`, `signal_spectrum_calculate`,
+   `signal_analyser_spectrum_plot`.
 3. Spectrogram вызывает representation `spectrogram`, `TwoSided=true`,
    ориентирует matrix как frequency × time и применяет ту же шкалу
    `10 log10(max(|P|, eps))`. Code anchors:
@@ -88,12 +95,27 @@
 дополнительно содержит median, peak-to-peak и RMS. Пустой subset является
 допустимым preference и не запускает ROI calculation.
 
+Spectrum settings нового Display: dB, линейная частотная ось и `λ=0.5`.
+Leakage конечна и лежит в `[0,1]`. Scale/frequency scale исключены из raw cache
+identity; Leakage, inclusive sample range, signal/sample rate и one/two-sided
+topology входят в typed key.
+
 ## Numeric constraints и edge cases
 
-Пустые и non-finite axes/power отвергаются. Несовместимая orientation вызывает
+Пустые и non-finite provider axes/power отвергаются, power должна быть
+неотрицательной. При `P=0` точная dB-формула даёт `-Inf`; общий API
+`json_safe` сериализует non-finite ordinate как `null`, не создавая неверный
+конечный floor. Несовместимая orientation вызывает
 `DimensionMismatch`. Complex time data визуализируется по magnitude. Продукт не
-объявляет one-sided mode и не выполняет собственную FFT/PSD нормализацию:
-spectral estimate делегирован EngeeDSP.
+выполняет собственную FFT/PSD нормализацию: spectral estimate делегирован
+EngeeDSP.
+
+Spectrum provider query требует минимум два raw sample. Ноль отсчётов после
+per-signal пересечения и один отсчёт возвращают typed empty без provider; два
+поддерживаются. Real provider axis обязана быть отсортированной в
+`[0,f_s/2]`, complex — отсортированной centered two-sided в
+`[-f_s/2,f_s/2]`. Log запрещён при любом видимом complex member. Normalize Y
+не меняет query, cache или power.
 
 Для raw statistics пустые/non-finite samples и неположительная либо
 неконечная `f_s` отвергаются до публикации view/display mutation. Позиции
@@ -142,6 +164,15 @@ revision mutation.
   magnitude и scale-normalized RMS на extreme finite inputs. Frontend
   static/behavior — 2/2 PASS; Playwright syntax/support/runner-help PASS.
   Runtime DevHub E2E не выполнялся.
+- Cascade 9 backend unit/API — 867/867 PASS; целевые C9 testsets 52/52 и
+  28/28. Проверены typed provider/query/cache, defaults, dB/linear, Leakage
+  recalculation, raw-cache reuse, strict 422, revision/no-op/stale, complex Log,
+  A/B/Clear/re-add, provider rollback и mixed-duration ROI. Frontend 2/2;
+  Playwright syntax/support/runner-help PASS. Runtime E2E не выполнялся.
+- Prod EngeeDSP `0.72.0` probe подтвердил real `0..Nyquist`, complex centered
+  two-sided, Leakage endpoints/validation, two-sample support и one-sample
+  `ArgumentError`. Локальный обязательный contract остаётся failed, потому что
+  пакет отсутствует в local environment; fallback не добавлен.
 
 ## Источники и наблюдаемые различия
 

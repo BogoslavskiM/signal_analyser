@@ -212,3 +212,24 @@ DOM, Plotly or network result is inferred from the static gate.
 risks: Runtime focus/layout/request timing and exact deployed SHA remain open.
 follow-ups: Run only after an accepted deployment and retain cleanup/timing
 evidence.
+
+## Cascade 9 Spectrum settings/ROI static contract — 2026-08-01
+
+replacement: `/root/e2e_c9_replacement` replaced `/root/e2e_cycle` after the
+original thread repeatedly exhausted context and left incomplete cleanup.
+goal: Prepare a deterministic Spectrum scenario that never leaves page state
+mutated and never performs a prohibited complex+Log request.
+changes: Added `spectrum_settings_roi.test.js`, selectors and feature mapping;
+corrected the checkbox prefix to the actual `signal-checkbox-*` contract.
+coverage: Defaults; exactly one `/api/view` and `+1` for Scale/Frequency/
+Leakage/ROI; root/display mirror; real `0..Nyquist`; complex Log disabled;
+Normalize zero-request; B defaults; Clear/re-add. Cleanup closes B first and
+restores A membership/source/settings/ROI/Normalize/plot/active page. It first
+uses Linear before returning a complex member and skips same-value mutations.
+verification: All Playwright JavaScript syntax, support contract, runner help
+and diff check PASS.
+browser_workspace_setup: Browser and MATLAB were not touched; static-only.
+risks: Runtime timing/network/Plotly assertions remain pending deployment.
+follow-ups: Run only against the exact accepted deployed SHA and retain timing
+evidence.
+next_task_candidates: Runtime C9; next frozen Spectrum slice afterward.

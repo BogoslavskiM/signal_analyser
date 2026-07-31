@@ -458,3 +458,40 @@ C9. Existing panel placeholders may remain, but must not claim actual RBW.
 
 Implementation is the next critical-path slice. This freeze does not claim
 implemented, runtime-verified, deployed or accepted-by-user C9 behavior.
+
+## Cascade 9 implementation and local freeze — 2026-08-01
+
+Status: `implemented-and-locally-verified`; product/test checkpoint
+`b53d79622dbe926316915d7c55668432434bcc07`; not pushed, not deployed, runtime
+E2E not run.
+
+The frozen DEC-015 contract is implemented across Backend, Frontend, Tester and
+E2E ownership. Integration gates: backend 867/867 (C9 52/52 + API 28/28),
+frontend 2/2, Julia parse, Playwright syntax/support/runner-help, skills 40,
+vanilla assets and documentation structure PASS. Local EngeeDSP contract fails
+at package load after findpeaks 16/16; the independent prod EngeeDSP `0.72.0`
+probe remains the provider capability evidence. No fallback/dependency edit was
+introduced.
+
+### Persistent role heartbeat after C9 freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_cycle` | completed standby | C10 backend after contract freeze | SA-GRAPH-004 and Architect decision | C9 OOP Spectrum, backend 867/867 |
+| Frontend | `/root/frontend_c9_replacement` | completed standby; replaces exhausted `/root/frontend_cycle` | C10 UI after exact contract | Backend/API contract not frozen | C9 Spectrum controls, front 2/2 |
+| Tester | `/root/tester_cycle` | completed standby; `/root/tester_c7_matrix` superseded after partial matrix | C10 red matrix | C10 contract not frozen | C9 service/API/front matrix complete |
+| E2E Tester | `/root/e2e_c9_replacement` | completed standby; replaces incomplete `/root/e2e_cycle` | runtime C9, then C10 scenario | exact deployed SHA/authenticated target | C9 static scenario and safe cleanup complete |
+| DevOps | `/root/devops_c9_freeze` | completed standby | documentation checkpoint; later authorized target preflight | Architect docs validation / external authority | local C9 commit `b53d796`; no push/deploy |
+| MATLAB Researcher | prior `/root/matlab_cycle` evidence consumed; no live writer in this restart | SA-GRAPH-004 next | bounded complex/Log reference | resume/replacement needed; MATLAB server is available | SA-GRAPH-001/002/003 saved |
+
+Replacement rationale and exact handoffs are persisted in the role-specific
+handoff files. No idle role has an unexplained eligible task: product roles are
+blocked on the next frozen contract, E2E on runtime authorization, DevOps on the
+separate documentation freeze, and MATLAB Researcher is the next active lane.
+
+### Next cascade candidate
+
+Run SA-GRAPH-004 for complex-signal/Log behavior and freeze one coherent C10
+slice. Preferred candidate is editable Frequency Limits plus explicit Log-floor
+presentation. RBW/window, actual RBW, manual units and Spectrogram/Persistence
+remain outside scope until separately researched and accepted.

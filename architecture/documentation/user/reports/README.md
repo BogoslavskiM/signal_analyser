@@ -10,3 +10,4 @@
 - [Cascade 6: Time presentation](signal-analyser-cascade-v6.md)
 - [Cascade 7: Time Limits/ROI](signal-analyser-cascade-v7.md)
 - [Cascade 8: selectable Statistics](signal-analyser-cascade-v8.md)
+- [Cascade 9: Spectrum settings и Time ROI](signal-analyser-cascade-v9.md)

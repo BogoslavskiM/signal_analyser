@@ -183,3 +183,28 @@ risks: Live target and real specialized DSP paths were not exercised. Existing
 enabled Peaks preparation may still abort the joint mutation atomically.
 follow-ups: Runtime only after an accepted deployment; keep specialized
 spectral/Peaks behavior behind proven Engee functions.
+
+## Cascade 9 typed Spectrum/ROI — 2026-08-01
+
+goal: Replace the legacy Spectrum estimate path with an exact per-Display,
+Time-ROI-aware EngeeDSP contract behind typed OOP boundaries.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_math.jl`,
+`lib/services/signal_analyser_service.jl`.
+contracts: Exact `spectrum_settings`, defaults/preserve/no-op/revision/atomicity,
+raw inclusive per-signal ROI, real one-sided, complex centered two-sided,
+EngeeDSP `pspectrum` only, no fallback/dependency edit.
+changes: Added `SignalSpectrumSettings`, `SignalTimeSampleRange`,
+`SignalSpectrumQuery`, `SignalSpectrumData`, abstract/provider/service types and
+typed cache key. Spectrum preparation is complete before state/cache
+publication. Scale is presentation-only; Leakage participates in raw cache
+identity. Mixed-duration members intersect the Display ROI independently.
+verification: Julia parse PASS; integrated backend 867/867 PASS, including C9
+service 52/52 and API 28/28. Prod EngeeDSP probe confirms topology, Leakage and
+short-input contract. Local real package gate fails because EngeeDSP is absent.
+risks: Runtime application E2E and deployment remain open. Exact dB at zero
+power is `-Inf`; existing API `json_safe` maps non-finite values to `null`.
+follow-ups: Target preflight/runtime E2E after an authorized deployment; next
+Spectrum options require a separately frozen contract.
+next_task_candidates: Frequency Limits/log-floor presentation; bounded
+complex/log MATLAB delta; no Spectrogram/Persistence refactor by inference.

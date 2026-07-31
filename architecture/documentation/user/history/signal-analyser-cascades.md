@@ -192,3 +192,25 @@
 - Runtime DevHub E2E, push и deployment не выполнялись. Локальное отсутствие
   EngeeDSP остаётся известным preflight limitation для специализированных
   путей и не влияет на Base/Statistics C8.
+
+## 2026-08-01 — Cascade 9 Spectrum settings и authoritative ROI
+
+- SA-GRAPH-001/002/003 и prod EngeeDSP `0.72.0` probe разделили наблюдаемые
+  MATLAB defaults/dB/Log rendering и проверяемый provider contract.
+- `implemented`: каждый Display хранит строгий `spectrum_settings` с defaults
+  dB/Linear/0.5; `/api/view` сохраняет revision/no-op/422/409 atomicity, а
+  Clear/new/A-B lifecycle не смешивает страницы.
+- Spectrum вычисляется EngeeDSP `pspectrum` по inclusive raw Time ROI каждого
+  видимого сигнала. Real использует one-sided, complex centered two-sided;
+  Leakage входит в raw cache key, presentation scales — нет. Fallback и
+  dependency edit не добавлялись.
+- Frontend получил условную Spectrum-секцию внутри Display, три native control,
+  запрет Log при complex, полный serialized request, rollback и Plotly
+  frequency-axis mode без клиентского DSP.
+- `verified locally`: backend 867/867 (C9 service 52/52, API 28/28), frontend
+  2/2, Julia parse, Playwright syntax/support/runner-help, skill/vanilla/docs
+  validators PASS. Local Engee contract сохраняет честный environment failure
+  после findpeaks 16/16 из-за отсутствующего пакета; prod provider evidence
+  подтверждено отдельно.
+- Product/test checkpoint: `b53d79622dbe926316915d7c55668432434bcc07`.
+  Push, runtime E2E, deployment и merge не выполнялись.

@@ -178,3 +178,21 @@ risks: Browser runtime layout, focus and network behavior await an authenticated
 deployed target.
 follow-ups: Run the prepared selectable Statistics scenario on the exact
 accepted product SHA.
+
+## Cascade 9 Spectrum settings UI — 2026-08-01
+
+replacement: `/root/frontend_c9_replacement` replaced
+`/root/frontend_cycle` after the original thread exhausted context and declared
+its partial rewrite unsafe to finish.
+goal: Add exact Spectrum controls without a fourth settings tab or client DSP.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Display-owned full `spectrum_settings`; native Scale/Frequency
+selects and Leakage range; change-only serialized mutation; 422 rollback and
+409 replay; complex-safe Log; Spectrum-only Plotly `xaxis.type`.
+changes: Added the conditional Display-panel subsection and stable selectors,
+normalization/state queue plumbing, per-Display inline errors and minimal CSS.
+verification: `node --check` PASS; frontend static/behavior 2/2 PASS; diff
+check PASS.
+risks: Live DOM/network/Plotly behavior remains unobserved until target runtime.
+follow-ups: Run the prepared C9 E2E after authorized deployment.
+next_task_candidates: Only controls backed by a newly frozen Backend contract.

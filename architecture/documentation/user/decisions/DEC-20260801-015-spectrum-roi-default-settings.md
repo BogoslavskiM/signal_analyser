@@ -121,3 +121,11 @@ state без изменения raw arrays.
 - [Engee enbw](https://engee.com/helpcenter/stable/en/func-dsp-measurements-and-feature-extraction/func-enbw.html).
 - Internal prod-probe record:
   [`../../agents/reports/spectrum-engeedsp-contract-probe-20260801.md`](../../agents/reports/spectrum-engeedsp-contract-probe-20260801.md).
+
+## Implementation update — 2026-08-01
+
+Решение реализовано и локально проверено в product/test checkpoint
+`b53d79622dbe926316915d7c55668432434bcc07`: backend 867/867, frontend 2/2,
+Playwright static gates PASS. Исходная строка `Implementation: planned` выше
+фиксирует состояние на момент принятия ADR и не переписывается задним числом.
+Push, runtime E2E и deployment не выполнялись.

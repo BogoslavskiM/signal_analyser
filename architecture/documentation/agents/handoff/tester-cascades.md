@@ -144,3 +144,23 @@ risks: Local EngeeDSP is absent, so real spectral/Peaks contracts remain a
 target preflight. C8 Base/Statistics itself has no EngeeDSP dependency.
 follow-ups: Preserve this exact gate during later Spectrum work; do not treat
 runtime E2E as completed.
+
+## Cascade 9 verification — 2026-08-01
+
+goal: Prove the strict nested Spectrum API/state contract and frontend queue
+behavior without hiding the missing local Engee runtime.
+scope: `test/back/**`, `test/engee/**`, `test/front/**`.
+coverage: Typed provider/query/cache/topology, raw ROI and mixed durations,
+defaults/A-B/Clear/re-add, scale/cache separation, Leakage recalculation,
+complex Log rejection, strict nested 422/409/atomicity and provider rollback.
+Frontend coverage includes exact full legacy request bodies, stable controls,
+one-request change, 422 rollback/error and Log/x-axis behavior.
+verification: Integrated backend 867/867 PASS; C9 service 52/52; C9 API 28/28;
+frontend 2/2 PASS. Local Engee suite passes findpeaks 16/16, then fails the
+required pspectrum group because `EngeeDSP` is not installed.
+risks: The Engee failure is retained, not skipped; target preflight remains
+mandatory. Runtime browser behavior is not claimed.
+follow-ups: Rerun real contract on the deployment environment and C9 E2E on
+the exact deployed SHA.
+next_task_candidates: Add focused contract cases only when the next Spectrum
+slice is frozen.
