@@ -26,7 +26,10 @@ module.exports = {
       activePlotTitle: "active-plot-title",
       signalTable: "signal-table",
       signalRowPrefix: "signal-row-",
+      signalVisibilityCheckboxPrefix: "signal-visibility-checkbox-",
+      signalVisibilityStatePrefix: "signal-visibility-state-",
       activePlotFieldPrefix: "active-plot-field-",
+      plotHostPrefix: "plot-host-",
     },
     api: {
       state: "/api/state",

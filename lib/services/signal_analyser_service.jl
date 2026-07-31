@@ -1,4 +1,4 @@
-const SIGNAL_ANALYSER_VIEW_FIELDS = Set(["state_revision", "active_plot", "selected_signal"])
+const SIGNAL_ANALYSER_VIEW_FIELDS = Set(["state_revision", "active_plot", "selected_signal", "visible_signals"])
 
 function signal_analyser_signal_payload(signal::AnalysedSignal)::Dict{String,Any}
     Dict{String,Any}(
@@ -84,15 +84,91 @@ function signal_analyser_cached_plots!(state::SignalAnalyserState, signal::Analy
     end
 end
 
+function signal_analyser_prepared_plots(state::SignalAnalyserState, signal_names::Vector{String})::Dict{String,Dict{String,Any}}
+    prepared = Dict{String,Dict{String,Any}}()
+    for name in signal_names
+        if haskey(state.plot_cache, name)
+            prepared[name] = state.plot_cache[name]
+        else
+            prepared[name] = signal_analyser_plots(signal_by_name(state, name))
+        end
+    end
+    prepared
+end
+
+function signal_analyser_publish_prepared_plots!(
+    state::SignalAnalyserState,
+    prepared::Dict{String,Dict{String,Any}},
+)
+    for (name, plots) in prepared
+        state.plot_cache[name] = plots
+    end
+    nothing
+end
+
+function signal_analyser_visible_signal_names(state::SignalAnalyserState)::Vector{String}
+    [signal.name for signal in state.signals if signal.visible]
+end
+
+function signal_analyser_with_visibility(signal::AnalysedSignal, visible::Bool)::AnalysedSignal
+    AnalysedSignal(
+        signal.name,
+        signal.color,
+        signal.sample_rate_hz,
+        signal.values,
+        signal.is_complex,
+        visible,
+    )
+end
+
+function signal_analyser_plot_for_payload(
+    plot::Dict{String,Any},
+    signal::AnalysedSignal,
+)::Dict{String,Any}
+    payload = copy(plot)
+    payload["signal"] = signal.name
+    payload["name"] = signal.name
+    payload["color"] = signal.color
+    payload
+end
+
+function signal_analyser_multi_trace_payload(
+    state::SignalAnalyserState,
+    selected_signal::AnalysedSignal,
+    visible_names::Vector{String},
+)::Dict{String,Any}
+    time_traces = Dict{String,Any}[]
+    spectrum_traces = Dict{String,Any}[]
+    for signal in state.signals
+        signal.name in visible_names || continue
+        plots = signal_analyser_cached_plots!(state, signal)
+        push!(time_traces, signal_analyser_plot_for_payload(plots["time"], signal))
+        push!(spectrum_traces, signal_analyser_plot_for_payload(plots["spectrum"], signal))
+    end
+
+    selected_plots = signal_analyser_cached_plots!(state, selected_signal)
+    Dict{String,Any}(
+        "selected_signal" => selected_signal.name,
+        "visible_signals" => visible_names,
+        "time_traces" => time_traces,
+        "spectrum_traces" => spectrum_traces,
+        "spectrogram" => signal_analyser_plot_for_payload(selected_plots["spectrogram"], selected_signal),
+        "persistence" => signal_analyser_plot_for_payload(selected_plots["persistence"], selected_signal),
+    )
+end
+
 function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{String,Any}
     signal = signal_by_name(state, state.view.selected_signal)
     plots = signal_analyser_cached_plots!(state, signal)
+    visible_names = signal_analyser_visible_signal_names(state)
     Dict{String,Any}(
         "state_revision" => state.view.state_revision,
         "active_plot" => signal_analyser_plot_name(state.view.active_plot),
         "selected_signal" => state.view.selected_signal,
+        "visible_signals" => visible_names,
         "signals" => [signal_analyser_signal_payload(item) for item in state.signals],
         "plots" => plots,
+        "plot_payload" => signal_analyser_multi_trace_payload(state, signal, visible_names),
         "panel" => signal_analyser_panel_payload(state.view.active_plot, signal, plots),
     )
 end
@@ -116,6 +192,46 @@ end
 
 function signal_analyser_payload_keys(data::AbstractDict)::Set{String}
     Set(string(key) for key in keys(data))
+end
+
+function signal_analyser_validate_visible_signals!(
+    field_errors::Dict{String,String},
+    state::SignalAnalyserState,
+    value,
+)::Union{Nothing,Vector{String}}
+    if !(value isa AbstractVector)
+        field_errors["visible_signals"] = "Требуется массив имён сигналов"
+        return nothing
+    end
+    if isempty(value)
+        field_errors["visible_signals"] = "Нужно оставить видимым хотя бы один сигнал"
+        return nothing
+    end
+
+    requested_names = String[]
+    seen = Set{String}()
+    for item in value
+        if !(item isa AbstractString)
+            field_errors["visible_signals"] = "Каждый элемент должен быть строкой"
+            return nothing
+        end
+        name = String(item)
+        if name in seen
+            field_errors["visible_signals"] = "Имена сигналов не должны повторяться"
+            return nothing
+        end
+        push!(seen, name)
+        push!(requested_names, name)
+    end
+
+    known_names = Set(signal.name for signal in state.signals)
+    unknown_names = sort!(setdiff(requested_names, collect(known_names)))
+    if !isempty(unknown_names)
+        field_errors["visible_signals"] = "Неизвестные сигналы: $(join(unknown_names, ", "))"
+        return nothing
+    end
+
+    [signal.name for signal in state.signals if signal.name in seen]
 end
 
 function validate_signal_analyser_view_payload(
@@ -156,11 +272,24 @@ function validate_signal_analyser_view_payload(
         end
     end
 
+    has_visible_signals = signal_analyser_payload_contains(data, "visible_signals")
+    visible_names = signal_analyser_visible_signal_names(state)
+    if has_visible_signals
+        validated_visible_names = signal_analyser_validate_visible_signals!(
+            field_errors,
+            state,
+            signal_analyser_payload_value(data, "visible_signals"),
+        )
+        validated_visible_names === nothing || (visible_names = validated_visible_names)
+    end
+
     isempty(field_errors) || throw(SignalAnalyserValidationError("Некорректный запрос отображения", field_errors))
+    requested_signal in visible_names || (requested_signal = first(visible_names))
     (
         revision = Int(revision_value),
         active_plot = requested_plot,
         selected_signal = requested_signal,
+        visible_signals = visible_names,
     )
 end
 
@@ -172,14 +301,29 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             state.view.state_revision,
         ))
 
-        changed = requested.active_plot != state.view.active_plot || requested.selected_signal != state.view.selected_signal
-        # Build the requested signal payload before publishing the mutation so a
-        # runtime DSP failure cannot leave view state and revision half-applied.
-        signal_analyser_cached_plots!(state, signal_by_name(state, requested.selected_signal))
+        current_visible = signal_analyser_visible_signal_names(state)
+        changed = requested.active_plot != state.view.active_plot ||
+            requested.selected_signal != state.view.selected_signal ||
+            requested.visible_signals != current_visible
+
+        # Build every payload affected by the request before publishing the
+        # mutation so a runtime DSP failure cannot leave state half-applied.
+        prepared_plots = signal_analyser_prepared_plots(
+            state,
+            unique(vcat(requested.visible_signals, [requested.selected_signal])),
+        )
         if changed
+            visible_set = Set(requested.visible_signals)
+            state.signals = [
+                signal_analyser_with_visibility(signal, signal.name in visible_set)
+                for signal in state.signals
+            ]
+            signal_analyser_publish_prepared_plots!(state, prepared_plots)
             state.view.active_plot = requested.active_plot
             state.view.selected_signal = requested.selected_signal
             state.view.state_revision += 1
+        else
+            signal_analyser_publish_prepared_plots!(state, prepared_plots)
         end
         signal_analyser_snapshot_unlocked(state)
     end

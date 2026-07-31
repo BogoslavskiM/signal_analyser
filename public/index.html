@@ -24,19 +24,19 @@
         <div class="plot-grid" data-testid="plot-grid">
           <article class="plot-card" data-plot="time" data-testid="plot-card-time" tabindex="0" role="button" aria-label="Выбрать график Время">
             <header class="plot-card-header"><h2>Время</h2><span class="plot-card-kind">Линия</span></header>
-            <div class="plot-host" data-plot-host="time" aria-label="График Время"></div>
+            <div class="plot-host" data-plot-host="time" data-testid="plot-host-time" data-plot-ready="false" aria-label="График Время"></div>
           </article>
           <article class="plot-card" data-plot="spectrum" data-testid="plot-card-spectrum" tabindex="0" role="button" aria-label="Выбрать график Спектр">
             <header class="plot-card-header"><h2>Спектр</h2><span class="plot-card-kind">Welch</span></header>
-            <div class="plot-host" data-plot-host="spectrum" aria-label="График Спектр"></div>
+            <div class="plot-host" data-plot-host="spectrum" data-testid="plot-host-spectrum" data-plot-ready="false" aria-label="График Спектр"></div>
           </article>
           <article class="plot-card" data-plot="spectrogram" data-testid="plot-card-spectrogram" tabindex="0" role="button" aria-label="Выбрать график Спектрограмма">
             <header class="plot-card-header"><h2>Спектрограмма</h2><span class="plot-card-kind">Тепловая карта</span></header>
-            <div class="plot-host" data-plot-host="spectrogram" aria-label="График Спектрограмма"></div>
+            <div class="plot-host" data-plot-host="spectrogram" data-testid="plot-host-spectrogram" data-plot-ready="false" aria-label="График Спектрограмма"></div>
           </article>
           <article class="plot-card" data-plot="persistence" data-testid="plot-card-persistence" tabindex="0" role="button" aria-label="Выбрать график Спектр персистентности">
             <header class="plot-card-header"><h2>Спектр персистентности</h2><span class="plot-card-kind">Тепловая карта</span></header>
-            <div class="plot-host" data-plot-host="persistence" aria-label="График Спектр персистентности"></div>
+            <div class="plot-host" data-plot-host="persistence" data-testid="plot-host-persistence" data-plot-ready="false" aria-label="График Спектр персистентности"></div>
           </article>
         </div>
       </section>
@@ -54,7 +54,7 @@
       <header class="signals-heading"><h2 id="signals-title">Сигналы</h2><span data-signal-count></span></header>
       <div class="signal-table-scroll">
         <table class="signal-table" data-testid="signal-table">
-          <thead><tr><th>Сигнал</th><th>Цвет</th><th>Частота дискретизации</th><th>Отсчёты</th><th>Длительность</th><th>Тип</th></tr></thead>
+          <thead><tr><th>Видимость</th><th>Сигнал</th><th>Цвет</th><th>Частота дискретизации</th><th>Отсчёты</th><th>Длительность</th><th>Тип</th></tr></thead>
           <tbody data-signal-rows></tbody>
         </table>
       </div>
@@ -65,6 +65,7 @@
       <div class="app-error" data-testid="app-error" hidden role="alert"><span data-error-text></span><button type="button" class="retry-button" data-retry>Повторить</button></div>
     </div>
   </main>
+  <script src="./js/vendor/plotly-cartesian-3.1.0.min.js"></script>
   <script src="./js/api.js"></script>
   <script src="./js/app.js"></script>
 </body>

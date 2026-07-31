@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("node:assert/strict");
+const config = require("../e2e.config");
 const { endpointMatches } = require("./signal_analyser_page");
 
 function response(url, method) {
@@ -19,4 +20,14 @@ assert.equal(endpointMatches(response("https://prod.example/user/apps/signal_ana
 assert.equal(endpointMatches(response("https://prod.example/user/apps/signal_analyser/api/viewer", "POST"), "/api/view", "POST"), false);
 assert.equal(endpointMatches(response("https://prod.example/user/apps/signal_analyser/not-api/view", "POST"), "/api/view", "POST"), false);
 
-console.log("ok - signal_analyser_page endpointMatches contract");
+assert.equal(config.app.testIds.signalVisibilityCheckboxPrefix, "signal-visibility-checkbox-");
+assert.equal(config.app.testIds.signalVisibilityStatePrefix, "signal-visibility-state-");
+assert.equal(config.app.testIds.plotHostPrefix, "plot-host-");
+assert.deepEqual(Object.keys(config.app.testIds.plotCards).sort(), [
+  "persistence",
+  "spectrogram",
+  "spectrum",
+  "time",
+]);
+
+console.log("ok - signal_analyser_page support contract assertions");
