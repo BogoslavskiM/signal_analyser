@@ -1,6 +1,6 @@
 "use strict";
 
-const { openAppPage } = require("../../support/app_page");
+const { openAppPage, testIdSelector } = require("../../support/app_page");
 const {
   clickAndWaitForView,
   isApiRequestUrl,
@@ -109,6 +109,44 @@ async function localKeyboardTabSwitch(page, config, assert, log, key, expectedTa
     `${key} bottom-tab navigation must not make an API request: ${JSON.stringify(requests)}`);
 }
 
+async function openMeasurementsFromStatisticsAction(page, config, assert, log) {
+  const action = page.locator(testIdSelector(config.app.testIds.signalStatisticsAction));
+  const measurements = measurementLocator(page, config, "measurementsTab");
+  const panel = measurementLocator(page, config, "panel");
+  const shell = page.locator(testIdSelector(config.app.testIds.shell));
+  const before = {
+    displayId: await shell.getAttribute("data-active-display-id"),
+    revision: await shell.getAttribute("data-state-revision"),
+    selectedRowId: await selectedRowId(page, config),
+  };
+  const requests = [];
+  const onRequest = function (request) {
+    if (isApiRequestUrl(request)) requests.push(`${request.method()} ${request.url()}`);
+  };
+  const startedAt = Date.now();
+  page.on("request", onRequest);
+  try {
+    await action.click({ timeout: 30000 });
+    await panel.waitFor({ state: "visible", timeout: 30000 });
+    await page.evaluate(function () { return Promise.resolve(); });
+  } finally {
+    page.off("request", onRequest);
+  }
+  performanceLog(log, "Signal statistics action opens Measurements", Date.now() - startedAt, undefined,
+    requests.length ? "unexpected API request" : "local-only");
+  assert(await tabIsActive(measurements), "Signal statistics action must activate Measurements tab");
+  assert(await measurements.evaluate(function (element) { return document.activeElement === element; }),
+    "Signal statistics action must move focus to Measurements tab");
+  assert(await selectedRowId(page, config) === before.selectedRowId,
+    "Signal statistics action must preserve selected signal");
+  assert(await shell.getAttribute("data-active-display-id") === before.displayId,
+    "Signal statistics action must preserve active Display scope");
+  assert(await shell.getAttribute("data-state-revision") === before.revision,
+    "Signal statistics action must preserve state revision");
+  assert(requests.length === 0,
+    `Signal statistics action must not make API requests: ${JSON.stringify(requests)}`);
+}
+
 function assertStatistics(assert, snapshot, signalName) {
   assert(text(snapshot.signalName) === signalName,
     `selected-signal label must exactly equal ${JSON.stringify(signalName)}, got ${JSON.stringify(snapshot.signalName)}`);
@@ -198,6 +236,14 @@ async function testMeasurementsStatistics({ appUrl, assert, config, log, page, s
       await localTabSwitch(page, config, assert, log, "measurementsTab");
       const current = selected(await signalRowsState(page, config));
       assert(current && current.checked, "Measurements scope requires a selected visible signal");
+      assertStatistics(assert, await measurementSnapshotState(page, config), current.name);
+    });
+
+    await step("Signal statistics action opens local Measurements without state mutation", async function () {
+      await localTabSwitch(page, config, assert, log, "signalsTab");
+      await openMeasurementsFromStatisticsAction(page, config, assert, log);
+      const current = selected(await signalRowsState(page, config));
+      assert(current && current.checked, "statistics action must retain selected visible signal scope");
       assertStatistics(assert, await measurementSnapshotState(page, config), current.name);
     });
 

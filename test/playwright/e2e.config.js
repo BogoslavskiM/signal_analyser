@@ -16,6 +16,7 @@ module.exports = {
       activePlotHost: "active-plot-host",
       plotErrorState: "plot-error-state",
       findPeaksAction: "find-peaks-action",
+      signalStatisticsAction: "signal-statistics-action",
       plotTypeSelect: "plot-type-select",
       settingsViewSelect: "settings-view-select",
       toggleAllSignals: "toggle-all-signals",

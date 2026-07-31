@@ -63,7 +63,7 @@ function environment(fetch, options) {
   const e = {
     root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(),
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
-    legend: node(), normalize: node(), markers: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), peaksAction: node(),
+    legend: node(), normalize: node(), markers: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), statisticsAction: node(), peaksAction: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
@@ -75,7 +75,7 @@ function environment(fetch, options) {
     "[data-testid='show-legend-checkbox']": e.legend, "[data-testid='normalize-y-checkbox']": e.normalize,
     "[data-testid='show-markers-checkbox']": e.markers, "[data-panel-fields]": e.fields, "[data-signal-count]": e.count,
     "[data-signal-rows]": e.rows, "[data-testid='toggle-all-signals']": e.toggleAll,
-    "[data-testid='find-peaks-action']": e.peaksAction,
+    "[data-testid='signal-statistics-action']": e.statisticsAction, "[data-testid='find-peaks-action']": e.peaksAction,
     "[role='tablist'][aria-label='Данные анализатора']": e.bottomTabs, "[data-testid='bottom-panel-signals']": e.signals,
     "[data-testid='measurements-panel']": e.measurements, "[data-measurements-content]": e.measurementContent,
     "[data-testid='peaks-panel']": e.peaksPanel, "[data-peaks-content]": e.peaksContent,
@@ -85,7 +85,12 @@ function environment(fetch, options) {
   const plotly = { react(host, data, layout) { calls.push({ plot: true, host, data, layout }); return Promise.resolve(); } };
   const scriptOutcomes = (options && options.scriptOutcomes || []).slice();
   const document = {
-    querySelector(selector) { return selectors[selector] || null; },
+    querySelector(selector) {
+      if (selector === "[data-bottom-tab='signals']") return e.signalBottomTab;
+      if (selector === "[data-bottom-tab='measurements']") return e.measurementsBottomTab;
+      if (selector === "[data-bottom-tab='peaks']") return e.peaksBottomTab;
+      return selectors[selector] || null;
+    },
     querySelectorAll(selector) { return selector === "[data-bottom-tab]" ? [e.signalBottomTab, e.measurementsBottomTab, e.peaksBottomTab] : []; },
     createElement(tag) {
       if (tag !== "script") return node();
@@ -256,6 +261,17 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(localTabRequests.length === 1 && localTabRequests[0].url === "./api/state", "opening Measurements must not make a backend request");
   assert(localTabs.e.signals.hidden === true && localTabs.e.measurements.hidden === false, "Measurements tab must swap only local panels");
   assert(localTabs.e.measurementsBottomTab.getAttribute("aria-selected") === "true", "Measurements tab must expose its local selected state accessibly");
+
+  const statisticsRequests = [];
+  const statistics = await boot((url, options) => {
+    statisticsRequests.push({ url, options });
+    return Promise.resolve(response(200, initial));
+  });
+  statistics.e.statisticsAction.listeners.click();
+  assert(statisticsRequests.length === 1 && statisticsRequests[0].url === "./api/state", "Signal statistics must open Measurements without an API request or revision mutation");
+  assert(statistics.e.signals.hidden === true && statistics.e.measurements.hidden === false && statistics.e.peaksPanel.hidden === true, "Signal statistics must locally show Measurements and hide Signals/Peaks panels");
+  assert(statistics.e.measurementsBottomTab.getAttribute("aria-selected") === "true" && statistics.e.measurementsBottomTab.getAttribute("tabindex") === "0", "Signal statistics must make Measurements the accessible roving tab");
+  assert(statistics.e.measurementsBottomTab.focused === true, "Signal statistics must transfer focus to Measurements when the tab supports focus");
 
   const keyboardTabs = await boot((url) => Promise.resolve(response(200, initial)));
   function key(tab, key) {

@@ -33,6 +33,7 @@ assert.equal(config.app.testIds.signalVisibilityStatePrefix, "signal-visibility-
 assert.equal(config.app.testIds.plotHostPrefix, "plot-host-");
 assert.equal(config.app.testIds.plotErrorState, "plot-error-state");
 assert.equal(config.app.testIds.findPeaksAction, "find-peaks-action");
+assert.equal(config.app.testIds.signalStatisticsAction, "signal-statistics-action");
 assert.equal(config.app.testIds.measurements.signalsTab, "signal-panel-tab-signals");
 assert.equal(config.app.testIds.measurements.measurementsTab, "signal-panel-tab-measurements");
 assert.equal(config.app.testIds.measurements.panel, "measurements-panel");
