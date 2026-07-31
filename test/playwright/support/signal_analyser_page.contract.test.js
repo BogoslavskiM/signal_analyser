@@ -2,7 +2,7 @@
 
 const assert = require("node:assert/strict");
 const config = require("../e2e.config");
-const { endpointMatches } = require("./signal_analyser_page");
+const { documentBox, endpointMatches } = require("./signal_analyser_page");
 
 function response(url, method) {
   return {
@@ -19,6 +19,11 @@ assert.equal(endpointMatches(response("https://prod.example/user/apps/signal_ana
 assert.equal(endpointMatches(response("https://prod.example/user/apps/signal_analyser/api/view", "GET"), "/api/view", "POST"), false);
 assert.equal(endpointMatches(response("https://prod.example/user/apps/signal_analyser/api/viewer", "POST"), "/api/view", "POST"), false);
 assert.equal(endpointMatches(response("https://prod.example/user/apps/signal_analyser/not-api/view", "POST"), "/api/view", "POST"), false);
+
+assert.deepEqual(documentBox(
+  { x: -139, y: -48, width: 896, height: 518 },
+  { x: 147, y: 120 }
+), { x: 8, y: 72, width: 896, height: 518 });
 
 assert.equal(config.app.testIds.signalVisibilityCheckboxPrefix, "signal-visibility-checkbox-");
 assert.equal(config.app.testIds.signalVisibilityStatePrefix, "signal-visibility-state-");

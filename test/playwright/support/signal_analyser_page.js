@@ -119,15 +119,31 @@ async function setCheckboxAndWaitForView(page, config, locator, checked, log, la
   return response;
 }
 
-async function boxSignature(locator) {
-  const box = await locator.boundingBox();
-  if (!box) return null;
+function documentBox(viewportBox, scrollPosition) {
+  return {
+    height: viewportBox.height,
+    width: viewportBox.width,
+    x: viewportBox.x + scrollPosition.x,
+    y: viewportBox.y + scrollPosition.y,
+  };
+}
+
+function roundedBox(box) {
   return {
     height: Math.round(box.height),
     width: Math.round(box.width),
     x: Math.round(box.x),
     y: Math.round(box.y),
   };
+}
+
+async function boxSignature(locator) {
+  const viewportBox = await locator.boundingBox();
+  if (!viewportBox) return null;
+  const scrollPosition = await locator.evaluate(function () {
+    return { x: window.scrollX, y: window.scrollY };
+  });
+  return roundedBox(documentBox(viewportBox, scrollPosition));
 }
 
 async function plotSignature(card) {
@@ -432,6 +448,7 @@ module.exports = {
   cardLocator,
   cardTestId,
   clickAndWaitForView,
+  documentBox,
   endpointMatches,
   logDiagnosticState,
   markPlotHosts,
