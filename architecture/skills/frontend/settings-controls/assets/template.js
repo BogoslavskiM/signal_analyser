@@ -1,464 +1,263 @@
-(function registerGenieSettingsControls(window, document) {
+(function registerGenieSettingsControls(window) {
   "use strict";
 
-  function normalizeOption(option) {
-    var value;
-    var label;
-
-    if (option && typeof option === "object") {
-      value = Object.prototype.hasOwnProperty.call(option, "value") ? option.value :
-        (Object.prototype.hasOwnProperty.call(option, "id") ? option.id : option.label);
-      label = Object.prototype.hasOwnProperty.call(option, "label") ? option.label : value;
-    } else {
-      value = option;
-      label = option;
-    }
-
-    return {
-      value: value,
-      label: String(label == null ? "" : label),
-      key: String(value == null ? "" : value),
-    };
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
   function numericDraftResult(rawValue, kind) {
     var text = String(rawValue == null ? "" : rawValue).trim();
-    var completeNumber = /^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$/;
+    var pattern = /^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$/;
     var value;
-
-    if (!text) {
-      return { valid: false, error: "Значение не может быть пустым" };
-    }
-    if (!completeNumber.test(text)) {
-      return {
-        valid: false,
-        error: kind === "int" ? "Значение должно быть целым числом" : "Значение должно быть числом",
-      };
-    }
-
+    if (!text || !pattern.test(text)) return {
+      valid: false, error: kind === "int" ? "Значение должно быть целым числом" : "Значение должно быть числом",
+    };
     value = Number(text);
-    if (!Number.isFinite(value)) {
-      return { valid: false, error: "Значение должно быть конечным числом" };
-    }
-    if (kind === "int" && !Number.isSafeInteger(value)) {
-      return { valid: false, error: "Значение должно быть целым числом" };
-    }
-
+    if (!Number.isFinite(value) || (kind === "int" && !Number.isSafeInteger(value))) return {
+      valid: false, error: kind === "int" ? "Значение должно быть целым числом" : "Значение должно быть конечным числом",
+    };
     return { valid: true, value: value, error: "" };
   }
 
-  function fieldTestId(fieldId) {
-    return "setting-" + String(fieldId || "field");
-  }
-
   function createSettingsControls(options) {
-    var labelText = options && typeof options.labelText === "function" ?
-      options.labelText :
-      function (label) { return label; };
-
-    var StringSetting = {
-      props: {
-        modelValue: { default: "" },
-        fieldId: { type: String, required: true },
-        label: { type: String, required: true },
-        units: { type: String, default: "" },
-        error: { type: String, default: "" },
-        warning: { type: String, default: "" },
-        disabled: { type: Boolean, default: false },
-      },
-      emits: ["update:modelValue", "typed-change"],
-      computed: {
-        displayLabel: function () {
-          return labelText(this.label);
-        },
-        validationMessage: function () {
-          return this.error || this.warning || "";
-        },
-        testId: function () {
-          return fieldTestId(this.fieldId);
-        },
-      },
-      methods: {
-        onInput: function (event) {
-          var value = event.target.value;
-          this.$emit("update:modelValue", value);
-          this.$emit("typed-change", { id: this.fieldId, value: value });
-        },
-      },
-      template:
-        '<div class="settings-field-row">' +
-        '<label class="settings-label settings-field-label" :for="testId" :data-tooltip="label">' +
-        '<span class="settings-label-text">{{ displayLabel }}</span>' +
-        '<span v-if="units" class="settings-unit-inline">{{ units }}</span>' +
-        '</label>' +
-        '<div class="settings-form-control-with-message" :class="{ \'has-error\': error, \'has-warning\': !error && warning }">' +
-        '<input :id="testId" class="settings-form-field" type="text" autocomplete="off" :data-testid="testId" :value="modelValue" :disabled="disabled" :aria-invalid="error ? \'true\' : \'false\'" @input="onInput">' +
-        '<span v-if="validationMessage" class="settings-field-status-icon" :class="error ? \'settings-field-error-icon\' : \'settings-field-warning-icon\'" :data-tooltip="validationMessage" :aria-label="validationMessage" tabindex="0"></span>' +
-        '<p v-if="validationMessage" class="settings-inline-message" :class="error ? \'settings-inline-error\' : \'settings-inline-warning\'">{{ validationMessage }}</p>' +
-        '</div>' +
-        '</div>',
+    var config = options || {};
+    var root = null;
+    var state = {
+      title: config.title || "Настройки",
+      fields: {},
+      groups: Array.isArray(config.groups) ? config.groups.map(function (group) { return Object.assign({}, group); }) : [],
+      applyPending: false,
+      localErrors: {},
+      enumQueries: {},
+      enumOpen: {},
+      enumActiveIndex: {},
+      enumMenuStyles: {},
     };
 
-    var NumberSetting = {
-      props: {
-        modelValue: { default: "" },
-        fieldId: { type: String, required: true },
-        label: { type: String, required: true },
-        kind: { type: String, default: "float" },
-        units: { type: String, default: "" },
-        min: { default: null },
-        max: { default: null },
-        step: { default: null },
-        error: { type: String, default: "" },
-        warning: { type: String, default: "" },
-        disabled: { type: Boolean, default: false },
-      },
-      emits: ["update:modelValue", "typed-change", "validity-change"],
-      data: function () {
-        return { localError: "" };
-      },
-      computed: {
-        displayLabel: function () {
-          return labelText(this.label);
-        },
-        displayError: function () {
-          return this.localError || this.error || "";
-        },
-        validationMessage: function () {
-          return this.displayError || this.warning || "";
-        },
-        testId: function () {
-          return fieldTestId(this.fieldId);
-        },
-      },
-      methods: {
-        onInput: function (event) {
-          var rawValue = event.target.value;
-          var allowedDraft = /^[+\-]?(?:(?:\d*(?:\.\d*)?)?)(?:[eE][+\-]?\d*)?$/;
-          var result;
+    function fieldLabel(field) {
+      var label = typeof config.labelText === "function" ? config.labelText(field.label) : field.label;
+      return escapeHtml(label);
+    }
 
-          if (rawValue.indexOf(",") !== -1 || /[dD]/.test(rawValue) || !allowedDraft.test(rawValue)) {
-            event.target.value = String(this.modelValue == null ? "" : this.modelValue);
-            return;
-          }
+    function message(field, id) {
+      var error = state.localErrors[id] || field.error || "";
+      var warning = !error ? field.warning || "" : "";
+      var text = error || warning;
+      if (!text) return "";
+      return '<span class="settings-field-status-icon ' + (error ? "settings-field-error-icon" : "settings-field-warning-icon") +
+        '" data-tooltip="' + escapeHtml(text) + '" aria-label="' + escapeHtml(text) + '"></span>' +
+        '<p class="settings-inline-message ' + (error ? "settings-inline-error" : "settings-inline-warning") + '">' +
+        escapeHtml(text) + "</p>";
+    }
 
-          result = numericDraftResult(rawValue, this.kind);
-          this.localError = result.error || "";
-          this.$emit("update:modelValue", rawValue);
-          this.$emit("validity-change", {
-            id: this.fieldId,
-            valid: result.valid,
-            error: result.error || "",
+    function renderField(id) {
+      var field = state.fields[id] || {};
+      var kind = field.kind || "string";
+      var disabled = field.readonly === true;
+      var testId = "setting-" + id;
+      var control;
+      if (field.visible === false) return "";
+      if (kind === "readonly") {
+        control = '<div class="settings-readonly-control"><output id="' + escapeHtml(testId) +
+          '" class="settings-readonly-value">' + escapeHtml(field.value) + "</output></div>";
+      } else if (kind === "boolean") {
+        control = '<span class="settings-checkbox-control"><input id="' + escapeHtml(testId) +
+          '" class="settings-checkbox" type="checkbox" data-setting-field="' + escapeHtml(id) + '"' +
+          (field.value === true ? " checked" : "") + (disabled ? " disabled" : "") + "></span>";
+      } else if (kind === "select") {
+        var normalizedOptions = (field.options || []).map(function (option) {
+            var value = option && typeof option === "object" ?
+              (Object.prototype.hasOwnProperty.call(option, "value") ? option.value : option.id) : option;
+            var label = option && typeof option === "object" ? option.label : option;
+            return { value: value, label: String(label == null ? "" : label) };
           });
-          if (result.valid) {
-            this.$emit("typed-change", { id: this.fieldId, value: result.value });
+        var selectedOption = normalizedOptions.find(function (option) { return String(option.value) === String(field.value); });
+        var query = Object.prototype.hasOwnProperty.call(state.enumQueries, id) ? state.enumQueries[id] :
+          (selectedOption ? selectedOption.label : "");
+        var filtered = normalizedOptions.filter(function (option) {
+          return !query || option.label.toLowerCase().includes(String(query).toLowerCase());
+        });
+        var list = state.enumOpen[id] ? '<div class="settings-search-combobox-dropdown" role="listbox" style="' +
+          escapeHtml(state.enumMenuStyles[id] || "") + '">' + filtered.map(function (option, index) {
+          return '<button class="settings-search-combobox-option' + (state.enumActiveIndex[id] === index ? " active" : "") +
+            (String(option.value) === String(field.value) ? " selected" : "") +
+            '" type="button" role="option" data-setting-enum-option="' + escapeHtml(id) + '" data-setting-enum-value="' +
+            escapeHtml(option.value) + '" data-setting-enum-label="' + escapeHtml(option.label) + '"><span class="settings-search-combobox-option-check"></span>' +
+            '<span class="settings-search-combobox-option-label">' + escapeHtml(option.label) + "</span></button>";
+        }).join("") + (!filtered.length ? '<div class="settings-search-combobox-empty">Нет вариантов</div>' : "") +
+          "</div>" : "";
+        control = '<div class="settings-search-combobox"><input id="' + escapeHtml(testId) + '" class="settings-form-field settings-search-combobox-input" type="text"' +
+          ' autocomplete="off" role="combobox" data-setting-enum-query="' + escapeHtml(id) + '" value="' + escapeHtml(query) +
+          '" aria-expanded="' + String(state.enumOpen[id] === true) + '"' + (disabled ? " disabled" : "") + ">" + list + "</div>";
+      } else {
+        control = '<input id="' + escapeHtml(testId) + '" class="settings-form-field" type="text" autocomplete="off" data-setting-field="' +
+          escapeHtml(id) + '" value="' + escapeHtml(field.value) + '"' + (disabled ? " disabled" : "") +
+          (state.localErrors[id] || field.error ? ' aria-invalid="true"' : "") + ">";
+      }
+      return '<div class="settings-field-row"><label class="settings-label settings-field-label" for="' + escapeHtml(testId) +
+        '" data-tooltip="' + escapeHtml(field.label) + '"><span class="settings-label-text">' + fieldLabel(field) +
+        '</span>' + (field.units ? '<span class="settings-unit-inline">' + escapeHtml(field.units) + "</span>" : "") +
+        '</label><div class="settings-form-control-with-message' +
+        (state.localErrors[id] || field.error ? " has-error" : (field.warning ? " has-warning" : "")) + '">' +
+        control + message(field, id) + "</div></div>";
+    }
+
+    function render() {
+      var groups = state.groups.length ? state.groups : [{
+        id: "main", title: "Основные",
+        fields: Array.isArray(config.fieldIds) ? config.fieldIds.slice() : [], open: true,
+      }];
+      var body = groups.map(function (group) {
+        return '<section class="settings-section' + (group.open === false ? " collapsed" : "") + '"><button class="settings-section-title"' +
+          ' type="button" data-settings-group="' + escapeHtml(group.id) + '" aria-expanded="' + String(group.open !== false) + '">' +
+          '<span class="settings-section-arrow" aria-hidden="true"></span><span class="settings-section-title-text">' +
+          escapeHtml(group.title) + '</span><span class="settings-section-line"></span></button><div class="settings-section-body">' +
+          (group.open === false ? "" : (group.fields || []).map(renderField).join("")) + "</div></section>";
+      }).join("");
+      var invalid = Object.keys(state.localErrors).some(function (id) { return Boolean(state.localErrors[id]); });
+      var html = '<aside class="settings-panel"><div class="settings-scroll-content"><h2 class="settings-panel-title">' +
+        escapeHtml(state.title) + "</h2>" + body + '</div><div class="settings-apply-block"><button class="settings-apply-button"' +
+        ' type="button" data-settings-apply' + (state.applyPending || invalid ? " disabled" : "") + ">Применить</button></div></aside>";
+      if (root) root.innerHTML = html;
+      return html;
+    }
+
+    function typedValue(field, raw) {
+      if (field.kind === "boolean") return raw === true;
+      if (field.kind === "number" || field.kind === "int" || field.kind === "float") {
+        return numericDraftResult(raw, field.kind === "int" ? "int" : "float");
+      }
+      return { valid: true, value: raw, error: "" };
+    }
+
+    var actions = {
+      configure: function (payload) {
+        var value = payload || {};
+        state.title = String(value.title || state.title);
+        state.fields = Object.assign({}, value.fields || {});
+        state.localErrors = {}; state.enumQueries = {}; state.enumOpen = {}; state.enumActiveIndex = {}; render();
+      },
+      updateField: function (id, raw) {
+        var field = state.fields[id];
+        var result;
+        if (!field || field.readonly) return;
+        result = typedValue(field, raw);
+        state.localErrors[id] = result.valid ? "" : result.error;
+        field.value = result.valid ? result.value : raw;
+        field.error = "";
+        field.warning = "";
+        if (typeof config.onTypedChange === "function") config.onTypedChange({ id: id, value: field.value, valid: result.valid });
+        render();
+      },
+      toggleGroup: function (id) {
+        var group = state.groups.find(function (item) { return String(item.id) === String(id); });
+        if (group) group.open = group.open === false; render();
+      },
+      searchEnum: function (id, query, rect) {
+        if (rect) state.enumMenuStyles[id] = "top:" + (rect.bottom + 4) + "px;left:" + rect.left + "px;width:" + rect.width + "px";
+        state.enumQueries[id] = String(query || ""); state.enumOpen[id] = true; state.enumActiveIndex[id] = 0; render();
+        if (root && window.requestAnimationFrame) window.requestAnimationFrame(function () {
+          var input = root && root.querySelector ? root.querySelector('[data-setting-enum-query="' + id + '"]') : null;
+          if (input && typeof input.focus === "function") {
+            input.focus();
+            if (typeof input.setSelectionRange === "function") input.setSelectionRange(input.value.length, input.value.length);
           }
-        },
+        });
       },
-      template:
-        '<div class="settings-field-row">' +
-        '<label class="settings-label settings-field-label" :for="testId" :data-tooltip="label">' +
-        '<span class="settings-label-text">{{ displayLabel }}</span>' +
-        '<span v-if="units" class="settings-unit-inline">{{ units }}</span>' +
-        '</label>' +
-        '<div class="settings-form-control-with-message" :class="{ \'has-error\': displayError, \'has-warning\': !displayError && warning }">' +
-        '<input :id="testId" class="settings-form-field" type="text" inputmode="decimal" autocomplete="off" :data-testid="testId" :data-min="min" :data-max="max" :data-step="step" :value="modelValue" :disabled="disabled" :aria-invalid="displayError ? \'true\' : \'false\'" @input="onInput">' +
-        '<span v-if="validationMessage" class="settings-field-status-icon" :class="displayError ? \'settings-field-error-icon\' : \'settings-field-warning-icon\'" :data-tooltip="validationMessage" :aria-label="validationMessage" tabindex="0"></span>' +
-        '<p v-if="validationMessage" class="settings-inline-message" :class="displayError ? \'settings-inline-error\' : \'settings-inline-warning\'">{{ validationMessage }}</p>' +
-        '</div>' +
-        '</div>',
+      closeEnum: function (id) {
+        var field = state.fields[id] || {};
+        var selected = (field.options || []).map(function (option) {
+          return option && typeof option === "object" ? option : { value: option, label: option };
+        }).find(function (option) { return String(option.value == null ? option.id : option.value) === String(field.value); });
+        state.enumQueries[id] = selected ? String(selected.label) : "";
+        state.enumOpen[id] = false; state.enumActiveIndex[id] = 0; render();
+      },
+      selectEnum: function (id, value, label) {
+        var field = state.fields[id] || {};
+        var match = (field.options || []).map(function (option) {
+          return option && typeof option === "object" ? option : { value: option, label: option };
+        }).find(function (option) {
+          return String(option.value == null ? option.id : option.value) === String(value);
+        });
+        var typedValue = match ? (match.value == null ? match.id : match.value) : value;
+        state.enumQueries[id] = String(label || ""); state.enumOpen[id] = false; state.enumActiveIndex[id] = 0;
+        actions.updateField(id, typedValue);
+      },
+      apply: function () {
+        if (state.applyPending || Object.keys(state.localErrors).some(function (id) { return Boolean(state.localErrors[id]); })) return Promise.resolve(null);
+        if (typeof config.onApply !== "function") return Promise.reject(new Error("Settings onApply action is not configured"));
+        state.applyPending = true; render();
+        var payload = {};
+        Object.keys(state.fields).forEach(function (id) { payload[id] = state.fields[id].value; });
+        return Promise.resolve(config.onApply(payload)).then(function (response) {
+          if (response && response.fields) actions.configure(response);
+          return response;
+        }).catch(function (error) {
+          if (typeof config.reportError === "function") { config.reportError(error, "settings-apply"); return null; }
+          throw error;
+        }).finally(function () { state.applyPending = false; render(); });
+      },
     };
 
-    var SearchCombobox = {
-      props: {
-        modelValue: { default: "" },
-        fieldId: { type: String, required: true },
-        options: { type: Array, default: function () { return []; } },
-        invalid: { type: Boolean, default: false },
-        warning: { type: Boolean, default: false },
-        disabled: { type: Boolean, default: false },
-      },
-      emits: ["choose"],
-      data: function () {
-        return {
-          open: false,
-          searchText: "",
-          activeIndex: -1,
-          dropdownStyle: {},
-        };
-      },
-      computed: {
-        normalizedOptions: function () {
-          var selectedValue = String(this.modelValue == null ? "" : this.modelValue);
-          return (this.options || []).map(function (option) {
-            var normalized = normalizeOption(option);
-            normalized.selected = normalized.key === selectedValue;
-            return normalized;
-          });
-        },
-        selectedLabel: function () {
-          var selected = this.normalizedOptions.find(function (option) {
-            return option.selected;
-          });
-          return selected ? selected.label : "";
-        },
-        filteredOptions: function () {
-          var query = String(this.searchText || "").toLowerCase();
-          if (!query) return this.normalizedOptions;
-          return this.normalizedOptions.filter(function (option) {
-            return option.label.toLowerCase().includes(query) || option.key.toLowerCase().includes(query);
-          });
-        },
-        testId: function () {
-          return fieldTestId(this.fieldId);
-        },
-      },
-      watch: {
-        modelValue: function () {
-          if (!this.open) this.searchText = this.selectedLabel;
-        },
-        options: function () {
-          if (!this.open) this.searchText = this.selectedLabel;
-        },
-        filteredOptions: function () {
-          this.activeIndex = this.filteredOptions.length ? 0 : -1;
-        },
-      },
-      mounted: function () {
-        this.searchText = this.selectedLabel;
-        window.addEventListener("resize", this.updateDropdownStyle);
-        window.addEventListener("scroll", this.updateDropdownStyle, true);
-      },
-      beforeUnmount: function () {
-        window.removeEventListener("resize", this.updateDropdownStyle);
-        window.removeEventListener("scroll", this.updateDropdownStyle, true);
-      },
-      methods: {
-        openSearch: function () {
-          if (this.disabled) return;
-          this.searchText = "";
-          this.open = true;
-          this.activeIndex = this.filteredOptions.length ? 0 : -1;
-          this.$nextTick(this.updateDropdownStyle);
-        },
-        cancelSearch: function () {
-          this.open = false;
-          this.searchText = this.selectedLabel;
-          this.activeIndex = -1;
-          this.dropdownStyle = {};
-        },
-        chooseOption: function (option) {
-          if (!option) return;
-          this.$emit("choose", option.value);
-          this.searchText = option.label;
-          this.open = false;
-          this.activeIndex = -1;
-          this.dropdownStyle = {};
-        },
-        onBlur: function () {
-          var self = this;
-          window.setTimeout(function () {
-            self.cancelSearch();
-          }, 0);
-        },
-        onKeydown: function (event) {
-          var lastIndex;
-
-          if (event.key === "Escape") {
-            event.preventDefault();
-            this.cancelSearch();
-            return;
-          }
-          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-            event.preventDefault();
-            if (!this.open) this.openSearch();
-            lastIndex = this.filteredOptions.length - 1;
-            if (lastIndex < 0) return;
-            this.activeIndex = event.key === "ArrowDown" ?
-              Math.min(this.activeIndex + 1, lastIndex) :
-              Math.max(this.activeIndex - 1, 0);
-            return;
-          }
-          if (event.key === "Enter" && this.open && this.activeIndex >= 0) {
-            event.preventDefault();
-            this.chooseOption(this.filteredOptions[this.activeIndex]);
-          }
-        },
-        updateDropdownStyle: function () {
-          var input = this.$refs && this.$refs.input;
-          var rect;
-          var viewportHeight;
-          var spaceBelow;
-          var spaceAbove;
-          var openUp;
-          var availableHeight;
-
-          if (!this.open || !input) return;
-          rect = input.getBoundingClientRect();
-          viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-          spaceBelow = viewportHeight - rect.bottom - 4;
-          spaceAbove = rect.top - 4;
-          openUp = spaceBelow < 96 && spaceAbove > spaceBelow;
-          availableHeight = Math.max(48, Math.min(180, (openUp ? spaceAbove : spaceBelow) - 4));
-          this.dropdownStyle = {
-            left: Math.round(rect.left) + "px",
-            top: Math.round(openUp ? rect.top - availableHeight - 4 : rect.bottom + 4) + "px",
-            width: Math.round(rect.width) + "px",
-            maxHeight: Math.round(availableHeight) + "px",
-          };
-        },
-      },
-      template:
-        '<div class="settings-search-combobox">' +
-        '<input ref="input" class="settings-search-combobox-input" :class="{ \'has-error\': invalid, \'has-warning\': !invalid && warning }" type="text" autocomplete="off" role="combobox" aria-autocomplete="list" :aria-expanded="open ? \'true\' : \'false\'" :data-testid="testId" :value="searchText" :placeholder="selectedLabel" :disabled="disabled" @focus="openSearch" @click="openSearch" @input="searchText = $event.target.value" @keydown="onKeydown" @blur="onBlur">' +
-        '<div v-if="open" class="settings-search-combobox-dropdown" :style="dropdownStyle" role="listbox">' +
-        '<button v-for="(option, index) in filteredOptions" :key="option.key" type="button" class="settings-search-combobox-option" :class="{ selected: option.selected, active: index === activeIndex }" role="option" :aria-selected="option.selected ? \'true\' : \'false\'" @mousedown.prevent="chooseOption(option)">' +
-        '<span class="settings-search-combobox-option-check" aria-hidden="true"></span>' +
-        '<span class="settings-search-combobox-option-label">{{ option.label }}</span>' +
-        '</button>' +
-        '<div v-if="filteredOptions.length === 0" class="settings-search-combobox-empty">Таких вариантов не найдено</div>' +
-        '</div>' +
-        '</div>',
-    };
-
-    var SelectSetting = {
-      components: { "settings-search-combobox": SearchCombobox },
-      props: {
-        modelValue: { default: "" },
-        fieldId: { type: String, required: true },
-        label: { type: String, required: true },
-        options: { type: Array, default: function () { return []; } },
-        error: { type: String, default: "" },
-        warning: { type: String, default: "" },
-        disabled: { type: Boolean, default: false },
-      },
-      emits: ["update:modelValue", "typed-change"],
-      computed: {
-        displayLabel: function () {
-          return labelText(this.label);
-        },
-        validationMessage: function () {
-          return this.error || this.warning || "";
-        },
-      },
-      methods: {
-        choose: function (value) {
-          this.$emit("update:modelValue", value);
-          this.$emit("typed-change", { id: this.fieldId, value: value });
-        },
-      },
-      template:
-        '<div class="settings-field-row">' +
-        '<span class="settings-label settings-field-label" :data-tooltip="label"><span class="settings-label-text">{{ displayLabel }}</span></span>' +
-        '<div class="settings-form-control-with-message" :class="{ \'has-error\': error, \'has-warning\': !error && warning }">' +
-        '<settings-search-combobox :field-id="fieldId" :options="options" :model-value="modelValue" :invalid="Boolean(error)" :warning="!error && Boolean(warning)" :disabled="disabled" @choose="choose"></settings-search-combobox>' +
-        '<span v-if="validationMessage" class="settings-field-status-icon" :class="error ? \'settings-field-error-icon\' : \'settings-field-warning-icon\'" :data-tooltip="validationMessage" :aria-label="validationMessage" tabindex="0"></span>' +
-        '<p v-if="validationMessage" class="settings-inline-message" :class="error ? \'settings-inline-error\' : \'settings-inline-warning\'">{{ validationMessage }}</p>' +
-        '</div>' +
-        '</div>',
-    };
-
-    var BooleanSetting = {
-      props: {
-        modelValue: { type: Boolean, default: false },
-        fieldId: { type: String, required: true },
-        label: { type: String, required: true },
-        error: { type: String, default: "" },
-        warning: { type: String, default: "" },
-        disabled: { type: Boolean, default: false },
-      },
-      emits: ["update:modelValue", "typed-change"],
-      computed: {
-        displayLabel: function () {
-          return labelText(this.label);
-        },
-        validationMessage: function () {
-          return this.error || this.warning || "";
-        },
-        testId: function () {
-          return fieldTestId(this.fieldId);
-        },
-      },
-      methods: {
-        onChange: function (event) {
-          var value = Boolean(event.target.checked);
-          this.$emit("update:modelValue", value);
-          this.$emit("typed-change", { id: this.fieldId, value: value });
-        },
-      },
-      template:
-        '<div class="settings-field-row settings-checkbox-row">' +
-        '<label class="settings-label settings-field-label" :for="testId">{{ displayLabel }}</label>' +
-        '<div class="settings-form-control-with-message">' +
-        '<label class="settings-checkbox-control" :class="{ \'has-error\': error, \'has-warning\': !error && warning }">' +
-        '<input :id="testId" class="settings-checkbox" type="checkbox" :data-testid="testId" :checked="modelValue" :disabled="disabled" :aria-invalid="error ? \'true\' : \'false\'" @change="onChange">' +
-        '</label>' +
-        '<span v-if="validationMessage" class="settings-field-status-icon" :class="error ? \'settings-field-error-icon\' : \'settings-field-warning-icon\'" :data-tooltip="validationMessage" :aria-label="validationMessage" tabindex="0"></span>' +
-        '<p v-if="validationMessage" class="settings-inline-message" :class="error ? \'settings-inline-error\' : \'settings-inline-warning\'">{{ validationMessage }}</p>' +
-        '</div>' +
-        '</div>',
-    };
-
-    var ReadonlySetting = {
-      props: {
-        fieldId: { type: String, required: true },
-        label: { type: String, required: true },
-        value: { default: "" },
-        units: { type: String, default: "" },
-      },
-      computed: {
-        displayLabel: function () {
-          return labelText(this.label);
-        },
-        testId: function () {
-          return fieldTestId(this.fieldId);
-        },
-      },
-      template:
-        '<div class="settings-field-row settings-readonly-row">' +
-        '<span class="settings-label settings-field-label" :data-tooltip="label">' +
-        '<span class="settings-label-text">{{ displayLabel }}</span>' +
-        '<span v-if="units" class="settings-unit-inline">{{ units }}</span>' +
-        '</span>' +
-        '<div class="settings-readonly-control" :data-testid="testId"><span class="settings-readonly-value">{{ value }}</span></div>' +
-        '</div>',
-    };
-
-    var SettingsGroup = {
-      props: {
-        modelValue: { type: Boolean, default: true },
-        title: { type: String, required: true },
-      },
-      emits: ["update:modelValue"],
-      methods: {
-        toggle: function () {
-          this.$emit("update:modelValue", !this.modelValue);
-        },
-      },
-      template:
-        '<section class="settings-section" :class="{ collapsed: !modelValue }">' +
-        '<button class="settings-section-title" type="button" :aria-expanded="modelValue ? \'true\' : \'false\'" @click="toggle">' +
-        '<span class="settings-section-arrow" aria-hidden="true"></span>' +
-        '<span class="settings-section-title-text">{{ title }}</span>' +
-        '<span class="settings-section-line" aria-hidden="true"></span>' +
-        '</button>' +
-        '<div v-if="modelValue" class="settings-section-body"><slot></slot></div>' +
-        '</section>',
-    };
-
-    return {
-      StringSetting: StringSetting,
-      NumberSetting: NumberSetting,
-      SearchCombobox: SearchCombobox,
-      SelectSetting: SelectSetting,
-      BooleanSetting: BooleanSetting,
-      ReadonlySetting: ReadonlySetting,
-      SettingsGroup: SettingsGroup,
-    };
+    function onChange(event) {
+      var id = event.target.getAttribute("data-setting-field");
+      if (id != null) actions.updateField(id, event.target.type === "checkbox" ? event.target.checked : event.target.value);
+    }
+    function onInput(event) {
+      var id = event.target.getAttribute("data-setting-enum-query");
+      if (id != null) actions.searchEnum(id, event.target.value, event.target.getBoundingClientRect());
+    }
+    function onKeyDown(event) {
+      var id = event.target.getAttribute("data-setting-enum-query");
+      var field;
+      var options;
+      var index;
+      if (id == null) return;
+      field = state.fields[id] || {};
+      options = (field.options || []).map(function (option) {
+        return option && typeof option === "object" ? option : { value: option, label: option };
+      }).filter(function (option) {
+        return String(option.label || "").toLowerCase().includes(String(state.enumQueries[id] || "").toLowerCase());
+      });
+      index = Number(state.enumActiveIndex[id] || 0);
+      if (event.key === "Escape") { event.preventDefault(); return actions.closeEnum(id); }
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault(); state.enumOpen[id] = true;
+        state.enumActiveIndex[id] = Math.max(0, Math.min(options.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)));
+        return render();
+      }
+      if (event.key === "Enter" && state.enumOpen[id] && options[index]) {
+        event.preventDefault();
+        return actions.selectEnum(id, options[index].value == null ? options[index].id : options[index].value, options[index].label);
+      }
+    }
+    function onClick(event) {
+      var group = event.target.closest("[data-settings-group]");
+      var option = event.target.closest("[data-setting-enum-option]");
+      if (option) return actions.selectEnum(option.getAttribute("data-setting-enum-option"),
+        option.getAttribute("data-setting-enum-value"), option.getAttribute("data-setting-enum-label"));
+      var enumInput = event.target.closest("[data-setting-enum-query]");
+      if (enumInput) return actions.searchEnum(enumInput.getAttribute("data-setting-enum-query"),
+        state.enumOpen[enumInput.getAttribute("data-setting-enum-query")] ? enumInput.value : "",
+        enumInput.getBoundingClientRect());
+      if (group) return actions.toggleGroup(group.getAttribute("data-settings-group"));
+      if (event.target.closest("[data-settings-apply]")) actions.apply();
+    }
+    function mount(element) {
+      if (!element) throw new Error("Settings mount root is required"); if (root) unmount(); root = element;
+      root.addEventListener("change", onChange); root.addEventListener("input", onInput);
+      root.addEventListener("keydown", onKeyDown); root.addEventListener("click", onClick); render(); return module;
+    }
+    function unmount() {
+      if (!root) return; root.removeEventListener("change", onChange); root.removeEventListener("input", onInput);
+      root.removeEventListener("keydown", onKeyDown); root.removeEventListener("click", onClick);
+      root.innerHTML = ""; root = null;
+    }
+    var module = { state: state, actions: actions, render: render, mount: mount, unmount: unmount };
+    return module;
   }
 
-  window.GenieSettingsControls = {
-    create: createSettingsControls,
-    numericDraftResult: numericDraftResult,
-  };
-})(window, document);
+  window.GenieSettingsControls = { create: createSettingsControls, numericDraftResult: numericDraftResult };
+})(window);

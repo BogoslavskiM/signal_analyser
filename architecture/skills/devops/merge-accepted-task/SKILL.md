@@ -1,6 +1,5 @@
 ---
 name: merge-accepted-task
-version: 0.1.0
 ---
 # Merge Accepted Task
 

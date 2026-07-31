@@ -1,6 +1,5 @@
 ---
 name: style-system
-version: 0.3.0
 ---
 # Style System
 
@@ -14,6 +13,18 @@ version: 0.3.0
 - Нужно перестроить canvas под мобильный viewport.
 - Нужно изменить предметное поведение control или API.
 
+## Core Contract
+- Применяй default visual profile: light theme, local Roboto, Engee-подобные
+  controls/tokens и fixed canvas `920 × 680` без responsive-перестройки.
+- Другой visual profile допустим только по прямому решению пользователя и ADR.
+
+## Optional Capabilities
+- `style.tooltip` — общий delayed tooltip.
+- `style.icons` — local SVG/currentColor mapping.
+- `style.validation` — error/warning states.
+- `style.busy` — loader/busy states.
+- `style.tabs-scrollbar` — отдельный scrollbar горизонтальных tabs.
+
 ## Bundled Template
 Используй:
 
@@ -25,7 +36,8 @@ version: 0.3.0
 
 1. Сначала скопируй font и общую тему.
 2. Не загружай font через Google Fonts или другой runtime network request.
-3. Подключи `tooltip.js` один раз для всего приложения.
+3. Подключи `tooltip.js` один раз, создай `window.GenieTooltip.create(...)` и
+   вызови `mount(document)`.
 4. Подключай CSS конкретных controls, dialogs, zones и pages после темы.
 5. Сохраняй имена общих tokens; меняй значения только при явном требовании приложения.
 6. Удаляй из перенесённых модулей дубли общих цветов, шрифтов и состояний.
@@ -67,8 +79,7 @@ version: 0.3.0
   минимальные размеры.
 - Внутренний component может управлять собственным overflow, но не менять
   глобальную раскладку через media query.
-- Изменяй базовые минимальные размеры только если содержимое нового приложения
-  объективно требует другого fixed canvas.
+- Изменяй profile/minimum size только по прямому решению пользователя и ADR.
 
 ## Tooltip and Scrollbars
 - Для общей подсказки используй `data-tooltip` и `assets/tooltip.js`.
@@ -97,7 +108,7 @@ version: 0.3.0
 другой второй визуальный признак.
 
 ## Guardrails
-- Только светлая тема; не добавляй dark-theme tokens без отдельного требования.
+- Только светлая тема; другой theme profile требует решения пользователя и ADR.
 - Не добавляй media queries, которые меняют число, порядок или пропорции зон.
 - Не используй inline colors и случайные `z-index`, если для них есть token.
 - Не копируй общий button/input CSS в каждый dialog или zone.

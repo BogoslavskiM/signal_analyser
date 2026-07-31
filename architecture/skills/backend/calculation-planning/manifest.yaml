@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: calculation-planning
-version: 0.6.0
+version: 0.7.0
 title: "Calculation Planning"
 description: >
   Backend skill для размещения математических и derived-data функций: входы,
@@ -17,4 +17,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

@@ -1,6 +1,5 @@
 ---
 name: dialog-system
-version: 0.3.0
 ---
 # Dialog System
 
@@ -14,17 +13,28 @@ version: 0.3.0
 - Нужно показать calculation error поверх output canvas.
 - Нужно реализовать предметную логику импорта, экспорта или файлового браузера.
 
+## Core Contract
+- Применяй skill только если blueprint включает modal dialogs.
+- Обеспечь overlay/card/title/body/actions и закрытие видимыми действиями.
+
+## Optional Capabilities
+- `dialog.form` — предметная form modal.
+- `dialog.error` — единый unexpected error dialog.
+- `dialog.success` — отдельный success dialog.
+- `dialog.stacking` — контролируемое наложение dialogs.
+
 ## Bundled Template
 Используй готовый комплект:
 
-- `assets/template.js` — Vue 3 global `base-dialog` и helpers для error/success state;
+- `assets/template.js` — vanilla dialog stack с явным lifecycle;
 - `assets/template.css` — overlay levels, card sizes, fixed title/actions и scrollable body;
 - `assets/template.html` — примеры form, error и success dialogs.
 
 1. Прочитай все три файла.
-2. Скопируй base component и стили в `public/js|css/app/dialogs`.
+2. Скопируй module и стили в `public/js|css/app/dialogs`.
 3. Создай для каждого предметного диалога отдельные JS/CSS/HTML-файлы по правилам `frontend/frontend-project-structure`.
-4. Зарегистрируй один `base-dialog` в root Vue app.
+4. Создай один module через `window.GenieDialogSystem.create(...)` и вызови
+   `mount(root)`.
 5. Храни state предметных диалогов в root state через их модули.
 6. Не копируй тексты, selectors и namespace приложения-источника.
 

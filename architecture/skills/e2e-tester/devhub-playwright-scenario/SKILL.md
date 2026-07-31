@@ -1,13 +1,13 @@
 ---
 name: devhub-playwright-scenario
-version: 1.7.0
 ---
 # Devhub Playwright Scenario
 
 ## When to Use
 - Playwright scaffold уже создан, и нужно добавить или стабилизировать
   пользовательский devhub-сценарий.
-- Нужно покрыть композицию frontend skills в работающем приложении.
+- Нужно покрыть композицию frontend skills и предметных product capabilities в
+  работающем приложении.
 - Нужно превратить внешний reference scenario произвольного формата, включая
   MATLAB-сценарий, в исполняемую проверку.
 - Нужно диагностировать timeout или flaky browser workflow.
@@ -26,6 +26,8 @@ version: 1.7.0
 target_app_url_or_current_tab
 target_app_context: optional
 enabled_frontend_skills
+enabled_optional_capabilities
+enabled_product_features
 user_workflow
 stable_data_testids
 expected_observable_result
@@ -60,7 +62,9 @@ browser_workspace_setup
    `REFERENCE_SCENARIO_COVERAGE.md`.
 3. Расширь существующий spec, когда совпадают workflow и setup. Новый spec
    создавай для самостоятельного пользовательского поведения.
-4. Объяви `requiredFeatures` по ids из `e2e.config.js`.
+4. Объяви `requiredFeatures` по универсальным skill ids и/или предметным
+   product capability ids, уже зарегистрированным в проектном
+   `e2e.config.js`.
 5. Не повторяй exhaustive unit/API assertions. E2E должен подтверждать, что
    согласованные contracts работают вместе через реальный UI.
 6. Если точной formula/branch проверки нет у обычного tester, передай ему

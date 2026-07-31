@@ -10,8 +10,8 @@
 Доступные скиллы:
 
 - `playwright-test-scaffold/` — создание переносимой `test/playwright`
-  инфраструктуры с CDP/vpnp runner, feature flags, базовыми helpers и русским
-  coverage map.
+  инфраструктуры с CDP/vpnp runner, capability flags универсальных UI skills и
+  предметных функций проекта, базовыми helpers и русским coverage map.
 - `devhub-playwright-scenario/` — разработка и стабилизация пользовательских
   devhub-сценариев поверх scaffold, включая произвольные внешние reference
   artifacts и сценарии, напрямую переданные MATLAB Researcher. Тесты запускаются

@@ -1,13 +1,13 @@
 ---
 name: playwright-test-scaffold
-version: 0.4.0
 ---
 # Playwright Test Scaffold
 
 ## When to Use
 - В новом Genie-приложении ещё нет `test/playwright/**`.
 - Нужно перенести стандартный CDP/devhub runner и базовую структуру E2E-тестов.
-- Нужно включить E2E-набор по составу frontend skills приложения.
+- Нужно включить E2E-набор по универсальным UI-возможностям и предметным
+  функциям приложения, доступным на проверяемом target.
 
 ## When NOT to Use
 - Playwright scaffold уже существует и нужен новый пользовательский сценарий —
@@ -30,8 +30,12 @@ version: 0.4.0
 разрешения пользователя или управляющего агента.
 
 ## Feature Flags
-В `e2e.config.js` включи flags только для frontend skills, реально подключённых
-в приложение:
+
+`e2e.config.js` объявляет известные конкретному проекту E2E capability flags
+двух видов:
+
+1. Универсальные UI capabilities используют ids реально подключённых frontend
+   skills:
 
 ```text
 layout-geometry
@@ -49,20 +53,34 @@ object-export-dialog
 reference-scenarios
 ```
 
+2. Предметные product capabilities определяет только конкретный проект,
+   например `measurements-statistics`. Не добавляй их имена в универсальный
+   каталог skills или scaffold template.
+
 - `reference-scenarios` включай, когда приложение получает внешний эталонный
   сценарий или численный fixture.
-- Каждый feature spec объявляет `requiredFeatures` массивом тех же ids.
+- Каждый feature spec объявляет `requiredFeatures` массивом ids, уже известных
+  его проектному `e2e.config.js`.
 - Spec без `requiredFeatures` является обязательным core test.
 - Disabled feature spec загружается для проверки синтаксиса, но не выполняется
   и учитывается runner как `skipped`.
+- Значение flag отражает наличие capability на обычно проверяемом target.
+  Для другого target временно передавай точный доступный набор через
+  `PLAYWRIGHT_FEATURES`.
+- Называй project-specific flag в lower kebab-case по наблюдаемой продуктовой
+  функции, а не по отдельному полю, странице или test case.
 - Не создавай новый flag для отдельного поля, страницы или одного test case.
   Flag соответствует переносимой возможности приложения.
+- Не выключай flag capability, которая должна присутствовать на target, чтобы
+  скрыть regression или product failure.
 
 ## Stable Selector Contract
 До написания feature specs получи Frontend → E2E handoff:
 
 ```text
 enabled_frontend_skills
+enabled_optional_capabilities
+enabled_product_features
 user_workflows
 stable_data_testids
 expected_visible_states
@@ -77,13 +95,15 @@ expected_visible_states
   вложенность в новом scaffold.
 
 ## Workflow
-1. Прочитай role contract и список frontend skills целевого приложения.
+1. Прочитай role contract, список frontend skills и product capabilities
+   целевого приложения.
 2. Убедись, что `test/playwright/` отсутствует либо согласуй merge с
    существующим scaffold.
 3. Скопируй bundled scaffold без domain names исходного приложения.
 4. Измени `name` в `package.json` и `package-lock.json`.
 5. Задай `app.readyTestId`, `app.loaderTestId` и `app.pageUrlMatch`.
-6. Включи feature flags по фактическому составу приложения.
+6. Объяви skill и project-specific flags в проектном config и включи только
+   capabilities, фактически доступные на обычно проверяемом target.
 7. Добавь Frontend → E2E selector handoff в комментарии конфигурации или
    проектную документацию; не дублируй selectors в нескольких helpers.
 8. Оставь core smoke spec исполняемым независимо от flags.
@@ -132,7 +152,9 @@ bash -n test/playwright/run_devhub_playwright_tests.sh
 ## Guardrails
 - Не переноси names, selectors, fixtures и expected values reference
   приложения.
-- Не включай feature, отсутствующую в frontend composition.
+- Не включай capability, отсутствующую на проверяемом target.
+- Не переноси project-specific flag в универсальный каталог skills или
+  scaffold template.
 - Не отключай failing feature flag ради зелёного отчёта.
 - Не заменяй полный runner сторонним test framework без отдельного решения
   архитектора.

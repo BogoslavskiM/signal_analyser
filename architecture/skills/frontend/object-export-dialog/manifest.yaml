@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: object-export-dialog
-version: 0.2.0
+version: 0.4.0
 title: "Object Export Dialog"
 description: >
   Наследуемый frontend skill для optional object export operations: backend
@@ -19,4 +19,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: dialog-system
+requires-skills: [dialog-system]

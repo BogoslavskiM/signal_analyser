@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: output-loading-flow
-version: 0.8.0
+version: 0.9.0
 title: "Output Loading Flow"
 description: >
   Frontend skill для separate fast Apply/zone contracts, local zone preloaders,
@@ -16,4 +16,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

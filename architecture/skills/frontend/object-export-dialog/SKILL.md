@@ -1,6 +1,5 @@
 ---
 name: object-export-dialog
-version: 0.2.0
 ---
 # Object Export Dialog
 
@@ -13,6 +12,16 @@ version: 0.2.0
 - Нужно сформировать export value, вычислить математику или построить Engee topology.
 - Приложение не поддерживает object export.
 
+## Core Contract
+- Применяй skill только если blueprint включает object export UI.
+- Получай operations/defaults с backend и используй explicit forms.
+
+## Optional Capabilities
+- `object-export.workspace` — workspace form.
+- `object-export.julia-script` — Julia script form.
+- `object-export.jld2` — JLD2 form.
+- `object-export.engee-model` — Engee model form.
+
 ## Inheritance
 - Наследуй modal/busy/error/success flow из `frontend/dialog-system`.
 - Для file targets используй `path-input` и targets из `frontend/file-browser-dialog`.
@@ -23,14 +32,15 @@ version: 0.2.0
 
 - `assets/template.js` — operation registry, state, defaults switch и export action;
 - `assets/template.css` — selector и operation form container;
-- `assets/template.html` — base dialog с dynamic explicit form component.
+- `assets/template.html` — mount point export dialog.
 
 1. Прочитай все три файла.
 2. Создай module через `window.GenieObjectExportDialog.create(...)`.
 3. Передай API actions `open`, `changeOperation`, `exportObject`.
-4. Передай map explicit form components только для операций текущего приложения.
+4. Передай map explicit vanilla form renderers только для операций текущего приложения.
 5. Передай opaque export context из вызывающей inspector/zone.
-6. Не стандартизируй форму context и context-dependent defaults заранее.
+6. Вызови `mount(root)`.
+7. Не стандартизируй форму context и context-dependent defaults заранее.
 
 ## Available Operations
 - Ни одна export operation не является обязательной или стандартной.
@@ -52,7 +62,7 @@ field_errors
 - Defaults могут зависеть от любого state приложения; frontend только применяет response.
 
 ## Explicit Forms
-- Для каждой подключённой операции создай явный form component.
+- Для каждой подключённой операции создай явную form render-функцию.
 - Не создавай универсальный form generator из field metadata.
 - Form получает `operation_state`, `field_errors` и `busy`, обновляет только свои explicit fields.
 - File operation обычно использует path, filename и overwrite.
@@ -86,7 +96,7 @@ field_errors
 - Проверь zero/one/multiple operations; при одной selector видим и disabled.
 - Проверь context-dependent defaults при open.
 - Проверь discard values и новые defaults при operation switch.
-- Проверь explicit form component и отсутствие metadata form generator.
+- Проверь explicit form renderer и отсутствие metadata form generator.
 - Проверь field validation отдельно от unexpected error.
 - Проверь busy/global loader, success target и form retention при error.
 - Проверь, что dialog не выбирает objects и не формирует export value.

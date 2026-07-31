@@ -1,6 +1,5 @@
 ---
 name: frontend-state-management
-version: 0.9.0
 ---
 # Frontend State Management
 
@@ -12,6 +11,19 @@ version: 0.9.0
 ## When NOT to Use
 - Нужно изменить только геометрию layout или CSS.
 - Нужно реализовать backend-хранилище, Apply или очередь расчётов.
+
+## Core Contract
+- Backend является source of truth для domain state.
+- Разделяй server payload, local UI state и stale-response guards.
+
+## Optional Capabilities
+- `state.draft-queue` — debounce и последовательная отправка draft fields.
+- `state.apply` — flush draft перед Apply.
+- `state.inspector` — backend-confirmed inspector mutations.
+- `state.pages` — main/opened page coordination.
+- `state.toolbar` — capability state toolbar.
+- `state.object-export` — state object export dialog.
+- `state.session-import` — guarded full state replacement.
 
 ## State Ownership
 - Считай backend источником истины для domain state.
@@ -91,12 +103,15 @@ version: 0.9.0
   явно выбранной operation.
 - Детали rendering и handlers бери из `frontend/application-toolbar`.
 
-## Vue Module Rules
-- Используй `watch` для обнаружения изменения draft-полей и запуска планировщика синхронизации.
-- Используй `methods` для явных команд: Apply, CRUD, selection, смена страницы и повторный запрос данных.
-- При применении backend payload устанавливай guard наподобие `applyingBackendPayload`, чтобы `watch` не отправил полученные значения обратно на backend.
-- Снимай guard после завершения всех синхронных state mutations; при необходимости используй `$nextTick`.
-- Не помещай business calculations в `computed` или `watch`.
+## Vanilla Module Rules
+- Используй явные input/change listeners для draft-полей и запуска
+  планировщика синхронизации.
+- Используй named actions для Apply, CRUD, selection, смены страницы и retry.
+- При применении backend payload устанавливай guard наподобие
+  `applyingBackendPayload`, чтобы render/listeners не отправили серверные
+  значения обратно.
+- Снимай guard после синхронных state mutations и render pass.
+- Не помещай business calculations в render callbacks или event listeners.
 
 ## Errors and Loading
 - Показывай semantic validation error поля под соответствующим control в принятом формате settings: error state, status icon и inline text.
@@ -118,5 +133,6 @@ version: 0.9.0
 - Проверь ответ на раннее значение после ввода нового: поле не откатывается и старая ошибка не появляется.
 - Проверь переключение `main_object` при незавершённом запросе: ответ старого объекта не меняет активные settings.
 - Проверь Apply во время debounce: последнее draft-значение сначала сохранено, затем вызван Apply.
-- Проверь, что применение backend payload не запускает повторную отправку через `watch`.
+- Проверь, что применение backend payload не запускает повторную отправку через
+  state listener или render callback.
 - Запусти `node test/front/run_front_tests.js`.

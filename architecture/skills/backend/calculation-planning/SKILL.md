@@ -1,6 +1,5 @@
 ---
 name: calculation-planning
-version: 0.6.0
 ---
 # Calculation Planning
 
@@ -13,7 +12,20 @@ version: 0.6.0
 - Нужно только изменить визуальный стиль уже готового output.
 - Нужно только описать route без новой math/domain логики.
 
-## Mandatory Runtime
+## Core Contract
+- Определи typed inputs, output shape, pure calculation boundary и tests.
+- Выбери execution mode по измерениям и требованиям.
+
+## Optional Capabilities
+- `calculation.cache` — named/domain cache дорогого результата.
+- `calculation.zone-state` — persistent output readiness/error state.
+- `calculation.worker-queue` — один worker queue с cooperative cancellation.
+- `calculation.shared-task` — общий intermediate result для зависимых outputs.
+- `calculation.priority` — user-action priority.
+
+## Selected Runtime Contract
+Worker rules ниже применяются только при `calculation.worker-queue`. Простые
+расчёты не получают worker автоматически.
 - Оставляй основной поток свободным для API и коротких операций.
 - Выполняй очередь долгих расчётов отдельным worker thread каждого inspector только в нагруженных приложениях.
 - Сортируй очередь: сначала расчётные зоны `settings` и `data`, затем остальные по убыванию времени последнего явного действия пользователя.

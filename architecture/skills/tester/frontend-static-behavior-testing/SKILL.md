@@ -1,6 +1,5 @@
 ---
 name: frontend-static-behavior-testing
-version: 0.1.0
 ---
 # Frontend Static and Behavior Testing
 
@@ -19,7 +18,7 @@ version: 0.1.0
 
 - `assets/run_front_tests.js` — текущий dependency-free sorted runner;
 - `assets/static-test-template.js` — static JS/CSS/HTML contract;
-- `assets/behavior-test-template.js` — VM/Vue/API behavior contract;
+- `assets/behavior-test-template.js` — VM/DOM/API behavior contract;
 - `assets/v8-coverage-summary.js` — dependency-free V8 script/function summary;
 - `assets/report-template.md` — frontend skill/ТЗ/coverage report.
 
@@ -43,8 +42,8 @@ test/front/
 - Runner рекурсивно находит `*.test.js`, сортирует paths и выполняет files
   последовательно.
 - Используй CommonJS, встроенные `fs/path/vm` и простой assertion callback.
-- Не добавляй Jest, Vitest, jsdom или package dependency без отдельного
-  обоснования и согласования.
+- Не добавляй Jest, Vitest, jsdom или package dependency без прямого решения
+  пользователя и ADR.
 
 ## Static Tests
 Проверяй source contracts без browser rendering:
@@ -62,9 +61,9 @@ test/front/
 Static assertion не заменяет behavior test user action/state transition.
 
 ## Behavior Tests
-- Загружай browser modules через `vm` с минимальными mock `window`, `document`,
-  Vue и внешними libraries.
-- Создавай VM-like object из `state/data`, `computed`, `methods` и lifecycle.
+- Загружай browser modules через `vm` с минимальными mock `window`, `document`
+  и внешних libraries.
+- Создавай harness из exported state/actions/render/lifecycle contract.
 - Проверяй state transitions, computed values, methods, lifecycle cleanup,
   API payloads и порядок calls.
 - API заменяй управляемыми mocks, записывающими calls.

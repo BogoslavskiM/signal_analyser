@@ -1,6 +1,5 @@
 ---
 name: matlab-clicker-research-loop
-version: 0.4.0
 ---
 # MATLAB Clicker Research Loop
 

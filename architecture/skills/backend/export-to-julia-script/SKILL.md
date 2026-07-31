@@ -1,6 +1,5 @@
 ---
 name: export-to-julia-script
-version: 0.1.0
 ---
 # Export to Julia Script
 

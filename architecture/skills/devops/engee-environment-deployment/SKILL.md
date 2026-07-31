@@ -1,6 +1,5 @@
 ---
 name: engee-environment-deployment
-version: 0.3.0
 ---
 # Engee Environment Deployment
 

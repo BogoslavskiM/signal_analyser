@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: task-documentation
-version: 0.1.0
+version: 1.2.0
 title: "Task Documentation"
 description: >
   Правила ведения долговременной архитектурной памяти: task-файлы, reports,
@@ -16,4 +16,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

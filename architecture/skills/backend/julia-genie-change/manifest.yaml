@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 name: julia-genie-change
 version: 0.2.0
 title: "Julia Genie Change"
@@ -17,4 +17,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

@@ -1,6 +1,5 @@
 ---
 name: api-contract-planning
-version: 1.5.0
 ---
 # API Contract Planning
 
@@ -13,7 +12,34 @@ version: 1.5.0
 - Нужно только поменять frontend rendering без изменения payload.
 - Нужно только изменить calculation function без нового route contract.
 
-## Mandatory Contracts
+## Core Contract
+
+- Для каждого выбранного endpoint зафиксируй method, request/response fields,
+  mutations и error behavior.
+- Держи business logic в named helpers, а route handlers тонкими.
+- По умолчанию semantic validation возвращает HTTP 200, wrong API type — HTTP
+  500. `409`, `422`, revisions и другая status policy допустимы только по
+  прямому проектному решению и ADR.
+- Не создавай endpoint или payload capability, не выбранную в blueprint.
+
+## Optional Capabilities
+
+- `api.inspector` — inspector CRUD/table contract.
+- `api.inspector-bulk-selection` — bulk selection subset contract.
+- `api.settings` — typed settings get/update/validation.
+- `api.apply` — быстрый Apply отдельно от outputs.
+- `api.output-zones` — независимые zone data routes.
+- `api.pages` — multi-page metadata/page controls.
+- `api.file-browser` — server-side file browser actions.
+- `api.session` — session import/export/defaults.
+- `api.object-export` — operations/defaults/export action.
+- `api.toolbar` — app version и toolbar capabilities.
+- `api.revision-conflict` — project-specific revision/stale contract; требует ADR.
+
+## Selected Capability Contracts
+
+Применяй следующие правила только для ids из
+`enabled_optional_capabilities`:
 - Обновляй draft одним field endpoint и возвращай HTTP 200 с полным settings payload.
 - Выполняй Apply над уже сохранённым backend draft. Не отправляй settings snapshot повторно в Apply request.
 - При Apply сначала останови активную долгую задачу inspector и только затем валидируй draft.
@@ -24,11 +50,14 @@ version: 1.5.0
 - Создавай отдельную data route для каждой расчётной зоны и возвращай её состояние через `data`, `isready`, `success`, `error`.
 - Возвращай `data` как типизированную структуру зоны. До первого результата используй её типизированное пустое значение, а не `null`.
 - Возвращай HTTP 500 при неверном JSON/API type: это programmer error.
-- Добавляй inspector bulk-selection route с `selected` и необязательным `object_ids`.
-- Не вводи `422`, idempotency keys, state/settings revisions или обобщённый API envelope без явного требования задачи.
+- Добавляй inspector bulk-selection route только при
+  `api.inspector-bulk-selection`.
+- Не вводи `422`, idempotency keys, state/settings revisions или обобщённый API
+  envelope без явного project decision и ADR.
 
 ## Workflow
-1. Определи группу route: initial state, inspector CRUD, view sync, settings get/update/validate/apply, output data, import/export.
+1. Определи только выбранные группы route: initial state, inspector CRUD, view
+   sync, settings, Apply/output data, import/export или другие capabilities.
 2. Для каждого endpoint запиши method, request fields, response fields и error behavior.
 3. Привяжи endpoint к backend helper; route handler не должен содержать business logic.
 4. Раздели domain mutation и view-state mutation, если у них разный lifecycle.

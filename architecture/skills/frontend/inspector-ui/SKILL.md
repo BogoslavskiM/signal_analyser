@@ -1,6 +1,5 @@
 ---
 name: inspector-ui
-version: 0.2.0
 ---
 # Inspector UI
 
@@ -13,10 +12,22 @@ version: 0.2.0
 - Нужно реализовать backend inspector state или mutation helpers.
 - Нужна серверная фильтрация, pagination, virtualization, sorting или reorder.
 
+## Core Contract
+- Применяй skill только если blueprint включает inspector/list capability.
+- Используй stable row ids, backend-confirmed state и stable E2E selectors.
+
+## Optional Capabilities
+- `inspector.main-selection` — main object и row selection.
+- `inspector.bulk-selection` — select-all/subset behavior.
+- `inspector.crud` — create/duplicate/delete actions.
+- `inspector.search` — frontend name search.
+- `inspector.columns` — optional column metadata/visibility.
+- `inspector.row-export` — согласованное row export action.
+
 ## Bundled Template
 Используй готовый комплект:
 
-- `assets/template.js` — Vue 3 global module для state, computed, actions и форматирования cells;
+- `assets/template.js` — vanilla inspector state/actions/render/lifecycle;
 - `assets/template.css` — таблица, headerless list, sticky cells, toolbar, hover actions и column menu;
 - `assets/template.html` — явный inspector template.
 
@@ -24,7 +35,7 @@ version: 0.2.0
 2. Скопируй их содержимое в соответствующие JS/CSS/HTML пути целевого приложения.
 3. Создай модуль через `window.GenieInspectorUi.create(...)`.
 4. Передай API actions: `create`, `duplicate`, `delete`, `setMain`, `setSelected`, `setBulkSelected`.
-5. Зарегистрируй module sections в одном root Vue app.
+5. Вызови `mount(root)` и зарегистрируй vanilla module в общем registry.
 6. Замени generic title, description и action icon classes на значения текущего приложения.
 7. Не переноси namespace и domain fields приложения-источника.
 

@@ -1,6 +1,5 @@
 ---
 name: apply-calculation-flow
-version: 0.6.0
 ---
 # Apply Calculation Flow
 
@@ -13,7 +12,20 @@ version: 0.6.0
 - Нужно только показать frontend loader поверх уже готового API.
 - Output дешёвый и всегда возвращается в основном state payload без cache.
 
-## Mandatory Invariants
+## Core Contract
+- Применяй skill только если blueprint включает Apply/output lifecycle.
+- Apply валидирует state и запускает согласованный lifecycle без смешивания
+  response с zone data.
+
+## Optional Capabilities
+- `calculation.zone-state` — data/isready/success/error per zone.
+- `calculation.worker-queue` — worker, queue, cooperative cancellation/revision.
+- `calculation.shared-task` — общий reusable intermediate result.
+- `calculation.priority` — приоритет по явному user action.
+
+## Selected Capability Invariants
+Worker/queue/cancellation правила ниже обязательны только при
+`calculation.worker-queue`; они не создают worker в простом приложении.
 - До Apply не изменяй outputs никаким образом.
 - На каждом успешном Apply пересчитывай все outputs, даже при неизменных settings.
 - Возвращай из Apply только HTTP 200 с `success=true` либо `success=false` и коротким `error`; не включай состояния или результаты расчётных зон.

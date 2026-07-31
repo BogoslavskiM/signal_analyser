@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: engee-environment-deployment
-version: 0.1.0
+version: 0.3.0
 title: "Engee Environment Deployment"
 description: >
   Deployment Genie-приложения в dev или prod через Engee MCP/plugin: clone или
@@ -22,4 +22,4 @@ requires-products:
   - "Engee"
 reference-files:
   - "https://engee.com/helpcenter/stable/ru/feature/genie-functions.html"
-extends: task-branch-lifecycle
+requires-skills: [task-branch-lifecycle]

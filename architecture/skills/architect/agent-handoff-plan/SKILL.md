@@ -1,6 +1,5 @@
 ---
 name: agent-handoff-plan
-version: 0.9.0
 ---
 # Agent Handoff Plan
 
@@ -20,14 +19,15 @@ version: 0.9.0
 3. Укажи scope: какие поведения, контракты и файлы можно менять.
 4. Укажи out_of_scope: что агент не должен чинить или проектировать.
 5. Опиши contracts: payloads, state fields, UI actions, tests или scenario evidence.
-6. Опиши acceptance: что должно быть истинно после выполнения.
-7. Укажи verification commands для роли.
-8. Потребуй итоговый структурированный handoff с полями `goal`, `scope`,
+6. Для каждого составного skill перечисли `enabled_optional_capabilities`.
+7. Опиши acceptance: что должно быть истинно после выполнения.
+8. Укажи verification commands для роли.
+9. Потребуй итоговый структурированный handoff с полями `goal`, `scope`,
    `contracts`, `changes`, `verification`, `risks`, `follow-ups`,
    `next_task_candidates`.
-9. Укажи risks и ожидаемые follow-up, если агент найдёт проблему вне своей
+10. Укажи risks и ожидаемые follow-up, если агент найдёт проблему вне своей
    зоны.
-10. Architect сохраняет постановку и каждый материальный результат в
+11. Architect сохраняет постановку и каждый материальный результат в
     `architecture/documentation/agents/handoff/`, синхронизирует internal
     task/backlog/report и client specification/decision/history/traceability по
     `architect/task-documentation`.
@@ -50,6 +50,10 @@ version: 0.9.0
    чтобы координацию можно было восстановить после остановки.
 7. Не создавай искусственные пустые сообщения, heartbeat spam или fake-running
    loops. Открытого completed thread достаточно для standby.
+8. После restart сначала попробуй продолжить сохранённый ID. Если thread
+   недоступен, создай replacement той же канонической роли и зафиксируй
+   `replaces`, старый/new ID и причину. Недоступность исторического ID не
+   блокирует цикл.
 
 ## Проверяемая Anti-idle Orchestration
 1. Для каждой persistent role веди rolling queue: текущая задача и следующая
@@ -92,9 +96,9 @@ version: 0.9.0
 - Frontend handoff должен называть zones/elements/payload fields, typed controls,
   stable `data-testid`, interactions и style constraints.
 - Tester handoff должен называть contract surfaces, stable field ids, queue/revision behavior и evidence.
-- E2E handoff должен описывать enabled frontend skill ids, пользовательский
-  сценарий, stable `data-testid`, target application context и наблюдаемый UI
-  результат.
+- E2E handoff должен описывать enabled frontend skill ids, enabled project
+  product capability ids, пользовательский сценарий, stable `data-testid`,
+  target application context и наблюдаемый UI результат.
 - E2E handoff обязательно содержит `browser_workspace_setup`: background CDP
   preferred; при интерактивном Chrome — отдельный macOS Space/desktop либо
   fullscreen fallback. До Space/focus/window actions нужна координация с
@@ -155,6 +159,7 @@ owner:
 goal:
 scope:
 contracts:
+enabled_optional_capabilities:
 changes:
 verification:
 risks:

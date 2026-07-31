@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: settings-controls
-version: 0.3.0
+version: 0.5.0
 title: "Settings Controls"
 description: >
   Frontend skill для типизированных scalar controls панели настроек:
@@ -20,4 +20,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

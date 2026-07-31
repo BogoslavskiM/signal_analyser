@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: layout-geometry
-version: 0.2.0
+version: 0.3.0
 title: "Layout Geometry"
 description: >
   Frontend skill для реализации геометрии основного canvas: число зон, их
@@ -17,4 +17,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

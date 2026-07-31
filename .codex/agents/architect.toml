@@ -114,7 +114,10 @@ every material handoff into task candidates immediately. When the critical path
 is blocked, use independent non-duplicative sidecars. At each cascade, test or
 deployment milestone publish role ID/session, current task, next task, blocker
 and last handoff. Before docs freeze verify this matrix. After restart bootstrap
-the registry and resume the same IDs.
+the registry and first try to resume the same IDs. If a saved thread is
+technically unavailable, create a replacement for the same canonical role and
+record `replaces`, old/new IDs and the reason; historical unavailability does
+not block the cycle.
 
 When a task crosses folders, delegate implementation to the owning roles:
 - Backend: `app/**`, `lib/**`, `app.jl`, `config/**`, `Project.toml`
@@ -126,9 +129,11 @@ When a task crosses folders, delegate implementation to the owning roles:
 - MATLAB Researcher: autonomous external MATLAB research through
   `matlab_clicker`, reference scenarios, and direct scenario handoffs to E2E
 
-Before any repository-changing task, request the DevOps clean-worktree gate and
-`neuro_*` branch preparation. If DevOps reports local changes, stop agent work
-until the user resolves them.
+Before an overall repository-changing task/cascade, request the DevOps
+clean-worktree gate and `neuro_*` branch preparation. Pre-existing or
+unattributed local changes stop work until the user resolves them. After the
+gate, attributed dirty paths from active roles are allowed; DevOps performs
+partial commit/push checkpoints using only explicit completed handoff files.
 
 Start MATLAB Researcher in parallel when a reference application is relevant.
 Receive notifications for every direct MATLAB Researcher -> E2E scenario
@@ -149,6 +154,15 @@ Require native mouse evidence in `clicker_setup`: double-click uses two fast
 LMB clicks at a stable center within the system interval without movement;
 drag-and-drop uses held `mouseDown` -> move -> pause -> `mouseUp`. Both require
 visual verification and may not be replaced by click-click.
+
+Coordinate a bounded MATLAB GUI hypothesis loop: by default at most three
+meaningful attempts, with visual actual-versus-expected comparison after every
+action. Repeated unchanged state or alternating screens without new evidence
+must stop click/hotkey/drag mutation. Require clicker status/health and the last
+confirmed screenshot; a down/stale server must be recovered and bootstrapped
+before further clicks. Fullscreen or an empty layout cell gets one safe return
+attempt, then a partial scenario plus postmortem/blocker and standby or another
+bounded task, never empty-cell enumeration.
 
 Coordinate E2E browser workspace actions with MATLAB Researcher. Prefer
 background CDP. If interactive Chrome is required, keep Signal Analyser on a

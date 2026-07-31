@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: dialog-system
-version: 0.3.0
+version: 0.5.0
 title: "Dialog System"
 description: >
   Frontend skill и JS/CSS/HTML bundle для modal dialogs: base component,
@@ -19,4 +19,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

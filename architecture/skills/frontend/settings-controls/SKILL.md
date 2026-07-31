@@ -1,6 +1,5 @@
 ---
 name: settings-controls
-version: 0.3.0
 ---
 # Settings Controls
 
@@ -13,9 +12,21 @@ version: 0.3.0
 - Нужно реализовать очередь draft-запросов и защиту от устаревших ответов.
 - Нужны массивы, динамические списки, file input, date, color или другой составной control.
 
+## Core Contract
+- Применяй skill только если blueprint включает scalar settings controls.
+- Рендери явные typed controls из backend metadata без дублирования semantic validation.
+
+## Optional Capabilities
+- `settings.searchable-enum` — searchable enum control.
+- `settings.warning` — warning state отдельно от error.
+- `settings.groups` — сворачиваемые группы.
+- `settings.readonly` — статическое readonly представление.
+- `settings.apply` — согласованный Apply action.
+
 ## Rendering Model
-- Размещай controls явно в HTML-шаблоне. Не генерируй всю форму одним универсальным `v-for`.
-- Реализуй типовые controls как переиспользуемые Vue-компоненты.
+- Перечисляй field ids явно в frontend `groups`/`fieldIds` layout config. Не
+  формируй состав формы динамически из backend metadata.
+- Реализуй типовые controls как переиспользуемые vanilla modules.
 - Получай значения, ограничения, варианты и validation state из полного backend `settings`.
 - После изменения поля применяй полный settings payload по правилам `frontend/frontend-state-management`.
 
@@ -38,7 +49,7 @@ step
 options
 ```
 
-- Используй stable `id` в API, component key и `data-testid`.
+- Используй stable `id` в API, layout registry и `data-testid`.
 - Считай неприменимые metadata пустыми, но сохраняй стабильную форму контракта.
 - Управляй видимостью control через backend `visible`.
 - Не определяй semantic validation повторно на frontend.
@@ -46,15 +57,16 @@ options
 ## Bundled Template
 Используй готовый комплект:
 
-- `assets/template.js` — Vue 3 global components без namespace конкретного приложения;
+- `assets/template.js` — vanilla scalar controls и explicit layout registry;
 - `assets/template.css` — связанные стили controls, validation states, groups и Apply;
 - `assets/template.html` — явный пример подключения controls к полному settings payload.
 
 1. Прочитай все три файла перед переносом.
 2. Скопируй их содержимое в соответствующие JS/CSS/HTML пути целевого приложения.
-3. Зарегистрируй components из `window.GenieSettingsControls.create(...)` в одном root Vue app.
-4. Замени примерные field ids и bindings из `template.html` на поля текущего backend contract.
-5. Сохрани generic component classes и `data-testid`, если нет явной причины изменить публичный UI contract.
+3. Создай module через `window.GenieSettingsControls.create(...)`, передай
+   явные `groups`/`fieldIds`, затем вызови `mount(root)`.
+4. Замени примерные field ids в layout config на поля текущего backend contract.
+5. Сохрани generic control classes и `data-testid`, если нет явной причины изменить публичный UI contract.
 6. Подключи существующие CSS variables приложения; fallback-значения шаблона используй только как страховку.
 7. Не копируй в template namespace, тексты или domain fields приложения-источника.
 8. Не перезаписывай существующий control целиком без сравнения его поведения с шаблоном.

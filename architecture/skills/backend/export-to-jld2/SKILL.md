@@ -1,6 +1,5 @@
 ---
 name: export-to-jld2
-version: 0.1.0
 ---
 # Export to JLD2
 

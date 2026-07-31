@@ -1,6 +1,5 @@
 ---
 name: layout-geometry
-version: 0.2.0
 ---
 # Layout Geometry
 
@@ -12,6 +11,15 @@ version: 0.2.0
 ## When NOT to Use
 - Нужно решить, какие business элементы находятся внутри зон.
 - Нужно проектировать backend state/API.
+
+## Core Contract
+- Реализуй только geometry, выбранную в blueprint.
+- По default visual profile сохраняй fixed canvas `920 × 680` без responsive
+  перестройки; отклонение требует прямого решения пользователя и ADR.
+
+## Optional Capabilities
+- `layout.placeholders` — пустые zones до composition.
+- `layout.internal-scroll` — явный scroll owner.
 
 ## Workflow
 1. Получи от архитектора layout blueprint или уточни недостающие proportions.

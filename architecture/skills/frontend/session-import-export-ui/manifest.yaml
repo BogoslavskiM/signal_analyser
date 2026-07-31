@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: session-import-export-ui
-version: 0.3.0
+version: 0.5.0
 title: "Session Import Export UI"
 description: >
   Наследуемый frontend skill для JLD2 session export/import: explicit form
@@ -19,4 +19,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: dialog-system
+requires-skills: [dialog-system, file-browser-dialog]

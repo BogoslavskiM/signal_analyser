@@ -1,6 +1,5 @@
 ---
 name: application-toolbar
-version: 0.2.0
 ---
 # Application Toolbar
 
@@ -12,7 +11,20 @@ version: 0.2.0
 - Действие относится только к конкретной zone или table row.
 - Нужна локальная панель управления графиком.
 
+## Core Contract
+- Применяй skill только если blueprint включает application toolbar.
+- Покажи brand/name/version и только объявленные backend capabilities.
+
+## Optional Capabilities
+- `toolbar.import` — глобальный import action.
+- `toolbar.export` — глобальный export action.
+- `toolbar.export-split` — primary/default action и dropdown операций.
+- `toolbar.other-actions` — дополнительные глобальные actions.
+- `toolbar.help` — help link.
+
 ## Bundled Template
+Bundle реализован на vanilla JavaScript и проверяется общим asset validator.
+
 Используй:
 
 - `assets/template.js` — capability state, actions и export menu;
@@ -20,11 +32,14 @@ version: 0.2.0
 - `assets/template.html` — бренд и порядок глобальных действий.
 
 1. Подключи module до root `app.js`.
-2. Передай frontend config: `appName`, `logoPath`, action handlers и mapping
+2. Создай module через `window.GenieApplicationToolbar.create(...)`, затем
+   вызови `mount(root)`.
+3. Передай frontend config: `appName`, `logoPath`, action handlers и mapping
    trusted icon ids на локальные SVG paths.
-3. Примени backend payload версии и доступных export operations.
-4. Скопируй только SVG, реально используемые действиями.
-5. Используй tooltip contract из `frontend/style-system`.
+4. Примени backend payload версии и доступных export operations через
+   `actions.configure(...)`.
+5. Скопируй только SVG, реально используемые действиями.
+6. Используй tooltip contract из `frontend/style-system`.
 
 ## Inheritance
 - Наследуй tokens, local font, icon mask, tooltip и fixed canvas из
@@ -32,7 +47,7 @@ version: 0.2.0
 - Не создавай отдельную палитру или responsive toolbar.
 
 ## Brand
-- Toolbar обязателен для типового приложения.
+- Toolbar существует только когда capability выбрана в blueprint.
 - Слева всегда показывай некликабельный логотип Engee, название приложения и
   `Версия <app_version>`.
 - Название задаётся frontend config конкретного приложения.

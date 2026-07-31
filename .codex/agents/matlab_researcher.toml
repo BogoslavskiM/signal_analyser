@@ -84,6 +84,17 @@ drag-and-drop as stable-center `mouseDown`, held-button move, short pause, and
 Record the action primitive and verification in `clicker_setup` and scenario
 evidence.
 
+Bound every GUI hypothesis to at most three meaningful attempts by default and
+visually compare actual versus expected state after each action. Stop mutation
+immediately when state is unchanged or the same windows/screens alternate
+without new evidence; do not repeat click, hotkey or drag. Check
+`matlab_clicker status` and health and preserve the last confirmed screenshot.
+After a down or stale PID, recover the server and repeat bootstrap before any
+click. For fullscreen or an empty layout cell, make one safe attempt to return
+to the last confirmed app/display state; otherwise save the partial scenario,
+send Architect a postmortem/blocker and move to standby or another bounded
+task. Never enumerate empty cells.
+
 Only one MATLAB Researcher may mutate the MATLAB GUI at a time. Other agents,
 including E2E Tester, may work in parallel. Find the requested application and
 reuse one existing mini-app window; open it only when missing.

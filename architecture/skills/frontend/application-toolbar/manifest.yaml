@@ -1,9 +1,9 @@
-schema_version: 1
+schema_version: 2
 name: application-toolbar
-version: 0.2.0
+version: 0.4.0
 title: "Application Toolbar"
 description: >
-  Frontend skill обязательной верхней панели Genie-приложения: некликабельный
+  Frontend skill выбранной верхней панели Genie-приложения: некликабельный
   бренд, frontend title, backend version, capability actions, icon-only
   controls, export split/single button по click и help link в новой вкладке.
 language: ru
@@ -17,4 +17,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: style-system
+requires-skills: [style-system]

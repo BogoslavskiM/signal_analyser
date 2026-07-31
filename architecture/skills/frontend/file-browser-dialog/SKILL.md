@@ -1,6 +1,5 @@
 ---
 name: file-browser-dialog
-version: 0.3.0
 ---
 # File Browser Dialog
 
@@ -14,10 +13,20 @@ version: 0.3.0
 - Нужны upload, rename, delete, create directory или multi-select.
 - Нужно реализовать сам import/export workflow.
 
+## Core Contract
+- Применяй skill только для server-side path selection через backend root.
+- Сохраняй root boundary, structured entries и backend normalization.
+
+## Optional Capabilities
+- `file-browser.directory` — выбор директории.
+- `file-browser.file` — выбор одного файла.
+- `file-browser.inline-tree` — inline expand/collapse.
+- `file-browser.sorting` — folders-first name sorting.
+
 ## Bundled Template
 Используй готовый комплект:
 
-- `assets/template.js` — Vue 3 global module, typed `path-input`, state, API actions и target integration;
+- `assets/template.js` — vanilla state/actions/render/lifecycle implementation;
 - `assets/template.css` — tree/list, path bar, loading overlay и compact dialog layout;
 - `assets/template.html` — file browser поверх `base-dialog`.
 
@@ -25,12 +34,13 @@ version: 0.3.0
 2. Скопируй их в соответствующие JS/CSS/HTML пути приложения.
 3. Подключи `frontend/dialog-system` до file browser.
 4. Создай module через `window.GenieFileBrowserDialog.create(...)`.
-5. Передай API actions `open`, `path`, `toggle`, `sort`, `select`, `cancel`.
+5. Передай API actions `open`, `path`, `toggle`, `sort`, `select`, `cancel` и
+   вызови `mount(root)`.
 6. Зарегистрируй targets родительских полей с mode, allowed extensions, getter и setter.
 7. Не зашивай в generic module конкретные имена target fields приложения-источника.
 
 ## Typed Path Control
-- Регистрируй возвращённый component `path-input` один раз в root app.
+- Используй общий markup contract `path-input-control` в предметной форме.
 - Используй editable string input и icon button, вызывающую file browser target.
 - Не выполняй filesystem validation внутри control.
 - Не меняй path по browse button до успешного backend select response.

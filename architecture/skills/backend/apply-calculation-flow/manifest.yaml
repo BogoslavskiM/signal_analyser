@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: apply-calculation-flow
-version: 0.6.0
+version: 0.7.0
 title: "Apply Calculation Flow"
 description: >
   Backend skill для Apply lifecycle: backend-only typed draft, full validation,
@@ -18,4 +18,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

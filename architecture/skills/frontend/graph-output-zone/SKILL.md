@@ -1,6 +1,5 @@
 ---
 name: graph-output-zone
-version: 0.2.0
 ---
 # Graph Output Zone
 
@@ -14,10 +13,21 @@ version: 0.2.0
 - Требуется другая библиотека графиков.
 - Страница не имеет расчётного output contract.
 
+## Core Contract
+- Применяй skill только если blueprint включает Plotly output.
+- Рендери backend-defined Plotly payload без предметных frontend calculations.
+
+## Optional Capabilities
+- `graph.multiple` — несколько графиков в frontend-defined grid.
+- `graph.comparison` — traces main + selected objects.
+- `graph.output-state` — pending/error overlays.
+- `graph.page-controls` — controls без общего Apply.
+- `graph.locale-ru` — локальная русская Plotly locale.
+
 ## Bundled Template
 Используй готовый комплект:
 
-- `assets/template.js` — общий Plotly component, локальная загрузка библиотеки и русской locale;
+- `assets/template.js` — общий Plotly module, локальная загрузка библиотеки и русской locale;
 - `assets/template.css` — canvas, frontend-defined grid, overlay, spinner и controls;
 - `assets/template.html` — пример graph page внутри multi-page element.
 
@@ -25,7 +35,7 @@ version: 0.2.0
 2. Скопируй их в соответствующие JS/CSS/HTML пути приложения.
 3. Положи Plotly и русскую locale в локальную vendor-директорию приложения.
 4. Создай модуль через `window.GenieGraphOutputZone.create(...)`.
-5. Зарегистрируй возвращённые `components` в root Vue app.
+5. Вызови `mount(root)` и зарегистрируй vanilla module в общем registry.
 6. В page registry установи `rendersOutputState: true`, чтобы graph page сама разместила preloader и error.
 7. Определи сетку и responsive rules в JS/CSS конкретной страницы.
 8. Не копируй названия страниц, объектов или namespace приложения-источника.
@@ -74,7 +84,7 @@ data:
 - Продолжай polling pending активной страницы по правилам `frontend/output-loading-flow`.
 
 ## Page Controls
-- Размещай page controls ниже canvas внутри component конкретной страницы.
+- Размещай page controls ниже canvas внутри render-функции конкретной страницы.
 - По умолчанию page controls не требуют общего Apply.
 - Храни их типизированные значения в backend view state и включай в session export/import.
 - Frontend root state зеркалит backend values по `page_id`.

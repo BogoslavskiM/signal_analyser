@@ -8,7 +8,8 @@ Chrome, запущенный через `vpnp google`.
 ## Настройка
 
 1. Укажи app-level selectors и URL fragment в `e2e.config.js`.
-2. Включи flags только для frontend skills, подключённых в приложение.
+2. Объяви flags frontend skills и предметных product capabilities этого
+   проекта. Включи только возможности, доступные на проверяемом target.
 3. Каждый feature spec объявляет:
 
 ```javascript
@@ -24,6 +25,9 @@ PLAYWRIGHT_FEATURES=settings-controls,inspector-ui \
 # или
 ./test/playwright/run_devhub_playwright_tests.sh --current
 ```
+
+Project-specific ids вроде `measurements-statistics` принадлежат только
+конкретному приложению и не добавляются в универсальный scaffold.
 
 ## Запуск
 

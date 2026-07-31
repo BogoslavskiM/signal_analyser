@@ -1,6 +1,5 @@
 ---
 name: session-import-export-ui
-version: 0.3.0
 ---
 # Session Import Export UI
 
@@ -12,6 +11,15 @@ version: 0.3.0
 - Нужно сохранить отдельный domain object в workspace, script, JLD2 или Engee model.
 - Нужно изменить общий modal contract — используй `frontend/dialog-system`.
 - Нужно реализовать backend serialization.
+
+## Core Contract
+- Применяй skill только если blueprint включает session persistence UI.
+- Используй backend-owned session format и атомарное применение state.
+
+## Optional Capabilities
+- `session.export` — экспорт полной сессии.
+- `session.import-replace` — полная замена текущей сессии.
+- `session.import-merge` — merge objects с backend conflict mapping.
 
 ## Inheritance
 - Наследуй modal structure, busy/error/success flow и stacking из `frontend/dialog-system`.
@@ -33,10 +41,12 @@ version: 0.3.0
 4. Передай API actions `openExport`, `exportSession`, `openImport`, `importSession`.
 5. Передай `applyBackendState`, global loader methods и общий unexpected error reporter.
 6. Добавь возвращённые file-browser targets в target registry.
+7. Вызови `mount(root)`.
 
 ## Session Format
 - Используй `.jld2` без frontend-выбора другого формата.
-- Считай import/export обязательной возможностью типового приложения.
+- Реализуй только операции, выбранные в blueprint и перечисленные в
+  `enabled_optional_capabilities`.
 - Не определяй структуру сессии на frontend: backend сериализует согласованные typed structures.
 - Ожидай обязательный backend session identity `__genie_app_name`.
 - Backend session включает objects/settings, inspector order, selection, main object, multi-page state, page controls, последнее полностью записанное output data и `isready/success/error`.
@@ -77,7 +87,9 @@ replace_current: boolean
 - После закрытия form покажи success dialog с backend message.
 
 ## Typed Path Control
-- Используй `path-input` component из `frontend/file-browser-dialog`: editable text input и icon button открытия file browser.
+- Используй `path-input-control` markup contract из
+  `frontend/file-browser-dialog`: editable text input и icon button открытия
+  file browser.
 - Значение path всегда string.
 - Кнопка browse вызывает file browser target; она не меняет path самостоятельно.
 - Не открывай native browser file input.

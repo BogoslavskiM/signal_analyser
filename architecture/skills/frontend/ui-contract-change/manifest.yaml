@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: ui-contract-change
-version: 0.7.0
+version: 0.8.0
 title: "UI Contract Change"
 description: >
   Frontend skill для typed settings controls, full inspector table payload,
@@ -17,4 +17,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

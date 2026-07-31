@@ -1,6 +1,5 @@
 ---
 name: export-to-workspace
-version: 0.1.0
 ---
 # Export to Workspace
 

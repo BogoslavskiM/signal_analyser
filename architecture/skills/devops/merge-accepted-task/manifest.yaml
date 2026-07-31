@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 name: merge-accepted-task
 version: 0.1.0
 title: "Merge Accepted Task"
@@ -19,4 +19,4 @@ requires-tools:
 requires-products:
   - "Engee"
 reference-files: []
-extends: engee-environment-deployment
+requires-skills: [engee-environment-deployment]

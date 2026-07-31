@@ -1,6 +1,5 @@
 ---
 name: backend-unit-testing
-version: 0.1.0
 ---
 # Backend Unit Testing
 

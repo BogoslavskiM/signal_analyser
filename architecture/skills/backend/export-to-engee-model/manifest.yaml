@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 name: export-to-engee-model
 version: 0.1.0
 title: "Export to Engee Model"
@@ -17,4 +17,4 @@ when-not:
 requires-tools: []
 requires-products: [engee]
 reference-files: []
-extends: null
+requires-skills: []

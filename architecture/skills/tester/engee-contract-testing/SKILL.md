@@ -1,6 +1,5 @@
 ---
 name: engee-contract-testing
-version: 0.2.0
 ---
 # Engee Contract Testing
 

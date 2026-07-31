@@ -1,6 +1,5 @@
 ---
 name: zone-composition
-version: 0.3.0
 ---
 # Zone Composition
 

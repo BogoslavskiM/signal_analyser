@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: file-browser-dialog
-version: 0.3.0
+version: 0.5.0
 title: "File Browser Dialog"
 description: >
   Frontend skill и JS/CSS/HTML bundle для server-side file browser: directory
@@ -19,4 +19,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: [dialog-system]

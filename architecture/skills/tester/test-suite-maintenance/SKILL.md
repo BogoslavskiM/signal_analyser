@@ -1,6 +1,5 @@
 ---
 name: test-suite-maintenance
-version: 2.4.0
 ---
 # Test Suite Maintenance
 
@@ -11,6 +10,19 @@ version: 2.4.0
 ## When NOT to Use
 - Нужно исправить product source вместо теста.
 - Нужно реализовать Playwright/devhub сценарий — используйте e2e skill.
+
+## Core Contract
+- Загрузи testing skill для фактически изменённой contract surface.
+- Проверяй только product capabilities и optional skill ids, включённые в
+  blueprint/handoff. Наличие checklist ниже не делает capability обязательной.
+- При product failure верни handoff владельцу и не исправляй source.
+
+## Optional Capabilities
+- `tests.backend-unit` — domain/state unit tests.
+- `tests.backend-api` — route/handler contracts.
+- `tests.frontend-static` — JS/CSS/HTML source contracts.
+- `tests.frontend-behavior` — deterministic VM/DOM/API behavior.
+- `tests.engee-contract` — target Engee function contracts через MCP.
 
 ## Workflow
 1. Определи тип покрытия: backend unit/API, frontend static/behavior или Engee package contract.
@@ -23,7 +35,8 @@ version: 2.4.0
 2. Прочитай ближайший production contract только чтобы понять expected behavior.
 3. Держи тест детерминированным и сфокусированным на одном behavior/contract.
 4. Если failure вызван product code, верни handoff владельцу продукта.
-5. Для inspector CRUD проверь полный table payload: columns, typed rows, order, main object и selected objects.
+5. Для inspector CRUD проверяй полный table payload только если включена
+   соответствующая inspector capability.
 6. Проверь bulk selection: без `object_ids` операция применяется ко всем объектам; с ids — только к переданному filtered subset; selection вне subset сохраняется; ответ содержит полный table payload.
 7. Проверь inspector без metric columns и header row: checkbox, имя и row actions остаются работоспособными.
 8. Для settings проверь metadata, typed values, one-field update и полный settings response.
@@ -121,7 +134,8 @@ version: 2.4.0
     outside click, scroll и resize.
 74. Проверь help как обычную ссылку в новой вкладке и отсутствие responsive
     collapse/overflow menu toolbar.
-75. Запусти релевантные проверки или явно опиши, почему среда недоступна.
+75. Запусти релевантные проверки выбранных capabilities или явно опиши, почему
+    среда недоступна.
 76. Для численной обработки различай базовую агрегацию и специализированные
     MATLAB-toolbox аналоги. Base/Statistics допустимы для min/max/mean,
     extrema indices, index-to-time и простой dB formula, но тестовые данные

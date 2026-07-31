@@ -1,360 +1,224 @@
-(function registerGenieMultiPageElement(window, document) {
+(function registerGenieMultiPageElement(window) {
   "use strict";
 
-  var MissingPage = {
-    template: '<div class="multi-page-missing">Frontend module страницы не зарегистрирован</div>',
-  };
+  function escapeHtml(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
 
   function createMultiPageElement(options) {
     var config = options || {};
-    var defaultPageId = String(config.defaultPageId || "");
-    var pageRegistry = config.pages || {};
-    var syncPages = typeof config.syncPages === "function" ? config.syncPages : function () {
-      return Promise.reject(new Error("Multi-page syncPages action is not configured"));
+    var registry = config.pages || {};
+    var syncPages = config.syncPages;
+    var root = null;
+    var pollTimer = null;
+    var state = {
+      title: config.title || "", pages: [], order: [], opened_pages: [], main_page: "",
+      pageMenuOpen: false, pageMenuStyle: "", runtime: {}, requestIds: {}, syncRequestId: 0,
     };
-    var pollDelay = Number(config.pollDelayMs) > 0 ? Number(config.pollDelayMs) : 750;
 
-    return {
-      state: function () {
-        return {
-          multiPageUi: {
-            title: config.title || "",
-            tabsCanScrollLeft: false,
-            tabsCanScrollRight: false,
-            pageMenuOpen: false,
-            pageMenuStyle: {},
-            pageRuntime: {},
-            syncRequestId: 0,
-            loadRequestIds: {},
-            pollTimers: {},
-          },
+    function orderedPages() {
+      var byId = {};
+      state.pages.forEach(function (page) { byId[String(page.id)] = page; });
+      return state.order.map(function (id) { return byId[String(id)]; }).filter(Boolean);
+    }
+
+    function openedPages() {
+      var ids = state.opened_pages.map(String);
+      return orderedPages().filter(function (page) { return ids.includes(String(page.id)); });
+    }
+
+    function activeId() {
+      var opened = openedPages();
+      if (opened.some(function (page) { return String(page.id) === String(state.main_page); })) return String(state.main_page);
+      return opened.length ? String(opened[0].id) : "";
+    }
+
+    function activeMetadata() {
+      var id = activeId();
+      return orderedPages().find(function (page) { return String(page.id) === id; }) || null;
+    }
+
+    function ensureRuntime(id) {
+      var module = registry[String(id)] || {};
+      if (!state.runtime[id]) {
+        state.runtime[id] = typeof module.loadData === "function" ?
+          { data: null, isready: false, success: false, error: "" } :
+          { data: null, isready: true, success: true, error: "" };
+      }
+      return state.runtime[id];
+    }
+
+    function renderPage() {
+      var id = activeId();
+      var metadata = activeMetadata();
+      var pageModule = registry[id] || {};
+      var runtime = ensureRuntime(id);
+      if (!id) return '<div class="multi-page-missing">Нет открытых страниц</div>';
+      if (!pageModule.rendersOutputState && !runtime.isready) {
+        return '<div class="multi-page-status" role="status"><span class="multi-page-spinner"></span></div>';
+      }
+      if (!pageModule.rendersOutputState && !runtime.success) {
+        return '<div class="multi-page-status multi-page-error" role="alert">' +
+          escapeHtml(runtime.error || "Не удалось получить данные страницы") + "</div>";
+      }
+      if (typeof pageModule.render !== "function") {
+        return '<div class="multi-page-missing">Frontend module страницы не зарегистрирован</div>';
+      }
+      return '<div class="multi-page-content" data-page-content="' + escapeHtml(id) + '">' +
+        pageModule.render({ pageId: id, metadata: metadata, runtime: runtime, data: runtime.data }) + "</div>";
+    }
+
+    function menuSections() {
+      var sections = {};
+      orderedPages().forEach(function (page) {
+        var key = String(page.menu_group || "");
+        if (!sections[key]) sections[key] = [];
+        sections[key].push(page);
+      });
+      return Object.keys(sections).map(function (title) {
+        return '<section class="multi-page-menu-section">' +
+          (title ? '<div class="multi-page-menu-section-title">' + escapeHtml(title) + "</div>" : "") +
+          sections[title].map(function (page) {
+            var checked = state.opened_pages.map(String).includes(String(page.id));
+            return '<label class="multi-page-menu-item"><input class="multi-page-menu-checkbox" type="checkbox"' +
+              ' data-page-visible="' + escapeHtml(page.id) + '"' + (checked ? " checked" : "") +
+              '><span class="multi-page-menu-copy"><span class="multi-page-menu-title">' + escapeHtml(page.title) +
+              '</span>' + (page.description ? '<span class="multi-page-menu-description">' + escapeHtml(page.description) + "</span>" : "") +
+              "</span></label>";
+          }).join("") + "</section>";
+      }).join("");
+    }
+
+    function render() {
+      var current = activeId();
+      var tabs = openedPages().map(function (page) {
+        return '<div class="multi-page-tab' + (String(page.id) === current ? " active" : "") + '" data-page-select="' +
+          escapeHtml(page.id) + '"><span class="multi-page-tab-title" data-tooltip="' + escapeHtml(page.title) + '">' +
+          escapeHtml(page.title) + '</span>' + (page.closable === false ? "" :
+            '<button class="multi-page-tab-close" type="button" data-page-close="' + escapeHtml(page.id) +
+            '" aria-label="Закрыть вкладку ' + escapeHtml(page.title) + '"></button>') + "</div>";
+      }).join("");
+      var menu = state.pageMenuOpen ? '<div class="multi-page-menu" data-multi-page-menu style="' +
+        escapeHtml(state.pageMenuStyle) + '">' + menuSections() + "</div>" : "";
+      var html = '<section class="multi-page-element">' + (state.title ? '<div class="multi-page-titlebar"><h2 class="multi-page-title">' +
+        escapeHtml(state.title) + "</h2></div>" : "") + '<div class="multi-page-header"><div class="multi-page-tabs-wrap">' +
+        '<button class="multi-page-tab-scroll multi-page-tab-scroll-prev" type="button" data-page-scroll="left" aria-label="Прокрутить вкладки влево"></button>' +
+        '<div class="multi-page-tabs" data-multi-page-tabs>' + tabs + '</div><button class="multi-page-tab-scroll multi-page-tab-scroll-next"' +
+        ' type="button" data-page-scroll="right" aria-label="Прокрутить вкладки вправо"></button></div>' +
+        '<div class="multi-page-header-actions"><button class="multi-page-menu-button icon-plus" type="button" data-page-menu-toggle aria-label="Добавить страницу"></button>' +
+        menu + '</div></div><div class="multi-page-body">' + renderPage() + "</div></section>";
+      if (root) root.innerHTML = html;
+      return html;
+    }
+
+    function sync(patch) {
+      var requestId = ++state.syncRequestId;
+      if (typeof syncPages !== "function") { render(); return Promise.resolve(null); }
+      return Promise.resolve(syncPages(Object.assign({
+        opened_pages: state.opened_pages.slice(), main_page: state.main_page,
+      }, patch || {}))).then(function (payload) {
+        if (requestId === state.syncRequestId && payload) actions.setPages(payload);
+        return payload;
+      }).catch(function (error) {
+        if (typeof config.reportError === "function") { config.reportError(error, "multi-page-sync"); return null; }
+        throw error;
+      });
+    }
+
+    function loadActive() {
+      var id = activeId();
+      var pageModule = registry[id] || {};
+      var runtime;
+      var requestId;
+      if (!id || typeof pageModule.loadData !== "function") { render(); return Promise.resolve(null); }
+      runtime = ensureRuntime(id); requestId = (state.requestIds[id] || 0) + 1; state.requestIds[id] = requestId;
+      runtime.isready = false; render();
+      return Promise.resolve(pageModule.loadData({ pageId: id, metadata: activeMetadata() })).then(function (payload) {
+        if (state.requestIds[id] !== requestId) return null;
+        state.runtime[id] = Object.assign({ data: null, isready: true, success: true, error: "" }, payload || {});
+        render();
+        if (!state.runtime[id].isready) schedulePoll();
+        return payload;
+      }).catch(function (error) {
+        if (state.requestIds[id] === requestId) state.runtime[id] = {
+          data: runtime.data, isready: true, success: false, error: String(error.message || error),
         };
+        render(); return null;
+      });
+    }
+
+    function schedulePoll() {
+      window.clearTimeout(pollTimer);
+      pollTimer = window.setTimeout(loadActive, Number(config.pollDelayMs) > 0 ? Number(config.pollDelayMs) : 750);
+    }
+
+    var actions = {
+      setPages: function (payload) {
+        var value = payload || {};
+        state.pages = Array.isArray(value.pages) ? value.pages.slice() : state.pages;
+        state.order = Array.isArray(value.order) ? value.order.slice() : state.order;
+        state.opened_pages = Array.isArray(value.opened_pages) ? value.opened_pages.slice() : state.opened_pages;
+        state.main_page = String(value.main_page || state.main_page || config.defaultPageId || "");
+        render();
       },
-      computed: {
-        multiPageState: function () {
-          return this.multiPage || {
-            pages: [],
-            order: [],
-            opened_pages: [],
-            main_page: "",
-          };
-        },
-        orderedPageMetadata: function () {
-          var pages = Array.isArray(this.multiPageState.pages) ? this.multiPageState.pages : [];
-          var order = Array.isArray(this.multiPageState.order) ? this.multiPageState.order : [];
-          var byId = {};
-          pages.forEach(function (page) {
-            byId[String(page.id)] = page;
-          });
-          return order.map(function (id) {
-            return byId[String(id)];
-          }).filter(Boolean);
-        },
-        openedPageMetadata: function () {
-          var opened = (this.multiPageState.opened_pages || []).map(String);
-          return this.orderedPageMetadata.filter(function (page) {
-            return opened.includes(String(page.id));
-          });
-        },
-        activePageId: function () {
-          var mainPage = String(this.multiPageState.main_page || "");
-          if (this.openedPageMetadata.some(function (page) { return String(page.id) === mainPage; })) {
-            return mainPage;
-          }
-          return this.openedPageMetadata.length ? String(this.openedPageMetadata[0].id) : defaultPageId;
-        },
-        activePageMetadata: function () {
-          var activeId = this.activePageId;
-          return this.orderedPageMetadata.find(function (page) {
-            return String(page.id) === activeId;
-          }) || null;
-        },
-        activePageModule: function () {
-          return pageRegistry[this.activePageId] || {};
-        },
-        activePageComponent: function () {
-          return this.activePageModule.component || MissingPage;
-        },
-        activePageRendersOutputState: function () {
-          return this.activePageModule.rendersOutputState === true;
-        },
-        activePageRuntime: function () {
-          return this.multiPageUi.pageRuntime[this.activePageId] || {
-            data: null,
-            isready: typeof this.activePageModule.loadData !== "function",
-            success: typeof this.activePageModule.loadData !== "function",
-            error: "",
-          };
-        },
-        activePageLoading: function () {
-          return this.activePageRuntime.isready === false;
-        },
-        activePageError: function () {
-          return this.activePageRuntime.isready === true && this.activePageRuntime.success === false ?
-            String(this.activePageRuntime.error || "Не удалось получить данные страницы") :
-            "";
-        },
-        pageMenuSections: function () {
-          var sections = [];
-          var byKey = {};
-          this.orderedPageMetadata.forEach(function (page) {
-            var key = String(page.menu_group || "");
-            if (!byKey[key]) {
-              byKey[key] = { title: key, pages: [] };
-              sections.push(byKey[key]);
-            }
-            byKey[key].pages.push(page);
-          });
-          return sections;
-        },
+      select: function (id) { state.main_page = String(id); render(); return sync({ main_page: state.main_page }).then(loadActive); },
+      toggle: function (id, opened) {
+        id = String(id); state.opened_pages = state.opened_pages.map(String).filter(function (value) { return value !== id; });
+        if (opened) { state.opened_pages.push(id); state.main_page = id; }
+        if (!state.opened_pages.length && config.defaultPageId) {
+          state.opened_pages = [String(config.defaultPageId)];
+        }
+        if (!state.opened_pages.includes(String(state.main_page))) state.main_page = state.opened_pages[0] || "";
+        render(); return sync();
       },
-      watch: {
-        "multiPage.opened_pages": function () {
-          this.$nextTick(this.updateMultiPageTabsScroll);
-        },
-        "multiPage.main_page": function () {
-          this.activateCurrentPage();
-        },
+      close: function (id) { return actions.toggle(id, false); },
+      toggleMenu: function (rect) {
+        state.pageMenuOpen = !state.pageMenuOpen;
+        if (state.pageMenuOpen && rect) {
+          state.pageMenuStyle = "top:" + (rect.bottom + 6) + "px;right:" + Math.max(8, window.innerWidth - rect.right) + "px";
+        }
+        render();
       },
-      methods: {
-        ensurePageRuntime: function (pageId) {
-          var id = String(pageId || "");
-          var pageModule = pageRegistry[id] || {};
-          var runtime = this.multiPageUi.pageRuntime[id];
-          var nextRuntime;
-
-          if (runtime) return runtime;
-          nextRuntime = typeof pageModule.loadData === "function" ?
-            { data: null, isready: false, success: false, error: "" } :
-            { data: null, isready: true, success: true, error: "" };
-          this.multiPageUi.pageRuntime = Object.assign({}, this.multiPageUi.pageRuntime, {
-            [id]: nextRuntime,
-          });
-          return nextRuntime;
-        },
-        setPageRuntime: function (pageId, patch) {
-          var id = String(pageId || "");
-          var runtime = Object.assign({}, this.ensurePageRuntime(id), patch || {});
-          this.multiPageUi.pageRuntime = Object.assign({}, this.multiPageUi.pageRuntime, {
-            [id]: runtime,
-          });
-          return runtime;
-        },
-        clearPagePollTimer: function (pageId) {
-          var id = String(pageId || "");
-          var timers = Object.assign({}, this.multiPageUi.pollTimers || {});
-          if (timers[id]) window.clearTimeout(timers[id]);
-          delete timers[id];
-          this.multiPageUi.pollTimers = timers;
-        },
-        schedulePagePoll: function (pageId) {
-          var self = this;
-          var id = String(pageId || "");
-          var timers;
-
-          this.clearPagePollTimer(id);
-          if (id !== this.activePageId) return;
-          timers = Object.assign({}, this.multiPageUi.pollTimers || {});
-          timers[id] = window.setTimeout(function () {
-            self.clearPagePollTimer(id);
-            if (id === self.activePageId) self.loadPageData(id);
-          }, pollDelay);
-          this.multiPageUi.pollTimers = timers;
-        },
-        loadPageData: function (pageId) {
-          var self = this;
-          var id = String(pageId || "");
-          var pageModule = pageRegistry[id] || {};
-          var requestIds;
-          var requestId;
-
-          this.clearPagePollTimer(id);
-          if (typeof pageModule.loadData !== "function") {
-            this.setPageRuntime(id, { isready: true, success: true, error: "" });
-            return Promise.resolve(null);
-          }
-
-          requestIds = Object.assign({}, this.multiPageUi.loadRequestIds || {});
-          requestId = Number(requestIds[id] || 0) + 1;
-          requestIds[id] = requestId;
-          this.multiPageUi.loadRequestIds = requestIds;
-          return Promise.resolve()
-            .then(function () {
-              return pageModule.loadData.call(self, id);
-            })
-            .then(function (payload) {
-              if (self.multiPageUi.loadRequestIds[id] !== requestId) return null;
-              self.setPageRuntime(id, {
-                data: payload.data,
-                isready: payload.isready === true,
-                success: payload.success === true,
-                error: String(payload.error || ""),
-              });
-              if (payload.isready !== true && id === self.activePageId) {
-                self.schedulePagePoll(id);
-              }
-              return payload;
-            })
-            .catch(function (error) {
-              if (self.multiPageUi.loadRequestIds[id] !== requestId) return null;
-              self.setPageRuntime(id, { isready: true, success: true, error: "" });
-              if (typeof self.showFrontendError === "function") {
-                self.showFrontendError(error);
-                return null;
-              }
-              throw error;
-            });
-        },
-        activateCurrentPage: function () {
-          var activeId = this.activePageId;
-          var timers = this.multiPageUi.pollTimers || {};
-          var self = this;
-          Object.keys(timers).forEach(function (pageId) {
-            if (pageId !== activeId) self.clearPagePollTimer(pageId);
-          });
-          this.ensurePageRuntime(activeId);
-          this.$nextTick(function () {
-            self.updateMultiPageTabsScroll();
-            self.scrollActiveTabIntoView();
-          });
-          return this.loadPageData(activeId);
-        },
-        syncMultiPageView: function () {
-          var self = this;
-          var requestId = this.multiPageUi.syncRequestId + 1;
-          var payload = {
-            opened_pages: (this.multiPageState.opened_pages || []).slice(),
-            main_page: this.multiPageState.main_page,
-          };
-          this.multiPageUi.syncRequestId = requestId;
-
-          return Promise.resolve()
-            .then(function () {
-              return syncPages.call(self, payload);
-            })
-            .then(function (response) {
-              if (self.multiPageUi.syncRequestId !== requestId) return null;
-              if (response && response.multi_page) self.multiPage = response.multi_page;
-              return response;
-            })
-            .catch(function (error) {
-              if (self.multiPageUi.syncRequestId !== requestId) return null;
-              if (typeof self.showFrontendError === "function") {
-                self.showFrontendError(error);
-                return null;
-              }
-              throw error;
-            });
-        },
-        selectMultiPage: function (pageId) {
-          var id = String(pageId || "");
-          if (id === this.activePageId) return;
-          this.multiPage.main_page = id;
-          this.syncMultiPageView();
-        },
-        toggleMultiPage: function (pageId, opened) {
-          var id = String(pageId || "");
-          var currentOpened = (this.multiPageState.opened_pages || []).map(String);
-          var nextOpened = currentOpened.slice();
-          var nextMain = this.activePageId;
-
-          if (opened && !nextOpened.includes(id)) nextOpened.push(id);
-          if (!opened) nextOpened = nextOpened.filter(function (item) { return item !== id; });
-          if (!nextOpened.length) nextOpened = [defaultPageId];
-          nextOpened = this.orderedPageMetadata.map(function (page) {
-            return String(page.id);
-          }).filter(function (item) {
-            return nextOpened.includes(item);
-          });
-
-          if (opened) {
-            nextMain = id;
-          } else if (!nextOpened.includes(nextMain)) {
-            nextMain = nextOpened[0];
-          }
-
-          this.multiPage.opened_pages = nextOpened;
-          this.multiPage.main_page = nextMain;
-          this.syncMultiPageView();
-        },
-        closeMultiPage: function (page) {
-          if (!page || page.closable === false) return;
-          this.toggleMultiPage(page.id, false);
-        },
-        refreshActiveMultiPageOutput: function () {
-          return this.activateCurrentPage();
-        },
-        multiPageTabsElement: function () {
-          return this.$refs && this.$refs.multiPageTabs ? this.$refs.multiPageTabs : null;
-        },
-        updateMultiPageTabsScroll: function () {
-          var tabs = this.multiPageTabsElement();
-          var maxScroll;
-          if (!tabs) return;
-          maxScroll = Math.max(0, tabs.scrollWidth - tabs.clientWidth);
-          this.multiPageUi.tabsCanScrollLeft = tabs.scrollLeft > 1;
-          this.multiPageUi.tabsCanScrollRight = tabs.scrollLeft < maxScroll - 1;
-        },
-        scrollMultiPageTabs: function (direction) {
-          var tabs = this.multiPageTabsElement();
-          var delta;
-          if (!tabs) return;
-          delta = Math.max(160, Math.floor(tabs.clientWidth * 0.7));
-          tabs.scrollBy({ left: direction === "left" ? -delta : delta, behavior: "smooth" });
-          window.setTimeout(this.updateMultiPageTabsScroll, 180);
-        },
-        scrollActiveTabIntoView: function () {
-          var tabs = this.multiPageTabsElement();
-          var active = tabs && tabs.querySelector ? tabs.querySelector(".multi-page-tab.active") : null;
-          if (active && typeof active.scrollIntoView === "function") {
-            active.scrollIntoView({ block: "nearest", inline: "nearest" });
-          }
-        },
-        toggleMultiPageMenu: function (event) {
-          var button = event && event.currentTarget;
-          var rect = button && button.getBoundingClientRect ? button.getBoundingClientRect() : null;
-          this.multiPageUi.pageMenuOpen = !this.multiPageUi.pageMenuOpen;
-          if (this.multiPageUi.pageMenuOpen && rect) {
-            this.multiPageUi.pageMenuStyle = {
-              position: "fixed",
-              top: Math.round(rect.bottom + 6) + "px",
-              right: Math.round(Math.max(8, window.innerWidth - rect.right)) + "px",
-            };
-          }
-        },
-        closeMultiPageMenu: function () {
-          this.multiPageUi.pageMenuOpen = false;
-          this.multiPageUi.pageMenuStyle = {};
-        },
-        handleMultiPageDocumentClick: function (event) {
-          var target = event.target;
-          if (!target || typeof target.closest !== "function") return;
-          if (target.closest("[data-multi-page-menu]") ||
-              target.closest("[data-multi-page-menu-toggle]")) return;
-          this.closeMultiPageMenu();
-        },
-      },
-      mounted: function () {
-        var self = this;
-        this.orderedPageMetadata.forEach(function (page) {
-          self.ensurePageRuntime(page.id);
-        });
-        window.addEventListener("resize", this.updateMultiPageTabsScroll);
-        document.addEventListener("mousedown", this.handleMultiPageDocumentClick);
-        this.activateCurrentPage();
-      },
-      beforeUnmount: function () {
-        var self = this;
-        Object.keys(this.multiPageUi.pollTimers || {}).forEach(function (pageId) {
-          self.clearPagePollTimer(pageId);
-        });
-        window.removeEventListener("resize", this.updateMultiPageTabsScroll);
-        document.removeEventListener("mousedown", this.handleMultiPageDocumentClick);
-      },
+      loadActive: loadActive,
     };
+
+    function onClick(event) {
+      var node;
+      var toggle = event.target.closest("[data-page-menu-toggle]");
+      if (toggle) return actions.toggleMenu(toggle.getBoundingClientRect());
+      node = event.target.closest("[data-page-close]"); if (node) { event.stopPropagation(); return actions.close(node.getAttribute("data-page-close")); }
+      node = event.target.closest("[data-page-select]"); if (node) return actions.select(node.getAttribute("data-page-select"));
+      node = event.target.closest("[data-page-scroll]");
+      if (node) {
+        var tabs = root.querySelector("[data-multi-page-tabs]");
+        if (tabs) tabs.scrollBy({ left: node.getAttribute("data-page-scroll") === "left" ? -240 : 240, behavior: "smooth" });
+      }
+    }
+    function onChange(event) {
+      var id = event.target.getAttribute("data-page-visible");
+      if (id != null) actions.toggle(id, event.target.checked);
+    }
+    function onDocumentClick(event) {
+      if (state.pageMenuOpen && !event.target.closest("[data-multi-page-menu],[data-page-menu-toggle]")) {
+        state.pageMenuOpen = false; render();
+      }
+    }
+    function mount(element) {
+      if (!element) throw new Error("Multi-page mount root is required"); if (root) unmount(); root = element;
+      root.addEventListener("click", onClick); root.addEventListener("change", onChange);
+      window.document.addEventListener("click", onDocumentClick); render(); loadActive(); return module;
+    }
+    function unmount() {
+      window.clearTimeout(pollTimer); pollTimer = null;
+      if (!root) return; root.removeEventListener("click", onClick); root.removeEventListener("change", onChange);
+      window.document.removeEventListener("click", onDocumentClick);
+      root.innerHTML = ""; root = null;
+    }
+    var module = { state: state, actions: actions, render: render, mount: mount, unmount: unmount };
+    return module;
   }
 
-  window.GenieMultiPageElement = {
-    create: createMultiPageElement,
-  };
-})(window, document);
+  window.GenieMultiPageElement = { create: createMultiPageElement };
+})(window);

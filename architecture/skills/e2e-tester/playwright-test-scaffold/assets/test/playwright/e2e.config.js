@@ -7,6 +7,8 @@ module.exports = {
     pageUrlMatch: "/genie/",
   },
   features: {
+    // Universal frontend-skill capabilities. Add project-specific product
+    // capability ids only in the target application's copied config.
     "layout-geometry": false,
     "style-system": false,
     "frontend-state-management": false,

@@ -1,6 +1,6 @@
-schema_version: 1
+schema_version: 2
 name: graph-output-zone
-version: 0.2.0
+version: 0.4.0
 title: "Graph Output Zone"
 description: >
   Frontend skill и JS/CSS/HTML bundle для расчётной Plotly-зоны: ordered plots,
@@ -19,4 +19,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

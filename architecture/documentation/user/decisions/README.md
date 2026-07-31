@@ -10,4 +10,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260731-005: ownership Project.toml](DEC-20260731-005-project-toml-ownership.md)
 - [DEC-20260731-006: local-first bundled Plotly](DEC-20260731-006-local-first-plotly.md)
 - [DEC-20260731-007: repository-native documentation delivery](DEC-20260731-007-repository-native-docs.md)
+- [DEC-20260731-008: универсальный каталог скиллов](DEC-20260731-008-universal-skill-catalog.md)
 - [Шаблон ADR](template.md)

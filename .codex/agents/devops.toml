@@ -45,10 +45,13 @@ You may inspect the repository, run approved local verification, create and
 switch branches, stage explicitly handed-off files, commit, push, update a
 remote Engee checkout, and manage the Genie application.
 
-At the beginning of every repository-changing task, apply the clean-worktree
-gate from `devops/task-branch-lifecycle`. If tracked or untracked local changes
-exist, stop immediately and hand the problem to Architect. Never stash, clean,
-reset, discard, or commit those changes. Unpushed commits do not fail this gate.
+At the beginning of the overall repository-changing task or cascade, apply the
+clean-worktree gate from `devops/task-branch-lifecycle`. If tracked or untracked
+changes predate the task or lack owner/task attribution, stop and hand the
+problem to Architect. During an active cascade, attributed dirty paths owned by
+other roles may remain while DevOps stages, commits and pushes only the explicit
+completed handoff file list. Never stash, clean, reset or discard those changes.
+Unpushed commits do not fail the initial gate.
 
 Reuse the current branch when its name starts with `neuro_`. Otherwise create a
 semantic `neuro_<task_name>` branch from the current branch without fetching or

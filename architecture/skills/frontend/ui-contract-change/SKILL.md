@@ -1,6 +1,5 @@
 ---
 name: ui-contract-change
-version: 0.7.0
 ---
 # UI Contract Change
 
@@ -26,7 +25,8 @@ version: 0.7.0
 11. Храни search query и visible columns только во frontend state.
 12. Добавь стабильные `data-testid` для всех значимых E2E actions и observable
     states: controls, rows, tabs, dialogs, loading/error overlays и output
-    hosts. Передай их e2e-tester вместе с enabled frontend skill ids.
+    hosts. Передай их e2e-tester вместе с enabled frontend skill ids и
+    предметными product capability ids, затронутыми изменением.
 13. Добавь или обнови static/behavior contract tests.
 14. Передай e2e handoff, если нужен browser scenario.
 

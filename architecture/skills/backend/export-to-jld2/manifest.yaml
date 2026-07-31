@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 name: export-to-jld2
 version: 0.1.0
 title: "Export to JLD2"
@@ -17,4 +17,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

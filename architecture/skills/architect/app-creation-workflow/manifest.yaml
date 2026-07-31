@@ -1,13 +1,11 @@
-schema_version: 1
+schema_version: 2
 name: app-creation-workflow
-version: 1.5.0
-title: "App Creation Workflow"
+version: 2.0.0
+title: "App Creation Capability Router"
 description: >
-  Верхнеуровневый workflow архитектора для создания типового Genie-приложения
-  группой агентов: DevOps task branch, параллельный MATLAB Researcher,
-  blueprint, раскладка, зоны, handoff backend/frontend/tester, application
-  toolbar, optional object export, единая система стилей и merge принятой задачи,
-  интеграционная проверка и следующий цикл задач.
+  Capability router архитектора: blueprint выбирает product capabilities,
+  profiles и optional contracts, после чего подключаются только нужные skills,
+  role handoffs, проверки и DevOps checkpoints.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -22,4 +20,4 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-extends: null
+requires-skills: []

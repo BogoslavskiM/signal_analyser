@@ -1,6 +1,5 @@
 ---
 name: backend-api-testing
-version: 0.1.0
 ---
 # Backend API Testing
 

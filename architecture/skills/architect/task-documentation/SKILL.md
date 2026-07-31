@@ -1,6 +1,5 @@
 ---
 name: task-documentation
-version: 1.1.0
 ---
 # Task Documentation
 
@@ -105,9 +104,12 @@ version: 1.1.0
 
 ## Cascade Definition of Done
 
-Каждый каскад обновляет: current specification, math (если затронута), ADR,
-traceability, dated history/report, internal task/backlog/handoff и Engee bug
-registry/intake при наличии evidence. Отдельно фиксируются implemented,
+Для multi-agent каскада всегда обновляй active task, material role handoffs и
+traceability. Остальные artifacts обновляй только по фактическому trigger:
+specification — при изменении user contract; mathematics — при изменении
+реализованной математики; ADR — при архитектурном решении; history/report — на
+значимом milestone; Engee intake/registry — при candidate или новых evidence.
+Не создавай пустые записи ради формального DoD. Отдельно фиксируй implemented,
 verified и deployed status. Client docs не должны оставлять `/tmp`,
 `/private/tmp`, user-specific absolute или ephemeral artifact links.
 Перед docs freeze Architect проверяет rolling queue всех persistent roles:

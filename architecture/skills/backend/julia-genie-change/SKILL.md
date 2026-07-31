@@ -1,6 +1,5 @@
 ---
 name: julia-genie-change
-version: 0.2.0
 ---
 # Julia Genie Change
 

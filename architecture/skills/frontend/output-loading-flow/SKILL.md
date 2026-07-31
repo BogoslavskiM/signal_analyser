@@ -1,6 +1,5 @@
 ---
 name: output-loading-flow
-version: 0.8.0
 ---
 # Output Loading Flow
 
@@ -11,6 +10,15 @@ version: 0.8.0
 ## When NOT to Use
 - Нужно реализовать backend calculation queue или cache.
 - Output всегда синхронно приходит в основном state payload и не имеет pending состояния.
+
+## Core Contract
+- Применяй skill только для output с отдельными pending/success/error states.
+- Не смешивай Apply response и output data contract.
+
+## Optional Capabilities
+- `output.polling` — polling pending active zone.
+- `output.priority-signal` — явное user-open event для backend priority.
+- `output.static-pages` — frontend-normalized static page state.
 
 ## Workflow
 1. Разделяй Apply contract и data contract. Apply возвращает только `success` и при ошибке `error`; отдельная ручка каждой расчётной зоны возвращает `data`, `isready`, `success`, `error`.

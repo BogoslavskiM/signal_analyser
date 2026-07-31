@@ -1,6 +1,5 @@
 ---
 name: frontend-project-structure
-version: 1.0.0
 ---
 # Frontend Project Structure
 
@@ -13,11 +12,19 @@ version: 1.0.0
 - Нужно только изменить геометрию существующего canvas.
 - Нужно только исправить локальный стиль или текст без изменения структуры.
 
-## Mandatory Stack
-- Используй Vue 3 global build, обычный JavaScript и прямое подключение файлов через `index.html`.
-- Не добавляй npm, bundler или TypeScript без явного требования либо доказанной невозможности разумно реализовать приложение на стандартном стеке.
-- Храни JS, CSS и HTML раздельно по типу файлов, сохраняя одинаковую предметную структуру каталогов.
-- Используй один root Vue app. Не создавай отдельное Vue-приложение для каждой зоны.
+## Core Contract
+- Используй vanilla JavaScript и прямое подключение файлов через `index.html`.
+- Не добавляй framework, npm, bundler или TypeScript. Другой stack допустим
+  только по прямому решению пользователя и ADR с отдельным technology skill.
+- Храни JS, CSS и HTML раздельно, сохраняя одинаковую предметную структуру.
+- Используй один application root и явный module registry.
+
+## Optional Capabilities
+- `frontend.modules.zones` — отдельные zone modules.
+- `frontend.modules.controls` — переиспользуемые controls.
+- `frontend.modules.dialogs` — dialog modules.
+- `frontend.modules.pages` — отдельные страницы multi-page элемента.
+- `frontend.modules.api-client` — общий API client.
 
 ## Project Layout
 
@@ -55,9 +62,10 @@ public/
   controls, dialogs, zones и pages.
 - Копируй локальный Roboto в `public/fonts` и только реально используемые
   общие SVG в `public/icons`; не подключай runtime font CDN.
-- Подключай общий `tooltip.js` один раз до `app.js`.
-- Создавай обязательную верхнюю zone через `frontend/application-toolbar`;
-  сохраняй её JS/CSS/HTML в симметричных `app/zones/toolbar` paths.
+- Подключай общий `tooltip.js` один раз до `app.js`; root app явно создаёт и
+  монтирует tooltip module.
+- Если blueprint включает toolbar, создавай её через
+  `frontend/application-toolbar` и сохраняй в симметричных paths.
 - Для каждой страницы multi-page элемента создавай отдельный JS и CSS. Добавляй отдельный HTML partial, если разметка страницы не помещается в общий шаблон агрегатора.
 - Выноси типовые controls в `controls/`, а не оставляй их реализацию внутри конкретной зоны.
 - Используй общий modal contract из `frontend/dialog-system`, но сохраняй каждый предметный dialog отдельным JS/CSS/HTML-модулем.
@@ -68,23 +76,21 @@ public/
 - Сохраняй симметричные semantic paths между `js/app`, `css/app` и `html/app`, чтобы блок можно было перенести в другое приложение вместе с его поведением и стилями.
 
 ## Module Contract
-Frontend-модуль может экспортировать следующие секции:
+Vanilla frontend-модуль может экспортировать следующие секции:
 
 ```text
-state
-computed
-watch
-methods
-mounted
-beforeUnmount
+createState
+render
+actions
+mount
+unmount
 ```
 
-- `state` возвращает начальное изменяемое состояние элемента.
-- `computed` содержит только производные значения без side effects.
-- `watch` реагирует на изменения состояния и запускает только необходимые побочные действия.
-- `methods` содержит user actions, координацию API-вызовов и контролируемые state mutations.
-- `mounted` выполняет начальную загрузку и подключает DOM/browser listeners или внешние UI-библиотеки.
-- `beforeUnmount` удаляет listeners, таймеры, polling и другие frontend-операции.
+- `createState` возвращает локальное начальное состояние, если оно нужно.
+- `render` отображает переданный state без business calculations.
+- `actions` содержит user actions и API coordination.
+- `mount` подключает listeners, timers и browser integrations.
+- `unmount` симметрично освобождает ресурсы.
 - Не добавляй пустые секции.
 
 ## Module Registration
@@ -101,10 +107,10 @@ beforeUnmount
   window.GenieAppModules = window.GenieAppModules || {};
   window.GenieAppModules.zones = window.GenieAppModules.zones || {};
   window.GenieAppModules.zones.inspectorList = {
-    state: function () {
+    createState: function () {
       return {};
     },
-    methods: {},
+    actions: {},
   };
 })(window);
 ```
@@ -115,13 +121,13 @@ beforeUnmount
 - Подключай scripts в `index.html` до `app.js` и в порядке их зависимостей.
 
 ## Root App
-- Оставляй в `app.js` сборку модулей, создание root Vue app и общую frontend-координацию.
+- Оставляй в `app.js` сборку модулей и общую frontend-координацию.
 - Публикуй `data-testid="app-ready"` только после завершения обязательного
   startup state и задавай общему loader `data-testid="app-loader"`. Если
   приложение использует другие ids, передай их E2E через app config.
 - Допускай в `app.js` общие loaders, startup flow, маршрутизацию запросов, обработку глобальных ошибок и app-wide lifecycle.
 - Переноси из `app.js` логику конкретной зоны, control, dialog или страницы в соответствующий модуль.
-- Предпочитай взаимодействие модулей через root state и публичные root methods.
+- Предпочитай взаимодействие модулей через root state и публичные actions.
 - Прямой вызов одного модуля другим допускай только в критическом случае, когда root coordination создаёт лишнюю сложность. Делай такую зависимость явной.
 
 ## API Access
@@ -138,6 +144,8 @@ beforeUnmount
 - Сохраняй стабильные module ids и selectors после публикации контракта.
 - Добавляй stable `data-testid` для E2E actions и observable states по
   контракту `frontend/ui-contract-change`.
+- Перед копированием bundled frontend assets запускай
+  `node architecture/skills/frontend/validate_vanilla_assets.js`.
 
 ## Verification
 - Проверь порядок `<script>` и `<link>` в `public/index.html`.
