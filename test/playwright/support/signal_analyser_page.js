@@ -48,11 +48,19 @@ function plotHost(card) {
 }
 
 function endpointMatches(response, endpoint, method) {
+  const matchesPath = function (pathname) {
+    if (pathname === endpoint) return true;
+    const suffixStart = pathname.length - endpoint.length;
+    return suffixStart > 0 && pathname.endsWith(endpoint) &&
+      pathname.charAt(suffixStart) === "/";
+  };
+
   try {
     const url = new URL(response.url());
-    return response.request().method() === method && url.pathname === endpoint;
+    return response.request().method() === method && matchesPath(url.pathname);
   } catch (_error) {
-    return response.request().method() === method && response.url().includes(endpoint);
+    const pathname = response.url().split(/[?#]/, 1)[0];
+    return response.request().method() === method && matchesPath(pathname);
   }
 }
 
@@ -221,6 +229,7 @@ module.exports = {
   cardLocator,
   cardTestId,
   clickAndWaitForView,
+  endpointMatches,
   logDiagnosticState,
   namedTestId,
   plotHost,

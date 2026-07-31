@@ -2,6 +2,7 @@
   "name": "signal-analyser-playwright-tests",
   "private": true,
   "scripts": {
+    "test:contract": "node support/signal_analyser_page.contract.test.js",
     "test": "node run_playwright_tests.js"
   },
   "devDependencies": {
