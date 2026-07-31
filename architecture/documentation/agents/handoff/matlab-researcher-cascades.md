@@ -3,15 +3,19 @@
 Internal durable handoff record.
 
 canonical_role: MATLAB Researcher  
-agent_id_or_session: `019fb7d3-32b4-77a0-bfa2-14f4d72dd983`  
-status: active permanent thread; next bounded cycle resumed  
-current_task: expand controls/defaults/transitions and stream saved scenarios  
+agent_id_or_session: `/root/matlab_cycle`
+status: active autonomous cycle 2
+current_task: statistics/peaks/pages/membership bounded research and saved scenarios
 last_handoff: bounded cycle with workspace variables, three-signal Time display
 and SA-UI-001 evidence; exact system paths available in role thread but not
 relayed in this record
 
 This is the persistent role thread and should be reused/resumed for future
 MATLAB questions. It must not be closed after a single scenario.
+
+Replacement note 2026-07-31: `/root/matlab_cycle` replaces stopped session
+`019fb7d3-32b4-77a0-bfa2-14f4d72dd983`; MATLAB clicker server readiness was
+reported by the user before cycle start.
 
 ## Current research handoff
 
@@ -100,3 +104,51 @@ and preserve the last confirmed screenshot; recover and bootstrap a down/stale
 server before clicks. Fullscreen/empty cell gets one safe recovery, then save a
 partial scenario and send Architect a postmortem/blocker before standby or a
 new bounded task. Add-On Explorer and Command Window guards are unchanged.
+
+## Autonomous cycle 2 saved scenario SA-UI-005 — 2026-07-31
+
+goal: Establish deterministic Signal Statistics defaults and values, initial
+Peaks dependency evidence, and correct the non-portable fixed-2x2 wording from
+SA-UI-003 without rewriting the historical scenario.
+system_path: `/Users/makar/work/matlab_clicker/research_output/signal-analyzer-reference-scenarios/scenarios/SA-UI-005-deterministic-statistics-peaks-correction.md`.
+docs_sources: Official MathWorks `measure-signals`,
+`select-signals-to-analyze`, `explore-signals`, `findpeaks` and
+`customize-signal-analyzer` pages, reached directly through the internet; no
+MATLAB Help, Documentation or Add-On Explorer.
+documented_direction: Signal Statistics offers Minimum, Maximum, Mean, Median,
+Peak to peak and RMS; defaults are Minimum/Maximum/Mean, results follow plotted
+signal and time limits, and Peaks/Label Peaks are time-domain dependent.
+clicker_setup: MATLAB R2024b and healthy clicker. The single Command Window
+command followed focus → pre-input Enter → detected Russian → Cmd+Space →
+visible ABC → ASCII type → start/tail visual verification → execution Enter →
+fresh prompt. It created `sa5_*` variables and a 15-sample 1 Hz timetable.
+Native drag imported the timetable; its child checkbox plotted the signal.
+observed_undocumented_behavior: Import created an unplotted parent container
+with a separately checkable child. Statistics menu had exactly six metrics;
+defaults were Minimum/Maximum/Mean. Main toggle created a lower result region.
+For ROI `0..14 s`, UI showed minimum `-2` at `12 s` and maximum `3` at `5 s`.
+From the exact source array, formula-derived mean is `1/3`, median `0`,
+peak-to-peak `5`, RMS `sqrt(25/15)`. Before Find Peaks, Find Peaks and Settings
+were enabled while Label Peaks was disabled. Three Median attempts and two
+Peaks Settings attempts did not confirm transitions and were stopped.
+docs_vs_app_delta: Defaults matched documentation; narrow geometry clipped
+later result columns. Peaks menu made time-domain scope and Label Peaks
+dependency explicit. Click calibration is insufficient to claim Median or
+Peaks Settings transactions. MATLAB grid/docking is layout-specific; current
+product contract remains multiple Display pages, one active graph host and no
+multi-layout editor.
+product_tasks: Existing P0 Minimum/Maximum/Mean is directly supported. The
+research scenario proposes selectable Median/peak-to-peak/RMS, ROI-sensitive
+results and a time-domain Peaks state machine, but these are candidates for
+separate accepted cascades, not changes to current P0. Preserve page-local
+membership and do not copy MATLAB grid/docking.
+e2e_scenarios: C5-01 deterministic defaults/min/max/mean; C5-02 selectable
+derived statistics after scope acceptance, with formula oracles and explicit
+MATLAB click uncertainty; C5-03 Peaks dependency only after a confirmed
+Backend/EngeeDSP contract.
+risks: Screenshots are not numeric oracles beyond visibly readable min/max and
+times; derived values depend on the exact recorded array; narrow window clips
+columns; popup coordinate selection remains blocked in this geometry.
+next_task_candidates: SA-UI-006 separates portable selection/membership/page
+semantics from MATLAB Display Grid; later retest derived metrics only with
+stable targeting, and resume SA-UI-004A only after clicker calibration.

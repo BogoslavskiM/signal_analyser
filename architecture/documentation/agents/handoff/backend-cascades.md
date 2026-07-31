@@ -3,16 +3,19 @@
 Internal durable handoff record.
 
 canonical_role: Backend  
-agent_id_or_session: `019fb7f1-3d91-7a42-bc79-43d4b26bf570`  
-status: active
-current_task: Cascade 4 read-only specialized peaks contract sidecar
-next_queued_task: integrate Tester P0 findings
+agent_id_or_session: `/root/backend_cycle`
+status: active autonomous cycle 2
+current_task: Cascade 3 P0 OOP/backend gate
+next_queued_task: evidence-backed Cascade 4 specialized peaks contract sidecar
 blocker_or_no_eligible_work: none
 last_handoff: Cascade 3 P0 snapshot implementation complete
 
 Earlier ephemeral threads became unavailable after completion. Future Backend
 work must resume the persistent canonical ID above rather than create another
 writer.
+
+Replacement note 2026-07-31: `/root/backend_cycle` replaces stopped session
+`019fb7f1-3d91-7a42-bc79-43d4b26bf570` for autonomous cycle 2.
 
 ## Cascade 2
 
@@ -52,3 +55,26 @@ risks: Integration depends on exact frontend/test array consumption.
 follow-ups: Tester gate; Cascade 4 contract research only.
 next_task_candidates: EngeeDSP `findpeaks` signature/default/error contract;
 no Cascade 4 implementation yet.
+
+## Autonomous cycle 2 OOP/atomicity handoff — 2026-07-31
+
+goal: Preserve the exact P0 API while moving raw measurements behind typed
+domain values and prevalidating them before state publication.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_service.jl`.
+contracts: External keys/order/units remain unchanged; no endpoint, peaks or
+dependency change.
+changes: Added typed ordinate/kind enums, position/item/units,
+`SignalMeasurementsSnapshot` invariants and explicit
+`SignalMeasurementsService` collaborator. `Dict{String,Any}` remains only in
+the API mapper. View/display paths prepare the future-revision measurement
+before mutating state and verify selected signal/revision consistency.
+mathematics: real uses `Re(x[k])`, complex uses `abs(x[k])`; first extrema;
+zero-based `t=k/fs`; arithmetic mean over all raw samples before plot bounding.
+verification: Julia parse PASS; backend PASS 504/504 after the focused Tester
+regression; invalid NaN selection through view and display paths leaves
+revision, active display, selection, visibility, cache and snapshot unchanged.
+risks: Empty/nonpositive-rate variants share the same invariant class but only
+the NaN path has the focused mutation regression.
+follow-ups: Peaks remains blocked on a proven public Engee/domain function
+contract.

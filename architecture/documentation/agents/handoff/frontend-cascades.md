@@ -3,15 +3,18 @@
 Internal durable handoff record.
 
 canonical_role: Frontend  
-agent_id_or_session: `019fb7f1-4164-7003-a5c0-5e109ee82074`  
-status: active correction
-current_task: correct Cascade 3 P0 `items` array consumption
+agent_id_or_session: `/root/frontend_cycle`
+status: active autonomous cycle 2
+current_task: verify/correct Cascade 3 P0 `items` array consumption
 next_queued_task: Cascade 4 peaks UI contract design
 blocker_or_no_eligible_work: first P0 handoff rejected for object/array mismatch
 last_handoff: P0 bottom tabs implemented; integration correction requested
 
 Earlier ephemeral threads became unavailable after completion. Future Frontend
 work must resume the persistent canonical ID above.
+
+Replacement note 2026-07-31: `/root/frontend_cycle` replaces stopped session
+`019fb7f1-4164-7003-a5c0-5e109ee82074` for autonomous cycle 2.
 
 ## Cascade 2
 
@@ -58,3 +61,31 @@ local-only tab switch, settings sidebar unchanged and exact stable selectors.
 The first handoff incorrectly consumed `measurements.items` as an object and was
 not accepted. Frontend resumed the same agent ID to consume the frozen ordered
 array by `item.id`, `item.time_s` and `measurements.units`.
+
+## Autonomous cycle 2 P0 handoff — 2026-07-31
+
+goal: Complete snapshot-backed measurements UI for the active Display page.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Exact ordered `measurements.items`; value/time units; null
+time/index as em dash; local-only Signals/Measurements tabs; Russian
+loading/error/empty states; stable table/row/scope selectors; no new endpoint.
+changes: Added accessible local panels, full measurement columns and scope
+attributes. Preserved one-graph Display pages and sidebar. Removed runtime CDN
+fallback in accordance with canonical `graph-output-zone`.
+verification: JS syntax and diff checks PASS. Initial full front test conflict
+was resolved by Tester in favor of the current local-only skill; final suite
+PASS 2/2.
+risks: Runtime target is not available yet.
+follow-ups: Runtime E2E; peaks UI remains contract-only until Backend publishes
+an accepted specialized function payload.
+
+## Cascade 4 read-only UI contract — 2026-07-31
+
+No product code was added. A future Peaks result is scoped to the active
+Display ID, authoritative selected visible signal and a backend context/revision
+key. Proposed stable states are `peaks-loading-state`, `peaks-error-state`,
+`peaks-empty-state`, `peaks-table` and backend-stable `peak-row-<id>`; labels or
+values may not be used as identifiers. Graph markers require backend-provided
+geometry and are not inferred in frontend. Transport, lifecycle, result schema,
+units, settings and marker contract remain unresolved Backend inputs. Until
+those exist, `find-peaks-action` is only a visual integration point.

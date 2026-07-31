@@ -10,8 +10,9 @@
 
 ## Постоянные решения Signal Analyser
 
-- Рабочая область графиков фиксирована: четыре отображения в сетке 2×2. Tabs,
-  layout chooser и MATLAB multi-layout не переносятся.
+- Рабочая область поддерживает несколько Display pages с одним графиком на
+  активной странице. Tabs являются частью продукта; arbitrary layout chooser,
+  docking и MATLAB multi-layout пока не переносятся.
 - `portable_behavior` из MATLAB — видимость сигналов через checkbox, независимый
   row selection, операции над selected signal и наблюдаемые результаты графиков.
 - `matlab_layout_specific` — расположение, docking и multi-layout MATLAB; это

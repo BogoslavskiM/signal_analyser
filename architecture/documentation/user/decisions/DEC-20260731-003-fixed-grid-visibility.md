@@ -2,8 +2,12 @@
 
 ID: `DEC-20260731-003`  
 Дата: 2026-07-31  
-Статус: accepted  
+Статус: superseded
 Supersedes: none
+
+Superseded by: [DEC-20260731-009](DEC-20260731-009-display-pages.md). Решение
+2×2 описывает предыдущий каскад; актуальный контракт использует Display pages
+с одним графиком без multi-layout editor.
 
 ## Контекст
 

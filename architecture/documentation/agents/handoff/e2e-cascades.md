@@ -3,15 +3,19 @@
 Internal durable handoff record.
 
 canonical_role: E2E Tester  
-agent_id_or_session: `019fb7f1-4bbf-75d2-9279-d8dedede56c5`  
-status: active
-current_task: Cascade 3 P0 snapshot UI scenario and timing logging
+agent_id_or_session: `/root/e2e_cycle`
+status: active autonomous cycle 2
+current_task: Cascade 3 P0 snapshot UI scenario, display lifecycle and timing logging
 next_queued_task: Cascade 4 peaks scenario design
 blocker_or_no_eligible_work: runtime execution waits for a deployed P0 target
 last_handoff: Cascade 2 prod E2E 7/7 at runtime SHA `2eba776`
 
 Earlier ephemeral threads became unavailable after completion. Future E2E
 Tester work must resume the persistent canonical ID above.
+
+Replacement note 2026-07-31: `/root/e2e_cycle` replaces stopped session
+`019fb7f1-4bbf-75d2-9279-d8dedede56c5` for autonomous cycle 2. Its initial
+turn hit temporary model capacity and the same thread was resumed successfully.
 
 ## Cascade 2
 
@@ -84,3 +88,47 @@ browser_workspace_setup: background CDP preferred; interactive actions retain
 the existing MATLAB coordination guardrail.
 next_task_candidates: Cascade 4 specialized peaks scenario after its API/state
 contract is accepted.
+
+## Autonomous cycle 2 P0 implementation — 2026-07-31
+
+goal: Exercise snapshot-backed Measurements through the active Display page.
+scope: `test/playwright/**`.
+contracts: Default Signals tab; local Measurements switch with zero API
+requests; exact minimum/maximum/mean order; selection and hidden-selected
+fallback refresh scope; no measurements/peaks endpoint.
+changes: Reworked the P0 scenario, enabled its capability, added ordered DOM
+observation, coverage mapping and timestamped semantic/API timing logs.
+verification: All Playwright JS syntax PASS; support contract PASS; diff check
+PASS. Runtime pending because `127.0.0.1:9222` has no listener and the bootstrap
+attempt did not expose CDP.
+performance_evidence: App-ready, local switch, each `/api/view` and total
+scenario durations are logged. There are no retries; operation limits are 30s
+and navigation is 60s. No soft budget is claimed without a healthy baseline.
+browser_workspace_setup: Background-only; no focus/Space/fullscreen/move/close
+actions. MATLAB Researcher confirmed MATLAB remained unchanged.
+source_evidence: Internal saved scenario
+`SA-UI-003-display-settings-measurements.md`; only portable initial
+Minimum/Maximum/Mean identity/scope was used.
+risks: No available runtime target; product result is not inferred.
+follow-ups: Align legacy Playwright geometry/network assertions with DEC-009
+Display pages and DEC-010 local-only Plotly, then run when CDP/target exists.
+
+DEC-009/010 alignment is complete: `display_pages` asserts one active host and
+page-local membership; `plotly_local_delivery` blocks/restores the local bundle,
+checks the stable Russian error and forbids external Plotly requests. Nested
+Genie paths are recognized as API paths in the local-tab no-request guard.
+Syntax/support/runner-help/diff checks PASS.
+
+CDP root cause: no listener is currently present. A prior log briefly reached
+`DevTools listening` and then the wrapper exited. E2E sandbox cannot write
+`/tmp/genie-playwright-chrome.log` or the user-session `google-vpn.log`, so it
+cannot safely retain the only available `vpnp google` launcher. DevOps owns the
+process/log prerequisite. No browser focus/Space/window action occurred and
+MATLAB stayed unchanged.
+
+One coordinated retained-PTY CDP attachment later succeeded. Background
+navigation to the canonical target ended at `https://engee.com/account/login`
+with title `Личный кабинет | Engee`; no app shell was observable. This is an
+authentication prerequisite, not a maintenance/app regression. No body/API
+payload was exported, no product spec ran and local `651943d` expectations were
+not applied to the older unavailable target context.

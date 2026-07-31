@@ -2,8 +2,11 @@
 
 ID: `DEC-20260731-006`  
 Дата: 2026-07-31  
-Статус: accepted, implementation unverified  
+Статус: superseded
 Supersedes: none
+
+Superseded by: [DEC-20260731-010](DEC-20260731-010-local-only-plotly.md).
+Актуальный `graph-output-zone` запрещает runtime CDN fallback.
 
 ## Контекст
 

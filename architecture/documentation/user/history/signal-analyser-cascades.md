@@ -58,3 +58,26 @@
 - `not verified`: Tester regression pending.
 - `not deployed`: prod E2E pending; required outcome is 4 ready plots, zero
   visible placeholders and zero CDN request when local artifact succeeds.
+
+## 2026-07-31 — Display pages и local-only correction
+
+- Пользовательское ТЗ и текущая реализация заменили фиксированную 2×2-сетку
+  страницами Display с одним графиком; multi-layout editor остаётся вне scope.
+- `DEC-20260731-009` supersedes старый geometry contract DEC-003.
+- Канонический `graph-output-zone` запретил runtime CDN dependency;
+  `DEC-20260731-010` supersedes DEC-006, а stale fallback tests направлены на
+  коррекцию.
+- Статус: implemented locally; повторные Tester и runtime E2E проверки идут,
+  deployment не выполнялся.
+- Локальный product/test checkpoint создан как `651943d`; GitHub push не
+  выполнен, поскольку внешняя передача ждёт отдельного явного approval.
+
+## 2026-07-31 — MATLAB deterministic statistics evidence
+
+- SA-UI-005 создан с полным Command Window guard для `sa5_*` variables.
+- `observed`: начальные Signal Statistics — Minimum/Maximum/Mean; для тестового
+  ряда minimum `-2` в `12 s`, maximum `3` в `5 s`; formula oracle mean `1/3`.
+- Peaks menu подтвердил зависимость от time-domain state. Median и Peaks
+  settings не подтверждены после bounded attempts и исключены из claims.
+- Это evidence поддерживает существующий P0, но не расширяет product scope на
+  Median, peak-to-peak, RMS или Peaks.

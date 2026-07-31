@@ -9,27 +9,27 @@ Owner: Architect
 
 ### Cascade 3/4 rolling queue — 2026-07-31
 
-1. Gate Cascade 3 P0 exact snapshot raw statistics: Backend → Frontend array
-   alignment, full backend/frontend suites, Playwright contract, then runtime
-   only after a product commit/deploy handoff.
+1. Cascade 3 P0 exact snapshot raw statistics is locally gated and committed at
+   `651943d`: backend 504/504, frontend 2/2 and Playwright static/support PASS.
+   Runtime awaits an authenticated retained CDP target and a later deploy.
 2. Cascade 4: define peaks as a specialized EngeeDSP
    `Functions.findpeaks` contract. Do not add endpoint/state shape or fallback
    before actual signature/default/error evidence and contract tests.
 3. Later additive slice: display-local Normalize Y, global markers/cursors and
    dependent controls.
-4. Separate architecture slice: fixed four display IDs with per-display
-   membership and transactional single-signal heatmap constraints; no
-   multi-layout and no reinterpretation of deployed v2 global visibility.
+4. Display pages with one active graph host and per-display membership are in
+   `651943d`; arbitrary grid/docking/multi-layout remains out of scope.
 5. E2E continuously uses sufficient timing logging and analyzes performance,
    hangs, retries and timeout suitability; instrumentation details remain
    contextual.
 
-1. Commit/push/deploy current product and test diff through the main flow, then
-   run `visibility_cascade` against that target.
+1. Product/test checkpoint is committed locally. Push requires explicit approval
+   for the exact remote transmission; deploy and merge remain separate explicit
+   decisions. Then run `visibility_cascade` against the accepted target.
 2. Confirm in runtime that time/spectrum trace names, colors and legends match
    all visible rows; heatmaps follow selected visible signal.
-3. Confirm no visible `.plot-placeholder` remains after all four Plotly hosts
-   are ready and hosts survive repeated `Plotly.react`.
+3. Confirm no visible `.plot-placeholder` remains after the active Display
+   Plotly host is ready and the host survives repeated `Plotly.react`.
 4. Consume the permanent MATLAB Researcher structured handoff and create next
    product/E2E tasks from new docs/app deltas rather than copying layout.
 
@@ -55,20 +55,25 @@ Owner: Architect
 7. Investigate StipplePlotly world-age warning candidate only after obtaining
    exact warning/stack, versions and a minimal safe reproduction. Do not publish
    it as a confirmed Engee bug before isolation.
-8. Verify local-first Plotly 3.1.0 delivery: Tester checks artifact/license/hash,
-   load order, UMD normalization and fallback; prod E2E proves four ready plots,
-   zero visible placeholders and zero CDN requests on local success.
+8. Verify local-only Plotly 3.1.0 delivery: Tester checks artifact/license/hash,
+   load order, UMD normalization, absence of CDN URL and local failure state;
+   prod E2E proves the active Display host is ready, has no visible placeholder
+   and issues no CDN request.
 
 ## MATLAB research backlog
 
-- Await `docs_sources`, `documented_direction`, `clicker_setup`,
-  `observed_undocumented_behavior`, `docs_vs_app_delta`, `product_tasks`, and
-  saved `e2e_scenarios` from MATLAB Researcher
-  `019fb7d3-32b4-77a0-bfa2-14f4d72dd983`.
-- Current evidence is sufficient for visibility/selection implementation, but
-  not sufficient to scope the next cascade until defaults, transitions, edge
-  cases and scenario paths arrive.
+- Consume the structured SA-UI-005 handoff from MATLAB Researcher
+  `/root/matlab_cycle`; the saved scenario is already present in the researcher
+  output store and the exact fields remain pending relay into this registry.
+- Current deterministic evidence is sufficient for existing P0
+  Minimum/Maximum/Mean. Median, peak-to-peak and RMS are future additive
+  statistics; do not add them without a separately accepted scope.
 - SA-UI-001 bounded evidence now adds independent selection/membership/active
   display, three-signal Time plot, disabled multi-signal TF/Persistence and
   duplicate-import overwrite prompt. Exact server paths and full docs source
   list remain pending relay; early commands lack per-command screenshots.
+- SA-UI-005 uses a fully guarded 15-sample deterministic signal. Observed
+  defaults are Minimum/Maximum/Mean; min `-2` at `12 s`, max `3` at `5 s`, and
+  formula oracle mean `1/3`. Peaks controls are time-domain dependent. Median
+  and Peaks settings were not confirmed within the three-attempt guard and must
+  not be reported as observed behavior.

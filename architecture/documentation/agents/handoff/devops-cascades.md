@@ -3,14 +3,75 @@
 Internal durable handoff record.
 
 canonical_role: DevOps  
-agent_id_or_session: `019fb7f1-486d-7041-ba96-8ed0119fc97f`  
-status: persistent audit active  
-current_task: audit durable ownership and no-deploy handoff  
-last_handoff: clean gate `019fb7cd-4958-79c0-86b9-b3d76fb80e04`; ephemeral
-review `019fb7e8-1f3c-7c20-83f4-4e2c485ea195`
+agent_id_or_session: `/root/devops_cycle`
+status: completed standby
+current_task: await explicit completed-role checkpoint handoff
+last_handoff: cycle-2 clean gate PASS at `41ac8f0`
 
 Earlier ephemeral threads became unavailable after completion. Future DevOps
 work must resume the persistent canonical ID above.
+
+Replacement note 2026-07-31: prior session
+`019fb7f1-486d-7041-ba96-8ed0119fc97f` was explicitly stopped and became
+unavailable. `/root/devops_cycle` replaces it for the new autonomous cycle.
+
+## Autonomous cycle 2 clean gate — 2026-07-31
+
+goal: Verify that the existing task branch can safely accept a new cascade.
+scope: Read-only Git status, branch, upstream, divergence and recent history.
+contracts: Only explicit owner handoff files may enter a checkpoint; deployment
+is separate; merge into `dev` still requires explicit user acceptance.
+changes: None.
+verification: `neuro_signal_analyser_cascade` at `41ac8f0`; clean tree, no
+conflicts, upstream `origin/neuro_signal_analyser_cascade`, `0 behind / 5 ahead`.
+risks: Five commits are not pushed yet; this does not block local work.
+follow-ups: Resume the same replacement session for the first explicit
+completed-file commit/push checkpoint.
+
+## Autonomous cycle 2 Engee gate resolution — 2026-07-31
+
+The first checkpoint attempt correctly stopped because local Julia could not
+load `EngeeDSP`. Architect then ran the equivalent read-only contract on the
+prod Engee MIND runtime: module and Manifest UUID
+`f9bbbd0e-0dd6-4072-898a-88f8f1250a99`, version `0.72.0`, tree
+`4941c08f227519cbc82caab7bc519851f44b0586`; power, two-sided spectrogram and
+persistence calls passed finite axis/value/range/shape checks with outputs 129,
+1024×29 and 256×1024. This target evidence resolves the mandatory package gate
+for the product/test checkpoint without classifying the local environment as a
+product defect.
+
+## Autonomous cycle 2 product/test checkpoint — 2026-07-31
+
+After target gate PASS, DevOps staged exactly 19 completed Backend, Frontend,
+Tester and E2E files. System approval rejected the combined commit/push because
+the GitHub payload/destination lacked a new explicit transmission approval.
+DevOps then created the allowed local-only commit `651943d` with message
+`feat: добавить страницы Display и измерения сигналов`; architecture files were
+not staged. Branch is ahead of upstream by six commits. Push of `651943d` to
+`origin` remains blocked on explicit user approval; deployment and merge were
+not attempted.
+
+## Autonomous cycle 2 CDP recovery — 2026-07-31
+
+Read-only diagnosis found stale `SingletonLock`/socket/cookie state in the old
+Chrome profile for an absent PID. The existing `vpnp google` wrapper considered
+its direct process stable after five seconds even though CDP then disappeared.
+One bounded launch with a new temporary profile
+`/tmp/genie-playwright-chrome-cdp-cycle-20260731` succeeded: Chrome 150,
+protocol 1.3, `/json/version` and `/json/list` live at `127.0.0.1:9222`.
+Only `chrome://newtab/` was initially open. No window/focus/Space/osascript
+action occurred and MATLAB remained unchanged. Architect handed the live CDP
+endpoint and canonical deployed URL to E2E Tester for background-only target
+classification.
+
+Follow-up confirmed the lifecycle mechanism: Chrome stays alive only while the
+unified PTY owner session is retained. With a fresh second profile and retained
+PTY, `/json/version` passed twice and E2E attached successfully. The canonical
+URL redirected to `https://engee.com/account/login`; classification is
+`authentication-required`, not maintenance or product failure. No runtime spec
+ran. Closing the PTY immediately removed the 9222 listener. Future runtime E2E
+requires a retained DevOps PTY plus an already authenticated authorized target
+tab.
 
 ## Cascade 2
 

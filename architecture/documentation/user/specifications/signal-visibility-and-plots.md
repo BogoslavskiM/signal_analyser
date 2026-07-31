@@ -11,11 +11,14 @@
 - Time и Spectrum отображают отдельный цветной trace каждого видимого сигнала
   и легенду.
 - Spectrogram и Persistence относятся к выбранному видимому сигналу.
-- Сетка всегда 2×2; MATLAB docking/multi-layout не переносится.
+- Можно добавлять, выбирать и закрывать Display pages; на активной странице
+  расположен один график. MATLAB docking/multi-layout пока не переносится.
+- Тип графика, selected signal и checkbox membership принадлежат активной
+  Display page и восстанавливаются при возврате на неё.
 - После готовности Plotly не виден текст `Подготовка графика…`.
-- Plotly `3.1.0` загружается local-first из vendored cartesian dist; CDN
-  используется только как fallback. Эта поставка `implemented`, но пока не
-  `verified` Tester и не `deployed`.
+- Plotly `3.1.0` загружается только из vendored cartesian dist; runtime CDN
+  fallback запрещён. При local failure показывается стабильное error state.
+  Эта поставка `implemented`, но пока не проверена runtime E2E и не deployed.
 
 ## Revision-safe API
 
@@ -37,26 +40,37 @@
 - multi-signal Time-Frequency и Persistence disabled;
 - повторный import переменной с тем же именем запрашивает overwrite.
 
-Неопределённости: точные evidence paths доступны во внутреннем research
-handoff, но не были переданы в текст этого документа; ранние команды создания
-подтверждены итоговым состоянием, а полный screenshot каждого per-command
-guard отсутствует. Полный guard evidence имеется только для финальной команды.
+Сохранённый внутренний сценарий SA-UI-003 содержит точные docs sources,
+фактические defaults/transitions и screenshot inventory. Ранние команды первого
+цикла подтверждены итоговым состоянием, а новый Cycle 5 уже содержит полный
+focus → pre-input Enter → English/ASCII → type → visual verify → execution
+Enter guard для созданных `sa5_*` переменных. На детерминированном 15-sample
+сигнале Signal Statistics по умолчанию показал Minimum, Maximum и Mean:
+minimum `-2` в `12 s`, maximum `3` в `5 s`, расчётный oracle mean равен `1/3`.
+Попытки включить Median и открыть Peaks settings не дали надёжно подтверждённой
+смены состояния и потому не считаются наблюдаемым контрактом.
 
 ## Code anchors и проверки
 
 - `lib/services/signal_analyser_service.jl`:
   `signal_analyser_validate_visible_signals!`,
   `validate_signal_analyser_view_payload`, `apply_signal_analyser_view!`,
-  `signal_analyser_multi_trace_payload`.
-- `public/js/app.js`: queue/revision mutation и Plotly rendering.
+  `apply_signal_analyser_display!`, `signal_analyser_multi_trace_payload`,
+  `signal_measurements_snapshot` и `signal_measurements_payload`.
+- `lib/domain/signal_analyser_state.jl`: `SignalAnalyserDisplayState` и typed
+  `SignalMeasurementsSnapshot` invariants.
+- `public/js/app.js`: Display queue/revision mutation, local bottom tabs,
+  measurement rows и Plotly rendering.
 - `public/js/vendor/plotly-cartesian-3.1.0.min.js`: vendored official npm
   artifact; SHA-256 `c462b40a1a542e16c3533f97d39fbbb91af4f5267f3cbf23bd70d785efc44c38`.
 - `test/back/lib/signal_analyser_service_test.jl` и
   `test/back/app/signal_analyser_api_test.jl`: unit/API contract.
-- `test/front/public/js/app.behavior.test.js`: multi-trace и placeholder ready.
-- `test/playwright/specs/signal_analyser/visibility_cascade.test.js`: runtime
-  E2E подготовлен, но ещё не выполнен на target второго каскада.
+- `test/front/public/js/app.behavior.test.js`: Display-local state,
+  measurements, local-only Plotly и failure state; front gate 2/2 PASS.
+- `test/playwright/specs/signal_analyser/display_pages.test.js`,
+  `measurements_statistics.test.js`, `plotly_local_delivery.test.js`: syntax и
+  support PASS; runtime требует authenticated target.
 
-Связано с [DEC-20260731-003](../decisions/DEC-20260731-003-fixed-grid-visibility.md),
-[DEC-20260731-006](../decisions/DEC-20260731-006-local-first-plotly.md) и
+Связано с [DEC-20260731-009](../decisions/DEC-20260731-009-display-pages.md),
+[DEC-20260731-010](../decisions/DEC-20260731-010-local-only-plotly.md) и
 [traceability](../traceability/signal-analyser-cascades.md).

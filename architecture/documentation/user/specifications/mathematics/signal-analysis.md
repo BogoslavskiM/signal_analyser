@@ -36,6 +36,14 @@
    края через rounded indices. Code anchors:
    `signal_analyser_bounded_indices`, `signal_analyser_bounded_line`,
    `signal_analyser_bounded_heatmap`.
+6. Raw statistics вычисляются до любого plot-прореживания. Для вещественного
+   сигнала `y[k]=Re(x[k])`, для комплексного `y[k]=|x[k]|`. Минимум и максимум
+   используют первый индекс совпадения; API index нулевой, `t_k=k/f_s`.
+   Среднее `mean(y)=N⁻¹Σy[k]` не имеет sample/time position. Единицы значения
+   безразмерные (`1`), времени — секунды. Typed invariants находятся в
+   `SignalMeasurementPosition`, `SignalMeasurementItem` и
+   `SignalMeasurementsSnapshot`; расчёт — `signal_measurements_snapshot`,
+   API mapping — `signal_measurements_payload`.
 
 ## Defaults
 
@@ -51,13 +59,21 @@
 объявляет one-sided mode и не выполняет собственную FFT/PSD нормализацию:
 spectral estimate делегирован EngeeDSP.
 
+Для raw statistics пустые/non-finite samples и неположительная либо
+неконечная `f_s` отвергаются до публикации view/display mutation. Позиции
+экстремума обязательны и неотрицательны; mean позиции не имеет. Snapshot
+сохраняет строгий порядок minimum, maximum, mean и согласован с revision и
+selected signal.
+
 ## Verification evidence
 
 - `test/back/lib/signal_analyser_service_test.jl`: orientation, dB conversion,
-  finite values, persistence range, plots и multi-trace payload.
+  finite values, persistence range, plots, multi-trace payload, raw statistics
+  и atomic invalid-selection regression; полный gate 504/504 PASS.
 - `test/engee/engee_package_contract_tests.jl`: реальный contract
-  `power`/`spectrogram`/`persistence`, two-sided axes и matrix shapes; локально
-  2026-07-31 test не запущен успешно из-за отсутствия discoverable EngeeDSP.
+  `power`/`spectrogram`/`persistence`, two-sided axes и matrix shapes. Локально
+  пакет не discoverable; повторный read-only prod runtime contract PASS для
+  версии `0.72.0`: power 129, spectrogram 1024×29, persistence 256×1024.
 - Первая prod-версия: EngeeDSP evidence и E2E 6/6, SHA `0606d47`.
 
 ## Источники и наблюдаемые различия
