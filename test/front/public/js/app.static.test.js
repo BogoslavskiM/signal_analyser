@@ -20,6 +20,14 @@ module.exports = async function testSignalAnalyserStaticContract(assert) {
 
   assert(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(css), "plot grid must have two fixed columns");
   assert(/grid-template-rows:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(css), "plot grid must have two fixed rows");
+  const hiddenAttributeRule = Array.from(css.matchAll(/([^{}]+)\{([^{}]*)\}/g)).some(([, selector, declarations]) =>
+    selector.split(",").some((part) => part.trim() === "[hidden]")
+      && /\bdisplay\s*:\s*none\s*!important\b/i.test(declarations)
+  );
+  assert(
+    hiddenAttributeRule,
+    "CSS must enforce display: none !important for [hidden] so loader and error visibility cannot be overridden"
+  );
   assert(!html.includes("role=\"tab\""), "the four plots must not be represented as tabs");
   assert(!html.includes("data-layout") && !html.includes("layout-chooser"), "layout chooser must not be present");
 

@@ -63,6 +63,7 @@
 .signal-row { cursor: pointer; }.signal-row:hover td { background: #f7fbff; }.signal-row.is-selected td { background: var(--accent-soft); }.signal-row.is-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .color-swatch { width: 19px; height: 19px; display: block; border: 1px solid rgba(0,0,0,.12); border-radius: 2px; background: var(--signal-color); }.signal-empty { color: var(--muted); text-align: center !important; }
 
+[hidden] { display: none !important; }
 .app-status { min-height: 0; display: flex; align-items: center; padding: 0 20px; background: var(--surface); }
 .app-loading, .app-error { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }.app-error { color: var(--danger); }.spinner { width: 12px; height: 12px; border: 2px solid #b9d8ef; border-top-color: var(--accent); border-radius: 50%; animation: app-spin 800ms linear infinite; }.retry-button { min-height: 24px; padding: 2px 8px; border: 1px solid currentColor; border-radius: 4px; background: var(--surface); color: inherit; cursor: pointer; }.retry-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 @keyframes app-spin { to { transform: rotate(360deg); } }
