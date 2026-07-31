@@ -115,3 +115,19 @@ base/auth maintenance shell является target app/proxy failure, веро�
 app-side 5xx, даже с HTTP 200. При недоступном base/auth contour это platform
 outage. После start/redeploy DevOps повторяет target probe и передаёт исходный
 scenario E2E Tester на rerun.
+
+## Local checkpoints autonomous cycle 2 — 2026-07-31
+
+Product/test checkpoints were created with exact accepted scopes and no external
+transfer:
+
+- `651943d` — Display pages, raw measurements and local-only Plotly tests;
+- `ab87889` — accessibility plus Engee `findpeaks` evidence matrix;
+- `d9fbcd9` — Cascade 4 typed Peaks backend, frontend and tests.
+
+Latest accepted gates: backend 553/553, frontend 2/2, Engee matrix 16/16,
+Playwright syntax/support/runner help and diff PASS. Branch is ahead of upstream;
+push remains blocked on explicit exact external payload/destination approval.
+Deploy/merge remain separate explicit decisions. Runtime E2E additionally needs
+an authenticated retained CDP tab; the unauthenticated canonical target redirects
+to `account/login`.

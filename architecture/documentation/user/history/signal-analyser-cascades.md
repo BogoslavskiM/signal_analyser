@@ -81,3 +81,26 @@
   settings не подтверждены после bounded attempts и исключены из claims.
 - Это evidence поддерживает существующий P0, но не расширяет product scope на
   Median, peak-to-peak, RMS или Peaks.
+
+## 2026-07-31 — MATLAB active-display portability evidence
+
+- SA-UI-006 подтвердил page-scoped checkbox membership и measurement context:
+  при смене active display они remap/restore, а неактивные plots сохраняются.
+- Row selection остаётся независимым и может указывать на unchecked сигнал
+  активного display.
+- MATLAB grid/docking остаётся layout-specific; product lifecycle Display pages
+  определяется DEC-009 и reference images.
+
+## 2026-07-31 — Cascade 4 P0 Peaks
+
+- Official Engee reference и prod MIND подтвердили
+  `EngeeDSP.Functions.findpeaks(...; out=:data)` и result Ypk/Xpk/Wpk/Ppk.
+- `implemented`: lazy per-Display Time-only capability через существующий
+  `/api/view`, typed OOP provider, atomic rollback, zero-based items, локальная
+  Peaks table и backend-driven Plotly markers; endpoint/fallback отсутствуют.
+- `verified locally`: backend 553/553, frontend 2/2, Engee matrix 16/16,
+  Playwright syntax/support PASS; compiled prod lazy-load pattern PASS.
+- Local product/test checkpoint: `d9fbcd9`; accessibility/evidence checkpoint:
+  `ab87889`. Push/deploy не выполнялись, runtime E2E auth-blocked.
+- Engee reference keyword mismatch `Npeaks`/`NPeaks` зарегистрирован как
+  confirmed documentation bug `ENGEE-20260731-002`.

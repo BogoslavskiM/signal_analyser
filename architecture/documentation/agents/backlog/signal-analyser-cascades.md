@@ -12,9 +12,9 @@ Owner: Architect
 1. Cascade 3 P0 exact snapshot raw statistics is locally gated and committed at
    `651943d`: backend 504/504, frontend 2/2 and Playwright static/support PASS.
    Runtime awaits an authenticated retained CDP target and a later deploy.
-2. Cascade 4: define peaks as a specialized EngeeDSP
-   `Functions.findpeaks` contract. Do not add endpoint/state shape or fallback
-   before actual signature/default/error evidence and contract tests.
+2. Cascade 4 P0 per-Display Peaks is implemented and locally committed as
+   `d9fbcd9`: existing `/api/view`, typed lazy Engee adapter, additive snapshot,
+   table and backend markers; no endpoint/fallback. Extended settings stay later.
 3. Later additive slice: display-local Normalize Y, global markers/cursors and
    dependent controls.
 4. Display pages with one active graph host and per-display membership are in
@@ -62,9 +62,8 @@ Owner: Architect
 
 ## MATLAB research backlog
 
-- Consume the structured SA-UI-005 handoff from MATLAB Researcher
-  `/root/matlab_cycle`; the saved scenario is already present in the researcher
-  output store and the exact fields remain pending relay into this registry.
+- SA-UI-005 and SA-UI-006 structured handoffs are consumed. SA-UI-007 active
+  membership clear/recovery is in progress in `/root/matlab_cycle`.
 - Current deterministic evidence is sufficient for existing P0
   Minimum/Maximum/Mean. Median, peak-to-peak and RMS are future additive
   statistics; do not add them without a separately accepted scope.
@@ -77,3 +76,6 @@ Owner: Architect
   formula oracle mean `1/3`. Peaks controls are time-domain dependent. Median
   and Peaks settings were not confirmed within the three-attempt guard and must
   not be reported as observed behavior.
+- SA-UI-006 confirms active-Display checkbox/measurement remapping, inactive
+  plot preservation and row-selection independence. Product add/close/fallback
+  remains governed by DEC-009 rather than MATLAB grid geometry.

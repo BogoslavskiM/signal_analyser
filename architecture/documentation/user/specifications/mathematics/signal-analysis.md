@@ -44,6 +44,13 @@
    `SignalMeasurementPosition`, `SignalMeasurementItem` и
    `SignalMeasurementsSnapshot`; расчёт — `signal_measurements_snapshot`,
    API mapping — `signal_measurements_payload`.
+7. Peaks P0 использует тот же полный raw ordinate и делегирует поиск
+   `EngeeDSP.Functions.findpeaks(y; out=:data)`. Package result
+   `(Ypk,Xpk,Wpk,Ppk)` переводится в product item:
+   `sample_index=Xpk-1`, `time_s=sample_index/f_s`, `value=Ypk`,
+   `width_samples=Wpk`, `prominence=Ppk`. Default occurrence order и first
+   sample flat plateau сохраняются. Peak ID равен `peak-<sample_index>`.
+   Вычисление выполняется только при `peaks_enabled=true`; fallback отсутствует.
 
 ## Defaults
 
@@ -65,16 +72,28 @@ spectral estimate делегирован EngeeDSP.
 сохраняет строгий порядок minimum, maximum, mean и согласован с revision и
 selected signal.
 
+Peaks query требует не менее трёх конечных raw samples и положительную конечную
+`f_s`. Provider arrays имеют одинаковую длину; locations уникальны, находятся
+в сигнале и следуют occurrence order; width/prominence неотрицательны и
+конечны. Typed snapshot согласован с revision, active Display, selected signal
+и capability flag. Любая ошибка проверяется до публикации mutation/cache.
+
 ## Verification evidence
 
 - `test/back/lib/signal_analyser_service_test.jl`: orientation, dB conversion,
   finite values, persistence range, plots, multi-trace payload, raw statistics
-  и atomic invalid-selection regression; полный gate 504/504 PASS.
+  и atomic invalid-selection/Peaks provider regressions; полный gate 553/553
+  PASS.
 - `test/engee/engee_package_contract_tests.jl`: реальный contract
   `power`/`spectrogram`/`persistence`, two-sided axes и matrix shapes. Локально
   пакет не discoverable; повторный read-only prod runtime contract PASS для
   версии `0.72.0`: power 129, spectrogram 1024×29, persistence 256×1024.
 - Первая prod-версия: EngeeDSP evidence и E2E 6/6, SHA `0606d47`.
+- `test/engee/findpeaks_contract_matrix.jl`: prod MIND подтвердил namespace,
+  `out=:data`, exact result shape, 1-based/default/x/Fs coordinates, plateau,
+  options и safe errors; evidence matrix 16/16 PASS.
+- Compiled lazy adapter pattern `Base.require` + `Base.invokelatest` повторён на
+  prod MIND и вернул expected `Ypk=[1,2,3]`, `Xpk=[2,4,8]` без world-age error.
 
 ## Источники и наблюдаемые различия
 
@@ -86,6 +105,8 @@ selected signal.
   platform package version `0.72.0`, UUID
   `f9bbbd0e-0dd6-4072-898a-88f8f1250a99`, module path
   `/usr/local/ijulia-core/packages/EngeeDSP/XobDm/src/EngeeDSP.jl`.
+- Engee `findpeaks` reference:
+  https://engee.com/helpcenter/stable/en/func-dsp-measurements-and-feature-extraction/func-findpeaks.html
 
 MATLAB bounded cycle подтвердил три Time traces, но multi-signal
 Time-Frequency/Persistence оказался disabled. Это UI reference delta, а не
@@ -100,3 +121,6 @@ environment version `0.72.0`; registry General не содержит UUID, а pa
 source задаётся internal `[sources]`. Local unit использует mock, real contract
 на target обязателен. Это [dependency/portability limitation](../../engee_bugs/ENGEE-20260731-001-engeedsp-project-discovery.md),
 не подтверждённый дефект Engee.
+
+Keyword spelling mismatch reference/runtime зарегистрирован отдельно как
+[ENGEE-20260731-002](../../engee_bugs/ENGEE-20260731-002-findpeaks-npeaks-casing.md).

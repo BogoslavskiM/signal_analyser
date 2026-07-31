@@ -132,3 +132,22 @@ with title `Личный кабинет | Engee`; no app shell was observable. T
 authentication prerequisite, not a maintenance/app regression. No body/API
 payload was exported, no product spec ran and local `651943d` expectations were
 not applied to the older unavailable target context.
+
+## Cascade 4 P0 Peaks static contract — 2026-07-31
+
+goal: Prepare runtime user scenario without fabricating selectors or provider
+results.
+scope: `test/playwright/e2e.config.js`, support contract and
+`specs/signal_analyser/peaks_p0.test.js`.
+contracts: One revision-safe POST `/api/view` per toggle, no `/api/peaks`, exact
+root/display/revision/signal/item scope, zero-based ordered finite items,
+backend marker meta, local bottom navigation with zero API calls, Time-only
+lifecycle and cleanup.
+changes: Registered final Frontend selectors/capability and added the complete
+scenario with timing logs. It validates DOM fields against direct authoritative
+snapshot and Plotly trace meta/coordinates.
+verification: All Playwright JS syntax, support contract, runner help and diff
+PASS. Runtime intentionally not run because canonical target redirects to login.
+risks: Authenticated retained CDP target plus deployed C4 SHA are prerequisites.
+follow-ups: DevOps deployment/auth handoff, then run `peaks_p0` and preserve
+timing/network evidence.

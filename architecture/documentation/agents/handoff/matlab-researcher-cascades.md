@@ -152,3 +152,40 @@ columns; popup coordinate selection remains blocked in this geometry.
 next_task_candidates: SA-UI-006 separates portable selection/membership/page
 semantics from MATLAB Display Grid; later retest derived metrics only with
 stable targeting, and resume SA-UI-004A only after clicker calibration.
+
+## Autonomous cycle 2 saved scenario SA-UI-006 — 2026-07-31
+
+goal: Establish portable active-display selection and membership semantics
+without adopting MATLAB grid geometry.
+system_path: `/Users/makar/work/matlab_clicker/research_output/signal-analyzer-reference-scenarios/scenarios/SA-UI-006-selection-membership-active-display-portability.md`.
+sha256: `b64d4f167242ce9d0181f6753163881b1d7044ad8c86688f8199f4df0302f78f`.
+docs_sources: Official MathWorks `select-signals-to-analyze`, `explore-signals`
+and `customize-signal-analyzer` pages, reached through external web only.
+clicker_setup: Existing MATLAB R2024b Signal Analyzer, server bootstrap reread,
+native drag, `exclusive_mouse=true`, `restore_mouse_after_run=true`, visible
+verification after every meaningful action. No Command Window input occurred.
+observed_undocumented_behavior: Imported secondary timetable remained unplotted
+until its child checkbox was checked in the active empty cell. Primary
+plot/statistics survived in the first cell; secondary survived in the second.
+Returning to the first cell remapped checkboxes to that cell and restored its
+measurement context. Row selection remained on secondary while it was unchecked
+there, proving selection and membership independence.
+docs_vs_app_delta: Docs describe selection, checkbox plotting to selected
+display and multiple/customizable displays, but not exact checkbox remapping or
+measurement restoration transitions.
+portable_behavior: Keep selected signal, active Display page and
+membership(page, signal) independent; derive table checkboxes from active page;
+preserve inactive pages; measurements follow active page.
+matlab_layout_specific: Fixed grid cells and docking remain comparison-only and
+are not target requirements under DEC-009.
+product_tasks: Current Display-page implementation must preserve page-scoped
+membership, inactive-page plots, independent row selection and page-scoped
+measurements; lifecycle add/close/fallback follows project contracts, not MATLAB
+grid inference.
+e2e_scenarios: Switch between two product Display pages with different members,
+assert checkbox remapping, inactive-page preservation, independent selected row
+and measurement scope restoration.
+risks: MATLAB grid does not directly specify product page add/remove/rename or
+active fallback semantics.
+next_task_candidates: SA-UI-007 clears active membership, proves other display
+and inventory preservation, then re-adds and verifies recovery.

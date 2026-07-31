@@ -89,3 +89,23 @@ values may not be used as identifiers. Graph markers require backend-provided
 geometry and are not inferred in frontend. Transport, lifecycle, result schema,
 units, settings and marker contract remain unresolved Backend inputs. Until
 those exist, `find-peaks-action` is only a visual integration point.
+
+## Cascade 4 P0 Peaks UI — 2026-07-31
+
+goal: Consume the frozen authoritative Peaks snapshot without frontend math.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Existing revision queue sends `peaks_enabled` through `/api/view`;
+action is Time-only; root/display/item scope is backend-owned; no endpoint,
+fallback, CDN or extended settings.
+changes: `find-peaks-action` now has pressed/busy/disabled/rollback semantics.
+Added hidden local `peaks-panel-tab`, labelled panel, loading/error/empty/table
+states, roving keyboard integration, horizontally accessible table and scoped
+marker trace using backend item coordinates. Plotly trace meta identifies
+`peak-marker-trace`, Display and signal. Non-Time clears capability; successful
+enable opens Peaks, disable restores Signals if necessary.
+selectors: `peaks-panel-tab`, `peaks-panel`, `peaks-table`, state selectors,
+`peak-row-<backend-id>`, field data attributes, app/table revision and scope.
+verification: JS syntax, diff and frontend 2/2 PASS; Tester and Playwright static
+contracts consume the same selectors.
+risks: Runtime Plotly/DOM evidence awaits authenticated deployed target.
+follow-ups: Runtime C4 E2E; thresholds/settings/Label Peaks remain separate.

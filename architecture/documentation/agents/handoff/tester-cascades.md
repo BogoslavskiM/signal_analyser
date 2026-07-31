@@ -74,3 +74,21 @@ handoffs; no further eligible local slice until new product/research evidence.
 Focused regression: selecting a hidden signal with a NaN raw sample through
 both view and display preparation fails before publication and preserves the
 entire authoritative state/cache/snapshot fingerprint. New group PASS 6/6.
+
+## Cascade 4 P0 freeze verification — 2026-07-31
+
+goal: Freeze typed provider, atomic state, API and frontend consumption.
+scope: `test/back/**`, `test/front/**`; prod evidence matrix already resides in
+`test/engee/findpeaks_contract_matrix.jl`.
+coverage: Disabled lazy no-call; full 1100 raw samples beyond plot bound; real
+and complex-magnitude queries; 1-based to zero-based mapping/time/width/
+prominence/id; exact snapshot/display keys; empty result; no-op/stale/invalid
+boolean/unknown fields/non-Time rejection/no endpoint; provider failure during
+enable and selected-signal change; exact rollback fingerprint; one-enabled and
+one-disabled Display switch away/back. Front tests cover revision request,
+pressed/local panel lifecycle, table/marker backend scope and no JS algorithm.
+verification: Backend 553/553 PASS; frontend 2/2 PASS; direct Engee evidence
+matrix 16/16 PASS; diff PASS.
+risks: Prod app path is not runtime-exercised; package and compiled lazy adapter
+were independently verified in prod MIND.
+follow-ups: Runtime E2E on accepted/authenticated deployment.

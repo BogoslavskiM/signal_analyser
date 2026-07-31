@@ -19,6 +19,9 @@
   reference context, но не требование к Genie UI.
 - Time и spectrum могут содержать отдельные traces всех visible signals;
   spectrogram и persistence относятся к selected visible signal.
+- Find Peaks — явно включаемая time-domain capability активной Display page.
+  Она использует только EngeeDSP provider, публикует таблицу и markers из
+  backend snapshot и не имеет скрытого JavaScript/Julia fallback.
 ## Исследовательская основа
 
 Official MathWorks docs исследуются через internet вне MATLAB и формируют

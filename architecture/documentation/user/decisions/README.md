@@ -13,4 +13,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260731-008: универсальный каталог скиллов](DEC-20260731-008-universal-skill-catalog.md)
 - [DEC-20260731-009: страницы Display с одним графиком](DEC-20260731-009-display-pages.md)
 - [DEC-20260731-010: локальная Plotly без CDN](DEC-20260731-010-local-only-plotly.md)
+- [DEC-20260731-011: lazy per-Display EngeeDSP Peaks](DEC-20260731-011-lazy-engeedsp-peaks.md)
 - [Шаблон ADR](template.md)

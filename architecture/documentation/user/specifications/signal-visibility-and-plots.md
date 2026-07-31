@@ -1,6 +1,6 @@
 # SPEC-SA-UI-001: видимость, выбор и графики сигналов
 
-Статус: `implemented`, локально `verified`, второй каскад не `deployed`  
+Статус: `implemented`, локально `verified`, текущие каскады не `deployed`
 Дата актуальности: 2026-07-31
 
 ## Интерфейс
@@ -19,6 +19,10 @@
 - Plotly `3.1.0` загружается только из vendored cartesian dist; runtime CDN
   fallback запрещён. При local failure показывается стабильное error state.
   Эта поставка `implemented`, но пока не проверена runtime E2E и не deployed.
+- `Find peaks` доступен только для Time и переключает per-Display capability.
+  При успехе открывается локальная вкладка Peaks с backend-provided table и
+  marker trace. Переход на другой тип графика выключает Peaks; thresholds,
+  sorting, settings и Label Peaks в текущий срез не входят.
 
 ## Revision-safe API
 
@@ -26,7 +30,15 @@
 `visible_signals`; дополнительно допустимы `selected_signal` и `active_plot`.
 Массив видимости непустой, состоит из уникальных известных строк. При попытке
 скрыть selected backend детерминированно выбирает первый видимый сигнал в
-каноническом порядке таблицы. Stale revision не меняет state.
+каноническом порядке таблицы. Additive boolean `peaks_enabled` управляет
+time-domain Peaks; новый endpoint не создаётся. Stale revision или provider
+failure не меняют state.
+
+Authoritative snapshot всегда содержит `peaks` с полями `enabled`,
+`state_revision`, `display_id`, `signal_name`, `ordinate`, `units`, `items`.
+Disabled state имеет пустой `items` и не загружает EngeeDSP. Peak item содержит
+stable `id`, zero-based `sample_index`, `time_s`, `value`, `width_samples` и
+`prominence`.
 
 ## Наблюдения MATLAB Signal Analyzer
 
@@ -37,6 +49,10 @@
 - Time display фактически показал три сигнала;
 - selection, membership текущего display и active display являются
   независимыми состояниями;
+- checkbox membership и measurement context восстанавливаются при возврате к
+  display, а графики неактивного display сохраняются;
+- выбранная строка может относиться к сигналу, который не включён checkbox в
+  активном display;
 - multi-signal Time-Frequency и Persistence disabled;
 - повторный import переменной с тем же именем запрашивает overwrite.
 
@@ -57,6 +73,10 @@ minimum `-2` в `12 s`, maximum `3` в `5 s`, расчётный oracle mean р�
   `validate_signal_analyser_view_payload`, `apply_signal_analyser_view!`,
   `apply_signal_analyser_display!`, `signal_analyser_multi_trace_payload`,
   `signal_measurements_snapshot` и `signal_measurements_payload`.
+- `lib/domain/signal_analyser_state.jl`: typed Peaks query/provider result/item,
+  snapshot, per-Display invariant и injectable provider collaborator.
+- `lib/services/signal_analyser_service.jl`: lazy EngeeDSP adapter, zero-based
+  mapping, Peaks payload и atomic view/display preparation.
 - `lib/domain/signal_analyser_state.jl`: `SignalAnalyserDisplayState` и typed
   `SignalMeasurementsSnapshot` invariants.
 - `public/js/app.js`: Display queue/revision mutation, local bottom tabs,
@@ -69,8 +89,10 @@ minimum `-2` в `12 s`, maximum `3` в `5 s`, расчётный oracle mean р�
   measurements, local-only Plotly и failure state; front gate 2/2 PASS.
 - `test/playwright/specs/signal_analyser/display_pages.test.js`,
   `measurements_statistics.test.js`, `plotly_local_delivery.test.js`: syntax и
-  support PASS; runtime требует authenticated target.
+  support PASS; `peaks_p0.test.js` добавляет revision/scope/table/marker
+  contract. Runtime требует authenticated target.
 
 Связано с [DEC-20260731-009](../decisions/DEC-20260731-009-display-pages.md),
 [DEC-20260731-010](../decisions/DEC-20260731-010-local-only-plotly.md) и
+[DEC-20260731-011](../decisions/DEC-20260731-011-lazy-engeedsp-peaks.md) и
 [traceability](../traceability/signal-analyser-cascades.md).

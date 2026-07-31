@@ -78,3 +78,33 @@ risks: Empty/nonpositive-rate variants share the same invariant class but only
 the NaN path has the focused mutation regression.
 follow-ups: Peaks remains blocked on a proven public Engee/domain function
 contract.
+
+## Cascade 4 P0 Peaks implementation — 2026-07-31
+
+goal: Add evidence-backed time-domain Peaks through a typed OOP boundary and
+atomic publication.
+scope: `lib/domain/signal_analyser_state.jl` and
+`lib/services/signal_analyser_service.jl` only.
+contracts: `/api/view` accepts additive boolean `peaks_enabled`; no endpoint.
+Every Display owns the flag, default false. Root snapshot always exposes exact
+`peaks` scope/units/items; disabled means empty items and no provider call.
+Peaks is Time-only and other plots disable it.
+changes: Added immutable query/provider-result/item/units/snapshot,
+`AbstractPeaksProvider`, lazy `EngeeDSPPeaksProvider`, injectable
+`SignalPeaksService{P}` and Display invariant operation. Dict remains mapper
+only. Production adapter uses `Base.require` plus `Base.invokelatest` and no
+fallback/dependency edit.
+mathematics: Real ordinate is `Re(x)`, complex is `abs(x)`, full raw samples.
+`Xpk-1` becomes zero-based sample index, `time=index/fs`, Wpk is width_samples,
+Ppk is prominence, ID is `peak-<index>`, occurrence order is preserved.
+atomicity: Stale check and complete plot/measurement/peaks preparation precede
+publication. Provider/package/malformed-result failures preserve revision,
+Display, selection, membership, flag and cache. Disabled path is lazy.
+verification: Parse/diff PASS; integrated backend 553/553 PASS including
+provider failure, complex magnitude, one-enabled/one-disabled Display switch,
+empty result and API validation. Independent prod compiled lazy-path probe
+returned expected Ypk/Xpk/Wpk/Ppk without world-age.
+risks: Runtime application E2E still requires authenticated deployed target;
+extended peak settings remain out of scope.
+follow-ups: Local product checkpoint, documentation, later authorized deploy
+and runtime Peaks scenario.
