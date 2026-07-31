@@ -215,6 +215,7 @@ async function testVisibilityCascade({ appUrl, assert, config, log, page, step, 
 }
 
 testVisibilityCascade.requiredFeatures = [
+  "legacy-fixed-workspace",
   "layout-geometry",
   "frontend-state-management",
   "inspector-ui",

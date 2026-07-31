@@ -78,6 +78,6 @@ async function testShellLayout({ appUrl, assert, config, log, page, step, useCur
   });
 }
 
-testShellLayout.requiredFeatures = ["layout-geometry", "graph-output-zone"];
+testShellLayout.requiredFeatures = ["legacy-fixed-workspace", "layout-geometry", "graph-output-zone"];
 
 module.exports = testShellLayout;

@@ -69,6 +69,6 @@ async function testActiveDisplay({ appUrl, assert, config, log, page, step, useC
   }
 }
 
-testActiveDisplay.requiredFeatures = ["frontend-state-management", "graph-output-zone"];
+testActiveDisplay.requiredFeatures = ["legacy-fixed-workspace", "frontend-state-management", "graph-output-zone"];
 
 module.exports = testActiveDisplay;

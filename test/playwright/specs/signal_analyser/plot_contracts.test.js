@@ -94,6 +94,6 @@ async function testPlotContracts({ appUrl, assert, config, log, page, step, useC
   });
 }
 
-testPlotContracts.requiredFeatures = ["graph-output-zone", "reference-scenarios"];
+testPlotContracts.requiredFeatures = ["legacy-fixed-workspace", "graph-output-zone", "reference-scenarios"];
 
 module.exports = testPlotContracts;

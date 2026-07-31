@@ -9,6 +9,14 @@ module.exports = {
     pageUrlMatch: "/user/apps/signal_analyser",
     testIds: {
       shell: "app-shell",
+      displayTabs: "display-tabs",
+      addDisplay: "add-display",
+      displayCanvas: "display-canvas",
+      displayPlotTitle: "display-plot-title",
+      activePlotHost: "active-plot-host",
+      plotTypeSelect: "plot-type-select",
+      settingsViewSelect: "settings-view-select",
+      toggleAllSignals: "toggle-all-signals",
       plotGrid: "plot-grid",
       plotCards: {
         time: "plot-card-time",
@@ -60,7 +68,7 @@ module.exports = {
     "settings-controls": false,
     "measurements-statistics": false,
     "inspector-ui": true,
-    "multi-page-element": false,
+    "multi-page-element": true,
     "graph-output-zone": true,
     "output-loading-flow": true,
     "dialog-system": false,
@@ -68,5 +76,9 @@ module.exports = {
     "session-import-export-ui": false,
     "object-export-dialog": false,
     "reference-scenarios": true,
+    // The legacy four-card specs remain loadable but must not run against the
+    // single-graph-per-Display workflow.
+    "legacy-fixed-workspace": false,
+    "signal-analyser-displays": true,
   },
 };

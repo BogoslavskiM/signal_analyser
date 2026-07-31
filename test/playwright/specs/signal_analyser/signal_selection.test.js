@@ -68,6 +68,6 @@ async function testSignalSelection({ appUrl, assert, config, log, page, step, us
   }
 }
 
-testSignalSelection.requiredFeatures = ["frontend-state-management", "inspector-ui", "graph-output-zone"];
+testSignalSelection.requiredFeatures = ["legacy-fixed-workspace", "frontend-state-management", "inspector-ui", "graph-output-zone"];
 
 module.exports = testSignalSelection;
