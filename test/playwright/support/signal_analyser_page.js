@@ -105,6 +105,15 @@ function endpointMatches(response, endpoint, method) {
   }
 }
 
+function isApiRequestUrl(request) {
+  const url = typeof request === "string" ? request : request.url();
+  try {
+    return /(?:^|\/)api\//.test(new URL(url).pathname);
+  } catch (_error) {
+    return /(?:^|\/)api\//.test(url.split(/[?#]/, 1)[0]);
+  }
+}
+
 function waitForApi(page, config, endpoint, method) {
   return page.waitForResponse(function (response) {
     return endpointMatches(response, endpoint, method);
@@ -455,6 +464,9 @@ async function measurementTableState(page, config) {
     return {
       ariaLabel: element.getAttribute("aria-label") || "",
       caption: element.querySelector("caption") && (element.querySelector("caption").textContent || "").trim() || "",
+      domRowIds: Array.prototype.slice.call(element.querySelectorAll("tbody tr[data-testid]")).map(function (row) {
+        return row.getAttribute("data-testid") || "";
+      }),
       headers,
       id: element.getAttribute("data-testid") || "",
       rows: rowElements.map(function (entry) {
@@ -573,6 +585,7 @@ module.exports = {
   clickAndWaitForView,
   documentBox,
   endpointMatches,
+  isApiRequestUrl,
   logDiagnosticState,
   markPlotHosts,
   measurementLocator,

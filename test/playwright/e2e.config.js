@@ -14,6 +14,7 @@ module.exports = {
       displayCanvas: "display-canvas",
       displayPlotTitle: "display-plot-title",
       activePlotHost: "active-plot-host",
+      plotErrorState: "plot-error-state",
       plotTypeSelect: "plot-type-select",
       settingsViewSelect: "settings-view-select",
       toggleAllSignals: "toggle-all-signals",
@@ -37,6 +38,8 @@ module.exports = {
       signalVisibilityCheckboxPrefix: "signal-visibility-checkbox-",
       signalVisibilityStatePrefix: "signal-visibility-state-",
       activePlotFieldPrefix: "active-plot-field-",
+      // Kept only so disabled legacy four-card specs still load for syntax.
+      // Current DEC-009 runtime uses activePlotHost exclusively.
       plotHostPrefix: "plot-host-",
       measurements: {
         signalsTab: "signal-panel-tab-signals",
@@ -45,9 +48,9 @@ module.exports = {
         signalName: "measurements-signal-name",
         table: "measurements-table",
         rows: {
+          minimum: "measurement-row-minimum",
           maximum: "measurement-row-maximum",
           mean: "measurement-row-mean",
-          minimum: "measurement-row-minimum",
         },
       },
     },
@@ -66,7 +69,9 @@ module.exports = {
     "style-system": false,
     "frontend-state-management": true,
     "settings-controls": false,
-    "measurements-statistics": false,
+    // Cascade 3 P0: authoritative state snapshots expose selected-visible raw
+    // statistics; the bottom-tab switch itself remains entirely local.
+    "measurements-statistics": true,
     "inspector-ui": true,
     "multi-page-element": true,
     "graph-output-zone": true,

@@ -9,6 +9,11 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8");
   const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   const api = fs.readFileSync(path.join(root, "public/js/api.js"), "utf8");
+  const plotlyPath = path.join(root, "public/js/vendor/plotly-cartesian-3.1.0.min.js");
+  const plotlyLicensePath = path.join(root, "public/js/vendor/plotly-cartesian-3.1.0.LICENSE");
+  const plotly = fs.readFileSync(plotlyPath);
+  const license = fs.readFileSync(plotlyLicensePath, "utf8");
+  const crypto = require("crypto");
 
   ["app-shell", "display-tabs", "display-canvas", "active-plot-host", "plot-type-select", "settings-view-select", "signal-table", "toggle-all-signals", "bottom-panel-signals", "measurements-panel", "display-count-status", "active-display-status"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `missing stable Display UI selector ${id}`)
@@ -20,6 +25,8 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(!/\b(?:href|src)\s*=\s*["']\/(?:css|js)\//i.test(html), "frontend assets must remain Genie-relative, not root-absolute");
   assert(html.includes('./js/vendor/plotly-cartesian-3.1.0.min.js'), "Plotly must be loaded from the pinned local vendor asset before the app");
   assert(html.indexOf('./js/vendor/plotly-cartesian-3.1.0.min.js') < html.indexOf('./js/app.js'), "local Plotly must load before app.js");
+  assert(crypto.createHash("sha256").update(plotly).digest("hex") === "c462b40a1a542e16c3533f97d39fbbb91af4f5267f3cbf23bd70d785efc44c38", "the bundled Plotly artifact must retain its reviewed SHA-256");
+  assert(license.includes("MIT License") && license.includes("Plotly Technologies Inc."), "the bundled Plotly artifact must retain its matching MIT license notice");
 
   assert(api.includes('request("./api/state")'), "state API must use ./api/state");
   assert(api.includes('request("./api/view", {'), "view API must use ./api/view");
@@ -34,5 +41,8 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(app.includes("data-signal-visibility") && app.includes("visible_signals"), "checkbox actions must update active Display membership");
   assert(app.includes("payload.current") && app.includes("status===409"), "stale API responses must canonicalize from the authoritative snapshot");
   assert(app.includes("moduleName") && app.includes("window.Plotly"), "the local Plotly UMD moduleName export must normalize before rendering");
+  assert(app.includes("loadPlotlyScript(localPlotlyUrl())"), "Plotly recovery must address only the pinned local artifact");
+  assert(!/https?:\/\/|cdn\./i.test(app), "Plotly runtime must not load a CDN asset");
+  assert(app.includes("activeBottomTab") && !app.includes("api.bottom"), "bottom Signals/Measurements tabs must remain frontend-local state");
   assert(!/grid-template-(?:columns|rows)\s*:\s*repeat\(2/i.test(css), "MVP styling must not retain a fixed four-plot grid");
 };

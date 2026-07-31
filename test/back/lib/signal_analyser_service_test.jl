@@ -187,6 +187,7 @@ end
     @test configured_second["active_display_id"] == "display-2"
     @test configured_second["active_plot"] == "spectrum"
     @test configured_second["visible_signals"] == [second_name]
+    assert_p0_snapshot_measurements(configured_second, state.signals[2])
 
     selected_first = SA.apply_signal_analyser_display!(state, Dict(
         "state_revision" => 2,
@@ -198,6 +199,7 @@ end
     @test selected_first["active_plot"] == "time"
     @test selected_first["selected_signal"] == first_name
     @test selected_first["visible_signals"] == [first_name, second_name]
+    assert_p0_snapshot_measurements(selected_first, state.signals[1])
 
     restored_second = SA.apply_signal_analyser_display!(state, Dict(
         "state_revision" => 3,
@@ -210,6 +212,7 @@ end
     @test restored_second["selected_signal"] == second_name
     @test restored_second["visible_signals"] == [second_name]
     @test [trace["name"] for trace in restored_second["plot_payload"]["time_traces"]] == [second_name]
+    assert_p0_snapshot_measurements(restored_second, state.signals[2])
 end
 
 @testset "Signal Analyser Display page lifecycle is revision-safe and atomic" begin
@@ -257,6 +260,9 @@ end
     end
     @test stale isa SA.SignalAnalyserStaleStateError
     @test SA.signal_analyser_snapshot(state) == first_created
+    after_stale = SA.signal_analyser_snapshot(state)
+    @test after_stale["state_revision"] == first_created["state_revision"]
+    @test after_stale["measurements"] == first_created["measurements"]
 
     state = SA.default_signal_analyser_state()
     snapshot = SA.signal_analyser_snapshot(state)
@@ -481,4 +487,82 @@ end
     @test fallback["state_revision"] == 2
     @test fallback["selected_signal"] == "raw-real"
     assert_p0_snapshot_measurements(fallback, state.signals[1])
+end
+
+function invalid_raw_selection_state()
+    valid = SA.AnalysedSignal(
+        "valid-raw",
+        "#111111",
+        1000.0,
+        ComplexF64[1.0 + 0.0im, 2.0 + 0.0im, 3.0 + 0.0im],
+        false,
+        true,
+    )
+    invalid = SA.AnalysedSignal(
+        "invalid-raw",
+        "#222222",
+        1000.0,
+        ComplexF64[1.0 + 0.0im, NaN + 0.0im, 3.0 + 0.0im],
+        false,
+        false,
+    )
+    SA.SignalAnalyserState(
+        SA.AnalysedSignal[valid, invalid],
+        SA.SignalAnalyserViewState(0, SA.TIME_PLOT, valid.name),
+        Dict{String,Dict{String,Any}}(),
+        ReentrantLock(),
+    )
+end
+
+function state_publication_fingerprint(state)
+    (
+        revision = state.view.state_revision,
+        active_display_id = state.active_display_id,
+        active_plot = state.view.active_plot,
+        selected_signal = state.view.selected_signal,
+        displays = [
+            (
+                id = display.id,
+                active_plot = display.active_plot,
+                selected_signal = display.selected_signal,
+                visible_signals = copy(display.visible_signals),
+            )
+            for display in state.displays
+        ],
+        plot_cache = deepcopy(state.plot_cache),
+    )
+end
+
+@testset "Signal Analyser invalid raw measurements abort View and Display publication" begin
+    SA.reset_pspectrum_double!()
+    state = invalid_raw_selection_state()
+    baseline_snapshot = SA.signal_analyser_snapshot(state)
+    baseline = state_publication_fingerprint(state)
+
+    @test_throws ArgumentError SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "selected_signal" => "invalid-raw",
+        "visible_signals" => ["valid-raw", "invalid-raw"],
+    ))
+    @test state_publication_fingerprint(state) == baseline
+    @test SA.signal_analyser_snapshot(state) == baseline_snapshot
+
+    invalid_display = SA.SignalAnalyserDisplayState(
+        "display-invalid",
+        "Display invalid",
+        SA.TIME_PLOT,
+        "invalid-raw",
+        ["valid-raw", "invalid-raw"],
+    )
+    push!(state.displays, invalid_display)
+    display_baseline_snapshot = SA.signal_analyser_snapshot(state)
+    display_baseline = state_publication_fingerprint(state)
+
+    @test_throws ArgumentError SA.apply_signal_analyser_display!(state, Dict(
+        "state_revision" => 0,
+        "operation" => "select",
+        "display_id" => "display-invalid",
+    ))
+    @test state_publication_fingerprint(state) == display_baseline
+    @test SA.signal_analyser_snapshot(state) == display_baseline_snapshot
 end

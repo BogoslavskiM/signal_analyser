@@ -10,7 +10,7 @@ baseline не меняется.
 | Order | Planned feature id | User contract | Required stable selectors | Acceptance |
 |---|---|---|---|---|
 | 1 | `multi-display-tabs` | Несколько Display tabs поверх одной application workspace. | `display-tabs`, `display-tab-*`, `display-add`, `display-close-*`, `display-active-state` | Add создаёт и выбирает новый Display; click и keyboard Arrow/Enter переключают ровно один active tab; close возвращает deterministic соседний tab. |
-| 2 | `display-fixed-grid` | Каждый Display содержит тот же fixed 2x2 набор Time/Spectrum/Spectrogram/Persistence. | `display-panel-*`, existing `plot-grid`, `plot-card-*`, `plot-host-*` scoped by active display | В каждом tab ровно четыре ready plot hosts в фиксированной 2x2 геометрии; add/switch/close не добавляет layout chooser и не изменяет размеры workspace. |
+| 2 | `display-single-graph` | Каждый Display содержит один самостоятельный graph canvas выбранного типа. | `display-canvas`, `active-plot-host`, `plot-type-select` scoped by active display | В каждом tab ровно один ready active host; add/switch/close не добавляет multi-layout editor и восстанавливает page-local plot type. |
 | 3 | `display-local-state` | Selection, active plot и inspector values изолированы по Display. | `display-state-revision-*`, existing `signal-row-*`, `active-plot-panel`, `active-plot-field-*` scoped by display | Изменение selected signal/active plot в Display B не меняет snapshot Display A; возврат в A восстанавливает его state/revision без stale B values. |
 | 4 | `bottom-measurements` | Нижняя Measurements область относится к active Display и selected signal. | `measurements-dock`, `measurements-display-scope`, existing `measurements-signal-name`, `measurements-table`, `measurement-row-*` | Dock остаётся под fixed grid; scope точно совпадает с active Display + selected signal; tab switch обновляет revision/rows и не меняет geometry. |
 | 5 | `inspector-actions` | Inspector actions применяются только к active Display. | `inspector-panel`, `inspector-display-scope`, `inspector-action-*`, `inspector-action-state-*` | Click и keyboard запускают action для active Display; disabled/precondition state доступен; action не мутирует inactive Display. |
@@ -20,7 +20,7 @@ baseline не меняется.
 
 1. Открыть приложение и сохранить active Display, selected signal, active plot,
    Measurements tab/dock state, document scroll и geometry.
-2. Создать Display B, подтвердить fixed 2x2 и переключение tab через click и
+2. Создать Display B, подтвердить один graph canvas и переключение tab через click и
    keyboard.
 3. В B выбрать другой signal/active plot и выполнить inspector action; снять
    state revision и status request id.

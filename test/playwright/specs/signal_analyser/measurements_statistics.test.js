@@ -1,24 +1,26 @@
 "use strict";
 
-const { openAppPage, testIdSelector } = require("../../support/app_page");
+const { openAppPage } = require("../../support/app_page");
 const {
-  boxSignature,
   clickAndWaitForView,
+  isApiRequestUrl,
   measurementLocator,
   measurementSnapshotState,
   performanceLog,
-  responseJson,
   selectedRowId,
+  setCheckboxAndWaitForView,
   signalRowsState,
-  stateRevisionFromPayload,
   waitForSettled,
 } = require("../../support/signal_analyser_page");
 
 const STATISTICS = ["minimum", "maximum", "mean"];
-const P0_SCENARIO_WARNING_MS = 45000;
 
 function rowLocator(page, row) {
   return page.locator(`[data-testid=${JSON.stringify(row.id)}]`);
+}
+
+function checkboxLocator(page, row) {
+  return page.locator(`[data-testid=${JSON.stringify(row.checkboxTestId)}]`);
 }
 
 function text(value) {
@@ -33,6 +35,10 @@ function selected(rows) {
   return rows.find(function (row) { return row.selected; });
 }
 
+function visible(rows) {
+  return rows.filter(function (row) { return row.checked; });
+}
+
 async function tabIsActive(locator) {
   return locator.evaluate(function (element) {
     return element.getAttribute("aria-selected") === "true" ||
@@ -41,19 +47,34 @@ async function tabIsActive(locator) {
   });
 }
 
-async function activateMeasurements(page, config, assert, log) {
-  const signals = measurementLocator(page, config, "signalsTab");
-  const measurements = measurementLocator(page, config, "measurementsTab");
-  assert(await signals.count() === 1, "Signals tab selector must resolve exactly once");
-  assert(await measurements.count() === 1, "Measurements tab selector must resolve exactly once");
-  await signals.click({ timeout: 30000 });
-  assert(await tabIsActive(signals), "click must activate Signals tab");
-  await measurements.focus();
-  await page.keyboard.press("Enter");
-  await measurementLocator(page, config, "panel").waitFor({ state: "visible", timeout: 30000 });
-  assert(await tabIsActive(measurements), "keyboard Enter must activate Measurements tab");
-  await waitForSettled(page, config);
-  log("Measurements tab activated through Signals click plus keyboard Enter");
+async function localTabSwitch(page, config, assert, log, tabName) {
+  const target = measurementLocator(page, config, tabName);
+  const panel = measurementLocator(page, config, "panel");
+  const requests = [];
+  const onRequest = function (request) {
+    if (isApiRequestUrl(request)) requests.push(`${request.method()} ${request.url()}`);
+  };
+  const startedAt = Date.now();
+  page.on("request", onRequest);
+  try {
+    await target.click({ timeout: 30000 });
+    if (tabName === "measurementsTab") {
+      await panel.waitFor({ state: "visible", timeout: 30000 });
+    } else {
+      await page.waitForFunction(function (testId) {
+        const element = document.querySelector(`[data-testid="${testId}"]`);
+        return !element || element.offsetParent === null;
+      }, config.app.testIds.measurements.panel, { timeout: 30000 });
+    }
+    await page.evaluate(function () { return Promise.resolve(); });
+  } finally {
+    page.off("request", onRequest);
+  }
+  performanceLog(log, `local ${tabName} switch`, Date.now() - startedAt, undefined,
+    requests.length ? "unexpected API request" : "local-only");
+  assert(await tabIsActive(target), `${tabName} must become the active bottom tab`);
+  assert(requests.length === 0,
+    `${tabName} must be a local UI switch without any API request: ${JSON.stringify(requests)}`);
 }
 
 function assertStatistics(assert, snapshot, signalName) {
@@ -65,6 +86,9 @@ function assertStatistics(assert, snapshot, signalName) {
     return name === signalName;
   }), `statistics descendants must expose only selected signal ${JSON.stringify(signalName)}`);
   assert(snapshot.table.rows.length === 3, "statistics table must contain exactly three rows");
+  assert(JSON.stringify(snapshot.table.domRowIds) === JSON.stringify(STATISTICS.map(function (statistic) {
+    return `measurement-row-${statistic}`;
+  })), `statistics UI order must preserve authoritative items order: ${JSON.stringify(snapshot.table.domRowIds)}`);
 
   STATISTICS.forEach(function (statistic) {
     const row = snapshot.table.rows.find(function (candidate) { return candidate.statistic === statistic; });
@@ -80,78 +104,108 @@ function assertStatistics(assert, snapshot, signalName) {
   });
 }
 
+async function restoreInitialVisibility(page, config, initialRows, originalSelectedId, log) {
+  const desired = new Map(initialRows.map(function (row) { return [row.id, row.checked]; }));
+  let rows = await signalRowsState(page, config);
+  for (const row of rows) {
+    if (desired.get(row.id) === true && !row.checked) {
+      await setCheckboxAndWaitForView(page, config, checkboxLocator(page, row), true, log,
+        `cleanup reveal ${row.name}`);
+    }
+  }
+  rows = await signalRowsState(page, config);
+  for (const row of rows) {
+    if (desired.get(row.id) === false && row.checked && visible(rows).length > 1) {
+      await setCheckboxAndWaitForView(page, config, checkboxLocator(page, row), false, log,
+        `cleanup hide ${row.name}`);
+      rows = await signalRowsState(page, config);
+    }
+  }
+  if (originalSelectedId && await selectedRowId(page, config) !== originalSelectedId) {
+    await clickAndWaitForView(page, config, page.locator(`[data-testid=${JSON.stringify(originalSelectedId)}]`), log,
+      "cleanup restore selected signal");
+  }
+}
+
 async function testMeasurementsStatistics({ appUrl, assert, config, log, page, step, useCurrentPage }) {
   const startedAt = Date.now();
   let originalRowId = "";
-  let originalScroll = { x: 0, y: 0 };
-  let originalTab = "signalsTab";
+  let initialRows = [];
+  const forbiddenEndpoints = [];
+  const onRequest = function (request) {
+    if (/\/api\/(?:measurements|peaks)(?:[/?#]|$)/.test(request.url())) {
+      forbiddenEndpoints.push(`${request.method()} ${request.url()}`);
+    }
+  };
 
   try {
-    await step("open Signal Analyser", async function () {
+    await step("open Signal Analyser with default Signals bottom tab", async function () {
+      page.on("request", onRequest);
       await openAppPage(page, { appUrl, config, log, useCurrentPage });
+      const signals = measurementLocator(page, config, "signalsTab");
+      const measurements = measurementLocator(page, config, "measurementsTab");
+      assert(await signals.count() === 1 && await measurements.count() === 1,
+        "bottom Signals and Measurements tabs must each resolve exactly once");
+      assert(await tabIsActive(signals), "Signals must be the default active bottom tab");
+      assert(!(await measurementLocator(page, config, "panel").isVisible()),
+        "Measurements panel must be hidden while default Signals tab is active");
       originalRowId = await selectedRowId(page, config);
-      originalScroll = await page.evaluate(function () { return { x: window.scrollX, y: window.scrollY }; });
-      originalTab = await tabIsActive(measurementLocator(page, config, "measurementsTab")) ?
-        "measurementsTab" : "signalsTab";
+      initialRows = await signalRowsState(page, config);
+      const current = selected(initialRows);
+      assert(current && current.checked, "the selected signal must initially be visible");
     });
 
-    await step("switch Signals to Measurements via click and keyboard", async function () {
-      await activateMeasurements(page, config, assert, log);
+    await step("open local Measurements tab and assert exact selected raw rows", async function () {
+      await localTabSwitch(page, config, assert, log, "measurementsTab");
+      const current = selected(await signalRowsState(page, config));
+      assert(current && current.checked, "Measurements scope requires a selected visible signal");
+      assertStatistics(assert, await measurementSnapshotState(page, config), current.name);
     });
 
-    const grid = page.locator(testIdSelector(config.app.testIds.plotGrid));
-    const fixedGeometry = {
-      grid: await boxSignature(grid),
-      panel: await boxSignature(measurementLocator(page, config, "panel")),
-    };
-    assert(fixedGeometry.grid && fixedGeometry.panel, "fixed plot grid and Measurements panel geometry is required");
-
-    let rows = await signalRowsState(page, config);
-    const first = selected(rows);
-    assert(first, "scenario requires exactly one selected signal");
-    let beforeRevision;
-
-    await step("assert raw selected-signal minimum maximum mean", async function () {
-      assertStatistics(assert, await measurementSnapshotState(page, config), first.name);
-      const response = await clickAndWaitForView(page, config, rowLocator(page, first), log,
-        `refresh selected ${first.name} statistics revision`);
-      beforeRevision = stateRevisionFromPayload(
-        await responseJson(response, "selected-signal baseline"), "selected-signal baseline"
-      );
-    });
-
-    await step("switch selected signal and refresh scope revision geometry", async function () {
-      rows = await signalRowsState(page, config);
-      const target = rows.find(function (row) { return row.id !== first.id; });
-      assert(target, "scenario requires a second signal row");
-      const response = await clickAndWaitForView(page, config, rowLocator(page, target), log,
-        `select ${target.name} statistics`);
-      const revision = stateRevisionFromPayload(
-        await responseJson(response, "selected-signal refresh"), "selected-signal refresh"
-      );
-      assert(revision > beforeRevision,
-        `selected-signal revision must increase (${beforeRevision} -> ${revision})`);
-      assert(await selectedRowId(page, config) === target.id, "selected signal row must refresh");
+    await step("row selection refreshes local Measurements scope", async function () {
+      await localTabSwitch(page, config, assert, log, "signalsTab");
+      const before = selected(await signalRowsState(page, config));
+      const target = (await signalRowsState(page, config)).find(function (row) {
+        return row.checked && row.id !== before.id;
+      });
+      assert(target, "scenario requires a second visible signal row");
+      await clickAndWaitForView(page, config, rowLocator(page, target), log, `select ${target.name}`);
+      assert(await selectedRowId(page, config) === target.id, "row click must select the visible target signal");
+      await localTabSwitch(page, config, assert, log, "measurementsTab");
       assertStatistics(assert, await measurementSnapshotState(page, config), target.name);
-      assert(JSON.stringify(await boxSignature(grid)) === JSON.stringify(fixedGeometry.grid),
-        "statistics refresh must not change grid geometry");
-      assert(JSON.stringify(await boxSignature(measurementLocator(page, config, "panel"))) === JSON.stringify(fixedGeometry.panel),
-        "statistics refresh must not change Measurements panel geometry");
+    });
+
+    await step("hiding selected signal falls back and refreshes Measurements scope", async function () {
+      await localTabSwitch(page, config, assert, log, "signalsTab");
+      let rows = await signalRowsState(page, config);
+      const selectedToHide = selected(rows);
+      assert(selectedToHide && selectedToHide.checked,
+        "hidden-selected fallback requires a selected visible signal");
+      const fallback = visible(rows).find(function (row) { return row.id !== selectedToHide.id; });
+      assert(fallback,
+        "hidden-selected fallback needs the selected signal and another visible signal");
+      await setCheckboxAndWaitForView(page, config, checkboxLocator(page, selectedToHide), false, log,
+        `hide selected ${selectedToHide.name}`);
+      rows = await signalRowsState(page, config);
+      assert(await selectedRowId(page, config) === fallback.id,
+        `hiding selected signal must select the first remaining visible signal ${fallback.id}`);
+      assert(selected(rows).checked, "fallback selection must remain visible");
+      await localTabSwitch(page, config, assert, log, "measurementsTab");
+      assertStatistics(assert, await measurementSnapshotState(page, config), fallback.name);
     });
   } finally {
+    page.off("request", onRequest);
     try {
-      if (originalRowId && await selectedRowId(page, config) !== originalRowId) {
-        await clickAndWaitForView(page, config, page.locator(`[data-testid=${JSON.stringify(originalRowId)}]`), log,
-          "cleanup restore selected signal");
-      }
-      await measurementLocator(page, config, originalTab).click({ timeout: 30000 });
-      await page.evaluate(function (scroll) { window.scrollTo(scroll.x, scroll.y); }, originalScroll);
+      await localTabSwitch(page, config, assert, log, "signalsTab");
+      if (initialRows.length) await restoreInitialVisibility(page, config, initialRows, originalRowId, log);
       await waitForSettled(page, config);
     } catch (error) {
       log(`cleanup could not restore statistics state/tab: ${error.message}`);
     }
-    performanceLog(log, "measurements-statistics scenario total", Date.now() - startedAt,
-      P0_SCENARIO_WARNING_MS, "complete");
+    performanceLog(log, "measurements-statistics P0 scenario total", Date.now() - startedAt,
+      undefined, "complete; soft budget pending healthy runtime baseline");
+    assert(forbiddenEndpoints.length === 0,
+      `P0 statistics must not call measurements or peaks endpoints: ${JSON.stringify(forbiddenEndpoints)}`);
   }
 }
 
@@ -159,6 +213,7 @@ testMeasurementsStatistics.requiredFeatures = [
   "frontend-state-management",
   "layout-geometry",
   "measurements-statistics",
+  "signal-analyser-displays",
 ];
 
 module.exports = testMeasurementsStatistics;

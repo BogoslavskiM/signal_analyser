@@ -1,5 +1,7 @@
 using Test
 
+include("findpeaks_contract_matrix.jl")
+
 """Return false with a real test failure when the required EngeeDSP runtime is absent."""
 function load_engee_dsp()
     try

@@ -22,6 +22,103 @@ struct AnalysedSignal
     visible::Bool
 end
 
+@enum SignalMeasurementOrdinate begin
+    REAL_ORDINATE
+    MAGNITUDE_ORDINATE
+end
+
+@enum SignalMeasurementKind begin
+    MINIMUM_MEASUREMENT
+    MAXIMUM_MEASUREMENT
+    MEAN_MEASUREMENT
+end
+
+const SIGNAL_MEASUREMENT_ORDINATE_NAMES = Dict(
+    REAL_ORDINATE => "real",
+    MAGNITUDE_ORDINATE => "magnitude",
+)
+
+const SIGNAL_MEASUREMENT_ITEM_METADATA = Dict(
+    MINIMUM_MEASUREMENT => (id = "minimum", label = "Минимум"),
+    MAXIMUM_MEASUREMENT => (id = "maximum", label = "Максимум"),
+    MEAN_MEASUREMENT => (id = "mean", label = "Среднее"),
+)
+
+struct SignalMeasurementPosition
+    sample_index::Int
+    time_s::Float64
+
+    function SignalMeasurementPosition(sample_index::Int, time_s::Real)
+        sample_index >= 0 || throw(ArgumentError("Индекс отсчёта измерения не может быть отрицательным"))
+        isfinite(time_s) && time_s >= 0 || throw(ArgumentError(
+            "Время измерения должно быть неотрицательным конечным числом",
+        ))
+        new(sample_index, Float64(time_s))
+    end
+end
+
+struct SignalMeasurementItem
+    kind::SignalMeasurementKind
+    value::Float64
+    position::Union{Nothing,SignalMeasurementPosition}
+
+    function SignalMeasurementItem(
+        kind::SignalMeasurementKind,
+        value::Real,
+        position::Union{Nothing,SignalMeasurementPosition},
+    )
+        isfinite(value) || throw(ArgumentError("Значение измерения должно быть конечным числом"))
+        if kind == MEAN_MEASUREMENT
+            position === nothing || throw(ArgumentError("Среднее значение не имеет позиции отсчёта"))
+        else
+            position === nothing && throw(ArgumentError("Экстремум должен иметь позицию отсчёта"))
+        end
+        new(kind, Float64(value), position)
+    end
+end
+
+struct SignalMeasurementUnits
+    value::String
+    time::String
+
+    function SignalMeasurementUnits(value::AbstractString, time::AbstractString)
+        isempty(value) && throw(ArgumentError("Единица значения измерения не может быть пустой"))
+        isempty(time) && throw(ArgumentError("Единица времени измерения не может быть пустой"))
+        new(String(value), String(time))
+    end
+end
+
+struct SignalMeasurementsSnapshot
+    state_revision::Int
+    signal_name::String
+    ordinate::SignalMeasurementOrdinate
+    units::SignalMeasurementUnits
+    items::NTuple{3,SignalMeasurementItem}
+
+    function SignalMeasurementsSnapshot(
+        state_revision::Int,
+        signal_name::AbstractString,
+        ordinate::SignalMeasurementOrdinate,
+        units::SignalMeasurementUnits,
+        items::NTuple{3,SignalMeasurementItem},
+    )
+        state_revision >= 0 || throw(ArgumentError("Ревизия snapshot не может быть отрицательной"))
+        isempty(signal_name) && throw(ArgumentError("Имя сигнала snapshot не может быть пустым"))
+        kinds = map(item -> item.kind, items)
+        kinds == (MINIMUM_MEASUREMENT, MAXIMUM_MEASUREMENT, MEAN_MEASUREMENT) || throw(ArgumentError(
+            "Измерения snapshot должны идти в порядке minimum, maximum, mean",
+        ))
+        new(state_revision, String(signal_name), ordinate, units, items)
+    end
+end
+
+"""Stateless domain service that derives raw-sample measurements."""
+struct SignalMeasurementsService end
+
+signal_measurement_ordinate_name(ordinate::SignalMeasurementOrdinate)::String =
+    SIGNAL_MEASUREMENT_ORDINATE_NAMES[ordinate]
+signal_measurement_metadata(kind::SignalMeasurementKind) = SIGNAL_MEASUREMENT_ITEM_METADATA[kind]
+
 mutable struct SignalAnalyserViewState
     state_revision::Int
     active_plot::SignalAnalyserPlot
@@ -43,6 +140,7 @@ mutable struct SignalAnalyserState
     active_display_id::String
     next_display_number::Int
     plot_cache::Dict{String,Dict{String,Any}}
+    measurements_service::SignalMeasurementsService
     lock::ReentrantLock
 end
 
@@ -67,6 +165,7 @@ function SignalAnalyserState(
         display.id,
         2,
         plot_cache,
+        SignalMeasurementsService(),
         lock,
     )
 end

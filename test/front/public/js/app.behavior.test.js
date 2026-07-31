@@ -16,6 +16,8 @@ function snapshot(revision, activeId, displayDefinitions) {
   const definitions = displayDefinitions || [
     { id: "display-1", name: "Display 1", active_plot: "time", selected_signal: A, visible_signals: [A, B] },
   ];
+  const active = definitions.find((definition) => definition.id === (activeId || definitions[0].id)) || definitions[0];
+  const selected = active.selected_signal;
   return {
     state_revision: revision,
     active_display_id: activeId || definitions[0].id,
@@ -32,7 +34,17 @@ function snapshot(revision, activeId, displayDefinitions) {
       ],
     },
     panel: { fields: [] },
-    measurements: { state_revision: revision, signal_name: A, items: [] },
+    measurements: {
+      state_revision: revision,
+      signal_name: selected,
+      ordinate: selected === B ? "magnitude" : "real",
+      units: { value: "1", time: "s" },
+      items: [
+        { id: "minimum", label: "Минимум", value: selected === B ? 3 : -2, time_s: 0, sample_index: 0 },
+        { id: "maximum", label: "Максимум", value: selected === B ? 9 : 5, time_s: 0.2, sample_index: 2 },
+        { id: "mean", label: "Среднее", value: selected === B ? 6 : 1, time_s: null, sample_index: null },
+      ],
+    },
   };
 }
 
@@ -53,6 +65,7 @@ function environment(fetch, options) {
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
     legend: node(), normalize: node(), markers: node(), fields: node(), count: node(), rows: node(), toggleAll: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
+    signalBottomTab: node(), measurementsBottomTab: node(),
   };
   const selectors = {
     "[data-testid='app-shell']": e.root, "[data-testid='app-loading']": e.loading, "[data-loading-text]": e.loadingText,
@@ -68,9 +81,27 @@ function environment(fetch, options) {
   };
   const calls = [];
   const plotly = { react(host, data, layout) { calls.push({ plot: true, host, data, layout }); return Promise.resolve(); } };
+  const scriptOutcomes = (options && options.scriptOutcomes || []).slice();
+  const document = {
+    querySelector(selector) { return selectors[selector] || null; },
+    querySelectorAll(selector) { return selector === "[data-bottom-tab]" ? [e.signalBottomTab, e.measurementsBottomTab] : []; },
+    createElement(tag) {
+      if (tag !== "script") return node();
+      return { src: "", async: false, onload: null, onerror: null };
+    },
+    head: { appendChild(script) {
+      calls.push({ script: script.src });
+      const outcome = scriptOutcomes.shift() || "error";
+      if (outcome === "load") { window.Plotly = plotly; script.onload(); } else script.onerror();
+    } },
+  };
   const window = { fetch(url, options) { calls.push({ url, options: options || {} }); return fetch(url, options || {}); }, addEventListener() {}, Plotly: plotly };
+  e.signalBottomTab.dataset.bottomTab = "signals";
+  e.measurementsBottomTab.dataset.bottomTab = "measurements";
+  e.signalBottomTab.classList = { toggle(on) { this.on = on; }, contains() { return false; } };
+  e.measurementsBottomTab.classList = { toggle(on) { this.on = on; }, contains() { return false; } };
   if (options && options.moduleNameOnly) { window.moduleName = plotly; delete window.Plotly; }
-  const document = { querySelector(selector) { return selectors[selector] || null; }, querySelectorAll(selector) { return selector === "[data-bottom-tab]" ? [] : []; } };
+  if (options && options.plotlyAbsent) delete window.Plotly;
   return { e, window, document, calls };
 }
 
@@ -109,6 +140,13 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(umd.window.Plotly === umd.window.moduleName, "local Plotly UMD moduleName export must normalize to window.Plotly");
   assert(umd.calls.some((call) => call.plot), "UMD-normalized local Plotly must render the active graph without CDN loading");
 
+  const recovered = await boot((url) => Promise.resolve(response(200, initial)), { plotlyAbsent: true, scriptOutcomes: ["error"] });
+  const scriptLoads = recovered.calls.filter((call) => call.script).map((call) => call.script);
+  assert(scriptLoads.length === 1, "missing Plotly must attempt exactly one local load without a CDN fallback");
+  assert(scriptLoads[0].includes("vendor/plotly-cartesian-3.1.0.min.js"), "the first Plotly recovery request must target the bundled local artifact");
+  assert(!scriptLoads.some((url) => /https?:\/\/|cdn\./i.test(url)), "Plotly recovery must never request a CDN");
+  assert(recovered.e.host.dataset.plotReady === "false" && recovered.e.host.innerHTML.includes("plot-error-state"), "a missing local Plotly artifact must expose the stable error state");
+
   const displayCalls = [];
   const created = snapshot(1, "display-2", [
     { id: "display-1", name: "Display 1", active_plot: "spectrum", selected_signal: B, visible_signals: [B] },
@@ -126,10 +164,17 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(displayCalls[1].url === "./api/displays", "add Display must use POST ./api/displays");
   assert(JSON.stringify(JSON.parse(displayCalls[1].options.body)) === JSON.stringify({ state_revision: 0, operation: "create" }), "add Display must send current revision and create operation only");
   assert(lifecycle.e.tabs.innerHTML.includes("display-tab-display-2"), "created display must be selected and rendered");
+  assert(lifecycle.e.measurementContent.innerHTML.includes(A), "the authoritative measurements in Display 2 must belong to Display 2's selected signal");
+  assert(lifecycle.e.measurementContent.innerHTML.indexOf("measurement-row-minimum") < lifecycle.e.measurementContent.innerHTML.indexOf("measurement-row-maximum") && lifecycle.e.measurementContent.innerHTML.indexOf("measurement-row-maximum") < lifecycle.e.measurementContent.innerHTML.indexOf("measurement-row-mean"), "measurement rows must preserve the authoritative minimum/maximum/mean order");
+  lifecycle.e.bottomTabs.listeners.click({ target: { closest(selector) { return selector === "[data-bottom-tab]" ? lifecycle.e.measurementsBottomTab : null; } } });
+  assert(displayCalls.length === 2, "opening Measurements remains a local tab operation without a display API mutation");
+  assert(lifecycle.e.measurements.hidden === false, "the Measurements panel must become visible locally");
   lifecycle.e.tabs.listeners.click({ target: tabTarget("display-1") });
   await flush();
   assert(JSON.stringify(JSON.parse(displayCalls[2].options.body)) === JSON.stringify({ state_revision: 1, operation: "select", display_id: "display-1" }), "select Display must use confirmed revision and display id");
   assert(lifecycle.e.title.textContent === "Spectrum", "selecting a page must restore its graph type");
+  assert(lifecycle.e.measurementContent.innerHTML.includes(B), "switching Display must render the server-authoritative measurements for the newly active selected signal");
+  assert(lifecycle.e.measurements.hidden === false && lifecycle.e.signals.hidden === true, "a Display switch must preserve the local Measurements tab while replacing only its authoritative content");
   lifecycle.e.tabs.listeners.click({ target: closeTarget("display-1") });
   await flush();
   assert(JSON.parse(displayCalls[3].options.body).operation === "close", "close control must request the close operation");
@@ -196,4 +241,14 @@ module.exports = async function testDisplayBehavior(assert) {
   const view = visibility.find((call) => call.url === "./api/view");
   assert(view, "per-display checkbox must update the active display through /api/view");
   assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", selected_signal: B, visible_signals: [B] }), "hiding selected signal must send complete active-page membership and fallback selection");
+
+  const localTabRequests = [];
+  const localTabs = await boot((url, options) => {
+    localTabRequests.push({ url, options });
+    return Promise.resolve(response(200, initial));
+  });
+  localTabs.e.bottomTabs.listeners.click({ target: { closest(selector) { return selector === "[data-bottom-tab]" ? localTabs.e.measurementsBottomTab : null; } } });
+  assert(localTabRequests.length === 1 && localTabRequests[0].url === "./api/state", "opening Measurements must not make a backend request");
+  assert(localTabs.e.signals.hidden === true && localTabs.e.measurements.hidden === false, "Measurements tab must swap only local panels");
+  assert(localTabs.e.measurementsBottomTab.getAttribute("aria-selected") === "true", "Measurements tab must expose its local selected state accessibly");
 };

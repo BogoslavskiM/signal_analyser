@@ -200,78 +200,93 @@ function signal_analyser_multi_trace_payload(
     )
 end
 
-function signal_analyser_measurement_ordinates(signal::AnalysedSignal)::Vector{Float64}
-    ordinate = signal.is_complex ? Float64.(abs.(signal.values)) : Float64.(real.(signal.values))
+function signal_measurement_ordinates(
+    ::SignalMeasurementsService,
+    signal::AnalysedSignal,
+)::Tuple{SignalMeasurementOrdinate,Vector{Float64}}
+    ordinate_kind = signal.is_complex ? MAGNITUDE_ORDINATE : REAL_ORDINATE
+    ordinate = ordinate_kind == MAGNITUDE_ORDINATE ? Float64.(abs.(signal.values)) : Float64.(real.(signal.values))
     isempty(ordinate) && throw(ArgumentError("Сигнал не содержит отсчётов"))
     all(isfinite, ordinate) || throw(ArgumentError("Сигнал содержит нечисловые отсчёты"))
     isfinite(signal.sample_rate_hz) && signal.sample_rate_hz > 0 || throw(ArgumentError(
         "Частота дискретизации сигнала должна быть положительным конечным числом",
     ))
-    ordinate
+    ordinate_kind, ordinate
 end
 
-function signal_analyser_measurement_item(
-    id::AbstractString,
-    label::AbstractString,
-    value::Real,
-    time_s,
-    sample_index,
-)::Dict{String,Any}
-    Dict{String,Any}(
-        "id" => String(id),
-        "label" => String(label),
-        "value" => Float64(value),
-        "time_s" => time_s,
-        "sample_index" => sample_index,
-    )
-end
-
-function signal_analyser_measurements_payload(
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
     state_revision::Int,
     signal::AnalysedSignal,
-)::Dict{String,Any}
-    ordinate = signal_analyser_measurement_ordinates(signal)
+)::SignalMeasurementsSnapshot
+    ordinate_kind, ordinate = signal_measurement_ordinates(service, signal)
     minimum_index = argmin(ordinate)
     maximum_index = argmax(ordinate)
     minimum_sample_index = minimum_index - 1
     maximum_sample_index = maximum_index - 1
 
-    Dict{String,Any}(
-        "state_revision" => state_revision,
-        "signal_name" => signal.name,
-        "ordinate" => signal.is_complex ? "magnitude" : "real",
-        "units" => Dict{String,Any}(
-            "value" => "1",
-            "time" => "s",
-        ),
-        "items" => Dict{String,Any}[
-            signal_analyser_measurement_item(
-                "minimum",
-                "Минимум",
+    SignalMeasurementsSnapshot(
+        state_revision,
+        signal.name,
+        ordinate_kind,
+        SignalMeasurementUnits("1", "s"),
+        (
+            SignalMeasurementItem(
+                MINIMUM_MEASUREMENT,
                 ordinate[minimum_index],
-                minimum_sample_index / signal.sample_rate_hz,
-                minimum_sample_index,
+                SignalMeasurementPosition(
+                    minimum_sample_index,
+                    minimum_sample_index / signal.sample_rate_hz,
+                ),
             ),
-            signal_analyser_measurement_item(
-                "maximum",
-                "Максимум",
+            SignalMeasurementItem(
+                MAXIMUM_MEASUREMENT,
                 ordinate[maximum_index],
-                maximum_sample_index / signal.sample_rate_hz,
-                maximum_sample_index,
+                SignalMeasurementPosition(
+                    maximum_sample_index,
+                    maximum_sample_index / signal.sample_rate_hz,
+                ),
             ),
-            signal_analyser_measurement_item(
-                "mean",
-                "Среднее",
-                Statistics.mean(ordinate),
-                nothing,
-                nothing,
-            ),
-        ],
+            SignalMeasurementItem(MEAN_MEASUREMENT, Statistics.mean(ordinate), nothing),
+        ),
     )
 end
 
-function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{String,Any}
+function signal_measurement_item_payload(item::SignalMeasurementItem)::Dict{String,Any}
+    metadata = signal_measurement_metadata(item.kind)
+    Dict{String,Any}(
+        "id" => metadata.id,
+        "label" => metadata.label,
+        "value" => item.value,
+        "time_s" => item.position === nothing ? nothing : item.position.time_s,
+        "sample_index" => item.position === nothing ? nothing : item.position.sample_index,
+    )
+end
+
+function signal_measurements_payload(measurements::SignalMeasurementsSnapshot)::Dict{String,Any}
+    Dict{String,Any}(
+        "state_revision" => measurements.state_revision,
+        "signal_name" => measurements.signal_name,
+        "ordinate" => signal_measurement_ordinate_name(measurements.ordinate),
+        "units" => Dict{String,Any}(
+            "value" => measurements.units.value,
+            "time" => measurements.units.time,
+        ),
+        "items" => Dict{String,Any}[signal_measurement_item_payload(item) for item in measurements.items],
+    )
+end
+
+function signal_analyser_snapshot_unlocked(
+    state::SignalAnalyserState,
+    measurements::SignalMeasurementsSnapshot,
+)::Dict{String,Any}
     signal = signal_by_name(state, state.view.selected_signal)
+    measurements.state_revision == state.view.state_revision || throw(ArgumentError(
+        "Ревизия measurements не совпадает с ревизией state snapshot",
+    ))
+    measurements.signal_name == signal.name || throw(ArgumentError(
+        "Сигнал measurements не совпадает с selected signal state snapshot",
+    ))
     plots = signal_analyser_cached_plots!(state, signal)
     visible_names = signal_analyser_visible_signal_names(state)
     Dict{String,Any}(
@@ -284,9 +299,19 @@ function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{Str
         "signals" => [signal_analyser_signal_payload(item) for item in state.signals],
         "plots" => plots,
         "plot_payload" => signal_analyser_multi_trace_payload(state, signal, visible_names),
-        "measurements" => signal_analyser_measurements_payload(state.view.state_revision, signal),
+        "measurements" => signal_measurements_payload(measurements),
         "panel" => signal_analyser_panel_payload(state.view.active_plot, signal, plots),
     )
+end
+
+function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{String,Any}
+    signal = signal_by_name(state, state.view.selected_signal)
+    measurements = signal_measurements_snapshot(
+        state.measurements_service,
+        state.view.state_revision,
+        signal,
+    )
+    signal_analyser_snapshot_unlocked(state, measurements)
 end
 
 function signal_analyser_snapshot(state::SignalAnalyserState)::Dict{String,Any}
@@ -430,6 +455,12 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             state,
             unique(vcat(requested.visible_signals, [requested.selected_signal])),
         )
+        next_revision = state.view.state_revision + (changed ? 1 : 0)
+        prepared_measurements = signal_measurements_snapshot(
+            state.measurements_service,
+            next_revision,
+            signal_by_name(state, requested.selected_signal),
+        )
         if changed
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             display.active_plot = requested.active_plot
@@ -440,7 +471,7 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         else
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
         end
-        signal_analyser_snapshot_unlocked(state)
+        signal_analyser_snapshot_unlocked(state, prepared_measurements)
     end
 end
 
@@ -518,6 +549,11 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 state,
                 signal_analyser_display_plot_names(display),
             )
+            prepared_measurements = signal_measurements_snapshot(
+                state.measurements_service,
+                state.view.state_revision + 1,
+                signal_by_name(state, display.selected_signal),
+            )
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             push!(state.displays, display)
             state.next_display_number += 1
@@ -530,9 +566,20 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                     state,
                     signal_analyser_display_plot_names(display),
                 )
+                prepared_measurements = signal_measurements_snapshot(
+                    state.measurements_service,
+                    state.view.state_revision + 1,
+                    signal_by_name(state, display.selected_signal),
+                )
                 signal_analyser_publish_prepared_plots!(state, prepared_plots)
                 signal_analyser_sync_active_display!(state, display)
                 state.view.state_revision += 1
+            else
+                prepared_measurements = signal_measurements_snapshot(
+                    state.measurements_service,
+                    state.view.state_revision,
+                    signal_by_name(state, display.selected_signal),
+                )
             end
         else
             close_index = findfirst(display -> display.id == requested.display_id, state.displays)::Int
@@ -550,12 +597,17 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 state,
                 signal_analyser_display_plot_names(next_active_display),
             )
+            prepared_measurements = signal_measurements_snapshot(
+                state.measurements_service,
+                state.view.state_revision + 1,
+                signal_by_name(state, next_active_display.selected_signal),
+            )
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             state.displays = remaining_displays
             closing_active_display && signal_analyser_sync_active_display!(state, next_active_display)
             state.view.state_revision += 1
         end
 
-        signal_analyser_snapshot_unlocked(state)
+        signal_analyser_snapshot_unlocked(state, prepared_measurements)
     end
 end
