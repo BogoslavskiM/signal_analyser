@@ -76,7 +76,7 @@ function environment(fetch, options) {
   const e = {
     root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(),
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
-    legend: node(), normalize: node(), markers: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
+    legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
@@ -87,6 +87,7 @@ function environment(fetch, options) {
     "[data-testid='plot-type-select']": e.plotSelect, "[data-testid='settings-view-select']": e.settingsSelect,
     "[data-testid='show-legend-checkbox']": e.legend, "[data-testid='normalize-y-checkbox']": e.normalize,
     "[data-testid='show-markers-checkbox']": e.markers, "[data-panel-fields]": e.fields, "[data-signal-count]": e.count,
+    "[data-testid='time-min-input']": e.minInput, "[data-testid='time-max-input']": e.maxInput, "[data-testid='time-limits-error']": e.limitsError,
     "[data-signal-rows]": e.rows, "[data-testid='toggle-all-signals']": e.toggleAll,
     "[data-testid='display-overflow-trigger']": e.overflowTrigger, "[data-testid='display-overflow-menu']": e.overflowMenu, "[data-testid='clear-display-action']": e.clearDisplayAction,
     "[data-testid='signal-statistics-action']": e.statisticsAction, "[data-testid='find-peaks-action']": e.peaksAction,
@@ -260,7 +261,7 @@ module.exports = async function testDisplayBehavior(assert) {
   await flush();
   const view = visibility.find((call) => call.url === "./api/view");
   assert(view, "per-display checkbox must update the active display through /api/view");
-  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], peaks_enabled: false }), "hiding the analysis source must retain global row selection, use canonical visible fallback and disable Peaks");
+  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], time_limits: null, peaks_enabled: false }), "hiding the analysis source must retain global row selection, use canonical visible fallback and disable Peaks");
 
   const localTabRequests = [];
   const localTabs = await boot((url, options) => {
@@ -290,7 +291,7 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   memberRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
-  assert(JSON.stringify(JSON.parse(rowRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], peaks_enabled: false }), "a member row click must atomically row-select and make that member the analysis source");
+  assert(JSON.stringify(JSON.parse(rowRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], time_limits: null, peaks_enabled: false }), "a member row click must atomically row-select and make that member the analysis source");
   assert(memberRow.e.rows.innerHTML.includes("signal-row-") && memberRow.e.rows.innerHTML.includes(B), "the selected member row must be rendered from authoritative row and analysis state");
 
   const uncheckedRequests = [];
@@ -301,7 +302,7 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   uncheckedRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
-  assert(JSON.stringify(JSON.parse(uncheckedRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], peaks_enabled: false }), "an unchecked row click must change only global row selection and preserve page membership/source");
+  assert(JSON.stringify(JSON.parse(uncheckedRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], time_limits: null, peaks_enabled: false }), "an unchecked row click must change only global row selection and preserve page membership/source");
 
   const clearRequests = [];
   const clear = await boot((url, options) => {
@@ -316,7 +317,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(clearRequests.length === 1 && clear.e.overflowMenu.hidden === false && clear.e.overflowTrigger.getAttribute("aria-expanded") === "true", "Display overflow must open Clear Display locally and accessibly without a request");
   clear.e.clearDisplayAction.listeners.click();
   await flush();
-  assert(JSON.stringify(JSON.parse(clearRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], peaks_enabled: false }), "Clear Display must send the revisioned empty active-page state through /api/view");
+  assert(JSON.stringify(JSON.parse(clearRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], time_limits: null, peaks_enabled: false }), "Clear Display must send the revisioned empty active-page state through /api/view");
   assert(clear.e.overflowMenu.hidden === true && clear.e.overflowTrigger.getAttribute("aria-expanded") === "false", "Clear Display must close its menu after activation");
   assert(clear.e.host === clearHost && clear.e.host.innerHTML.includes("empty-display-plot-state") && clear.e.host.dataset.plotReady === "false", "an empty authoritative page must retain its one graph host while clearing stale rendering");
   assert((!clear.e.host.data || clear.e.host.data.length === 0) && (!clear.e.host._fullData || clear.e.host._fullData.length === 0) && (!clear.e.host.calcdata || clear.e.host.calcdata.length === 0), "an empty Display must purge stale Plotly data from the persistent graph host");
@@ -420,6 +421,45 @@ module.exports = async function testDisplayBehavior(assert) {
   await flush();
   assert(displayPreferences.e.normalize.checked === true && displayPreferences.e.markers.checked === true, "switching back must restore per-Display Time presentation preferences");
 
+  const limitsDefinition = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B], time_limits: { min_s: 0, max_s: .2, units: "s" } };
+  const limitsInitial = snapshot(0, "display-1", [limitsDefinition], A);
+  limitsInitial.plot_payload.time_traces = [{ name: A, signal: A, x: [0, .1, .2], y: [-2, 1, 5] }, { name: B, signal: B, x: [0, .1, .2], y: [2, 3, 4] }];
+  const limitsCommittedDefinition = Object.assign({}, limitsDefinition, { time_limits: { min_s: .1, max_s: .2, units: "s" } });
+  const limitsCommitted = snapshot(1, "display-1", [limitsCommittedDefinition], A);
+  limitsCommitted.plot_payload.time_traces = limitsInitial.plot_payload.time_traces;
+  const limitsRequests = [];
+  const limits = await boot((url, options) => {
+    limitsRequests.push({ url, options });
+    return Promise.resolve(response(200, url === "./api/state" ? limitsInitial : limitsCommitted));
+  });
+  assert(limits.e.minInput.value === "0" && limits.e.maxInput.value === "0.2" && limits.e.minInput.disabled === false && limits.e.maxInput.disabled === false, "a nonempty Time Display must render authoritative seconds limits exactly");
+  limits.e.minInput.value = ".1";
+  limits.e.minInput.listeners.input({ target: limits.e.minInput });
+  assert(limitsRequests.length === 1, "typing Time Limits must not issue a request");
+  limits.e.minInput.listeners.keydown({ key: "Enter", preventDefault() {} });
+  await flush();
+  assert(limitsRequests.filter((call) => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(limitsRequests[1].options.body).time_limits) === JSON.stringify({ min_s: .1, max_s: .2, units: "s" }), "Enter must commit one canonical serialized Time Limits request");
+  const limitsPlot = limits.calls.filter((call) => call.plot).at(-1);
+  assert(JSON.stringify(limitsPlot.layout.xaxis.range) === JSON.stringify([.1, .2]) && JSON.stringify(limitsInitial.plot_payload.time_traces[0].y) === JSON.stringify([-2, 1, 5]), "authoritative Time Limits must set Plotly xaxis.range without slicing or mutating backend traces");
+
+  const invalidLimitsRequests = [];
+  const invalidLimits = await boot((url, options) => {
+    invalidLimitsRequests.push({ url, options });
+    if (url === "./api/state") return Promise.resolve(response(200, limitsInitial));
+    return Promise.resolve(response(422, {
+      ok: false, code: "invalid_request",
+      error: { code: "invalid_request", message: "Некорректный запрос отображения", fields: { time_limits: "Максимальная Time Limit превышает длительность analysis source" } },
+    }));
+  });
+  invalidLimits.e.minInput.value = ".1";
+  invalidLimits.e.maxInput.value = "9";
+  invalidLimits.e.minInput.listeners.input({ target: invalidLimits.e.minInput });
+  invalidLimits.e.maxInput.listeners.input({ target: invalidLimits.e.maxInput });
+  invalidLimits.e.maxInput.listeners.keydown({ key: "Enter", preventDefault() {} });
+  await flush();
+  assert(invalidLimitsRequests.filter((call) => call.url === "./api/view").length === 1, "a rejected Time Limits edit must still issue exactly one committed view request");
+  assert(invalidLimits.e.minInput.value === "0" && invalidLimits.e.maxInput.value === "0.2" && invalidLimits.e.limitsError.hidden === false && invalidLimits.e.limitsError.textContent === "Максимальная Time Limit превышает длительность analysis source", "nested payload.error.fields.time_limits must restore authoritative values and render the exact inline error");
+
   const keyboardTabs = await boot((url) => Promise.resolve(response(200, initial)));
   function key(tab, key) {
     let prevented = false;
@@ -447,7 +487,7 @@ module.exports = async function testDisplayBehavior(assert) {
   peaks.e.peaksAction.listeners.click();
   await flush();
   const peakView = peakRequests.find((call) => call.url === "./api/view");
-  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], peaks_enabled: true }), "Find Peaks must use the existing revisioned /api/view request with canonical source state and an additive boolean only");
+  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], time_limits: null, peaks_enabled: true }), "Find Peaks must use the existing revisioned /api/view request with canonical source state and an additive boolean only");
   assert(peaks.e.peaksAction.getAttribute("aria-pressed") === "true" && peaks.e.peaksBottomTab.hidden === false && peaks.e.peaksPanel.hidden === false, "an enabled authoritative Peaks snapshot must press the action and open the local Peaks tab/panel");
   assert(peaks.e.peaksContent.innerHTML.includes("peak-row-peak-2") && peaks.e.peaksContent.innerHTML.includes("data-sample-index='2'"), "the Peaks table must render backend item fields without a client-side peak calculation");
   const marker = peaks.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");

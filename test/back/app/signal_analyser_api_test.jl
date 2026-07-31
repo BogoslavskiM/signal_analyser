@@ -194,6 +194,50 @@ end
     @test stale_response.body["current"]["plot_payload"]["visible_signals"] == [first_name]
 end
 
+@testset "Cascade 7 API Time Limits validation envelope" begin
+    SA_API.reset_pspectrum_double!()
+    state = SA_API.default_signal_analyser_state()
+    baseline = SA_API.signal_analyser_snapshot(state)
+    for invalid_limits in (
+        "not-an-object",
+        Dict("min_s" => 0.0, "max_s" => 0.1),
+        Dict("min_s" => 0.0, "max_s" => 0.1, "units" => "ms"),
+        Dict("min_s" => 0.1, "max_s" => 0.1, "units" => "s"),
+        Dict("min_s" => -0.1, "max_s" => 0.1, "units" => "s"),
+        Dict("min_s" => 0.0, "max_s" => 99.0, "units" => "s"),
+    )
+        err = try
+            SA_API.apply_signal_analyser_view!(state, Dict(
+                "state_revision" => 0, "time_limits" => invalid_limits,
+            ))
+            nothing
+        catch caught
+            caught
+        end
+        @test err isa SA_API.SignalAnalyserValidationError
+        @test Set(keys(err.fields)) == Set(["time_limits"])
+        envelope = SA_API.signal_analyser_validation_response(err)
+        @test envelope.status == 422
+        @test envelope.body == Dict(
+            "ok" => false,
+            "code" => "invalid_request",
+            "error" => Dict(
+                "code" => "invalid_request",
+                "message" => "Некорректный запрос отображения",
+                "fields" => err.fields,
+            ),
+        )
+        @test SA_API.signal_analyser_snapshot(state) == baseline
+    end
+
+    accepted = SA_API.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "time_limits" => Dict("min_s" => 0.0, "max_s" => 0.1, "units" => "s"),
+    ))
+    @test accepted["state_revision"] == 1
+    @test accepted["time_limits"] == Dict("min_s" => 0.0, "max_s" => 0.1, "units" => "s")
+end
+
 @testset "Signal Analyser API view payload contract" begin
     SA_API.reset_pspectrum_double!()
     state = SA_API.default_signal_analyser_state()

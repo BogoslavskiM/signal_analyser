@@ -7,10 +7,12 @@ const SIGNAL_ANALYSER_VIEW_FIELDS = Set([
     "analysis_signal",
     "selected_signal",
     "visible_signals",
+    "time_limits",
     "peaks_enabled",
 ])
 const SIGNAL_ANALYSER_DISPLAY_FIELDS = Set(["state_revision", "operation", "display_id"])
 const SIGNAL_ANALYSER_DISPLAY_OPERATIONS = Set(["create", "select", "close"])
+const SIGNAL_TIME_LIMIT_FIELDS = Set(["min_s", "max_s", "units"])
 
 function signal_analyser_signal_payload(signal::AnalysedSignal)::Dict{String,Any}
     Dict{String,Any}(
@@ -23,6 +25,16 @@ function signal_analyser_signal_payload(signal::AnalysedSignal)::Dict{String,Any
         "visible" => signal.visible,
     )
 end
+
+function signal_time_limits_payload(limits::SignalTimeLimits)::Dict{String,Any}
+    Dict{String,Any}(
+        "min_s" => limits.min_s,
+        "max_s" => limits.max_s,
+        "units" => "s",
+    )
+end
+
+signal_time_limits_payload(::Nothing) = nothing
 
 function signal_analyser_panel_field(
     id::AbstractString,
@@ -199,6 +211,7 @@ function signal_analyser_display_payload(display::SignalAnalyserDisplayState)::D
         "selected_signal" => analysis_name,
         "analysis_signal" => analysis_name,
         "visible_signals" => signal_analyser_display_members(display),
+        "time_limits" => signal_time_limits_payload(display.time_limits),
         "peaks_enabled" => display.peaks_enabled,
     )
 end
@@ -292,7 +305,7 @@ function signal_analyser_multi_trace_payload(
 end
 
 function signal_measurement_ordinates(
-    ::SignalMeasurementsService,
+    ::SignalTimeRoiService,
     signal::AnalysedSignal,
 )::Tuple{SignalMeasurementOrdinate,Vector{Float64}}
     ordinate_kind = signal.is_complex ? MAGNITUDE_ORDINATE : REAL_ORDINATE
@@ -305,21 +318,92 @@ function signal_measurement_ordinates(
     ordinate_kind, ordinate
 end
 
+signal_measurement_ordinates(service::SignalMeasurementsService, signal::AnalysedSignal) =
+    signal_measurement_ordinates(service.roi_service, signal)
+
+function signal_full_time_limits(
+    service::SignalTimeRoiService,
+    signal::AnalysedSignal,
+)::SignalTimeLimits
+    signal_measurement_ordinates(service, signal)
+    duration_s = signal_duration_s(signal)
+    isfinite(duration_s) && duration_s > 0 || throw(ArgumentError(
+        "Полный диапазон сигнала должен иметь положительную конечную длительность",
+    ))
+    SignalTimeLimits(0.0, duration_s)
+end
+
+signal_full_time_limits(service::SignalMeasurementsService, signal::AnalysedSignal) =
+    signal_full_time_limits(service.roi_service, signal)
+
+function signal_ordinate_roi(
+    service::SignalTimeRoiService,
+    signal::AnalysedSignal,
+    limits::SignalTimeLimits,
+)::SignalOrdinateRoi
+    ordinate_kind, ordinate = signal_measurement_ordinates(service, signal)
+    duration_s = signal_duration_s(signal)
+    limits.min_s >= 0.0 || throw(ArgumentError("Минимальная Time Limit не может быть отрицательной"))
+    limits.max_s <= duration_s || throw(ArgumentError(
+        "Максимальная Time Limit превышает длительность analysis source",
+    ))
+
+    first_position = findfirst(eachindex(ordinate)) do index
+        time_s = (index - 1) / signal.sample_rate_hz
+        limits.min_s <= time_s <= limits.max_s
+    end
+    last_position = findlast(eachindex(ordinate)) do index
+        time_s = (index - 1) / signal.sample_rate_hz
+        limits.min_s <= time_s <= limits.max_s
+    end
+    first_position === nothing && throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
+    last_position === nothing && throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
+    first_position <= last_position || throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
+    SignalOrdinateRoi(
+        ordinate_kind,
+        @view(ordinate[first_position:last_position]),
+        first_position - 1,
+        signal.sample_rate_hz,
+    )
+end
+
+signal_ordinate_roi(
+    service::SignalMeasurementsService,
+    signal::AnalysedSignal,
+    limits::SignalTimeLimits,
+) = signal_ordinate_roi(service.roi_service, signal, limits)
+
+function signal_time_limits_are_valid(
+    service::SignalMeasurementsService,
+    signal::AnalysedSignal,
+    limits::SignalTimeLimits,
+)::Bool
+    try
+        signal_ordinate_roi(service, signal, limits)
+        true
+    catch err
+        err isa ArgumentError || rethrow()
+        false
+    end
+end
+
 function signal_measurements_snapshot(
     service::SignalMeasurementsService,
     state_revision::Int,
     signal::AnalysedSignal,
+    limits::SignalTimeLimits,
 )::SignalMeasurementsSnapshot
-    ordinate_kind, ordinate = signal_measurement_ordinates(service, signal)
+    roi = signal_ordinate_roi(service, signal, limits)
+    ordinate = collect(roi.values)
     minimum_index = argmin(ordinate)
     maximum_index = argmax(ordinate)
-    minimum_sample_index = minimum_index - 1
-    maximum_sample_index = maximum_index - 1
+    minimum_sample_index = roi.sample_offset + minimum_index - 1
+    maximum_sample_index = roi.sample_offset + maximum_index - 1
 
     SignalMeasurementsSnapshot(
         state_revision,
         signal.name,
-        ordinate_kind,
+        roi.ordinate,
         SignalMeasurementUnits("1", "s"),
         (
             SignalMeasurementItem(
@@ -327,7 +411,7 @@ function signal_measurements_snapshot(
                 ordinate[minimum_index],
                 SignalMeasurementPosition(
                     minimum_sample_index,
-                    minimum_sample_index / signal.sample_rate_hz,
+                    minimum_sample_index / roi.sample_rate_hz,
                 ),
             ),
             SignalMeasurementItem(
@@ -335,11 +419,25 @@ function signal_measurements_snapshot(
                 ordinate[maximum_index],
                 SignalMeasurementPosition(
                     maximum_sample_index,
-                    maximum_sample_index / signal.sample_rate_hz,
+                    maximum_sample_index / roi.sample_rate_hz,
                 ),
             ),
             SignalMeasurementItem(MEAN_MEASUREMENT, Statistics.mean(ordinate), nothing),
         ),
+    )
+end
+
+
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
+    state_revision::Int,
+    signal::AnalysedSignal,
+)::SignalMeasurementsSnapshot
+    signal_measurements_snapshot(
+        service,
+        state_revision,
+        signal,
+        signal_full_time_limits(service, signal),
     )
 end
 
@@ -355,6 +453,16 @@ function signal_measurements_snapshot(
         SignalMeasurementUnits("1", "s"),
         (),
     )
+end
+
+
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
+    state_revision::Int,
+    signal::Nothing,
+    limits::Nothing,
+)::SignalMeasurementsSnapshot
+    signal_measurements_snapshot(service, state_revision, signal)
 end
 
 function signal_peaks_detect(
@@ -447,21 +555,35 @@ function signal_peaks_snapshot(
     display.active_plot == TIME_PLOT || throw(ArgumentError(
         "Поиск пиков доступен только для Time plot",
     ))
-    ordinate_kind, ordinate = signal_measurement_ordinates(service.ordinate_service, signal)
+    limits = display.time_limits
+    limits === nothing && throw(ArgumentError("Непустой Display должен иметь Time Limits"))
+    roi = signal_ordinate_roi(service.ordinate_service, signal, limits)
+    if length(roi.values) < 3
+        return SignalPeaksSnapshot(
+            true,
+            state_revision,
+            display.id,
+            signal.name,
+            roi.ordinate,
+            units,
+            SignalPeakItem[],
+        )
+    end
     query = SignalPeaksQuery(
         state_revision,
         display.id,
         signal.name,
-        ordinate_kind,
-        ordinate,
-        signal.sample_rate_hz,
+        roi.ordinate,
+        collect(roi.values),
+        roi.sample_rate_hz,
+        roi.sample_offset,
     )
     result = signal_peaks_detect(service.provider, query)
     items = SignalPeakItem[
         SignalPeakItem(
             result.peak_values[index],
-            result.locations_1based[index] - 1,
-            (result.locations_1based[index] - 1) / query.sample_rate_hz,
+            query.sample_offset + result.locations_1based[index] - 1,
+            (query.sample_offset + result.locations_1based[index] - 1) / query.sample_rate_hz,
             result.widths_samples[index],
             result.prominences[index],
         )
@@ -567,6 +689,7 @@ function signal_analyser_snapshot_unlocked(
         "analysis_signal" => analysis_name,
         "selected_signal" => analysis_name,
         "visible_signals" => visible_names,
+        "time_limits" => signal_time_limits_payload(active_display.time_limits),
         "signals" => [signal_analyser_signal_payload(item) for item in state.signals],
         "plots" => plots,
         "plot_payload" => signal_analyser_multi_trace_payload(state, signal, visible_names),
@@ -586,6 +709,7 @@ function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{Str
         state.measurements_service,
         state.view.state_revision,
         signal,
+        display.time_limits,
     )
     peaks = signal_peaks_snapshot(
         state.peaks_service,
@@ -650,6 +774,49 @@ function signal_analyser_validate_visible_signals!(
     end
 
     [signal.name for signal in state.signals if signal.name in seen]
+end
+
+function signal_analyser_validate_time_limits!(
+    field_errors::Dict{String,String},
+    value,
+)::Union{Nothing,SignalTimeLimits}
+    value === nothing && return nothing
+    if !(value isa AbstractDict)
+        field_errors["time_limits"] = "Требуется null или объект {min_s, max_s, units}"
+        return nothing
+    end
+    keys_set = signal_analyser_payload_keys(value)
+    if keys_set != SIGNAL_TIME_LIMIT_FIELDS
+        missing = sort!(collect(setdiff(SIGNAL_TIME_LIMIT_FIELDS, keys_set)))
+        unknown = sort!(collect(setdiff(keys_set, SIGNAL_TIME_LIMIT_FIELDS)))
+        details = String[]
+        isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
+        isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
+        field_errors["time_limits"] = "Ожидались только min_s, max_s, units ($(join(details, "; ")))"
+        return nothing
+    end
+
+    minimum_value = signal_analyser_payload_value(value, "min_s")
+    maximum_value = signal_analyser_payload_value(value, "max_s")
+    units_value = signal_analyser_payload_value(value, "units")
+    if !(minimum_value isa Real) || minimum_value isa Bool ||
+        !(maximum_value isa Real) || maximum_value isa Bool
+        field_errors["time_limits"] = "min_s и max_s должны быть конечными числами"
+        return nothing
+    end
+    if units_value != "s"
+        field_errors["time_limits"] = "Поддерживаются только units=s"
+        return nothing
+    end
+    try
+        SignalTimeLimits(minimum_value, maximum_value)
+    catch err
+        if err isa ArgumentError || err isa InexactError || err isa OverflowError
+            field_errors["time_limits"] = sprint(showerror, err)
+            return nothing
+        end
+        rethrow()
+    end
 end
 
 function validate_signal_analyser_view_payload(
@@ -757,6 +924,70 @@ function validate_signal_analyser_view_payload(
         first(visible_names)
     end
 
+    has_time_limits = signal_analyser_payload_contains(data, "time_limits")
+    time_limits_value = signal_analyser_payload_value(data, "time_limits")
+    validated_time_limits = has_time_limits ?
+        signal_analyser_validate_time_limits!(field_errors, time_limits_value) : nothing
+    source_changed = current_analysis_name != requested_analysis_name
+    carried_time_limits = has_time_limits && if time_limits_value === nothing
+        display.time_limits === nothing
+    else
+        validated_time_limits !== nothing && validated_time_limits == display.time_limits
+    end
+    requested_time_limits = if requested_analysis_name === nothing
+        if has_time_limits && time_limits_value !== nothing && !(source_changed && carried_time_limits) &&
+            !haskey(field_errors, "time_limits")
+            field_errors["time_limits"] = "Пустой Display должен иметь time_limits=null"
+        end
+        nothing
+    else
+        prospective_signal = signal_by_name(state, requested_analysis_name)
+        if has_time_limits && source_changed && carried_time_limits
+            if display.time_limits !== nothing && signal_time_limits_are_valid(
+                state.measurements_service,
+                prospective_signal,
+                display.time_limits,
+            )
+                display.time_limits
+            else
+                signal_full_time_limits(state.measurements_service, prospective_signal)
+            end
+        elseif has_time_limits
+            if time_limits_value === nothing
+                field_errors["time_limits"] = "Непустой Display должен иметь Time Limits"
+                nothing
+            elseif validated_time_limits === nothing
+                nothing
+            else
+                try
+                    signal_ordinate_roi(
+                        state.measurements_service,
+                        prospective_signal,
+                        validated_time_limits,
+                    )
+                    validated_time_limits
+                catch err
+                    if err isa ArgumentError
+                        field_errors["time_limits"] = sprint(showerror, err)
+                        nothing
+                    else
+                        rethrow()
+                    end
+                end
+            end
+        elseif current_analysis_name == requested_analysis_name && display.time_limits !== nothing
+            display.time_limits
+        elseif display.time_limits !== nothing && signal_time_limits_are_valid(
+            state.measurements_service,
+            prospective_signal,
+            display.time_limits,
+        )
+            display.time_limits
+        else
+            signal_full_time_limits(state.measurements_service, prospective_signal)
+        end
+    end
+
     has_peaks_enabled = signal_analyser_payload_contains(data, "peaks_enabled")
     peaks_enabled_value = signal_analyser_payload_value(data, "peaks_enabled")
     requested_peaks_enabled = display.peaks_enabled
@@ -784,6 +1015,7 @@ function validate_signal_analyser_view_payload(
         requested_plot,
         requested_analysis_name,
         visible_names,
+        requested_time_limits,
         requested_peaks_enabled,
     )
     (
@@ -809,6 +1041,7 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             prospective_display.active_plot != display.active_plot ||
             prospective_display.membership.signal_names != display.membership.signal_names ||
             !isequal(prospective_analysis_name, signal_analyser_display_analysis_name(display)) ||
+            !isequal(prospective_display.time_limits, display.time_limits) ||
             prospective_display.peaks_enabled != display.peaks_enabled
 
         # Build every payload affected by the request before publishing the
@@ -824,6 +1057,7 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             state.measurements_service,
             next_revision,
             prospective_signal,
+            prospective_display.time_limits,
         )
         prepared_peaks = signal_peaks_snapshot(
             state.peaks_service,
@@ -915,12 +1149,15 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
 
         if requested.operation == "create"
             display_number = state.next_display_number
+            analysis_signal = first(state.signals)
             display = SignalAnalyserDisplayState(
                 "display-$display_number",
                 "Display $display_number",
                 TIME_PLOT,
-                first(state.signals).name,
+                analysis_signal.name,
                 [signal.name for signal in state.signals],
+                signal_full_time_limits(state.measurements_service, analysis_signal),
+                false,
             )
             prepared_plots = signal_analyser_prepared_plots(
                 state,
@@ -930,6 +1167,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 state.measurements_service,
                 state.view.state_revision + 1,
                 signal_analyser_display_analysis_signal(state, display),
+                display.time_limits,
             )
             prepared_peaks = signal_peaks_snapshot(
                 state.peaks_service,
@@ -953,6 +1191,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                     state.measurements_service,
                     state.view.state_revision + 1,
                     signal_analyser_display_analysis_signal(state, display),
+                    display.time_limits,
                 )
                 prepared_peaks = signal_peaks_snapshot(
                     state.peaks_service,
@@ -968,6 +1207,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                     state.measurements_service,
                     state.view.state_revision,
                     signal_analyser_display_analysis_signal(state, display),
+                    display.time_limits,
                 )
                 prepared_peaks = signal_peaks_snapshot(
                     state.peaks_service,
@@ -996,6 +1236,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 state.measurements_service,
                 state.view.state_revision + 1,
                 signal_analyser_display_analysis_signal(state, next_active_display),
+                next_active_display.time_limits,
             )
             prepared_peaks = signal_peaks_snapshot(
                 state.peaks_service,

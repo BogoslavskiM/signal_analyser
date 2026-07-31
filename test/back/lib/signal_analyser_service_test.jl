@@ -103,7 +103,7 @@ end
     state = SA.default_signal_analyser_state()
     snapshot = SA.signal_analyser_snapshot(state)
 
-    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
+    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
     @test snapshot["active_display_id"] == "display-1"
     @test snapshot["displays"] == [Dict(
         "id" => "display-1",
@@ -112,12 +112,14 @@ end
         "analysis_signal" => "Гармонический сигнал",
         "selected_signal" => "Гармонический сигнал",
         "visible_signals" => ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"],
+        "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
         "peaks_enabled" => false,
     )]
     @test snapshot["state_revision"] == 0
     @test snapshot["active_plot"] == "time"
     @test snapshot["row_selected_signal"] == "Гармонический сигнал"
     @test snapshot["analysis_signal"] == "Гармонический сигнал"
+    @test snapshot["time_limits"] == Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s")
     @test snapshot["selected_signal"] == "Гармонический сигнал"
     @test snapshot["visible_signals"] == ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"]
     @test [signal["name"] for signal in snapshot["signals"]] == ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"]
@@ -222,6 +224,7 @@ end
         "analysis_signal" => first_name,
         "selected_signal" => first_name,
         "visible_signals" => [first_name, second_name],
+        "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
         "peaks_enabled" => false,
     )
 
@@ -599,6 +602,8 @@ end
         SA.TIME_PLOT,
         "invalid-raw",
         ["valid-raw", "invalid-raw"],
+        SA.SignalTimeLimits(0.0, 0.002),
+        false,
     )
     push!(state.displays, invalid_display)
     display_baseline_snapshot = SA.signal_analyser_snapshot(state)
@@ -783,4 +788,165 @@ end
     @test restored["analysis_signal"] == names[1]
     @test restored["displays"][2]["visible_signals"] == names
     @test restored["displays"][2]["analysis_signal"] == names[1]
+end
+
+@testset "Cascade 7 Time Limits ROI" begin
+    @test SA.SignalTimeLimits(0, 1) == SA.SignalTimeLimits(0.0, 1.0)
+    @test_throws ArgumentError SA.SignalTimeLimits(1, 1)
+    @test_throws ArgumentError SA.SignalTimeLimits(NaN, 1)
+    roi = SA.SignalOrdinateRoi(SA.REAL_ORDINATE, [1.0], 7, 10.0)
+    @test roi.sample_offset == 7
+    @test collect(roi.values) == [1.0]
+    @test_throws ArgumentError SA.SignalOrdinateRoi(SA.REAL_ORDINATE, Float64[], 0, 1.0)
+end
+
+@testset "Cascade 7 Time Limits ROI publication, Peaks and lifecycle" begin
+    # Use a deliberately long raw signal: these assertions prove that ROI work is
+    # performed before the Time-plot downsampling boundary and uses absolute
+    # (zero-based) signal coordinates.
+    values = ComplexF64.(collect(0:19))
+    signal = SA.AnalysedSignal("roi", "#111111", 10.0, values, false, true)
+    provider = FakePeaksProvider(
+        SA.SignalPeaksQuery[],
+        SA.SignalPeaksProviderResult([8.0], [2], [1.5], [3.0], 4),
+        nothing,
+    )
+    state = SA.SignalAnalyserState(
+        SA.AnalysedSignal[signal],
+        SA.SignalAnalyserViewState(0, SA.TIME_PLOT, signal.name),
+        Dict{String,Dict{String,Any}}(),
+        ReentrantLock(); peaks_provider = provider,
+    )
+
+    # 0.7..1.01 includes raw samples 7,8,9,10 (both endpoints inclusive).
+    four = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "time_limits" => Dict("min_s" => 0.7, "max_s" => 1.01, "units" => "s"),
+    ))
+    @test four["state_revision"] == 1
+    @test four["time_limits"] == Dict("min_s" => 0.7, "max_s" => 1.01, "units" => "s")
+    @test four["measurements"]["items"] == [
+        Dict("id" => "minimum", "label" => "Минимум", "value" => 7.0, "time_s" => 0.7, "sample_index" => 7),
+        Dict("id" => "maximum", "label" => "Максимум", "value" => 10.0, "time_s" => 1.0, "sample_index" => 10),
+        Dict("id" => "mean", "label" => "Среднее", "value" => 8.5, "time_s" => nothing, "sample_index" => nothing),
+    ]
+    @test isempty(provider.calls)
+
+    one = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 1,
+        "time_limits" => Dict("min_s" => 0.7, "max_s" => 0.71, "units" => "s"),
+        "peaks_enabled" => true,
+    ))
+    @test one["state_revision"] == 2
+    @test one["peaks"]["enabled"] === true
+    @test one["peaks"]["items"] == Any[]
+    @test isempty(provider.calls) # 1 raw sample: provider must not be invoked.
+
+    two = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 2,
+        "time_limits" => Dict("min_s" => 0.7, "max_s" => 0.81, "units" => "s"),
+    ))
+    @test two["state_revision"] == 3
+    @test two["peaks"]["enabled"] === true
+    @test two["peaks"]["items"] == Any[]
+    @test isempty(provider.calls) # 2 raw samples: the same guard applies.
+
+    peaks = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 3,
+        "time_limits" => Dict("min_s" => 0.7, "max_s" => 1.01, "units" => "s"),
+    ))
+    @test peaks["state_revision"] == 4
+    @test length(provider.calls) == 1
+    query = only(provider.calls)
+    @test query.sample_offset == 7
+    @test collect(query.values) == [7.0, 8.0, 9.0, 10.0]
+    @test query.state_revision == 4
+    @test peaks["peaks"]["items"] == [Dict(
+        "id" => "peak-8", "value" => 8.0, "time_s" => 0.8,
+        "sample_index" => 8, "width_samples" => 1.5, "prominence" => 3.0,
+    )]
+
+    no_op = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 4,
+        "time_limits" => Dict("min_s" => 0.7, "max_s" => 1.01, "units" => "s"),
+        "peaks_enabled" => true,
+    ))
+    @test no_op["state_revision"] == 4
+    @test length(provider.calls) == 2 # snapshot refresh is allowed; mutation is not.
+
+    before_invalid = SA.signal_analyser_snapshot(state)
+    invalid = try
+        SA.apply_signal_analyser_view!(state, Dict(
+            "state_revision" => 4,
+            "time_limits" => Dict("min_s" => 1.1, "max_s" => 1.0, "units" => "s"),
+        ))
+        nothing
+    catch caught
+        caught
+    end
+    @test invalid isa SA.SignalAnalyserValidationError
+    @test Set(keys(invalid.fields)) == Set(["time_limits"])
+    @test SA.signal_analyser_snapshot(state) == before_invalid
+
+    before_provider_failure = (
+        state.view.state_revision,
+        state.active_display_id,
+        state.view.active_plot,
+        state.view.selected_signal,
+        state.displays[1].time_limits,
+        state.displays[1].peaks_enabled,
+        deepcopy(state.plot_cache),
+    )
+    provider.failure = ArgumentError("ROI provider failure")
+    @test_throws ArgumentError SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 4,
+        "time_limits" => Dict("min_s" => 0.8, "max_s" => 1.11, "units" => "s"),
+    ))
+    @test (
+        state.view.state_revision,
+        state.active_display_id,
+        state.view.active_plot,
+        state.view.selected_signal,
+        state.displays[1].time_limits,
+        state.displays[1].peaks_enabled,
+        state.plot_cache,
+    ) == before_provider_failure
+    provider.failure = nothing
+
+    # A carried range follows a source change only when it is valid for the
+    # prospective analysis source; otherwise the new source receives its full range.
+    short = SA.AnalysedSignal("short", "#222222", 10.0, ComplexF64.(collect(0:4)), false, true)
+    long = SA.AnalysedSignal("long", "#333333", 10.0, ComplexF64.(collect(0:10)), false, true)
+    lifecycle = SA.SignalAnalyserState(
+        SA.AnalysedSignal[long, short], SA.SignalAnalyserViewState(0, SA.TIME_PLOT, long.name),
+        Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = FakePeaksProvider(
+            SA.SignalPeaksQuery[], SA.SignalPeaksProviderResult(Float64[], Int[], Float64[], Float64[], 3), nothing,
+        ),
+    )
+    narrowed = SA.apply_signal_analyser_view!(lifecycle, Dict(
+        "state_revision" => 0,
+        "time_limits" => Dict("min_s" => 0.5, "max_s" => 0.7, "units" => "s"),
+    ))
+    reset_on_short = SA.apply_signal_analyser_view!(lifecycle, Dict(
+        "state_revision" => 1, "analysis_signal" => short.name,
+        "time_limits" => narrowed["time_limits"],
+    ))
+    @test reset_on_short["time_limits"] == Dict("min_s" => 0.0, "max_s" => 0.4, "units" => "s")
+    short_narrowed = SA.apply_signal_analyser_view!(lifecycle, Dict(
+        "state_revision" => 2,
+        "time_limits" => Dict("min_s" => 0.2, "max_s" => 0.4, "units" => "s"),
+    ))
+    preserved = SA.apply_signal_analyser_view!(lifecycle, Dict(
+        "state_revision" => 3, "analysis_signal" => long.name,
+        "time_limits" => short_narrowed["time_limits"],
+    ))
+    @test preserved["time_limits"] == short_narrowed["time_limits"]
+    cleared = SA.apply_signal_analyser_view!(lifecycle, Dict("state_revision" => 4, "visible_signals" => String[], "time_limits" => nothing))
+    @test cleared["time_limits"] === nothing
+    readded = SA.apply_signal_analyser_view!(lifecycle, Dict("state_revision" => 5, "visible_signals" => [short.name], "time_limits" => nothing))
+    @test readded["time_limits"] == Dict("min_s" => 0.0, "max_s" => 0.4, "units" => "s")
+    created = SA.apply_signal_analyser_display!(lifecycle, Dict("state_revision" => 6, "operation" => "create"))
+    @test created["time_limits"] == Dict("min_s" => 0.0, "max_s" => 1.0, "units" => "s")
+    returned = SA.apply_signal_analyser_display!(lifecycle, Dict("state_revision" => 7, "operation" => "select", "display_id" => "display-1"))
+    @test returned["time_limits"] == readded["time_limits"]
 end

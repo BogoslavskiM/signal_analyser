@@ -22,10 +22,60 @@ struct AnalysedSignal
     visible::Bool
 end
 
+"""Authoritative per-Display Time region in seconds."""
+struct SignalTimeLimits
+    min_s::Float64
+    max_s::Float64
+
+    function SignalTimeLimits(min_s::Real, max_s::Real)
+        minimum_time = Float64(min_s)
+        maximum_time = Float64(max_s)
+        isfinite(minimum_time) && isfinite(maximum_time) || throw(ArgumentError(
+            "Time Limits должны быть конечными числами",
+        ))
+        minimum_time < maximum_time || throw(ArgumentError(
+            "Минимальная Time Limit должна быть меньше максимальной",
+        ))
+        new(minimum_time, maximum_time)
+    end
+end
+
+Base.:(==)(left::SignalTimeLimits, right::SignalTimeLimits) =
+    left.min_s == right.min_s && left.max_s == right.max_s
+Base.isequal(left::SignalTimeLimits, right::SignalTimeLimits) = left == right
+Base.hash(limits::SignalTimeLimits, seed::UInt) = hash((limits.min_s, limits.max_s), seed)
+
 @enum SignalMeasurementOrdinate begin
     REAL_ORDINATE
     MAGNITUDE_ORDINATE
 end
+
+"""Finite raw ordinate samples inside an inclusive Time ROI."""
+struct SignalOrdinateRoi
+    ordinate::SignalMeasurementOrdinate
+    values::Tuple{Vararg{Float64}}
+    sample_offset::Int
+    sample_rate_hz::Float64
+
+    function SignalOrdinateRoi(
+        ordinate::SignalMeasurementOrdinate,
+        values::AbstractVector{<:Real},
+        sample_offset::Int,
+        sample_rate_hz::Real,
+    )
+        roi_values = Float64.(values)
+        isempty(roi_values) && throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
+        all(isfinite, roi_values) || throw(ArgumentError("ROI сигнала содержит нечисловые отсчёты"))
+        sample_offset >= 0 || throw(ArgumentError("Смещение ROI не может быть отрицательным"))
+        isfinite(sample_rate_hz) && sample_rate_hz > 0 || throw(ArgumentError(
+            "Частота дискретизации ROI должна быть положительной и конечной",
+        ))
+        new(ordinate, Tuple(roi_values), sample_offset, Float64(sample_rate_hz))
+    end
+end
+
+"""Stateless domain collaborator that resolves inclusive raw Time ROIs."""
+struct SignalTimeRoiService end
 
 @enum SignalMeasurementKind begin
     MINIMUM_MEASUREMENT
@@ -119,8 +169,12 @@ struct SignalMeasurementsSnapshot
     end
 end
 
-"""Stateless domain service that derives raw-sample measurements."""
-struct SignalMeasurementsService end
+"""Domain service that derives raw-sample measurements through a typed ROI collaborator."""
+struct SignalMeasurementsService
+    roi_service::SignalTimeRoiService
+end
+
+SignalMeasurementsService() = SignalMeasurementsService(SignalTimeRoiService())
 
 signal_measurement_ordinate_name(ordinate::SignalMeasurementOrdinate)::String =
     SIGNAL_MEASUREMENT_ORDINATE_NAMES[ordinate]
@@ -145,6 +199,7 @@ struct SignalPeaksQuery
     ordinate::SignalMeasurementOrdinate
     values::Tuple{Vararg{Float64}}
     sample_rate_hz::Float64
+    sample_offset::Int
 
     function SignalPeaksQuery(
         state_revision::Int,
@@ -153,6 +208,7 @@ struct SignalPeaksQuery
         ordinate::SignalMeasurementOrdinate,
         values::AbstractVector{<:Real},
         sample_rate_hz::Real,
+        sample_offset::Int,
     )
         state_revision >= 0 || throw(ArgumentError("Ревизия peaks query не может быть отрицательной"))
         isempty(display_id) && throw(ArgumentError("Идентификатор Display peaks query не может быть пустым"))
@@ -163,6 +219,9 @@ struct SignalPeaksQuery
         isfinite(sample_rate_hz) && sample_rate_hz > 0 || throw(ArgumentError(
             "Частота дискретизации peaks query должна быть положительной и конечной",
         ))
+        sample_offset >= 0 || throw(ArgumentError(
+            "Абсолютное смещение peaks query не может быть отрицательным",
+        ))
         new(
             state_revision,
             String(display_id),
@@ -170,9 +229,27 @@ struct SignalPeaksQuery
             ordinate,
             Tuple(peak_values),
             Float64(sample_rate_hz),
+            sample_offset,
         )
     end
 end
+
+SignalPeaksQuery(
+    state_revision::Int,
+    display_id::AbstractString,
+    signal_name::AbstractString,
+    ordinate::SignalMeasurementOrdinate,
+    values::AbstractVector{<:Real},
+    sample_rate_hz::Real,
+) = SignalPeaksQuery(
+    state_revision,
+    display_id,
+    signal_name,
+    ordinate,
+    values,
+    sample_rate_hz,
+    0,
+)
 
 struct SignalPeaksProviderResult
     peak_values::Tuple{Vararg{Float64}}
@@ -369,6 +446,7 @@ mutable struct SignalAnalyserDisplayState
     active_plot::SignalAnalyserPlot
     membership::SignalDisplayMembership
     analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource}
+    time_limits::Union{Nothing,SignalTimeLimits}
     peaks_enabled::Bool
 
     function SignalAnalyserDisplayState(
@@ -377,6 +455,7 @@ mutable struct SignalAnalyserDisplayState
         active_plot::SignalAnalyserPlot,
         membership::SignalDisplayMembership,
         analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
+        time_limits::Union{Nothing,SignalTimeLimits},
         peaks_enabled::Bool,
     )
         analysis_name = signal_analysis_name(analysis_source)
@@ -385,6 +464,9 @@ mutable struct SignalAnalyserDisplayState
         ))
         analysis_name === nothing || analysis_name in membership.signal_names || throw(ArgumentError(
             "Analysis source должен входить в membership Display",
+        ))
+        (analysis_name === nothing) == (time_limits === nothing) || throw(ArgumentError(
+            "Time Limits должны отсутствовать только у пустого Display",
         ))
         peaks_enabled && active_plot != TIME_PLOT && throw(ArgumentError(
             "Поиск пиков доступен только для Time plot",
@@ -398,18 +480,11 @@ mutable struct SignalAnalyserDisplayState
             active_plot,
             membership,
             analysis_source,
+            time_limits,
             peaks_enabled,
         )
     end
 end
-
-SignalAnalyserDisplayState(
-    id::AbstractString,
-    name::AbstractString,
-    active_plot::SignalAnalyserPlot,
-    selected_signal::Union{Nothing,AbstractString},
-    visible_signals::AbstractVector{<:AbstractString},
-) = SignalAnalyserDisplayState(id, name, active_plot, selected_signal, visible_signals, false)
 
 function SignalAnalyserDisplayState(
     id::AbstractString,
@@ -417,6 +492,7 @@ function SignalAnalyserDisplayState(
     active_plot::SignalAnalyserPlot,
     selected_signal::Union{Nothing,AbstractString},
     visible_signals::AbstractVector{<:AbstractString},
+    time_limits::Union{Nothing,SignalTimeLimits},
     peaks_enabled::Bool,
 )
     SignalAnalyserDisplayState(
@@ -425,6 +501,7 @@ function SignalAnalyserDisplayState(
         active_plot,
         SignalDisplayMembership(visible_signals),
         signal_analysis_source(selected_signal),
+        time_limits,
         peaks_enabled,
     )
 end
@@ -443,6 +520,7 @@ function signal_analyser_publish_display_state!(
     display.active_plot = prospective.active_plot
     display.membership = prospective.membership
     display.analysis_source = prospective.analysis_source
+    display.time_limits = prospective.time_limits
     display.peaks_enabled = prospective.peaks_enabled
     nothing
 end
@@ -486,6 +564,11 @@ function SignalAnalyserState(
         view.active_plot,
         analysis_name,
         visible_signals,
+        analysis_name === nothing ? nothing : SignalTimeLimits(
+            0.0,
+            signal_duration_s(signals[findfirst(signal -> signal.name == analysis_name, signals)::Int]),
+        ),
+        false,
     )
     view.selected_signal = analysis_name
     SignalAnalyserState(
