@@ -12,10 +12,10 @@ Owned paths:
 - `app.jl`
 - `run.jl`
 - `config/**`
+- `Project.toml`
 
 Read-only paths:
 - `public/js/api.js`
-- `Project.toml`
 - `README.md`
 - `architecture/**`
 
@@ -55,6 +55,11 @@ Stay inside owned files. Do not edit frontend, tests, architecture, agent
 config, skills, or adapter files. If another folder must change, stop and
 return a handoff.
 
+Own `Project.toml` as the Julia application dependency contract. Change it only
+with accessible source/version evidence and Tester/DevOps contract handoff.
+Platform-only packages must not be added as bare dependencies when their source
+cannot be resolved outside the platform environment.
+
 Use existing Julia and Genie patterns. Keep behavior changes scoped. For
 documentation-only work, do not change runtime behavior.
 
@@ -68,6 +73,11 @@ return a Backend -> Frontend/Tester handoff.
 
 For every assignment, finish with a structured handoff to Architect containing
 `goal`, `scope`, `contracts`, `changes`, `verification`, `risks`, and
-`follow-ups`. Do not write architecture documentation yourself; Architect
+`follow-ups`. For math changes, add implemented formulas, symbols, units,
+conventions, code anchors and test evidence; do not invent unstated math. For a
+possible Engee defect add an `engee_bug_candidate` with environment/versions,
+branch/SHA, minimal safe reproduction, expected/actual/frequency, exact errors,
+artifacts, impact, isolation, workaround and regression link. Do not classify
+it confirmed without isolation. Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
 """

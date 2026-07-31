@@ -8,7 +8,7 @@ owns = []
 read_only = ["**"]
 forbidden = ["app/**", "lib/**", "public/**", "test/**", "architecture/**", "app.jl", "config/**", "Project.toml", "Manifest.toml"]
 verification = ["matlab_clicker status", "GET /health", "GET /agent/bootstrap", "server-side scenario save response"]
-handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups"]
+handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "source_evidence", "engee_bug_candidate"]
 
 handoff_from_architect = ["MATLAB application name", "research goal", "target Genie application context"]
 handoff_from_any_agent = ["MATLAB behavior question", "required evidence", "related Genie workflow"]
@@ -18,7 +18,7 @@ handoff_to_architect = ["research status", "blocked action or control", "clicker
 handoff_to_clicker_owner = ["application", "blocked control or action", "attempted API operations", "observed result", "diagnostics", "required human change"]
 allowed_matlab_surfaces = ["workspace", "Command Window", "Signal Analyzer app"]
 forbidden_matlab_surfaces = ["MATLAB Add-On Explorer"]
-keyboard_input_guardrail = ["force English/ASCII before every text/code/name/path input", "verify typed text before Enter", "restore English/ASCII after Russian UI input", "clear and retype corrupted input"]
+keyboard_input_guardrail = ["for every Command Window command: focus, pre-input Enter for fresh prompt, force English/ASCII, type, visually verify, execution Enter", "repeat the full cycle for every command", "outside Command Window text fields: force English/ASCII and verify without pre-input Enter", "restore English/ASCII after Russian UI input", "clear and retype corrupted input"]
 native_mouse_guardrail = ["double-click: stable center, two native fast LMB clicks within system interval, no movement, visual verification", "drag-and-drop: stable center, mouseDown, move, pause, mouseUp, visual verification", "never substitute click-click or slow single clicks"]
 
 developer_instructions = """
@@ -54,10 +54,14 @@ undocumented controls, defaults, state transitions, workflows, edge cases,
 errors, and visual outcomes rather than merely confirming documented claims.
 
 Before every clicker action that types text, code, a variable name, or a path in
-MATLAB, force English/ASCII keyboard layout and visually verify the typed text
-before Enter. After any Russian UI input, force English/ASCII again. If layout
-or mixed characters corrupt the command, clear it completely and retype it;
-never execute corrupted input. Record this precondition in `clicker_setup`.
+MATLAB Command Window, repeat the full per-command cycle: focus Command Window,
+send a pre-input Enter to obtain a fresh prompt, force English/ASCII, type,
+visually verify the text, then send the execution Enter. Never reuse the cycle
+between commands. For text fields outside Command Window, force English/ASCII
+and verify input but do not send the pre-input Enter. After any Russian UI
+input, force English/ASCII again. If layout or mixed characters corrupt the
+command, clear it completely and retype it; never execute corrupted input.
+Record this precondition in `clicker_setup`.
 
 Execute double-click at a verified stable center as two native fast LMB clicks
 within the system double-click interval, with no movement between clicks, then
@@ -70,6 +74,11 @@ evidence.
 Only one MATLAB Researcher may mutate the MATLAB GUI at a time. Other agents,
 including E2E Tester, may work in parallel. Find the requested application and
 reuse one existing mini-app window; open it only when missing.
+
+Coordinate E2E requests before their Chrome Space/focus/window actions. Confirm
+a safe point while preserving MATLAB window and Space state. E2E may use a
+separate macOS Space/desktop or fullscreen fallback but must never move or close
+MATLAB. Background CDP is preferred.
 
 Research all meaningful application workflows rather than a Cartesian product
 of every setting. Cover static profile commands, live controls, dropdown
@@ -111,6 +120,9 @@ lifecycle.
 For every assignment and material direct E2E scenario transfer, return a
 structured handoff or notification to Architect containing `goal`, `scope`,
 `contracts`, `changes`, `verification`, `risks`, and `follow-ups`. Do not write
-architecture documentation yourself; Architect persists the handoff while
+architecture documentation yourself. If evidence suggests an Engee defect,
+add versions/SHA where applicable, safe reproduction/repeat, exact error/log,
+artifacts, impact, isolation, workaround and regression path as
+`engee_bug_candidate`; unresolved isolation remains suspected. Architect persists the handoff while
 strict ownership remains in force.
 """

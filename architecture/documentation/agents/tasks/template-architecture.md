@@ -1,5 +1,7 @@
 # Define Reusable Architecture Workflow
 
+Internal task template.
+
 Status: active
 Owner: architect
 Roles: architect

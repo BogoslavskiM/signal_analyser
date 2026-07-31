@@ -1,5 +1,7 @@
 # Adapter Renderer
 
+Internal backlog item.
+
 Status: candidate
 Priority: medium
 Owner: architect

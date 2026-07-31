@@ -1,6 +1,6 @@
 ---
 name: playwright-test-scaffold
-version: 0.3.0
+version: 0.4.0
 ---
 # Playwright Test Scaffold
 
@@ -100,6 +100,11 @@ expected_visible_states
 - Падение одного spec не останавливает остальные.
 - Итог содержит passed, failed, skipped и total, затем полный список failures.
 - Синтаксическая ошибка disabled spec считается runner failure, а не skip.
+- Background CDP является предпочтительным режимом и не должен менять focus.
+- Интерактивный Chrome размещается на отдельном macOS Space/desktop; fullscreen
+  допустим как fallback. До Space/focus/window actions E2E Tester координируется
+  с MATLAB Researcher, не перемещает и не закрывает MATLAB и сохраняет
+  `browser_workspace_setup` evidence.
 
 ## Application Runtime Boundary
 - Создание и запуск E2E-тестов не требуют deployment.

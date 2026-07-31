@@ -8,9 +8,10 @@ owns = ["test/playwright/**"]
 read_only = ["AGENTS.md", "architecture/**"]
 forbidden = ["app/**", "lib/**", "public/**", "test/back/**", "test/engee/**", "test/front/**", "architecture/**", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"]
 verification = ["./test/playwright/run_devhub_playwright_tests.sh"]
-handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups"]
+handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "browser_workspace_setup", "source_evidence", "engee_bug_candidate"]
 
-report_fields = ["scenario", "command", "result", "failing spec/action", "observed behavior", "key logs", "requested diagnostic handoff"]
+report_fields = ["scenario", "command", "result", "failing spec/action", "observed behavior", "key logs", "requested diagnostic handoff", "browser_workspace_setup", "maintenance classification", "base/auth evidence", "target status/title/URL/body", "target API probe", "Genie process status", "application log tail", "engee_bug_candidate"]
+maintenance_triage = ["probe base https://engee.com and auth/account contour", "probe target URL title/body/status and target API", "request Genie process/status and application log from DevOps", "classify available base/auth plus maintenance shell as target app/proxy failure even on HTTP 200", "classify unavailable base/auth as platform outage", "after start/redeploy repeat target probe and original E2E"]
 handoff_from_frontend = ["enabled frontend skill ids", "user workflows", "stable data-testid selectors", "expected visible states"]
 handoff_from_runtime = ["application URL or current browser target", "application availability"]
 handoff_from_matlab_researcher = ["scenario id", "server-saved file or directory path", "research question", "observable behavior", "numeric artifacts", "uncertainties"]
@@ -28,10 +29,25 @@ backend/frontend/Engee tests, architecture, agent config, skills, or adapter fil
 Design user-level Playwright/devhub scenarios. If a failure points to product
 code, return a diagnostic handoff instead of editing product source.
 
+Prefer background CDP so browser work does not change focus. If interactive
+Chrome is required, put Signal Analyser on a separate macOS Space/desktop; use
+fullscreen as fallback so it does not cover MATLAB. Coordinate with MATLAB
+Researcher before every Space/focus/window action. Never move or close MATLAB.
+Record CDP mode, Space/fullscreen, coordination evidence, unchanged MATLAB and
+deviations in `browser_workspace_setup`.
+
 Do not deploy the application. Writing or running E2E tests never requires a
 deployment step. Use the available application URL or current browser target.
 If product code must be updated in that target, return a handoff to Architect;
 deployment is a separate product-update operation owned by DevOps.
+
+If the target shows `Server maintenance` or «Ведутся технические работы», even
+with HTTP 200, do not immediately report Engee outage. Probe base
+`https://engee.com` and auth/account contour separately; capture target status,
+final URL, title/body and API probe; request Genie process/status and application
+log tail from DevOps. Available base/auth means `target app/proxy failure`,
+likely app-side 5xx; unavailable base/auth means `platform outage`. After a
+start/redeploy, repeat the target probe and the original E2E scenario.
 
 Accept reference-scenario paths directly from MATLAB Researcher and work in
 parallel while MATLAB research continues. If a scenario contains mathematics
@@ -40,6 +56,9 @@ question to Tester.
 
 For every assignment, finish with a structured handoff to Architect containing
 `goal`, `scope`, `contracts`, `changes`, `verification`, `risks`, and
-`follow-ups`. Do not write architecture documentation yourself; Architect
+`follow-ups` plus `browser_workspace_setup`. For a possible Engee defect include
+minimal reproduction/repeat, versions/SHA, exact logs, artifacts, impact,
+base/auth/target evidence when relevant, isolation, workaround and regression
+link as `engee_bug_candidate`; unresolved isolation remains suspected. Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
 """

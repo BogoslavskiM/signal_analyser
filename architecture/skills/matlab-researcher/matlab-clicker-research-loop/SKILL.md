@@ -1,6 +1,6 @@
 ---
 name: matlab-clicker-research-loop
-version: 0.2.0
+version: 0.3.0
 ---
 # MATLAB Clicker Research Loop
 
@@ -40,15 +40,20 @@ version: 0.2.0
 долгоживущей exec-сессии и выполняй HTTP-запросы, пока эта сессия активна.
 
 ## Keyboard Layout Precondition
-1. Перед каждым clicker action, который вводит text, code, variable name или
-   path в MATLAB, принудительно установи English keyboard layout и ASCII input.
-2. До нажатия Enter визуально проверь фактически набранную строку. HTTP success
-   или отправленные key events не подтверждают правильность текста.
-3. После любого ввода русского текста в UI снова принудительно установи
+1. Для каждой отдельной команды Command Window заново выполни полный цикл:
+   focus Command Window -> pre-input Enter для получения fresh prompt ->
+   принудительный English/ASCII -> type -> visual verification набранной строки
+   -> execution Enter. Цикл нельзя переиспользовать между командами.
+2. Для text fields вне Command Window pre-input Enter не выполняй: перед каждым
+   text/name/path input установи English/ASCII, набери и визуально проверь текст,
+   затем используй штатное действие поля.
+3. HTTP success или отправленные key events не подтверждают правильность
+   набранного текста; выполнение разрешено только после visual verification.
+4. После любого ввода русского текста в UI снова принудительно установи
    English/ASCII до следующего command/name/path input.
-4. Если команда или путь повреждены раскладкой либо смешанными символами, не
+5. Если команда или путь повреждены раскладкой либо смешанными символами, не
    выполняй их: полностью очисти поле/Command Window line и набери заново.
-5. Выполнение этого precondition обязательно перед каждым соответствующим
+6. Выполнение этого precondition обязательно перед каждым соответствующим
    clicker action и фиксируется в `clicker_setup` handoff.
 
 ## Native Mouse Actions
@@ -89,6 +94,9 @@ version: 0.2.0
    считается доказательством изменения UI.
 12. Используй generic `/run`, если named profile command отсутствует, но API
     позволяет надёжно выполнить и подтвердить действие.
+13. Перед сообщёнными E2E Tester Space/focus/window actions подтверди безопасный
+    coordination point. E2E не получает права перемещать/закрывать MATLAB;
+    MATLAB Researcher сохраняет текущее MATLAB window/Space state.
 
 ## Scenario Stream
 1. Один сохранённый сценарий отвечает на один исследовательский вопрос.
@@ -108,6 +116,7 @@ observed_undocumented_behavior:
 docs_vs_app_delta:
 product_tasks:
 e2e_scenarios:
+engee_bug_candidate: optional
 ```
 
 Каждый элемент `e2e_scenarios` содержит `scenario_id`, возвращённый сервером
@@ -150,6 +159,9 @@ required_human_change:
 - English/ASCII layout и проверка набранного текста до Enter обязательны для
   каждого command/name/path input; повреждённый ввод очищается и набирается
   заново.
+- Каждая Command Window команда начинает новый focus -> pre-input Enter ->
+  English/ASCII -> type -> verify -> execution Enter цикл. В text fields вне
+  Command Window pre-input Enter не используется.
 - Double-click и drag-and-drop выполняются только нативными mouse primitives с
   удержанием/системным timing и обязательной visual verification; click-click
   и медленные single-click substitutes запрещены.
@@ -159,3 +171,5 @@ required_human_change:
 - Не редактируй файлы текущего проекта или `matlab_clicker`.
 - Не считай скриншот точным численным oracle.
 - Не повторяй сохранённые сценарии без причины считать их устаревшими.
+- При вероятном дефекте Engee верни candidate evidence Architect, но не
+  классифицируй `confirmed` без safe repeat и isolation от MATLAB/clicker/app.

@@ -6,7 +6,8 @@ Genie-приложения.
 ## Разделы
 
 - `agents/` — строгие контракты ролей многоагентной системы и адаптеры инструментов.
-- `documentation/` — общие задачи, отчеты, бэклог и документация проекта.
+- `documentation/` — audience router: `user/` для клиента и `agents/` для
+  внутренней durable memory.
 - `skills/` — переиспользуемые скиллы для агентов.
 
 ## Порядок чтения
@@ -14,7 +15,7 @@ Genie-приложения.
 1. `architecture/agents/manifest.toml`
 2. Файл активной роли в `architecture/agents/roles/`.
 3. Подходящие скиллы в `architecture/skills/<role>/`.
-4. Связанная с задачей память проекта в `architecture/documentation/`.
+4. Router `architecture/documentation/README.md`, затем нужный audience layer.
 
 Используй TOML только для строгих контрактов агентов и адаптеров в `agents/`.
 Для документации и скиллов используй Markdown.

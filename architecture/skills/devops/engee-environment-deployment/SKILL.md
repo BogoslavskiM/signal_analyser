@@ -1,6 +1,6 @@
 ---
 name: engee-environment-deployment
-version: 0.1.0
+version: 0.3.0
 ---
 # Engee Environment Deployment
 
@@ -37,7 +37,14 @@ Dev и prod равноправны: отдельное разрешение дл
    fast-forward способом. Если локальной ветки нет, создай tracking branch от
    соответствующей `origin/<branch>`.
 7. Проверь, что разворачиваемый `HEAD` совпадает с переданным `commit_sha`.
-8. Если изменился backend, получи список запущенных приложений:
+8. Если приложение требует platform-provided package, до остановки приложения
+   выполни target runtime preflight: проверь required version, loaded
+   module/PkgId UUID, безопасный import и согласованный package contract.
+   Platform LOAD_PATH module может иметь
+   `Base.find_package(...) === nothing`; это не failure само по себе. Missing
+   module, wrong UUID или failed import/contract блокируют deployment. Не
+   добавляй dependency в `Project.toml` и не устанавливай package.
+9. Если изменился backend, получи список запущенных приложений:
 
 ```julia
 engee.genie.list()
@@ -53,13 +60,13 @@ Backend включает `app/**`, `lib/**`, `app.jl`, `config/**`, `Project.tom
 `Manifest.toml` и другие Julia/server-side файлы приложения. Для изменений
 только frontend или tests приложение не останавливай.
 
-9. Всегда используй один и тот же файл логов внутри проекта:
+10. Всегда используй один и тот же файл логов внутри проекта:
 
 ```text
 /user/apps/<repository_name>/genie.log
 ```
 
-10. Если приложение не запущено, запусти его:
+11. Если приложение не запущено, запусти его:
 
 ```julia
 status = engee.genie.start(
@@ -69,13 +76,35 @@ status = engee.genie.start(
 )
 ```
 
-11. Получи URL из возвращённого `GenieApplicationStatus` (`status.open_url`
+12. Получи URL из возвращённого `GenieApplicationStatus` (`status.open_url`
     либо соответствующее URL-поле доступной версии API). Не открывай
     приложение.
-12. Получи и верни логи приложения через
+13. Получи и верни логи приложения через
     `engee.genie.logs("/user/apps/<repository_name>")`.
-13. При ошибке верни диагностику и доступные логи. Не выполняй автоматический
+14. При ошибке верни диагностику и доступные логи. Не выполняй автоматический
     rollback.
+
+## Maintenance shell diagnosis
+
+Если E2E или HTTP probe видит `Server maintenance` / «Ведутся технические
+работы», в том числе с HTTP 200:
+
+1. HTTP probe base `https://engee.com` и auth/account contour отдельно от
+   приложения.
+2. Probe точный target Genie URL, зафиксируй status, final URL, title/body и
+   результат target API probe.
+3. Получи `engee.genie.list()`/целевой process status и tail
+   `/user/apps/<repository_name>/genie.log`.
+4. При доступных base и auth/account классифицируй состояние как
+   `target app/proxy failure`, вероятный app-side 5xx. HTTP 200 maintenance
+   shell не меняет эту классификацию.
+5. При недоступных base или auth/account contour классифицируй как
+   `platform outage` и не приписывай сбой только приложению.
+6. После разрешённого start/redeploy повтори target URL/API probe и передай E2E
+   Tester handoff на повтор исходного scenario.
+
+HTTP probe не является открытием URL в браузере и не запускает E2E внутри
+DevOps role.
 
 ## Guardrails
 - Не размещай PAT, Git credentials или другие секреты в репозитории и отчёте.
@@ -83,6 +112,10 @@ status = engee.genie.start(
 - Не останавливай Genie при изменениях только frontend или tests.
 - Не подменяй deployment локальным запуском Julia.
 - Не запускай Playwright и не открывай URL.
+- Не объявляй Engee outage только по maintenance shell целевого приложения.
+- Вероятный Engee defect передавай Architect как candidate с exact logs,
+  versions, branch/SHA, minimal safe reproduction, repeat/isolation evidence,
+  workaround и regression link. Workaround не является closure.
 
 ## Output
 ```text
@@ -94,6 +127,18 @@ application_url:
 log_file:
 logs:
 diagnostics:
+runtime_package_preflight:
+classification:
+base_auth_evidence:
+target_http_status:
+target_title:
+target_url:
+target_body_evidence:
+target_api_probe:
+genie_process_status:
+application_log_tail:
+post_start_target_probe:
+e2e_rerun_handoff:
 ```
 
 ## Reference

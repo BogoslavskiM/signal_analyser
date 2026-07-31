@@ -1,5 +1,7 @@
 # Template Architecture Initial Report
 
+Internal report template.
+
 Task: template-architecture
 Agent: architect
 Status: draft

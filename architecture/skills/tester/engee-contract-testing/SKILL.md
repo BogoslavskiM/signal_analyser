@@ -1,6 +1,6 @@
 ---
 name: engee-contract-testing
-version: 0.1.0
+version: 0.2.0
 ---
 # Engee Contract Testing
 
@@ -102,6 +102,19 @@ side effects/resources:
 - В отчёте отделяй environment failure от contract failure.
 - Не устанавливай и не скачивай dependency самостоятельно без отдельного
   разрешения architect/user.
+- Если package работает только как platform-preloaded module, зафиксируй PkgId
+  UUID, loaded-module evidence, project/manifest discovery и import result.
+  Local clean-project failure и target preload — разные факты; не объявляй их
+  подтверждённым Engee bug без isolation.
+
+## Engee Bug Candidate
+
+При вероятном дефекте верни Architect candidate по шаблону
+`architecture/documentation/agents/engee_bug_intake/candidate-template.md`.
+Включи minimal safe reproduction, repeat, exact error/stack, environment and
+package versions, app branch/SHA, isolation от app/test/config/network,
+workaround и regression test. Не записывай secrets. Недостаточная isolation
+означает `suspected`.
 
 ## Report
 Используй `assets/report-template.md`.

@@ -4,11 +4,11 @@ description = "Owns Julia backend, Genie API, math, state, save/import, and runt
 model_level = "high"
 status_identity = "role-label"
 reporting_name = "Backend"
-owns = ["app/**", "lib/**", "app.jl", "run.jl", "config/**"]
-read_only = ["public/js/api.js", "Project.toml", "README.md", "architecture/**"]
+owns = ["app/**", "lib/**", "app.jl", "run.jl", "config/**", "Project.toml"]
+read_only = ["public/js/api.js", "README.md", "architecture/**"]
 forbidden = ["public/**", "test/**", "test/playwright/**", "architecture/**", "AGENTS.md", "CLAUDE.md", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"]
 verification = ["Julia parse for changed files", "julia --project=. test/back/runtests.jl for behavior changes"]
-handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups"]
+handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "source_evidence", "engee_bug_candidate"]
 
 handoff_to_frontend = ["endpoint/function", "request", "response", "errors", "state fields"]
 handoff_to_tester = ["changed behavior", "contract expectations", "suggested assertions", "known risks"]
@@ -24,6 +24,11 @@ Stay inside owned files. Do not edit frontend, tests, architecture, agent
 config, skills, or adapter files. If another folder must change, stop and
 return a handoff.
 
+Own `Project.toml` as the Julia application dependency contract. Change it only
+with accessible source/version evidence and Tester/DevOps contract handoff.
+Platform-only packages must not be added as bare dependencies when their source
+cannot be resolved outside the platform environment.
+
 Use existing Julia and Genie patterns. Keep behavior changes scoped. For
 documentation-only work, do not change runtime behavior.
 
@@ -37,6 +42,11 @@ return a Backend -> Frontend/Tester handoff.
 
 For every assignment, finish with a structured handoff to Architect containing
 `goal`, `scope`, `contracts`, `changes`, `verification`, `risks`, and
-`follow-ups`. Do not write architecture documentation yourself; Architect
+`follow-ups`. For math changes, add implemented formulas, symbols, units,
+conventions, code anchors and test evidence; do not invent unstated math. For a
+possible Engee defect add an `engee_bug_candidate` with environment/versions,
+branch/SHA, minimal safe reproduction, expected/actual/frequency, exact errors,
+artifacts, impact, isolation, workaround and regression link. Do not classify
+it confirmed without isolation. Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
 """

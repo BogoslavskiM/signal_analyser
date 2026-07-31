@@ -1,6 +1,6 @@
 ---
 name: devhub-playwright-scenario
-version: 1.3.0
+version: 1.5.0
 ---
 # Devhub Playwright Scenario
 
@@ -31,6 +31,7 @@ stable_data_testids
 expected_observable_result
 reference_scenario_path: optional
 reference_artifacts: optional
+browser_workspace_setup
 ```
 
 - Target передаёт Architect, пользователь или доступный runtime context.
@@ -40,6 +41,18 @@ reference_artifacts: optional
   changes и остаётся отдельной операцией Architect → DevOps.
 - `reference_scenario_path` может прийти напрямую от MATLAB Researcher. Начинай
   автоматизацию сразу, не дожидаясь завершения всего MATLAB-исследования.
+
+## Browser Workspace Safety
+
+1. Предпочитай background CDP без focus/window mutation.
+2. Если нужен интерактивный Chrome, открой Signal Analyser на отдельном macOS
+   Space/desktop. Если Space недоступен, используй fullscreen Chrome как
+   fallback, чтобы не перекрывать MATLAB.
+3. До любого Space/focus/window action согласуй действие с MATLAB Researcher и
+   зафиксируй coordination result.
+4. Никогда не перемещай и не закрывай MATLAB, не меняй его Space/window state.
+5. Handoff содержит `browser_workspace_setup`: CDP mode, Chrome Space/fullscreen,
+   coordination evidence, MATLAB unchanged и deviations.
 
 ## Select the Coverage
 1. Сформулируй observable behavior одним предложением.
@@ -187,6 +200,27 @@ Reload допустим только после фиксации diagnostic stat
   contract/reference. Передай discrepancy Architect; MATLAB Researcher при этом
   продолжает свою работу.
 
+### Maintenance shell triage
+
+Если target показывает `Server maintenance` или «Ведутся технические работы»,
+включая soft-error HTML с HTTP 200, не объявляй Engee outage без разделённой
+диагностики:
+
+1. Проверь base `https://engee.com` и доступность auth/account contour.
+2. Отдельно probe target Genie URL. Запиши HTTP status, final URL, page title,
+   релевантный body text и результат target API probe.
+3. Запроси у DevOps Genie process/status и tail application log; E2E Tester не
+   запускает и не redeploy приложение самостоятельно.
+4. Если base и auth/account доступны, классифицируй maintenance shell как
+   `target app/proxy failure`, вероятный app-side 5xx, даже когда shell пришёл с
+   HTTP 200.
+5. Только если base или auth/account contour также недоступны, классифицируй
+   результат как `platform outage`.
+6. Handoff содержит evidence: base/auth result, target status/title/URL/body,
+   API probe, process status и log tail.
+7. После DevOps start/redeploy повтори target probe, затем исходный E2E
+   scenario. Не считай start response достаточным восстановлением.
+
 Для timeout логируй последнее релевантное состояние: values, request/pending
 flags, active id, opened overlays, output hosts или scroll geometry.
 
@@ -207,9 +241,17 @@ PLAYWRIGHT_SPEC=<relative-spec-fragment> \
 - Выполни `node --check` для всех изменённых JS и `git diff --check`.
 - Отчёт содержит scenario, command, target application context,
   passed/failed/skipped, failing action, observed state и handoff.
+- Отчёт содержит `browser_workspace_setup` evidence даже при background CDP.
+- Для maintenance shell отчёт дополнительно содержит classification,
+  base/auth evidence, target status/title/URL/body, API probe, Genie process
+  status и application log tail.
 
 ## Guardrails
 - Не маскируй product bug retry, disabled flag, cache update или tolerance.
 - Не включай feature flag только ради запуска отсутствующего UI.
 - Не оставляй test data, изменённый viewport, открытый dialog или filter.
 - Не запускай несколько runner на одном CDP endpoint.
+- Не интерпретируй HTTP 200 maintenance shell как healthy target или как
+  доказанный platform outage.
+- Не выполняй Chrome Space/focus/window action без coordination с MATLAB
+  Researcher; не перемещай и не закрывай MATLAB.

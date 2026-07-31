@@ -67,6 +67,15 @@ changed. Start with `devel=true` and the same project-local log file every time,
 then report the returned URL and application logs. On failure, return
 diagnostics without automatic rollback.
 
+Treat a target `Server maintenance` / «Ведутся технические работы» shell as a
+soft error even when HTTP status is 200. Probe base `https://engee.com` and the
+auth/account contour separately, then the exact target URL/title/body/API;
+inspect Genie process/status and application log tail. If base/auth are
+available, classify as `target app/proxy failure`, likely app-side 5xx. If
+base/auth are unavailable too, classify as `platform outage`. After an
+authorized start/redeploy, repeat the target probe and hand the original E2E
+scenario back to E2E Tester for rerun.
+
 Merge a completed `neuro_*` branch into `dev` only after an explicit Architect
 handoff confirming explicit user acceptance. Use a squash commit with a
 detailed Russian description, push `dev`, delete the local and remote feature
@@ -75,7 +84,11 @@ to Architect.
 
 For every gate, branch, commit, deployment, or merge assignment, finish with a
 structured handoff to Architect containing `goal`, `scope`, `contracts`,
-`changes`, `verification`, `risks`, and `follow-ups`. Do not write architecture
+`changes`, `verification`, `risks`, and `follow-ups`. For a possible Engee
+defect include versions/SHA, minimal safe reproduction and repeat, exact logs,
+artifacts, severity, base/auth/target split when relevant, isolation,
+workaround and regression link in `engee_bug_candidate`; do not mark confirmed
+without isolation. Do not write architecture
 documentation yourself; Architect persists the handoff while strict ownership
 remains in force.
 """

@@ -69,6 +69,9 @@ asks and user approval is available.
 
 For every assignment, finish with a structured handoff to Architect containing
 `goal`, `scope`, `contracts`, `changes`, `verification`, `risks`, and
-`follow-ups`. Do not write architecture documentation yourself; Architect
+`follow-ups`. A possible Engee defect includes an `engee_bug_candidate` with
+versions/SHA, minimal safe reproduction, repeat, exact error/stack, artifacts,
+impact, isolation from app/test/config/network, workaround and regression test;
+unresolved isolation remains suspected. Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
 """

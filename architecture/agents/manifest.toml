@@ -1,0 +1,87 @@
+schema_version = "1"
+source_of_truth = "architecture/agents"
+strict_boundaries = true
+role_import_mode = "one-role-file-plus-manifest-entry"
+
+required_project_layout = [
+  "architecture/README.md",
+  "architecture/agents/README.md",
+  "architecture/agents/manifest.toml",
+  "architecture/agents/roles/*.toml",
+  "architecture/agents/adapt.sh",
+  "architecture/documentation/**",
+  "architecture/skills/**",
+  "app/**",
+  "lib/**",
+  "run.jl",
+  "public/js/**",
+  "public/css/**",
+  "public/html/**",
+  "public/index.html",
+  "public/icons/**",
+  "public/fonts/**",
+  "docs/**",
+  "test/back/**",
+  "test/engee/**",
+  "test/front/**",
+  "test/playwright/**",
+]
+
+verification_commands = [
+  "julia --startup-file=no -e 'for file in ARGS; Meta.parseall(read(file, String)); println(file); end' <files>",
+  "julia --project=. test/back/runtests.jl",
+  "julia --startup-file=no test/engee/engee_package_contract_tests.jl",
+  "node test/front/run_front_tests.js",
+  "./test/playwright/run_devhub_playwright_tests.sh",
+]
+
+[workflow]
+lead_role = "architect"
+deployment_role = "devops"
+accepted_task_target = "dev"
+reporting = "chat-first"
+handoff_policy = "handoff-instead-of-crossing-boundaries"
+durable_documentation = "architect-continuous"
+handoff_record_path = "architecture/documentation/agents/handoff"
+role_thread_policy = "one-reusable-thread-per-declared-role"
+role_thread_standby = "completed-standby-without-fake-activity"
+documentation_path = "architecture/documentation/**"
+documentation_user_path = "architecture/documentation/user/**"
+documentation_agents_path = "architecture/documentation/agents/**"
+documentation_audience_boundary = "physical-user-agents-split-with-cross-links"
+skills_path = "architecture/skills/**"
+
+[[roles]]
+name = "architect"
+file = "architecture/agents/roles/architect.toml"
+owns = ["architecture/**", "docs/**", "AGENTS.md", "CLAUDE.md", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md", "README.md"]
+
+[[roles]]
+name = "backend"
+file = "architecture/agents/roles/backend.toml"
+owns = ["app/**", "lib/**", "app.jl", "run.jl", "config/**", "Project.toml"]
+
+[[roles]]
+name = "frontend"
+file = "architecture/agents/roles/frontend.toml"
+owns = ["public/js/**", "public/css/**", "public/html/**", "public/index.html", "public/icons/**", "public/fonts/**"]
+
+[[roles]]
+name = "tester"
+file = "architecture/agents/roles/tester.toml"
+owns = ["test/back/**", "test/engee/**", "test/front/**"]
+
+[[roles]]
+name = "e2e_tester"
+file = "architecture/agents/roles/e2e-tester.toml"
+owns = ["test/playwright/**"]
+
+[[roles]]
+name = "devops"
+file = "architecture/agents/roles/devops.toml"
+owns = []
+
+[[roles]]
+name = "matlab_researcher"
+file = "architecture/agents/roles/matlab-researcher.toml"
+owns = []

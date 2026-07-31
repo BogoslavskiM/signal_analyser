@@ -31,4 +31,5 @@
 
 Используй один каталог скилла на каждую повторяемую проектную процедуру. Зоны
 ответственности ролей храни в `architecture/agents/roles/`, а память конкретных
-задач — в `architecture/documentation/`.
+задач — в `architecture/documentation/agents/`, а клиентские спецификации,
+решения и история — в `architecture/documentation/user/`.

@@ -1,6 +1,6 @@
 ---
 name: agent-handoff-plan
-version: 0.6.0
+version: 0.8.0
 ---
 # Agent Handoff Plan
 
@@ -27,8 +27,28 @@ version: 0.6.0
 9. Укажи risks и ожидаемые follow-up, если агент найдёт проблему вне своей
    зоны.
 10. Architect сохраняет постановку и каждый материальный результат в
-    `architecture/documentation/handoff/` и синхронизирует active task,
-    durable report и backlog по `architect/task-documentation`.
+    `architecture/documentation/agents/handoff/`, синхронизирует internal
+    task/backlog/report и client specification/decision/history/traceability по
+    `architect/task-documentation`.
+
+## Reusable Role Threads
+1. Для каждой объявленной роли поддерживай не более одного открытого
+   сохраняемого chat/thread. Registry связывает canonical role с неизменным
+   agent ID/session.
+2. Максимально загружай доступные роли независимой полезной работой из active
+   tasks и backlog, но не нарушай dependencies, strict ownership и реальную
+   готовность входных contracts.
+3. После завершения задания не закрывай role thread. Переведи его в
+   `completed standby`, сохрани last handoff и оставь пригодным для resume.
+4. Новое задание для роли отправляй в тот же thread через `send_input` или
+   `resume_agent`, используя canonical role + сохранённый agent ID/session.
+5. Если подходящей независимой работы нет, `completed standby` является
+   допустимым вынужденным простоем.
+6. В `architecture/documentation/agents/handoff/` поддерживай durable registry с
+   полями canonical role, agent ID/session, status, current task и last handoff,
+   чтобы координацию можно было восстановить после остановки.
+7. Не создавай искусственные пустые сообщения, heartbeat spam или fake-running
+   loops. Открытого completed thread достаточно для standby.
 
 ## Guardrails
 - Не отдавай одному агенту задачу, которая требует редактировать чужой ownership.
@@ -36,6 +56,9 @@ version: 0.6.0
 - Рабочие роли не получают shared write access к architecture documentation;
   они обязаны вернуть структурированный handoff Architect, который один
   сохраняет durable record.
+- Не запускай второй thread той же роли, пока её сохранённый thread можно
+  продолжить. Новый role ID допустим только если предыдущий thread фактически
+  недоступен; зафиксируй замену в registry.
 - Backend handoff должен называть state/mutations/routes/tests.
 - Frontend handoff должен называть zones/elements/payload fields, typed controls,
   stable `data-testid`, interactions и style constraints.
@@ -43,8 +66,18 @@ version: 0.6.0
 - E2E handoff должен описывать enabled frontend skill ids, пользовательский
   сценарий, stable `data-testid`, target application context и наблюдаемый UI
   результат.
+- E2E handoff обязательно содержит `browser_workspace_setup`: background CDP
+  preferred; при интерактивном Chrome — отдельный macOS Space/desktop либо
+  fullscreen fallback. До Space/focus/window actions нужна координация с
+  MATLAB Researcher. MATLAB нельзя перемещать или закрывать.
 - DevOps handoff перед commit/deployment должен содержать краткое объяснение,
   явный список файлов и локальный verification context.
+- Maintenance shell handoff не ограничивается HTTP status. E2E фиксирует
+  base/auth, target status/title/final URL/body и API probe; DevOps добавляет
+  Genie process/status и application log tail. При доступных base/auth это
+  `target app/proxy failure`, вероятный app-side 5xx, даже с HTTP 200; при
+  недоступных base/auth — `platform outage`. После start/redeploy обязательны
+  повторный target probe и исходный E2E.
 - Merge handoff DevOps допустим только от Architect после явного принятия
   задачи пользователем.
 - MATLAB Researcher получает от Architect имя MATLAB-приложения и цель
@@ -62,10 +95,28 @@ version: 0.6.0
   каждого text/code/name/path input, визуальная проверка до Enter, возврат в
   English после русского UI-ввода и полная очистка с повторным набором при
   повреждённой раскладке.
+- Для каждой Command Window команды `clicker_setup` подтверждает новый полный
+  цикл focus -> pre-input Enter -> English/ASCII -> type -> visual verify ->
+  execution Enter. Для text fields вне Command Window pre-input Enter не
+  применяется.
 - MATLAB `clicker_setup` фиксирует нативные mouse actions: double-click — stable
   center и два быстрых LMB clicks в system interval без movement;
   drag-and-drop — `mouseDown`, move, pause, `mouseUp`. После каждого нужна
   visual verification; click-click substitutes запрещены.
+- Backend handoff по математике предоставляет formulas actually implemented,
+  symbols/units/conventions, code anchors и test evidence. MATLAB Researcher
+  предоставляет docs/observations/deltas; ни одна роль не изобретает product
+  math. Architect курирует client math specification.
+- Backend, Tester, E2E Tester, DevOps и MATLAB Researcher при вероятном дефекте
+  Engee добавляют `engee_bug_candidate`: surface, environment/versions/SHA,
+  minimal safe reproduction, expected/actual/frequency, exact error/log,
+  artifacts, severity, isolation evidence, workaround и regression link.
+  Architect сохраняет intake и публикует `user/engee_bugs/`; без isolation
+  status остаётся `suspected`.
+- Ephemeral evidence path допустим во внутреннем handoff, но handoff помечает
+  client relevance, provenance и promotion need. Architect до cascade DoD
+  переносит значимый artifact в `documentation/user/assets/` или связывает с
+  durable repo file; client docs не получают temporary/user-specific links.
 
 ## Reference
 Шаблон:
@@ -79,6 +130,8 @@ changes:
 verification:
 risks:
 follow-ups:
+source_evidence:
+engee_bug_candidate: optional
 files_or_folders:
 out_of_scope:
 acceptance:

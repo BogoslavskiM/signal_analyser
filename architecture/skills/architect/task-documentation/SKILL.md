@@ -1,51 +1,106 @@
 ---
 name: task-documentation
-version: 0.2.0
+version: 1.0.0
 ---
 # Task Documentation
 
 ## When to Use
-- Нужно сохранить архитектурное решение, отчёт, backlog или проектную память.
-- Результат должен быть понятен будущим агентам без истории чата.
-- Начинается long-running или multi-agent задача: durable documentation для
-  неё обязательна с первого handoff и до integration review.
+- Любая long-running/multi-agent задача, каскад, архитектурное или
+  математическое решение.
+- Нужна понятная клиенту история либо durable memory после потери чата.
+- Появился Engee bug candidate, regression, deployment или correction.
 
-## When NOT to Use
-- Задача малая, результат очевиден из diff и не создаёт долговременного знания.
-- Нужен только handoff на текущую реализацию.
+## Audience Boundary
 
-## Workflow
-1. Сразу создай или обнови active task file в
-   `architecture/documentation/tasks/`. Зафиксируй цель, contract, роли,
-   acceptance, текущий этап и verification plan.
-2. Для каждого role handoff создай или обнови запись в
-   `architecture/documentation/handoff/`. Сохраняй минимум `goal`, `scope`,
-   `contracts`, `changes`, `verification`, `risks`, `follow-ups` и статус.
-3. После каждого материального handoff или изменения решения обновляй active
-   task и соответствующую handoff-запись, не дожидаясь конца задачи.
-4. Запиши durable result в `architecture/documentation/reports/`, если
-   результат важен для будущей проверки. Укажи решения, deployment context,
-   verification evidence, исправленные дефекты и остаточные риски.
-5. Перенеси нерешённые функциональные и технические follow-up в
-   `architecture/documentation/backlog/`.
-6. Обнови `architecture/documentation/project.md`, только если изменилось
-   проектное правило или постоянный контекст.
-7. Перед финальным ответом сверяй task, report, backlog и handoff records с
-   фактическим diff и последними результатами агентов.
+1. `architecture/documentation/user/` — русская client-readable документация:
+   product overview, current specifications, mathematics, immutable ADR,
+   append-only history/reports, traceability и `engee_bugs/`.
+2. `architecture/documentation/agents/` — internal tasks, backlog, handoff,
+   persistent agent registry, coordination/research reports/templates и bug
+   candidate intake.
+3. Root `architecture/documentation/README.md` только маршрутизирует аудиторию.
+4. Не дублируй authoritative content: один слой владеет фактом, другой даёт
+   cross-link.
+5. В `user/` запрещены internal prompt jargon, random nickname, agent/thread
+   ID и секреты. В `agents/` canonical role + ID/status допустимы, секреты — нет.
+6. `user/` является authoritative repository-native delivery. Не создавай
+   site/PDF build/publish pipeline без explicit future request. Используй
+   relative repo links.
 
-## Guardrails
-- Не дублируй role ownership из TOML в документации как новый источник истины.
-- Не превращай task docs в лог каждого мелкого действия.
-- Документируй решения, tradeoffs и следующие действия, а не очевидный diff.
-- Только Architect пишет durable task/report/backlog/handoff documentation.
-  Рабочие роли сохраняют strict ownership и возвращают структурированный
-  handoff в чат, даже если могут читать `architecture/**`.
-- Не записывай токены, cookie, пароли и другие секреты в документацию.
-- Не отмечай verification как passed без команды или явного evidence source.
+## Continuous Workflow
+
+1. С первого handoff обновляй
+   `architecture/documentation/agents/tasks/` и role record в
+   `architecture/documentation/agents/handoff/`.
+2. После material handoff синхронизируй internal task/backlog/report, не
+   дожидаясь integration review.
+3. Клиентский текущий контракт веди в `user/specifications/`; математику — в
+   `user/specifications/mathematics/`.
+4. Для решения создай ADR в `user/decisions/` с `id`, `date`, `status`,
+   `context`, `alternatives`, `decision`, `consequences`, `supersedes`.
+5. Обнови `user/traceability/`: requirement → research → decision/math →
+   implementation file/symbol → unit/contract/E2E → branch/SHA. Различай
+   `planned`, `implemented`, `verified`, `deployed`.
+6. Добавь датированный append-only пункт в `user/history/` и при необходимости
+   report в `user/reports/`. Active task/backlog могут изменяться; завершённый
+   snapshot переносится в report/history.
+7. Нерешённое оставь в `agents/backlog/`; client limitation публикуй только
+   когда она влияет на контракт.
+8. Перед финальным ответом сверяй docs с diff, tests, target SHA/URL/logs и
+   последними handoff.
+9. Client-relevant ephemeral evidence перенеси до DoD в
+   `user/assets/<category>/` либо замени ссылкой на durable repo file. Добавь
+   date/source/provenance/license/hash и regeneration command where relevant.
+
+## Mathematics Policy
+
+- Каждое математическое утверждение содержит formula/symbols/units,
+  one/two-sided convention, complex handling, normalization/scale, algorithm,
+  defaults, numeric constraints/edge cases, code file+symbol и verification.
+- Не публикуй формулу, которой нет в implementation.
+- MathWorks/Engee sources задают documented direction; MATLAB observed delta и
+  product implementation указываются раздельно.
+- Backend и MATLAB Researcher предоставляют source evidence; Architect
+  сопоставляет его с кодом/tests и утверждает текст. Ни одна роль не придумывает
+  математику.
+- Facts, inferences и ambiguities маркируются отдельно. Screenshot не считается
+  точным numeric oracle.
+
+## Immutable and Append-only Records
+
+- Старый ADR не переписывай: mark `superseded`, добавь dated note и successor.
+- Опубликованные reports, history, handoff и Engee reproduction не затирай.
+  Correction — новая датированная note/link.
+- Verification нельзя отмечать passed без команды или named evidence source.
+
+## Engee Bugs
+
+- Candidate от рабочей роли сначала попадает в
+  `agents/engee_bug_intake/`; Architect создаёт/обновляет human record в
+  `user/engee_bugs/` со stable ID `ENGEE-YYYYMMDD-NNN-short-slug`.
+- Обязательны environment/version/SHA, prerequisites, minimal safe reproduction,
+  expected/actual/frequency, exact error/log/stack, artifacts, severity,
+  isolation evidence, workaround, regression, owner/ticket и resolution.
+- До `confirmed` повтори minimal reproduction when safe. Availability issue
+  требует base/auth/target split. Неизолированное остаётся `suspected`.
+- Workaround не закрывает bug. Не заменяй обязательную Engee engineering
+  function hand-rolled implementation без bug record и отдельного ADR.
+
+## Cascade Definition of Done
+
+Каждый каскад обновляет: current specification, math (если затронута), ADR,
+traceability, dated history/report, internal task/backlog/handoff и Engee bug
+registry/intake при наличии evidence. Отдельно фиксируются implemented,
+verified и deployed status. Client docs не должны оставлять `/tmp`,
+`/private/tmp`, user-specific absolute или ephemeral artifact links.
+
+## Documenter Decision
+
+Architect сохраняет coherence. Отдельная роль Documenter вводится новым ADR
+при устойчивом trigger из `DEC-20260731-002`, а не получает authority молча.
 
 ## Reference
-- `architecture/documentation/tasks/`
-- `architecture/documentation/reports/`
-- `architecture/documentation/backlog/`
-- `architecture/documentation/handoff/`
-- `architecture/documentation/project.md`
+
+- `architecture/documentation/README.md`
+- `architecture/documentation/user/README.md`
+- `architecture/documentation/agents/README.md`
