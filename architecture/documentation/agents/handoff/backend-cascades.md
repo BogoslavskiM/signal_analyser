@@ -161,3 +161,25 @@ verification: Julia parse/diff PASS; integrated backend 719/719 PASS.
 risks: Real EngeeDSP ROI call remains a target gate. A future one-sample import
 needs an explicit duration/limits contract.
 follow-ups: Runtime on accepted deployment; no dependency or fallback added.
+
+## Cascade 8 selectable Statistics — 2026-07-31
+
+goal: Add an ordered per-Display measurement selection and compute only its
+requested raw-ROI statistics.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_service.jl`.
+contracts: Exact IDs/order minimum, maximum, mean, median, peak_to_peak, rms;
+defaults first three; empty allowed; root/display snapshot and additive
+`/api/view`; strict duplicate/unknown/type 422; equal set no-op; Clear preserves
+and re-add recomputes. Existing measurements/item keysets remain unchanged.
+changes: Added typed `SignalMeasurementSelection`, expanded measurement kinds,
+canonical API validation and selected-only snapshot preparation. Empty subset
+bypasses ROI. Median uses odd/even standard definition; P2P is max-minus-min;
+RMS is scale-normalized with exact zero for zero scale. Statistics stay free of
+EngeeDSP and dictionaries remain at the wire mapper boundary.
+verification: Integrated backend 789/789 PASS, including formulas, complex
+magnitude, extreme finite RMS, lifecycle, stale/no-op and atomic invalid input.
+risks: Live target and real specialized DSP paths were not exercised. Existing
+enabled Peaks preparation may still abort the joint mutation atomically.
+follow-ups: Runtime only after an accepted deployment; keep specialized
+spectral/Peaks behavior behind proven Engee functions.

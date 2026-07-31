@@ -22,6 +22,12 @@
 - Find Peaks — явно включаемая time-domain capability активной Display page.
   Она использует только EngeeDSP provider, публикует таблицу и markers из
   backend snapshot и не имеет скрытого JavaScript/Julia fallback.
+- Signal Statistics настраиваются отдельно для каждого Display. Доступны
+  Minimum, Maximum, Mean, Median, Peak to peak и RMS в фиксированном порядке;
+  по умолчанию включены первые три, но допустим и пустой выбор. Все значения
+  вычисляет backend по authoritative raw Time ROI, а интерфейс лишь отправляет
+  полный набор выбранных показателей и отображает snapshot.
+
 ## Исследовательская основа
 
 Official MathWorks docs исследуются через internet вне MATLAB и формируют

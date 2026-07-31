@@ -64,6 +64,18 @@
    Для Peaks query хранит `sample_offset=min(I)`: локальный Engee `Xpk`
    переводится как `sample_index=sample_offset+Xpk-1`. ROI из одного или двух
    samples имеет typed enabled empty Peaks и не вызывает provider.
+10. Выбираемые Statistics используют тот же `I` и ordinate `y`. Канонический
+    порядок: minimum, maximum, mean, median, peak-to-peak, RMS. Median равна
+    среднему двух центральных отсортированных значений при чётном `|I|` и
+    центральному значению при нечётном. Peak-to-Peak равна
+    `max(y[k])-min(y[k])`, `k∈I`. Для RMS сначала берётся
+    `s=max(|y[k]|)`: при `s=0` результат точно `0`, иначе
+    `RMS=s·sqrt(|I|⁻¹ Σ_{k∈I} (y_k/s)²)`. Масштабирование предотвращает
+    промежуточное переполнение для конечных `Float64`. Только minimum/maximum
+    имеют абсолютную позицию; mean/median/peak-to-peak/RMS её не имеют. Code
+    anchors: typed `SignalMeasurementSelection` и measurement items в
+    `lib/domain/signal_analyser_state.jl`; selected-only calculation в
+    `lib/services/signal_analyser_service.jl::signal_measurements_snapshot`.
 
 ## Defaults
 
@@ -71,6 +83,10 @@
 `0.82 sin(2π·180t) + 0.28 sin(2π·420t + 0.35)`; complex chirp
 `exp(j2π(90t + 0.5·1100t²)) + 0.22 exp(j2π·510t)`. Code anchor:
 `lib/domain/signal_analyser_state.jl::default_signal_catalog`.
+
+Новый Display выбирает minimum, maximum и mean. Полный канонический набор
+дополнительно содержит median, peak-to-peak и RMS. Пустой subset является
+допустимым preference и не запускает ROI calculation.
 
 ## Numeric constraints и edge cases
 
@@ -81,9 +97,12 @@ spectral estimate делегирован EngeeDSP.
 
 Для raw statistics пустые/non-finite samples и неположительная либо
 неконечная `f_s` отвергаются до публикации view/display mutation. Позиции
-экстремума обязательны и неотрицательны; mean позиции не имеет. Snapshot
-сохраняет строгий порядок minimum, maximum, mean и согласован с revision и
-selected signal.
+экстремума обязательны и неотрицательны; остальные показатели позиции не
+имеют. Snapshot сохраняет выбранный канонический порядок и согласован с
+revision и selected signal. Duplicate/unknown/non-string/non-array selection
+отвергается до публикации. При пустом выборе и непустом source snapshot
+сохраняет ordinate/units, но `items=[]`; ROI не материализуется. При пустом
+Display signal/ordinate равны null, а preference сохраняется.
 
 Time Limits конечны, строго упорядочены, лежат внутри `[0,(N-1)/f_s]` и
 содержат raw sample. Peaks provider query требует не менее трёх конечных ROI
@@ -118,6 +137,11 @@ revision mutation.
   prod MIND и вернул expected `Ypk=[1,2,3]`, `Xpk=[2,4,8]` без world-age error.
 - Cascade 7 frontend static/behavior 2/2 и Playwright syntax/support PASS;
   backend regression и additive ROI matrix — 719/719.
+- Cascade 8 backend unit/API — 789/789 PASS: canonical/default/empty selection,
+  strict atomic 422, Display lifecycle, odd/even median, peak-to-peak, complex
+  magnitude и scale-normalized RMS на extreme finite inputs. Frontend
+  static/behavior — 2/2 PASS; Playwright syntax/support/runner-help PASS.
+  Runtime DevHub E2E не выполнялся.
 
 ## Источники и наблюдаемые различия
 
@@ -125,6 +149,8 @@ revision mutation.
   https://www.mathworks.com/help/signal/ref/signalanalyzer-app.html
 - MathWorks `pspectrum`:
   https://www.mathworks.com/help/signal/ref/pspectrum.html
+- MathWorks Measure Signals:
+  https://www.mathworks.com/help/signal/ug/measure-signals.html
 - Engee runtime function: `EngeeDSP.Functions.pspectrum`, required Engee
   platform package version `0.72.0`, UUID
   `f9bbbd0e-0dd6-4072-898a-88f8f1250a99`, module path

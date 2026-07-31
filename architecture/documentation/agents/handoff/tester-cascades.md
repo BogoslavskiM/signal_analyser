@@ -128,3 +128,19 @@ invalid/provider atomicity; frontend exact nested inline error rollback.
 verification: Integrated backend 719/719, frontend 2/2 and diff PASS.
 risks: Real EngeeDSP execution remains target-only; provider seam verifies the
 exact delegated query and mapping.
+
+## Cascade 8 verification — 2026-07-31
+
+coverage: Exact canonical IDs/defaults/order, any subset including empty,
+strict duplicate/unknown/non-string/non-array 422 and atomic fingerprint;
+revision +1/no-op/stale; Clear preserve/re-add recompute/new/inactive Display;
+raw inclusive ROI, first extrema positions, odd/even median, peak-to-peak,
+complex magnitude and scale-normalized RMS for extreme finite values. Frontend
+coverage fixes the settings selectors, one-request checkbox contract, nested
+422 rendering, local tabs and absence of client statistic calculation.
+verification: Integrated backend 789/789 and frontend 2/2 PASS; diff clean for
+the role-owned matrix.
+risks: Local EngeeDSP is absent, so real spectral/Peaks contracts remain a
+target preflight. C8 Base/Statistics itself has no EngeeDSP dependency.
+follow-ups: Preserve this exact gate during later Spectrum work; do not treat
+runtime E2E as completed.

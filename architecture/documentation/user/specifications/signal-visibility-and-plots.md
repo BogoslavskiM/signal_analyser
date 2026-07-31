@@ -36,6 +36,14 @@
   Peaks пересчитываются по тому же inclusive raw ROI. Пустой Display имеет
   `time_limits=null`; invalid edit показывает inline 422 и восстанавливает
   последнее authoritative значение.
+- Вкладки настроек Display/Time/Measurements являются функциональной локальной
+  навигацией. Measurements содержит checkbox в каноническом порядке Minimum,
+  Maximum, Mean, Median, Peak to peak, RMS. Выбор принадлежит Display,
+  восстанавливается при смене страниц и допускает отключение всех строк.
+  `Signal statistics` одновременно открывает Measurements settings и нижнюю
+  панель результатов. На пустом Display controls disabled без потери checked
+  preference; на непустом non-Time Display они доступны, потому что
+  authoritative Time ROI сохраняется. Frontend не вычисляет показатели.
 - Overflow menu активного Display содержит доступное действие Clear Display.
   Пустая страница показывает явные empty states графика, Measurements и Peaks;
   тот же graph host сохраняется, а stale Plotly traces очищаются.
@@ -56,6 +64,15 @@ analysis source входит в membership; после его удаления b
 Новый endpoint не создаётся. Stale revision, validation или provider failure
 не меняют state.
 
+Additive `measurement_kinds` — полный массив выбранных wire ID из
+`minimum`, `maximum`, `mean`, `median`, `peak_to_peak`, `rms`. Отсутствующее
+поле сохраняет выбор активной страницы; входной порядок канонизируется. Новый
+Display получает первые три ID, а пустой массив допустим. Не-массив, нестроковый
+элемент, неизвестный или повторяющийся ID возвращает field-level 422 и не
+меняет state/cache/revision. Фактически изменившийся набор даёт ровно одну
+revision, равный набор является no-op. Clear Display сохраняет preference,
+первый re-add пересчитывает сохранённый набор, неактивные страницы не меняются.
+
 Snapshot добавляет non-null `row_selected_signal`, nullable root
 `analysis_signal` и `displays[].analysis_signal`; root/display
 `selected_signal` остаётся совместимым alias. Пустой Display возвращает пустые
@@ -73,6 +90,14 @@ Root и каждый Display snapshot содержат `time_limits`. Measuremen
 абсолютные zero-based позиции. Enabled Peaks для ROI из 1–2 отсчётов возвращает
 typed empty result без вызова provider; для более длинного ROI provider получает
 точный subset и absolute starting offset.
+
+Root и каждый Display snapshot также содержат ordered `measurement_kinds`.
+Форма `measurements` и её item keyset не меняются, но `items` содержит только
+выбранные показатели в каноническом порядке. Позиция заполнена только у Minimum
+и Maximum; Mean, Median, Peak-to-Peak и RMS имеют null sample/time. Пустой выбор
+на непустой странице сохраняет signal/ordinate/units и возвращает `items=[]`,
+не материализуя ROI. Пустой Display сохраняет null signal/ordinate и не теряет
+сам preference.
 
 ## Наблюдения MATLAB Signal Analyzer
 
@@ -107,6 +132,12 @@ Time-only доступность controls. В MATLAB R2024b Show Markers про�
 cross-display state; продукт сохраняет ранее принятое per-Display поведение как
 явное portable product decision.
 
+SA-UI-010 подтвердил точный порядок шести показателей, defaults из первых трёх,
+page-local выбор и независимые defaults пустой новой страницы. Это наблюдение
+зафиксировало portable contract выбора. Алгоритмы Median, Peak-to-Peak и RMS
+приняты по официальной документации и проверяемой реализации, а не выводятся
+frontend из отображаемой таблицы.
+
 ## Code anchors и проверки
 
 - `lib/services/signal_analyser_service.jl`:
@@ -121,8 +152,13 @@ cross-display state; продукт сохраняет ранее принято
 - `lib/domain/signal_analyser_state.jl`: `SignalAnalyserDisplayState` и typed
   `GlobalSignalSelection`, `SignalDisplayMembership`, explicit analysis source
   и nullable `SignalMeasurementsSnapshot`/`SignalPeaksSnapshot` invariants.
+- `lib/domain/signal_analyser_state.jl`: typed
+  `SignalMeasurementSelection` и расширенный measurement-kind contract.
+- `lib/services/signal_analyser_service.jl`: strict selection validation,
+  canonical ordering и selected-only raw ROI statistics.
 - `public/js/app.js`: Display queue/revision mutation, local bottom tabs,
-  measurement rows, Time presentation/limits controls и Plotly rendering.
+  measurement rows, functional settings tabs, statistics checkbox mutation,
+  Time presentation/limits controls и Plotly rendering.
 - `public/js/vendor/plotly-cartesian-3.1.0.min.js`: vendored official npm
   artifact; SHA-256 `c462b40a1a542e16c3533f97d39fbbb91af4f5267f3cbf23bd70d785efc44c38`.
 - `test/back/lib/signal_analyser_service_test.jl` и
@@ -135,12 +171,14 @@ cross-display state; продукт сохраняет ранее принято
   contract; `clear_display.test.js` добавляет Clear/re-add/state-separation
   contract; `time_presentation.test.js` добавляет Normalize/Show Markers.
   `time_limits.test.js` добавляет ROI, 422 rollback, page lifecycle и absolute
-  Peaks coordinates.
+  Peaks coordinates; `selectable_statistics.test.js` добавляет page-local
+  selection, Clear/re-add, ROI и cleanup contract.
   Runtime требует authenticated target.
 
 Связано с [DEC-20260731-009](../decisions/DEC-20260731-009-display-pages.md),
 [DEC-20260731-010](../decisions/DEC-20260731-010-local-only-plotly.md) и
 [DEC-20260731-011](../decisions/DEC-20260731-011-lazy-engeedsp-peaks.md),
 [DEC-20260731-012](../decisions/DEC-20260731-012-display-selection-separation.md),
-[DEC-20260731-013](../decisions/DEC-20260731-013-authoritative-time-roi.md) и
+[DEC-20260731-013](../decisions/DEC-20260731-013-authoritative-time-roi.md),
+[DEC-20260731-014](../decisions/DEC-20260731-014-selectable-statistics.md) и
 [traceability](../traceability/signal-analyser-cascades.md).

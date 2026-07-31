@@ -188,6 +188,48 @@ multi-layout editor.
 - Excluded: Link Time groups, unit conversion, cursor-defined ROI, zoom/pan
   event synchronization, Spectrum recomputation and arbitrary Y limits.
 
+## Contract восьмого каскада P0 selectable Statistics — 2026-07-31
+
+- SA-UI-010 observed exact order `Minimum`, `Maximum`, `Mean`, `Median`,
+  `Peak to peak`, `RMS`; defaults are the first three. Selection belongs to a
+  Display, survives page switching and is independent from another Display.
+  Official MathWorks docs define all six as time-domain ROI statistics.
+- Typed per-Display `measurement_kinds` is an ordered canonical subset of
+  exact wire IDs `minimum`, `maximum`, `mean`, `median`, `peak_to_peak`, `rms`.
+  Root and every `displays[]` expose the array. New Display defaults to the
+  first three. Empty selection is valid; request order is canonicalized and an
+  equal set is a no-op. Unknown/duplicate/non-string/non-array input is
+  field-level 422 and atomic.
+- `/api/view` accepts additive `measurement_kinds`; absence preserves the
+  current page selection. Actual selection change is one +1 revision. Clear
+  preserves the preference while Measurements becomes typed empty; first
+  re-add recomputes the preserved selection. Inactive pages are unchanged.
+- Existing `measurements` keyset and item keyset remain unchanged. Items follow
+  the canonical selected order. Minimum/Maximum keep absolute first-occurrence
+  sample/time positions; Mean/Median/Peak-to-Peak/RMS have null position.
+  Empty selection on a nonempty source keeps signal/ordinate/units with
+  `items=[]`; empty Display keeps null signal/ordinate.
+- All metrics use one inclusive raw `SignalOrdinateRoi`, never bounded plot
+  arrays. `median` uses the standard odd/even median; `peak_to_peak=max-min`;
+  RMS uses a scale-normalized finite algorithm
+  `scale*sqrt(mean((y/scale)^2))`, with exact zero for `scale=0`, to avoid
+  overflow on finite Float64 inputs. Complex signals retain magnitude ordinate.
+- Empty selection does not materialize ROI or invoke DSP/provider. Other
+  selections compute only requested metrics. Statistics never load EngeeDSP;
+  existing enabled Peaks preparation during the same view mutation remains
+  outside C8 and can still fail atomically.
+- Frontend makes Display/Time/Measurements settings tabs functional local
+  navigation. Measurements shows native checkbox controls in canonical order;
+  a checkbox change sends one serialized full `/api/view`. `Signal statistics`
+  opens both the Measurements settings tab and bottom output panel. Empty
+  Display disables controls without losing checked state; nonempty non-Time
+  pages retain access because the authoritative Time ROI remains defined.
+- Stable selectors: `statistics-settings-tab`, `statistics-controls`,
+  `statistics-option-<id>`, `statistics-selection-error` and existing
+  `measurement-row-<id>`. Frontend performs no statistic calculation.
+- Excluded: variance/std/mean-square, custom ordering, localization redesign,
+  cursor ROI, export, saved-session persistence and Peaks settings.
+
 ## Persistent role heartbeat — 2026-07-31
 
 | Canonical role | Persistent agent ID | Current task | Next queued task | Blocker | Last handoff/status |
@@ -208,16 +250,16 @@ replacement-thread на каноническую роль.
 
 | Canonical role | Replacement session | Current task | Next queued task | Blocker | Last handoff/status |
 | --- | --- | --- | --- | --- | --- |
-| Backend | `/root/backend_cycle` | completed standby | next frozen C8 backend slice | none | C7 typed ROI complete; integrated backend 719/719 |
-| Frontend | `/root/frontend_cycle` | completed standby | next frozen C8 UI slice | none | C7 Time Limits UI complete; front 2/2 |
-| Tester | `/root/tester_c7_matrix` | completed standby | next frozen C8 test matrix | local EngeeDSP unavailable | C7 backend 719/719; front 2/2 |
-| E2E Tester | `/root/e2e_cycle` | completed standby | next research-confirmed scenario | runtime auth/deployment | C7 Time Limits static contract complete |
-| DevOps | `/root/devops_cycle` | completed standby | documentation checkpoint; later authorized push | external transmission approval | C7 product/test checkpoint `1b7864b`; no push/deploy/merge |
-| MATLAB Researcher | `/root/matlab_cycle` | SA-UI-010 selectable Statistics/ROI | SA-UI-011 settings persistence | none | SA-UI-009 saved; raw Statistics and control scope confirmed |
+| Backend | `/root/backend_cycle` | completed standby | next frozen C9 backend slice | none | C8 selectable Statistics complete; integrated backend 789/789 |
+| Frontend | `/root/frontend_cycle` | completed standby | next frozen C9 UI slice | none | C8 settings/Statistics UI complete; front 2/2 |
+| Tester | `/root/tester_c7_matrix` | completed standby | next frozen C9 test matrix | local EngeeDSP unavailable | C8 backend 789/789; front 2/2 |
+| E2E Tester | `/root/e2e_cycle` | completed standby | next research-confirmed scenario | runtime auth/deployment | C8 selectable Statistics static scenario complete |
+| DevOps | `/root/devops_cycle` | completed standby | C8 documentation checkpoint; later authorized push | external transmission approval | C8 product/test checkpoint `0fc70fd6`; no push/deploy/merge |
+| MATLAB Researcher | `/root/matlab_cycle` | SA-GRAPH-001 Spectrum defaults/units | SA-UI-011 settings persistence | none | SA-UI-010 saved; exact six metrics/defaults/page scope confirmed |
 
 DevOps gate evidence: branch `neuro_signal_analyser_cascade`, product/test HEAD
-`1b7864b`, no product/test changes remain outside the checkpoint, no conflicts,
-upstream divergence `0 behind / 16 ahead`. Architecture documentation remains
+`0fc70fd6`, no product/test changes remain outside the checkpoint, no conflicts,
+upstream divergence `0 behind / 18 ahead`. Architecture documentation remains
 a separate pending checkpoint. Unpushed commits do not block implementation;
 future checkpoints stage only explicit completed handoff files. No merge into
 `dev` is authorized without a new explicit user acceptance handoff.
@@ -225,13 +267,16 @@ future checkpoints stage only explicit completed handoff files. No merge into
 ## Verification
 
 - Julia parse changed backend: PASS.
-- Backend: current full gate 719/719 assertions PASS, including typed OOP
-  measurements/Peaks, inclusive Time ROI, provider offset/short-ROI guard,
-  preserve/reset, empty Display and atomic failure paths.
+- Backend: current full gate 789/789 assertions PASS, including typed OOP
+  measurements/Peaks, inclusive Time ROI, selectable Statistics, stable RMS,
+  canonical ordering, preserve/reset, empty Display and atomic failure paths.
 - Frontend static/behavior: 2/2 files PASS.
 - E2E support contract and syntax checks: PASS.
 - Cascade 5 Clear Display E2E syntax/support/runner-help: PASS; runtime pending.
 - Cascade 7 Time Limits E2E syntax/support/runner-help: PASS; runtime pending.
+- Cascade 8 selectable Statistics E2E syntax/support/runner-help: PASS; runtime
+  pending. Cleanup restores page, metric selection, membership, analysis source
+  and ROI.
 - Runtime E2E: fresh-profile CDP attachment PASS, but canonical target redirects
   to `account/login`; product specs require an authenticated retained PTY/tab.
 - Local EngeeDSP contract: FAIL because `EngeeDSP` is absent in the local
@@ -268,6 +313,11 @@ frontend 2/2, Playwright syntax/support/runner-help and architecture validators
 PASS. It is not pushed/deployed; real EngeeDSP and runtime interaction remain
 target gates.
 
+Cascade 8 selectable per-Display Statistics is locally committed as
+`0fc70fd6`: backend 789/789, frontend 2/2, Playwright syntax/support/
+runner-help, skill and vanilla validators PASS. It is not pushed or deployed;
+live authenticated runtime E2E remains a target gate.
+
 EngeeDSP ambiguity is not an unconditional second-deploy blocker: on the same
 target, deployment may proceed only after the UUID/preload/import and target
 contract preflight passes. A failed preflight blocks deployment. No blind
@@ -300,7 +350,9 @@ attempt budget and are not claimed. SA-UI-006 additionally confirms that
 checkbox membership and measurements remap with active display while row
 selection remains independent and inactive-display plots persist. Product
 Display add/close/fallback still follows project contracts, not MATLAB grid.
-SA-UI-008 and SA-UI-009 are saved; SA-UI-010 is active.
+SA-UI-008, SA-UI-009 and SA-UI-010 are saved. SA-UI-010 confirms the exact six
+Statistics choices, first-three defaults, page-local selection and inclusive
+raw ROI behavior. SA-GRAPH-001 Spectrum defaults/units is active.
 
 SA-UI-007 then confirmed that Clear Display can leave the active MATLAB display
 with zero memberships while preserving inactive plots and global signal
@@ -309,7 +361,8 @@ attempts. Cascade 5 now implements the accepted product-model response under
 DEC-012; deterministic first re-add remains a product decision rather than a
 MATLAB-observed claim. SA-UI-008 established Time ROI evidence. SA-UI-009 then
 confirmed 0..1 normalization with raw Statistics and sample markers; its
-cross-display marker scope remains a MATLAB R2024b delta. SA-UI-010 is active.
+cross-display marker scope remains a MATLAB R2024b delta. SA-UI-010 established
+the selectable Statistics evidence consumed by Cascade 8; SA-GRAPH-001 is next.
 
 ## Dated runtime correction 2026-07-31 — Cascade 2 complete
 

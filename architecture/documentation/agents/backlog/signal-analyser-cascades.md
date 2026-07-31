@@ -18,9 +18,11 @@ Owner: Architect
 3. Cascade 6 Time `Normalize Y Axis`/`Show Markers` is implemented and committed
    at `f546195`; runtime remains pending. Cascade 7 authoritative per-Display
    Time Limits with ROI Statistics/Peaks is implemented and committed at
-   `1b7864b`, locally verified 719/719 + front 2/2. SA-UI-010 now researches
-   selectable statistics for the next frozen slice. Link groups, cursors, unit
-   conversion and persistence to save/import remain later slices.
+   `1b7864b`, locally verified 719/719 + front 2/2. Cascade 8 selectable
+   per-Display Statistics is implemented and locally verified at backend
+   789/789 + frontend 2/2 and committed locally as `0fc70fd`.
+   Link groups, cursors, unit conversion and persistence to save/import remain
+   later slices.
 4. Cascade 5 state separation/Clear Display is implemented and committed at
    `8d480ac`: global row selection, nullable page analysis source, empty
    membership, deterministic recovery and no-provider empty payloads. Runtime
@@ -70,11 +72,11 @@ Owner: Architect
 
 ## MATLAB research backlog
 
-- SA-UI-005 and SA-UI-006 structured handoffs are consumed. SA-UI-007 active
-  membership clear/recovery is in progress in `/root/matlab_cycle`.
-- Current deterministic evidence is sufficient for existing P0
-  Minimum/Maximum/Mean. Median, peak-to-peak and RMS are future additive
-  statistics; do not add them without a separately accepted scope.
+- SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
+  researches Spectrum defaults/units for a future separately frozen slice.
+- SA-UI-010 confirmed the exact six-metric order, first-three defaults and
+  page-local selection. Cascade 8 consumed that evidence; future statistics
+  beyond minimum/maximum/mean/median/peak-to-peak/RMS need a new accepted scope.
 - SA-UI-001 bounded evidence now adds independent selection/membership/active
   display, three-signal Time plot, disabled multi-signal TF/Persistence and
   duplicate-import overwrite prompt. Exact server paths and full docs source
@@ -90,5 +92,6 @@ Owner: Architect
 - SA-UI-007 confirms active-only clear, zero membership, statistics removal and
   preservation of inactive plots/global inventory. Re-add is unconfirmed.
 - SA-UI-008 is saved and consumed by Cascade 7. SA-UI-009 Normalize Y/Show
-  Markers is saved and consumed; SA-UI-010 selectable Statistics is active. Product Clear
-  recovery remains an explicit DEC-012 decision, not observed MATLAB re-add.
+  Markers and SA-UI-010 selectable Statistics are saved and consumed. Product
+  Clear recovery remains an explicit DEC-012 decision, not observed MATLAB
+  re-add.

@@ -191,3 +191,24 @@ equal no-op, nested 422 rollback, source preserve/reset, Display A/B,
 non-Time, Clear/null/re-add and cleanup.
 verification: All JS syntax, support contract, runner help and diff PASS.
 runtime: Not run; authenticated deployed target is still required.
+
+## Cascade 8 selectable Statistics static contract — 2026-07-31
+
+goal: Prepare deterministic runtime coverage for per-Display statistics choice
+without claiming a browser run.
+scope: `test/playwright/**`.
+contracts: Capture and restore original membership, source, ROI, active page and
+selected kinds; wait for create/select/close Display responses; check canonical
+order/defaults, one request, narrowed inclusive ROI, page independence, Clear
+preservation and first re-add recomputation. Disabled controls on empty Display
+and exact cleanup are required. Arbitrary and empty subsets remain covered by
+the backend/frontend matrices rather than claimed as a browser observation.
+changes: Registered selectable Statistics selectors and a lifecycle-safe
+scenario in the existing background-only workspace harness.
+verification: All Playwright JavaScript syntax, support contract and runner
+`--help` PASS.
+runtime: Not run; an authenticated deployed target is still required. No live
+DOM, Plotly or network result is inferred from the static gate.
+risks: Runtime focus/layout/request timing and exact deployed SHA remain open.
+follow-ups: Run only after an accepted deployment and retain cleanup/timing
+evidence.

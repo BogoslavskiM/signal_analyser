@@ -131,3 +131,22 @@ push remains blocked on explicit exact external payload/destination approval.
 Deploy/merge remain separate explicit decisions. Runtime E2E additionally needs
 an authenticated retained CDP tab; the unauthenticated canonical target redirects
 to `account/login`.
+
+## Cascade 8 commit-freeze handoff — 2026-07-31
+
+goal: Freeze only the completed selectable Statistics product/test paths, then
+freeze Architect documentation separately.
+scope: Explicit Backend, Frontend, Tester and E2E handoff files; no unrelated
+dirty architecture paths in the product/test checkpoint.
+verification supplied: Backend 789/789, frontend 2/2, all Playwright JavaScript
+syntax, support contract, runner help, skill catalog and vanilla validator PASS.
+status: DevOps created local checkpoint
+`0fc70fd6b8323b86cffcf2011810ac8cb1c6d076`, message
+`feat: добавить выбираемые статистики Display`; branch was `0 behind / 18
+ahead`. No push, deployment or merge occurred or is authorized by this
+handoff.
+risks: Runtime E2E remains blocked on authenticated accepted target. Local
+EngeeDSP absence remains a target-preflight constraint rather than a C8
+Statistics failure.
+follow-ups: Commit only the explicit completed documentation handoff. External
+transfer stays separate.

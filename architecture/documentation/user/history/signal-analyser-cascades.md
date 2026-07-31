@@ -172,3 +172,23 @@
   cross-display и мог переключаться из empty display.
 - Продукт сохраняет page-local Show Markers как явное portable decision; этот
   delta не переписывает уже проверенный Cascade 6 задним числом.
+
+## 2026-07-31 — Cascade 8 selectable Statistics
+
+- SA-UI-010 подтвердил точный порядок Minimum, Maximum, Mean, Median, Peak to
+  peak, RMS, defaults из первых трёх и независимость выбора между Display.
+- `implemented`: typed ordered `measurement_kinds` в root/display snapshot и
+  существующем `/api/view`; пустой subset, canonical ordering, per-Display
+  Clear/re-add/new/inactive lifecycle и строгий atomic field-level 422.
+- Median, Peak-to-Peak и scale-normalized RMS вычисляются по одному inclusive
+  raw ROI. Только extrema сохраняют абсолютную sample/time position; пустой
+  выбор не материализует ROI и не вызывает DSP/provider.
+- Frontend получил функциональные Display/Time/Measurements settings tabs и
+  native checkboxes; `Signal statistics` открывает settings и нижний output.
+- `verified locally`: backend 789/789, frontend 2/2, Playwright
+  syntax/support/runner-help, skills catalog и vanilla validators PASS.
+- Product/test checkpoint `0fc70fd`; upstream divergence после commit —
+  `0 behind / 18 ahead`.
+- Runtime DevHub E2E, push и deployment не выполнялись. Локальное отсутствие
+  EngeeDSP остаётся известным preflight limitation для специализированных
+  путей и не влияет на Base/Statistics C8.

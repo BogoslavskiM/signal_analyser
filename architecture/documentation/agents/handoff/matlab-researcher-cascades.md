@@ -264,3 +264,22 @@ actual-sample markers, Time-only availability and state restoration.
 product_decision: Keep existing page-local Show Markers for deterministic
 Display ownership instead of copying R2024b global asymmetry.
 next_task: SA-UI-010 selectable Statistics and ROI.
+
+## Autonomous cycle 2 scenario SA-UI-010 — 2026-07-31
+
+goal: Observe exact Signal Statistics defaults, toggles, page scope and ROI
+recomputation.
+external_scenario_id: `SA-UI-010-signal-statistics-selection-page-local-roi`.
+sha256: `da95228f1e960413d78a6ad8304f64b984e42cc783817634bdf8fb338973bffe`.
+observed: Split-menu order is Minimum, Maximum, Mean, Median, Peak to peak,
+RMS; defaults are first three. All six were enabled on the right Display, empty
+left retained independent defaults/zero rows, and return restored all six.
+ROI 4..6 retained raw min `0.30902 @ 4` and max `1 @ 5` under normalized
+rendering. Table has one row per plotted signal.
+formula_oracle_not_visual_claim: hidden clipped columns are expected mean
+`0.5393446629`, median `0.3090169944`, P2P `0.6909830056`, RMS
+`0.6300748648`; exact UI rounding/order was not observed.
+portable_behavior: page-local metric set, exact defaults/order, zero-row empty
+state, inclusive raw ROI recompute and restoration.
+product_result: Consumed into frozen Cascade 8 and DEC-014.
+next_task: SA-GRAPH-001 deterministic Spectrum defaults/units.

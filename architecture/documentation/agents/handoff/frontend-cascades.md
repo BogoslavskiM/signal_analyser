@@ -156,3 +156,25 @@ Time uses `xaxis.range`; non-Time/empty disables controls and preserves state.
 CSS adds compact responsive, focus, disabled and error states.
 verification: JS syntax/diff and frontend 2/2 PASS.
 risks: Runtime interaction awaits authenticated deployment.
+
+## Cascade 8 selectable Statistics UI — 2026-07-31
+
+goal: Expose authoritative per-Display measurement selection without client
+calculation.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Three functional local settings tabs; native checkbox controls in
+canonical order; exactly one serialized full `/api/view` per checkbox change;
+nested field-level error; empty Display disabled without preference loss;
+`Signal statistics` opens Measurements settings and bottom results.
+selectors: `statistics-settings-tab`, `statistics-controls`,
+`statistics-option-<id>`, `statistics-selection-error`, existing
+`measurement-row-<id>`.
+changes: Added accessible tab state/keyboard navigation, snapshot-driven
+selection rendering and strict rollback/canonical response handling. No
+statistics formula or alternate endpoint was added to JavaScript.
+verification: Frontend static/behavior 2/2 PASS; JavaScript syntax and stable
+selector contracts PASS.
+risks: Browser runtime layout, focus and network behavior await an authenticated
+deployed target.
+follow-ups: Run the prepared selectable Statistics scenario on the exact
+accepted product SHA.

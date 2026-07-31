@@ -16,4 +16,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260731-011: lazy per-Display EngeeDSP Peaks](DEC-20260731-011-lazy-engeedsp-peaks.md)
 - [DEC-20260731-012: разделение row selection, Display membership и analysis source](DEC-20260731-012-display-selection-separation.md)
 - [DEC-20260731-013: authoritative per-Display Time ROI](DEC-20260731-013-authoritative-time-roi.md)
+- [DEC-20260731-014: selectable per-Display Statistics](DEC-20260731-014-selectable-statistics.md)
 - [Шаблон ADR](template.md)
