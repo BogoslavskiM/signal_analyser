@@ -32,8 +32,11 @@ assert.equal(config.app.testIds.signalVisibilityCheckboxPrefix, "signal-visibili
 assert.equal(config.app.testIds.signalVisibilityStatePrefix, "signal-visibility-state-");
 assert.equal(config.app.testIds.plotHostPrefix, "plot-host-");
 assert.equal(config.app.testIds.plotErrorState, "plot-error-state");
+assert.equal(config.app.testIds.plotInvalidDataState, "plot-invalid-data-state");
 assert.equal(config.app.testIds.findPeaksAction, "find-peaks-action");
 assert.equal(config.app.testIds.signalStatisticsAction, "signal-statistics-action");
+assert.equal(config.app.testIds.normalizeYAxisCheckbox, "normalize-y-checkbox");
+assert.equal(config.app.testIds.showMarkersCheckbox, "show-markers-checkbox");
 assert.equal(config.app.testIds.displayOverflowTrigger, "display-overflow-trigger");
 assert.equal(config.app.testIds.displayOverflowMenu, "display-overflow-menu");
 assert.equal(config.app.testIds.clearDisplayAction, "clear-display-action");
@@ -54,6 +57,7 @@ assert.equal(config.app.testIds.peaks.table, "peaks-table");
 assert.equal(config.app.testIds.peaks.rowPrefix, "peak-row-");
 assert.equal(config.features.peaks, true);
 assert.equal(config.features["clear-display"], true);
+assert.equal(config.features["time-presentation"], true);
 assert.deepEqual(Object.keys(config.app.testIds.plotCards).sort(), [
   "persistence",
   "spectrogram",

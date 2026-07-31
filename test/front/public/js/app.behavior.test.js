@@ -322,6 +322,104 @@ module.exports = async function testDisplayBehavior(assert) {
   assert((!clear.e.host.data || clear.e.host.data.length === 0) && (!clear.e.host._fullData || clear.e.host._fullData.length === 0) && (!clear.e.host.calcdata || clear.e.host.calcdata.length === 0), "an empty Display must purge stale Plotly data from the persistent graph host");
   assert(clear.e.measurementContent.innerHTML.includes("empty-display-measurements-state") && clear.e.peaksContent.innerHTML.includes("empty-display-peaks-state"), "an empty authoritative page must render typed empty analysis panels locally");
 
+  const timeDefinition = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: B, selected_signal: B, visible_signals: [A, B], peaks_enabled: true };
+  const timePresentation = snapshot(0, "display-1", [timeDefinition], B);
+  timePresentation.plot_payload.time_traces = [
+    { name: A, signal: A, x: [0, .1, .2], y: [-2, 0, 2] },
+    { name: B, signal: B, x: [0, .1, .2], y: [5, 5, 5] },
+  ];
+  timePresentation.peaks = { enabled: true, state_revision: 0, display_id: "display-1", signal_name: B, ordinate: "magnitude", units: { value: "1", time: "s", width: "samples", prominence: "1" }, items: [{ id: "peak-source", value: 5, time_s: .1, sample_index: 1, width_samples: 1, prominence: 2 }] };
+  const spectrumDefinition = Object.assign({}, timeDefinition, { active_plot: "spectrum" });
+  const spectrumPresentation = snapshot(1, "display-1", [spectrumDefinition], B);
+  spectrumPresentation.plot_payload = Object.assign({}, timePresentation.plot_payload, { spectrum_traces: timePresentation.plot_payload.time_traces });
+  spectrumPresentation.peaks = Object.assign({}, timePresentation.peaks, { state_revision: 1, enabled: false });
+  const presentationRequests = [];
+  const presentation = await boot((url, options) => {
+    presentationRequests.push({ url, options });
+    return Promise.resolve(response(200, url === "./api/state" ? timePresentation : spectrumPresentation));
+  });
+  const presentationHost = presentation.e.host;
+  const rawTraceArrays = timePresentation.plot_payload.time_traces.map((trace) => trace.y.slice());
+  presentation.e.normalize.checked = true;
+  presentation.e.normalize.listeners.change({ target: presentation.e.normalize });
+  await flush();
+  const normalizedPlot = presentation.calls.filter((call) => call.plot).at(-1);
+  const normalizedOrdinary = normalizedPlot.data.filter((trace) => !trace.meta);
+  const normalizedPeak = normalizedPlot.data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");
+  assert(presentationRequests.length === 1 && presentation.e.host === presentationHost, "Time presentation preferences must be local, revision-free and retain the single Plotly host");
+  assert(JSON.stringify(normalizedOrdinary.map((trace) => trace.y)) === JSON.stringify([[0, .5, 1], [0, 0, 0]]), "Normalize Y must independently map every finite Time trace to exact [0,1] and map a constant trace to zero");
+  assert(JSON.stringify(normalizedPeak.y) === JSON.stringify([0]) && normalizedPeak.meta.signal_name === B, "Peaks markers must normalize against the analysis-source extrema only");
+  assert(JSON.stringify(timePresentation.plot_payload.time_traces.map((trace) => trace.y)) === JSON.stringify(rawTraceArrays), "Time normalization must not mutate authoritative source arrays");
+  presentation.e.markers.checked = true;
+  presentation.e.markers.listeners.change({ target: presentation.e.markers });
+  await flush();
+  const markedPlot = presentation.calls.filter((call) => call.plot).at(-1);
+  assert(markedPlot.data.filter((trace) => !trace.meta).every((trace) => trace.mode === "lines+markers") && markedPlot.data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace").mode === "markers", "Show Markers must affect ordinary Time traces only and preserve the Peaks marker mode");
+  assert(presentationRequests.length === 1, "both Time presentation toggles must make zero API requests");
+  presentation.e.settingsSelect.value = "spectrum";
+  presentation.e.settingsSelect.listeners.change({ target: presentation.e.settingsSelect });
+  await flush();
+  assert(presentation.e.normalize.disabled === true && presentation.e.markers.disabled === true && presentation.e.normalize.checked === true && presentation.e.markers.checked === true, "non-Time plots must disable presentation controls without discarding per-Display preferences");
+  const spectrumPlot = presentation.calls.filter((call) => call.plot).at(-1);
+  assert(spectrumPlot.layout.yaxis.autorange === undefined && spectrumPlot.data.filter((trace) => !trace.meta).every((trace) => trace.mode !== "lines+markers"), "Spectrum must preserve disabled Time preferences without Normalize-specific layout or ordinary markers");
+
+  const peakAffineDefinition = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B], peaks_enabled: true };
+  const peakAffine = snapshot(0, "display-1", [peakAffineDefinition], A);
+  peakAffine.plot_payload.time_traces = [
+    { name: A, signal: A, x: [0, .1, .2], y: [-2, 0, 2] },
+    { name: B, signal: B, x: [0, .1, .2], y: [10, 20, 30] },
+  ];
+  peakAffine.peaks = { enabled: true, state_revision: 0, display_id: "display-1", signal_name: A, ordinate: "real", units: { value: "1", time: "s", width: "samples", prominence: "1" }, items: [{ id: "peak-outside", value: 4, time_s: .1, sample_index: 1, width_samples: 1, prominence: 2 }] };
+  const affine = await boot((url) => Promise.resolve(response(200, peakAffine)));
+  affine.e.normalize.checked = true;
+  affine.e.normalize.listeners.change({ target: affine.e.normalize });
+  await flush();
+  const affinePeak = affine.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");
+  assert(JSON.stringify(affinePeak.x) === JSON.stringify([.1]) && JSON.stringify(affinePeak.y) === JSON.stringify([1.5]) && affinePeak.meta.normalization === "analysis-source-affine-unclipped", "raw backend Peaks values outside source extrema must use the same affine source transform without clipping");
+
+  const invalidDefinition = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B] };
+  const invalidPresentation = snapshot(0, "display-1", [invalidDefinition], A);
+  invalidPresentation.plot_payload.time_traces = [
+    { name: A, signal: A, x: [0, .1], y: [0, NaN] },
+    { name: B, signal: B, x: [0, .1], y: [1, 2] },
+  ];
+  const invalid = await boot((url) => Promise.resolve(response(200, invalidPresentation)));
+  const invalidHost = invalid.e.host;
+  assert(invalid.calls.filter((call) => call.plot).length === 0 && invalidHost.innerHTML.includes("plot-invalid-data-state") && invalidHost.dataset.plotReady === "false", "a visible Time trace with nonfinite data must skip Plotly.react and render the stable invalid-data state");
+  invalidHost.data = [{ stale: true }];
+  invalidHost._fullData = [{ stale: true }];
+  invalidHost.calcdata = [[{ stale: true }]];
+  invalid.e.normalize.checked = true;
+  invalid.e.normalize.listeners.change({ target: invalid.e.normalize });
+  await flush();
+  assert(invalid.e.host === invalidHost && invalid.calls.filter((call) => call.plot).length === 0 && (!invalidHost.data || invalidHost.data.length === 0) && (!invalidHost._fullData || invalidHost._fullData.length === 0) && (!invalidHost.calcdata || invalidHost.calcdata.length === 0), "invalid Time data must purge the persistent host and remain Plotly-free with Normalize enabled");
+
+  const emptyPresentation = await boot((url) => Promise.resolve(response(200, emptySnapshot(0, A))));
+  assert(emptyPresentation.e.normalize.disabled === true && emptyPresentation.e.markers.disabled === true, "an empty Display must disable Time-only presentation controls");
+
+  const displayPreferenceRequests = [];
+  const preferenceDisplayOne = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B] };
+  const preferenceDisplayTwo = { id: "display-2", name: "Display 2", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B] };
+  const preferenceCreated = snapshot(1, "display-2", [preferenceDisplayOne, preferenceDisplayTwo], A);
+  const preferenceRestored = snapshot(2, "display-1", [preferenceDisplayOne, preferenceDisplayTwo], A);
+  const displayPreferences = await boot((url, options) => {
+    displayPreferenceRequests.push({ url, options });
+    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    return Promise.resolve(response(200, JSON.parse(options.body).operation === "create" ? preferenceCreated : preferenceRestored));
+  });
+  displayPreferences.e.normalize.checked = true;
+  displayPreferences.e.normalize.listeners.change({ target: displayPreferences.e.normalize });
+  displayPreferences.e.markers.checked = true;
+  displayPreferences.e.markers.listeners.change({ target: displayPreferences.e.markers });
+  await flush();
+  assert(displayPreferenceRequests.length === 1, "persisting local Time preferences must not mutate the API revision");
+  displayPreferences.e.tabs.listeners.click({ target: addTarget() });
+  await flush();
+  assert(displayPreferences.e.normalize.checked === false && displayPreferences.e.markers.checked === false && displayPreferences.e.normalize.disabled === false && displayPreferences.e.markers.disabled === false, "a newly created Time Display must start with presentation preferences off and enabled");
+  displayPreferences.e.tabs.listeners.click({ target: tabTarget("display-1") });
+  await flush();
+  assert(displayPreferences.e.normalize.checked === true && displayPreferences.e.markers.checked === true, "switching back must restore per-Display Time presentation preferences");
+
   const keyboardTabs = await boot((url) => Promise.resolve(response(200, initial)));
   function key(tab, key) {
     let prevented = false;
