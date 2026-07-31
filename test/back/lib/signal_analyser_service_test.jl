@@ -103,7 +103,7 @@ end
     state = SA.default_signal_analyser_state()
     snapshot = SA.signal_analyser_snapshot(state)
 
-    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
+    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "spectrum_settings", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
     @test snapshot["active_display_id"] == "display-1"
     @test snapshot["displays"] == [Dict(
         "id" => "display-1",
@@ -114,6 +114,7 @@ end
         "visible_signals" => ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"],
         "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
         "measurement_kinds" => ["minimum", "maximum", "mean"],
+        "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5),
         "peaks_enabled" => false,
     )]
     @test snapshot["state_revision"] == 0
@@ -135,7 +136,7 @@ end
     @test Set(keys(snapshot["plots"])) == Set(["time", "spectrum", "spectrogram", "persistence"])
     assert_line_plot(snapshot["plots"]["time"])
     assert_line_plot(snapshot["plots"]["spectrum"])
-    @test snapshot["plots"]["spectrum"]["method"] == "welch"
+    @test snapshot["plots"]["spectrum"]["method"] == "pspectrum"
     assert_heatmap_plot(snapshot["plots"]["spectrogram"])
     assert_heatmap_plot(snapshot["plots"]["persistence"]; persistence = true)
     @test Set(keys(snapshot["plot_payload"])) == Set(["selected_signal", "visible_signals", "time_traces", "spectrum_traces", "spectrogram", "persistence"])
@@ -152,13 +153,11 @@ end
     @test snapshot["plot_payload"]["spectrogram"]["signal"] == "Гармонический сигнал"
     @test snapshot["plot_payload"]["persistence"]["signal"] == "Гармонический сигнал"
     assert_p0_snapshot_measurements(snapshot, state.signals[1])
-    @test length(SA.PSPECTRUM_CALLS) == 6
-    @test SA.PSPECTRUM_CALLS[1].representation == "power"
-    @test SA.PSPECTRUM_CALLS[1].options[end - 1:end] == ("TwoSided", true)
-    @test "FrequencyResolution" in SA.PSPECTRUM_CALLS[1].options
+    @test length(SA.SPECTRUM_CALLS) == 2
+    @test all(query -> query.leakage == 0.5, SA.SPECTRUM_CALLS)
 
     SA.signal_analyser_snapshot(state)
-    @test length(SA.PSPECTRUM_CALLS) == 6
+    @test length(SA.SPECTRUM_CALLS) == 2
 
     second_name = snapshot["signals"][2]["name"]
     second_snapshot = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "selected_signal" => second_name))
@@ -169,11 +168,11 @@ end
     @test second_snapshot["plots"]["time"]["y"] == second_snapshot["plot_payload"]["time_traces"][2]["y"]
     @test second_snapshot["plots"]["spectrum"]["y"] == second_snapshot["plot_payload"]["spectrum_traces"][2]["y"]
     assert_p0_snapshot_measurements(second_snapshot, state.signals[2])
-    @test length(SA.PSPECTRUM_CALLS) == 6
+    @test length(SA.SPECTRUM_CALLS) == 2
     assert_heatmap_plot(second_snapshot["plots"]["spectrogram"])
 
     SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "active_plot" => "spectrum"))
-    @test length(SA.PSPECTRUM_CALLS) == 6
+    @test length(SA.SPECTRUM_CALLS) == 2
     no_op = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 2, "active_plot" => "spectrum", "selected_signal" => second_name))
     @test no_op["state_revision"] == 2
     @test state.view.state_revision == 2
@@ -228,6 +227,7 @@ end
         "visible_signals" => [first_name, second_name],
         "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
         "measurement_kinds" => ["minimum", "maximum", "mean"],
+        "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5),
         "peaks_enabled" => false,
     )
 
@@ -1040,4 +1040,137 @@ end
     @test empty_snapshot.signal_name == invalid.name
     @test empty_snapshot.ordinate == SA.REAL_ORDINATE
     @test isempty(empty_snapshot.items)
+end
+
+@testset "Cascade 9 Spectrum settings provider and mutation contract" begin
+    SA.reset_pspectrum_double!()
+    empty!(SA.SPECTRUM_CALLS)
+    state = SA.default_signal_analyser_state()
+    initial = SA.signal_analyser_snapshot(state)
+    @test initial["spectrum_settings"] == Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5)
+    @test initial["displays"][1]["spectrum_settings"] == initial["spectrum_settings"]
+    @test length(SA.SPECTRUM_CALLS) == 2
+    @test SA.SPECTRUM_CALLS[1].topology == SA.ONE_SIDED_SPECTRUM
+    @test SA.SPECTRUM_CALLS[2].topology == SA.CENTERED_TWO_SIDED_SPECTRUM
+    @test all(value -> value isa ComplexF64, SA.SPECTRUM_CALLS[2].values)
+    before = SA.signal_analyser_snapshot(state)
+    invalid = try SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 2.0))); nothing catch e; e end
+    @test invalid isa SA.SignalAnalyserValidationError
+    @test haskey(invalid.fields, "spectrum_settings")
+    @test SA.signal_analyser_snapshot(state) == before
+    linear = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrum_settings" => Dict("scale" => "linear", "frequency_scale" => "linear", "leakage" => 0.5)))
+    @test linear["state_revision"] == 1
+    @test linear["plots"]["spectrum"]["y"] == [1.0, 4.0]
+    @test length(SA.SPECTRUM_CALLS) == 2
+    noop = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrum_settings" => Dict("scale" => "linear", "frequency_scale" => "linear", "leakage" => 0.5)))
+    @test noop["state_revision"] == 1
+
+    # The nested object is a strict, atomic contract.  None of these malformed
+    # variants may publish a partial Display mutation or invalidate raw caches.
+    before_invalid = SA.signal_analyser_snapshot(state)
+    for malformed in (
+        nothing,
+        Dict("scale" => "db", "frequency_scale" => "linear"),
+        Dict("scale" => "watts", "frequency_scale" => "linear", "leakage" => 0.5),
+        Dict("scale" => "db", "frequency_scale" => "octave", "leakage" => 0.5),
+        Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => true),
+    )
+        err = try
+            SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrum_settings" => malformed))
+            nothing
+        catch caught
+            caught
+        end
+        @test err isa SA.SignalAnalyserValidationError
+        @test haskey(err.fields, "spectrum_settings")
+        @test SA.signal_analyser_snapshot(state) == before_invalid
+    end
+
+    # Scale and frequency presentation are deliberately excluded from raw
+    # provider identity; leakage is part of it and must recalculate.
+    db = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1,
+        "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5)))
+    @test db["state_revision"] == 2
+    @test db["plots"]["spectrum"]["y"] ≈ [0.0, 10 * log10(4.0)]
+    @test length(SA.SPECTRUM_CALLS) == 2
+    leakage = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 2,
+        "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.25)))
+    @test leakage["state_revision"] == 3
+    @test length(SA.SPECTRUM_CALLS) == 4
+    @test all(query -> query.leakage == 0.25, SA.SPECTRUM_CALLS[3:4])
+    stale = try
+        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 2,
+            "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.25)))
+        nothing
+    catch caught
+        caught
+    end
+    @test stale isa SA.SignalAnalyserStaleStateError
+
+    # A complex visible member prohibits logarithmic frequency scale, and the
+    # rejected mixed mutation is atomic.
+    complex_state = SA.default_signal_analyser_state()
+    complex_before = SA.signal_analyser_snapshot(complex_state)
+    complex_log = try
+        SA.apply_signal_analyser_view!(complex_state, Dict("state_revision" => 0,
+            "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "log", "leakage" => 0.5)))
+        nothing
+    catch caught
+        caught
+    end
+    @test complex_log isa SA.SignalAnalyserValidationError
+    @test haskey(complex_log.fields, "spectrum_settings")
+    @test SA.signal_analyser_snapshot(complex_state) == complex_before
+
+    # Removing the complex member permits log presentation.  Creating and
+    # clearing Displays preserve an independent canonical settings object.
+    real_name = complex_state.signals[1].name
+    log_view = SA.apply_signal_analyser_view!(complex_state, Dict("state_revision" => 0,
+        "visible_signals" => [real_name],
+        "spectrum_settings" => Dict("scale" => "linear", "frequency_scale" => "log", "leakage" => 0.5)))
+    @test log_view["state_revision"] == 1
+    @test log_view["spectrum_settings"]["frequency_scale"] == "log"
+    created = SA.apply_signal_analyser_display!(complex_state, Dict("state_revision" => 1, "operation" => "create"))
+    @test created["displays"][2]["spectrum_settings"] == Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5)
+    active_log = SA.apply_signal_analyser_display!(complex_state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))
+    cleared = SA.apply_signal_analyser_view!(complex_state, Dict("state_revision" => 3, "visible_signals" => String[]))
+    @test cleared["spectrum_settings"] == active_log["spectrum_settings"]
+    @test cleared["displays"][2]["spectrum_settings"] == Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5)
+
+    # Provider failures are prepared before publication and therefore roll back
+    # the whole revisioned operation.
+    SA.SPECTRUM_FAILURE[] = true
+    failing_before = SA.signal_analyser_snapshot(state)
+    provider_error = try
+        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 3,
+            "spectrum_settings" => Dict("scale" => "linear", "frequency_scale" => "linear", "leakage" => 0.75)))
+        nothing
+    catch caught
+        caught
+    end
+    @test provider_error isa ArgumentError
+    @test SA.signal_analyser_snapshot(state) == failing_before
+    SA.SPECTRUM_FAILURE[] = false
+
+    # Mixed-duration visible sources intersect the Display ROI independently:
+    # a one-sample intersection is represented but never calls the provider,
+    # while a two-sample real source remains a legitimate raw provider query.
+    empty!(SA.SPECTRUM_CALLS)
+    long = SA.AnalysedSignal("long", "#111111", 10.0, ComplexF64[1, 2, 3], false, true)
+    short = SA.AnalysedSignal("short", "#222222", 10.0, ComplexF64[1], false, true)
+    roi_state = SA.SignalAnalyserState(SA.AnalysedSignal[long, short],
+        SA.SignalAnalyserViewState(0, SA.TIME_PLOT, "long"), Dict{String,Dict{String,Any}}(), ReentrantLock())
+    SA.signal_analyser_snapshot(roi_state)
+    @test length(SA.SPECTRUM_CALLS) == 1
+    empty!(SA.SPECTRUM_CALLS)
+    one_sample = SA.apply_signal_analyser_view!(roi_state, Dict("state_revision" => 0,
+        "time_limits" => Dict("min_s" => 0.0, "max_s" => 0.05, "units" => "s")))
+    @test one_sample["time_limits"]["max_s"] == 0.05
+    @test isempty(SA.SPECTRUM_CALLS)
+    two_samples = SA.apply_signal_analyser_view!(roi_state, Dict("state_revision" => 1,
+        "time_limits" => Dict("min_s" => 0.0, "max_s" => 0.1, "units" => "s")))
+    @test two_samples["state_revision"] == 2
+    @test length(SA.SPECTRUM_CALLS) == 1
+    @test SA.SPECTRUM_CALLS[1].signal_name == "long"
+    @test length(SA.SPECTRUM_CALLS[1].values) == 2
 end

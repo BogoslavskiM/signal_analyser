@@ -9,11 +9,28 @@ const SIGNAL_ANALYSER_VIEW_FIELDS = Set([
     "visible_signals",
     "time_limits",
     "measurement_kinds",
+    "spectrum_settings",
     "peaks_enabled",
 ])
 const SIGNAL_ANALYSER_DISPLAY_FIELDS = Set(["state_revision", "operation", "display_id"])
 const SIGNAL_ANALYSER_DISPLAY_OPERATIONS = Set(["create", "select", "close"])
 const SIGNAL_TIME_LIMIT_FIELDS = Set(["min_s", "max_s", "units"])
+const SIGNAL_SPECTRUM_SETTINGS_FIELDS = Set(["scale", "frequency_scale", "leakage"])
+
+const SIGNAL_SPECTRUM_SCALE_NAMES = Dict(
+    DB_SPECTRUM_SCALE => "db",
+    LINEAR_SPECTRUM_SCALE => "linear",
+)
+const SIGNAL_SPECTRUM_SCALES_BY_NAME = Dict(
+    value => key for (key, value) in SIGNAL_SPECTRUM_SCALE_NAMES
+)
+const SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES = Dict(
+    LINEAR_SPECTRUM_FREQUENCY_SCALE => "linear",
+    LOG_SPECTRUM_FREQUENCY_SCALE => "log",
+)
+const SIGNAL_SPECTRUM_FREQUENCY_SCALES_BY_NAME = Dict(
+    value => key for (key, value) in SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES
+)
 
 function signal_analyser_signal_payload(signal::AnalysedSignal)::Dict{String,Any}
     Dict{String,Any}(
@@ -36,6 +53,16 @@ function signal_time_limits_payload(limits::SignalTimeLimits)::Dict{String,Any}
 end
 
 signal_time_limits_payload(::Nothing) = nothing
+
+function signal_spectrum_settings_payload(
+    settings::SignalSpectrumSettings,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "scale" => SIGNAL_SPECTRUM_SCALE_NAMES[settings.scale],
+        "frequency_scale" => SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[settings.frequency_scale],
+        "leakage" => settings.leakage,
+    )
+end
 
 function signal_measurement_selection_payload(
     selection::SignalMeasurementSelection,
@@ -84,7 +111,7 @@ function signal_analyser_panel_payload(
         ]
     elseif active_plot == SPECTRUM_PLOT
         [
-            signal_analyser_panel_field("method", "Метод оценки", "text", "Welch"),
+            signal_analyser_panel_field("method", "Метод оценки", "text", "pspectrum"),
             signal_analyser_panel_field("frequency_points", "Частотных отсчётов", "integer", length(plots["spectrum"]["x"])),
             signal_analyser_panel_field("frequency_span_hz", "Полоса частот", "number", signal.sample_rate_hz, "Гц"),
         ]
@@ -109,7 +136,9 @@ function signal_analyser_panel_payload(
     )
 end
 
-function signal_analyser_empty_plots()::Dict{String,Any}
+function signal_analyser_empty_plots(
+    spectrum_settings::SignalSpectrumSettings = SignalSpectrumSettings(),
+)::Dict{String,Any}
     Dict{String,Any}(
         "time" => Dict{String,Any}(
             "type" => "line",
@@ -123,8 +152,8 @@ function signal_analyser_empty_plots()::Dict{String,Any}
             "x" => Float64[],
             "y" => Float64[],
             "x_label" => "Частота, Гц",
-            "y_label" => "Мощность, дБ",
-            "method" => "welch",
+            "y_label" => spectrum_settings.scale == DB_SPECTRUM_SCALE ? "Мощность, дБ" : "Мощность",
+            "method" => "pspectrum",
         ),
         "spectrogram" => Dict{String,Any}(
             "type" => "heatmap",
@@ -166,7 +195,7 @@ end
 
 function signal_analyser_cached_plots!(state::SignalAnalyserState, signal::AnalysedSignal)::Dict{String,Any}
     get!(state.plot_cache, signal.name) do
-        signal_analyser_plots(signal)
+        signal_analyser_base_plots(signal)
     end
 end
 
@@ -176,7 +205,7 @@ function signal_analyser_prepared_plots(state::SignalAnalyserState, signal_names
         if haskey(state.plot_cache, name)
             prepared[name] = state.plot_cache[name]
         else
-            prepared[name] = signal_analyser_plots(signal_by_name(state, name))
+            prepared[name] = signal_analyser_base_plots(signal_by_name(state, name))
         end
     end
     prepared
@@ -190,6 +219,80 @@ function signal_analyser_publish_prepared_plots!(
         state.plot_cache[name] = plots
     end
     nothing
+end
+
+function signal_analyser_prepared_spectra(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    signal_names::Vector{String},
+)::Dict{SignalSpectrumCacheKey,SignalSpectrumData}
+    isempty(signal_names) && return Dict{SignalSpectrumCacheKey,SignalSpectrumData}()
+    limits = display.time_limits
+    limits === nothing && throw(ArgumentError("Непустой Display должен иметь Time Limits"))
+    prepared = Dict{SignalSpectrumCacheKey,SignalSpectrumData}()
+    for name in signal_names
+        signal = signal_by_name(state, name)
+        sample_range = signal_spectrum_sample_range(
+            state.spectrum_service,
+            state.measurements_service.roi_service,
+            signal,
+            limits,
+        )
+        sample_range === nothing && continue
+        key = signal_spectrum_cache_key(signal, sample_range, display.spectrum_settings)
+        if haskey(state.spectrum_cache, key)
+            prepared[key] = state.spectrum_cache[key]
+        elseif length(sample_range) == 1
+            prepared[key] = SignalSpectrumData(signal_spectrum_topology(signal))
+        else
+            query = signal_spectrum_query(signal, sample_range, display.spectrum_settings)
+            prepared[key] = signal_spectrum_calculate(state.spectrum_service, query)
+        end
+    end
+    prepared
+end
+
+function signal_analyser_publish_prepared_spectra!(
+    state::SignalAnalyserState,
+    prepared::Dict{SignalSpectrumCacheKey,SignalSpectrumData},
+)
+    for (key, data) in prepared
+        state.spectrum_cache[key] = data
+    end
+    nothing
+end
+
+function signal_analyser_cached_spectrum_data!(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    signal::AnalysedSignal,
+)::SignalSpectrumData
+    limits = display.time_limits
+    limits === nothing && throw(ArgumentError("Непустой Display должен иметь Time Limits"))
+    sample_range = signal_spectrum_sample_range(
+        state.spectrum_service,
+        state.measurements_service.roi_service,
+        signal,
+        limits,
+    )
+    sample_range === nothing && return SignalSpectrumData(signal_spectrum_topology(signal))
+    key = signal_spectrum_cache_key(signal, sample_range, display.spectrum_settings)
+    get!(state.spectrum_cache, key) do
+        length(sample_range) == 1 && return SignalSpectrumData(signal_spectrum_topology(signal))
+        query = signal_spectrum_query(signal, sample_range, display.spectrum_settings)
+        signal_spectrum_calculate(state.spectrum_service, query)
+    end
+end
+
+function signal_analyser_plots_for_display!(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    signal::AnalysedSignal,
+)::Dict{String,Any}
+    plots = copy(signal_analyser_cached_plots!(state, signal))
+    spectrum_data = signal_analyser_cached_spectrum_data!(state, display, signal)
+    plots["spectrum"] = signal_analyser_spectrum_plot(spectrum_data, display.spectrum_settings)
+    plots
 end
 
 function signal_analyser_visible_signal_names(state::SignalAnalyserState)::Vector{String}
@@ -220,6 +323,7 @@ function signal_analyser_display_payload(display::SignalAnalyserDisplayState)::D
         "visible_signals" => signal_analyser_display_members(display),
         "time_limits" => signal_time_limits_payload(display.time_limits),
         "measurement_kinds" => signal_measurement_selection_payload(display.measurement_selection),
+        "spectrum_settings" => signal_spectrum_settings_payload(display.spectrum_settings),
         "peaks_enabled" => display.peaks_enabled,
     )
 end
@@ -264,6 +368,7 @@ end
 
 function signal_analyser_multi_trace_payload(
     state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
     selected_signal::AnalysedSignal,
     visible_names::Vector{String},
 )::Dict{String,Any}
@@ -271,9 +376,11 @@ function signal_analyser_multi_trace_payload(
     spectrum_traces = Dict{String,Any}[]
     for signal in state.signals
         signal.name in visible_names || continue
-        plots = signal_analyser_cached_plots!(state, signal)
-        push!(time_traces, signal_analyser_plot_for_payload(plots["time"], signal))
-        push!(spectrum_traces, signal_analyser_plot_for_payload(plots["spectrum"], signal))
+        base_plots = signal_analyser_cached_plots!(state, signal)
+        spectrum_data = signal_analyser_cached_spectrum_data!(state, display, signal)
+        spectrum_plot = signal_analyser_spectrum_plot(spectrum_data, display.spectrum_settings)
+        push!(time_traces, signal_analyser_plot_for_payload(base_plots["time"], signal))
+        push!(spectrum_traces, signal_analyser_plot_for_payload(spectrum_plot, signal))
     end
 
     selected_plots = signal_analyser_cached_plots!(state, selected_signal)
@@ -289,11 +396,12 @@ end
 
 function signal_analyser_multi_trace_payload(
     ::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
     ::Nothing,
     visible_names::Vector{String},
 )::Dict{String,Any}
     isempty(visible_names) || throw(ArgumentError("Пустой analysis source допустим только для пустого Display"))
-    plots = signal_analyser_empty_plots()
+    plots = signal_analyser_empty_plots(display.spectrum_settings)
     spectrogram = copy(plots["spectrogram"])
     spectrogram["signal"] = nothing
     spectrogram["name"] = ""
@@ -353,6 +461,21 @@ function signal_ordinate_roi(
     limits::SignalTimeLimits,
 )::SignalOrdinateRoi
     ordinate_kind, ordinate = signal_measurement_ordinates(service, signal)
+    sample_range = signal_time_sample_range(service, signal, limits)
+    SignalOrdinateRoi(
+        ordinate_kind,
+        @view(ordinate[sample_range.first_index:sample_range.last_index]),
+        sample_range.first_index - 1,
+        signal.sample_rate_hz,
+    )
+end
+
+function signal_time_sample_range(
+    service::SignalTimeRoiService,
+    signal::AnalysedSignal,
+    limits::SignalTimeLimits,
+)::SignalTimeSampleRange
+    _, ordinate = signal_measurement_ordinates(service, signal)
     duration_s = signal_duration_s(signal)
     limits.min_s >= 0.0 || throw(ArgumentError("Минимальная Time Limit не может быть отрицательной"))
     limits.max_s <= duration_s || throw(ArgumentError(
@@ -370,12 +493,7 @@ function signal_ordinate_roi(
     first_position === nothing && throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
     last_position === nothing && throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
     first_position <= last_position || throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
-    SignalOrdinateRoi(
-        ordinate_kind,
-        @view(ordinate[first_position:last_position]),
-        first_position - 1,
-        signal.sample_rate_hz,
-    )
+    SignalTimeSampleRange(first_position, last_position)
 end
 
 signal_ordinate_roi(
@@ -383,6 +501,138 @@ signal_ordinate_roi(
     signal::AnalysedSignal,
     limits::SignalTimeLimits,
 ) = signal_ordinate_roi(service.roi_service, signal, limits)
+
+signal_time_sample_range(
+    service::SignalMeasurementsService,
+    signal::AnalysedSignal,
+    limits::SignalTimeLimits,
+) = signal_time_sample_range(service.roi_service, signal, limits)
+
+signal_spectrum_topology(signal::AnalysedSignal)::SignalSpectrumTopology =
+    signal.is_complex ? CENTERED_TWO_SIDED_SPECTRUM : ONE_SIDED_SPECTRUM
+
+"""Intersect a Display Time ROI with one visible signal without resampling it."""
+function signal_spectrum_sample_range(
+    ::SignalSpectrumService,
+    ::SignalTimeRoiService,
+    signal::AnalysedSignal,
+    limits::SignalTimeLimits,
+)::Union{Nothing,SignalTimeSampleRange}
+    isempty(signal.values) && throw(ArgumentError("Сигнал не содержит отсчётов"))
+    isfinite(signal.sample_rate_hz) && signal.sample_rate_hz > 0 || throw(ArgumentError(
+        "Частота дискретизации сигнала должна быть положительным конечным числом",
+    ))
+    limits.min_s >= 0.0 || throw(ArgumentError("Минимальная Time Limit не может быть отрицательной"))
+    first_position = findfirst(eachindex(signal.values)) do index
+        limits.min_s <= (index - 1) / signal.sample_rate_hz <= limits.max_s
+    end
+    first_position === nothing && return nothing
+    last_position = findlast(eachindex(signal.values)) do index
+        limits.min_s <= (index - 1) / signal.sample_rate_hz <= limits.max_s
+    end
+    last_position === nothing && return nothing
+    SignalTimeSampleRange(first_position, last_position)
+end
+
+function signal_spectrum_cache_key(
+    signal::AnalysedSignal,
+    sample_range::SignalTimeSampleRange,
+    settings::SignalSpectrumSettings,
+)::SignalSpectrumCacheKey
+    SignalSpectrumCacheKey(
+        signal.name,
+        signal.sample_rate_hz,
+        sample_range,
+        settings.leakage,
+        signal_spectrum_topology(signal),
+    )
+end
+
+function signal_spectrum_query(
+    signal::AnalysedSignal,
+    sample_range::SignalTimeSampleRange,
+    settings::SignalSpectrumSettings,
+)::SignalSpectrumQuery
+    SignalSpectrumQuery(
+        signal.name,
+        @view(signal.values[sample_range.first_index:sample_range.last_index]),
+        signal.sample_rate_hz,
+        sample_range,
+        settings.leakage,
+        signal_spectrum_topology(signal),
+    )
+end
+
+function signal_spectrum_calculate(
+    provider::AbstractSignalSpectrumProvider,
+    query::SignalSpectrumQuery,
+)::SignalSpectrumData
+    throw(MethodError(signal_spectrum_calculate, (provider, query)))
+end
+
+function signal_spectrum_calculate(
+    ::EngeeDSPSpectrumProvider,
+    query::SignalSpectrumQuery,
+)::SignalSpectrumData
+    samples = query.topology == ONE_SIDED_SPECTRUM ?
+        Float64.(real.(query.values)) : copy(query.values)
+    times = collect(0:(length(samples) - 1)) ./ query.sample_rate_hz
+    power, frequencies, _ = signal_analyser_pspectrum(
+        samples,
+        times,
+        "power",
+        "Leakage",
+        query.leakage,
+        "TwoSided",
+        query.topology == CENTERED_TWO_SIDED_SPECTRUM,
+    )
+    provider_power = Float64.(vec(collect(power)))
+    provider_frequencies = Float64.(vec(collect(frequencies)))
+    SignalSpectrumData(provider_frequencies, provider_power, query.topology)
+end
+
+function signal_spectrum_calculate(
+    service::SignalSpectrumService,
+    query::SignalSpectrumQuery,
+)::SignalSpectrumData
+    data = signal_spectrum_calculate(service.provider, query)
+    data.topology == query.topology || throw(ArgumentError(
+        "Spectrum provider вернул topology, не совпадающую с query",
+    ))
+    isempty(data.frequencies_hz) && throw(ArgumentError(
+        "Spectrum provider вернул пустой результат для ROI из двух или более отсчётов",
+    ))
+    frequencies = data.frequencies_hz
+    issorted(frequencies) || throw(ArgumentError(
+        "Spectrum provider вернул неупорядоченную частотную ось",
+    ))
+    nyquist_hz = query.sample_rate_hz / 2
+    tolerance_hz = sqrt(eps(Float64)) * max(query.sample_rate_hz, 1.0)
+    all(frequency -> -nyquist_hz - tolerance_hz <= frequency <= nyquist_hz + tolerance_hz, frequencies) ||
+        throw(ArgumentError("Spectrum provider вернул частоты вне Nyquist-диапазона"))
+    if query.topology == ONE_SIDED_SPECTRUM
+        all(frequency -> frequency >= -tolerance_hz, frequencies) || throw(ArgumentError(
+            "Spectrum provider вернул отрицательные частоты для one-sided query",
+        ))
+    else
+        any(frequency -> frequency < 0.0, frequencies) &&
+            any(frequency -> frequency >= 0.0, frequencies) || throw(ArgumentError(
+                "Spectrum provider не вернул centered two-sided частотную ось",
+            ))
+    end
+    data
+end
+
+function signal_spectrum_data(
+    service::SignalSpectrumService,
+    signal::AnalysedSignal,
+    limits::SignalTimeLimits,
+    settings::SignalSpectrumSettings,
+)::SignalSpectrumData
+    sample_range = signal_time_sample_range(SignalTimeRoiService(), signal, limits)
+    length(sample_range) == 1 && return SignalSpectrumData(signal_spectrum_topology(signal))
+    signal_spectrum_calculate(service, signal_spectrum_query(signal, sample_range, settings))
+end
 
 function signal_time_limits_are_valid(
     service::SignalMeasurementsService,
@@ -782,7 +1032,15 @@ function signal_analyser_snapshot_unlocked(
     peaks.enabled == active_display.peaks_enabled || throw(ArgumentError(
         "Статус peaks не совпадает с active Display state snapshot",
     ))
-    plots = signal === nothing ? signal_analyser_empty_plots() : signal_analyser_cached_plots!(state, signal)
+    if active_display.spectrum_settings.frequency_scale == LOG_SPECTRUM_FREQUENCY_SCALE &&
+        any(item -> item.is_complex && item.name in active_display.membership.signal_names, state.signals)
+        throw(ArgumentError(
+            "Log frequency scale недоступна для Display с комплексным сигналом",
+        ))
+    end
+    plots = signal === nothing ?
+        signal_analyser_empty_plots(active_display.spectrum_settings) :
+        signal_analyser_plots_for_display!(state, active_display, signal)
     visible_names = signal_analyser_visible_signal_names(state)
     Dict{String,Any}(
         "state_revision" => state.view.state_revision,
@@ -795,9 +1053,15 @@ function signal_analyser_snapshot_unlocked(
         "visible_signals" => visible_names,
         "time_limits" => signal_time_limits_payload(active_display.time_limits),
         "measurement_kinds" => signal_measurement_selection_payload(active_display.measurement_selection),
+        "spectrum_settings" => signal_spectrum_settings_payload(active_display.spectrum_settings),
         "signals" => [signal_analyser_signal_payload(item) for item in state.signals],
         "plots" => plots,
-        "plot_payload" => signal_analyser_multi_trace_payload(state, signal, visible_names),
+        "plot_payload" => signal_analyser_multi_trace_payload(
+            state,
+            active_display,
+            signal,
+            visible_names,
+        ),
         "measurements" => signal_measurements_payload(measurements),
         "peaks" => signal_peaks_payload(peaks),
         "panel" => signal === nothing ?
@@ -919,6 +1183,59 @@ function signal_analyser_validate_time_limits!(
     catch err
         if err isa ArgumentError || err isa InexactError || err isa OverflowError
             field_errors["time_limits"] = sprint(showerror, err)
+            return nothing
+        end
+        rethrow()
+    end
+end
+
+function signal_analyser_validate_spectrum_settings!(
+    field_errors::Dict{String,String},
+    value,
+)::Union{Nothing,SignalSpectrumSettings}
+    if !(value isa AbstractDict)
+        field_errors["spectrum_settings"] =
+            "Требуется объект {scale, frequency_scale, leakage}"
+        return nothing
+    end
+    keys_set = signal_analyser_payload_keys(value)
+    if keys_set != SIGNAL_SPECTRUM_SETTINGS_FIELDS
+        missing = sort!(collect(setdiff(SIGNAL_SPECTRUM_SETTINGS_FIELDS, keys_set)))
+        unknown = sort!(collect(setdiff(keys_set, SIGNAL_SPECTRUM_SETTINGS_FIELDS)))
+        details = String[]
+        isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
+        isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
+        field_errors["spectrum_settings"] =
+            "Ожидались только scale, frequency_scale, leakage ($(join(details, "; ")))"
+        return nothing
+    end
+
+    scale_value = signal_analyser_payload_value(value, "scale")
+    frequency_scale_value = signal_analyser_payload_value(value, "frequency_scale")
+    leakage_value = signal_analyser_payload_value(value, "leakage")
+    if !(scale_value isa AbstractString) ||
+        !haskey(SIGNAL_SPECTRUM_SCALES_BY_NAME, String(scale_value))
+        field_errors["spectrum_settings"] = "scale: допустимо db или linear"
+        return nothing
+    end
+    if !(frequency_scale_value isa AbstractString) ||
+        !haskey(SIGNAL_SPECTRUM_FREQUENCY_SCALES_BY_NAME, String(frequency_scale_value))
+        field_errors["spectrum_settings"] = "frequency_scale: допустимо linear или log"
+        return nothing
+    end
+    if !(leakage_value isa Real) || leakage_value isa Bool
+        field_errors["spectrum_settings"] = "leakage: требуется конечное число от 0 до 1"
+        return nothing
+    end
+    try
+        SignalSpectrumSettings(
+            SIGNAL_SPECTRUM_SCALES_BY_NAME[String(scale_value)],
+            SIGNAL_SPECTRUM_FREQUENCY_SCALES_BY_NAME[String(frequency_scale_value)],
+            leakage_value,
+        )
+    catch err
+        if err isa ArgumentError || err isa InexactError || err isa OverflowError
+            field_errors["spectrum_settings"] = sprint(showerror, err)
             return nothing
         end
         rethrow()
@@ -1143,6 +1460,22 @@ function validate_signal_analyser_view_payload(
             (requested_measurement_selection = validated_measurement_selection)
     end
 
+    has_spectrum_settings = signal_analyser_payload_contains(data, "spectrum_settings")
+    requested_spectrum_settings = display.spectrum_settings
+    if has_spectrum_settings
+        validated_spectrum_settings = signal_analyser_validate_spectrum_settings!(
+            field_errors,
+            signal_analyser_payload_value(data, "spectrum_settings"),
+        )
+        validated_spectrum_settings === nothing ||
+            (requested_spectrum_settings = validated_spectrum_settings)
+    end
+    if requested_spectrum_settings.frequency_scale == LOG_SPECTRUM_FREQUENCY_SCALE &&
+        any(signal -> signal.is_complex && signal.name in visible_names, state.signals)
+        field_errors["spectrum_settings"] =
+            "frequency_scale=log недоступен, пока Display содержит комплексный сигнал"
+    end
+
     has_peaks_enabled = signal_analyser_payload_contains(data, "peaks_enabled")
     peaks_enabled_value = signal_analyser_payload_value(data, "peaks_enabled")
     requested_peaks_enabled = display.peaks_enabled
@@ -1172,6 +1505,7 @@ function validate_signal_analyser_view_payload(
         visible_names,
         requested_time_limits,
         requested_measurement_selection,
+        requested_spectrum_settings,
         requested_peaks_enabled,
     )
     (
@@ -1199,12 +1533,18 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             !isequal(prospective_analysis_name, signal_analyser_display_analysis_name(display)) ||
             !isequal(prospective_display.time_limits, display.time_limits) ||
             prospective_display.measurement_selection != display.measurement_selection ||
+            prospective_display.spectrum_settings != display.spectrum_settings ||
             prospective_display.peaks_enabled != display.peaks_enabled
 
         # Build every payload affected by the request before publishing the
         # mutation so a runtime DSP failure cannot leave state half-applied.
         prepared_plots = signal_analyser_prepared_plots(
             state,
+            prospective_members,
+        )
+        prepared_spectra = signal_analyser_prepared_spectra(
+            state,
+            prospective_display,
             prospective_members,
         )
         next_revision = state.view.state_revision + (changed ? 1 : 0)
@@ -1225,12 +1565,14 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         )
         if changed
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
+            signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
             signal_analyser_publish_display_state!(display, prospective_display)
             signal_analyser_publish_row_selection!(state, requested.row_selection)
             signal_analyser_sync_active_display!(state, display)
             state.view.state_revision += 1
         else
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
+            signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
         end
         signal_analyser_snapshot_unlocked(state, prepared_measurements, prepared_peaks)
     end
@@ -1321,6 +1663,11 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 state,
                 signal_analyser_display_plot_names(display),
             )
+            prepared_spectra = signal_analyser_prepared_spectra(
+                state,
+                display,
+                signal_analyser_display_plot_names(display),
+            )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
@@ -1335,6 +1682,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 signal_analyser_display_analysis_signal(state, display),
             )
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
+            signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
             push!(state.displays, display)
             state.next_display_number += 1
             signal_analyser_sync_active_display!(state, display)
@@ -1344,6 +1692,11 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             if display.id != state.active_display_id
                 prepared_plots = signal_analyser_prepared_plots(
                     state,
+                    signal_analyser_display_plot_names(display),
+                )
+                prepared_spectra = signal_analyser_prepared_spectra(
+                    state,
+                    display,
                     signal_analyser_display_plot_names(display),
                 )
                 prepared_measurements = signal_measurements_snapshot(
@@ -1360,6 +1713,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                     signal_analyser_display_analysis_signal(state, display),
                 )
                 signal_analyser_publish_prepared_plots!(state, prepared_plots)
+                signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
                 signal_analyser_sync_active_display!(state, display)
                 state.view.state_revision += 1
             else
@@ -1393,6 +1747,11 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 state,
                 signal_analyser_display_plot_names(next_active_display),
             )
+            prepared_spectra = signal_analyser_prepared_spectra(
+                state,
+                next_active_display,
+                signal_analyser_display_plot_names(next_active_display),
+            )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
@@ -1407,6 +1766,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 signal_analyser_display_analysis_signal(state, next_active_display),
             )
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
+            signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
             state.displays = remaining_displays
             closing_active_display && signal_analyser_sync_active_display!(state, next_active_display)
             state.view.state_revision += 1

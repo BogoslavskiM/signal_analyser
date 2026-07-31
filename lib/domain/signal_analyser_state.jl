@@ -45,6 +45,189 @@ Base.:(==)(left::SignalTimeLimits, right::SignalTimeLimits) =
 Base.isequal(left::SignalTimeLimits, right::SignalTimeLimits) = left == right
 Base.hash(limits::SignalTimeLimits, seed::UInt) = hash((limits.min_s, limits.max_s), seed)
 
+@enum SignalSpectrumScale begin
+    DB_SPECTRUM_SCALE
+    LINEAR_SPECTRUM_SCALE
+end
+
+@enum SignalSpectrumFrequencyScale begin
+    LINEAR_SPECTRUM_FREQUENCY_SCALE
+    LOG_SPECTRUM_FREQUENCY_SCALE
+end
+
+@enum SignalSpectrumTopology begin
+    ONE_SIDED_SPECTRUM
+    CENTERED_TWO_SIDED_SPECTRUM
+end
+
+"""Persistent per-Display Spectrum presentation and leakage settings."""
+struct SignalSpectrumSettings
+    scale::SignalSpectrumScale
+    frequency_scale::SignalSpectrumFrequencyScale
+    leakage::Float64
+
+    function SignalSpectrumSettings(
+        scale::SignalSpectrumScale,
+        frequency_scale::SignalSpectrumFrequencyScale,
+        leakage::Real,
+    )
+        leakage_value = Float64(leakage)
+        isfinite(leakage_value) && 0.0 <= leakage_value <= 1.0 || throw(ArgumentError(
+            "Leakage Spectrum должен быть конечным числом от 0 до 1",
+        ))
+        new(scale, frequency_scale, leakage_value)
+    end
+end
+
+SignalSpectrumSettings() = SignalSpectrumSettings(
+    DB_SPECTRUM_SCALE,
+    LINEAR_SPECTRUM_FREQUENCY_SCALE,
+    0.5,
+)
+
+Base.:(==)(left::SignalSpectrumSettings, right::SignalSpectrumSettings) =
+    left.scale == right.scale &&
+    left.frequency_scale == right.frequency_scale &&
+    left.leakage == right.leakage
+Base.isequal(left::SignalSpectrumSettings, right::SignalSpectrumSettings) = left == right
+Base.hash(settings::SignalSpectrumSettings, seed::UInt) =
+    hash((settings.scale, settings.frequency_scale, settings.leakage), seed)
+
+"""Inclusive 1-based raw sample range shared by ROI consumers."""
+struct SignalTimeSampleRange
+    first_index::Int
+    last_index::Int
+
+    function SignalTimeSampleRange(first_index::Int, last_index::Int)
+        first_index >= 1 || throw(ArgumentError("Первый индекс sample range должен быть положительным"))
+        last_index >= first_index || throw(ArgumentError(
+            "Последний индекс sample range не может предшествовать первому",
+        ))
+        new(first_index, last_index)
+    end
+end
+
+Base.length(range::SignalTimeSampleRange) = range.last_index - range.first_index + 1
+Base.:(==)(left::SignalTimeSampleRange, right::SignalTimeSampleRange) =
+    left.first_index == right.first_index && left.last_index == right.last_index
+Base.isequal(left::SignalTimeSampleRange, right::SignalTimeSampleRange) = left == right
+Base.hash(range::SignalTimeSampleRange, seed::UInt) =
+    hash((range.first_index, range.last_index), seed)
+
+"""Typed raw-complex-preserving Spectrum provider query."""
+struct SignalSpectrumQuery
+    signal_name::String
+    values::Vector{ComplexF64}
+    sample_rate_hz::Float64
+    sample_range::SignalTimeSampleRange
+    leakage::Float64
+    topology::SignalSpectrumTopology
+
+    function SignalSpectrumQuery(
+        signal_name::AbstractString,
+        values::AbstractVector{<:Number},
+        sample_rate_hz::Real,
+        sample_range::SignalTimeSampleRange,
+        leakage::Real,
+        topology::SignalSpectrumTopology,
+    )
+        isempty(signal_name) && throw(ArgumentError("Имя сигнала Spectrum query не может быть пустым"))
+        samples = ComplexF64.(values)
+        length(samples) == length(sample_range) || throw(ArgumentError(
+            "Число отсчётов Spectrum query не совпадает с sample range",
+        ))
+        length(samples) >= 2 || throw(ArgumentError(
+            "Spectrum provider query требует не менее двух отсчётов",
+        ))
+        all(value -> isfinite(real(value)) && isfinite(imag(value)), samples) || throw(ArgumentError(
+            "Отсчёты Spectrum query должны быть конечными",
+        ))
+        sample_rate_value = Float64(sample_rate_hz)
+        isfinite(sample_rate_value) && sample_rate_value > 0 || throw(ArgumentError(
+            "Частота дискретизации Spectrum query должна быть положительной и конечной",
+        ))
+        leakage_value = Float64(leakage)
+        isfinite(leakage_value) && 0.0 <= leakage_value <= 1.0 || throw(ArgumentError(
+            "Leakage Spectrum query должен быть конечным числом от 0 до 1",
+        ))
+        new(
+            String(signal_name),
+            samples,
+            sample_rate_value,
+            sample_range,
+            leakage_value,
+            topology,
+        )
+    end
+end
+
+"""Validated raw provider power and frequency output before presentation scale."""
+struct SignalSpectrumData
+    frequencies_hz::Tuple{Vararg{Float64}}
+    power::Tuple{Vararg{Float64}}
+    topology::SignalSpectrumTopology
+
+    function SignalSpectrumData(
+        frequencies_hz::AbstractVector{<:Real},
+        power::AbstractVector{<:Real},
+        topology::SignalSpectrumTopology,
+    )
+        frequencies = Float64.(frequencies_hz)
+        powers = Float64.(power)
+        length(frequencies) == length(powers) || throw(ArgumentError(
+            "Оси Spectrum provider имеют разную длину",
+        ))
+        all(isfinite, frequencies) || throw(ArgumentError(
+            "Spectrum provider вернул нечисловые частоты",
+        ))
+        all(value -> isfinite(value) && value >= 0.0, powers) || throw(ArgumentError(
+            "Spectrum provider вернул некорректную мощность",
+        ))
+        new(Tuple(frequencies), Tuple(powers), topology)
+    end
+end
+
+SignalSpectrumData(topology::SignalSpectrumTopology) =
+    SignalSpectrumData(Float64[], Float64[], topology)
+
+abstract type AbstractSignalSpectrumProvider end
+struct EngeeDSPSpectrumProvider <: AbstractSignalSpectrumProvider end
+
+struct SignalSpectrumService{P<:AbstractSignalSpectrumProvider}
+    provider::P
+end
+
+SignalSpectrumService() = SignalSpectrumService(EngeeDSPSpectrumProvider())
+
+"""Runtime cache identity for raw Spectrum data; presentation scales are excluded."""
+struct SignalSpectrumCacheKey
+    signal_name::String
+    sample_rate_hz::Float64
+    sample_range::SignalTimeSampleRange
+    leakage::Float64
+    topology::SignalSpectrumTopology
+end
+
+SignalSpectrumCacheKey(query::SignalSpectrumQuery) = SignalSpectrumCacheKey(
+    query.signal_name,
+    query.sample_rate_hz,
+    query.sample_range,
+    query.leakage,
+    query.topology,
+)
+
+Base.:(==)(left::SignalSpectrumCacheKey, right::SignalSpectrumCacheKey) =
+    left.signal_name == right.signal_name &&
+    left.sample_rate_hz == right.sample_rate_hz &&
+    left.sample_range == right.sample_range &&
+    left.leakage == right.leakage &&
+    left.topology == right.topology
+Base.isequal(left::SignalSpectrumCacheKey, right::SignalSpectrumCacheKey) = left == right
+Base.hash(key::SignalSpectrumCacheKey, seed::UInt) = hash(
+    (key.signal_name, key.sample_rate_hz, key.sample_range, key.leakage, key.topology),
+    seed,
+)
+
 @enum SignalMeasurementOrdinate begin
     REAL_ORDINATE
     MAGNITUDE_ORDINATE
@@ -502,6 +685,7 @@ mutable struct SignalAnalyserDisplayState
     analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource}
     time_limits::Union{Nothing,SignalTimeLimits}
     measurement_selection::SignalMeasurementSelection
+    spectrum_settings::SignalSpectrumSettings
     peaks_enabled::Bool
 
     function SignalAnalyserDisplayState(
@@ -512,6 +696,7 @@ mutable struct SignalAnalyserDisplayState
         analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
         time_limits::Union{Nothing,SignalTimeLimits},
         measurement_selection::SignalMeasurementSelection,
+        spectrum_settings::SignalSpectrumSettings,
         peaks_enabled::Bool,
     )
         analysis_name = signal_analysis_name(analysis_source)
@@ -538,6 +723,7 @@ mutable struct SignalAnalyserDisplayState
             analysis_source,
             time_limits,
             measurement_selection,
+            spectrum_settings,
             peaks_enabled,
         )
     end
@@ -560,6 +746,30 @@ function SignalAnalyserDisplayState(
         analysis_source,
         time_limits,
         SignalMeasurementSelection(),
+        SignalSpectrumSettings(),
+        peaks_enabled,
+    )
+end
+
+function SignalAnalyserDisplayState(
+    id::AbstractString,
+    name::AbstractString,
+    active_plot::SignalAnalyserPlot,
+    membership::SignalDisplayMembership,
+    analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
+    time_limits::Union{Nothing,SignalTimeLimits},
+    measurement_selection::SignalMeasurementSelection,
+    peaks_enabled::Bool,
+)
+    SignalAnalyserDisplayState(
+        id,
+        name,
+        active_plot,
+        membership,
+        analysis_source,
+        time_limits,
+        measurement_selection,
+        SignalSpectrumSettings(),
         peaks_enabled,
     )
 end
@@ -572,6 +782,7 @@ function SignalAnalyserDisplayState(
     visible_signals::AbstractVector{<:AbstractString},
     time_limits::Union{Nothing,SignalTimeLimits},
     measurement_selection::SignalMeasurementSelection,
+    spectrum_settings::SignalSpectrumSettings,
     peaks_enabled::Bool,
 )
     SignalAnalyserDisplayState(
@@ -582,6 +793,7 @@ function SignalAnalyserDisplayState(
         signal_analysis_source(selected_signal),
         time_limits,
         measurement_selection,
+        spectrum_settings,
         peaks_enabled,
     )
 end
@@ -603,6 +815,30 @@ function SignalAnalyserDisplayState(
         visible_signals,
         time_limits,
         SignalMeasurementSelection(),
+        SignalSpectrumSettings(),
+        peaks_enabled,
+    )
+end
+
+function SignalAnalyserDisplayState(
+    id::AbstractString,
+    name::AbstractString,
+    active_plot::SignalAnalyserPlot,
+    selected_signal::Union{Nothing,AbstractString},
+    visible_signals::AbstractVector{<:AbstractString},
+    time_limits::Union{Nothing,SignalTimeLimits},
+    measurement_selection::SignalMeasurementSelection,
+    peaks_enabled::Bool,
+)
+    SignalAnalyserDisplayState(
+        id,
+        name,
+        active_plot,
+        selected_signal,
+        visible_signals,
+        time_limits,
+        measurement_selection,
+        SignalSpectrumSettings(),
         peaks_enabled,
     )
 end
@@ -623,11 +859,15 @@ function signal_analyser_publish_display_state!(
     display.analysis_source = prospective.analysis_source
     display.time_limits = prospective.time_limits
     display.measurement_selection = prospective.measurement_selection
+    display.spectrum_settings = prospective.spectrum_settings
     display.peaks_enabled = prospective.peaks_enabled
     nothing
 end
 
-mutable struct SignalAnalyserState{P<:AbstractPeaksProvider}
+mutable struct SignalAnalyserState{
+    P<:AbstractPeaksProvider,
+    S<:AbstractSignalSpectrumProvider,
+}
     signals::Vector{AnalysedSignal}
     view::SignalAnalyserViewState
     row_selection::GlobalSignalSelection
@@ -635,8 +875,10 @@ mutable struct SignalAnalyserState{P<:AbstractPeaksProvider}
     active_display_id::String
     next_display_number::Int
     plot_cache::Dict{String,Dict{String,Any}}
+    spectrum_cache::Dict{SignalSpectrumCacheKey,SignalSpectrumData}
     measurements_service::SignalMeasurementsService
     peaks_service::SignalPeaksService{P}
+    spectrum_service::SignalSpectrumService{S}
     lock::ReentrantLock
 end
 
@@ -647,6 +889,7 @@ function SignalAnalyserState(
     lock::ReentrantLock,
     ;
     peaks_provider::AbstractPeaksProvider = EngeeDSPPeaksProvider(),
+    spectrum_provider::AbstractSignalSpectrumProvider = EngeeDSPSpectrumProvider(),
 )
     isempty(signals) && throw(ArgumentError("Signal Analyser требует хотя бы один сигнал в global inventory"))
     known_names = [signal.name for signal in signals]
@@ -681,8 +924,10 @@ function SignalAnalyserState(
         display.id,
         2,
         plot_cache,
+        Dict{SignalSpectrumCacheKey,SignalSpectrumData}(),
         SignalMeasurementsService(),
         SignalPeaksService(peaks_provider),
+        SignalSpectrumService(spectrum_provider),
         lock,
     )
 end
@@ -751,6 +996,7 @@ end
 
 function default_signal_analyser_state(;
     peaks_provider::AbstractPeaksProvider = EngeeDSPPeaksProvider(),
+    spectrum_provider::AbstractSignalSpectrumProvider = EngeeDSPSpectrumProvider(),
 )::SignalAnalyserState
     signals = default_signal_catalog()
     SignalAnalyserState(
@@ -759,6 +1005,7 @@ function default_signal_analyser_state(;
         Dict{String,Dict{String,Any}}(),
         ReentrantLock(),
         peaks_provider = peaks_provider,
+        spectrum_provider = spectrum_provider,
     )
 end
 

@@ -59,6 +59,27 @@ end
         assert_frequency_axis(frequencies)
     end
 
+    @testset "C9 topology, Leakage and short-input boundaries" begin
+        real_two = [1.0, -1.0]
+        real_time = [0.0, 1.0 / fs_hz]
+        for leakage in (0.0, 1.0)
+            power, frequencies, _ = pspectrum(
+                real_two, real_time, "power", "Leakage", leakage, "TwoSided", false,
+            )
+            @test !isempty(vec(collect(power)))
+            @test all(value -> value >= 0.0, Float64.(vec(collect(frequencies))))
+        end
+        complex_two = ComplexF64[1.0 + 0.0im, 0.0 + 1.0im]
+        power, frequencies, _ = pspectrum(
+            complex_two, real_time, "power", "Leakage", 0.5, "TwoSided", true,
+        )
+        @test !isempty(vec(collect(power)))
+        assert_frequency_axis(frequencies)
+        @test_throws ArgumentError pspectrum([1.0], [0.0], "power", "Leakage", 0.5, "TwoSided", false)
+        @test_throws ArgumentError pspectrum(real_two, real_time, "power", "Leakage", -0.01, "TwoSided", false)
+        @test_throws ArgumentError pspectrum(real_two, real_time, "power", "Leakage", 1.01, "TwoSided", false)
+    end
+
     @testset "spectrogram" begin
         power, frequencies, times = pspectrum(signal, time, "spectrogram", "TwoSided", true)
         @test !isempty(vec(collect(times)))

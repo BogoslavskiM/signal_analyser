@@ -46,6 +46,16 @@ include(joinpath(PROJECT_ROOT, "lib", "domain", "signal_analyser_state.jl"))
 include(joinpath(PROJECT_ROOT, "lib", "services", "signal_analyser_math.jl"))
 include(joinpath(PROJECT_ROOT, "lib", "services", "signal_analyser_service.jl"))
 
+"""Deterministic Spectrum provider used by unit/API tests; real EngeeDSP stays in test/engee."""
+const SPECTRUM_CALLS = Any[]
+const SPECTRUM_FAILURE = Ref(false)
+function signal_spectrum_calculate(::EngeeDSPSpectrumProvider, query::SignalSpectrumQuery)::SignalSpectrumData
+    push!(SPECTRUM_CALLS, query)
+    SPECTRUM_FAILURE[] && throw(ArgumentError("deterministic Spectrum provider failure"))
+    frequencies = query.topology == ONE_SIDED_SPECTRUM ? [0.0, query.sample_rate_hz / 2] : [-query.sample_rate_hz / 2, query.sample_rate_hz / 2]
+    SignalSpectrumData(frequencies, [1.0, 4.0], query.topology)
+end
+
 # The API helpers use the tiny Main.Genie renderer double above. This keeps
 # route/API tests in-process and deliberately avoids starting a Genie server.
 include(joinpath(PROJECT_ROOT, "app", "api.jl"))

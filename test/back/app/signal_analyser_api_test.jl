@@ -285,6 +285,57 @@ end
     @test stale isa SA_API.SignalAnalyserStaleStateError
 end
 
+@testset "Cascade 9 API Spectrum settings envelope and revision contract" begin
+    SA_API.reset_pspectrum_double!()
+    state = SA_API.default_signal_analyser_state()
+    baseline = SA_API.signal_analyser_snapshot(state)
+    @test baseline["spectrum_settings"] == Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5)
+    @test all(display -> display["spectrum_settings"] isa Dict, baseline["displays"])
+
+    for invalid_settings in (
+        nothing,
+        Dict("scale" => "db", "frequency_scale" => "linear"),
+        Dict("scale" => "invalid", "frequency_scale" => "linear", "leakage" => 0.5),
+        Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => Inf),
+    )
+        err = try
+            SA_API.apply_signal_analyser_view!(state, Dict(
+                "state_revision" => 0, "spectrum_settings" => invalid_settings,
+            ))
+            nothing
+        catch caught
+            caught
+        end
+        @test err isa SA_API.SignalAnalyserValidationError
+        @test Set(keys(err.fields)) == Set(["spectrum_settings"])
+        envelope = SA_API.signal_analyser_validation_response(err)
+        @test envelope.status == 422
+        @test envelope.body["error"]["fields"] == err.fields
+        @test SA_API.signal_analyser_snapshot(state) == baseline
+    end
+
+    canonical = SA_API.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "spectrum_settings" => Dict("scale" => "linear", "frequency_scale" => "linear", "leakage" => 0.25),
+    ))
+    @test canonical["state_revision"] == 1
+    @test canonical["spectrum_settings"] == Dict("scale" => "linear", "frequency_scale" => "linear", "leakage" => 0.25)
+    @test SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1))["state_revision"] == 1
+    stale = try
+        SA_API.apply_signal_analyser_view!(state, Dict(
+            "state_revision" => 0,
+            "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5),
+        ))
+        nothing
+    catch caught
+        caught
+    end
+    @test stale isa SA_API.SignalAnalyserStaleStateError
+    stale_envelope = SA_API.signal_analyser_stale_response(state, stale)
+    @test stale_envelope.status == 409
+    @test stale_envelope.body["current"] == canonical
+end
+
 @testset "Signal Analyser API view payload contract" begin
     SA_API.reset_pspectrum_double!()
     state = SA_API.default_signal_analyser_state()

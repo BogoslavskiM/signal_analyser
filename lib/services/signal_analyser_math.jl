@@ -96,30 +96,38 @@ function signal_analyser_time_plot(signal::AnalysedSignal)::Dict{String,Any}
     )
 end
 
-function signal_analyser_spectrum_plot(signal::AnalysedSignal)::Dict{String,Any}
-    # A deliberately coarser resolution than the full-record resolution makes
-    # pspectrum average overlapping segments, i.e. use its Welch path.
-    frequency_resolution_hz = 8 * signal.sample_rate_hz / length(signal.values)
-    power, frequencies, _ = signal_analyser_pspectrum(
-        signal.values,
-        signal_time_values(signal),
-        "power",
-        "FrequencyResolution",
-        frequency_resolution_hz,
-        "TwoSided",
-        true,
-    )
-    x = signal_analyser_finite_vector(frequencies, "частоты спектра")
-    y = signal_analyser_power_db(power, "мощность спектра")
+function signal_analyser_spectrum_plot(
+    data::SignalSpectrumData,
+    settings::SignalSpectrumSettings,
+)::Dict{String,Any}
+    x = Float64[data.frequencies_hz...]
+    power = Float64[data.power...]
+    y = if settings.scale == DB_SPECTRUM_SCALE
+        Float64.(10 .* log10.(power))
+    else
+        power
+    end
     x, y = signal_analyser_bounded_line(x, y)
     Dict{String,Any}(
         "type" => "line",
         "x" => x,
         "y" => y,
         "x_label" => "Частота, Гц",
-        "y_label" => "Мощность, дБ",
-        "method" => "welch",
+        "y_label" => settings.scale == DB_SPECTRUM_SCALE ? "Мощность, дБ" : "Мощность",
+        "method" => "pspectrum",
     )
+end
+
+function signal_analyser_spectrum_plot(signal::AnalysedSignal)::Dict{String,Any}
+    settings = SignalSpectrumSettings()
+    service = SignalSpectrumService()
+    data = signal_spectrum_data(
+        service,
+        signal,
+        signal_full_time_limits(SignalMeasurementsService(), signal),
+        settings,
+    )
+    signal_analyser_spectrum_plot(data, settings)
 end
 
 function signal_analyser_spectrogram_plot(signal::AnalysedSignal)::Dict{String,Any}
@@ -187,6 +195,19 @@ function signal_analyser_plots(signal::AnalysedSignal)::Dict{String,Any}
     Dict{String,Any}(
         "time" => signal_analyser_time_plot(signal),
         "spectrum" => signal_analyser_spectrum_plot(signal),
+        "spectrogram" => signal_analyser_spectrogram_plot(signal),
+        "persistence" => signal_analyser_persistence_plot(signal),
+    )
+end
+
+
+function signal_analyser_base_plots(signal::AnalysedSignal)::Dict{String,Any}
+    Dict{String,Any}(
+        "time" => signal_analyser_time_plot(signal),
+        "spectrum" => signal_analyser_spectrum_plot(
+            SignalSpectrumData(signal.is_complex ? CENTERED_TWO_SIDED_SPECTRUM : ONE_SIDED_SPECTRUM),
+            SignalSpectrumSettings(),
+        ),
         "spectrogram" => signal_analyser_spectrogram_plot(signal),
         "persistence" => signal_analyser_persistence_plot(signal),
     )
