@@ -4,10 +4,11 @@ Internal durable handoff record.
 
 canonical_role: Frontend  
 agent_id_or_session: `019fb7f1-4164-7003-a5c0-5e109ee82074`  
-status: persistent audit active  
-current_task: audit durable multi-trace and interaction handoff  
-last_handoff: implementation `019fb7cf-7581-7230-9c9f-7a88483b80af`; ephemeral
-review `019fb7e8-0d56-77b2-9b75-6ce6f29c3b13`
+status: active correction
+current_task: correct Cascade 3 P0 `items` array consumption
+next_queued_task: Cascade 4 peaks UI contract design
+blocker_or_no_eligible_work: first P0 handoff rejected for object/array mismatch
+last_handoff: P0 bottom tabs implemented; integration correction requested
 
 Earlier ephemeral threads became unavailable after completion. Future Frontend
 work must resume the persistent canonical ID above.
@@ -49,3 +50,11 @@ risks: UMD normalization, nested base path and no-CDN behavior require tests;
 do not mark verified/deployed yet.  
 follow-ups: Tester checks artifact/license/hash/static loader. E2E asserts four
 ready plots, zero visible placeholders and zero CDN requests on local success.
+
+## Cascade 3 P0 integration note — 2026-07-31
+
+Accepted UI direction: bottom `Сигналы`/`Измерения` tabs, default Signals,
+local-only tab switch, settings sidebar unchanged and exact stable selectors.
+The first handoff incorrectly consumed `measurements.items` as an object and was
+not accepted. Frontend resumed the same agent ID to consume the frozen ordered
+array by `item.id`, `item.time_s` and `measurements.units`.

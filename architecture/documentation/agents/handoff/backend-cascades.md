@@ -4,10 +4,11 @@ Internal durable handoff record.
 
 canonical_role: Backend  
 agent_id_or_session: `019fb7f1-3d91-7a42-bc79-43d4b26bf570`  
-status: persistent audit active  
-current_task: audit durable visibility/API handoff  
-last_handoff: implementation `019fb7cf-6c54-7f01-9bff-4000bcc360cb`; ephemeral
-review `019fb7e7-fe90-7cd2-ac1f-8ac850dbe692`
+status: active
+current_task: Cascade 4 read-only specialized peaks contract sidecar
+next_queued_task: integrate Tester P0 findings
+blocker_or_no_eligible_work: none
+last_handoff: Cascade 3 P0 snapshot implementation complete
 
 Earlier ephemeral threads became unavailable after completion. Future Backend
 work must resume the persistent canonical ID above rather than create another
@@ -33,3 +34,21 @@ risks: Runtime EngeeDSP environment and deployed API behavior remain unverified
 for this uncommitted cascade.  
 follow-ups: Consume final reviewer handoff; rerun EngeeDSP contract in the
 required environment and runtime E2E after deployment.
+
+## Cascade 3 P0 handoff — 2026-07-31
+
+goal: Publish selected visible signal raw statistics in each state snapshot.
+scope: `lib/services/signal_analyser_service.jl`.
+contracts: Exact additive `measurements` object with revision/name/ordinate/
+units and ordered array items `minimum`, `maximum`, `mean`; no endpoint or
+peaks. Raw samples precede plot bounding; extrema use first tie and zero-based
+index/time.
+changes: Base/Statistics implementation complete; real component and complex
+magnitude supported. Provisional endpoint/EngeeDSP peaks code removed.
+verification: Julia parse PASS; direct default/fallback/1100-sample probes PASS.
+Full backend suite initially failed only on stale Tester-owned keyset and awaits
+the corrected Tester gate.
+risks: Integration depends on exact frontend/test array consumption.
+follow-ups: Tester gate; Cascade 4 contract research only.
+next_task_candidates: EngeeDSP `findpeaks` signature/default/error contract;
+no Cascade 4 implementation yet.

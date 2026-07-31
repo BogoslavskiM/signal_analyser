@@ -17,12 +17,20 @@ module.exports = async function testSignalAnalyserStaticContract(assert) {
   [
     "app-shell", "plot-grid", "plot-card-time", "plot-card-spectrum",
     "plot-card-spectrogram", "plot-card-persistence", "active-plot-panel",
-    "active-plot-title", "signal-table", "app-loading", "app-error",
+    "active-plot-title", "active-plot-panel", "signal-table", "app-loading", "app-error",
   ].forEach((selector) => assert(html.includes(`data-testid=\"${selector}\"`), `missing selector ${selector}`));
+  ["time", "spectrum", "spectrogram", "persistence"].forEach((plotId) => {
+    assert(html.includes(`data-testid=\"plot-host-${plotId}\"`), `missing Plotly host testid ${plotId}`);
+  });
   assert(app.includes("data-testid=\\\"signal-row-"), "signal rows must use stable safe-name selector");
   assert(app.includes("data-testid=\\\"signal-visibility-checkbox-"), "signal visibility checkboxes must use stable safe-name selector");
   assert(app.includes("data-testid=\\\"signal-visibility-state-"), "signal visibility labels must use stable safe-name selector");
   assert(app.includes("data-testid=\\\"active-plot-field-"), "panel fields must use stable id selector");
+  assert(html.includes('data-bottom-tabs'), "bottom area must expose a local two-tab control");
+  assert(html.includes('data-bottom-tab="signals"') && html.includes('data-bottom-tab="measurements"'), "bottom area must expose Signals and Measurements tabs");
+  assert(html.includes('data-bottom-content="signals"') && html.includes('data-bottom-content="measurements"'), "each bottom tab must have matching content");
+  assert(!html.includes("selected-measurements-panel") && !html.includes("selected-measurements-table"), "measurements must not be rendered in a sidebar");
+  assert(app.includes("data-testid=\\\"measurement-item-"), "measurement rows must use stable item-id selectors");
 
   assert(/grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(css), "plot grid must have two fixed columns");
   assert(/grid-template-rows:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/.test(css), "plot grid must have two fixed rows");
@@ -35,19 +43,22 @@ module.exports = async function testSignalAnalyserStaticContract(assert) {
     hiddenAttributeRule,
     "CSS must enforce display: none !important for [hidden] so loader and error visibility cannot be overridden"
   );
-  assert(!html.includes("role=\"tab\""), "the four plots must not be represented as tabs");
+  assert(/data-plot="time"[\s\S]{0,180}role="button"/.test(html), "plot cards must remain buttons rather than layout tabs");
   assert(!html.includes("data-layout") && !html.includes("layout-chooser"), "layout chooser must not be present");
   assert(!/grid-template-(?:columns|rows)[^{}]*(?:auto-fit|auto-fill)/.test(css), "plot grid must not switch to responsive layouts");
 
   [
     "Анализатор сигналов", "Время", "Спектр", "Спектрограмма", "Спектр персистентности",
-    "Сигналы", "Параметры отображения", "Видимость", "Загрузка данных", "Повторить",
+    "Сигналы", "Измерения", "Параметры отображения", "Показатель", "Значение",
+    "Время", "Видимость", "Загрузка данных", "Повторить",
   ].forEach((label) => {
     assert(html.includes(label), `missing Russian label ${label}`);
   });
   [
     "Загрузка данных анализатора", "Синхронизация выбора", "Не удалось синхронизировать состояние анализатора",
     "Нельзя скрыть последний видимый сигнал", "Нет данных для отображения", "Не удалось отобразить график",
+    "Нет измерений для выбранного сигнала",
+    "Минимум", "Максимум", "Среднее",
   ].forEach((label) => {
     assert(app.includes(label), `missing Russian runtime text ${label}`);
   });
@@ -72,12 +83,18 @@ module.exports = async function testSignalAnalyserStaticContract(assert) {
 
   assert(api.includes('request("./api/state")'), "state API must use exactly ./api/state");
   assert(api.includes('request("./api/view", {'), "view API must use exactly ./api/view");
+  assert(!api.includes('request("./api/measurements"'), "Cascade 3 measurements must not use a separate API endpoint");
   assert(!/["']\/api(?:\/|["'])/.test(api), "API client must not use root-absolute /api paths");
   assert(api.includes("method: \"POST\""), "view API must be POST");
   assert(api.includes("body: JSON.stringify(payload)"), "view payload must be serialized");
 
   assert(app.includes("visible_signals"), "frontend must read and send visible_signals");
   assert(app.includes("plot_payload"), "frontend must consume backend plot_payload for multi-signal traces");
+  assert(/measurements\.state_revision/.test(app) && /measurements\.signal_name/.test(app), "frontend must reject measurements that do not match the confirmed snapshot");
+  assert(app.includes("ordinate") && app.includes("units") && app.includes("items"), "frontend must consume the final measurements snapshot contract");
+  assert(/item\.id/.test(app) && /item\.time_s/.test(app), "frontend must consume measurement item id and time_s fields");
+  assert(/units\.value/.test(app) && /units\.time/.test(app), "frontend must render measurement units from the snapshot");
+  assert(app.includes("minimum") && app.includes("maximum") && app.includes("mean"), "frontend must render the three P0 measurement items");
   assert(app.includes("time_traces") && app.includes("spectrum_traces"), "frontend must render separate line traces for all visible time/spectrum signals");
   assert(/showlegend\s*:\s*true/.test(app), "line plots must enable Plotly legends");
   assert(/showlegend\s*:\s*false/.test(app), "heatmaps must disable Plotly legends");

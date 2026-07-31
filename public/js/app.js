@@ -9,9 +9,15 @@
     spectrogram: "Спектрограмма",
     persistence: "Спектр персистентности",
   };
+  var MEASUREMENT_ROWS = [
+    { id: "minimum", label: "Минимум" },
+    { id: "maximum", label: "Максимум" },
+    { id: "mean", label: "Среднее" },
+  ];
   var state = null;
   var intendedView = null;
   var mutationInFlight = false;
+  var activeBottomTab = "signals";
   var plotlyPromise = null;
   var PLOTLY_LOCAL_FILE = "vendor/plotly-cartesian-3.1.0.min.js";
   var PLOTLY_CDN_URL = "https://cdn.plot.ly/plotly-3.1.0.min.js";
@@ -78,6 +84,7 @@
       signals: signals,
       plots: isObject(next.plots) ? next.plots : {},
       plot_payload: isObject(next.plot_payload) ? next.plot_payload : {},
+      measurements: isObject(next.measurements) ? next.measurements : null,
       panel: isObject(next.panel) ? next.panel : { title: "Параметры отображения", active_plot: "time", fields: [] },
     };
   }
@@ -299,6 +306,46 @@
     var raw = value == null || value === "" ? "—" : String(value);
     return field && field.unit ? raw + " " + field.unit : raw;
   }
+  function formatMeasurementValue(value, unit) {
+    var raw;
+    if (value == null || value === "") return "—";
+    raw = Number.isFinite(Number(value)) ? Number(value).toLocaleString("ru-RU", { maximumFractionDigits: 8 }) : String(value);
+    return unit ? raw + " " + unit : raw;
+  }
+  function currentMeasurements() {
+    var measurements = state && state.measurements;
+    if (!isObject(measurements)) return null;
+    if (String(measurements.signal_name || "") !== String(state.selected_signal || "")) return null;
+    if (!isVisibleSignal(measurements.signal_name) || !Array.isArray(measurements.items)) return null;
+    return measurements;
+  }
+  function measurementItem(measurements, rowId) {
+    var item = measurements && Array.isArray(measurements.items)
+      ? measurements.items.filter(function (entry) { return entry && entry.id === rowId; })[0] : null;
+    return isObject(item) ? item : {};
+  }
+  function formatMeasurementIndex(value) {
+    if (value == null || value === "") return "—";
+    return Number.isFinite(Number(value)) ? new Intl.NumberFormat("ru-RU").format(Number(value)) : String(value);
+  }
+  function renderMeasurements() {
+    var measurements = currentMeasurements();
+    var content = document.querySelector("[data-measurements-content]");
+    var selectedName = state && state.selected_signal || "";
+    var units = measurements && isObject(measurements.units) ? measurements.units : {};
+    var valueUnit = units.value || "";
+    var timeUnit = units.time || "";
+    if (!content) return;
+    content.innerHTML = "<div class=\"measurements-heading\"><span data-testid=\"measurements-signal-name\">" + escapeHtml(selectedName || "Сигнал не выбран") + "</span></div>"
+      + "<table class=\"measurements-table\" data-testid=\"measurements-table\"><thead><tr><th>Измерение</th><th>Значение</th><th>Время</th><th>Индекс</th></tr></thead><tbody>"
+      + MEASUREMENT_ROWS.map(function (row) {
+        var item = measurementItem(measurements, row.id);
+        return "<tr data-testid=\"measurement-row-" + row.id + "\"><td>" + row.label + "</td>"
+          + "<td>" + escapeHtml(formatMeasurementValue(item.value, valueUnit)) + "</td>"
+          + "<td>" + escapeHtml(formatMeasurementValue(item.time_s, timeUnit)) + "</td>"
+          + "<td>" + escapeHtml(formatMeasurementIndex(item.sample_index != null ? item.sample_index : item.index)) + "</td></tr>";
+      }).join("") + "</tbody></table>";
+  }
   function renderPanel() {
     var panel = state.panel || {};
     var title = panel.title || PLOT_TITLES[state.active_plot] || "Параметры отображения";
@@ -326,6 +373,28 @@
       return "<tr tabindex=\"0\" role=\"button\" aria-label=\"Выбрать сигнал " + escapeHtml(name) + "\" aria-pressed=\"" + selected + "\" class=\"signal-row" + (selected ? " is-selected" : "") + "\" data-signal=\"" + escapeHtml(name) + "\" data-visible=\"" + checked + "\" data-testid=\"signal-row-" + id + "\"><td class=\"visibility-cell\"><label class=\"visibility-control\" data-signal-visibility-control><input type=\"checkbox\" data-signal-visibility=\"" + escapeHtml(name) + "\" data-testid=\"signal-visibility-checkbox-" + id + "\" " + (checked ? "checked " : "") + (disabled ? "disabled " : "") + "aria-label=\"Видимость сигнала " + escapeHtml(name) + "\"><span data-testid=\"signal-visibility-state-" + id + "\">" + (checked ? "Виден" : "Скрыт") + "</span></label></td><td>" + escapeHtml(name) + "</td><td><span class=\"color-swatch\" style=\"--signal-color:" + escapeHtml(signal.color || "#8a98a5") + "\" aria-label=\"Цвет сигнала\"></span></td><td>" + formatRate(signal.sample_rate_hz) + "</td><td>" + formatSamples(signal.sample_count) + "</td><td>" + formatDuration(signal.duration_s) + "</td><td>" + escapeHtml(signal.data_type || "—") + "</td></tr>";
     }).join("") : "<tr><td class=\"signal-empty\" colspan=\"7\">Нет доступных сигналов.</td></tr>";
   }
+  function renderBottomTabs() {
+    ["signals", "measurements"].forEach(function (tabId) {
+      var active = tabId === activeBottomTab;
+      var tab = document.querySelector("[data-bottom-tab='" + tabId + "']");
+      var panel = tabId === "signals"
+        ? document.querySelector("[data-testid='bottom-panel-signals']")
+        : document.querySelector("[data-testid='measurements-panel']");
+      if (tab) {
+        tab.classList.toggle("is-active", active);
+        tab.setAttribute("aria-selected", active ? "true" : "false");
+        tab.tabIndex = active ? 0 : -1;
+      }
+      if (panel) panel.hidden = !active;
+    });
+    renderMeasurements();
+  }
+  function activateBottomTab(tabId, focus) {
+    if (tabId !== "signals" && tabId !== "measurements") return;
+    activeBottomTab = tabId;
+    renderBottomTabs();
+    if (focus) document.querySelector("[data-bottom-tab='" + tabId + "']").focus();
+  }
   function applySnapshot(snapshot, preserveView) {
     state = normalizeSnapshot(snapshot);
     if (preserveView) {
@@ -334,7 +403,7 @@
       state.selected_signal = normalizeSelected(preserveView.selected_signal, state.visible_signals);
       state.visibility_contract = state.visibility_contract || preserveView.include_visible_signals;
     }
-    renderCards(); renderPanel(); renderSignals(); renderPlots();
+    renderCards(); renderPanel(); renderSignals(); renderBottomTabs(); renderPlots();
     ensurePlotly().then(renderPlots).catch(function () {
       PLOT_ORDER.forEach(function (plotId) {
         var host = document.querySelector("[data-plot-host='" + plotId + "']");
@@ -374,7 +443,7 @@
     state.visible_signals = target.visible_signals;
     state.selected_signal = target.selected_signal;
     state.visibility_contract = state.visibility_contract || target.include_visible_signals;
-    renderCards(); renderPanel(); renderSignals(); renderPlots();
+    renderCards(); renderPanel(); renderSignals(); renderBottomTabs(); renderPlots();
   }
   function requestView(target, retryCount) {
     var payload = { state_revision: state && state.state_revision };
@@ -429,6 +498,24 @@
     api.getState().then(function (snapshot) { applySnapshot(snapshot); }).catch(function (error) { showError(humanError(error)); }).finally(function () { showLoading(false); });
   }
   function bindEvents() {
+    var bottomTablist = document.querySelector("[role='tablist']");
+    if (bottomTablist) bottomTablist.addEventListener("click", function (event) {
+      var tab = event.target.closest("[data-bottom-tab]");
+      if (tab) activateBottomTab(tab.getAttribute("data-bottom-tab"), true);
+    });
+    if (bottomTablist) bottomTablist.addEventListener("keydown", function (event) {
+      var tab = event.target.closest("[data-bottom-tab]");
+      var tabs = ["signals", "measurements"];
+      var index;
+      var next;
+      if (!tab) return;
+      index = tabs.indexOf(tab.getAttribute("data-bottom-tab"));
+      if (event.key === "ArrowLeft") next = tabs[(index + tabs.length - 1) % tabs.length];
+      if (event.key === "ArrowRight") next = tabs[(index + 1) % tabs.length];
+      if (event.key === "Home") next = tabs[0];
+      if (event.key === "End") next = tabs[tabs.length - 1];
+      if (next) { event.preventDefault(); activateBottomTab(next, true); }
+    });
     document.querySelector("[data-testid='plot-grid']").addEventListener("click", function (event) {
       var card = event.target.closest("[data-plot]");
       if (card) choose({ active_plot: card.getAttribute("data-plot") });

@@ -28,6 +28,15 @@ assert.deepEqual(documentBox(
 assert.equal(config.app.testIds.signalVisibilityCheckboxPrefix, "signal-visibility-checkbox-");
 assert.equal(config.app.testIds.signalVisibilityStatePrefix, "signal-visibility-state-");
 assert.equal(config.app.testIds.plotHostPrefix, "plot-host-");
+assert.equal(config.app.testIds.measurements.signalsTab, "signal-panel-tab-signals");
+assert.equal(config.app.testIds.measurements.measurementsTab, "signal-panel-tab-measurements");
+assert.equal(config.app.testIds.measurements.panel, "measurements-panel");
+assert.equal(config.app.testIds.measurements.signalName, "measurements-signal-name");
+assert.equal(config.app.testIds.measurements.table, "measurements-table");
+assert.equal(config.app.testIds.measurements.rows.minimum, "measurement-row-minimum");
+assert.equal(config.app.testIds.measurements.rows.maximum, "measurement-row-maximum");
+assert.equal(config.app.testIds.measurements.rows.mean, "measurement-row-mean");
+assert.equal(config.features["measurements-statistics"], false);
 assert.deepEqual(Object.keys(config.app.testIds.plotCards).sort(), [
   "persistence",
   "spectrogram",

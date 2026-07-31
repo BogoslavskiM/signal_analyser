@@ -8,7 +8,7 @@ owns = ["test/back/**", "test/engee/**", "test/front/**"]
 read_only = ["AGENTS.md", "architecture/**"]
 forbidden = ["app/**", "lib/**", "public/**", "test/playwright/**", "architecture/**", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"]
 verification = ["julia --project=. test/back/runtests.jl", "julia --startup-file=no test/engee/engee_package_contract_tests.jl", "node test/front/run_front_tests.js"]
-handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "source_evidence", "engee_bug_candidate"]
+handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "next_task_candidates", "source_evidence", "engee_bug_candidate"]
 
 handoff_to_product = ["failing behavior", "expected behavior", "test gap", "recommended owner"]
 
@@ -46,4 +46,13 @@ versions/SHA, minimal safe reproduction, repeat, exact error/stack, artifacts,
 impact, isolation from app/test/config/network, workaround and regression test;
 unresolved isolation remains suspected. Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
+
+Accept Base/Statistics for basic min/max/mean, extrema indices, index-to-time
+conversion and simple dB formulas, but prove they use full raw samples before
+plot downsampling. Require proven public Engee/domain calls for specialized
+MATLAB-toolbox analogues including `findpeaks`, `pspectrum`, spectrogram,
+persistence, filters/windows/coherence. Missing or broken specialized
+functions must not be hidden by hand-rolled fallback; require explicit error,
+bug candidate and tested workaround decision. Include `next_task_candidates`
+in every handoff.
 """

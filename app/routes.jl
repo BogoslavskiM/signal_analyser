@@ -59,6 +59,20 @@ route("/api/view", method = POST) do
     end
 end
 
+route("/api/displays", method = POST) do
+    try
+        api_json(apply_signal_analyser_display!(SIGNAL_ANALYSER_STATE, jsonpayload()))
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)
+        else
+            api_error_response("Не удалось обновить Display Signal Analyser", err; status = 500)
+        end
+    end
+end
+
 route("/api/example", method = GET) do
     try
         api_json(example_payload())

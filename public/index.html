@@ -50,14 +50,22 @@
       </aside>
     </div>
 
-    <section class="signals-section" aria-labelledby="signals-title">
-      <header class="signals-heading"><h2 id="signals-title">Сигналы</h2><span data-signal-count></span></header>
-      <div class="signal-table-scroll">
-        <table class="signal-table" data-testid="signal-table">
-          <thead><tr><th>Видимость</th><th>Сигнал</th><th>Цвет</th><th>Частота дискретизации</th><th>Отсчёты</th><th>Длительность</th><th>Тип</th></tr></thead>
-          <tbody data-signal-rows></tbody>
-        </table>
+    <section class="bottom-zone" aria-label="Сигналы и измерения">
+      <div class="bottom-tablist" role="tablist" aria-label="Данные анализатора">
+        <button type="button" class="bottom-tab is-active" id="signal-panel-tab-signals" data-testid="signal-panel-tab-signals" data-bottom-tab="signals" role="tab" aria-selected="true" aria-controls="bottom-panel-signals" tabindex="0">Сигналы <span data-signal-count></span></button>
+        <button type="button" class="bottom-tab" id="signal-panel-tab-measurements" data-testid="signal-panel-tab-measurements" data-bottom-tab="measurements" role="tab" aria-selected="false" aria-controls="bottom-panel-measurements" tabindex="-1">Измерения</button>
       </div>
+      <section class="bottom-panel signals-panel" id="bottom-panel-signals" data-testid="bottom-panel-signals" role="tabpanel" aria-labelledby="signal-panel-tab-signals">
+        <div class="signal-table-scroll">
+          <table class="signal-table" data-testid="signal-table">
+            <thead><tr><th>Видимость</th><th>Сигнал</th><th>Цвет</th><th>Частота дискретизации</th><th>Отсчёты</th><th>Длительность</th><th>Тип</th></tr></thead>
+            <tbody data-signal-rows></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="bottom-panel measurements-panel" id="bottom-panel-measurements" data-testid="measurements-panel" role="tabpanel" aria-labelledby="signal-panel-tab-measurements" hidden>
+        <div class="measurements-content" data-measurements-content aria-live="polite"></div>
+      </section>
     </section>
 
     <div class="app-status" aria-live="polite">

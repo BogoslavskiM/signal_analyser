@@ -8,7 +8,7 @@ owns = ["app/**", "lib/**", "app.jl", "run.jl", "config/**", "Project.toml"]
 read_only = ["public/js/api.js", "README.md", "architecture/**"]
 forbidden = ["public/**", "test/**", "test/playwright/**", "architecture/**", "AGENTS.md", "CLAUDE.md", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"]
 verification = ["Julia parse for changed files", "julia --project=. test/back/runtests.jl for behavior changes"]
-handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "source_evidence", "engee_bug_candidate"]
+handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "next_task_candidates", "source_evidence", "engee_bug_candidate"]
 
 handoff_to_frontend = ["endpoint/function", "request", "response", "errors", "state fields"]
 handoff_to_tester = ["changed behavior", "contract expectations", "suggested assertions", "known risks"]
@@ -49,4 +49,13 @@ branch/SHA, minimal safe reproduction, expected/actual/frequency, exact errors,
 artifacts, impact, isolation, workaround and regression link. Do not classify
 it confirmed without isolation. Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
+
+For numerical work, Base/Statistics is acceptable for min/max/mean, extrema
+indices, index-to-time conversion and simple dB formulas, computed from the
+authoritative raw samples rather than downsampled plot payloads. Specialized
+MATLAB-toolbox analogues such as `findpeaks`, `pspectrum`, spectrogram,
+persistence, filters/windows/coherence must call a proven public Engee/domain
+function. If that function is missing or broken, report an Engee bug candidate
+and require an explicit tested workaround decision; never add a silent
+hand-rolled replacement. Include `next_task_candidates` in every handoff.
 """

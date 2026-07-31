@@ -42,12 +42,57 @@ function assert_visibility(snapshot, visible_names, selected_name)
     @test snapshot["plot_payload"]["selected_signal"] == selected_name
 end
 
+function p0_measurement_state()
+    real_values = fill(ComplexF64(2.0, 9.0), 1100)
+    real_values[1026] = 25.0 + 0.0im
+    real_values[1071] = 25.0 + 0.0im
+    real_values[1051] = -30.0 + 0.0im
+    real_values[1100] = -30.0 + 0.0im
+    complex_values = fill(ComplexF64(6.0, 8.0), 1100)
+    complex_values[1026] = 8.0 + 15.0im
+    complex_values[1071] = 8.0 + 15.0im
+    complex_values[1051] = 1.0 + 0.0im
+    complex_values[1100] = 1.0 + 0.0im
+    signals = SA.AnalysedSignal[
+        SA.AnalysedSignal("raw-real", "#111111", 1000.0, real_values, false, true),
+        SA.AnalysedSignal("raw-complex", "#222222", 1000.0, complex_values, true, true),
+    ]
+    SA.SignalAnalyserState(signals, SA.SignalAnalyserViewState(0, SA.TIME_PLOT, "raw-real"), Dict{String,Dict{String,Any}}(), ReentrantLock())
+end
+
+function raw_measurement_items(signal)
+    values = signal.is_complex ? abs.(signal.values) : real.(signal.values)
+    ordinate = Float64.(values)
+    minimum_index = findfirst(value -> value == minimum(ordinate), ordinate) - 1
+    maximum_index = findfirst(value -> value == maximum(ordinate), ordinate) - 1
+    expected = Dict(
+        "minimum" => Dict("id" => "minimum", "label" => "Минимум", "value" => ordinate[minimum_index + 1], "time_s" => minimum_index / signal.sample_rate_hz, "sample_index" => minimum_index),
+        "maximum" => Dict("id" => "maximum", "label" => "Максимум", "value" => ordinate[maximum_index + 1], "time_s" => maximum_index / signal.sample_rate_hz, "sample_index" => maximum_index),
+        "mean" => Dict("id" => "mean", "label" => "Среднее", "value" => sum(ordinate) / length(ordinate), "time_s" => nothing, "sample_index" => nothing),
+    )
+    [expected["minimum"], expected["maximum"], expected["mean"]]
+end
+
+function assert_p0_snapshot_measurements(snapshot, signal)
+    @test haskey(snapshot, "measurements")
+    haskey(snapshot, "measurements") || return
+    payload = get(snapshot, "measurements", Dict{String,Any}())
+    @test Set(keys(payload)) == Set(["state_revision", "signal_name", "ordinate", "units", "items"])
+    @test payload["state_revision"] == snapshot["state_revision"]
+    @test payload["signal_name"] == signal.name == snapshot["selected_signal"]
+    @test payload["ordinate"] == (signal.is_complex ? "magnitude" : "real")
+    @test payload["units"] == Dict("time" => "s", "value" => "1")
+    @test payload["items"] == raw_measurement_items(signal)
+    @test payload["items"][3]["time_s"] === nothing
+    @test payload["items"][3]["sample_index"] === nothing
+end
+
 @testset "Signal Analyser snapshot and cache" begin
     SA.reset_pspectrum_double!()
     state = SA.default_signal_analyser_state()
     snapshot = SA.signal_analyser_snapshot(state)
 
-    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_plot", "selected_signal", "visible_signals", "signals", "plots", "plot_payload", "panel"])
+    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_plot", "selected_signal", "visible_signals", "signals", "plots", "plot_payload", "measurements", "panel"])
     @test snapshot["state_revision"] == 0
     @test snapshot["active_plot"] == "time"
     @test snapshot["selected_signal"] == "Гармонический сигнал"
@@ -79,6 +124,7 @@ end
     @test snapshot["plots"]["spectrum"]["y"] == snapshot["plot_payload"]["spectrum_traces"][1]["y"]
     @test snapshot["plot_payload"]["spectrogram"]["signal"] == "Гармонический сигнал"
     @test snapshot["plot_payload"]["persistence"]["signal"] == "Гармонический сигнал"
+    assert_p0_snapshot_measurements(snapshot, state.signals[1])
     @test length(SA.PSPECTRUM_CALLS) == 6
     @test SA.PSPECTRUM_CALLS[1].representation == "power"
     @test SA.PSPECTRUM_CALLS[1].options[end - 1:end] == ("TwoSided", true)
@@ -95,6 +141,7 @@ end
     @test second_snapshot["plot_payload"]["persistence"]["signal"] == second_name
     @test second_snapshot["plots"]["time"]["y"] == second_snapshot["plot_payload"]["time_traces"][2]["y"]
     @test second_snapshot["plots"]["spectrum"]["y"] == second_snapshot["plot_payload"]["spectrum_traces"][2]["y"]
+    assert_p0_snapshot_measurements(second_snapshot, state.signals[2])
     @test length(SA.PSPECTRUM_CALLS) == 6
     assert_heatmap_plot(second_snapshot["plots"]["spectrogram"])
 
@@ -253,4 +300,33 @@ end
     @test dsp_error isa ArgumentError
     SA.PSPECTRUM_FAILURE[] = false
     @test SA.signal_analyser_snapshot(state) == before
+end
+
+@testset "Signal Analyser raw-sample snapshot measurements contract" begin
+    SA.reset_pspectrum_double!()
+    state = p0_measurement_state()
+    real_snapshot = SA.signal_analyser_snapshot(state)
+    @test length(real_snapshot["plot_payload"]["time_traces"][1]["y"]) <= 1024
+    assert_p0_snapshot_measurements(real_snapshot, state.signals[1])
+    @test real_snapshot["measurements"]["items"][1]["sample_index"] == 1050
+    @test real_snapshot["measurements"]["items"][2]["sample_index"] == 1025
+    @test state.view.state_revision == 0
+    repeated = SA.signal_analyser_snapshot(state)
+    @test repeated["state_revision"] == real_snapshot["state_revision"]
+    @test repeated["visible_signals"] == real_snapshot["visible_signals"]
+    @test repeated["measurements"] == real_snapshot["measurements"]
+
+    complex_snapshot = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "selected_signal" => "raw-complex"))
+    @test complex_snapshot["state_revision"] == 1
+    assert_p0_snapshot_measurements(complex_snapshot, state.signals[2])
+    @test complex_snapshot["measurements"]["items"][1]["sample_index"] == 1050
+    @test complex_snapshot["measurements"]["items"][2]["sample_index"] == 1025
+
+    fallback = SA.apply_signal_analyser_view!(
+        state,
+        Dict("state_revision" => 1, "selected_signal" => "raw-complex", "visible_signals" => ["raw-real"]),
+    )
+    @test fallback["state_revision"] == 2
+    @test fallback["selected_signal"] == "raw-real"
+    assert_p0_snapshot_measurements(fallback, state.signals[1])
 end

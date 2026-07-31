@@ -30,6 +30,18 @@ module.exports = {
       signalVisibilityStatePrefix: "signal-visibility-state-",
       activePlotFieldPrefix: "active-plot-field-",
       plotHostPrefix: "plot-host-",
+      measurements: {
+        signalsTab: "signal-panel-tab-signals",
+        measurementsTab: "signal-panel-tab-measurements",
+        panel: "measurements-panel",
+        signalName: "measurements-signal-name",
+        table: "measurements-table",
+        rows: {
+          maximum: "measurement-row-maximum",
+          mean: "measurement-row-mean",
+          minimum: "measurement-row-minimum",
+        },
+      },
     },
     api: {
       state: "/api/state",
@@ -46,6 +58,7 @@ module.exports = {
     "style-system": false,
     "frontend-state-management": true,
     "settings-controls": false,
+    "measurements-statistics": false,
     "inspector-ui": true,
     "multi-page-element": false,
     "graph-output-zone": true,

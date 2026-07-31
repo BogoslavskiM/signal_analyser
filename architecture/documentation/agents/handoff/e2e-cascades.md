@@ -4,10 +4,11 @@ Internal durable handoff record.
 
 canonical_role: E2E Tester  
 agent_id_or_session: `019fb7f1-4bbf-75d2-9279-d8dedede56c5`  
-status: persistent audit active  
-current_task: audit durable visibility scenario handoff  
-last_handoff: scaffold `019fb7d6-ce10-7cc2-aafe-616426ac3595`; ephemeral review
-`019fb7e8-0d36-7353-ab57-aab9919bf488`
+status: active
+current_task: Cascade 3 P0 snapshot UI scenario and timing logging
+next_queued_task: Cascade 4 peaks scenario design
+blocker_or_no_eligible_work: runtime execution waits for a deployed P0 target
+last_handoff: Cascade 2 prod E2E 7/7 at runtime SHA `2eba776`
 
 Earlier ephemeral threads became unavailable after completion. Future E2E
 Tester work must resume the persistent canonical ID above.
@@ -65,3 +66,21 @@ portable_behavior: Checkbox changes plotted visibility; row selection remains
 independent and enables selected-signal operations.  
 matlab_layout_specific: MATLAB docking and multi-layout are reference-only and
 must not replace the Genie fixed 2×2 layout.
+
+## Cascade 3 P0 assignment — 2026-07-31
+
+goal: Cover snapshot-backed raw statistics through bottom tabs.
+scope: `test/playwright/**`.
+contracts: Default `Сигналы`; local `Измерения` switch without API mutation;
+selected visible name and exact minimum/maximum/mean rows; row selection and
+hidden-selected fallback update UI; no measurements endpoint, peaks or loading
+placeholder.
+performance_evidence: Sufficient temporary timing logging is mandatory during
+scenarios. E2E Tester chooses implementation, placement and format, then uses
+the logs to analyze performance, hangs, retries and timeout suitability. A
+material issue produces an evidence-backed Architect handoff; no universal
+metric list or fixed threshold is prescribed.
+browser_workspace_setup: background CDP preferred; interactive actions retain
+the existing MATLAB coordination guardrail.
+next_task_candidates: Cascade 4 specialized peaks scenario after its API/state
+contract is accepted.

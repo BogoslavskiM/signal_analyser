@@ -16,8 +16,12 @@ function response(status, payload) {
   return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(payload) };
 }
 
-function linePlot(y, method) {
-  const plot = { type: "line", x: [0, 1], y, x_label: "x", y_label: "y" };
+const RAW_TIME = [0, 0.1, 0.2];
+const RAW_REAL = [-2, 3, -2];
+const RAW_MAGNITUDE = [5, 13, 5];
+
+function linePlot(y, method, x) {
+  const plot = { type: "line", x: x || [0, 1], y, x_label: "x", y_label: "y" };
   if (method) plot.method = method;
   return plot;
 }
@@ -26,25 +30,49 @@ function heatmapPlot(z) {
   return { type: "heatmap", x: [0, 1], y: [0, 1], z, x_label: "x", y_label: "y", color_label: "z" };
 }
 
-function trace(name, color, y, method) {
-  const item = linePlot(y, method);
+function trace(name, color, y, method, x) {
+  const item = linePlot(y, method, x);
   item.name = name;
   item.signal = name;
   item.color = color;
   return item;
 }
 
+function statistic(values, times, reducer) {
+  const value = reducer === "min" ? Math.min(...values) : Math.max(...values);
+  const index = values.findIndex((item) => item === value);
+  return { value, time_s: times[index], sample_index: index };
+}
+
+function measurementPayload(revision, selectedSignal) {
+  const isChirp = selectedSignal === CHIRP;
+  const values = isChirp ? RAW_MAGNITUDE : RAW_REAL;
+  const min = statistic(values, RAW_TIME, "min");
+  const max = statistic(values, RAW_TIME, "max");
+  return {
+    state_revision: revision,
+    signal_name: selectedSignal,
+    ordinate: isChirp ? "magnitude" : "real",
+    units: { time: "s", value: "1" },
+    items: [
+      { id: "minimum", label: "Минимум", value: min.value, time_s: min.time_s, sample_index: min.sample_index },
+      { id: "maximum", label: "Максимум", value: max.value, time_s: max.time_s, sample_index: max.sample_index },
+      { id: "mean", label: "Среднее", value: values.reduce((sum, value) => sum + value, 0) / values.length, time_s: null, sample_index: null },
+    ],
+  };
+}
+
 function snapshot(revision, activePlot, selectedSignal, visibleNames) {
   const visible = visibleNames || [HARMONIC, CHIRP];
   const allSignals = [
-    { name: HARMONIC, color: "#2563eb", sample_rate_hz: 2048, sample_count: 512, duration_s: 0.25, data_type: "Вещественный", visible: visible.includes(HARMONIC) },
-    { name: CHIRP, color: "#dc2626", sample_rate_hz: 2048, sample_count: 512, duration_s: 0.25, data_type: "Комплексный", visible: visible.includes(CHIRP) },
+    { name: HARMONIC, color: "#2563eb", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Вещественный", visible: visible.includes(HARMONIC) },
+    { name: CHIRP, color: "#dc2626", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Комплексный", visible: visible.includes(CHIRP) },
   ];
   const selectedColor = selectedSignal === CHIRP ? "#dc2626" : "#2563eb";
-  const selectedY = selectedSignal === CHIRP ? [3, 4] : [1, 2];
+  const selectedY = selectedSignal === CHIRP ? RAW_MAGNITUDE : RAW_REAL;
   const timeTraces = [
-    trace(HARMONIC, "#2563eb", [1, 2]),
-    trace(CHIRP, "#dc2626", [3, 4]),
+    trace(HARMONIC, "#2563eb", RAW_REAL, undefined, RAW_TIME),
+    trace(CHIRP, "#dc2626", RAW_MAGNITUDE, undefined, RAW_TIME),
   ].filter((item) => visible.includes(item.name));
   const spectrumTraces = [
     trace(HARMONIC, "#2563eb", [10, 11], "welch"),
@@ -59,7 +87,7 @@ function snapshot(revision, activePlot, selectedSignal, visibleNames) {
     visible_signals: visible,
     signals: allSignals,
     plots: {
-      time: linePlot(selectedY),
+      time: linePlot(selectedY, undefined, RAW_TIME),
       spectrum: linePlot(selectedSignal === CHIRP ? [12, 13] : [10, 11], "welch"),
       spectrogram: heatmapPlot(selectedSignal === CHIRP ? [[5, 6], [7, 8]] : [[1, 2], [3, 4]]),
       persistence: heatmapPlot(selectedSignal === CHIRP ? [[9, 10], [11, 12]] : [[2, 3], [4, 5]]),
@@ -72,6 +100,7 @@ function snapshot(revision, activePlot, selectedSignal, visibleNames) {
       spectrogram: selectedSpectrogram,
       persistence: selectedPersistence,
     },
+    measurements: measurementPayload(revision, selectedSignal),
     panel: { title: "Параметры отображения", active_plot: activePlot, fields: [{ id: "method", label: "Метод оценки", type: "text", value: "Welch", unit: "", readonly: true }] },
   };
 }
@@ -115,6 +144,13 @@ function makeEnvironment(fetch, options) {
     errorText: element({ "data-error-text": "" }),
     title: element({ "data-testid": "active-plot-title" }),
     panelFields: element({ "data-panel-fields": "" }),
+    bottomTabs: element({ "data-bottom-tabs": "" }),
+    signalsTab: element({ "data-bottom-tab": "signals" }),
+    measurementsTab: element({ "data-bottom-tab": "measurements" }),
+    signalsContent: element({ "data-bottom-content": "signals" }),
+    measurementsContent: element({ "data-bottom-content": "measurements" }, { hidden: true }),
+    measurementsRows: element({ "data-measurement-rows": "" }),
+    measurementsState: element({ "data-measurement-state": "" }),
     count: element({ "data-signal-count": "" }),
     rows: element({ "data-signal-rows": "" }),
     grid: element({ "data-testid": "plot-grid" }),
@@ -141,6 +177,13 @@ function makeEnvironment(fetch, options) {
     "[data-error-text]": elements.errorText,
     "[data-testid='active-plot-title']": elements.title,
     "[data-panel-fields]": elements.panelFields,
+    "[data-bottom-tabs]": elements.bottomTabs,
+    "[data-bottom-tab='signals']": elements.signalsTab,
+    "[data-bottom-tab='measurements']": elements.measurementsTab,
+    "[data-bottom-content='signals']": elements.signalsContent,
+    "[data-bottom-content='measurements']": elements.measurementsContent,
+    "[data-measurement-rows]": elements.measurementsRows,
+    "[data-measurement-state]": elements.measurementsState,
     "[data-signal-count]": elements.count,
     "[data-signal-rows]": elements.rows,
     "[data-testid='plot-grid']": elements.grid,
@@ -187,6 +230,23 @@ function clickSignal(environment, name) {
   environment.elements.rows.listeners.click({ target: row });
 }
 
+function clickPanelTab(environment, id) {
+  const tab = id === "signals" ? environment.elements.signalsTab : environment.elements.measurementsTab;
+  tab.closest = (selector) => selector === "[data-bottom-tab]" ? tab : null;
+  if (!environment.elements.bottomTabs.listeners.click) return false;
+  environment.elements.bottomTabs.listeners.click({ target: tab });
+  return true;
+}
+
+function keyPanelTab(environment, id, key) {
+  const tab = id === "signals" ? environment.elements.signalsTab : environment.elements.measurementsTab;
+  let prevented = false;
+  if (!environment.elements.bottomTabs.listeners.keydown) return false;
+  tab.closest = (selector) => selector === "[data-bottom-tab]" ? tab : null;
+  environment.elements.bottomTabs.listeners.keydown({ target: tab, key, preventDefault() { prevented = true; } });
+  return prevented;
+}
+
 function visibilityCheckbox(name, checked) {
   const checkbox = element({ "data-signal-visibility": name });
   checkbox.checked = checked;
@@ -224,6 +284,27 @@ module.exports = async function testSignalAnalyserBehavior(assert) {
   assert(initialEnvironment.cards.time.classList.contains("is-active"), "initial active card must be marked");
   assert(initialEnvironment.elements.rows.innerHTML.includes("signal-row is-selected"), "initial selected signal row must be marked");
   assert(initialEnvironment.elements.panelFields.innerHTML.includes("active-plot-field-method"), "panel field selector must be rendered from field id");
+  assert(initialEnvironment.elements.signalsTab.getAttribute("aria-selected") === "true", "Signals bottom tab must be active initially");
+  assert(initialEnvironment.elements.measurementsTab.getAttribute("aria-selected") === "false", "measurements tab must be inactive initially");
+  assert(clickPanelTab(initialEnvironment, "measurements"), "bottom tab click handler must be registered");
+  assert(initialRequests.length === 1, "switching to measurements tab must be local and must not call the API");
+  assert(initialEnvironment.elements.measurementsTab.getAttribute("aria-selected") === "true", "click must activate measurements tab");
+  assert(initialEnvironment.elements.measurementsContent.hidden === false && initialEnvironment.elements.signalsContent.hidden === true, "click must swap the two bottom tab contents");
+  assert(initialEnvironment.elements.measurementsRows.innerHTML.includes("data-testid=\"measurement-item-minimum\""), "measurements tab must render a stable minimum item testid");
+  assert(initialEnvironment.elements.measurementsRows.innerHTML.includes("data-testid=\"measurement-item-maximum\""), "measurements tab must render a stable maximum item testid");
+  assert(initialEnvironment.elements.measurementsRows.innerHTML.includes("data-testid=\"measurement-item-mean\""), "measurements tab must render a stable mean item testid");
+  assert(initialEnvironment.elements.measurementsRows.innerHTML.includes(HARMONIC) && initialEnvironment.elements.measurementsRows.innerHTML.includes("real"), "measurements tab must render the matching selected raw-sample result");
+  assert(initialEnvironment.elements.measurementsRows.innerHTML.includes("Минимум") && initialEnvironment.elements.measurementsRows.innerHTML.includes("Среднее"), "measurements tab must render Russian statistic labels");
+  assert(initialEnvironment.elements.panelFields.innerHTML.includes("active-plot-field-method"), "switching bottom tabs must leave the settings sidebar content unchanged");
+  assert(keyPanelTab(initialEnvironment, "measurements", "ArrowLeft"), "bottom tab keyboard navigation must prevent default");
+  assert(initialEnvironment.elements.signalsTab.getAttribute("aria-selected") === "true", "ArrowLeft must return selection to Signals tab");
+
+  const mismatch = snapshot(1, "time", HARMONIC);
+  mismatch.measurements = Object.assign({}, mismatch.measurements, { state_revision: 0, signal_name: CHIRP });
+  const mismatchEnvironment = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? mismatch : mismatch)));
+  assert(clickPanelTab(mismatchEnvironment, "measurements"), "mismatch environment must register bottom tab click handler");
+  assert(mismatchEnvironment.elements.measurementsRows.innerHTML === "", "mismatched measurements must not render stale item values");
+  assert(mismatchEnvironment.elements.measurementsState.textContent.includes("Нет измерений"), "mismatched measurements must render the empty state");
   assert(initialEnvironment.plotlyCalls.length >= 4, "all four plots must be rendered through Plotly");
   ["time", "spectrum", "spectrogram", "persistence"].forEach((id) => {
     assert(initialEnvironment.hosts[id].querySelectorAll(".plot-placeholder").length === 0, `${id} placeholder must be removed after Plotly ready`);
@@ -278,6 +359,9 @@ module.exports = async function testSignalAnalyserBehavior(assert) {
     await flush();
     assert(queueEnvironment.cards.persistence.classList.contains("is-active"), "server-confirmed card must become active");
     assert(queueEnvironment.elements.rows.innerHTML.includes(CHIRP) && queueEnvironment.elements.rows.innerHTML.includes("signal-row is-selected"), "server-confirmed selected row must be marked");
+    assert(clickPanelTab(queueEnvironment, "measurements"), "queue environment must register bottom tab click handler");
+    assert(queueEnvironment.elements.measurementsRows.innerHTML.includes(CHIRP), "server-confirmed row selection must refresh selected measurements");
+    assert(queueEnvironment.elements.measurementsRows.innerHTML.includes("magnitude"), "complex selection must refresh the matching ordinate");
   }
 
   const visibilityRequests = [];
@@ -295,6 +379,8 @@ module.exports = async function testSignalAnalyserBehavior(assert) {
   await flush();
   assert(stoppedClick, "visibility checkbox click must stop propagation");
   assert(visibilityRequests.length === 1, "visibility checkbox click must not select the row or call the API");
+  assert(clickPanelTab(visibilityEnvironment, "measurements"), "visibility environment must register bottom tab click handler");
+  assert(visibilityEnvironment.elements.measurementsRows.innerHTML.includes(HARMONIC), "visibility checkbox click must leave selected measurements unchanged");
   let stoppedChange = false;
   visibilityEnvironment.elements.rows.listeners.change({ target: checkbox, stopPropagation() { stoppedChange = true; } });
   await flush();
@@ -308,6 +394,7 @@ module.exports = async function testSignalAnalyserBehavior(assert) {
   resolveVisibilityFirst(response(200, snapshot(1, "time", CHIRP, [CHIRP])));
   await flush();
   assert(visibilityRequests.length === 3, "queued visibility change must run after the first response");
+  assert(visibilityEnvironment.elements.measurementsRows.innerHTML.includes(CHIRP), "fallback visibility response must refresh selected measurements");
   assert(JSON.stringify(JSON.parse(visibilityRequests[2].options.body)) === JSON.stringify({ state_revision: 1, active_plot: "time", selected_signal: CHIRP, visible_signals: [HARMONIC, CHIRP] }), "queued visibility mutation must use the server-confirmed revision and canonical visible order");
   resolveVisibilitySecond(response(200, snapshot(2, "time", CHIRP, [HARMONIC, CHIRP])));
   await flush();

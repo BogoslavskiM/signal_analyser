@@ -1,4 +1,9 @@
+import Statistics
+
 const SIGNAL_ANALYSER_VIEW_FIELDS = Set(["state_revision", "active_plot", "selected_signal", "visible_signals"])
+const SIGNAL_ANALYSER_DISPLAY_FIELDS = Set(["state_revision", "operation", "display_id"])
+const SIGNAL_ANALYSER_DISPLAY_OPERATIONS = Set(["create", "select", "close"])
+const SIGNAL_ANALYSER_MAX_DISPLAYS = 4
 
 function signal_analyser_signal_payload(signal::AnalysedSignal)::Dict{String,Any}
     Dict{String,Any}(
@@ -110,6 +115,29 @@ function signal_analyser_visible_signal_names(state::SignalAnalyserState)::Vecto
     [signal.name for signal in state.signals if signal.visible]
 end
 
+function signal_analyser_display_by_id(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+)::SignalAnalyserDisplayState
+    index = findfirst(display -> display.id == display_id, state.displays)
+    index === nothing && throw(ArgumentError("Display не найден: $display_id"))
+    state.displays[index]
+end
+
+function signal_analyser_active_display(state::SignalAnalyserState)::SignalAnalyserDisplayState
+    signal_analyser_display_by_id(state, state.active_display_id)
+end
+
+function signal_analyser_display_payload(display::SignalAnalyserDisplayState)::Dict{String,Any}
+    Dict{String,Any}(
+        "id" => display.id,
+        "name" => display.name,
+        "active_plot" => signal_analyser_plot_name(display.active_plot),
+        "selected_signal" => display.selected_signal,
+        "visible_signals" => copy(display.visible_signals),
+    )
+end
+
 function signal_analyser_with_visibility(signal::AnalysedSignal, visible::Bool)::AnalysedSignal
     AnalysedSignal(
         signal.name,
@@ -119,6 +147,22 @@ function signal_analyser_with_visibility(signal::AnalysedSignal, visible::Bool):
         signal.is_complex,
         visible,
     )
+end
+
+function signal_analyser_sync_active_display!(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)
+    visible_set = Set(display.visible_signals)
+    signals = [
+        signal_analyser_with_visibility(signal, signal.name in visible_set)
+        for signal in state.signals
+    ]
+    state.signals = signals
+    state.active_display_id = display.id
+    state.view.active_plot = display.active_plot
+    state.view.selected_signal = display.selected_signal
+    nothing
 end
 
 function signal_analyser_plot_for_payload(
@@ -157,18 +201,91 @@ function signal_analyser_multi_trace_payload(
     )
 end
 
+function signal_analyser_measurement_ordinates(signal::AnalysedSignal)::Vector{Float64}
+    ordinate = signal.is_complex ? Float64.(abs.(signal.values)) : Float64.(real.(signal.values))
+    isempty(ordinate) && throw(ArgumentError("Сигнал не содержит отсчётов"))
+    all(isfinite, ordinate) || throw(ArgumentError("Сигнал содержит нечисловые отсчёты"))
+    isfinite(signal.sample_rate_hz) && signal.sample_rate_hz > 0 || throw(ArgumentError(
+        "Частота дискретизации сигнала должна быть положительным конечным числом",
+    ))
+    ordinate
+end
+
+function signal_analyser_measurement_item(
+    id::AbstractString,
+    label::AbstractString,
+    value::Real,
+    time_s,
+    sample_index,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "id" => String(id),
+        "label" => String(label),
+        "value" => Float64(value),
+        "time_s" => time_s,
+        "sample_index" => sample_index,
+    )
+end
+
+function signal_analyser_measurements_payload(
+    state_revision::Int,
+    signal::AnalysedSignal,
+)::Dict{String,Any}
+    ordinate = signal_analyser_measurement_ordinates(signal)
+    minimum_index = argmin(ordinate)
+    maximum_index = argmax(ordinate)
+    minimum_sample_index = minimum_index - 1
+    maximum_sample_index = maximum_index - 1
+
+    Dict{String,Any}(
+        "state_revision" => state_revision,
+        "signal_name" => signal.name,
+        "ordinate" => signal.is_complex ? "magnitude" : "real",
+        "units" => Dict{String,Any}(
+            "value" => "1",
+            "time" => "s",
+        ),
+        "items" => Dict{String,Any}[
+            signal_analyser_measurement_item(
+                "minimum",
+                "Минимум",
+                ordinate[minimum_index],
+                minimum_sample_index / signal.sample_rate_hz,
+                minimum_sample_index,
+            ),
+            signal_analyser_measurement_item(
+                "maximum",
+                "Максимум",
+                ordinate[maximum_index],
+                maximum_sample_index / signal.sample_rate_hz,
+                maximum_sample_index,
+            ),
+            signal_analyser_measurement_item(
+                "mean",
+                "Среднее",
+                Statistics.mean(ordinate),
+                nothing,
+                nothing,
+            ),
+        ],
+    )
+end
+
 function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{String,Any}
     signal = signal_by_name(state, state.view.selected_signal)
     plots = signal_analyser_cached_plots!(state, signal)
     visible_names = signal_analyser_visible_signal_names(state)
     Dict{String,Any}(
         "state_revision" => state.view.state_revision,
+        "active_display_id" => state.active_display_id,
+        "displays" => [signal_analyser_display_payload(display) for display in state.displays],
         "active_plot" => signal_analyser_plot_name(state.view.active_plot),
         "selected_signal" => state.view.selected_signal,
         "visible_signals" => visible_names,
         "signals" => [signal_analyser_signal_payload(item) for item in state.signals],
         "plots" => plots,
         "plot_payload" => signal_analyser_multi_trace_payload(state, signal, visible_names),
+        "measurements" => signal_analyser_measurements_payload(state.view.state_revision, signal),
         "panel" => signal_analyser_panel_payload(state.view.active_plot, signal, plots),
     )
 end
@@ -243,6 +360,7 @@ function validate_signal_analyser_view_payload(
         Dict("body" => "Ожидался JSON-объект"),
     ))
 
+    display = signal_analyser_active_display(state)
     field_errors = Dict{String,String}()
     unknown_fields = setdiff(signal_analyser_payload_keys(data), SIGNAL_ANALYSER_VIEW_FIELDS)
     isempty(unknown_fields) || (field_errors["body"] = "Неизвестные поля: $(join(sort!(collect(unknown_fields)), ", "))")
@@ -252,7 +370,7 @@ function validate_signal_analyser_view_payload(
 
     has_active_plot = signal_analyser_payload_contains(data, "active_plot")
     active_plot_value = signal_analyser_payload_value(data, "active_plot")
-    requested_plot = state.view.active_plot
+    requested_plot = display.active_plot
     if has_active_plot
         if active_plot_value isa AbstractString && haskey(SIGNAL_ANALYSER_PLOTS_BY_NAME, String(active_plot_value))
             requested_plot = SIGNAL_ANALYSER_PLOTS_BY_NAME[String(active_plot_value)]
@@ -263,7 +381,7 @@ function validate_signal_analyser_view_payload(
 
     has_selected_signal = signal_analyser_payload_contains(data, "selected_signal")
     selected_signal_value = signal_analyser_payload_value(data, "selected_signal")
-    requested_signal = state.view.selected_signal
+    requested_signal = display.selected_signal
     if has_selected_signal
         if selected_signal_value isa AbstractString && any(signal -> signal.name == selected_signal_value, state.signals)
             requested_signal = String(selected_signal_value)
@@ -273,7 +391,7 @@ function validate_signal_analyser_view_payload(
     end
 
     has_visible_signals = signal_analyser_payload_contains(data, "visible_signals")
-    visible_names = signal_analyser_visible_signal_names(state)
+    visible_names = copy(display.visible_signals)
     if has_visible_signals
         validated_visible_names = signal_analyser_validate_visible_signals!(
             field_errors,
@@ -301,9 +419,10 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             state.view.state_revision,
         ))
 
-        current_visible = signal_analyser_visible_signal_names(state)
-        changed = requested.active_plot != state.view.active_plot ||
-            requested.selected_signal != state.view.selected_signal ||
+        display = signal_analyser_active_display(state)
+        current_visible = display.visible_signals
+        changed = requested.active_plot != display.active_plot ||
+            requested.selected_signal != display.selected_signal ||
             requested.visible_signals != current_visible
 
         # Build every payload affected by the request before publishing the
@@ -313,18 +432,133 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             unique(vcat(requested.visible_signals, [requested.selected_signal])),
         )
         if changed
-            visible_set = Set(requested.visible_signals)
-            state.signals = [
-                signal_analyser_with_visibility(signal, signal.name in visible_set)
-                for signal in state.signals
-            ]
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
-            state.view.active_plot = requested.active_plot
-            state.view.selected_signal = requested.selected_signal
+            display.active_plot = requested.active_plot
+            display.selected_signal = requested.selected_signal
+            display.visible_signals = copy(requested.visible_signals)
+            signal_analyser_sync_active_display!(state, display)
             state.view.state_revision += 1
         else
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
         end
+        signal_analyser_snapshot_unlocked(state)
+    end
+end
+
+function validate_signal_analyser_display_payload(
+    state::SignalAnalyserState,
+    data,
+)::NamedTuple
+    data isa AbstractDict || throw(SignalAnalyserValidationError(
+        "Тело запроса должно быть JSON-объектом",
+        Dict("body" => "Ожидался JSON-объект"),
+    ))
+
+    field_errors = Dict{String,String}()
+    unknown_fields = setdiff(signal_analyser_payload_keys(data), SIGNAL_ANALYSER_DISPLAY_FIELDS)
+    isempty(unknown_fields) || (field_errors["body"] = "Неизвестные поля: $(join(sort!(collect(unknown_fields)), ", "))")
+
+    revision_value = signal_analyser_payload_value(data, "state_revision")
+    revision_value isa Integer && !(revision_value isa Bool) || (field_errors["state_revision"] = "Требуется целое число")
+
+    operation_value = signal_analyser_payload_value(data, "operation")
+    operation = if operation_value isa AbstractString && String(operation_value) in SIGNAL_ANALYSER_DISPLAY_OPERATIONS
+        String(operation_value)
+    else
+        field_errors["operation"] = "Допустимо: create, select, close"
+        nothing
+    end
+
+    has_display_id = signal_analyser_payload_contains(data, "display_id")
+    display_id_value = signal_analyser_payload_value(data, "display_id")
+    display_id = nothing
+    if operation == "create"
+        has_display_id && (field_errors["display_id"] = "Поле не допускается для create")
+        length(state.displays) < SIGNAL_ANALYSER_MAX_DISPLAYS ||
+            (field_errors["operation"] = "Достигнут лимит из $SIGNAL_ANALYSER_MAX_DISPLAYS Display")
+    elseif operation == "select" || operation == "close"
+        if !has_display_id || !(display_id_value isa AbstractString) || isempty(String(display_id_value))
+            field_errors["display_id"] = "Требуется непустой идентификатор Display"
+        else
+            display_id = String(display_id_value)
+            any(display -> display.id == display_id, state.displays) ||
+                (field_errors["display_id"] = "Неизвестный идентификатор Display")
+        end
+        operation == "close" && length(state.displays) == 1 &&
+            (field_errors["operation"] = "Нужно оставить хотя бы один Display")
+    end
+
+    isempty(field_errors) || throw(SignalAnalyserValidationError("Некорректный запрос Display", field_errors))
+    (
+        revision = Int(revision_value),
+        operation = operation::String,
+        display_id = display_id,
+    )
+end
+
+function signal_analyser_display_plot_names(display::SignalAnalyserDisplayState)::Vector{String}
+    unique(vcat(display.visible_signals, [display.selected_signal]))
+end
+
+function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{String,Any}
+    lock(state.lock) do
+        requested = validate_signal_analyser_display_payload(state, data)
+        requested.revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
+            requested.revision,
+            state.view.state_revision,
+        ))
+
+        if requested.operation == "create"
+            display_number = state.next_display_number
+            display = SignalAnalyserDisplayState(
+                "display-$display_number",
+                "Display $display_number",
+                TIME_PLOT,
+                first(state.signals).name,
+                [signal.name for signal in state.signals],
+            )
+            prepared_plots = signal_analyser_prepared_plots(
+                state,
+                signal_analyser_display_plot_names(display),
+            )
+            signal_analyser_publish_prepared_plots!(state, prepared_plots)
+            push!(state.displays, display)
+            state.next_display_number += 1
+            signal_analyser_sync_active_display!(state, display)
+            state.view.state_revision += 1
+        elseif requested.operation == "select"
+            display = signal_analyser_display_by_id(state, requested.display_id)
+            if display.id != state.active_display_id
+                prepared_plots = signal_analyser_prepared_plots(
+                    state,
+                    signal_analyser_display_plot_names(display),
+                )
+                signal_analyser_publish_prepared_plots!(state, prepared_plots)
+                signal_analyser_sync_active_display!(state, display)
+                state.view.state_revision += 1
+            end
+        else
+            close_index = findfirst(display -> display.id == requested.display_id, state.displays)::Int
+            closing_active_display = requested.display_id == state.active_display_id
+            remaining_displays = [
+                display for display in state.displays
+                if display.id != requested.display_id
+            ]
+            next_active_display = if closing_active_display
+                remaining_displays[min(close_index, length(remaining_displays))]
+            else
+                signal_analyser_active_display(state)
+            end
+            prepared_plots = signal_analyser_prepared_plots(
+                state,
+                signal_analyser_display_plot_names(next_active_display),
+            )
+            signal_analyser_publish_prepared_plots!(state, prepared_plots)
+            state.displays = remaining_displays
+            closing_active_display && signal_analyser_sync_active_display!(state, next_active_display)
+            state.view.state_revision += 1
+        end
+
         signal_analyser_snapshot_unlocked(state)
     end
 end

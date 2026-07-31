@@ -38,6 +38,18 @@ saved `e2e_scenarios`.
 - `matlab_layout_specific`: docking, placement and multi-layout details. Record
   these as evidence, but do not copy them into the fixed 2×2 product.
 
+## Dated safety correction 2026-07-31 — bounded GUI hypotheses
+
+После фактического повторяющегося GUI incident каждая hypothesis ограничена по
+умолчанию тремя осмысленными попытками и visual comparison после каждого
+действия. Unchanged state либо чередование тех же экранов без нового evidence
+немедленно прекращает click/hotkey/drag mutation. Researcher проверяет clicker
+status/health и последнюю подтверждённую screenshot; down/stale PID требует
+server recovery и нового bootstrap до кликов. Fullscreen/empty layout cell
+получает одну safe recovery attempt, затем сохраняются partial scenario и
+postmortem/blocker без перебора пустых cells; роль переходит в standby или к
+другой bounded задаче.
+
 ## Required research handoff
 
 Each material handoff contains `docs_sources`, `documented_direction`,

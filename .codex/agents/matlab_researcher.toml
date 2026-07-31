@@ -138,4 +138,7 @@ add versions/SHA where applicable, safe reproduction/repeat, exact error/log,
 artifacts, impact, isolation, workaround and regression path as
 `engee_bug_candidate`; unresolved isolation remains suspected. Architect persists the handoff while
 strict ownership remains in force.
+Include `next_task_candidates` in every material cycle handoff so completed
+evidence immediately feeds product, test and research queues without waiting
+for the entire research program.
 """

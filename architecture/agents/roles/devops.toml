@@ -8,7 +8,7 @@ owns = []
 read_only = ["**"]
 forbidden = ["app/**", "lib/**", "public/**", "test/**", "architecture/**", "app.jl", "config/**", "Project.toml", "Manifest.toml"]
 verification = ["clean Git worktree gate", "relevant local checks for changed zones except Playwright", "Engee Genie start status and logs"]
-handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "source_evidence", "engee_bug_candidate"]
+handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "next_task_candidates", "source_evidence", "engee_bug_candidate"]
 
 handoff_from_agents = ["concise change explanation", "explicit file list", "local verification context"]
 deployment_report = ["environment", "branch", "commit SHA", "start result", "application URL", "log file", "logs or failure diagnostics"]
@@ -73,4 +73,6 @@ workaround and regression link in `engee_bug_candidate`; do not mark confirmed
 without isolation. Do not write architecture
 documentation yourself; Architect persists the handoff while strict ownership
 remains in force.
+Include `next_task_candidates` in every handoff; completed standby is valid only
+when Architect records the exact dependency, blocker or no-eligible-work reason.
 """

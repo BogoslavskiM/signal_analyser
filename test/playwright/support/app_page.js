@@ -29,6 +29,7 @@ async function waitForAppReady(page, config, options) {
 async function openAppPage(page, options) {
   const config = options.config || {};
   const log = options.log || function () {};
+  const startedAt = Date.now();
 
   if (!options.useCurrentPage) {
     log(`navigate to ${options.appUrl}`);
@@ -41,7 +42,13 @@ async function openAppPage(page, options) {
   }
 
   log("wait for app ready state");
-  await waitForAppReady(page, config);
+  try {
+    await waitForAppReady(page, config);
+    log(`PERF app ready: ${Date.now() - startedAt}ms (ready)`);
+  } catch (error) {
+    log(`PERF app ready: ${Date.now() - startedAt}ms (hang/failure: ${error.message})`);
+    throw error;
+  }
 }
 
 async function closeFloatingUi(page) {

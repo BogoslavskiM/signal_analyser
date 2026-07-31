@@ -3,15 +3,16 @@
 > Внутренняя active-task запись. Клиентский статус опубликован в
 > [`../../user/reports/`](../../user/reports/README.md).
 
-Status: integration-review  
+Status: active-cascade-3-p0
 Owner: Architect  
 Branch: `neuro_signal_analyser_cascade`  
 Architecture checkpoint: `98d6cd8`
 
 ## Goal
 
-Стабилизировать первую prod-версию и реализовать второй каскад MATLAB-подобной
-видимости сигналов без изменения фиксированной сетки 2×2.
+Стабилизировать первую prod-версию, довести второй каскад MATLAB-подобной
+видимости сигналов и реализовать минимальный третий каскад raw statistics без
+изменения фиксированной сетки 2×2.
 
 ## Contract второго каскада
 
@@ -30,16 +31,35 @@ Architecture checkpoint: `98d6cd8`
   нет.
 - Русские loading/error/visibility labels. Fixed 2×2, без layouts.
 
-## Roles and resume identities
+## Contract третьего каскада P0 — 2026-07-31
 
-| Canonical role | Historical session | Persistent session | Status |
-| --- | --- | --- | --- |
-| Backend | `019fb7cf-6c54-7f01-9bff-4000bcc360cb` | `019fb7f1-3d91-7a42-bc79-43d4b26bf570` | implementation complete, persistent audit active |
-| Frontend | `019fb7cf-7581-7230-9c9f-7a88483b80af` | `019fb7f1-4164-7003-a5c0-5e109ee82074` | implementation complete, 2/2 PASS, persistent audit active |
-| Tester | `019fb7d7-3fc2-7be3-ae12-77594d92f0b6` | `019fb7f1-26cf-75c0-9b01-69e5e2f5cc4d` | tests complete, persistent audit active |
-| E2E Tester | `019fb7d6-ce10-7cc2-aafe-616426ac3595` | `019fb7f1-4bbf-75d2-9279-d8dedede56c5` | scaffold/support complete, persistent audit active |
-| DevOps | `019fb7cd-4958-79c0-86b9-b3d76fb80e04` | `019fb7f1-486d-7041-ba96-8ed0119fc97f` | gate/checklist complete, persistent audit active |
-| MATLAB Researcher | `019fb7d3-32b4-77a0-bfa2-14f4d72dd983` | same permanent thread | research continues separately |
+- Никакого нового endpoint: `measurements` является additive частью каждого
+  authoritative state snapshot и относится к текущему selected visible signal.
+- Exact shape: `state_revision`, `signal_name`, `ordinate`, `units`, `items`.
+  `items` — ordered array `minimum`, `maximum`, `mean`; mean имеет
+  `time_s=null`, `sample_index=null`.
+- Источник — полный raw signal до plot downsampling. Real ordinate использует
+  real component, complex — magnitude. Extrema выбирают первый tie; API index
+  zero-based, `time_s=sample_index/sample_rate_hz`.
+- Base/Statistics допустимы. Peaks, `findpeaks`, settings и per-display
+  membership исключены из P0; peaks переходят в Cascade 4 с обязательной
+  публичной EngeeDSP/domain функцией.
+- В нижней зоне frontend добавляет локальные вкладки `Сигналы`/`Измерения`;
+  settings sidebar остаётся settings, switch вкладки не меняет revision.
+- E2E обязан обеспечить достаточное timing logging и по логам анализировать
+  performance, hangs, retries и уместность timeout. Реализацию, размещение и
+  формат логов выбирает E2E Tester; material issue даёт evidence-backed handoff.
+
+## Persistent role heartbeat — 2026-07-31
+
+| Canonical role | Persistent agent ID | Current task | Next queued task | Blocker | Last handoff/status |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `019fb7f1-3d91-7a42-bc79-43d4b26bf570` | Cascade 4 read-only `findpeaks` contract sidecar | integrate Tester findings | none | Cascade 3 exact snapshot implementation complete; parse/probes PASS |
+| Frontend | `019fb7f1-4164-7003-a5c0-5e109ee82074` | correct P0 `items` array consumption | Cascade 4 peaks UI contract | exact-array correction active | first P0 handoff rejected for object/array mismatch |
+| Tester | `019fb7f1-26cf-75c0-9b01-69e5e2f5cc4d` | replace stale provisional tests with exact P0 array contract | Cascade 4 Engee `findpeaks` contract matrix | exact-shape correction active | interrupted draft rejected for canceled nested shape |
+| E2E Tester | `019fb7f1-4bbf-75d2-9279-d8dedede56c5` | snapshot-only P0 scenario plus timing logging | Cascade 4 scenario design | runtime waits for deployed P0 later | implementation active |
+| DevOps | `019fb7f1-486d-7041-ba96-8ed0119fc97f` | completed standby | authorized devhub startup reproduction | explicit authorization/deployed SHA required | suspected startup triage handoff complete |
+| MATLAB Researcher | `019fb7d3-32b4-77a0-bfa2-14f4d72dd983` | Cycle 4 | next bounded observed delta | none reported | Cycles 2/3 handed off |
 
 ## Verification
 
@@ -56,10 +76,8 @@ Architecture checkpoint: `98d6cd8`
 
 ## Acceptance status
 
-Implementation and local product contracts are complete. Final acceptance still
-requires a target containing the second cascade, runtime visibility E2E, and an
-EngeeDSP-enabled contract run. Commit, push and deployment of product/test
-changes are intentionally outside this agent flow.
+Cascade 2 is deployed and runtime-verified at product SHA `2eba776`; test-only
+HEAD was `f9ff77e`. Cascade 3 P0 is uncommitted, not verified and not deployed.
 
 EngeeDSP ambiguity is not an unconditional second-deploy blocker: on the same
 target, deployment may proceed only after the UUID/preload/import and target
@@ -86,6 +104,14 @@ independent selection/display membership/active display, disabled multi-signal
 Time-Frequency/Persistence and duplicate import overwrite prompt. Only the
 final guard command has complete per-command screenshot evidence; next bounded
 cycle is active.
+
+## Dated runtime correction 2026-07-31 — Cascade 2 complete
+
+Prod at `2eba776` remained healthy with `devel=false`; full E2E 7/7 passed.
+Local Plotly returned 200, completed in 8232 ms with 469541 encoded bytes,
+issued no CDN request, produced four ready hosts and left zero visible
+placeholders. SA-VIS-07 passed and final UI state was restored. This supersedes
+the earlier pending-runtime wording in this mutable active task.
 
 ## Durable handoffs
 

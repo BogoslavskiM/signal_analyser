@@ -28,11 +28,47 @@ mutable struct SignalAnalyserViewState
     selected_signal::String
 end
 
+mutable struct SignalAnalyserDisplayState
+    id::String
+    name::String
+    active_plot::SignalAnalyserPlot
+    selected_signal::String
+    visible_signals::Vector{String}
+end
+
 mutable struct SignalAnalyserState
     signals::Vector{AnalysedSignal}
     view::SignalAnalyserViewState
+    displays::Vector{SignalAnalyserDisplayState}
+    active_display_id::String
+    next_display_number::Int
     plot_cache::Dict{String,Dict{String,Any}}
     lock::ReentrantLock
+end
+
+function SignalAnalyserState(
+    signals::Vector{AnalysedSignal},
+    view::SignalAnalyserViewState,
+    plot_cache::Dict{String,Dict{String,Any}},
+    lock::ReentrantLock,
+)
+    visible_signals = [signal.name for signal in signals if signal.visible]
+    display = SignalAnalyserDisplayState(
+        "display-1",
+        "Display 1",
+        view.active_plot,
+        view.selected_signal,
+        visible_signals,
+    )
+    SignalAnalyserState(
+        signals,
+        view,
+        SignalAnalyserDisplayState[display],
+        display.id,
+        2,
+        plot_cache,
+        lock,
+    )
 end
 
 struct SignalAnalyserValidationError <: Exception

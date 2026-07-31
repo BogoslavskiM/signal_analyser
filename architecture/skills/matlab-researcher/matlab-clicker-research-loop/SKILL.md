@@ -1,6 +1,6 @@
 ---
 name: matlab-clicker-research-loop
-version: 0.3.0
+version: 0.4.0
 ---
 # MATLAB Clicker Research Loop
 
@@ -68,6 +68,22 @@ version: 0.3.0
 - Если visual verification не подтверждает ожидаемый state transition, action
   не считается успешным; зафиксируй observed result и повторяй только после
   проверки координат/состояния.
+
+## Bounded GUI Hypothesis Loop
+
+1. Каждая GUI hypothesis получает bounded attempt budget: по умолчанию не более
+   трёх осмысленных попыток.
+2. После каждого действия визуально сравни фактическое состояние с ожидаемым.
+3. Если состояние не меняется либо чередуются те же окна/экраны без нового
+   evidence, немедленно прекрати GUI mutation. Не повторяй click, hotkey или
+   drag.
+4. Проверь `matlab_clicker status`/health и сохрани ссылку на последнюю
+   подтверждённую screenshot/evidence. При down/stale PID сначала восстанови
+   server и заново выполни bootstrap; не кликай через недостоверное состояние.
+5. Для fullscreen или empty layout cell допустима одна безопасная попытка
+   вернуться к последнему подтверждённому app/display state. Если она не
+   помогла, не перебирай пустые cells: сохрани partial scenario, отправь
+   Architect postmortem/blocker и перейди в standby либо к новой bounded задаче.
 
 ## Research Loop
 1. В MATLAB используй только workspace/Command Window и Signal Analyzer app.
@@ -165,6 +181,11 @@ required_human_change:
 - Double-click и drag-and-drop выполняются только нативными mouse primitives с
   удержанием/системным timing и обязательной visual verification; click-click
   и медленные single-click substitutes запрещены.
+- GUI hypothesis ограничена bounded attempt budget (по умолчанию максимум три
+  осмысленные попытки), visual comparison после каждого действия и немедленной
+  остановкой повторяющегося mutation loop без нового evidence. Down/stale
+  clicker восстанавливается до bootstrap; fullscreen/empty cell получает одну
+  safe recovery attempt, затем partial scenario и blocker handoff.
 - Не пиши тесты и не сравнивай MATLAB с Genie.
 - Не создавай отдельную coverage matrix: покрытие фиксируют сохранённые сценарии
   и явный список блокеров.

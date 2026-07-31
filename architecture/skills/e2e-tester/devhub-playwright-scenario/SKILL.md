@@ -1,6 +1,6 @@
 ---
 name: devhub-playwright-scenario
-version: 1.5.0
+version: 1.7.0
 ---
 # Devhub Playwright Scenario
 
@@ -98,6 +98,14 @@ browser_workspace_setup
 - Не используй fixed sleep как основную синхронизацию. Короткий локальный sleep
   допустим только для известного debounce, animation или wheel settling.
 - Timeout назначай конкретной операции, а не группе несвязанных шагов.
+
+## Performance Analysis
+
+В ходе сценариев обязательно обеспечь достаточное временное timing logging и
+по этим логам анализируй производительность, зависания, retries и уместность
+timeout. Сам выбирай техническую реализацию, размещение и формат логов под
+контекст. При значимой проблеме передай Architect evidence-backed handoff. Не
+задавай универсальный обязательный набор метрик или фиксированные пороги.
 
 ## Bounded Retries
 Retry допустим только для доказанно переходного browser/devhub события:

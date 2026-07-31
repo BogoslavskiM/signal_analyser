@@ -4,6 +4,14 @@ const { DEFAULT_TIMEOUT, testIdSelector, waitForAppReady } = require("./app_page
 
 const VIEW_TIMEOUT = 30000;
 const PLOTS = ["time", "spectrum", "spectrogram", "persistence"];
+function performanceLog(log, label, elapsedMs, warningMs, outcome) {
+  const emit = typeof log === "function" ? log : console.log;
+  const hasWarning = Number.isFinite(warningMs);
+  const status = hasWarning && elapsedMs > warningMs ? "PERF_BUDGET_EXCEEDED" : "PERF";
+  const warning = hasWarning ? `; warning ${warningMs}ms` : "";
+  emit(`${status} ${label}: ${elapsedMs}ms (${outcome || "ok"}${warning})`);
+  return elapsedMs;
+}
 
 function signalConfig(config) {
   if (!config || !config.app || !config.app.testIds) {
@@ -56,6 +64,30 @@ function plotHostByName(page, config, plot) {
   return page.locator(testIdSelector(`${testIds(config).plotHostPrefix}${plot}`));
 }
 
+function measurementsConfig(config) {
+  const measurements = testIds(config).measurements;
+  if (!measurements || typeof measurements !== "object") {
+    throw new Error("Missing Signal Analyser measurements test id contract");
+  }
+  return measurements;
+}
+
+function measurementLocator(page, config, name) {
+  const id = measurementsConfig(config)[name];
+  if (typeof id !== "string") {
+    throw new Error(`Missing Signal Analyser measurements test id: ${name}`);
+  }
+  return page.locator(testIdSelector(id));
+}
+
+function measurementRow(page, config, statistic) {
+  const id = measurementsConfig(config).rows && measurementsConfig(config).rows[statistic];
+  if (typeof id !== "string") {
+    throw new Error(`Missing Signal Analyser measurements row test id: ${statistic}`);
+  }
+  return page.locator(testIdSelector(id));
+}
+
 function endpointMatches(response, endpoint, method) {
   const matchesPath = function (pathname) {
     if (pathname === endpoint) return true;
@@ -79,6 +111,38 @@ function waitForApi(page, config, endpoint, method) {
   }, { timeout: VIEW_TIMEOUT });
 }
 
+async function waitForTimedApi(page, config, endpoint, method, log, label, warningMs) {
+  const startedAt = Date.now();
+  try {
+    const response = await waitForApi(page, config, endpoint, method);
+    performanceLog(log, `${label} ${method} ${endpoint}`, Date.now() - startedAt, warningMs,
+      `HTTP ${response.status()}`);
+    return response;
+  } catch (error) {
+    performanceLog(log, `${label} ${method} ${endpoint}`, Date.now() - startedAt, warningMs,
+      `hang/failure: ${error && error.message ? error.message : error}`);
+    throw error;
+  }
+}
+
+async function responseJson(response, label) {
+  try {
+    return await response.json();
+  } catch (error) {
+    throw new Error(`${label} response is not JSON: ${error.message}`);
+  }
+}
+
+function stateRevisionFromPayload(payload, label) {
+  const direct = payload && payload.state_revision;
+  const nested = payload && payload.state && payload.state.state_revision;
+  const revision = Number.isInteger(direct) ? direct : nested;
+  if (!Number.isInteger(revision)) {
+    throw new Error(`${label} response must expose integer state_revision`);
+  }
+  return revision;
+}
+
 async function assertOkResponse(response, label) {
   if (!response.ok()) {
     let body = "";
@@ -100,7 +164,7 @@ async function waitForSettled(page, config) {
 }
 
 async function clickAndWaitForView(page, config, locator, log, label) {
-  const responsePromise = waitForApi(page, config, signalConfig(config).api.view, "POST");
+  const responsePromise = waitForTimedApi(page, config, signalConfig(config).api.view, "POST", log, label);
   await locator.click({ timeout: VIEW_TIMEOUT });
   const response = await responsePromise;
   await assertOkResponse(response, `${label} /api/view`);
@@ -110,7 +174,7 @@ async function clickAndWaitForView(page, config, locator, log, label) {
 }
 
 async function setCheckboxAndWaitForView(page, config, locator, checked, log, label) {
-  const responsePromise = waitForApi(page, config, signalConfig(config).api.view, "POST");
+  const responsePromise = waitForTimedApi(page, config, signalConfig(config).api.view, "POST", log, label);
   await locator.setChecked(checked, { timeout: VIEW_TIMEOUT });
   const response = await responsePromise;
   await assertOkResponse(response, `${label} /api/view`);
@@ -205,20 +269,28 @@ async function plotSignature(card) {
   });
 }
 
-async function waitForPlotlyReady(page, config, plots) {
+async function waitForPlotlyReady(page, config, plots, log, warningMs) {
   const names = plots || PLOTS;
   for (const plot of names) {
+    const startedAt = Date.now();
     const host = plotHostByName(page, config, plot);
-    await host.waitFor({ state: "visible", timeout: VIEW_TIMEOUT });
-    await page.waitForFunction(function (selector) {
-      const element = document.querySelector(selector);
-      const traces = element && (Array.isArray(element.data) ? element.data :
-        Array.isArray(element._fullData) ? element._fullData : []);
-      return Boolean(element && element.isConnected &&
-        element.classList.contains("js-plotly-plot") &&
-        element.getAttribute("data-plot-ready") === "true" &&
-        traces.length > 0);
-    }, testIdSelector(`${testIds(config).plotHostPrefix}${plot}`), { timeout: VIEW_TIMEOUT });
+    try {
+      await host.waitFor({ state: "visible", timeout: VIEW_TIMEOUT });
+      await page.waitForFunction(function (selector) {
+        const element = document.querySelector(selector);
+        const traces = element && (Array.isArray(element.data) ? element.data :
+          Array.isArray(element._fullData) ? element._fullData : []);
+        return Boolean(element && element.isConnected &&
+          element.classList.contains("js-plotly-plot") &&
+          element.getAttribute("data-plot-ready") === "true" &&
+          traces.length > 0);
+      }, testIdSelector(`${testIds(config).plotHostPrefix}${plot}`), { timeout: VIEW_TIMEOUT });
+      performanceLog(log, `${plot} Plotly ready/render`, Date.now() - startedAt, warningMs, "ready");
+    } catch (error) {
+      performanceLog(log, `${plot} Plotly ready/render`, Date.now() - startedAt, warningMs,
+        `hang/failure: ${error && error.message ? error.message : error}`);
+      throw error;
+    }
   }
 }
 
@@ -368,6 +440,57 @@ function assertSelectedHeatmap(assert, signature, selectedName, label) {
     `${label} heatmap trace must belong to selected visible signal ${selectedName}`);
 }
 
+async function measurementTableState(page, config) {
+  const table = measurementLocator(page, config, "table");
+  const rows = measurementsConfig(config).rows;
+  await table.waitFor({ state: "visible", timeout: VIEW_TIMEOUT });
+  return table.evaluate(function (element, rowIds) {
+    const rowElements = Object.entries(rowIds).map(function (entry) {
+      return [entry[0], element.querySelector(`[data-testid="${entry[1]}"]`)];
+    });
+    const headers = Array.prototype.slice.call(element.querySelectorAll("th")).map(function (node) {
+      return (node.textContent || "").trim();
+    }).filter(Boolean);
+    const scopeNodes = Array.prototype.slice.call(element.querySelectorAll("[data-signal], [data-selected-signal]"));
+    return {
+      ariaLabel: element.getAttribute("aria-label") || "",
+      caption: element.querySelector("caption") && (element.querySelector("caption").textContent || "").trim() || "",
+      headers,
+      id: element.getAttribute("data-testid") || "",
+      rows: rowElements.map(function (entry) {
+        const row = entry[1];
+        if (!row) return { statistic: entry[0], id: "", signal: "", text: "", values: [] };
+        const cells = Array.prototype.slice.call(row.querySelectorAll("th, td")).map(function (cell) {
+          return (cell.textContent || "").trim();
+        }).filter(Boolean);
+        return {
+          statistic: entry[0],
+          id: row.getAttribute("data-testid") || "",
+          signal: row.getAttribute("data-signal") || row.getAttribute("data-selected-signal") || "",
+          text: (row.textContent || "").replace(/\s+/g, " ").trim(),
+          values: cells,
+        };
+      }),
+      scopeSignals: scopeNodes.map(function (node) {
+        return node.getAttribute("data-signal") || node.getAttribute("data-selected-signal") || "";
+      }).filter(Boolean),
+      selectedSignal: element.getAttribute("data-selected-signal") || element.getAttribute("data-signal") || "",
+      text: (element.textContent || "").replace(/\s+/g, " ").trim(),
+    };
+  }, rows);
+}
+
+async function measurementSnapshotState(page, config) {
+  const panel = measurementLocator(page, config, "panel");
+  const signalName = measurementLocator(page, config, "signalName");
+  await panel.waitFor({ state: "visible", timeout: VIEW_TIMEOUT });
+  return {
+    panelText: (await panel.innerText()).replace(/\s+/g, " ").trim(),
+    signalName: (await signalName.innerText()).replace(/\s+/g, " ").trim(),
+    table: await measurementTableState(page, config),
+  };
+}
+
 async function selectedRowId(page, config) {
   const states = signalConfig(config).selectedState;
   const rows = signalRows(page, config);
@@ -452,17 +575,25 @@ module.exports = {
   endpointMatches,
   logDiagnosticState,
   markPlotHosts,
+  measurementLocator,
+  measurementRow,
+  measurementSnapshotState,
+  measurementTableState,
   namedTestId,
   plotHostByName,
   plotHost,
   plotSignature,
+  responseJson,
   selectedRowId,
   setCheckboxAndWaitForView,
   signalRows,
   signalRowsState,
+  stateRevisionFromPayload,
   testIds,
   visibilityCheckboxes,
   waitForApi,
+  waitForTimedApi,
   waitForPlotlyReady,
   waitForSettled,
+  performanceLog,
 };

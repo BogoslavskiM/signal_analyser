@@ -29,10 +29,15 @@ Every role record keeps:
 - `agent_id_or_session`
 - `status`
 - `current_task`
+- `next_queued_task`
+- `blocker_or_no_eligible_work`
 - `last_handoff`
 
 Every material handoff also records `goal`, `scope`, `contracts`, `changes`,
 `verification`, `risks` and `follow-ups`.
+Handoff также содержит `next_task_candidates`. E2E material performance issue
+дополняется evidence-backed `performance_evidence`; конкретную технику timing
+logging выбирает E2E Tester.
 
 ## Role records
 

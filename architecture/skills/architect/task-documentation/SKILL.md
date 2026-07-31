@@ -1,6 +1,6 @@
 ---
 name: task-documentation
-version: 1.0.0
+version: 1.1.0
 ---
 # Task Documentation
 
@@ -34,6 +34,9 @@ version: 1.0.0
    `architecture/documentation/agents/handoff/`.
 2. После material handoff синхронизируй internal task/backlog/report, не
    дожидаясь integration review.
+   В том же orchestration cycle перенеси `next_task_candidates` в rolling queue
+   роли и назначь следующую eligible задачу либо зафиксируй точный blocker,
+   dependency или `no-eligible-work` в persistent registry.
 3. Клиентский текущий контракт веди в `user/specifications/`; математику — в
    `user/specifications/mathematics/`.
 4. Для решения создай ADR в `user/decisions/` с `id`, `date`, `status`,
@@ -51,6 +54,11 @@ version: 1.0.0
 9. Client-relevant ephemeral evidence перенеси до DoD в
    `user/assets/<category>/` либо замени ссылкой на durable repo file. Добавь
    date/source/provenance/license/hash и regeneration command where relevant.
+10. Для E2E требуется достаточное временное timing logging и основанный на нём
+    анализ performance, hangs, retries и уместности timeout. E2E Tester выбирает
+    техническую реализацию, размещение и формат логов; при значимой проблеме
+    Architect сохраняет evidence-backed handoff. Универсальный набор метрик и
+    фиксированные пороги не предписываются.
 
 ## Mathematics Policy
 
@@ -63,6 +71,15 @@ version: 1.0.0
 - Backend и MATLAB Researcher предоставляют source evidence; Architect
   сопоставляет его с кодом/tests и утверждает текст. Ни одна роль не придумывает
   математику.
+- Base/Statistics допустимы для базовой агрегации: min/max/mean, индексов
+  экстремумов, перевода индекса во время и простой формулы dB. Эти операции не
+  требуют EngeeDSP только ради библиотечного вызова, но выполняются по
+  authoritative raw samples, а не по downsampled plot payload.
+- Для специализированных MATLAB-toolbox аналогов (`findpeaks`, `pspectrum`,
+  spectrogram, persistence, filters/windows/coherence и подобных) используй
+  доказанную публичную Engee/domain функцию. Не подменяй её hand-rolled
+  реализацией. Missing/broken функция создаёт Engee bug candidate и требует
+  явного workaround ADR с тестами; silent fallback запрещён.
 - Facts, inferences и ambiguities маркируются отдельно. Screenshot не считается
   точным numeric oracle.
 
@@ -93,6 +110,9 @@ traceability, dated history/report, internal task/backlog/handoff и Engee bug
 registry/intake при наличии evidence. Отдельно фиксируются implemented,
 verified и deployed status. Client docs не должны оставлять `/tmp`,
 `/private/tmp`, user-specific absolute или ephemeral artifact links.
+Перед docs freeze Architect проверяет rolling queue всех persistent roles:
+каждая роль имеет meaningful current/next task либо точную причину blocker,
+dependency или `no-eligible-work`; parallel lanes не сериализуются документами.
 
 ## Documenter Decision
 

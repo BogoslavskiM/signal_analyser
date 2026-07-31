@@ -4,10 +4,11 @@ Internal durable handoff record.
 
 canonical_role: Tester  
 agent_id_or_session: `019fb7f1-26cf-75c0-9b01-69e5e2f5cc4d`  
-status: persistent audit active  
-current_task: audit durable unit/API/static/behavior handoff  
-last_handoff: implementation `019fb7d7-3fc2-7be3-ae12-77594d92f0b6`;
-ephemeral review `019fb7e8-0dbd-7661-90ed-43df55f0a719`
+status: active correction
+current_task: exact Cascade 3 P0 snapshot array tests
+next_queued_task: Cascade 4 Engee `findpeaks` contract matrix
+blocker_or_no_eligible_work: stale provisional nested shape must be removed
+last_handoff: Cascade 2 full local gate 289/289 and frontend 2/2
 
 Earlier ephemeral threads became unavailable after completion. Future Tester
 work must resume the persistent canonical ID above.
@@ -37,3 +38,12 @@ UMD `moduleName` normalization, local-first behavior and CDN fallback. Required
 success evidence: four render definitions/ready hosts, no visible placeholder,
 and no CDN request when local load succeeds. Until this handoff returns PASS,
 delivery remains implemented-only.
+
+## Cascade 3 P0 test correction — 2026-07-31
+
+The endpoint/peaks and nested `signal/samples/statistics` drafts are rejected.
+The accepted test surface is the exact additive snapshot `measurements` object
+with ordered `items` array, raw-sample proof beyond the 1024 plot bound,
+real/magnitude behavior, first ties, zero-based time/index and no endpoint or
+peaks placeholder. Base/Statistics is valid for this slice. Specialized
+`findpeaks` tests are queued for Cascade 4 only.

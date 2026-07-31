@@ -7,6 +7,23 @@ Owner: Architect
 
 ## Functional follow-ups
 
+### Cascade 3/4 rolling queue — 2026-07-31
+
+1. Gate Cascade 3 P0 exact snapshot raw statistics: Backend → Frontend array
+   alignment, full backend/frontend suites, Playwright contract, then runtime
+   only after a product commit/deploy handoff.
+2. Cascade 4: define peaks as a specialized EngeeDSP
+   `Functions.findpeaks` contract. Do not add endpoint/state shape or fallback
+   before actual signature/default/error evidence and contract tests.
+3. Later additive slice: display-local Normalize Y, global markers/cursors and
+   dependent controls.
+4. Separate architecture slice: fixed four display IDs with per-display
+   membership and transactional single-signal heatmap constraints; no
+   multi-layout and no reinterpretation of deployed v2 global visibility.
+5. E2E continuously uses sufficient timing logging and analyzes performance,
+   hangs, retries and timeout suitability; instrumentation details remain
+   contextual.
+
 1. Commit/push/deploy current product and test diff through the main flow, then
    run `visibility_cascade` against that target.
 2. Confirm in runtime that time/spectrum trace names, colors and legends match

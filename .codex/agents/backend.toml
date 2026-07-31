@@ -80,4 +80,13 @@ branch/SHA, minimal safe reproduction, expected/actual/frequency, exact errors,
 artifacts, impact, isolation, workaround and regression link. Do not classify
 it confirmed without isolation. Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
+
+For numerical work, Base/Statistics is acceptable for min/max/mean, extrema
+indices, index-to-time conversion and simple dB formulas, computed from the
+authoritative raw samples rather than downsampled plot payloads. Specialized
+MATLAB-toolbox analogues such as `findpeaks`, `pspectrum`, spectrogram,
+persistence, filters/windows/coherence must call a proven public Engee/domain
+function. If that function is missing or broken, report an Engee bug candidate
+and require an explicit tested workaround decision; never add a silent
+hand-rolled replacement. Include `next_task_candidates` in every handoff.
 """

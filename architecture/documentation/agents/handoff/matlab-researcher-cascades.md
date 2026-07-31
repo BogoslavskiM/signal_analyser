@@ -89,3 +89,14 @@ e2e_scenarios: Add SA-UI-001-derived independence checks, selected-only
 heatmaps, multi-visible Time/Spectrum and duplicate-name behavior when product
 import exists. Exact MATLAB evidence paths are pending relay from the role
 thread.
+
+## Safety loop correction — 2026-07-31
+
+current_task guard: Each GUI hypothesis has a default maximum of three
+meaningful attempts. After every action compare actual and expected visual
+state. Stop all repeated click/hotkey/drag mutation when state is unchanged or
+the same screens alternate without new evidence. Check clicker status/health
+and preserve the last confirmed screenshot; recover and bootstrap a down/stale
+server before clicks. Fullscreen/empty cell gets one safe recovery, then save a
+partial scenario and send Architect a postmortem/blocker before standby or a
+new bounded task. Add-On Explorer and Command Window guards are unchanged.

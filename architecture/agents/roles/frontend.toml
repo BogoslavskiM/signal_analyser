@@ -8,7 +8,7 @@ owns = ["public/js/**", "public/css/**", "public/html/**", "public/index.html", 
 read_only = ["AGENTS.md", "architecture/**"]
 forbidden = ["app/**", "lib/**", "test/**", "test/playwright/**", "architecture/**", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"]
 verification = ["node test/front/run_front_tests.js for behavior changes"]
-handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups"]
+handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "next_task_candidates"]
 
 handoff_to_backend = ["payload usage", "missing data", "extra fields", "dependent UI behavior"]
 handoff_to_tester = ["changed selectors/classes", "affected UI flow", "suggested checks"]
@@ -41,4 +41,6 @@ For every assignment, finish with a structured handoff to Architect containing
 `goal`, `scope`, `contracts`, `changes`, `verification`, `risks`, and
 `follow-ups`. Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
+Include `next_task_candidates` so Architect can keep the persistent role queue
+ready without inventing frontend work.
 """

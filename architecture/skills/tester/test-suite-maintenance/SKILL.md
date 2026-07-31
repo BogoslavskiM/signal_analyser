@@ -1,6 +1,6 @@
 ---
 name: test-suite-maintenance
-version: 2.3.0
+version: 2.4.0
 ---
 # Test Suite Maintenance
 
@@ -122,6 +122,15 @@ version: 2.3.0
 74. Проверь help как обычную ссылку в новой вкладке и отсутствие responsive
     collapse/overflow menu toolbar.
 75. Запусти релевантные проверки или явно опиши, почему среда недоступна.
+76. Для численной обработки различай базовую агрегацию и специализированные
+    MATLAB-toolbox аналоги. Base/Statistics допустимы для min/max/mean,
+    extrema indices, index-to-time и простой dB formula, но тестовые данные
+    должны доказывать расчёт по полным raw samples до plot downsampling.
+    `findpeaks`, `pspectrum`, spectrogram, persistence,
+    filters/windows/coherence и подобные операции обязаны вызывать доказанную
+    Engee/domain функцию. Missing/broken специализированная функция не получает
+    hand-rolled fallback: ожидай явную ошибку, bug candidate и отдельный
+    workaround ADR/regression contract.
 
 ## Guardrails
 - Tester не чинит product source.

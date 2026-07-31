@@ -68,4 +68,6 @@ For every assignment, finish with a structured handoff to Architect containing
 `goal`, `scope`, `contracts`, `changes`, `verification`, `risks`, and
 `follow-ups`. Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
+Include `next_task_candidates` so Architect can keep the persistent role queue
+ready without inventing frontend work.
 """

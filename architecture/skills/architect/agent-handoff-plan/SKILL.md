@@ -1,6 +1,6 @@
 ---
 name: agent-handoff-plan
-version: 0.8.0
+version: 0.9.0
 ---
 # Agent Handoff Plan
 
@@ -23,7 +23,8 @@ version: 0.8.0
 6. Опиши acceptance: что должно быть истинно после выполнения.
 7. Укажи verification commands для роли.
 8. Потребуй итоговый структурированный handoff с полями `goal`, `scope`,
-   `contracts`, `changes`, `verification`, `risks`, `follow-ups`.
+   `contracts`, `changes`, `verification`, `risks`, `follow-ups`,
+   `next_task_candidates`.
 9. Укажи risks и ожидаемые follow-up, если агент найдёт проблему вне своей
    зоны.
 10. Architect сохраняет постановку и каждый материальный результат в
@@ -49,6 +50,34 @@ version: 0.8.0
    чтобы координацию можно было восстановить после остановки.
 7. Не создавай искусственные пустые сообщения, heartbeat spam или fake-running
    loops. Открытого completed thread достаточно для standby.
+
+## Проверяемая Anti-idle Orchestration
+1. Для каждой persistent role веди rolling queue: текущая задача и следующая
+   eligible задача должны быть известны до завершения текущей, когда backlog и
+   dependencies это позволяют.
+2. После каждого completed/handoff в том же orchestration cycle либо отправь в
+   тот же role ID meaningful next task через `send_input`/`resume_agent`, либо
+   запиши в registry точную причину `blocker`, `dependency` или
+   `no-eligible-work`. Не оставляй необъяснённый idle.
+3. Documentation, deployment, E2E, commit/freeze и MATLAB research являются
+   параллельными lanes и не могут сериализовать planning/assignment остальных
+   ролей.
+4. Каждый material MATLAB/docs/test/prod handoff сразу преобразуй в task
+   candidates и backlog; не жди завершения всего research или каскада.
+5. При blocked critical path назначай независимые sidecars без дублирования:
+   next-contract design, test matrix, bug triage, evidence promotion,
+   performance/security review.
+6. На каждом cascade/deploy/test milestone публикуй heartbeat/status matrix:
+   canonical role + agent ID/session, active task, next queued task, blocker и
+   last handoff.
+7. Fake-running loops, пустые сообщения и работа без проверяемого результата
+   запрещены. Полезная работа либо честный completed standby с причиной.
+8. Перед docs freeze или другой долгой задачей Architect проверяет, что все
+   доступные роли назначены либо registry содержит точный blocker/dependency/
+   no-eligible-work reason.
+9. После restart сначала bootstrap durable registry, затем resume тех же
+   canonical role IDs. Новый ID допустим только при доказанной недоступности
+   старого и фиксируется как замена.
 
 ## Guardrails
 - Не отдавай одному агенту задачу, которая требует редактировать чужой ownership.
@@ -130,6 +159,7 @@ changes:
 verification:
 risks:
 follow-ups:
+next_task_candidates:
 source_evidence:
 engee_bug_candidate: optional
 files_or_folders:

@@ -74,4 +74,13 @@ versions/SHA, minimal safe reproduction, repeat, exact error/stack, artifacts,
 impact, isolation from app/test/config/network, workaround and regression test;
 unresolved isolation remains suspected. Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
+
+Accept Base/Statistics for basic min/max/mean, extrema indices, index-to-time
+conversion and simple dB formulas, but prove they use full raw samples before
+plot downsampling. Require proven public Engee/domain calls for specialized
+MATLAB-toolbox analogues including `findpeaks`, `pspectrum`, spectrogram,
+persistence, filters/windows/coherence. Missing or broken specialized
+functions must not be hidden by hand-rolled fallback; require explicit error,
+bug candidate and tested workaround decision. Include `next_task_candidates`
+in every handoff.
 """
