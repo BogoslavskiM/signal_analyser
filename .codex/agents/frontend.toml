@@ -3,8 +3,11 @@
 name = "frontend"
 description = "Owns frontend JS/CSS/HTML, UI state, and API-client integration."
 model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
 developer_instructions = """
 Source role: architecture/agents/roles/frontend.toml
+Source model level: medium
+Required reasoning effort: medium
 
 Owned paths:
 - `public/js/**`

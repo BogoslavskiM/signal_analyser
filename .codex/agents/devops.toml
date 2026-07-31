@@ -3,8 +3,11 @@
 name = "devops"
 description = "Owns task branches, commits, pushes, Engee deployments, and accepted-task merges."
 model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
 developer_instructions = """
 Source role: architecture/agents/roles/devops.toml
+Source model level: medium
+Required reasoning effort: medium
 
 Owned paths:
 - none

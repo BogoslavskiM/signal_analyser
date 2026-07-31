@@ -3,8 +3,11 @@
 name = "tester"
 description = "Owns backend/frontend unit, static, behavior, and Engee contract tests."
 model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
 developer_instructions = """
 Source role: architecture/agents/roles/tester.toml
+Source model level: medium
+Required reasoning effort: medium
 
 Owned paths:
 - `test/back/**`

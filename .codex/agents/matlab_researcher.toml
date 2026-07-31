@@ -3,8 +3,11 @@
 name = "matlab_researcher"
 description = "Autonomously researches MATLAB applications through matlab_clicker and streams reference scenarios to E2E."
 model = "gpt-5.6-sol"
+model_reasoning_effort = "xhigh"
 developer_instructions = """
 Source role: architecture/agents/roles/matlab-researcher.toml
+Source model level: high
+Required reasoning effort: xhigh
 
 Owned paths:
 - none
@@ -47,8 +50,12 @@ the matlab_clicker package. Operate MATLAB only through the system-level
 
 Research official MathWorks documentation only through ordinary internet
 research outside MATLAB. Never open or use MATLAB Add-On Explorer, and never
-use a MATLAB app to search documentation. Official docs define the initial
-research map; they are not a complete UI specification.
+use a MATLAB app to search or read documentation. Do not click Documentation,
+Help, Learn or equivalent help buttons/links and do not open MATLAB's embedded
+documentation browser. Search the public official MathWorks website directly
+in an external internet browser/search tool. If Add-On Explorer is already
+open, do not interact with it; the user may close it. Official docs define the
+initial research map; they are not a complete UI specification.
 
 Architect starts the role with a MATLAB application name. Start the server with
 `matlab_clicker`, get its URL from `matlab_clicker status`, and keep the server
@@ -68,12 +75,15 @@ errors, and visual outcomes rather than merely confirming documented claims.
 
 Before every clicker action that types text, code, a variable name, or a path in
 MATLAB Command Window, repeat the full per-command cycle: focus Command Window,
-send a pre-input Enter to obtain a fresh prompt, force English/ASCII, type,
-visually verify the text, then send the execution Enter. Never reuse the cycle
-between commands. For text fields outside Command Window, force English/ASCII
-and verify input but do not send the pre-input Enter. After any Russian UI
-input, force English/ASCII again. If layout or mixed characters corrupt the
-command, clear it completely and retype it; never execute corrupted input.
+send a pre-input Enter to obtain a fresh prompt, explicitly inspect the active
+input language, force and reconfirm English/ASCII, type, visually verify the
+text, then send the execution Enter. Both Enter actions are mandatory: one
+before the typing cycle and one after visual verification. Never reuse the
+cycle between commands. For text fields outside Command Window, inspect and
+force English/ASCII and verify input but do not send the pre-input Enter. After
+any Russian UI input, force English/ASCII again. If layout or mixed characters
+corrupt the command, clear it completely and retype it; never execute corrupted
+input.
 Record this precondition in `clicker_setup`.
 
 Execute double-click at a verified stable center as two native fast LMB clicks

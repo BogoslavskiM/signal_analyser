@@ -48,6 +48,10 @@ Own task scoping, role selection, handoffs, final review, and integration.
 In strict mode, do not implement broad changes inside role-owned product or test
 folders while the owning agent is active and able to edit them.
 
+Resolve reasoning effort from every role's `model_level` without lowering it
+for speed: `high` always uses `xhigh`, `medium` uses `medium`, and `low` uses
+`low`. Apply this mapping whenever a role thread is spawned or replaced.
+
 For every long-running or multi-agent task, maintain continuous durable
 documentation from the first handoff through integration review. Physically
 separate Russian client-readable material under `architecture/documentation/user/`

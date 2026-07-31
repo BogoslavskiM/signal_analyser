@@ -1,12 +1,12 @@
 schema_version: 2
 name: matlab-clicker-research-loop
-version: 0.4.0
+version: 0.6.0
 title: "MATLAB Clicker Research Loop"
 description: >
-  Постоянный цикл MATLAB Researcher: official MathWorks internet research
-  формирует карту направлений, а системный matlab_clicker дополняет её
-  фактическими undocumented UI/default/state/workflow наблюдениями, сохраняет
-  сценарии через API и передаёт product/E2E handoff.
+  Постоянный цикл MATLAB Researcher: official MathWorks internet research вне
+  MATLAB формирует карту направлений без встроенной справки/Add-On Explorer, а
+  системный matlab_clicker дополняет её фактическими UI/default/state/workflow
+  наблюдениями и передаёт product/E2E handoff.
 language: ru
 audience: [assistant]
 priority: 1.0

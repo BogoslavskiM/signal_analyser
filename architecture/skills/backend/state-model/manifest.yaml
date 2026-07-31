@@ -1,6 +1,6 @@
 schema_version: 2
 name: state-model
-version: 2.0.0
+version: 2.1.0
 title: "Backend State Model"
 description: >
   Backend skill для создания inspector-style state model: stable object ids,

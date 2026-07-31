@@ -56,6 +56,12 @@ documentation_agents_path = "architecture/documentation/agents/**"
 documentation_audience_boundary = "physical-user-agents-split-with-cross-links"
 skills_path = "architecture/skills/**"
 
+[model_selection]
+reasoning_effort_policy = "match-model-level"
+high_reasoning_effort = "xhigh"
+medium_reasoning_effort = "medium"
+low_reasoning_effort = "low"
+
 [[roles]]
 name = "architect"
 file = "architecture/agents/roles/architect.toml"

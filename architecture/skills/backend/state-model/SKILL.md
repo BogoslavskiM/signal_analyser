@@ -17,6 +17,9 @@ name: state-model
 - Моделируй только domain/view capabilities, выбранные в blueprint.
 - Используй typed Julia structures и stable ids для изменяемых сущностей.
 - Не помещай runtime resources в persistent state.
+- Строй backend object/domain-oriented: aggregate root владеет изменяемым
+  состоянием и инвариантами, domain operations принимают typed objects, а
+  application service координирует use case без присвоения себе domain logic.
 
 ## Optional Capabilities
 - `state.inspector` — object map/order/main/selection/table payload.
@@ -66,6 +69,10 @@ name: state-model
 - Предпочитай typed Julia structs и enums для domain settings.
 - Используй полиморфизм, когда варианты реально имеют разное поведение.
 - Не плодить типы ради косметических отличий или одного поля.
+- Не разносить один aggregate по десяткам свободных mutation helpers вокруг
+  global state. Поведение, меняющее объект и проверяющее его инварианты, должно
+  быть сгруппировано вокруг domain type/service boundary и тестироваться через
+  его публичные operations.
 - Не используй изменяемое имя как единственный идентификатор объекта.
 - Не добавляй backend-фильтрацию без пагинации, большого набора данных или явного требования.
 - Не держи business logic в HTTP routes.

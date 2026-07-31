@@ -3,7 +3,6 @@ import Statistics
 const SIGNAL_ANALYSER_VIEW_FIELDS = Set(["state_revision", "active_plot", "selected_signal", "visible_signals"])
 const SIGNAL_ANALYSER_DISPLAY_FIELDS = Set(["state_revision", "operation", "display_id"])
 const SIGNAL_ANALYSER_DISPLAY_OPERATIONS = Set(["create", "select", "close"])
-const SIGNAL_ANALYSER_MAX_DISPLAYS = 4
 
 function signal_analyser_signal_payload(signal::AnalysedSignal)::Dict{String,Any}
     Dict{String,Any}(
@@ -474,8 +473,6 @@ function validate_signal_analyser_display_payload(
     display_id = nothing
     if operation == "create"
         has_display_id && (field_errors["display_id"] = "Поле не допускается для create")
-        length(state.displays) < SIGNAL_ANALYSER_MAX_DISPLAYS ||
-            (field_errors["operation"] = "Достигнут лимит из $SIGNAL_ANALYSER_MAX_DISPLAYS Display")
     elseif operation == "select" || operation == "close"
         if !has_display_id || !(display_id_value isa AbstractString) || isempty(String(display_id_value))
             field_errors["display_id"] = "Требуется непустой идентификатор Display"
@@ -545,7 +542,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 if display.id != requested.display_id
             ]
             next_active_display = if closing_active_display
-                remaining_displays[min(close_index, length(remaining_displays))]
+                remaining_displays[max(1, close_index - 1)]
             else
                 signal_analyser_active_display(state)
             end

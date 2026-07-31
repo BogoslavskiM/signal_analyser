@@ -13,14 +13,19 @@ name: matlab-clicker-research-loop
 
 ## Official Documentation Research Map
 1. До clicker-исследования найди релевантные official MathWorks pages через
-   обычный internet research вне MATLAB. Используй official docs как primary
-   source и сохрани прямые URL в `docs_sources`.
-2. Никогда не открывай и не используй MATLAB Add-On Explorer. MATLAB app не
-   является инструментом поиска документации.
-3. Преобразуй документацию в `documented_direction`: список заявленных
+   обычный internet search/browser вне MATLAB непосредственно на официальном
+   сайте MathWorks. Используй official docs как primary source и сохрани прямые
+   URL в `docs_sources`.
+2. Для поиска или чтения документации запрещено нажимать в MATLAB кнопки
+   `Documentation`, `Help`, `Learn`, ссылки справки и любые аналогичные UI
+   controls. Не открывай встроенный documentation browser MATLAB.
+3. Никогда не открывай и не используй MATLAB Add-On Explorer. Если он уже
+   открыт, не взаимодействуй с ним; пользователь может закрыть его. MATLAB app
+   не является инструментом поиска документации.
+4. Преобразуй документацию в `documented_direction`: список заявленных
    workflows, операций, представлений, ограничений и вопросов, которые должен
    проверить clicker. Это research map, а не исчерпывающая спецификация UI.
-4. После каждого существенного clicker handoff уточняй internet research map,
+5. После каждого существенного clicker handoff уточняй internet research map,
    если фактическое приложение открыло новый workflow или термин. Цикл docs ->
    clicker -> delta -> новые product/tests tasks является постоянным.
 
@@ -40,9 +45,12 @@ name: matlab-clicker-research-loop
 
 ## Keyboard Layout Precondition
 1. Для каждой отдельной команды Command Window заново выполни полный цикл:
-   focus Command Window -> pre-input Enter для получения fresh prompt ->
-   принудительный English/ASCII -> type -> visual verification набранной строки
-   -> execution Enter. Цикл нельзя переиспользовать между командами.
+   focus Command Window -> pre-input Enter для получения fresh prompt -> явно
+   проверь текущий язык ввода -> при необходимости переключи и повторно
+   подтверди English/ASCII -> type -> visual verification набранной строки ->
+   execution Enter. Оба Enter обязательны: один непосредственно перед циклом
+   ввода, второй только после визуальной проверки команды. Цикл нельзя
+   переиспользовать между командами.
 2. Для text fields вне Command Window pre-input Enter не выполняй: перед каждым
    text/name/path input установи English/ASCII, набери и визуально проверь текст,
    затем используй штатное действие поля.
@@ -169,14 +177,18 @@ required_human_change:
 - Только один MATLAB Researcher изменяет MATLAB GUI.
 - Остальные агенты могут работать параллельно.
 - Никогда не открывай и не используй MATLAB Add-On Explorer.
-- Документацию ищи только обычным internet research вне MATLAB.
+- Документацию ищи только обычным internet search/browser вне MATLAB на
+  официальном сайте MathWorks. Не нажимай в MATLAB `Documentation`, `Help`,
+  `Learn` или другие кнопки/ссылки справки и не используй встроенный
+  documentation browser.
 - В MATLAB clicker ограничен workspace/Command Window и Signal Analyzer app.
 - English/ASCII layout и проверка набранного текста до Enter обязательны для
   каждого command/name/path input; повреждённый ввод очищается и набирается
   заново.
 - Каждая Command Window команда начинает новый focus -> pre-input Enter ->
-  English/ASCII -> type -> verify -> execution Enter цикл. В text fields вне
-  Command Window pre-input Enter не используется.
+  явная проверка языка -> подтверждённый English/ASCII -> type -> verify ->
+  execution Enter цикл. Не пропускай ни Enter до ввода, ни Enter после
+  проверки. В text fields вне Command Window pre-input Enter не используется.
 - Double-click и drag-and-drop выполняются только нативными mouse primitives с
   удержанием/системным timing и обязательной visual verification; click-click
   и медленные single-click substitutes запрещены.

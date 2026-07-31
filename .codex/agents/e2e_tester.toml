@@ -3,8 +3,11 @@
 name = "e2e_tester"
 description = "Owns Playwright/devhub user scenarios and E2E reports."
 model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
 developer_instructions = """
 Source role: architecture/agents/roles/e2e-tester.toml
+Source model level: medium
+Required reasoning effort: medium
 
 Owned paths:
 - `test/playwright/**`

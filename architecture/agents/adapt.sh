@@ -87,6 +87,21 @@ workflow_value() {
   ' "$MANIFEST_PATH"
 }
 
+model_selection_value() {
+  local key="$1"
+  awk -v key="$key" '
+    /^\[model_selection\]/ { in_model_selection = 1; next }
+    /^\[/ && in_model_selection { exit }
+    in_model_selection && $0 ~ "^" key " = " {
+      sub("^" key " = ", "")
+      gsub(/^"/, "")
+      gsub(/"$/, "")
+      print
+      exit
+    }
+  ' "$MANIFEST_PATH"
+}
+
 toml_array_line() {
   local file="$1"
   local key="$2"
@@ -167,6 +182,27 @@ model_for_adapter() {
   esac
 }
 
+reasoning_for_level() {
+  local level="$1"
+  local reasoning
+
+  case "$level" in
+    high|medium|low)
+      reasoning="$(model_selection_value "${level}_reasoning_effort")"
+      ;;
+    *)
+      echo "No reasoning-effort mapping for model level '$level'." >&2
+      return 1
+      ;;
+  esac
+
+  if [[ -z "$reasoning" ]]; then
+    echo "Manifest has no reasoning effort for model level '$level'." >&2
+    return 1
+  fi
+  printf '%s\n' "$reasoning"
+}
+
 model_binding_for_adapter() {
   case "$1" in
     codex|claude|gemini) printf '%s\n' "native" ;;
@@ -187,6 +223,7 @@ validate_role_models() {
       return 1
     fi
     model_for_adapter "$selected" "$level" >/dev/null
+    reasoning_for_level "$level" >/dev/null
   done
 }
 
@@ -249,22 +286,23 @@ role_summary_markdown() {
   cat <<'EOF'
 ## Roles
 
-| Role | Model level | Resolved model | Owns | Read-only | Forbidden |
-| --- | --- | --- | --- | --- | --- |
+| Role | Model level | Reasoning effort | Resolved model | Owns | Read-only | Forbidden |
+| --- | --- | --- | --- | --- | --- | --- |
 EOF
 
-  local file name model_level model owns read_only forbidden
+  local file name model_level reasoning model owns read_only forbidden
   for file in "${ROLE_FILES[@]}"; do
     name="$(toml_value "$file" name)"
     model_level="$(toml_value "$file" model_level)"
+    reasoning="$(reasoning_for_level "$model_level")"
     model="$(model_for_adapter "$selected" "$model_level")"
     owns="$(toml_array_line "$file" owns)"
     read_only="$(toml_array_line "$file" read_only)"
     forbidden="$(toml_array_line "$file" forbidden)"
     [[ -z "$read_only" ]] && read_only="[]"
     [[ -z "$forbidden" ]] && forbidden="[]"
-    printf '| `%s` | `%s` | `%s` | %s | %s | %s |\n' \
-      "$name" "$model_level" "$model" "$owns" "$read_only" "$forbidden"
+    printf '| `%s` | `%s` | `%s` | `%s` | %s | %s | %s |\n' \
+      "$name" "$model_level" "$reasoning" "$model" "$owns" "$read_only" "$forbidden"
   done
 }
 
@@ -318,6 +356,7 @@ $(bootstrap_markdown)
 - Reporting: \`$(workflow_value reporting)\`
 - Handoff policy: \`$(workflow_value handoff_policy)\`
 - Strict boundaries: \`$(toml_bool_value "$MANIFEST_PATH" strict_boundaries)\`
+- Reasoning policy: \`high -> $(reasoning_for_level high)\`, \`medium -> $(reasoning_for_level medium)\`, \`low -> $(reasoning_for_level low)\`
 
 ## Agent Identity
 
@@ -336,11 +375,12 @@ EOF
 role_markdown() {
   local file="$1"
   local selected="$2"
-  local name label description model_level model binding
+  local name label description model_level reasoning model binding
   name="$(toml_value "$file" name)"
   label="$(toml_value "$file" label)"
   description="$(toml_value "$file" description)"
   model_level="$(toml_value "$file" model_level)"
+  reasoning="$(reasoning_for_level "$model_level")"
   model="$(model_for_adapter "$selected" "$model_level")"
   binding="$(model_binding_for_adapter "$selected")"
 
@@ -376,6 +416,7 @@ $description
 ## Model
 
 - Source level: \`$model_level\`
+- Reasoning effort: \`$reasoning\`
 - Resolved model for $(adapter_tool "$selected"): \`$model\`
 - Binding: \`$binding\`
 
@@ -426,11 +467,12 @@ EOF
 role_toml() {
   local file="$1"
   local selected="$2"
-  local name label description model_level model
+  local name label description model_level reasoning model
   name="$(toml_value "$file" name)"
   label="$(toml_value "$file" label)"
   description="$(toml_value "$file" description | sed 's/"/\\"/g')"
   model_level="$(toml_value "$file" model_level)"
+  reasoning="$(reasoning_for_level "$model_level")"
   model="$(model_for_adapter "$selected" "$model_level")"
 
   cat <<EOF
@@ -439,8 +481,11 @@ role_toml() {
 name = "$name"
 description = "$description"
 model = "$model"
+model_reasoning_effort = "$reasoning"
 developer_instructions = """
 Source role: $(rel "$file")
+Source model level: $model_level
+Required reasoning effort: $reasoning
 
 Owned paths:
 $(toml_array_markdown "$file" owns)

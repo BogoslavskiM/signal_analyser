@@ -34,6 +34,7 @@ bash architecture/agents/adapt.sh --adapter=codex
 - Reporting: `chat-first`
 - Handoff policy: `handoff-instead-of-crossing-boundaries`
 - Strict boundaries: `true`
+- Reasoning policy: `high -> xhigh`, `medium -> medium`, `low -> low`
 
 ## Agent Identity
 
@@ -43,15 +44,15 @@ bash architecture/agents/adapt.sh --adapter=codex
 
 ## Roles
 
-| Role | Model level | Resolved model | Owns | Read-only | Forbidden |
-| --- | --- | --- | --- | --- | --- |
-| `architect` | `high` | `gpt-5.6-sol` | ["architecture/**", "docs/**", "AGENTS.md", "CLAUDE.md", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md", "README.md"] | [] | ["app/**", "lib/**", "public/**", "test/back/**", "test/engee/**", "test/front/**", "test/playwright/**"] |
-| `backend` | `high` | `gpt-5.6-sol` | ["app/**", "lib/**", "app.jl", "run.jl", "config/**", "Project.toml"] | ["public/js/api.js", "README.md", "architecture/**"] | ["public/**", "test/**", "test/playwright/**", "architecture/**", "AGENTS.md", "CLAUDE.md", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"] |
-| `frontend` | `medium` | `gpt-5.6-terra` | ["public/js/**", "public/css/**", "public/html/**", "public/index.html", "public/icons/**", "public/fonts/**"] | ["AGENTS.md", "architecture/**"] | ["app/**", "lib/**", "test/**", "test/playwright/**", "architecture/**", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"] |
-| `tester` | `medium` | `gpt-5.6-terra` | ["test/back/**", "test/engee/**", "test/front/**"] | ["AGENTS.md", "architecture/**"] | ["app/**", "lib/**", "public/**", "test/playwright/**", "architecture/**", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"] |
-| `e2e_tester` | `medium` | `gpt-5.6-terra` | ["test/playwright/**"] | ["AGENTS.md", "architecture/**"] | ["app/**", "lib/**", "public/**", "test/back/**", "test/engee/**", "test/front/**", "architecture/**", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"] |
-| `devops` | `medium` | `gpt-5.6-terra` | [] | ["**"] | ["app/**", "lib/**", "public/**", "test/**", "architecture/**", "app.jl", "config/**", "Project.toml", "Manifest.toml"] |
-| `matlab_researcher` | `high` | `gpt-5.6-sol` | [] | ["**"] | ["app/**", "lib/**", "public/**", "test/**", "architecture/**", "app.jl", "config/**", "Project.toml", "Manifest.toml"] |
+| Role | Model level | Reasoning effort | Resolved model | Owns | Read-only | Forbidden |
+| --- | --- | --- | --- | --- | --- | --- |
+| `architect` | `high` | `xhigh` | `gpt-5.6-sol` | ["architecture/**", "docs/**", "AGENTS.md", "CLAUDE.md", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md", "README.md"] | [] | ["app/**", "lib/**", "public/**", "test/back/**", "test/engee/**", "test/front/**", "test/playwright/**"] |
+| `backend` | `high` | `xhigh` | `gpt-5.6-sol` | ["app/**", "lib/**", "app.jl", "run.jl", "config/**", "Project.toml"] | ["public/js/api.js", "README.md", "architecture/**"] | ["public/**", "test/**", "test/playwright/**", "architecture/**", "AGENTS.md", "CLAUDE.md", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"] |
+| `frontend` | `medium` | `medium` | `gpt-5.6-terra` | ["public/js/**", "public/css/**", "public/html/**", "public/index.html", "public/icons/**", "public/fonts/**"] | ["AGENTS.md", "architecture/**"] | ["app/**", "lib/**", "test/**", "test/playwright/**", "architecture/**", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"] |
+| `tester` | `medium` | `medium` | `gpt-5.6-terra` | ["test/back/**", "test/engee/**", "test/front/**"] | ["AGENTS.md", "architecture/**"] | ["app/**", "lib/**", "public/**", "test/playwright/**", "architecture/**", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"] |
+| `e2e_tester` | `medium` | `medium` | `gpt-5.6-terra` | ["test/playwright/**"] | ["AGENTS.md", "architecture/**"] | ["app/**", "lib/**", "public/**", "test/back/**", "test/engee/**", "test/front/**", "architecture/**", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"] |
+| `devops` | `medium` | `medium` | `gpt-5.6-terra` | [] | ["**"] | ["app/**", "lib/**", "public/**", "test/**", "architecture/**", "app.jl", "config/**", "Project.toml", "Manifest.toml"] |
+| `matlab_researcher` | `high` | `xhigh` | `gpt-5.6-sol` | [] | ["**"] | ["app/**", "lib/**", "public/**", "test/**", "architecture/**", "app.jl", "config/**", "Project.toml", "Manifest.toml"] |
 
 ## Verification Commands
 

@@ -32,6 +32,16 @@ cannot be resolved outside the platform environment.
 Use existing Julia and Genie patterns. Keep behavior changes scoped. For
 documentation-only work, do not change runtime behavior.
 
+Use object/domain-oriented architecture for backend changes. Model stable
+entities, aggregate state and service collaborators as typed Julia structs;
+keep invariants in domain operations dispatched on those types. Application
+services coordinate use cases, adapters own external resources, and HTTP routes
+perform mapping only. Do not grow procedural god-modules, global mutable state,
+or long collections of unrelated free helper functions. Julia multiple
+dispatch is the implementation mechanism, but it must preserve encapsulation,
+single responsibility and explicit object/service boundaries. Do not imitate
+Java class hierarchies when a small typed Julia design is sufficient.
+
 Modes:
 - math mode: formulas, signals, Engee-related calculations, `block_math_*`
 - api/runtime mode: routes, payloads, state, precompute/performance
