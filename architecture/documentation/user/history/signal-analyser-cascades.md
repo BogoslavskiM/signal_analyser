@@ -104,3 +104,26 @@
   `ab87889`. Push/deploy не выполнялись, runtime E2E auth-blocked.
 - Engee reference keyword mismatch `Npeaks`/`NPeaks` зарегистрирован как
   confirmed documentation bug `ENGEE-20260731-002`.
+
+## 2026-07-31 — MATLAB Clear Display delta
+
+- SA-UI-007 observed an active-only Clear Display transition: membership and
+  statistics were removed only from the active display, while inactive plot and
+  global signal inventory survived.
+- MATLAB re-add remained unconfirmed after bounded attempts.
+- Этот delta был принят как основание отдельного state-model Cascade 5; MATLAB
+  re-add не выдаётся за observed behavior.
+
+## 2026-07-31 — Cascade 5 state separation и Clear Display
+
+- `implemented`: global row selection, ordered page membership с допустимым
+  `[]`, nullable page analysis source и legacy nullable selected alias.
+- `implemented`: доступный overflow/Clear, независимые row/member attributes,
+  явные empty states и очистка внутреннего Plotly state без замены graph host.
+- `verified locally`: backend 649/649, frontend 2/2, Playwright
+  syntax/support/runner-help PASS; skills 40/schema 2, vanilla assets и docs
+  structure validators PASS.
+- Local EngeeDSP package gate остаётся environment failure; независимая prod
+  findpeaks matrix 16/16 сохраняет статус PASS.
+- `not deployed`: runtime scenario ждёт authenticated target и отдельное
+  разрешение на внешний push/deploy.

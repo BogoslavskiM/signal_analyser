@@ -78,11 +78,18 @@ Peaks query требует не менее трёх конечных raw samples
 конечны. Typed snapshot согласован с revision, active Display, selected signal
 и capability flag. Любая ошибка проверяется до публикации mutation/cache.
 
+Пустой Display является допустимым UI/domain состоянием, но не математическим
+входом spectral или peak algorithms. Для него `pspectrum` и `findpeaks` не
+вызываются: линии и heatmaps пусты, measurement/peak ordinate и signal name
+равны null, items пусты, а units/schema сохраняются. Первый добавленный member
+снова создаёт analysis source и после полной подготовки публикуется одной
+revision mutation.
+
 ## Verification evidence
 
 - `test/back/lib/signal_analyser_service_test.jl`: orientation, dB conversion,
   finite values, persistence range, plots, multi-trace payload, raw statistics
-  и atomic invalid-selection/Peaks provider regressions; полный gate 553/553
+  и atomic invalid-selection/Peaks provider/Clear regressions; полный gate 649/649
   PASS.
 - `test/engee/engee_package_contract_tests.jl`: реальный contract
   `power`/`spectrogram`/`persistence`, two-sided axes и matrix shapes. Локально

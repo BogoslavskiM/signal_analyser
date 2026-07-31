@@ -92,3 +92,20 @@ matrix 16/16 PASS; diff PASS.
 risks: Prod app path is not runtime-exercised; package and compiled lazy adapter
 were independently verified in prod MIND.
 follow-ups: Runtime E2E on accepted/authenticated deployment.
+
+## Cascade 5 P0 verification — 2026-07-31
+
+goal: Gate independent canonical state fields and the complete empty Display
+lifecycle.
+scope: `test/back/**`, `test/front/**`, `test/engee/**`.
+coverage: Row-only selection, differing valid canonical row/source fields,
+analysis/legacy alias conflicts, canonical fallback, Clear/no-op/stale and
+atomicity, typed empty payloads, zero provider calls, recovery, inactive page
+preservation and seeded new Display. Front coverage includes accessible menu,
+payload, separate DOM state, empty panels and Plotly purge without host
+replacement.
+verification: Backend 649/649 PASS; frontend 2/2 PASS; diff PASS. Direct
+findpeaks evidence matrix remains 16/16 PASS. Required local Engee package gate
+fails because EngeeDSP is not installed and is not represented as skipped.
+risks: Engee-enabled target gate and runtime UI remain external prerequisites.
+follow-ups: Rerun the same contracts on an accepted deployed target.

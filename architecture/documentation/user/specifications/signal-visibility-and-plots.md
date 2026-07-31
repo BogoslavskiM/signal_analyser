@@ -5,16 +5,20 @@
 
 ## Интерфейс
 
-- Таблица содержит русские checkbox управления видимостью.
-- Click по строке выбирает сигнал; click по checkbox не запускает выбор строки.
-- Видимым остаётся минимум один сигнал.
+- Таблица содержит русские checkbox управления membership активного Display.
+- Click по строке всегда меняет global row selection; если строка входит в
+  активный Display, она также становится analysis source. Click по checkbox не
+  запускает выбор строки.
+- Membership активного Display может быть пустым. Clear Display не удаляет
+  global inventory, row selection или состояние неактивных страниц.
 - Time и Spectrum отображают отдельный цветной trace каждого видимого сигнала
   и легенду.
-- Spectrogram и Persistence относятся к выбранному видимому сигналу.
+- Spectrogram и Persistence относятся к page-local analysis source.
 - Можно добавлять, выбирать и закрывать Display pages; на активной странице
   расположен один график. MATLAB docking/multi-layout пока не переносится.
-- Тип графика, selected signal и checkbox membership принадлежат активной
-  Display page и восстанавливаются при возврате на неё.
+- Тип графика, nullable analysis source и checkbox membership принадлежат
+  активной Display page и восстанавливаются при возврате на неё. Row selection
+  глобален и от страницы не зависит.
 - После готовности Plotly не виден текст `Подготовка графика…`.
 - Plotly `3.1.0` загружается только из vendored cartesian dist; runtime CDN
   fallback запрещён. При local failure показывается стабильное error state.
@@ -23,16 +27,28 @@
   При успехе открывается локальная вкладка Peaks с backend-provided table и
   marker trace. Переход на другой тип графика выключает Peaks; thresholds,
   sorting, settings и Label Peaks в текущий срез не входят.
+- Overflow menu активного Display содержит доступное действие Clear Display.
+  Пустая страница показывает явные empty states графика, Measurements и Peaks;
+  тот же graph host сохраняется, а stale Plotly traces очищаются.
 
 ## Revision-safe API
 
-`POST /api/view` принимает целый `state_revision` и атомарное полное множество
-`visible_signals`; дополнительно допустимы `selected_signal` и `active_plot`.
-Массив видимости непустой, состоит из уникальных известных строк. При попытке
-скрыть selected backend детерминированно выбирает первый видимый сигнал в
-каноническом порядке таблицы. Additive boolean `peaks_enabled` управляет
-time-domain Peaks; новый endpoint не создаётся. Stale revision или provider
-failure не меняют state.
+`POST /api/view` принимает целый `state_revision` и атомарное полное ordered
+множество `visible_signals`, включая `[]`; дополнительно допустимы
+`row_selected_signal`, nullable `analysis_signal`, legacy nullable
+`selected_signal` и `active_plot`. Canonical row/analysis fields независимы;
+одновременные analysis/legacy aliases обязаны совпадать. У непустого Display
+analysis source входит в membership; после его удаления backend выбирает
+первый remaining member в каноническом порядке. Первый re-add в пустой Display
+становится source. Additive boolean `peaks_enabled` управляет time-domain Peaks;
+Clear всегда выключает его. Новый endpoint не создаётся. Stale revision,
+validation или provider failure не меняют state.
+
+Snapshot добавляет non-null `row_selected_signal`, nullable root
+`analysis_signal` и `displays[].analysis_signal`; root/display
+`selected_signal` остаётся совместимым alias. Пустой Display возвращает пустые
+typed plots/panel и Measurements/Peaks с прежними keys/units, null source и
+`items=[]`, не вызывая `pspectrum`/`findpeaks`.
 
 Authoritative snapshot всегда содержит `peaks` с полями `enabled`,
 `state_revision`, `display_id`, `signal_name`, `ordinate`, `units`, `items`.
@@ -78,7 +94,8 @@ minimum `-2` в `12 s`, maximum `3` в `5 s`, расчётный oracle mean р�
 - `lib/services/signal_analyser_service.jl`: lazy EngeeDSP adapter, zero-based
   mapping, Peaks payload и atomic view/display preparation.
 - `lib/domain/signal_analyser_state.jl`: `SignalAnalyserDisplayState` и typed
-  `SignalMeasurementsSnapshot` invariants.
+  `GlobalSignalSelection`, `SignalDisplayMembership`, explicit analysis source
+  и nullable `SignalMeasurementsSnapshot`/`SignalPeaksSnapshot` invariants.
 - `public/js/app.js`: Display queue/revision mutation, local bottom tabs,
   measurement rows и Plotly rendering.
 - `public/js/vendor/plotly-cartesian-3.1.0.min.js`: vendored official npm
@@ -90,9 +107,11 @@ minimum `-2` в `12 s`, maximum `3` в `5 s`, расчётный oracle mean р�
 - `test/playwright/specs/signal_analyser/display_pages.test.js`,
   `measurements_statistics.test.js`, `plotly_local_delivery.test.js`: syntax и
   support PASS; `peaks_p0.test.js` добавляет revision/scope/table/marker
+  contract; `clear_display.test.js` добавляет Clear/re-add/state-separation
   contract. Runtime требует authenticated target.
 
 Связано с [DEC-20260731-009](../decisions/DEC-20260731-009-display-pages.md),
 [DEC-20260731-010](../decisions/DEC-20260731-010-local-only-plotly.md) и
-[DEC-20260731-011](../decisions/DEC-20260731-011-lazy-engeedsp-peaks.md) и
+[DEC-20260731-011](../decisions/DEC-20260731-011-lazy-engeedsp-peaks.md),
+[DEC-20260731-012](../decisions/DEC-20260731-012-display-selection-separation.md) и
 [traceability](../traceability/signal-analyser-cascades.md).

@@ -189,3 +189,45 @@ risks: MATLAB grid does not directly specify product page add/remove/rename or
 active fallback semantics.
 next_task_candidates: SA-UI-007 clears active membership, proves other display
 and inventory preservation, then re-adds and verifies recovery.
+
+## Autonomous cycle 2 saved partial scenario SA-UI-007 — 2026-07-31
+
+goal: Prove active-display-only clear and preservation boundaries, with bounded
+recovery attempts.
+system_path: `/Users/makar/work/matlab_clicker/research_output/signal-analyzer-reference-scenarios/scenarios/SA-UI-007-active-display-clear-preservation.md`.
+sha256: `330b48c08f88e647e7fed2b5a73f23de7bca4b792e3042bb7946918236788c7b`.
+docs_sources: Official MathWorks `select-signals-to-analyze`, `explore-signals`
+and `customize-signal-analyzer`; exact Clear Display transition is not stated.
+clicker_setup: Healthy server after bootstrap refresh, existing PID, exclusive
+mouse/restore and screenshot after every action. No Command Window text was
+entered; one generic Right key was misrouted to a fresh prompt which stayed
+empty.
+observed_undocumented_behavior: One Clear Display action emptied only active
+top-left plot, unchecked its membership and removed its statistics rows. The
+inactive top-right plot, both imported timetable parents and all workspace
+variables remained.
+portable_behavior: Clear current page removes active-page memberships and
+page-local measurement context without deleting global signals or inactive
+pages.
+uncertainty: Primary re-add was not confirmed after bounded click,
+double-click and keyboard attempts; mutations stopped. Recovery is a proposed
+product contract, not a MATLAB-observed claim.
+product_delta: Current product forbids an empty visible set and forces selected
+signal into membership. SA-UI-006/007 show that MATLAB row selection,
+active-page membership and active measurement source can remain separate. This
+requires a future explicit state-model cascade, not a silent P0 change.
+matlab_layout_specific: Grid, toolbar placement and tree hit areas are excluded.
+next_task_candidates: SA-UI-008 Time Limits locality/linkage; future typed
+selection/membership/analysis-source design and Clear Display contract.
+
+## Architect consumption of SA-UI-007 — 2026-07-31
+
+status: consumed by Cascade 5 and DEC-012.
+product_result: Global row selection, empty per-Display membership, nullable
+analysis source and active-only Clear are implemented at product/test checkpoint
+`8d480ac`. First re-add behavior is explicitly identified as a deterministic
+product decision because MATLAB recovery was unconfirmed.
+verification: Backend 649/649, frontend 2/2 and Clear Display Playwright
+syntax/support/runner-help PASS. Runtime remains undeployed.
+next_task: SA-UI-008 Time Limits locality/linkage continues independently; do
+not reopen Add-On Explorer or use in-app documentation.

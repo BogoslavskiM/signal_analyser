@@ -14,4 +14,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260731-009: страницы Display с одним графиком](DEC-20260731-009-display-pages.md)
 - [DEC-20260731-010: локальная Plotly без CDN](DEC-20260731-010-local-only-plotly.md)
 - [DEC-20260731-011: lazy per-Display EngeeDSP Peaks](DEC-20260731-011-lazy-engeedsp-peaks.md)
+- [DEC-20260731-012: разделение row selection, Display membership и analysis source](DEC-20260731-012-display-selection-separation.md)
 - [Шаблон ADR](template.md)

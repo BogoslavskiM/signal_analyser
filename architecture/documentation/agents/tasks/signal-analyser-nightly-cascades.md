@@ -3,7 +3,7 @@
 > Внутренняя active-task запись. Клиентский статус опубликован в
 > [`../../user/reports/`](../../user/reports/README.md).
 
-Status: active-cascade-4-p0-autonomous-cycle-2
+Status: active-cascade-5-p0-autonomous-cycle-2
 Owner: Architect  
 Branch: `neuro_signal_analyser_cascade`  
 Architecture checkpoint: local Cascade 4 documentation checkpoint (see git history)
@@ -83,6 +83,44 @@ multi-layout editor.
 - Не входят в P0: thresholds, sorting, NPeaks, x/Fs modes, width reference,
   persistent settings, Label Peaks toggle и MATLAB grid/docking.
 
+## Contract пятого каскада P0 state separation/Clear Display — 2026-07-31
+
+- Evidence SA-UI-006/007 разделяет global row selection, membership активного
+  Display и page analysis source. MATLAB re-add не подтверждён; его поведение
+  ниже является явным детерминированным product decision.
+- Typed model: non-null global `row_selected_signal`; ordered per-Display
+  membership, допускающий `[]`; nullable per-Display `analysis_signal`, который
+  отсутствует только у пустого Display и иначе обязан входить в membership.
+- Backward compatibility: root/displays `selected_signal` сохраняется как
+  nullable legacy alias `analysis_signal`. Snapshot добавляет root
+  `row_selected_signal`, root `analysis_signal` и
+  `displays[].analysis_signal`. `signals` остаётся global inventory; его
+  `visible` — projection membership активной страницы.
+- `/api/view` остаётся единственным view mutation endpoint и принимает additive
+  `row_selected_signal` и nullable `analysis_signal`; legacy `selected_signal`
+  принимается как alias. Одновременные aliases обязаны совпадать.
+  `visible_signals=[]` является Clear Display; новый endpoint не создаётся.
+- Row click всегда меняет global row selection; если row является member
+  активного Display, тот же request также делает его analysis source. Click
+  nonmember row не меняет plot/measurements/peaks source.
+- Удаление текущего source при оставшихся members выбирает первый member в
+  global canonical order. Clear устанавливает source null и выключает Peaks.
+  Добавление первого signal в пустой Display делает его source и оставляет
+  Peaks выключенным. Новый Display по-прежнему создаётся со всеми signals и
+  первым canonical source.
+- Empty Display не вызывает `pspectrum`/`findpeaks`: time/spectrum traces пусты,
+  heatmaps/panel имеют typed empty state; measurements/peaks сохраняют keys и
+  units, но `signal_name=null`, `ordinate=null`, `items=[]`, Peaks disabled.
+  Global inventory, row selection и inactive Displays не меняются.
+- Frontend добавляет accessible overflow menu `clear-display-action`, один
+  existing graph host с page-scoped empty state и раздельные selected/membership
+  accessibility attributes. Clear обратим через checkbox и не требует modal.
+- Каждая фактическая row/membership/source/plot/Peaks mutation увеличивает общую
+  revision один раз; no-op Clear не увеличивает. Все outputs будущего state
+  готовятся до atomic publication; stale/provider/DSP error ничего не меняет.
+- Не входят: MATLAB grid/docking, rename/reorder pages и интерпретация
+  unconfirmed MATLAB re-add как observed behavior.
+
 ## Persistent role heartbeat — 2026-07-31
 
 | Canonical role | Persistent agent ID | Current task | Next queued task | Blocker | Last handoff/status |
@@ -103,28 +141,29 @@ replacement-thread на каноническую роль.
 
 | Canonical role | Replacement session | Current task | Next queued task | Blocker | Last handoff/status |
 | --- | --- | --- | --- | --- | --- |
-| Backend | `/root/backend_cycle` | completed standby | extended Peaks settings only after new accepted scope | none | typed lazy Engee provider and atomic C4 implementation; backend 553/553 |
-| Frontend | `/root/frontend_cycle` | completed standby | runtime Peaks corrections if evidence fails | authenticated deployed target | Time-only action/table/markers and rollback complete; front 2/2 |
-| Tester | `/root/tester_cycle` | completed standby | rerun after new product/research handoff | none | backend 553/553; front 2/2; Engee matrix 16/16 |
-| E2E Tester | `/root/e2e_cycle` | completed standby | run Peaks scenario on authenticated deployed target | canonical URL redirects to login; retained PTY required | Peaks syntax/support contract complete; no runtime product spec run |
-| DevOps | `/root/devops_cycle` | completed standby | push accepted local commits after explicit payload/destination approval | external transmission approval | product C4 checkpoint `d9fbcd9`; no deploy/merge |
-| MATLAB Researcher | `/root/matlab_cycle` | SA-UI-007 active membership clear/recovery | next bounded observed delta | none | SA-UI-006 saved; page-scoped checkbox/measurement restoration and selection independence confirmed |
+| Backend | `/root/backend_cycle` | completed standby | audit next frozen domain/API delta | none | C5 typed selection/membership/source and empty payloads; backend 649/649 |
+| Frontend | `/root/frontend_cycle` | completed standby | runtime Clear corrections if evidence fails | authenticated deployed target | accessible Clear, state separation and no-stale empty host; front 2/2 |
+| Tester | `/root/tester_cycle` | completed standby | rerun after next product/research handoff | local EngeeDSP unavailable | backend 649/649; front 2/2; Engee matrix 16/16 |
+| E2E Tester | `/root/e2e_cycle` | completed standby | run Clear/Peaks scenarios on authenticated deployed target | canonical URL redirects to login; retained PTY required | Clear syntax/support contract complete; no runtime product spec run |
+| DevOps | `/root/devops_cycle` | completed standby | documentation checkpoint; later authorized push | external transmission approval | product C5 checkpoint `8d480ac`; no push/deploy/merge |
+| MATLAB Researcher | `/root/matlab_cycle` | SA-UI-008 Time Limits locality/linkage | next bounded observed delta | none | SA-UI-007 partial saved; active-only clear/preservation confirmed, re-add unconfirmed |
 
 DevOps gate evidence: branch `neuro_signal_analyser_cascade`, product/test HEAD
-`d9fbcd9`, no product/test changes remain outside the checkpoint, no conflicts,
-upstream divergence `0 behind / 9 ahead`. Architecture documentation remains a
-separate pending checkpoint. Unpushed commits do not block implementation;
+`8d480ac`, no product/test changes remain outside the checkpoint, no conflicts,
+upstream divergence `0 behind / 12 ahead`. Architecture documentation remains
+a separate pending checkpoint. Unpushed commits do not block implementation;
 future checkpoints stage only explicit completed handoff files. No merge into
 `dev` is authorized without a new explicit user acceptance handoff.
 
 ## Verification
 
 - Julia parse changed backend: PASS.
-- Backend: current full gate 553/553 assertions PASS, including typed OOP
-  measurements/Peaks, provider rollback, complex magnitude, page-local scope
-  and atomic invalid-raw selection.
+- Backend: current full gate 649/649 assertions PASS, including typed OOP
+  measurements/Peaks, provider rollback, state separation, empty Display,
+  recovery, inactive preservation and atomic invalid-raw selection.
 - Frontend static/behavior: 2/2 files PASS.
 - E2E support contract and syntax checks: PASS.
+- Cascade 5 Clear Display E2E syntax/support/runner-help: PASS; runtime pending.
 - Runtime E2E: fresh-profile CDP attachment PASS, but canonical target redirects
   to `account/login`; product specs require an authenticated retained PTY/tab.
 - Local EngeeDSP contract: FAIL because `EngeeDSP` is absent in the local
@@ -145,6 +184,11 @@ Cascade 4 Peaks is locally committed as `d9fbcd9` and locally verified by
 backend 553/553, frontend 2/2, Engee matrix 16/16 and Playwright static gates.
 Accessibility/evidence checkpoint is `ab87889`. Neither commit is pushed or
 deployed; runtime Peaks E2E remains authentication/deployment-blocked.
+
+Cascade 5 state separation/Clear Display is locally committed as `8d480ac` and
+verified by backend 649/649, frontend 2/2, Playwright static gates and catalog/
+vanilla/documentation validators. It is not pushed or deployed; runtime Clear
+E2E remains authentication/deployment-blocked.
 
 EngeeDSP ambiguity is not an unconditional second-deploy blocker: on the same
 target, deployment may proceed only after the UUID/preload/import and target
@@ -178,7 +222,14 @@ attempt budget and are not claimed. SA-UI-006 additionally confirms that
 checkbox membership and measurements remap with active display while row
 selection remains independent and inactive-display plots persist. Product
 Display add/close/fallback still follows project contracts, not MATLAB grid.
-SA-UI-007 is active.
+SA-UI-007 is saved; SA-UI-008 is active.
+
+SA-UI-007 then confirmed that Clear Display can leave the active MATLAB display
+with zero memberships while preserving inactive plots and global signal
+inventory; active statistics disappear. Re-add was not confirmed after bounded
+attempts. Cascade 5 now implements the accepted product-model response under
+DEC-012; deterministic first re-add remains a product decision rather than a
+MATLAB-observed claim. SA-UI-008 is active.
 
 ## Dated runtime correction 2026-07-31 — Cascade 2 complete
 

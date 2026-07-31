@@ -151,3 +151,21 @@ PASS. Runtime intentionally not run because canonical target redirects to login.
 risks: Authenticated retained CDP target plus deployed C4 SHA are prerequisites.
 follow-ups: DevOps deployment/auth handoff, then run `peaks_p0` and preserve
 timing/network evidence.
+
+## Cascade 5 Clear Display static contract — 2026-07-31
+
+goal: Prepare deterministic runtime coverage for empty/recovered Display and
+selection separation.
+scope: `test/playwright/**`.
+contracts: Keyboard-accessible menu; exactly one revision-safe Clear request;
+empty active membership/source/Peaks; unchanged global rows/row selection and
+inactive page; zero stale traces; first re-add +1/source/Peaks disabled; member
+versus nonmember row-click behavior.
+changes: Added `clear_display.test.js`, exact overflow and
+`empty-display-*` selectors, feature registration and page-object separation of
+`data-row-selected` from `data-display-membership`.
+verification: All Playwright JS syntax, support contract, runner help and diff
+PASS. Runtime intentionally not run without an authenticated deployed target.
+risks: DOM/Plotly/network behavior is prepared, not yet observed in prod.
+follow-ups: Run `signal_analyser/clear_display` after the exact product SHA is
+available and preserve timing/setup evidence.

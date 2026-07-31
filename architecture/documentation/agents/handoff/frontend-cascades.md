@@ -109,3 +109,25 @@ verification: JS syntax, diff and frontend 2/2 PASS; Tester and Playwright stati
 contracts consume the same selectors.
 risks: Runtime Plotly/DOM evidence awaits authenticated deployed target.
 follow-ups: Runtime C4 E2E; thresholds/settings/Label Peaks remain separate.
+
+## Cascade 5 P0 Clear Display UI — 2026-07-31
+
+goal: Render independent row selection/membership and reversible empty Display
+without adding a second graph host or endpoint.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Canonical `/api/view` payload sends row selection, nullable analysis
+source, ordered membership and Peaks flag. Row click couples source only when
+the row is a member; checkbox does not select the row. Last uncheck/Clear are
+allowed; first re-add is canonicalized by Backend.
+changes: Added accessible overflow menu/Clear action, keyboard focus lifecycle,
+root/row membership attributes and plot/measurement/peak empty states. Empty
+render calls Plotly purge and clears host trace properties while preserving the
+same host element.
+selectors: `display-overflow-trigger`, `display-overflow-menu`,
+`clear-display-action`, `empty-display-plot-state`,
+`empty-display-measurements-state`, `empty-display-peaks-state`,
+`data-row-selected`, `data-display-membership`.
+verification: JS syntax and diff PASS; frontend 2/2 PASS including persistent
+host/no-stale Plotly state.
+risks: Runtime keyboard/Plotly evidence awaits authenticated deployed target.
+follow-ups: Run the prepared Clear Display E2E after authorized deployment.

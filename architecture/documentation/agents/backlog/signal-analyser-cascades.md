@@ -17,9 +17,13 @@ Owner: Architect
    table and backend markers; no endpoint/fallback. Extended settings stay later.
 3. Later additive slice: display-local Normalize Y, global markers/cursors and
    dependent controls.
-4. Display pages with one active graph host and per-display membership are in
+4. Cascade 5 state separation/Clear Display is implemented and committed at
+   `8d480ac`: global row selection, nullable page analysis source, empty
+   membership, deterministic recovery and no-provider empty payloads. Runtime
+   remains pending an authenticated deployed target.
+5. Display pages with one active graph host and per-display membership are in
    `651943d`; arbitrary grid/docking/multi-layout remains out of scope.
-5. E2E continuously uses sufficient timing logging and analyzes performance,
+6. E2E continuously uses sufficient timing logging and analyzes performance,
    hangs, retries and timeout suitability; instrumentation details remain
    contextual.
 
@@ -79,3 +83,7 @@ Owner: Architect
 - SA-UI-006 confirms active-Display checkbox/measurement remapping, inactive
   plot preservation and row-selection independence. Product add/close/fallback
   remains governed by DEC-009 rather than MATLAB grid geometry.
+- SA-UI-007 confirms active-only clear, zero membership, statistics removal and
+  preservation of inactive plots/global inventory. Re-add is unconfirmed.
+- SA-UI-008 Time Limits locality/linkage is active. Product Clear recovery is an
+  explicit DEC-012 decision and is not attributed to unconfirmed MATLAB re-add.

@@ -108,3 +108,25 @@ risks: Runtime application E2E still requires authenticated deployed target;
 extended peak settings remain out of scope.
 follow-ups: Local product checkpoint, documentation, later authorized deploy
 and runtime Peaks scenario.
+
+## Cascade 5 P0 state separation — 2026-07-31
+
+goal: Express independent global row selection, page membership and nullable
+analysis source, including a fully empty active Display.
+scope: `lib/domain/signal_analyser_state.jl` and
+`lib/services/signal_analyser_service.jl`.
+contracts: Snapshot adds non-null `row_selected_signal`, nullable root/display
+`analysis_signal` and nullable legacy `selected_signal`. `/api/view` accepts the
+independent canonical fields and `visible_signals=[]`; only canonical/legacy
+analysis aliases conflict. Empty Display disables Peaks and never invokes
+`pspectrum`/`findpeaks`.
+changes: Added `GlobalSignalSelection`, ordered `SignalDisplayMembership`,
+explicit no/source analysis types, nullable typed measurement/peak snapshots,
+empty plot/panel mappers and atomic view/display lifecycle publication.
+verification: Julia parse/diff PASS; integrated backend 649/649 PASS. Clear,
+no-op/stale, first re-add, source fallback, differing valid canonical fields,
+inactive preservation and seeded page creation are covered.
+risks: Runtime application behavior remains undeployed/authentication-blocked;
+local EngeeDSP package discovery remains unavailable.
+follow-ups: Stand by for runtime/backend defect triage after an authorized
+deployment; do not infer row/source coupling at the API layer.
