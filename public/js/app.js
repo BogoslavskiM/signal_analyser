@@ -1,553 +1,60 @@
 (function signalAnalyserApp(window, document) {
   "use strict";
 
-  var api = window.SignalAnalyserApi;
-  var PLOT_ORDER = ["time", "spectrum", "spectrogram", "persistence"];
-  var PLOT_TITLES = {
-    time: "Время",
-    spectrum: "Спектр",
-    spectrogram: "Спектрограмма",
-    persistence: "Спектр персистентности",
-  };
-  var MEASUREMENT_ROWS = [
-    { id: "minimum", label: "Минимум" },
-    { id: "maximum", label: "Максимум" },
-    { id: "mean", label: "Среднее" },
-  ];
-  var state = null;
-  var intendedView = null;
-  var mutationInFlight = false;
-  var activeBottomTab = "signals";
-  var plotlyPromise = null;
-  var PLOTLY_LOCAL_FILE = "vendor/plotly-cartesian-3.1.0.min.js";
-  var PLOTLY_CDN_URL = "https://cdn.plot.ly/plotly-3.1.0.min.js";
-  var applicationScriptUrl = document.currentScript && document.currentScript.src;
-  var resizeObserver = null;
-  var root = document.querySelector("[data-testid='app-shell']");
-  var loading = document.querySelector("[data-testid='app-loading']");
-  var loadingText = document.querySelector("[data-loading-text]");
-  var errorPanel = document.querySelector("[data-testid='app-error']");
-  var errorText = document.querySelector("[data-error-text]");
+  var api = window.SignalAnalyserApi, PLOTS = ["time", "spectrum", "spectrogram", "persistence"];
+  var TITLES = { time: "Time", spectrum: "Spectrum", spectrogram: "Spectrogram", persistence: "Persistence" };
+  var state = null, displays = [], activeDisplayId = null, activeBottomTab = "signals", displayUi = {};
+  var intentQueue = [], requestInFlight = false, desiredViews = {}, plotlyPromise = null, pendingAction = null;
+  var appScriptUrl = document.currentScript && document.currentScript.src;
+  var host = document.querySelector("[data-testid='active-plot-host']"), root = document.querySelector("[data-testid='app-shell']");
 
-  function isObject(value) { return value && typeof value === "object"; }
-  function escapeHtml(value) {
-    return String(value == null ? "" : value).replace(/[&<>'\"]/g, function (character) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", "\"": "&quot;" }[character];
-    });
+  function object(v) { return v && typeof v === "object"; }
+  function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function(c) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[c]; }); }
+  function testId(value) { return "signal-" + encodeURIComponent(String(value || "signal")).replace(/%/g, "_").replace(/[^A-Za-z0-9_-]/g, function(c) { return "_" + c.charCodeAt(0).toString(16); }); }
+  function names() { return (state && state.signals || []).map(function(s) { return String(s.name || ""); }).filter(Boolean); }
+  function ordered(values) { var wanted = {}; (values || []).forEach(function(v) { wanted[v] = true; }); return names().filter(function(n) { return wanted[n]; }); }
+  function active() { return displays.filter(function(d) { return d.id === activeDisplayId; })[0] || displays[0]; }
+  function normalize(snapshot) {
+    var signals = Array.isArray(snapshot && snapshot.signals) ? snapshot.signals : [];
+    return { state_revision:snapshot && snapshot.state_revision, signals:signals,
+      displays:Array.isArray(snapshot && snapshot.displays) ? snapshot.displays.map(function(d) {
+        var ui = displayUi[String(d.id)] || {};
+        return { id:String(d.id), label:d.name || d.label || "Display", plot:PLOTS.indexOf(d.active_plot) >= 0 ? d.active_plot : "time", visible_signals:Array.isArray(d.visible_signals) ? d.visible_signals : [], selected_signal:d.selected_signal || "", showLegend:ui.showLegend !== undefined ? ui.showLegend : d.show_legend !== false, normalizeY:ui.normalizeY !== undefined ? ui.normalizeY : !!d.normalize_y, showMarkers:ui.showMarkers !== undefined ? ui.showMarkers : !!d.show_markers };
+      }) : [], active_display_id:snapshot && snapshot.active_display_id, plots:object(snapshot && snapshot.plots) ? snapshot.plots : {}, plot_payload:object(snapshot && snapshot.plot_payload) ? snapshot.plot_payload : {}, panel:object(snapshot && snapshot.panel) ? snapshot.panel : {}, measurements:object(snapshot && snapshot.measurements) ? snapshot.measurements : null };
   }
-  function safeName(name) {
-    var normalized = String(name || "").trim().toLowerCase().normalize("NFKD")
-      .replace(/[^a-z0-9_]+/g, "-").replace(/^-+|-+$/g, "");
-    return normalized || ("signal-" + encodeURIComponent(String(name || "unknown")).replace(/[^a-z0-9]/gi, "").toLowerCase());
-  }
-  function signalName(signal) { return String(signal && signal.name || ""); }
-  function signalNames(signals) {
-    return (Array.isArray(signals) ? signals : []).map(signalName).filter(Boolean);
-  }
-  function orderedExistingNames(names, signals) {
-    var requested = {};
-    (Array.isArray(names) ? names : []).forEach(function (name) { if (name) requested[String(name)] = true; });
-    return signalNames(signals).filter(function (name) { return requested[name]; });
-  }
-  function namesFromSnapshot(next) {
-    var direct = Array.isArray(next.visible_signals) ? next.visible_signals
-      : Array.isArray(next.visible_signal_names) ? next.visible_signal_names
-        : Array.isArray(next.visibleSignals) ? next.visibleSignals : null;
-    var signals = Array.isArray(next.signals) ? next.signals : [];
-    var hasVisibility = signals.some(function (signal) { return signal && typeof signal.visible === "boolean"; });
-    var explicit = signals.filter(function (signal) { return signal && signal.visible !== false; }).map(signalName).filter(Boolean);
-    if (direct) return direct;
-    if (hasVisibility) return explicit;
-    return signalNames(signals);
-  }
-  function normalizeVisible(names, signals) {
-    var ordered = orderedExistingNames(names, signals);
-    if (ordered.length) return ordered;
-    var all = signalNames(signals);
-    return all.length ? [all[0]] : [];
-  }
-  function normalizeSelected(selected, visible) {
-    var value = String(selected || "");
-    return visible.indexOf(value) >= 0 ? value : (visible[0] || value);
-  }
-  function normalizeSnapshot(snapshot) {
-    var next = isObject(snapshot) ? snapshot : {};
-    var signals = Array.isArray(next.signals) ? next.signals : [];
-    var hasTopLevelVisible = Array.isArray(next.visible_signals) || Array.isArray(next.visible_signal_names) || Array.isArray(next.visibleSignals);
-    var visible = normalizeVisible(namesFromSnapshot(next), signals);
-    return {
-      state_revision: next.state_revision,
-      visibility_contract: hasTopLevelVisible,
-      active_plot: PLOT_ORDER.indexOf(next.active_plot) >= 0 ? next.active_plot : "time",
-      selected_signal: normalizeSelected(next.selected_signal, visible),
-      visible_signals: visible,
-      signals: signals,
-      plots: isObject(next.plots) ? next.plots : {},
-      plot_payload: isObject(next.plot_payload) ? next.plot_payload : {},
-      measurements: isObject(next.measurements) ? next.measurements : null,
-      panel: isObject(next.panel) ? next.panel : { title: "Параметры отображения", active_plot: "time", fields: [] },
-    };
-  }
-  function showLoading(visible, text) {
-    loading.hidden = !visible;
-    if (text) loadingText.textContent = text;
-    root.setAttribute("aria-busy", visible ? "true" : "false");
-  }
-  function showError(message) {
-    errorText.textContent = message || "Не удалось загрузить данные анализатора.";
-    errorPanel.hidden = false;
-  }
-  function clearError() { errorPanel.hidden = true; errorText.textContent = ""; }
-  function humanError(error) {
-    if (error && error.status === 422) return "Сервер отклонил параметры отображения. Проверьте состояние сигнала.";
-    return "Не удалось синхронизировать состояние анализатора. Повторите попытку.";
-  }
-  function plotlyInstance() {
-    var plotly = window.Plotly;
-    if (!plotly && window.moduleName && typeof window.moduleName.react === "function") {
-      plotly = window.moduleName;
-      window.Plotly = plotly;
-    }
-    return plotly;
-  }
-  function hasPlotly() {
-    var plotly = plotlyInstance();
-    return Boolean(plotly && typeof plotly.react === "function");
-  }
-  function plotlyLocalUrl() {
-    if (applicationScriptUrl && window.URL) return new window.URL(PLOTLY_LOCAL_FILE, applicationScriptUrl).href;
-    return "./js/" + PLOTLY_LOCAL_FILE;
-  }
-  function loadPlotlyScript(url) {
-    return new Promise(function (resolve, reject) {
-      var script = document.createElement("script");
-      script.src = url;
-      script.async = true;
-      script.onload = function () { hasPlotly() ? resolve(window.Plotly) : reject(new Error("Plotly не зарегистрирован")); };
-      script.onerror = function () { reject(new Error("Не удалось загрузить Plotly")); };
-      document.head.appendChild(script);
-    });
-  }
-  function ensurePlotly() {
-    if (hasPlotly()) return Promise.resolve(window.Plotly);
-    if (plotlyPromise) return plotlyPromise;
-    plotlyPromise = loadPlotlyScript(plotlyLocalUrl()).catch(function () {
-      return loadPlotlyScript(PLOTLY_CDN_URL);
-    }).catch(function (error) { plotlyPromise = null; throw error; });
-    return plotlyPromise;
-  }
-  function plotPlaceholder(host, message, error) {
-    clearPlotPlaceholders(host);
-    host.setAttribute("data-plot-ready", "false");
-    host.setAttribute("data-plot-state", error ? "error" : "placeholder");
-    var placeholder = document.createElement("div");
-    placeholder.className = "plot-placeholder" + (error ? " is-error" : "");
-    placeholder.textContent = message;
-    host.appendChild(placeholder);
-  }
-  function clearPlotPlaceholders(host) {
-    if (!host || typeof host.querySelectorAll !== "function") return;
-    Array.prototype.slice.call(host.querySelectorAll(".plot-placeholder")).forEach(function (placeholder) {
-      placeholder.parentNode.removeChild(placeholder);
-    });
-  }
-  function markPlotReady(host) {
-    host.setAttribute("data-plot-ready", "true");
-    host.setAttribute("data-plot-state", "ready");
-  }
-  function signalByName(name) {
-    return (state.signals || []).filter(function (signal) { return signalName(signal) === name; })[0] || {};
-  }
-  function visibleSignals() {
-    return normalizeVisible(state && state.visible_signals, state && state.signals);
-  }
-  function isVisibleSignal(name) {
-    return visibleSignals().indexOf(String(name || "")) >= 0;
-  }
-  function traceSignalName(item) {
-    return String(item && (item.signal || item.signal_name || item.name || item.label) || "");
-  }
-  function seriesFromMap(map, xMap) {
-    if (!isObject(map)) return [];
-    return Object.keys(map).map(function (name) {
-      var value = map[name];
-      if (isObject(value) && (Array.isArray(value.y) || Array.isArray(value.z))) {
-        return Object.assign({ name: name, signal: name }, value);
-      }
-      return { name: name, signal: name, x: isObject(xMap) ? xMap[name] : undefined, y: value };
-    });
-  }
-  function plotSeries(plot) {
-    if (Array.isArray(plot.traces)) return plot.traces;
-    if (Array.isArray(plot.series)) return plot.series;
-    if (Array.isArray(plot.signals)) return plot.signals;
-    if (isObject(plot.signals)) return seriesFromMap(plot.signals, plot.x_by_signal);
-    if (isObject(plot.y_by_signal)) return seriesFromMap(plot.y_by_signal, plot.x_by_signal);
-    if (isObject(plot.z_by_signal)) return seriesFromMap(plot.z_by_signal, plot.x_by_signal);
-    return [];
-  }
-  function isPlotlyTrace(trace) {
-    return isObject(trace) && (trace.type || trace.mode || Array.isArray(trace.y) || Array.isArray(trace.z));
-  }
-  function lineTraces(plot) {
-    var visible = visibleSignals();
-    var data = Array.isArray(plot.data) && plot.data.every(isPlotlyTrace) ? plot.data : null;
-    var series = data || plotSeries(plot);
-    var byName = {};
-    series.forEach(function (item) {
-      var name = traceSignalName(item);
-      if (name) byName[name] = item;
-    });
-    var traces = visible.map(function (name) {
-      var item = byName[name];
-      var signal = signalByName(name);
-      if (!item || !Array.isArray(item.y)) return null;
-      if (data) {
-        return Object.assign({}, item, {
-          name: name,
-          showlegend: true,
-          line: Object.assign({}, item.line || {}, { color: (item.line && item.line.color) || signal.color || "#1676e6" }),
-        });
-      }
-      return {
-        type: "scatter",
-        mode: "lines",
-        x: Array.isArray(item.x) ? item.x : Array.isArray(plot.x) ? plot.x : [],
-        y: item.y,
-        line: { color: item.color || signal.color || "#1676e6", width: 1.4 },
-        name: name,
-        showlegend: true,
-        hovertemplate: "%{x}<br>%{y}<extra>" + escapeHtml(name) + "</extra>",
-      };
-    }).filter(Boolean);
-    if (!traces.length && Array.isArray(plot.y) && isVisibleSignal(state.selected_signal)) {
-      var selected = signalByName(state.selected_signal);
-      traces.push({ type: "scatter", mode: "lines", x: Array.isArray(plot.x) ? plot.x : [], y: plot.y, line: { color: selected.color || "#1676e6", width: 1.4 }, name: state.selected_signal || "Сигнал", showlegend: true, hovertemplate: "%{x}<br>%{y}<extra></extra>" });
-    }
-    return traces;
-  }
-  function selectedHeatmapPayload(plot) {
-    var selected = normalizeSelected(state.selected_signal, visibleSignals());
-    var series = plotSeries(plot);
-    var direct = null;
-    series.forEach(function (item) {
-      if (!direct && traceSignalName(item) === selected && Array.isArray(item.z)) direct = item;
-    });
-    if (direct) return direct;
-    return Array.isArray(plot.z) ? plot : null;
-  }
-  function renderPayload(plotId) {
-    var plots = state && isObject(state.plots) ? state.plots : {};
-    var base = isObject(plots[plotId]) ? plots[plotId] : {};
-    var payload = state && isObject(state.plot_payload) ? state.plot_payload : {};
-    if (plotId === "time" && Array.isArray(payload.time_traces)) {
-      return Object.assign({}, base, { traces: payload.time_traces });
-    }
-    if (plotId === "spectrum" && Array.isArray(payload.spectrum_traces)) {
-      return Object.assign({}, base, { traces: payload.spectrum_traces });
-    }
-    if ((plotId === "spectrogram" || plotId === "persistence") && isObject(payload[plotId])) {
-      return Object.assign({}, base, payload[plotId]);
-    }
-    return base;
-  }
-  function plotDefinition(plotId, payload) {
-    var plot = isObject(payload) ? payload : {};
-    var isHeatmap = plot.type === "heatmap" || plotId === "spectrogram" || plotId === "persistence";
-    var baseLayout = {
-      margin: { l: 58, r: isHeatmap ? 62 : 18, t: 12, b: isHeatmap ? 46 : 56 },
-      paper_bgcolor: "#ffffff", plot_bgcolor: "#ffffff", font: { family: "Roboto, Arial, sans-serif", size: 12, color: "#1f2937" },
-      xaxis: { title: { text: plot.x_label || "" }, gridcolor: "#e8edf2", zerolinecolor: "#d9e0e7", automargin: true },
-      yaxis: { title: { text: plot.y_label || "" }, gridcolor: "#e8edf2", zerolinecolor: "#d9e0e7", automargin: true },
-      showlegend: !isHeatmap,
-      legend: { orientation: "h", x: 0, y: -0.22, xanchor: "left", yanchor: "top" },
-    };
-    if (!isHeatmap) {
-      var traces = lineTraces(plot);
-      return traces.length ? { data: traces, layout: Object.assign({}, baseLayout, plot.layout || {}, { showlegend: true, legend: baseLayout.legend }) } : null;
-    }
-    var heatmap = selectedHeatmapPayload(plot);
-    if (heatmap) {
-      return { data: [{ type: "heatmap", x: Array.isArray(heatmap.x) ? heatmap.x : Array.isArray(plot.x) ? plot.x : [], y: Array.isArray(heatmap.y) ? heatmap.y : Array.isArray(plot.y) ? plot.y : [], z: heatmap.z, colorscale: heatmap.colorscale || "Jet", colorbar: { title: { text: plot.color_label || heatmap.color_label || "" }, thickness: 12, len: 0.86 }, name: state.selected_signal || "Сигнал", hovertemplate: "x: %{x}<br>y: %{y}<br>z: %{z}<extra></extra>" }], layout: Object.assign({}, baseLayout, plot.layout || {}, { showlegend: false }) };
-    }
-    return null;
-  }
-  function renderPlots() {
-    PLOT_ORDER.forEach(function (plotId) {
-      var host = document.querySelector("[data-plot-host='" + plotId + "']");
-      var payload = renderPayload(plotId);
-      var definition = plotDefinition(plotId, payload);
-      if (!host) return;
-      if (!definition || !payload) {
-        plotPlaceholder(host, "Нет данных для отображения.");
-        return;
-      }
-      if (!hasPlotly()) {
-        plotPlaceholder(host, "Подготовка графика…");
-        return;
-      }
-      if (host.clientWidth <= 0 || host.clientHeight <= 0) return;
-      clearPlotPlaceholders(host);
-      window.Plotly.react(host, definition.data, Object.assign(definition.layout, { width: host.clientWidth, height: host.clientHeight, autosize: false }), { responsive: true, displaylogo: false, displayModeBar: true })
-        .then(function () { clearPlotPlaceholders(host); markPlotReady(host); })
-        .catch(function () { plotPlaceholder(host, "Не удалось отобразить график.", true); });
-    });
-  }
-  function renderCards() {
-    PLOT_ORDER.forEach(function (plotId) {
-      var card = document.querySelector("[data-plot='" + plotId + "']");
-      var active = state.active_plot === plotId;
-      card.classList.toggle("is-active", active);
-      card.setAttribute("aria-pressed", active ? "true" : "false");
-    });
-  }
-  function formatValue(field) {
-    var value = field && field.value;
-    var raw = value == null || value === "" ? "—" : String(value);
-    return field && field.unit ? raw + " " + field.unit : raw;
-  }
-  function formatMeasurementValue(value, unit) {
-    var raw;
-    if (value == null || value === "") return "—";
-    raw = Number.isFinite(Number(value)) ? Number(value).toLocaleString("ru-RU", { maximumFractionDigits: 8 }) : String(value);
-    return unit ? raw + " " + unit : raw;
-  }
-  function currentMeasurements() {
-    var measurements = state && state.measurements;
-    if (!isObject(measurements)) return null;
-    if (String(measurements.signal_name || "") !== String(state.selected_signal || "")) return null;
-    if (!isVisibleSignal(measurements.signal_name) || !Array.isArray(measurements.items)) return null;
-    return measurements;
-  }
-  function measurementItem(measurements, rowId) {
-    var item = measurements && Array.isArray(measurements.items)
-      ? measurements.items.filter(function (entry) { return entry && entry.id === rowId; })[0] : null;
-    return isObject(item) ? item : {};
-  }
-  function formatMeasurementIndex(value) {
-    if (value == null || value === "") return "—";
-    return Number.isFinite(Number(value)) ? new Intl.NumberFormat("ru-RU").format(Number(value)) : String(value);
-  }
-  function renderMeasurements() {
-    var measurements = currentMeasurements();
-    var content = document.querySelector("[data-measurements-content]");
-    var selectedName = state && state.selected_signal || "";
-    var units = measurements && isObject(measurements.units) ? measurements.units : {};
-    var valueUnit = units.value || "";
-    var timeUnit = units.time || "";
-    if (!content) return;
-    content.innerHTML = "<div class=\"measurements-heading\"><span data-testid=\"measurements-signal-name\">" + escapeHtml(selectedName || "Сигнал не выбран") + "</span></div>"
-      + "<table class=\"measurements-table\" data-testid=\"measurements-table\"><thead><tr><th>Измерение</th><th>Значение</th><th>Время</th><th>Индекс</th></tr></thead><tbody>"
-      + MEASUREMENT_ROWS.map(function (row) {
-        var item = measurementItem(measurements, row.id);
-        return "<tr data-testid=\"measurement-row-" + row.id + "\"><td>" + row.label + "</td>"
-          + "<td>" + escapeHtml(formatMeasurementValue(item.value, valueUnit)) + "</td>"
-          + "<td>" + escapeHtml(formatMeasurementValue(item.time_s, timeUnit)) + "</td>"
-          + "<td>" + escapeHtml(formatMeasurementIndex(item.sample_index != null ? item.sample_index : item.index)) + "</td></tr>";
-      }).join("") + "</tbody></table>";
-  }
-  function renderPanel() {
-    var panel = state.panel || {};
-    var title = panel.title || PLOT_TITLES[state.active_plot] || "Параметры отображения";
-    var fields = Array.isArray(panel.fields) ? panel.fields : [];
-    document.querySelector("[data-testid='active-plot-title']").textContent = title;
-    document.querySelector("[data-panel-fields]").innerHTML = fields.length ? fields.map(function (field) {
-      var id = safeName(field.id || field.label);
-      return "<div class=\"plot-field\" data-testid=\"active-plot-field-" + id + "\"><dt>" + escapeHtml(field.label || field.id || "Параметр") + "</dt><dd data-testid=\"active-plot-field-value-" + id + "\">" + escapeHtml(formatValue(field)) + "</dd></div>";
-    }).join("") : "<div class=\"panel-empty\">Для этого отображения нет доступных параметров.</div>";
-  }
-  function formatRate(value) { return Number.isFinite(Number(value)) ? new Intl.NumberFormat("ru-RU").format(Number(value)) + " Гц" : "—"; }
-  function formatSamples(value) { return Number.isFinite(Number(value)) ? new Intl.NumberFormat("ru-RU").format(Number(value)) : "—"; }
-  function formatDuration(value) { return Number.isFinite(Number(value)) ? Number(value).toLocaleString("ru-RU", { maximumFractionDigits: 6 }) + " с" : "—"; }
-  function renderSignals() {
-    var rows = state.signals || [];
-    var visible = visibleSignals();
-    var lastVisible = visible.length <= 1;
-    document.querySelector("[data-signal-count]").textContent = rows.length ? rows.length + " " + (rows.length === 1 ? "сигнал" : "сигналов") + ", видно " + visible.length : "";
-    document.querySelector("[data-signal-rows]").innerHTML = rows.length ? rows.map(function (signal) {
-      var name = signalName(signal);
-      var selected = name === state.selected_signal;
-      var checked = visible.indexOf(name) >= 0;
-      var id = safeName(name);
-      var disabled = checked && lastVisible;
-      return "<tr tabindex=\"0\" role=\"button\" aria-label=\"Выбрать сигнал " + escapeHtml(name) + "\" aria-pressed=\"" + selected + "\" class=\"signal-row" + (selected ? " is-selected" : "") + "\" data-signal=\"" + escapeHtml(name) + "\" data-visible=\"" + checked + "\" data-testid=\"signal-row-" + id + "\"><td class=\"visibility-cell\"><label class=\"visibility-control\" data-signal-visibility-control><input type=\"checkbox\" data-signal-visibility=\"" + escapeHtml(name) + "\" data-testid=\"signal-visibility-checkbox-" + id + "\" " + (checked ? "checked " : "") + (disabled ? "disabled " : "") + "aria-label=\"Видимость сигнала " + escapeHtml(name) + "\"><span data-testid=\"signal-visibility-state-" + id + "\">" + (checked ? "Виден" : "Скрыт") + "</span></label></td><td>" + escapeHtml(name) + "</td><td><span class=\"color-swatch\" style=\"--signal-color:" + escapeHtml(signal.color || "#8a98a5") + "\" aria-label=\"Цвет сигнала\"></span></td><td>" + formatRate(signal.sample_rate_hz) + "</td><td>" + formatSamples(signal.sample_count) + "</td><td>" + formatDuration(signal.duration_s) + "</td><td>" + escapeHtml(signal.data_type || "—") + "</td></tr>";
-    }).join("") : "<tr><td class=\"signal-empty\" colspan=\"7\">Нет доступных сигналов.</td></tr>";
-  }
-  function renderBottomTabs() {
-    ["signals", "measurements"].forEach(function (tabId) {
-      var active = tabId === activeBottomTab;
-      var tab = document.querySelector("[data-bottom-tab='" + tabId + "']");
-      var panel = tabId === "signals"
-        ? document.querySelector("[data-testid='bottom-panel-signals']")
-        : document.querySelector("[data-testid='measurements-panel']");
-      if (tab) {
-        tab.classList.toggle("is-active", active);
-        tab.setAttribute("aria-selected", active ? "true" : "false");
-        tab.tabIndex = active ? 0 : -1;
-      }
-      if (panel) panel.hidden = !active;
-    });
-    renderMeasurements();
-  }
-  function activateBottomTab(tabId, focus) {
-    if (tabId !== "signals" && tabId !== "measurements") return;
-    activeBottomTab = tabId;
-    renderBottomTabs();
-    if (focus) document.querySelector("[data-bottom-tab='" + tabId + "']").focus();
-  }
-  function applySnapshot(snapshot, preserveView) {
-    state = normalizeSnapshot(snapshot);
-    if (preserveView) {
-      state.active_plot = preserveView.active_plot;
-      state.visible_signals = normalizeVisible(preserveView.visible_signals, state.signals);
-      state.selected_signal = normalizeSelected(preserveView.selected_signal, state.visible_signals);
-      state.visibility_contract = state.visibility_contract || preserveView.include_visible_signals;
-    }
-    renderCards(); renderPanel(); renderSignals(); renderBottomTabs(); renderPlots();
-    ensurePlotly().then(renderPlots).catch(function () {
-      PLOT_ORDER.forEach(function (plotId) {
-        var host = document.querySelector("[data-plot-host='" + plotId + "']");
-        if (host) plotPlaceholder(host, "Не удалось загрузить библиотеку графиков.", true);
-      });
-    });
-  }
-  function currentView() {
-    return {
-      active_plot: state && state.active_plot || "time",
-      selected_signal: state && state.selected_signal || "",
-      visible_signals: visibleSignals(),
-      include_visible_signals: Boolean(state && state.visibility_contract),
-    };
-  }
-  function canonicalTarget(target) {
-    var next = {
-      active_plot: PLOT_ORDER.indexOf(target.active_plot) >= 0 ? target.active_plot : "time",
-      visible_signals: normalizeVisible(target.visible_signals, state && state.signals),
-      selected_signal: target.selected_signal,
-      include_visible_signals: Boolean(target.include_visible_signals),
-    };
-    next.selected_signal = normalizeSelected(next.selected_signal, next.visible_signals);
-    return next;
-  }
-  function nextTarget(change) {
-    var source = intendedView || currentView();
-    return canonicalTarget({
-      active_plot: change.active_plot || source.active_plot,
-      selected_signal: change.selected_signal || source.selected_signal,
-      visible_signals: Array.isArray(change.visible_signals) ? change.visible_signals : source.visible_signals,
-      include_visible_signals: Boolean(source.include_visible_signals || Array.isArray(change.visible_signals)),
-    });
-  }
-  function applyOptimisticView(target) {
-    state.active_plot = target.active_plot;
-    state.visible_signals = target.visible_signals;
-    state.selected_signal = target.selected_signal;
-    state.visibility_contract = state.visibility_contract || target.include_visible_signals;
-    renderCards(); renderPanel(); renderSignals(); renderBottomTabs(); renderPlots();
-  }
-  function requestView(target, retryCount) {
-    var payload = { state_revision: state && state.state_revision };
-    if (target.active_plot) payload.active_plot = target.active_plot;
-    if (target.selected_signal) payload.selected_signal = target.selected_signal;
-    if (target.include_visible_signals || state && state.visibility_contract) payload.visible_signals = target.visible_signals || [];
-    return api.view(payload).catch(function (error) {
-      var current = error && error.payload && error.payload.current;
-      if (error && error.status === 409 && current && retryCount < 1) {
-        var newestTarget = intendedView || target;
-        intendedView = null;
-        applySnapshot(current, newestTarget);
-        return requestView(newestTarget, retryCount + 1);
-      }
-      if (error && error.status === 409 && current) applySnapshot(current, intendedView);
-      throw error;
-    });
-  }
-  function drainMutationQueue() {
-    var target;
-    if (mutationInFlight || !intendedView) return;
-    target = intendedView;
-    intendedView = null;
-    mutationInFlight = true;
-    clearError(); showLoading(true, "Синхронизация выбора…");
-    requestView(target, 0).then(function (snapshot) { applySnapshot(snapshot, intendedView); }).catch(function (error) { showError(humanError(error)); }).finally(function () {
-      mutationInFlight = false;
-      showLoading(false);
-      drainMutationQueue();
-    });
-  }
-  function choose(change) {
-    if (!state) return;
-    intendedView = nextTarget(change);
-    applyOptimisticView(intendedView);
-    drainMutationQueue();
-  }
-  function changeVisibility(name, checked) {
-    var visible = visibleSignals();
-    var nextVisible = checked ? visible.concat([name]).filter(function (value, index, list) { return list.indexOf(value) === index; })
-      : visible.filter(function (value) { return value !== name; });
-    nextVisible = orderedExistingNames(nextVisible, state.signals);
-    if (!nextVisible.length) {
-      showError("Нельзя скрыть последний видимый сигнал.");
-      renderSignals();
-      return;
-    }
-    choose({ visible_signals: nextVisible, selected_signal: normalizeSelected(state.selected_signal, nextVisible) });
-  }
-  function loadState() {
-    clearError(); showLoading(true, "Загрузка данных анализатора…");
-    api.getState().then(function (snapshot) { applySnapshot(snapshot); }).catch(function (error) { showError(humanError(error)); }).finally(function () { showLoading(false); });
-  }
-  function bindEvents() {
-    var bottomTablist = document.querySelector("[role='tablist']");
-    if (bottomTablist) bottomTablist.addEventListener("click", function (event) {
-      var tab = event.target.closest("[data-bottom-tab]");
-      if (tab) activateBottomTab(tab.getAttribute("data-bottom-tab"), true);
-    });
-    if (bottomTablist) bottomTablist.addEventListener("keydown", function (event) {
-      var tab = event.target.closest("[data-bottom-tab]");
-      var tabs = ["signals", "measurements"];
-      var index;
-      var next;
-      if (!tab) return;
-      index = tabs.indexOf(tab.getAttribute("data-bottom-tab"));
-      if (event.key === "ArrowLeft") next = tabs[(index + tabs.length - 1) % tabs.length];
-      if (event.key === "ArrowRight") next = tabs[(index + 1) % tabs.length];
-      if (event.key === "Home") next = tabs[0];
-      if (event.key === "End") next = tabs[tabs.length - 1];
-      if (next) { event.preventDefault(); activateBottomTab(next, true); }
-    });
-    document.querySelector("[data-testid='plot-grid']").addEventListener("click", function (event) {
-      var card = event.target.closest("[data-plot]");
-      if (card) choose({ active_plot: card.getAttribute("data-plot") });
-    });
-    document.querySelector("[data-testid='plot-grid']").addEventListener("keydown", function (event) {
-      var card = event.target.closest("[data-plot]");
-      if (card && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); choose({ active_plot: card.getAttribute("data-plot") }); }
-    });
-    document.querySelector("[data-signal-rows]").addEventListener("click", function (event) {
-      if (event.target.closest("[data-signal-visibility], [data-signal-visibility-control]")) { event.stopPropagation(); return; }
-      var row = event.target.closest("[data-signal]"); if (row) choose({ selected_signal: row.getAttribute("data-signal") });
-    });
-    document.querySelector("[data-signal-rows]").addEventListener("change", function (event) {
-      var checkbox = event.target.closest("[data-signal-visibility]");
-      if (!checkbox) return;
-      event.stopPropagation();
-      changeVisibility(checkbox.getAttribute("data-signal-visibility"), checkbox.checked);
-    });
-    document.querySelector("[data-signal-rows]").addEventListener("keydown", function (event) {
-      if (event.target.closest("[data-signal-visibility], [data-signal-visibility-control]")) return;
-      var row = event.target.closest("[data-signal]"); if (row && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); choose({ selected_signal: row.getAttribute("data-signal") }); }
-    });
-    document.querySelector("[data-retry]").addEventListener("click", loadState);
-    if (window.ResizeObserver) {
-      resizeObserver = new window.ResizeObserver(function () { if (state && hasPlotly()) renderPlots(); });
-      resizeObserver.observe(document.querySelector("[data-testid='plot-grid']"));
-    }
-    window.addEventListener("beforeunload", function () {
-      if (resizeObserver) resizeObserver.disconnect();
-      document.querySelectorAll("[data-plot-host]").forEach(function (host) { if (hasPlotly()) window.Plotly.purge(host); });
-    });
-  }
-  bindEvents();
-  loadState();
+  function applyDesiredViews() { Object.keys(desiredViews).forEach(function(id) { var d = displays.filter(function(item) { return item.id === id; })[0], target = desiredViews[id]; if (d && target) { d.plot = target.active_plot; d.selected_signal = target.selected_signal; d.visible_signals = target.visible_signals.slice(); } }); }
+  function accept(snapshot) { state = normalize(snapshot); displays = state.displays; activeDisplayId = state.active_display_id || (displays[0] && displays[0].id); applyDesiredViews(); }
+  function loading(on, text) { document.querySelector("[data-testid='app-loading']").hidden = !on; document.querySelector("[data-loading-text]").textContent = text || "Loading…"; root.setAttribute("aria-busy", on ? "true" : "false"); }
+  function error(message) { var p = document.querySelector("[data-testid='app-error']"); p.hidden = !message; document.querySelector("[data-error-text]").textContent = message || ""; }
+
+  // The local Plotly cartesian bundle is UMD and publishes `moduleName` in some browsers.
+  // Normalize it before every draw, then retry the local asset using the app script URL so
+  // installations served under a nested base path do not accidentally request /vendor/....
+  function plotly() { if (!window.Plotly && window.moduleName && typeof window.moduleName.react === "function") window.Plotly = window.moduleName; return window.Plotly; }
+  function hasPlotly() { return !!(plotly() && typeof plotly().react === "function"); }
+  function localPlotlyUrl() { return appScriptUrl && window.URL ? new window.URL("vendor/plotly-cartesian-3.1.0.min.js", appScriptUrl).href : "./js/vendor/plotly-cartesian-3.1.0.min.js"; }
+  function loadPlotlyScript(url) { return new Promise(function(resolve, reject) { var script = document.createElement("script"); script.src = url; script.async = true; script.onload = function() { hasPlotly() ? resolve(plotly()) : reject(new Error("Plotly was not registered")); }; script.onerror = function() { reject(new Error("Plotly failed to load")); }; document.head.appendChild(script); }); }
+  function ensurePlotly() { if (hasPlotly()) return Promise.resolve(plotly()); if (plotlyPromise) return plotlyPromise; plotlyPromise = loadPlotlyScript(localPlotlyUrl()).catch(function() { return loadPlotlyScript("https://cdn.plot.ly/plotly-3.1.0.min.js"); }).catch(function(err) { plotlyPromise = null; throw err; }); return plotlyPromise; }
+  function currentPayload(plot) { var direct = state.plot_payload || {}, base = state.plots[plot] || {}; if (plot === "time" && Array.isArray(direct.time_traces)) return Object.assign({}, base, { traces:direct.time_traces }); if (plot === "spectrum" && Array.isArray(direct.spectrum_traces)) return Object.assign({}, base, { traces:direct.spectrum_traces }); return object(direct[plot]) ? Object.assign({}, base, direct[plot]) : base; }
+  function traceName(t) { return String(t && (t.signal || t.signal_name || t.name || t.label) || ""); }
+  function plotData(plot, display) { var p = currentPayload(plot), heat = plot === "spectrogram" || plot === "persistence" || p.type === "heatmap"; if (heat) { var selected = (p.traces || p.series || []).filter(function(t) { return traceName(t) === display.selected_signal; })[0] || p; return selected && Array.isArray(selected.z) ? [{ type:"heatmap", x:selected.x || p.x || [], y:selected.y || p.y || [], z:selected.z, colorscale:selected.colorscale || "Jet", colorbar:{ title:{ text:selected.color_label || p.color_label || "" } } }] : []; } var raw = Array.isArray(p.traces) ? p.traces : Array.isArray(p.data) ? p.data : []; return raw.filter(function(t) { return display.visible_signals.indexOf(traceName(t)) >= 0; }).map(function(t) { var s = (state.signals || []).filter(function(x) { return x.name === traceName(t); })[0] || {}; return Object.assign({}, t, { type:t.type || "scatter", mode:display.showMarkers ? "lines+markers" : (t.mode || "lines"), name:traceName(t), line:Object.assign({}, t.line || {}, { color:(t.line || {}).color || s.color || "#1676e6" }) }); }); }
+  function draw() { var d = active(); if (!d || !state) return; var data = plotData(d.plot, d), p = currentPayload(d.plot), heat = d.plot === "spectrogram" || d.plot === "persistence" || p.type === "heatmap"; if (!data.length) { host.innerHTML = "<div class='plot-placeholder'>No data to display.</div>"; host.dataset.plotReady = "false"; return; } ensurePlotly().then(function(Plotly) { return Plotly.react(host, data, { margin:{ l:62, r:heat ? 72 : 24, t:14, b:55 }, paper_bgcolor:"#fff", plot_bgcolor:"#fff", font:{ family:"Roboto, Arial, sans-serif", color:"#202938" }, xaxis:{ title:{ text:p.x_label || "" }, gridcolor:"#e7edf3" }, yaxis:{ title:{ text:p.y_label || "" }, gridcolor:"#e7edf3", autorange:d.normalizeY ? true : undefined }, showlegend:!heat && d.showLegend, legend:{ orientation:"h", y:-.2 } }, { responsive:true, displaylogo:false }); }).then(function() { host.dataset.plotReady = "true"; }).catch(function() { host.innerHTML = "<div class='plot-placeholder is-error'>Plotly is unavailable.</div>"; host.dataset.plotReady = "false"; }); }
+  function renderTabs() { var nav = document.querySelector("[data-testid='display-tabs']"); nav.innerHTML = displays.map(function(d) { var on = d.id === activeDisplayId; return "<button class='display-tab" + (on ? " is-active" : "") + "' data-display-id='" + esc(d.id) + "' data-testid='display-tab-" + esc(d.id) + "' role='tab' aria-selected='" + on + "'>" + esc(d.label) + (displays.length > 1 ? "<span class='display-tab-close' data-close-display='" + esc(d.id) + "' data-testid='close-display-" + esc(d.id) + "' aria-label='Close " + esc(d.label) + "'>×</span>" : "") + "</button>"; }).join("") + "<button type='button' class='add-display' data-testid='add-display' aria-label='Add display'>+</button>"; }
+  function renderSettings() { var d = active(), select = document.querySelector("[data-testid='plot-type-select']"), panel = state.panel || {}; document.querySelector("[data-testid='display-plot-title']").textContent = TITLES[d.plot]; select.value = d.plot; var view = document.querySelector("[data-testid='settings-view-select']"); view.innerHTML = PLOTS.map(function(k) { return "<option value='" + k + "'>" + TITLES[k] + "</option>"; }).join(""); view.value = d.plot; document.querySelector("[data-testid='show-legend-checkbox']").checked = d.showLegend; document.querySelector("[data-testid='normalize-y-checkbox']").checked = d.normalizeY; document.querySelector("[data-testid='show-markers-checkbox']").checked = d.showMarkers; document.querySelector("[data-panel-fields]").innerHTML = (panel.fields || []).map(function(f) { return "<div class='plot-field'><dt>" + esc(f.label || f.id) + "</dt><dd>" + esc(f.value) + (f.unit ? " " + esc(f.unit) : "") + "</dd></div>"; }).join(""); }
+  function renderSignals() { var d = active(), visible = d.visible_signals; document.querySelector("[data-signal-count]").textContent = (state.signals || []).length + " signals"; document.querySelector("[data-testid='toggle-all-signals']").checked = visible.length === names().length; document.querySelector("[data-signal-rows]").innerHTML = (state.signals || []).map(function(s) { var n = String(s.name || ""), on = visible.indexOf(n) >= 0, sel = d.selected_signal === n, id = testId(n); return "<tr class='signal-row" + (sel ? " is-selected" : "") + "' data-signal='" + esc(n) + "' data-testid='signal-row-" + id + "'><td><input type='checkbox' data-signal-visibility='" + esc(n) + "' data-testid='signal-checkbox-" + id + "' " + (on ? "checked" : "") + " aria-label='Show " + esc(n) + "'></td><td>" + esc(n) + "</td><td><span class='color-swatch' style='--signal-color:" + esc(s.color || "#1676e6") + "'></span></td><td>" + esc(s.sample_rate_hz || "—") + " Hz</td><td>" + esc(s.sample_count || "—") + "</td><td>" + esc(s.duration_s || "—") + " s</td><td>" + esc(s.data_type || "—") + "</td></tr>"; }).join(""); }
+  function renderMeasurements() { var m = state.measurements || {}, c = document.querySelector("[data-measurements-content]"); c.innerHTML = "<div class='measurements-heading' data-testid='measurements-signal-name'>" + esc(active().selected_signal || "No signal selected") + "</div>" + (Array.isArray(m.items) ? "<table class='measurements-table'><tbody>" + m.items.map(function(x) { return "<tr><td>" + esc(x.label || x.id) + "</td><td>" + esc(x.value) + "</td></tr>"; }).join("") + "</tbody></table>" : ""); }
+  function render() { if (!state || !active()) return; renderTabs(); renderSettings(); renderSignals(); renderMeasurements(); document.querySelector("[data-testid='display-count-status']").textContent = displays.length + " displays"; document.querySelector("[data-testid='active-display-status']").textContent = active().label + " · " + TITLES[active().plot]; draw(); }
+
+  function viewTarget(d) { return { displayId:d.id, active_plot:d.plot, selected_signal:d.selected_signal, visible_signals:d.visible_signals.slice() }; }
+  function sameView(a, b) { return a && b && a.displayId === b.displayId && a.active_plot === b.active_plot && a.selected_signal === b.selected_signal && a.visible_signals.join("\u0001") === b.visible_signals.join("\u0001"); }
+  function enqueue(intent) { var tail = intentQueue[intentQueue.length - 1]; if (intent.kind === "view" && tail && tail.kind === "view" && tail.target.displayId === intent.target.displayId) intentQueue[intentQueue.length - 1] = intent; else intentQueue.push(intent); pendingAction = intentQueue[intentQueue.length - 1] || null; drain(); }
+  function drain() { if (requestInFlight || !intentQueue.length || !state) return; var intent = intentQueue.shift(); pendingAction = intentQueue[intentQueue.length - 1] || null; requestInFlight = true; loading(true, "Updating display…"); error(""); var call = intent.kind === "view" ? api.view({ state_revision:state.state_revision, active_plot:intent.target.active_plot, selected_signal:intent.target.selected_signal, visible_signals:intent.target.visible_signals }) : api.displays(Object.assign({ state_revision:state.state_revision }, intent.payload)); call.then(function(snapshot) { if (intent.kind === "view" && sameView(desiredViews[intent.target.displayId], intent.target)) delete desiredViews[intent.target.displayId]; accept(snapshot); render(); }).catch(function(e) { if (e && e.status===409 && e.payload && e.payload.current) { accept(e.payload.current); render(); if (intent.kind === "view") { var newest = desiredViews[intent.target.displayId] || intent.target; intent.target = newest; intentQueue.unshift(intent); } else intentQueue.unshift(intent); pendingAction = intentQueue[intentQueue.length - 1] || null; return; } error(intent.kind === "view" && e && e.status === 422 ? "Server rejected display settings." : "Unable to update display."); render(); }).finally(function() { requestInFlight = false; loading(false); drain(); }); }
+  function displayMutation(operation, id) { var payload = { operation:operation }; if (id) payload.display_id = id; enqueue({ kind:"display", payload:payload }); }
+  function selectDisplay(id) { if (id !== activeDisplayId) displayMutation("select", id); }
+  function addDisplay() { displayMutation("create"); }
+  function closeDisplay(id) { if (displays.length > 1) displayMutation("close", id); }
+  function update(change) { var d = active(); Object.keys(change).forEach(function(k) { d[k] = change[k]; }); d.visible_signals = ordered(d.visible_signals); if (d.visible_signals.indexOf(d.selected_signal) < 0) d.selected_signal = d.visible_signals[0] || ""; render(); if (Object.keys(change).every(function(k) { return k === "showLegend" || k === "normalizeY" || k === "showMarkers"; })) { displayUi[d.id] = { showLegend:d.showLegend, normalizeY:d.normalizeY, showMarkers:d.showMarkers }; return; } var target = viewTarget(d); desiredViews[d.id] = target; enqueue({ kind:"view", target:target }); }
+  function bind() { document.querySelector("[data-testid='display-tabs']").addEventListener("click", function(e) { var close = e.target.closest("[data-close-display]"); if (close) { closeDisplay(close.dataset.closeDisplay); return; } var tab = e.target.closest("[data-display-id]"); if (tab) selectDisplay(tab.dataset.displayId); if (e.target.closest("[data-testid='add-display']")) addDisplay(); }); document.querySelector("[data-testid='plot-type-select']").addEventListener("change", function(e) { update({ plot:e.target.value }); }); document.querySelector("[data-testid='settings-view-select']").addEventListener("change", function(e) { update({ plot:e.target.value }); }); ["show-legend-checkbox", "normalize-y-checkbox", "show-markers-checkbox"].forEach(function(id) { document.querySelector("[data-testid='" + id + "']").addEventListener("change", function(e) { var c = {}; c[id === "show-legend-checkbox" ? "showLegend" : id === "normalize-y-checkbox" ? "normalizeY" : "showMarkers"] = e.target.checked; update(c); }); }); document.querySelector("[data-signal-rows]").addEventListener("change", function(e) { var box = e.target.closest("[data-signal-visibility]"); if (!box) return; var v = active().visible_signals.slice(), name = box.dataset.signalVisibility; if (box.checked) v.push(name); else v = v.filter(function(n) { return n !== name; }); if (!v.length) { box.checked = true; error("At least one signal must remain visible."); return; } update({ visible_signals:v }); }); document.querySelector("[data-signal-rows]").addEventListener("click", function(e) { if (e.target.matches("input")) return; var row = e.target.closest("[data-signal]"); if (row) update({ selected_signal:row.dataset.signal }); }); document.querySelector("[data-testid='toggle-all-signals']").addEventListener("change", function(e) { update({ visible_signals:e.target.checked ? names() : [names()[0]] }); }); document.querySelector("[role='tablist'][aria-label='Данные анализатора']").addEventListener("click", function(e) { var b = e.target.closest("[data-bottom-tab]"); if (!b) return; activeBottomTab = b.dataset.bottomTab; document.querySelectorAll("[data-bottom-tab]").forEach(function(x) { var on = x.dataset.bottomTab === activeBottomTab; x.classList.toggle("is-active", on); x.setAttribute("aria-selected", on); }); document.querySelector("[data-testid='bottom-panel-signals']").hidden = activeBottomTab !== "signals"; document.querySelector("[data-testid='measurements-panel']").hidden = activeBottomTab !== "measurements"; }); document.querySelector("[data-retry]").addEventListener("click", load); window.addEventListener("resize", function() { if (state) draw(); }); }
+  function load() { loading(true, "Loading Signal Analyzer…"); error(""); api.getState().then(function(s) { accept(s); render(); }).catch(function() { error("Unable to load Signal Analyzer data."); }).finally(function() { loading(false); }); }
+  bind(); load();
 })(window, document);

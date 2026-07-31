@@ -3,78 +3,41 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Анализатор сигналов</title>
+  <title>Signal Analyzer</title>
   <link rel="stylesheet" href="./css/theme.css">
   <link rel="stylesheet" href="./css/app.css">
 </head>
 <body>
-  <main class="signal-analyser" data-testid="app-shell" aria-label="Анализатор сигналов">
+  <main class="signal-analyser" data-testid="app-shell" aria-label="Signal Analyzer">
     <header class="app-toolbar">
-      <div class="app-brand" aria-label="Engee">
-        <svg class="engee-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 9.5C7.8 5.7 12 4 16 4s8.2 1.7 11 5.5l-4.1 2.2A8.5 8.5 0 0 0 16 8c-2.7 0-5.2 1.3-6.9 3.7L5 9.5Zm22 13C24.2 26.3 20 28 16 28s-8.2-1.7-11-5.5l4.1-2.2A8.5 8.5 0 0 0 16 24c2.7 0 5.2-1.3 6.9-3.7l4.1 2.2ZM4 13h24v6H4z"/></svg>
-        <span class="engee-name">engee</span>
-      </div>
-      <span class="toolbar-divider" aria-hidden="true"></span>
-      <h1>Анализатор сигналов</h1>
-      <span class="app-version">Версия 1.0.0</span>
+      <div class="app-brand" aria-label="Engee"><svg class="engee-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 9.5C7.8 5.7 12 4 16 4s8.2 1.7 11 5.5l-4.1 2.2A8.5 8.5 0 0 0 16 8c-2.7 0-5.2 1.3-6.9 3.7L5 9.5Zm22 13C24.2 26.3 20 28 16 28s-8.2-1.7-11-5.5l4.1-2.2A8.5 8.5 0 0 0 16 24c2.7 0 5.2-1.3 6.9-3.7l4.1 2.2ZM4 13h24v6H4z"/></svg><span class="engee-name">engee</span></div>
+      <span class="toolbar-divider" aria-hidden="true"></span><h1>Signal Analyzer</h1><span class="app-version">v1.0.0</span>
+      <div class="toolbar-actions" aria-label="Действия"><button class="icon-button" type="button" aria-label="Экспорт" title="Экспорт">⇧</button><button class="icon-button" type="button" aria-label="Открыть в новом окне" title="Открыть в новом окне">↗</button><button class="icon-button" type="button" aria-label="Справка" title="Справка">?</button></div>
     </header>
 
-    <div class="application-body">
-      <section class="workspace" aria-label="Графики">
-        <div class="plot-grid" data-testid="plot-grid">
-          <article class="plot-card" data-plot="time" data-testid="plot-card-time" tabindex="0" role="button" aria-label="Выбрать график Время">
-            <header class="plot-card-header"><h2>Время</h2><span class="plot-card-kind">Линия</span></header>
-            <div class="plot-host" data-plot-host="time" data-testid="plot-host-time" data-plot-ready="false" aria-label="График Время"></div>
-          </article>
-          <article class="plot-card" data-plot="spectrum" data-testid="plot-card-spectrum" tabindex="0" role="button" aria-label="Выбрать график Спектр">
-            <header class="plot-card-header"><h2>Спектр</h2><span class="plot-card-kind">Welch</span></header>
-            <div class="plot-host" data-plot-host="spectrum" data-testid="plot-host-spectrum" data-plot-ready="false" aria-label="График Спектр"></div>
-          </article>
-          <article class="plot-card" data-plot="spectrogram" data-testid="plot-card-spectrogram" tabindex="0" role="button" aria-label="Выбрать график Спектрограмма">
-            <header class="plot-card-header"><h2>Спектрограмма</h2><span class="plot-card-kind">Тепловая карта</span></header>
-            <div class="plot-host" data-plot-host="spectrogram" data-testid="plot-host-spectrogram" data-plot-ready="false" aria-label="График Спектрограмма"></div>
-          </article>
-          <article class="plot-card" data-plot="persistence" data-testid="plot-card-persistence" tabindex="0" role="button" aria-label="Выбрать график Спектр персистентности">
-            <header class="plot-card-header"><h2>Спектр персистентности</h2><span class="plot-card-kind">Тепловая карта</span></header>
-            <div class="plot-host" data-plot-host="persistence" data-testid="plot-host-persistence" data-plot-ready="false" aria-label="График Спектр персистентности"></div>
-          </article>
-        </div>
+    <div class="main-stage">
+      <section class="display-workspace" aria-label="Displays">
+        <nav class="display-tabs" data-testid="display-tabs" aria-label="Страницы отображения" role="tablist"></nav>
+        <section class="single-display" data-testid="display-canvas">
+          <header class="plot-header"><h2 data-testid="display-plot-title">Time</h2><label class="plot-type-control">Тип графика <select data-testid="plot-type-select" aria-label="Тип графика"><option value="time">Time</option><option value="spectrum">Spectrum</option><option value="spectrogram">Spectrogram</option><option value="persistence">Persistence</option></select></label><button type="button" class="more-button" aria-label="Дополнительные действия">⋮</button></header>
+          <div class="plot-host" data-testid="active-plot-host" data-plot-ready="false" aria-label="График активного Display"></div>
+        </section>
       </section>
 
-      <aside class="active-plot-panel" data-testid="active-plot-panel" aria-live="polite">
-        <header class="panel-heading"><h2>Параметры отображения</h2></header>
-        <div class="panel-content">
-          <h3 data-testid="active-plot-title">Параметры</h3>
-          <dl class="plot-fields" data-panel-fields></dl>
-        </div>
+      <aside class="display-settings" data-testid="display-settings" aria-live="polite">
+        <header class="panel-heading"><h2>Display settings</h2></header>
+        <div class="settings-tabs" role="tablist" aria-label="Настройки display"><button class="settings-tab is-active" type="button">Display</button><button class="settings-tab" type="button">Time</button><button class="settings-tab" type="button">Measurements</button></div>
+        <div class="panel-content"><label class="setting-label" for="settings-view">View</label><select id="settings-view" data-testid="settings-view-select"></select><label class="checkbox-setting"><input type="checkbox" data-testid="show-legend-checkbox" checked> Show legend</label><label class="checkbox-setting"><input type="checkbox" data-testid="normalize-y-checkbox"> Normalize Y axis</label><label class="checkbox-setting"><input type="checkbox" data-testid="show-markers-checkbox"> Show markers</label><div class="settings-divider"></div><h3>Analysis</h3><div class="analysis-actions"><button type="button" data-testid="signal-statistics-action">⌁ Signal statistics</button><button type="button" data-testid="find-peaks-action">⌁ Find peaks</button></div><dl class="plot-fields" data-panel-fields></dl></div>
       </aside>
     </div>
 
     <section class="bottom-zone" aria-label="Сигналы и измерения">
-      <div class="bottom-tablist" role="tablist" aria-label="Данные анализатора">
-        <button type="button" class="bottom-tab is-active" id="signal-panel-tab-signals" data-testid="signal-panel-tab-signals" data-bottom-tab="signals" role="tab" aria-selected="true" aria-controls="bottom-panel-signals" tabindex="0">Сигналы <span data-signal-count></span></button>
-        <button type="button" class="bottom-tab" id="signal-panel-tab-measurements" data-testid="signal-panel-tab-measurements" data-bottom-tab="measurements" role="tab" aria-selected="false" aria-controls="bottom-panel-measurements" tabindex="-1">Измерения</button>
-      </div>
-      <section class="bottom-panel signals-panel" id="bottom-panel-signals" data-testid="bottom-panel-signals" role="tabpanel" aria-labelledby="signal-panel-tab-signals">
-        <div class="signal-table-scroll">
-          <table class="signal-table" data-testid="signal-table">
-            <thead><tr><th>Видимость</th><th>Сигнал</th><th>Цвет</th><th>Частота дискретизации</th><th>Отсчёты</th><th>Длительность</th><th>Тип</th></tr></thead>
-            <tbody data-signal-rows></tbody>
-          </table>
-        </div>
-      </section>
-      <section class="bottom-panel measurements-panel" id="bottom-panel-measurements" data-testid="measurements-panel" role="tabpanel" aria-labelledby="signal-panel-tab-measurements" hidden>
-        <div class="measurements-content" data-measurements-content aria-live="polite"></div>
-      </section>
+      <div class="bottom-tablist" role="tablist" aria-label="Данные анализатора"><button type="button" class="bottom-tab is-active" data-testid="signal-panel-tab-signals" data-bottom-tab="signals" role="tab" aria-selected="true">Signals <span data-signal-count></span></button><button type="button" class="bottom-tab" data-testid="signal-panel-tab-measurements" data-bottom-tab="measurements" role="tab" aria-selected="false">Measurements</button></div>
+      <section class="bottom-panel signals-panel" data-testid="bottom-panel-signals"><div class="signal-table-scroll"><table class="signal-table" data-testid="signal-table"><thead><tr><th><input type="checkbox" data-testid="toggle-all-signals" aria-label="Показать все сигналы"></th><th>Name</th><th>Color</th><th>Sample rate</th><th>Samples</th><th>Duration</th><th>Type</th></tr></thead><tbody data-signal-rows></tbody></table></div></section>
+      <section class="bottom-panel measurements-panel" data-testid="measurements-panel" hidden><div class="measurements-content" data-measurements-content aria-live="polite"></div></section>
     </section>
-
-    <div class="app-status" aria-live="polite">
-      <div class="app-loading" data-testid="app-loading" hidden role="status"><span class="spinner" aria-hidden="true"></span><span data-loading-text>Загрузка данных…</span></div>
-      <div class="app-error" data-testid="app-error" hidden role="alert"><span data-error-text></span><button type="button" class="retry-button" data-retry>Повторить</button></div>
-    </div>
+    <footer class="app-status"><span data-testid="display-count-status"></span><span class="status-ready">● Ready</span><span data-testid="active-display-status"></span><div class="app-loading" data-testid="app-loading" hidden role="status"><span class="spinner"></span><span data-loading-text>Loading…</span></div><div class="app-error" data-testid="app-error" hidden role="alert"><span data-error-text></span><button type="button" class="retry-button" data-retry>Retry</button></div></footer>
   </main>
-  <script src="./js/vendor/plotly-cartesian-3.1.0.min.js"></script>
-  <script src="./js/api.js"></script>
-  <script src="./js/app.js"></script>
+  <script src="./js/vendor/plotly-cartesian-3.1.0.min.js"></script><script src="./js/api.js"></script><script src="./js/app.js"></script>
 </body>
 </html>
