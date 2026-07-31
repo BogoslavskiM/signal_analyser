@@ -27,9 +27,9 @@
   }
 
   window.SignalAnalyserApi = {
-    getState: function () { return request("/api/state"); },
+    getState: function () { return request("./api/state"); },
     view: function (payload) {
-      return request("/api/view", {
+      return request("./api/view", {
         method: "POST",
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify(payload),

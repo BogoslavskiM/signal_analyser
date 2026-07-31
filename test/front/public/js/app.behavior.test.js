@@ -129,10 +129,10 @@ module.exports = async function testSignalAnalyserBehavior(assert) {
   const initial = snapshot(1, "time", HARMONIC);
   const initialEnvironment = await boot((url, options) => {
     initialRequests.push({ url, options });
-    if (url === "/api/state") return Promise.resolve(response(200, initial));
+    if (url === "./api/state") return Promise.resolve(response(200, initial));
     return Promise.resolve(response(200, snapshot(2, "spectrum", HARMONIC)));
   });
-  assert(initialRequests.length === 1 && initialRequests[0].url === "/api/state", "initialization must issue exactly one GET /api/state");
+  assert(initialRequests.length === 1 && initialRequests[0].url === "./api/state", "initialization must issue exactly one GET ./api/state");
   assert(!initialRequests[0].options.method, "state request must not set a mutation method");
   assert(initialEnvironment.cards.time.classList.contains("is-active"), "initial active card must be marked");
   assert(initialEnvironment.elements.rows.innerHTML.includes("signal-row is-selected"), "initial selected signal row must be marked");
@@ -145,14 +145,14 @@ module.exports = async function testSignalAnalyserBehavior(assert) {
   const queueInitial = snapshot(0, "time", HARMONIC);
   const queueEnvironment = await boot((url, options) => {
     queueRequests.push({ url, options });
-    if (url === "/api/state") return Promise.resolve(response(200, queueInitial));
+    if (url === "./api/state") return Promise.resolve(response(200, queueInitial));
     if (!resolveFirst) return new Promise((resolve) => { resolveFirst = resolve; });
     return new Promise((resolve) => { resolveSecond = resolve; });
   });
   clickCard(queueEnvironment, "spectrum");
   await flush();
   assert(queueRequests.length === 2, "first intent must send one view request");
-  assert(queueRequests[1].url === "/api/view" && queueRequests[1].options.method === "POST", "selection must use POST /api/view");
+  assert(queueRequests[1].url === "./api/view" && queueRequests[1].options.method === "POST", "selection must use POST ./api/view");
   assert(JSON.stringify(JSON.parse(queueRequests[1].options.body)) === JSON.stringify({ state_revision: 0, active_plot: "spectrum", selected_signal: HARMONIC }), "first view request must serialize revision and complete target");
   clickCard(queueEnvironment, "persistence");
   clickSignal(queueEnvironment, CHIRP);
@@ -174,12 +174,12 @@ module.exports = async function testSignalAnalyserBehavior(assert) {
   const staleCurrent = snapshot(7, "time", HARMONIC);
   const staleEnvironment = await boot((url, options) => {
     staleRequests.push({ url, options });
-    if (url === "/api/state") return Promise.resolve(response(200, initial));
+    if (url === "./api/state") return Promise.resolve(response(200, initial));
     return Promise.resolve(response(409, { ok: false, current: staleCurrent }));
   });
   clickCard(staleEnvironment, "spectrum");
   await flush();
-  assert(staleRequests.filter((request) => request.url === "/api/view").length === 2, "409 with current snapshot must retry once and no more");
+  assert(staleRequests.filter((request) => request.url === "./api/view").length === 2, "409 with current snapshot must retry once and no more");
   assert(JSON.parse(staleRequests[2].options.body).state_revision === 7, "single retry must use the revision from current");
   assert(staleEnvironment.elements.error.hidden === false, "a second stale response must be visible as an error");
 
