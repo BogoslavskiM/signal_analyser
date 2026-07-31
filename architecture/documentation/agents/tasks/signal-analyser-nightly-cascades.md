@@ -380,3 +380,81 @@ the earlier pending-runtime wording in this mutable active task.
 - [E2E Tester](../handoff/e2e-cascades.md)
 - [DevOps](../handoff/devops-cascades.md)
 - [MATLAB Researcher](../handoff/matlab-researcher-cascades.md)
+
+## Cascade 9 P0 Spectrum baseline contract frozen — 2026-08-01
+
+Status: `contract-frozen-implementation-next`. Authoritative product decision:
+[DEC-20260801-015](../../user/decisions/DEC-20260801-015-spectrum-roi-default-settings.md).
+Research and provider evidence are separated in
+[the EngeeDSP probe report](../reports/spectrum-engeedsp-contract-probe-20260801.md).
+
+### Frozen implementation contract
+
+- `SignalSpectrumSettings` belongs to each Display and is mirrored at root for
+  the active Display. Exact full wire object is
+  `{scale:"db|linear",frequency_scale:"linear|log",leakage:Float64}` with
+  defaults `db`, `linear`, `0.5`.
+- `/api/view` accepts the additive full object; absence preserves. Only exact
+  nested keys/types are accepted and Leakage must be finite in `[0,1]`.
+  Nested field-level `422` is atomic. Actual change is one revision `+1`; equal
+  value is no-op. New Display gets defaults, Clear preserves, A/B are
+  independent.
+- Backend uses typed `SignalTimeSampleRange` retaining raw real/complex samples,
+  `SignalSpectrumQuery`, `SignalSpectrumData`, an abstract provider plus
+  EngeeDSP provider/service, and a typed cache key containing signal identity,
+  inclusive ROI, Leakage and topology. No Dict-domain state.
+- The provider calls public EngeeDSP `pspectrum` only, in default Leakage mode:
+  pass `Leakage`, remove forced fixed `FrequencyResolution`, use
+  `TwoSided=false` for real and `true` for complex. dB is
+  `10*log10(raw power)`; linear is raw power. Frequency scale is presentation
+  metadata and never changes spectral computation. No fallback or dependency
+  edit is allowed.
+- Spectrum recomputes from authoritative raw Time ROI and is independent from
+  Normalize. Real axes are one-sided `0..Nyquist`; complex axes are centered
+  two-sided. Any visible complex signal makes requested Log invalid; adding a
+  complex signal to an existing Log Display is also rejected atomically.
+- Empty Display/source returns typed empty. Inclusive ROI with one raw sample
+  returns typed empty without provider; two samples are supported. Existing
+  plot/trace keysets remain unless minimal additive metadata is required.
+- Frontend keeps exactly three Display/Time/Measurements setting panels. A
+  conditional Spectrum subsection is physically inside Display, never a fourth
+  tab. Stable IDs are `spectrum-settings`, `spectrum-scale-select`,
+  `spectrum-frequency-scale-select`, `spectrum-leakage-input`, and
+  `spectrum-settings-error`.
+- Scale and frequency-scale use native selects. Leakage range commits on
+  `change`, not every `input`. Controls are enabled only for an active Spectrum
+  plot with nonempty source, while values remain preserved otherwise. Each
+  actual change sends one full serialized view request with rollback/stale
+  queue. Plotly `xaxis.type` follows authoritative state and raw arrays remain
+  untouched. Frontend performs no DSP.
+
+### Evidence and boundary
+
+SA-GRAPH-001 (`c22e0074fc3e8f17ca797052490583dcb0d1f8a552fdd5825023e14026d6d278`)
+observed MATLAB R2024b real `Fs=1`, `N=15`: Hz, `0..0.5`, Linear, dB checked,
+Leakage midpoint, ROI `4..6` flat near `3.0102995 dB` with actual RBW
+`855.5818 mHz`, and ROI `0..14` peak near `0.2` with actual RBW
+`171.1164 mHz`; Normalize was independent. Leakage `0.5` is docs-derived.
+Page locality remains unconfirmed; per-Display ownership is a product decision.
+
+Prod EngeeDSP probe verified real one-sided and complex centered two-sided
+power, Leakage endpoints/validation, FrequencyLimits clip/reject behavior, a
+one-sample `ArgumentError`, two-sample support and an empty `Any[]` third power
+output. Therefore editable frequency limits, RBW/window modes, actual RBW
+metadata, manual frequency units, Spectrogram/Persistence refactor,
+mixed-sample-rate policy beyond provider axes and live deployment are outside
+C9. Existing panel placeholders may remain, but must not claim actual RBW.
+
+### Persistent role heartbeat — Cascade 9 contract freeze
+
+| Canonical role | Persistent session | Current task | Next queued task | Blocker | Last handoff/status |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_cycle` | completed standby after C9 inventory | implement frozen typed Spectrum provider/service/state | none | read-only gap inventory delivered |
+| Frontend | `/root/frontend_cycle` | completed standby | implement frozen Display-panel Spectrum controls | none | C8 frontend gate complete |
+| Tester | `/root/tester_c7_matrix` | completed standby after C9 matrix | implement backend/frontend C9 contract tests | local EngeeDSP unavailable; provider doubles required | read-only red-matrix delivered |
+| E2E Tester | `/root/e2e_cycle` | completed standby after C9 plan | implement static/runtime-safe C9 scenario | live target auth/deployment remains external | read-only scenario and cleanup plan delivered |
+| DevOps | `/root/devops_cycle` | completed standby | product/test checkpoint after verified handoffs | external approval still required for push/deploy/merge | C8 docs checkpoint `89c46d9`; tree was clean |
+| MATLAB Researcher | `/root/matlab_cycle` | next bounded Spectrum research active | settings persistence and complex/log delta | none reported | SA-GRAPH-001 saved and consumed |
+
+Implementation is the next critical-path slice. This freeze does not claim
+implemented, runtime-verified, deployed or accepted-by-user C9 behavior.

@@ -283,3 +283,54 @@ portable_behavior: page-local metric set, exact defaults/order, zero-row empty
 state, inclusive raw ROI recompute and restoration.
 product_result: Consumed into frozen Cascade 8 and DEC-014.
 next_task: SA-GRAPH-001 deterministic Spectrum defaults/units.
+
+## Autonomous cycle scenario SA-GRAPH-001 — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_cycle`
+
+goal: Establish deterministic Spectrum defaults, Time ROI recomputation,
+displayed actual RBW and Normalize independence without treating UI position as
+a numeric oracle.
+external_scenario_id:
+`SA-GRAPH-001-deterministic-spectrum-defaults-roi-rbw`.
+sha256: `c22e0074fc3e8f17ca797052490583dcb0d1f8a552fdd5825023e14026d6d278`.
+docs_sources: Official MathWorks Explore Signals, Spectrum Computation in Signal
+Analyzer and `pspectrum` pages were researched directly on the web outside
+MATLAB. Engee `pspectrum` and `enbw` pages supplied the provider map. MATLAB
+Help, Documentation UI and Add-On Explorer were not used.
+documented_direction: Signal Analyzer defaults Spectrum to dB, converts power
+with `10*log10(power)`, supports linear/log frequency axes, recomputes over a
+Time ROI, uses one-sided real and centered two-sided complex spectra, and does
+not permit Log for complex. Leakage docs default to `0.5` in `[0,1]`.
+clicker_setup: MATLAB R2024b/clicker health and the existing bounded GUI rules
+were respected. The deterministic source was real with `Fs=1 Hz`, `N=15`.
+No valid Command Window command was entered in this scenario. One accidental
+unexecuted text insertion was immediately cleared and the clean prompt was
+visually verified. Time-limit fields used the required English/ASCII and
+before-commit visual guards. MATLAB was not stopped and Add-On Explorer was not
+opened.
+observed_undocumented_behavior: The app showed Hz, `0..0.5 Hz`, Linear
+frequency scale, checked dB and Leakage at its midpoint. ROI `4..6 s` yielded a
+flat Spectrum near `3.0102995 dB` and displayed actual RBW `855.5818 mHz`;
+ROI `0..14 s` restored a peak near `0.2 Hz` and actual RBW `171.1164 mHz`.
+Normalize Y Axis did not change Spectrum.
+docs_vs_app_delta: Numeric Leakage `0.5` is docs-derived, not visually read
+from the midpoint. Page locality was not established. Actual RBW was visible in
+MATLAB but the prod EngeeDSP power probe returned empty `Any[]` as the third
+output, so current product cannot claim that metadata.
+product_tasks: Implement frozen Cascade 9 per-Display typed Spectrum settings,
+raw-Time-ROI recomputation, real/complex topology, EngeeDSP provider boundary,
+atomic complex/log guard and Display-panel native controls. Per-Display
+locality is an explicit product decision matching existing page architecture.
+e2e_scenarios: Verify defaults; one request/revision per setting; Leakage commit
+on change; ROI-driven backend Spectrum recomputation independent of Normalize;
+real linear/log axes; complex/log atomic rejection; A/B restoration; Clear
+preservation; one-sample typed empty/two-sample support; exact cleanup.
+risks: Page locality remains unobserved. Editable frequency limits, RBW/window
+mode, actual RBW metadata, manual frequency units, mixed sample rates and
+Spectrogram/Persistence refactor are not evidence-complete for C9.
+product_result: Evidence consumed into frozen Cascade 9 and DEC-015; product
+implementation and runtime verification are pending.
+next_task_candidates: Bounded settings persistence and complex/log behavior,
+without reopening in-app documentation or Add-On Explorer.

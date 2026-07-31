@@ -17,4 +17,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260731-012: разделение row selection, Display membership и analysis source](DEC-20260731-012-display-selection-separation.md)
 - [DEC-20260731-013: authoritative per-Display Time ROI](DEC-20260731-013-authoritative-time-roi.md)
 - [DEC-20260731-014: selectable per-Display Statistics](DEC-20260731-014-selectable-statistics.md)
+- [DEC-20260801-015: Spectrum по Time ROI и настройки Display](DEC-20260801-015-spectrum-roi-default-settings.md)
 - [Шаблон ADR](template.md)
