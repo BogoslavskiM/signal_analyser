@@ -115,6 +115,7 @@ function signal_analyser_spectrum_plot(
         "x_label" => "Частота, Гц",
         "y_label" => settings.scale == DB_SPECTRUM_SCALE ? "Мощность, дБ" : "Мощность",
         "method" => "pspectrum",
+        "frequency_limits" => signal_spectrum_frequency_limits_metadata(settings, data),
     )
 end
 

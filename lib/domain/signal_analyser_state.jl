@@ -60,38 +60,88 @@ end
     CENTERED_TWO_SIDED_SPECTRUM
 end
 
-"""Persistent per-Display Spectrum presentation and leakage settings."""
+abstract type AbstractSignalSpectrumFrequencyLimits end
+
+"""Provider-selected full topology domain."""
+struct AutomaticSignalSpectrumFrequencyLimits <: AbstractSignalSpectrumFrequencyLimits end
+
+"""User-requested finite frequency interval in canonical Hz."""
+struct ExplicitSignalSpectrumFrequencyLimits <: AbstractSignalSpectrumFrequencyLimits
+    min_hz::Float64
+    max_hz::Float64
+
+    function ExplicitSignalSpectrumFrequencyLimits(min_hz::Real, max_hz::Real)
+        minimum_frequency = Float64(min_hz)
+        maximum_frequency = Float64(max_hz)
+        isfinite(minimum_frequency) && isfinite(maximum_frequency) || throw(ArgumentError(
+            "Frequency Limits должны быть конечными числами",
+        ))
+        minimum_frequency < maximum_frequency || throw(ArgumentError(
+            "Минимальная Frequency Limit должна быть меньше максимальной",
+        ))
+        new(minimum_frequency, maximum_frequency)
+    end
+end
+
+Base.:(==)(::AutomaticSignalSpectrumFrequencyLimits, ::AutomaticSignalSpectrumFrequencyLimits) = true
+Base.isequal(::AutomaticSignalSpectrumFrequencyLimits, ::AutomaticSignalSpectrumFrequencyLimits) = true
+Base.hash(::AutomaticSignalSpectrumFrequencyLimits, seed::UInt) = hash(:automatic_spectrum_limits, seed)
+Base.:(==)(left::ExplicitSignalSpectrumFrequencyLimits, right::ExplicitSignalSpectrumFrequencyLimits) =
+    left.min_hz == right.min_hz && left.max_hz == right.max_hz
+Base.isequal(
+    left::ExplicitSignalSpectrumFrequencyLimits,
+    right::ExplicitSignalSpectrumFrequencyLimits,
+) = left == right
+Base.hash(limits::ExplicitSignalSpectrumFrequencyLimits, seed::UInt) =
+    hash((limits.min_hz, limits.max_hz), seed)
+
+"""Persistent per-Display Spectrum presentation and provider settings."""
 struct SignalSpectrumSettings
     scale::SignalSpectrumScale
     frequency_scale::SignalSpectrumFrequencyScale
     leakage::Float64
+    frequency_limits::AbstractSignalSpectrumFrequencyLimits
 
     function SignalSpectrumSettings(
         scale::SignalSpectrumScale,
         frequency_scale::SignalSpectrumFrequencyScale,
         leakage::Real,
+        frequency_limits::AbstractSignalSpectrumFrequencyLimits,
     )
         leakage_value = Float64(leakage)
         isfinite(leakage_value) && 0.0 <= leakage_value <= 1.0 || throw(ArgumentError(
             "Leakage Spectrum должен быть конечным числом от 0 до 1",
         ))
-        new(scale, frequency_scale, leakage_value)
+        new(scale, frequency_scale, leakage_value, frequency_limits)
     end
 end
+
+SignalSpectrumSettings(
+    scale::SignalSpectrumScale,
+    frequency_scale::SignalSpectrumFrequencyScale,
+    leakage::Real,
+) = SignalSpectrumSettings(
+    scale,
+    frequency_scale,
+    leakage,
+    AutomaticSignalSpectrumFrequencyLimits(),
+)
 
 SignalSpectrumSettings() = SignalSpectrumSettings(
     DB_SPECTRUM_SCALE,
     LINEAR_SPECTRUM_FREQUENCY_SCALE,
     0.5,
+    AutomaticSignalSpectrumFrequencyLimits(),
 )
 
 Base.:(==)(left::SignalSpectrumSettings, right::SignalSpectrumSettings) =
     left.scale == right.scale &&
     left.frequency_scale == right.frequency_scale &&
-    left.leakage == right.leakage
+    left.leakage == right.leakage &&
+    left.frequency_limits == right.frequency_limits
 Base.isequal(left::SignalSpectrumSettings, right::SignalSpectrumSettings) = left == right
 Base.hash(settings::SignalSpectrumSettings, seed::UInt) =
-    hash((settings.scale, settings.frequency_scale, settings.leakage), seed)
+    hash((settings.scale, settings.frequency_scale, settings.leakage, settings.frequency_limits), seed)
 
 """Inclusive 1-based raw sample range shared by ROI consumers."""
 struct SignalTimeSampleRange
@@ -122,6 +172,7 @@ struct SignalSpectrumQuery
     sample_range::SignalTimeSampleRange
     leakage::Float64
     topology::SignalSpectrumTopology
+    frequency_limits::AbstractSignalSpectrumFrequencyLimits
 
     function SignalSpectrumQuery(
         signal_name::AbstractString,
@@ -130,6 +181,7 @@ struct SignalSpectrumQuery
         sample_range::SignalTimeSampleRange,
         leakage::Real,
         topology::SignalSpectrumTopology,
+        frequency_limits::AbstractSignalSpectrumFrequencyLimits,
     )
         isempty(signal_name) && throw(ArgumentError("Имя сигнала Spectrum query не может быть пустым"))
         samples = ComplexF64.(values)
@@ -157,9 +209,27 @@ struct SignalSpectrumQuery
             sample_range,
             leakage_value,
             topology,
+            frequency_limits,
         )
     end
 end
+
+SignalSpectrumQuery(
+    signal_name::AbstractString,
+    values::AbstractVector{<:Number},
+    sample_rate_hz::Real,
+    sample_range::SignalTimeSampleRange,
+    leakage::Real,
+    topology::SignalSpectrumTopology,
+) = SignalSpectrumQuery(
+    signal_name,
+    values,
+    sample_rate_hz,
+    sample_range,
+    leakage,
+    topology,
+    AutomaticSignalSpectrumFrequencyLimits(),
+)
 
 """Validated raw provider power and frequency output before presentation scale."""
 struct SignalSpectrumData
@@ -206,6 +276,7 @@ struct SignalSpectrumCacheKey
     sample_range::SignalTimeSampleRange
     leakage::Float64
     topology::SignalSpectrumTopology
+    frequency_limits::AbstractSignalSpectrumFrequencyLimits
 end
 
 SignalSpectrumCacheKey(query::SignalSpectrumQuery) = SignalSpectrumCacheKey(
@@ -214,6 +285,22 @@ SignalSpectrumCacheKey(query::SignalSpectrumQuery) = SignalSpectrumCacheKey(
     query.sample_range,
     query.leakage,
     query.topology,
+    query.frequency_limits,
+)
+
+SignalSpectrumCacheKey(
+    signal_name::AbstractString,
+    sample_rate_hz::Real,
+    sample_range::SignalTimeSampleRange,
+    leakage::Real,
+    topology::SignalSpectrumTopology,
+) = SignalSpectrumCacheKey(
+    String(signal_name),
+    Float64(sample_rate_hz),
+    sample_range,
+    Float64(leakage),
+    topology,
+    AutomaticSignalSpectrumFrequencyLimits(),
 )
 
 Base.:(==)(left::SignalSpectrumCacheKey, right::SignalSpectrumCacheKey) =
@@ -221,10 +308,18 @@ Base.:(==)(left::SignalSpectrumCacheKey, right::SignalSpectrumCacheKey) =
     left.sample_rate_hz == right.sample_rate_hz &&
     left.sample_range == right.sample_range &&
     left.leakage == right.leakage &&
-    left.topology == right.topology
+    left.topology == right.topology &&
+    left.frequency_limits == right.frequency_limits
 Base.isequal(left::SignalSpectrumCacheKey, right::SignalSpectrumCacheKey) = left == right
 Base.hash(key::SignalSpectrumCacheKey, seed::UInt) = hash(
-    (key.signal_name, key.sample_rate_hz, key.sample_range, key.leakage, key.topology),
+    (
+        key.signal_name,
+        key.sample_rate_hz,
+        key.sample_range,
+        key.leakage,
+        key.topology,
+        key.frequency_limits,
+    ),
     seed,
 )
 

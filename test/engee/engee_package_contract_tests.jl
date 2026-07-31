@@ -80,6 +80,44 @@ end
         @test_throws ArgumentError pspectrum(real_two, real_time, "power", "Leakage", 1.01, "TwoSided", false)
     end
 
+    @testset "C10 FrequencyLimits forwards provider grid semantics" begin
+        probe_fs_hz = 100.0
+        probe_count = 64
+        probe_time = collect(0:(probe_count - 1)) ./ probe_fs_hz
+        real_signal = sin.(2pi .* 10.0 .* probe_time)
+        complex_signal = ComplexF64.(cis.(2pi .* 10.0 .* probe_time))
+
+        real_power, real_frequency, _ = pspectrum(
+            real_signal, probe_time, "power", "Leakage", 0.5, "TwoSided", false,
+            "FrequencyLimits", [5.0, 20.0],
+        )
+        @test !isempty(vec(collect(real_power)))
+        @test first(vec(Float64.(collect(real_frequency)))) == 5.0
+        @test last(vec(Float64.(collect(real_frequency)))) == 20.0
+        @test all(value -> 5.0 <= value <= 20.0, vec(Float64.(collect(real_frequency))))
+
+        complex_power, complex_frequency, _ = pspectrum(
+            complex_signal, probe_time, "power", "Leakage", 0.5, "TwoSided", true,
+            "FrequencyLimits", [-20.0, 15.0],
+        )
+        @test !isempty(vec(collect(complex_power)))
+        @test first(vec(Float64.(collect(complex_frequency)))) == -20.0
+        @test last(vec(Float64.(collect(complex_frequency)))) == 15.0
+        @test any(value -> value < 0.0, vec(Float64.(collect(complex_frequency))))
+        @test any(value -> value > 0.0, vec(Float64.(collect(complex_frequency))))
+
+        clipped_power, clipped_frequency, _ = pspectrum(
+            real_signal, probe_time, "power", "Leakage", 0.5, "TwoSided", false,
+            "FrequencyLimits", [40.0, 60.0],
+        )
+        @test !isempty(vec(collect(clipped_power)))
+        @test first(vec(Float64.(collect(clipped_frequency)))) == 40.0
+        @test last(vec(Float64.(collect(clipped_frequency)))) == 50.0
+        @test_throws ArgumentError pspectrum(real_signal, probe_time, "power", "Leakage", 0.5, "TwoSided", false, "FrequencyLimits", [60.0, 80.0])
+        @test_throws ArgumentError pspectrum(real_signal, probe_time, "power", "Leakage", 0.5, "TwoSided", false, "FrequencyLimits", [20.0, 20.0])
+        @test_throws ArgumentError pspectrum(real_signal, probe_time, "power", "Leakage", 0.5, "TwoSided", false, "FrequencyLimits", [NaN, 20.0])
+    end
+
     @testset "spectrogram" begin
         power, frequencies, times = pspectrum(signal, time, "spectrogram", "TwoSided", true)
         @test !isempty(vec(collect(times)))

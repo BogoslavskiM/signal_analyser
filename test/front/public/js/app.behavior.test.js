@@ -76,7 +76,7 @@ function environment(fetch, options) {
   const e = {
     root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(), settingsTabs: node(), statisticsControls: node(), statisticsError: node(),
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
-    legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), spectrumSettings: node(), spectrumScale: node(), spectrumFrequency: node(), spectrumLeakage: node(), spectrumLeakageValue: node(), spectrumError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
+    legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), spectrumSettings: node(), spectrumScale: node(), spectrumFrequency: node(), spectrumLeakage: node(), spectrumLeakageValue: node(), spectrumError: node(), spectrumFrequencyMin: node(), spectrumFrequencyMax: node(), spectrumFrequencyLimitsError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
@@ -104,6 +104,8 @@ function environment(fetch, options) {
     "[data-testid='spectrum-settings']": e.spectrumSettings, "[data-testid='spectrum-scale-select']": e.spectrumScale,
     "[data-testid='spectrum-frequency-scale-select']": e.spectrumFrequency, "[data-testid='spectrum-leakage-input']": e.spectrumLeakage,
     "[data-testid='spectrum-leakage-value']": e.spectrumLeakageValue, "[data-testid='spectrum-settings-error']": e.spectrumError,
+    "[data-testid='spectrum-frequency-min-input']": e.spectrumFrequencyMin, "[data-testid='spectrum-frequency-max-input']": e.spectrumFrequencyMax,
+    "[data-testid='spectrum-frequency-limits-error']": e.spectrumFrequencyLimitsError,
     "[data-signal-rows]": e.rows, "[data-testid='toggle-all-signals']": e.toggleAll,
     "[data-testid='display-overflow-trigger']": e.overflowTrigger, "[data-testid='display-overflow-menu']": e.overflowMenu, "[data-testid='clear-display-action']": e.clearDisplayAction,
     "[data-testid='signal-statistics-action']": e.statisticsAction, "[data-testid='find-peaks-action']": e.peaksAction,
@@ -283,7 +285,7 @@ module.exports = async function testDisplayBehavior(assert) {
   await flush();
   const view = visibility.find((call) => call.url === "./api/view");
   assert(view, "per-display checkbox must update the active display through /api/view");
-  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5 }, peaks_enabled: false }), "hiding the analysis source must retain global row selection, preserve default Statistics/Spectrum settings and disable Peaks");
+  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, peaks_enabled: false }), "hiding the analysis source must retain global row selection, preserve default Statistics/Spectrum settings and disable Peaks");
 
   const localTabRequests = [];
   const localTabs = await boot((url, options) => {
@@ -347,7 +349,7 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   memberRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
-  assert(JSON.stringify(JSON.parse(rowRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5 }, peaks_enabled: false }), "ordinary row mutations must retain the complete canonical Spectrum settings request");
+  assert(JSON.stringify(JSON.parse(rowRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, peaks_enabled: false }), "ordinary row mutations must retain the complete canonical Spectrum settings request");
   assert(memberRow.e.rows.innerHTML.includes("signal-row-") && memberRow.e.rows.innerHTML.includes(B), "the selected member row must be rendered from authoritative row and analysis state");
 
   const uncheckedRequests = [];
@@ -358,7 +360,7 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   uncheckedRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
-  assert(JSON.stringify(JSON.parse(uncheckedRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5 }, peaks_enabled: false }), "membership mutations must retain the complete canonical Spectrum settings request");
+  assert(JSON.stringify(JSON.parse(uncheckedRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, peaks_enabled: false }), "membership mutations must retain the complete canonical Spectrum settings request");
 
   const clearRequests = [];
   const clear = await boot((url, options) => {
@@ -373,7 +375,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(clearRequests.length === 1 && clear.e.overflowMenu.hidden === false && clear.e.overflowTrigger.getAttribute("aria-expanded") === "true", "Display overflow must open Clear Display locally and accessibly without a request");
   clear.e.clearDisplayAction.listeners.click();
   await flush();
-  assert(JSON.stringify(JSON.parse(clearRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5 }, peaks_enabled: false }), "Clear Display must preserve complete canonical Spectrum settings in the revisioned empty request");
+  assert(JSON.stringify(JSON.parse(clearRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, peaks_enabled: false }), "Clear Display must preserve complete canonical Spectrum settings in the revisioned empty request");
   assert(clear.e.overflowMenu.hidden === true && clear.e.overflowTrigger.getAttribute("aria-expanded") === "false", "Clear Display must close its menu after activation");
   assert(clear.e.host === clearHost && clear.e.host.innerHTML.includes("empty-display-plot-state") && clear.e.host.dataset.plotReady === "false", "an empty authoritative page must retain its one graph host while clearing stale rendering");
   assert((!clear.e.host.data || clear.e.host.data.length === 0) && (!clear.e.host._fullData || clear.e.host._fullData.length === 0) && (!clear.e.host.calcdata || clear.e.host.calcdata.length === 0), "an empty Display must purge stale Plotly data from the persistent graph host");
@@ -543,7 +545,7 @@ module.exports = async function testDisplayBehavior(assert) {
   peaks.e.peaksAction.listeners.click();
   await flush();
   const peakView = peakRequests.find((call) => call.url === "./api/view");
-  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5 }, peaks_enabled: true }), "Find Peaks must retain complete canonical Spectrum settings");
+  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, peaks_enabled: true }), "Find Peaks must retain complete canonical Spectrum settings");
   assert(peaks.e.peaksAction.getAttribute("aria-pressed") === "true" && peaks.e.peaksBottomTab.hidden === false && peaks.e.peaksPanel.hidden === false, "an enabled authoritative Peaks snapshot must press the action and open the local Peaks tab/panel");
   assert(peaks.e.peaksContent.innerHTML.includes("peak-row-peak-2") && peaks.e.peaksContent.innerHTML.includes("data-sample-index='2'"), "the Peaks table must render backend item fields without a client-side peak calculation");
   const marker = peaks.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");
@@ -568,7 +570,7 @@ module.exports = async function testDisplayBehavior(assert) {
   await flush();
   const spectrumViews = spectrumRequests.filter((call) => call.url === "./api/view");
   assert(spectrumViews.length === 1, "a Spectrum setting commit must make exactly one view request");
-  assert(JSON.stringify(JSON.parse(spectrumViews[0].options.body).spectrum_settings) === JSON.stringify({ scale: "linear", frequency_scale: "log", leakage: .25 }), "Spectrum controls must submit the complete canonical nested object");
+  assert(JSON.stringify(JSON.parse(spectrumViews[0].options.body).spectrum_settings) === JSON.stringify({ scale: "linear", frequency_scale: "log", leakage: .25, frequency_limits: null }), "Spectrum controls must submit the complete canonical nested object");
   assert(spectrum.calls.filter((call) => call.plot).at(-1).layout.xaxis.type === "log", "authoritative Spectrum frequency_scale must control only the Spectrum x axis");
 
   const rejectedRequests = [];
@@ -587,4 +589,41 @@ module.exports = async function testDisplayBehavior(assert) {
   complexSpectrum.plot_payload.spectrum_traces = spectrumInitial.plot_payload.spectrum_traces;
   const complex = await boot((url) => Promise.resolve(response(200, complexSpectrum)));
   assert(complex.e.spectrumFrequency.options.find((option) => option.value === "log").disabled === true, "Log Spectrum frequency scale must be disabled while a complex member is visible");
+
+  const c10AutoSettings = { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null };
+  const c10Definition = Object.assign({}, c9SpectrumDefinition, { spectrum_settings: c10AutoSettings });
+  const c10Initial = snapshot(0, "display-1", [c10Definition], A);
+  c10Initial.plot_payload.spectrum_traces = spectrumInitial.plot_payload.spectrum_traces;
+  c10Initial.plots.spectrum = { type: "line", x: [0, 5], y: [0, 1], frequency_limits: { mode: "auto", requested: null, effective: { min_hz: 0, max_hz: 5, units: "Hz" } } };
+  const c10ExplicitSettings = Object.assign({}, c10AutoSettings, { frequency_limits: { min_hz: 1, max_hz: 4, units: "Hz" } });
+  const c10Committed = snapshot(1, "display-1", [Object.assign({}, c10Definition, { spectrum_settings: c10ExplicitSettings })], A);
+  c10Committed.plot_payload.spectrum_traces = spectrumInitial.plot_payload.spectrum_traces;
+  c10Committed.plots.spectrum = { type: "line", x: [1, 4], y: [0, 1], frequency_limits: { mode: "explicit", requested: c10ExplicitSettings.frequency_limits, effective: c10ExplicitSettings.frequency_limits } };
+  const c10Requests = [];
+  const c10 = await boot((url, options) => {
+    c10Requests.push({ url, options });
+    return Promise.resolve(response(200, url === "./api/state" ? c10Initial : c10Committed));
+  });
+  assert(c10.e.spectrumFrequencyMin.value === "0" && c10.e.spectrumFrequencyMax.value === "5", "Auto Frequency Limits must show only backend effective Hz values");
+  c10.e.spectrumFrequencyMin.value = "1";
+  c10.e.spectrumFrequencyMax.value = "4";
+  c10.e.spectrumFrequencyMin.listeners.input();
+  assert(c10Requests.filter((call) => call.url === "./api/view").length === 0, "Frequency Limits draft input must not mutate before commit");
+  c10.e.spectrumFrequencyMax.listeners.keydown({ key: "Enter", preventDefault() {} });
+  await flush();
+  const c10Views = c10Requests.filter((call) => call.url === "./api/view");
+  assert(c10Views.length === 1, "Enter must commit one full queued Frequency Limits request");
+  assert(JSON.stringify(JSON.parse(c10Views[0].options.body).spectrum_settings) === JSON.stringify(c10ExplicitSettings), "Frequency Limits commit must retain exact four-key Spectrum settings");
+
+  const c10RejectedRequests = [];
+  const c10Rejected = await boot((url, options) => {
+    c10RejectedRequests.push({ url, options });
+    return Promise.resolve(response(url === "./api/state" ? 200 : 422, url === "./api/state" ? c10Initial : { error: { fields: { spectrum_settings: "Frequency Limits outside topology" } } }));
+  });
+  c10Rejected.e.spectrumFrequencyMin.value = "6";
+  c10Rejected.e.spectrumFrequencyMax.value = "7";
+  c10Rejected.e.spectrumFrequencyMax.listeners.change();
+  await flush();
+  assert(c10RejectedRequests.filter((call) => call.url === "./api/view").length === 1, "rejected Frequency Limits must not issue an implicit retry");
+  assert(c10Rejected.e.spectrumFrequencyMin.value === "0" && c10Rejected.e.spectrumFrequencyMax.value === "5" && c10Rejected.e.spectrumFrequencyLimitsError.hidden === false, "422 must restore the exact authoritative Auto presentation and inline field error");
 };

@@ -92,11 +92,21 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   );
   assert(/data-testid="spectrum-settings-error"[^>]*role="alert"[^>]*hidden/.test(html), "Spectrum settings must reserve an accessible inline validation state");
   assert(/data-testid="spectrum-leakage-input"[^>]*type="range"[^>]*min="0"[^>]*max="1"/.test(html), "Spectrum leakage must expose its bounded numeric control");
+  ["spectrum-frequency-min-input", "spectrum-frequency-max-input", "spectrum-frequency-limits-error"].forEach((id) =>
+    assert(html.includes(`data-testid="${id}"`), `Frequency Limits must expose stable selector ${id}`)
+  );
+  assert(/data-testid="spectrum-frequency-min-input"[^>]*inputmode="decimal"/.test(html) && /data-testid="spectrum-frequency-max-input"[^>]*inputmode="decimal"/.test(html), "Frequency Limits must expose typed Hz inputs");
+  assert(/data-testid="spectrum-frequency-limits-error"[^>]*role="alert"[^>]*hidden/.test(html), "Frequency Limits must reserve an accessible inline validation state");
+  assert((html.match(/data-settings-tab=/g) || []).length === 3 && (html.match(/data-settings-panel=/g) || []).length === 3, "Frequency Limits must remain in the existing three settings tabs");
   ["spectrum_settings", "spectrumSettingsErrors", "bindSpectrumSettings", "renderSpectrumSettings", "frequency_scale", "hasVisibleComplexSignal"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Cascade 9 Spectrum settings term ${term}`)
   );
   assert(app.includes('xaxis.type = spectrumSettings(d.spectrum_settings).frequency_scale'), "Spectrum frequency scale must map to Spectrum x-axis layout only");
   assert(app.includes('option.value === "log") option.disabled = complex'), "Log Spectrum frequency scale must be unavailable with a visible complex signal");
+  ["frequency_limits", "spectrumFrequencyLimits", "spectrum-frequency-min-input", "spectrum-frequency-max-input", "spectrum-frequency-limits-error"].forEach((term) =>
+    assert(app.includes(term), `frontend must preserve Cascade 10 Frequency Limits term ${term}`)
+  );
+  assert(!/log[-_ ]?floor/i.test(html) && !/log[-_ ]?floor/i.test(app), "Cascade 10 must not add a Log-floor field or client-side floor calculation");
   assert((app.match(/function renderStatisticsControls\(/g) || []).length === 1, "Statistics settings must have exactly one render function");
   assert((app.match(/function render\(/g) || []).length === 1, "frontend must retain exactly one render declaration");
   assert(!app.includes("function bindStatisticsShortcut("), "Statistics shortcut must not retain a dead duplicate binding path");

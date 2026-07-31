@@ -52,7 +52,14 @@ const SPECTRUM_FAILURE = Ref(false)
 function signal_spectrum_calculate(::EngeeDSPSpectrumProvider, query::SignalSpectrumQuery)::SignalSpectrumData
     push!(SPECTRUM_CALLS, query)
     SPECTRUM_FAILURE[] && throw(ArgumentError("deterministic Spectrum provider failure"))
-    frequencies = query.topology == ONE_SIDED_SPECTRUM ? [0.0, query.sample_rate_hz / 2] : [-query.sample_rate_hz / 2, query.sample_rate_hz / 2]
+    frequencies = if query.frequency_limits isa ExplicitSignalSpectrumFrequencyLimits
+        limits = query.frequency_limits::ExplicitSignalSpectrumFrequencyLimits
+        [limits.min_hz, limits.max_hz]
+    elseif query.topology == ONE_SIDED_SPECTRUM
+        [0.0, query.sample_rate_hz / 2]
+    else
+        [-query.sample_rate_hz / 2, query.sample_rate_hz / 2]
+    end
     SignalSpectrumData(frequencies, [1.0, 4.0], query.topology)
 end
 
