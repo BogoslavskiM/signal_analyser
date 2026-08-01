@@ -632,3 +632,28 @@ changes: None.
 risks: Current omitted product path itself has recorded >1.2 GiB allocation
 cost even at N64. This is not classified as Engee defect.
 next_task_candidates: Lazy/materialization containment assessment.
+
+## Cascade 23 lazy Persistence materialization assessment — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c19_persistence_leakage_probe`.
+scope: Read-only trace of initial snapshot, Display lifecycle, source/settings
+changes and the prepared four-cache aggregate.
+finding: Defaults and the current planner eagerly materialize selected-source
+Persistence even while Time, Spectrum or Spectrogram is active. The aggregate
+atomicity contract does not require that provider call.
+decision: GO under DEC-029. Materialize only for a prospective active
+Persistence plot with a non-null source and at least two samples. Inactive wire
+keeps existing keys/source labels with typed-empty x/y/z, while the raw cache is
+retained for later warm reuse.
+atomicity: A cold switch to Persistence must prepare the complete prospective
+Display aggregate before publishing active plot, revision or any of the four
+cache maps. Provider failure leaves all prior observable state and caches
+unchanged.
+changes: None in this assessment.
+risks: Active Persistence retains the C22 omitted-overlap allocation risk. No
+cancellation, eviction, custom DSP, provider option, API schema or math change
+is authorized.
+next_task_candidates: Service-only OOP implementation in
+`lib/services/signal_analyser_service.jl`, followed by lifecycle/rollback and
+wire-shape tests.

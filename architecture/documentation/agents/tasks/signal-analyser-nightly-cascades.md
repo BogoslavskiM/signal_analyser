@@ -1194,3 +1194,27 @@ Persistence feature or provider probe.
 | E2E Tester | `/root/e2e_c18_persistence_inventory` | rebaseline inventory complete | lazy render scenario | foundation NO-GO | event-only oracle |
 | DevOps | `/root/devops_c17_commit` | snapshot docs committed | C22 docs checkpoint | Architect validation | `5f31a4a` |
 | MATLAB Researcher | `/root/matlab_c20_persistence_overlap` | parity claim rejected | standby | no safe GUI action | official web only |
+
+## Cascade 23 contract freeze — 2026-08-01
+
+Status: `contract-frozen-implementation-next`; DEC-029.
+
+Persistence becomes active-view-only at the service materialization boundary.
+Inactive Persistence payloads preserve the current exact wire schema and
+source metadata with typed-empty data, while raw provider results remain
+cacheable and reusable. A cold transition into active Persistence prepares the
+full prospective four-cache aggregate before any Display/revision/cache
+publication. No provider option, spectral math, API settings, frontend schema,
+cache eviction or cancellation policy changes in this cascade. Active
+Persistence retains the C22 operational resource risk.
+
+### Persistent role queue after C23 contract freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | lazy trace complete | service-only OOP implementation | docs checkpoint | DEC-029 GO |
+| Frontend | `/root/frontend_time_snapshot` | Time boundary hardening active | C23 no-runtime-delta audit | backend wire behavior | exact schema unchanged |
+| Tester | `/root/tester_c18_persistence_matrix` | Time matrix correction active | C23 lifecycle/rollback matrix | backend implementation | typed-empty oracle |
+| E2E Tester | `/root/e2e_c18_persistence_inventory` | C19 static complete | C23 event-driven lifecycle scenario | backend implementation | no fixed waits |
+| DevOps | `/root/devops_c17_commit` | C22 docs committed | C23 contract checkpoint | Architect validation | `11a77c9` |
+| MATLAB Researcher | `/root/matlab_c20_persistence_overlap` | standby | no C23 GUI research | none required | official web only |

@@ -144,6 +144,10 @@ source, samples, sample rate, topology и fixed `NumPowerBins=256` входят 
 raw-cache identity; signed zero канонизируется. Leakage меняет provider power
 axis и occurrence, но не frequency axis в подтверждённом prod contract. A/B и
 Clear сохраняют preference; empty Display и `N<2` provider не вызывают.
+Provider materialization дополнительно зависит от prospective active plot.
+Inactive Persistence возвращает typed-empty axes/matrix без вычисления и
+сохраняет raw cache для warm return. Это scheduling policy: pspectrum math,
+Leakage, topology, bins, dB conversion и bounding не меняются.
 
 Power Limits также не входят в query/cache/provider identity. Для Auto
 effective extrema вычисляются по полной raw matrix до wire bounding: каждое

@@ -488,3 +488,15 @@
 - Current omitted cost записан как operational resource risk. Pod cleaned/
   stopped, Engee bug не заявлен; следующий candidate — semantic-preserving
   lazy materialization.
+
+## 2026-08-01 — Cascade 23 lazy Persistence contract
+
+- Service trace подтвердил eager cache miss на initial GET и Display lifecycle
+  независимо от active plot; four-cache aggregate этого не требует.
+- DEC-029 принимает active-Persistence-only materialization. Inactive wire
+  детерминированно typed empty, source metadata сохраняется, raw cache retained
+  и warm-reuses при возврате.
+- Provider options/math/API settings не меняются. Cold active transition должен
+  подготовить prospective aggregate до state/revision/cache publication.
+- Контракт уменьшает accidental startup/inactive risk, но не объявляет active
+  omitted Persistence безопасным. Implementation evidence пока не заявляется.

@@ -31,4 +31,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260801-026: Persistence OverlapPercent NO-GO](DEC-20260801-026-persistence-overlap-no-go.md)
 - [DEC-20260801-027: Persistence Frequency Limits blocked](DEC-20260801-027-persistence-frequency-limits-blocked.md)
 - [DEC-20260801-028: fixed Persistence segmentation NO-GO](DEC-20260801-028-fixed-persistence-segmentation-no-go.md)
+- [DEC-20260801-029: lazy Persistence materialization](DEC-20260801-029-lazy-persistence-materialization.md)
 - [Шаблон ADR](template.md)

@@ -210,6 +210,14 @@ Owner: Architect
   changing PWR/occurrence. Guard stopped all remaining mandatory evidence.
   C21 remains blocked; current omitted cost is an operational risk. Next
   candidate is semantic-preserving lazy Persistence materialization.
+- DEC-029 freezes C23 as semantic-preserving resource containment: Persistence
+  provider materialization is permitted only for a prospective active
+  Persistence plot with a valid source. Inactive responses keep the exact
+  existing wire keys and source metadata but carry typed-empty axes/matrix;
+  raw caches remain warm. A cold active transition must prepare the complete
+  four-plot aggregate before publishing Display state, revision or caches.
+  This does not make active omitted-overlap Persistence resource-safe and does
+  not unblock C21 Frequency Limits.
 - C19 implemented and locally accepted at product/test commit `2f99ff8`:
   backend 1497/1497, C19 48/48, frontend 2/2, focused Playwright static and
   independent Frontend/E2E/Backend audits CLEAN. Local Engee gate retains the

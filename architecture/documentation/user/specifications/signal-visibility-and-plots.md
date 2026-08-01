@@ -19,6 +19,11 @@
   Display-local normalized Leakage. Secondary visible signals не
   создают дополнительные Persistence traces или provider calls; empty Display
   очищает тот же host без stale heatmap.
+- Persistence материализуется только когда он является prospective active
+  plot. Inactive nonempty wire сохраняет source/name/color и labels, но всегда
+  имеет `x=[]`, `y=[]`, `z=[]`, даже при warm raw cache. Switch away не удаляет
+  cache; return warm-reuses. Initial Time snapshot и inactive source/Leakage/
+  lifecycle mutations не вызывают Persistence provider.
 - Можно добавлять, выбирать и закрывать Display pages; на активной странице
   расположен один график. MATLAB docking/multi-layout пока не переносится.
 - Тип графика, nullable analysis source и checkbox membership принадлежат
@@ -246,6 +251,10 @@ Persistence-settings-only mutation не материализует Spectrum/Spec
 sample rate/count, topology, fixed 256 power bins и exact Leakage. Provider
 получает canonical `Leakage`, `NumPowerBins`, `TwoSided`; existing heatmap wire
 и dB presentation не получают metadata или дополнительных traces.
+Если Persistence inactive, settings-only mutation также не материализует его:
+preference/revision сохраняются, wire остаётся typed empty, provider вызывается
+при следующем active switch. Active cold mutation готовит весь prospective
+payload и четыре caches до публикации; preparation failure атомарен.
 Следующий обычный GET материализует missing data. Другие semantic changes
 (membership/source/time/Spectrum/active plot) сохраняют полную atomic
 preparation.
