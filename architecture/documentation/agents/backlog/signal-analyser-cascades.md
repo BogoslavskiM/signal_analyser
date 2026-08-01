@@ -314,3 +314,77 @@ Owner: Architect
 - Push, deployment and merge remain unauthorised/unperformed. Panel, plot
   payload, traces/heatmaps, settings, Measurements, Peaks, DSP and math require
   a separate accepted contract; they are not implicit C29 scope.
+
+## Cascade 29 implementation and runtime lane — 2026-08-01
+
+- [DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md)
+  and its assessment/report are frozen at `cf787be`. At this shared
+  handoff milestone Frontend, Tester and gated E2E changes are assigned but not
+  yet claimed implemented, verified or deployed.
+- Frontend `/root/frontend_c29_payload` owns the exact six-key pre-normalize
+  boundary, one selected route, no-fallback router and local per-ID quarantine.
+  Tester `/root/tester_c29_payload` owns the deterministic exact-envelope,
+  projection, four-route, precedence and initial/`200`/`409`/A-B/recovery
+  matrix. E2E Tester `/root/e2e_c29_payload` owns a disabled-by-default
+  route-controlled scenario with timing evidence; browser runtime remains
+  target-dependent and does not require deployment to be prepared or run.
+- First independent static audit blocks E2E acceptance until three exact
+  evidence defects are corrected: the valid six-key fixture must not fabricate
+  branches from legacy `plots`; A/B recovery must exercise authoritative
+  `200`/`409 current` in the same document so queue and discarded-intent state
+  survive into the oracle; and the read-only inventory check must assert row/
+  control cardinality instead of passing over an empty locator loop. E2E Tester
+  `/root/e2e_c29_payload` owns correction and a repeated independent audit is
+  the next task. Runtime remains later and target-dependent.
+- Second independent audit confirms reloads/fixed sleeps are gone and same-
+  document transitions/timing/deferred Plotly are present, but still blocks
+  acceptance on four successor gaps: immutable row identity must exclude the
+  deliberately absent quarantined checkbox ID; every branch made active by the
+  scenario must be validated at that moment; the legacy no-fallback witness
+  must be nonempty/renderable; and malformed active-payload successful `200`
+  must join the existing malformed `409 current` lifecycle. These corrections
+  and a final independent `CLEAN` audit remain the current E2E queue.
+- Third independent audit keeps E2E acceptance blocked on two narrower contract
+  mismatches: synthetic `409` routes must return `{current: snapshot}`, not a
+  bare snapshot, and the renderable legacy Time/Spectrum witness must accept
+  the existing `{traces:[...]}` form. Static syntax/support/default gates pass;
+  these two corrections and another independent audit remain current work.
+- Final resolution: every preserved E2E audit defect is corrected and the
+  independent final verdict is `CLEAN`. Frontend/Tester `cf5445a` is 2/2 twice
+  plus independent role audits `CLEAN`; gated E2E `745eefc` passes JavaScript,
+  support, shell, targeted-diff and explicit prerequisite/default-false gates.
+  The remaining C29 lane is focused browser timing/runtime on a compatible
+  C26-C29 target with feature gates enabled. No compatible target is currently
+  evidenced, so E2E is completed standby with an exact dependency rather than
+  an unexplained idle state.
+- Backend/API/math and MATLAB remain no-delta. Push, deployment and merge remain
+  unperformed; merge still requires explicit user acceptance. The current
+  Frontend/Tester/E2E checkpoints are local only.
+- Local C29 payload mismatch is not the DEC-033 global class. Root versus a
+  valid active Display selection mismatch remains global fatal/reset/Retry;
+  `plot_payload` versus those already-valid projections, exact-envelope or
+  active-branch corruption quarantines only the active validated Display ID.
+  C27/C28 active quarantine takes precedence and skips C29 fields.
+- Exact observable C29 error:
+  `data-testid="display-active-plot-payload-contract-error-state"`,
+  `role="alert"`, text
+  `Некорректные данные активного графика в ответе сервера.` Same-ID View
+  desired/queued/pending/replay work is discarded with zero new View POST;
+  valid other-Display work/topology continues; C24 host generation is
+  invalidated and purged; valid recovery clears only the local error without
+  resurrecting discarded intent.
+- Backend is completed standby with no eligible C29 delta. Existing evidence
+  is 1582 assertions PASS plus route-reachable GET/`200`/`409` probes for all
+  four `active_plot` enum values; it supports the no-delta conclusion but does
+  not verify the future frontend boundary. MATLAB Researcher is completed
+  standby after official MathWorks web research only; no GUI, Command Window,
+  clicker or saved scenario was used.
+- DevOps `/root/devops_c17_commit` has all three accepted local checkpoints:
+  contract `cf787be`, Frontend/Tester product/unit `cf5445a` and gated E2E
+  `745eefc`. Only the validated shared-document set still requires a separate
+  exact handoff/checkpoint. Push, deployment and merge remain unperformed;
+  merge additionally lacks explicit user acceptance.
+- Numeric `x/y/z`, finite/shape/geometry checks, trace type, axes/scales,
+  normalization, metadata, labels/colors, `plots`, panel, settings,
+  Measurements, Peaks, inactive-branch internals, backend/API/request schema,
+  DSP and math remain deferred to separately accepted contracts.

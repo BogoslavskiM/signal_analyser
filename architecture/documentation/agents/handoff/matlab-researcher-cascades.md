@@ -811,3 +811,58 @@ risks: Current Help is not release-frozen; app tutorial examples must not be
 promoted into defaults.
 next_task_candidates: Bounded fresh-session observation only after unsafe
 Command Window state is explicitly cleared.
+
+## Cascade 29 active-payload official-web direction — 2026-08-01
+
+canonical_role: MATLAB Researcher
+owner: MATLAB Researcher
+session: `/root/matlab_c23_spectrum_defaults`
+goal: Determine whether public Signal Analyzer direction requires Genie to
+validate or render multiple plot payload branches simultaneously.
+scope: Official MathWorks web documentation only; no MATLAB GUI, Command
+Window, Add-On Explorer, clicker, browser workspace mutation or repository
+edit.
+files_or_folders: None; research only.
+out_of_scope: Numeric/visual parity, fresh-session default observation,
+layout/docking reproduction, payload schema invention and product/test edits.
+contracts: MathWorks documents simultaneous waveform, spectrum, persistence
+and spectrogram representations through a Display Grid and separate displays;
+Spectrogram and Persistence are one-signal-per-display views. This is research
+direction, not a Genie wire or layout contract. The Genie conclusion is an
+Architect inference: its existing one `active_plot` per Display and one shared
+Plotly host justify routing exactly one active branch in C29.
+enabled_optional_capabilities: None; no MATLAB-clicker capability was enabled.
+acceptance: Official sources, documented facts, Genie inference and unobserved
+GUI behavior remain explicitly separated.
+changes: None. Research is complete and the role is completed standby.
+verification: Direct official-web review only. No MATLAB GUI evidence, saved
+scenario, screenshot, Command Window command or clicker result is claimed.
+risks: Public help describes MATLAB's layout capability, not a release-frozen
+Genie payload schema. Treating it as numeric or UI parity would overstate the
+evidence.
+follow-ups: No eligible C29 GUI work. A future layout-parity question requires
+a separate bounded assignment and safe clicker setup; it must not broaden
+DEC-035.
+next_task_candidates: None for C29 (`no-eligible-work`); remain completed
+standby until a distinct reference question is accepted.
+docs_sources: MathWorks Signal Analyzer app reference
+`https://www.mathworks.com/help/signal/ref/signalanalyzer-app.html`; MathWorks
+Explore Signals, “View Signals on Multiple Plots”
+`https://www.mathworks.com/help/signal/ug/explore-signals.html`.
+documented_direction: Signal Analyzer can place different representations in
+separate display regions; Spectrogram/Persistence are documented as
+single-signal displays.
+clicker_setup: Not invoked; no text, keyboard, mouse, GUI or workspace action
+occurred.
+observed_undocumented_behavior: None.
+docs_vs_app_delta: MATLAB GUI state was not observed. Genie's exact single-
+active-route rule is a product inference from its existing architecture, not a
+claim of MATLAB application behavior.
+product_tasks: Implement only the already accepted DEC-035 frontend routing
+boundary; do not introduce MATLAB-style multi-view layout.
+e2e_scenarios: No MATLAB scenario was created. C29 E2E remains a Genie route-
+controlled scenario owned by E2E Tester.
+source_evidence: The two official MathWorks pages above,
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md)
+and contract commit `cf787be`.
+engee_bug_candidate: None.

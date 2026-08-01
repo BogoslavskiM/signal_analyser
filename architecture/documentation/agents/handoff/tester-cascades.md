@@ -658,3 +658,90 @@ next_task_candidates: Runtime C28 correlation through the gated E2E scenario;
 otherwise completed standby pending a new accepted contract.
 source_evidence: DEC-034; behavior matrix; commit `08af1e7`.
 engee_bug_candidate: None.
+
+## Cascade 29 active-plot payload routing matrix contract — 2026-08-01
+
+canonical_role: Tester
+owner: Tester
+session: `/root/tester_c29_payload`
+goal: Prove DEC-035 strict active-route acceptance, local-versus-global
+severity and lifecycle without fixture repair, fallback or request-count false
+positives.
+scope: `test/front/public/js/app.behavior.test.js`; deterministic Node behavior
+harness only.
+files_or_folders: `test/front/public/js/app.behavior.test.js`.
+out_of_scope: Product/backend/E2E edits; numeric `x/y/z`, geometry, DSP/math;
+inactive-branch internals; `plots`, panel, settings, Measurements and Peaks.
+contracts: First make every ordinary valid fixture publish the exact six-key
+`plot_payload` without helper auto-healing after targeted mutation. Isolate
+missing/extra/null/array/primitive envelope cases; payload selected/membership
+type/value/order mismatches against already-valid projections; all four active
+routes; wrong branch container; Time/Spectrum cardinality/order; missing,
+inherited or wrong owned `signal`; `name` with missing/wrong `signal`; and all
+four canonical routing-empty forms. Prove malformed inactive branches are
+ignored and valid `plots` cannot rescue a malformed active branch. C27/C28
+active quarantine must skip C29 and preserve the earlier selector. A true
+valid-active root projection mismatch must remain global fatal, while a
+payload-only projection mismatch must expose only
+`display-active-plot-payload-contract-error-state` with `role="alert"` and
+exact text `Некорректные данные активного графика в ответе сервера.` Cover
+initial, successful malformed `200`, malformed `409 current`, two-Display A/B
+isolation and valid authoritative recovery with exact pre/post View request
+counts: same-ID desired/queued/pending/stale-replay work is discarded, valid B
+continues, topology stays available and old intent never resurrects. Bound a
+deferred Plotly settlement to prove purge/error/readiness remain authoritative
+without an unbounded reassertion loop.
+enabled_optional_capabilities: Not applicable; the selected
+`frontend-static-behavior-testing` skill declares no optional capability IDs.
+acceptance: Every malformed class is created after valid fixture construction;
+DOM, selector, queue identity, exact View call counts and controlled promise
+settlement jointly distinguish local quarantine, global fatal and accepted
+inactive corruption.
+changes: None at handoff time; the behavior matrix is planned/in progress and
+is not claimed by this record.
+verification: Planned `node --check
+test/front/public/js/app.behavior.test.js`,
+`node test/front/run_front_tests.js` and `git diff --check`, followed by an
+independent false-positive audit. No result is marked passed here.
+risks: A disabled-control-only assertion can miss replay; shared fixture
+aliasing can mutate both expected and actual; generic rendering success can
+hide `plots` fallback; uncontrolled Plotly promises can hang the suite.
+follow-ups: Return exact covered cases, request counts, fixture corrections and
+any uncovered contract seam to Architect; browser-visible composition remains
+the E2E Tester lane.
+next_task_candidates: Independent Tester audit after implementation; preserve
+these post-helper corruption seams for any future typed/numeric payload slice.
+source_evidence:
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md);
+contract commit `cf787be`; active-plot payload routing
+assessment; C24 and C27/C28 controlled lifecycle matrices.
+engee_bug_candidate: None.
+
+## Cascade 29 acceptance matrix and final audit resolution — 2026-08-01
+
+canonical_role: Tester
+owner: Tester
+sessions: `/root/tester_c29_payload`, `/root/tester_c29_audit`
+goal: Close the DEC-035 deterministic matrix, including the inverse active-
+branch container classes missed by the first green suite.
+scope: `test/front/public/js/app.behavior.test.js`; no product/backend/E2E edit.
+contracts: Exact envelope/projection/four-route/empty/inactive/precedence
+classes; Time/Spectrum plain-object and Spectrogram/Persistence nonempty-array
+inverse cases; local exact alert with zero Plotly/View POST; initial/`200`/`409`
+A-B/recovery/topology/late-settlement lifecycle.
+changes: Published exact valid six-key fixtures and the full C29 corruption
+matrix; after independent audit added `{signal:A}` line-object and
+`[{signal:A}]` heatmap-array regressions to both active-route loops.
+verification: Full frontend suite PASS 2/2 twice consecutively after correction;
+owned diff-check PASS; final independent Tester audit `CLEAN` with no remaining
+routing, precedence, queue, recovery, topology or deferred-Plotly defect.
+risks: Node behavior coverage does not claim compatible-target browser runtime.
+follow-ups: Preserve post-helper mutations and inverse-container cases; runtime
+composition remains the gated E2E lane.
+next_task_candidates: No eligible C29 unit work; completed standby pending a
+new accepted contract or material runtime defect.
+source_evidence:
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md);
+Tester first `FAIL` and final `CLEAN` audits; local checkpoint
+`cf5445a8baf8eff9f7a69ae662b331ad79d55a45`.
+engee_bug_candidate: None.

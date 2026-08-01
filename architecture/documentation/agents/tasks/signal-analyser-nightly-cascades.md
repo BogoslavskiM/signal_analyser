@@ -1427,3 +1427,88 @@ untouched. Push, deployment and merge were not performed.
 | E2E Tester | `/root/e2e_c27_audit` | C28 gated static CLEAN/committed | focused C28 runtime | compatible C28 target absent; feature default false | `a091410` |
 | DevOps | `/root/devops_c17_commit` | C28 local commits complete; completed standby | validated C28 architecture-doc checkpoint | exact Architect file handoff required; no push/deploy/merge authority | `a091410`, `08af1e7` |
 | MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | completed standby; no C28 action | none | no GUI/reference question for C28 | untouched |
+
+## Cascade 29 contract freeze and implementation handoff — 2026-08-01
+
+Status: `contract-frozen-implementation-in-progress`; product/test
+implementation was not present at this freeze, runtime was not verified and
+deployment was not performed.
+
+The three-file authoritative contract checkpoint is `cf787be`.
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md)
+freezes
+`plot_payload` as a non-null, non-array plain object with exactly
+`selected_signal`, `visible_signals`, `time_traces`, `spectrum_traces`,
+`spectrogram` and `persistence`. It runs only after DEC-032/033/034. A real
+root-versus-valid-active-Display selection mismatch remains the earlier global
+fatal/reset class. A payload-versus-already-valid selection projection,
+exact-envelope or selected-branch failure is instead local C29 quarantine of
+the validated active Display ID.
+
+Routing selects exactly one branch from the valid four-value `active_plot`:
+ordered and cardinality-equal owned-`signal` traces for Time/Spectrum, or a
+plain owned-`signal` object matching the selected source for Spectrogram/
+Persistence. `plots`, inactive branches, previous payload, `name` and
+fabricated empty values are forbidden fallback sources. The exact local state
+is `data-testid="display-active-plot-payload-contract-error-state"`,
+`role="alert"`, text
+`Некорректные данные активного графика в ответе сервера.`
+
+The assigned lifecycle matrix covers initial, authoritative malformed `200`,
+malformed `409 current`, two-Display isolation and authoritative valid
+recovery. It must prove exact same-ID View queue/replay purge, zero new View
+POST for the quarantined ID, independent valid-ID continuation, topology
+availability, C24 Plotly generation invalidation/purge, no stale settlement
+resurrection and no resurrection of discarded intents. A Display already
+quarantined by C27/C28 skips C29 field validation and preserves its earlier
+selector/error.
+
+Numeric `x/y/z`, finiteness, dimensions, heatmap geometry, trace types, axes,
+scales, normalization, metadata, labels/colors, `plots`, `panel`, settings,
+Measurements, Peaks, inactive-branch internals, backend/API/request schema,
+DSP and mathematics remain excluded. Existing Backend evidence is a no-delta
+audit: 1582 assertions plus route-reachable GET/`200`/`409` probes of all four
+`active_plot` enum values pass; it does not claim the future frontend C29
+implementation. MATLAB evidence is official-web direction only; no GUI,
+Command Window or clicker action was used.
+
+### Persistent role queue after C29 contract freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c27_serializer_audit` | C29 no-delta audit complete; completed standby | future aggregate/import hardening only | separate ADR required; no eligible C29 backend work | 1582 PASS plus GET/200/409 four-enum probes |
+| Frontend | `/root/frontend_c29_payload` | implement DEC-035 exact payload validator/router and local quarantine | focused role verification and structured implementation handoff | none; contract checkpoint `cf787be` committed | C29 implementation contract below |
+| Tester | `/root/tester_c29_payload` | implement exact fixture/corruption/lifecycle behavior matrix | independent false-positive audit and structured acceptance handoff | coordinate exact seams with Frontend; no product ownership | C29 matrix contract below |
+| E2E Tester | `/root/e2e_c29_payload` | correct third-audit `409 current` wrapper and legacy `{traces:[...]}` witness gaps | final independent static/support/default-false/timing audit | exact API/witness evidence required; compatible runtime target later | E2E Tester `/root/e2e_c29_audit` third verdict `DEFECTS` |
+| DevOps | `/root/devops_c17_commit` | three-file C29 contract checkpoint complete; completed standby | validated shared-doc checkpoint, then explicit accepted product/test checkpoints | exact completed file handoff required; no push/deploy/merge authority | `cf787be` |
+| MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | official-web C29 direction complete; completed standby | none | no eligible C29 GUI/reference task; layout parity is excluded | MathWorks public docs only; no GUI/clicker |
+
+## Cascade 29 product/unit and gated E2E static close — 2026-08-01
+
+Status: `implemented-and-locally-verified`; gated E2E static `CLEAN`; browser
+runtime unclaimed; not deployed.
+
+Frontend/Tester checkpoint `cf5445a` contains only `public/js/app.js` and its
+behavior test. Exact six-key/selected-route validation, no-fallback routing,
+local quarantine and inverse route-container guards pass the frontend suite 2/2
+twice; independent Frontend and Tester final audits are `CLEAN`.
+
+Gated E2E checkpoint `745eefc` contains only feature registration and
+`active_plot_payload_routing.test.js`. Three preserved independent `DEFECTS`
+rounds drove strict server fixtures, same-document `200`/`409 current`, exact
+inventory/control evidence, revalidated switched branches, renderable legacy
+no-fallback witnesses, correct `{current: snapshot}` wrappers and standard
+`{traces:[...]}` recognition. Final independent static audit is `CLEAN`:
+JavaScript/support/shell/targeted-diff/default-false gates pass. No browser,
+CDP, MATLAB, push, deployment or merge action is claimed.
+
+### Persistent role queue after C29 local close
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c27_serializer_audit` | C29 no-delta audit complete; completed standby | future aggregate/import hardening only | separate ADR required; no eligible C29 backend work | 1582 PASS plus GET/200/409 four-enum probes |
+| Frontend | `/root/frontend_c29_payload` | C29 implementation/final audit CLEAN and committed; completed standby | compatible-target runtime correlation support only | compatible C29 target absent; no eligible product correction | `cf5445a`; Frontend `/root/frontend_c29_audit` CLEAN |
+| Tester | `/root/tester_c29_payload` | C29 matrix/final audit CLEAN and committed; completed standby | investigate only a material runtime regression or new accepted contract | no eligible C29 unit work | `cf5445a`; Tester `/root/tester_c29_audit` CLEAN |
+| E2E Tester | `/root/e2e_c29_payload` | C29 gated static CLEAN and committed; completed standby | focused same-document runtime with timing analysis | compatible C26-C29 target required; feature/prerequisites default false | `745eefc`; E2E Tester `/root/e2e_c29_audit` final CLEAN |
+| DevOps | `/root/devops_c17_commit` | C29 contract/product/unit/E2E local checkpoints complete; completed standby | exact validated shared-doc checkpoint | Architect file handoff required; no push/deploy/merge authority | `cf787be`, `cf5445a`, `745eefc` |
+| MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | official-web direction complete; completed standby | none | no eligible C29 GUI/reference task | no GUI/clicker; MATLAB untouched |

@@ -592,3 +592,58 @@
   state route остаётся недоступен (`500`) из-за известного отсутствующего
   EngeeDSP prerequisite; новый дефект Engee не заявлен.
 - MATLAB, push, deployment и merge не выполнялись.
+
+## 2026-08-01 — Cascade 29: контракт маршрутизации payload активного графика
+
+- [DEC-035](../decisions/DEC-20260801-035-active-plot-payload-routing-contract.md)
+  фиксирует `plot_payload` как объект ровно из шести ключей и разрешает читать
+  только ветку, выбранную уже проверенным `active_plot`. Запасные источники
+  `plots`, другая ветка, предыдущий payload, поле `name` и созданные клиентом
+  пустые значения запрещены.
+- Ошибка root-проекции относительно корректной active Display остаётся
+  глобальной ошибкой предыдущего контракта с полным reset/Retry. Несовпадение
+  payload с уже согласованной selection-проекцией, неверная six-key envelope
+  или active branch является локальной ошибкой только active Display. Если
+  Display уже изолирована более ранней проверкой selection или `active_plot`,
+  C29 не заменяет её ошибку.
+- Локальное состояние имеет стабильный selector
+  `data-testid="display-active-plot-payload-contract-error-state"`,
+  `role="alert"` и точный текст
+  «Некорректные данные активного графика в ответе сервера.». Для этой Display
+  очищаются ожидающие View-действия и график; независимые корректные страницы
+  и действия с topology сохраняются. Следующий корректный authoritative
+  snapshot снимает только локальную ошибку и не повторяет отброшенное действие.
+- Существующая backend-проверка остаётся без изменений: полный набор из 1582
+  утверждений и route-пробы GET/`200`/`409` для четырёх значений `active_plot`
+  прошли. Это подтверждает отсутствие требуемого backend/API изменения, но не
+  считается проверкой ещё не реализованной frontend-границы C29.
+- Внешнее направление получено только из официальной web-документации MATLAB:
+  она описывает несколько представлений через отдельные области Display Grid.
+  Правило Genie «одна active branch на Display» является выводом из текущей
+  архитектуры приложения, а не заявлением о GUI- или числовом паритете с
+  MATLAB. MATLAB GUI и clicker не использовались.
+- На этом этапе зафиксирован только контракт в локальном commit `cf787be`.
+  Изменения продукта и тестов, автоматическая и browser-runtime проверка,
+  deployment, push и merge ещё не заявляются. Numeric `x/y/z`, геометрия,
+  axes/scales, metadata, `plots`, panel, settings, Measurements, Peaks,
+  inactive branches, DSP и математика остаются вне C29.
+
+## 2026-08-01 — Cascade 29: локальное закрытие реализации и статического E2E
+
+- Frontend-граница и behavior-матрица реализованы в локальном commit
+  `cf5445a`. Проверка exact six-key envelope выполняется до нормализации после
+  C27/C28 precedence; Time/Spectrum принимают только массивы traces, а
+  Spectrogram/Persistence — только plain object. Active graph больше не читает
+  `plots`, другую ветку, старый payload или `name` как fallback.
+- Frontend suite прошёл 2/2 два раза подряд после добавления обратных invalid-
+  форм контейнеров. Независимые проверки реализации и unit-матрицы завершены с
+  результатом `CLEAN`; локальная ошибка, queue cleanup, A/B, `200`/`409`,
+  recovery, topology и late Plotly settlement соответствуют DEC-035.
+- Gated E2E сохранён в локальном commit `745eefc`. Три последовательных
+  статических проверки последовательно закрыли fixture, same-document
+  lifecycle, inventory, renderable no-fallback и форму `{current: snapshot}`.
+  Финальная независимая проверка — `CLEAN`; JavaScript/support/shell/diff и
+  default-false gates прошли.
+- Browser runtime не выполнялся: требуется совместимый target с C26-C29 и явно
+  включёнными feature gates. Backend/API/математика и MATLAB не менялись.
+  Push, deployment и merge не выполнялись; задача не является deployed.

@@ -562,3 +562,259 @@ source_evidence: DEC-034; scenario/support files; commit `a091410`.
 browser_workspace_setup: Static-only; no browser, focus, Space, window or
 MATLAB action.
 engee_bug_candidate: None.
+
+## Cascade 29 active-plot payload gated recovery contract — 2026-08-01
+
+canonical_role: E2E Tester
+owner: E2E Tester
+session: `/root/e2e_c29_payload`
+goal: Preserve a disabled-by-default browser contract showing that malformed
+active payload is a local no-fallback failure while real valid-active root
+selection corruption remains global fatal.
+scope: A route-controlled spec under
+`test/playwright/specs/signal_analyser/`, the minimal feature registration in
+`test/playwright/e2e.config.js` and stable selector/support contract in
+`test/playwright/support/`; no product or ordinary unit-test edit.
+files_or_folders: `test/playwright/e2e.config.js`,
+`test/playwright/specs/signal_analyser/**`, `test/playwright/support/**`.
+out_of_scope: Exhaustive six-key/type/cardinality matrix, numeric `x/y/z`,
+Plotly geometry/math, backend/provider behavior, deployment and MATLAB GUI.
+contracts: Register a project capability such as
+`active-plot-payload-routing`, default false. Begin from a valid populated A
+snapshot. Return malformed active A `plot_payload` while leaving `plots` valid
+and assert no graph fallback, the exact local alert
+`data-testid="display-active-plot-payload-contract-error-state"`,
+`role="alert"`, text
+`Некорректные данные активного графика в ответе сервера.`, preserved validated
+topology/inventory/row identity, disabled A View mutations and zero View POST.
+Keep a valid B Display usable and prove a new authoritative valid A snapshot
+clears only A's local error without replaying the discarded intent. A separate
+valid-active root selection mismatch must still produce the existing global
+fatal/reset/Retry surface, not the C29 alert. Prefer observable UI composition
+over repeating the Tester matrix. Capture step/route/request/cleanup timing
+logs sufficient to analyze hangs, retries and timeout suitability; do not
+invent a universal threshold.
+enabled_frontend_skills: `ui-contract-change`,
+`frontend-state-management`, `graph-output-zone`.
+enabled_optional_capabilities: `state.pages`, `graph.output-state`.
+enabled_product_features: `active-plot-payload-routing` (planned feature ID).
+stable_data_testids:
+`display-active-plot-payload-contract-error-state`, existing Display tab,
+inventory row, graph host, View mutation controls and global fatal/Retry
+selectors.
+target_app_context: No compatible C29 target is claimed at handoff time. Static
+scenario preparation does not require or trigger deployment.
+acceptance: Node syntax, support contract, gated module load, exact default-
+false assertion, shell/static checks and timing-log review pass before any
+runtime claim; a runtime result is reported only against a compatible target.
+changes: None at handoff time; the gated scenario is planned/in progress and
+has not run in a browser.
+verification: Planned role-owned static/support/default-false/shell gates and
+independent E2E audit. Focused then broader background-CDP execution remains a
+separate target-dependent task. No result is marked passed here.
+risks: Fixture interception can accidentally repair the malformed payload;
+checking only an alert can miss fallback rendering or View mutation; an
+incompatible target can create a false product failure.
+follow-ups: Consume the final Frontend selector/feature handoff. Run focused
+C29 runtime with timing analysis only when a compatible application URL/current
+target is available; report a material timing or maintenance issue with exact
+evidence.
+next_task_candidates: Static gated implementation and independent audit;
+focused compatible-target background-CDP runtime later.
+source_evidence:
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md);
+contract commit `cf787be`; Frontend/Tester C29
+contracts; existing C26-C28 route-controlled recovery patterns.
+browser_workspace_setup: Background CDP preferred for future runtime. Static
+work requires no browser/focus/Space/window action. MATLAB remains unchanged;
+coordinate with MATLAB Researcher before any later interactive workspace
+action.
+engee_bug_candidate: None.
+
+## Cascade 29 first independent static audit — 2026-08-01
+
+canonical_role: E2E Tester
+owner: E2E Tester
+session: `/root/e2e_c29_audit`
+goal: Independently test whether the first C29 Playwright diff proves the
+frozen no-fallback and same-document recovery contracts without runtime.
+scope: Read-only C29 Playwright diff and frontend selector/DOM contract; no
+repository mutation, browser runtime or MATLAB action.
+files_or_folders: Read-only
+`test/playwright/specs/signal_analyser/active_plot_payload_routing.test.js`,
+`test/playwright/e2e.config.js`, Playwright support and `public/js/app.js`.
+out_of_scope: Product/unit/backend edits, target runtime, deployment and GUI.
+contracts: Exact six-key payload routing, local C29 alert, C27/C28 precedence,
+same-ID queue/no-resurrection lifecycle, no legacy `plots` fallback and
+non-vacuous read-only inventory evidence.
+enabled_optional_capabilities: `state.pages`, `graph.output-state` as consumed
+by the planned `active-plot-payload-routing` project scenario.
+acceptance: Static scenario evidence must require a server-valid exact six-key
+envelope directly, exercise recovery within the same document/request queues
+and assert inventory row/control cardinality rather than succeeding on an empty
+locator loop.
+changes: None; independent read-only audit.
+verification: Node syntax passed for every `test/playwright/**/*.js` file and
+`public/js/app.js`. C29-only diff-check, shell syntax, support load and default-
+false gate passed. The feature and all four prerequisites remain disabled by
+default. The C29 spec has no fixed sleeps, includes timing logs and uses a
+bounded deferred-Plotly settlement. Overall acceptance is blocked by the three
+defects below.
+risks: First, lines 33-43 of
+`active_plot_payload_routing.test.js` derive absent active branches from
+legacy `plots` and fabricate a purported valid envelope, weakening proof that
+the server supplied the exact C29 contract. Second, reloads around lines 247,
+261 and 275 destroy desired/queued/Plotly state before B recovery, so the
+request-count assertion cannot prove same-document per-ID cleanup or intent
+non-resurrection. Third, the checkbox loop around lines 162-165 has no count
+assertion and passes vacuously when quarantine renders zero checkboxes.
+follow-ups: E2E Tester `/root/e2e_c29_payload` must require/validate the server
+six-key envelope directly while retaining independent valid legacy `plots`
+only as a malformed-case no-fallback candidate; add a same-document
+authoritative `200`/`409 current` seam and prove A intent remains discarded as
+valid B continues/recovers; assert exact row order/count plus the accepted
+read-only state and zero membership controls. Then request a new independent
+static audit before feature acceptance.
+next_task_candidates: Correct the three exact evidence defects; repeat static/
+support/default-false/timing review; only then consider compatible-target
+runtime.
+source_evidence:
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md);
+read-only C29 diff; E2E Tester `/root/e2e_c29_audit` result.
+browser_workspace_setup: Static-only audit; no browser, CDP, focus, Space,
+window or MATLAB action.
+engee_bug_candidate: None.
+
+## Cascade 29 second independent static audit — 2026-08-01
+
+canonical_role: E2E Tester
+owner: E2E Tester
+session: `/root/e2e_c29_audit`
+goal: Re-audit the first correction of the C29 gated scenario and determine
+whether the no-fallback/same-document evidence is now acceptance-ready.
+scope: Read-only `test/playwright/**` C29 diff plus frontend DOM contract; no
+edit, runtime or MATLAB action.
+files_or_folders: Read-only
+`test/playwright/specs/signal_analyser/active_plot_payload_routing.test.js`,
+feature registration and Playwright support.
+out_of_scope: Product/unit/backend edits, compatible-target execution,
+deployment and GUI.
+contracts: Non-vacuous immutable inventory identity with zero quarantined
+membership controls; validate each branch after it becomes active; use a
+renderable nonempty legacy `plots` branch as no-fallback witness; cover both
+malformed successful `200` and malformed `409 current` without replay.
+enabled_optional_capabilities: `state.pages`, `graph.output-state` as consumed
+by the planned `active-plot-payload-routing` project scenario.
+acceptance: All four evidence requirements above must be isolated in the gated
+scenario before the final independent audit can return `CLEAN`.
+changes: None; second independent read-only audit.
+verification: JavaScript syntax/support load, targeted diff-check, C29 default-
+false/prerequisite gates and shell syntax pass. Reloads and fixed sleeps are
+gone; cleanup, timing logs, deferred Plotly and same-document Display
+transitions are present. Overall verdict remains `DEFECTS` for the four points
+below.
+risks: Baseline row identity includes real checkbox test IDs while quarantine
+intentionally has zero checkbox controls, so exact equality fails before the
+separate zero-control assertion. The scenario changes `active_plot` but checks
+only the originally active branch, even though DEC-035 leaves former inactive
+internals unconstrained. The legacy no-fallback witness accepts empty `[]`/`{}`
+and therefore need not be renderable. Finally malformed C29 response coverage
+uses only `409 current`; successful `200` remains valid-only.
+follow-ups: E2E Tester `/root/e2e_c29_payload` must compare immutable row
+identity without checkbox IDs and assert zero controls separately; validate the
+newly active route after every plot switch; require nonempty renderable legacy
+Time/Spectrum or Spectrogram/Persistence data; add a malformed active-payload
+successful `200` lifecycle with zero replay. Then request a final independent
+audit.
+next_task_candidates: Correct the four second-audit gaps and repeat the full
+static/support/default-false/timing audit; compatible-target runtime remains
+later.
+source_evidence:
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md);
+corrected uncommitted C29 diff; E2E Tester `/root/e2e_c29_audit` second result.
+browser_workspace_setup: Static-only audit; no browser, CDP, MATLAB, Space or
+focus action.
+engee_bug_candidate: None.
+
+## Cascade 29 third independent static audit — 2026-08-01
+
+canonical_role: E2E Tester
+owner: E2E Tester
+session: `/root/e2e_c29_audit`
+goal: Re-audit the second correction of C29 response lifecycle and renderable
+legacy no-fallback evidence.
+scope: Read-only C29 Playwright diff/support; no edit, browser or MATLAB.
+contracts: Synthetic `409` must use the established `{current: snapshot}` body
+consumed by the client; renderable legacy Time/Spectrum witness must recognize
+the existing `{traces:[...]}` form while preserving heatmap forms.
+changes: None; third independent read-only audit.
+verification: All Playwright JavaScript/support syntax, targeted diff-check,
+shell syntax and explicit existence/default-false checks for the four
+prerequisite gates pass. Overall verdict remains `DEFECTS` on the two contract
+gaps below; no runtime evidence is claimed.
+risks: The three synthetic `409` routes return bare snapshots, so the client
+cannot consume `payload.current` and the scenario does not prove C27/C28/C29
+`409 current` behavior. The renderable legacy guard checks an object `data`
+array but not the standard line `{traces:[...]}` form, so a valid Time/Spectrum
+no-fallback witness fails before reaching the assertion.
+follow-ups: E2E Tester `/root/e2e_c29_payload` must wrap every synthetic `409`
+body as `{current: response.body}` and accept nonempty `branch.traces` in the
+legacy line witness, then request another final independent audit.
+next_task_candidates: Correct the two third-audit gaps; repeat static/support/
+default-false/timing audit; compatible-target runtime remains later.
+source_evidence:
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md);
+second-corrected uncommitted C29 diff; E2E Tester `/root/e2e_c29_audit` third
+result.
+browser_workspace_setup: Static-only audit; no browser, CDP, MATLAB, Space or
+focus action.
+engee_bug_candidate: None.
+
+## Cascade 29 final static audit resolution — 2026-08-01
+
+canonical_role: E2E Tester
+owner: E2E Tester
+sessions: `/root/e2e_c29_payload`, `/root/e2e_c29_audit`
+goal: Resolve all three preserved C29 audit rounds and accept the gated static
+scenario without overstating browser runtime.
+scope: `test/playwright/e2e.config.js` and
+`test/playwright/specs/signal_analyser/active_plot_payload_routing.test.js`;
+static/support/timing contract only.
+files_or_folders: The two exact Playwright paths above.
+out_of_scope: Browser/CDP target execution, deployment, product/unit/backend
+changes and MATLAB.
+contracts: All synthetic `409` fixtures use `{current: snapshot}` while `200`
+remains a bare snapshot. The renderable legacy witness accepts line
+`traces`/`data` and direct nonempty heatmaps. Seven View and four Display
+responses form one same-document sequence. Deferred Plotly is installed only
+after a settled baseline and proves exactly one stale call with no
+resurrection. C27/C28 precedence, malformed C29 `409 current` and successful
+`200`, valid B recovery, immutable inventory/topology, zero membership controls
+and all four default-false prerequisites are covered.
+enabled_optional_capabilities: `state.pages`, `graph.output-state` through the
+project `active-plot-payload-routing` feature.
+acceptance: Final independent audit returns `CLEAN`; JavaScript/support/shell/
+targeted-diff/default-false gates pass; no runtime result is inferred.
+changes: Corrected strict server-envelope fixtures, same-document lifecycle,
+immutable row identity, newly-active-branch validation, nonempty renderable
+legacy witnesses, malformed successful `200`, `{current: snapshot}` `409`
+wrappers and the standard `{traces:[...]}` line witness. Preserved the three
+earlier `DEFECTS` audits above as append-only history.
+verification: Final independent verdict `CLEAN`. All Playwright JavaScript and
+support syntax, bash syntax, targeted diff and explicit prerequisite existence/
+default-false checks pass. No browser runtime, CDP or MATLAB action occurred.
+risks: Compatible-target runtime remains unverified. The feature and C26/C27/
+C28 prerequisites default to false until explicitly enabled on a matching
+target.
+follow-ups: Run the focused gated C29 same-document scenario with timing
+analysis only against a compatible target; deployment is not a prerequisite
+for testing an already-compatible target.
+next_task_candidates: Compatible-target background-CDP runtime; otherwise
+completed standby with an exact target-compatibility blocker.
+source_evidence:
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md);
+three preserved audit rounds; final E2E Tester `/root/e2e_c29_audit` `CLEAN`;
+local checkpoint `745eefc331ba37ddd9096be4abf236a9379bfcc7`.
+browser_workspace_setup: Static-only completion; no browser, CDP, MATLAB,
+Space, focus or window action. Future runtime prefers background CDP.
+engee_bug_candidate: None.

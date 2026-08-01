@@ -720,3 +720,48 @@ ADR; otherwise completed standby with no eligible C28 work.
 source_evidence: DEC-034; backend suite; GET/200/409 four-enum route probes; no
 backend diff in `08af1e7` or `a091410`.
 engee_bug_candidate: None.
+
+## Cascade 29 active-payload backend no-delta audit — 2026-08-01
+
+canonical_role: Backend
+owner: Backend
+session: `/root/backend_c27_serializer_audit`
+goal: Determine whether DEC-035 requires a backend/API/schema change before
+frontend strict routing can be implemented.
+scope: Read-only domain/service/API serializer and existing backend evidence;
+no repository edit.
+files_or_folders: Read-only `lib/services/signal_analyser_service.jl` and
+`test/back/lib/signal_analyser_service_test.jl`.
+out_of_scope: Frontend validation/routing, behavior/E2E tests, numeric payload
+semantics, DSP/math and aggregate/import hardening.
+contracts: The active snapshot already owns `plot_payload` with exactly six
+keys: `selected_signal`, `visible_signals`, `time_traces`, `spectrum_traces`,
+`spectrogram`, `persistence`. Nonempty Time/Spectrum traces follow ordered
+membership and receive owned `signal`; Spectrogram/Persistence receive the
+selected source. Empty preparation preserves the same envelope, empty traces
+and owned null heatmap source. The existing closed four-enum `active_plot` and
+root-equality serializer remain unchanged for GET, successful mutation and
+`409 current`; request omission compatibility is unchanged.
+enabled_optional_capabilities: None; this is read-only conformance, not a
+Backend composite-skill implementation.
+acceptance: Existing route-reachable responses supply the frozen DEC-035 outer
+and source-routing facts without a backend/API/request change; any future
+numeric/typed branch boundary requires a separate accepted ADR.
+changes: None. Backend/API/schema/math have no C29 delta and the role is
+completed standby.
+verification: Existing full backend suite evidence is 1582 assertions PASS;
+existing route-reachable GET/`200`/`409` probes PASS for all four `active_plot`
+enum values. This no-delta evidence supports route reachability but does not
+claim the planned Frontend/Tester C29 implementation or browser runtime.
+risks: Public aggregate arrays remain hardening backlog for future direct
+import/CRUD/session restore. C29 intentionally does not validate numeric
+`x/y/z`, shape or inactive-branch internals.
+follow-ups: No backend patch for C29. Preserve existing serializer keyset and
+owned-source behavior while Frontend/Tester implement the strict boundary.
+next_task_candidates: Future aggregate/import hardening only after a separate
+ADR; otherwise completed standby with `no-eligible-work` for C29.
+source_evidence:
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md);
+contract commit `cf787be`; active-plot payload routing
+assessment; existing 1582-suite and four-enum GET/`200`/`409` evidence.
+engee_bug_candidate: None.

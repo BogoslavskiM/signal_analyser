@@ -646,3 +646,99 @@ next_task_candidates: Runtime C28 observation on a compatible target; otherwise
 completed standby until a separately frozen next snapshot contract exists.
 source_evidence: DEC-034; `public/js/app.js`; frontend suite; commit `08af1e7`.
 engee_bug_candidate: None.
+
+## Cascade 29 active-plot payload routing implementation contract — 2026-08-01
+
+canonical_role: Frontend
+owner: Frontend
+session: `/root/frontend_c29_payload`
+goal: Enforce DEC-035 before normalization so the graph consumes exactly the
+server-selected active payload branch and never fabricates or falls back.
+scope: `public/js/app.js`; validation, local per-Display quarantine, graph
+routing, View queue guards and C24 shared-host generation lifecycle only.
+files_or_folders: `public/js/app.js`.
+out_of_scope: Backend/API/request schema; numeric `x/y/z`; trace/heatmap
+geometry, axes, scales, normalization, metadata, labels/colors; `plots`,
+`panel`, settings, Measurements, Peaks, inactive-branch internals, DSP/math and
+unrelated UI/style refactors.
+contracts: Run after DEC-032/033/034. Skip C29 fields for an active Display
+already quarantined by C27/C28. Otherwise require a non-null, non-array plain
+`plot_payload` with the exact six keys `selected_signal`, `visible_signals`,
+`time_traces`, `spectrum_traces`, `spectrogram`, `persistence`. Payload
+selection projections must exactly equal the already-valid Display/root
+projections; their mismatch is local C29 quarantine, whereas a real root
+projection mismatch remains the earlier DEC-033 global fatal class. Route only
+the selected `active_plot`: Time/Spectrum arrays have exact ordered membership
+cardinality and each plain trace owns matching `signal`; Spectrogram/
+Persistence are plain objects owning `signal` equal to the selected source.
+Accept canonical routing-empty branches, including owned `signal=null` for an
+active empty heatmap. Never use `plots`, another branch, previous payload,
+`name`, `{}` or `[]` as fallback. Local quarantine purges only that ID's
+desired/queued/pending/stale-replay View work, prevents a new View POST,
+invalidates/purges the C24 host and cannot be replaced by late Plotly
+settlement. Render exactly
+`data-testid="display-active-plot-payload-contract-error-state"`,
+`role="alert"`, text
+`Некорректные данные активного графика в ответе сервера.` Topology actions and
+independent valid-Display work remain available. Malformed authoritative `200`
+or `409 current` discards same-ID work without replay; later valid
+authoritative recovery clears only that ID's C29 state and never resurrects the
+discarded intent.
+enabled_frontend_skills: `ui-contract-change`,
+`frontend-state-management`, `graph-output-zone`.
+enabled_optional_capabilities: `state.pages`, `graph.output-state`.
+acceptance: Exact envelope/projection/route validators run before normalize;
+the existing permissive `currentPayload()`/`traceName()` fallback paths cannot
+accept malformed active data; exact alert, per-ID queue/host lifecycle,
+C27/C28 precedence and independent Display continuation are observable in the
+Tester-controlled matrix.
+changes: None at handoff time; implementation is planned/in progress and is not
+claimed by this record.
+verification: Planned `node --check public/js/app.js`,
+`node test/front/run_front_tests.js`, `git diff --check` and focused controlled
+initial/`200`/`409`/A-B/recovery/late-Plotly inspection with a structured role
+result. No gate is marked passed here.
+risks: Reusing `currentPayload()` or `traceName()` can retain forbidden
+fallback. Running C29 before C27/C28 can change local/global severity.
+Auto-healing valid fixtures can conceal missing-field failures.
+follow-ups: Hand the exact selector, visible text, changed routing seam and
+verification evidence to E2E Tester; report any backend shape conflict as a
+separate Backend handoff rather than widening frontend semantics.
+next_task_candidates: Independent Frontend audit after implementation; then a
+separate typed/numeric payload contract only if a new ADR accepts it.
+source_evidence:
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md);
+contract commit `cf787be`; internal active-plot
+payload routing assessment; existing C24/C27/C28 lifecycle contracts.
+engee_bug_candidate: None.
+
+## Cascade 29 implementation and final audit resolution — 2026-08-01
+
+canonical_role: Frontend
+owner: Frontend
+sessions: `/root/frontend_c29_payload`, `/root/frontend_c29_audit`
+goal: Implement DEC-035 and close the inverse-container defect found by the
+first independent product/unit audit.
+scope: `public/js/app.js`; no backend/API/HTML/style/math change.
+contracts: Exact six-key pre-normalize validator after C27/C28 precedence;
+Time/Spectrum accept arrays only, Spectrogram/Persistence plain objects only;
+one active `plot_payload` route with no `plots`, `name`, prior-payload or
+inactive-route fallback; local per-ID quarantine/queue/host lifecycle and exact
+accessible alert.
+changes: Added the strict payload error map/validator, removed permissive graph
+routing fallback and split active-branch validation by plot type so inverse
+container shapes quarantine before normalize/render.
+verification: `node --check public/js/app.js` PASS; full frontend suite PASS
+2/2 twice after the correction; owned diff-check PASS; independent Frontend
+audit `CLEAN` with no remaining C29 product/unit defect.
+risks: Browser runtime is not claimed. Compatible-target execution remains the
+gated E2E lane.
+follow-ups: No further product correction. Preserve the exact selector/text and
+C27/C28 precedence in runtime correlation.
+next_task_candidates: Compatible-target C29 browser regression only; otherwise
+completed standby.
+source_evidence:
+[DEC-035](../../user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md);
+Frontend/Tester final audits; local checkpoint
+`cf5445a8baf8eff9f7a69ae662b331ad79d55a45`.
+engee_bug_candidate: None.

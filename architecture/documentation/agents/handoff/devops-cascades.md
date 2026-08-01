@@ -413,3 +413,73 @@ explicit Architect handoff; otherwise completed standby.
 source_evidence: Role acceptance for `a091410` and `08af1e7`; committed docs
 checkpoints `9190bb9`, `76f5413`, `8f7bfcf`.
 engee_bug_candidate: None.
+
+## Cascade 29 contract documentation checkpoint — 2026-08-01
+
+canonical_role: DevOps
+owner: DevOps
+session: `/root/devops_c17_commit`
+goal: Persist only the accepted C29 authoritative contract snapshot while
+keeping shared handoffs and product/test work outside the checkpoint.
+scope: Exactly
+`architecture/documentation/agents/reports/active-plot-payload-routing-assessment-20260801.md`,
+`architecture/documentation/user/decisions/DEC-20260801-035-active-plot-payload-routing-contract.md`
+and
+`architecture/documentation/user/reports/signal-analyser-cascade-v29.md`.
+files_or_folders: The three explicit architecture documentation files above.
+out_of_scope: Shared task/backlog/handoff/history/traceability updates;
+`public/**`; `test/**`; push, deployment, merge and amend.
+contracts: Exact staged file set and cached diff review; retain contract-only
+status with implementation, runtime and deployment unclaimed.
+enabled_optional_capabilities: None; this was a bounded local checkpoint.
+acceptance: The commit contains only the three handed-off documents and leaves
+the worktree clean at checkpoint completion.
+changes: Created local commit
+`cf787bee3cbfef65dd20c0779b80c2f4693cac2c` (`docs: freeze active plot payload
+routing`).
+verification: Exact commit stat/path inspection and clean-worktree check PASS
+at checkpoint completion. Product/test/runtime gates were not part of this
+checkpoint.
+risks: The branch and C29 contract remain local. Shared documentation and
+parallel role-owned implementation are later, separately attributable work.
+follow-ups: Commit only an explicit validated shared-document list after
+Architect handoff; create product/test checkpoints only after the owning roles
+return accepted verification. No push/deployment/merge without separate
+authority; merge requires explicit user acceptance.
+next_task_candidates: Validated C29 shared-doc checkpoint, then explicit
+accepted Frontend/Tester/E2E path checkpoints; otherwise completed standby.
+source_evidence: Commit `cf787be`; exact three-file `git show --stat` and
+DevOps handoff.
+engee_bug_candidate: None.
+
+## Cascade 29 product/unit and gated E2E checkpoints — 2026-08-01
+
+canonical_role: DevOps
+owner: DevOps
+session: `/root/devops_c17_commit`
+goal: Persist accepted C29 role-owned product/unit and gated E2E paths as
+separate exact local checkpoints.
+scope: First exactly `public/js/app.js` and
+`test/front/public/js/app.behavior.test.js`; then exactly
+`test/playwright/e2e.config.js` and
+`test/playwright/specs/signal_analyser/active_plot_payload_routing.test.js`.
+contracts: Separate exact staged sets, accepted role verification and no
+architecture file crossover; no push, deployment, merge or amend.
+changes: Created Frontend/Tester checkpoint
+`cf5445a8baf8eff9f7a69ae662b331ad79d55a45` and gated E2E checkpoint
+`745eefc331ba37ddd9096be4abf236a9379bfcc7`.
+verification: `git show --stat` confirms only the two explicit paths per
+checkpoint. Accepted frontend suite is 2/2 with independent Frontend/Tester
+audits `CLEAN`; gated E2E final independent static audit is `CLEAN` after three
+preserved defect rounds. Browser runtime was not performed.
+risks: Branch/checkpoints remain local. Compatible-target runtime and deployment
+are unclaimed; feature prerequisites remain default false.
+follow-ups: Commit the exact validated Architect shared-document set only after
+handoff. No push/deployment/merge without separate authority; merge requires
+explicit user acceptance.
+next_task_candidates: Validated C29 shared-document checkpoint; otherwise
+completed standby. Compatible-target runtime is an E2E task, not a deployment
+prerequisite.
+source_evidence: Local commits `cf5445a`, `745eefc`; accepted role handoffs and
+final audits.
+engee_bug_candidate: None.
