@@ -505,6 +505,9 @@
   подготовить prospective aggregate до state/revision/cache publication.
 - Контракт уменьшает accidental startup/inactive risk, но не объявляет active
   omitted Persistence безопасным. Implementation evidence пока не заявляется.
+- Реализация затем принята в `84b21f3`: C23 104/104, full backend PASS и
+  repeated independent audit CLEAN после закрытия cold/rollback/N<2/lifecycle/
+  exact-wire false-positive seams. Gated E2E static — `6d57949`; не deployed.
 
 ## 2026-08-01 — Cascade 24 latest Plotly render contract
 
@@ -516,6 +519,9 @@
   error и boundedly reasserts newest frame после unavoidable DOM mutation.
 - API/backend/wire/Plotly artifact/math не меняются. Deterministic controlled-
   promise matrix обязательна; implementation evidence пока не заявляется.
+- Coordinator и six-case controlled-promise matrix затем приняты в `102aa07`:
+  frontend 2/2, syntax/diff и independent final audit CLEAN. Runtime/deployment
+  не заявляются.
 
 ## 2026-08-01 — Cascade 25 measurement snapshot contract
 

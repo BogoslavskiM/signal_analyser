@@ -476,3 +476,17 @@ risks: Runtime target absent; N<2 remains backend-owned.
 follow-ups: Run focused then full enabled suite against exact C19 target.
 next_task_candidates: Runtime C19 or C20 static only after frozen contract.
 engee_bug_candidate: None.
+
+## Cascade 23 lazy Persistence gated lifecycle — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c23_lazy_persistence`.
+scope: `test/playwright/**`.
+contracts: Inactive source-bound typed-empty wire; cold active full heatmap;
+away no stale heatmap; warm exact return. Provider count remains backend-only.
+changes: Added disabled-by-default feature and event-driven focused scenario.
+verification: Node syntax, support contract and independent E2E audit CLEAN.
+Runtime CDP was unavailable and is not claimed.
+risks: Enable only on a C23-capable target.
+commit: `6d5794901698cf0873de2829e1dde991597d0ed1`.
+browser_workspace_setup: Static-only; no browser/MATLAB interaction.

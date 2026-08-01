@@ -486,3 +486,20 @@ follow-ups: Frontend validator/quarantine and Tester malformed initial/200/409
 matrix after the C24 `app.js` checkpoint.
 next_task_candidates: Implement DEC-031 without backend/API/math changes.
 engee_bug_candidate: None.
+
+## Cascades 23 and 24 acceptance matrices — 2026-08-01
+
+canonical_role: Tester
+sessions: `/root/tester_c23_lazy_persistence`, `/root/tester_c7_matrix`.
+goal: Prove DEC-029 cold/rollback/lifecycle policy and DEC-030 async ordering.
+scope: `test/back/lib/signal_analyser_service_test.jl` and
+`test/front/public/js/app.behavior.test.js`.
+changes: C23 104 assertions cover true-cold four caches, wrong-topology
+rollback, exact/history-independent wire, Clear/re-add/close and active N<2.
+C24 controlled promises cover plot/Display switch, stale reject, delayed
+loader, synchronous empty state and bounded reassertion.
+verification: Full backend PASS; frontend 2/2; parse/syntax/diff; independent
+audits CLEAN after closing all reported false-positive seams.
+risks: Runtime C23 E2E remains gated and not deployed.
+follow-ups: Preserve intermediate pre-settlement assertions.
+commits: C23 `84b21f3`; C24 `102aa07`.

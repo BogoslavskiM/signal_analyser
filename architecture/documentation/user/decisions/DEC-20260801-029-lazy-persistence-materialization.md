@@ -56,3 +56,10 @@ cache key, bounding, Frequency Limits или Overlap decisions.
 - [Architecture assessment](../../agents/reports/persistence-lazy-materialization-assessment-20260801.md)
 - [DEC-028](DEC-20260801-028-fixed-persistence-segmentation-no-go.md)
 - [DEC-024](DEC-20260801-024-typed-persistence-foundation.md)
+
+## Датированное уточнение 2026-08-01 — local implementation
+
+Контракт реализован и локально проверен в
+`84b21f390a64dab18f576b298ae698deb22432d7`; gated E2E static contract —
+`6d5794901698cf0873de2829e1dde991597d0ed1`. C23 104/104, full backend и
+independent final audit прошли. Runtime E2E и deployment не заявляются.

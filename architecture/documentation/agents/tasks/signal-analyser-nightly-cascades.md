@@ -1266,3 +1266,13 @@ No backend/API/math/root-fallback or C24 render change belongs to this cascade.
 | E2E Tester | `/root/e2e_c23_final_audit` | standby | optional snapshot recovery static gate | frontend implementation | no backend oracle |
 | DevOps | `/root/devops_c17_commit` | C24 docs current | C25 docs/product commits | role validation | no push/deploy |
 | MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | direct web only |
+
+## Cascades 23 and 24 implementation close — 2026-08-01
+
+Status: `implemented-and-locally-verified`; not deployed.
+
+C23 product/test `84b21f3` passes full backend with 104 focused assertions and
+repeated independent audit CLEAN. Gated C23 E2E static contract is `6d57949`;
+runtime remains unavailable. C24 product/test `102aa07` passes frontend 2/2 and
+a six-case controlled-promise matrix; independent audit CLEAN after three
+pre-settlement oracle fixes. Push, deployment and merge were not performed.

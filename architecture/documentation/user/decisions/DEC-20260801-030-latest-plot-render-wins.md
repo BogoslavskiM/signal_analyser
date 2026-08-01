@@ -63,3 +63,10 @@ marker/content/readiness всегда соответствуют newest state, s
 
 - [Внутренняя оценка async race](../../agents/reports/plotly-render-race-assessment-20260801.md)
 - [Cascade 24](../reports/signal-analyser-cascade-v24.md)
+
+## Датированное уточнение 2026-08-01 — local implementation
+
+Контракт реализован и локально проверен в
+`102aa074431167da54c8a639c791f8d096b7df75`. Frontend 2/2, six-case
+controlled-promise matrix и independent final audit прошли. Deployment не
+заявляется.

@@ -224,10 +224,10 @@ Owner: Architect
   and dynamic RBW. Fresh Linear/Log selection, engineering prefix, app
   Leakage readout scale and resolution-mode defaults remain unobserved. Do not
   touch MATLAB/clicker until the unsafe prior Command Window state is cleared.
-- DEC-030 freezes C24 latest-render-wins. One shared Plotly host needs a
-  frontend-only generation-aware serialized render coordinator. Deterministic
-  deferred-promise tests must prove stale success/rejection/loader/placeholder
-  cases and bounded newest-frame reassertion; backend/API/wire stay unchanged.
+- C24 latest-render-wins is implemented at `102aa07`: the shared Plotly host
+  uses a frontend-only generation-aware serialized coordinator. Six controlled-
+  promise cases and independent final audit are CLEAN; backend/API/wire remain
+  unchanged and deployment is unclaimed.
 - DEC-031 freezes C25 `measurement_kinds` snapshot hardening. Absent keeps the
   canonical first-three compatibility default; present null/nonarray/member
   type/unknown/duplicate corruption quarantines the Display, disables

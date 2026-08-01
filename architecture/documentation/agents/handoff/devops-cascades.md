@@ -356,3 +356,14 @@ and `test/front/public/js/app.behavior.test.js`.
 verification: JS syntax, frontend 2/2, cached exact staged list and diff-check
 PASS; post-commit worktree clean.
 risks: Push, deployment, merge and amend were not performed.
+
+## Cascades 23 and 24 local checkpoints — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c17_commit`.
+changes: Created C23 backend/test `84b21f390a64dab18f576b298ae698deb22432d7`,
+C23 E2E static `6d5794901698cf0873de2829e1dde991597d0ed1` and C24
+frontend/test `102aa074431167da54c8a639c791f8d096b7df75`.
+verification: Exact staged lists, cached diff checks and role gates PASS;
+worktree clean after each commit.
+risks: Push, deployment, merge and amend were not performed.

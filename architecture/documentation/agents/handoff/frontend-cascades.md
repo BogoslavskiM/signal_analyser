@@ -467,3 +467,20 @@ controlled-promise cases; E2E remains optional until a compatible target.
 next_task_candidates: `public/js/app.js` implementation plus frontend behavior
 tests after documentation checkpoint.
 engee_bug_candidate: None.
+
+## Cascade 24 latest Plotly render implementation — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c23_contract_audit`.
+goal: Make the newest shared-host frame authoritative under async Plotly work.
+scope: `public/js/app.js` only; vanilla JS.
+contracts: Monotonic generation on every draw, serialized tail, stale queued
+skip, current-only success/error and bounded newest-frame reassertion.
+changes: Added generation/tail/reassert coordinator without API/schema/HTML/
+math/Plotly artifact changes.
+verification: Frontend 2/2; controlled-promise six-case matrix; syntax/diff;
+independent audit found three test false positives, then final verdict CLEAN.
+risks: In-flight Plotly cannot be cancelled and may delay newest render.
+follow-ups: Runtime fast-switch observation only after accepted deployment.
+commit: `102aa074431167da54c8a639c791f8d096b7df75`.
+engee_bug_candidate: None.

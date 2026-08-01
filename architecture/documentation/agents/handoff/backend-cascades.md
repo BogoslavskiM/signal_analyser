@@ -657,3 +657,21 @@ is authorized.
 next_task_candidates: Service-only OOP implementation in
 `lib/services/signal_analyser_service.jl`, followed by lifecycle/rollback and
 wire-shape tests.
+
+## Cascade 23 lazy Persistence implementation — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c19_persistence_leakage_probe`.
+goal: Implement DEC-029 at the service materialization boundary.
+scope: `lib/services/signal_analyser_service.jl` only.
+contracts: Typed prospective active-view plan; inactive exact typed-empty wire;
+retained warm raw cache; full prospective four-cache aggregate before state/
+revision publication; create/select/close/source/settings/N<2 policy.
+changes: Added typed preparation mode/plan, prepared-snapshot reuse and unified
+View/Display aggregate lifecycle; preserved Spectrogram refresh behavior.
+verification: Julia parse/diff PASS; full backend PASS; C23 104 assertions;
+independent final audit CLEAN.
+risks: Explicit active Persistence retains C22 resource risk; no cancellation.
+follow-ups: Runtime gated E2E only on matching target.
+commit: `84b21f390a64dab18f576b298ae698deb22432d7`.
+engee_bug_candidate: None.
