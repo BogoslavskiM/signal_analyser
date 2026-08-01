@@ -841,6 +841,29 @@ module.exports = async function testDisplayBehavior(assert) {
     assert(malformedRequests.filter(call => call.url === "./api/view").length === 0, "a Persistence contract error must block unrelated server mutations rather than mask malformed state");
   }
 
+  const timeRootDef = {id:"display-1", name:"Display 1", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A]};
+  const timeRoot = snapshot(0, "display-1", [timeRootDef], A); timeRoot.time_limits = {min_s:0, max_s:.2, units:"s"};
+  const timeFallback = await boot((url) => Promise.resolve(response(200, timeRoot)));
+  assert(timeFallback.e.minInput.value === "0" && timeFallback.e.maxInput.value === "0.2" && timeFallback.e.limitsError.hidden, "missing display Time Limits use valid legacy root fallback");
+  const timeNullDef = Object.assign({}, timeRootDef, {analysis_signal:null, selected_signal:null, visible_signals:[], time_limits:null});
+  const timeNull = snapshot(0, "display-1", [timeNullDef], A); timeNull.time_limits = timeRoot.time_limits;
+  const timeOverride = await boot((url) => Promise.resolve(response(200, timeNull)));
+  assert(timeOverride.e.minInput.value === "" && timeOverride.e.maxInput.value === "" && timeOverride.e.limitsError.hidden === true && timeOverride.e.minInput.disabled, "empty display null overrides non-null root Time Limits");
+  const malformedTimes = [null, "0", [0,.2], {}, {min_s:0,max_s:.2,units:"s",extra:true}, {min_s:true,max_s:.2,units:"s"}, {min_s:NaN,max_s:.2,units:"s"}, {min_s:1,max_s:0,units:"s"}, {min_s:0,max_s:.2,units:"ms"}];
+  for (const malformedTime of malformedTimes) {
+    const def = Object.assign({}, timeRootDef, {time_limits:malformedTime}), bad = snapshot(0, "display-1", [def], A), calls = [];
+    const env = await boot((url, options) => { calls.push({url, options}); return Promise.resolve(response(200, bad)); });
+    assert(env.e.limitsError.hidden === false && env.e.limitsError.textContent.includes("Некорректные границы времени") && env.e.minInput.disabled && env.e.maxInput.disabled, "malformed Time Limits are visibly quarantined with disabled inputs");
+    env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
+    assert(calls.filter(call => call.url === "./api/view").length === 0, "Time contract corruption blocks unrelated View POST");
+  }
+  const badTime = snapshot(1, "display-1", [Object.assign({}, timeRootDef, {time_limits:{min_s:1,max_s:0,units:"s"}})], A);
+  const staleTimeCalls = [], staleTimeResolvers = [];
+  const staleTime = await boot((url, options) => { staleTimeCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, timeRoot)) : new Promise(resolve => staleTimeResolvers.push(resolve)); });
+  staleTime.e.minInput.value = ".05"; staleTime.e.maxInput.value = ".15"; staleTime.e.maxInput.listeners.change(); await flush();
+  staleTime.e.minInput.value = ".06"; staleTime.e.maxInput.value = ".16"; staleTime.e.maxInput.listeners.change(); await flush();
+  staleTimeResolvers.shift()(response(409, {current:badTime})); await flush();
+  assert(staleTimeCalls.filter(call => call.url === "./api/view").length === 1 && staleTime.e.limitsError.hidden === false, "malformed Time 409 quarantines and drains queued intent without replay");
   const c19Pages = [Object.assign({}, c19Def, { persistence_settings:{leakage:.25} }), { id:"display-2", name:"Display 2", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A], persistence_settings:{leakage:.5} }];
   const c19PageA = snapshot(0, "display-1", c19Pages, A), c19PageB = snapshot(1, "display-2", c19Pages, A);
   c19PageA.plot_payload.persistence = c19Initial.plot_payload.persistence; c19PageB.plot_payload.persistence = c19Initial.plot_payload.persistence;
