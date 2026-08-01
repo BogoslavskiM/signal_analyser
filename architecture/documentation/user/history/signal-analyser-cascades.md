@@ -578,3 +578,17 @@
 - Request-side omission остаётся совместимым. Panel, plots, graph payload,
   settings, Measurements/Peaks и DSP/math вынесены из C28. Implementation
   evidence пока не заявляется.
+
+## 2026-08-01 — Cascade 28 active-plot implementation close
+
+- Строгая проверка per-Display/root `active_plot` реализована до нормализации в
+  `08af1e7`; silent fallback в Time удалён, local/global precedence и
+  per-Display quarantine соответствуют DEC-034.
+- Frontend `2/2`, полный initial/`200`/`409`/recovery lifecycle и независимые
+  Frontend/Tester audits прошли с verdict `CLEAN`. Backend не менялся: полный
+  suite и route probes четырёх enum прошли.
+- Gated E2E `a091410` прошёл static/support/default-false/shell gates и
+  независимый audit `CLEAN`, но browser runtime не выполнялся. Обычный local
+  state route остаётся недоступен (`500`) из-за известного отсутствующего
+  EngeeDSP prerequisite; новый дефект Engee не заявлен.
+- MATLAB, push, deployment и merge не выполнялись.

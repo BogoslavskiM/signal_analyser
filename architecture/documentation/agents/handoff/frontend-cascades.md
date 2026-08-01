@@ -619,3 +619,30 @@ source_evidence: DEC-034 and
 next_task_candidates: C28 frontend implementation is eligible after the
 committed documentation checkpoints; product work remains planned.
 engee_bug_candidate: None.
+
+## Cascade 28 active-plot snapshot implementation — 2026-08-01
+
+canonical_role: Frontend
+owner: Frontend
+session: `/root/frontend_c26_bind_fix`.
+goal: Enforce DEC-034 without silent Time fallback, cross-Display loss or stale
+Plotly resurrection.
+scope: `public/js/app.js`; vanilla JS; no backend/API/HTML/math change.
+contracts: Validate owned exact four-enum per Display and valid-active root
+equality before normalize; preserve invalid-active precedence; quarantine only
+the malformed Display ID; purge its View intents; keep independent topology and
+valid-Display work; recover only from a new authoritative valid snapshot.
+changes: Added the active-plot validator/error map, removed normalize fallback,
+wired quarantine/error/interaction guards and included active-plot corruption
+in stale server-surface clearing.
+verification: Frontend 2/2 and Node syntax PASS; initial/200/409/recovery,
+four-enum, malformed classes, A/B, exact queue purge, topology and controlled
+deferred-Plotly matrix PASS; independent Frontend audit CLEAN.
+risks: Browser runtime is unclaimed. A compatible target must preserve the
+exact response field/root projection before enabling gated E2E.
+follow-ups: Preserve DEC-033 selection-error precedence and C24 generation
+oracles; do not broaden C28 into panel/payload/settings/Measurements/Peaks.
+next_task_candidates: Runtime C28 observation on a compatible target; otherwise
+completed standby until a separately frozen next snapshot contract exists.
+source_evidence: DEC-034; `public/js/app.js`; frontend suite; commit `08af1e7`.
+engee_bug_candidate: None.

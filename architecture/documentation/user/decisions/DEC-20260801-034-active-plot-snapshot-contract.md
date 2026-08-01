@@ -125,3 +125,29 @@ settlement не меняет local quarantine host и не запускает un
 - `lib/domain/signal_analyser_state.jl`
 - `lib/services/signal_analyser_service.jl`
 - `public/js/app.js`
+
+## Примечание о реализации — 2026-08-01
+
+Исходная запись `Implementation: planned in Cascade 28; not deployed` выше
+сохраняется как состояние решения на момент его принятия. После отдельного
+контрактного checkpoint граница реализована и локально проверена в
+`08af1e73b2852063a76cc9900ca39b17036bc54b`.
+
+Frontend теперь проверяет per-Display и root `active_plot` до `normalize()`, не
+подставляет `time`, хранит отдельную local contract error по Display ID и
+использует существующий global fatal reset для противоречивой root-проекции.
+Матрица Frontend/Tester покрывает все четыре значения enum, malformed initial,
+успешный `200`, `409 current`, A/B isolation, точную очистку View intents,
+topology recovery и позднее завершение Plotly; frontend suite прошёл `2/2`, а
+два независимых аудита дали `CLEAN`.
+
+Отключённый по умолчанию browser contract сохранён отдельно в
+`a09141049e3b4df7ddad3e57b427f6d1d65c2872`: syntax, support, feature gate,
+значение default-false и shell syntax проверены, независимый аудит — `CLEAN`.
+Runtime E2E не выполнялся и не заявляется.
+
+Backend не менялся: полный suite и отдельные route-reachable GET/`200`/`409`
+пробы всех четырёх enum прошли. Обычный локальный state route без тестовой
+изоляции возвращает `500` из-за уже известного отсутствующего prerequisite
+EngeeDSP; это не новый дефект Engee и не свидетельство C28 regression. Push,
+deployment и merge не выполнялись.

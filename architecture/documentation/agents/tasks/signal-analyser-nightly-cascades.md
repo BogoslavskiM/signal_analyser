@@ -1403,3 +1403,27 @@ payload/settings/Measurements/Peaks/DSP/math remain outside C28.
 | E2E Tester | `/root/e2e_c27_audit` | C27 gated CLEAN | optional C28 static gate | frontend implementation | no runtime target |
 | DevOps | `/root/devops_c17_commit` | C28 docs checkpoints committed | C28 product commits | role acceptance | `9190bb9`, `76f5413` |
 | MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | official web only |
+
+## Cascade 28 implementation close — 2026-08-01
+
+Status: `implemented-and-locally-verified`; runtime unclaimed; not deployed.
+
+Frontend/Tester checkpoint `08af1e7` enforces DEC-034 before normalization and
+passes frontend 2/2 plus independent Frontend/Tester audits CLEAN. Gated E2E
+checkpoint `a091410` passes Node syntax, support, gated/default-false, bash
+syntax and independent E2E audit CLEAN; it was not run in a browser. Backend
+has no C28 delta: full suite and route-reachable GET/200/409 probes for all four
+enum values PASS. The ordinary local state path returns known prerequisite
+`500` because EngeeDSP is absent; this is not a new Engee candidate. MATLAB was
+untouched. Push, deployment and merge were not performed.
+
+### Persistent role queue after C28 implementation close
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c27_serializer_audit` | C28 conformance PASS; completed standby | future aggregate/import hardening only | new ADR required; no eligible C28 delta | full suite + four-enum GET/200/409 probes |
+| Frontend | `/root/frontend_c26_bind_fix` | C28 CLEAN/committed; completed standby | next snapshot slice after contract freeze | no next contract accepted | `08af1e7` |
+| Tester | `/root/tester_c7_matrix` | C28 matrix CLEAN/committed; completed standby | matrix for next accepted snapshot slice | no next contract accepted | `08af1e7` |
+| E2E Tester | `/root/e2e_c27_audit` | C28 gated static CLEAN/committed | focused C28 runtime | compatible C28 target absent; feature default false | `a091410` |
+| DevOps | `/root/devops_c17_commit` | C28 local commits complete; completed standby | validated C28 architecture-doc checkpoint | exact Architect file handoff required; no push/deploy/merge authority | `a091410`, `08af1e7` |
+| MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | completed standby; no C28 action | none | no GUI/reference question for C28 | untouched |

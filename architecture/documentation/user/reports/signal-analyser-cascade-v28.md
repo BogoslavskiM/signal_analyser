@@ -29,3 +29,27 @@ C28 не меняет backend/API/request compatibility и не валидиру
 plot payloads, traces/heatmaps, настройки, Measurements, Peaks, DSP или
 математику. Реализация, автоматические проверки, runtime-проверка и deployment
 пока не заявляются.
+
+## Дополнение 2026-08-01 — закрытие реализации
+
+Предыдущий абзац фиксирует состояние отчёта на момент contract freeze. После
+него C28 реализован и локально проверен; deployment по-прежнему отсутствует.
+
+- Frontend/Tester checkpoint
+  `08af1e73b2852063a76cc9900ca39b17036bc54b` удаляет silent-Time fallback,
+  вводит строгую проверку до нормализации, local quarantine и root fatal gate.
+- Frontend suite прошёл `2/2`. Initial/`200`/`409`/recovery matrix проверяет
+  четыре enum, malformed классы, precedence, A/B isolation, exact queue purge,
+  topology operations, zero View POST и защищённое от позднего Plotly
+  settlement состояние. Независимые Frontend и Tester аудиты — `CLEAN`.
+- Gated E2E checkpoint
+  `a09141049e3b4df7ddad3e57b427f6d1d65c2872` прошёл Node syntax, support,
+  gated-load, default-false и shell syntax проверки; независимый E2E audit —
+  `CLEAN`. Browser runtime не выполнялся.
+- Backend code не менялся. Полный backend suite и отдельные route-reachable
+  GET/`200`/`409` пробы четырёх enum прошли. Обычный локальный state route
+  возвращает `500` из-за известного отсутствующего EngeeDSP prerequisite;
+  нового Engee bug candidate нет.
+- MATLAB не использовался. Push, deployment и merge не выполнялись.
+
+Контрактные и handoff checkpoints: `9190bb9`, `76f5413`, `8f7bfcf`.

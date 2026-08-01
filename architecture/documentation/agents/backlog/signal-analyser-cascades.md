@@ -298,3 +298,19 @@ Owner: Architect
   Request omission remains unchanged. Panel/plots/selection-metadata payloads,
   settings, Measurements, Peaks, DSP and math are deferred; implementation
   follows the documentation checkpoint.
+
+## Cascade 28 close and remaining runtime lane — 2026-08-01
+
+- C28 product/test implementation is closed locally at `08af1e7`: frontend 2/2
+  and independent Frontend/Tester audits are CLEAN. Backend remains unchanged;
+  full suite and GET/200/409 four-enum conformance probes PASS.
+- Gated E2E `a091410` is static/support/default-false/shell verified and
+  independently audited CLEAN. Browser runtime remains backlog work and must
+  use a compatible C28 target with the feature explicitly enabled; no runtime
+  result may be inferred from the static gate.
+- Ordinary local state still returns the known missing-EngeeDSP prerequisite
+  `500`. This is not a new Engee defect. Run the existing Engee environment
+  prerequisite gate before attempting local runtime; do not add a fallback.
+- Push, deployment and merge remain unauthorised/unperformed. Panel, plot
+  payload, traces/heatmaps, settings, Measurements, Peaks, DSP and math require
+  a separate accepted contract; they are not implicit C29 scope.

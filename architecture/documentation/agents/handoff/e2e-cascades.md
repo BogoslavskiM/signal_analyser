@@ -533,3 +533,32 @@ C28 static scenario only after DEC-034 checkpoint.
 commit: `a4edbc9fdbdcdce91eef3943a256b36c65776cc4`.
 browser_workspace_setup: Static-only; no browser/focus/Space/window/MATLAB.
 engee_bug_candidate: None.
+
+## Cascade 28 active-plot gated recovery — 2026-08-01
+
+canonical_role: E2E Tester
+owner: E2E Tester
+session: `/root/e2e_c27_audit`.
+goal: Preserve a target-gated browser contract for local active-plot quarantine,
+root fatal reset and distinct valid Retry recovery without claiming runtime.
+scope: `test/playwright/e2e.config.js`,
+`test/playwright/specs/signal_analyser/active_plot_snapshot.test.js` and
+`test/playwright/support/signal_analyser_page.contract.test.js`.
+contracts: Active A malformed `active_plot` yields exact local error, preserved
+topology/inventory/row identity, disabled View controls and zero mutation;
+valid-active root mismatch is exact global fatal; Retry GET restores distinct
+valid B; feature remains disabled by default.
+changes: Registered stable active-plot error test ID and default-false feature;
+added route-controlled scenario with event/timing evidence and cleanup.
+verification: Node syntax, support contract, gated module load, explicit
+default-false assertion and `bash -n` PASS; independent E2E audit CLEAN. No
+browser target was executed.
+risks: Runtime is unclaimed; enable only against a C28-compatible target.
+follow-ups: Run focused C28 runtime with timing analysis when such a target is
+available; do not infer deployment from static acceptance.
+next_task_candidates: Focused background-CDP runtime C28; completed standby
+until a compatible target exists.
+source_evidence: DEC-034; scenario/support files; commit `a091410`.
+browser_workspace_setup: Static-only; no browser, focus, Space, window or
+MATLAB action.
+engee_bug_candidate: None.

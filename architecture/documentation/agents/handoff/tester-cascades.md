@@ -629,3 +629,32 @@ source_evidence: DEC-034 and
 next_task_candidates: Land the RED matrix alongside the planned Frontend
 implementation.
 engee_bug_candidate: None.
+
+## Cascade 28 active-plot snapshot acceptance matrix — 2026-08-01
+
+canonical_role: Tester
+owner: Tester
+session: `/root/tester_c7_matrix`.
+goal: Prove exact DEC-034 response semantics across lifecycle and async seams
+without fixture repair or request-count false positives.
+scope: `test/front/public/js/app.behavior.test.js`; no product/backend/E2E edit.
+contracts: All four canonical enum values; per-Display malformed local
+quarantine; valid-active root malformed/mismatch fatal; invalid-active
+precedence; exact desired/queued/pending/409-replay purge by ID; independent B
+continuation; topology availability; valid recovery without resurrection;
+bounded deferred Plotly settlement.
+changes: Added isolated initial/200/409/recovery corruption matrices, exact
+request and DOM oracles, four-enum lifecycle coverage, dual-corruption
+precedence, A/B isolation and controlled async settlement coverage; repaired
+existing valid fixtures to publish root `active_plot` explicitly.
+verification: Frontend suite 2/2 and Node syntax PASS; independent Tester audit
+CLEAN. The audit confirmed no helper auto-heals the field under test and no
+disabled-control-only false positive substitutes for exact request counts.
+risks: Static behavior tests do not claim browser runtime or target
+compatibility.
+follow-ups: Retain controlled promise and post-helper corruption seams in
+future snapshot work.
+next_task_candidates: Runtime C28 correlation through the gated E2E scenario;
+otherwise completed standby pending a new accepted contract.
+source_evidence: DEC-034; behavior matrix; commit `08af1e7`.
+engee_bug_candidate: None.

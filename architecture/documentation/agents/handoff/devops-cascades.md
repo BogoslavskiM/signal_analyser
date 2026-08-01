@@ -386,3 +386,30 @@ source_evidence: DEC-031 and Architect accepted C25 handoff.
 follow-ups: Architect persists append-only implementation trace separately.
 next_task_candidates: C26 docs/product checkpoints after role validation.
 engee_bug_candidate: None.
+
+## Cascade 28 local checkpoints — 2026-08-01
+
+canonical_role: DevOps
+owner: DevOps
+session: `/root/devops_c17_commit`.
+goal: Persist only accepted C28 role-owned paths as separate local E2E and
+Frontend/Tester checkpoints.
+scope: Three accepted `test/playwright/**` files, then exactly `public/js/app.js`
+and `test/front/public/js/app.behavior.test.js`; architecture excluded.
+contracts: Exact staged path sets, cached diff review and accepted role gates;
+no push, deploy, merge or amend.
+changes: Created E2E commit
+`a09141049e3b4df7ddad3e57b427f6d1d65c2872` and Frontend/Tester commit
+`08af1e73b2852063a76cc9900ca39b17036bc54b`.
+verification: Accepted Node syntax/support/gated/default-false/`bash -n`,
+frontend 2/2 and independent Frontend/Tester/E2E audits CLEAN; exact commit
+stats contain only the handed-off product/test paths.
+risks: Runtime E2E is unclaimed. Ordinary local state is blocked by the known
+missing EngeeDSP prerequisite. Branch remains local.
+follow-ups: Architect may hand off an exact validated architecture-only docs
+checkpoint. No push/deployment/merge without separate authority.
+next_task_candidates: Commit the validated C28 documentation file list after an
+explicit Architect handoff; otherwise completed standby.
+source_evidence: Role acceptance for `a091410` and `08af1e7`; committed docs
+checkpoints `9190bb9`, `76f5413`, `8f7bfcf`.
+engee_bug_candidate: None.

@@ -694,3 +694,29 @@ aggregate before any future import/CRUD/session restore.
 follow-ups: No backend/API change required for C27.
 next_task_candidates: Separate aggregate-hardening ADR before signal import.
 engee_bug_candidate: None.
+
+## Cascade 28 active-plot serializer conformance — 2026-08-01
+
+canonical_role: Backend
+owner: Backend
+session: `/root/backend_c27_serializer_audit`.
+goal: Confirm route-reachable snapshots already satisfy the DEC-034 closed enum
+and root projection without a backend change.
+scope: Read-only domain/service/API serializer and backend verification; no
+repository edit.
+contracts: Every Display and root response owns one of `time`, `spectrum`,
+`spectrogram`, `persistence`; root equals the valid active Display on initial
+GET, successful mutation and `409 current`; request omission remains unchanged.
+changes: None; backend/API/schema/math are unchanged for C28.
+verification: Full backend suite PASS; separate route-reachable GET/200/409
+probes PASS for all four enum values.
+risks: Ordinary local state returns `500` because the known EngeeDSP
+prerequisite is absent. Isolated backend contract evidence passes; this is not
+a new C28 regression or Engee defect.
+follow-ups: Satisfy the existing EngeeDSP environment prerequisite before local
+ordinary runtime; no fallback or backend C28 patch.
+next_task_candidates: Future aggregate/import hardening only after a separate
+ADR; otherwise completed standby with no eligible C28 work.
+source_evidence: DEC-034; backend suite; GET/200/409 four-enum route probes; no
+backend diff in `08af1e7` or `a091410`.
+engee_bug_candidate: None.
