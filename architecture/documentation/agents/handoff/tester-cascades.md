@@ -612,13 +612,20 @@ goal: Prove response plot identity is strict and never repaired to Time.
 scope: `test/front/public/js/app.behavior.test.js`.
 contracts: Per-Display missing/null/empty/type/case/whitespace/unknown quarantine;
 valid-active root missing/type/unknown/mismatch global fatal; invalid-active
-root ignored; all four enum values valid; no same-ID replay or stale graph.
+root ignored; all four enum values valid. Cover active/inactive A-B isolation,
+exact same-ID View desired/queued/pending/stale-replay purge with zero View POST,
+preservation and continuation of valid other-Display intents, topology
+select/create/close availability, and valid recovery without resurrection.
+Use a bounded controlled deferred-Plotly case to prove that stale settlement
+cannot replace quarantine or start an unbounded reassertion.
 changes: None; contract only.
-verification: Not run; controlled initial/200/409/recovery matrix planned.
+verification: Not run; controlled initial/200/409/recovery matrix remains
+planned after committed documentation checkpoints `9190bb9` and `76f5413`.
 risks: Fixture helper currently omits root `active_plot`; update valid fixtures
 without converting missing-field cases into fallback compatibility.
 follow-ups: Preserve C24-C27 controlled promises and post-helper corruption.
 source_evidence: DEC-034 and
 `agents/reports/active-plot-snapshot-assessment-20260801.md`.
-next_task_candidates: Land RED matrix alongside Frontend implementation.
+next_task_candidates: Land the RED matrix alongside the planned Frontend
+implementation.
 engee_bug_candidate: None.

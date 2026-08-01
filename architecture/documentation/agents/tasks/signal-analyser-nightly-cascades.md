@@ -1382,6 +1382,10 @@ is unclaimed. Push, deployment and merge were not performed.
 
 Status: `contract-frozen-implementation-next`; DEC-034.
 
+Documentation checkpoint committed: the three-file contract snapshot is
+`9190bb9`; the shared task/handoff/history/traceability checkpoint is
+`76f5413`. Product implementation and its verification remain planned.
+
 Every Display response must own exact `active_plot` in the closed four-value
 enum. Invalid Display plot quarantines only that validated ID and never defaults
 to Time. If active Display plot is valid, root `active_plot` must own and equal
@@ -1394,8 +1398,8 @@ payload/settings/Measurements/Peaks/DSP/math remain outside C28.
 | Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
 | --- | --- | --- | --- | --- | --- |
 | Backend | `/root/backend_c27_serializer_audit` | no C28 delta | read-only enum support | none | typed plot serialized |
-| Frontend | `/root/frontend_c26_bind_fix` | C27 CLEAN/committed | C28 plot validator/quarantine | docs checkpoint | DEC-034 precedence |
+| Frontend | `/root/frontend_c26_bind_fix` | C28 implementation planned | C28 plot validator/quarantine | none; docs checkpoints committed | DEC-034 precedence; `9190bb9`, `76f5413` |
 | Tester | `/root/tester_c7_matrix` | C27 matrix CLEAN/committed | C28 enum/lifecycle matrix | frontend implementation | controlled 200/409 |
 | E2E Tester | `/root/e2e_c27_audit` | C27 gated CLEAN | optional C28 static gate | frontend implementation | no runtime target |
-| DevOps | `/root/devops_c17_commit` | C28 docs checkpoint in progress | C28 product commits | role acceptance | `9190bb9` |
+| DevOps | `/root/devops_c17_commit` | C28 docs checkpoints committed | C28 product commits | role acceptance | `9190bb9`, `76f5413` |
 | MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | official web only |
