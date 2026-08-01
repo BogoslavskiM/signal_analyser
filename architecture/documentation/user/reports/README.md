@@ -26,3 +26,4 @@
 - [Cascade 23: lazy Persistence resource containment](signal-analyser-cascade-v23.md)
 - [Cascade 24: deterministic latest Plotly render](signal-analyser-cascade-v24.md)
 - [Cascade 25: строгий snapshot выбранных Statistics](signal-analyser-cascade-v25.md)
+- [Cascade 26: строгая глобальная структура snapshot](signal-analyser-cascade-v26.md)

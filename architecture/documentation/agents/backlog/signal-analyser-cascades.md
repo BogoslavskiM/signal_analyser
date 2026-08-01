@@ -228,11 +228,16 @@ Owner: Architect
   uses a frontend-only generation-aware serialized coordinator. Six controlled-
   promise cases and independent final audit are CLEAN; backend/API/wire remain
   unchanged and deployment is unclaimed.
-- DEC-031 freezes C25 `measurement_kinds` snapshot hardening. Absent keeps the
-  canonical first-three compatibility default; present null/nonarray/member
-  type/unknown/duplicate corruption quarantines the Display, disables
-  Statistics controls and purges queued/replayed full View intents. No root
-  fallback, backend/API/math change or partial C24 coupling is allowed.
+- C25 `measurement_kinds` snapshot hardening is implemented at `0d7bd7e`.
+  Absent keeps canonical first-three defaults without root fallback; present
+  corruption quarantines the Display, disables Statistics and purges queued/
+  replayed View intents. Frontend 2/2 and independent audit CLEAN; no backend/
+  API/math change, C24 coupling or deployment claim.
+- DEC-032 freezes C26 global snapshot envelope. Required object snapshot,
+  unique named signal entries, nonempty unique-ID Display entries and exact
+  active ID are validated before normalize. Corruption globally resets state,
+  host and all mutation queues, exposes existing Retry, and never replays.
+  Membership/source/row/root consistency is deliberately deferred to C27.
 - C19 implemented and locally accepted at product/test commit `2f99ff8`:
   backend 1497/1497, C19 48/48, frontend 2/2, focused Playwright static and
   independent Frontend/E2E/Backend audits CLEAN. Local Engee gate retains the

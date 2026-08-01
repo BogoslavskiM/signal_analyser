@@ -62,3 +62,11 @@ valid full View request и A/B isolation.
 
 - [DEC-014](DEC-20260731-014-selectable-statistics.md)
 - [Backend/frontend boundary assessment](../../agents/reports/measurement-kinds-snapshot-assessment-20260801.md)
+
+## Датированное уточнение 2026-08-01 — local implementation
+
+Контракт реализован и локально проверен в
+`0d7bd7ed72cd92a74174abb7210778da5cd62e2a`. Frontend 2/2, initial/root,
+valid empty/unordered, malformed matrix, successful 200/409 queue purge, exact
+body и A/B isolation прошли; independent final audit CLEAN. Deployment не
+заявляется.

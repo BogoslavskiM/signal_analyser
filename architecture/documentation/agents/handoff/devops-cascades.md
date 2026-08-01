@@ -367,3 +367,22 @@ frontend/test `102aa074431167da54c8a639c791f8d096b7df75`.
 verification: Exact staged lists, cached diff checks and role gates PASS;
 worktree clean after each commit.
 risks: Push, deployment, merge and amend were not performed.
+
+## Cascade 25 local checkpoint — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c17_commit`.
+goal: Persist the accepted C25 product/test checkpoint without crossing roles.
+scope: Exactly `public/js/app.js` and
+`test/front/public/js/app.behavior.test.js`.
+contracts: Exact staged list, cached diff and accepted frontend gates; no
+architecture files, push, deploy, merge or amend.
+changes: Created frontend/test commit
+`0d7bd7ed72cd92a74174abb7210778da5cd62e2a` from exactly two accepted paths.
+verification: Node syntax, frontend 2/2, exact staged list and cached diff PASS;
+post-commit worktree clean.
+risks: Push, deployment, merge and amend were not performed.
+source_evidence: DEC-031 and Architect accepted C25 handoff.
+follow-ups: Architect persists append-only implementation trace separately.
+next_task_candidates: C26 docs/product checkpoints after role validation.
+engee_bug_candidate: None.

@@ -484,3 +484,41 @@ risks: In-flight Plotly cannot be cancelled and may delay newest render.
 follow-ups: Runtime fast-switch observation only after accepted deployment.
 commit: `102aa074431167da54c8a639c791f8d096b7df75`.
 engee_bug_candidate: None.
+
+## Cascade 25 Statistics snapshot hardening — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c23_contract_audit`.
+goal: Prevent malformed present `measurement_kinds` from becoming fabricated
+valid frontend state or replayed full View bodies.
+scope: `public/js/app.js` only; vanilla JS.
+contracts: Display absence first-three/no root fallback; present unique known
+string subset including empty; corruption quarantine/error/disable/purge.
+changes: Added exact snapshot validator and per-Display contract errors, reused
+the shared quarantine and accessible Statistics error; C24 unchanged.
+verification: Frontend 2/2, syntax/diff, full initial/200/409/A-B matrix and
+independent final audit CLEAN.
+risks: Quarantined Display blocks server mutations until a valid snapshot.
+source_evidence: DEC-031 and
+`agents/reports/measurement-kinds-snapshot-assessment-20260801.md`.
+follow-ups: Preserve no-root-fallback and queue purge oracles.
+next_task_candidates: C26 global envelope only after a separate contract.
+commit: `0d7bd7ed72cd92a74174abb7210778da5cd62e2a`.
+engee_bug_candidate: None.
+
+## Cascade 26 global snapshot envelope discovery — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c24_final_audit`.
+goal: Separate global topology corruption from per-Display selection gaps.
+scope: Read-only frontend/backend serializer trace.
+contracts: P0-A requires object snapshot, unique named signals, nonempty unique-
+ID Displays and matching active ID; failure is global fatal/reset/Retry.
+changes: None; discovery only.
+verification: Direct normalize/accept/active/update call-flow review against
+backend serializer and DEC-009/012.
+risks: Mixing membership/source would broaden failure semantics; deferred C27.
+follow-ups: Implement DEC-032 after docs checkpoint with C24/C25 regression.
+source_evidence: `agents/reports/global-snapshot-envelope-assessment-20260801.md`.
+next_task_candidates: Implement DEC-032 global envelope and fatal Retry matrix.
+engee_bug_candidate: None.

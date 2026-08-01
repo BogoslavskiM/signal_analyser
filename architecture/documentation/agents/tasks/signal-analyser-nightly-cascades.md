@@ -1276,3 +1276,35 @@ repeated independent audit CLEAN. Gated C23 E2E static contract is `6d57949`;
 runtime remains unavailable. C24 product/test `102aa07` passes frontend 2/2 and
 a six-case controlled-promise matrix; independent audit CLEAN after three
 pre-settlement oracle fixes. Push, deployment and merge were not performed.
+
+## Cascade 25 implementation close — 2026-08-01
+
+Status: `implemented-and-locally-verified`; not deployed.
+
+C25 frontend/test `0d7bd7e` passes frontend 2/2. Exact absent/root precedence,
+valid empty/unordered canonical selection, malformed shape/member matrix,
+visible disabled quarantine, successful 200/409 queued-intent purge, exact
+valid request and A/B isolation are covered. Independent final audit CLEAN.
+Backend/API/math/C24 coordinator were unchanged; push/deployment/merge absent.
+
+## Cascade 26 contract freeze — 2026-08-01
+
+Status: `contract-frozen-implementation-next`; DEC-032.
+
+Validate global snapshot topology before normalize: object snapshot, named
+unique signal objects, nonempty unique-ID Display objects and matching active
+ID. Any corruption is app-fatal/reset through existing alert/Retry; clear state,
+host/tabs/rows, all View/Display desired/queued/pending intents and C24 render
+generation. Initial/200/409 never replay. Membership/source/row/root validation
+is C27 and must not broaden this patch.
+
+### Persistent role queue after C26 contract freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | no C26 delta | serializer confirmation only | none | topology always emitted |
+| Frontend | `/root/frontend_c24_final_audit` | envelope discovery complete | global validator/fatal reset | docs checkpoint | P0-A isolated |
+| Tester | `/root/tester_c18_persistence_matrix` | envelope matrix complete | initial/200/409/retry tests | frontend implementation | fatal vs quarantine split |
+| E2E Tester | `/root/e2e_c23_final_audit` | standby | optional fatal/retry static scenario | frontend implementation | existing app-error selector |
+| DevOps | `/root/devops_c17_commit` | C25 product current | C26 docs/product commits | role validation | no push/deploy |
+| MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | direct web only |

@@ -503,3 +503,39 @@ audits CLEAN after closing all reported false-positive seams.
 risks: Runtime C23 E2E remains gated and not deployed.
 follow-ups: Preserve intermediate pre-settlement assertions.
 commits: C23 `84b21f3`; C24 `102aa07`.
+
+## Cascade 25 Statistics snapshot acceptance matrix — 2026-08-01
+
+canonical_role: Tester
+sessions: `/root/tester_c18_persistence_matrix`, `/root/tester_c7_matrix`.
+goal: Prove DEC-031 absent/present and lifecycle quarantine without false replay.
+scope: `test/front/public/js/app.behavior.test.js`.
+contracts: Display-only no-root fallback, canonical valid subsets, present
+corruption error/disable/purge, exact View body and A/B isolation.
+changes: Added absent/nondefault-root, valid empty/unordered, malformed classes,
+malformed present/valid root, 200/409 queued purge, exact body and A/B tests.
+verification: Frontend 2/2 and diff PASS; independent Frontend audit CLEAN.
+risks: None; controlled resolvers make replay observable without fixed sleeps.
+source_evidence: DEC-031 and
+`agents/reports/measurement-kinds-snapshot-assessment-20260801.md`.
+follow-ups: Preserve exact request comparisons and pre/post POST counts.
+next_task_candidates: C26 global envelope matrix after separate ADR.
+commit: `0d7bd7ed72cd92a74174abb7210778da5cd62e2a`.
+engee_bug_candidate: None.
+
+## Cascade 26 global envelope matrix discovery — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c18_persistence_matrix`.
+goal: Rank global crash/fabrication and per-Display corruption boundaries.
+scope: Read-only frontend/backend/test trace.
+changes: None; discovery only.
+contracts: C26 global fatal for outer topology; C27 per-Display quarantine for
+membership/source plus global root consistency.
+verification: Serializer/request validator evidence and harness inventory.
+risks: App-fatal 200 may follow a committed backend mutation; Retry must refetch
+authoritative state rather than replay intent.
+follow-ups: Initial/200/409/recovery exact matrix after DEC-032 implementation.
+source_evidence: `agents/reports/global-snapshot-envelope-assessment-20260801.md`.
+next_task_candidates: Implement initial/200/409/fatal-control/Retry C26 matrix.
+engee_bug_candidate: None.

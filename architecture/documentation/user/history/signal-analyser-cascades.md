@@ -532,3 +532,15 @@
   Statistics и очищает desired/queued/pending/replay intents.
 - Backend/API/math не меняются; C24 Plotly coordination не смешивается с этим
   frontend boundary. Implementation evidence пока не заявляется.
+- Boundary затем реализован в `0d7bd7e`: frontend 2/2, initial/root precedence,
+  valid empty/unordered, malformed classes, 200/409 queue purge, exact body и
+  A/B isolation; independent final audit CLEAN. Не deployed.
+
+## 2026-08-01 — Cascade 26 global snapshot envelope contract
+
+- Frontend/Tester trace подтвердил crash/fabrication risk до normalize: null
+  Display, `"undefined"` IDs и silent first-Display fallback.
+- DEC-032 отделяет P0-A topology от C27 selection. Signals/Displays/active ID
+  валидируются глобально; corruption очищает state/host/queues и оставляет
+  existing accessible Retry без replay.
+- Backend/API/HTML/math не меняются; implementation evidence пока не заявляется.
