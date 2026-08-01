@@ -4,8 +4,8 @@ const { openAppPage, testIdSelector } = require("../../support/app_page");
 const { assertNoPreparingPlaceholders, endpointMatches, performanceLog, responseJson, signalRowsState, waitForApi, waitForSettled } = require("../../support/signal_analyser_page");
 
 const TIMEOUT = 30000;
-const DEFAULT = { overlap_percent: 50, leakage: 0.5, frequency_limits: null, frequency_scale: "linear" };
-function four(settings) { return Object.assign({ frequency_scale: "linear" }, settings || {}); }
+const DEFAULT = { overlap_percent: 50, leakage: 0.5, frequency_limits: null, frequency_scale: "linear", power_limits: null };
+function four(settings) { return Object.assign({ frequency_scale: "linear", power_limits: null }, settings || {}); }
 
 function id(page, config, name) { return page.locator(testIdSelector(config.app.testIds[name])); }
 function shell(page, config) { return id(page, config, "shell"); }
@@ -22,8 +22,8 @@ function assertExactSettings(assert, snapshot, expected, label) {
   expected = four(expected);
   const display = activeDisplay(snapshot), root = settings(snapshot);
   assert(display && display.spectrogram_settings && same(root, display.spectrogram_settings), `${label}: root and active Display must mirror spectrogram_settings`);
-  assert(root && Object.keys(root).sort().join(",") === "frequency_limits,frequency_scale,leakage,overlap_percent", `${label}: spectrogram_settings must have exactly four keys`);
-  assert(same(root, expected), `${label}: unexpected exact four-key settings ${JSON.stringify(root)}`);
+  assert(root && Object.keys(root).sort().join(",") === "frequency_limits,frequency_scale,leakage,overlap_percent,power_limits", `${label}: spectrogram_settings must have exactly five keys`);
+  assert(same(root, expected), `${label}: unexpected exact five-key settings ${JSON.stringify(root)}`);
 }
 function wire(snapshot, label) {
   const payload = snapshot && snapshot.plot_payload && snapshot.plot_payload.spectrogram || snapshot && snapshot.plots && snapshot.plots.spectrogram;
@@ -52,8 +52,8 @@ async function mutation(page, config, action, log, label, expectedStatus, expect
     if (expectedSettings) {
       const body = requestBody(requests[0], label);
       expectedSettings = four(expectedSettings);
-      if (!same(body.spectrogram_settings, expectedSettings) || Object.keys(body.spectrogram_settings || {}).length !== 4) {
-        throw new Error(`${label}: request must send the exact full four-key spectrogram_settings body`);
+      if (!same(body.spectrogram_settings, expectedSettings) || Object.keys(body.spectrogram_settings || {}).length !== 5) {
+        throw new Error(`${label}: request must send the exact full five-key spectrogram_settings body`);
       }
     }
     if (expectedStatus === 200 && payload.state_revision !== before + 1) throw new Error(`${label}: valid mutation must increment revision exactly once`);
@@ -151,15 +151,15 @@ async function testSpectrogramLeakage({ appUrl, assert, config, log, page, step,
       const one = await setLeakage(page, config, 1, log, "set Spectrogram Leakage 1", 200, { overlap_percent: 50, leakage: 1, frequency_limits: null }); assertExactSettings(assert, one, { overlap_percent: 50, leakage: 1, frequency_limits: null }, "Leakage 1"); await waitForHeatmap(page, config, assert, "Leakage 1"); assertPowerOnlyChange(assert, zeroWire, wireSignature(one, "Leakage 1"), "Leakage 0 to 1");
       await assertNoop(page, config, 1, assert, log); await assertLocalInvalidIfReachable(page, config, 1.01, { overlap_percent: 50, leakage: 1, frequency_limits: null }, assert, log);
     });
-    await step("synthetic 422 and 409 keep the exact desired four-key body", async function () {
+    await step("synthetic 422 and 409 keep the exact desired five-key body", async function () {
       const before = await state(page); let rejectedBody;
       await page.route("**/api/view*", async function (route) { if (!rejectedBody && route.request().method() === "POST") { rejectedBody = requestBody(route.request(), "synthetic Leakage 422"); await route.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ ok: false, error: { message: "synthetic leakage rejection" } }) }); return; } await route.continue(); });
       try { await setLeakage(page, config, 0, log, "synthetic Leakage 422", 422, { overlap_percent: 50, leakage: 0, frequency_limits: null }); } finally { await page.unroute("**/api/view*"); }
-      assert(same(rejectedBody && rejectedBody.spectrogram_settings, { overlap_percent: 50, leakage: 0, frequency_limits: null, frequency_scale: "linear" }) && Object.keys(rejectedBody.spectrogram_settings).length === 4, "422 must receive exact full four-key desired body"); assertExactSettings(assert, await state(page), settings(before), "synthetic Leakage 422 rollback");
+      assert(same(rejectedBody && rejectedBody.spectrogram_settings, { overlap_percent: 50, leakage: 0, frequency_limits: null, frequency_scale: "linear", power_limits: null }) && Object.keys(rejectedBody.spectrogram_settings).length === 5, "422 must receive exact full five-key desired body"); assertExactSettings(assert, await state(page), settings(before), "synthetic Leakage 422 rollback");
       const revision = before.state_revision; let intercepted = false, replayBodies = [];
       await page.route("**/api/view*", async function (route) { if (route.request().method() === "POST") { replayBodies.push(requestBody(route.request(), "synthetic Leakage 409")); if (!intercepted) { intercepted = true; await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ current: before }) }); return; } } await route.continue(); });
       try { const input = id(page, config, "spectrogramLeakageInput"); await input.fill("0"); await input.dispatchEvent("change"); await page.waitForFunction(function (expected) { const node = document.querySelector(expected.selector); return node && Number(node.getAttribute("data-state-revision")) === expected.revision; }, { selector: testIdSelector(config.app.testIds.shell), revision: revision + 1 }, { timeout: TIMEOUT }); } finally { await page.unroute("**/api/view*"); }
-      assert(intercepted && replayBodies.length === 2 && replayBodies.every(function (body) { return same(body.spectrogram_settings, { overlap_percent: 50, leakage: 0, frequency_limits: null, frequency_scale: "linear" }) && Object.keys(body.spectrogram_settings || {}).length === 4; }), "409 must replay exactly one identical full four-key desired body"); await waitForSettled(page, config);
+      assert(intercepted && replayBodies.length === 2 && replayBodies.every(function (body) { return same(body.spectrogram_settings, { overlap_percent: 50, leakage: 0, frequency_limits: null, frequency_scale: "linear", power_limits: null }) && Object.keys(body.spectrogram_settings || {}).length === 5; }), "409 must replay exactly one identical full five-key desired body"); await waitForSettled(page, config);
       await setLeakage(page, config, 1, log, "restore A Leakage 1 after replay", 200, { overlap_percent: 50, leakage: 1, frequency_limits: null });
     });
     await step("Spectrum leakage independence and A/B/Clear/re-add/source lifecycle", async function () {

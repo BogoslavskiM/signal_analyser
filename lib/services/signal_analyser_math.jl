@@ -2,6 +2,71 @@ const SIGNAL_ANALYSER_MAX_LINE_POINTS = 1024
 const SIGNAL_ANALYSER_MAX_HEATMAP_COLUMNS = 160
 const SIGNAL_ANALYSER_MAX_HEATMAP_ROWS = 160
 
+"""Finite full-raw Spectrogram dB extent; equality is valid for constant power."""
+struct SignalSpectrogramPowerExtent
+    min_db::Float64
+    max_db::Float64
+
+    function SignalSpectrogramPowerExtent(min_db::Real, max_db::Real)
+        minimum_power = Float64(min_db)
+        maximum_power = Float64(max_db)
+        isfinite(minimum_power) && isfinite(maximum_power) || throw(ArgumentError(
+            "Effective Power Limits Spectrogram должны быть конечными числами",
+        ))
+        minimum_power <= maximum_power || throw(ArgumentError(
+            "Минимальная effective Power Limit Spectrogram не может превышать максимальную",
+        ))
+        new(
+            minimum_power == 0.0 ? 0.0 : minimum_power,
+            maximum_power == 0.0 ? 0.0 : maximum_power,
+        )
+    end
+end
+
+"""Transient dB projection and extrema derived from every full-raw power cell."""
+struct SignalSpectrogramPowerProjection
+    values_db::Matrix{Float64}
+    finite_extent::Union{Nothing,SignalSpectrogramPowerExtent}
+end
+
+function SignalSpectrogramPowerProjection(data::SignalSpectrogramData)
+    values_db = Matrix{Float64}(undef, size(data.power))
+    minimum_power_db = Inf
+    maximum_power_db = -Inf
+    has_finite_power = false
+    for index in eachindex(data.power)
+        power_db = 10 * log10(data.power[index])
+        values_db[index] = power_db
+        if isfinite(power_db)
+            minimum_power_db = min(minimum_power_db, power_db)
+            maximum_power_db = max(maximum_power_db, power_db)
+            has_finite_power = true
+        end
+    end
+    extent = has_finite_power ?
+        SignalSpectrogramPowerExtent(minimum_power_db, maximum_power_db) : nothing
+    SignalSpectrogramPowerProjection(values_db, extent)
+end
+
+"""Typed requested/effective Spectrogram colormap resolution."""
+struct SignalSpectrogramPowerLimitsResolution{L<:AbstractSignalSpectrogramPowerLimits}
+    requested::L
+    effective::Union{Nothing,SignalSpectrogramPowerExtent}
+end
+
+SignalSpectrogramPowerLimitsResolution(
+    limits::AutomaticSignalSpectrogramPowerLimits,
+    projection::SignalSpectrogramPowerProjection,
+) = SignalSpectrogramPowerLimitsResolution(limits, projection.finite_extent)
+
+SignalSpectrogramPowerLimitsResolution(
+    limits::ExplicitSignalSpectrogramPowerLimits,
+    ::SignalSpectrogramPowerProjection,
+) = SignalSpectrogramPowerLimitsResolution(
+    limits,
+    SignalSpectrogramPowerExtent(limits.min_db, limits.max_db),
+)
+
 function signal_analyser_engee_dsp_module()
     try
         Base.require(@__MODULE__, :EngeeDSP)
@@ -128,10 +193,16 @@ function signal_analyser_spectrogram_plot(
     data::SignalSpectrogramData,
     frequency_limits_metadata::Dict{String,Any},
     frequency_scale_metadata::Dict{String,Any},
+    power_limits::AbstractSignalSpectrogramPowerLimits,
 )::Dict{String,Any}
+    power_projection = SignalSpectrogramPowerProjection(data)
+    power_limits_resolution = SignalSpectrogramPowerLimitsResolution(
+        power_limits,
+        power_projection,
+    )
     x = Float64[data.segment_centers_s...]
     y = Float64[data.frequencies_hz...]
-    z = Float64.(10 .* log10.(data.power))
+    z = power_projection.values_db
     x, y, z = signal_analyser_bounded_heatmap(x, y, z)
     Dict{String,Any}(
         "type" => "heatmap",
@@ -143,6 +214,21 @@ function signal_analyser_spectrogram_plot(
         "color_label" => "Мощность, дБ",
         "frequency_limits" => frequency_limits_metadata,
         "frequency_scale" => frequency_scale_metadata,
+        "power_limits" => signal_spectrogram_power_limits_metadata(power_limits_resolution),
+    )
+end
+
+
+function signal_analyser_spectrogram_plot(
+    data::SignalSpectrogramData,
+    frequency_limits_metadata::Dict{String,Any},
+    frequency_scale_metadata::Dict{String,Any},
+)::Dict{String,Any}
+    signal_analyser_spectrogram_plot(
+        data,
+        frequency_limits_metadata,
+        frequency_scale_metadata,
+        AutomaticSignalSpectrogramPowerLimits(),
     )
 end
 
@@ -154,6 +240,7 @@ function signal_analyser_spectrogram_plot(
         data,
         signal_spectrogram_frequency_limits_metadata(settings, data),
         signal_spectrogram_frequency_scale_metadata(settings, data),
+        settings.power_limits,
     )
 end
 
@@ -166,6 +253,7 @@ function signal_analyser_spectrogram_plot(
         data,
         signal_spectrogram_frequency_limits_metadata(settings, signal),
         signal_spectrogram_frequency_scale_metadata(settings, signal),
+        settings.power_limits,
     )
 end
 

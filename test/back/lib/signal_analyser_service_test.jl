@@ -19,7 +19,7 @@ end
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
     state = SA.default_signal_analyser_state()
     initial = SA.signal_analyser_snapshot(state)
-    auto_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    auto_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     @test initial["spectrogram_settings"] == auto_settings
     @test initial["plots"]["spectrogram"]["frequency_limits"] == Dict("mode" => "auto", "requested" => nothing,
         "effective" => Dict("min_hz" => 0.0, "max_hz" => state.signals[1].sample_rate_hz / 2, "units" => "Hz"))
@@ -27,12 +27,12 @@ end
 
     invalids = (
         Dict("overlap_percent" => 50.0, "leakage" => 0.5),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => true, "frequency_scale" => "linear"),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => Dict("min_hz" => true, "max_hz" => 1.0, "units" => "Hz"), "frequency_scale" => "linear"),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => Dict("min_hz" => 1.0, "max_hz" => 1.0, "units" => "Hz"), "frequency_scale" => "linear"),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => Dict("min_hz" => NaN, "max_hz" => 1.0, "units" => "Hz"), "frequency_scale" => "linear"),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => Dict("min_hz" => 0.0, "max_hz" => 1.0, "units" => "kHz"), "frequency_scale" => "linear"),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => Dict("min_hz" => -1.0, "max_hz" => 1.0, "units" => "Hz"), "frequency_scale" => "linear"),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => true, "frequency_scale" => "linear", "power_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => Dict("min_hz" => true, "max_hz" => 1.0, "units" => "Hz"), "frequency_scale" => "linear", "power_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => Dict("min_hz" => 1.0, "max_hz" => 1.0, "units" => "Hz"), "frequency_scale" => "linear", "power_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => Dict("min_hz" => NaN, "max_hz" => 1.0, "units" => "Hz"), "frequency_scale" => "linear", "power_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => Dict("min_hz" => 0.0, "max_hz" => 1.0, "units" => "kHz"), "frequency_scale" => "linear", "power_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => Dict("min_hz" => -1.0, "max_hz" => 1.0, "units" => "Hz"), "frequency_scale" => "linear", "power_limits" => nothing),
     )
     for settings in invalids
         @test_throws SA.SignalAnalyserValidationError SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => settings))
@@ -41,7 +41,7 @@ end
     empty!(SA.SPECTRUM_CALLS); empty!(state.spectrum_cache)
 
     limits = Dict("min_hz" => 1.0, "max_hz" => 4.0, "units" => "Hz")
-    explicit_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => limits, "frequency_scale" => "linear")
+    explicit_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => limits, "frequency_scale" => "linear", "power_limits" => nothing)
     changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => explicit_settings))
     @test changed["state_revision"] == 1 && changed["spectrogram_settings"] == explicit_settings
     @test changed["plots"]["spectrogram"]["frequency_limits"] == Dict("mode" => "explicit", "requested" => limits, "effective" => limits)
@@ -51,7 +51,7 @@ end
 
     # Auto and an explicit full band are distinct provider/cache identities.
     full = Dict("overlap_percent" => 50.0, "leakage" => 0.5,
-        "frequency_limits" => Dict("min_hz" => 0.0, "max_hz" => state.signals[1].sample_rate_hz / 2, "units" => "Hz"), "frequency_scale" => "linear")
+        "frequency_limits" => Dict("min_hz" => 0.0, "max_hz" => state.signals[1].sample_rate_hz / 2, "units" => "Hz"), "frequency_scale" => "linear", "power_limits" => nothing)
     calls_before_full = length(SA.SPECTROGRAM_CALLS)
     full_changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => full))
     @test full_changed["state_revision"] == 2 && length(SA.SPECTROGRAM_CALLS) == calls_before_full + 1
@@ -74,7 +74,7 @@ end
     narrow = SA.AnalysedSignal("c15-narrow", "#333333", 10.0, ComplexF64[1, 2, 3], false, true)
     transitions = SA.SignalAnalyserState([real, complex, narrow], SA.SignalAnalyserViewState(0, SA.TIME_PLOT, real.name), Dict{String,Dict{String,Any}}(), ReentrantLock())
     complex_limits = Dict("min_hz" => 10.0, "max_hz" => 20.0, "units" => "Hz")
-    c15_explicit = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => complex_limits, "frequency_scale" => "linear")
+    c15_explicit = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => complex_limits, "frequency_scale" => "linear", "power_limits" => nothing)
     first = SA.apply_signal_analyser_view!(transitions, Dict("state_revision" => 0, "spectrogram_settings" => c15_explicit))
     centered = SA.apply_signal_analyser_view!(transitions, Dict("state_revision" => 1, "analysis_signal" => complex.name))
     @test centered["spectrogram_settings"] == c15_explicit
@@ -197,7 +197,7 @@ end
         "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
         "measurement_kinds" => ["minimum", "maximum", "mean"],
         "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing),
-        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing),
         "peaks_enabled" => false,
     )]
     @test snapshot["state_revision"] == 0
@@ -311,7 +311,7 @@ end
         "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
         "measurement_kinds" => ["minimum", "maximum", "mean"],
         "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing),
-        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing),
         "peaks_enabled" => false,
     )
 
@@ -1154,7 +1154,7 @@ end
     before_invalid = SA.signal_analyser_snapshot(state)
     for malformed in (
         nothing,
-        Dict("scale" => "db", "frequency_scale" => "linear"),
+        Dict("scale" => "db", "frequency_scale" => "linear", "power_limits" => nothing),
         Dict("scale" => "watts", "frequency_scale" => "linear", "leakage" => 0.5),
         Dict("scale" => "db", "frequency_scale" => "octave", "leakage" => 0.5),
         Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => true),
@@ -1444,12 +1444,12 @@ end
     @test zero_key_dict[positive_zero_key] == :canonical
     state = SA.default_signal_analyser_state()
     initial = SA.signal_analyser_snapshot(state)
-    @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
-    invalid = try SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => Dict("overlap_percent" => 75.1, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear"))); nothing catch e; e end
+    @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
+    invalid = try SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => Dict("overlap_percent" => 75.1, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing))); nothing catch e; e end
     @test invalid isa SA.SignalAnalyserValidationError
     @test SA.signal_analyser_snapshot(state) == initial
-    changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => Dict("overlap_percent" => 75.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")))
-    @test changed["state_revision"] == 1 && changed["spectrogram_settings"] == Dict("overlap_percent" => 75.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => Dict("overlap_percent" => 75.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)))
+    @test changed["state_revision"] == 1 && changed["spectrogram_settings"] == Dict("overlap_percent" => 75.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
 end
 
 @testset "Cascade 13 Leakage-only mutation never rebuilds Spectrum cache" begin
@@ -1464,10 +1464,10 @@ end
 
     changed = SA.apply_signal_analyser_view!(state, Dict(
         "state_revision" => 0,
-        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing),
     ))
     @test changed["state_revision"] == 1
-    @test changed["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test changed["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     @test length(SA.SPECTROGRAM_CALLS) == 1
     @test isempty(SA.SPECTRUM_CALLS)
     @test isempty(state.spectrum_cache)
@@ -1486,10 +1486,10 @@ end
 
     no_op = SA.apply_signal_analyser_view!(state, Dict(
         "state_revision" => 0,
-        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing),
     ))
     @test no_op["state_revision"] == 0
-    @test no_op["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test no_op["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     @test isempty(SA.SPECTRUM_CALLS) && isempty(state.spectrum_cache)
     @test isempty(SA.SPECTROGRAM_CALLS) && isempty(state.spectrogram_cache)
     @test no_op["plots"]["spectrum"]["type"] == "line"
@@ -1515,7 +1515,7 @@ end
     state = SA.default_signal_analyser_state()
     first_name, second_name = [signal.name for signal in state.signals]
     initial = SA.signal_analyser_snapshot(state)
-    @test all(display -> display["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear"), initial["displays"])
+    @test all(display -> display["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing), initial["displays"])
     @test !isempty(SA.SPECTROGRAM_CALLS)
     calls_at_default = length(SA.SPECTROGRAM_CALLS)
 
@@ -1547,7 +1547,7 @@ end
         @test length(SA.SPECTROGRAM_CALLS) == calls_at_default
     end
 
-    overlap_75 = Dict("overlap_percent" => 75.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    overlap_75 = Dict("overlap_percent" => 75.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     updated = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => overlap_75))
     @test updated["state_revision"] == 1
     @test updated["spectrogram_settings"] == overlap_75
@@ -1558,27 +1558,27 @@ end
     @test length(SA.SPECTROGRAM_CALLS) == calls_at_75
 
     created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "create"))
-    @test created["displays"][2]["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test created["displays"][2]["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     selected_first = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))
     @test selected_first["spectrogram_settings"] == overlap_75
     selected_second = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-2"))
-    @test selected_second["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test selected_second["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
 
     calls_before_clear = length(SA.SPECTROGRAM_CALLS)
     cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => String[]))
-    @test cleared["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test cleared["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     @test length(SA.SPECTROGRAM_CALLS) == calls_before_clear
     readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [first_name]))
-    @test readded["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test readded["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     @test length(SA.SPECTROGRAM_CALLS) == calls_before_clear + 1
     changed_signal = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 6, "visible_signals" => [first_name, second_name], "analysis_signal" => second_name))
-    @test changed_signal["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test changed_signal["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
 
     before_failure = SA.signal_analyser_snapshot(state)
     empty!(state.spectrogram_cache)
     SA.SPECTROGRAM_FAILURE[] = true
     failure = try
-        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 7, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 0.0, "frequency_limits" => nothing, "frequency_scale" => "linear")))
+        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 7, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 0.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)))
         nothing
     catch caught
         caught
@@ -1599,47 +1599,47 @@ end
     state = SA.default_signal_analyser_state()
     first_name, second_name = [signal.name for signal in state.signals]
     initial = SA.signal_analyser_snapshot(state)
-    @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     initial_spectrogram_calls, initial_spectrum_calls = length(SA.SPECTROGRAM_CALLS), length(SA.SPECTRUM_CALLS)
 
-    leakage_zero = Dict("overlap_percent" => 50.0, "leakage" => -0.0, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    leakage_zero = Dict("overlap_percent" => 50.0, "leakage" => -0.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => leakage_zero))
     @test changed["state_revision"] == 1
-    @test changed["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.0, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test changed["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     @test !signbit(changed["spectrogram_settings"]["leakage"])
     @test length(SA.SPECTROGRAM_CALLS) == initial_spectrogram_calls + 1
     @test length(SA.SPECTRUM_CALLS) == initial_spectrum_calls
     @test SA.SPECTROGRAM_CALLS[end].leakage == 0.0
-    @test SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.0, "frequency_limits" => nothing, "frequency_scale" => "linear")))["state_revision"] == 1
+    @test SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)))["state_revision"] == 1
     @test length(SA.SPECTROGRAM_CALLS) == initial_spectrogram_calls + 1
 
-    restored = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")))
+    restored = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)))
     @test restored["state_revision"] == 2
     @test length(SA.SPECTROGRAM_CALLS) == initial_spectrogram_calls + 1 # default raw cache is reused
     @test length(SA.SPECTRUM_CALLS) == initial_spectrum_calls
 
     created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "create"))
-    @test created["displays"][2]["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test created["displays"][2]["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     selected_a = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-1"))
-    @test selected_a["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
-    leaked_a = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear")))
-    @test leaked_a["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test selected_a["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
+    leaked_a = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)))
+    @test leaked_a["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     selected_b = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 5, "operation" => "select", "display_id" => "display-2"))
-    @test selected_b["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test selected_b["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 6, "visible_signals" => String[]))
-    @test cleared["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test cleared["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     calls_before_readd = length(SA.SPECTROGRAM_CALLS)
     readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 7, "visible_signals" => [first_name]))
-    @test readded["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test readded["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     @test length(SA.SPECTROGRAM_CALLS) == calls_before_readd + 1 # first re-add recomputes after Clear
     source_changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 8, "visible_signals" => [first_name, second_name], "analysis_signal" => second_name))
-    @test source_changed["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test source_changed["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
 
     before_failure = SA.signal_analyser_snapshot(state)
     empty!(state.spectrogram_cache)
     SA.SPECTROGRAM_FAILURE[] = true
     failure = try
-        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 9, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear")))
+        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 9, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)))
         nothing
     catch caught
         caught
@@ -1662,8 +1662,8 @@ end
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
     state = SA.default_signal_analyser_state()
     baseline = SA.signal_analyser_snapshot(state)
-    exact_linear = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
-    exact_log = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "log")
+    exact_linear = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
+    exact_log = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "log", "power_limits" => nothing)
     @test baseline["spectrogram_settings"] == exact_linear
     @test baseline["plots"]["spectrogram"]["frequency_scale"] == Dict("requested" => "linear", "effective" => "linear", "available" => ["linear", "log"])
 
@@ -1726,7 +1726,7 @@ end
     # A combined presentation/provider mutation delegates only for the provider field, never Spectrum.
     readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 10, "visible_signals" => [source_real]))
     before_combined = (length(SA.SPECTRUM_CALLS), length(SA.SPECTROGRAM_CALLS))
-    combined = Dict("overlap_percent" => 25.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    combined = Dict("overlap_percent" => 25.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     SA.apply_signal_analyser_view!(state, Dict("state_revision" => 11, "spectrogram_settings" => combined))
     @test length(SA.SPECTRUM_CALLS) == before_combined[1]
     @test length(SA.SPECTROGRAM_CALLS) == before_combined[2] + 1
@@ -1738,4 +1738,92 @@ end
     short_calls = length(SA.SPECTROGRAM_CALLS)
     SA.signal_spectrogram_data(SA.SignalSpectrogramService(SA.EngeeDSPSpectrogramProvider()), short)
     @test length(SA.SPECTROGRAM_CALLS) == short_calls
+end
+
+@testset "Cascade 17 Spectrogram Power Limits are presentation-only and full-raw" begin
+    auto = SA.AutomaticSignalSpectrogramPowerLimits()
+    explicit = SA.ExplicitSignalSpectrogramPowerLimits(-80, -20)
+    @test SA.signal_spectrogram_power_limits_payload(auto) === nothing
+    @test SA.signal_spectrogram_power_limits_payload(explicit) == Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB")
+    @test !signbit(SA.ExplicitSignalSpectrogramPowerLimits(-0.0, 1).min_db)
+    @test_throws ArgumentError SA.ExplicitSignalSpectrogramPowerLimits(true, 1)
+    @test_throws ArgumentError SA.ExplicitSignalSpectrogramPowerLimits(-Inf, 1)
+    @test_throws ArgumentError SA.ExplicitSignalSpectrogramPowerLimits(1, 1)
+    @test_throws ArgumentError SA.ExplicitSignalSpectrogramPowerLimits(1, -1)
+
+    # Extrema must include a finite raw cell beyond the 160×160 wire envelope.
+    power = fill(1.0, 161, 161); power[81, 81] = 1e-12; power[81, 80] = 1e3; power[2, 2] = 0.0
+    raw = SA.SignalSpectrogramData(collect(0.0:160.0), collect(0.0:160.0), power, SA.ONE_SIDED_SPECTRUM)
+    projection = SA.SignalSpectrogramPowerProjection(raw)
+    @test projection.finite_extent == SA.SignalSpectrogramPowerExtent(-120, 30)
+    @test projection.values_db[2, 2] == -Inf
+    _, _, bounded_db = SA.signal_analyser_bounded_heatmap(collect(raw.segment_centers_s), collect(raw.frequencies_hz), projection.values_db)
+    @test !any(value -> value == -120.0 || value == 30.0, bounded_db)
+    @test SA.signal_spectrogram_power_limits_metadata(SA.SignalSpectrogramSettings(50, .5, SA.AutomaticSignalSpectrumFrequencyLimits(), SA.LINEAR_SPECTROGRAM_FREQUENCY_SCALE, auto), raw) == Dict("mode" => "auto", "requested" => nothing, "effective" => Dict("min_db" => -120.0, "max_db" => 30.0, "units" => "dB"))
+    @test SA.signal_spectrogram_power_limits_metadata(SA.SignalSpectrogramSettings(50, .5, SA.AutomaticSignalSpectrumFrequencyLimits(), SA.LINEAR_SPECTROGRAM_FREQUENCY_SCALE, explicit), raw) == Dict("mode" => "explicit", "requested" => Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB"), "effective" => Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB"))
+    zero = SA.SignalSpectrogramData([0.0], [0.0], zeros(1, 1), SA.ONE_SIDED_SPECTRUM)
+    constant = SA.SignalSpectrogramData([0.0], [0.0], fill(0.01, 1, 1), SA.ONE_SIDED_SPECTRUM)
+    mixed = SA.SignalSpectrogramData([0.0, 1.0], [0.0], reshape([0.0, 0.01], 2, 1), SA.ONE_SIDED_SPECTRUM)
+    @test SA.SignalSpectrogramPowerProjection(zero).finite_extent === nothing
+    @test SA.SignalSpectrogramPowerProjection(constant).finite_extent == SA.SignalSpectrogramPowerExtent(-20, -20)
+    @test SA.SignalSpectrogramPowerProjection(mixed).finite_extent == SA.SignalSpectrogramPowerExtent(-20, -20)
+
+    SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
+    state = SA.default_signal_analyser_state()
+    initial = SA.signal_analyser_snapshot(state)
+    auto_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
+    explicit_payload = Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB")
+    explicit_settings = merge(copy(auto_settings), Dict("power_limits" => explicit_payload))
+    # A presentation-only C17 change stays cold; the next GET owns materialization.
+    SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
+    cold = SA.default_signal_analyser_state()
+    empty!(cold.spectrum_cache); empty!(cold.spectrogram_cache); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
+    cold_changed = SA.apply_signal_analyser_view!(cold, Dict("state_revision" => 0, "spectrogram_settings" => explicit_settings))
+    @test cold_changed["state_revision"] == 1 && cold_changed["plots"]["spectrogram"]["x"] == Float64[] && cold_changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload)
+    @test isempty(SA.SPECTRUM_CALLS) && isempty(SA.SPECTROGRAM_CALLS) && isempty(cold.spectrum_cache) && isempty(cold.spectrogram_cache)
+    @test SA.apply_signal_analyser_view!(cold, Dict("state_revision" => 1, "spectrogram_settings" => explicit_settings))["state_revision"] == 1
+    @test isempty(SA.SPECTRUM_CALLS) && isempty(SA.SPECTROGRAM_CALLS) && isempty(cold.spectrum_cache) && isempty(cold.spectrogram_cache)
+    SA.signal_analyser_snapshot(cold)
+    @test length(SA.SPECTRUM_CALLS) == 2 && length(SA.SPECTROGRAM_CALLS) == 1 && length(cold.spectrum_cache) == 2 && length(cold.spectrogram_cache) == 1
+
+    SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
+    combined_cold = SA.default_signal_analyser_state()
+    empty!(combined_cold.spectrum_cache); empty!(combined_cold.spectrogram_cache); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
+    combined_settings = Dict("overlap_percent" => 25.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => explicit_payload)
+    combined_changed = SA.apply_signal_analyser_view!(combined_cold, Dict("state_revision" => 0, "spectrogram_settings" => combined_settings))
+    @test combined_changed["state_revision"] == 1 && combined_changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload)
+    @test isempty(SA.SPECTRUM_CALLS) && length(SA.SPECTROGRAM_CALLS) == 1 && isempty(combined_cold.spectrum_cache) && length(combined_cold.spectrogram_cache) == 1
+    @test initial["spectrogram_settings"] == auto_settings
+    @test initial["plots"]["spectrogram"]["power_limits"]["mode"] == "auto"
+    @test initial["plots"]["spectrogram"]["power_limits"]["effective"] isa Dict
+    calls_before = (length(SA.SPECTRUM_CALLS), length(SA.SPECTROGRAM_CALLS), length(state.spectrum_cache), length(state.spectrogram_cache))
+    xyz_before = (initial["plots"]["spectrogram"]["x"], initial["plots"]["spectrogram"]["y"], initial["plots"]["spectrogram"]["z"])
+    changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => explicit_settings))
+    @test changed["state_revision"] == 1 && changed["spectrogram_settings"] == explicit_settings
+    @test (length(SA.SPECTRUM_CALLS), length(SA.SPECTROGRAM_CALLS), length(state.spectrum_cache), length(state.spectrogram_cache)) == calls_before
+    @test (changed["plots"]["spectrogram"]["x"], changed["plots"]["spectrogram"]["y"], changed["plots"]["spectrogram"]["z"]) == xyz_before
+    @test changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload)
+    @test SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => explicit_settings))["state_revision"] == 1
+
+    for bad in (nothing, true, Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB", "extra" => true), Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "Hz"), Dict("min_db" => true, "max_db" => -20.0, "units" => "dB"), Dict("min_db" => -20.0, "max_db" => -20.0, "units" => "dB"), Dict("min_db" => -20.0, "max_db" => -80.0, "units" => "dB"))
+        bad === nothing && continue # Auto is valid; missing fifth key is separately malformed below.
+        malformed = merge(copy(auto_settings), Dict("power_limits" => bad))
+        before = SA.signal_analyser_snapshot(state)
+        @test_throws SA.SignalAnalyserValidationError SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => malformed))
+        @test SA.signal_analyser_snapshot(state) == before
+    end
+    missing_key = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
+    @test_throws SA.SignalAnalyserValidationError SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => missing_key))
+
+    created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "create"))
+    @test created["displays"][2]["spectrogram_settings"] == auto_settings
+    selected = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))
+    @test selected["spectrogram_settings"] == explicit_settings
+    cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 3, "visible_signals" => String[]))
+    @test cleared["spectrogram_settings"] == explicit_settings
+    @test cleared["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload)
+    readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => [state.signals[1].name]))
+    @test readded["spectrogram_settings"] == explicit_settings
+    switched = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [state.signals[1].name, state.signals[2].name], "analysis_signal" => state.signals[2].name))
+    @test switched["spectrogram_settings"] == explicit_settings && switched["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload)
 end

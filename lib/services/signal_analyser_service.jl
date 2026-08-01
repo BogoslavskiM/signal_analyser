@@ -28,7 +28,9 @@ const SIGNAL_SPECTROGRAM_SETTINGS_FIELDS = Set([
     "leakage",
     "frequency_limits",
     "frequency_scale",
+    "power_limits",
 ])
+const SIGNAL_SPECTROGRAM_POWER_LIMIT_FIELDS = Set(["min_db", "max_db", "units"])
 
 const SIGNAL_SPECTRUM_SCALE_NAMES = Dict(
     DB_SPECTRUM_SCALE => "db",
@@ -125,7 +127,56 @@ function signal_spectrogram_settings_payload(
         "leakage" => settings.leakage,
         "frequency_limits" => signal_spectrum_frequency_limits_payload(settings.frequency_limits),
         "frequency_scale" => SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES[settings.frequency_scale],
+        "power_limits" => signal_spectrogram_power_limits_payload(settings.power_limits),
     )
+end
+
+signal_spectrogram_power_limits_payload(
+    ::AutomaticSignalSpectrogramPowerLimits,
+) = nothing
+
+function signal_spectrogram_power_limits_payload(
+    limits::ExplicitSignalSpectrogramPowerLimits,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "min_db" => limits.min_db,
+        "max_db" => limits.max_db,
+        "units" => "dB",
+    )
+end
+
+signal_spectrogram_power_extent_payload(::Nothing) = nothing
+
+function signal_spectrogram_power_extent_payload(
+    extent::SignalSpectrogramPowerExtent,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "min_db" => extent.min_db,
+        "max_db" => extent.max_db,
+        "units" => "dB",
+    )
+end
+
+function signal_spectrogram_power_limits_metadata(
+    resolution::SignalSpectrogramPowerLimitsResolution,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "mode" => resolution.requested isa AutomaticSignalSpectrogramPowerLimits ?
+            "auto" : "explicit",
+        "requested" => signal_spectrogram_power_limits_payload(resolution.requested),
+        "effective" => signal_spectrogram_power_extent_payload(resolution.effective),
+    )
+end
+
+function signal_spectrogram_power_limits_metadata(
+    settings::SignalSpectrogramSettings,
+    data::SignalSpectrogramData,
+)::Dict{String,Any}
+    projection = SignalSpectrogramPowerProjection(data)
+    signal_spectrogram_power_limits_metadata(SignalSpectrogramPowerLimitsResolution(
+        settings.power_limits,
+        projection,
+    ))
 end
 
 function signal_spectrogram_frequency_scale_metadata(
@@ -317,6 +368,10 @@ function signal_analyser_empty_plots(
             "frequency_scale" => signal_spectrogram_frequency_scale_metadata(
                 spectrogram_settings,
                 nothing,
+            ),
+            "power_limits" => signal_spectrogram_power_limits_metadata(
+                spectrogram_settings,
+                SignalSpectrogramData(ONE_SIDED_SPECTRUM),
             ),
         ),
         "persistence" => Dict{String,Any}(
@@ -625,6 +680,7 @@ function signal_analyser_multi_trace_payload(
     display::SignalAnalyserDisplayState,
     selected_signal::AnalysedSignal,
     visible_names::Vector{String},
+    selected_plots::Dict{String,Any},
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
@@ -645,13 +701,6 @@ function signal_analyser_multi_trace_payload(
         push!(spectrum_traces, signal_analyser_plot_for_payload(spectrum_plot, signal))
     end
 
-    selected_plots = signal_analyser_plots_for_display!(
-        state,
-        display,
-        selected_signal,
-        materialize_missing_spectra = materialize_missing_spectra,
-        materialize_missing_spectrogram = materialize_missing_spectrogram,
-    )
     Dict{String,Any}(
         "selected_signal" => selected_signal.name,
         "visible_signals" => visible_names,
@@ -663,19 +712,43 @@ function signal_analyser_multi_trace_payload(
 end
 
 function signal_analyser_multi_trace_payload(
-    ::SignalAnalyserState,
+    state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
-    ::Nothing,
+    selected_signal::AnalysedSignal,
     visible_names::Vector{String},
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
 )::Dict{String,Any}
-    isempty(visible_names) || throw(ArgumentError("Пустой analysis source допустим только для пустого Display"))
-    plots = signal_analyser_empty_plots(
-        display.spectrum_settings,
-        display.spectrogram_settings,
+    selected_plots = signal_analyser_plots_for_display!(
+        state,
+        display,
+        selected_signal,
+        materialize_missing_spectra = materialize_missing_spectra,
+        materialize_missing_spectrogram = materialize_missing_spectrogram,
     )
+    signal_analyser_multi_trace_payload(
+        state,
+        display,
+        selected_signal,
+        visible_names,
+        selected_plots,
+        materialize_missing_spectra = materialize_missing_spectra,
+        materialize_missing_spectrogram = materialize_missing_spectrogram,
+    )
+end
+
+function signal_analyser_multi_trace_payload(
+    ::SignalAnalyserState,
+    ::SignalAnalyserDisplayState,
+    ::Nothing,
+    visible_names::Vector{String},
+    plots::Dict{String,Any},
+    ;
+    materialize_missing_spectra::Bool = true,
+    materialize_missing_spectrogram::Bool = true,
+)::Dict{String,Any}
+    isempty(visible_names) || throw(ArgumentError("Пустой analysis source допустим только для пустого Display"))
     spectrogram = copy(plots["spectrogram"])
     spectrogram["signal"] = nothing
     spectrogram["name"] = ""
@@ -691,6 +764,30 @@ function signal_analyser_multi_trace_payload(
         "spectrum_traces" => Dict{String,Any}[],
         "spectrogram" => spectrogram,
         "persistence" => persistence,
+    )
+end
+
+function signal_analyser_multi_trace_payload(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    signal::Nothing,
+    visible_names::Vector{String},
+    ;
+    materialize_missing_spectra::Bool = true,
+    materialize_missing_spectrogram::Bool = true,
+)::Dict{String,Any}
+    plots = signal_analyser_empty_plots(
+        display.spectrum_settings,
+        display.spectrogram_settings,
+    )
+    signal_analyser_multi_trace_payload(
+        state,
+        display,
+        signal,
+        visible_names,
+        plots,
+        materialize_missing_spectra = materialize_missing_spectra,
+        materialize_missing_spectrogram = materialize_missing_spectrogram,
     )
 end
 
@@ -869,6 +966,7 @@ function signal_spectrogram_with_frequency_limits(
         settings.leakage,
         frequency_limits,
         settings.frequency_scale,
+        settings.power_limits,
     )
 end
 
@@ -1655,6 +1753,7 @@ function signal_analyser_snapshot_unlocked(
             active_display,
             signal,
             visible_names,
+            plots,
             materialize_missing_spectra = materialize_missing_spectra,
             materialize_missing_spectrogram = materialize_missing_spectrogram,
         ),
@@ -1943,6 +2042,54 @@ function signal_analyser_validate_spectrogram_frequency_limits!(
     end
 end
 
+function signal_analyser_validate_spectrogram_power_limits!(
+    field_errors::Dict{String,String},
+    value,
+)::Union{Nothing,AbstractSignalSpectrogramPowerLimits}
+    value === nothing && return AutomaticSignalSpectrogramPowerLimits()
+    if !(value isa AbstractDict)
+        field_errors["spectrogram_settings"] =
+            "power_limits: требуется null или объект {min_db, max_db, units}"
+        return nothing
+    end
+    keys_set = signal_analyser_payload_keys(value)
+    if length(value) != 3 || keys_set != SIGNAL_SPECTROGRAM_POWER_LIMIT_FIELDS
+        missing = sort!(collect(setdiff(SIGNAL_SPECTROGRAM_POWER_LIMIT_FIELDS, keys_set)))
+        unknown = sort!(collect(setdiff(keys_set, SIGNAL_SPECTROGRAM_POWER_LIMIT_FIELDS)))
+        details = String[]
+        isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
+        isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
+        length(value) == 3 || push!(details, "требуется ровно три поля")
+        field_errors["spectrogram_settings"] =
+            "power_limits: ожидались только min_db, max_db, units ($(join(details, "; ")))"
+        return nothing
+    end
+
+    minimum_value = signal_analyser_payload_value(value, "min_db")
+    maximum_value = signal_analyser_payload_value(value, "max_db")
+    units_value = signal_analyser_payload_value(value, "units")
+    if !(minimum_value isa Real) || minimum_value isa Bool ||
+        !(maximum_value isa Real) || maximum_value isa Bool
+        field_errors["spectrogram_settings"] =
+            "power_limits: min_db и max_db должны быть конечными JSON numbers, но не Bool"
+        return nothing
+    end
+    if units_value != "dB"
+        field_errors["spectrogram_settings"] =
+            "power_limits: поддерживаются только units=dB"
+        return nothing
+    end
+    try
+        ExplicitSignalSpectrogramPowerLimits(minimum_value, maximum_value)
+    catch err
+        if err isa ArgumentError || err isa InexactError || err isa OverflowError
+            field_errors["spectrogram_settings"] = sprint(showerror, err)
+            return nothing
+        end
+        rethrow()
+    end
+end
+
 function signal_analyser_validate_spectrum_settings!(
     field_errors::Dict{String,String},
     value,
@@ -2009,19 +2156,19 @@ function signal_analyser_validate_spectrogram_settings!(
 )::Union{Nothing,SignalSpectrogramSettings}
     if !(value isa AbstractDict)
         field_errors["spectrogram_settings"] =
-            "Требуется объект {overlap_percent, leakage, frequency_limits, frequency_scale}"
+            "Требуется объект {overlap_percent, leakage, frequency_limits, frequency_scale, power_limits}"
         return nothing
     end
     keys_set = signal_analyser_payload_keys(value)
-    if length(value) != 4 || keys_set != SIGNAL_SPECTROGRAM_SETTINGS_FIELDS
+    if length(value) != 5 || keys_set != SIGNAL_SPECTROGRAM_SETTINGS_FIELDS
         missing = sort!(collect(setdiff(SIGNAL_SPECTROGRAM_SETTINGS_FIELDS, keys_set)))
         unknown = sort!(collect(setdiff(keys_set, SIGNAL_SPECTROGRAM_SETTINGS_FIELDS)))
         details = String[]
         isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
         isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
-        length(value) == 4 || push!(details, "требуется ровно четыре поля")
+        length(value) == 5 || push!(details, "требуется ровно пять полей")
         field_errors["spectrogram_settings"] =
-            "Ожидались только overlap_percent, leakage, frequency_limits и frequency_scale ($(join(details, "; ")))"
+            "Ожидались только overlap_percent, leakage, frequency_limits, frequency_scale и power_limits ($(join(details, "; ")))"
         return nothing
     end
 
@@ -2049,12 +2196,18 @@ function signal_analyser_validate_spectrogram_settings!(
             "frequency_scale: допустимо только lowercase linear или log"
         return nothing
     end
+    power_limits = signal_analyser_validate_spectrogram_power_limits!(
+        field_errors,
+        signal_analyser_payload_value(value, "power_limits"),
+    )
+    power_limits === nothing && return nothing
     try
         SignalSpectrogramSettings(
             overlap_value,
             leakage_value,
             frequency_limits,
             SIGNAL_SPECTROGRAM_FREQUENCY_SCALES_BY_NAME[String(frequency_scale_value)],
+            power_limits,
         )
     catch err
         if err isa ArgumentError || err isa InexactError || err isa OverflowError

@@ -4,7 +4,7 @@ const { openAppPage, testIdSelector } = require("../../support/app_page");
 const { assertNoPreparingPlaceholders, endpointMatches, performanceLog, responseJson, signalRowsState, waitForApi, waitForSettled } = require("../../support/signal_analyser_page");
 
 const TIMEOUT = 30000;
-const DEFAULT = { overlap_percent: 50, leakage: 0.5, frequency_limits: null, frequency_scale: "linear" };
+const DEFAULT = { overlap_percent: 50, leakage: 0.5, frequency_limits: null, frequency_scale: "linear", power_limits: null };
 
 function id(page, config, name) { return page.locator(testIdSelector(config.app.testIds[name])); }
 function shell(page, config) { return id(page, config, "shell"); }
@@ -18,8 +18,8 @@ function body(request, label) { try { return JSON.parse(request.postData() || "{
 function assertSettings(assert, snapshot, expected, label) {
   const display = activeDisplay(snapshot), value = settings(snapshot);
   assert(display && display.spectrogram_settings && same(value, display.spectrogram_settings), `${label}: root and active Display must mirror spectrogram_settings`);
-  assert(value && Object.keys(value).sort().join(",") === "frequency_limits,frequency_scale,leakage,overlap_percent", `${label}: spectrogram_settings must contain exactly four keys`);
-  assert(same(value, expected), `${label}: unexpected four-key settings ${JSON.stringify(value)}`);
+  assert(value && Object.keys(value).sort().join(",") === "frequency_limits,frequency_scale,leakage,overlap_percent,power_limits", `${label}: spectrogram_settings must contain exactly five keys`);
+  assert(same(value, expected), `${label}: unexpected five-key settings ${JSON.stringify(value)}`);
 }
 function wire(snapshot, label) {
   const plot = snapshot && snapshot.plot_payload && snapshot.plot_payload.spectrogram || snapshot && snapshot.plots && snapshot.plots.spectrogram;
@@ -27,7 +27,7 @@ function wire(snapshot, label) {
   return plot;
 }
 function signature(snapshot, label) { const plot = wire(snapshot, label); return { x: JSON.stringify(plot.x), y: JSON.stringify(plot.y), z: JSON.stringify(plot.z), signal: plot.signal || "" }; }
-function expectedSettings(current, frequencyLimits) { return { overlap_percent: Number(current.overlap_percent), leakage: Number(current.leakage), frequency_limits: frequencyLimits, frequency_scale: current.frequency_scale || "linear" }; }
+function expectedSettings(current, frequencyLimits) { return { overlap_percent: Number(current.overlap_percent), leakage: Number(current.leakage), frequency_limits: frequencyLimits, frequency_scale: current.frequency_scale || "linear", power_limits: current.power_limits || null }; }
 function isComplex(signal) { return /complex|комплекс/i.test(String(signal && (signal.data_type || signal.dataType || ""))); }
 function domain(signal) { const half = Number(signal && signal.sample_rate_hz) / 2; return isComplex(signal) ? { min_hz: -half, max_hz: half } : { min_hz: 0, max_hz: half }; }
 
@@ -40,7 +40,7 @@ async function mutation(page, config, action, log, label, status, expected) {
     const response = await responsePromise, payload = await responseJson(response, label);
     performanceLog(log, label, Date.now() - startedAt, undefined, `HTTP ${response.status()}; ${requests.length} request(s)`);
     if (response.status() !== status || requests.length !== 1) throw new Error(`${label}: expected exactly one HTTP ${status} /api/view request`);
-    if (expected) { const request = body(requests[0], label); if (!same(request.spectrogram_settings, expected) || Object.keys(request.spectrogram_settings || {}).length !== 4) throw new Error(`${label}: request must send the exact full four-key spectrogram_settings body`); }
+    if (expected) { const request = body(requests[0], label); if (!same(request.spectrogram_settings, expected) || Object.keys(request.spectrogram_settings || {}).length !== 5) throw new Error(`${label}: request must send the exact full five-key spectrogram_settings body`); }
     if (status === 200 && payload.state_revision !== revision + 1) throw new Error(`${label}: valid mutation must increment revision exactly once`);
     if (status !== 200 && Number(await shell(page, config).getAttribute("data-state-revision")) !== revision) throw new Error(`${label}: rejected mutation must preserve revision`);
     await waitForSettled(page, config); return payload;
@@ -72,7 +72,7 @@ async function setPairByFocusNavigation(page, config, min, max, log, label, expe
     const response = await responsePromise, payload = await responseJson(response, label);
     performanceLog(log, label, Date.now() - startedAt, undefined, `HTTP ${response.status()}; ${requests.length} request(s); Tab zero-request`);
     const request = requests[0] && body(requests[0], label);
-    if (!response.ok() || requests.length !== 1 || payload.state_revision !== revision + 1 || !same(request && request.spectrogram_settings, expected) || Object.keys(request && request.spectrogram_settings || {}).length !== 4) throw new Error(`${label}: natural pair edit must make one +1 exact four-key /api/view request`);
+    if (!response.ok() || requests.length !== 1 || payload.state_revision !== revision + 1 || !same(request && request.spectrogram_settings, expected) || Object.keys(request && request.spectrogram_settings || {}).length !== 5) throw new Error(`${label}: natural pair edit must make one +1 exact five-key /api/view request`);
     await waitForSettled(page, config); return payload;
   } finally { page.off("request", onRequest); }
 }
@@ -118,15 +118,15 @@ async function testSpectrogramFrequencyLimits({ appUrl, assert, config, log, pag
       const explicit = await setPairByFocusNavigation(page, config, requested.min_hz, requested.max_hz, log, "set full real Spectrogram Frequency Limits by Tab", expected); assertSettings(assert, explicit, expected, "full real limits"); const metadata = limits(explicit); assert(metadata && metadata.mode === "explicit" && same(metadata.requested, requested) && same(metadata.effective, requested), "explicit full real limits must retain exact requested/effective Hz metadata"); await waitForHeatmap(page, config, assert, "full real limits"); const explicitWire = signature(explicit, "full real limits"); assert(explicitWire.x === original.autoWire.x && explicitWire.y !== original.autoWire.y && explicitWire.z !== original.autoWire.z, "explicit full limits must change provider y/z while preserving time centers");
       await assertNoop(page, config, requested.min_hz, requested.max_hz, assert, log); await assertLocalInvalid(page, config, requested.max_hz, requested.min_hz, assert, log); original.realRequested = requested;
     });
-    await step("synthetic 422 and bounded 409 retain exact four-key intent", async function () {
+    await step("synthetic 422 and bounded 409 retain exact five-key intent", async function () {
       const before = await state(page), rejected = expectedSettings(settings(before), { min_hz: 0, max_hz: original.realDomain.max_hz / 2, units: "Hz" }); let rejectedBody;
       await page.route("**/api/view*", async function (route) { if (!rejectedBody && route.request().method() === "POST") { rejectedBody = body(route.request(), "synthetic Spectrogram Frequency Limits 422"); await route.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ ok: false, error: { message: "synthetic Spectrogram Frequency Limits rejection" } }) }); return; } await route.continue(); });
       try { await setPair(page, config, 0, original.realDomain.max_hz / 2, log, "synthetic Spectrogram Frequency Limits 422", 422, rejected); } finally { await page.unroute("**/api/view*"); }
-      assert(same(rejectedBody && rejectedBody.spectrogram_settings, rejected) && Object.keys(rejectedBody.spectrogram_settings || {}).length === 4, "422 must receive an exact full four-key desired body"); assertSettings(assert, await state(page), settings(before), "422 rollback");
+      assert(same(rejectedBody && rejectedBody.spectrogram_settings, rejected) && Object.keys(rejectedBody.spectrogram_settings || {}).length === 5, "422 must receive an exact full five-key desired body"); assertSettings(assert, await state(page), settings(before), "422 rollback");
       const revision = before.state_revision, replayBodies = []; let intercepted = false;
       await page.route("**/api/view*", async function (route) { if (route.request().method() === "POST") { replayBodies.push(body(route.request(), "synthetic Spectrogram Frequency Limits 409")); if (!intercepted) { intercepted = true; await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ current: before }) }); return; } } await route.continue(); });
       try { await draftPair(page, config, 0, original.realDomain.max_hz / 2); await id(page, config, "spectrogramFrequencyMaxInput").press("Enter"); await page.waitForFunction(function (expected) { const node = document.querySelector(expected.selector); return node && Number(node.getAttribute("data-state-revision")) === expected.revision; }, { selector: testIdSelector(config.app.testIds.shell), revision: revision + 1 }, { timeout: TIMEOUT }); } finally { await page.unroute("**/api/view*"); }
-      assert(intercepted && replayBodies.length === 2 && replayBodies.every(function (item) { return same(item.spectrogram_settings, rejected) && Object.keys(item.spectrogram_settings || {}).length === 4; }), "409 must replay exactly one full four-key desired request"); await waitForSettled(page, config); await setPair(page, config, original.realRequested.min_hz, original.realRequested.max_hz, log, "restore full real limits after replay", 200, expectedSettings(settings(await state(page)), original.realRequested));
+      assert(intercepted && replayBodies.length === 2 && replayBodies.every(function (item) { return same(item.spectrogram_settings, rejected) && Object.keys(item.spectrogram_settings || {}).length === 5; }), "409 must replay exactly one full five-key desired request"); await waitForSettled(page, config); await setPair(page, config, original.realRequested.min_hz, original.realRequested.max_hz, log, "restore full real limits after replay", 200, expectedSettings(settings(await state(page)), original.realRequested));
     });
     await step("Spectrum independence, conditional complex source reset and N<2", async function () {
       const before = await state(page), beforeWire = signature(before, "before Spectrum limits"); await selectPlot(page, config, "spectrum", log, "open independent Spectrum limits"); const spectrumMax = Number(await id(page, config, "spectrumFrequencyMaxInput").inputValue()); await id(page, config, "spectrumFrequencyMinInput").fill("0"); await id(page, config, "spectrumFrequencyMaxInput").fill(String(spectrumMax / 2)); await mutation(page, config, function () { return id(page, config, "spectrumFrequencyMaxInput").press("Enter"); }, log, "change independent Spectrum Frequency Limits", 200); const returned = await selectPlot(page, config, "spectrogram", log, "return to independent Spectrogram") || await state(page); assertSettings(assert, returned, expectedSettings(DEFAULT, original.realRequested), "Spectrum limits independence"); assert(same(beforeWire.y, signature(returned, "after Spectrum limits").y) && same(beforeWire.z, signature(returned, "after Spectrum limits").z), "Spectrum limits must not change persisted Spectrogram y/z");

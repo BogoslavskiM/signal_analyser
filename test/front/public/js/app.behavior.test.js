@@ -10,7 +10,14 @@ const B = "Комплексный ЛЧМ-сигнал";
 function flush() {
   return Promise.resolve().then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve());
 }
-function response(status, payload) { return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(payload) }; }
+function response(status, payload) {
+  // Every ordinary Spectrogram fixture publishes the C17 metadata contract.
+  // Dedicated malformed-metadata cases bypass this default explicitly.
+  [payload && payload.plot_payload && payload.plot_payload.spectrogram, payload && payload.plots && payload.plots.spectrogram].forEach((plot) => {
+    if (plot && !Object.prototype.hasOwnProperty.call(plot, "power_limits")) plot.power_limits = { mode:"auto", requested:null, effective:null };
+  });
+  return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(payload) };
+}
 
 function snapshot(revision, activeId, displayDefinitions, rowSelectedSignal) {
   const definitions = displayDefinitions || [
@@ -76,7 +83,7 @@ function environment(fetch, options) {
   const e = {
     root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(), settingsTabs: node(), statisticsControls: node(), statisticsError: node(),
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
-    legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), spectrogramSettings: node(), spectrogramOverlap: node(), spectrogramOverlapError: node(), spectrogramLeakage: node(), spectrogramLeakageError: node(), spectrogramFrequencyLimitsControls: node(), spectrogramFrequencyMin: node(), spectrogramFrequencyMax: node(), spectrogramFrequencyLimitsError: node(), spectrogramFrequencyScale: node(), spectrogramFrequencyScaleEffective: node(), spectrogramFrequencyScaleError: node(), spectrumSettings: node(), spectrumScale: node(), spectrumFrequency: node(), spectrumLeakage: node(), spectrumLeakageValue: node(), spectrumError: node(), spectrumFrequencyMin: node(), spectrumFrequencyMax: node(), spectrumFrequencyLimitsError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
+    legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), spectrogramSettings: node(), spectrogramOverlap: node(), spectrogramOverlapError: node(), spectrogramLeakage: node(), spectrogramLeakageError: node(), spectrogramFrequencyLimitsControls: node(), spectrogramFrequencyMin: node(), spectrogramFrequencyMax: node(), spectrogramFrequencyLimitsError: node(), spectrogramFrequencyScale: node(), spectrogramFrequencyScaleEffective: node(), spectrogramFrequencyScaleError: node(), spectrogramPowerLimitsControls: node(), spectrogramPowerMin: node(), spectrogramPowerMax: node(), spectrogramPowerLimitsEffective: node(), spectrogramPowerLimitsError: node(), spectrumSettings: node(), spectrumScale: node(), spectrumFrequency: node(), spectrumLeakage: node(), spectrumLeakageValue: node(), spectrumError: node(), spectrumFrequencyMin: node(), spectrumFrequencyMax: node(), spectrumFrequencyLimitsError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
@@ -95,6 +102,8 @@ function environment(fetch, options) {
   e.statisticsControls.querySelectorAll = (selector) => selector === "input[type='checkbox']" ? e.statisticsOptions : selector === "input[type='checkbox']:checked" ? e.statisticsOptions.filter((option) => option.checked) : [];
   e.spectrogramFrequencyLimitsControls.dataset.testid = "spectrogram-frequency-limits-controls";
   e.spectrogramFrequencyLimitsControls.contains = (target) => target === e.spectrogramFrequencyMin || target === e.spectrogramFrequencyMax;
+  e.spectrogramPowerLimitsControls.dataset.testid = "spectrogram-power-limits-controls";
+  e.spectrogramPowerLimitsControls.contains = (target) => target === e.spectrogramPowerMin || target === e.spectrogramPowerMax;
   const selectors = {
     "[data-testid='app-shell']": e.root, "[data-testid='app-loading']": e.loading, "[data-loading-text]": e.loadingText,
     "[data-testid='app-error']": e.error, "[data-error-text]": e.errorText, ".settings-tabs": e.settingsTabs, "[data-testid='statistics-controls']": e.statisticsControls, "[data-testid='statistics-selection-error']": e.statisticsError, "[data-testid='display-tabs']": e.tabs,
@@ -115,6 +124,10 @@ function environment(fetch, options) {
     "[data-testid='spectrogram-frequency-limits-error']": e.spectrogramFrequencyLimitsError,
     "[data-testid='spectrogram-frequency-scale-select']": e.spectrogramFrequencyScale, "[data-testid='spectrogram-frequency-scale-effective']": e.spectrogramFrequencyScaleEffective,
     "[data-testid='spectrogram-frequency-scale-error']": e.spectrogramFrequencyScaleError,
+    "[data-testid='spectrogram-power-limits-controls']": e.spectrogramPowerLimitsControls,
+    "[data-testid='spectrogram-power-min-input']": e.spectrogramPowerMin, "[data-testid='spectrogram-power-max-input']": e.spectrogramPowerMax,
+    "[data-testid='spectrogram-power-limits-effective']": e.spectrogramPowerLimitsEffective,
+    "[data-testid='spectrogram-power-limits-error']": e.spectrogramPowerLimitsError,
     "[data-signal-rows]": e.rows, "[data-testid='toggle-all-signals']": e.toggleAll,
     "[data-testid='display-overflow-trigger']": e.overflowTrigger, "[data-testid='display-overflow-menu']": e.overflowMenu, "[data-testid='clear-display-action']": e.clearDisplayAction,
     "[data-testid='signal-statistics-action']": e.statisticsAction, "[data-testid='find-peaks-action']": e.peaksAction,
@@ -296,7 +309,7 @@ module.exports = async function testDisplayBehavior(assert) {
   await flush();
   const view = visibility.find((call) => call.url === "./api/view");
   assert(view, "per-display checkbox must update the active display through /api/view");
-  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear" }, peaks_enabled: false }), "hiding the analysis source must retain complete canonical Spectrogram settings and disable Peaks");
+  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, peaks_enabled: false }), "hiding the analysis source must retain complete canonical Spectrogram settings and disable Peaks");
 
   const localTabRequests = [];
   const localTabs = await boot((url, options) => {
@@ -360,7 +373,7 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   memberRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
-  assert(JSON.stringify(JSON.parse(rowRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear" }, peaks_enabled: false }), "ordinary row mutations must retain complete canonical settings");
+  assert(JSON.stringify(JSON.parse(rowRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, peaks_enabled: false }), "ordinary row mutations must retain complete canonical settings");
   assert(memberRow.e.rows.innerHTML.includes("signal-row-") && memberRow.e.rows.innerHTML.includes(B), "the selected member row must be rendered from authoritative row and analysis state");
 
   const uncheckedRequests = [];
@@ -371,7 +384,7 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   uncheckedRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
-  assert(JSON.stringify(JSON.parse(uncheckedRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear" }, peaks_enabled: false }), "membership mutations must retain complete canonical settings");
+  assert(JSON.stringify(JSON.parse(uncheckedRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, peaks_enabled: false }), "membership mutations must retain complete canonical settings");
 
   const clearRequests = [];
   const clear = await boot((url, options) => {
@@ -386,7 +399,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(clearRequests.length === 1 && clear.e.overflowMenu.hidden === false && clear.e.overflowTrigger.getAttribute("aria-expanded") === "true", "Display overflow must open Clear Display locally and accessibly without a request");
   clear.e.clearDisplayAction.listeners.click();
   await flush();
-  assert(JSON.stringify(JSON.parse(clearRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear" }, peaks_enabled: false }), "Clear Display must preserve complete canonical settings");
+  assert(JSON.stringify(JSON.parse(clearRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, peaks_enabled: false }), "Clear Display must preserve complete canonical settings");
   assert(clear.e.overflowMenu.hidden === true && clear.e.overflowTrigger.getAttribute("aria-expanded") === "false", "Clear Display must close its menu after activation");
   assert(clear.e.host === clearHost && clear.e.host.innerHTML.includes("empty-display-plot-state") && clear.e.host.dataset.plotReady === "false", "an empty authoritative page must retain its one graph host while clearing stale rendering");
   assert((!clear.e.host.data || clear.e.host.data.length === 0) && (!clear.e.host._fullData || clear.e.host._fullData.length === 0) && (!clear.e.host.calcdata || clear.e.host.calcdata.length === 0), "an empty Display must purge stale Plotly data from the persistent graph host");
@@ -556,7 +569,7 @@ module.exports = async function testDisplayBehavior(assert) {
   peaks.e.peaksAction.listeners.click();
   await flush();
   const peakView = peakRequests.find((call) => call.url === "./api/view");
-  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear" }, peaks_enabled: true }), "Find Peaks must retain complete canonical settings");
+  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, peaks_enabled: true }), "Find Peaks must retain complete canonical settings");
   assert(peaks.e.peaksAction.getAttribute("aria-pressed") === "true" && peaks.e.peaksBottomTab.hidden === false && peaks.e.peaksPanel.hidden === false, "an enabled authoritative Peaks snapshot must press the action and open the local Peaks tab/panel");
   assert(peaks.e.peaksContent.innerHTML.includes("peak-row-peak-2") && peaks.e.peaksContent.innerHTML.includes("data-sample-index='2'"), "the Peaks table must render backend item fields without a client-side peak calculation");
   const marker = peaks.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");
@@ -638,23 +651,23 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c10RejectedRequests.filter((call) => call.url === "./api/view").length === 1, "rejected Frequency Limits must not issue an implicit retry");
   assert(c10Rejected.e.spectrumFrequencyMin.value === "0" && c10Rejected.e.spectrumFrequencyMax.value === "5" && c10Rejected.e.spectrumFrequencyLimitsError.hidden === false, "422 must restore the exact authoritative Auto presentation and inline field error");
 
-  const c12Def = { id:"display-1", name:"Display 1", active_plot:"spectrogram", analysis_signal:A, selected_signal:A, visible_signals:[A], spectrogram_settings:{ overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear" } };
+  const c12Def = { id:"display-1", name:"Display 1", active_plot:"spectrogram", analysis_signal:A, selected_signal:A, visible_signals:[A], spectrogram_settings:{ overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null } };
   const c12Initial = snapshot(0, "display-1", [c12Def], A); c12Initial.plot_payload.spectrogram = { type:"heatmap", x:[0], y:[0], z:[[0]] };
-  const c12Committed = snapshot(1, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:75, leakage:.5, frequency_limits:null , frequency_scale:"linear"} })], A); c12Committed.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
+  const c12Committed = snapshot(1, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:75, leakage:.5, frequency_limits:null , frequency_scale:"linear", power_limits:null} })], A); c12Committed.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
   const c12Requests = [];
   const c12 = await boot((url, options) => { c12Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c12Initial : c12Committed)); });
   assert(c12.e.spectrogramSettings.hidden === false && c12.e.spectrogramOverlap.value === "50" && Number(c12.e.spectrogramLeakage.value) === .5, "Spectrogram controls default canonically to overlap 50 and independent Leakage .5");
   c12.e.spectrogramOverlap.value = "75"; c12.e.spectrogramOverlap.listeners.input();
   assert(c12Requests.filter(call => call.url === "./api/view").length === 0, "typing Overlap is draft-only");
   c12.e.spectrogramOverlap.listeners.keydown({key:"Enter", preventDefault(){}}); await flush();
-  assert(c12Requests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c12Requests.at(-1).options.body).spectrogram_settings) === JSON.stringify({ overlap_percent:75, leakage:.5, frequency_limits:null, frequency_scale:"linear" }), "Enter commits the exact full four-key Spectrogram target");
+  assert(c12Requests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c12Requests.at(-1).options.body).spectrogram_settings) === JSON.stringify({ overlap_percent:75, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null }), "Enter commits the exact full five-key Spectrogram target");
   c12.e.spectrogramOverlap.value = "75"; c12.e.spectrogramOverlap.listeners.change(); await flush();
   assert(c12Requests.filter(call => call.url === "./api/view").length === 1, "equal Overlap is no-op");
   c12.e.spectrogramOverlap.value = "75.1"; c12.e.spectrogramOverlap.listeners.change();
   assert(c12Requests.filter(call => call.url === "./api/view").length === 1 && c12.e.spectrogramOverlapError.hidden === false, "unsafe Overlap is local error without request");
 
   function overlapBody(revision, overlapPercent, leakage = .5, frequencyLimits = null, frequencyScale = "linear") {
-    return { state_revision:revision, active_plot:"spectrogram", row_selected_signal:A, analysis_signal:A, visible_signals:[A], time_limits:null, measurement_kinds:["minimum", "maximum", "mean"], spectrum_settings:{ scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null }, spectrogram_settings:{ overlap_percent:overlapPercent, leakage, frequency_limits:frequencyLimits, frequency_scale:frequencyScale }, peaks_enabled:false };
+    return { state_revision:revision, active_plot:"spectrogram", row_selected_signal:A, analysis_signal:A, visible_signals:[A], time_limits:null, measurement_kinds:["minimum", "maximum", "mean"], spectrum_settings:{ scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null }, spectrogram_settings:{ overlap_percent:overlapPercent, leakage, frequency_limits:frequencyLimits, frequency_scale:frequencyScale, power_limits:null }, peaks_enabled:false };
   }
   const overlap422Requests = [], overlap422Resolvers = [];
   const overlap422 = await boot((url, options) => {
@@ -672,7 +685,7 @@ module.exports = async function testDisplayBehavior(assert) {
   overlap422Resolvers.shift()(response(422, { error:{ fields:{ spectrogram_settings:"Overlap rejected" } } })); await flush();
   assert(overlap422.e.spectrogramOverlap.value === "50" && overlap422.e.spectrogramOverlapError.hidden === false, "two queued 422 Overlap edits must restore the original canonical 50, never an optimistic intermediate value");
 
-  const c12Replay = snapshot(2, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:60, leakage:.5, frequency_limits:null , frequency_scale:"linear"} })], A); c12Replay.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
+  const c12Replay = snapshot(2, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:60, leakage:.5, frequency_limits:null , frequency_scale:"linear", power_limits:null} })], A); c12Replay.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
   const overlap409Requests = [], overlap409Resolvers = [];
   const overlap409 = await boot((url, options) => {
     overlap409Requests.push({ url, options });
@@ -700,7 +713,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(overlap409TwiceRequests.filter(call => call.url === "./api/view").length === 2, "a second 409 for the replayed target must stop retries and drain the request queue");
   assert(overlap409Twice.e.spectrogramOverlap.value === "50" && Number(overlap409Twice.e.spectrogramLeakage.value) === .5 && overlap409Twice.e.spectrogramOverlapError.hidden === false, "a bounded replay failure restores the latest canonical server snapshot and exposes its error");
 
-  const leakageCommitted = snapshot(1, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:50, leakage:1, frequency_limits:null , frequency_scale:"linear"} })], A); leakageCommitted.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
+  const leakageCommitted = snapshot(1, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:50, leakage:1, frequency_limits:null , frequency_scale:"linear", power_limits:null} })], A); leakageCommitted.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
   const leakageRequests = [];
   const leakage = await boot((url, options) => { leakageRequests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c12Initial : leakageCommitted)); });
   leakage.e.spectrogramLeakage.value = "1"; leakage.e.spectrogramLeakage.listeners.input();
@@ -717,7 +730,7 @@ module.exports = async function testDisplayBehavior(assert) {
   leakage422.e.spectrogramLeakage.value = "0"; leakage422.e.spectrogramLeakage.listeners.change(); await flush();
   assert(leakage422Requests.filter(call => call.url === "./api/view").length === 1 && Number(leakage422.e.spectrogramLeakage.value) === .5 && leakage422.e.spectrogramLeakageError.hidden === false, "422 rolls Leakage back to the last accepted normalized control value");
 
-  const leakageReplay = snapshot(2, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:50, leakage:.25, frequency_limits:null , frequency_scale:"linear"} })], A); leakageReplay.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
+  const leakageReplay = snapshot(2, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:50, leakage:.25, frequency_limits:null , frequency_scale:"linear", power_limits:null} })], A); leakageReplay.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
   const leakage409Requests = [], leakage409Resolvers = [];
   const leakage409 = await boot((url, options) => { leakage409Requests.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c12Initial)); return new Promise(resolve => leakage409Resolvers.push(resolve)); });
   leakage409.e.spectrogramLeakage.value = "0"; leakage409.e.spectrogramLeakage.listeners.change(); await flush();
@@ -727,7 +740,7 @@ module.exports = async function testDisplayBehavior(assert) {
   leakage409Resolvers.shift()(response(200, leakageReplay)); await flush();
   assert(leakage409Requests.filter(call => call.url === "./api/view").length === 2 && Number(leakage409.e.spectrogramLeakage.value) === .25, "Leakage stale replay settles once without a duplicate request");
 
-  const c15Auto = { overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear" };
+  const c15Auto = { overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null };
   const c15Limits = { min_hz:1, max_hz:4, units:"Hz" };
   const c15Definition = Object.assign({}, c12Def, { spectrogram_settings:c15Auto });
   const c15Initial = snapshot(0, "display-1", [c15Definition], A);
@@ -743,7 +756,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c15.e.spectrogramFrequencyMin.listeners.input();
   assert(c15Requests.filter(call => call.url === "./api/view").length === 0, "Spectrogram Frequency Limits must remain local drafts until commit");
   c15.e.spectrogramFrequencyMax.listeners.keydown({key:"Enter", preventDefault(){}}); await flush();
-  assert(c15Requests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c15Requests.at(-1).options.body).spectrogram_settings) === JSON.stringify({ overlap_percent:50, leakage:.5, frequency_limits:c15Limits, frequency_scale:"linear" }), "Spectrogram limit commit must issue one complete four-key body");
+  assert(c15Requests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c15Requests.at(-1).options.body).spectrogram_settings) === JSON.stringify({ overlap_percent:50, leakage:.5, frequency_limits:c15Limits, frequency_scale:"linear", power_limits:null }), "Spectrogram limit commit must issue one complete five-key body");
   c15.e.spectrogramFrequencyMin.value = "4"; c15.e.spectrogramFrequencyMax.value = "1"; c15.document.activeElement = c15.e.spectrogramLeakage; c15.e.spectrogramFrequencyLimitsControls.listeners.focusout({target:c15.e.spectrogramFrequencyMax, relatedTarget:c15.e.spectrogramLeakage});
   assert(c15Requests.filter(call => call.url === "./api/view").length === 1 && c15.e.spectrogramFrequencyLimitsError.hidden === false, "nonordered Spectrogram limit drafts must fail locally without DSP/API work");
   c15.e.spectrogramFrequencyMin.value = ""; c15.e.spectrogramFrequencyMax.value = ""; c15.document.activeElement = c15.e.spectrogramLeakage; c15.e.spectrogramFrequencyLimitsControls.listeners.focusout({target:c15.e.spectrogramFrequencyMax, relatedTarget:c15.e.spectrogramLeakage}); await flush();
@@ -764,7 +777,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c15Pair.e.spectrogramFrequencyMax.listeners.input();
   c15Pair.document.activeElement = c15Pair.e.spectrogramLeakage;
   c15Pair.e.spectrogramFrequencyLimitsControls.listeners.focusout({target:c15Pair.e.spectrogramFrequencyMax, relatedTarget:c15Pair.e.spectrogramLeakage}); await flush();
-  assert(c15PairRequests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c15PairRequests.at(-1).options.body).spectrogram_settings) === JSON.stringify({overlap_percent:50, leakage:.5, frequency_limits:c15Limits, frequency_scale:"linear"}), "paired F min/F max editing must send exactly one final full four-key request");
+  assert(c15PairRequests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c15PairRequests.at(-1).options.body).spectrogram_settings) === JSON.stringify({overlap_percent:50, leakage:.5, frequency_limits:c15Limits, frequency_scale:"linear", power_limits:null}), "paired F min/F max editing must send exactly one final full five-key request");
   c15PairResolvers.shift()(response(422, {error:{fields:{spectrogram_settings:"Frequency Limits rejected"}}})); await flush();
   assert(c15Pair.e.spectrogramFrequencyMin.value === "0" && c15Pair.e.spectrogramFrequencyMax.value === "5" && c15Pair.e.spectrogramFrequencyLimitsError.hidden === false, "Frequency Limits 422 must restore the authoritative Auto pair and error");
   assert(c15Pair.e.spectrogramFrequencyMin.disabled === false && c15Pair.e.spectrogramFrequencyMax.disabled === false, "Frequency Limits controls must become editable again after rejection");
@@ -780,11 +793,11 @@ module.exports = async function testDisplayBehavior(assert) {
   c15Replay.e.spectrogramFrequencyLimitsControls.listeners.focusout({target:c15Replay.e.spectrogramFrequencyMax, relatedTarget:c15Replay.e.spectrogramLeakage}); await flush();
   c15ReplayResolvers.shift()(response(409, {current:c15Initial})); await flush();
   assert(c15ReplayRequests.filter(call => call.url === "./api/view").length === 2, "first Frequency Limits 409 must issue exactly one bounded replay");
-  assert(JSON.stringify(JSON.parse(c15ReplayRequests.at(-1).options.body).spectrogram_settings) === JSON.stringify({overlap_percent:50, leakage:.5, frequency_limits:c15Limits, frequency_scale:"linear"}), "Frequency Limits replay must preserve the latest complete target");
+  assert(JSON.stringify(JSON.parse(c15ReplayRequests.at(-1).options.body).spectrogram_settings) === JSON.stringify({overlap_percent:50, leakage:.5, frequency_limits:c15Limits, frequency_scale:"linear", power_limits:null}), "Frequency Limits replay must preserve the latest complete target");
   c15ReplayResolvers.shift()(response(409, {current:c15Initial})); await flush();
   assert(c15ReplayRequests.filter(call => call.url === "./api/view").length === 2 && c15Replay.e.spectrogramFrequencyMin.value === "0" && c15Replay.e.spectrogramFrequencyLimitsError.hidden === false, "second Frequency Limits 409 must stop replay and restore canonical Auto state");
 
-  const c16Auto = { overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear" };
+  const c16Auto = { overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null };
   const c16Log = Object.assign({}, c16Auto, { frequency_scale:"log" });
   const c16Definition = { id:"display-1", name:"Display 1", active_plot:"spectrogram", analysis_signal:A, selected_signal:A, visible_signals:[A], spectrogram_settings:c16Auto };
   const c16Initial = snapshot(0, "display-1", [c16Definition], A);
@@ -837,4 +850,76 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c16ReplayRequests.filter(call => call.url === "./api/view").length === 2 && JSON.stringify(JSON.parse(c16ReplayRequests.at(-1).options.body).spectrogram_settings) === JSON.stringify(c16Log), "first Frequency Scale 409 must replay one latest full target");
   c16ReplayResolvers.shift()(response(409, {current:c16Initial})); await flush();
   assert(c16ReplayRequests.filter(call => call.url === "./api/view").length === 2 && c16Replay.e.spectrogramFrequencyScale.value === "linear" && c16Replay.e.spectrogramFrequencyScaleError.hidden === false, "second Frequency Scale 409 must settle canonically without another replay");
+
+  const c17Auto = { overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null };
+  const c17Pair = { min_db:-80, max_db:-20, units:"dB" };
+  const c17Definition = { id:"display-1", name:"Display 1", active_plot:"spectrogram", analysis_signal:A, selected_signal:A, visible_signals:[A], spectrogram_settings:c17Auto };
+  const c17Initial = snapshot(0, "display-1", [c17Definition], A);
+  c17Initial.plot_payload.spectrogram = { type:"heatmap", x:[0, .1], y:[0, 5], z:[[-100, -10], [-80, -20]], power_limits:{mode:"auto", requested:null, effective:{min_db:-100, max_db:-10, units:"dB"}} };
+  c17Initial.plots.spectrogram = c17Initial.plot_payload.spectrogram;
+  const c17Committed = snapshot(1, "display-1", [Object.assign({}, c17Definition, {spectrogram_settings:Object.assign({}, c17Auto, {power_limits:c17Pair})})], A);
+  c17Committed.plot_payload.spectrogram = { type:"heatmap", x:[0, .1], y:[0, 5], z:[[-100, -10], [-80, -20]], power_limits:{mode:"explicit", requested:c17Pair, effective:c17Pair} };
+  c17Committed.plots.spectrogram = c17Committed.plot_payload.spectrogram;
+  const c17Requests = [];
+  const c17 = await boot((url, options) => { c17Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c17Initial : c17Committed)); });
+  assert(c17.e.spectrogramPowerMin.value === "" && c17.e.spectrogramPowerMax.value === "" && c17.e.spectrogramPowerLimitsEffective.textContent.includes("-100"), "Auto Power Limits must retain blank editable intent and render authoritative effective dB bounds");
+  c17.e.spectrogramPowerMin.value = "-80"; c17.e.spectrogramPowerMax.value = "-20"; c17.e.spectrogramPowerMin.listeners.input();
+  c17.document.activeElement = c17.e.spectrogramPowerMax;
+  c17.e.spectrogramPowerLimitsControls.listeners.focusout({target:c17.e.spectrogramPowerMin, relatedTarget:c17.e.spectrogramPowerMax});
+  assert(c17Requests.filter(call => call.url === "./api/view").length === 0, "natural P min to P max focus transfer must not send an incomplete request");
+  c17.document.activeElement = c17.e.spectrogramLeakage;
+  c17.e.spectrogramPowerLimitsControls.listeners.focusout({target:c17.e.spectrogramPowerMax, relatedTarget:c17.e.spectrogramLeakage}); await flush();
+  assert(c17Requests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c17Requests.at(-1).options.body).spectrogram_settings) === JSON.stringify(Object.assign({}, c17Auto, {power_limits:c17Pair})), "Power Limits pair must commit exactly one full five-key target");
+  const c17Plot = c17.calls.filter(call => call.plot).at(-1);
+  assert(c17Plot.data[0].zauto === false && c17Plot.data[0].zmin === -80 && c17Plot.data[0].zmax === -20 && JSON.stringify(c17Plot.data[0].z) === JSON.stringify(c17Committed.plot_payload.spectrogram.z), "strict explicit effective pair must set Plotly z bounds without mutating authoritative z");
+  c17.e.spectrogramPowerMin.value = ""; c17.e.spectrogramPowerMax.value = ""; c17.document.activeElement = c17.e.spectrogramLeakage;
+  c17.e.spectrogramPowerLimitsControls.listeners.focusout({target:c17.e.spectrogramPowerMax, relatedTarget:c17.e.spectrogramLeakage}); await flush();
+  assert(JSON.parse(c17Requests.at(-1).options.body).spectrogram_settings.power_limits === null, "clearing both Power Limits fields must restore Auto through the full object");
+  c17.e.spectrogramPowerMin.value = "-20"; c17.e.spectrogramPowerMax.value = "-80"; c17.e.spectrogramPowerMax.listeners.keydown({key:"Enter", preventDefault(){}});
+  assert(c17Requests.filter(call => call.url === "./api/view").length === 2 && c17.e.spectrogramPowerLimitsError.hidden === false, "reversed Power Limits must fail locally without a request");
+
+  const c17Constant = snapshot(2, "display-1", [c17Definition], A);
+  c17Constant.plot_payload.spectrogram = {type:"heatmap", x:[0], y:[0], z:[[-42]], power_limits:{mode:"auto", requested:null, effective:{min_db:-42, max_db:-42, units:"dB"}}}; c17Constant.plots.spectrogram = c17Constant.plot_payload.spectrogram;
+  const c17ConstantEnv = await boot(() => Promise.resolve(response(200, c17Constant)));
+  const c17ConstantPlot = c17ConstantEnv.calls.filter(call => call.plot).at(-1);
+  assert(c17ConstantPlot.data[0].zauto === false && c17ConstantPlot.data[0].zmin === -43 && c17ConstantPlot.data[0].zmax === -41 && c17Constant.plot_payload.spectrogram.power_limits.effective.min_db === -42, "constant Auto Power Limits must use renderer-only ±1 fallback while preserving exact metadata");
+  const c17Empty = snapshot(3, "display-1", [c17Definition], A);
+  c17Empty.plot_payload.spectrogram = {type:"heatmap", x:[], y:[], z:[], power_limits:{mode:"auto", requested:null, effective:null}}; c17Empty.plots.spectrogram = c17Empty.plot_payload.spectrogram;
+  const c17EmptyEnv = await boot(() => Promise.resolve(response(200, c17Empty)));
+  const c17EmptyPlot = c17EmptyEnv.calls.filter(call => call.plot).at(-1);
+  assert(c17EmptyEnv.e.spectrogramPowerLimitsEffective.textContent === "Effective: —" && c17EmptyPlot.data[0].zauto === true && !Object.prototype.hasOwnProperty.call(c17EmptyPlot.data[0], "zmin"), "empty or zero-only effective null must retain zauto without invented extrema");
+  const c17Malformed = snapshot(4, "display-1", [c17Definition], A);
+  c17Malformed.plot_payload.spectrogram = {type:"heatmap", x:[0], y:[0], z:[[-20]], power_limits:{mode:"auto", requested:null, effective:{min_db:0, max_db:-20, units:"dB"}}}; c17Malformed.plots.spectrogram = c17Malformed.plot_payload.spectrogram;
+  const c17MalformedEnv = await boot(() => Promise.resolve({ok:true, status:200, json:() => Promise.resolve(c17Malformed)}));
+  assert(c17MalformedEnv.e.host.innerHTML.includes("spectrogram-power-limits-contract-error-state") && c17MalformedEnv.e.host.dataset.plotReady === "false" && !c17MalformedEnv.calls.some(call => call.plot), "malformed Power Limits metadata must enter the stable contract error without bounded-wire fallback");
+  for (const malformedMeta of [
+    {mode:"explicit", requested:null, effective:c17Pair},
+    {mode:"explicit", requested:c17Pair, effective:{min_db:-81, max_db:-20, units:"dB"}},
+    {mode:"unknown", requested:null, effective:null},
+    {mode:"auto", requested:c17Pair, effective:null, extra:true},
+  ]) {
+    const invalid = snapshot(4, "display-1", [c17Definition], A);
+    invalid.plot_payload.spectrogram = {type:"heatmap", x:[0], y:[0], z:[[-20]], power_limits:malformedMeta}; invalid.plots.spectrogram = invalid.plot_payload.spectrogram;
+    const env = await boot(() => Promise.resolve({ok:true, status:200, json:() => Promise.resolve(invalid)}));
+    assert(env.e.host.innerHTML.includes("spectrogram-power-limits-contract-error-state") && !env.calls.some(call => call.plot), "every malformed C17 power metadata shape must be a stable no-Plotly contract error");
+  }
+  const c17NoSource = snapshot(4, "display-1", [Object.assign({}, c17Definition, {analysis_signal:null, selected_signal:null, visible_signals:[], spectrogram_settings:Object.assign({}, c17Auto, {power_limits:c17Pair})})], A);
+  c17NoSource.plot_payload.spectrogram = {type:"heatmap", x:[], y:[], z:[], power_limits:{mode:"explicit", requested:c17Pair, effective:c17Pair}}; c17NoSource.plots.spectrogram = c17NoSource.plot_payload.spectrogram;
+  const c17NoSourceEnv = await boot(() => Promise.resolve(response(200, c17NoSource)));
+  assert(c17NoSourceEnv.e.spectrogramPowerMin.disabled === true && c17NoSourceEnv.e.spectrogramPowerMax.disabled === true && c17NoSourceEnv.e.spectrogramPowerMin.value === "-80", "no-source must disable the pair while retaining explicit preference");
+
+  const c17RollbackRequests = [], c17RollbackResolvers = [];
+  const c17Rollback = await boot((url, options) => { c17RollbackRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c17Initial)) : new Promise(resolve => c17RollbackResolvers.push(resolve)); });
+  c17Rollback.e.spectrogramPowerMin.value = "-80"; c17Rollback.e.spectrogramPowerMax.value = "-20"; c17Rollback.document.activeElement = c17Rollback.e.spectrogramLeakage;
+  c17Rollback.e.spectrogramPowerLimitsControls.listeners.focusout({target:c17Rollback.e.spectrogramPowerMax, relatedTarget:c17Rollback.e.spectrogramLeakage}); await flush();
+  c17RollbackResolvers.shift()(response(422, {error:{fields:{spectrogram_settings:"Power Limits rejected"}}})); await flush();
+  assert(c17Rollback.e.spectrogramPowerMin.value === "" && c17Rollback.e.spectrogramPowerLimitsError.hidden === false && c17RollbackRequests.filter(call => call.url === "./api/view").length === 1, "422 must restore the accepted Auto intent without retry");
+  const c17ReplayRequests = [], c17ReplayResolvers = [];
+  const c17Replay = await boot((url, options) => { c17ReplayRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c17Initial)) : new Promise(resolve => c17ReplayResolvers.push(resolve)); });
+  c17Replay.e.spectrogramPowerMin.value = "-80"; c17Replay.e.spectrogramPowerMax.value = "-20"; c17Replay.document.activeElement = c17Replay.e.spectrogramLeakage;
+  c17Replay.e.spectrogramPowerLimitsControls.listeners.focusout({target:c17Replay.e.spectrogramPowerMax, relatedTarget:c17Replay.e.spectrogramLeakage}); await flush();
+  c17ReplayResolvers.shift()(response(409, {current:c17Initial})); await flush();
+  assert(c17ReplayRequests.filter(call => call.url === "./api/view").length === 2 && JSON.stringify(JSON.parse(c17ReplayRequests.at(-1).options.body).spectrogram_settings) === JSON.stringify(Object.assign({}, c17Auto, {power_limits:c17Pair})), "first Power Limits 409 must replay exactly one latest complete target");
+  c17ReplayResolvers.shift()(response(409, {current:c17Initial})); await flush();
+  assert(c17ReplayRequests.filter(call => call.url === "./api/view").length === 2 && c17Replay.e.spectrogramPowerMin.value === "" && c17Replay.e.spectrogramPowerLimitsError.hidden === false, "second Power Limits 409 must stop replay and restore canonical state");
 };

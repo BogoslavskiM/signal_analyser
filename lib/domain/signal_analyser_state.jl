@@ -60,6 +60,59 @@ end
     LOG_SPECTROGRAM_FREQUENCY_SCALE
 end
 
+abstract type AbstractSignalSpectrogramPowerLimits end
+
+"""Derive Spectrogram colormap limits from the complete raw power matrix."""
+struct AutomaticSignalSpectrogramPowerLimits <: AbstractSignalSpectrogramPowerLimits end
+
+"""User-requested finite Spectrogram colormap interval in canonical dB."""
+struct ExplicitSignalSpectrogramPowerLimits <: AbstractSignalSpectrogramPowerLimits
+    min_db::Float64
+    max_db::Float64
+
+    function ExplicitSignalSpectrogramPowerLimits(min_db::Real, max_db::Real)
+        min_db isa Bool && throw(ArgumentError(
+            "Минимальная Power Limit Spectrogram должна быть числом, но не Bool",
+        ))
+        max_db isa Bool && throw(ArgumentError(
+            "Максимальная Power Limit Spectrogram должна быть числом, но не Bool",
+        ))
+        minimum_power = Float64(min_db)
+        maximum_power = Float64(max_db)
+        isfinite(minimum_power) && isfinite(maximum_power) || throw(ArgumentError(
+            "Power Limits Spectrogram должны быть конечными числами",
+        ))
+        minimum_power < maximum_power || throw(ArgumentError(
+            "Минимальная Power Limit Spectrogram должна быть меньше максимальной",
+        ))
+        new(
+            minimum_power == 0.0 ? 0.0 : minimum_power,
+            maximum_power == 0.0 ? 0.0 : maximum_power,
+        )
+    end
+end
+
+Base.:(==)(
+    ::AutomaticSignalSpectrogramPowerLimits,
+    ::AutomaticSignalSpectrogramPowerLimits,
+) = true
+Base.isequal(
+    ::AutomaticSignalSpectrogramPowerLimits,
+    ::AutomaticSignalSpectrogramPowerLimits,
+) = true
+Base.hash(::AutomaticSignalSpectrogramPowerLimits, seed::UInt) =
+    hash(:automatic_spectrogram_power_limits, seed)
+Base.:(==)(
+    left::ExplicitSignalSpectrogramPowerLimits,
+    right::ExplicitSignalSpectrogramPowerLimits,
+) = left.min_db == right.min_db && left.max_db == right.max_db
+Base.isequal(
+    left::ExplicitSignalSpectrogramPowerLimits,
+    right::ExplicitSignalSpectrogramPowerLimits,
+) = left == right
+Base.hash(limits::ExplicitSignalSpectrogramPowerLimits, seed::UInt) =
+    hash((limits.min_db, limits.max_db), seed)
+
 @enum SignalSpectrumTopology begin
     ONE_SIDED_SPECTRUM
     CENTERED_TWO_SIDED_SPECTRUM
@@ -157,12 +210,14 @@ struct SignalSpectrogramSettings
     leakage::Float64
     frequency_limits::AbstractSignalSpectrumFrequencyLimits
     frequency_scale::SignalSpectrogramFrequencyScale
+    power_limits::AbstractSignalSpectrogramPowerLimits
 
     function SignalSpectrogramSettings(
         overlap_percent::Real,
         leakage::Real,
         frequency_limits::AbstractSignalSpectrumFrequencyLimits,
         frequency_scale::SignalSpectrogramFrequencyScale,
+        power_limits::AbstractSignalSpectrogramPowerLimits,
     )
         overlap_percent isa Bool && throw(ArgumentError(
             "Overlap Spectrogram должен быть числом, но не Bool",
@@ -183,9 +238,23 @@ struct SignalSpectrogramSettings
             leakage_value == 0.0 ? 0.0 : leakage_value,
             frequency_limits,
             frequency_scale,
+            power_limits,
         )
     end
 end
+
+SignalSpectrogramSettings(
+    overlap_percent::Real,
+    leakage::Real,
+    frequency_limits::AbstractSignalSpectrumFrequencyLimits,
+    frequency_scale::SignalSpectrogramFrequencyScale,
+) = SignalSpectrogramSettings(
+    overlap_percent,
+    leakage,
+    frequency_limits,
+    frequency_scale,
+    AutomaticSignalSpectrogramPowerLimits(),
+)
 
 SignalSpectrogramSettings(
     overlap_percent::Real,
@@ -211,7 +280,8 @@ Base.:(==)(left::SignalSpectrogramSettings, right::SignalSpectrogramSettings) =
     left.overlap_percent == right.overlap_percent &&
     left.leakage == right.leakage &&
     left.frequency_limits == right.frequency_limits &&
-    left.frequency_scale == right.frequency_scale
+    left.frequency_scale == right.frequency_scale &&
+    left.power_limits == right.power_limits
 Base.isequal(left::SignalSpectrogramSettings, right::SignalSpectrogramSettings) = left == right
 Base.hash(settings::SignalSpectrogramSettings, seed::UInt) =
     hash(
@@ -220,6 +290,7 @@ Base.hash(settings::SignalSpectrogramSettings, seed::UInt) =
             settings.leakage,
             settings.frequency_limits,
             settings.frequency_scale,
+            settings.power_limits,
         ),
         seed,
     )

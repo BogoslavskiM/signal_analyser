@@ -142,6 +142,16 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(app.includes('scale.disabled = !enabled || !Array.isArray(scaleMeta.available) || scaleMeta.available.length < 2'), "availability metadata must authoritatively disable Spectrogram Log");
   assert(app.includes('type:spectrogramScale === "log" ? "log" : undefined'), "effective Spectrogram scale must control only the y axis");
   assert(!/spectrogram.*(?:fft|stft|pspectrum)/i.test(app), "Cascade 16 must not add client-side Spectrogram DSP");
+  ["spectrogram-power-min-input", "spectrogram-power-max-input", "spectrogram-power-limits-effective", "spectrogram-power-limits-error"].forEach((id) =>
+    assert(html.includes(`data-testid="${id}"`), `Cascade 17 must expose stable Spectrogram Power Limits selector ${id}`)
+  );
+  assert(/data-testid="spectrogram-power-min-input"[^>]*inputmode="decimal"/.test(html) && /data-testid="spectrogram-power-max-input"[^>]*inputmode="decimal"/.test(html), "Cascade 17 must expose typed dB pair inputs");
+  assert(/data-testid="spectrogram-power-limits-effective"[^>]*aria-live="polite"/.test(html), "Cascade 17 must expose a read-only live effective Power Limits state");
+  assert(/data-testid="spectrogram-power-limits-error"[^>]*role="alert"[^>]*hidden/.test(html), "Cascade 17 must reserve an accessible Power Limits error");
+  ["power_limits", "spectrogramPowerLimits", "spectrogramPowerLimitsCommit", "zauto", "zmin", "zmax"].forEach((term) =>
+    assert(app.includes(term), `Cascade 17 frontend must retain Power Limits term ${term}`)
+  );
+  assert(!/spectrogram.*(?:fft|stft|pspectrum|minthreshold)/i.test(app), "Cascade 17 must not add client-side DSP or MinThreshold behavior");
   assert((app.match(/function renderStatisticsControls\(/g) || []).length === 1, "Statistics settings must have exactly one render function");
   assert((app.match(/function render\(/g) || []).length === 1, "frontend must retain exactly one render declaration");
   assert(!app.includes("function bindStatisticsShortcut("), "Statistics shortcut must not retain a dead duplicate binding path");
