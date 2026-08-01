@@ -36,4 +36,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260801-031: строгая граница snapshot для measurement_kinds](DEC-20260801-031-measurement-kinds-snapshot-boundary.md)
 - [DEC-20260801-032: строгая глобальная envelope snapshot](DEC-20260801-032-global-snapshot-envelope.md)
 - [DEC-20260801-038: единственный Engee target — production](DEC-20260801-038-engee-production-target.md)
+- [DEC-20260801-039: встроенный браузер переменных Engee](DEC-20260801-039-engee-workspace-variable-browser.md)
 - [Шаблон ADR](template.md)
