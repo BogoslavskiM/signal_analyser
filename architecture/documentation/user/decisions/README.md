@@ -19,4 +19,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260731-014: selectable per-Display Statistics](DEC-20260731-014-selectable-statistics.md)
 - [DEC-20260801-015: Spectrum по Time ROI и настройки Display](DEC-20260801-015-spectrum-roi-default-settings.md)
 - [DEC-20260801-016: редактируемые Frequency Limits для Spectrum](DEC-20260801-016-frequency-limits.md)
+- [DEC-20260801-017: typed Spectrogram foundation](DEC-20260801-017-typed-spectrogram-foundation.md)
 - [Шаблон ADR](template.md)

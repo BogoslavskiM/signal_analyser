@@ -626,3 +626,19 @@ positive controls FrequencyResolution/OverlapPercent work. Confirmed record:
 [`ENGEE-20260801-003`](../../user/engee_bugs/ENGEE-20260801-003-pspectrum-time-resolution-undefined.md).
 This blocks a TimeResolution control but not probe-only discovery or a future
 default Spectrogram seam. Remaining ROI/grid/default decisions are still open.
+
+## Cascade 11 contract freeze — 2026-08-01
+
+Status: `contract-frozen`; implementation not started at this checkpoint.
+
+[DEC-20260801-017](../../user/decisions/DEC-20260801-017-typed-spectrogram-foundation.md)
+freezes only the typed default Spectrogram foundation. Backend replaces the
+full-signal placeholder with typed query/data/provider/service/raw-cache,
+strict frequency×time output validation, real one-sided/complex centered
+topology, N<2 bypass and exact dB presentation without finite floor. Existing
+heatmap wire, analysis-source selection and frontend remain unchanged.
+
+Time ROI/segment selection, every editable setting, new API routes, Persistence
+and TimeResolution are explicitly outside scope. The confirmed provider defect
+ENGEE-20260801-003 forbids exposing TimeResolution or adding a hand-rolled STFT
+workaround.

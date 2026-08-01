@@ -108,6 +108,9 @@ Owner: Architect
   `TimeResolution` has confirmed defect ENGEE-20260801-003; do not expose the
   control or add a hand-rolled STFT. Still open: exact ROI segment selection,
   remaining defaults/options and application execution/lifecycle decision.
+- DEC-017 freezes the first C11 implementation slice: typed default
+  Spectrogram only, unchanged wire/UI, full raw signal, strict real/complex
+  topology and raw cache. Persistence, ROI and all controls remain backlog.
 - C10 Frequency Limits implementation is complete at local checkpoint
   `9c7cd70`; backend 944/944, frontend 2/2 and static E2E gates pass. Remaining
   C10 work is target Engee/runtime E2E only and must not be reported as
