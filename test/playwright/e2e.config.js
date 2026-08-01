@@ -25,6 +25,7 @@ module.exports = {
       activePlotHost: "active-plot-host",
       displaySelectionContractErrorState: "display-selection-contract-error-state",
       activePlotContractErrorState: "display-active-plot-contract-error-state",
+      activePlotPayloadContractErrorState: "display-active-plot-payload-contract-error-state",
       plotErrorState: "plot-error-state",
       plotInvalidDataState: "plot-invalid-data-state",
       findPeaksAction: "find-peaks-action",
@@ -157,6 +158,10 @@ module.exports = {
     // DEC-034 / Cascade 28 is a target-gated browser contract for strict
     // per-Display active_plot quarantine and valid-active root equality.
     "active-plot-snapshot": false,
+    // DEC-035 / Cascade 29 is a target-gated browser contract for strict
+    // active plot_payload routing. Its route seam stays disabled until all
+    // prerequisite snapshot gates and the C29 runtime boundary are available.
+    "active-plot-payload-routing": false,
     "spectrogram-overlap": true,
     "spectrogram-leakage": true,
     "spectrogram-frequency-limits": true,
