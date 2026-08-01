@@ -159,6 +159,11 @@ Owner: Architect
   Constant Auto `{v,v}` keeps exact metadata and receives only a renderer-local
   `[v-1,v+1]` fallback. Fit Colormap, viewport state и изменения/shared Power
   Limits существующего Spectrum dB/linear остаются deferred.
+- C17 implemented and locally accepted at product/test commit `290c057`:
+  backend 1397/1397, focused 49/49 + API 22/22, frontend 2/2, Playwright static
+  and final audit CLEAN. Runtime E2E/deploy remain unavailable and are not
+  claimed. C18 awaits a separate docs-backed narrow contract; Fit Colormap
+  remains blocked on safe viewport observation.
 - C14 discovery is restricted to Spectrogram Reassign. Official docs support a
   boolean `pspectrum` flag and display-local checkbox semantics, but app default
   remains inferred. Prod Engee false/true/default/invalid/order/topology probe

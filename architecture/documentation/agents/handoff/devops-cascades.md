@@ -275,3 +275,17 @@ working tree clean after commit.
 risks: Branch remains local and ahead of origin; no deployment evidence.
 follow-ups: No push/deploy/merge without explicit authority.
 next_task_candidates: Commit Architect C16 documentation after validation.
+
+## Cascade 17 local checkpoint — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c17_commit`.
+scope: Commit-only over 17 accepted `lib/public/test` paths; architecture
+excluded.
+changes: Local commit `290c057a05c7ebeab68a69632fcec462bd893339`
+(`feat: добавить Power Limits Spectrogram`).
+verification: Exact staged set, cached diff PASS and clean working tree after
+commit; accepted backend 1397/1397, C17 49/49 + API 22/22, frontend 2/2.
+risks: Branch remains local; runtime Playwright not run.
+follow-ups: Separate Architect documentation checkpoint; no push/deploy/merge.
+next_task_candidates: Commit accepted C17 documentation only.

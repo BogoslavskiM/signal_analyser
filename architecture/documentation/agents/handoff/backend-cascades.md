@@ -457,3 +457,24 @@ next_task_candidates: Implement DEC-023 in the three existing Julia modules.
 source_evidence: Current conversion/bounding and presentation-only semantic
 preparation anchors plus MATLAB Researcher C17 recommendation.
 engee_bug_candidate: None; the slice never changes provider behavior.
+
+## Cascade 17 Power Limits implementation — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c17_power_inventory`.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_math.jl`,
+`lib/services/signal_analyser_service.jl`.
+contracts: Typed Auto/Explicit preference and equal-capable transient extent;
+exact five-key parser; one full-raw dB projection traversal before bounding;
+query/cache/provider isolation; exact empty/constant metadata.
+changes: Added OOP value objects and projection/resolution objects, retained
+legacy constructor arities, and reused the selected projection in snapshot
+assembly instead of scanning the matrix twice.
+verification: Backend 1397/1397, C17 49/49 + API 22/22; Julia parse/diff and
+final integration audit PASS.
+risks: Runtime browser verification remains external; Engee path is unchanged.
+follow-ups: Wait for a separately frozen C18 contract.
+next_task_candidates: Read-only C18 OOP inventory after ADR.
+source_evidence: DEC-023; product commit `290c057`.
+engee_bug_candidate: None.

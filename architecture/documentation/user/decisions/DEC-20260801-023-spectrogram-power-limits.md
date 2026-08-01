@@ -4,6 +4,9 @@ ID: `DEC-20260801-023`
 Дата: `2026-08-01`
 Статус: accepted
 Implementation: planned in Cascade 17; not deployed
+
+Implementation note 2026-08-01: реализовано локально в commit
+`290c057a05c7ebeab68a69632fcec462bd893339`; не развёрнуто.
 Supersedes: exact four-key Spectrogram settings shape из DEC-022; все
 вычислительные и Frequency Scale semantics DEC-017..022 сохраняются
 

@@ -346,3 +346,22 @@
 - Product/test checkpoint `83308222896379eb72f1923006de39ce07265d8d`.
   Runtime E2E, push, deployment и merge не выполнялись. Local EngeeDSP
   отсутствует, Devhub MCP unavailable/404; Engee defect не заявлен.
+
+## 2026-08-01 — Cascade 17 Spectrogram Power Limits
+
+- `implemented`: exact пятиключевой Spectrogram settings object получил
+  Display-local Auto/null либо strict explicit `{min_db,max_db,units:"dB"}`.
+- Auto effective вычисляется по всей raw power matrix до 160×160 bounding;
+  нули не искажают extrema, mixed/constant/empty случаи имеют точную metadata.
+- Power-only mutation presentation-only: не меняет query/cache/provider,
+  backend `x/y/z` и на холодном состоянии не вызывает spectral provider.
+- Vanilla frontend получил атомарную пару P min/P max, Auto clear, effective
+  readout, accepted rollback и bounded 409 replay. Plotly получает только
+  `zauto/zmin/zmax`; для `{v,v}` применяется renderer-local ±1 dB fallback.
+- E2E-сценарий прошёл повторную реализацию после двух незавершённых попыток;
+  финальный независимый audit verdict — `CLEAN`.
+- `verified locally`: backend 1397/1397, C17 49/49 + API 22/22, frontend 2/2,
+  Julia parse, Playwright syntax/support/help, documentation/diff gates PASS.
+- Product/test checkpoint `290c057a05c7ebeab68a69632fcec462bd893339`.
+  Runtime E2E, push, deployment и merge не выполнялись; Engee provider не
+  затронут, поэтому новый Engee contract test не требуется.

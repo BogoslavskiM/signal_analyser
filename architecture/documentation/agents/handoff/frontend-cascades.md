@@ -326,3 +326,19 @@ renderer-only ±1 dB fallback without changing metadata/z.
 follow-ups: Consume backend effective metadata, keep exact five-key queue and
 hand stable selectors/workflows to E2E Tester.
 next_task_candidates: Implement after backend five-key metadata is available.
+
+## Cascade 17 Power Limits UI — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c17_power_inventory`.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Exact five-key desired target; atomic P min/P max group; Auto clear;
+accepted 422 rollback; one bounded 409 replay; exact metadata validation;
+Plotly-only z range and constant ±1 dB fallback.
+changes: Added stable controls/effective/error selectors and per-Display draft
+state. Invalid or inconsistent backend metadata now produces a stable contract
+error and cannot silently derive bounds from transported z.
+verification: Frontend 2/2, JS syntax/diff and final audit PASS.
+risks: Runtime Plotly interaction awaits a CDP/application target.
+follow-ups: Preserve vanilla JS and exact metadata boundary in C18.
+next_task_candidates: C18 feasibility only after a frozen decision.

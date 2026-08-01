@@ -369,3 +369,22 @@ browser_workspace_setup: Read-only static inventory; no CDP, focus, Space or
 MATLAB action.
 source_evidence: DEC-023 and existing C12/C13/C15/C16 Playwright scenarios.
 engee_bug_candidate: None; C17 does not invoke Engee provider behavior.
+
+## Cascade 17 Power Limits static scenario — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c17_replacement`; replaces `/root/e2e_c13_impl` after two
+incomplete implementation turns.
+scope: `test/playwright/**`.
+contracts: Five-key migration plus Auto/manual, atomic pair, local invalid,
+exact zauto/zmin/zmax, invariant backend x/y/z, Linear→Log→Linear isolation,
+422/two-409, no-source/re-add, A/B/Clear/source and exact cleanup.
+changes: Added `spectrogram_power_limits.test.js`, selectors/feature and
+migrated four predecessor Spectrogram scenarios without weakening bodies.
+verification: All Playwright syntax, support contract, runner help, stale-key/
+fixed-sleep scans and diff PASS; final integration audit CLEAN.
+browser_workspace_setup: Static-only; browser and MATLAB untouched.
+risks: Runtime blocked by absent CDP target at `127.0.0.1:9222`.
+follow-ups: Run focused then full enabled suite when an accepted target exists.
+next_task_candidates: Runtime C17 or static C18 after contract freeze.
+engee_bug_candidate: None.

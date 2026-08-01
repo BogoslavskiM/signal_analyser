@@ -333,3 +333,19 @@ run full backend/frontend gates and preserve exact five-key assertions.
 next_task_candidates: Implement matrix after Backend/Frontend product diff.
 source_evidence: DEC-023 inputs plus C15 pair and C16 presentation-only tests.
 engee_bug_candidate: None; no Engee contract is introduced.
+
+## Cascade 17 verification — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c17_power_matrix`.
+scope: `test/back/**`, `test/front/**`.
+coverage: Exact five-key state/API, explicit validation, full-raw omitted-cell
+extrema, empty/zero/mixed/constant metadata, query/cache/provider/x/y/z
+isolation, cold/equal/combined mutation and complete Display/source lifecycle.
+Frontend tests cover atomic pair, Auto, renderer mapping, invalid metadata,
+422 and both 409 outcomes.
+verification: Full backend 1397/1397; C17 49/49 + API 22/22; frontend 2/2;
+parse/diff and final audit PASS.
+risks: No Engee test is warranted because provider behavior is unchanged.
+follow-ups: Runtime E2E when a target exists; otherwise wait for C18 ADR.
+next_task_candidates: C18 matrix after contract freeze.

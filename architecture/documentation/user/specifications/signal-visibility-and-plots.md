@@ -52,14 +52,17 @@
   в membership есть комплексный сигнал. Normalize Y остаётся локальным
   presentation control и не меняет Spectrum payload/revision.
 - Внутри той же Display tab для Spectrogram показываются `Overlap (%)`,
-  normalized `Leakage`, пара `F min`/`F max` в фиксированных Hz и Frequency
-  Scale (`Linear`/`Log`) с read-only effective state. Overlap принадлежит
+  normalized `Leakage`, пара `F min`/`F max` в фиксированных Hz, Frequency
+  Scale (`Linear`/`Log`) и пара `P min`/`P max` в dB с read-only effective
+  state. Overlap принадлежит
   Display, default 50, product range 0..75; Leakage
   независима от Spectrum Leakage, default 0.5, range 0..1. Auto-границы
   показывают backend-effective topology. Frequency draft коммитится атомарно
   только по Enter либо после выхода фокуса из всей пары; переход между полями
   запроса не создаёт. Очистка обоих полей возвращает Auto.
-  Frequency Scale default равен Linear; requested Log сохраняется при пустом
+  Frequency Scale default равен Linear; Power Limits default равен Auto.
+  Оба пустых P-поля возвращают Auto, а одно пустое, non-finite, equal или
+  reversed значение откатывается локально без запроса. Requested Log сохраняется при пустом
   или complex source, но control disabled, а effective равен соответственно
   пустому значению или Linear. Empty/non-Spectrogram скрывает секцию без потери
   preferences. Frontend не
@@ -203,6 +206,15 @@ Explicit provider axis обязана иметь минимум две стро�
 лежать внутри interval и сохранять обе границы с tolerance
 `sqrt(eps(Float64))*max(Fs,1)`. Post-hoc crop, собственная FFT/STFT и fallback
 запрещены. Spectrum Frequency Limits полностью независимы.
+
+`plots.spectrogram.power_limits` всегда содержит exact три ключа `mode`,
+`requested`, `effective`. Auto effective выводится из всей raw power matrix до
+160×160 wire bounding по finite `10*log10(P)` для `P>0`; no-source, `N<2` и
+zero-only дают `null`, а constant-positive честно даёт `{v,v}`. Explicit
+strict dB pair сохраняет `effective=requested` даже без source. Power Limits не
+входят в query/cache/provider и не меняют backend `x/y/z`. Frontend передаёт
+strict effective pair как Plotly `zmin/zmax`; для `{v,v}` только renderer
+использует `[v-1,v+1]`, не меняя metadata или `z`.
 
 Spectrogram-settings-only mutation не материализует missing Spectrum cache.
 Canonical no-op не вызывает missing Spectrum/Spectrogram provider: response

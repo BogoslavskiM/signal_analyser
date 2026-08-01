@@ -116,7 +116,8 @@ identity; Leakage, effective Frequency Limits, inclusive sample range,
 signal/sample rate и one/two-sided topology входят в typed key.
 
 Spectrogram settings нового Display: explicit `OverlapPercent=50`,
-`Leakage=0.5`, Auto Frequency Limits и requested Frequency Scale `linear`.
+`Leakage=0.5`, Auto Frequency Limits, requested Frequency Scale `linear` и
+Auto Power Limits.
 Все значения принадлежат Display,
 сохраняются при Clear и
 независимо восстанавливаются при A/B; первый re-add пересчитывает raw
@@ -128,6 +129,15 @@ power/RBW, но при фиксированном overlap не меняет freq
 Requested Frequency Scale в query/cache/provider identity не входит и не меняет
 raw/wire `x/y/z`; eligibility и effective metadata выводятся только из topology
 analysis source.
+
+Power Limits также не входят в query/cache/provider identity. Для Auto
+effective extrema вычисляются по полной raw matrix до wire bounding: каждое
+finite `P>0` преобразуется как `10*log10(P)`, а нулевые `-Inf` не участвуют в
+extrema. Empty/no-source/`N<2`/zero-only дают `effective=null`; mixed matrix
+использует только finite dB, constant-positive сохраняет exact `{v,v}`.
+Explicit input требует finite non-Bool `min_db < max_db`, units `dB`, и всегда
+публикует `effective=requested`. Renderer-only расширение constant Auto не
+является частью математики или wire payload.
 
 ## Numeric constraints и edge cases
 
@@ -266,6 +276,12 @@ revision mutation.
   metadata, Spectrum independence и atomic failures. Frontend 2/2 покрывает
   полный natural-focus pair, 422, first/second 409; Playwright static PASS.
   Runtime E2E не выполнялся.
+- Cascade 17 backend — 1397/1397 PASS, C17 49/49 и API 22/22. Проверены exact
+  five-key state, strict explicit pair, full-raw Auto extrema до bounding,
+  empty/zero/mixed/constant cases, cold/equal/combined provider-cache rules,
+  A/B/Clear/re-add/source/scale lifecycle и bit-identical backend `x/y/z`.
+  Frontend 2/2; Julia parse, Playwright syntax/support/help и финальный
+  integration audit PASS. Runtime E2E не выполнялся.
 
 ## Источники и наблюдаемые различия
 

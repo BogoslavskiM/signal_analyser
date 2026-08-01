@@ -973,3 +973,25 @@ only Plotly rendering uses deterministic `[v-1,v+1]`. Fit Colormap и любые
 | E2E Tester | `/root/e2e_c13_impl` | C16 complete | five-key migration/scenario | product selectors | C16 CLEAN |
 | DevOps | `/root/devops_c16_commit` | C16 docs complete | C17 contract checkpoint | Architect validation | `0324849` |
 | MATLAB Researcher | `/root/matlab_c17_power_limits` | docs-only complete | later safe Fit probe | unsafe Command Window | direct-doc handoff |
+
+## Cascade 17 implementation close — 2026-08-01
+
+Status: `implemented-and-locally-verified`; product/test checkpoint
+`290c057a05c7ebeab68a69632fcec462bd893339`; not pushed or deployed.
+
+DEC-023 is implemented across Backend, Frontend, Tester and E2E ownership.
+Backend 1397/1397, C17 49/49 + API 22/22, frontend 2/2, parse/static/support/
+help/diff gates and final integration audit are green. E2E Tester
+`/root/e2e_c17_replacement` replaced `/root/e2e_c13_impl` after two incomplete
+turns. Runtime E2E remains blocked only by absent CDP/application target.
+
+### Persistent role queue after C17
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c17_power_inventory` | C17 implementation complete | C18 inventory after ADR | C18 decision | full backend PASS |
+| Frontend | `/root/frontend_c17_power_inventory` | C17 UI complete | C18 feasibility after ADR | C18 decision | front 2/2 |
+| Tester | `/root/tester_c17_power_matrix` | C17 matrix complete | C18 matrix after ADR | C18 decision | 49/49 + 22/22 |
+| E2E Tester | `/root/e2e_c17_replacement` | C17 static complete | runtime C17 / C18 after ADR | no runtime target | static PASS |
+| DevOps | `/root/devops_c17_commit` | product commit complete | docs checkpoint | Architect validation | `290c057` |
+| MATLAB Researcher | `/root/matlab_c18_docs_discovery` | C18 docs-only discovery active | recommendation | no MATLAB GUI use | C17 docs evidence |
