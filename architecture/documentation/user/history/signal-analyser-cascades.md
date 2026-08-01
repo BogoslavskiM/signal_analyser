@@ -459,3 +459,19 @@
   current adapter omits overlap, а fixed zero является отдельной breaking
   numerical/cache/deployment migration. Следующий cascade — fixed-segmentation
   foundation discovery, не Frequency Limits code.
+
+## 2026-08-01 — strict frontend snapshot boundary hardening
+
+- Spectrum snapshot теперь различает absent legacy settings и present malformed
+  exact DEC-016 object. Corruption quarantined, controls disabled, contract
+  error visible, desired/replay requests не получают fabricated defaults.
+- Spectrogram получил тот же boundary для exact five-key settings без потери
+  Auto effective limits, requested/effective scale, power metadata, drafts и
+  422/409 behavior. Quarantine немедленно очищает desired/queued/pending intents.
+- Tester добавил Spectrum corruption matrix и 24-case Spectrogram outer/nested
+  matrix, malformed 409 replay, queued intent и successful-200 immediate purge.
+- `verified locally`: frontend 2/2, syntax, Playwright support, diff-check и
+  независимый repeated frontend audit CLEAN.
+- Local commits: Spectrum `01f96d9f9bc83b687e92846995ab4833a8c431cc`,
+  Spectrogram `0fc78161430cf41e5d2fdc301d712686a46686c4`. Push, deployment
+  и merge не выполнялись.

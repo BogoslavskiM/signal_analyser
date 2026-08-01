@@ -335,3 +335,13 @@ risks: Runtime E2E/deployment unavailable; local EngeeDSP absent.
 follow-ups: Separate Architect C19 implementation/C20 research docs checkpoint.
 No push/deploy/merge was requested or performed.
 next_task_candidates: Commit validated final documentation only.
+## Frontend snapshot hardening checkpoints — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c17_commit`.
+changes: Created local Spectrum checkpoint `01f96d9f9bc83b687e92846995ab4833a8c431cc`
+and Spectrogram checkpoint `0fc78161430cf41e5d2fdc301d712686a46686c4`.
+verification: Each commit staged only the exact handed-off public/test paths;
+cached diff-check passed and post-commit worktree was clean.
+risks: Push, deployment, merge and amend were not performed.
+follow-ups: C22 docs/product checkpoints require separate explicit handoff.

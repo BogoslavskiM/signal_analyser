@@ -1164,3 +1164,12 @@ segmentation/resource foundation with numerical/cache/deployment migration.
 | E2E Tester | `/root/e2e_c18_persistence_inventory` | Frequency Limits inventory complete | rebaseline then limits scenario | foundation | event-driven plan |
 | DevOps | `/root/devops_c17_commit` | C20 docs committed | C21 docs checkpoint | Architect validation | `c6b8dd9` |
 | MATLAB Researcher | `/root/matlab_c20_persistence_overlap` | C21 docs research complete | fixed policy docs risk | direct web only | no GUI/clicker |
+
+## Cross-cutting snapshot boundary close — 2026-08-01
+
+Status: `implemented-and-verified`; local commits `01f96d9`, `0fc7816`.
+
+Spectrum and Spectrogram now enforce the same absent-versus-present snapshot
+boundary already added for Persistence. Exact corruption cannot be normalized
+into a later full view request; queue, stale replay and successful malformed
+response paths are quarantined. Front 2/2 and independent final audit CLEAN.

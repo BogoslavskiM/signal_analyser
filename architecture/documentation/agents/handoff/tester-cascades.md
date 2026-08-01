@@ -432,3 +432,20 @@ current 0.72.0 evidence.
 follow-ups: Run target Engee gate and runtime E2E on an accepted SHA.
 next_task_candidates: C20 matrix only after probe and ADR.
 engee_bug_candidate: None.
+## Spectrum/Spectrogram snapshot corruption matrices — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c18_persistence_matrix`.
+scope: `test/front/public/js/app.behavior.test.js` and compatible static seams.
+contracts: Spectrum exact four-key and Spectrogram exact five-key/nested
+settings; absent legacy defaults; malformed present quarantine.
+changes: Added Spectrum malformed matrix and 24-category Spectrogram matrix;
+asserted visible error, all server controls disabled and zero unrelated POST.
+Added malformed 409 no-replay, already-queued no-send and successful malformed
+200 immediate-purge regression cases.
+verification: Frontend suite 2/2 and diff-check PASS after product fixes.
+risks: These tests intentionally keep exact full-body fixtures; successor
+settings ADR must migrate every valid fixture atomically.
+commits: `01f96d9`, `0fc7816`.
+follow-ups: Preserve corruption quarantine for every future exact settings
+object.

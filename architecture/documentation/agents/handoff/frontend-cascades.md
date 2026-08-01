@@ -397,3 +397,25 @@ Independent post-test audit verdict CLEAN; no additional edits were required.
 risks: Runtime browser verification remains external.
 follow-ups: Runtime focused scenario only on accepted target.
 next_task_candidates: Later Persistence controls only after successor ADR.
+## Spectrum/Spectrogram strict snapshot hardening — 2026-08-01
+
+canonical_role: Frontend
+sessions: `/root/frontend_cycle`, `/root/frontend_c18_persistence_inventory`,
+`/root/frontend_spectrogram_rescue`, `/root/frontend_spectrogram_audit`.
+goal: Stop malformed present server settings from becoming valid fabricated
+frontend defaults and later unrelated/replayed `/api/view` bodies.
+scope: `public/index.html`, `public/js/app.js`; vanilla JS only.
+contracts: Completely absent legacy fields receive documented defaults. Present
+Spectrum exact-four-key or Spectrogram exact-five-key/nested corruption is
+quarantined with visible accessible error and disabled server controls.
+changes: Added strict snapshot validators, per-Display contract errors and
+single-path queue/replay quarantine. Preserved all valid Spectrogram effective
+frequency/scale/power metadata, drafts, no-source and rollback behavior.
+verification: Front 2/2, syntax, support contract, diff-check; independent
+audit found and then verified fixes for malformed 409, queued intent and
+successful-200 immediate purge. Final verdict CLEAN.
+risks: No public cache epoch exists; backend must never publish stale numerical
+payload for the accepted revision/settings.
+commits: Spectrum `01f96d9`; Spectrogram `0fc7816`.
+follow-ups: Keep future exact-object schema migrations atomic across validator,
+fixtures and full request bodies.

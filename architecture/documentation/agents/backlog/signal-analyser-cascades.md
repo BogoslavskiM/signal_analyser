@@ -200,6 +200,11 @@ Owner: Architect
   implementation because current C19 omits Overlap and fixed zero is a global
   breaking algorithm/cache migration. Next work is a separate fixed Persistence
   segmentation/resource foundation; C21 evidence remains reusable afterward.
+- Frontend snapshot boundary hardening is complete at `01f96d9` (Spectrum) and
+  `0fc7816` (Spectrogram). Present malformed exact settings are quarantined;
+  absent legacy settings retain compatibility defaults. Spectrogram queued,
+  stale-replay and successful-response intents are purged without POST. Front
+  2/2 and repeated independent audit CLEAN.
 - C19 implemented and locally accepted at product/test commit `2f99ff8`:
   backend 1497/1497, C19 48/48, frontend 2/2, focused Playwright static and
   independent Frontend/E2E/Backend audits CLEAN. Local Engee gate retains the
