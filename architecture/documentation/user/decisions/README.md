@@ -35,4 +35,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260801-030: latest Plotly render wins](DEC-20260801-030-latest-plot-render-wins.md)
 - [DEC-20260801-031: строгая граница snapshot для measurement_kinds](DEC-20260801-031-measurement-kinds-snapshot-boundary.md)
 - [DEC-20260801-032: строгая глобальная envelope snapshot](DEC-20260801-032-global-snapshot-envelope.md)
+- [DEC-20260801-038: единственный Engee target — production](DEC-20260801-038-engee-production-target.md)
 - [Шаблон ADR](template.md)

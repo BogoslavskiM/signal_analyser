@@ -5,7 +5,7 @@ name: engee-environment-deployment
 
 ## When to Use
 - После успешных локальных тестов, commit и push агенты запросили deployment.
-- Нужно развернуть одну и ту же ветку в dev или prod.
+- Нужно развернуть ветку в Engee target, зафиксированный проектным manifest.
 
 ## When NOT to Use
 - Есть незакоммиченные изменения или не прошли обязательные локальные тесты.
@@ -13,7 +13,7 @@ name: engee-environment-deployment
 
 ## Input
 ```text
-environment: dev | prod
+environment: <manifest.engee_target.environment>
 repository_url:
 repository_name:
 branch:
@@ -21,10 +21,18 @@ commit_sha:
 changed_zones:
 ```
 
-Dev и prod равноправны: отдельное разрешение для prod не требуется.
+До подключения прочитай `[engee_target]` в
+`architecture/agents/manifest.toml`. Enforce `environment`, `base_url`,
+`mcp_server`, `allow_devhub` и `allow_fallback`. PAT выбранного MCP server
+получай только из защищённых root AGENTS instructions; не копируй его значение
+в repository files, reports, logs или сохранённые commands.
 
 ## Workflow
-1. Подключись к выбранному окружению через Engee MCP или Engee plugin.
+1. Подключись только к `mcp_server` из manifest через Engee MCP или Engee
+   plugin. Проверь совпадение фактических environment и base URL с
+   `[engee_target]`. При несовпадении прекрати операцию. Fallback допустим
+   только когда `allow_fallback=true`, а его target явно задан project policy;
+   одного allow flag без target недостаточно.
 2. Выполняй команды на Engee через предоставленный `eval_command`.
 3. Используй каталог `/user/apps/<repository_name>`. Если `/user/apps` не
    существует, создай его.
@@ -88,7 +96,7 @@ status = engee.genie.start(
 Если E2E или HTTP probe видит `Server maintenance` / «Ведутся технические
 работы», в том числе с HTTP 200:
 
-1. HTTP probe base `https://engee.com` и auth/account contour отдельно от
+1. HTTP probe `base_url` из `[engee_target]` и auth/account contour отдельно от
    приложения.
 2. Probe точный target Genie URL, зафиксируй status, final URL, title/body и
    результат target API probe.
@@ -107,6 +115,10 @@ DevOps role.
 
 ## Guardrails
 - Не размещай PAT, Git credentials или другие секреты в репозитории и отчёте.
+- Не подключайся к devhub, если `allow_devhub=false`.
+- Не используй fallback, если `allow_fallback=false` или fallback target не
+  задан project policy.
+- Не принимай environment из произвольного task text в обход `[engee_target]`.
 - Не применяй reset, clean или stash к удалённой копии проекта.
 - Не останавливай Genie при изменениях только frontend или tests.
 - Не подменяй deployment локальным запуском Julia.
@@ -141,5 +153,6 @@ e2e_rerun_handoff:
 ```
 
 ## Reference
-- https://engee.com/helpcenter/stable/ru/feature/genie-functions.html
+- Official Engee Help Center: Genie public control functions for the configured
+  environment.
 - `devops/task-branch-lifecycle`

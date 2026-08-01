@@ -37,6 +37,10 @@ tests:
 6. Для составного skill перечисли `enabled_optional_capabilities`.
 7. Передай независимые задачи role owners через `agent-handoff-plan` и веди
    rolling queue.
+8. До Engee probes, deployment или E2E прочитай `[engee_target]` проектного
+   `architecture/agents/manifest.toml`. Target выбирает проект, а не агент.
+   Enforce `environment`, `base_url`, `mcp_server`, `allow_devhub` и
+   `allow_fallback`; не используй неразрешённое окружение или fallback.
 
 ## Optional Capability Routing
 
@@ -68,6 +72,8 @@ tests:
 5. Получи stable `data-testid` и полный `interaction_design_review` каждого
    menu item/button завершённой feature, затем передай единый user workflow
    через `e2e-tester/devhub-playwright-scenario`.
+   Содержащий `devhub` skill id сохранён только для совместимости каталога и не
+   выбирает окружение: фактический target всегда берётся из `[engee_target]`.
 6. Выполни предварительный integration review и continuous documentation.
 7. После готового handoff DevOps может commit/push только явно перечисленные
    завершённые файлы. Dirty paths активных ролей допустимы при известном
@@ -88,6 +94,8 @@ tests:
 - Параллельные изменения допустимы только при owner/task attribution.
 - DevOps не добавляет в commit незавершённые или непереданные файлы.
 - E2E не требует deployment и использует доступный target/current tab.
+- Доступный target/current tab обязан соответствовать `base_url` и allow flags
+  проектного `[engee_target]`.
 - Merge разрешён только после явного принятия пользователя.
 
 ## Reference

@@ -9,6 +9,12 @@
 2. Файл активной роли в `architecture/agents/roles/*.toml`.
 3. Подходящие скиллы из `architecture/skills/<role>/<skill-name>/SKILL.md`.
 
+Engee environment не выбирается ролью из task text. Каждая роль читает и
+enforce `environment`, `base_url`, `mcp_server`, `allow_devhub` и
+`allow_fallback` из `[engee_target]` manifest. PAT configured MCP server берётся
+только из защищённых root instructions и никогда не записывается в репозиторий
+или отчёты.
+
 `manifest.toml` — индекс проекта. Файлы ролей определяют зоны ответственности
 и поведение. `adapt.sh` переносит эти же правила в runtime-файлы Codex, Claude,
 Cursor, Windsurf, Cline, Roo и Gemini.

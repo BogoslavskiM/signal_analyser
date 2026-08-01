@@ -36,6 +36,16 @@ bash architecture/agents/adapt.sh --adapter=codex
 - Strict boundaries: `true`
 - Reasoning policy: `high -> xhigh`, `medium -> medium`, `low -> low`
 
+## Engee Target
+
+- Selection: `project-locked`
+- Environment: `prod`
+- Base URL: `https://engee.com`
+- MCP server: `prod`
+- Devhub allowed: `false`
+- Fallback allowed: `false`
+- Credential source: `protected root AGENTS instructions`; never persist secrets in repository files or reports.
+
 ## Agent Identity
 
 - Every status and handoff starts with `ROLE: <canonical role label>`.

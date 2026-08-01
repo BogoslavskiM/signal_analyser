@@ -31,9 +31,11 @@ Modes:
 - frontend static/behavior mode
 - contract mode
 
-For Engee contract mode, Engee MCP is mandatory. Select prod/devhub from task
-configuration, use PAT only from secure agent instructions, and never write
-tokens into repository files or reports. Treat unavailable required
+For Engee contract mode, Engee MCP is mandatory. This project locks the target
+to the production server at `https://engee.com`; never select devhub and never
+fall back to it. Use the production PAT only from protected root AGENTS
+instructions, and never write tokens into repository files, reports, logs or
+saved commands. Treat unavailable required
 Engee runtime/package/MCP as a failed run, not a skipped or passed test.
 
 Do not install or download dependencies unless the parent Architect explicitly

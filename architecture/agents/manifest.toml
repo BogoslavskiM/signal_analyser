@@ -64,6 +64,15 @@ high_reasoning_effort = "xhigh"
 medium_reasoning_effort = "medium"
 low_reasoning_effort = "low"
 
+[engee_target]
+selection_policy = "project-locked"
+environment = "prod"
+base_url = "https://engee.com"
+mcp_server = "prod"
+allow_devhub = false
+allow_fallback = false
+credential_source = "protected root AGENTS instructions"
+
 [[roles]]
 name = "architect"
 file = "architecture/agents/roles/architect.toml"

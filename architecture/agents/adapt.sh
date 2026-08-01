@@ -102,6 +102,21 @@ model_selection_value() {
   ' "$MANIFEST_PATH"
 }
 
+engee_target_value() {
+  local key="$1"
+  awk -v key="$key" '
+    /^\[engee_target\]/ { in_engee_target = 1; next }
+    /^\[/ && in_engee_target { exit }
+    in_engee_target && $0 ~ "^" key " = " {
+      sub("^" key " = ", "")
+      gsub(/^"/, "")
+      gsub(/"$/, "")
+      print
+      exit
+    }
+  ' "$MANIFEST_PATH"
+}
+
 toml_array_line() {
   local file="$1"
   local key="$2"
@@ -357,6 +372,16 @@ $(bootstrap_markdown)
 - Handoff policy: \`$(workflow_value handoff_policy)\`
 - Strict boundaries: \`$(toml_bool_value "$MANIFEST_PATH" strict_boundaries)\`
 - Reasoning policy: \`high -> $(reasoning_for_level high)\`, \`medium -> $(reasoning_for_level medium)\`, \`low -> $(reasoning_for_level low)\`
+
+## Engee Target
+
+- Selection: \`$(engee_target_value selection_policy)\`
+- Environment: \`$(engee_target_value environment)\`
+- Base URL: \`$(engee_target_value base_url)\`
+- MCP server: \`$(engee_target_value mcp_server)\`
+- Devhub allowed: \`$(engee_target_value allow_devhub)\`
+- Fallback allowed: \`$(engee_target_value allow_fallback)\`
+- Credential source: \`$(engee_target_value credential_source)\`; never persist secrets in repository files or reports.
 
 ## Agent Identity
 

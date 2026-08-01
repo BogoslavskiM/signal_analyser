@@ -1,6 +1,6 @@
 schema_version: 2
 name: agent-handoff-plan
-version: 1.0.0
+version: 1.1.0
 title: "Agent Handoff Plan"
 description: >
   Правила архитектора для передачи задач role-owned агентам, включая DevOps и

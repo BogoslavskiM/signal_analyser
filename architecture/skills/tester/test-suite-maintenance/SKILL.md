@@ -9,7 +9,7 @@ name: test-suite-maintenance
 
 ## When NOT to Use
 - Нужно исправить product source вместо теста.
-- Нужно реализовать Playwright/devhub сценарий — используйте e2e skill.
+- Нужно реализовать пользовательский Playwright/E2E сценарий — используйте e2e skill.
 
 ## Core Contract
 - Загрузи testing skill для фактически изменённой contract surface.
@@ -31,7 +31,8 @@ name: test-suite-maintenance
    Для frontend static/behavior tests загрузи
    `tester/frontend-static-behavior-testing`.
    Для Engee package contract загрузи `tester/engee-contract-testing` и
-   обязательно используй Engee MCP.
+   обязательно используй Engee MCP на target из `[engee_target]`, enforce
+   `environment`, `base_url`, `mcp_server` и allow flags.
 2. Прочитай ближайший production contract только чтобы понять expected behavior.
 3. Держи тест детерминированным и сфокусированным на одном behavior/contract.
 4. Если failure вызван product code, верни handoff владельцу продукта.

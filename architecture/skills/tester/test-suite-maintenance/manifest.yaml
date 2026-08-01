@@ -1,6 +1,6 @@
 schema_version: 2
 name: test-suite-maintenance
-version: 2.5.0
+version: 2.6.0
 title: "Test Suite Maintenance"
 description: >
   Tester skill для backend, frontend и Engee contracts: inspector table,

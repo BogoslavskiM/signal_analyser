@@ -1,11 +1,14 @@
 ---
 name: devhub-playwright-scenario
 ---
-# Devhub Playwright Scenario
+# Engee Playwright Scenario
+
+`devhub-playwright-scenario` — сохранённый для совместимости id каталога; он не
+выбирает окружение и не разрешает devhub.
 
 ## When to Use
 - Playwright scaffold уже создан, и нужно добавить или стабилизировать
-  пользовательский devhub-сценарий.
+  пользовательский сценарий на разрешённом Engee target.
 - Нужно покрыть композицию frontend skills и предметных product capabilities в
   работающем приложении.
 - Нужно превратить внешний reference scenario произвольного формата, включая
@@ -42,6 +45,24 @@ stable_data_testids
   features и regression. Timing evidence во время E2E остаётся обязательным;
   measured blocking issue передаётся Architect для явной reclassification.
 
+## Target Gate
+
+1. Прочитай `[engee_target]` в `architecture/agents/manifest.toml` до browser
+   navigation, выбора current tab или MCP access.
+2. Enforce `environment`, `base_url`, `mcp_server`, `allow_devhub` и
+   `allow_fallback`; агент не выбирает environment сам.
+3. Отклони URL/current tab, origin которых не совпадает с configured allowed
+   origins. Отклони devhub при `allow_devhub=false` и fallback при
+   `allow_fallback=false`.
+4. Если MCP действительно нужен, получай PAT configured `mcp_server` только из
+   защищённых root AGENTS instructions и никогда не сохраняй его значение.
+5. При существующем project manifest его `[engee_target].base_url` является
+   lock: env/config обязаны совпадать и не могут override. Fallback config
+   и alternate manifest допустимы только при физически отсутствующем canonical
+   manifest; override не может скрыть существующий canonical path.
+6. Legacy skill/runner names с `devhub` являются только совместимыми именами
+   файлов и не меняют target.
+
 ## Inputs
 Перед началом получи:
 
@@ -74,7 +95,7 @@ browser_workspace_setup
 ## Browser Workspace Safety
 
 1. Предпочитай background CDP без focus/window mutation.
-2. Если нужен интерактивный Chrome, открой Signal Analyser на отдельном macOS
+2. Если нужен интерактивный Chrome, открой target Genie app на отдельном macOS
    Space/desktop. Если Space недоступен, используй fullscreen Chrome как
    fallback, чтобы не перекрывать MATLAB.
 3. До любого Space/focus/window action согласуй действие с MATLAB Researcher и
@@ -139,12 +160,12 @@ timeout. Сам выбирай техническую реализацию, ра
 задавай универсальный обязательный набор метрик или фиксированные пороги.
 
 ## Bounded Retries
-Retry допустим только для доказанно переходного browser/devhub события:
+Retry допустим только для доказанно переходного browser/target события:
 
 - controlled input был перезаписан более поздним backend response;
 - tooltip/hover не активировался после первого pointer transition;
 - условная кнопка была remount во время click;
-- output остался pending при согласованном devhub stall.
+- output остался pending при согласованном target stall.
 
 Retry:
 
@@ -245,7 +266,7 @@ Reload допустим только после фиксации diagnostic stat
 включая soft-error HTML с HTTP 200, не объявляй Engee outage без разделённой
 диагностики:
 
-1. Проверь base `https://engee.com` и доступность auth/account contour.
+1. Проверь project `base_url` и доступность auth/account contour.
 2. Отдельно probe target Genie URL. Запиши HTTP status, final URL, page title,
    релевантный body text и результат target API probe.
 3. Запроси у DevOps Genie process/status и tail application log; E2E Tester не
@@ -266,12 +287,16 @@ flags, active id, opened overlays, output hosts или scroll geometry.
 ## Running and Definition of Done
 ```bash
 PLAYWRIGHT_SPEC=<relative-spec-fragment> \
-./test/playwright/run_devhub_playwright_tests.sh <devhub-app-url>
+./test/playwright/run_devhub_playwright_tests.sh <allowed-engee-app-url>
 # или для уже открытого приложения
 ./test/playwright/run_devhub_playwright_tests.sh --current
 
-./test/playwright/run_devhub_playwright_tests.sh <devhub-app-url>
+./test/playwright/run_devhub_playwright_tests.sh <allowed-engee-app-url>
 ```
+
+Имя runner сохранено для совместимости. Перед запуском runner получает allowed
+origins из project `[engee_target]` или copied project config и технически
+отклоняет иной явный URL или `--current` tab до выполнения specs.
 
 - Сначала запусти affected spec, затем полный enabled suite.
 - Runner продолжает после failures и формирует полный отчёт.

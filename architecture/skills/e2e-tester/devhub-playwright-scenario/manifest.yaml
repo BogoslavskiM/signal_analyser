@@ -1,11 +1,11 @@
 schema_version: 2
 name: devhub-playwright-scenario
-version: 1.9.0
-title: "Devhub Playwright Scenario"
+version: 1.10.0
+title: "Engee Playwright Scenario"
 description: >
-  Универсальная процедура разработки и стабилизации Playwright/devhub
-  сценариев поверх готового scaffold: универсальные skill flags и предметные
-  product capability flags, stable data-testid,
+  Универсальная процедура разработки и стабилизации Playwright-сценариев на
+  project-locked Engee target поверх готового scaffold: универсальные skill
+  flags и предметные product capability flags, stable data-testid,
   observable waits, bounded retries, прямые handoff MATLAB Researcher,
   arbitrary reference artifacts и полный E2E-отчёт без зависимости тестов от
   deployment.
@@ -14,7 +14,7 @@ audience: [assistant]
 priority: 0.9
 when-to-use:
   - "Нужно добавить или стабилизировать пользовательский Playwright сценарий"
-  - "Нужно покрыть композицию frontend skills и product capabilities в devhub"
+  - "Нужно покрыть композицию frontend skills и product capabilities на Engee target"
   - "Нужно автоматизировать внешний reference scenario, включая MATLAB"
 when-not:
   - "В приложении ещё нет Playwright scaffold"

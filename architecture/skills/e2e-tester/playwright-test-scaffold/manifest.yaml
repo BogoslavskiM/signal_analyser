@@ -1,13 +1,14 @@
 schema_version: 2
 name: playwright-test-scaffold
-version: 0.6.0
+version: 0.7.0
 title: "Playwright Test Scaffold"
 description: >
   Переносимый scaffold интеграционных тестов Genie-приложения: Chrome CDP,
   vpnp wrapper, non-fail-fast runner, capability flags по универсальным
   frontend skills и предметным функциям конкретного проекта, stable
-  data-testid contract, запуск по URL или текущей browser tab, базовые helpers
-  и русский coverage map без зависимости тестов от deployment.
+  data-testid contract, project-locked Engee target, запуск по URL или текущей
+  browser tab, базовые helpers и русский coverage map без зависимости тестов
+  от deployment.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -20,6 +21,6 @@ when-not:
 requires-tools: []
 requires-products:
   - "Chrome с CDP"
-  - "vpnp google для devhub"
+  - "vpnp google для разрешённого Engee target"
 reference-files: []
 requires-skills: []

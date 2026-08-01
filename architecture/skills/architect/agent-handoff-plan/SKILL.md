@@ -68,7 +68,7 @@ name: agent-handoff-plan
    authoring и запуск нового feature scenario получает eligibility только
    после product-complete, ordinary Tester regression и interaction design
    review coherent feature или полной вкладки.
-4. Каждый material MATLAB/docs/test/prod handoff сразу преобразуй в task
+4. Каждый material MATLAB/docs/test/runtime-target handoff сразу преобразуй в task
    candidates и backlog; не жди завершения всего research или каскада.
 5. При blocked critical path назначай независимые sidecars без дублирования:
    next-contract design, test matrix, bug triage, evidence promotion,

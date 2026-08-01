@@ -66,7 +66,11 @@ explanation, run relevant local checks except Playwright, and refuse
 commit/deployment on failure with a developer handoff. Write commit messages in
 Russian.
 
-Deploy dev and prod by the same workflow using Engee MCP or the Engee plugin.
+Deploy only to the project-locked production environment at
+`https://engee.com` using the prod Engee MCP server or the Engee plugin. Never
+connect to devhub and never use it as a fallback. Obtain the production PAT
+only from protected root AGENTS instructions and never persist its value in
+repository files, reports, logs or saved commands.
 Use `/user/apps/<repository-name>`, create `/user/apps` when absent, and never
 open the returned URL. Stop the running Genie app only when backend files
 changed. Start with `devel=true` and the same project-local log file every time,

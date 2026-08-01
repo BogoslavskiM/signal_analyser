@@ -1,5 +1,7 @@
 "use strict";
 
+const { assertAllowedUrl, resolveAllowedOrigins } = require("./target_policy");
+
 const DEFAULT_TIMEOUT = 30000;
 const ACTION_TIMEOUT = 60000;
 
@@ -29,14 +31,17 @@ async function waitForAppReady(page, config, options) {
 async function openAppPage(page, options) {
   const config = options.config || {};
   const log = options.log || function () {};
+  const allowedOrigins = resolveAllowedOrigins(config);
 
   if (!options.useCurrentPage) {
+    assertAllowedUrl(options.appUrl, allowedOrigins, "application URL");
     log(`navigate to ${options.appUrl}`);
     await page.goto(options.appUrl, {
       waitUntil: "domcontentloaded",
       timeout: ACTION_TIMEOUT,
     });
   } else {
+    assertAllowedUrl(page.url(), allowedOrigins, "current page URL");
     log(`use current page ${page.url() || "(blank)"}`);
   }
 

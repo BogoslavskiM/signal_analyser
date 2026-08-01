@@ -1,11 +1,11 @@
 schema_version: 2
 name: app-creation-workflow
-version: 2.0.0
+version: 2.1.0
 title: "App Creation Capability Router"
 description: >
   Capability router архитектора: blueprint выбирает product capabilities,
   profiles и optional contracts, после чего подключаются только нужные skills,
-  role handoffs, проверки и DevOps checkpoints.
+  role handoffs, project-locked Engee target, проверки и DevOps checkpoints.
 language: ru
 audience: [assistant]
 priority: 0.9

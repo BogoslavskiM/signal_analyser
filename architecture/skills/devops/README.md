@@ -1,7 +1,9 @@
 # Скиллы DevOps
 
 Скиллы DevOps описывают Git-жизненный цикл задачи и deployment Genie-приложения
-в dev или prod. Границы роли определены в
+в Engee target, зафиксированный проектным `[engee_target]`. Роль обязана
+enforce `environment`, `base_url`, `mcp_server` и allow flags без собственного
+выбора окружения. Границы роли определены в
 `architecture/agents/roles/devops.toml`.
 
 - `task-branch-lifecycle/` — проверка чистоты репозитория, подготовка

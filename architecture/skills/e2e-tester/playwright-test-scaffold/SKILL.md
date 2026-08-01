@@ -5,7 +5,7 @@ name: playwright-test-scaffold
 
 ## When to Use
 - В новом Genie-приложении ещё нет `test/playwright/**`.
-- Нужно перенести стандартный CDP/devhub runner и базовую структуру E2E-тестов.
+- Нужно перенести стандартный CDP/Engee runner и базовую структуру E2E-тестов.
 - Нужно включить E2E-набор по универсальным UI-возможностям и предметным
   функциям приложения, доступным на проверяемом target.
 
@@ -28,6 +28,12 @@ name: playwright-test-scaffold
 
 Не копируй `node_modules`. Установи зависимости штатной командой только после
 разрешения пользователя или управляющего агента.
+
+Skill id и legacy runner filename с `devhub` сохранены только для совместимости
+каталога. Они не выбирают окружение. Scaffold обязан получать разрешённый
+target из `[engee_target]` проектного `architecture/agents/manifest.toml` и
+enforce `environment`, `base_url`, `mcp_server`, `allow_devhub` и
+`allow_fallback`.
 
 ## Feature Flags
 
@@ -65,8 +71,8 @@ reference-scenarios
 - Disabled feature spec загружается для проверки синтаксиса, но не выполняется
   и учитывается runner как `skipped`.
 - Значение flag отражает наличие capability на обычно проверяемом target.
-  Для другого target временно передавай точный доступный набор через
-  `PLAYWRIGHT_FEATURES`.
+  Временно передавай точный доступный набор через `PLAYWRIGHT_FEATURES`, не
+  меняя разрешённое окружение из `[engee_target]`.
 - Называй project-specific flag в lower kebab-case по наблюдаемой продуктовой
   функции, а не по отдельному полю, странице или test case.
 - Не создавай новый flag для отдельного поля, страницы или одного test case.
@@ -102,6 +108,14 @@ expected_visible_states
 3. Скопируй bundled scaffold без domain names исходного приложения.
 4. Измени `name` в `package.json` и `package-lock.json`.
 5. Задай `app.readyTestId`, `app.loaderTestId` и `app.pageUrlMatch`.
+   При существующем project manifest `[engee_target].base_url` является locked
+   effective origin. `target.allowedOrigins` и `PLAYWRIGHT_ALLOWED_ORIGINS`
+   могут только совпадать с ним, но не override. Только при физически
+   отсутствующем canonical manifest они являются fallback config.
+   `PLAYWRIGHT_TARGET_MANIFEST` также не может скрыть существующий canonical
+   manifest: другой или отсутствующий override является hard error. Shell
+   отклоняет запрещённый explicit URL до browser launch; JS runner отклоняет
+   explicit URL/current tab до specs.
 6. Объяви skill и project-specific flags в проектном config и включи только
    capabilities, фактически доступные на обычно проверяемом target.
 7. Добавь Frontend → E2E selector handoff в комментарии конфигурации или
@@ -111,6 +125,19 @@ expected_visible_states
 10. Обнови русский coverage map для внешних reference scenarios.
 
 ## Runner Contract
+- Allowed origins обязательны. Если project manifest существует,
+  `[engee_target].base_url` является locked effective origin; отсутствующие
+  section/base URL и любой конфликт env/config являются hard error. Env/config
+  fallback и alternate manifest разрешены только когда canonical manifest
+  физически отсутствует. При существующем canonical manifest отличный или
+  nonexistent `PLAYWRIGHT_TARGET_MANIFEST` является hard error; override не
+  меняет precedence. Конфликт fallback env/config или пустой effective allow
+  list также являются hard error.
+- Explicit app URL проверяется shell до browser launch и повторно JS runner до
+  specs. `--current` page проверяется JS runner до specs. `openAppPage` повторяет
+  guard непосредственно перед navigation или ожиданием current page.
+- Сравнивай exact parsed URL origin, а не string prefix. Разрешай только HTTP(S)
+  origins без credentials.
 - Использует уже открытый Chrome через CDP.
 - Wrapper запускает Chrome через `vpnp google`, если endpoint ещё недоступен.
 - Один CDP endpoint обслуживает не более одного runner одновременно.
@@ -144,15 +171,22 @@ for file in $(rg --files test/playwright -g '*.js'); do
 done
 
 bash -n test/playwright/run_devhub_playwright_tests.sh
-./test/playwright/run_devhub_playwright_tests.sh <devhub-app-url>
+./test/playwright/run_devhub_playwright_tests.sh <allowed-engee-app-url>
 # или
 ./test/playwright/run_devhub_playwright_tests.sh --current
 ```
+
+`<allowed-engee-app-url>` обязан принадлежать configured allowed origins.
+Используй target-neutral placeholder и не удаляй allowed-origin guard.
 
 ## Guardrails
 - Не переноси names, selectors, fixtures и expected values reference
   приложения.
 - Не включай capability, отсутствующую на проверяемом target.
+- Не удаляй shell/runner/navigation allowed-origin guards и не допускай пустой
+  allow list.
+- Не используй devhub при `allow_devhub=false`, иной origin в обход
+  `[engee_target]` или fallback при `allow_fallback=false`.
 - Не переноси project-specific flag в универсальный каталог skills или
   scaffold template.
 - Не отключай failing feature flag ради зелёного отчёта.

@@ -33,6 +33,7 @@ math_documentation_policy = ["document only formulas present in implementation",
 engee_bug_policy = ["stable ENGEE-YYYYMMDD-NNN-short-slug in documentation/user/engee_bugs", "roles submit candidates through handoff", "minimal safe reproduction and isolation before confirmed", "availability candidates require base/auth/target split", "workaround does not close bug", "no silent hand-rolled replacement for required Engee engineering functions"]
 e2e_browser_workspace_policy = ["background CDP preferred", "interactive Chrome uses separate macOS Space/desktop or fullscreen fallback", "coordinate Space/focus/window actions with MATLAB Researcher", "never move or close MATLAB", "require browser_workspace_setup evidence"]
 e2e_performance_policy = ["E2E must provide sufficient timing logging during scenarios", "E2E analyzes performance hangs retries and timeout suitability from those logs", "E2E chooses logging implementation placement and format for context", "material issues require an evidence-backed Architect handoff", "no universal metric set or fixed thresholds"]
+engee_target_policy = ["project target is locked to prod at https://engee.com", "devhub is forbidden for runtime contract probes deployment and E2E", "no devhub fallback is allowed", "use the prod PAT only from protected root AGENTS instructions", "never persist PAT values in repository files reports logs or commands"]
 
 developer_instructions = """
 You are Architect for Genie app projects.
@@ -48,6 +49,13 @@ files only as runtime glue for specific tools.
 Own task scoping, role selection, handoffs, final review, and integration.
 In strict mode, do not implement broad changes inside role-owned product or test
 folders while the owning agent is active and able to edit them.
+
+This project locks every Engee runtime, MCP contract probe, deployment and E2E
+target to production at `https://engee.com`. Never assign devhub and never use
+it as a fallback. Require the production PAT only from protected root AGENTS
+instructions and never copy its value into repository files, reports, logs or
+saved commands. Legacy filenames or skill IDs containing `devhub` are
+compatibility labels only and do not override this target policy.
 
 Resolve reasoning effort from every role's `model_level` without lowering it
 for speed: `high` always uses `xhigh`, `medium` uses `medium`, and `low` uses

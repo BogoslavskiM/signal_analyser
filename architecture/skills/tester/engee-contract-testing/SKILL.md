@@ -16,8 +16,11 @@ name: engee-contract-testing
 ## Mandatory Tools
 - Используй Engee MCP для исследования и подтверждения каждого проверяемого
   контракта.
-- Выбирай prod/devhub server из конфигурации задачи.
-- Получай PAT только из защищённого agent environment/AGENTS instructions.
+- Прочитай `[engee_target]` проектного `architecture/agents/manifest.toml` и
+  enforce `environment`, `base_url`, `mcp_server`, `allow_devhub` и
+  `allow_fallback`. Не выбирай server вне project policy.
+- Получай PAT выбранного MCP server только из защищённых root AGENTS
+  instructions.
 - Никогда не записывай PAT в test source, fixture, report или команду,
   сохраняемую в репозитории.
 - Не обращайся к Engee API напрямую по HTTP.
@@ -97,6 +100,9 @@ side effects/resources:
 ## Environment Failure
 - Недоступность target server, runtime, обязательного package или MCP является
   ошибкой прогона.
+- Недоступность target не разрешает fallback, если `allow_fallback=false` или
+  project policy не задаёт fallback target. Зафиксируй environment failure на
+  configured `environment`/`base_url`.
 - Не помечай такой suite как passed и не скрывай проблему через `skip`.
 - В отчёте отделяй environment failure от contract failure.
 - Не устанавливай и не скачивай dependency самостоятельно без отдельного

@@ -1,6 +1,12 @@
 "use strict";
 
 module.exports = {
+  target: {
+    // Copy the project [engee_target].base_url origin here only when the shell
+    // cannot read architecture/agents/manifest.toml. An empty list is a hard
+    // configuration error unless PLAYWRIGHT_ALLOWED_ORIGINS is provided.
+    allowedOrigins: [],
+  },
   app: {
     readyTestId: "app-ready",
     loaderTestId: "app-loader",

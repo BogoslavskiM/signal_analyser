@@ -5,6 +5,7 @@ const os = require("os");
 const path = require("path");
 const config = require("./e2e.config");
 const { createLogger } = require("./support/logger");
+const { assertAllowedUrl, resolveAllowedOrigins } = require("./support/target_policy");
 
 const testRoot = __dirname;
 const specsDir = path.join(testRoot, "specs");
@@ -19,6 +20,7 @@ function usage() {
     "  PLAYWRIGHT_CDP_URL       Chrome DevTools endpoint, default http://127.0.0.1:9222",
     "  PLAYWRIGHT_APP_URL       Alternative to <app-url>",
     "  PLAYWRIGHT_PAGE_URL_MATCH Select an already-open page by URL fragment",
+    "  PLAYWRIGHT_ALLOWED_ORIGINS Comma-separated origins allowed by project [engee_target]",
     "  PLAYWRIGHT_CURRENT=1     Use an already-open page and skip navigation",
     "  PLAYWRIGHT_SPEC          Run specs whose relative path contains this text",
     "  PLAYWRIGHT_FEATURES      Comma-separated enabled feature override",
@@ -146,6 +148,15 @@ async function currentPage(browser, urlMatch) {
     process.exit(2);
   }
 
+  const allowedOrigins = resolveAllowedOrigins(
+    config,
+    process.env.PLAYWRIGHT_ALLOWED_ORIGINS
+  );
+  if (appUrl) assertAllowedUrl(appUrl, allowedOrigins, "application URL");
+  const runtimeConfig = Object.assign({}, config, {
+    target: Object.assign({}, config.target || {}, { allowedOrigins }),
+  });
+
   const cdpUrl = process.env.PLAYWRIGHT_CDP_URL || "http://127.0.0.1:9222";
   const releaseRunnerLock = acquireRunnerLock(cdpUrl);
   process.once("exit", releaseRunnerLock);
@@ -159,7 +170,11 @@ async function currentPage(browser, urlMatch) {
   const urlMatch = process.env.PLAYWRIGHT_PAGE_URL_MATCH ||
     (useCurrentPage ? config.app.pageUrlMatch || "" : "");
   const page = await currentPage(browser, urlMatch);
+  if (useCurrentPage) {
+    assertAllowedUrl(page.url(), allowedOrigins, "current page URL");
+  }
   runnerLog.log(`Using page: ${page.url() || "(blank)"}`);
+  runnerLog.log(`Allowed origins: ${allowedOrigins.join(", ")}`);
 
   const specFilter = process.env.PLAYWRIGHT_SPEC || "";
   const testFiles = findTests(specsDir).sort().filter(function (file) {
@@ -215,7 +230,7 @@ async function currentPage(browser, urlMatch) {
           await test({
             appUrl,
             assert: createAssert(file),
-            config,
+            config: runtimeConfig,
             features,
             log: logger.log,
             page,

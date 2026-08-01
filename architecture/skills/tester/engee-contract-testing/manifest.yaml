@@ -1,12 +1,12 @@
 schema_version: 2
 name: engee-contract-testing
-version: 0.2.0
+version: 0.3.0
 title: "Engee Contract Testing"
 description: >
   Tester skill для обязательного исследования через Engee MCP и полного
   контрактного тестирования реально используемых функций Engee: критические
-  сценарии, hard environment failures, cleanup и агрегированный отчёт без
-  runtime logs.
+  сценарии, project-locked target, hard environment failures, cleanup и
+  агрегированный отчёт без runtime logs.
 language: ru
 audience: [assistant]
 priority: 0.95

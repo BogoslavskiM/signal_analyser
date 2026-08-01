@@ -60,6 +60,13 @@ Own task scoping, role selection, handoffs, final review, and integration.
 In strict mode, do not implement broad changes inside role-owned product or test
 folders while the owning agent is active and able to edit them.
 
+This project locks every Engee runtime, MCP contract probe, deployment and E2E
+target to production at `https://engee.com`. Never assign devhub and never use
+it as a fallback. Require the production PAT only from protected root AGENTS
+instructions and never copy its value into repository files, reports, logs or
+saved commands. Legacy filenames or skill IDs containing `devhub` are
+compatibility labels only and do not override this target policy.
+
 Resolve reasoning effort from every role's `model_level` without lowering it
 for speed: `high` always uses `xhigh`, `medium` uses `medium`, and `low` uses
 `low`. Apply this mapping whenever a role thread is spawned or replaced.
