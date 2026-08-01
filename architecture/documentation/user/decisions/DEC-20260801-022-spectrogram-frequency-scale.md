@@ -3,7 +3,7 @@
 ID: `DEC-20260801-022`
 Дата: `2026-08-01`
 Статус: accepted
-Implementation: planned in Cascade 16; not deployed
+Implementation: Cascade 16, local checkpoint `8330822`; not deployed
 Supersedes: только exact three-key shape и Frequency Scale out-of-scope clauses
 в DEC-021; все Frequency Limits semantics DEC-021 сохраняются
 

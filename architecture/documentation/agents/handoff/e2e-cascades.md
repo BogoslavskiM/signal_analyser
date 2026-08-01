@@ -327,3 +327,22 @@ PASS. Static-only; browser and MATLAB untouched.
 risks: Conditional complex/N<2 and live timing await exact deployed target.
 follow-ups: Run C12/C13/C15 on accepted SHA with timing/network artifacts.
 next_task_candidates: Runtime E2E after explicit deployment authority.
+
+## Cascade 16 Spectrogram Frequency Scale static scenario — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c13_impl`.
+scope: `test/playwright/**`.
+contracts: Exact four-key request; real Linear/Log Plotly state and exact
+zero-bin floor; conditional complex requested/effective split; 422/two-409 UI
+recovery; Spectrum isolation; A/B/Clear/re-add and exact cleanup including row
+selection.
+changes: Added `spectrogram_frequency_scale.test.js`, selectors/feature and
+migrated older Spectrogram scenarios to four-key expectations. Audit removed
+fixed wait, strengthened Plotly readiness and canonical UI/cleanup assertions.
+verification: All Playwright JS syntax, support contract, runner help and diff
+PASS; final read-only audit CLEAN.
+browser_workspace_setup: Static-only; browser and MATLAB untouched.
+risks: Runtime network/timing/Plotly path awaits authorized exact deployment.
+follow-ups: Run isolated C16 on the accepted SHA with artifacts.
+next_task_candidates: C17 E2E only after implementation.

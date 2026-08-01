@@ -51,14 +51,18 @@
   `change`, целиком и через существующую revision queue. Log недоступен, пока
   в membership есть комплексный сигнал. Normalize Y остаётся локальным
   presentation control и не меняет Spectrum payload/revision.
-- Внутри той же Display tab для непустого Spectrogram показываются
-  `Overlap (%)`, normalized `Leakage` и пара `F min`/`F max` в фиксированных
-  Hz. Overlap принадлежит Display, default 50, product range 0..75; Leakage
+- Внутри той же Display tab для Spectrogram показываются `Overlap (%)`,
+  normalized `Leakage`, пара `F min`/`F max` в фиксированных Hz и Frequency
+  Scale (`Linear`/`Log`) с read-only effective state. Overlap принадлежит
+  Display, default 50, product range 0..75; Leakage
   независима от Spectrum Leakage, default 0.5, range 0..1. Auto-границы
   показывают backend-effective topology. Frequency draft коммитится атомарно
   только по Enter либо после выхода фокуса из всей пары; переход между полями
   запроса не создаёт. Очистка обоих полей возвращает Auto.
-  Empty/non-Spectrogram скрывает секцию без потери preferences. Frontend не
+  Frequency Scale default равен Linear; requested Log сохраняется при пустом
+  или complex source, но control disabled, а effective равен соответственно
+  пустому значению или Linear. Empty/non-Spectrogram скрывает секцию без потери
+  preferences. Frontend не
   рассчитывает hop, segment count, Kaiser window, RBW или matrix.
 - Overflow menu активного Display содержит доступное действие Clear Display.
   Пустая страница показывает явные empty states графика, Measurements и Peaks;
@@ -104,18 +108,23 @@ A/B независимы. При смене analysis source допустимый
 отвергаются атомарно.
 
 Additive `spectrogram_settings` — строгий полный объект
-`{overlap_percent:number,leakage:number,frequency_limits:null|object}`.
+`{overlap_percent:number,leakage:number,frequency_limits:null|object,frequency_scale:"linear|log"}`.
 Overlap/Leakage обязаны быть конечными JSON Number, но не Bool; диапазоны
 `[0,75]` и `[0,1]`, defaults нового Display `50` и `0.5`. Frequency Limits
 равны Auto `null` либо exact `{min_hz,max_hz,units:"Hz"}` с конечными non-Bool
 границами, `min_hz < max_hz` и всем interval внутри topology analysis source:
 real `[0,Fs/2]`, complex `[-Fs/2,Fs/2]`. Signed zero канонизируется.
-Missing/extra key, неверный type/units, non-finite, диапазон или внешний
+`frequency_scale` — lowercase requested enum с default `linear`. Missing/extra
+key, неверный type/units/enum, non-finite, диапазон или внешний
 interval дают field-level 422 без mutation/cache publication. Equal canonical
 input — cold no-op, изменение — одна revision, stale — 409 с максимум одним
 replay. A/B независимы, Clear сохраняет preference и не вызывает provider,
 первый re-add пересчитывает Spectrogram. Source change сохраняет только
-полностью допустимый explicit interval, иначе атомарно возвращает Auto.
+полностью допустимый explicit interval, иначе атомарно возвращает Auto;
+requested scale сохраняется всегда. Для отсутствующего source scale metadata
+равна `{requested,effective:null,available:[]}`, для real —
+`{requested,effective:requested,available:["linear","log"]}`, для complex —
+`{requested,effective:"linear",available:["linear"]}`.
 
 Snapshot добавляет non-null `row_selected_signal`, nullable root
 `analysis_signal` и `displays[].analysis_signal`; root/display
@@ -175,6 +184,17 @@ provider outputs не считаются bitwise эквивалентными. R
 backend-owned; wire применяет exact `10log10(P)` и только presentation bounding
 160×160. Source change сохраняет overlap, но меняет cache identity. `N<2` и
 empty Display возвращают typed empty без provider.
+
+Requested Frequency Scale принадлежит Display и публикуется через
+`plots.spectrogram.frequency_scale`, но не входит в query/cache/provider и не
+меняет backend `x/y/z`. Scale-only mutation на холодном cache возвращает
+typed-empty wire с metadata и не прогревает Spectrum/Spectrogram; следующий GET
+может материализовать данные. Frontend выбирает Plotly `yaxis.type` только по
+effective metadata. Для Log он клонирует presentation `y` и заменяет finite
+nonpositive coordinate ровно на половину минимального положительного bin, не
+меняя authoritative `y`, `z`, порядок или число строк. Пустая ось остаётся
+обычным empty state; непустая ось без положительной частоты даёт стабильную
+ошибку `spectrogram-log-frequency-error-state`.
 
 `plots.spectrogram.frequency_limits` всегда содержит `mode`, `requested` и
 `effective`. Для Auto effective равен полному authoritative topology, для

@@ -262,3 +262,16 @@ risks: Runtime E2E and Engee package gate remain external.
 follow-ups: Separate Architect documentation checkpoint. No push/deploy/merge
 was requested or performed.
 next_task_candidates: C16 only after frozen successor contract.
+
+## Cascade 16 local checkpoint — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c16_commit`.
+scope: Commit-only over accepted C16 `lib/public/test` paths.
+changes: Local commit `83308222896379eb72f1923006de39ce07265d8d`
+(`feat: добавить Frequency Scale Spectrogram`).
+verification: Cached diff PASS; backend full PASS including C16; frontend 2/2;
+working tree clean after commit.
+risks: Branch remains local and ahead of origin; no deployment evidence.
+follow-ups: No push/deploy/merge without explicit authority.
+next_task_candidates: Commit Architect C16 documentation after validation.

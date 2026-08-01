@@ -412,3 +412,22 @@ risks: Runtime provider/E2E remains undeployed; suspected Nyquist-touch edge is
 blocked by strict input/output guards.
 follow-ups: C16 Frequency Scale must not enter query/cache/provider.
 next_task_candidates: Typed presentation-only C16 state after successor ADR.
+
+## Cascade 16 Frequency Scale implementation — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c15_spectrogram_limits_probe`.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_service.jl`,
+`lib/services/signal_analyser_math.jl`.
+contracts: Dedicated scale enum; exact four-key parser/state; authoritative
+requested/effective/available; reversible real/complex/Clear lifecycle; scale
+excluded from query/cache/provider and backend arrays.
+changes: Added typed scale state and metadata projection. Scale-only cold/equal
+mutations perform zero spectral provider calls; computational setting changes
+retain existing recompute behavior.
+verification: Full backend PASS; C16 47/47, API 16/16; Julia parse/diff PASS;
+final integration audit CLEAN.
+risks: Local EngeeDSP and Devhub MCP unavailable; no runtime deployment.
+follow-ups: Power Limits requires separate evidence/ADR and OOP contract.
+next_task_candidates: C17 read-only inventory after research.

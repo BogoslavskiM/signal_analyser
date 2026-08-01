@@ -116,7 +116,8 @@ identity; Leakage, effective Frequency Limits, inclusive sample range,
 signal/sample rate и one/two-sided topology входят в typed key.
 
 Spectrogram settings нового Display: explicit `OverlapPercent=50`,
-`Leakage=0.5` и Auto Frequency Limits. Все значения принадлежат Display,
+`Leakage=0.5`, Auto Frequency Limits и requested Frequency Scale `linear`.
+Все значения принадлежат Display,
 сохраняются при Clear и
 независимо восстанавливаются при A/B; первый re-add пересчитывает raw
 Spectrogram. Exact overlap, Leakage, requested Auto/Explicit interval, source,
@@ -124,6 +125,9 @@ samples, sample rate и topology входят в typed raw-cache identity. Signe
 канонизируется. Auto и explicit полный domain различаются. Leakage меняет
 power/RBW, но при фиксированном overlap не меняет frequency/time axes в
 подтверждённом provider contract. Empty Display и `N<2` provider не вызывают.
+Requested Frequency Scale в query/cache/provider identity не входит и не меняет
+raw/wire `x/y/z`; eligibility и effective metadata выводятся только из topology
+analysis source.
 
 ## Numeric constraints и edge cases
 
@@ -158,6 +162,13 @@ analysis source; provider clipping не является продуктовым 
 requested границы с той же tolerance. Auto metadata берёт полный topology, а
 explicit metadata равна requested даже при typed-empty short input. Никакой
 post-hoc обрезки матрицы или собственной спектральной оценки нет.
+
+Spectrogram Log является presentation-only преобразованием координаты оси:
+frontend создаёт transient clone `y`, заменяя каждый finite `y<=0` ровно на
+`min(y[y>0])/2`. `z`, порядок и cardinality не меняются. Empty `y` не требует
+floor; непустая ось без положительного bin является ошибкой отображения. Это
+явная продуктовая политика Plotly, а не DSP-преобразование или заявленная
+MATLAB parity.
 
 Для raw statistics пустые/non-finite samples и неположительная либо
 неконечная `f_s` отвергаются до публикации view/display mutation. Позиции

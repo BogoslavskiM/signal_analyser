@@ -288,3 +288,19 @@ risks: Runtime browser behavior awaits exact target; source markup uses a safe
 dynamic mount into the existing compact one-line Spectrogram section.
 follow-ups: C16 requires backend-authoritative requested/effective state.
 next_task_candidates: C16 scale select only after successor ADR.
+
+## Cascade 16 Frequency Scale UI — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c13_impl`.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Exact four-key desired target; backend-authoritative requested/
+effective/available; disabled no-source/complex; bounded 422/409; transient Log
+y clone only.
+changes: Added native scale select, effective/error surfaces and Plotly Log
+presentation. All-nonpositive nonempty y has stable error; empty y remains the
+ordinary empty state.
+verification: Frontend 2/2, JS syntax/diff and final audit PASS.
+risks: Live Plotly/network behavior awaits exact deployment.
+follow-ups: Do not infer or add Power Limits before C17 ADR.
+next_task_candidates: C17 feasibility inventory after frozen contract.

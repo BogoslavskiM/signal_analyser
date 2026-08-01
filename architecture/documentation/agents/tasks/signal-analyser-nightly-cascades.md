@@ -926,3 +926,26 @@ the authoritative payload. Power Limits move to C17.
 | E2E Tester | `/root/e2e_c13_impl` | static scenario after docs commit | runtime after deployment | product selectors/metadata | C15 cleanup complete |
 | DevOps | `/root/devops_c12_commit` | contract commit after handoff | product freeze | Architect docs paths | C15 docs `3259119` |
 | MATLAB Researcher | `/root/matlab_c16_next_slice` | completed standby | safe GUI scenario later | incomplete Command Window line | docs/passive evidence complete |
+
+## Cascade 16 local freeze — 2026-08-01
+
+Status: `implemented-and-locally-verified`; product/test checkpoint
+`83308222896379eb72f1923006de39ce07265d8d`; not pushed or deployed.
+
+DEC-022 is implemented across Backend, Frontend, Tester and E2E ownership.
+Backend full, C16 47/47 + API 16/16, frontend 2/2, syntax/static/diff gates and
+three-pass integration audit are green. Tester `/root/tester_c16_replacement`
+replaced `/root/tester_c15_limits_matrix` after repeated incomplete migration
+turns. EngeeDSP remains absent locally and Devhub MCP returned unavailable/404;
+this is not isolated as an Engee defect.
+
+### Persistent role queue after C16
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c15_spectrogram_limits_probe` | C16 complete | C17 inventory after ADR | C17 evidence/decision | C16 full PASS |
+| Frontend | `/root/frontend_c13_impl` | C16 complete | C17 feasibility after ADR | C17 evidence/decision | front 2/2 |
+| Tester | `/root/tester_c16_replacement` | C16 complete | C17 matrix after ADR | C17 evidence/decision | 47/47 + 16/16 |
+| E2E Tester | `/root/e2e_c13_impl` | C16 static complete | C17 after implementation | no runtime target | final audit CLEAN |
+| DevOps | `/root/devops_c16_commit` | C16 product commit complete | docs commit | Architect docs validation | `8330822` |
+| MATLAB Researcher | `/root/matlab_c17_power_limits` | C17 docs-only research active | exact recommendation | unsafe MATLAB Command Window | C16 docs evidence |

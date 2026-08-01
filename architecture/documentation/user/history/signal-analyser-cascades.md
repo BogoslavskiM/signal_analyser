@@ -323,3 +323,26 @@
   Runtime E2E, push, deployment и merge не выполнялись. Local Engee gate
   проходит findpeaks 16/16 и затем падает только из-за отсутствующего EngeeDSP;
   prod provider probe остаётся runtime capability evidence.
+
+## 2026-08-01 — Cascade 16 Spectrogram Frequency Scale
+
+- `implemented`: exact четырёхключевой Spectrogram settings object получил
+  Display-local requested `frequency_scale` (`linear|log`, default `linear`).
+- Backend публикует authoritative requested/effective/available metadata:
+  no-source `null/[]`, real requested + Linear/Log, complex locked Linear.
+  Requested Log переживает real→complex→real и Clear без client writeback.
+- Scale-only mutation даёт одну revision, но не входит в typed query/cache/
+  provider и не меняет backend `x/y/z`; cold mutation не прогревает оба
+  spectral provider.
+- Frontend использует effective scale и transient clone частотной оси. Zero bin
+  заменяется ровно на `minPositive/2`; authoritative `y/z` не мутируют, а
+  непустая ось без положительных bins показывает стабильную ошибку.
+- Tester replacement `/root/tester_c16_replacement` завершил exact migration
+  после повторных незавершённых turn исходного `/root/tester_c15_limits_matrix`.
+  Три audit pass закрыли no-positive/no-source, stale three-key E2E, bounded
+  409, точные UI recovery и cleanup gaps; итоговый verdict `CLEAN`.
+- `verified locally`: backend full PASS, C16 47/47 + API 16/16, frontend 2/2,
+  Julia parse, Playwright syntax/support/help и diff PASS.
+- Product/test checkpoint `83308222896379eb72f1923006de39ce07265d8d`.
+  Runtime E2E, push, deployment и merge не выполнялись. Local EngeeDSP
+  отсутствует, Devhub MCP unavailable/404; Engee defect не заявлен.

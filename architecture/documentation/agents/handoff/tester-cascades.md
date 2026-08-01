@@ -294,3 +294,18 @@ risks: Real package gate remains prod-only; state aggregate cannot construct a
 zero-duration N=1 fixture, so N<2 metadata is tested through the typed path.
 follow-ups: Provisioned Engee rerun and runtime E2E only.
 next_task_candidates: C16 presentation-only zero-provider matrix after ADR.
+
+## Cascade 16 verification — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c16_replacement`; replaces
+`/root/tester_c15_limits_matrix` after repeated incomplete migration turns.
+scope: `test/back/**`, `test/front/**`.
+coverage: Exact four-key enum/parser/API, metadata, real/complex/no-source/N<2,
+A/B/Clear/re-add, cold/equal/combined provider-cache behavior, no-positive Log,
+authoritative no-source controls, 422 and bounded 409.
+verification: Full backend PASS; C16 47/47 + API 16/16; frontend 2/2; parse and
+diff PASS. Final integration audit CLEAN.
+risks: Local EngeeDSP absent and Devhub MCP SSE returned 404; no defect claim.
+follow-ups: Rerun Engee gate when environment is provisioned.
+next_task_candidates: C17 test matrix only after decision freeze.
