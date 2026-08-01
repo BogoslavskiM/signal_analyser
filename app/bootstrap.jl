@@ -14,4 +14,12 @@ const EXAMPLE_APP_STATE = Dict{String,Any}(
 )
 
 const SIGNAL_ANALYSER_STATE = default_signal_analyser_state()
-const SIGNAL_INVENTORY_SERVICE = SignalInventoryService(EngeeWorkspaceSignalSource())
+const WORKSPACE_VARIABLE_PROVIDER = EngeeWorkspaceVariableProvider()
+const WORKSPACE_CATALOG_SERVICE = WorkspaceCatalogService(WORKSPACE_VARIABLE_PROVIDER)
+const SIGNAL_INVENTORY_SERVICE = SignalInventoryService(
+    EngeeWorkspaceSignalSource(WORKSPACE_VARIABLE_PROVIDER),
+)
+const WORKSPACE_BATCH_IMPORT_SERVICE = WorkspaceBatchImportService(
+    WORKSPACE_CATALOG_SERVICE,
+    SIGNAL_INVENTORY_SERVICE,
+)

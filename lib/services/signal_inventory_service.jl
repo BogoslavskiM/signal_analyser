@@ -237,21 +237,24 @@ function signal_inventory_replace_display!(
     nothing
 end
 
-function signal_inventory_add_series!(
+function signal_inventory_add_candidates!(
     service::SignalInventoryService,
     state::SignalAnalyserState,
-    series::Vector{WorkspaceSignalSeries},
-    base_name::String,
-    source_color::Union{Nothing,String} = nothing,
+    candidates::AbstractVector{WorkspaceSignalCandidate},
 )::Vector{String}
-    isempty(series) && throw(ArgumentError("Signals mutation не может добавить пустой набор"))
+    isempty(candidates) && throw(ArgumentError("Signals mutation не может добавить пустой набор"))
     existing_names = Set(signal.name for signal in state.signals)
     added_names = String[]
     added_signals = AnalysedSignal[]
     working_signals = copy(state.signals)
-    for item in series
-        name = signal_inventory_unique_name(existing_names, base_name)
-        color = signal_inventory_next_color(service.palette, working_signals, source_color)
+    for candidate in candidates
+        item = candidate.series
+        name = signal_inventory_unique_name(existing_names, candidate.base_name)
+        color = signal_inventory_next_color(
+            service.palette,
+            working_signals,
+            candidate.source_color,
+        )
         signal = AnalysedSignal(
             name,
             color,
@@ -296,6 +299,19 @@ function signal_inventory_add_series!(
     state.row_selection = GlobalSignalSelection(first_added)
     signal_analyser_sync_active_display!(state, prospective_display)
     added_names
+end
+
+function signal_inventory_add_series!(
+    service::SignalInventoryService,
+    state::SignalAnalyserState,
+    series::Vector{WorkspaceSignalSeries},
+    base_name::String,
+    source_color::Union{Nothing,String} = nothing,
+)::Vector{String}
+    candidates = WorkspaceSignalCandidate[
+        WorkspaceSignalCandidate(base_name, item, source_color) for item in series
+    ]
+    signal_inventory_add_candidates!(service, state, candidates)
 end
 
 function signal_inventory_execute!(
@@ -461,6 +477,23 @@ function prepare_signal_inventory_mutation(
             err.field,
             sprint(showerror, err),
         ))
+    end
+    prospective.view.state_revision += 1
+    snapshot = signal_analyser_snapshot_unlocked(prospective)
+    PreparedSignalInventoryMutation(prospective, snapshot)
+end
+
+function prepare_signal_inventory_batch_mutation(
+    service::SignalInventoryService,
+    state::SignalAnalyserState,
+    candidates::AbstractVector{WorkspaceSignalCandidate},
+)::PreparedSignalInventoryMutation
+    prospective = signal_inventory_clone_state(state)
+    try
+        signal_inventory_add_candidates!(service, prospective, candidates)
+    catch err
+        err isa SignalAnalysisSourceCompatibilityError || rethrow()
+        throw(signal_inventory_validation_error(err.field, sprint(showerror, err)))
     end
     prospective.view.state_revision += 1
     snapshot = signal_analyser_snapshot_unlocked(prospective)

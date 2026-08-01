@@ -83,7 +83,7 @@ function node(attrs) {
     classList: { toggle() {}, contains() { return false; } },
     setAttribute(k, v) { attributes[k] = String(v); }, getAttribute(k) { return attributes[k] || null; },
     addEventListener(k, fn) { this.listeners[k] = fn; },
-    focus() { this.focused = true; }, closest() { return null; }, matches() { return false; },
+    focus() { this.focused = true; }, closest() { return null; }, matches() { return false; }, querySelectorAll() { return []; }, contains() { return false; },
   };
 }
 
@@ -94,7 +94,7 @@ function environment(fetch, options) {
     legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), spectrogramSettings: node(), spectrogramContractError: node(), spectrogramOverlap: node(), spectrogramOverlapError: node(), spectrogramLeakage: node(), spectrogramLeakageError: node(), spectrogramFrequencyLimitsControls: node(), spectrogramFrequencyMin: node(), spectrogramFrequencyMax: node(), spectrogramFrequencyLimitsError: node(), spectrogramFrequencyScale: node(), spectrogramFrequencyScaleEffective: node(), spectrogramFrequencyScaleError: node(), spectrogramPowerLimitsControls: node(), spectrogramPowerMin: node(), spectrogramPowerMax: node(), spectrogramPowerLimitsEffective: node(), spectrogramPowerLimitsError: node(), persistenceSettings: node(), persistenceLeakage: node(), persistenceLeakageValue: node(), persistenceLeakageError: node(), spectrumSettings: node(), spectrumScale: node(), spectrumFrequency: node(), spectrumLeakage: node(), spectrumLeakageValue: node(), spectrumError: node(), spectrumFrequencyMin: node(), spectrumFrequencyMax: node(), spectrumFrequencyLimitsError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
     signalsAddAction: node(), signalsAddMenu: node(), signalsAddWorkspaceAction: node(), signalsAddSelectionAction: node(), signalsCopyAction: node(), signalsDeleteAction: node(),
-    signalsWorkspaceDialog: node(), signalsWorkspaceVariable: node(), signalsWorkspaceName: node(), signalsWorkspaceRate: node(), signalsWorkspaceSubmit: node(), signalsWorkspaceCancel: node(), signalsWorkspaceClose: node(),
+    signalsWorkspaceDialog: node(), signalsWorkspaceTitle: node(), signalsWorkspaceForm: node(), signalsWorkspaceRefresh: node(), signalsWorkspaceLoading: node(), signalsWorkspaceEmpty: node(), signalsWorkspaceList: node(), signalsWorkspaceSelectionCount: node(), signalsWorkspaceSampleRateGroup: node(), signalsWorkspaceVariable: node(), signalsWorkspaceName: node(), signalsWorkspaceRate: node(), signalsWorkspaceRateError: node(), signalsWorkspaceBatchError: node(), signalsWorkspaceRetry: node(), signalsWorkspaceSuccess: node(), signalsWorkspaceSuccessCount: node(), signalsWorkspaceDone: node(), signalsWorkspaceSubmit: node(), signalsWorkspaceCancel: node(), signalsWorkspaceClose: node(),
     signalsDeleteDialog: node(), signalsDeleteName: node(), signalsDeleteConfirm: node(), signalsDeleteCancel: node(), signalsDeleteClose: node(), signalsActionError: node(), signalsActionErrorText: node(), signalsActionErrorClose: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
@@ -147,9 +147,9 @@ function environment(fetch, options) {
     "[data-testid='signals-add-action']": e.signalsAddAction, "[data-testid='signals-add-menu']": e.signalsAddMenu,
     "[data-testid='signals-add-workspace-action']": e.signalsAddWorkspaceAction, "[data-testid='signals-add-selection-action']": e.signalsAddSelectionAction,
     "[data-testid='signals-copy-action']": e.signalsCopyAction, "[data-testid='signals-delete-action']": e.signalsDeleteAction,
-    "[data-testid='signals-workspace-dialog']": e.signalsWorkspaceDialog, "[data-testid='signals-workspace-variable-input']": e.signalsWorkspaceVariable,
+    "[data-testid='signals-workspace-dialog']": e.signalsWorkspaceDialog, "[data-testid='signals-workspace-form']": e.signalsWorkspaceForm, "[data-testid='signals-workspace-refresh']": e.signalsWorkspaceRefresh, "[data-testid='signals-workspace-loading']": e.signalsWorkspaceLoading, "[data-testid='signals-workspace-empty']": e.signalsWorkspaceEmpty, "[data-testid='signals-workspace-list']": e.signalsWorkspaceList, "[data-testid='signals-workspace-selection-count']": e.signalsWorkspaceSelectionCount, "[data-testid='signals-workspace-sample-rate-group']": e.signalsWorkspaceSampleRateGroup, "[data-testid='signals-workspace-variable-input']": e.signalsWorkspaceVariable,
     "[data-testid='signals-workspace-name-input']": e.signalsWorkspaceName, "[data-testid='signals-workspace-sample-rate-input']": e.signalsWorkspaceRate,
-    "[data-testid='signals-workspace-submit']": e.signalsWorkspaceSubmit, "[data-testid='signals-workspace-cancel']": e.signalsWorkspaceCancel, "[data-testid='signals-workspace-close']": e.signalsWorkspaceClose,
+    "[data-testid='signals-workspace-sample-rate-error']": e.signalsWorkspaceRateError, "[data-testid='signals-workspace-batch-error']": e.signalsWorkspaceBatchError, "[data-testid='signals-workspace-retry']": e.signalsWorkspaceRetry, "[data-testid='signals-workspace-success']": e.signalsWorkspaceSuccess, "[data-testid='signals-workspace-success-count']": e.signalsWorkspaceSuccessCount, "[data-testid='signals-workspace-done']": e.signalsWorkspaceDone, "[data-testid='signals-workspace-submit']": e.signalsWorkspaceSubmit, "[data-testid='signals-workspace-cancel']": e.signalsWorkspaceCancel, "[data-testid='signals-workspace-close']": e.signalsWorkspaceClose,
     "[data-testid='signals-delete-dialog']": e.signalsDeleteDialog, "[data-testid='signals-delete-name']": e.signalsDeleteName, "[data-testid='signals-delete-confirm']": e.signalsDeleteConfirm,
     "[data-testid='signals-delete-cancel']": e.signalsDeleteCancel, "[data-testid='signals-delete-close']": e.signalsDeleteClose, "[data-testid='signals-action-error']": e.signalsActionError, "[data-testid='signals-action-error-text']": e.signalsActionErrorText, "[data-testid='signals-action-error-close']": e.signalsActionErrorClose,
     "[role='tablist'][aria-label='Данные анализатора']": e.bottomTabs, "[data-testid='bottom-panel-signals']": e.signals,
@@ -162,7 +162,10 @@ function environment(fetch, options) {
   const scriptOutcomes = (options && options.scriptOutcomes || []).slice();
   const document = {
     activeElement: null,
+    listeners: {},
+    documentElement: { dataset: {} },
     querySelector(selector) { return selectors[selector] || null; },
+    getElementById(id) { return id === "signals-workspace-title" ? e.signalsWorkspaceTitle : null; },
     querySelectorAll(selector) {
       if (selector === "[data-bottom-tab]") return [e.signalBottomTab, e.measurementsBottomTab, e.peaksBottomTab];
       if (selector === "[data-settings-tab]") return e.settingsTabNodes;
@@ -173,6 +176,7 @@ function environment(fetch, options) {
       if (tag !== "script") return node();
       return { src: "", async: false, onload: null, onerror: null };
     },
+    addEventListener(type, handler) { (this.listeners[type] || (this.listeners[type] = [])).push(handler); },
     head: { appendChild(script) {
       calls.push({ script: script.src });
       const outcome = scriptOutcomes.shift() || "error";
@@ -211,6 +215,7 @@ function addTarget() { return { closest(selector) { return selector === "[data-t
 function closeTarget(id) { return { closest(selector) { return selector === "[data-close-display]" ? { dataset: { closeDisplay: id } } : null; } }; }
 function checkboxTarget(name, checked) { return { checked, dataset: { signalVisibility: name }, closest(selector) { return selector === "[data-signal-visibility]" ? this : null; }, matches() { return true; } }; }
 function rowTarget(name) { return { closest(selector) { return selector === "[data-signal]" ? { dataset: { signal: name } } : null; }, matches() { return false; } }; }
+function workspaceTarget(testId) { return { closest(selector) { return String(selector).includes(`data-testid='${testId}'`) ? {} : null; } }; }
 
 module.exports = async function testDisplayBehavior(assert) {
   const initial = snapshot(0);
@@ -419,55 +424,135 @@ module.exports = async function testDisplayBehavior(assert) {
     return result;
   }
   const signalsInitial = signalsSnapshot(0, [A, B], A), importedSignal = "workspace";
-  const signalsImported = signalsSnapshot(1, [A, B, importedSignal], importedSignal);
+
+  // DEC-039 replaces the typed one-variable form with a server-owned catalog.
+  const rawVariable = {variable_id:"wv_raw", name:"raw matrix", type:"Matrix{Float64}", shape:[3, 2], sample_count:3, source_kind:"raw_matrix", compatibility:"requires_sample_rate", reason:null, sample_rate_requirement:"required", selectable:true};
+  const timedVariable = {variable_id:"wv_timed", name:"timed vector", type:"Timed", shape:[3], sample_count:3, source_kind:"timed_vector", compatibility:"compatible", reason:null, sample_rate_requirement:"not_needed", selectable:true};
+  const incompatibleVariable = {variable_id:"wv_bad", name:"unsupported", type:"String", shape:[], sample_count:0, source_kind:"unsupported", compatibility:"incompatible", reason:"Тип не поддерживается", sample_rate_requirement:"unsupported", selectable:false};
+  const catalog = {catalog_revision:"wc_00000000-0000-4000-8000-000000000000", expires_at:"2026-08-01T00:05:00Z", truncated:false, total:3, variables:[rawVariable, timedVariable, incompatibleVariable]};
+  const catalogCalls = [], catalogResolvers = [];
+  const catalogEnv = await boot((url, options) => {
+    catalogCalls.push({url, options});
+    if (url === "./api/state") return Promise.resolve(response(200, signalsInitial));
+    if (url === "./api/workspace/variables") return Promise.resolve(response(200, catalog));
+    return new Promise(resolve => catalogResolvers.push(resolve));
+  });
+  const workspaceClick = catalogEnv.document.listeners.click.at(-1);
+  workspaceClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  assert(catalogCalls.filter(call => call.url === "./api/workspace/variables").length === 1 && catalogEnv.e.signalsWorkspaceDialog.hidden === false, "workspace Add must open one catalog dialog and load only the server-owned catalog");
+  workspaceClick({target:{closest() { return null; }}, preventDefault() {}, stopImmediatePropagation() {}});
+  assert(catalogEnv.e.signalsWorkspaceDialog.hidden === false, "form overlay click must be inert; only its visible Close or Cancel may dismiss the browser");
+  assert(catalogEnv.e.signalsWorkspaceList.getAttribute("aria-busy") === "false" && catalogEnv.e.signalsWorkspaceList.innerHTML.includes("raw matrix") && catalogEnv.e.signalsWorkspaceList.innerHTML.includes("Тип:") && catalogEnv.e.signalsWorkspaceList.innerHTML.includes("Размер:") && catalogEnv.e.signalsWorkspaceList.innerHTML.includes("Отсчёты:") && catalogEnv.e.signalsWorkspaceList.innerHTML.includes("Источник:") && catalogEnv.e.signalsWorkspaceList.innerHTML.includes("Не поддерживается") && catalogEnv.e.signalsWorkspaceList.innerHTML.includes("disabled"), "catalog rows must expose visible metadata, explicit unsupported wording, a disabled incompatible checkbox, and settled list aria-busy=false");
+  const workspaceChange = catalogEnv.document.listeners.change.at(-1);
+  workspaceChange({target:{dataset:{workspaceVariableId:"wv_timed"}, checked:true}});
+  workspaceChange({target:{dataset:{workspaceVariableId:"wv_raw"}, checked:true}});
+  assert(catalogEnv.e.signalsWorkspaceSelectionCount.textContent === "Выбрано: 2" && catalogEnv.e.signalsWorkspaceSampleRateGroup.hidden === false && catalogEnv.e.signalsWorkspaceSubmit.disabled === true, "multi-select must require the shared sample rate exactly when a raw entry is checked");
+  const workspaceInput = catalogEnv.document.listeners.input.at(-1);
+  workspaceInput({target:catalogEnv.e.signalsWorkspaceRate});
+  assert(catalogEnv.e.signalsWorkspaceRate.getAttribute("aria-invalid") === "true" && catalogEnv.e.signalsWorkspaceRate.getAttribute("aria-describedby") === "signals-workspace-sample-rate-hint signals-workspace-sample-rate-error", "invalid required Fs must expose both hint and actual inline error through aria-describedby");
+  catalogEnv.e.signalsWorkspaceRate.value = "48000";
+  workspaceInput({target:catalogEnv.e.signalsWorkspaceRate});
+  assert(catalogEnv.e.signalsWorkspaceRate.getAttribute("aria-invalid") === "false" && catalogEnv.e.signalsWorkspaceRate.getAttribute("aria-describedby") === "signals-workspace-sample-rate-hint", "valid Fs must remove the inactive error description while retaining its hint");
+  workspaceClick({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  const batchCall = catalogCalls.find(call => call.url === "./api/signals");
+  assert(batchCall && JSON.stringify(JSON.parse(batchCall.options.body)) === JSON.stringify({state_revision:0, operation:"import_workspace_batch", catalog_revision:catalog.catalog_revision, selections:[{variable_id:"wv_raw", sample_rate_hz:48000}, {variable_id:"wv_timed", sample_rate_hz:null}]}), "browser batch import must serialize catalog-order opaque IDs only, with raw Fs and timed null");
+  assert(catalogEnv.e.signalsWorkspaceSubmit.disabled && catalogEnv.e.signalsWorkspaceList.getAttribute("aria-busy") === "true" && !catalogEnv.e.rows.innerHTML.includes("raw matrix"), "batch import must be action-local busy on both form/list and never add optimistic inventory rows");
+  catalogResolvers.shift()(response(200, signalsSnapshot(1, [A, B, "raw matrix", "timed vector"], "raw matrix")));
+  await flush();
+  assert(catalogEnv.e.signalsWorkspaceDialog.hidden === true && catalogEnv.e.signalsWorkspaceSuccess.hidden === false && catalogEnv.e.signalsWorkspaceSuccessCount.textContent === "Добавлено: 2", "authoritative batch success must close the form before opening a separate acknowledged count dialog");
+  catalogEnv.e.signalsWorkspaceSuccess.querySelectorAll = () => [catalogEnv.e.signalsWorkspaceDone];
+  const successTrap = catalogEnv.document.listeners.keydown[1];
+  catalogEnv.document.activeElement = catalogEnv.e.signalsWorkspaceDone;
+  let successTabPrevented = false, successShiftTabPrevented = false;
+  successTrap({key:"Tab", shiftKey:false, preventDefault() { successTabPrevented = true; }, stopImmediatePropagation() {}});
+  successTrap({key:"Tab", shiftKey:true, preventDefault() { successShiftTabPrevented = true; }, stopImmediatePropagation() {}});
+  const successPosts = catalogCalls.filter(call => call.url === "./api/signals").length;
+  let successEscapePrevented = false, successEnterPrevented = false;
+  catalogEnv.document.listeners.keydown.forEach(handler => handler({key:"Escape", preventDefault() { successEscapePrevented = true; }, stopImmediatePropagation() {}}));
+  catalogEnv.document.listeners.keydown.forEach(handler => handler({key:"Enter", preventDefault() { successEnterPrevented = true; }, stopImmediatePropagation() {}}));
+  workspaceClick({target:{closest() { return null; }}, preventDefault() {}, stopImmediatePropagation() {}});
+  assert(successTabPrevented && successShiftTabPrevented && catalogEnv.e.signalsWorkspaceDone.focused && successEscapePrevented && successEnterPrevented && catalogEnv.e.signalsWorkspaceSuccess.hidden === false && catalogCalls.filter(call => call.url === "./api/signals").length === successPosts, "Done-only success dialog must self-wrap Tab/Shift+Tab and keep Escape, Enter, and overlay inert");
+  workspaceClick({target:workspaceTarget("signals-workspace-done"), preventDefault() {}, stopImmediatePropagation() {}});
+  assert(catalogEnv.e.signalsWorkspaceSuccess.hidden === true && catalogEnv.e.signalsAddWorkspaceAction.focused === true, "Done must not repeat the batch and must restore focus to the workspace Add menu action");
+  workspaceClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  workspaceClick({target:workspaceTarget("signals-workspace-cancel"), preventDefault() {}, stopImmediatePropagation() {}});
+  assert(catalogEnv.e.signalsWorkspaceDialog.hidden === true && catalogEnv.e.signalsAddWorkspaceAction.focused === true, "visible Cancel must dismiss the browser and restore the workspace Add trigger");
+  workspaceClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  workspaceClick({target:workspaceTarget("signals-workspace-close"), preventDefault() {}, stopImmediatePropagation() {}});
+  assert(catalogEnv.e.signalsWorkspaceDialog.hidden === true && catalogEnv.e.signalsAddWorkspaceAction.focused === true, "visible Close must dismiss the browser and restore the workspace Add trigger");
+  workspaceClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  workspaceChange({target:{dataset:{workspaceVariableId:"wv_raw"}, checked:true}});
+  catalogEnv.e.signalsWorkspaceRate.value = "48000";
+  workspaceInput({target:catalogEnv.e.signalsWorkspaceRate});
+  workspaceClick({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  catalogResolvers.shift()(response(422, {error:{message:"Значение raw matrix больше недоступно"}}));
+  await flush();
+  assert(catalogEnv.e.signalsWorkspaceDialog.hidden === false && catalogEnv.e.signalsWorkspaceList.innerHTML.includes("checked") && catalogEnv.e.signalsWorkspaceRate.value === "48000" && catalogEnv.e.signalsWorkspaceBatchError.hidden === false, "batch 422 must preserve the catalog, checks, shared Fs and a recoverable error without optimistic rows");
+  workspaceClick({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  catalogResolvers.shift()(response(409, {error:{code:"workspace_changed"}}));
+  await flush();
+  assert(catalogCalls.filter(call => call.url === "./api/signals").length === 3 && catalogCalls.filter(call => call.url === "./api/workspace/variables").length === 5 && !catalogEnv.e.signalsWorkspaceList.innerHTML.includes("checked") && catalogEnv.e.signalsWorkspaceSubmit.disabled, "catalog conflict must refresh into an unselected fail-closed dialog and never replay the mutation automatically");
+
+  const browserLoads = [], browserEnv = await boot((url) => {
+    if (url === "./api/state") return Promise.resolve(response(200, signalsInitial));
+    return new Promise(resolve => browserLoads.push(resolve));
+  });
+  const browserClick = browserEnv.document.listeners.click.at(-1);
+  browserClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  assert(browserEnv.e.signalsWorkspaceForm.getAttribute("aria-busy") === "true" && browserEnv.e.signalsWorkspaceLoading.hidden === false && browserEnv.e.signalsWorkspaceRefresh.disabled && browserEnv.e.signalsWorkspaceClose.disabled && browserEnv.e.signalsWorkspaceTitle.focused, "catalog loading must expose one busy form, lock every visible dismissal/control and focus the title");
+  browserLoads.shift()(response(502, {error:{message:"provider unavailable"}}));
+  await flush();
+  assert(browserEnv.e.signalsWorkspaceRetry.hidden === false && browserEnv.e.signalsWorkspaceBatchError.hidden === false && browserEnv.e.signalsWorkspaceRetry.focused, "catalog provider failure must retain a recoverable Retry destination rather than fabricate an empty catalog");
+  browserClick({target:workspaceTarget("signals-workspace-retry"), preventDefault() {}, stopImmediatePropagation() {}});
+  browserLoads.shift()(response(200, {catalog_revision:"wc_123e4567-e89b-42d3-a456-426614174000", expires_at:"2099-01-01T00:00:00Z", truncated:true, total:1001, variables:[Object.assign({}, timedVariable)]}));
+  await flush();
+  assert(browserEnv.e.signalsWorkspaceForm.getAttribute("aria-busy") === "false" && browserEnv.e.signalsWorkspaceEmpty.hidden === true && browserEnv.e.signalsWorkspaceList.innerHTML.includes("timed vector") && browserEnv.e.signalsWorkspaceSubmit.disabled, "a nonempty truncated catalog completion must end loading, render its available row, and still prohibit an empty batch mutation");
+  assert(browserEnv.e.signalsWorkspaceSelectionCount.textContent.includes("Каталог обновлён. Выберите переменные снова.") && browserEnv.e.signalsWorkspaceSelectionCount.textContent.includes("1 из 1001") && browserEnv.e.signalsWorkspaceSelectionCount.textContent.includes("лимит 1000"), "Retry must show the reset instruction and truncated shown/total/cap metadata simultaneously");
+
+  const extractInitial = signalsSnapshot(0, [A, B], A);
+  extractInitial.time_limits = {min_s:0, max_s:.2, units:"s"};
+  extractInitial.displays[0].time_limits = {min_s:0, max_s:.2, units:"s"};
+  const extractCalls = [], extractResolvers = [];
+  const extractEnv = await boot((url, options) => {
+    extractCalls.push({url, options});
+    return url === "./api/state" ? Promise.resolve(response(200, extractInitial)) : new Promise(resolve => extractResolvers.push(resolve));
+  });
+  extractEnv.e.signalsAddSelectionAction.listeners.click({target:extractEnv.e.signalsAddSelectionAction});
+  await flush();
+  const extractCall = extractCalls.find(call => call.url === "./api/signals");
+  assert(extractCall && JSON.stringify(JSON.parse(extractCall.options.body)) === JSON.stringify({state_revision:0, operation:"extract_time_limits", display_id:"display-1"}), "Extract must submit only the authoritative active Display ID and revision, never plot payload/ROI samples");
+
   const signalsCalls = [], signalsResolvers = [];
   const signalsEnv = await boot((url, options) => { signalsCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, signalsInitial)) : new Promise(resolve => signalsResolvers.push(resolve)); });
   let addEnterPrevented = false;
   signalsEnv.e.signalsAddAction.listeners.keydown({key:"Enter", target:signalsEnv.e.signalsAddAction, preventDefault() { addEnterPrevented = true; }}); await flush();
   assert(addEnterPrevented && signalsEnv.e.signalsAddMenu.hidden === false && signalsEnv.e.signalsAddWorkspaceAction.focused === true, "Enter on Signals Add must mount the menu and focus Workspace after rendering without a network mutation");
-  signalsEnv.e.signalsAddWorkspaceAction.listeners.click({target:signalsEnv.e.signalsAddWorkspaceAction});
-  assert(signalsEnv.e.signalsAddMenu.hidden === true && signalsEnv.e.signalsWorkspaceDialog.hidden === false, "workspace menu action closes the menu and opens its dialog");
-  signalsEnv.e.signalsWorkspaceVariable.value = "workspace"; signalsEnv.e.signalsWorkspaceName.value = "";
-  signalsEnv.e.signalsWorkspaceRate.value = "";
-  signalsEnv.e.signalsWorkspaceSubmit.listeners.click({target:signalsEnv.e.signalsWorkspaceSubmit}); await flush();
-  const blankRateCall = signalsCalls.find(call => call.url === "./api/signals");
-  assert(JSON.parse(blankRateCall.options.body).sample_rate_hz === null, "blank sample rate must serialize explicitly as null for a timed workspace value, without Number conversion");
-  signalsResolvers.shift()(response(422, {error:{fields:{sample_rate_hz:"Требуется частота дискретизации для raw array"}}})); await flush();
-  assert(signalsEnv.e.signalsWorkspaceDialog.hidden === false && signalsEnv.e.signalsWorkspaceVariable.value === "workspace" && signalsEnv.e.signalsWorkspaceRate.value === "" && signalsEnv.e.signalsActionError.hidden === false, "raw workspace 422 after blank sample rate must preserve the timed-import form and field feedback");
-  for (const invalidRate of ["NaN", "Infinity", "-Infinity", "0", "-1", "text"]) {
-    signalsEnv.e.signalsWorkspaceRate.value = invalidRate;
-    signalsEnv.e.signalsWorkspaceSubmit.listeners.click({target:signalsEnv.e.signalsWorkspaceSubmit}); await flush();
-    assert(signalsCalls.filter(call => call.url === "./api/signals").length === 1 && signalsEnv.e.signalsActionError.hidden === false, "workspace sample-rate " + JSON.stringify(invalidRate) + " must fail locally and never serialize non-finite/non-positive input");
-  }
-  signalsEnv.e.signalsWorkspaceRate.value = "10";
-  signalsEnv.e.signalsWorkspaceSubmit.listeners.click({target:signalsEnv.e.signalsWorkspaceSubmit}); await flush();
-  const importCall = signalsCalls.filter(call => call.url === "./api/signals").at(-1);
-  assert(JSON.stringify(JSON.parse(importCall.options.body)) === JSON.stringify({state_revision:0, operation:"import_workspace", variable_name:"workspace", signal_name:null, sample_rate_hz:10}), "workspace Add must send the strict import_workspace union body");
-  assert(signalsEnv.e.signalsWorkspaceSubmit.disabled && !signalsEnv.e.signalsCopyAction.disabled && !signalsEnv.e.signalsDeleteAction.disabled && !signalsEnv.e.rows.innerHTML.includes(importedSignal), "Signals mutation is action-local busy and never optimistically mutates rows");
-  signalsResolvers.shift()(response(200, signalsImported)); await flush();
-  assert(signalsEnv.e.signalsWorkspaceDialog.hidden === false && signalsEnv.e.rows.innerHTML.includes(importedSignal) && signalsEnv.e.rows.innerHTML.includes("data-signal='" + importedSignal + "'"), "authoritative full snapshot, not optimistic state, publishes an imported row while explicit dialog close remains user-controlled");
-  signalsEnv.e.signalsWorkspaceClose.listeners.click({target:signalsEnv.e.signalsWorkspaceClose});
-  assert(signalsEnv.e.signalsWorkspaceDialog.hidden === true, "workspace dialog close is a visible local action");
-
-  const copiedSignal = importedSignal + "_Copy", copiedSnapshot = signalsSnapshot(2, [A, B, importedSignal, copiedSignal], copiedSignal);
+  const copiedSignal = A + "_Copy", copiedSnapshot = signalsSnapshot(1, [A, B, copiedSignal], copiedSignal);
   signalsEnv.e.signalsCopyAction.listeners.click({target:signalsEnv.e.signalsCopyAction}); await flush();
   const copyCall = signalsCalls.filter(call => call.url === "./api/signals").at(-1);
-  assert(JSON.stringify(JSON.parse(copyCall.options.body)) === JSON.stringify({state_revision:1, operation:"duplicate", signal_name:importedSignal}), "Copy must use globally row-selected signal rather than a checkbox membership target");
+  assert(JSON.stringify(JSON.parse(copyCall.options.body)) === JSON.stringify({state_revision:0, operation:"duplicate", signal_name:A}), "Copy must use globally row-selected signal rather than a checkbox membership target");
   signalsResolvers.shift()(response(200, copiedSnapshot)); await flush();
   assert(signalsEnv.e.rows.innerHTML.includes(copiedSignal), "Copy becomes visible only from its authoritative full snapshot");
   signalsEnv.e.signalsDeleteAction.listeners.click({target:signalsEnv.e.signalsDeleteAction});
-  assert(signalsEnv.e.signalsDeleteDialog.hidden === false && signalsCalls.filter(call => call.url === "./api/signals").length === 3, "Delete opens a confirmation dialog and does not mutate before confirm");
+  assert(signalsEnv.e.signalsDeleteDialog.hidden === false && signalsCalls.filter(call => call.url === "./api/signals").length === 1, "Delete opens a confirmation dialog and does not mutate before confirm");
   signalsEnv.e.signalsDeleteCancel.listeners.click({target:signalsEnv.e.signalsDeleteCancel});
-  assert(signalsEnv.e.signalsDeleteDialog.hidden === true && signalsCalls.filter(call => call.url === "./api/signals").length === 3, "Delete cancel closes without an API mutation");
+  assert(signalsEnv.e.signalsDeleteDialog.hidden === true && signalsCalls.filter(call => call.url === "./api/signals").length === 1, "Delete cancel closes without an API mutation");
   signalsEnv.e.signalsDeleteAction.listeners.click({target:signalsEnv.e.signalsDeleteAction}); signalsEnv.e.signalsDeleteConfirm.listeners.click({target:signalsEnv.e.signalsDeleteConfirm}); await flush();
   const deleteCall = signalsCalls.filter(call => call.url === "./api/signals").at(-1);
-  assert(JSON.stringify(JSON.parse(deleteCall.options.body)) === JSON.stringify({state_revision:2, operation:"delete", signal_name:copiedSignal}), "Delete confirm must send only the selected signal and current revision");
-  const staleDeleteSnapshot = signalsSnapshot(3, [A, B, importedSignal, copiedSignal], copiedSignal);
+  assert(JSON.stringify(JSON.parse(deleteCall.options.body)) === JSON.stringify({state_revision:1, operation:"delete", signal_name:copiedSignal}), "Delete confirm must send only the selected signal and current revision");
+  const staleDeleteSnapshot = signalsSnapshot(2, [A, B, copiedSignal], copiedSignal);
   signalsResolvers.shift()(response(409, {current:staleDeleteSnapshot})); await flush();
   const deleteReplay = signalsCalls.filter(call => call.url === "./api/signals");
-  assert(deleteReplay.length === 5 && JSON.parse(deleteReplay.at(-1).options.body).state_revision === 3, "first Signals 409 must canonicalize from a newer revision and retry exactly once when its selected source still exists");
+  assert(deleteReplay.length === 3 && JSON.parse(deleteReplay.at(-1).options.body).state_revision === 2, "first Signals 409 must canonicalize from a newer revision and retry exactly once when its selected source still exists");
   signalsResolvers.shift()(response(422, {error:{fields:{signal_name:"Недопустимый сигнал"}}})); await flush();
-  assert(signalsEnv.e.signalsDeleteDialog.hidden === false && signalsEnv.e.signalsActionError.hidden === false && signalsCalls.filter(call => call.url === "./api/signals").length === 5, "Signals 422 preserves the visible error form and bounds retry without optimistic rollback");
+  assert(signalsEnv.e.signalsDeleteDialog.hidden === false && signalsEnv.e.signalsActionError.hidden === false && signalsCalls.filter(call => call.url === "./api/signals").length === 3, "Signals 422 preserves the visible error form and bounds retry without optimistic rollback");
 
   const localTabRequests = [];
   const localTabs = await boot((url, options) => {
@@ -1721,4 +1806,98 @@ module.exports = async function testDisplayBehavior(assert) {
   const c18EmptyEnv = await boot(() => Promise.resolve(response(200, c18Empty)));
   const c18EmptyPlot = c18EmptyEnv.calls.filter(call => call.plot).at(-1);
   assert(c18EmptyPlot.data.length === 1 && c18EmptyPlot.data[0].type === "heatmap" && c18EmptyPlot.data[0].x.length === 0 && c18EmptyPlot.data[0].y.length === 0 && c18EmptyPlot.data[0].z.length === 0, "Cascade 18 typed-empty Persistence must retain the existing generic empty heatmap wire without a new frontend state");
+
+  // DEC-039 release matrix: the catalog token is a time-bounded authority.
+  // Keep this isolated from the larger Signals sequence so each stale branch
+  // proves both its wire bound and its visible fail-closed state.
+  async function workspaceStaleScenario(expiresAt, conflict, currentSnapshot) {
+    const requests = [], signalResolvers = [], catalogResolvers = []; let catalogFetches = 0;
+    const scenarioCatalog = { catalog_revision:"wc_6393fd37-ecdc-4be2-9f27-19be23219618", expires_at:expiresAt, truncated:false, total:1, variables:[Object.assign({}, timedVariable)] };
+    const env = await boot((url, options) => {
+      requests.push({url, options});
+      if (url === "./api/state") return Promise.resolve(response(200, signalsInitial));
+      if (url === "./api/workspace/variables") return ++catalogFetches === 1 ? Promise.resolve(response(200, scenarioCatalog)) : new Promise(resolve => catalogResolvers.push(resolve));
+      return new Promise(resolve => signalResolvers.push(resolve));
+    });
+    const click = env.document.listeners.click.at(-1), change = env.document.listeners.change.at(-1);
+    click({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+    await flush();
+    change({target:{dataset:{workspaceVariableId:"wv_timed"}, checked:true}});
+    click({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
+    await flush();
+    signalResolvers.shift()(response(409, {error:{code:conflict || "stale_state"}, current:currentSnapshot || signalsSnapshot(1, [A, B], A)}));
+    await flush();
+    return {env, requests, signalResolvers, catalogResolvers};
+  }
+  const replayable = await workspaceStaleScenario("2099-01-01T00:00:00Z");
+  const replayablePosts = replayable.requests.filter(call => call.url === "./api/signals");
+  assert(replayablePosts.length === 2 && JSON.parse(replayablePosts[1].options.body).state_revision === 1, "only a current, same-Display catalog with parseable future expiry may replay stale_state exactly once using current revision");
+  replayable.signalResolvers.shift()(response(409, {error:{code:"stale_state"}, current:signalsSnapshot(2, [A, B], A)}));
+  await flush();
+  assert(replayable.requests.filter(call => call.url === "./api/signals").length === 2 && replayable.env.e.signalsWorkspaceBatchError.hidden === false, "a second stale_state must stop visibly and never issue a third automatic replay");
+  replayable.env.document.listeners.click.at(-1)({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  const explicitRetry = replayable.requests.filter(call => call.url === "./api/signals");
+  assert(explicitRetry.length === 3 && JSON.parse(explicitRetry.at(-1).options.body).state_revision === 2, "after bounded stale stop, an explicit user retry must serialize the accepted authoritative current revision");
+
+  for (const invalidExpiry of ["2000-01-01T00:00:00Z", "not-a-rfc3339-time", null]) {
+    const expired = await workspaceStaleScenario(invalidExpiry);
+    assert(expired.requests.filter(call => call.url === "./api/signals").length === 1, "expired, malformed, or absent catalog expiry must never replay stale_state");
+    assert(expired.requests.filter(call => call.url === "./api/workspace/variables").length === 2 && expired.env.e.signalsWorkspaceSubmit.disabled, "invalid catalog expiry must discard rows/selections and begin fail-closed catalog refresh");
+    expired.catalogResolvers.shift()(response(200, {catalog_revision:"wc_c5fe791f-1760-42f3-a8fb-7b50d452aef3", expires_at:"2099-01-01T00:00:00Z", truncated:false, total:1, variables:[Object.assign({}, timedVariable)]}));
+    await flush();
+    expired.env.document.listeners.change.at(-1)({target:{dataset:{workspaceVariableId:"wv_timed"}, checked:true}});
+    expired.env.document.listeners.click.at(-1)({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
+    await flush();
+    const explicitRetry = expired.requests.filter(call => call.url === "./api/signals");
+    assert(explicitRetry.length === 2 && JSON.parse(explicitRetry.at(-1).options.body).state_revision === 1, "after expiry fail-closed refresh, the explicit retry must serialize accepted authoritative current state_revision");
+  }
+
+  const changedActiveCurrent = snapshot(1, "display-2", [
+    {id:"display-1", name:"Display 1", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A, B]},
+    {id:"display-2", name:"Display 2", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A, B]},
+  ], A);
+  const changedActive = await workspaceStaleScenario("2099-01-01T00:00:00Z", "stale_state", changedActiveCurrent);
+  assert(changedActive.requests.filter(call => call.url === "./api/signals").length === 1 && changedActive.env.e.signalsWorkspaceBatchError.hidden === false, "stale_state with a changed active Display must visibly stop without replaying the prior Display mutation");
+  changedActive.env.document.listeners.click.at(-1)({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  const changedActiveRetry = changedActive.requests.filter(call => call.url === "./api/signals");
+  assert(changedActiveRetry.length === 2 && JSON.parse(changedActiveRetry.at(-1).options.body).state_revision === 1, "changed-active stale stop must retain canonical current state for an explicit retry, never the stale source Display revision");
+
+  const staleCatalog = await workspaceStaleScenario("2099-01-01T00:00:00Z", "workspace_changed");
+  assert(staleCatalog.requests.filter(call => call.url === "./api/signals").length === 1 && staleCatalog.requests.filter(call => call.url === "./api/workspace/variables").length === 2, "workspace_changed must never replay and must demand one catalog refresh");
+  staleCatalog.catalogResolvers.shift()(response(502, {error:{message:"workspace unavailable"}}));
+  await flush();
+  assert(staleCatalog.env.e.signalsWorkspaceList.innerHTML === "" && staleCatalog.env.e.signalsWorkspaceSubmit.disabled && staleCatalog.env.e.signalsWorkspaceRetry.hidden === false && staleCatalog.env.e.signalsWorkspaceBatchError.hidden === false, "failed mandatory refresh must reject old catalog rows, selection token and submit capability instead of restoring stale choices");
+
+  const keyboard = await workspaceStaleScenario("2099-01-01T00:00:00Z");
+  // Resolve its replay path only after it has given us a normal, populated
+  // browser.  The mock exposes the actual dialog control order used by the
+  // focus trap rather than a synthetic index-only list.
+  keyboard.signalResolvers.shift()(response(200, signalsSnapshot(1, [A, B, "timed vector"], "timed vector")));
+  await flush();
+  const keyboardClick = keyboard.env.document.listeners.click.at(-1);
+  keyboardClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  keyboard.catalogResolvers.shift()(response(200, { catalog_revision:"wc_9a44062c-7236-48d7-8f07-2c89f63991f0", expires_at:"2099-01-01T00:00:00Z", truncated:false, total:1, variables:[Object.assign({}, timedVariable)] }));
+  await flush();
+  keyboard.env.document.listeners.change.at(-1)({target:{dataset:{workspaceVariableId:"wv_timed"}, checked:true}});
+  const check = node(); check.dataset.workspaceVariableId = "wv_timed";
+  keyboard.env.e.signalsWorkspaceRate.hidden = true;
+  keyboard.env.e.signalsWorkspaceDialog.querySelectorAll = () => [keyboard.env.e.signalsWorkspaceClose, keyboard.env.e.signalsWorkspaceRefresh, check, keyboard.env.e.signalsWorkspaceRate, keyboard.env.e.signalsWorkspaceCancel, keyboard.env.e.signalsWorkspaceSubmit];
+  // The first document key handler is the Add-trigger activation guard; the
+  // next one is the modal trap installed by bindSignalsActions.
+  const trap = keyboard.env.document.listeners.keydown[1];
+  keyboard.env.document.activeElement = keyboard.env.e.signalsWorkspaceClose;
+  let shiftWrapped = false;
+  trap({key:"Tab", shiftKey:true, preventDefault() { shiftWrapped = true; }, stopImmediatePropagation() {}});
+  assert(shiftWrapped && keyboard.env.e.signalsWorkspaceSubmit.focused, "workspace modal Shift+Tab must wrap from visible Close to visible Add after refresh and selectable checkboxes");
+  keyboard.env.document.activeElement = keyboard.env.e.signalsWorkspaceSubmit;
+  let forwardWrapped = false;
+  trap({key:"Tab", shiftKey:false, preventDefault() { forwardWrapped = true; }, stopImmediatePropagation() {}});
+  assert(forwardWrapped && keyboard.env.e.signalsWorkspaceClose.focused, "workspace modal Tab must wrap from Add to Close in native visible-control order");
+  const postsBeforeModalKeys = keyboard.requests.filter(call => call.url === "./api/signals").length;
+  let escapePrevented = false, enterPrevented = false;
+  keyboard.env.document.listeners.keydown.forEach(handler => handler({key:"Escape", preventDefault() { escapePrevented = true; }, stopImmediatePropagation() {}}));
+  keyboard.env.document.listeners.keydown.forEach(handler => handler({key:"Enter", preventDefault() { enterPrevented = true; }, stopImmediatePropagation() {}}));
+  assert(escapePrevented && enterPrevented && keyboard.env.e.signalsWorkspaceDialog.hidden === false && keyboard.requests.filter(call => call.url === "./api/signals").length === postsBeforeModalKeys, "workspace modal Escape/Enter must be inert: neither dismiss nor submit may bypass visible actions");
 };

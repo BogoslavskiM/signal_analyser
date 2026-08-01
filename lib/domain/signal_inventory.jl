@@ -55,6 +55,30 @@ struct ImportWorkspaceSignalCommand <: AbstractSignalInventoryCommand
     end
 end
 
+struct ImportWorkspaceBatchCommand <: AbstractSignalInventoryCommand
+    revision::Int
+    catalog_revision::String
+    selections::Tuple{Vararg{WorkspaceImportSelection}}
+
+    function ImportWorkspaceBatchCommand(
+        revision::Int,
+        catalog_revision::AbstractString,
+        selections::AbstractVector{WorkspaceImportSelection},
+    )
+        revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
+        catalog = String(catalog_revision)
+        occursin(WORKSPACE_CATALOG_REVISION_REGEX, catalog) || throw(ArgumentError(
+            "Некорректная revision каталога рабочей области",
+        ))
+        1 <= length(selections) <= WORKSPACE_CATALOG_MAX_SELECTIONS || throw(ArgumentError(
+            "Batch import должен содержать от 1 до 1000 selections",
+        ))
+        ids = [selection.variable_id for selection in selections]
+        allunique(ids) || throw(ArgumentError("Variable ID selections не должны повторяться"))
+        new(revision, catalog, Tuple(selections))
+    end
+end
+
 struct DuplicateSignalCommand <: AbstractSignalInventoryCommand
     revision::Int
     signal_name::String
@@ -182,3 +206,19 @@ WorkspaceSignalSeries(values::AbstractVector, sample_rate_hz::Real) =
         sample_rate_hz,
         any(value -> value isa Complex, values),
     )
+
+struct WorkspaceSignalCandidate
+    base_name::String
+    series::WorkspaceSignalSeries
+    source_color::Union{Nothing,String}
+
+    function WorkspaceSignalCandidate(
+        base_name::AbstractString,
+        series::WorkspaceSignalSeries,
+        source_color::Union{Nothing,AbstractString} = nothing,
+    )
+        name = String(base_name)
+        isempty(name) && throw(ArgumentError("Base name сигнала не может быть пустым"))
+        new(name, series, source_color === nothing ? nothing : String(source_color))
+    end
+end

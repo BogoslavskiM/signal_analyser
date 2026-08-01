@@ -3381,5 +3381,8 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
     end
 end
 
+include(joinpath(@__DIR__, "..", "adapters", "engee_workspace_variable_provider.jl"))
 include(joinpath(@__DIR__, "..", "adapters", "engee_workspace_signal_source.jl"))
+include(joinpath(@__DIR__, "workspace_catalog_service.jl"))
 include(joinpath(@__DIR__, "signal_inventory_service.jl"))
+include(joinpath(@__DIR__, "workspace_batch_import_service.jl"))

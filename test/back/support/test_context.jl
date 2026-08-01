@@ -109,8 +109,8 @@ include(joinpath(PROJECT_ROOT, "app", "api.jl"))
 # Keep response-envelope assertions structural and deterministic even when a
 # local Genie installation is present: the helpers under test still build the
 # real payload, while this more-specific serializer exposes it in-process.
-function api_json(payload::Dict{String,Any}; status::Int = 200)
-    (status = status, body = json_safe(payload))
+function api_json(payload::Dict{String,Any}; status::Int = 200, headers = nothing)
+    (status = status, body = json_safe(payload), headers = headers)
 end
 
 source(parts::AbstractString...) = read(joinpath(PROJECT_ROOT, parts...), String)

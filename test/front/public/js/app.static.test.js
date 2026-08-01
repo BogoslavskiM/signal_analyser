@@ -26,24 +26,32 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/id="measurements-panel"[^>]*role="tabpanel"[^>]*aria-labelledby="signal-panel-tab-measurements"/.test(html), "Measurements panel must be labelled by its tab");
   assert(!html.includes("plot-grid") && !html.includes("layout-chooser"), "MVP must not render a multi-layout plot grid");
   assert(html.includes("data-signal-rows") && app.includes("data-signal-visibility"), "signal list must contain per-signal checkbox controls at runtime");
-  ["signals-add-action", "signals-add-menu", "signals-add-workspace-action", "signals-add-selection-action", "signals-copy-action", "signals-delete-action", "signals-workspace-dialog", "signals-workspace-variable-input", "signals-workspace-name-input", "signals-workspace-sample-rate-input", "signals-workspace-submit", "signals-workspace-cancel", "signals-workspace-close", "signals-delete-dialog", "signals-delete-name", "signals-delete-confirm", "signals-delete-cancel", "signals-delete-close", "signals-action-error", "signals-action-error-text", "signals-action-error-close"].forEach((id) =>
+  ["signals-add-action", "signals-add-menu", "signals-add-workspace-action", "signals-add-selection-action", "signals-copy-action", "signals-delete-action", "signals-workspace-dialog", "signals-workspace-refresh", "signals-workspace-loading", "signals-workspace-empty", "signals-workspace-list", "signals-workspace-selection-count", "signals-workspace-sample-rate-group", "signals-workspace-sample-rate-input", "signals-workspace-sample-rate-error", "signals-workspace-batch-error", "signals-workspace-retry", "signals-workspace-submit", "signals-workspace-cancel", "signals-workspace-close", "signals-workspace-success", "signals-workspace-success-count", "signals-workspace-done", "signals-delete-dialog", "signals-delete-name", "signals-delete-confirm", "signals-delete-cancel", "signals-delete-close"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `Signals inspector must expose stable selector ${id}`)
   );
+  assert(/id="signals-workspace-title"[^>]*tabindex="-1"/.test(html), "workspace catalog must expose a focusable stable dialog-title anchor without inventing a data-testid");
   assert(/data-testid="signals-add-action"[^>]*aria-label="Добавить сигнал"[^>]*aria-haspopup="menu"[^>]*aria-controls="signals-add-menu"/.test(html), "Signals Add icon control must expose its exact accessible menu trigger semantics");
   assert(/data-testid="signals-add-menu"[^>]*role="menu"[^>]*hidden/.test(html), "Signals Add menu must begin hidden with menu semantics");
   assert(/data-testid="signals-add-workspace-action"[^>]*role="menuitem"/.test(html) && /data-testid="signals-add-selection-action"[^>]*role="menuitem"/.test(html), "both Signals Add sources must be semantic menu actions");
   assert(/data-testid="signals-copy-action"[^>]*aria-label="Копировать выбранный сигнал"/.test(html), "Signals Copy must expose its exact accessible name");
   assert(/data-testid="signals-delete-action"[^>]*aria-label="Удалить выбранный сигнал"/.test(html), "Signals Delete must expose its exact accessible name");
-  assert(/data-testid="signals-workspace-dialog"[^>]*role="dialog"[^>]*aria-modal="true"/.test(html), "workspace import must use a modal semantic dialog");
+  assert(/data-testid="signals-workspace-dialog"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="signals-workspace-title"/.test(html), "workspace catalog must use the labelled modal dialog contract");
+  assert(/data-testid="signals-workspace-success"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="signals-workspace-success-count"/.test(html), "workspace success must use its own labelled modal dialog");
   assert(/data-testid="signals-delete-dialog"[^>]*role="alertdialog"[^>]*aria-modal="true"/.test(html), "signal deletion must use a modal destructive confirmation dialog");
-  assert(/data-testid="signals-action-error"[^>]*role="alert"/.test(html), "Signals errors must have one accessible non-modal feedback surface");
+  assert(/data-testid="signals-workspace-batch-error"[^>]*role="alert"/.test(html), "workspace catalog errors must have an accessible feedback surface");
   ["signals-toolbar-error", "signals-delete-done"].forEach((id) => assert(html.includes(`data-testid="${id}"`), `Signals audit selector ${id} must exist`));
-  ["signals-workspace-success", "signals-workspace-done"].forEach((id) => assert(html.includes(`data-testid="${id}"`), `workspace success selector ${id} must exist`));
+  ["signals-workspace-success", "signals-workspace-success-count", "signals-workspace-done"].forEach((id) => assert(html.includes(`data-testid="${id}"`), `workspace success selector ${id} must exist`));
   assert(/data-testid="signals-delete-dialog"[^>]*aria-describedby="signals-delete-(?:name|status)"/.test(html), "Delete dialog must describe its current name or acknowledged completion status");
-  assert(/data-testid="signals-workspace-variable-input"(?=[^>]*\brequired\b)(?=[^>]*aria-required="true")(?=[^>]*aria-describedby=)[^>]*>/.test(html), "workspace variable must expose required/describedby semantics");
   assert(/data-testid="signals-workspace-sample-rate-input"[^>]*aria-describedby=/.test(html), "workspace sample rate must expose validation description semantics");
-  ["signals-toolbar-error", "signals-delete-done", "aria-invalid", "focusFirstInvalid", "Home", "End", "signalsToolbar"].forEach((term) => assert(app.includes(term), `frontend must preserve final Signals audit behavior ${term}`));
-  ["signals-workspace-success", "signals-workspace-done", "signals-delete-success", "focus", "Shift+Tab", "signals-copy-action", "signals-add-action"].forEach((term) => assert(app.includes(term), `frontend must preserve final Signals completion/menu focus behavior ${term}`));
+  assert(!html.includes("signals-workspace-variable-input") && !html.includes("signals-workspace-name-input"), "catalog browser must not retain manual variable-name or rename controls");
+  ["signals-toolbar-error", "signals-delete-done", "aria-invalid", "Home", "End", "signalsToolbar"].forEach((term) => assert(app.includes(term), `frontend must preserve final Signals audit behavior ${term}`));
+  ["workspaceBrowser", "workspaceVariables", "signals-workspace-success", "signals-workspace-done", "signals-delete-success", "focus", "Shift+Tab", "signals-copy-action", "signals-add-action"].forEach((term) => assert(app.includes(term), `frontend must preserve catalog completion/menu focus behavior ${term}`));
+  ["workspace/variables", "Cache-Control", "no-store"].forEach((term) => assert(api.includes(term), `catalog API must retain ${term}`));
+  ["aria-busy", "signals-workspace-loading", "signals-workspace-empty", "signals-workspace-retry", "signals-workspace-selection-count", "Не поддерживается", "Тип:", "Размер:", "Отсчёты:", "Источник:", "Совместимость:", "Частота дискретизации:"].forEach((term) => assert(html.includes(term) || app.includes(term), `catalog must retain visible/auditable metadata and busy term ${term}`));
+  ["workspace_changed", "stale_workspace_catalog", "stale_state", "catalog_revision", "loadWorkspaceCatalog", "workspaceBrowser.catalog = null", "Escape", "Tab"].forEach((term) => assert(app.includes(term), `catalog stale/focus fail-closed behavior must retain ${term}`));
+  assert(!/grid-template-(?:columns|rows)\s*:\s*repeat\(5/i.test(css), "workspace browser must not introduce a fixed fifth-row grid shift");
+  assert(/@media\s*\([^)]*max-width\s*:\s*\d+px[^)]*\)\s*\{[^}]*(?:\.signals-workspace-browser\s+)?\.signals-workspace-metadata\s*\{[^}]*grid-template-columns\s*:\s*(?:1fr|repeat\(2,)/is.test(css), "narrow workspace dialog CSS must collapse metadata columns without inventing an application layout row");
+  assert(/\.signals-workspace-browser\s*\{[^}]*grid-template-rows\s*:\s*auto\s+minmax\(0,1fr\)\s+auto/is.test(css) && /\.signal-analyser\s*\{[^}]*grid-template-rows\s*:\s*64px\s+minmax\(0,1fr\)\s+205px\s+38px/is.test(css), "responsive catalog styles must preserve the existing dialog footer and four-row application/bottom-panel geometry");
   assert(!/overflows*:s*hidden/i.test(css.slice(css.indexOf(".signals"), css.indexOf(".signals") + 1600)), "Signals toolbar/rows must not clip its menu or dialogs");
   assert(/<script\b[^>]*src=["']\.\/js\/api\.js["']/.test(html) && /<script\b[^>]*src=["']\.\/js\/app\.js["']/.test(html), "Genie-relative API and app scripts must be registered");
   assert(!/\b(?:href|src)\s*=\s*["']\/(?:css|js)\//i.test(html), "frontend assets must remain Genie-relative, not root-absolute");
@@ -56,7 +64,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(api.includes('request("./api/view", {'), "view API must use ./api/view");
   assert(api.includes('request("./api/displays", {'), "Display lifecycle API must use ./api/displays");
   assert(api.includes('request("./api/signals", {'), "Signals inspector mutations must use the sole ./api/signals route");
-  ["import_workspace", "duplicate", "extract_time_limits", "delete", "signalsAction", "signals-add-menu", "signals-workspace-dialog", "signals-delete-dialog", "payload.current", "status===409"].forEach((term) =>
+  ["import_workspace", "import_workspace_batch", "catalog_revision", "selections", "duplicate", "extract_time_limits", "delete", "signalsAction", "signals-add-menu", "signals-workspace-dialog", "signals-delete-dialog", "payload.current", "status===409"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Signals inspector lifecycle term ${term}`)
   );
   assert((api.match(/method: "POST"/g) || []).length >= 2, "view and displays mutations must POST JSON");
@@ -206,5 +214,5 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   const analysisAt = html.indexOf('data-display-settings-actions');
   assert(displayPanelAt >= 0 && analysisAt > displayPanelAt && analysisAt < timePanelAt, "Analysis actions must belong exclusively to the Display settings panel");
   assert(!/https?:\/\/|cdn\./i.test(app), "Peaks integration must not add a CDN dependency");
-  assert(!/grid-template-(?:columns|rows)\s*:\s*repeat\(2/i.test(css), "MVP styling must not retain a fixed four-plot grid");
+  assert(!/\.plot-grid[^}]*grid-template-(?:columns|rows)\s*:\s*repeat\(2/i.test(css), "MVP styling must not retain a fixed four-plot grid; responsive catalog metadata may legitimately use two columns");
 };

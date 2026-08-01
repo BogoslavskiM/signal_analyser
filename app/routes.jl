@@ -45,6 +45,39 @@ route("/api/state", method = GET) do
     end
 end
 
+route("/api/workspace/variables", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            workspace_catalog_payload(load_workspace_catalog!(WORKSPACE_CATALOG_SERVICE));
+            headers = response_headers,
+        )
+    catch err
+        if err isa WorkspaceUnavailableError
+            workspace_api_error_response(
+                "workspace_unavailable",
+                err;
+                status = 503,
+                headers = response_headers,
+            )
+        elseif err isa WorkspaceProviderError
+            workspace_api_error_response(
+                "workspace_provider_error",
+                err;
+                status = 502,
+                headers = response_headers,
+            )
+        else
+            api_error_response(
+                "Не удалось получить каталог рабочей области",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+        end
+    end
+end
+
 route("/api/view", method = POST) do
     try
         api_json(apply_signal_analyser_view!(SIGNAL_ANALYSER_STATE, jsonpayload()))
@@ -76,7 +109,7 @@ end
 route("/api/signals", method = POST) do
     try
         api_json(apply_signal_inventory!(
-            SIGNAL_INVENTORY_SERVICE,
+            WORKSPACE_BATCH_IMPORT_SERVICE,
             SIGNAL_ANALYSER_STATE,
             jsonpayload(),
         ))
@@ -85,6 +118,14 @@ route("/api/signals", method = POST) do
             signal_analyser_validation_response(err)
         elseif err isa SignalAnalyserStaleStateError
             signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)
+        elseif err isa StaleWorkspaceCatalogError
+            workspace_api_error_response("stale_workspace_catalog", err; status = 409)
+        elseif err isa WorkspaceChangedError
+            workspace_api_error_response("workspace_changed", err; status = 409)
+        elseif err isa WorkspaceUnavailableError
+            workspace_api_error_response("workspace_unavailable", err; status = 503)
+        elseif err isa WorkspaceProviderError
+            workspace_api_error_response("workspace_provider_error", err; status = 502)
         else
             api_error_response("Не удалось изменить Signals inventory", err; status = 500)
         end

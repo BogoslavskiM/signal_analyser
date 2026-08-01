@@ -28,6 +28,7 @@
 
   window.SignalAnalyserApi = {
     getState: function () { return request("./api/state"); },
+    workspaceVariables: function () { return request("./api/workspace/variables", { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" }); },
     view: function (payload) {
       return request("./api/view", {
         method: "POST",

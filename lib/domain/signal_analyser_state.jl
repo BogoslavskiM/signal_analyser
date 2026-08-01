@@ -1,3 +1,4 @@
+include(joinpath(@__DIR__, "workspace_catalog.jl"))
 include(joinpath(@__DIR__, "signal_inventory.jl"))
 
 @enum SignalAnalyserPlot begin

@@ -2,6 +2,16 @@ using Test
 
 include("findpeaks_contract_matrix.jl")
 
+@testset "DEC-039 Engee workspace catalog target lock" begin
+    manifest = read(joinpath(@__DIR__, "..", "..", "architecture", "agents", "manifest.toml"), String)
+    @test occursin("[engee_target]", manifest)
+    @test occursin("environment = \"prod\"", manifest)
+    @test occursin("base_url = \"https://engee.com\"", manifest)
+    @test occursin("mcp_server = \"prod\"", manifest)
+    @test occursin("allow_devhub = false", manifest)
+    @test occursin("allow_fallback = false", manifest)
+end
+
 """Return false with a real test failure when the required EngeeDSP runtime is absent."""
 function load_engee_dsp()
     try

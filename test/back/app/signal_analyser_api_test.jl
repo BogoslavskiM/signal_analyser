@@ -96,7 +96,7 @@ end
     @test occursin("DeleteSignalCommand", domain_source)
     @test occursin("AbstractWorkspaceSignalSource", domain_source)
     @test occursin("EngeeWorkspaceSignalSource", adapter_source)
-    @test occursin("engee.genie.recv", adapter_source)
+    @test occursin("workspace_variable_value", adapter_source)
     @test !occursin("engee.genie.eval", adapter_source)
     @test !occursin("Core.eval", adapter_source)
 end
@@ -763,4 +763,62 @@ end
     stale = try SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => exact)); nothing catch caught; caught end
     @test stale isa SA_API.SignalAnalyserStaleStateError
     @test SA_API.signal_analyser_stale_response(state, stale).status == 409
+end
+
+@testset "DEC-039 workspace catalog route and batch-import source contract" begin
+    routes_source = SA_API.source("app", "routes.jl")
+    api_source = SA_API.source("app", "api.jl")
+    domain_source = SA_API.source("lib", "domain", "workspace_catalog.jl")
+    adapter_source = SA_API.source("lib", "adapters", "engee_workspace_variable_provider.jl")
+
+    @test occursin("/api/workspace/variables", routes_source)
+    @test occursin("Cache-Control", routes_source)
+    @test occursin("no-store", routes_source)
+    @test occursin("import_workspace_batch", api_source)
+    @test occursin("catalog_revision", api_source)
+    @test occursin("selections", api_source)
+    @test occursin("WorkspaceCatalog", domain_source)
+    @test occursin("WorkspaceVariable", domain_source)
+    @test occursin("ENGEE_WORKSPACE_CATALOG_INTROSPECTION", adapter_source)
+    @test occursin("engee.genie.eval", adapter_source)
+    @test occursin("engee.genie.recv", adapter_source)
+    @test !occursin("engee.genie.send", adapter_source)
+    introspection = match(r"const ENGEE_WORKSPACE_CATALOG_INTROSPECTION = \"\"\"(.*?)\"\"\""s, adapter_source)
+    @test introspection !== nothing && !occursin("\$", introspection.captures[1])
+    @test occursin("context = Main", adapter_source)
+    @test occursin("Base.invokelatest(evaluate, ENGEE_WORKSPACE_CATALOG_INTROSPECTION)", adapter_source)
+end
+
+@testset "DEC-039 batch API parser, error mapping and legacy coexistence" begin
+    revision = "wc_00000000-0000-4000-8000-000000000000"
+    variable_id = SA_API.workspace_variable_id(revision, "base")
+    valid = Dict{String,Any}(
+        "operation" => "import_workspace_batch", "state_revision" => 0,
+        "catalog_revision" => revision,
+        "selections" => Any[Dict("variable_id" => variable_id, "sample_rate_hz" => 48_000.0)],
+    )
+    command = SA_API.parse_signal_inventory_command(valid)
+    @test command isa SA_API.ImportWorkspaceBatchCommand && command.catalog_revision == revision
+    legacy = SA_API.parse_signal_inventory_command(Dict{String,Any}(
+        "operation" => "import_workspace", "state_revision" => 0,
+        "variable_name" => "base", "signal_name" => nothing, "sample_rate_hz" => 48_000.0,
+    ))
+    @test legacy isa SA_API.ImportWorkspaceSignalCommand
+    malformed = Any[
+        merge(copy(valid), Dict("catalog_revision" => "wc_bad")),
+        merge(copy(valid), Dict("selections" => Any[])),
+        merge(copy(valid), Dict("selections" => Any[Dict("variable_id" => variable_id, "sample_rate_hz" => true)])),
+        merge(copy(valid), Dict("selections" => Any[Dict("variable_id" => variable_id, "sample_rate_hz" => 1.0), Dict("variable_id" => variable_id, "sample_rate_hz" => 1.0)])),
+        merge(copy(valid), Dict("unexpected" => true)),
+    ]
+    for body in malformed
+        err = try SA_API.parse_signal_inventory_command(body); nothing catch caught; caught end
+        @test err isa SA_API.SignalAnalyserValidationError
+        response = SA_API.signal_analyser_validation_response(err)
+        @test response.status == 422 && response.body["code"] == "invalid_request"
+    end
+    for (error, status, code) in ((SA_API.WorkspaceProviderError("bad"), 502, "workspace_provider_error"), (SA_API.WorkspaceUnavailableError("gone"), 503, "workspace_unavailable"), (SA_API.WorkspaceChangedError(revision, "changed"), 409, "workspace_changed"), (SA_API.StaleWorkspaceCatalogError(revision), 409, "stale_workspace_catalog"))
+        response = SA_API.workspace_api_error_response(code, error; status = status)
+        @test response.status == status && response.body["code"] == code && response.body["error"]["code"] == code
+    end
 end

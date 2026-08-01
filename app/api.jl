@@ -8,6 +8,12 @@ const SIGNAL_INVENTORY_REQUEST_FIELDS = Dict(
         "signal_name",
         "sample_rate_hz",
     ]),
+    "import_workspace_batch" => Set([
+        "state_revision",
+        "operation",
+        "catalog_revision",
+        "selections",
+    ]),
     "duplicate" => Set(["state_revision", "operation", "signal_name"]),
     "extract_time_limits" => Set(["state_revision", "operation", "display_id"]),
     "delete" => Set(["state_revision", "operation", "signal_name"]),
@@ -24,16 +30,39 @@ json_safe(value::AbstractDict) = Dict(string(key) => json_safe(val) for (key, va
 json_safe(value::NamedTuple) = Dict(string(key) => json_safe(getproperty(value, key)) for key in keys(value))
 json_safe(value) = value
 
-function api_json(payload; status::Int = 200)
-    Genie.Renderer.Json.json(json_safe(payload); status = status)
+function api_json(payload; status::Int = 200, headers = nothing)
+    headers === nothing ?
+        Genie.Renderer.Json.json(json_safe(payload); status = status) :
+        Genie.Renderer.Json.json(json_safe(payload); status = status, headers = headers)
 end
 
-function api_error_response(action::AbstractString, err; status::Int = 400)
+function workspace_api_error_response(
+    code::AbstractString,
+    err;
+    status::Int,
+    headers = nothing,
+)
+    api_json(Dict(
+        "ok" => false,
+        "code" => String(code),
+        "error" => Dict(
+            "code" => String(code),
+            "message" => sprint(showerror, err),
+        ),
+    ); status = status, headers = headers)
+end
+
+function api_error_response(
+    action::AbstractString,
+    err;
+    status::Int = 400,
+    headers = nothing,
+)
     @error action exception = (err, catch_backtrace())
     api_json(Dict(
         "ok" => false,
         "error" => string(action, ": ", sprint(showerror, err)),
-    ); status = status)
+    ); status = status, headers = headers)
 end
 
 function signal_analyser_validation_response(err::SignalAnalyserValidationError)
@@ -86,7 +115,70 @@ function signal_inventory_request_revision!(
         field_errors["state_revision"] = "Требуется неотрицательное целое число"
         return nothing
     end
-    Int(value)
+    try
+        Int(value)
+    catch err
+        (err isa InexactError || err isa OverflowError) || rethrow()
+        field_errors["state_revision"] = "Требуется целое число в диапазоне Int"
+        nothing
+    end
+end
+
+function signal_inventory_batch_selections!(
+    field_errors::Dict{String,String},
+    value,
+)::Union{Nothing,Vector{WorkspaceImportSelection}}
+    if !(value isa AbstractVector) ||
+        !(1 <= length(value) <= WORKSPACE_CATALOG_MAX_SELECTIONS)
+        field_errors["selections"] = "Требуется массив от 1 до 1000 selections"
+        return nothing
+    end
+    selections = WorkspaceImportSelection[]
+    seen_ids = Set{String}()
+    for (index, item) in enumerate(value)
+        if !(item isa AbstractDict) ||
+            signal_analyser_payload_keys(item) != Set(["variable_id", "sample_rate_hz"])
+            field_errors["selections"] =
+                "Selection $(index) должна содержать только variable_id и sample_rate_hz"
+            return nothing
+        end
+        id_value = signal_analyser_payload_value(item, "variable_id")
+        if !(id_value isa AbstractString) ||
+            !occursin(WORKSPACE_VARIABLE_ID_REGEX, String(id_value))
+            field_errors["selections"] = "Selection $(index) содержит некорректный variable_id"
+            return nothing
+        end
+        id = String(id_value)
+        if id in seen_ids
+            field_errors["selections"] = "Variable ID selections не должны повторяться"
+            return nothing
+        end
+        push!(seen_ids, id)
+        sample_rate_value = signal_analyser_payload_value(item, "sample_rate_hz")
+        sample_rate = if sample_rate_value === nothing
+            nothing
+        elseif sample_rate_value isa Real && !(sample_rate_value isa Bool)
+            rate = try
+                Float64(sample_rate_value)
+            catch err
+                (err isa InexactError || err isa OverflowError) || rethrow()
+                nothing
+            end
+            if rate !== nothing && isfinite(rate) && rate > 0
+                rate
+            else
+                field_errors["selections"] =
+                    "Selection $(index) должна содержать null или положительный конечный sample_rate_hz"
+                return nothing
+            end
+        else
+            field_errors["selections"] =
+                "Selection $(index) должна содержать null или положительный конечный sample_rate_hz"
+            return nothing
+        end
+        push!(selections, WorkspaceImportSelection(id, sample_rate))
+    end
+    selections
 end
 
 function parse_signal_inventory_command(data)::AbstractSignalInventoryCommand
@@ -101,7 +193,7 @@ function parse_signal_inventory_command(data)::AbstractSignalInventoryCommand
         String(operation_value)
     else
         field_errors["operation"] =
-            "Допустимо: import_workspace, duplicate, extract_time_limits, delete"
+            "Допустимо: import_workspace, import_workspace_batch, duplicate, extract_time_limits, delete"
         nothing
     end
     expected_fields = operation === nothing ?
@@ -110,7 +202,29 @@ function parse_signal_inventory_command(data)::AbstractSignalInventoryCommand
     signal_inventory_request_exact_fields!(field_errors, data, expected_fields)
     revision = signal_inventory_request_revision!(field_errors, data)
 
-    if operation == "import_workspace"
+    if operation == "import_workspace_batch"
+        catalog_value = signal_analyser_payload_value(data, "catalog_revision")
+        catalog_revision = if catalog_value isa AbstractString &&
+            occursin(WORKSPACE_CATALOG_REVISION_REGEX, String(catalog_value))
+            String(catalog_value)
+        else
+            field_errors["catalog_revision"] = "Требуется catalog revision формата wc_UUID"
+            nothing
+        end
+        selections = signal_inventory_batch_selections!(
+            field_errors,
+            signal_analyser_payload_value(data, "selections"),
+        )
+        isempty(field_errors) || throw(SignalAnalyserValidationError(
+            "Некорректный запрос Signals",
+            field_errors,
+        ))
+        return ImportWorkspaceBatchCommand(
+            revision::Int,
+            catalog_revision::String,
+            selections::Vector{WorkspaceImportSelection},
+        )
+    elseif operation == "import_workspace"
         variable_value = signal_analyser_payload_value(data, "variable_name")
         variable_name = if variable_value isa AbstractString &&
             !isempty(strip(String(variable_value)))
