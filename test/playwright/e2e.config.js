@@ -24,6 +24,7 @@ module.exports = {
       displayPlotTitle: "display-plot-title",
       activePlotHost: "active-plot-host",
       displaySelectionContractErrorState: "display-selection-contract-error-state",
+      activePlotContractErrorState: "display-active-plot-contract-error-state",
       plotErrorState: "plot-error-state",
       plotInvalidDataState: "plot-invalid-data-state",
       findPeaksAction: "find-peaks-action",
@@ -153,6 +154,9 @@ module.exports = {
     // DEC-033 / Cascade 27 is a planned browser contract for the local
     // selection quarantine versus global active-root-fatal boundary.
     "display-selection-snapshot": false,
+    // DEC-034 / Cascade 28 is a target-gated browser contract for strict
+    // per-Display active_plot quarantine and valid-active root equality.
+    "active-plot-snapshot": false,
     "spectrogram-overlap": true,
     "spectrogram-leakage": true,
     "spectrogram-frequency-limits": true,
