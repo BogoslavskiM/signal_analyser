@@ -230,3 +230,20 @@ risks: Engee provider accepts Bool, while product intentionally rejects before
 dispatch; runtime UI remains unverified.
 follow-ups: Rerun formal provider matrix on provisioned target.
 next_task_candidates: C13 Leakage matrix after default/range/order ADR.
+
+## Cascade 13 verification — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c13_impl`.
+scope: `test/back/**`, `test/front/**`, `test/engee/**`.
+coverage: Exact two-key parser/API; default/endpoints/signed zero/Bool/nonfinite/
+range; no-op/+1/422/409; lifecycle/cache/provider failure; real/complex option
+order; Spectrum independence; frontend drafts/accepted rollback/bounded replay.
+Audit regressions prove cold Spectrogram-only zero Spectrum dispatch, cold
+canonical no-op zero spectral dispatch with next-GET materialization, and
+hash/Dict consistency for signed zero.
+verification: Backend 1229/1229 and frontend 2/2 PASS. Local Engee gate passes
+findpeaks 16/16 then fails required EngeeDSP import; prod provider matrix PASS.
+risks: Formal local real-provider run remains unavailable, not skipped.
+follow-ups: Rerun Engee contract on provisioned target.
+next_task_candidates: C14 Bool/cache/provider matrix after ADR.

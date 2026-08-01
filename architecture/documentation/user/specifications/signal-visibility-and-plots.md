@@ -52,10 +52,12 @@
   в membership есть комплексный сигнал. Normalize Y остаётся локальным
   presentation control и не меняет Spectrum payload/revision.
 - Внутри той же Display tab для непустого Spectrogram показывается только
-  `Overlap (%)`. Значение принадлежит Display, default 50, допустимый product
-  range 0..75. Draft локален; change/blur/Enter коммитит full view через
-  существующую revision queue. Empty/non-Spectrogram скрывает секцию без
-  потери preference. Frontend не рассчитывает hop, segment count или matrix.
+  `Overlap (%)` и normalized `Leakage`. Overlap принадлежит Display, default
+  50, product range 0..75; Leakage независима от Spectrum Leakage, default 0.5,
+  range 0..1. Drafts локальны; Overlap change/blur/Enter и Leakage change
+  коммитят один full view через существующую revision queue.
+  Empty/non-Spectrogram скрывает секцию без потери preferences. Frontend не
+  рассчитывает hop, segment count, Kaiser window, RBW или matrix.
 - Overflow menu активного Display содержит доступное действие Clear Display.
   Пустая страница показывает явные empty states графика, Measurements и Peaks;
   тот же graph host сохраняется, а stale Plotly traces очищаются.
@@ -100,9 +102,10 @@ A/B независимы. При смене analysis source допустимый
 отвергаются атомарно.
 
 Additive `spectrogram_settings` — строгий полный объект
-`{overlap_percent:number}`. Значение обязано быть конечным JSON Number, но не
-Bool, в inclusive product-safe range `[0,75]`; default нового Display равен
-`50`. Missing/extra key, неверный тип, non-finite и выход за диапазон дают
+`{overlap_percent:number,leakage:number}`. Оба значения обязаны быть конечными
+JSON Number, но не Bool; диапазоны `[0,75]` и `[0,1]`, defaults нового Display
+`50` и `0.5`. Signed zero канонизируется. Missing/extra key, неверный тип,
+non-finite и выход за диапазон дают
 field-level 422 без mutation/cache publication. Equal canonical input — no-op,
 изменение — одна revision, stale — 409. A/B независимы, Clear сохраняет
 preference и не вызывает provider, первый re-add пересчитывает Spectrogram.
@@ -157,11 +160,19 @@ Plotly renderer без изменения state.
 
 Root и каждый Display snapshot содержат canonical `spectrogram_settings`.
 Spectrogram использует только analysis source, полный raw signal и exact
-overlap в typed query/cache. EngeeDSP получает `OverlapPercent`, затем explicit
-`TwoSided`: real one-sided, complex centered two-sided. Raw power и axes
+Leakage/overlap в typed query/cache. EngeeDSP получает `Leakage`,
+`OverlapPercent`, затем explicit `TwoSided`: real one-sided, complex centered
+two-sided. Raw power и axes
 backend-owned; wire применяет exact `10log10(P)` и только presentation bounding
 160×160. Source change сохраняет overlap, но меняет cache identity. `N<2` и
 empty Display возвращают typed empty без provider.
+
+Spectrogram-settings-only mutation не материализует missing Spectrum cache.
+Canonical no-op не вызывает missing Spectrum/Spectrogram provider: response
+сохраняет wire keys с typed-empty representation и переиспользует cached data.
+Следующий обычный GET материализует missing data. Другие semantic changes
+(membership/source/time/Spectrum/active plot) сохраняют полную atomic
+preparation.
 
 ## Наблюдения MATLAB Signal Analyzer
 
@@ -244,7 +255,8 @@ AppleScript activation timeout. Поэтому centered complex limits и точ
 - `lib/domain/signal_analyser_state.jl`: `SignalSpectrogramSettings`, typed
   Spectrogram query/data/provider/service и cache key.
 - `lib/services/signal_analyser_service.jl`: strict Overlap validation,
-  Display lifecycle, canonical Engee options и atomic raw-cache publication.
+  Leakage/Overlap validation, semantic preparation plan, canonical Engee
+  options и atomic raw-cache publication.
 - `public/js/app.js`: Display queue/revision mutation, local bottom tabs,
   measurement rows, functional settings tabs, statistics checkbox mutation,
   Time presentation/limits controls и Plotly rendering.
@@ -268,7 +280,9 @@ AppleScript activation timeout. Поэтому centered complex limits и точ
   invalid/422/409, A/B/Clear/re-add, zero-bound Log и Auto cleanup;
   `typed_spectrogram.test.js` фиксирует typed heatmap topology, а
   `spectrogram_overlap.test.js` — default/boundaries/no-op/422/409,
-  A/B/Clear/re-add/source и один host/три tabs.
+  A/B/Clear/re-add/source и один host/три tabs;
+  `spectrogram_leakage.test.js` добавляет normalized endpoints, invariant grids,
+  Spectrum independence, bounded retry, A/B/Clear/re-add/source и cleanup.
   Runtime требует authenticated target.
 
 Связано с [DEC-20260731-009](../decisions/DEC-20260731-009-display-pages.md),
@@ -280,5 +294,6 @@ AppleScript activation timeout. Поэтому centered complex limits и точ
 [DEC-20260801-015](../decisions/DEC-20260801-015-spectrum-roi-default-settings.md),
 [DEC-20260801-016](../decisions/DEC-20260801-016-frequency-limits.md),
 [DEC-20260801-017](../decisions/DEC-20260801-017-typed-spectrogram-foundation.md),
-[DEC-20260801-018](../decisions/DEC-20260801-018-spectrogram-overlap-percent.md) и
+[DEC-20260801-018](../decisions/DEC-20260801-018-spectrogram-overlap-percent.md),
+[DEC-20260801-019](../decisions/DEC-20260801-019-spectrogram-leakage.md) и
 [traceability](../traceability/signal-analyser-cascades.md).

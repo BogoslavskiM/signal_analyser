@@ -274,3 +274,20 @@
   push, runtime E2E, deployment и merge не выполнялись.
 - Prod probe подтвердил explicit 0/50/75, Auto=75 и high-overlap resource
   hazard. Product cap 75 — документированная safety delta, не MATLAB parity.
+
+## 2026-08-01 — Cascade 13 Spectrogram Leakage
+
+- `implemented`: independent Display-local normalized Leakage 0..1, default
+  0.5, exact two-key Spectrogram settings and canonical signed zero.
+- Query/raw cache/provider включают Leakage перед OverlapPercent/TwoSided;
+  raw power меняется при invariant frequency/time grid. Spectrum state/cache/
+  provider не связан с Spectrogram Leakage.
+- Frontend добавил range/value/error в существующую Display tab; 422 использует
+  accepted baseline, 409 имеет максимум один replay и bounded second-stale
+  rollback. Один host, три tabs, no client DSP сохранены.
+- Audit исправил cold-cache Spectrum dispatch, canonical no-op provider work,
+  cache-key hash для signed zero и недостижимые E2E branches.
+- `verified locally`: backend 1229/1229, frontend 2/2, Playwright static,
+  Julia parse, skills/vanilla/docs/diff PASS.
+- Product/test checkpoint `aebd6f96158caa1917de334c1d61abe6ca8ca950`;
+  push, runtime E2E, deployment и merge не выполнялись.

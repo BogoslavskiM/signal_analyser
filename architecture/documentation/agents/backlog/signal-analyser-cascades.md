@@ -142,6 +142,14 @@ Owner: Architect
   default 0.5, finite non-Bool 0..1, exact two-key Spectrogram object and
   canonical Leakage/Overlap/TwoSided provider order. MATLAB slider display scale
   remains a later presentation observation, not an implementation blocker.
+- C13 implementation is complete at local checkpoint `aebd6f9`: backend
+  1229/1229, frontend 2/2 and Playwright static gates pass. Audit corrections
+  cover cold-cache/no-op independence, signed-zero hash and bounded stale replay.
+  Runtime target E2E, push and deployment remain unperformed.
+- C14 discovery is restricted to Spectrogram Reassign. Official docs support a
+  boolean `pspectrum` flag and display-local checkbox semantics, but app default
+  remains inferred. Prod Engee false/true/default/invalid/order/topology probe
+  and a new ADR are required before implementation.
 
 - SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
   researches Spectrum defaults/units for a future separately frozen slice.

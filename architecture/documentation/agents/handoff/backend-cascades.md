@@ -329,3 +329,24 @@ risks: Local real EngeeDSP is absent; runtime deployment not exercised.
 follow-ups: Leakage requires an independent contract and must remain separate
 from existing Spectrum Leakage.
 next_task_candidates: Prod Spectrogram Leakage probe and successor ADR.
+
+## Cascade 13 Spectrogram Leakage — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c13_impl`.
+goal: Implement DEC-019 with strict OOP state/query/cache/provider independence.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_service.jl`.
+contracts: Exact two-key settings; Leakage default .5, non-Bool 0..1 and signed
+zero canonicalization; canonical Leakage/Overlap/TwoSided provider order;
+Spectrum independence; no-op/+1/422/409 and Display lifecycle.
+changes: Extended settings/query/cache key and adapter. Added typed semantic
+view-change classification plus missing-materialization controls: Spectrogram-
+only change does not warm Spectrum; canonical no-op warms neither spectral
+provider, reuses cached data or returns typed-empty wire, while next GET
+materializes normally. Direct cache-key construction validates/canonicalizes.
+verification: Backend 1229/1229; typed 21/21, cold isolation 6/6, cold no-op
+27/27, lifecycle 76/76, independence 23/23, API 94/94; parse/diff PASS.
+risks: Local EngeeDSP absent; runtime deployment not exercised.
+follow-ups: Reassign remains probe/ADR-only.
+next_task_candidates: C14 public-provider Reassign capability probe.

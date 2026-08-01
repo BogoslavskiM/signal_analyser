@@ -757,3 +757,45 @@ determinism, invariant time grid and raw-power changes. The MATLAB app slider's
 display scale remains deliberately unfrozen and is not an implementation gate:
 product UI exposes normalized 0..1 without claiming GUI-scale parity. No other
 Spectrogram/Persistence control enters C13.
+
+## Cascade 13 implementation and local freeze — 2026-08-01
+
+Status: `implemented-and-locally-verified`; product/test checkpoint
+`aebd6f96158caa1917de334c1d61abe6ca8ca950`; contract checkpoint
+`5ef6ce7167039753711badfe68802f94bb8a2849`; not pushed, not deployed,
+runtime E2E not run.
+
+DEC-019 is implemented across Backend, Frontend, Tester and E2E ownership.
+Normalized independent Leakage participates in exact Display state, query, raw
+cache and canonical Engee options. Integration gates: backend 1229/1229
+(typed 21, cold isolation 6, cold no-op 27, lifecycle 76, independence 23,
+API 94), frontend 2/2, Julia parse, Playwright syntax/support/help,
+skills/vanilla/docs and diff PASS.
+
+Cross-role audit found and closed cold-cache Spectrum coupling, no-op provider
+materialization, signed-zero hash inconsistency, unbounded repeated 409 and
+three E2E reachability/cleanup gaps. Final read-only review signed off clean.
+Local Engee gate remains an honest absent-package failure after findpeaks
+16/16; prod real/complex evidence is preserved. No external action occurred.
+
+## Cascade 14 discovery started — 2026-08-01
+
+Status: `docs-and-provider-probe-only`; no C14 product/test changes.
+
+Candidate is Spectrogram `Reassign` as a Display-local boolean. Official docs
+identify `pspectrum(...,"spectrogram",Reassign=flag)`, default false at the API
+surface, energy-center relocation and an app checkbox; exact app default remains
+inference until GUI evidence. Backend is probing public Engee real/complex
+false/true/default/order/type behavior. No payload/UI is frozen until prod
+evidence plus DEC-020.
+
+### Persistent role heartbeat after C13 freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c14_reassign_probe` | prod Reassign probe | implementation after ADR | provider evidence pending | C13 1229/1229 |
+| Frontend | `/root/frontend_c13_impl` | C13 complete | C14 checkbox after ADR | typed contract absent | bounded stale replay |
+| Tester | `/root/tester_c14_reassign_matrix` | read-only C14 matrix | tests after ADR | provider/default evidence | C13 audit regressions |
+| E2E Tester | `/root/e2e_c13_impl` | C13 static complete | C14 after implementation | contract absent | source-safe C13 scenario |
+| DevOps | `/root/devops_c12_commit` | C13 local freeze complete | docs/C14 checkpoint on handoff | no external authority | commit `aebd6f9` |
+| MATLAB Researcher | `/root/matlab_c14_reassign_docs` | docs-only C14 complete | optional GUI default later | unsafe GUI state | official Reassign map |

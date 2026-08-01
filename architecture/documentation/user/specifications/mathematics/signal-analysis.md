@@ -37,10 +37,11 @@
    `signal_spectrum_effective_frequency_limits`,
    `signal_analyser_spectrum_plot`.
 3. Spectrogram копирует полный raw signal в typed `SignalSpectrogramQuery` и
-   вызывает representation `spectrogram` с explicit
+   вызывает representation `spectrogram` с explicit `Leakage=lambda`,
    `OverlapPercent=O`, затем `TwoSided=false` для real либо `true` для complex.
    `O` — конечное non-Bool число в product-safe диапазоне `0 <= O <= 75`,
-   default `50`. Provider matrix обязана быть точно frequency × segment-time,
+   default `50`; `lambda` — конечное non-Bool число `0 <= lambda <= 1`, default
+   `0.5`. Provider matrix обязана быть точно frequency × segment-time,
    power — конечной, вещественной и неотрицательной. Presentation применяет
    `P_dB=10 log10(P)` без epsilon floor; raw cache хранит полную matrix, а wire
    ограничивается до 160×160. Code anchors: `SignalSpectrogramSettings`,
@@ -114,11 +115,13 @@ Leakage конечна и лежит в `[0,1]`. Scale/frequency scale искл�
 identity; Leakage, effective Frequency Limits, inclusive sample range,
 signal/sample rate и one/two-sided topology входят в typed key.
 
-Spectrogram settings нового Display: explicit `OverlapPercent=50`. Значение
-принадлежит Display, сохраняется при Clear и независимо восстанавливается при
-A/B; первый re-add пересчитывает raw Spectrogram. Exact overlap, source,
-samples, sample rate и topology входят в typed raw-cache identity. Empty
-Display и `N<2` provider не вызывают.
+Spectrogram settings нового Display: explicit `OverlapPercent=50` и
+`Leakage=0.5`. Оба значения принадлежат Display, сохраняются при Clear и
+независимо восстанавливаются при A/B; первый re-add пересчитывает raw
+Spectrogram. Exact overlap, Leakage, source, samples, sample rate и topology
+входят в typed raw-cache identity. Signed zero канонизируется. Leakage меняет
+power/RBW, но при фиксированном overlap не меняет frequency/time axes в
+подтверждённом provider contract. Empty Display и `N<2` provider не вызывают.
 
 ## Numeric constraints и edge cases
 
@@ -228,6 +231,13 @@ revision mutation.
   combined query/cache/provider forwarding и failure atomicity. Frontend 2/2;
   Playwright syntax/support/help PASS. Prod explicit 0/50/75 probe подтвердил
   deterministic segment grid и Auto=75 provider delta; runtime E2E не
+  выполнялся.
+- Cascade 13 backend — 1229/1229 PASS: typed Leakage 21/21, cold Spectrum
+  isolation 6/6, cold canonical no-op 27/27, lifecycle/cache 76/76,
+  Spectrum independence 23/23 и API 94/94. Проверены signed-zero hash/Dict,
+  exact two-key object, endpoints/Bool/nonfinite/range, provider order,
+  unchanged grids, bounded 409 и ordinary-GET materialization after typed-empty
+  no-op response. Frontend 2/2 и Playwright static PASS; runtime E2E не
   выполнялся.
 
 ## Источники и наблюдаемые различия

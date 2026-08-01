@@ -254,3 +254,20 @@ verification: JavaScript syntax/diff PASS; frontend 2/2.
 risks: Runtime browser behavior awaits an exact deployed target.
 follow-ups: Do not reuse Spectrum Leakage state for Spectrogram; wait for ADR.
 next_task_candidates: C13 UI only after typed backend contract.
+
+## Cascade 13 Spectrogram Leakage UI — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c13_impl`.
+scope: `public/index.html`, `public/js/app.js`.
+contracts: Exact two-key normalized state; independent native range/value/error;
+draft on input, one full-view change; accepted 422 rollback; at most one 409
+replay; one host/three tabs/no client DSP.
+changes: Added per-Display Leakage draft/error and distinct commit bookkeeping.
+Second stale response removes only a matching desired target, accepts canonical
+server state, restores the corresponding setting, shows inline error and drains
+without overwriting a newer queued target.
+verification: JavaScript syntax/diff and frontend 2/2 PASS.
+risks: Runtime browser timing remains unverified.
+follow-ups: No MATLAB slider-scale parity claim; normalized provider value only.
+next_task_candidates: C14 control only after typed ADR/backend.

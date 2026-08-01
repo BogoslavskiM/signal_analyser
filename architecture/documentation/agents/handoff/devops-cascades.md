@@ -230,3 +230,19 @@ risks: Local EngeeDSP unavailable; runtime E2E not run.
 follow-ups: Separate Architect documentation checkpoint. No push/deploy/merge
 without new explicit authority.
 next_task_candidates: Local C13 checkpoint only after a frozen contract.
+
+## Cascade 13 product/test commit-freeze — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c12_commit`.
+goal: Commit exactly the accepted C13 product/test set.
+scope: Twelve explicit files under `lib/**`, `public/**` and `test/**`;
+architecture excluded.
+changes: Local commit `aebd6f96158caa1917de334c1d61abe6ca8ca950`,
+message `feat: добавить Leakage для Spectrogram`.
+verification: Parent `5ef6ce7167039753711badfe68802f94bb8a2849`;
+exact staged list and cached diff PASS. Accepted gates: backend 1229/1229,
+frontend 2/2, Playwright static, prod Engee matrix.
+risks: Local EngeeDSP package unavailable; runtime E2E not run.
+follow-ups: Separate Architect documentation checkpoint; no push/deploy/merge.
+next_task_candidates: C14 local checkpoint only after frozen implementation.

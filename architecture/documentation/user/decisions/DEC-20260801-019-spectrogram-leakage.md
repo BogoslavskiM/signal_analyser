@@ -3,7 +3,7 @@
 ID: `DEC-20260801-019`
 Дата: `2026-08-01`
 Статус: accepted
-Implementation: planned in Cascade 13; not deployed
+Implementation: implemented and locally verified in Cascade 13; not deployed
 
 ## Контекст
 
@@ -86,6 +86,20 @@ real/complex combined Engee options, independence from Spectrum Leakage и
 frontend queue regressions. E2E проверяет default, endpoints, one request,
 provider-derived `z` change, independence, lifecycle и cleanup; runtime требует
 точного deployed SHA.
+
+## Реализация и audit correction
+
+Product/test checkpoint `aebd6f96158caa1917de334c1d61abe6ca8ca950`.
+Backend 1229/1229, frontend 2/2 и Playwright static gates прошли. Реализация
+добавляет cold-cache typed-empty response policy: Spectrogram-only mutation не
+вызывает отсутствующий Spectrum provider, а canonical no-op не вызывает ни
+Spectrum, ни Spectrogram. Cached данные переиспользуются; следующий обычный GET
+материализует отсутствующие representations. Это сохраняет stable wire keys и
+делает provider independence/no-op фактическими, а не только revision rules.
+
+Аудит также закрыл signed-zero equality/hash/Dict invariant, bounded second-409
+rollback, disabled Spectrum control в E2E cleanup, native range clamp и
+обязательную source-switch ветку. Runtime E2E, push/deploy/merge не выполнялись.
 
 ## Источники
 

@@ -14,3 +14,4 @@
 - [Cascade 10: Frequency Limits](signal-analyser-cascade-v10.md)
 - [Cascade 11: typed Spectrogram foundation](signal-analyser-cascade-v11.md)
 - [Cascade 12: Spectrogram OverlapPercent](signal-analyser-cascade-v12.md)
+- [Cascade 13: Spectrogram Leakage](signal-analyser-cascade-v13.md)

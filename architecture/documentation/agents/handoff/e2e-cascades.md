@@ -290,3 +290,21 @@ browser_workspace_setup: Static-only; browser and MATLAB untouched.
 risks: Runtime request timing, Plotly matrix change and cleanup await deployment.
 follow-ups: Run against exact accepted C12 SHA and retain network/timing proof.
 next_task_candidates: C13 static scenario only after contract implementation.
+
+## Cascade 13 Spectrogram Leakage static scenario — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c13_impl`.
+scope: `test/playwright/**` Leakage scenario/config/support.
+contracts: Default .5, endpoints 0/1, exact two-key requests, invariant grids
+with changed power, 422/409, Spectrum independence, A/B/Clear/re-add/source,
+one host/three tabs and exact cleanup.
+changes: Added `spectrogram_leakage.test.js`. Audit correction switches to
+Spectrum before editing/restoring its Leakage, treats native range clamp as
+zero-request no-op, re-adds two signals before source switch and always uses
+active Display analysis source.
+verification: All Playwright JavaScript syntax, support contract, runner help
+and diff PASS. Static-only; browser/MATLAB untouched.
+risks: Runtime Plotly/network/timing remains pending exact deployment.
+follow-ups: Run isolated C13 scenario on accepted SHA.
+next_task_candidates: C14 static scenario only after implementation.
