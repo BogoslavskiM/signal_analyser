@@ -567,3 +567,62 @@ contract basis. Prod EngeeDSP evidence resolves provider semantics.
   and verification are available for a local C10 checkpoint; no push/deploy.
 - MATLAB Researcher `/root/matlab_c10_complex_log`: interrupted standby after
   bounded blocker; next work requires recovered clicker health.
+
+## Cascade 10 implementation and local freeze — 2026-08-01
+
+Status: `implemented-and-locally-verified`; product/test checkpoint
+`9c7cd70ddc10c323f6897afe65cdac2e1a960715`; contract checkpoint `df5451d`;
+not pushed, not deployed, runtime E2E not run.
+
+DEC-016 is implemented across Backend, Frontend, Tester and E2E ownership.
+Integration gates: Julia parse and backend 944/944 (C10 37/37 + API 40/40),
+frontend 2/2, Playwright syntax/support/runner-help, skills 40, vanilla assets
+and documentation PASS. Local Engee gate remains an honest required import
+failure after findpeaks 16/16 because the package is absent; prod 0.72.0
+FrequencyLimits evidence is preserved. No fallback or dependency edit exists.
+
+### Persistent role heartbeat after C10 freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_cycle` | read-only C11 heatmap/provider gap analysis | prod Engee probe matrix | new contract not frozen | C10 OOP limits, backend 944/944 |
+| Frontend | `/root/frontend_c9_replacement` | read-only heatmap UI inventory complete | metadata UI after contract | Backend typed settings absent | C10 F min/F max, front 2/2 |
+| Tester | `/root/tester_cycle` | completed standby | C11 red matrix after contract | provider contract absent | C10 unit/API/front matrix complete |
+| E2E Tester | `/root/e2e_c9_replacement` | completed standby | runtime C9/C10 | authorized exact target | C10 static scenario complete |
+| DevOps | `/root/devops_c10_freeze` | completed standby; replaces unavailable C9 thread | target preflight only after authority | no push/deploy authority | local C10 commit `9c7cd70` |
+| MATLAB Researcher | `/root/matlab_c10_complex_log` | completed standby after docs-only heatmap map | GUI SA-GRAPH-004A/005 after recovery | incomplete unexecuted line and activation timeout | durable SA-GRAPH-004 partial + docs map |
+
+No role has unexplained eligible idle work: Tester depends on the next frozen
+contract; E2E and DevOps depend on target authority; MATLAB GUI work is safely
+blocked; Backend/Frontend performed independent next-contract discovery.
+
+## Cascade 11 discovery started — 2026-08-01
+
+Status: `probe-planning-only`; no C11 product/test changes.
+
+MATLAB Researcher docs and Backend/Frontend read-only inventories agree that
+current Spectrogram/Persistence heatmaps are placeholders rather than a frozen
+ROI/settings contract. The next eligible action is a read-only prod EngeeDSP
+probe for representation outputs, topology, segment grid, ROI subset behavior,
+FrequencyLimits and Persistence bins. No settings, route, cache or UI mutation
+is authorized before this evidence and a successor ADR.
+
+Preferred narrow candidate after the gate is Spectrogram only, no editable
+controls, using a typed provider/service/cache while retaining the existing
+single graph host and heatmap response keys. One-signal eligibility, segment
+ROI semantics and eager-versus-lazy execution remain Architect decisions.
+
+### C11 initial prod provider evidence
+
+Prod EngeeDSP `0.72.0`/Julia `1.12.4` probe confirmed real one-sided and complex
+centered defaults, nonnegative Spectrogram power, Persistence columns summing
+to 100%, exact/clipped/error FrequencyLimits behavior, absolute time centers,
+representation-specific N=1 rejection/N=2 support and configurable
+NumPowerBins. Provider Auto uses 75% overlap for the probed input, which differs
+from MATLAB app docs and prevents inferred default parity.
+
+`TimeResolution` is independently broken by an undefined internal validator;
+positive controls FrequencyResolution/OverlapPercent work. Confirmed record:
+[`ENGEE-20260801-003`](../../user/engee_bugs/ENGEE-20260801-003-pspectrum-time-resolution-undefined.md).
+This blocks a TimeResolution control but not probe-only discovery or a future
+default Spectrogram seam. Remaining ROI/grid/default decisions are still open.

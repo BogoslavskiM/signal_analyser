@@ -168,3 +168,20 @@ evidence is documented. Runtime E2E remains pending.
 follow-ups: Separate Architect documentation checkpoint. Push/deploy/merge only
 after separate authority; none was performed.
 next_task_candidates: Target preflight and deployment only after authorization.
+
+## Cascade 10 product/test commit-freeze — 2026-08-01
+
+replacement: `/root/devops_c10_freeze` replaced unavailable
+`/root/devops_c9_freeze` for this bounded checkpoint.
+goal: Commit only completed C10 product/test paths.
+scope: 16 exact files under `lib/**`, `public/**` and `test/**`; Architect-owned
+dirty documentation explicitly excluded.
+changes: Local commit `9c7cd70ddc10c323f6897afe65cdac2e1a960715`,
+message `feat: добавить Frequency Limits для Spectrum`.
+verification: `df5451d` is an ancestor; staged list matched handoffs; cached
+diff check PASS; integrated Julia parse/backend 944/944, frontend 2/2,
+Playwright static gates and validators supplied. Branch became 24 commits ahead.
+risks: Local EngeeDSP remains absent; no target checks were in scope.
+follow-ups: Architect documentation checkpoint; no push/deploy/merge without a
+new explicit handoff.
+next_task_candidates: Deployment preflight only after authorization.

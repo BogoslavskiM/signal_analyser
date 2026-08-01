@@ -405,3 +405,48 @@ e2e_scenarios: No direct MATLAB scenario handoff is available. Product E2E may
 test the frozen contract but labels complex/Log parity as docs-derived.
 next_task_candidates: Recover clicker health without closing MATLAB, then retry
 the bounded complex scenario or continue with SA-GRAPH-005 Frequency Units.
+
+### Durable correction for SA-GRAPH-004 partial — 2026-08-01
+
+The partial scenario was successfully persisted after the earlier coordination
+snapshot. Authoritative external scenario ID:
+`SA-GRAPH-004-complex-spectrum-log-partial`; system path
+`/Users/makar/work/matlab_clicker/research_output/signal-analyzer-reference-scenarios/scenarios/SA-GRAPH-004-complex-spectrum-log-partial.md`;
+SHA-256 `2c3455ff1ec9d6007faeecb3307a58eedcab542accc2c4fff8c88885ee13925e`.
+The server save returned `ok=true`, `created=true`, `bytes=7469`, and a fresh
+bootstrap exposed the same path/SHA. This corrects only the earlier statement
+that no scenario had been saved; all uncertainty and the no-complex-observation
+boundary remain unchanged. The E2E Tester received the direct path/SHA.
+
+## External-docs-only Spectrogram/Persistence map — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c10_complex_log`.
+goal: Keep the research lane useful while MATLAB GUI activation is unsafe.
+scope: Official public MathWorks pages only; no MATLAB GUI, Command Window,
+server-state or repository mutation.
+docs_sources: MathWorks Explore Signals, Spectrogram Computation in Signal
+Analyzer, Persistence Spectrum in Signal Analyzer, `pspectrum`, and Signal
+Analyzer Tips and Limitations.
+documented_direction: Both time-frequency views accept one signal per Display;
+real input is one-sided and complex input centered two-sided. Spectrogram uses
+power from squared STFT, automatic segment length, 50% overlap and Kaiser
+window; its color is power. Persistence is a normalized percentage histogram
+over frequency/power bins, uses segments intersecting the visible Time ROI and
+includes partially visible segments. `pspectrum` exposes time resolution,
+overlap, leakage, limits, topology, threshold and reassignment; persistence
+adds power-bin count with documented default 256.
+observed_undocumented_behavior: None. This is explicitly docs-only and creates
+no MATLAB oracle.
+docs_vs_app_delta: Exact app defaults for limits/colormaps/density, settings
+locality, second-signal rollback, Persistence Log control and detailed segment
+boundary behavior remain unknown.
+product_tasks: Future implementation should use a shared typed segmented
+spectral provider pipeline with distinct spectrogram power-image and
+persistence normalized-density projections; no hand-rolled substitute is
+authorized before Engee capability evidence and a new ADR.
+e2e_scenarios: Provisional `SA-GRAPH-TF-001` Spectrogram defaults/eligibility,
+`SA-GRAPH-TF-002` Persistence defaults/eligibility and `SA-GRAPH-TF-003` shared
+ROI/color semantics. They remain blocked on direct MATLAB and provider evidence.
+next_task_candidates: Engee capability probe for `pspectrum` spectrogram and
+persistence modes; later bounded GUI evidence after clicker recovery.

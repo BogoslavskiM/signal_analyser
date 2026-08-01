@@ -214,3 +214,23 @@
   подтверждено отдельно.
 - Product/test checkpoint: `b53d79622dbe926316915d7c55668432434bcc07`.
   Push, runtime E2E, deployment и merge не выполнялись.
+
+## 2026-08-01 — Cascade 10 Frequency Limits
+
+- `implemented`: strict four-key Spectrum settings хранит Auto/null либо exact
+  requested Hz interval; source preserve/reset, A/B, Clear/re-add, no-op/+1 и
+  atomic 422/409 lifecycle закрыты.
+- Provider получает explicit `FrequencyLimits`; effective interval secondary
+  trace является topology intersection. No-overlap/0/1 ROI не вызывает
+  provider, а FFT/crop/padding/resampling/fallback отсутствуют.
+- Frontend получил F min/F max в существующей Display Spectrum section,
+  backend-effective Auto values, draft/commit/rollback/409 queue и Auto reset
+  очисткой обоих полей. Три tabs и отсутствие Log-floor сохранены.
+- `verified locally`: backend 944/944 (C10 37/37 + API 40/40), frontend 2/2,
+  Julia parse, Playwright syntax/support/help и architecture/docs/vanilla
+  validators PASS.
+- Product/test checkpoint:
+  `9c7cd70ddc10c323f6897afe65cdac2e1a960715`; contract docs `df5451d`.
+  Push, runtime E2E, deployment и merge не выполнялись.
+- Local Engee gate сохраняет честный import failure после findpeaks 16/16;
+  prod EngeeDSP `0.72.0` FrequencyLimits probe остаётся capability evidence.

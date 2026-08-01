@@ -91,6 +91,28 @@ Owner: Architect
   invalid source changes reset Auto, and requested/effective metadata remain
   separate. SA-GRAPH-004 is a documented partial blocker, not a contract gate.
   Implementation, local verification and a C10 checkpoint are now active.
+- SA-GRAPH-004 partial is now durably saved with SHA but confirms only the real
+  zero-bound Log transition; complex UI behavior remains docs-only. A separate
+  official-docs map identifies Spectrogram/Persistence as a future shared
+  segmented-provider candidate. No C11 implementation is frozen until direct
+  MATLAB and Engee provider evidence exist.
+- C11 provider probe matrix is now specified: real/complex topology and shape,
+  raw units, segment centers/overlap/absolute time, short input, aligned and
+  unaligned ROI subsets, FrequencyLimits, option conflicts/order and
+  Persistence NumPowerBins. Current placeholder eager/cache behavior must not
+  be promoted as contract. First implementation candidate remains Spectrogram
+  only after evidence plus an ADR.
+- Initial C11 prod probe is complete for topology/shapes/raw ranges,
+  FrequencyLimits, short input, absolute centers, overlap and NumPowerBins.
+  Provider Auto overlap was 75% in the probe, unlike MATLAB app docs. EngeeDSP
+  `TimeResolution` has confirmed defect ENGEE-20260801-003; do not expose the
+  control or add a hand-rolled STFT. Still open: exact ROI segment selection,
+  remaining defaults/options and application execution/lifecycle decision.
+- C10 Frequency Limits implementation is complete at local checkpoint
+  `9c7cd70`; backend 944/944, frontend 2/2 and static E2E gates pass. Remaining
+  C10 work is target Engee/runtime E2E only and must not be reported as
+  deployed. Next product planning may use the Spectrogram/Persistence evidence
+  map but cannot implement until a new ADR freezes one narrow provider slice.
 
 - SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
   researches Spectrum defaults/units for a future separately frozen slice.

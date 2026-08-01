@@ -233,3 +233,24 @@ risks: Runtime timing/network/Plotly assertions remain pending deployment.
 follow-ups: Run only against the exact accepted deployed SHA and retain timing
 evidence.
 next_task_candidates: Runtime C9; next frozen Spectrum slice afterward.
+
+## Cascade 10 Frequency Limits static scenario — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c9_replacement`.
+scope: `test/playwright/**` C10 scenario, config, support and coverage map.
+contracts: Auto/effective display; atomic pair setup and one Enter/request/+1;
+equal no-op; local invalid and 422 rollback; synthetic 409 replay; A/B,
+Clear/re-add, real Log Min0, exactly three tabs, no Log-floor and conditional
+exact cleanup including Auto restoration.
+changes: Added `frequency_limits.test.js`, selectors, feature flag and support
+contract. Pair drafts are set without focus transfer before the single observed
+commit, so ordinary per-field blur semantics are not over-constrained.
+verification: All Playwright JS syntax, support contract, runner help and diff
+PASS.
+browser_workspace_setup: Background CDP only is planned; no focus/Space/window
+action occurred and MATLAB was unchanged.
+risks: Runtime skipped because no authenticated target with exact C10 SHA.
+follow-ups: Run after an authorized exact deployment and retain timing/network
+evidence.
+next_task_candidates: Runtime C9/C10 only after target availability.

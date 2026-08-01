@@ -208,3 +208,60 @@ follow-ups: Target preflight/runtime E2E after an authorized deployment; next
 Spectrum options require a separately frozen contract.
 next_task_candidates: Frequency Limits/log-floor presentation; bounded
 complex/log MATLAB delta; no Spectrogram/Persistence refactor by inference.
+
+## Cascade 10 Frequency Limits — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_cycle`.
+goal: Implement DEC-016 without frontend DSP, fallback or functional-sprawl
+regression.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_math.jl`,
+`lib/services/signal_analyser_service.jl`.
+contracts: Strict four-key settings; typed Auto/Explicit limits; exact root,
+Display and requested/effective metadata; source preserve/reset; secondary
+topology intersection; provider/query/cache inclusion; 0/1/no-overlap bypass;
+real Min0 Log and existing complex Log guard.
+changes: Added OOP limits variants and invariants, typed query/cache fields,
+strict parser/serializer, atomic lifecycle, Engee FrequencyLimits options and
+provider output validation. No FFT/crop/padding/resampling/fallback/dependency
+edit.
+verification: Julia parse PASS; full backend 944/944; C10 unit 37/37 and API
+40/40; durable mixed-Fs/no-overlap and source preserve/reset regressions PASS.
+risks: Local real provider gate cannot import absent EngeeDSP; prod 0.72.0
+probe is separate capability evidence.
+follow-ups: Runtime target gate; next Spectrogram/Persistence work remains
+read-only planning until a new contract.
+next_task_candidates: Shared typed heatmap provider gap analysis and Engee
+probe matrix.
+
+## C11 heatmap provider read-only gap analysis — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_cycle`.
+goal: Identify the smallest safe Spectrogram/Persistence seam without freezing
+unproven math/API.
+current_gap: Existing heatmap functions call `pspectrum` directly, always set
+`TwoSided=true`, use whole signal, return raw dictionaries and cache bounded
+presentation only by signal name. They ignore Display ROI/settings/topology and
+contain unproven epsilon/absolute-value assumptions. No typed heatmap
+query/data/provider/cache abstraction exists.
+proposed_contract: Separate typed `SignalSpectrogramQuery/Data` and
+`SignalPersistenceQuery/Data` over shared segmented input; one abstract
+time-frequency provider with representation-specific dispatch; full raw result
+caches and presentation-only 160×160 bounding. This remains a proposal.
+probe_gate: Prod matrix must isolate real/complex topology, exact axes/matrix
+orientation/units, segment grid/absolute time/short input, ROI subset behavior,
+FrequencyLimits, option order/conflicts and Persistence NumPowerBins/percentage
+invariants. A missing segment-origin capability may be a provider gap; no
+hand-rolled STFT/histogram fallback is allowed.
+narrow_first_slice: Probe-only. After evidence and a new ADR, the smallest
+implementation candidate is Spectrogram only with no editable settings, typed
+provider/service/cache behind the existing heatmap wire. Persistence and UI
+controls remain deferred.
+verification: Read-only inventory only; no files/runtime changed.
+risks: Current eager placeholder calculation and cache semantics are not a safe
+foundation for ROI parity.
+next_task_candidates: Engee prod probe; MATLAB UI defaults after clicker
+recovery; Architect decision on one-signal eligibility, segment ROI and eager
+versus lazy output contract.

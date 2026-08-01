@@ -196,3 +196,43 @@ check PASS.
 risks: Live DOM/network/Plotly behavior remains unobserved until target runtime.
 follow-ups: Run the prepared C9 E2E after authorized deployment.
 next_task_candidates: Only controls backed by a newly frozen Backend contract.
+
+## Cascade 10 Frequency Limits — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c9_replacement`.
+goal: Add Frequency Limits without a fourth tab or client-side DSP.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Four-key canonical state; backend-effective Auto values; stable F
+min/F max/error IDs; draft-only input, deduplicated commit, exact full request,
+local invalid and 422 rollback, 409 replay, Auto reset by clearing both fields.
+changes: Added accessible native fields in existing Display Spectrum section,
+per-Display drafts/errors and queue integration. No Log-floor control, Nyquist
+calculation, filtering or cropping.
+verification: `node --check` PASS; frontend 2/2; public diff check PASS.
+risks: Runtime behavior remains unobserved on an exact deployed C10 target.
+follow-ups: Read-only Spectrogram/Persistence UI inventory; no implementation
+before typed Backend settings exist.
+next_task_candidates: Heatmap metadata surface after contract freeze.
+
+## C11 heatmap UI read-only inventory — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c9_replacement`.
+current_surface: Spectrogram/Persistence already use one persistent Plotly
+heatmap host and backend arrays/axis/color labels. No multi-layout is required.
+Current heatmaps have no typed Display settings/ROI contract and frontend
+locally chooses Jet; this must not become an inferred editable setting.
+proposal: Keep exactly three tabs. Until settings exist, at most expose a
+read-only conditional Heatmap metadata group with candidate IDs
+`heatmap-settings`, `heatmap-kind-value`, `heatmap-x-axis-value`,
+`heatmap-y-axis-value`, `heatmap-colorbar-value`, `heatmap-empty-state`.
+backend_dependency: Canonical source/kind/axes/color units and actual ranges;
+future editable settings require exact full `/api/view` shape, defaults,
+validation and locality. Frontend must not calculate bins, limits, color scale
+or clip `z`.
+verification: Read-only inventory of public files and both reference PNGs; no
+files changed.
+risks: Current full-signal placeholder behavior ignores Display ROI and could
+misrepresent controls.
+next_task_candidates: Metadata-only UI after Backend/provider/ADR freeze.

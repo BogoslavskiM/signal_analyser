@@ -135,3 +135,11 @@ signal сохраняет ранее принятое атомарное огр�
   [`../../agents/reports/frequency-limits-engeedsp-contract-probe-20260801.md`](../../agents/reports/frequency-limits-engeedsp-contract-probe-20260801.md)
 - Предыдущее решение:
   [DEC-20260801-015](DEC-20260801-015-spectrum-roi-default-settings.md)
+
+## Implementation note — 2026-08-01
+
+Cascade 10 реализовал frozen contract. Для восстановления Auto без нового
+control очистка обоих полей коммитит `frequency_limits=null`; одно пустое или
+иное локально некорректное значение восстанавливает прежние canonical/effective
+поля и показывает inline error без API request. Это уточнение не меняет wire,
+provider или lifecycle decision.

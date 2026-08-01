@@ -81,13 +81,18 @@ revision, равный набор является no-op. Clear Display сохр
 первый re-add пересчитывает сохранённый набор, неактивные страницы не меняются.
 
 Additive `spectrum_settings` — строгий полный объект
-`{scale:"db|linear",frequency_scale:"linear|log",leakage:number}`. Отсутствие
-объекта сохраняет preference; missing/extra keys, неверные enum/type,
-non-finite или Leakage вне `[0,1]` дают field-level 422 без частичной mutation.
+`{scale:"db|linear",frequency_scale:"linear|log",leakage:number,frequency_limits}`.
+`frequency_limits` равен `null` для Auto либо точному объекту
+`{min_hz:number,max_hz:number,units:"Hz"}`. Отсутствие всего объекта сохраняет
+preference; missing/extra keys, неверные enum/type, Bool/non-finite,
+неупорядоченные границы, иные units, Leakage вне `[0,1]` или явный диапазон вне
+topology analysis source дают field-level 422 без частичной mutation.
 Фактическое изменение даёт одну revision, равное значение является no-op.
-Clear сохраняет настройки, новый Display получает defaults, а страницы A/B
-независимы. Запрос Log и добавление комплексного member в уже Log-настроенный
-Display отвергаются атомарно.
+Clear сохраняет настройки, новый Display получает Auto defaults, а страницы
+A/B независимы. При смене analysis source допустимый explicit interval
+сохраняется, недопустимый сбрасывается только в Auto в той же atomic mutation.
+Запрос Log и добавление комплексного member в уже Log-настроенный Display
+отвергаются атомарно.
 
 Snapshot добавляет non-null `row_selected_signal`, nullable root
 `analysis_signal` и `displays[].analysis_signal`; root/display
@@ -122,6 +127,20 @@ Spectrum вычисляется заново по inclusive raw Time ROI каж�
 два и более передаются EngeeDSP. Вещественный результат one-sided
 `0..Nyquist`, комплексный — centered two-sided. Frequency scale меняет только
 Plotly `xaxis.type`, raw frequency/power arrays остаются backend-owned.
+`plots.spectrum.frequency_limits` содержит `mode`, сохранённый `requested` и
+фактический `effective` interval. В Auto effective берётся только из provider
+output analysis source. Explicit interval входит в typed query/cache и
+передаётся EngeeDSP как `FrequencyLimits`; secondary signal получает
+пересечение с собственным topology domain, а отсутствие пересечения даёт typed
+empty без provider. Frontend не выводит Nyquist и не обрезает arrays.
+
+В существующей Display-вкладке Spectrum есть поля `F min`/`F max`. Auto
+показывает backend effective Hz values; валидный commit создаёт explicit intent.
+Очистка обоих полей возвращает Auto, одно пустое/нечисловое/неупорядоченное поле
+даёт локальную ошибку и восстанавливает canonical values без запроса. Внешний
+422 также откатывает exact canonical state. Отдельный Log-floor control не
+существует: вещественный Min `0` сохраняется, а положительный предел выбирает
+Plotly renderer без изменения state.
 
 ## Наблюдения MATLAB Signal Analyzer
 
@@ -171,6 +190,12 @@ dB/Linear: peak около `-3.0103 dB` соответствует linear power 
 ownership Spectrum settings остаётся переносимым product decision, а не
 неподтверждённым MATLAB claim.
 
+SA-GRAPH-004 сохранён как partial scenario: реальный zero-bound Log повторно
+подтверждён, но создание complex source не завершилось из-за усечения ввода и
+AppleScript activation timeout. Поэтому centered complex limits и точное
+состояние Log control не объявляются MATLAB-наблюдением; product продолжает
+документированное complex/Log ограничение как явный portable contract.
+
 ## Code anchors и проверки
 
 - `lib/services/signal_analyser_service.jl`:
@@ -213,7 +238,9 @@ ownership Spectrum settings остаётся переносимым product deci
   Peaks coordinates; `selectable_statistics.test.js` добавляет page-local
   selection, Clear/re-add, ROI и cleanup contract;
   `spectrum_settings_roi.test.js` добавляет defaults, exact mutations,
-  one-sided axis, complex-safe Log, A/B, Clear/re-add и полный cleanup.
+  one-sided axis, complex-safe Log, A/B, Clear/re-add и полный cleanup;
+  `frequency_limits.test.js` добавляет Auto/effective, exact request/revision,
+  invalid/422/409, A/B/Clear/re-add, zero-bound Log и Auto cleanup.
   Runtime требует authenticated target.
 
 Связано с [DEC-20260731-009](../decisions/DEC-20260731-009-display-pages.md),
@@ -222,5 +249,6 @@ ownership Spectrum settings остаётся переносимым product deci
 [DEC-20260731-012](../decisions/DEC-20260731-012-display-selection-separation.md),
 [DEC-20260731-013](../decisions/DEC-20260731-013-authoritative-time-roi.md),
 [DEC-20260731-014](../decisions/DEC-20260731-014-selectable-statistics.md),
-[DEC-20260801-015](../decisions/DEC-20260801-015-spectrum-roi-default-settings.md) и
+[DEC-20260801-015](../decisions/DEC-20260801-015-spectrum-roi-default-settings.md),
+[DEC-20260801-016](../decisions/DEC-20260801-016-frequency-limits.md) и
 [traceability](../traceability/signal-analyser-cascades.md).

@@ -27,8 +27,14 @@
    representation `power`, `Leakage=λ`, без forced `FrequencyResolution`.
    Для real передаётся `TwoSided=false`, для complex — `true`. Linear выдача
    равна raw power `P`; dB равна `P_dB=10 log10(P)`. Frequency scale — только
-   presentation metadata. Code anchors: `SignalSpectrumQuery`,
+   presentation metadata. Auto не передаёт `FrequencyLimits`; explicit
+   interval `[f_min,f_max]` передаётся provider в Hz и входит в query/cache.
+   Для secondary signal с topology domain `[d_min,d_max]` effective interval
+   равен `[max(f_min,d_min), min(f_max,d_max)]` только при строгом `lo<hi`;
+   иначе trace пуст и provider не вызывается. Code anchors:
+   `AbstractSignalSpectrumFrequencyLimits`, `SignalSpectrumQuery`,
    `SignalSpectrumService`, `signal_spectrum_calculate`,
+   `signal_spectrum_effective_frequency_limits`,
    `signal_analyser_spectrum_plot`.
 3. Spectrogram вызывает representation `spectrogram`, `TwoSided=true`,
    ориентирует matrix как frequency × time и применяет ту же шкалу
@@ -95,10 +101,12 @@
 дополнительно содержит median, peak-to-peak и RMS. Пустой subset является
 допустимым preference и не запускает ROI calculation.
 
-Spectrum settings нового Display: dB, линейная частотная ось и `λ=0.5`.
+Spectrum settings нового Display: dB, линейная частотная ось, `λ=0.5` и Auto
+Frequency Limits. Auto domain для real равен `[0,f_s/2]`, для complex —
+`[-f_s/2,f_s/2]`. Явные границы хранятся в Hz как requested intent.
 Leakage конечна и лежит в `[0,1]`. Scale/frequency scale исключены из raw cache
-identity; Leakage, inclusive sample range, signal/sample rate и one/two-sided
-topology входят в typed key.
+identity; Leakage, effective Frequency Limits, inclusive sample range,
+signal/sample rate и one/two-sided topology входят в typed key.
 
 ## Numeric constraints и edge cases
 
@@ -116,6 +124,15 @@ per-signal пересечения и один отсчёт возвращают 
 `[0,f_s/2]`, complex — отсортированной centered two-sided в
 `[-f_s/2,f_s/2]`. Log запрещён при любом видимом complex member. Normalize Y
 не меняет query, cache или power.
+
+Explicit Frequency Limits должны состоять из двух конечных JSON numbers, но не
+Bool, быть строго возрастающими и полностью лежать в topology analysis source;
+units строго `Hz`. При смене source сохранённый interval остаётся только если
+валиден для нового полного domain, иначе сбрасывается в Auto. Secondary trace
+не расширяет requested interval и не вызывает provider при пустом пересечении.
+Provider output для explicit query обязан быть отсортированным, лежать внутри
+effective limits и сохранять обе границы с tolerance
+`sqrt(eps(Float64))*max(f_s,1)`.
 
 Для raw statistics пустые/non-finite samples и неположительная либо
 неконечная `f_s` отвергаются до публикации view/display mutation. Позиции
@@ -173,6 +190,14 @@ revision mutation.
   two-sided, Leakage endpoints/validation, two-sample support и one-sample
   `ArgumentError`. Локальный обязательный contract остаётся failed, потому что
   пакет отсутствует в local environment; fallback не добавлен.
+- Cascade 10 backend unit/API — 944/944 PASS; целевые C10 testsets 37/37 и
+  40/40. Проверены exact four-key state/API, Auto/explicit variants,
+  source preserve/reset, mixed sample rates, no-overlap typed empty,
+  query/cache identity, provider options, requested/effective metadata,
+  no-op/+1 и atomic 422. Frontend 2/2; Playwright syntax/support/runner-help
+  PASS. Локальный Engee gate проходит findpeaks 16/16 и затем честно падает на
+  обязательном import отсутствующего `EngeeDSP`; отдельный prod probe
+  подтвердил FrequencyLimits grid/clipping/errors.
 
 ## Источники и наблюдаемые различия
 

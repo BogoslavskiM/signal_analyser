@@ -164,3 +164,20 @@ follow-ups: Rerun real contract on the deployment environment and C9 E2E on
 the exact deployed SHA.
 next_task_candidates: Add focused contract cases only when the next Spectrum
 slice is frozen.
+
+## Cascade 10 verification — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_cycle`.
+scope: `test/back/**`, `test/front/**`, `test/engee/**`.
+coverage: Exact four-key state/API, Auto/Explicit validation, Bool/nonfinite/
+order/units/domain 422 atomicity, revision/no-op, A/B/Clear/re-add/source
+preserve/reset, mixed-Fs no-overlap zero-provider, metadata/query/cache/provider
+options, frontend IDs/drafts/full request/rollback/no-client-DSP, formal Engee
+FrequencyLimits matrix. Legacy exact bodies were migrated, not weakened.
+verification: Backend 944/944; C10 unit 37/37; API 40/40; frontend 2/2. Engee
+gate executed: findpeaks 16/16, then required failure because local EngeeDSP is
+absent.
+risks: Formal C10 provider matrix still needs provisioned Engee runtime.
+follow-ups: Rerun on target; retain exact assertions in future cascades.
+next_task_candidates: Future heatmap provider red matrix after contract.
