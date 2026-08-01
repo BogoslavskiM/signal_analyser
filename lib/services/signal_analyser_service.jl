@@ -23,7 +23,7 @@ const SIGNAL_SPECTRUM_SETTINGS_FIELDS = Set([
     "frequency_limits",
 ])
 const SIGNAL_SPECTRUM_FREQUENCY_LIMIT_FIELDS = Set(["min_hz", "max_hz", "units"])
-const SIGNAL_SPECTROGRAM_SETTINGS_FIELDS = Set(["overlap_percent"])
+const SIGNAL_SPECTROGRAM_SETTINGS_FIELDS = Set(["overlap_percent", "leakage"])
 
 const SIGNAL_SPECTRUM_SCALE_NAMES = Dict(
     DB_SPECTRUM_SCALE => "db",
@@ -110,6 +110,7 @@ function signal_spectrogram_settings_payload(
 )::Dict{String,Any}
     Dict{String,Any}(
         "overlap_percent" => settings.overlap_percent,
+        "leakage" => settings.leakage,
     )
 end
 
@@ -360,6 +361,8 @@ function signal_analyser_cached_spectrum_data!(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
     signal::AnalysedSignal,
+    ;
+    materialize_missing::Bool = true,
 )::SignalSpectrumData
     limits = display.time_limits
     limits === nothing && throw(ArgumentError("Непустой Display должен иметь Time Limits"))
@@ -381,6 +384,10 @@ function signal_analyser_cached_spectrum_data!(
         display.spectrum_settings,
         frequency_limits,
     )
+    if haskey(state.spectrum_cache, key)
+        return state.spectrum_cache[key]
+    end
+    materialize_missing || return SignalSpectrumData(signal_spectrum_topology(signal))
     get!(state.spectrum_cache, key) do
         length(sample_range) == 1 && return SignalSpectrumData(signal_spectrum_topology(signal))
         query = signal_spectrum_query(
@@ -397,8 +404,14 @@ function signal_analyser_cached_spectrogram_data!(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
     signal::AnalysedSignal,
+    ;
+    materialize_missing::Bool = true,
 )::SignalSpectrogramData
     key = signal_spectrogram_cache_key(signal, display.spectrogram_settings)
+    if haskey(state.spectrogram_cache, key)
+        return state.spectrogram_cache[key]
+    end
+    materialize_missing || return SignalSpectrogramData(signal_spectrum_topology(signal))
     get!(state.spectrogram_cache, key) do
         signal_spectrogram_data(state.spectrogram_service, signal, display.spectrogram_settings)
     end
@@ -408,10 +421,23 @@ function signal_analyser_plots_for_display!(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
     signal::AnalysedSignal,
+    ;
+    materialize_missing_spectra::Bool = true,
+    materialize_missing_spectrogram::Bool = true,
 )::Dict{String,Any}
     plots = copy(signal_analyser_cached_plots!(state, signal))
-    spectrum_data = signal_analyser_cached_spectrum_data!(state, display, signal)
-    spectrogram_data = signal_analyser_cached_spectrogram_data!(state, display, signal)
+    spectrum_data = signal_analyser_cached_spectrum_data!(
+        state,
+        display,
+        signal,
+        materialize_missing = materialize_missing_spectra,
+    )
+    spectrogram_data = signal_analyser_cached_spectrogram_data!(
+        state,
+        display,
+        signal,
+        materialize_missing = materialize_missing_spectrogram,
+    )
     plots["spectrum"] = signal_analyser_spectrum_plot(spectrum_data, display.spectrum_settings)
     plots["spectrogram"] = signal_analyser_spectrogram_plot(spectrogram_data)
     plots
@@ -494,19 +520,33 @@ function signal_analyser_multi_trace_payload(
     display::SignalAnalyserDisplayState,
     selected_signal::AnalysedSignal,
     visible_names::Vector{String},
+    ;
+    materialize_missing_spectra::Bool = true,
+    materialize_missing_spectrogram::Bool = true,
 )::Dict{String,Any}
     time_traces = Dict{String,Any}[]
     spectrum_traces = Dict{String,Any}[]
     for signal in state.signals
         signal.name in visible_names || continue
         base_plots = signal_analyser_cached_plots!(state, signal)
-        spectrum_data = signal_analyser_cached_spectrum_data!(state, display, signal)
+        spectrum_data = signal_analyser_cached_spectrum_data!(
+            state,
+            display,
+            signal,
+            materialize_missing = materialize_missing_spectra,
+        )
         spectrum_plot = signal_analyser_spectrum_plot(spectrum_data, display.spectrum_settings)
         push!(time_traces, signal_analyser_plot_for_payload(base_plots["time"], signal))
         push!(spectrum_traces, signal_analyser_plot_for_payload(spectrum_plot, signal))
     end
 
-    selected_plots = signal_analyser_plots_for_display!(state, display, selected_signal)
+    selected_plots = signal_analyser_plots_for_display!(
+        state,
+        display,
+        selected_signal,
+        materialize_missing_spectra = materialize_missing_spectra,
+        materialize_missing_spectrogram = materialize_missing_spectrogram,
+    )
     Dict{String,Any}(
         "selected_signal" => selected_signal.name,
         "visible_signals" => visible_names,
@@ -522,6 +562,9 @@ function signal_analyser_multi_trace_payload(
     display::SignalAnalyserDisplayState,
     ::Nothing,
     visible_names::Vector{String},
+    ;
+    materialize_missing_spectra::Bool = true,
+    materialize_missing_spectrogram::Bool = true,
 )::Dict{String,Any}
     isempty(visible_names) || throw(ArgumentError("Пустой analysis source допустим только для пустого Display"))
     plots = signal_analyser_empty_plots(display.spectrum_settings)
@@ -858,6 +901,7 @@ function signal_spectrogram_cache_key(
         length(signal.values),
         signal_spectrum_topology(signal),
         settings.overlap_percent,
+        settings.leakage,
     )
 end
 
@@ -874,6 +918,7 @@ function signal_spectrogram_query(
         signal.sample_rate_hz,
         signal_spectrum_topology(signal),
         settings.overlap_percent,
+        settings.leakage,
     )
 end
 
@@ -898,6 +943,8 @@ function signal_spectrogram_calculate(
         samples,
         times,
         "spectrogram",
+        "Leakage",
+        query.leakage,
         "OverlapPercent",
         query.overlap_percent,
         "TwoSided",
@@ -1362,6 +1409,9 @@ function signal_analyser_snapshot_unlocked(
     state::SignalAnalyserState,
     measurements::SignalMeasurementsSnapshot,
     peaks::SignalPeaksSnapshot,
+    ;
+    materialize_missing_spectra::Bool = true,
+    materialize_missing_spectrogram::Bool = true,
 )::Dict{String,Any}
     active_display = signal_analyser_active_display(state)
     analysis_name = signal_analyser_display_analysis_name(active_display)
@@ -1396,7 +1446,13 @@ function signal_analyser_snapshot_unlocked(
     end
     plots = signal === nothing ?
         signal_analyser_empty_plots(active_display.spectrum_settings) :
-        signal_analyser_plots_for_display!(state, active_display, signal)
+        signal_analyser_plots_for_display!(
+            state,
+            active_display,
+            signal,
+            materialize_missing_spectra = materialize_missing_spectra,
+            materialize_missing_spectrogram = materialize_missing_spectrogram,
+        )
     visible_names = signal_analyser_visible_signal_names(state)
     Dict{String,Any}(
         "state_revision" => state.view.state_revision,
@@ -1418,6 +1474,8 @@ function signal_analyser_snapshot_unlocked(
             active_display,
             signal,
             visible_names,
+            materialize_missing_spectra = materialize_missing_spectra,
+            materialize_missing_spectrogram = materialize_missing_spectrogram,
         ),
         "measurements" => signal_measurements_payload(measurements),
         "peaks" => signal_peaks_payload(peaks),
@@ -1425,6 +1483,70 @@ function signal_analyser_snapshot_unlocked(
             signal_analyser_empty_panel_payload(state.view.active_plot) :
             signal_analyser_panel_payload(state.view.active_plot, signal, plots),
     )
+end
+
+"""Typed semantic diff used to plan atomic View mutation preparation."""
+struct SignalAnalyserViewChanges
+    row_selection::Bool
+    active_plot::Bool
+    membership::Bool
+    analysis_source::Bool
+    time_limits::Bool
+    measurement_selection::Bool
+    spectrum_settings::Bool
+    spectrogram_settings::Bool
+    peaks_enabled::Bool
+end
+
+function SignalAnalyserViewChanges(
+    current_row_selection::GlobalSignalSelection,
+    current_display::SignalAnalyserDisplayState,
+    prospective_row_selection::GlobalSignalSelection,
+    prospective_display::SignalAnalyserDisplayState,
+)
+    SignalAnalyserViewChanges(
+        prospective_row_selection.signal_name != current_row_selection.signal_name,
+        prospective_display.active_plot != current_display.active_plot,
+        prospective_display.membership.signal_names != current_display.membership.signal_names,
+        !isequal(
+            signal_analyser_display_analysis_name(prospective_display),
+            signal_analyser_display_analysis_name(current_display),
+        ),
+        !isequal(prospective_display.time_limits, current_display.time_limits),
+        prospective_display.measurement_selection != current_display.measurement_selection,
+        prospective_display.spectrum_settings != current_display.spectrum_settings,
+        prospective_display.spectrogram_settings != current_display.spectrogram_settings,
+        prospective_display.peaks_enabled != current_display.peaks_enabled,
+    )
+end
+
+function signal_analyser_has_changes(changes::SignalAnalyserViewChanges)::Bool
+    any((
+        changes.row_selection,
+        changes.active_plot,
+        changes.membership,
+        changes.analysis_source,
+        changes.time_limits,
+        changes.measurement_selection,
+        changes.spectrum_settings,
+        changes.spectrogram_settings,
+        changes.peaks_enabled,
+    ))
+end
+
+function signal_analyser_only_spectrogram_settings_changed(
+    changes::SignalAnalyserViewChanges,
+)::Bool
+    changes.spectrogram_settings && !any((
+        changes.row_selection,
+        changes.active_plot,
+        changes.membership,
+        changes.analysis_source,
+        changes.time_limits,
+        changes.measurement_selection,
+        changes.spectrum_settings,
+        changes.peaks_enabled,
+    ))
 end
 
 function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{String,Any}
@@ -1658,19 +1780,19 @@ function signal_analyser_validate_spectrogram_settings!(
 )::Union{Nothing,SignalSpectrogramSettings}
     if !(value isa AbstractDict)
         field_errors["spectrogram_settings"] =
-            "Требуется объект {overlap_percent}"
+            "Требуется объект {overlap_percent, leakage}"
         return nothing
     end
     keys_set = signal_analyser_payload_keys(value)
-    if length(value) != 1 || keys_set != SIGNAL_SPECTROGRAM_SETTINGS_FIELDS
+    if length(value) != 2 || keys_set != SIGNAL_SPECTROGRAM_SETTINGS_FIELDS
         missing = sort!(collect(setdiff(SIGNAL_SPECTROGRAM_SETTINGS_FIELDS, keys_set)))
         unknown = sort!(collect(setdiff(keys_set, SIGNAL_SPECTROGRAM_SETTINGS_FIELDS)))
         details = String[]
         isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
         isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
-        length(value) == 1 || push!(details, "требуется ровно одно поле")
+        length(value) == 2 || push!(details, "требуется ровно два поля")
         field_errors["spectrogram_settings"] =
-            "Ожидался только overlap_percent ($(join(details, "; ")))"
+            "Ожидались только overlap_percent и leakage ($(join(details, "; ")))"
         return nothing
     end
 
@@ -1680,8 +1802,14 @@ function signal_analyser_validate_spectrogram_settings!(
             "overlap_percent: требуется конечное JSON number от 0 до 75, но не Bool"
         return nothing
     end
+    leakage_value = signal_analyser_payload_value(value, "leakage")
+    if !(leakage_value isa Real) || leakage_value isa Bool
+        field_errors["spectrogram_settings"] =
+            "leakage: требуется конечное JSON number от 0 до 1, но не Bool"
+        return nothing
+    end
     try
-        SignalSpectrogramSettings(overlap_value)
+        SignalSpectrogramSettings(overlap_value, leakage_value)
     catch err
         if err isa ArgumentError || err isa InexactError || err isa OverflowError
             field_errors["spectrogram_settings"] = sprint(showerror, err)
@@ -2019,15 +2147,16 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         prospective_display = requested.display
         prospective_members = signal_analyser_display_members(prospective_display)
         prospective_analysis_name = signal_analyser_display_analysis_name(prospective_display)
-        changed = requested.row_selection.signal_name != state.row_selection.signal_name ||
-            prospective_display.active_plot != display.active_plot ||
-            prospective_display.membership.signal_names != display.membership.signal_names ||
-            !isequal(prospective_analysis_name, signal_analyser_display_analysis_name(display)) ||
-            !isequal(prospective_display.time_limits, display.time_limits) ||
-            prospective_display.measurement_selection != display.measurement_selection ||
-            prospective_display.spectrum_settings != display.spectrum_settings ||
-            prospective_display.spectrogram_settings != display.spectrogram_settings ||
-            prospective_display.peaks_enabled != display.peaks_enabled
+        changes = SignalAnalyserViewChanges(
+            state.row_selection,
+            display,
+            requested.row_selection,
+            prospective_display,
+        )
+        changed = signal_analyser_has_changes(changes)
+        spectrogram_settings_only = signal_analyser_only_spectrogram_settings_changed(changes)
+        prepare_spectrum = changed && !spectrogram_settings_only
+        prepare_spectrogram = changed
 
         # Build every payload affected by the request before publishing the
         # mutation so a runtime DSP failure cannot leave state half-applied.
@@ -2035,20 +2164,24 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             state,
             prospective_members,
         )
-        prepared_spectra = signal_analyser_prepared_spectra(
-            state,
-            prospective_display,
-            prospective_members,
-        )
+        prepared_spectra = prepare_spectrum ?
+            signal_analyser_prepared_spectra(
+                state,
+                prospective_display,
+                prospective_members,
+            ) :
+            Dict{SignalSpectrumCacheKey,SignalSpectrumData}()
         next_revision = state.view.state_revision + (changed ? 1 : 0)
         prospective_signal = prospective_analysis_name === nothing ? nothing :
             signal_by_name(state, prospective_analysis_name)
-        prepared_spectrograms = signal_analyser_prepared_spectrograms(
-            state,
-            prospective_display,
-            prospective_signal,
-            refresh = isempty(signal_analyser_display_members(display)) && !isempty(prospective_members),
-        )
+        prepared_spectrograms = prepare_spectrogram ?
+            signal_analyser_prepared_spectrograms(
+                state,
+                prospective_display,
+                prospective_signal,
+                refresh = isempty(signal_analyser_display_members(display)) && !isempty(prospective_members),
+            ) :
+            Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}()
         prepared_measurements = signal_measurements_snapshot(
             state.measurements_service,
             next_revision,
@@ -2064,18 +2197,24 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         )
         if changed
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
-            signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
-            signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
+            prepare_spectrum &&
+                signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
+            prepare_spectrogram &&
+                signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
             signal_analyser_publish_display_state!(display, prospective_display)
             signal_analyser_publish_row_selection!(state, requested.row_selection)
             signal_analyser_sync_active_display!(state, display)
             state.view.state_revision += 1
         else
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
-            signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
-            signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
         end
-        signal_analyser_snapshot_unlocked(state, prepared_measurements, prepared_peaks)
+        signal_analyser_snapshot_unlocked(
+            state,
+            prepared_measurements,
+            prepared_peaks,
+            materialize_missing_spectra = prepare_spectrum,
+            materialize_missing_spectrogram = prepare_spectrogram,
+        )
     end
 end
 

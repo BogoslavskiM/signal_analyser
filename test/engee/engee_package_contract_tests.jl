@@ -126,16 +126,19 @@ end
         assert_pspectrum_matrix(power, frequencies, times)
     end
 
-    @testset "C12 spectrogram OverlapPercent canonical provider matrix" begin
+    @testset "C13 spectrogram Leakage + OverlapPercent canonical provider matrix" begin
         # This is deliberately the production adapter order: app-level JSON validation
-        # rejects Bool and values outside 0:75 before this provider boundary.
+        # rejects Bool and values outside the frozen ranges before this provider boundary.
         real_signal = sin.(2pi .* 32.0 .* time) .+ 0.25 .* sin.(2pi .* 72.0 .* time)
         for (probe_signal, two_sided) in ((real_signal, false), (signal, true))
-            for overlap_percent in (0.0, 50.0, 75.0)
+            default_power, default_frequencies, default_times = pspectrum(probe_signal, time, "spectrogram", "OverlapPercent", 50.0, "TwoSided", two_sided)
+            for leakage in (0.0, 0.5, 1.0), overlap_percent in (0.0, 50.0, 75.0)
                 power, frequencies, times = pspectrum(
                     probe_signal,
                     time,
                     "spectrogram",
+                    "Leakage",
+                    leakage,
                     "OverlapPercent",
                     overlap_percent,
                     "TwoSided",
@@ -150,6 +153,11 @@ end
                     @test all(value -> value >= 0.0, Float64.(vec(collect(frequencies))))
                 end
                 assert_pspectrum_matrix(power, frequencies, times)
+                if leakage == 0.5 && overlap_percent == 50.0
+                    @test power == default_power
+                    @test frequencies == default_frequencies
+                    @test times == default_times
+                end
             end
         end
 
@@ -159,8 +167,10 @@ end
             signal,
             time,
             "spectrogram",
-            "OverlapPercent",
+            "Leakage",
             true,
+            "OverlapPercent",
+            50.0,
             "TwoSided",
             true,
         )
@@ -168,6 +178,13 @@ end
         @test all(isfinite, vec(collect(bool_times)))
         assert_frequency_axis(bool_frequencies)
         assert_pspectrum_matrix(bool_power, bool_frequencies, bool_times)
+
+        canonical = pspectrum(signal, time, "spectrogram", "Leakage", 0.0, "OverlapPercent", 50.0, "TwoSided", true)
+        reordered = pspectrum(signal, time, "spectrogram", "OverlapPercent", 50.0, "Leakage", 0.0, "TwoSided", true)
+        @test canonical == reordered
+        @test_throws ArgumentError pspectrum(signal, time, "spectrogram", "Leakage", -0.01, "OverlapPercent", 50.0, "TwoSided", true)
+        @test_throws ArgumentError pspectrum(signal, time, "spectrogram", "Leakage", 1.01, "OverlapPercent", 50.0, "TwoSided", true)
+        @test_throws ArgumentError pspectrum(signal, time, "spectrogram", "Leakage", NaN, "OverlapPercent", 50.0, "TwoSided", true)
     end
 
     @testset "persistence" begin

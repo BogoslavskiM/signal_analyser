@@ -114,11 +114,14 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(!api.includes("spectrogram"), "Cascade 11 must not add a Spectrogram-specific route");
   assert(html.includes('data-testid="spectrogram-overlap-percent-input"'), "Cascade 12 must expose the stable Overlap input selector");
   assert(/data-testid="spectrogram-overlap-percent-error"[^>]*role="alert"[^>]*hidden/.test(html), "Cascade 12 must reserve an accessible Overlap inline error");
-  ["spectrogram_settings", "overlap_percent", "spectrogram-overlap-percent-input", "spectrogram-overlap-percent-error"].forEach((term) =>
-    assert(app.includes(term), `frontend must preserve Cascade 12 Overlap term ${term}`)
+  assert(/data-testid="spectrogram-leakage-input"[^>]*type="range"[^>]*min="0"[^>]*max="1"[^>]*step="0\.01"/.test(html), "Cascade 13 must expose normalized Leakage range control");
+  assert(/data-testid="spectrogram-leakage-error"[^>]*role="alert"[^>]*hidden/.test(html), "Cascade 13 must reserve an accessible Leakage inline error");
+  ["spectrogram_settings", "overlap_percent", "leakage", "spectrogram-overlap-percent-input", "spectrogram-overlap-percent-error", "spectrogram-leakage-input", "spectrogram-leakage-error"].forEach((term) =>
+    assert(app.includes(term), `frontend must preserve Cascade 13 Spectrogram settings term ${term}`)
   );
-  assert((html.match(/data-settings-tab=/g) || []).length === 3, "Cascade 12 Overlap must remain inside exactly three settings tabs");
-  assert(!api.includes("overlap") && !api.includes("spectrogram_settings"), "Cascade 12 must reuse /api/view rather than add an Overlap route");
+  assert((html.match(/data-settings-tab=/g) || []).length === 3, "Cascade 13 Leakage must remain inside exactly three settings tabs");
+  assert(!api.includes("overlap") && !api.includes("leakage") && !api.includes("spectrogram_settings"), "Cascade 13 must reuse /api/view rather than add a Spectrogram settings route");
+  assert(!/fft|stft|window\(/i.test(app), "Cascade 13 must not add client-side DSP");
   assert((app.match(/function renderStatisticsControls\(/g) || []).length === 1, "Statistics settings must have exactly one render function");
   assert((app.match(/function render\(/g) || []).length === 1, "frontend must retain exactly one render declaration");
   assert(!app.includes("function bindStatisticsShortcut("), "Statistics shortcut must not retain a dead duplicate binding path");

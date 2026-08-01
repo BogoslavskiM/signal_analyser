@@ -120,7 +120,7 @@ end
         "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
         "measurement_kinds" => ["minimum", "maximum", "mean"],
         "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing),
-        "spectrogram_settings" => Dict("overlap_percent" => 50.0),
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5),
         "peaks_enabled" => false,
     )]
     @test snapshot["state_revision"] == 0
@@ -234,7 +234,7 @@ end
         "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
         "measurement_kinds" => ["minimum", "maximum", "mean"],
         "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing),
-        "spectrogram_settings" => Dict("overlap_percent" => 50.0),
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5),
         "peaks_enabled" => false,
     )
 
@@ -1341,36 +1341,104 @@ end
     @test SA.signal_analyser_snapshot(state) == baseline
 end
 
-@testset "Cascade 12 typed Spectrogram Overlap settings invariants" begin
-    @test SA.SignalSpectrogramSettings().overlap_percent == 50.0
-    @test SA.SignalSpectrogramSettings(0).overlap_percent == 0.0
-    @test SA.SignalSpectrogramSettings(75).overlap_percent == 75.0
-    @test_throws ArgumentError SA.SignalSpectrogramSettings(75.1)
-    @test_throws ArgumentError SA.SignalSpectrogramSettings(-1)
-    @test_throws ArgumentError SA.SignalSpectrogramSettings(Inf)
-    @test_throws ArgumentError SA.SignalSpectrogramSettings(true)
-    query_50 = SA.SignalSpectrogramQuery("overlap", [1.0, 2.0], 10.0, SA.ONE_SIDED_SPECTRUM, 50.0)
-    query_75 = SA.SignalSpectrogramQuery("overlap", [1.0, 2.0], 10.0, SA.ONE_SIDED_SPECTRUM, 75.0)
-    @test query_50.overlap_percent == 50.0
-    @test SA.SignalSpectrogramCacheKey(query_50) != SA.SignalSpectrogramCacheKey(query_75)
+@testset "Cascade 13 typed Spectrogram settings invariants" begin
+    @test SA.SignalSpectrogramSettings().overlap_percent == 50.0 && SA.SignalSpectrogramSettings().leakage == 0.5
+    @test SA.SignalSpectrogramSettings(0, 0).overlap_percent == 0.0 && SA.SignalSpectrogramSettings(0, 0).leakage == 0.0
+    @test SA.SignalSpectrogramSettings(75, 1).overlap_percent == 75.0 && SA.SignalSpectrogramSettings(75, 1).leakage == 1.0
+    @test SA.SignalSpectrogramSettings(50, -0.0).leakage == 0.0 && !signbit(SA.SignalSpectrogramSettings(50, -0.0).leakage)
+    @test_throws ArgumentError SA.SignalSpectrogramSettings(75.1, 0.5)
+    @test_throws ArgumentError SA.SignalSpectrogramSettings(-1, 0.5)
+    @test_throws ArgumentError SA.SignalSpectrogramSettings(50, 1.1)
+    @test_throws ArgumentError SA.SignalSpectrogramSettings(50, -0.1)
+    @test_throws ArgumentError SA.SignalSpectrogramSettings(50, Inf)
+    @test_throws ArgumentError SA.SignalSpectrogramSettings(50, true)
+    query_50 = SA.SignalSpectrogramQuery("leakage", [1.0, 2.0], 10.0, SA.ONE_SIDED_SPECTRUM, 50.0, 0.5)
+    query_overlap = SA.SignalSpectrogramQuery("leakage", [1.0, 2.0], 10.0, SA.ONE_SIDED_SPECTRUM, 75.0, 0.5)
+    query_leakage = SA.SignalSpectrogramQuery("leakage", [1.0, 2.0], 10.0, SA.ONE_SIDED_SPECTRUM, 50.0, 1.0)
+    @test query_50.overlap_percent == 50.0 && query_50.leakage == 0.5
+    @test SA.SignalSpectrogramCacheKey(query_50) != SA.SignalSpectrogramCacheKey(query_overlap)
+    @test SA.SignalSpectrogramCacheKey(query_50) != SA.SignalSpectrogramCacheKey(query_leakage)
+    negative_zero_key = SA.SignalSpectrogramCacheKey(SA.SignalSpectrogramQuery("leakage-zero", [1.0, 2.0], 10.0, SA.ONE_SIDED_SPECTRUM, 50.0, -0.0))
+    positive_zero_key = SA.SignalSpectrogramCacheKey(SA.SignalSpectrogramQuery("leakage-zero", [1.0, 2.0], 10.0, SA.ONE_SIDED_SPECTRUM, 50.0, 0.0))
+    @test negative_zero_key == positive_zero_key
+    @test isequal(negative_zero_key, positive_zero_key)
+    @test hash(negative_zero_key) == hash(positive_zero_key)
+    zero_key_dict = Dict(negative_zero_key => :canonical)
+    @test zero_key_dict[positive_zero_key] == :canonical
     state = SA.default_signal_analyser_state()
     initial = SA.signal_analyser_snapshot(state)
-    @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
-    invalid = try SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => Dict("overlap_percent" => 75.1))); nothing catch e; e end
+    @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
+    invalid = try SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => Dict("overlap_percent" => 75.1, "leakage" => 0.5))); nothing catch e; e end
     @test invalid isa SA.SignalAnalyserValidationError
     @test SA.signal_analyser_snapshot(state) == initial
-    changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => Dict("overlap_percent" => 75.0)))
-    @test changed["state_revision"] == 1 && changed["spectrogram_settings"] == Dict("overlap_percent" => 75.0)
+    changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => Dict("overlap_percent" => 75.0, "leakage" => 0.5)))
+    @test changed["state_revision"] == 1 && changed["spectrogram_settings"] == Dict("overlap_percent" => 75.0, "leakage" => 0.5)
 end
 
-@testset "Cascade 12 Spectrogram Overlap mutation, cache and display lifecycle" begin
+@testset "Cascade 13 Leakage-only mutation never rebuilds Spectrum cache" begin
+    SA.reset_pspectrum_double!()
+    empty!(SA.SPECTROGRAM_CALLS)
+    empty!(SA.SPECTRUM_CALLS)
+    state = SA.default_signal_analyser_state()
+    empty!(state.spectrum_cache)
+    empty!(state.spectrogram_cache)
+    empty!(SA.SPECTRUM_CALLS)
+    empty!(SA.SPECTROGRAM_CALLS)
+
+    changed = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 1.0),
+    ))
+    @test changed["state_revision"] == 1
+    @test changed["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 1.0)
+    @test length(SA.SPECTROGRAM_CALLS) == 1
+    @test isempty(SA.SPECTRUM_CALLS)
+    @test isempty(state.spectrum_cache)
+    @test length(state.spectrogram_cache) == 1
+end
+
+@testset "Cascade 13 equal Spectrogram settings are cold-cache no-op" begin
+    SA.reset_pspectrum_double!()
+    empty!(SA.SPECTRUM_CALLS)
+    empty!(SA.SPECTROGRAM_CALLS)
+    state = SA.default_signal_analyser_state()
+    empty!(state.spectrum_cache)
+    empty!(state.spectrogram_cache)
+    empty!(SA.SPECTRUM_CALLS)
+    empty!(SA.SPECTROGRAM_CALLS)
+
+    no_op = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5),
+    ))
+    @test no_op["state_revision"] == 0
+    @test no_op["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
+    @test isempty(SA.SPECTRUM_CALLS) && isempty(state.spectrum_cache)
+    @test isempty(SA.SPECTROGRAM_CALLS) && isempty(state.spectrogram_cache)
+    @test no_op["plots"]["spectrum"]["type"] == "line"
+    @test no_op["plots"]["spectrum"]["x"] isa Vector{Float64} && no_op["plots"]["spectrum"]["y"] isa Vector{Float64}
+    @test isempty(no_op["plots"]["spectrum"]["x"]) && isempty(no_op["plots"]["spectrum"]["y"])
+    @test no_op["plots"]["spectrogram"]["type"] == "heatmap"
+    @test no_op["plots"]["spectrogram"]["x"] isa Vector{Float64} && no_op["plots"]["spectrogram"]["y"] isa Vector{Float64} && no_op["plots"]["spectrogram"]["z"] isa Vector{Vector{Float64}}
+    @test isempty(no_op["plots"]["spectrogram"]["x"]) && isempty(no_op["plots"]["spectrogram"]["y"]) && isempty(no_op["plots"]["spectrogram"]["z"])
+    @test Set(keys(no_op["plot_payload"])) == Set(["selected_signal", "visible_signals", "time_traces", "spectrum_traces", "spectrogram", "persistence"])
+
+    materialized = SA.signal_analyser_snapshot(state)
+    @test materialized["state_revision"] == 0
+    @test length(SA.SPECTRUM_CALLS) == 2 && length(state.spectrum_cache) == 2
+    @test length(SA.SPECTROGRAM_CALLS) == 1 && length(state.spectrogram_cache) == 1
+    assert_line_plot(materialized["plots"]["spectrum"])
+    assert_heatmap_plot(materialized["plots"]["spectrogram"])
+end
+
+@testset "Cascade 13 Spectrogram settings mutation, cache and display lifecycle" begin
     SA.reset_pspectrum_double!()
     empty!(SA.SPECTROGRAM_CALLS)
     SA.SPECTROGRAM_FAILURE[] = false
     state = SA.default_signal_analyser_state()
     first_name, second_name = [signal.name for signal in state.signals]
     initial = SA.signal_analyser_snapshot(state)
-    @test all(display -> display["spectrogram_settings"] == Dict("overlap_percent" => 50.0), initial["displays"])
+    @test all(display -> display["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5), initial["displays"])
     @test !isempty(SA.SPECTROGRAM_CALLS)
     calls_at_default = length(SA.SPECTROGRAM_CALLS)
 
@@ -1378,12 +1446,17 @@ end
         nothing,
         "50",
         Dict{String,Any}(),
-        Dict("overlap_percent" => true),
-        Dict("overlap_percent" => NaN),
-        Dict("overlap_percent" => Inf),
-        Dict("overlap_percent" => -0.1),
-        Dict("overlap_percent" => 75.1),
-        Dict("overlap_percent" => 50.0, "extra" => 1),
+        Dict("overlap_percent" => 50.0),
+        Dict("leakage" => 0.5),
+        Dict("overlap_percent" => true, "leakage" => 0.5),
+        Dict("overlap_percent" => 50.0, "leakage" => true),
+        Dict("overlap_percent" => 50.0, "leakage" => NaN),
+        Dict("overlap_percent" => 50.0, "leakage" => Inf),
+        Dict("overlap_percent" => 50.0, "leakage" => -0.1),
+        Dict("overlap_percent" => 50.0, "leakage" => 1.1),
+        Dict("overlap_percent" => NaN, "leakage" => 0.5),
+        Dict("overlap_percent" => 75.1, "leakage" => 0.5),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "extra" => 1),
     )
         error = try
             SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => invalid))
@@ -1397,44 +1470,104 @@ end
         @test length(SA.SPECTROGRAM_CALLS) == calls_at_default
     end
 
-    overlap_75 = Dict("overlap_percent" => 75.0)
+    overlap_75 = Dict("overlap_percent" => 75.0, "leakage" => 0.5)
     updated = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => overlap_75))
     @test updated["state_revision"] == 1
     @test updated["spectrogram_settings"] == overlap_75
     @test updated["displays"][1]["spectrogram_settings"] == overlap_75
-    @test SA.SPECTROGRAM_CALLS[end].overlap_percent == 75.0
+    @test SA.SPECTROGRAM_CALLS[end].overlap_percent == 75.0 && SA.SPECTROGRAM_CALLS[end].leakage == 0.5
     calls_at_75 = length(SA.SPECTROGRAM_CALLS)
     @test SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => overlap_75))["state_revision"] == 1
     @test length(SA.SPECTROGRAM_CALLS) == calls_at_75
 
     created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "create"))
-    @test created["displays"][2]["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+    @test created["displays"][2]["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
     selected_first = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))
     @test selected_first["spectrogram_settings"] == overlap_75
     selected_second = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-2"))
-    @test selected_second["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+    @test selected_second["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
 
     calls_before_clear = length(SA.SPECTROGRAM_CALLS)
     cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => String[]))
-    @test cleared["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+    @test cleared["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
     @test length(SA.SPECTROGRAM_CALLS) == calls_before_clear
     readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [first_name]))
-    @test readded["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+    @test readded["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
     @test length(SA.SPECTROGRAM_CALLS) == calls_before_clear + 1
     changed_signal = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 6, "visible_signals" => [first_name, second_name], "analysis_signal" => second_name))
-    @test changed_signal["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+    @test changed_signal["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
 
     before_failure = SA.signal_analyser_snapshot(state)
     empty!(state.spectrogram_cache)
     SA.SPECTROGRAM_FAILURE[] = true
     failure = try
-        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 7, "spectrogram_settings" => Dict("overlap_percent" => 0.0)))
+        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 7, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 0.0)))
         nothing
     catch caught
         caught
     end
     @test failure isa ArgumentError
     @test state.view.state_revision == before_failure["state_revision"]
+    @test isempty(state.spectrogram_cache)
+    SA.SPECTROGRAM_FAILURE[] = false
+    @test SA.signal_analyser_snapshot(state) == before_failure
+end
+
+@testset "Cascade 13 Leakage cache identity and Spectrum independence" begin
+    SA.reset_pspectrum_double!()
+    empty!(SA.SPECTROGRAM_CALLS)
+    empty!(SA.SPECTRUM_CALLS)
+    SA.SPECTROGRAM_FAILURE[] = false
+    SA.SPECTRUM_FAILURE[] = false
+    state = SA.default_signal_analyser_state()
+    first_name, second_name = [signal.name for signal in state.signals]
+    initial = SA.signal_analyser_snapshot(state)
+    @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
+    initial_spectrogram_calls, initial_spectrum_calls = length(SA.SPECTROGRAM_CALLS), length(SA.SPECTRUM_CALLS)
+
+    leakage_zero = Dict("overlap_percent" => 50.0, "leakage" => -0.0)
+    changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => leakage_zero))
+    @test changed["state_revision"] == 1
+    @test changed["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.0)
+    @test !signbit(changed["spectrogram_settings"]["leakage"])
+    @test length(SA.SPECTROGRAM_CALLS) == initial_spectrogram_calls + 1
+    @test length(SA.SPECTRUM_CALLS) == initial_spectrum_calls
+    @test SA.SPECTROGRAM_CALLS[end].leakage == 0.0
+    @test SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.0)))["state_revision"] == 1
+    @test length(SA.SPECTROGRAM_CALLS) == initial_spectrogram_calls + 1
+
+    restored = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5)))
+    @test restored["state_revision"] == 2
+    @test length(SA.SPECTROGRAM_CALLS) == initial_spectrogram_calls + 1 # default raw cache is reused
+    @test length(SA.SPECTRUM_CALLS) == initial_spectrum_calls
+
+    created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "create"))
+    @test created["displays"][2]["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
+    selected_a = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-1"))
+    @test selected_a["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
+    leaked_a = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 1.0)))
+    @test leaked_a["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 1.0)
+    selected_b = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 5, "operation" => "select", "display_id" => "display-2"))
+    @test selected_b["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
+    cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 6, "visible_signals" => String[]))
+    @test cleared["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
+    calls_before_readd = length(SA.SPECTROGRAM_CALLS)
+    readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 7, "visible_signals" => [first_name]))
+    @test readded["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
+    @test length(SA.SPECTROGRAM_CALLS) == calls_before_readd + 1 # first re-add recomputes after Clear
+    source_changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 8, "visible_signals" => [first_name, second_name], "analysis_signal" => second_name))
+    @test source_changed["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5)
+
+    before_failure = SA.signal_analyser_snapshot(state)
+    empty!(state.spectrogram_cache)
+    SA.SPECTROGRAM_FAILURE[] = true
+    failure = try
+        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 9, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 1.0)))
+        nothing
+    catch caught
+        caught
+    end
+    @test failure isa ArgumentError
     @test isempty(state.spectrogram_cache)
     SA.SPECTROGRAM_FAILURE[] = false
     @test SA.signal_analyser_snapshot(state) == before_failure
