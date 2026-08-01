@@ -442,6 +442,66 @@ module.exports = async function testDisplayBehavior(assert) {
   rejectedStatistics.e.statisticsControls.listeners.change({ target: { closest(selector) { return selector === "input[type='checkbox']" ? rejectedMedian : null; } } });
   await flush();
   assert(rejectedStatistics.e.statisticsOptions.slice(0, 3).every((option) => option.checked) && rejectedStatistics.e.statisticsOptions[3].checked === false && rejectedStatistics.e.statisticsError.hidden === false && rejectedStatistics.e.statisticsError.textContent === "Недопустимый набор показателей", "nested payload.error.fields.measurement_kinds must roll back authoritative checks and render its exact inline error");
+  const measurementAbsentDef = Object.assign({}, statsDefinition); delete measurementAbsentDef.measurement_kinds;
+  const measurementAbsent = snapshot(0, "display-1", [measurementAbsentDef], A); measurementAbsent.measurement_kinds = ["rms"];
+  const measurementCompat = await boot((url) => Promise.resolve(response(200, measurementAbsent)));
+  assert(measurementCompat.e.statisticsOptions.slice(0,3).every(option => option.checked), "absent snapshot measurement_kinds defaults to canonical first three");
+  const measurementEmpty = snapshot(0, "display-1", [Object.assign({}, statsDefinition, {measurement_kinds:[]})], A);
+  const measurementEmptyEnv = await boot((url) => Promise.resolve(response(200, measurementEmpty)));
+  assert(measurementEmptyEnv.e.statisticsOptions.every(option => !option.checked), "valid empty Statistics selection is retained without fallback");
+  const measurementSubset = snapshot(0, "display-1", [Object.assign({}, statsDefinition, {measurement_kinds:["rms", "minimum", "median"]})], A);
+  const measurementSubsetEnv = await boot((url) => Promise.resolve(response(200, measurementSubset)));
+  assert(measurementSubsetEnv.e.statisticsOptions[0].checked && measurementSubsetEnv.e.statisticsOptions[3].checked && measurementSubsetEnv.e.statisticsOptions[5].checked, "unordered valid Statistics subset renders in canonical checkbox order");
+  for (const malformedKinds of [null, "minimum", ["minimum", "minimum"], ["unknown"], ["minimum", "unknown"], [true]]) {
+    const def = Object.assign({}, statsDefinition, {measurement_kinds:malformedKinds}), bad = snapshot(0, "display-1", [def], A), calls = [];
+    const env = await boot((url, options) => { calls.push({url, options}); return Promise.resolve(response(200, bad)); });
+    assert(env.e.statisticsError.hidden === false && env.e.statisticsError.textContent.includes("Некорректный набор Statistics") && env.e.statisticsOptions.every(option => option.disabled), "malformed snapshot Statistics quarantines and disables every metric control");
+    env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
+    assert(calls.filter(call => call.url === "./api/view").length === 0, "Statistics corruption blocks unrelated View POST");
+  }
+  // C25/DEC-031 lifecycle matrix: root is never a fallback for a present
+  // display value, and a malformed authoritative response purges every
+  // pending intent for that Display.
+  const c25MalformedDefinition = Object.assign({}, statsDefinition, { measurement_kinds:null });
+  const c25Malformed = snapshot(1, "display-1", [c25MalformedDefinition], A);
+  c25Malformed.measurement_kinds = ["rms"];
+  const c25RootOverride = await boot((url) => Promise.resolve(response(200, c25Malformed)));
+  assert(c25RootOverride.e.statisticsError.hidden === false && c25RootOverride.e.statisticsOptions.every(option => option.disabled) && !c25RootOverride.e.statisticsOptions[5].checked, "C25 malformed present Display Statistics must quarantine even when root projects a valid nondefault subset");
+  function c25StatisticsChange(controlled, index) {
+    const option = controlled.e.statisticsOptions[index]; option.checked = true;
+    controlled.e.statisticsControls.listeners.change({ target:{ closest(selector) { return selector === "input[type='checkbox']" ? option : null; } } });
+  }
+  const c25Malformed409Calls = [], c25Malformed409Resolvers = [];
+  const c25Malformed409 = await boot((url, options) => { c25Malformed409Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, statsInitial)) : new Promise(resolve => c25Malformed409Resolvers.push(resolve)); });
+  c25StatisticsChange(c25Malformed409, 3); await flush();
+  c25StatisticsChange(c25Malformed409, 4); await flush();
+  c25Malformed409Resolvers.shift()(response(409, {current:c25Malformed})); await flush();
+  assert(c25Malformed409Calls.filter(call => call.url === "./api/view").length === 1 && c25Malformed409.e.statisticsError.hidden === false && c25Malformed409.e.statisticsOptions.every(option => option.disabled), "C25 malformed 409 current after an in-flight Statistics edit drains same-Display queue with no replay POST");
+  const c25Malformed200Calls = [], c25Malformed200Resolvers = [];
+  const c25Malformed200 = await boot((url, options) => { c25Malformed200Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, statsInitial)) : new Promise(resolve => c25Malformed200Resolvers.push(resolve)); });
+  c25StatisticsChange(c25Malformed200, 3); await flush();
+  c25StatisticsChange(c25Malformed200, 4); await flush();
+  c25Malformed200Resolvers.shift()(response(200, c25Malformed)); await flush();
+  assert(c25Malformed200Calls.filter(call => call.url === "./api/view").length === 1 && c25Malformed200.e.statisticsError.hidden === false && c25Malformed200.e.statisticsOptions.every(option => option.disabled), "C25 malformed successful Statistics snapshot immediately purges queued intent without a later POST");
+  const c25Displays = [
+    Object.assign({}, statsDefinition, {id:"display-1", name:"Display A", measurement_kinds:null}),
+    Object.assign({}, statsDefinition, {id:"display-2", name:"Display B", measurement_kinds:["rms", "minimum"]}),
+  ];
+  const c25A = snapshot(0, "display-1", c25Displays, A), c25B = snapshot(1, "display-2", c25Displays, A);
+  const c25IsolationCalls = [];
+  const c25Isolation = await boot((url, options) => { c25IsolationCalls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c25A)); return Promise.resolve(response(200, url === "./api/displays" ? c25B : snapshot(2, "display-2", [Object.assign({}, c25Displays[0]), Object.assign({}, c25Displays[1], {measurement_kinds:["minimum", "median", "rms"]})], A))); });
+  assert(c25Isolation.e.statisticsOptions.every(option => option.disabled), "C25 malformed Display A disables only A's Statistics controls");
+  c25Isolation.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
+  assert(c25Isolation.e.statisticsOptions.every(option => !option.disabled) && c25Isolation.e.statisticsOptions[0].checked && c25Isolation.e.statisticsOptions[5].checked, "C25 valid active Display B remains independently enabled after quarantined Display A");
+  c25StatisticsChange(c25Isolation, 3); await flush();
+  assert(c25IsolationCalls.filter(call => call.url === "./api/view").length === 1, "C25 valid Display B can still send its independent Statistics request");
+  const c25CanonicalInitial = snapshot(0, "display-1", [Object.assign({}, statsDefinition, {measurement_kinds:["rms", "minimum", "median"]})], A);
+  const c25CanonicalCommitted = snapshot(1, "display-1", [Object.assign({}, statsDefinition, {measurement_kinds:["minimum", "median", "peak_to_peak", "rms"]})], A);
+  const c25CanonicalCalls = [];
+  const c25Canonical = await boot((url, options) => { c25CanonicalCalls.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c25CanonicalInitial : c25CanonicalCommitted)); });
+  c25StatisticsChange(c25Canonical, 4); await flush();
+  const c25CanonicalBody = JSON.parse(c25CanonicalCalls.find(call => call.url === "./api/view").options.body);
+  assert(JSON.stringify(c25CanonicalBody) === JSON.stringify({state_revision:0, active_plot:"time", row_selected_signal:A, analysis_signal:A, visible_signals:[A, B], time_limits:null, measurement_kinds:["minimum", "median", "peak_to_peak", "rms"], spectrum_settings:{scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null}, spectrogram_settings:{overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null}, persistence_settings:{leakage:.5}, peaks_enabled:false}), "C25 unordered valid subset mutation must serialize one exact canonical full View body");
 
   const rowRequests = [];
   const memberRow = await boot((url, options) => {
