@@ -73,3 +73,12 @@ matrices unchanged.
 - [Envelope assessment](../../agents/reports/global-snapshot-envelope-assessment-20260801.md)
 - [DEC-009](DEC-20260731-009-display-pages.md)
 - [DEC-012](DEC-20260731-012-display-selection-separation.md)
+
+## Реализация — 2026-08-01
+
+Frontend boundary и deterministic matrix приняты локально в `f5820bd`.
+Проверены initial/200/409 corruption, Peaks и bounded stale-replay paths,
+fatal-state controls, Retry A/B recovery и позднее завершение `Plotly.react`
+после reset. Frontend suite 2/2 и независимый финальный аудит CLEAN. Отдельный
+disabled-by-default E2E contract сохранён в `33df821`; runtime, deployment,
+push и merge не заявляются.

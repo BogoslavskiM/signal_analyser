@@ -539,3 +539,21 @@ follow-ups: Initial/200/409/recovery exact matrix after DEC-032 implementation.
 source_evidence: `agents/reports/global-snapshot-envelope-assessment-20260801.md`.
 next_task_candidates: Implement initial/200/409/fatal-control/Retry C26 matrix.
 engee_bug_candidate: None.
+
+## Cascade 26 global envelope acceptance matrix — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c7_matrix`.
+goal: Prove global fatal/reset/Retry semantics across every response lifecycle.
+scope: `test/front/public/js/app.behavior.test.js`.
+contracts: Exact DEC-032 error and empty authoritative DOM; zero replay/POST;
+valid Retry recovery; no stale C24 graph resurrection.
+changes: Added outer-envelope classes, 200/409 queue purge, fatal-control and
+A/B recovery cases, plus Peaks, second stale-replay and deferred Plotly bridge
+oracles after independent audit exposed false-positive gaps.
+verification: Frontend 2/2, diff PASS and independent final Frontend audit CLEAN.
+risks: Runtime E2E remains gated; static E2E contract is separate `33df821`.
+follow-ups: Preserve controlled promise settlement assertions.
+next_task_candidates: C27 selection/root corruption matrix after DEC-033.
+commit: `f5820bd64c165daba9781aff87528c09bdd08576`.
+engee_bug_candidate: None.

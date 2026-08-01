@@ -1308,3 +1308,26 @@ is C27 and must not broaden this patch.
 | E2E Tester | `/root/e2e_c23_final_audit` | standby | optional fatal/retry static scenario | frontend implementation | existing app-error selector |
 | DevOps | `/root/devops_c17_commit` | C25 product current | C26 docs/product commits | role validation | no push/deploy |
 | MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | direct web only |
+
+## Cascade 26 implementation close — 2026-08-01
+
+Status: `implemented-and-locally-verified`; not deployed.
+
+C26 frontend/test `f5820bd` passes frontend 2/2. The deterministic matrix covers
+outer-envelope classes, initial/200/409 queue purge, Peaks success, bounded
+second stale replay, fatal controls, Retry A/B recovery and deferred C24
+Plotly settlement after fatal reset. Independent final Frontend audit CLEAN.
+Gated E2E contract `33df821` passed static/support checks and independent audit;
+runtime remains unclaimed. Backend/API/HTML/schema/math were unchanged. Push,
+deployment and merge were not performed.
+
+### Persistent role queue after C26 implementation close
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | no C26 delta | C27 read-only serializer support | DEC-033 checkpoint | backend unchanged |
+| Frontend | `/root/frontend_c26_bind_fix` | C26 CLEAN/committed | implement C27 selection boundary | DEC-033 checkpoint | `f5820bd` |
+| Tester | `/root/tester_c7_matrix` | C26 matrix CLEAN/committed | C27 lifecycle matrix | DEC-033 checkpoint | controlled promises |
+| E2E Tester | `/root/e2e_c26_audit` | C26 static audit CLEAN | optional C27 gated scenario | compatible target absent | `33df821` |
+| DevOps | `/root/devops_c17_commit` | C26 commits complete | C26 trace/C27 docs commits | exact path acceptance | no push/deploy |
+| MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | official web only |

@@ -544,3 +544,7 @@
   валидируются глобально; corruption очищает state/host/queues и оставляет
   existing accessible Retry без replay.
 - Backend/API/HTML/math не меняются; implementation evidence пока не заявляется.
+- Boundary затем реализован в `f5820bd`: frontend 2/2, exact initial/200/409,
+  Peaks/second-stale, fatal controls, Retry A/B и deferred Plotly settlement;
+  independent final audit CLEAN. Gated E2E static — `33df821`; runtime и
+  deployment не заявляются.

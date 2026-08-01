@@ -490,3 +490,23 @@ Runtime CDP was unavailable and is not claimed.
 risks: Enable only on a C23-capable target.
 commit: `6d5794901698cf0873de2829e1dde991597d0ed1`.
 browser_workspace_setup: Static-only; no browser/MATLAB interaction.
+
+## Cascade 26 global snapshot envelope gated recovery — 2026-08-01
+
+canonical_role: E2E Tester
+sessions: `/root/e2e_c23_final_audit`, `/root/e2e_c26_audit`.
+scope: `test/playwright/**`.
+contracts: Populated A topology before corruption; exact fatal alert and empty
+existing host/tabs/rows; every known server-mutating control disabled; zero
+View/Display POST; Retry issues a new GET and restores a distinct active B
+topology without fallback identity.
+changes: Added disabled-by-default `global-snapshot-envelope` feature, route-
+controlled scenario and selector/support contract.
+verification: Node syntax, gated module load, Playwright support contract and
+diff checks PASS; independent E2E audit CLEAN after closing missing-host,
+mutation-oracle and same-snapshot recovery false-positive gaps.
+risks: No compatible browser target was executed; runtime behavior is unclaimed.
+follow-ups: Enable only on an accepted C26-capable target and run through
+background CDP.
+commit: `33df821fe2faf776f90b11e3ed7a4338df2b4670`.
+browser_workspace_setup: Static-only; no browser, focus, Space or MATLAB action.

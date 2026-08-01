@@ -522,3 +522,23 @@ follow-ups: Implement DEC-032 after docs checkpoint with C24/C25 regression.
 source_evidence: `agents/reports/global-snapshot-envelope-assessment-20260801.md`.
 next_task_candidates: Implement DEC-032 global envelope and fatal Retry matrix.
 engee_bug_candidate: None.
+
+## Cascade 26 global snapshot envelope implementation — 2026-08-01
+
+canonical_role: Frontend
+sessions: `/root/frontend_c23_contract_audit`, `/root/frontend_c26_bind_fix`.
+goal: Reject malformed global snapshot identity without fallback, replay or
+stale graph resurrection.
+scope: `public/js/app.js`; vanilla JS.
+contracts: DEC-032 pre-normalize envelope, exact fatal error/reset, Retry-only
+server recovery, C24 generation invalidation and zero mutation while fatal.
+changes: Added strict envelope validation, fatal state/control/queue purge,
+explicit interaction guards, accept-failure termination and late Plotly host
+re-clear; no backend/API/HTML/schema/math delta.
+verification: Frontend 2/2; initial/200/409/Peaks/second-stale/Retry/A-B and
+deferred Plotly controlled matrix; syntax/diff; independent final audit CLEAN.
+risks: Runtime browser execution remains gated and unclaimed.
+follow-ups: C27 owns selection/membership/root projection validation.
+next_task_candidates: Implement DEC-033 only after its docs checkpoint.
+commit: `f5820bd64c165daba9781aff87528c09bdd08576`.
+engee_bug_candidate: None.

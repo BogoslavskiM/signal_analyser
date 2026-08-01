@@ -11,3 +11,11 @@ Corruption очищает клиентский state, график, tabs/rows и
 показывает existing accessible app error и оставляет Retry. Membership,
 analysis source, row selection и root projections намеренно вынесены в
 следующий каскад.
+
+## Реализация — 2026-08-01
+
+Boundary реализован локально в `f5820bd`: malformed initial/200/409 очищает
+authoritative UI и все intents, Retry восстанавливает отличающуюся A/B
+topology, а поздний stale Plotly settlement больше не возвращает старый график.
+Frontend tests 2/2 и независимый аудит CLEAN. Gated E2E contract — `33df821`;
+браузерный runtime и deployment не заявляются.
