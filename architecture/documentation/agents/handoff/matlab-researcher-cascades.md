@@ -632,3 +632,26 @@ frontend and E2E matrices; Fit/viewport in a later contract.
 e2e_scenarios: Proposed Auto full-raw range, explicit pair with unchanged z,
 invalid pair, Clear/source/A-B/scale lifecycle and exact cleanup. No saved path
 exists because authorized GUI evidence was intentionally not created.
+
+## C18 Persistence docs-only recommendation — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c18_docs_discovery`.
+goal: Choose the next narrow slice after C17 without unsafe MATLAB interaction.
+scope: Official MathWorks web documentation and read-only repository/prod-probe
+review. MATLAB GUI, Command Window, Add-On Explorer and clicker were untouched.
+recommendation: Typed/default Persistence foundation, no controls or ROI.
+documented_contract: Persistence is a normalized power-frequency percentage
+histogram; raw shape is power bins × frequency bins; documented default
+NumPowerBins is 256; real is one-sided and complex centered two-sided.
+provider_evidence: Existing prod Engee probe confirms 256×1024, full topology,
+positive sorted linear-power axis, occurrence 0..100 and explicit 256-bin path.
+unknowns: Fresh-view Leakage/Overlap defaults are not directly documented and
+must not be inferred from Spectrogram. Fit Colormap needs viewport lifecycle;
+RBW lacks usable provider metadata.
+changes: None.
+verification: Direct official web research plus existing probe/code comparison.
+follow-ups: Implement DEC-024; probe settings only in later independent slices.
+next_task_candidates: Typed Persistence foundation; then dedicated provider
+research for Persistence Leakage/Overlap.
+engee_bug_candidate: None.

@@ -342,3 +342,18 @@ verification: Frontend 2/2, JS syntax/diff and final audit PASS.
 risks: Runtime Plotly interaction awaits a CDP/application target.
 follow-ups: Preserve vanilla JS and exact metadata boundary in C18.
 next_task_candidates: C18 feasibility only after a frozen decision.
+
+## C18 typed Persistence frontend inventory — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c18_persistence_inventory`.
+scope: Read-only `public/js/app.js` and frontend tests.
+contracts: Existing generic heatmap already consumes exact Persistence x/y/z
+wire; no settings, outgoing API fields, metadata or controls are required.
+changes: None; product migration is zero if wire and labels remain stable.
+verification: Read-only renderer/state/client inspection.
+risks: Generic renderer is not a strict schema validator; backend typed
+validation remains authoritative. Do not inject `frequency_scale` metadata.
+follow-ups: Add focused positive/empty behavior regression after backend diff:
+one heatmap, bit-identical x/y/z, linear y, occurrence colorbar, no controls.
+next_task_candidates: C18 frontend tests only.

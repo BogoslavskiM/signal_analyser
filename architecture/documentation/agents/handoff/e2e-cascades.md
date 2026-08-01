@@ -388,3 +388,21 @@ risks: Runtime blocked by absent CDP target at `127.0.0.1:9222`.
 follow-ups: Run focused then full enabled suite when an accepted target exists.
 next_task_candidates: Runtime C17 or static C18 after contract freeze.
 engee_bug_candidate: None.
+
+## C18 typed Persistence E2E inventory — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c18_persistence_inventory`.
+scope: Read-only `test/playwright/**`; no browser or MATLAB action.
+contracts: Register only `typed-persistence`; use existing active host, plot,
+Display, Clear, row and checkbox selectors. New scenario covers real one-sided,
+conditional complex centered, multi-visible analysis-source-only, A/B,
+Clear/re-add/source and exact cleanup without fixed sleeps.
+changes: None.
+verification: Runner/config/support/spec inventory only; runtime target absent.
+risks: Deterministic `N<2` UI fixture does not exist; keep that in backend tests.
+follow-ups: Add `typed_persistence.test.js` after backend contract lands; never
+revive disabled `legacy-fixed-workspace` Persistence cards.
+next_task_candidates: C18 static scenario, then runtime on an accepted target.
+browser_workspace_setup: Background CDP only when available; MATLAB untouched.
+engee_bug_candidate: None.

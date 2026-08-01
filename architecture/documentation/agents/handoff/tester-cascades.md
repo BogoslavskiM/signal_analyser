@@ -349,3 +349,24 @@ parse/diff and final audit PASS.
 risks: No Engee test is warranted because provider behavior is unchanged.
 follow-ups: Runtime E2E when a target exists; otherwise wait for C18 ADR.
 next_task_candidates: C18 matrix after contract freeze.
+
+## C18 typed Persistence test matrix — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c18_persistence_matrix`.
+scope: Read-only backend/API/frontend/Engee harness inventory.
+contracts: Dedicated immutable Query/Data/CacheKey/provider/service/cache;
+fixed 256; real one-sided/complex centered; strict power×frequency orientation;
+positive ordered power; occurrence 0..100; exact dB then bounding; `N<2` empty;
+analysis-source-only and atomic failure; unchanged wire/no controls.
+coverage: Constructor/hash/copy invariants, asymmetric provider double, option
+order, topology, invalid axes/matrix/range, repeated GET/cache, multi-visible,
+A/B/Clear/re-add/source, warm/cold failure, API exact shape, no client DSP.
+changes: None.
+verification: Existing test seams and prod evidence reviewed read-only.
+risks: Local EngeeDSP remains unavailable; prod evidence, not local success,
+supports explicit NumPowerBins/topology. Future target test must stay required.
+follow-ups: Implement after Backend product types land; do not encode legacy
+transpose/abs/epsilon behavior as compatibility.
+next_task_candidates: C18 unit/API/front/Engee contract tests.
+engee_bug_candidate: None.

@@ -995,3 +995,27 @@ turns. Runtime E2E remains blocked only by absent CDP/application target.
 | E2E Tester | `/root/e2e_c17_replacement` | C17 static complete | runtime C17 / C18 after ADR | no runtime target | static PASS |
 | DevOps | `/root/devops_c17_commit` | product commit complete | docs checkpoint | Architect validation | `290c057` |
 | MATLAB Researcher | `/root/matlab_c18_docs_discovery` | C18 docs-only discovery active | recommendation | no MATLAB GUI use | C17 docs evidence |
+
+## Cascade 18 contract freeze — 2026-08-01
+
+Status: `contract-frozen`; implementation eligible after documentation
+checkpoint.
+
+[DEC-20260801-024](../../user/decisions/DEC-20260801-024-typed-persistence-foundation.md)
+freezes a typed/default Persistence foundation without UI or wire expansion.
+Dedicated immutable query/data/cache/provider/service replaces the eager
+untyped helper. Fixed 256 power bins, real one-sided/complex centered topology,
+strict power×frequency orientation, positive linear power, occurrence 0..100,
+exact dB conversion and post-conversion bounding are authoritative. Only the
+Display analysis source is computed; secondary visible signals are excluded.
+
+### Persistent role queue for C18
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c18_inventory_replacement` | OOP inventory complete | implementation after docs commit | docs checkpoint | DEC-024 CLEAN |
+| Frontend | `/root/frontend_c18_persistence_inventory` | zero-migration inventory complete | focused regression tests | backend stable wire | existing generic heatmap |
+| Tester | `/root/tester_c18_persistence_matrix` | matrix complete | tests after product diff | backend types | exact lifecycle matrix |
+| E2E Tester | `/root/e2e_c18_persistence_inventory` | static inventory complete | typed Persistence scenario | backend product diff | selectors available |
+| DevOps | `/root/devops_c17_commit` | C17 docs complete | C18 contract checkpoint | Architect validation | `7af17ec` |
+| MATLAB Researcher | `/root/matlab_c18_docs_discovery` | docs-only complete | no runtime follow-up | MATLAB GUI remains untouched | DEC-024 evidence |

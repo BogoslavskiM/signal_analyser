@@ -164,6 +164,12 @@ Owner: Architect
   and final audit CLEAN. Runtime E2E/deploy remain unavailable and are not
   claimed. C18 awaits a separate docs-backed narrow contract; Fit Colormap
   remains blocked on safe viewport observation.
+- DEC-024 freezes C18 as typed/default Persistence foundation: dedicated OOP
+  query/data/provider/service/raw-cache, fixed NumPowerBins 256, real one-sided,
+  complex centered, strict power×frequency orientation, positive raw power,
+  occurrence 0..100, exact dB then 160×160 bounding and analysis-source-only
+  computation. Wire stays unchanged; no settings/API/UI controls are added.
+  Persistence ROI/settings/Fit Colormap remain separately deferred.
 - C14 discovery is restricted to Spectrogram Reassign. Official docs support a
   boolean `pspectrum` flag and display-local checkbox semantics, but app default
   remains inferred. Prod Engee false/true/default/invalid/order/topology probe

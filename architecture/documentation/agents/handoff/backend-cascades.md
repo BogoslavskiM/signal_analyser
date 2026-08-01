@@ -478,3 +478,26 @@ follow-ups: Wait for a separately frozen C18 contract.
 next_task_candidates: Read-only C18 OOP inventory after ADR.
 source_evidence: DEC-023; product commit `290c057`.
 engee_bug_candidate: None.
+
+## C18 typed Persistence OOP inventory — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c18_inventory_replacement`; replaces interrupted
+`/root/backend_c18_persistence_inventory`.
+scope: Read-only domain/math/service inspection against DEC-024.
+contracts: Dedicated query/data/cache key/provider/service/cache. Key contains
+signal name, sample rate, sample count, topology and fixed power-bin count.
+Provider explicitly receives `NumPowerBins=256` then topology-derived
+`TwoSided`. Base plot cache retains an empty compatibility wire; selected
+Persistence is always replaced from the typed cache.
+atomic_plan: Add prepare/publish Persistence phases. Provider and complete data
+validation finish before publication of any cache, Display or revision.
+Secondary visibility with unchanged source never materializes Persistence.
+changes: None.
+verification: Read-only feasibility verdict CLEAN.
+risks: Current signal name is canonical identity; future same-name raw
+replacement would require a generation/content identity in a successor ADR.
+follow-ups: Implement DEC-024 after documentation checkpoint.
+next_task_candidates: Backend C18 implementation in the three existing Julia
+modules without API/UI expansion.
+engee_bug_candidate: None.
