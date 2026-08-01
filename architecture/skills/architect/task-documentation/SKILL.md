@@ -115,6 +115,11 @@ verified и deployed status. Client docs не должны оставлять `/
 Перед docs freeze Architect проверяет rolling queue всех persistent roles:
 каждая роль имеет meaningful current/next task либо точную причину blocker,
 dependency или `no-eligible-work`; parallel lanes не сериализуются документами.
+Для завершённой UI feature traceability включает action-by-action
+`interaction_design_review`. Новый E2E milestone отмечается только после
+product completion и ordinary Tester regression; отдельные кнопки и частично
+готовые меню не получают самостоятельный E2E cycle. Optimization-only backlog
+следует после функциональных features, если нет измеренного blocker evidence.
 
 ## Documenter Decision
 

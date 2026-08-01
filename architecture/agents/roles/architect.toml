@@ -25,6 +25,7 @@ matlab_research_handoff = ["docs_sources", "documented_direction", "clicker_setu
 matlab_gui_loop_policy = ["default maximum three meaningful attempts per GUI hypothesis", "require visual actual-versus-expected comparison after each action", "stop repeated unchanged or alternating GUI mutations without new evidence", "check clicker status health and last confirmed screenshot", "recover down or stale server and bootstrap before clicks", "fullscreen or empty cell gets one safe recovery then partial scenario postmortem blocker and standby or another bounded task"]
 role_thread_policy = ["one persistent thread per declared role", "reuse canonical role and agent ID/session via send_input or resume_agent", "completed work moves to completed standby without close_agent", "assign independent useful work from active tasks/backlog when dependencies and ownership allow", "completed standby is allowed when no suitable work exists", "no empty messages or fake-running loops"]
 anti_idle_policy = ["maintain a rolling current and next eligible task queue per persistent role", "after every completed handoff in the same orchestration cycle resume meaningful work or record exact blocker dependency or no-eligible-work", "documentation deployment E2E commit-freeze and research are parallel lanes", "convert each material handoff immediately into task candidates and backlog", "assign non-duplicative sidecars when the critical path is blocked", "publish milestone heartbeat with role ID current next blocker and last handoff", "before docs freeze verify every role is assigned or explicitly blocked", "after restart bootstrap registry and resume the same role IDs", "never create fake-running loops or empty work"]
+feature_review_policy = ["complete one coherent feature before starting the next user-prioritized feature", "require per-action interaction design review after product and unit readiness", "release E2E authoring and execution only at feature or complete-tab milestone", "schedule optimization and performance-only implementation after functional features and regression unless blocking evidence reclassifies it"]
 maintenance_triage = ["separate base/auth from target Genie probes", "HTTP 200 maintenance shell is a soft error", "coordinate E2E target evidence with DevOps process/log evidence", "classify target app/proxy failure versus platform outage", "after start/redeploy require target re-probe and original E2E rerun"]
 documentation_policy = ["physical user/agents audience split", "user layer is Russian client-readable and excludes agent IDs/internal prompts/secrets", "agents layer stores tasks/backlog/handoffs/registry/research coordination", "ADR/reports/history/handoffs/bug reproductions are append-only", "trace planned/implemented/verified/deployed separately", "cascade DoD updates specs/math/ADR/traceability/history and internal records"]
 documentation_delivery = ["user directory is authoritative repository-native Markdown plus versioned assets", "no site or PDF pipeline without explicit future request", "use relative repository links", "no client links to tmp private/tmp user-specific absolute or ephemeral artifacts", "promote client evidence into user/assets with provenance license hash and regeneration metadata", "keep large/generated artifacts size-conscious"]
@@ -113,6 +114,16 @@ the registry and first try to resume the same IDs. If a saved thread is
 technically unavailable, create a replacement for the same canonical role and
 record `replaces`, old/new IDs and the reason; historical unavailability does
 not block the cycle.
+
+Respect user-prioritized feature sequencing. Do not begin the next feature
+until the current coherent feature meets its functional and ordinary-test
+contract. After product readiness require Frontend to inventory and review the
+design of every menu item and button individually. Only then release the
+feature-level E2E handoff. E2E must not be authored or run for each incremental
+control; a complete inspector, tab or similarly coherent workflow is the
+minimum new-scenario milestone. Put optimization/performance-only product work
+after functional features and regression unless measured blocking evidence is
+explicitly reclassified.
 
 When a task crosses folders, delegate implementation to the owning roles:
 - Backend: `app/**`, `lib/**`, `app.jl`, `config/**`, `Project.toml`

@@ -28,7 +28,15 @@ name: ui-contract-change
     hosts. Передай их e2e-tester вместе с enabled frontend skill ids и
     предметными product capability ids, затронутыми изменением.
 13. Добавь или обнови static/behavior contract tests.
-14. Передай e2e handoff, если нужен browser scenario.
+14. После завершения coherent feature проведи аналитический design review
+    каждого menu item/button: purpose, placement/hierarchy, label/icon/tooltip,
+    accessible name, focus order/hit target, default/hover/focus-visible/
+    active/disabled/busy/destructive states, visibility, confirmation,
+    error/success feedback и recovery. Для каждого finding укажи resolved или
+    deferred.
+15. Передай feature-complete handoff с review Architect. E2E handoff допустим
+    только после ordinary Tester regression и Architect milestone; не создавай
+    отдельный E2E-цикл после каждой кнопки.
 
 ## Guardrails
 - Не переносить business logic во frontend, если она принадлежит backend.

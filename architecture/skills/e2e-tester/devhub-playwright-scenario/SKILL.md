@@ -18,6 +18,29 @@ name: devhub-playwright-scenario
 - Нужно проверить чистую формулу, API payload или frontend module изолированно:
   это зона обычного tester.
 - Нужно изменить product source.
+- Добавлена только отдельная кнопка, field или часть меню, но coherent feature
+  либо вкладка ещё не объявлена Architect как complete.
+
+## Feature Readiness Gate
+
+До authoring и запуска нового feature scenario потребуй:
+
+```text
+feature_milestone
+product_completion_handoff
+ordinary_tester_regression
+interaction_design_review
+stable_data_testids
+```
+
+- Минимальный milestone — законченный inspector, вкладка или другой цельный
+  user workflow, а не отдельный control.
+- Один E2E покрывает интеграцию крупной feature; exhaustive branch/button
+  matrix остаётся у обычного Tester.
+- Диагностика regression уже принятого E2E разрешена без нового milestone.
+- Optimization/performance-only product work планируется после функциональных
+  features и regression. Timing evidence во время E2E остаётся обязательным;
+  measured blocking issue передаётся Architect для явной reclassification.
 
 ## Inputs
 Перед началом получи:
@@ -31,6 +54,10 @@ enabled_product_features
 user_workflow
 stable_data_testids
 expected_observable_result
+feature_milestone
+product_completion_handoff
+ordinary_tester_regression
+interaction_design_review
 reference_scenario_path: optional
 reference_artifacts: optional
 browser_workspace_setup

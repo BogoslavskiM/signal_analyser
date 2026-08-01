@@ -25,7 +25,15 @@ name: integration-review
 6. Если менялись bundled frontend assets, запусти
    `node architecture/skills/frontend/validate_vanilla_assets.js`.
 7. Запусти parse/validation для изменённых TOML, Julia, shell или markdown-файлов, если применимо.
-8. Зафиксируй оставшиеся risks и handoff.
+8. Для завершённой UI feature проверь `interaction_design_review`: каждый
+   menu item и button перечислен отдельно; purpose, hierarchy, label/icon/
+   tooltip/accessibility, hit target/focus order, mandatory states,
+   visibility, confirmation и feedback имеют evidence и disposition.
+9. Разреши новый E2E scenario только после product handoff, ordinary Tester
+   regression и этого design review. Проверяй feature workflow целиком, а не
+   каждую промежуточную кнопку отдельным циклом.
+10. Зафиксируй оставшиеся risks и handoff. Optimization-only follow-ups ставь
+    после функционального backlog, если они не являются измеренным blocker.
 
 ## Guardrails
 - Не исправляй продуктовую реализацию вместо владельца роли.

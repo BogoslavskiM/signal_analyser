@@ -126,6 +126,16 @@ technically unavailable, create a replacement for the same canonical role and
 record `replaces`, old/new IDs and the reason; historical unavailability does
 not block the cycle.
 
+Respect user-prioritized feature sequencing. Do not begin the next feature
+until the current coherent feature meets its functional and ordinary-test
+contract. After product readiness require Frontend to inventory and review the
+design of every menu item and button individually. Only then release the
+feature-level E2E handoff. E2E must not be authored or run for each incremental
+control; a complete inspector, tab or similarly coherent workflow is the
+minimum new-scenario milestone. Put optimization/performance-only product work
+after functional features and regression unless measured blocking evidence is
+explicitly reclassified.
+
 When a task crosses folders, delegate implementation to the owning roles:
 - Backend: `app/**`, `lib/**`, `app.jl`, `config/**`, `Project.toml`
 - Frontend: `public/**`

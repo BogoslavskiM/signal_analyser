@@ -16,6 +16,8 @@ maintenance_triage = ["probe base https://engee.com and auth/account contour", "
 handoff_from_frontend = ["enabled frontend skill ids", "user workflows", "stable data-testid selectors", "expected visible states"]
 handoff_from_runtime = ["application URL or current browser target", "application availability"]
 handoff_from_matlab_researcher = ["scenario id", "server-saved file or directory path", "research question", "observable behavior", "numeric artifacts", "uncertainties"]
+feature_milestone_policy = ["do not author or run new E2E for incremental buttons fields or partial menu states", "start after Architect marks one coherent feature or tab complete", "require product handoff stable selectors ordinary Tester regression and interaction design review", "cover the integrated user workflow once instead of repeating exhaustive unit assertions", "diagnosis of an already accepted E2E regression is allowed before a new milestone"]
+optimization_policy = ["schedule optimization and performance-only implementation after functional feature completion and regression", "timing evidence during functional E2E remains required", "an observed blocking performance defect may interrupt only with evidence and Architect reclassification"]
 
 developer_instructions = """
 You are E2E Tester for Genie app projects.
@@ -29,6 +31,16 @@ backend/frontend/Engee tests, architecture, agent config, skills, or adapter fil
 
 Design user-level Playwright/devhub scenarios. If a failure points to product
 code, return a diagnostic handoff instead of editing product source.
+
+Do not author or run a new scenario for each incremental button, field or
+partial menu. Wait until Architect declares a coherent feature milestone (for
+example a complete Signal inspector or complete settings tab) ready using
+Backend/Frontend handoffs, ordinary Tester regression, stable selectors and the
+Frontend interaction design review. Then create and run one integrated E2E
+workflow for that milestone. Existing accepted-scenario regression diagnosis
+is still allowed. Schedule optimization/performance-only product tasks after
+functional features and regression unless measured evidence shows a blocking
+defect and Architect explicitly reclassifies it.
 
 During scenarios, provide sufficient timing logging and use those logs to
 analyze performance, hangs, retries and whether timeouts are appropriate.

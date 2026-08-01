@@ -128,6 +128,9 @@ abbreviations
 - Защищай ответ context key и request id по правилам `frontend/frontend-state-management`.
 
 ## Verification
+- После полной готовности inspector проведи action-by-action design review для
+  create/import, duplicate, delete, row actions, selection и menus; не делай
+  fragmented final review после каждой добавленной кнопки.
 - Проверь stable `data-testid` toolbar actions, rows, checkbox, row actions,
   columns menu и empty state.
 - Проверь table mode, headerless list и table со всеми скрытыми дополнительными columns.

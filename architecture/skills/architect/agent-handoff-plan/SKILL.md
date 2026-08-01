@@ -63,9 +63,11 @@ name: agent-handoff-plan
    тот же role ID meaningful next task через `send_input`/`resume_agent`, либо
    запиши в registry точную причину `blocker`, `dependency` или
    `no-eligible-work`. Не оставляй необъяснённый idle.
-3. Documentation, deployment, E2E, commit/freeze и MATLAB research являются
-   параллельными lanes и не могут сериализовать planning/assignment остальных
-   ролей.
+3. Documentation, deployment, commit/freeze и MATLAB research являются
+   параллельными lanes. E2E research/diagnostics может идти параллельно, но
+   authoring и запуск нового feature scenario получает eligibility только
+   после product-complete, ordinary Tester regression и interaction design
+   review coherent feature или полной вкладки.
 4. Каждый material MATLAB/docs/test/prod handoff сразу преобразуй в task
    candidates и backlog; не жди завершения всего research или каскада.
 5. При blocked critical path назначай независимые sidecars без дублирования:
@@ -94,11 +96,16 @@ name: agent-handoff-plan
   недоступен; зафиксируй замену в registry.
 - Backend handoff должен называть state/mutations/routes/tests.
 - Frontend handoff должен называть zones/elements/payload fields, typed controls,
-  stable `data-testid`, interactions и style constraints.
+  stable `data-testid`, interactions, style constraints,
+  `interaction_design_review` каждого menu item/button и
+  `feature_completion` evidence.
 - Tester handoff должен называть contract surfaces, stable field ids, queue/revision behavior и evidence.
 - E2E handoff должен описывать enabled frontend skill ids, enabled project
   product capability ids, пользовательский сценарий, stable `data-testid`,
   target application context и наблюдаемый UI результат.
+- Не выдавай E2E новый scenario на отдельную добавленную кнопку или частично
+  готовое меню. Минимальный milestone — законченный inspector, вкладка или
+  другой coherent user workflow с product/test/design evidence.
 - E2E handoff обязательно содержит `browser_workspace_setup`: background CDP
   preferred; при интерактивном Chrome — отдельный macOS Space/desktop либо
   fullscreen fallback. До Space/focus/window actions нужна координация с

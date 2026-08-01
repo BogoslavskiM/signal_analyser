@@ -119,6 +119,10 @@ name: style-system
 - Не смешивай стили и business calculations.
 
 ## Verification
+- Для завершённой feature составь action inventory всех menu items/buttons и
+  аналитически проверь каждый по visual hierarchy, icon/label/tooltip,
+  accessible name, hit target, focus order, mandatory states, destructive
+  affordance, visibility и feedback. Зафиксируй disposition каждого finding.
 - Проверь, что тема загружена раньше CSS модулей.
 - Проверь отсутствие runtime-запросов к Google Fonts/CDN и загрузку локального
   Roboto.

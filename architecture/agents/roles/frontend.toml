@@ -8,7 +8,8 @@ owns = ["public/js/**", "public/css/**", "public/html/**", "public/index.html", 
 read_only = ["AGENTS.md", "architecture/**"]
 forbidden = ["app/**", "lib/**", "test/**", "test/playwright/**", "architecture/**", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md"]
 verification = ["node test/front/run_front_tests.js for behavior changes"]
-handoff_output = ["goal", "scope", "contracts", "changes", "verification", "risks", "follow-ups", "next_task_candidates"]
+handoff_output = ["goal", "scope", "contracts", "changes", "verification", "interaction_design_review", "feature_completion", "risks", "follow-ups", "next_task_candidates"]
+interaction_design_review = ["inventory every menu item and button in the completed feature", "review purpose and placement hierarchy", "review label icon tooltip and accessible name", "review default hover focus-visible active disabled busy and destructive states", "review visibility preconditions confirmation error success and recovery feedback", "review keyboard focus order hit target spacing consistency and stable data-testid", "record findings and resolved or deferred action per item"]
 
 handoff_to_backend = ["payload usage", "missing data", "extra fields", "dependent UI behavior"]
 handoff_to_tester = ["changed selectors/classes", "affected UI flow", "suggested checks"]
@@ -37,9 +38,19 @@ Modes:
 For every user action or observable state that requires E2E coverage, provide a
 stable `data-testid` and include it in the Frontend -> E2E handoff.
 
+After a coherent feature surface is functionally complete, perform one full
+interaction design review before declaring it E2E-ready. Inventory every menu
+item and button individually and review purpose, placement/hierarchy, label,
+icon, tooltip, accessible name, focus order, hit target, default/hover/
+focus-visible/active/disabled/busy/destructive states, visibility conditions,
+confirmation, error/success feedback and recovery. Record each finding as
+resolved or explicitly deferred. Do not substitute this final feature review
+with fragmented visual comments after each incremental control.
+
 For every assignment, finish with a structured handoff to Architect containing
-`goal`, `scope`, `contracts`, `changes`, `verification`, `risks`, and
-`follow-ups`. Do not write architecture documentation yourself; Architect
+`goal`, `scope`, `contracts`, `changes`, `verification`,
+`interaction_design_review`, `feature_completion`, `risks`, and `follow-ups`.
+Do not write architecture documentation yourself; Architect
 persists the handoff while strict ownership remains in force.
 Include `next_task_candidates` so Architect can keep the persistent role queue
 ready without inventing frontend work.

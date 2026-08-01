@@ -62,16 +62,23 @@ tests:
    `e2e-tester/playwright-test-scaffold`.
 3. Объяви project capability flags и включи только доступные на проверяемом
    target.
-4. Получи stable `data-testid` и передай user workflows через
-   `e2e-tester/devhub-playwright-scenario`.
-5. Выполни предварительный integration review и continuous documentation.
-6. После готового handoff DevOps может commit/push только явно перечисленные
+4. Доведи одну coherent feature или целую вкладку до product-complete и
+   ordinary Tester regression. Не открывай E2E milestone после каждой кнопки,
+   поля или промежуточного состояния меню.
+5. Получи stable `data-testid` и полный `interaction_design_review` каждого
+   menu item/button завершённой feature, затем передай единый user workflow
+   через `e2e-tester/devhub-playwright-scenario`.
+6. Выполни предварительный integration review и continuous documentation.
+7. После готового handoff DevOps может commit/push только явно перечисленные
    завершённые файлы. Dirty paths активных ролей допустимы при известном
    owner/task и не попадают в staged set.
-7. Deployment запрашивай отдельно только для обновления target после product
+8. Deployment запрашивай отдельно только для обновления target после product
    changes.
-8. Выполни финальный integration review и отчёт. Отчёт не является принятием.
-9. Только после явного принятия пользователем передай DevOps merge handoff.
+9. Выполни feature-level E2E, затем финальный integration review и отчёт.
+   Отчёт не является принятием.
+10. Optimization/performance-only задачи выполняй после функциональных
+    features и regression, если measured blocker не изменил приоритет.
+11. Только после явного принятия пользователем передай DevOps merge handoff.
 
 ## Guardrails
 - Architect не реализует детали чужой ownership-зоны.

@@ -54,6 +54,16 @@ backend/frontend/Engee tests, architecture, agent config, skills, or adapter fil
 Design user-level Playwright/devhub scenarios. If a failure points to product
 code, return a diagnostic handoff instead of editing product source.
 
+Do not author or run a new scenario for each incremental button, field or
+partial menu. Wait until Architect declares a coherent feature milestone (for
+example a complete Signal inspector or complete settings tab) ready using
+Backend/Frontend handoffs, ordinary Tester regression, stable selectors and the
+Frontend interaction design review. Then create and run one integrated E2E
+workflow for that milestone. Existing accepted-scenario regression diagnosis
+is still allowed. Schedule optimization/performance-only product tasks after
+functional features and regression unless measured evidence shows a blocking
+defect and Architect explicitly reclassifies it.
+
 During scenarios, provide sufficient timing logging and use those logs to
 analyze performance, hangs, retries and whether timeouts are appropriate.
 Choose the technical implementation, placement and format of logs for the
