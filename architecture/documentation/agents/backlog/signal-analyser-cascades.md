@@ -189,6 +189,11 @@ Owner: Architect
   allocations. Probe transient real/complex output, invalids/order and guarded
   0/25/50/75/99/99.9 resources; no ADR until a safe cap and explicit non-GUI-
   parity default policy exist. Persistence Frequency Limits is the fallback.
+- C20 closed NO-GO under DEC-026. Explicit 50 crossed 512 MiB for real and
+  complex; 75/omitted reached 1.02–1.75 GiB; a later option-order call crossed
+  the guard even at 0. Values 99/99.9 and the remaining interaction/order
+  matrix were not run. No cap/default/state/API/UI is accepted. Pod cleanup and
+  stopped status are confirmed; Persistence Frequency Limits is now active.
 - C19 implemented and locally accepted at product/test commit `2f99ff8`:
   backend 1497/1497, C19 48/48, frontend 2/2, focused Playwright static and
   independent Frontend/E2E/Backend audits CLEAN. Local Engee gate retains the

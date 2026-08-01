@@ -571,3 +571,26 @@ follow-ups: Runtime target only; later settings require successor ADR.
 next_task_candidates: Bounded C20 Persistence Overlap prod probe.
 source_evidence: DEC-025, prod C19 report, product commit `2f99ff8`.
 engee_bug_candidate: None.
+
+## Cascade 20 Persistence Overlap resource probe — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c19_persistence_leakage_probe`.
+goal: Decide bounded provider/resource feasibility before any product ADR.
+scope: Prod EngeeDSP 0.72.0, deterministic in-memory real/complex fixtures;
+no repository/model/file/dependency/deploy/MATLAB/browser mutation.
+contracts: Explicit 0/25 is deterministic and materially changes occurrence;
+frequency/topology and 256x1024 orientation remain stable. Provider rejects
+range/nonfinite/string but accepts Bool.
+resource_gate: 50 allocated 543–627 MiB, 75 1.02–1.18 GiB, omitted up to
+1.75 GiB. Later option-order 0 calls also crossed 512 MiB; 99/99.9 and the
+remaining matrix were stopped.
+decision: NO-GO. Twenty-five percent is evidence ceiling, not a safe cap; no
+default/range/schema/provider order can be frozen. Fallback Frequency Limits.
+cleanup: retained outputs cleared; pod stop 204 and follow-up status stopped.
+changes: None.
+verification: Exact types/shapes/axes/occurrence sums/repeats/deltas plus
+warmed allocation signal; full order/interaction gate intentionally incomplete.
+risks: Allocation is volatile and not pod RSS, but repeated hard-limit
+crossings are decisive. No Engee bug is claimed.
+next_task_candidates: Bounded Persistence Frequency Limits provider matrix.

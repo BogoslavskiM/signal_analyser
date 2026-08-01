@@ -1122,3 +1122,24 @@ prod provider evidence and cleanup are complete.
 | E2E Tester | `/root/e2e_c18_persistence_inventory` | C19 static/audit complete | runtime C19 / C20 after ADR | no runtime target | static CLEAN |
 | DevOps | `/root/devops_c17_commit` | C19 product checkpoint complete | final docs checkpoint | Architect validation | `2f99ff8` |
 | MATLAB Researcher | `/root/matlab_c20_persistence_overlap` | C20 docs discovery complete | bounded provider probe | C19 docs close | probe plan ready |
+
+## Cascade 20 close — 2026-08-01
+
+Status: `accepted-no-go`; DEC-026; no product implementation.
+
+Persistence Overlap materially works but fails the bounded resource/complete-
+contract gate. The 512 MiB cutoff triggered at 50 for both topologies and later
+at 0 during option-order work; 75/omitted reached GiB scale. The remaining
+matrix and 99/99.9 were stopped, pod cleanup/status completed, and no cap or
+default was frozen. Persistence Frequency Limits is the active successor.
+
+### Persistent role queue after C20
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | C20 NO-GO/cleanup complete | Frequency Limits bounded probe | docs checkpoint | stopped pod |
+| Frontend | `/root/frontend_c18_persistence_inventory` | fallback inventory complete | exact UI inventory after probe | successor ADR | no copied defaults |
+| Tester | `/root/tester_c18_persistence_matrix` | fallback matrix complete | contract tests after ADR | provider semantics | bounded prerequisites |
+| E2E Tester | `/root/e2e_c18_persistence_inventory` | fallback inventory complete | event scenario after ADR | provider output oracle | no fixed waits |
+| DevOps | `/root/devops_c17_commit` | C19 hardening commit complete | C20 docs checkpoint | Architect validation | `fec3dbf` |
+| MATLAB Researcher | `/root/matlab_c20_persistence_overlap` | official formula complete | Frequency Limits docs-only delta | direct web only | no GUI/clicker |

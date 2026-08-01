@@ -738,3 +738,23 @@ product_tasks: None before probe and successor ADR.
 e2e_scenarios: None; no MATLAB scenario was created.
 source_evidence: Official URLs and repository C12/C18/C19 evidence only.
 engee_bug_candidate: None.
+
+## C20 Persistence Overlap formula clarification — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c20_persistence_overlap`.
+scope: Direct official MathWorks/Engee web only. MATLAB GUI, Command Window,
+Add-On Explorer and clicker were not used.
+documented_math: `beta=40(1-leakage)`, finite-window
+`ENBW=M*sum(w^2)/sum(w)^2`, omitted
+`O=100*(1-1/(2*ENBW-1))`, explicit overlap samples
+`L=floor(M*O/100)`. Persistence builds a spectrogram before histogramming.
+consequence: Omitted overlap is Leakage/window/segment-length confounded;
+bit-equality to an explicit percentage does not prove a literal default.
+resource_direction: More overlap increases segment spectra/histogram work
+while final output dimensions stay fixed; exact time/memory scaling is not
+documented and required runtime measurement.
+changes: None.
+verification: Official public pages only; no GUI observation claim.
+follow-ups: Prod cross-probe before ADR; its resource cutoff controls NO-GO.
+next_task_candidates: Persistence Frequency Limits docs reconciliation.

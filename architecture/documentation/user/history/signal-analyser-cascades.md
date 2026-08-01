@@ -416,3 +416,30 @@
 - Runtime E2E, push, deployment и merge не выполнялись. Local Engee gate
   проходит findpeaks 16/16 и затем падает только из-за отсутствующего EngeeDSP;
   prod provider probe PASS, новый Engee defect не заявлен.
+
+## 2026-08-01 — Cascade 19 snapshot contract hardening
+
+- Frontend теперь отличает полностью отсутствующий legacy
+  `persistence_settings` от present malformed exact object. Первый получает
+  compatibility `0.5`; второй quarantined, показывает inline error, отключает
+  control и не может попасть в unrelated `/api/view`.
+- API malformed matrix расширена null/string/nonfinite/negative и stale-after-
+  accepted cases; frontend покрывает non-object, exact keys, Bool, nonfinite и
+  range corruption, A/B restoration и zero-request quarantine.
+- `verified locally`: backend 1511/1511, C19 API 35/35, frontend 2/2, syntax,
+  support contract, diff-check и независимый Persistence audit CLEAN.
+- Hardening checkpoint `fec3dbf5634c2de337d87f453d81b5757bc66584`;
+  push/deployment/merge не выполнялись.
+
+## 2026-08-01 — Cascade 20 Persistence OverlapPercent NO-GO
+
+- Official docs подтвердили window/Leakage/ENBW-зависимый omitted overlap;
+  output equality с explicit percentage не является доказательством literal
+  default.
+- Prod EngeeDSP подтвердил deterministic `0/25`, topology и material
+  occurrence delta, но resource guard сработал: 50% — 543–627 MiB, 75% —
+  1.02–1.18 GiB, omitted — до 1.75 GiB. Поздний 0% тоже пересёк 512 MiB.
+- `99/99.9` и оставшаяся interaction/order matrix безопасно не запускались;
+  pod очищен, остановлен и подтверждён `stopped`.
+- DEC-026 запрещает product exposure и выбирает Persistence Frequency Limits
+  как fallback. Engee bug не заявлен.
