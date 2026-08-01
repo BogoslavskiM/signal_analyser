@@ -142,6 +142,9 @@ module.exports = {
     "typed-spectrogram": true,
     "typed-persistence": true,
     "persistence-leakage": true,
+    // DEC-029 / Cascade 23 is a planned runtime contract.  Keep its E2E
+    // scenario parseable and explicitly gated until its target is available.
+    "lazy-persistence-materialization": false,
     "spectrogram-overlap": true,
     "spectrogram-leakage": true,
     "spectrogram-frequency-limits": true,
