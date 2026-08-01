@@ -247,3 +247,19 @@ findpeaks 16/16 then fails required EngeeDSP import; prod provider matrix PASS.
 risks: Formal local real-provider run remains unavailable, not skipped.
 follow-ups: Rerun Engee contract on provisioned target.
 next_task_candidates: C14 Bool/cache/provider matrix after ADR.
+
+## C14 Reassign read-only matrix / NO-GO — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c14_reassign_matrix`.
+proposal: Future exact three-key object with strict Bool, explicit provider
+order, cache identity, cold no-op, Spectrum independence, Display lifecycle and
+checkbox/queue/E2E matrix.
+gate_result: Prod true is broken, so no test/product files were created and the
+proposal is not a frozen implementation contract. False/default evidence alone
+cannot justify a decorative or silently downgraded toggle.
+verification: Read-only C13 contract/test inspection plus Backend prod NO-GO.
+risks: True axes/shape/power and cost unknown; current typed invariants cannot
+be assumed.
+follow-ups: Retain matrix for upstream-fixed build; no C14 implementation now.
+next_task_candidates: C15 Spectrogram Frequency Limits matrix after evidence.

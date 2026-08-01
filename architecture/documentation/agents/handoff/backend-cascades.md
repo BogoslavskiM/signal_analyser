@@ -350,3 +350,23 @@ verification: Backend 1229/1229; typed 21/21, cold isolation 6/6, cold no-op
 risks: Local EngeeDSP absent; runtime deployment not exercised.
 follow-ups: Reassign remains probe/ADR-only.
 next_task_candidates: C14 public-provider Reassign capability probe.
+
+## C14 Reassign prod capability NO-GO — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c14_reassign_probe`.
+scope: Read-only public EngeeDSP `pspectrum` prod probe; no repository changes.
+evidence: Omitted Reassign and false are bitwise equal, deterministic and
+option-order invariant. Every valid true call failed 28/28 across real/complex,
+one-/two-sided, Leakage 0/.5/1 and N=2..4096 with
+`UndefVarError: fetchTimeReassignment not defined` at
+`computeSpectrogram.jl:375` via public `pspectrum.jl:50`.
+validation: Numeric/string/null-like inputs reject; provider unexpectedly
+accepts Symbol aliases, so future product must remain strict JSON Bool.
+decision: Current build is NO-GO. Omit/false only; no control, silent downgrade,
+fallback, custom DSP or dependency edit.
+verification: Prod false/default matrices PASS; true defect isolated independent
+of application/test/network. Confirmed as ENGEE-20260801-004.
+risks: True topology/power/resource behavior remains unknown.
+follow-ups: Reprobe an upstream-fixed build before successor ADR.
+next_task_candidates: Spectrogram Frequency Limits capability slice.

@@ -150,6 +150,15 @@ Owner: Architect
   boolean `pspectrum` flag and display-local checkbox semantics, but app default
   remains inferred. Prod Engee false/true/default/invalid/order/topology probe
   and a new ADR are required before implementation.
+- C14 closed NO-GO: Reassign true fails 28/28 with undefined internal helper.
+  DEC-020 and ENGEE-20260801-004 block all product exposure until upstream fix,
+  fixed-build probe and successor ADR.
+- C15 Frequency Limits evidence is complete. Prod Spectrogram creates new exact
+  1024-point grids for in-domain ranges, clips partial ranges, rejects fully
+  external/reversed/nonfinite shapes, and supports N=2. A boundary-only
+  Nyquist-touch can produce a degenerate two-unique-value axis; product policy
+  should validate fully inside authoritative topology and never delegate that
+  edge. ADR must keep Spectrogram settings independent from Spectrum settings.
 
 - SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
   researches Spectrum defaults/units for a future separately frozen slice.

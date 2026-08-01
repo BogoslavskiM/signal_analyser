@@ -22,4 +22,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260801-017: typed Spectrogram foundation](DEC-20260801-017-typed-spectrogram-foundation.md)
 - [DEC-20260801-018: Spectrogram OverlapPercent](DEC-20260801-018-spectrogram-overlap-percent.md)
 - [DEC-20260801-019: Spectrogram Leakage](DEC-20260801-019-spectrogram-leakage.md)
+- [DEC-20260801-020: Spectrogram Reassign NO-GO](DEC-20260801-020-spectrogram-reassign-no-go.md)
 - [Шаблон ADR](template.md)

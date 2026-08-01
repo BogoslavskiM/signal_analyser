@@ -799,3 +799,29 @@ evidence plus DEC-020.
 | E2E Tester | `/root/e2e_c13_impl` | C13 static complete | C14 after implementation | contract absent | source-safe C13 scenario |
 | DevOps | `/root/devops_c12_commit` | C13 local freeze complete | docs/C14 checkpoint on handoff | no external authority | commit `aebd6f9` |
 | MATLAB Researcher | `/root/matlab_c14_reassign_docs` | docs-only C14 complete | optional GUI default later | unsafe GUI state | official Reassign map |
+
+## Cascade 14 capability decision — 2026-08-01
+
+Status: `accepted-no-go`; no product/test implementation.
+
+[DEC-20260801-020](../../user/decisions/DEC-20260801-020-spectrogram-reassign-no-go.md)
+blocks Reassign on current prod. Omitted/false is bitwise stable, but true fails
+28/28 across real/complex, topology, Leakage and input lengths with undefined
+`fetchTimeReassignment`. The isolated runtime defect is recorded as
+[ENGEE-20260801-004](../../user/engee_bugs/ENGEE-20260801-004-pspectrum-reassign-undefined.md).
+
+No payload/state/cache/UI/test surface is added. Silent downgrade, disabled
+decorative control, hand-rolled algorithm and dependency edit are forbidden.
+An upstream-fixed exact build plus a new prod matrix and successor ADR are
+required to reopen C14.
+
+## Cascade 15 discovery started — 2026-08-01
+
+Status: `provider-and-docs-evidence-complete`; contract freeze pending.
+
+Candidate is independent Display-local Spectrogram Frequency Limits. Official
+docs prove the app control and computational `pspectrum` mapping. Prod probe
+confirms real/complex exact in-domain grids, clipping/outside behavior,
+determinism, option-order invariance and N=2 support. Architect must freeze a
+strict product policy rather than copy C10 Spectrum semantics or expose a
+provider Nyquist-touch degenerate grid.

@@ -508,3 +508,23 @@ follow-ups: Optional bounded GUI mapping only after the unsafe Command Window
 state is explicitly recovered; it is not a C13 implementation gate.
 next_task_candidates: Implement normalized independent C13 contract; later GUI
 scale observation as a separate presentation parity task.
+
+## C14 docs-only Spectrogram Reassign — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c14_reassign_docs`.
+scope: Official MathWorks web documentation only; MATLAB GUI/Command Window,
+Help/Add-On and clicker untouched.
+documented_contract: `pspectrum(...,"spectrogram",Reassign=Bool)` relocates
+power estimates to energy centers and API-defaults false. Signal Analyzer has a
+Spectrogram checkbox; an official two-display example enables it only on the
+right, supporting independent runtime Display state. Generated script passes
+explicit `Reassign` with Leakage/TimeResolution/OverlapPercent.
+docs_delta: App checkbox default is inferred, not explicitly specified.
+Lifecycle persistence and off-script omission remain unobserved. Spectrogram
+is single-signal and complex remains centered two-sided.
+verification: Official Explore Signals, pspectrum, reassigned-ridges and Share
+Analysis pages cross-checked; no app/runtime evidence claimed.
+risks: Docs capability cannot override prod Engee failure.
+follow-ups: Optional GUI default mapping only after safe clicker recovery.
+next_task_candidates: Consume prod NO-GO; research next safe slice.

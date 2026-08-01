@@ -291,3 +291,15 @@
   Julia parse, skills/vanilla/docs/diff PASS.
 - Product/test checkpoint `aebd6f96158caa1917de334c1d61abe6ca8ca950`;
   push, runtime E2E, deployment и merge не выполнялись.
+
+## 2026-08-01 — Cascade 14 Reassign NO-GO
+
+- Official docs подтвердили logical Reassign, API default false, app checkbox и
+  energy-center relocation; точный app default остался inference.
+- Prod omitted/false bitwise equivalent и deterministic. Все 28/28 valid true
+  calls на real/complex, one-/two-sided, Leakage 0/.5/1 и N=2..4096 упали с
+  undefined `fetchTimeReassignment`.
+- Дефект изолирован и зарегистрирован как `ENGEE-20260801-004`.
+- DEC-020 запрещает payload/state/UI/control, silent downgrade, fallback и
+  custom DSP до upstream fix и повторного public-provider matrix.
+- Product/test files не менялись; цикл переключён на C15 Frequency Limits.
