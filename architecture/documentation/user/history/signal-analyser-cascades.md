@@ -647,3 +647,21 @@
 - Browser runtime не выполнялся: требуется совместимый target с C26-C29 и явно
   включёнными feature gates. Backend/API/математика и MATLAB не менялись.
   Push, deployment и merge не выполнялись; задача не является deployed.
+
+## 2026-08-01 — Signals workspace browser implementation и production probe
+
+- DEC-039 реализован в product checkpoint `522c4fc`: metadata-only каталог,
+  opaque revision-bound IDs, immutable TTL registry, fresh metadata/typed recv
+  revalidation и атомарный multi-import добавлены вместе со встроенным
+  checkbox browser без ручного имени переменной.
+- Backend focused/API/full gates и frontend `2/2` прошли; независимые product,
+  ordinary-test и action-by-action interaction reviews завершены без blocker.
+- Exact product SHA `522c4fc` развернут только на `https://engee.com`.
+  Read-only приложение/state/catalog probes отвечают `200`, каталог имеет
+  `Cache-Control: no-store`; EngeeDSP package/function preflight прошёл.
+- Интегральный E2E сохранен локально в `78368e7`: статический независимый audit
+  принял точный девятизапросный revision trace и production POST quarantine.
+  Browser runtime не заявлен из-за отсутствия CDP у существующего Chrome.
+- Структурные тесты дополнительно фиксируют исключение private/imported Julia
+  bindings. Служебные public-owned globals нельзя безопасно отличить от
+  пользовательских без host provenance; blacklist имен не введен.

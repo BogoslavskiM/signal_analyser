@@ -389,6 +389,34 @@ follow-ups: Run focused then full enabled suite when an accepted target exists.
 next_task_candidates: Runtime C17 or static C18 after contract freeze.
 engee_bug_candidate: None.
 
+## DEC-039 integrated Signals static E2E close — 2026-08-01
+
+canonical_role: E2E Tester
+owner: E2E Tester
+sessions: `/root/e2e_signals_inspector_milestone`,
+`/root/audit_signals_e2e_spec`
+goal: Freeze one complete Signals workflow after product, ordinary tests and
+interaction review.
+scope: `test/playwright/e2e.config.js` and
+`test/playwright/specs/signal_analyser/signals_inspector_actions.test.js`.
+contracts: Production-only origin; real read-only app/state/catalog health;
+pre-navigation POST quarantine; exact view `0→1→2`; batch `422@2`, stale
+`409@2`, one replay `200→3`; workspace conflict exactly once at `3`; Copy
+`3→4`; Extract `4→5`; Delete `5→6`.
+changes: Replaced typed-name import scenario with checkbox catalog workflow,
+strict opaque-ID payloads, catalog error/truncation/conflict lifecycle and an
+immutable nine-request trace.
+verification: JavaScript/shell/static/support/diff checks PASS; independent
+static verdict CLEAN; local checkpoint `78368e7a1bd1185d84eecd7ab93de47148668900`.
+risks: Browser runtime is unclaimed. Existing user Chrome has no CDP endpoint;
+it was not moved, closed or restarted.
+follow-ups: Run the focused quarantined scenario after explicit browser/CDP
+workspace authority; analyze emitted timings then.
+next_task_candidates: Runtime E2E only; otherwise blocked by browser workspace.
+browser_workspace_setup: None; static-only work.
+source_evidence: E2E diff, independent audit, locked production manifest.
+engee_bug_candidate: None.
+
 ## C18 typed Persistence E2E inventory — 2026-08-01
 
 canonical_role: E2E Tester

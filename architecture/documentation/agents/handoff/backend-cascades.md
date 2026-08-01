@@ -479,6 +479,34 @@ next_task_candidates: Read-only C18 OOP inventory after ADR.
 source_evidence: DEC-023; product commit `290c057`.
 engee_bug_candidate: None.
 
+## DEC-039 production binding-provenance audit — 2026-08-01
+
+canonical_role: Backend
+owner: Backend
+session: `/root/audit_signals_backend`
+goal: Safely exclude tool/internal workspace bindings observed in the deployed
+catalog without hiding user variables.
+scope: Read-only provider audit and exact-production binding classification; no
+repository edits.
+contracts: Genuine imports remain excluded by
+`names(...; all=false, imported=false)`; opaque user names and unsupported user
+values cannot be blacklisted.
+changes: None.
+verification: Provider `Meta.parseall` and diff-check PASS. Exact production
+classification found the observed rows are mutable bindings owned by `Main`,
+with the same available Julia provenance as ordinary user assignments.
+risks: `binding_module`, binding kind, visibility, export and constness do not
+distinguish tool-session globals from user globals. Name/type filtering would
+violate DEC-039.
+follow-ups: Require Engee host namespace isolation or a documented user-binding
+enumerator/predicate before a provider filter can be implemented safely.
+next_task_candidates: Implement only a proven host-provenance contract;
+otherwise completed standby with that exact external dependency.
+source_evidence: `lib/adapters/engee_workspace_variable_provider.jl`; deployed
+read-only catalog classification; DEC-039.
+engee_bug_candidate: None; this is an unfilled host integration contract, not
+an isolated Engee defect.
+
 ## C18 typed Persistence OOP inventory — 2026-08-01
 
 canonical_role: Backend

@@ -27,3 +27,5 @@
 - [Cascade 24: deterministic latest Plotly render](signal-analyser-cascade-v24.md)
 - [Cascade 25: строгий snapshot выбранных Statistics](signal-analyser-cascade-v25.md)
 - [Cascade 26: строгая глобальная структура snapshot](signal-analyser-cascade-v26.md)
+- [Signals milestone: Add, Copy и Delete](signal-analyser-signals-inspector-v31.md)
+- [Signals: встроенный браузер переменных](signal-analyser-workspace-browser-v32.md)

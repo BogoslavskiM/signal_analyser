@@ -387,6 +387,32 @@ follow-ups: Architect persists append-only implementation trace separately.
 next_task_candidates: C26 docs/product checkpoints after role validation.
 engee_bug_candidate: None.
 
+## DEC-039 product deployment and local E2E checkpoint — 2026-08-01
+
+canonical_role: DevOps
+owner: DevOps
+sessions: `/root/devops_engee_prod_target`,
+`/root/devops_signals_checkpoint`
+goal: Deploy the accepted workspace-browser product to locked production and
+persist the accepted integrated E2E diff.
+scope: Exact product SHA `522c4fc`; later two Playwright files only.
+contracts: `https://engee.com` only; read-only deployment verification; no
+real workspace import POST.
+changes: Production checkout fast-forwarded to `522c4fc` and started. Local
+E2E commit `78368e7a1bd1185d84eecd7ab93de47148668900` created.
+verification: Production registry RUNNING; GET app/state/catalog all `200`;
+catalog metadata-only/no-store; EngeeDSP package/function preflight PASS;
+E2E syntax/contract/diff/secret gates PASS.
+risks: E2E commit remains local because export to configured GitHub remote
+requires explicit user approval after disclosure. Tool-session public globals
+remain visible as incompatible catalog rows.
+follow-ups: Push only after exact remote/branch approval; redeploy a later
+checkpoint only after a new accepted product handoff.
+next_task_candidates: Commit structural Tester checkpoint, then completed
+standby; runtime belongs to E2E Tester.
+source_evidence: Exact prod SHA/status/log/API probes; commit `78368e7`.
+engee_bug_candidate: None.
+
 ## Cascade 28 local checkpoints — 2026-08-01
 
 canonical_role: DevOps

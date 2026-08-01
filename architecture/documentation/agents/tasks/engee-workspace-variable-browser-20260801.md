@@ -2,7 +2,8 @@
 
 Date: 2026-08-01
 Owner: Architect
-Status: contract frozen; external provider proofs complete; product not started
+Status: product and ordinary verification complete; deployed read-only probe
+complete; integrated E2E static gate complete; browser runtime blocked by CDP
 Decision: [DEC-039](../../user/decisions/DEC-20260801-039-engee-workspace-variable-browser.md)
 
 ## Goal
@@ -37,12 +38,43 @@ rules.
 
 | Role | Current deliverable | Next eligible work | Blocker |
 | --- | --- | --- | --- |
-| Backend | provider port, catalog route and atomic multi-import | deployed-app catalog/recv contract probe | product implementation handoff |
-| Frontend | selector/payload handoff complete | catalog dialog and mutation lifecycle | none; frozen wire supports parallel work |
-| Tester | read-only matrix review against DEC-039 | backend/API/frontend ordinary coverage | product symbols may land concurrently |
-| E2E Tester | scenario contract only | one integrated Signals runtime workflow | provider target probe + product/ordinary tests + design review |
-| DevOps | no action | explicit completed-file checkpoints and later target probe/deploy only on handoff | no completed product handoff |
+| Backend | completed standby after product and provider audit | host-provenance integration if Engee exposes it | public-owned tool globals cannot be distinguished safely |
+| Frontend | completed standby after catalog UI and design review | settings milestone only after Signals runtime gate | no product blocker |
+| Tester | structural binding-filter regressions complete | exact host-provenance regression after Backend contract | host predicate absent |
+| E2E Tester | integrated static scenario accepted | one production runtime workflow | existing Chrome has no approved CDP workspace |
+| DevOps | product deployed; local E2E/test checkpoints prepared | push exact local commits after explicit remote-export approval | export approval required |
 | MATLAB Researcher | no action | optional reference question only | no eligible work; MATLAB evidence is not required for provider binding |
+
+## Implementation and verification status — 2026-08-01
+
+- Product commit `522c4fc5bcbaa21e5dc412fe282d8ca498db8706` implements the
+  provider, immutable catalog registry, exact GET/POST contracts, atomic batch
+  service, browser UI and ordinary backend/frontend tests.
+- Backend focused workspace tests, focused API tests and the complete backend
+  command pass. Frontend static/behavior suite passes `2/2`. Independent
+  Backend and Frontend reviews are clean.
+- Production is running exact product SHA `522c4fc` at the locked
+  `https://engee.com` target. Read-only `GET /`, `GET /api/state` and
+  `GET /api/workspace/variables` return `200`; catalog response is metadata-only
+  with `Cache-Control: no-store`. EngeeDSP package/function preflight passes.
+- Integrated E2E checkpoint `78368e7a1bd1185d84eecd7ab93de47148668900`
+  is locally committed. Static independent audit accepts the immutable nine-
+  request trace and production POST quarantine. Browser runtime is not claimed:
+  the existing user Chrome process has no CDP endpoint and may not be restarted
+  without explicit authority.
+- Additional structural tests prove the literal catalog excludes private and
+  imported Julia bindings and pin `all=false, imported=false`; checkpoint
+  `5527ac818daa668a221514147f8bfab82ece957f` contains only those tests.
+
+## Open host-provenance boundary
+
+The production read-only catalog exposed several tool-session globals as
+incompatible entries. Exact production classification shows they are ordinary
+mutable bindings owned by `Main`, indistinguishable from user assignments by
+`binding_module`, binding kind, visibility, export or constness. A name or type
+blacklist would hide legitimate user variables and is forbidden. The safe
+successor requires either host namespace isolation or a documented Engee user-
+binding predicate; until then the rows remain visible but nonselectable.
 
 ## Provider evidence received and implementation obligations
 

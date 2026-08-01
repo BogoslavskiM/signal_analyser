@@ -279,3 +279,26 @@ matrix review.
 
 No product, test or deployment change is claimed by this assessment. The two
 external prod probes are provider evidence only, not deployed-app verification.
+
+## Implementation correction — 2026-08-01
+
+The earlier status above is preserved as the pre-implementation assessment.
+DEC-039 product is now implemented in `522c4fc5bcbaa21e5dc412fe282d8ca498db8706`.
+Focused workspace/API tests, the full backend command and frontend `2/2` pass;
+independent product, ordinary-test and interaction audits are CLEAN. Exact SHA
+`522c4fc` is deployed on locked production `https://engee.com`; read-only
+application/state/catalog probes return `200`, with metadata-only catalog and
+`Cache-Control: no-store`.
+
+Integrated E2E checkpoint `78368e7a1bd1185d84eecd7ab93de47148668900`
+passes static independent audit with an immutable nine-request trace and zero
+production POST escape. Runtime remains unverified because the existing Chrome
+session has no CDP endpoint and no authority was granted to restart it.
+
+Production classification also corrects the earlier assumption that all
+tool-session bindings can be excluded structurally. Genuine imports are already
+excluded by `names(...; all=false, imported=false)`, and new ordinary tests pin
+that behavior. The observed tool-session globals are public-owned `Main`
+bindings with the same Julia provenance as user assignments; binding metadata
+cannot distinguish them. Name/type blacklists remain forbidden. Host namespace
+isolation or a documented user-binding predicate is the only safe successor.

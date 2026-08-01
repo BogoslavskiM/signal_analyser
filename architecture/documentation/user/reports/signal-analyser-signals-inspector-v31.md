@@ -27,3 +27,9 @@ optimization являются последующими milestones.
 
 - [DEC-037](../decisions/DEC-20260801-037-signal-inventory-actions.md)
 - [Внутренняя assessment](../../agents/reports/signal-inventory-actions-assessment-20260801.md)
+
+## Уточнение 2026-08-01
+
+Этот документ сохраняет состояние до реализации. Ручной ввод имени переменной
+заменён решением DEC-039; фактический результат и статус развертывания описаны в
+[отчёте о встроенном браузере переменных](signal-analyser-workspace-browser-v32.md).

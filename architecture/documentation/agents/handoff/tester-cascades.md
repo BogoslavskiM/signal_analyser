@@ -371,6 +371,31 @@ transpose/abs/epsilon behavior as compatibility.
 next_task_candidates: C18 unit/API/front/Engee contract tests.
 engee_bug_candidate: None.
 
+## DEC-039 structural binding-filter regression — 2026-08-01
+
+canonical_role: Tester
+owner: Tester
+session: `/root/audit_workspace_binding_filter`
+goal: Prove the literal catalog structurally excludes private and imported
+bindings and make selection flags review-visible.
+scope: `test/back/lib/workspace_catalog_test.jl` and
+`test/back/app/signal_analyser_api_test.jl` only.
+contracts: One exported owned vector is included; one private owned scratch and
+one non-exported import are excluded; literal retains `all=false` and
+`imported=false`; no production-name blacklist.
+changes: Added a semantic fresh-module literal-eval fixture and a whitespace/
+keyword-order tolerant source pin.
+verification: Focused workspace and API tests PASS; full backend command exits
+successfully; diff-check PASS.
+risks: This does not classify public-owned tool globals, which need a Backend/
+host provenance contract.
+follow-ups: Add another exact regression only when a safe structural host
+predicate exists.
+next_task_candidates: Completed standby; no eligible test work until that
+predicate or a production reproduction is supplied.
+source_evidence: Changed tests and Backend production classification handoff.
+engee_bug_candidate: None.
+
 ## Cascade 18 verification — 2026-08-01
 
 canonical_role: Tester
