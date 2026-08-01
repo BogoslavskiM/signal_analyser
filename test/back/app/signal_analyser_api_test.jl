@@ -785,6 +785,7 @@ end
     @test !occursin("engee.genie.send", adapter_source)
     introspection = match(r"const ENGEE_WORKSPACE_CATALOG_INTROSPECTION = \"\"\"(.*?)\"\"\""s, adapter_source)
     @test introspection !== nothing && !occursin("\$", introspection.captures[1])
+    @test introspection !== nothing && occursin(r"names\s*\(\s*catalog_module\s*;(?=[^)]*\ball\s*=\s*false)(?=[^)]*\bimported\s*=\s*false)[^)]*\)", introspection.captures[1])
     @test occursin("context = Main", adapter_source)
     @test occursin("Base.invokelatest(evaluate, ENGEE_WORKSPACE_CATALOG_INTROSPECTION)", adapter_source)
 end

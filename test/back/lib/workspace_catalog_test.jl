@@ -235,6 +235,25 @@ end
     end
 end
 
+@testset "DEC-039 literal catalog introspection excludes non-public and imported bindings" begin
+    # The literal program must enumerate only workspace-owned public bindings.
+    # These fixture names are intentionally unrelated to any observed runtime
+    # rows: the oracle is the structural visibility/import relationship, not a
+    # blacklist of names.
+    workspace = Module(:WorkspaceCatalogBindingFilterProbe)
+    Core.eval(workspace, :(using Base))
+    Core.eval(workspace, :(owned_workspace_signal = [1.0, 2.0, 3.0]))
+    Core.eval(workspace, :(internal_workspace_scratch = [4.0, 5.0, 6.0]))
+    Core.eval(workspace, :(import Base: sqrt))
+    Core.eval(workspace, :(export owned_workspace_signal))
+
+    raw = Core.eval(workspace, Meta.parse(WC.ENGEE_WORKSPACE_CATALOG_INTROSPECTION))
+    @test raw.total == 1 && !raw.truncated && length(raw.entries) == 1
+    entry = only(raw.entries)
+    @test entry.name == "owned_workspace_signal"
+    @test entry.type == "Vector{Float64}" && entry.shape == [3] && entry.source_kind == "raw_vector"
+end
+
 @testset "DEC-039 batch import is catalog-ordered and atomic" begin
     raw = (name = "z vector", type = "Vector{Float64}", shape = [3], source_kind = "raw_vector")
     matrix = (name = "a matrix", type = "Matrix{Float64}", shape = [3, 2], source_kind = "raw_matrix")
