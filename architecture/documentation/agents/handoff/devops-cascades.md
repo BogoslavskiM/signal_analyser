@@ -305,3 +305,18 @@ risks: Runtime E2E/Engee provider and deployment not performed.
 follow-ups: Separate Architect C18 implementation documentation checkpoint;
 no push/deploy/merge.
 next_task_candidates: Commit accepted C18 docs only.
+
+## Cascade 19 clean-worktree gate — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c17_commit`.
+goal: Confirm a safe local base before C19 documentation or product edits.
+scope: Read-only branch, status and recent history inspection.
+changes: None.
+verification: Branch `neuro_signal_analyser_cascade`; clean worktree; tracking
+`origin/neuro_signal_analyser_cascade [ahead 49]`; HEAD chain `13247f0`,
+`27fcdef`, `3b16cd9`, `c8554f8`.
+risks: Remote intentionally trails the local branch by 49 commits.
+follow-ups: Commit only an explicit validated C19 file list; no push, deploy or
+merge without separate authority.
+next_task_candidates: C19 contract documentation checkpoint after probe PASS.

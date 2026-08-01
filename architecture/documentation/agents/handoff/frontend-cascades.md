@@ -357,3 +357,26 @@ validation remains authoritative. Do not inject `frequency_scale` metadata.
 follow-ups: Add focused positive/empty behavior regression after backend diff:
 one heatmap, bit-identical x/y/z, linear y, occurrence colorbar, no controls.
 next_task_candidates: C18 frontend tests only.
+
+## C19 Persistence Leakage frontend inventory — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c18_persistence_inventory`.
+goal: Map a strictly independent Persistence Leakage control without editing.
+scope: Read-only `public/index.html`, `public/js/app.js`, `public/css/app.css`
+and frontend tests.
+proposed_contract: One exact `persistence_settings` object with normalized
+`leakage`; per-Display draft/accepted state; full desired target; equal value is
+a no-op; local invalid causes no request; 422 restores accepted state; one 409
+retry and bounded second-409 rollback. Clear and source changes preserve intent.
+selectors: `persistence-settings`, `persistence-leakage-input`,
+`persistence-leakage-value`, `persistence-leakage-error`.
+isolation: No client DSP and no coupling to Spectrum or Spectrogram Leakage.
+No-source state disables the control while retaining the Display preference.
+changes: None; feasibility inventory only.
+verification: Read-only state/render/request lifecycle inspection.
+risks: Normalized `0..1` presentation is a product choice; implementation is
+blocked until prod provider evidence and an accepted ADR freeze defaults,
+validation and wire shape.
+follow-ups: Implement only after the C19 documentation checkpoint.
+next_task_candidates: Exact state/UI/request implementation after probe PASS.

@@ -388,3 +388,27 @@ risks: Prod runtime contract remains evidence-backed but not rerun in C18.
 follow-ups: Provisioned Engee and runtime E2E only.
 next_task_candidates: C19 matrix after contract freeze.
 engee_bug_candidate: None.
+
+## C19 Persistence Leakage test inventory — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c18_persistence_matrix`.
+goal: Prepare an exact cross-layer matrix without changing tests.
+scope: Read-only backend/API/frontend/Engee harness inventory.
+proposed_contract: Exact one-key Persistence settings, default `0.5`, finite
+non-Bool inclusive `[0,1]`, signed-zero canonicalization; Leakage in immutable
+query/cache identity and canonical provider order before fixed NumPowerBins and
+TwoSided.
+coverage: Constructors/copy/hash, default/endpoints/no-op/revision, A/B/Clear/
+re-add/source, cache independence, cold/equal/combined mutation, full 422/409,
+atomic equality of all four caches, frontend state and provisioned Engee
+contract. Estimated additions: 150--190 backend, 20--30 API, 55--80 frontend
+and 25--35 Engee assertions.
+changes: None.
+verification: Existing C18 seams and prior settings matrices reviewed read-only.
+risks: Exact provider semantics and default equivalence cannot be inferred from
+Spectrogram and remain blocked on the prod probe and ADR.
+follow-ups: Freeze provider output oracle before writing assertions.
+next_task_candidates: Implement C19 tests concurrently with product owners
+after contract checkpoint.
+engee_bug_candidate: None pending provider probe.

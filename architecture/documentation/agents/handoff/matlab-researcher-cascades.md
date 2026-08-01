@@ -655,3 +655,34 @@ follow-ups: Implement DEC-024; probe settings only in later independent slices.
 next_task_candidates: Typed Persistence foundation; then dedicated provider
 research for Persistence Leakage/Overlap.
 engee_bug_candidate: None.
+
+## C19 Persistence Leakage docs-only discovery — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c18_docs_discovery`.
+goal: Select the smallest independently researchable Persistence setting after
+the typed C18 foundation.
+scope: Official MathWorks web documentation and read-only repository review.
+MATLAB GUI, Command Window, Add-On Explorer and clicker were untouched.
+documented_contract: Public `pspectrum` documents Leakage default `0.5`, finite
+real domain `[0,1]` and Kaiser relation `beta=40(1-leakage)`. Persistence is
+computed from a spectrogram using its leakage, time resolution and overlap.
+recommendation: Probe independent Display-local Persistence Leakage before any
+ADR or implementation. Prefer it over Overlap because the documented Overlap
+default depends on the selected window.
+ambiguity: The exact Signal Analyzer widget/value presentation was not observed.
+A normalized `0..1` product control would be an explicit product decision, not
+a claim of MATLAB GUI parity.
+required_probe: Deterministic real/complex `N=256`, `Fs=100`; omitted, `0.5`,
+`0`, `1` and repeats; invalid finite/range/type cases; option-order invariance
+with fixed `NumPowerBins=256` and `TwoSided`; exact shape/topology/orientation,
+positive power and occurrence range; omitted/default equivalence and material
+output differences.
+changes: None.
+verification: Direct official web research; no MATLAB or repository mutation.
+follow-ups: Accept an ADR only after a successful prod EngeeDSP probe.
+next_task_candidates: Independent Persistence Leakage; otherwise record NO-GO
+and choose another narrow slice.
+source_evidence: MathWorks `pspectrum` and Persistence Spectrum in Signal
+Analyzer public documentation.
+engee_bug_candidate: None pending provider probe.

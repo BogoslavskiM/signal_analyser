@@ -521,3 +521,31 @@ need future generation identity.
 follow-ups: Runtime target gates only; no implicit settings expansion.
 next_task_candidates: C19 inventory after separate evidence/ADR.
 engee_bug_candidate: None.
+
+## C19 Persistence Leakage prod provider probe — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c19_persistence_leakage_probe`.
+goal: Establish the exact public EngeeDSP boundary before a product ADR.
+scope: Prod Engee MIND, deterministic in-memory arrays only; no repository,
+model, dependency, deploy, browser or MATLAB mutation.
+environment: Julia `1.12.4`; EngeeDSP `0.72.0`, UUID
+`f9bbbd0e-0dd6-4072-898a-88f8f1250a99`, tree
+`4941c08f227519cbc82caab7bc519851f44b0586`.
+contracts: Real/complex `N=256`, `Fs=100`; occurrence 256x1024, frequency
+1024x1, power 256x1; strict finite axes, positive power and occurrence 0..100.
+Omitted Leakage is bit-exact explicit `0.5`; endpoints/repeats deterministic.
+Leakage changes power axis/occurrence, not frequency axis. All six permutations
+of Leakage/NumPowerBins/TwoSided are bit-exact equal.
+validation: Range/nonfinite/string reject consistently. Provider accepts Bool
+as numeric endpoints, so product must reject Bool before dispatch.
+changes: None by Backend; only Architect documentation was in flight.
+verification: Exact array/type/shape/equality/range/delta predicates inside the
+prod runtime; no hand-written spectral oracle.
+cleanup: Temporary prod pod stopped; follow-up status `stopped`.
+risks: Leakage must invalidate Persistence raw cache; it is not presentation.
+follow-ups: Implement DEC-025 with immutable settings/query/cache identity and
+canonical Leakage, NumPowerBins, TwoSided order.
+next_task_candidates: C19 Backend OOP implementation after docs checkpoint.
+source_evidence: Exact report under `agents/reports/` and official docs.
+engee_bug_candidate: None.

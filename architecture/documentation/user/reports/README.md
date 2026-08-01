@@ -19,3 +19,4 @@
 - [Cascade 16: Spectrogram Frequency Scale](signal-analyser-cascade-v16.md)
 - [Cascade 17: Spectrogram Power Limits](signal-analyser-cascade-v17.md)
 - [Cascade 18: typed Persistence foundation](signal-analyser-cascade-v18.md)
+- [Cascade 19: контракт Persistence Leakage](signal-analyser-cascade-v19.md)

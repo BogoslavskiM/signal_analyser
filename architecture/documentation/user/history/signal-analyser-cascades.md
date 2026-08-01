@@ -385,3 +385,16 @@
   Runtime E2E, push, deployment и merge не выполнялись. Local Engee gate
   проходит findpeaks 16/16 и затем честно падает из-за отсутствующего EngeeDSP;
   новый Engee defect не заявлен.
+
+## 2026-08-01 — Cascade 19 Persistence Leakage contract freeze
+
+- `researched`: prod EngeeDSP `0.72.0` подтвердил bit-exact omitted=`0.5`,
+  endpoints, determinism, strict real/complex topology и option-order
+  invariance. Leakage меняет raw power axis и occurrence, frequency axis нет.
+- `decided`: exact per-Display `persistence_settings={leakage:0.5}`, finite
+  non-Bool `[0,1]`, signed-zero canonicalization; Leakage входит в typed query/
+  cache key и передаётся перед fixed NumPowerBins/TwoSided.
+- Normalized range frontend объявлен продуктовой политикой, не наблюдением
+  MATLAB GUI. Spectrum и Spectrogram остаются полностью независимыми.
+- `not yet implemented`: product/test/runtime evidence, commit SHA, deploy и
+  merge появятся только после реализации и отдельного audit.

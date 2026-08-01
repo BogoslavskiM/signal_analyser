@@ -176,6 +176,13 @@ Owner: Architect
   and final audit CLEAN. P1 ordinary-snapshot partial cache publication was
   found by audit and fixed with a four-cache prepared aggregate. Runtime
   Engee/E2E and deployment remain external; no new Engee bug is claimed.
+- C19 provider gate passed on prod EngeeDSP `0.72.0`; DEC-025 freezes exact
+  independent `persistence_settings={leakage}` with default `0.5`, finite
+  non-Bool `[0,1]`, signed-zero canonicalization and raw query/cache identity.
+  Canonical provider order is Leakage, fixed NumPowerBins, TwoSided. Normalized
+  UI is an explicit product decision; it is not a MATLAB GUI-parity claim.
+  Backend, Frontend, Tester and E2E implementation is eligible after the
+  contract documentation checkpoint. Overlap/ROI/limits/scale remain deferred.
 - C14 discovery is restricted to Spectrogram Reassign. Official docs support a
   boolean `pspectrum` flag and display-local checkbox semantics, but app default
   remains inferred. Prod Engee false/true/default/invalid/order/topology probe

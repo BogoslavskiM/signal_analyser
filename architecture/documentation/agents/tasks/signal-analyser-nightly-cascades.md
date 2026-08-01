@@ -1043,3 +1043,48 @@ local EngeeDSP import remains the only required target-gate limitation.
 | E2E Tester | `/root/e2e_c18_persistence_inventory` | C18 static complete | runtime C18 / C19 after ADR | no runtime target | static PASS |
 | DevOps | `/root/devops_c17_commit` | product + test hardening complete | C18 docs checkpoint | Architect validation | `27fcdef` |
 | MATLAB Researcher | `/root/matlab_c18_docs_discovery` | C18 docs complete | C19 docs-only discovery | no MATLAB GUI use | DEC-024 consumed |
+
+## Cascade 19 discovery gate — 2026-08-01
+
+Status: `provider-probe-complete`; superseded below by the accepted contract.
+
+Direct official web research selects independent Display-local Persistence
+Leakage as the narrow candidate. Product implementation requires a successful
+prod EngeeDSP probe over real/complex omitted/default/endpoints/repeats,
+invalid values, option order and exact output invariants. Normalized UI is a
+product decision rather than an unobserved MATLAB GUI-parity claim.
+
+### Persistent role queue for C19 discovery
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | prod read-only probe active | OOP implementation or NO-GO handoff | exact provider results | public EngeeDSP surface found |
+| Frontend | `/root/frontend_c18_persistence_inventory` | read-only feasibility complete | exact state/UI implementation | probe PASS + ADR | selector/lifecycle proposal |
+| Tester | `/root/tester_c18_persistence_matrix` | read-only matrix complete | concurrent contract tests | probe PASS + ADR | cross-layer assertion estimate |
+| E2E Tester | `/root/e2e_c18_persistence_inventory` | read-only inventory complete | focused static scenario | probe PASS + selectors | no-sleep lifecycle plan |
+| DevOps | `/root/devops_c17_commit` | clean-worktree gate complete | contract-doc checkpoint | Architect validation | clean, ahead 49 |
+| MATLAB Researcher | `/root/matlab_c18_docs_discovery` | docs-only discovery complete | later separate setting research | prod probe active | Leakage recommendation |
+
+## Cascade 19 contract freeze — 2026-08-01
+
+Status: `contract-frozen`; implementation eligible after documentation
+checkpoint.
+
+[DEC-20260801-025](../../user/decisions/DEC-20260801-025-persistence-leakage.md)
+freezes exact one-key Display-local Persistence settings. Default is explicit
+`0.5`; accepted product range is finite non-Bool `[0,1]`; signed zero is
+canonical. Leakage participates in immutable query/cache identity and provider
+order before fixed NumPowerBins/TwoSided. The existing heatmap wire and C18
+atomic four-cache publication remain authoritative. Normalized frontend range
+is a product/API representation, not an unobserved MATLAB GUI fact.
+
+### Persistent role queue after C19 contract freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | prod probe PASS/cleanup complete | OOP implementation | docs commit | exact provider handoff |
+| Frontend | `/root/frontend_c18_persistence_inventory` | feasibility complete | vanilla state/UI implementation | docs commit | selector/lifecycle proposal |
+| Tester | `/root/tester_c18_persistence_matrix` | matrix complete | unit/API/front/Engee tests | product types + docs commit | exact coverage estimate |
+| E2E Tester | `/root/e2e_c18_persistence_inventory` | inventory complete | focused static scenario | selectors + docs commit | event-driven plan |
+| DevOps | `/root/devops_c17_commit` | clean gate complete | contract docs commit | Architect validation | clean/ahead 49 |
+| MATLAB Researcher | `/root/matlab_c18_docs_discovery` | docs-only complete standby | next independent research | no safe GUI need | official Leakage map |

@@ -425,3 +425,35 @@ follow-ups: Run focused then full suite on an accepted C18 target.
 next_task_candidates: Runtime C18 or C19 static after ADR.
 browser_workspace_setup: Background CDP only; no MATLAB/window action.
 engee_bug_candidate: None.
+
+## C19 Persistence Leakage E2E inventory — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c18_persistence_inventory`.
+goal: Plan an independent per-Display Leakage lifecycle scenario without
+browser or repository mutation.
+scope: Read-only `test/playwright/**`; no browser/CDP or MATLAB action.
+required_contract: Accepted provider default/domain/output oracle; exact typed
+state/request shape; Display/Clear/source lifecycle; stable frontend selectors
+and feature registration.
+proposed_scenario: Default plus endpoints `0`/`1`; one successful +1 mutation;
+equal/local-invalid no request; 422 rollback; exactly one 409 retry and second
+409 rollback; output remains one finite source-only power-by-frequency heatmap;
+Spectrum and Spectrogram settings/payload signatures remain unchanged; A/B,
+Clear/re-add/source and exact cleanup. Waits are response/DOM/Plotly conditions,
+never fixed sleeps, with timing logs for meaningful mutations.
+selectors: Existing page/plot/source selectors plus proposed
+`persistence-settings`, `persistence-leakage-input` and
+`persistence-leakage-error`.
+changes: None.
+verification: Read-only comparison of C17 event-driven settings scenario, C18
+typed Persistence scenario and current support/config surface.
+risks: Runtime target remains absent; `N<2` has no deterministic UI fixture and
+stays backend-owned. Do not infer equal frequency/power axes across Leakage
+unless the probe proves it.
+follow-ups: Add the focused static scenario after accepted Backend/Frontend
+contracts, then run runtime only on an available accepted target.
+next_task_candidates: C19 static scenario after ADR and selectors.
+browser_workspace_setup: No browser action; future background CDP only, MATLAB
+unchanged.
+engee_bug_candidate: None pending provider probe.
