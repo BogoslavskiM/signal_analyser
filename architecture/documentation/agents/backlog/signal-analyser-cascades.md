@@ -124,6 +124,12 @@ Owner: Architect
   Before an ADR or implementation, probe Engee explicit 0/50/75, invalid
   -1/100/nonfinite/Bool, option order, segment centers/counts and high-overlap
   resource behavior. TimeResolution remains blocked; no fallback is allowed.
+- Prod C12 probe is complete. Explicit 0/50/75 gives deterministic 8/15/29
+  columns for N=256, provider Auto equals 75, option order is invariant, and
+  Bool is permissively accepted. 99/99.9 costs about 649 MB allocations on the
+  bounded fixture. DEC-018 therefore freezes explicit default 50 and a
+  product-safe 0..75 inclusive range. C12 implementation is now eligible after
+  the C11 terminal-center hotfix checkpoint.
 
 - SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
   researches Spectrum defaults/units for a future separately frozen slice.

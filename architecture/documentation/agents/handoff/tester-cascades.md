@@ -201,3 +201,14 @@ is preserved separately.
 follow-ups: Rerun typed E2E on an exact deployed SHA; next settings matrix only
 after ADR.
 next_task_candidates: OverlapPercent strict JSON/API/cache/provider matrix.
+
+## Cascade 11 short-input correction verification — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_cycle`.
+coverage: At Fs=10/N=2, terminal center `0.15 s` is accepted; `0.16 s` and
+existing `0.2 s` cases are rejected.
+verification: Full backend 982/982; C11 38/38.
+risks: Real EngeeDSP remains prod-only; exact N=2..16 evidence is recorded in
+the provider report.
+follow-ups: C12 explicit overlap must retain these boundaries.

@@ -669,6 +669,23 @@ prod Engee probe verifies explicit 0/50/75, invalid boundaries/types, segment
 counts/centers, option order and resource behavior. Time Resolution stays Auto;
 Leakage, Reassign, ROI, limits, scale and colormap remain separate.
 
+## Cascade 12 contract freeze — 2026-08-01
+
+Status: `contract-frozen`; implementation starts only after the C11
+short-input hotfix checkpoint.
+
+[DEC-20260801-018](../../user/decisions/DEC-20260801-018-spectrogram-overlap-percent.md)
+freezes one Display-local `spectrogram_settings.overlap_percent`: explicit
+default 50, finite non-Bool and product-safe inclusive range 0..75. The 75 cap
+is an explicit resource delta from MATLAB/provider `<100`: prod N=256 at
+99/99.9 allocated about 649 MB and produced 15× the 50%-segment count. Query,
+raw cache and provider call include exact overlap; root/Display lifecycle uses
+the existing revision-safe `/api/view` contract.
+
+Frontend may add only one native input/error inside the existing Display tab.
+One host, three tabs, no new route and no client DSP remain strict. Every other
+Spectrogram/Persistence setting remains outside C12.
+
 ### Persistent role heartbeat after C11 freeze
 
 | Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |

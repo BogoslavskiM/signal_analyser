@@ -206,6 +206,10 @@ revision mutation.
   syntax/support/help PASS. Локальный Engee gate по-прежнему честно падает
   после findpeaks 16/16 из-за отсутствующего пакета; prod C11 probe подтверждает
   фактический provider contract.
+- C11 short-input correction после prod `N=2..16` probe — backend 982/982,
+  C11 38/38. Valid segment center допускается до
+  `last_timestamp + 0.5/f_s + tolerance`; более дальний center по-прежнему
+  отклоняется.
 
 ## Источники и наблюдаемые различия
 

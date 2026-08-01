@@ -98,3 +98,8 @@ centered topology, `N<2` bypass, точный dB и presentation-only 160×160 b
 Backend gate 980/980, целевой C11 36/36, frontend 2/2 и Playwright static gates
 PASS. Product/test checkpoint `d47e51e61a346803902ce1f5b179ed8fb9f02c14`;
 push, deployment и runtime E2E не выполнялись.
+
+Short-input prod follow-up обнаружил valid terminal center до половины sample
+после последнего raw timestamp. Локальный hotfix расширил только upper bound до
+`last_timestamp + 0.5/f_s + tolerance`; backend 982/982, C11 38/38. Это
+уточняет provider-coordinate invariant, не добавляя C12 settings.

@@ -254,3 +254,6 @@
   Playwright syntax/support/help, skills/vanilla/adapters и diff PASS.
 - Product/test checkpoint `d47e51e61a346803902ce1f5b179ed8fb9f02c14`;
   push, runtime E2E, deployment и merge не выполнялись.
+- Short-input prod evidence уточнило terminal center: provider может вернуть
+  половину sample после последнего timestamp. Hotfix `6801696` меняет только
+  верхнюю validation bound; итоговый backend 982/982, C11 38/38.

@@ -201,3 +201,15 @@ risks: Local EngeeDSP absent; product checkpoint is not published or deployed.
 follow-ups: Separate Architect documentation checkpoint. No push/deploy/merge
 without explicit authority.
 next_task_candidates: Local next-cascade checkpoint after a new frozen ADR.
+
+## Cascade 11 short-input hotfix freeze — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c10_freeze`.
+scope: Exact Backend service and Tester regression files.
+changes: Local commit `68016963800bcd89d43ad224a9519d3634ab729b`,
+message `fix: разрешить terminal center короткой спектрограммы`.
+verification: Parent `6e34e1d`; exact staged set and cached diff PASS; accepted
+backend 982/982, C11 38/38, Julia parse and prod N=2..16 evidence.
+risks: Not pushed or deployed.
+follow-ups: Architect contract/docs checkpoint; no external transfer.

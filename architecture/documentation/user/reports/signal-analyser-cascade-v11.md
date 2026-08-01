@@ -55,6 +55,15 @@ Spectrogram `OverlapPercent` отдельно от Time Resolution. MATLAB app
 документирует default 50%, тогда как standalone provider Auto зависит от ENBW;
 до реализации требуется отдельный explicit 0/50/75 и invalid-boundary probe.
 
+## Short-input correction
+
+Prod follow-up `N=2..16` показал, что valid terminal segment center может быть
+на `0.5/f_s` позже последнего raw timestamp. Первоначальный C11 upper bound был
+слишком строгим. Hotfix `68016963800bcd89d43ad224a9519d3634ab729b`
+разрешил только этот half-sample interval с прежним numeric tolerance. После
+исправления backend 982/982, C11 38/38; topology/shape/power/lower-bound checks
+не ослаблены.
+
 ## Источники
 
 - [DEC-20260801-017](../decisions/DEC-20260801-017-typed-spectrogram-foundation.md)

@@ -292,3 +292,20 @@ follow-ups: Probe/freeze OverlapPercent separately; keep TimeResolution blocked
 by ENGEE-20260801-003.
 next_task_candidates: Spectrogram OverlapPercent query/cache extension after
 provider evidence.
+
+## Cascade 11 short-input terminal-center correction — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_cycle`.
+goal: Accept valid EngeeDSP terminal centers without weakening other typed
+Spectrogram invariants.
+scope: `lib/services/signal_analyser_service.jl` only.
+contracts: Upper center bound is
+`last_timestamp + 0.5/f_s + numeric_tolerance`; lower bound, topology, shape,
+frequency and power validation unchanged.
+changes: Local product/test checkpoint `68016963800bcd89d43ad224a9519d3634ab729b`.
+verification: Julia parse/diff PASS; backend 982/982; C11 38/38; prod real/
+complex N=2..16 max observed center overrun 0.5 sample.
+risks: Exact short-input evidence is target-only; local provider is a double.
+follow-ups: Preserve the bound while adding explicit OverlapPercent.
+next_task_candidates: DEC-018 implementation.
