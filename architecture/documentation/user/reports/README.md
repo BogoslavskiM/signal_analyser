@@ -13,3 +13,4 @@
 - [Cascade 9: Spectrum settings и Time ROI](signal-analyser-cascade-v9.md)
 - [Cascade 10: Frequency Limits](signal-analyser-cascade-v10.md)
 - [Cascade 11: typed Spectrogram foundation](signal-analyser-cascade-v11.md)
+- [Cascade 12: Spectrogram OverlapPercent](signal-analyser-cascade-v12.md)

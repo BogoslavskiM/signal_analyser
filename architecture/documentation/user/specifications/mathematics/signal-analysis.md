@@ -9,9 +9,9 @@
 - `N` — число отсчётов; `f_s` — частота дискретизации, Гц.
 - `x[n]` — входной сигнал, вещественный либо комплексный.
 - `t[n]` — время, с; частотные оси — Гц; power scale — дБ.
-- Spectrum для real вызывается one-sided (`TwoSided=false`), для complex —
-  centered two-sided (`TwoSided=true`). Spectrogram/Persistence сохраняют
-  прежний two-sided contract.
+- Spectrum и Spectrogram для real вызываются one-sided (`TwoSided=false`), для
+  complex — centered two-sided (`TwoSided=true`). Persistence пока сохраняет
+  legacy two-sided contract.
 
 ## Реализованные формулы и algorithms
 
@@ -36,11 +36,17 @@
    `SignalSpectrumService`, `signal_spectrum_calculate`,
    `signal_spectrum_effective_frequency_limits`,
    `signal_analyser_spectrum_plot`.
-3. Spectrogram вызывает representation `spectrogram`, `TwoSided=true`,
-   ориентирует matrix как frequency × time и применяет ту же шкалу
-   `10 log10(max(|P|, eps))`. Code anchors:
-   `signal_analyser_spectrogram_plot`, `signal_analyser_oriented_matrix`,
-   `signal_analyser_power_db_matrix`.
+3. Spectrogram копирует полный raw signal в typed `SignalSpectrogramQuery` и
+   вызывает representation `spectrogram` с explicit
+   `OverlapPercent=O`, затем `TwoSided=false` для real либо `true` для complex.
+   `O` — конечное non-Bool число в product-safe диапазоне `0 <= O <= 75`,
+   default `50`. Provider matrix обязана быть точно frequency × segment-time,
+   power — конечной, вещественной и неотрицательной. Presentation применяет
+   `P_dB=10 log10(P)` без epsilon floor; raw cache хранит полную matrix, а wire
+   ограничивается до 160×160. Code anchors: `SignalSpectrogramSettings`,
+   `SignalSpectrogramQuery`, `SignalSpectrogramData`,
+   `SignalSpectrogramService`, `SignalSpectrogramCacheKey`,
+   `signal_analyser_spectrogram_plot`.
 4. Persistence вызывает representation `persistence`, `TwoSided=true`.
    Power-level axis переводится в дБ по той же формуле; occurrence обязана быть
    конечной в диапазоне 0–100 % с tolerance `1e-9`, затем clamp в `[0,100]`.
@@ -107,6 +113,12 @@ Frequency Limits. Auto domain для real равен `[0,f_s/2]`, для complex
 Leakage конечна и лежит в `[0,1]`. Scale/frequency scale исключены из raw cache
 identity; Leakage, effective Frequency Limits, inclusive sample range,
 signal/sample rate и one/two-sided topology входят в typed key.
+
+Spectrogram settings нового Display: explicit `OverlapPercent=50`. Значение
+принадлежит Display, сохраняется при Clear и независимо восстанавливается при
+A/B; первый re-add пересчитывает raw Spectrogram. Exact overlap, source,
+samples, sample rate и topology входят в typed raw-cache identity. Empty
+Display и `N<2` provider не вызывают.
 
 ## Numeric constraints и edge cases
 
@@ -210,6 +222,13 @@ revision mutation.
   C11 38/38. Valid segment center допускается до
   `last_timestamp + 0.5/f_s + tolerance`; более дальний center по-прежнему
   отклоняется.
+- Cascade 12 backend — 1110/1110 PASS; typed Overlap 13/13,
+  lifecycle/cache 56/56 и API 59/59. Проверены exact nested object, default 50,
+  finite non-Bool range 0..75, no-op/+1/422/409, A/B/Clear/re-add/source,
+  combined query/cache/provider forwarding и failure atomicity. Frontend 2/2;
+  Playwright syntax/support/help PASS. Prod explicit 0/50/75 probe подтвердил
+  deterministic segment grid и Auto=75 provider delta; runtime E2E не
+  выполнялся.
 
 ## Источники и наблюдаемые различия
 

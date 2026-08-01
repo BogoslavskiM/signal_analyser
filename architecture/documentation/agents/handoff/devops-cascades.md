@@ -213,3 +213,20 @@ verification: Parent `6e34e1d`; exact staged set and cached diff PASS; accepted
 backend 982/982, C11 38/38, Julia parse and prod N=2..16 evidence.
 risks: Not pushed or deployed.
 follow-ups: Architect contract/docs checkpoint; no external transfer.
+
+## Cascade 12 product/test commit-freeze — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c12_commit`.
+goal: Commit exactly the accepted C12 product/test paths.
+scope: Fourteen explicit files under `lib/**`, `public/**` and `test/**`;
+Architect documentation excluded.
+changes: Local commit `f1dac5819ed49438fb249561102f7b2651c4150d`,
+message `feat: добавить Spectrogram OverlapPercent`.
+verification: Parent `981cba563dff07b99e0997bb986805692f3880ef`; exact staged list and cached
+diff PASS. Accepted gates: backend 1110/1110, frontend 2/2, Julia parse,
+Playwright static and architecture validators.
+risks: Local EngeeDSP unavailable; runtime E2E not run.
+follow-ups: Separate Architect documentation checkpoint. No push/deploy/merge
+without new explicit authority.
+next_task_candidates: Local C13 checkpoint only after a frozen contract.

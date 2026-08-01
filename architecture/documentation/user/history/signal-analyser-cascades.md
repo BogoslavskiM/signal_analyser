@@ -257,3 +257,20 @@
 - Short-input prod evidence уточнило terminal center: provider может вернуть
   половину sample после последнего timestamp. Hotfix `6801696` меняет только
   верхнюю validation bound; итоговый backend 982/982, C11 38/38.
+
+## 2026-08-01 — Cascade 12 Spectrogram OverlapPercent
+
+- `implemented`: один Display-local `spectrogram_settings.overlap_percent`,
+  explicit default 50 и строгий finite non-Bool product range 0..75.
+- Query/raw cache/provider включают exact overlap; A/B, Clear/re-add, empty,
+  source change, no-op/+1 и atomic 422/409 lifecycle закрыты.
+- Frontend добавил только `Overlap (%)` в существующую Display tab. 422
+  откатывает к last accepted server value; 409 повторяет ровно один последний
+  full desired target. Один host, три tabs и отсутствие client DSP сохранены.
+- `verified locally`: backend 1110/1110 (C12 typed 13/13,
+  lifecycle/cache 56/56, API 59/59), frontend 2/2, Julia parse, Playwright
+  syntax/support/help, skills/vanilla/docs и diff PASS.
+- Product/test checkpoint `f1dac5819ed49438fb249561102f7b2651c4150d`;
+  push, runtime E2E, deployment и merge не выполнялись.
+- Prod probe подтвердил explicit 0/50/75, Auto=75 и high-overlap resource
+  hazard. Product cap 75 — документированная safety delta, не MATLAB parity.

@@ -309,3 +309,23 @@ complex N=2..16 max observed center overrun 0.5 sample.
 risks: Exact short-input evidence is target-only; local provider is a double.
 follow-ups: Preserve the bound while adding explicit OverlapPercent.
 next_task_candidates: DEC-018 implementation.
+
+## Cascade 12 Spectrogram OverlapPercent — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_cycle`.
+goal: Implement DEC-018 through typed OOP state/query/cache/provider boundaries.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_service.jl`.
+contracts: Exact one-key settings object; default 50; finite non-Bool 0..75;
+Display-local root mirror; no-op/+1/422/409; A/B/Clear/re-add/source lifecycle;
+canonical provider options `OverlapPercent`, value, `TwoSided`, flag.
+changes: Added `SignalSpectrogramSettings`; propagated overlap through Display
+state, query/cache identity and atomic preparation/publication. Empty and N<2
+bypass provider; first re-add recomputes; source change preserves preference.
+verification: Julia parse/diff PASS; backend 1110/1110, C12 typed 13/13,
+lifecycle/cache 56/56 and API 59/59. Prod explicit 0/50/75 evidence retained.
+risks: Local real EngeeDSP is absent; runtime deployment not exercised.
+follow-ups: Leakage requires an independent contract and must remain separate
+from existing Spectrum Leakage.
+next_task_candidates: Prod Spectrogram Leakage probe and successor ADR.

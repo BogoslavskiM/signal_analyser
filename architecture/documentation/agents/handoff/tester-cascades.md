@@ -212,3 +212,21 @@ verification: Full backend 982/982; C11 38/38.
 risks: Real EngeeDSP remains prod-only; exact N=2..16 evidence is recorded in
 the provider report.
 follow-ups: C12 explicit overlap must retain these boundaries.
+
+## Cascade 12 verification — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_cycle`.
+scope: `test/back/**`, `test/front/**`, `test/engee/**`.
+coverage: Typed default/range/Bool/nonfinite; strict one-key API; no-op/+1/
+422/409 atomicity; A/B/Clear/re-add/source; cache/provider forwarding and
+failure rollback; real/complex Engee matrix. Front regressions cover exact
+bodies, two consecutive 422 canonical rollback and exactly one latest replay
+after 409.
+verification: Backend 1110/1110; C12 typed 13/13, lifecycle/cache 56/56, API
+59/59; frontend 2/2. Local Engee passes findpeaks 16/16 then fails required
+EngeeDSP import; prod overlap probe is authoritative.
+risks: Engee provider accepts Bool, while product intentionally rejects before
+dispatch; runtime UI remains unverified.
+follow-ups: Rerun formal provider matrix on provisioned target.
+next_task_candidates: C13 Leakage matrix after default/range/order ADR.

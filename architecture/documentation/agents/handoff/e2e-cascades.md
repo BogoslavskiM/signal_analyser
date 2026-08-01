@@ -274,3 +274,19 @@ follow-ups: Run on exact accepted target; preserve network/Plotly evidence and
 cleanup.
 next_task_candidates: Runtime C11 after deployment; future OverlapPercent E2E
 only after its contract exists.
+
+## Cascade 12 Spectrogram Overlap static scenario — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c9_replacement`.
+scope: `test/playwright/**` Overlap scenario, config, support and coverage map.
+contracts: Default 50; valid 0/75; no-op; local invalid; synthetic 422/409;
+A/B/Clear/re-add/source; one host and exactly three tabs; exact cleanup.
+changes: Added `spectrogram_overlap.test.js`. Source capture, mutation guard and
+cleanup use active Display `analysis_signal`, never independent row selection.
+verification: All Playwright JavaScript syntax, support contract, runner help
+and diff PASS.
+browser_workspace_setup: Static-only; browser and MATLAB untouched.
+risks: Runtime request timing, Plotly matrix change and cleanup await deployment.
+follow-ups: Run against exact accepted C12 SHA and retain network/timing proof.
+next_task_candidates: C13 static scenario only after contract implementation.

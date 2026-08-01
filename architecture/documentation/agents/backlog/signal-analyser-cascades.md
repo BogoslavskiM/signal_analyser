@@ -130,6 +130,14 @@ Owner: Architect
   bounded fixture. DEC-018 therefore freezes explicit default 50 and a
   product-safe 0..75 inclusive range. C12 implementation is now eligible after
   the C11 terminal-center hotfix checkpoint.
+- C12 implementation is complete at local checkpoint `f1dac58`: backend
+  1110/1110, frontend 2/2 and Playwright static gates pass. Runtime target E2E,
+  push and deployment remain unperformed.
+- C13 discovery is limited to Spectrogram Leakage. Freeze no fields/defaults
+  from the existing Spectrum Leakage by analogy. Required gates are official
+  MathWorks web evidence plus prod Engee real/complex default/0/0.5/1,
+  invalid-type/range and combined `Leakage`+`OverlapPercent` option probes. A
+  successor ADR must explicitly preserve independence of both settings.
 
 - SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
   researches Spectrum defaults/units for a future separately frozen slice.

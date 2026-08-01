@@ -3,7 +3,7 @@
 ID: `DEC-20260801-018`
 Дата: `2026-08-01`
 Статус: accepted
-Implementation: planned in Cascade 12; not deployed
+Implementation: implemented and locally verified in Cascade 12; not deployed
 
 ## Контекст
 
@@ -84,6 +84,23 @@ post-hoc overlap, fallback и dependency edit запрещены.
   эту границу в validation message, а документация — не называть её MATLAB
   parity.
 - Runtime E2E/deployment остаются отдельными gates.
+
+## Реализация и проверка
+
+Контракт реализован локальным product/test checkpoint
+`f1dac5819ed49438fb249561102f7b2651c4150d`. Полный backend gate прошёл
+1110/1110, включая C12 typed 13/13, lifecycle/cache 56/56 и API 59/59;
+frontend static/behavior — 2/2. Playwright syntax, support contract и runner
+help прошли, но runtime E2E не запускался. Последовательные 422 восстанавливают
+последнее принятое сервером значение, а 409 удаляет дубликаты и повторяет ровно
+один последний full desired target. E2E source lifecycle использует
+`activeDisplay.analysis_signal`, а не независимый global row selection.
+
+Формальный Engee contract сохраняет наблюдаемую permissive-дельту provider:
+Bool принимается EngeeDSP, но product отклоняет его до dispatch. Локальный gate
+проходит findpeaks 16/16 и затем честно падает из-за отсутствующего EngeeDSP;
+prod probe остаётся authoritative provider evidence. Push, deploy и merge не
+выполнялись.
 
 ## Источники
 

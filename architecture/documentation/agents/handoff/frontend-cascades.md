@@ -236,3 +236,21 @@ files changed.
 risks: Current full-signal placeholder behavior ignores Display ROI and could
 misrepresent controls.
 next_task_candidates: Metadata-only UI after Backend/provider/ADR freeze.
+
+## Cascade 12 Spectrogram Overlap UI — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c9_replacement`.
+goal: Add one Display-local Overlap control without client DSP or new tabs.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Conditional native input/error; draft-only input; change/blur/Enter
+full-view commit; local range 0..75; canonical 422 rollback; one latest 409
+replay; one host and exactly three tabs.
+changes: Added Spectrogram subsection and per-Display draft/error state.
+Last-accepted settings are captured from server snapshots so consecutive 422s
+cannot restore optimistic state. Stale replay removes same-Display queued view
+duplicates before inserting exactly one latest desired target.
+verification: JavaScript syntax/diff PASS; frontend 2/2.
+risks: Runtime browser behavior awaits an exact deployed target.
+follow-ups: Do not reuse Spectrum Leakage state for Spectrogram; wait for ADR.
+next_task_candidates: C13 UI only after typed backend contract.

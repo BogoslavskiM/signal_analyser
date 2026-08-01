@@ -696,3 +696,46 @@ Spectrogram/Persistence setting remains outside C12.
 | E2E Tester | `/root/e2e_c9_replacement` | C11 static scenario complete | runtime C11 after deployment | no target authority | typed Spectrogram scenario |
 | DevOps | `/root/devops_c10_freeze` | local C11 freeze complete | next local checkpoint after acceptance | no push/deploy authority | commit `d47e51e` |
 | MATLAB Researcher | `/root/matlab_c11_docs` | docs-only C12 recommendation complete | bounded GUI only after recovery | unsafe incomplete Command Window line | OverlapPercent evidence |
+
+## Cascade 12 implementation and local freeze — 2026-08-01
+
+Status: `implemented-and-locally-verified`; product/test checkpoint
+`f1dac5819ed49438fb249561102f7b2651c4150d`; contract/probe checkpoint
+`981cba563dff07b99e0997bb986805692f3880ef`; not pushed, not deployed,
+runtime E2E not run.
+
+DEC-018 is implemented across Backend, Frontend, Tester and E2E ownership.
+Exact Display-local default 50/range 0..75 participates in typed state, query,
+raw cache and provider call. A/B/Clear/re-add/source and revision-safe
+no-op/422/409 lifecycle are covered. Integration gates: backend 1110/1110
+(typed 13/13, lifecycle/cache 56/56, API 59/59), frontend 2/2, Julia parse,
+Playwright syntax/support/help, skills/vanilla/docs and diff PASS. Queue review
+corrected canonical rollback after consecutive 422 and deduplicated 409 replay;
+E2E uses Display analysis source rather than row selection.
+
+Local Engee gate still records the missing package failure after findpeaks
+16/16; prod explicit overlap evidence is preserved. No push/deploy/merge
+occurred.
+
+## Cascade 13 discovery started — 2026-08-01
+
+Status: `docs-and-provider-probe-only`; no C13 product/test changes.
+
+The next candidate is Spectrogram Leakage only. It must be independent of the
+existing Spectrum `spectrum_settings.leakage` and must not be inferred from it.
+MATLAB Researcher is restricted to official web documentation; Backend probes
+explicit/default/boundary/type behavior for real and complex EngeeDSP with
+OverlapPercent=50. Tester prepared a range-neutral matrix. No implementation is
+eligible until an ADR freezes exact nesting, default, range, combined provider
+option order and resource policy. MATLAB GUI/Command Window remains untouched.
+
+### Persistent role heartbeat after C12 freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c13_leakage_probe` | prod read-only C13 probe | OOP implementation after ADR | evidence/ADR pending | C12 backend 1110/1110 |
+| Frontend | `/root/frontend_c9_replacement` | completed C12 | C13 control after ADR/backend | typed contract absent | C12 queue correction, front 2/2 |
+| Tester | `/root/tester_c13_matrix` | C13 range-neutral matrix complete | implement after ADR | default/range/order pending | C12 matrix complete |
+| E2E Tester | `/root/e2e_c9_replacement` | completed C12 static scenario | C13 after implementation | contract absent | source-safe C12 scenario |
+| DevOps | `/root/devops_c12_commit` | C12 local freeze complete | docs or C13 checkpoint on handoff | no external authority | commit `f1dac58` |
+| MATLAB Researcher | `/root/matlab_c13_leakage` | official-docs-only C13 research | return evidence | no GUI; docs only | C12 docs consumed |
