@@ -1222,3 +1222,25 @@ Persistence retains the C22 operational resource risk.
 | E2E Tester | `/root/e2e_c18_persistence_inventory` | C19 static complete | C23 event-driven lifecycle scenario | backend implementation | no fixed waits |
 | DevOps | `/root/devops_c17_commit` | C22 docs committed | C23 contract checkpoint | Architect validation | `11a77c9` |
 | MATLAB Researcher | `/root/matlab_c20_persistence_overlap` | standby | no C23 GUI research | none required | official web only |
+
+## Cascade 24 contract freeze — 2026-08-01
+
+Status: `contract-frozen-implementation-next`; DEC-030.
+
+The shared Plotly host adopts latest-render-wins through a frontend-only
+monotonic generation and serialized render tail. Every draw invalidates older
+work, including synchronous placeholders. Stale queued jobs do not call
+Plotly; stale success/rejection cannot publish host state; unavoidable stale
+in-flight DOM mutation causes one bounded newest-frame reassertion. No API,
+backend, payload, Plotly artifact or DSP change is permitted.
+
+### Persistent role queue after C24 contract freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | C23 implemented | no C24 delta | C23 commit | full backend green |
+| Frontend | `/root/frontend_c23_contract_audit` | C24 discovery complete | generation coordinator | docs checkpoint | exact race matrix |
+| Tester | `/root/tester_c18_persistence_matrix` | measurement discovery complete | deferred Plotly tests | frontend implementation | controlled promises |
+| E2E Tester | `/root/e2e_c23_final_audit` | C23 static CLEAN | optional fast-switch scenario | frontend implementation | no fixed sleeps |
+| DevOps | `/root/devops_c17_commit` | checkpoints current | C24 docs/product commits | role validation | no push/deploy |
+| MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | docs research complete | standby | unsafe GUI state | official web only |

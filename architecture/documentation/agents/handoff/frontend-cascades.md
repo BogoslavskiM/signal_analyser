@@ -438,3 +438,32 @@ verification: JS syntax, frontend 2/2, diff-check and independent final audit
 CLEAN.
 commit: `f24e60caf0be6f31b78b0ef0178954862222448d`.
 follow-ups: Treat `measurement_kinds` as an independent exact snapshot change.
+
+## Cascade 24 Plotly render race assessment — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c23_contract_audit`.
+goal: Eliminate stale asynchronous Plotly publication in the shared host.
+scope: Read-only `public/js/app.js`/shared host trace.
+finding: `ensurePlotly()` and `Plotly.react()` continuations have no generation
+guard. Older success, rejection or in-flight DOM mutation can overwrite the
+newest plot, Display or synchronous placeholder; purge is not cancellation.
+decision: DEC-030 accepts a frontend-only monotonically increasing generation
+plus serialized render tail. Stale jobs skip before `react`; stale settlements
+cannot publish readiness/error and must boundedly reassert the newest frame if
+Plotly already mutated the host.
+verification_plan: Controlled deferred Plotly promises cover stale success,
+stale rejection, delayed loader, placeholder overwrite, plot and Display
+switches without fixed sleeps.
+changes: None in discovery.
+risk: Serialization cannot cancel an in-flight Plotly call and can delay the
+newest render; bounded reassertion must not form a redraw loop.
+verification: Read-only call-flow trace plus architecture documentation gates;
+no implementation/runtime claim.
+source_evidence: `agents/reports/plotly-render-race-assessment-20260801.md` and
+DEC-030.
+follow-ups: Frontend implements only after the C24 docs checkpoint; Tester adds
+controlled-promise cases; E2E remains optional until a compatible target.
+next_task_candidates: `public/js/app.js` implementation plus frontend behavior
+tests after documentation checkpoint.
+engee_bug_candidate: None.

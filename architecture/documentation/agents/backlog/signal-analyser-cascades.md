@@ -224,6 +224,10 @@ Owner: Architect
   and dynamic RBW. Fresh Linear/Log selection, engineering prefix, app
   Leakage readout scale and resolution-mode defaults remain unobserved. Do not
   touch MATLAB/clicker until the unsafe prior Command Window state is cleared.
+- DEC-030 freezes C24 latest-render-wins. One shared Plotly host needs a
+  frontend-only generation-aware serialized render coordinator. Deterministic
+  deferred-promise tests must prove stale success/rejection/loader/placeholder
+  cases and bounded newest-frame reassertion; backend/API/wire stay unchanged.
 - C19 implemented and locally accepted at product/test commit `2f99ff8`:
   backend 1497/1497, C19 48/48, frontend 2/2, focused Playwright static and
   independent Frontend/E2E/Backend audits CLEAN. Local Engee gate retains the

@@ -505,3 +505,14 @@
   подготовить prospective aggregate до state/revision/cache publication.
 - Контракт уменьшает accidental startup/inactive risk, но не объявляет active
   omitted Persistence безопасным. Implementation evidence пока не заявляется.
+
+## 2026-08-01 — Cascade 24 latest Plotly render contract
+
+- Read-only trace подтвердил общий async race единственного Plotly host: stale
+  success/rejection/in-flight mutation может заменить newest graph или
+  synchronous placeholder.
+- DEC-030 принимает frontend-only generation-aware serialized coordinator.
+  Every draw invalidates older work; stale settlement не публикует readiness/
+  error и boundedly reasserts newest frame после unavoidable DOM mutation.
+- API/backend/wire/Plotly artifact/math не меняются. Deterministic controlled-
+  promise matrix обязательна; implementation evidence пока не заявляется.

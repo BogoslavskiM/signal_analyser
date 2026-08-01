@@ -380,5 +380,16 @@ AppleScript activation timeout. Поэтому centered complex limits и точ
 [DEC-20260801-016](../decisions/DEC-20260801-016-frequency-limits.md),
 [DEC-20260801-017](../decisions/DEC-20260801-017-typed-spectrogram-foundation.md),
 [DEC-20260801-018](../decisions/DEC-20260801-018-spectrogram-overlap-percent.md),
-[DEC-20260801-019](../decisions/DEC-20260801-019-spectrogram-leakage.md) и
+[DEC-20260801-019](../decisions/DEC-20260801-019-spectrogram-leakage.md),
+[DEC-20260801-030](../decisions/DEC-20260801-030-latest-plot-render-wins.md) и
 [traceability](../traceability/signal-analyser-cascades.md).
+
+## Планируемая асинхронная публикация графика
+
+Один `active-plot-host` обслуживает все Display и типы графиков. По DEC-030
+последний запрошенный `draw()` должен стать authoritative независимо от порядка
+завершения загрузки Plotly. Frontend будет сериализовать Plotly jobs, проверять
+monotonically increasing generation до запуска и при settlement, а после
+неизбежной stale in-flight mutation ограниченно восстанавливать newest frame.
+После реализации старый success/error не сможет заменить новый график или
+синхронный empty/error placeholder. API, payload и backend revision не меняются.

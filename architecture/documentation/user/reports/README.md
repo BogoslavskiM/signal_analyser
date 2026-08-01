@@ -24,3 +24,4 @@
 - [Cascade 21: Persistence Frequency Limits capability](signal-analyser-cascade-v21.md)
 - [Cascade 22: fixed Persistence segmentation NO-GO](signal-analyser-cascade-v22.md)
 - [Cascade 23: lazy Persistence resource containment](signal-analyser-cascade-v23.md)
+- [Cascade 24: deterministic latest Plotly render](signal-analyser-cascade-v24.md)
