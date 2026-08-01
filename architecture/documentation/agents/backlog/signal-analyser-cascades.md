@@ -138,6 +138,10 @@ Owner: Architect
   MathWorks web evidence plus prod Engee real/complex default/0/0.5/1,
   invalid-type/range and combined `Leakage`+`OverlapPercent` option probes. A
   successor ADR must explicitly preserve independence of both settings.
+- C13 evidence is complete and DEC-019 freezes normalized independent Leakage:
+  default 0.5, finite non-Bool 0..1, exact two-key Spectrogram object and
+  canonical Leakage/Overlap/TwoSided provider order. MATLAB slider display scale
+  remains a later presentation observation, not an implementation blocker.
 
 - SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
   researches Spectrum defaults/units for a future separately frozen slice.

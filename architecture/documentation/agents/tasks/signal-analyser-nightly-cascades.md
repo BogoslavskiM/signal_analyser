@@ -739,3 +739,21 @@ option order and resource policy. MATLAB GUI/Command Window remains untouched.
 | E2E Tester | `/root/e2e_c9_replacement` | completed C12 static scenario | C13 after implementation | contract absent | source-safe C12 scenario |
 | DevOps | `/root/devops_c12_commit` | C12 local freeze complete | docs or C13 checkpoint on handoff | no external authority | commit `f1dac58` |
 | MATLAB Researcher | `/root/matlab_c13_leakage` | official-docs-only C13 research | return evidence | no GUI; docs only | C12 docs consumed |
+
+## Cascade 13 contract freeze — 2026-08-01
+
+Status: `contract-frozen`; implementation may start after the documentation
+checkpoint.
+
+[DEC-20260801-019](../../user/decisions/DEC-20260801-019-spectrogram-leakage.md)
+freezes one independent normalized Spectrogram Leakage inside the existing
+two-key `spectrogram_settings`: explicit default 0.5, finite non-Bool inclusive
+range 0..1 and signed-zero canonicalization. Query/raw cache/provider include
+exact Leakage; canonical Engee options are Leakage, OverlapPercent, TwoSided.
+
+Official docs prove provider semantics and independence from Spectrum Leakage;
+prod Engee real/complex probes prove default equivalence, endpoints,
+determinism, invariant time grid and raw-power changes. The MATLAB app slider's
+display scale remains deliberately unfrozen and is not an implementation gate:
+product UI exposes normalized 0..1 without claiming GUI-scale parity. No other
+Spectrogram/Persistence control enters C13.

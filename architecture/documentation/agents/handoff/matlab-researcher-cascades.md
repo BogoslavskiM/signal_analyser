@@ -478,3 +478,33 @@ risks: High valid overlap can cause large segment counts; any stricter cap is a
 product policy. TimeResolution remains blocked by ENGEE-20260801-003.
 next_task_candidates: C12 OverlapPercent probe/ADR; then independent Leakage or
 Reassign research.
+
+## C13 docs-only Spectrogram Leakage contract — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c13_leakage`.
+goal: Separate normalized provider Leakage from app slider presentation and
+from Spectrum Leakage.
+scope: Official MathWorks web documentation only. MATLAB GUI, Command Window,
+Help and Add-On Explorer were untouched.
+documented_contract: `pspectrum` uses normalized finite real Leakage `[0,1]`,
+default `0.5`, with Kaiser `beta=40*(1-leakage)`. Endpoint 0 suppresses
+sidelobes at resolution cost; endpoint 1 is rectangular and improves close-tone
+resolution while masking weak neighbors. Leakage 0.85 approximates Hann.
+independence: Signal Analyzer explicitly separates Spectrum Leakage from the
+Leakage used to window Spectrogram segments. With Time Resolution and Overlap
+fixed, Leakage changes frequency spreading/RBW but not outer segment centers or
+count.
+docs_vs_app_delta: The Signal Analyzer Spectrogram page does not formally state
+the displayed slider scale/default. App examples indicate a non-normalized
+display, while `labelSpectrogramOptions` uses a separate beta-style 0..40
+quantity. Neither is proof of Signal Analyzer serialization. Product uses the
+normalized provider value and does not claim pixel/scale parity.
+verification: Official `pspectrum`, Signal Analyzer spectrogram computation,
+function-comparison and generated-script pages inspected directly. Clicker
+reported down; no server or GUI action was attempted.
+risks: Never conflate UI slider display, normalized leakage and Kaiser beta.
+follow-ups: Optional bounded GUI mapping only after the unsafe Command Window
+state is explicitly recovered; it is not a C13 implementation gate.
+next_task_candidates: Implement normalized independent C13 contract; later GUI
+scale observation as a separate presentation parity task.
