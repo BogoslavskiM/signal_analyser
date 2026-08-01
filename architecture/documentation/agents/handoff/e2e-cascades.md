@@ -254,3 +254,23 @@ risks: Runtime skipped because no authenticated target with exact C10 SHA.
 follow-ups: Run after an authorized exact deployment and retain timing/network
 evidence.
 next_task_candidates: Runtime C9/C10 only after target availability.
+
+## Cascade 11 typed Spectrogram static scenario — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c9_replacement`.
+scope: `test/playwright/**` typed Spectrogram scenario, config, support and
+coverage map.
+contracts: One active graph host/one heatmap/no placeholder; analysis-source
+wire identity and source switch; frequency × time shape; real one-sided and
+conditional complex centered topology; exactly three settings tabs and no new
+controls.
+changes: Added `typed_spectrogram.test.js` and registered its capability.
+verification: All Playwright JavaScript syntax, support contract, runner help
+and diff PASS.
+browser_workspace_setup: Static-only; browser, windows and MATLAB untouched.
+risks: Runtime skipped because no authorized exact C11 deployment exists.
+follow-ups: Run on exact accepted target; preserve network/Plotly evidence and
+cleanup.
+next_task_candidates: Runtime C11 after deployment; future OverlapPercent E2E
+only after its contract exists.

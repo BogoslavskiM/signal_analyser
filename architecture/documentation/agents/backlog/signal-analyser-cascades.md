@@ -116,6 +116,14 @@ Owner: Architect
   C10 work is target Engee/runtime E2E only and must not be reported as
   deployed. Next product planning may use the Spectrogram/Persistence evidence
   map but cannot implement until a new ADR freezes one narrow provider slice.
+- C11 typed Spectrogram foundation is complete at local checkpoint `d47e51e`:
+  backend 980/980, C11 36/36, frontend 2/2 and static E2E gates pass. Runtime
+  target E2E remains undeployed/unverified.
+- Docs-only C12 research recommends Spectrogram `OverlapPercent` as the next
+  narrow slice. MATLAB app default is explicit 50%, while provider Auto differs.
+  Before an ADR or implementation, probe Engee explicit 0/50/75, invalid
+  -1/100/nonfinite/Bool, option order, segment centers/counts and high-overlap
+  resource behavior. TimeResolution remains blocked; no fallback is allowed.
 
 - SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
   researches Spectrum defaults/units for a future separately frozen slice.

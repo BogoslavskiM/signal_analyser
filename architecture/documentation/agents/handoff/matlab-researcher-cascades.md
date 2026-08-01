@@ -450,3 +450,31 @@ e2e_scenarios: Provisional `SA-GRAPH-TF-001` Spectrogram defaults/eligibility,
 ROI/color semantics. They remain blocked on direct MATLAB and provider evidence.
 next_task_candidates: Engee capability probe for `pspectrum` spectrogram and
 persistence modes; later bounded GUI evidence after clicker recovery.
+
+## C12 docs-only Spectrogram OverlapPercent recommendation — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c11_docs`.
+goal: Select the safest narrow setting after typed Spectrogram foundation.
+scope: Official public MathWorks web documentation only. MATLAB GUI, workspace,
+Command Window, Help/Add-On Explorer and clicker state were untouched.
+docs_sources: Spectrogram Computation in Signal Analyzer, Explore Signals,
+Customize Signal Analyzer, `pspectrum`, generated-script mapping and Signal
+Analyzer reference pages.
+documented_direction: Signal Analyzer uses Auto segment length and default 50%
+overlap. Overlap is a percent of segment length, floors to sample count and is
+valid in `[0,100)`. Segment grid stays fixed under pan/zoom; ROI selects cells
+rather than resegmenting an arbitrary cropped array.
+docs_vs_provider_delta: Standalone `pspectrum` omitted overlap depends on ENBW,
+not the app's documented 50%. App parity therefore requires explicit
+`OverlapPercent=50`. Leakage/Reassign provider defaults are not promoted to app
+defaults. Power Limits are presentation, not `MinThreshold`.
+product_tasks: Freeze an OverlapPercent-only ADR after Engee probes 0/50/75,
+invalid -1/100/nonfinite/Bool, option ordering, segment counts/centers and
+resource behavior. Include it in Display-local typed query/cache identity.
+Keep TimeResolution, Leakage, Reassign, ROI, limits/scale/colormap outside.
+e2e_scenarios: `[]`; docs-only evidence produced no MATLAB oracle.
+risks: High valid overlap can cause large segment counts; any stricter cap is a
+product policy. TimeResolution remains blocked by ENGEE-20260801-003.
+next_task_candidates: C12 OverlapPercent probe/ADR; then independent Leakage or
+Reassign research.

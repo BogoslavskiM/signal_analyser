@@ -265,3 +265,30 @@ foundation for ROI parity.
 next_task_candidates: Engee prod probe; MATLAB UI defaults after clicker
 recovery; Architect decision on one-signal eligibility, segment ROI and eager
 versus lazy output contract.
+
+## Cascade 11 typed Spectrogram foundation — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_cycle`.
+goal: Implement DEC-017 as an OOP provider foundation without controls, routes,
+frontend DSP or fallback.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_math.jl`,
+`lib/services/signal_analyser_service.jl`.
+contracts: Copied full-raw query; typed frequency × segment-time data; real
+one-sided/complex centered topology; N<2 empty; strict axes/shape/domain/power;
+typed raw cache; exact dB and presentation-only 160×160 bounding; atomic
+provider failure.
+changes: Added Spectrogram query/data/provider/service/cache types and injected
+aggregate dependency, EngeeDSP adapter with explicit `TwoSided`, validated raw
+preparation/publication and source-local render overlay. Removed the legacy
+Spectrogram transpose tolerance, absolute-value conversion and epsilon floor.
+verification: Julia parse PASS; integrated backend 980/980 with C11 36/36;
+production-adapter smoke confirms real `Vector{Float64}`, explicit false and
+exact orientation. Local real provider import remains unavailable.
+risks: Runtime E2E/deployment pending; full-signal eager calculation remains the
+accepted C11 boundary; Time ROI and all settings deferred.
+follow-ups: Probe/freeze OverlapPercent separately; keep TimeResolution blocked
+by ENGEE-20260801-003.
+next_task_candidates: Spectrogram OverlapPercent query/cache extension after
+provider evidence.

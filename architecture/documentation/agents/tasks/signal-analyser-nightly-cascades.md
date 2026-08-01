@@ -642,3 +642,40 @@ Time ROI/segment selection, every editable setting, new API routes, Persistence
 and TimeResolution are explicitly outside scope. The confirmed provider defect
 ENGEE-20260801-003 forbids exposing TimeResolution or adding a hand-rolled STFT
 workaround.
+
+## Cascade 11 implementation and local freeze — 2026-08-01
+
+Status: `implemented-and-locally-verified`; product/test checkpoint
+`d47e51e61a346803902ce1f5b179ed8fb9f02c14`; contract checkpoint `7d357dd`;
+not pushed, not deployed, runtime E2E not run.
+
+DEC-017 is implemented within the frozen boundary: typed full-raw Spectrogram
+query/data/provider/service/cache, real one-sided/complex centered topology,
+strict axes/shape/power validation, N<2 bypass, atomic preparation/publication,
+exact dB and presentation-only 160×160 bounding. Wire/UI/routes/settings remain
+unchanged. Integration gates: backend 980/980 (C11 36/36), frontend 2/2, Julia
+parse, Playwright syntax/support/help, skills/vanilla/adapters and diff PASS.
+Local Engee gate remains an honest absent-package failure after findpeaks 16/16;
+prod provider evidence is preserved. No push/deploy/merge occurred.
+
+## Cascade 12 discovery started — 2026-08-01
+
+Status: `provider-probe-gated`; no C12 product/test changes.
+
+Official MathWorks docs identify an OverlapPercent-only slice as the smallest
+next parity step: Signal Analyzer documents 50%, `[0,100)` and floor-to-samples,
+while standalone `pspectrum` Auto depends on ENBW. C12 may freeze only after a
+prod Engee probe verifies explicit 0/50/75, invalid boundaries/types, segment
+counts/centers, option order and resource behavior. Time Resolution stays Auto;
+Leakage, Reassign, ROI, limits, scale and colormap remain separate.
+
+### Persistent role heartbeat after C11 freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_cycle` | completed C11 | C12 only after ADR | Engee overlap probe | typed Spectrogram, backend 980/980 |
+| Frontend | `/root/frontend_c9_replacement` | C11 no-change inventory complete | Overlap control after API contract | C12 not frozen | one host/three tabs guards |
+| Tester | `/root/tester_cycle` | completed C11 matrix | C12 red matrix after ADR | provider contract absent | C11 36/36 |
+| E2E Tester | `/root/e2e_c9_replacement` | C11 static scenario complete | runtime C11 after deployment | no target authority | typed Spectrogram scenario |
+| DevOps | `/root/devops_c10_freeze` | local C11 freeze complete | next local checkpoint after acceptance | no push/deploy authority | commit `d47e51e` |
+| MATLAB Researcher | `/root/matlab_c11_docs` | docs-only C12 recommendation complete | bounded GUI only after recovery | unsafe incomplete Command Window line | OverlapPercent evidence |

@@ -198,6 +198,14 @@ revision mutation.
   PASS. Локальный Engee gate проходит findpeaks 16/16 и затем честно падает на
   обязательном import отсутствующего `EngeeDSP`; отдельный prod probe
   подтвердил FrequencyLimits grid/clipping/errors.
+- Cascade 11 backend — 980/980 PASS; целевой typed Spectrogram testset 36/36.
+  Проверены query copy/validation, real/complex topology, exact matrix
+  orientation, raw cache reuse/source locality, `N<2` no-provider, invalid
+  topology/time/frequency rejection, zero-power JSON null, raw 161×161 против
+  bounded 160×160 wire и provider-failure atomicity. Frontend 2/2 и Playwright
+  syntax/support/help PASS. Локальный Engee gate по-прежнему честно падает
+  после findpeaks 16/16 из-за отсутствующего пакета; prod C11 probe подтверждает
+  фактический provider contract.
 
 ## Источники и наблюдаемые различия
 

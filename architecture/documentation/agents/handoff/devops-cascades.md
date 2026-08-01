@@ -185,3 +185,19 @@ risks: Local EngeeDSP remains absent; no target checks were in scope.
 follow-ups: Architect documentation checkpoint; no push/deploy/merge without a
 new explicit handoff.
 next_task_candidates: Deployment preflight only after authorization.
+
+## Cascade 11 product/test commit-freeze — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c10_freeze`.
+goal: Commit exactly the completed typed Spectrogram product/test paths.
+scope: Ten explicit files under `lib/**` and `test/**`; architecture excluded.
+changes: Local commit `d47e51e61a346803902ce1f5b179ed8fb9f02c14`,
+message `feat: добавить typed Spectrogram foundation`.
+verification: `7d357dd` confirmed ancestor; staged set exactly matched the ten
+authorized files; cached diff PASS. Accepted gates: backend 980/980, C11 36/36,
+frontend 2/2, Julia parse, Playwright static, skills/vanilla/adapter dry-run.
+risks: Local EngeeDSP absent; product checkpoint is not published or deployed.
+follow-ups: Separate Architect documentation checkpoint. No push/deploy/merge
+without explicit authority.
+next_task_candidates: Local next-cascade checkpoint after a new frozen ADR.

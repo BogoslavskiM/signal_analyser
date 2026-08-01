@@ -1,6 +1,6 @@
 # Time-frequency EngeeDSP contract probe — 2026-08-01
 
-Status: verified prod capability evidence; C11 contract not frozen
+Status: verified prod capability evidence; consumed by DEC-017/C11
 
 ## Environment and boundary
 
@@ -56,6 +56,13 @@ all returned centers by exactly 10 seconds.
 Both representations reject `N=1` and accept `N>=2`. Spectrogram shapes varied
 with short-input segmentation; Persistence retained `256×1024` output.
 
+With explicit `FrequencyResolution=2` and `OverlapPercent=75`, an arbitrary
+cropped subset created a new segment grid and did not preserve full-signal
+centers. A grid-aligned subset starting at `0.64 s` preserved all seven shared
+centers and their power columns exactly (`max abs diff = 0`). Therefore a
+future Time ROI contract must select from a fixed full-signal grid; arbitrary
+array cropping/resegmentation is not equivalent.
+
 ## Persistence NumPowerBins
 
 - `20`, `19` and `256` produced exactly that many occurrence rows/power levels.
@@ -77,10 +84,9 @@ the same function/input/session. See
 
 ## C11 consequences
 
-- Do not promote current full-signal heatmap placeholders into a contract.
-- First implementation candidate remains typed Spectrogram with no editable
-  settings, only after an ADR decides source eligibility, ROI/segment semantics
-  and eager versus lazy calculation.
+- DEC-017/C11 replaced the placeholder with typed Spectrogram and no editable
+  settings. It intentionally remains full-signal and keeps current analysis
+  source eligibility; ROI/grid semantics remain deferred.
 - A TimeResolution control is blocked by the confirmed provider defect; no
   hand-rolled STFT workaround is authorized.
 - Persistence remains deferred until its power-axis/density contract and ROI

@@ -181,3 +181,23 @@ absent.
 risks: Formal C10 provider matrix still needs provisioned Engee runtime.
 follow-ups: Rerun on target; retain exact assertions in future cascades.
 next_task_candidates: Future heatmap provider red matrix after contract.
+
+## Cascade 11 verification — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_cycle`.
+scope: `test/back/**`, `test/front/**`.
+coverage: Query ownership/validation; typed data shape/order/finite/nonnegative;
+real/complex topology and source-local raw cache reuse; N<2 no-provider;
+provider topology/time/frequency rejection; exact frequency × time wire;
+zero-power `-Inf` to JSON null; full 161×161 raw versus bounded 160×160 wire;
+failure atomicity with empty unpublished cache. Frontend asserts no new routes,
+controls/settings or fourth tab.
+verification: Full backend 980/980; C11 36/36; frontend 2/2; Julia parse and
+diff PASS. Local Engee gate executes findpeaks 16/16 then fails required import
+because EngeeDSP is absent.
+risks: Runtime target provider/browser remains pending; prod capability probe
+is preserved separately.
+follow-ups: Rerun typed E2E on an exact deployed SHA; next settings matrix only
+after ADR.
+next_task_candidates: OverlapPercent strict JSON/API/cache/provider matrix.

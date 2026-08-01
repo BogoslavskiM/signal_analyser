@@ -234,3 +234,23 @@
   Push, runtime E2E, deployment и merge не выполнялись.
 - Local Engee gate сохраняет честный import failure после findpeaks 16/16;
   prod EngeeDSP `0.72.0` FrequencyLimits probe остаётся capability evidence.
+
+## 2026-08-01 — Cascade 11 typed Spectrogram foundation
+
+- `implemented`: legacy direct Spectrogram helper заменён typed query/data,
+  abstract provider, Engee adapter, service и full-resolution raw cache.
+- Real input делегируется как one-sided, complex как centered two-sided;
+  provider result обязан иметь exact frequency × segment-time orientation,
+  sorted finite axes, valid topology/domain и nonnegative finite real power.
+- `N<2` возвращает typed empty без provider. Provider failure и invalid axes не
+  публикуют частичный cache/state; analysis source остаётся единственным
+  heatmap source Display.
+- Presentation применяет exact `10log10(P)`, сохраняет zero как `-Inf` до
+  общего JSON `null` и ограничивает только wire до 160×160. Raw cache не
+  уменьшается; epsilon floor, FFT/STFT fallback и dependency edit отсутствуют.
+- Frontend/wire/settings/routes не расширены: один host и ровно три settings
+  tabs. Добавлен статический typed Spectrogram E2E contract.
+- `verified locally`: backend 980/980, C11 36/36, frontend 2/2, Julia parse,
+  Playwright syntax/support/help, skills/vanilla/adapters и diff PASS.
+- Product/test checkpoint `d47e51e61a346803902ce1f5b179ed8fb9f02c14`;
+  push, runtime E2E, deployment и merge не выполнялись.

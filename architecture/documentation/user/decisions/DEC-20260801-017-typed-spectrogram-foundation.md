@@ -4,7 +4,7 @@ ID: `DEC-20260801-017`
 Дата: 2026-08-01
 Статус: accepted
 Supersedes: current untyped Spectrogram placeholder implementation only
-Implementation: planned in Cascade 11; not deployed
+Implementation: completed in local Cascade 11 checkpoint `d47e51e`; not deployed
 
 ## Контекст
 
@@ -89,3 +89,12 @@ OverlapPercent, TimeResolution, colormap, power limits и Persistence остаю
   https://engee.com/helpcenter/stable/en/func-dsp-transforms-correlation-and-modeling/func-pspectrum.html
 - MathWorks Spectrogram Computation:
   https://www.mathworks.com/help/signal/ug/spectrogram-computation-in-signal-analyzer.html
+
+## Implementation note — 2026-08-01
+
+Cascade 11 реализовал решение без расширения scope: typed query/data/provider/
+service/raw-cache, strict provider validation, real one-sided и complex
+centered topology, `N<2` bypass, точный dB и presentation-only 160×160 bound.
+Backend gate 980/980, целевой C11 36/36, frontend 2/2 и Playwright static gates
+PASS. Product/test checkpoint `d47e51e61a346803902ce1f5b179ed8fb9f02c14`;
+push, deployment и runtime E2E не выполнялись.
