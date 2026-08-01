@@ -503,6 +503,82 @@ module.exports = async function testDisplayBehavior(assert) {
   const c25CanonicalBody = JSON.parse(c25CanonicalCalls.find(call => call.url === "./api/view").options.body);
   assert(JSON.stringify(c25CanonicalBody) === JSON.stringify({state_revision:0, active_plot:"time", row_selected_signal:A, analysis_signal:A, visible_signals:[A, B], time_limits:null, measurement_kinds:["minimum", "median", "peak_to_peak", "rms"], spectrum_settings:{scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null}, spectrogram_settings:{overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null}, persistence_settings:{leakage:.5}, peaks_enabled:false}), "C25 unordered valid subset mutation must serialize one exact canonical full View body");
 
+  // C26/DEC-032: topology is an all-or-nothing snapshot envelope.  These
+  // cases intentionally vary only the outer identity fields; C27 owns the
+  // per-Display membership and selection details.
+  function c26Snapshot(mutate) { const result = snapshot(0); mutate(result); return result; }
+  const c26MalformedEnvelopes = [
+    null, 7,
+    c26Snapshot(s => { delete s.signals; }), c26Snapshot(s => { s.signals = {}; }),
+    c26Snapshot(s => { s.signals = [null]; }), c26Snapshot(s => { s.signals = [{}]; }), c26Snapshot(s => { s.signals = [{name:""}]; }), c26Snapshot(s => { s.signals = [{name:7}]; }), c26Snapshot(s => { s.signals = [{name:A}, {name:A}]; }),
+    c26Snapshot(s => { delete s.displays; }), c26Snapshot(s => { s.displays = {}; }), c26Snapshot(s => { s.displays = []; }),
+    c26Snapshot(s => { s.displays = [null]; }), c26Snapshot(s => { s.displays = [{}]; }), c26Snapshot(s => { s.displays = [{id:""}]; }), c26Snapshot(s => { s.displays = [{id:7}]; }), c26Snapshot(s => { s.displays = [{id:"display-1"}, {id:"display-1"}]; }),
+    c26Snapshot(s => { delete s.active_display_id; }), c26Snapshot(s => { s.active_display_id = ""; }), c26Snapshot(s => { s.active_display_id = 7; }), c26Snapshot(s => { s.active_display_id = "unknown-display"; }),
+  ];
+  for (const malformedEnvelope of c26MalformedEnvelopes) {
+    const c26Calls = [];
+    const c26Fatal = await boot((url, options) => { c26Calls.push({url, options}); return Promise.resolve(response(200, malformedEnvelope)); });
+    assert(c26Fatal.e.error.hidden === false && c26Fatal.e.errorText.textContent === "Некорректная структура snapshot сервера." && c26Fatal.e.host.innerHTML === "" && c26Fatal.e.tabs.innerHTML === "" && c26Fatal.e.rows.innerHTML === "", "C26 every malformed outer envelope must reset UI into the exact fatal Retry state without fallback");
+    assert(c26Calls.filter(call => call.url !== "./api/state").length === 0 && c26Fatal.e.retry.hidden === false, "C26 malformed initial envelope must issue no mutation and retain Retry");
+  }
+  function c26StatisticsChange(controlled, index) { const option = controlled.e.statisticsOptions[index]; option.checked = true; controlled.e.statisticsControls.listeners.change({target:{closest(selector) { return selector === "input[type='checkbox']" ? option : null; }}}); }
+  const c26FatalCurrent = c26Snapshot(s => { s.active_display_id = "unknown-display"; });
+  const c26StalePlotCalls = [];
+  const c26StalePlot = await boot((url, options) => { c26StalePlotCalls.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? initial : c26FatalCurrent)); }, {deferredPlotly:true});
+  assert(c26StalePlot.plotResolvers.length === 1 && c26StalePlot.calls.filter(call => call.plot).length === 1, "C26 bridge starts exactly one controlled pre-fatal Plotly render");
+  c26StalePlot.e.plotSelect.value = "spectrum"; c26StalePlot.e.plotSelect.listeners.change({target:c26StalePlot.e.plotSelect}); await flush();
+  assert(c26StalePlot.e.host.innerHTML === "" && c26StalePlot.e.host.dataset.plotReady === "false" && c26StalePlot.e.errorText.textContent === "Некорректная структура snapshot сервера.", "C26 malformed snapshot must reset the host and publish exact fatal state before stale Plotly settles");
+  c26StalePlot.plotResolvers.shift().resolve(); await flush();
+  assert(c26StalePlot.e.host.innerHTML === "" && c26StalePlot.e.host.dataset.plotReady === "false" && c26StalePlot.e.errorText.textContent === "Некорректная структура snapshot сервера." && c26StalePlot.calls.filter(call => call.plot).length === 1, "C24→C26 stale Plotly settlement after fatal reset must not re-render or overwrite the empty fatal host");
+  const c26Malformed409Calls = [], c26Malformed409Resolvers = [];
+  const c26Malformed409 = await boot((url, options) => { c26Malformed409Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26Malformed409Resolvers.push(resolve)); });
+  c26Malformed409.e.plotSelect.value = "spectrum"; c26Malformed409.e.plotSelect.listeners.change({target:c26Malformed409.e.plotSelect}); await flush();
+  c26Malformed409.e.plotSelect.value = "persistence"; c26Malformed409.e.plotSelect.listeners.change({target:c26Malformed409.e.plotSelect}); await flush();
+  c26Malformed409Resolvers.shift()(response(409, {current:c26FatalCurrent})); await flush();
+  assert(c26Malformed409Calls.filter(call => call.url === "./api/view").length === 1 && c26Malformed409.e.error.hidden === false && c26Malformed409.e.tabs.innerHTML === "", "C26 malformed 409 current after queued same-Display intents must globally purge queue and skip replay");
+  const c26Malformed200Calls = [], c26Malformed200Resolvers = [];
+  const c26Malformed200 = await boot((url, options) => { c26Malformed200Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26Malformed200Resolvers.push(resolve)); });
+  c26Malformed200.e.plotSelect.value = "spectrum"; c26Malformed200.e.plotSelect.listeners.change({target:c26Malformed200.e.plotSelect}); await flush();
+  c26Malformed200.e.plotSelect.value = "persistence"; c26Malformed200.e.plotSelect.listeners.change({target:c26Malformed200.e.plotSelect}); await flush();
+  c26Malformed200Resolvers.shift()(response(200, c26FatalCurrent)); await flush();
+  assert(c26Malformed200Calls.filter(call => call.url === "./api/view").length === 1 && c26Malformed200.e.error.hidden === false && c26Malformed200.e.host.innerHTML === "", "C26 malformed successful 200 after queued intent must immediately purge globally without a later POST");
+  const c26Peaks200Calls = [], c26Peaks200Resolvers = [];
+  const c26Peaks200 = await boot((url, options) => { c26Peaks200Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26Peaks200Resolvers.push(resolve)); });
+  c26Peaks200.e.peaksAction.listeners.click(); await flush();
+  c26Peaks200Resolvers.shift()(response(200, c26FatalCurrent)); await flush();
+  assert(c26Peaks200Calls.filter(call => call.url === "./api/view").length === 1 && c26Peaks200.e.error.hidden === false && c26Peaks200.e.errorText.textContent === "Некорректная структура snapshot сервера." && c26Peaks200.e.tabs.innerHTML === "" && c26Peaks200.e.host.innerHTML === "", "C26 malformed successful 200 resolving a Peaks intent must enter exact fatal state without a null dereference or later POST");
+  const c26SecondStaleCalls = [], c26SecondStaleResolvers = [];
+  const c26SecondStale = await boot((url, options) => { c26SecondStaleCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26SecondStaleResolvers.push(resolve)); });
+  c26SecondStale.e.plotSelect.value = "spectrum"; c26SecondStale.e.plotSelect.listeners.change({target:c26SecondStale.e.plotSelect}); await flush();
+  c26SecondStaleResolvers.shift()(response(409, {current:initial})); await flush();
+  assert(c26SecondStaleResolvers.length === 1 && c26SecondStaleCalls.filter(call => call.url === "./api/view").length === 2, "C26 first valid stale response must begin exactly one controlled replay cycle");
+  c26SecondStaleResolvers.shift()(response(409, {current:c26FatalCurrent})); await flush();
+  assert(c26SecondStaleCalls.filter(call => call.url === "./api/view").length === 2 && c26SecondStale.e.error.hidden === false && c26SecondStale.e.errorText.textContent === "Некорректная структура snapshot сервера." && c26SecondStale.e.tabs.innerHTML === "" && c26SecondStale.e.host.innerHTML === "", "C26 malformed 409 current on the second stale-replay cycle must preserve exact fatal state and purge without a third replay or overwrite");
+  const c26FatalCalls = [];
+  const c26Fatal = await boot((url, options) => { c26FatalCalls.push({url, options}); return Promise.resolve(response(200, c26FatalCurrent)); });
+  c26Fatal.e.plotSelect.value = "spectrum"; c26Fatal.e.plotSelect.listeners.change({target:c26Fatal.e.plotSelect});
+  c26Fatal.e.settingsSelect.value = "persistence"; c26Fatal.e.settingsSelect.listeners.change({target:c26Fatal.e.settingsSelect});
+  c26StatisticsChange(c26Fatal, 3);
+  c26Fatal.e.rows.listeners.change({target:checkboxTarget(A, false)});
+  c26Fatal.e.toggleAll.checked = false; c26Fatal.e.toggleAll.listeners.change({target:c26Fatal.e.toggleAll});
+  c26Fatal.e.tabs.listeners.click({target:addTarget()}); c26Fatal.e.tabs.listeners.click({target:tabTarget("display-2")}); c26Fatal.e.tabs.listeners.click({target:closeTarget("display-1")});
+  c26Fatal.e.clearDisplayAction.listeners.click(); c26Fatal.e.peaksAction.listeners.click();
+  c26Fatal.e.bottomTabs.listeners.click({target:{closest(selector) { return selector === "[data-bottom-tab]" ? c26Fatal.e.measurementsBottomTab : null; }}});
+  await flush();
+  assert(c26FatalCalls.filter(call => call.url !== "./api/state").length === 0 && c26Fatal.e.error.hidden === false, "C26 every fatal-state server-mutating control must be harmless with zero POST while local bottom tabs remain harmless");
+  const c26RecoveryDisplays = [
+    {id:"display-1", name:"Display A", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A]},
+    {id:"display-2", name:"Display B", active_plot:"time", analysis_signal:B, selected_signal:B, visible_signals:[B]},
+  ];
+  const c26RecoveryA = snapshot(1, "display-1", c26RecoveryDisplays, A), c26RecoveryB = snapshot(2, "display-2", c26RecoveryDisplays, B);
+  const c26RecoveryCalls = []; let c26GetCount = 0;
+  const c26Recovery = await boot((url, options) => { c26RecoveryCalls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c26GetCount++ === 0 ? c26FatalCurrent : c26RecoveryA)); return Promise.resolve(response(200, url === "./api/displays" ? c26RecoveryB : c26RecoveryB)); });
+  c26Recovery.e.retry.listeners.click(); await flush();
+  assert(c26Recovery.e.error.hidden === true && c26Recovery.e.tabs.innerHTML.includes("display-tab-display-1") && c26Recovery.e.rows.innerHTML.includes("signal-row"), "C26 valid Retry GET must clear fatal state and restore valid A topology");
+  c26Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
+  c26Recovery.e.plotSelect.value = "spectrum"; c26Recovery.e.plotSelect.listeners.change({target:c26Recovery.e.plotSelect}); await flush();
+  assert(c26Recovery.e.activeStatus.textContent.includes("Display B") && c26RecoveryCalls.filter(call => call.url === "./api/view").length === 1, "C26 recovered valid Display B must regain deterministic controls and normal View mutation");
+
   const rowRequests = [];
   const memberRow = await boot((url, options) => {
     rowRequests.push({ url, options });
