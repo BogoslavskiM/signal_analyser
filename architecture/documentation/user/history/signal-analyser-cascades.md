@@ -475,6 +475,11 @@
 - Local commits: Spectrum `01f96d9f9bc83b687e92846995ab4833a8c431cc`,
   Spectrogram `0fc78161430cf41e5d2fdc301d712686a46686c4`. Push, deployment
   и merge не выполнялись.
+- Time Limits затем получил тот же exact boundary с отдельным precedence:
+  absent Display field может использовать legacy root, explicit `null`
+  допустим только для empty Display, а nonempty/malformed значение блокирует
+  controls и очередь. Frontend 2/2 и независимый audit CLEAN; local commit
+  `f24e60caf0be6f31b78b0ef0178954862222448d`.
 
 ## 2026-08-01 — Cascade 22 fixed Persistence segmentation NO-GO
 

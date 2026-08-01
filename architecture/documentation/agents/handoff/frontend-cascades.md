@@ -419,3 +419,22 @@ payload for the accepted revision/settings.
 commits: Spectrum `01f96d9`; Spectrogram `0fc7816`.
 follow-ups: Keep future exact-object schema migrations atomic across validator,
 fixtures and full request bodies.
+
+## Time Limits strict snapshot hardening — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_time_snapshot`.
+scope: `public/js/app.js`; vanilla JS only.
+contracts: Absent per-Display Time Limits may use the legacy root projection.
+An explicit Display value always wins; `null` is valid only for an empty
+Display, while nonempty `null` and every malformed present exact object are
+quarantined. Valid objects are exact finite `{min_s,max_s,units:"s"}` with
+`min_s <= max_s` under the established DEC-013 snapshot rule.
+changes: Added per-Display contract errors, stable disabled inputs and the same
+desired/queued/pending/stale-replay quarantine used by other exact settings.
+Interrupted partial `measurement_kinds` work was removed and remains a separate
+future boundary.
+verification: JS syntax, frontend 2/2, diff-check and independent final audit
+CLEAN.
+commit: `f24e60caf0be6f31b78b0ef0178954862222448d`.
+follow-ups: Treat `measurement_kinds` as an independent exact snapshot change.

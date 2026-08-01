@@ -449,3 +449,18 @@ settings ADR must migrate every valid fixture atomically.
 commits: `01f96d9`, `0fc7816`.
 follow-ups: Preserve corruption quarantine for every future exact settings
 object.
+
+## Time Limits snapshot corruption matrix — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c18_persistence_matrix`.
+scope: `test/front/public/js/app.behavior.test.js`.
+contracts: Missing Display field uses valid legacy root; explicit `null`
+overrides root only for an empty Display; nonempty `null`, wrong shapes, extra
+keys, nonfinite/Bool endpoints, reversed bounds and wrong units quarantine.
+changes: Added visible error/disabled-input/zero-POST matrix and malformed 409
+queued-intent drain assertion.
+verification: Frontend 2/2 and diff-check PASS; independent Frontend audit
+CLEAN.
+commit: `f24e60caf0be6f31b78b0ef0178954862222448d`.
+follow-ups: Preserve exact precedence and empty-only nullable semantics.

@@ -1167,12 +1167,16 @@ segmentation/resource foundation with numerical/cache/deployment migration.
 
 ## Cross-cutting snapshot boundary close — 2026-08-01
 
-Status: `implemented-and-verified`; local commits `01f96d9`, `0fc7816`.
+Status: `implemented-and-verified`; local commits `01f96d9`, `0fc7816`,
+`f24e60c`.
 
 Spectrum and Spectrogram now enforce the same absent-versus-present snapshot
 boundary already added for Persistence. Exact corruption cannot be normalized
 into a later full view request; queue, stale replay and successful malformed
 response paths are quarantined. Front 2/2 and independent final audit CLEAN.
+Time Limits now follows the same present-corruption boundary while preserving
+DEC-013's legacy root fallback and empty-Display-only nullable form. The
+interrupted `measurement_kinds` partial was removed for a separate cascade.
 
 ## Cascade 22 close — 2026-08-01
 

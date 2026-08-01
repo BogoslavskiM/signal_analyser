@@ -345,3 +345,14 @@ verification: Each commit staged only the exact handed-off public/test paths;
 cached diff-check passed and post-commit worktree was clean.
 risks: Push, deployment, merge and amend were not performed.
 follow-ups: C22 docs/product checkpoints require separate explicit handoff.
+
+## Time snapshot hardening checkpoint — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c17_commit`.
+changes: Created local Time snapshot checkpoint
+`f24e60caf0be6f31b78b0ef0178954862222448d` from exactly `public/js/app.js`
+and `test/front/public/js/app.behavior.test.js`.
+verification: JS syntax, frontend 2/2, cached exact staged list and diff-check
+PASS; post-commit worktree clean.
+risks: Push, deployment, merge and amend were not performed.
