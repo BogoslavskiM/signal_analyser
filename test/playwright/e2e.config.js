@@ -136,6 +136,7 @@ module.exports = {
     "spectrum-settings-roi": true,
     "frequency-limits": true,
     "typed-spectrogram": true,
+    "typed-persistence": true,
     "spectrogram-overlap": true,
     "spectrogram-leakage": true,
     "spectrogram-frequency-limits": true,

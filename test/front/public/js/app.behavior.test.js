@@ -922,4 +922,19 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c17ReplayRequests.filter(call => call.url === "./api/view").length === 2 && JSON.stringify(JSON.parse(c17ReplayRequests.at(-1).options.body).spectrogram_settings) === JSON.stringify(Object.assign({}, c17Auto, {power_limits:c17Pair})), "first Power Limits 409 must replay exactly one latest complete target");
   c17ReplayResolvers.shift()(response(409, {current:c17Initial})); await flush();
   assert(c17ReplayRequests.filter(call => call.url === "./api/view").length === 2 && c17Replay.e.spectrogramPowerMin.value === "" && c17Replay.e.spectrogramPowerLimitsError.hidden === false, "second Power Limits 409 must stop replay and restore canonical state");
+
+  const c18Definition = { id:"display-1", name:"Display 1", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A, B] };
+  const c18Positive = snapshot(5, "display-1", [c18Definition], A);
+  c18Positive.plot_payload.persistence = {type:"heatmap", signal:A, x:[0, 5], y:[-30, -10], z:[[10, 20], [30, 40]], x_label:"Частота, Гц", y_label:"Мощность, дБ", color_label:"Встречаемость, %"};
+  c18Positive.plots.persistence = c18Positive.plot_payload.persistence;
+  const c18PositiveEnv = await boot(() => Promise.resolve(response(200, c18Positive)));
+  const c18PositivePlot = c18PositiveEnv.calls.filter(call => call.plot).at(-1);
+  assert(c18PositiveEnv.e.plotSelect.value === "persistence" && c18PositivePlot.data.length === 1 && c18PositivePlot.data[0].type === "heatmap" && JSON.stringify(c18PositivePlot.data[0].x) === JSON.stringify([0, 5]) && JSON.stringify(c18PositivePlot.data[0].y) === JSON.stringify([-30, -10]) && JSON.stringify(c18PositivePlot.data[0].z) === JSON.stringify([[10, 20], [30, 40]]), "Cascade 18 positive Persistence must remain one generic server heatmap without client reshaping");
+  assert(c18PositivePlot.data[0].colorbar.title.text === "Встречаемость, %" && c18PositivePlot.layout.yaxis.type === undefined, "Cascade 18 Persistence keeps its backend labels and linear generic heatmap y-axis");
+  const c18Empty = snapshot(6, "display-1", [c18Definition], A);
+  c18Empty.plot_payload.persistence = {type:"heatmap", signal:A, x:[], y:[], z:[], x_label:"Частота, Гц", y_label:"Мощность, дБ", color_label:"Встречаемость, %"};
+  c18Empty.plots.persistence = c18Empty.plot_payload.persistence;
+  const c18EmptyEnv = await boot(() => Promise.resolve(response(200, c18Empty)));
+  const c18EmptyPlot = c18EmptyEnv.calls.filter(call => call.plot).at(-1);
+  assert(c18EmptyPlot.data.length === 1 && c18EmptyPlot.data[0].type === "heatmap" && c18EmptyPlot.data[0].x.length === 0 && c18EmptyPlot.data[0].y.length === 0 && c18EmptyPlot.data[0].z.length === 0, "Cascade 18 typed-empty Persistence must retain the existing generic empty heatmap wire without a new frontend state");
 };

@@ -72,6 +72,11 @@ end
     @test occursin("signal_analyser_validation_response(err)", routes_source)
     @test occursin("signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)", routes_source)
     @test !occursin("signal_analyser_unavailable_response", routes_source)
+    @test !occursin("/api/persistence", routes_source)
+    @test !occursin("persistence_settings", SA_API.source("lib", "services", "signal_analyser_service.jl"))
+    # `num_power_bins` is required as an internal immutable provider-query
+    # invariant; only a serialized/request wire key is forbidden in C18.
+    @test !occursin("\"num_power_bins\"", SA_API.source("lib", "services", "signal_analyser_service.jl"))
 end
 
 @testset "Signal Analyser API Peaks boolean view contract" begin

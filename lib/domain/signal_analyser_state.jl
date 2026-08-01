@@ -646,6 +646,17 @@ SignalSpectrogramData(topology::SignalSpectrumTopology) = SignalSpectrogramData(
     topology,
 )
 
+Base.:(==)(left::SignalSpectrogramData, right::SignalSpectrogramData) =
+    left.frequencies_hz == right.frequencies_hz &&
+    left.segment_centers_s == right.segment_centers_s &&
+    left.power == right.power &&
+    left.topology == right.topology
+Base.isequal(left::SignalSpectrogramData, right::SignalSpectrogramData) =
+    isequal(left.frequencies_hz, right.frequencies_hz) &&
+    isequal(left.segment_centers_s, right.segment_centers_s) &&
+    isequal(left.power, right.power) &&
+    isequal(left.topology, right.topology)
+
 abstract type AbstractSignalSpectrogramProvider end
 struct EngeeDSPSpectrogramProvider <: AbstractSignalSpectrogramProvider end
 
@@ -777,6 +788,214 @@ Base.hash(key::SignalSpectrogramCacheKey, seed::UInt) = hash(
         key.overlap_percent,
         key.leakage,
         key.frequency_limits,
+    ),
+    seed,
+)
+
+const SIGNAL_PERSISTENCE_DEFAULT_NUM_POWER_BINS = 256
+
+"""Typed full-raw-signal query for the Persistence provider."""
+struct SignalPersistenceQuery
+    signal_name::String
+    values::Vector{ComplexF64}
+    sample_rate_hz::Float64
+    topology::SignalSpectrumTopology
+    num_power_bins::Int
+
+    function SignalPersistenceQuery(
+        signal_name::AbstractString,
+        values::AbstractVector{<:Number},
+        sample_rate_hz::Real,
+        topology::SignalSpectrumTopology,
+        num_power_bins::Integer,
+    )
+        isempty(signal_name) && throw(ArgumentError(
+            "Имя сигнала Persistence query не может быть пустым",
+        ))
+        samples = ComplexF64.(values)
+        all(value -> isfinite(real(value)) && isfinite(imag(value)), samples) ||
+            throw(ArgumentError("Отсчёты Persistence query должны быть конечными"))
+        sample_rate_hz isa Bool && throw(ArgumentError(
+            "Частота дискретизации Persistence query должна быть числом, но не Bool",
+        ))
+        sample_rate_value = Float64(sample_rate_hz)
+        isfinite(sample_rate_value) && sample_rate_value > 0 || throw(ArgumentError(
+            "Частота дискретизации Persistence query должна быть положительной и конечной",
+        ))
+        num_power_bins isa Bool && throw(ArgumentError(
+            "Число power bins Persistence query должно быть целым числом, но не Bool",
+        ))
+        num_power_bins > 0 || throw(ArgumentError(
+            "Число power bins Persistence query должно быть положительным",
+        ))
+        new(
+            String(signal_name),
+            samples,
+            sample_rate_value,
+            topology,
+            Int(num_power_bins),
+        )
+    end
+end
+
+SignalPersistenceQuery(
+    signal_name::AbstractString,
+    values::AbstractVector{<:Number},
+    sample_rate_hz::Real,
+    topology::SignalSpectrumTopology,
+) = SignalPersistenceQuery(
+    signal_name,
+    values,
+    sample_rate_hz,
+    topology,
+    SIGNAL_PERSISTENCE_DEFAULT_NUM_POWER_BINS,
+)
+
+"""Validated raw Persistence provider data in power-by-frequency orientation."""
+struct SignalPersistenceData
+    frequencies_hz::Tuple{Vararg{Float64}}
+    power_levels::Tuple{Vararg{Float64}}
+    occurrence_percent::Matrix{Float64}
+    topology::SignalSpectrumTopology
+
+    function SignalPersistenceData(
+        frequencies_hz::AbstractVector{<:Real},
+        power_levels::AbstractVector{<:Real},
+        occurrence_percent::AbstractMatrix,
+        topology::SignalSpectrumTopology,
+    )
+        frequencies = Float64.(frequencies_hz)
+        powers = Float64.(power_levels)
+        all(isfinite, frequencies) || throw(ArgumentError(
+            "Persistence provider вернул нечисловые частоты",
+        ))
+        all(isfinite, powers) || throw(ArgumentError(
+            "Persistence provider вернул нечисловые уровни мощности",
+        ))
+        all(value -> value > 0.0, powers) || throw(ArgumentError(
+            "Persistence provider вернул неположительные уровни мощности",
+        ))
+        all(diff(frequencies) .> 0.0) || throw(ArgumentError(
+            "Persistence provider вернул нестрого возрастающую частотную ось",
+        ))
+        all(diff(powers) .> 0.0) || throw(ArgumentError(
+            "Persistence provider вернул нестрого возрастающую ось мощности",
+        ))
+        provider_occurrence = Matrix(collect(occurrence_percent))
+        size(provider_occurrence) == (length(powers), length(frequencies)) ||
+            throw(DimensionMismatch(
+                "Матрица Persistence provider имеет размер $(size(provider_occurrence)), " *
+                "ожидался ($(length(powers)), $(length(frequencies)))",
+            ))
+        all(value -> value isa Real, provider_occurrence) || throw(ArgumentError(
+            "Persistence provider вернул комплексную встречаемость",
+        ))
+        occurrence = Float64.(provider_occurrence)
+        all(value -> isfinite(value) && 0.0 <= value <= 100.0, occurrence) ||
+            throw(ArgumentError("Persistence provider вернул встречаемость вне диапазона 0–100 %"))
+        isempty(frequencies) == isempty(powers) || throw(ArgumentError(
+            "Оси empty Persistence должны быть пусты одновременно",
+        ))
+        new(Tuple(frequencies), Tuple(powers), occurrence, topology)
+    end
+end
+
+SignalPersistenceData(topology::SignalSpectrumTopology) = SignalPersistenceData(
+    Float64[],
+    Float64[],
+    zeros(Float64, 0, 0),
+    topology,
+)
+
+Base.:(==)(left::SignalPersistenceData, right::SignalPersistenceData) =
+    left.frequencies_hz == right.frequencies_hz &&
+    left.power_levels == right.power_levels &&
+    left.occurrence_percent == right.occurrence_percent &&
+    left.topology == right.topology
+Base.isequal(left::SignalPersistenceData, right::SignalPersistenceData) =
+    isequal(left.frequencies_hz, right.frequencies_hz) &&
+    isequal(left.power_levels, right.power_levels) &&
+    isequal(left.occurrence_percent, right.occurrence_percent) &&
+    isequal(left.topology, right.topology)
+
+abstract type AbstractSignalPersistenceProvider end
+struct EngeeDSPPersistenceProvider <: AbstractSignalPersistenceProvider end
+
+struct SignalPersistenceService{P<:AbstractSignalPersistenceProvider}
+    provider::P
+end
+
+SignalPersistenceService() = SignalPersistenceService(EngeeDSPPersistenceProvider())
+
+"""Runtime cache identity for full-resolution raw Persistence provider data."""
+struct SignalPersistenceCacheKey
+    signal_name::String
+    sample_rate_hz::Float64
+    sample_count::Int
+    topology::SignalSpectrumTopology
+    num_power_bins::Int
+
+    function SignalPersistenceCacheKey(
+        signal_name::AbstractString,
+        sample_rate_hz::Real,
+        sample_count::Integer,
+        topology::SignalSpectrumTopology,
+        num_power_bins::Integer,
+    )
+        isempty(signal_name) && throw(ArgumentError(
+            "Имя сигнала Persistence cache key не может быть пустым",
+        ))
+        sample_rate_hz isa Bool && throw(ArgumentError(
+            "Частота дискретизации Persistence cache key должна быть числом, но не Bool",
+        ))
+        sample_rate_value = Float64(sample_rate_hz)
+        isfinite(sample_rate_value) && sample_rate_value > 0 || throw(ArgumentError(
+            "Частота дискретизации Persistence cache key должна быть положительной и конечной",
+        ))
+        sample_count isa Bool && throw(ArgumentError(
+            "Число отсчётов Persistence cache key должно быть целым числом, но не Bool",
+        ))
+        sample_count >= 0 || throw(ArgumentError(
+            "Число отсчётов Persistence cache key не может быть отрицательным",
+        ))
+        num_power_bins isa Bool && throw(ArgumentError(
+            "Число power bins Persistence cache key должно быть целым числом, но не Bool",
+        ))
+        num_power_bins > 0 || throw(ArgumentError(
+            "Число power bins Persistence cache key должно быть положительным",
+        ))
+        new(
+            String(signal_name),
+            sample_rate_value,
+            Int(sample_count),
+            topology,
+            Int(num_power_bins),
+        )
+    end
+end
+
+SignalPersistenceCacheKey(query::SignalPersistenceQuery) = SignalPersistenceCacheKey(
+    query.signal_name,
+    query.sample_rate_hz,
+    length(query.values),
+    query.topology,
+    query.num_power_bins,
+)
+
+Base.:(==)(left::SignalPersistenceCacheKey, right::SignalPersistenceCacheKey) =
+    left.signal_name == right.signal_name &&
+    left.sample_rate_hz == right.sample_rate_hz &&
+    left.sample_count == right.sample_count &&
+    left.topology == right.topology &&
+    left.num_power_bins == right.num_power_bins
+Base.isequal(left::SignalPersistenceCacheKey, right::SignalPersistenceCacheKey) = left == right
+Base.hash(key::SignalPersistenceCacheKey, seed::UInt) = hash(
+    (
+        key.signal_name,
+        key.sample_rate_hz,
+        key.sample_count,
+        key.topology,
+        key.num_power_bins,
     ),
     seed,
 )
@@ -1477,6 +1696,7 @@ mutable struct SignalAnalyserState{
     P<:AbstractPeaksProvider,
     S<:AbstractSignalSpectrumProvider,
     G<:AbstractSignalSpectrogramProvider,
+    R<:AbstractSignalPersistenceProvider,
 }
     signals::Vector{AnalysedSignal}
     view::SignalAnalyserViewState
@@ -1487,10 +1707,12 @@ mutable struct SignalAnalyserState{
     plot_cache::Dict{String,Dict{String,Any}}
     spectrum_cache::Dict{SignalSpectrumCacheKey,SignalSpectrumData}
     spectrogram_cache::Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}
+    persistence_cache::Dict{SignalPersistenceCacheKey,SignalPersistenceData}
     measurements_service::SignalMeasurementsService
     peaks_service::SignalPeaksService{P}
     spectrum_service::SignalSpectrumService{S}
     spectrogram_service::SignalSpectrogramService{G}
+    persistence_service::SignalPersistenceService{R}
     lock::ReentrantLock
 end
 
@@ -1503,6 +1725,7 @@ function SignalAnalyserState(
     peaks_provider::AbstractPeaksProvider = EngeeDSPPeaksProvider(),
     spectrum_provider::AbstractSignalSpectrumProvider = EngeeDSPSpectrumProvider(),
     spectrogram_provider::AbstractSignalSpectrogramProvider = EngeeDSPSpectrogramProvider(),
+    persistence_provider::AbstractSignalPersistenceProvider = EngeeDSPPersistenceProvider(),
 )
     isempty(signals) && throw(ArgumentError("Signal Analyser требует хотя бы один сигнал в global inventory"))
     known_names = [signal.name for signal in signals]
@@ -1539,10 +1762,12 @@ function SignalAnalyserState(
         plot_cache,
         Dict{SignalSpectrumCacheKey,SignalSpectrumData}(),
         Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}(),
+        Dict{SignalPersistenceCacheKey,SignalPersistenceData}(),
         SignalMeasurementsService(),
         SignalPeaksService(peaks_provider),
         SignalSpectrumService(spectrum_provider),
         SignalSpectrogramService(spectrogram_provider),
+        SignalPersistenceService(persistence_provider),
         lock,
     )
 end
@@ -1613,6 +1838,7 @@ function default_signal_analyser_state(;
     peaks_provider::AbstractPeaksProvider = EngeeDSPPeaksProvider(),
     spectrum_provider::AbstractSignalSpectrumProvider = EngeeDSPSpectrumProvider(),
     spectrogram_provider::AbstractSignalSpectrogramProvider = EngeeDSPSpectrogramProvider(),
+    persistence_provider::AbstractSignalPersistenceProvider = EngeeDSPPersistenceProvider(),
 )::SignalAnalyserState
     signals = default_signal_catalog()
     SignalAnalyserState(
@@ -1623,6 +1849,7 @@ function default_signal_analyser_state(;
         peaks_provider = peaks_provider,
         spectrum_provider = spectrum_provider,
         spectrogram_provider = spectrogram_provider,
+        persistence_provider = persistence_provider,
     )
 end
 

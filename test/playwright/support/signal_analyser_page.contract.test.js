@@ -95,6 +95,7 @@ assert.equal(config.features["selectable-statistics"], true);
 assert.equal(config.features["spectrum-settings-roi"], true);
 assert.equal(config.features["frequency-limits"], true);
 assert.equal(config.features["typed-spectrogram"], true);
+assert.equal(config.features["typed-persistence"], true);
 assert.equal(config.features["spectrogram-overlap"], true);
 assert.equal(config.features["spectrogram-leakage"], true);
 assert.equal(config.features["spectrogram-frequency-limits"], true);

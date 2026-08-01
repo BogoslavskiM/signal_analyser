@@ -85,33 +85,6 @@ function signal_analyser_pspectrum(args...)
     pspectrum(args...)
 end
 
-function signal_analyser_finite_vector(values, label::AbstractString)::Vector{Float64}
-    result = Float64.(vec(collect(values)))
-    isempty(result) && throw(ArgumentError("EngeeDSP вернул пустой массив: $label"))
-    all(isfinite, result) || throw(ArgumentError("EngeeDSP вернул нечисловые значения: $label"))
-    result
-end
-
-function signal_analyser_power_db(values, label::AbstractString)::Vector{Float64}
-    powers = Float64.(abs.(vec(collect(values))))
-    isempty(powers) && throw(ArgumentError("EngeeDSP вернул пустой массив: $label"))
-    all(isfinite, powers) || throw(ArgumentError("EngeeDSP вернул нечисловые значения: $label"))
-    Float64.(10 .* log10.(max.(powers, eps(Float64))))
-end
-
-function signal_analyser_oriented_matrix(values, row_count::Int, column_count::Int, label::AbstractString)
-    matrix = Matrix(collect(values))
-    if size(matrix) == (row_count, column_count)
-        return matrix
-    end
-    if size(matrix) == (column_count, row_count)
-        return permutedims(matrix)
-    end
-    throw(DimensionMismatch(
-        "$label имеет размер $(size(matrix)), ожидался ($row_count, $column_count)",
-    ))
-end
-
 function signal_analyser_bounded_indices(length_value::Int, limit::Int)::Vector{Int}
     length_value > 0 || return Int[]
     length_value <= limit && return collect(1:length_value)
@@ -266,32 +239,11 @@ function signal_analyser_spectrogram_plot(signal::AnalysedSignal)::Dict{String,A
     signal_analyser_spectrogram_plot(data, settings, signal)
 end
 
-function signal_analyser_persistence_plot(signal::AnalysedSignal)::Dict{String,Any}
-    occurrence, frequencies, power_levels = signal_analyser_pspectrum(
-        signal.values,
-        signal_time_values(signal),
-        "persistence",
-        "TwoSided",
-        true,
-    )
-    x = signal_analyser_finite_vector(frequencies, "частоты персистентности")
-    linear_power = signal_analyser_finite_vector(power_levels, "уровни мощности персистентности")
-    y = Float64.(10 .* log10.(max.(abs.(linear_power), eps(Float64))))
-    oriented_occurrence = signal_analyser_oriented_matrix(
-        occurrence,
-        length(y),
-        length(x),
-        "Персистентность",
-    )
-    occurrence_percent = Float64.(oriented_occurrence)
-    all(isfinite, occurrence_percent) || throw(ArgumentError(
-        "EngeeDSP вернул нечисловые значения: персистентность",
-    ))
-    all(value -> -1.0e-9 <= value <= 100.0 + 1.0e-9, occurrence_percent) || throw(ArgumentError(
-        "EngeeDSP вернул персистентность вне диапазона 0–100 %",
-    ))
-    occurrence_percent = clamp.(occurrence_percent, 0.0, 100.0)
-    x, y, z = signal_analyser_bounded_heatmap(x, y, occurrence_percent)
+function signal_analyser_persistence_plot(data::SignalPersistenceData)::Dict{String,Any}
+    x = Float64[data.frequencies_hz...]
+    linear_power = Float64[data.power_levels...]
+    y = Float64.(10 .* log10.(linear_power))
+    x, y, z = signal_analyser_bounded_heatmap(x, y, data.occurrence_percent)
     Dict{String,Any}(
         "type" => "heatmap",
         "x" => x,
@@ -301,6 +253,11 @@ function signal_analyser_persistence_plot(signal::AnalysedSignal)::Dict{String,A
         "y_label" => "Мощность, дБ",
         "color_label" => "Встречаемость, %",
     )
+end
+
+function signal_analyser_persistence_plot(signal::AnalysedSignal)::Dict{String,Any}
+    data = signal_persistence_data(SignalPersistenceService(), signal)
+    signal_analyser_persistence_plot(data)
 end
 
 function signal_analyser_plots(signal::AnalysedSignal)::Dict{String,Any}
@@ -325,6 +282,8 @@ function signal_analyser_base_plots(signal::AnalysedSignal)::Dict{String,Any}
             SignalSpectrogramSettings(),
             signal,
         ),
-        "persistence" => signal_analyser_persistence_plot(signal),
+        "persistence" => signal_analyser_persistence_plot(
+            SignalPersistenceData(signal_spectrum_topology(signal)),
+        ),
     )
 end

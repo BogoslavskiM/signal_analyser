@@ -235,4 +235,32 @@ end
         assert_pspectrum_matrix(occurrence, power_levels, frequencies)
         @test all(value -> 0.0 <= value <= 100.0, vec(Float64.(collect(occurrence))))
     end
+
+    @testset "C18 Persistence explicit default provider options" begin
+        real_signal = sin.(2pi .* 32.0 .* time) .+ 0.25 .* sin.(2pi .* 72.0 .* time)
+        endpoint_tolerance = sqrt(eps(Float64)) * fs_hz
+        for (probe_signal, two_sided, expected_domain) in (
+            (real_signal, false, (0.0, fs_hz / 2)),
+            (signal, true, (-fs_hz / 2, fs_hz / 2)),
+        )
+            occurrence, frequencies, power_levels = pspectrum(
+                probe_signal,
+                time,
+                "persistence",
+                "NumPowerBins",
+                256,
+                "TwoSided",
+                two_sided,
+            )
+            frequency_axis = Float64.(vec(collect(frequencies)))
+            power_axis = Float64.(vec(collect(power_levels)))
+            @test length(power_axis) == 256
+            @test !isempty(frequency_axis) && all(isfinite, frequency_axis) && all(diff(frequency_axis) .> 0.0)
+            @test all(isfinite, power_axis) && all(power_axis .> 0.0) && all(diff(power_axis) .> 0.0)
+            @test abs(first(frequency_axis) - expected_domain[1]) <= endpoint_tolerance
+            @test abs(last(frequency_axis) - expected_domain[2]) <= endpoint_tolerance
+            @test size(occurrence) == (length(power_axis), length(frequency_axis))
+            @test all(value -> isfinite(value) && 0.0 <= value <= 100.0, vec(Float64.(collect(occurrence))))
+        end
+    end
 end

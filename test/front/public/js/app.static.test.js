@@ -152,6 +152,11 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
     assert(app.includes(term), `Cascade 17 frontend must retain Power Limits term ${term}`)
   );
   assert(!/spectrogram.*(?:fft|stft|pspectrum|minthreshold)/i.test(app), "Cascade 17 must not add client-side DSP or MinThreshold behavior");
+  assert(html.includes('<option value="persistence">Persistence</option>'), "Cascade 18 must retain Persistence as the existing generic plot-kind option");
+  assert(!/persistence[-_ ]?(?:settings|limits|power|frequency|bins|controls)/i.test(html), "Cascade 18 must not add Persistence controls or settings surface");
+  assert(!/persistence[-_ ]?(?:settings|limits|power|frequency|bins|controls)/i.test(app), "Cascade 18 must not add client Persistence state or controls");
+  assert(!api.includes("persistence"), "Cascade 18 must retain the existing generic state/view wire without a Persistence route");
+  assert(!/persistence.*(?:fft|stft|pspectrum|histogram|minthreshold|log10)/i.test(app), "Cascade 18 must not calculate Persistence DSP, histogram, or dB conversion in JavaScript");
   assert((app.match(/function renderStatisticsControls\(/g) || []).length === 1, "Statistics settings must have exactly one render function");
   assert((app.match(/function render\(/g) || []).length === 1, "frontend must retain exactly one render declaration");
   assert(!app.includes("function bindStatisticsShortcut("), "Statistics shortcut must not retain a dead duplicate binding path");

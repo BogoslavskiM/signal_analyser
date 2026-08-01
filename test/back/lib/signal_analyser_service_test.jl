@@ -90,6 +90,144 @@ struct InvalidSpectrogramProvider <: SA.AbstractSignalSpectrogramProvider
 end
 SA.signal_spectrogram_calculate(provider::InvalidSpectrogramProvider, query::SA.SignalSpectrogramQuery) = provider.data
 
+struct WrongTopologyPersistenceProvider <: SA.AbstractSignalPersistenceProvider end
+function SA.signal_persistence_calculate(::WrongTopologyPersistenceProvider, query::SA.SignalPersistenceQuery)
+    powers = collect(range(0.01, 1.0, length = query.num_power_bins))
+    # The datum itself is valid; only its declared topology is incompatible
+    # with the query and must be rejected before cache/snapshot publication.
+    SA.SignalPersistenceData([0.0, query.sample_rate_hz / 2], powers,
+        zeros(Float64, query.num_power_bins, 2), SA.CENTERED_TWO_SIDED_SPECTRUM)
+end
+
+@testset "Cascade 18 typed Persistence provider, presentation and cache foundation" begin
+    values = ComplexF64[1, 2, 3]
+    query = SA.SignalPersistenceQuery("persistence-copy", values, 100.0, SA.ONE_SIDED_SPECTRUM)
+    @test query.num_power_bins == SA.SIGNAL_PERSISTENCE_DEFAULT_NUM_POWER_BINS == 256
+    values[1] = 999 + 0im
+    @test query.values[1] == 1 + 0im
+    same_key = SA.SignalPersistenceCacheKey(query)
+    @test same_key == SA.SignalPersistenceCacheKey("persistence-copy", 100.0, 3, SA.ONE_SIDED_SPECTRUM, 256)
+    @test hash(same_key) == hash(SA.SignalPersistenceCacheKey(query))
+    @test same_key != SA.SignalPersistenceCacheKey("persistence-copy", 100.0, 3, SA.CENTERED_TWO_SIDED_SPECTRUM, 256)
+    @test same_key != SA.SignalPersistenceCacheKey("other", 100.0, 3, SA.ONE_SIDED_SPECTRUM, 256)
+    @test same_key != SA.SignalPersistenceCacheKey("persistence-copy", 100.0, 3, SA.ONE_SIDED_SPECTRUM, 128)
+    for invalid in (
+        () -> SA.SignalPersistenceQuery("", ComplexF64[1, 2], 1.0, SA.ONE_SIDED_SPECTRUM),
+        () -> SA.SignalPersistenceQuery("bad", ComplexF64[1, ComplexF64(NaN, 0)], 1.0, SA.ONE_SIDED_SPECTRUM),
+        () -> SA.SignalPersistenceQuery("bad", ComplexF64[1, 2], true, SA.ONE_SIDED_SPECTRUM),
+        () -> SA.SignalPersistenceQuery("bad", ComplexF64[1, 2], Inf, SA.ONE_SIDED_SPECTRUM),
+        () -> SA.SignalPersistenceQuery("bad", ComplexF64[1, 2], 1.0, SA.ONE_SIDED_SPECTRUM, 0),
+        () -> SA.SignalPersistenceCacheKey("bad", 1.0, -1, SA.ONE_SIDED_SPECTRUM, 256),
+        () -> SA.SignalPersistenceCacheKey("bad", 1.0, 2, SA.ONE_SIDED_SPECTRUM, true),
+    )
+        @test_throws ArgumentError invalid()
+    end
+    @test_throws DimensionMismatch SA.SignalPersistenceData([0.0, 1.0], [0.1, 1.0], [0.0 1.0; 2.0 3.0; 4.0 5.0], SA.ONE_SIDED_SPECTRUM)
+    @test_throws ArgumentError SA.SignalPersistenceData([0.0, 0.0], [0.1, 1.0], [0.0 1.0; 2.0 3.0], SA.ONE_SIDED_SPECTRUM)
+    @test_throws ArgumentError SA.SignalPersistenceData([0.0, 1.0], [0.0, 1.0], [0.0 1.0; 2.0 3.0], SA.ONE_SIDED_SPECTRUM)
+    @test_throws ArgumentError SA.SignalPersistenceData([0.0, 1.0], [0.1, 1.0], [0.0 101.0; 2.0 3.0], SA.ONE_SIDED_SPECTRUM)
+
+    SA.reset_persistence_double!()
+    real = SA.AnalysedSignal("c18-real", "#111111", 100.0, ComplexF64[1, 2, 3], false, true)
+    complex = SA.AnalysedSignal("c18-complex", "#222222", 100.0, ComplexF64[1 + im, 2 + im, 3 + im], true, true)
+    real_data = SA.signal_persistence_data(SA.SignalPersistenceService(), real)
+    complex_data = SA.signal_persistence_data(SA.SignalPersistenceService(), complex)
+    @test length(SA.PERSISTENCE_CALLS) == 2
+    @test SA.PERSISTENCE_CALLS[1].topology == SA.ONE_SIDED_SPECTRUM && SA.PERSISTENCE_CALLS[1].num_power_bins == 256
+    @test SA.PERSISTENCE_CALLS[2].topology == SA.CENTERED_TWO_SIDED_SPECTRUM && SA.PERSISTENCE_CALLS[2].num_power_bins == 256
+    @test real_data.frequencies_hz == (0.0, 25.0, 50.0)
+    @test complex_data.frequencies_hz == (-50.0, 0.0, 50.0)
+    @test size(real_data.occurrence_percent) == (256, 3) && all(value -> 0.0 <= value <= 100.0, real_data.occurrence_percent)
+    # This small raw typed datum proves exact dB conversion happens before the
+    # 160×160 presentation bound (which does not alter a 2×3 matrix).
+    rendered = SA.signal_analyser_persistence_plot(SA.SignalPersistenceData(
+        [0.0, 25.0, 50.0], [0.01, 0.1], [0.0 25.0 50.0; 75.0 90.0 100.0], SA.ONE_SIDED_SPECTRUM,
+    ))
+    @test rendered["x"] == [0.0, 25.0, 50.0]
+    @test rendered["y"] == 10 .* log10.([0.01, 0.1])
+    @test rendered["z"] == [[0.0, 25.0, 50.0], [75.0, 90.0, 100.0]]
+    @test rendered["x_label"] == "Частота, Гц" && rendered["y_label"] == "Мощность, дБ" && rendered["color_label"] == "Встречаемость, %"
+    short = SA.AnalysedSignal("c18-short", "#333333", 100.0, ComplexF64[1], false, true)
+    before_short = length(SA.PERSISTENCE_CALLS)
+    empty_data = SA.signal_persistence_data(SA.SignalPersistenceService(), short)
+    @test isempty(empty_data.frequencies_hz) && isempty(empty_data.power_levels) && size(empty_data.occurrence_percent) == (0, 0)
+    @test length(SA.PERSISTENCE_CALLS) == before_short
+
+    SA.reset_persistence_double!()
+    state = SA.default_signal_analyser_state()
+    first_name, second_name = [signal.name for signal in state.signals]
+    initial = SA.signal_analyser_snapshot(state)
+    @test length(SA.PERSISTENCE_CALLS) == 1 && length(state.persistence_cache) == 1
+    @test initial["plot_payload"]["persistence"]["signal"] == first_name
+    repeated = SA.signal_analyser_snapshot(state)
+    @test repeated == initial && length(SA.PERSISTENCE_CALLS) == 1 && length(state.persistence_cache) == 1
+    membership = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "visible_signals" => [first_name]))
+    @test membership["analysis_signal"] == first_name && length(SA.PERSISTENCE_CALLS) == 1 && length(state.persistence_cache) == 1
+    changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "visible_signals" => [first_name, second_name], "analysis_signal" => second_name))
+    @test changed["plot_payload"]["persistence"]["signal"] == second_name && length(SA.PERSISTENCE_CALLS) == 2 && length(state.persistence_cache) == 2
+
+    # A/B pages share the identical selected-source raw key; Clear publishes
+    # typed empty wire only; re-add reuses the retained raw cache.
+    SA.reset_persistence_double!()
+    pages = SA.default_signal_analyser_state()
+    first_page_source = pages.signals[1].name
+    SA.signal_analyser_snapshot(pages)
+    created = SA.apply_signal_analyser_display!(pages, Dict("state_revision" => 0, "operation" => "create"))
+    @test created["active_display_id"] == "display-2" && length(SA.PERSISTENCE_CALLS) == 1 && length(pages.persistence_cache) == 1
+    selected_a = SA.apply_signal_analyser_display!(pages, Dict("state_revision" => 1, "operation" => "select", "display_id" => "display-1"))
+    @test selected_a["plot_payload"]["persistence"]["signal"] == first_page_source && length(SA.PERSISTENCE_CALLS) == 1
+    cleared = SA.apply_signal_analyser_view!(pages, Dict("state_revision" => 2, "visible_signals" => String[]))
+    @test cleared["plot_payload"]["persistence"]["signal"] === nothing && cleared["plots"]["persistence"]["x"] == Any[] && length(SA.PERSISTENCE_CALLS) == 1
+    readded = SA.apply_signal_analyser_view!(pages, Dict("state_revision" => 3, "visible_signals" => [first_page_source]))
+    @test readded["plot_payload"]["persistence"]["signal"] == first_page_source && length(SA.PERSISTENCE_CALLS) == 1 && length(pages.persistence_cache) == 1
+
+    # A provider failure must not publish a cold new source or mutate a warm
+    # source snapshot/cache. The call itself is observable, publication is not.
+    SA.reset_persistence_double!()
+    warm = SA.default_signal_analyser_state()
+    warm_before = SA.signal_analyser_snapshot(warm)
+    warm_caches_before = (
+        deepcopy(warm.plot_cache), deepcopy(warm.spectrum_cache),
+        deepcopy(warm.spectrogram_cache), deepcopy(warm.persistence_cache),
+    )
+    warm_second = warm.signals[2].name
+    SA.PERSISTENCE_FAILURE[] = true
+    warm_error = try
+        SA.apply_signal_analyser_view!(warm, Dict("state_revision" => 0, "analysis_signal" => warm_second, "visible_signals" => [warm.signals[1].name, warm_second]))
+        nothing
+    catch caught
+        caught
+    end
+    SA.PERSISTENCE_FAILURE[] = false
+    @test warm_error isa ArgumentError && sprint(showerror, warm_error) == "ArgumentError: deterministic Persistence provider failure"
+    @test SA.signal_analyser_snapshot(warm) == warm_before
+    @test (warm.plot_cache, warm.spectrum_cache, warm.spectrogram_cache, warm.persistence_cache) == warm_caches_before
+
+    SA.reset_persistence_double!(); SA.PERSISTENCE_FAILURE[] = true
+    cold = SA.default_signal_analyser_state()
+    cold_second = cold.signals[2].name
+    cold_error = try
+        SA.apply_signal_analyser_view!(cold, Dict("state_revision" => 0, "analysis_signal" => cold_second, "visible_signals" => [cold.signals[1].name, cold_second]))
+        nothing
+    catch caught
+        caught
+    end
+    SA.PERSISTENCE_FAILURE[] = false
+    @test cold_error isa ArgumentError && cold.view.state_revision == 0 && isempty(cold.persistence_cache) && isempty(cold.plot_cache)
+
+    invalid = SA.default_signal_analyser_state(persistence_provider = WrongTopologyPersistenceProvider())
+    invalid_caches_before = (
+        deepcopy(invalid.plot_cache), deepcopy(invalid.spectrum_cache),
+        deepcopy(invalid.spectrogram_cache), deepcopy(invalid.persistence_cache),
+    )
+    invalid_error = try SA.signal_analyser_snapshot(invalid) catch caught; caught end
+    @test invalid_error isa ArgumentError
+    @test (invalid.plot_cache, invalid.spectrum_cache, invalid.spectrogram_cache, invalid.persistence_cache) == invalid_caches_before
+    @test invalid.view.state_revision == 0
+    # Test context doubles are process-global; leave the legacy suite isolated.
+    SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS); SA.reset_persistence_double!()
+end
+
 function SA.signal_peaks_detect(provider::FakePeaksProvider, query::SA.SignalPeaksQuery)
     push!(provider.calls, query)
     isnothing(provider.failure) || throw(provider.failure)
@@ -492,7 +630,9 @@ end
     SA.apply_signal_analyser_view!(failing_state, Dict("state_revision" => 0, "visible_signals" => [first_name]))
     failure_before = SA.signal_analyser_snapshot(failing_state)
 
-    SA.PSPECTRUM_FAILURE[] = true
+    # C18 prepares typed Persistence for the next analysis source before
+    # publication; make that provider failure the atomicity boundary.
+    SA.PERSISTENCE_FAILURE[] = true
     dsp_error = try
         SA.apply_signal_analyser_view!(
             failing_state,
@@ -503,8 +643,8 @@ end
         caught
     end
     @test dsp_error isa ArgumentError
-    @test sprint(showerror, dsp_error) == "ArgumentError: deterministic EngeeDSP failure"
-    SA.PSPECTRUM_FAILURE[] = false
+    @test sprint(showerror, dsp_error) == "ArgumentError: deterministic Persistence provider failure"
+    SA.PERSISTENCE_FAILURE[] = false
     @test SA.signal_analyser_snapshot(failing_state) == failure_before
 end
 
@@ -579,7 +719,7 @@ end
     @test stale isa SA.SignalAnalyserStaleStateError
     @test SA.signal_analyser_snapshot(state) == before
 
-    SA.PSPECTRUM_FAILURE[] = true
+    SA.SPECTRUM_FAILURE[] = true
     dsp_error = try
         SA.apply_signal_analyser_view!(
             state,
@@ -590,7 +730,7 @@ end
         caught
     end
     @test dsp_error isa ArgumentError
-    SA.PSPECTRUM_FAILURE[] = false
+    SA.SPECTRUM_FAILURE[] = false
     @test SA.signal_analyser_snapshot(state) == before
 end
 

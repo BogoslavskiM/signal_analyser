@@ -374,14 +374,8 @@ function signal_analyser_empty_plots(
                 SignalSpectrogramData(ONE_SIDED_SPECTRUM),
             ),
         ),
-        "persistence" => Dict{String,Any}(
-            "type" => "heatmap",
-            "x" => Float64[],
-            "y" => Float64[],
-            "z" => Vector{Vector{Float64}}(),
-            "x_label" => "Частота, Гц",
-            "y_label" => "Мощность, дБ",
-            "color_label" => "Встречаемость, %",
+        "persistence" => signal_analyser_persistence_plot(
+            SignalPersistenceData(ONE_SIDED_SPECTRUM),
         ),
     )
 end
@@ -435,6 +429,8 @@ function signal_analyser_prepared_spectra(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
     signal_names::Vector{String},
+    ;
+    materialize_missing::Bool = true,
 )::Dict{SignalSpectrumCacheKey,SignalSpectrumData}
     isempty(signal_names) && return Dict{SignalSpectrumCacheKey,SignalSpectrumData}()
     limits = display.time_limits
@@ -462,6 +458,8 @@ function signal_analyser_prepared_spectra(
         )
         if haskey(state.spectrum_cache, key)
             prepared[key] = state.spectrum_cache[key]
+        elseif !materialize_missing
+            continue
         elseif length(sample_range) == 1
             prepared[key] = SignalSpectrumData(signal_spectrum_topology(signal))
         else
@@ -493,13 +491,20 @@ function signal_analyser_prepared_spectrograms(
     signal::Union{Nothing,AnalysedSignal},
     ;
     refresh::Bool = false,
+    materialize_missing::Bool = true,
 )::Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}
     prepared = Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}()
     signal === nothing && return prepared
     key = signal_spectrogram_cache_key(signal, display.spectrogram_settings)
-    prepared[key] = !refresh && haskey(state.spectrogram_cache, key) ?
-        state.spectrogram_cache[key] :
-        signal_spectrogram_data(state.spectrogram_service, signal, display.spectrogram_settings)
+    if !refresh && haskey(state.spectrogram_cache, key)
+        prepared[key] = state.spectrogram_cache[key]
+    elseif materialize_missing
+        prepared[key] = signal_spectrogram_data(
+            state.spectrogram_service,
+            signal,
+            display.spectrogram_settings,
+        )
+    end
     prepared
 end
 
@@ -510,6 +515,235 @@ function signal_analyser_publish_prepared_spectrograms!(
     for (key, data) in prepared
         state.spectrogram_cache[key] = data
     end
+    nothing
+end
+
+function signal_analyser_prepared_persistences(
+    state::SignalAnalyserState,
+    signal::Union{Nothing,AnalysedSignal},
+    ;
+    materialize_missing::Bool = true,
+)::Dict{SignalPersistenceCacheKey,SignalPersistenceData}
+    prepared = Dict{SignalPersistenceCacheKey,SignalPersistenceData}()
+    signal === nothing && return prepared
+    key = signal_persistence_cache_key(signal)
+    if haskey(state.persistence_cache, key)
+        prepared[key] = state.persistence_cache[key]
+    elseif materialize_missing
+        prepared[key] = signal_persistence_data(state.persistence_service, signal)
+    end
+    prepared
+end
+
+function signal_analyser_publish_prepared_persistences!(
+    state::SignalAnalyserState,
+    prepared::Dict{SignalPersistenceCacheKey,SignalPersistenceData},
+)
+    for (key, data) in prepared
+        state.persistence_cache[key] = data
+    end
+    nothing
+end
+
+"""A fully rendered Display payload whose cache writes have not been published yet."""
+struct SignalAnalyserPreparedDisplayPlots
+    plots::Dict{String,Any}
+    plot_payload::Dict{String,Any}
+    plot_cache::Dict{String,Dict{String,Any}}
+    spectrum_cache::Dict{SignalSpectrumCacheKey,SignalSpectrumData}
+    spectrogram_cache::Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}
+    persistence_cache::Dict{SignalPersistenceCacheKey,SignalPersistenceData}
+end
+
+function signal_analyser_prepared_spectrum_data(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    signal::AnalysedSignal,
+    prepared::Dict{SignalSpectrumCacheKey,SignalSpectrumData},
+)::SignalSpectrumData
+    limits = display.time_limits
+    limits === nothing && throw(ArgumentError("Непустой Display должен иметь Time Limits"))
+    frequency_limits = signal_spectrum_effective_frequency_limits(
+        display.spectrum_settings.frequency_limits,
+        signal,
+    )
+    frequency_limits === nothing && return SignalSpectrumData(signal_spectrum_topology(signal))
+    sample_range = signal_spectrum_sample_range(
+        state.spectrum_service,
+        state.measurements_service.roi_service,
+        signal,
+        limits,
+    )
+    sample_range === nothing && return SignalSpectrumData(signal_spectrum_topology(signal))
+    key = signal_spectrum_cache_key(
+        signal,
+        sample_range,
+        display.spectrum_settings,
+        frequency_limits,
+    )
+    get(prepared, key, SignalSpectrumData(signal_spectrum_topology(signal)))
+end
+
+function signal_analyser_prepare_display_plots(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    signal::AnalysedSignal,
+    visible_names::Vector{String},
+    ;
+    materialize_missing_spectra::Bool = true,
+    materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
+)::SignalAnalyserPreparedDisplayPlots
+    signal.name in visible_names || throw(ArgumentError(
+        "Analysis source должен входить в состав видимых сигналов Display",
+    ))
+    prepared_plots = signal_analyser_prepared_plots(state, visible_names)
+    prepared_spectra = signal_analyser_prepared_spectra(
+        state,
+        display,
+        visible_names,
+        materialize_missing = materialize_missing_spectra,
+    )
+    prepared_spectrograms = signal_analyser_prepared_spectrograms(
+        state,
+        display,
+        signal,
+        materialize_missing = materialize_missing_spectrogram,
+    )
+    prepared_persistences = signal_analyser_prepared_persistences(
+        state,
+        signal,
+        materialize_missing = materialize_missing_persistence,
+    )
+
+    selected_plots = copy(prepared_plots[signal.name])
+    selected_spectrum = signal_analyser_prepared_spectrum_data(
+        state,
+        display,
+        signal,
+        prepared_spectra,
+    )
+    spectrogram_key = signal_spectrogram_cache_key(signal, display.spectrogram_settings)
+    selected_spectrogram = get(
+        prepared_spectrograms,
+        spectrogram_key,
+        SignalSpectrogramData(signal_spectrum_topology(signal)),
+    )
+    persistence_key = signal_persistence_cache_key(signal)
+    selected_persistence = get(
+        prepared_persistences,
+        persistence_key,
+        SignalPersistenceData(signal_spectrum_topology(signal)),
+    )
+    selected_plots["spectrum"] = signal_analyser_spectrum_plot(
+        selected_spectrum,
+        display.spectrum_settings,
+    )
+    selected_plots["spectrogram"] = signal_analyser_spectrogram_plot(
+        selected_spectrogram,
+        display.spectrogram_settings,
+        signal,
+    )
+    selected_plots["persistence"] = signal_analyser_persistence_plot(selected_persistence)
+
+    time_traces = Dict{String,Any}[]
+    spectrum_traces = Dict{String,Any}[]
+    for visible_signal in state.signals
+        visible_signal.name in visible_names || continue
+        base_plots = prepared_plots[visible_signal.name]
+        spectrum_data = signal_analyser_prepared_spectrum_data(
+            state,
+            display,
+            visible_signal,
+            prepared_spectra,
+        )
+        spectrum_plot = signal_analyser_spectrum_plot(
+            spectrum_data,
+            display.spectrum_settings,
+        )
+        push!(
+            time_traces,
+            signal_analyser_plot_for_payload(base_plots["time"], visible_signal),
+        )
+        push!(
+            spectrum_traces,
+            signal_analyser_plot_for_payload(spectrum_plot, visible_signal),
+        )
+    end
+    plot_payload = Dict{String,Any}(
+        "selected_signal" => signal.name,
+        "visible_signals" => visible_names,
+        "time_traces" => time_traces,
+        "spectrum_traces" => spectrum_traces,
+        "spectrogram" => signal_analyser_plot_for_payload(
+            selected_plots["spectrogram"],
+            signal,
+        ),
+        "persistence" => signal_analyser_plot_for_payload(
+            selected_plots["persistence"],
+            signal,
+        ),
+    )
+    SignalAnalyserPreparedDisplayPlots(
+        selected_plots,
+        plot_payload,
+        prepared_plots,
+        prepared_spectra,
+        prepared_spectrograms,
+        prepared_persistences,
+    )
+end
+
+function signal_analyser_prepare_display_plots(
+    ::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    ::Nothing,
+    visible_names::Vector{String};
+    materialize_missing_spectra::Bool = true,
+    materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
+)::SignalAnalyserPreparedDisplayPlots
+    isempty(visible_names) || throw(ArgumentError(
+        "Пустой analysis source допустим только для пустого Display",
+    ))
+    plots = signal_analyser_empty_plots(
+        display.spectrum_settings,
+        display.spectrogram_settings,
+    )
+    spectrogram = copy(plots["spectrogram"])
+    spectrogram["signal"] = nothing
+    spectrogram["name"] = ""
+    spectrogram["color"] = ""
+    persistence = copy(plots["persistence"])
+    persistence["signal"] = nothing
+    persistence["name"] = ""
+    persistence["color"] = ""
+    plot_payload = Dict{String,Any}(
+        "selected_signal" => nothing,
+        "visible_signals" => String[],
+        "time_traces" => Dict{String,Any}[],
+        "spectrum_traces" => Dict{String,Any}[],
+        "spectrogram" => spectrogram,
+        "persistence" => persistence,
+    )
+    SignalAnalyserPreparedDisplayPlots(
+        plots,
+        plot_payload,
+        Dict{String,Dict{String,Any}}(),
+        Dict{SignalSpectrumCacheKey,SignalSpectrumData}(),
+        Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}(),
+        Dict{SignalPersistenceCacheKey,SignalPersistenceData}(),
+    )
+end
+
+function signal_analyser_publish_display_plots!(
+    state::SignalAnalyserState,
+    prepared::SignalAnalyserPreparedDisplayPlots,
+)
+    signal_analyser_publish_prepared_plots!(state, prepared.plot_cache)
+    signal_analyser_publish_prepared_spectra!(state, prepared.spectrum_cache)
+    signal_analyser_publish_prepared_spectrograms!(state, prepared.spectrogram_cache)
+    signal_analyser_publish_prepared_persistences!(state, prepared.persistence_cache)
     nothing
 end
 
@@ -573,6 +807,22 @@ function signal_analyser_cached_spectrogram_data!(
     end
 end
 
+function signal_analyser_cached_persistence_data!(
+    state::SignalAnalyserState,
+    signal::AnalysedSignal,
+    ;
+    materialize_missing::Bool = true,
+)::SignalPersistenceData
+    key = signal_persistence_cache_key(signal)
+    if haskey(state.persistence_cache, key)
+        return state.persistence_cache[key]
+    end
+    materialize_missing || return SignalPersistenceData(signal_spectrum_topology(signal))
+    get!(state.persistence_cache, key) do
+        signal_persistence_data(state.persistence_service, signal)
+    end
+end
+
 function signal_analyser_plots_for_display!(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
@@ -580,27 +830,19 @@ function signal_analyser_plots_for_display!(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
-    plots = copy(signal_analyser_cached_plots!(state, signal))
-    spectrum_data = signal_analyser_cached_spectrum_data!(
+    prepared = signal_analyser_prepare_display_plots(
         state,
         display,
         signal,
-        materialize_missing = materialize_missing_spectra,
+        [signal.name],
+        materialize_missing_spectra = materialize_missing_spectra,
+        materialize_missing_spectrogram = materialize_missing_spectrogram,
+        materialize_missing_persistence = materialize_missing_persistence,
     )
-    spectrogram_data = signal_analyser_cached_spectrogram_data!(
-        state,
-        display,
-        signal,
-        materialize_missing = materialize_missing_spectrogram,
-    )
-    plots["spectrum"] = signal_analyser_spectrum_plot(spectrum_data, display.spectrum_settings)
-    plots["spectrogram"] = signal_analyser_spectrogram_plot(
-        spectrogram_data,
-        display.spectrogram_settings,
-        signal,
-    )
-    plots
+    signal_analyser_publish_display_plots!(state, prepared)
+    prepared.plots
 end
 
 function signal_analyser_visible_signal_names(state::SignalAnalyserState)::Vector{String}
@@ -684,6 +926,7 @@ function signal_analyser_multi_trace_payload(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     time_traces = Dict{String,Any}[]
     spectrum_traces = Dict{String,Any}[]
@@ -719,6 +962,7 @@ function signal_analyser_multi_trace_payload(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     selected_plots = signal_analyser_plots_for_display!(
         state,
@@ -726,6 +970,7 @@ function signal_analyser_multi_trace_payload(
         selected_signal,
         materialize_missing_spectra = materialize_missing_spectra,
         materialize_missing_spectrogram = materialize_missing_spectrogram,
+        materialize_missing_persistence = materialize_missing_persistence,
     )
     signal_analyser_multi_trace_payload(
         state,
@@ -735,6 +980,7 @@ function signal_analyser_multi_trace_payload(
         selected_plots,
         materialize_missing_spectra = materialize_missing_spectra,
         materialize_missing_spectrogram = materialize_missing_spectrogram,
+        materialize_missing_persistence = materialize_missing_persistence,
     )
 end
 
@@ -747,6 +993,7 @@ function signal_analyser_multi_trace_payload(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     isempty(visible_names) || throw(ArgumentError("Пустой analysis source допустим только для пустого Display"))
     spectrogram = copy(plots["spectrogram"])
@@ -775,6 +1022,7 @@ function signal_analyser_multi_trace_payload(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     plots = signal_analyser_empty_plots(
         display.spectrum_settings,
@@ -788,6 +1036,7 @@ function signal_analyser_multi_trace_payload(
         plots,
         materialize_missing_spectra = materialize_missing_spectra,
         materialize_missing_spectrogram = materialize_missing_spectrogram,
+        materialize_missing_persistence = materialize_missing_persistence,
     )
 end
 
@@ -1313,6 +1562,101 @@ signal_spectrogram_data(
     SignalSpectrogramSettings(),
 )
 
+function signal_persistence_cache_key(signal::AnalysedSignal)::SignalPersistenceCacheKey
+    SignalPersistenceCacheKey(
+        signal.name,
+        signal.sample_rate_hz,
+        length(signal.values),
+        signal_spectrum_topology(signal),
+        SIGNAL_PERSISTENCE_DEFAULT_NUM_POWER_BINS,
+    )
+end
+
+function signal_persistence_query(signal::AnalysedSignal)::SignalPersistenceQuery
+    SignalPersistenceQuery(
+        signal.name,
+        signal.values,
+        signal.sample_rate_hz,
+        signal_spectrum_topology(signal),
+        SIGNAL_PERSISTENCE_DEFAULT_NUM_POWER_BINS,
+    )
+end
+
+function signal_persistence_calculate(
+    provider::AbstractSignalPersistenceProvider,
+    query::SignalPersistenceQuery,
+)::SignalPersistenceData
+    throw(MethodError(signal_persistence_calculate, (provider, query)))
+end
+
+function signal_persistence_calculate(
+    ::EngeeDSPPersistenceProvider,
+    query::SignalPersistenceQuery,
+)::SignalPersistenceData
+    samples = query.topology == ONE_SIDED_SPECTRUM ?
+        Float64.(real.(query.values)) : copy(query.values)
+    times = collect(0:(length(samples) - 1)) ./ query.sample_rate_hz
+    occurrence, frequencies, power_levels = signal_analyser_pspectrum(
+        samples,
+        times,
+        "persistence",
+        "NumPowerBins",
+        query.num_power_bins,
+        "TwoSided",
+        query.topology == CENTERED_TWO_SIDED_SPECTRUM,
+    )
+    occurrence isa AbstractMatrix || throw(ArgumentError(
+        "Persistence provider должен вернуть двумерную матрицу встречаемости",
+    ))
+    SignalPersistenceData(
+        vec(collect(frequencies)),
+        vec(collect(power_levels)),
+        occurrence,
+        query.topology,
+    )
+end
+
+
+function signal_persistence_calculate(
+    service::SignalPersistenceService,
+    query::SignalPersistenceQuery,
+)::SignalPersistenceData
+    length(query.values) < 2 && return SignalPersistenceData(query.topology)
+    data = signal_persistence_calculate(service.provider, query)
+    data.topology == query.topology || throw(ArgumentError(
+        "Persistence provider вернул topology, не совпадающую с query",
+    ))
+    isempty(data.frequencies_hz) && throw(ArgumentError(
+        "Persistence provider вернул пустую частотную ось для двух или более отсчётов",
+    ))
+    length(data.power_levels) == query.num_power_bins || throw(DimensionMismatch(
+        "Persistence provider вернул $(length(data.power_levels)) power bins, " *
+        "ожидалось $(query.num_power_bins)",
+    ))
+
+    domain = signal_spectrum_topology_limits(query.sample_rate_hz, query.topology)
+    tolerance_hz = sqrt(eps(Float64)) * max(query.sample_rate_hz, 1.0)
+    frequencies = data.frequencies_hz
+    all(
+        frequency -> domain.min_hz - tolerance_hz <= frequency <= domain.max_hz + tolerance_hz,
+        frequencies,
+    ) || throw(ArgumentError(
+        "Persistence provider вернул частоты вне topology query",
+    ))
+    abs(first(frequencies) - domain.min_hz) <= tolerance_hz &&
+        abs(last(frequencies) - domain.max_hz) <= tolerance_hz || throw(ArgumentError(
+            "Persistence provider не вернул полный частотный домен topology query",
+        ))
+    data
+end
+
+function signal_persistence_data(
+    service::SignalPersistenceService,
+    signal::AnalysedSignal,
+)::SignalPersistenceData
+    signal_persistence_calculate(service, signal_persistence_query(signal))
+end
+
 function signal_time_limits_are_valid(
     service::SignalMeasurementsService,
     signal::AnalysedSignal,
@@ -1688,6 +2032,7 @@ function signal_analyser_snapshot_unlocked(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     active_display = signal_analyser_active_display(state)
     analysis_name = signal_analyser_display_analysis_name(active_display)
@@ -1720,20 +2065,18 @@ function signal_analyser_snapshot_unlocked(
             "Log frequency scale недоступна для Display с комплексным сигналом",
         ))
     end
-    plots = signal === nothing ?
-        signal_analyser_empty_plots(
-            active_display.spectrum_settings,
-            active_display.spectrogram_settings,
-        ) :
-        signal_analyser_plots_for_display!(
-            state,
-            active_display,
-            signal,
-            materialize_missing_spectra = materialize_missing_spectra,
-            materialize_missing_spectrogram = materialize_missing_spectrogram,
-        )
     visible_names = signal_analyser_visible_signal_names(state)
-    Dict{String,Any}(
+    prepared_display_plots = signal_analyser_prepare_display_plots(
+        state,
+        active_display,
+        signal,
+        visible_names,
+        materialize_missing_spectra = materialize_missing_spectra,
+        materialize_missing_spectrogram = materialize_missing_spectrogram,
+        materialize_missing_persistence = materialize_missing_persistence,
+    )
+    plots = prepared_display_plots.plots
+    snapshot = Dict{String,Any}(
         "state_revision" => state.view.state_revision,
         "active_display_id" => state.active_display_id,
         "displays" => [signal_analyser_display_payload(display) for display in state.displays],
@@ -1748,21 +2091,15 @@ function signal_analyser_snapshot_unlocked(
         "spectrogram_settings" => signal_spectrogram_settings_payload(active_display.spectrogram_settings),
         "signals" => [signal_analyser_signal_payload(item) for item in state.signals],
         "plots" => plots,
-        "plot_payload" => signal_analyser_multi_trace_payload(
-            state,
-            active_display,
-            signal,
-            visible_names,
-            plots,
-            materialize_missing_spectra = materialize_missing_spectra,
-            materialize_missing_spectrogram = materialize_missing_spectrogram,
-        ),
+        "plot_payload" => prepared_display_plots.plot_payload,
         "measurements" => signal_measurements_payload(measurements),
         "peaks" => signal_peaks_payload(peaks),
         "panel" => signal === nothing ?
             signal_analyser_empty_panel_payload(state.view.active_plot) :
             signal_analyser_panel_payload(state.view.active_plot, signal, plots),
     )
+    signal_analyser_publish_display_plots!(state, prepared_display_plots)
+    snapshot
 end
 
 """Typed semantic diff used to plan atomic View mutation preparation."""
@@ -2592,6 +2929,8 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             )
         prepare_spectrum = changed && !spectrogram_settings_only
         prepare_spectrogram = changed && !spectrogram_presentation_only
+        prepare_persistence = changed && prospective_analysis_name !=
+            signal_analyser_display_analysis_name(display)
 
         # Build every payload affected by the request before publishing the
         # mutation so a runtime DSP failure cannot leave state half-applied.
@@ -2617,6 +2956,9 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
                 refresh = isempty(signal_analyser_display_members(display)) && !isempty(prospective_members),
             ) :
             Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}()
+        prepared_persistences = prepare_persistence ?
+            signal_analyser_prepared_persistences(state, prospective_signal) :
+            Dict{SignalPersistenceCacheKey,SignalPersistenceData}()
         prepared_measurements = signal_measurements_snapshot(
             state.measurements_service,
             next_revision,
@@ -2636,6 +2978,8 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
                 signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
             prepare_spectrogram &&
                 signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
+            prepare_persistence &&
+                signal_analyser_publish_prepared_persistences!(state, prepared_persistences)
             signal_analyser_publish_display_state!(display, prospective_display)
             signal_analyser_publish_row_selection!(state, requested.row_selection)
             signal_analyser_sync_active_display!(state, display)
@@ -2649,6 +2993,7 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             prepared_peaks,
             materialize_missing_spectra = prepare_spectrum,
             materialize_missing_spectrogram = prepare_spectrogram,
+            materialize_missing_persistence = prepare_persistence,
         )
     end
 end
@@ -2748,6 +3093,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 display,
                 analysis_signal,
             )
+            prepared_persistences = signal_analyser_prepared_persistences(state, analysis_signal)
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
@@ -2764,6 +3110,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
             signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
+            signal_analyser_publish_prepared_persistences!(state, prepared_persistences)
             push!(state.displays, display)
             state.next_display_number += 1
             signal_analyser_sync_active_display!(state, display)
@@ -2785,6 +3132,10 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                     display,
                     signal_analyser_display_analysis_signal(state, display),
                 )
+                prepared_persistences = signal_analyser_prepared_persistences(
+                    state,
+                    signal_analyser_display_analysis_signal(state, display),
+                )
                 prepared_measurements = signal_measurements_snapshot(
                     state.measurements_service,
                     state.view.state_revision + 1,
@@ -2801,6 +3152,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 signal_analyser_publish_prepared_plots!(state, prepared_plots)
                 signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
                 signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
+                signal_analyser_publish_prepared_persistences!(state, prepared_persistences)
                 signal_analyser_sync_active_display!(state, display)
                 state.view.state_revision += 1
             else
@@ -2844,6 +3196,10 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 next_active_display,
                 signal_analyser_display_analysis_signal(state, next_active_display),
             )
+            prepared_persistences = signal_analyser_prepared_persistences(
+                state,
+                signal_analyser_display_analysis_signal(state, next_active_display),
+            )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
@@ -2860,6 +3216,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
             signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
+            signal_analyser_publish_prepared_persistences!(state, prepared_persistences)
             state.displays = remaining_displays
             closing_active_display && signal_analyser_sync_active_display!(state, next_active_display)
             state.view.state_revision += 1

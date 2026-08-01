@@ -80,6 +80,28 @@ function signal_spectrogram_calculate(::EngeeDSPSpectrogramProvider, query::Sign
     SignalSpectrogramData(frequencies, [0.0, (length(query.values) - 1) / query.sample_rate_hz], [1.0 4.0; 9.0 16.0], query.topology)
 end
 
+"""Deterministic typed Persistence provider double; real EngeeDSP remains test/engee only."""
+const PERSISTENCE_CALLS = Any[]
+const PERSISTENCE_FAILURE = Ref(false)
+function reset_persistence_double!()
+    empty!(PERSISTENCE_CALLS)
+    PERSISTENCE_FAILURE[] = false
+    nothing
+end
+function signal_persistence_calculate(::EngeeDSPPersistenceProvider, query::SignalPersistenceQuery)::SignalPersistenceData
+    push!(PERSISTENCE_CALLS, query)
+    PERSISTENCE_FAILURE[] && throw(ArgumentError("deterministic Persistence provider failure"))
+    frequencies = query.topology == ONE_SIDED_SPECTRUM ?
+        [0.0, query.sample_rate_hz / 4, query.sample_rate_hz / 2] :
+        [-query.sample_rate_hz / 2, 0.0, query.sample_rate_hz / 2]
+    # Deliberately asymmetric power-by-frequency matrix: a renderer/service
+    # transpose would be detected structurally and numerically.
+    powers = collect(range(0.01, 1.0, length = query.num_power_bins))
+    occurrence = [Float64(mod((row - 1) * 17 + (column - 1) * 29, 101))
+                  for row in eachindex(powers), column in eachindex(frequencies)]
+    SignalPersistenceData(frequencies, powers, occurrence, query.topology)
+end
+
 # The API helpers use the tiny Main.Genie renderer double above. This keeps
 # route/API tests in-process and deliberately avoids starting a Genie server.
 include(joinpath(PROJECT_ROOT, "app", "api.jl"))
