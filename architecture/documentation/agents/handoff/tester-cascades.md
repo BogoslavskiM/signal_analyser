@@ -603,3 +603,22 @@ follow-ups: Preserve post-helper mutations and exact pre/post request counts.
 next_task_candidates: C28 active-plot matrix after DEC-034.
 commit: `f334e7fa3e5ef042d0898c29c37226d39be90b4b`.
 engee_bug_candidate: None.
+
+## Cascade 28 active-plot snapshot matrix contract — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c7_matrix`.
+goal: Prove response plot identity is strict and never repaired to Time.
+scope: `test/front/public/js/app.behavior.test.js`.
+contracts: Per-Display missing/null/empty/type/case/whitespace/unknown quarantine;
+valid-active root missing/type/unknown/mismatch global fatal; invalid-active
+root ignored; all four enum values valid; no same-ID replay or stale graph.
+changes: None; contract only.
+verification: Not run; controlled initial/200/409/recovery matrix planned.
+risks: Fixture helper currently omits root `active_plot`; update valid fixtures
+without converting missing-field cases into fallback compatibility.
+follow-ups: Preserve C24-C27 controlled promises and post-helper corruption.
+source_evidence: DEC-034 and
+`agents/reports/active-plot-snapshot-assessment-20260801.md`.
+next_task_candidates: Land RED matrix alongside Frontend implementation.
+engee_bug_candidate: None.

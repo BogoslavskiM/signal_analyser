@@ -592,3 +592,22 @@ follow-ups: C28 owns strict `active_plot`; do not broaden C27.
 next_task_candidates: DEC-034 only after its checkpoint.
 commit: `f334e7fa3e5ef042d0898c29c37226d39be90b4b`.
 engee_bug_candidate: None.
+
+## Cascade 28 active-plot snapshot implementation contract — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c26_bind_fix`.
+goal: Eliminate silent Time fallback for malformed response plot identity.
+scope: `public/js/app.js`; vanilla JS; no backend/API/HTML/math delta.
+contracts: Owned exact four-enum per Display with per-ID quarantine; owned exact
+root equality for valid active Display with global fatal; invalid-active root
+precedence; request omission unchanged; generation-safe local error.
+changes: None; contract only.
+verification: Not run; implementation and matrix planned after checkpoint.
+risks: Validating root before active Display escalates local corruption; using
+Time internally or in View bodies fabricates server state.
+follow-ups: Exclude panel/plots/payload/settings/Measurements/Peaks from C28.
+source_evidence: DEC-034 and
+`agents/reports/active-plot-snapshot-assessment-20260801.md`.
+next_task_candidates: C28 frontend implementation after docs checkpoint.
+engee_bug_candidate: None.

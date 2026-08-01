@@ -566,3 +566,15 @@
   local/global precedence, 200/409 queues, topology recovery, A/B isolation и
   stale Plotly protection; independent final audit CLEAN. Backend 1582 PASS без
   product delta. Gated E2E static — `a4edbc9`; runtime/deployment не заявляются.
+
+## 2026-08-01 — Cascade 28 active-plot snapshot contract
+
+- DEC-034 запрещает frontend превращать malformed response `active_plot` в
+  `time`: Display обязан содержать одно из `time`, `spectrum`, `spectrogram`,
+  `persistence`, иначе quarantined только его validated ID.
+- Для valid active Display root `active_plot` обязан точно совпадать; mismatch
+  вызывает global fatal. Invalid active Display проверяется раньше root и не
+  эскалируется глобально.
+- Request-side omission остаётся совместимым. Panel, plots, graph payload,
+  settings, Measurements/Peaks и DSP/math вынесены из C28. Implementation
+  evidence пока не заявляется.

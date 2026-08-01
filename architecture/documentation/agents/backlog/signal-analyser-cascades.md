@@ -291,3 +291,10 @@ Owner: Architect
   root projections by precedence. Empty inventory becomes global fatal through
   the row gate. Implementation is eligible after the documentation checkpoint;
   plot payloads, settings, Measurements, Peaks and math remain out of scope.
+- DEC-034 freezes C28 strict `active_plot` responses. Each Display owns one
+  exact four-enum value; malformed plot identity quarantines only its validated
+  ID and never defaults to Time. A valid active Display requires exact root
+  equality or global fatal; invalid active plot suppresses root validation.
+  Request omission remains unchanged. Panel/plots/selection-metadata payloads,
+  settings, Measurements, Peaks, DSP and math are deferred; implementation
+  follows the documentation checkpoint.

@@ -1377,3 +1377,25 @@ is unclaimed. Push, deployment and merge were not performed.
 | E2E Tester | `/root/e2e_c27_audit` | C27 static audit CLEAN | optional C28 static gate | compatible target absent | `a4edbc9` |
 | DevOps | `/root/devops_c17_commit` | C27 commits complete | C27 trace/C28 docs | exact path acceptance | no push/deploy |
 | MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | official web only |
+
+## Cascade 28 contract freeze — 2026-08-01
+
+Status: `contract-frozen-implementation-next`; DEC-034.
+
+Every Display response must own exact `active_plot` in the closed four-value
+enum. Invalid Display plot quarantines only that validated ID and never defaults
+to Time. If active Display plot is valid, root `active_plot` must own and equal
+it or the snapshot is global fatal; invalid active Display suppresses root plot
+validation by precedence. Request omission stays compatible. Panel/plots/
+payload/settings/Measurements/Peaks/DSP/math remain outside C28.
+
+### Persistent role queue after C28 contract freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c27_serializer_audit` | no C28 delta | read-only enum support | none | typed plot serialized |
+| Frontend | `/root/frontend_c26_bind_fix` | C27 CLEAN/committed | C28 plot validator/quarantine | docs checkpoint | DEC-034 precedence |
+| Tester | `/root/tester_c7_matrix` | C27 matrix CLEAN/committed | C28 enum/lifecycle matrix | frontend implementation | controlled 200/409 |
+| E2E Tester | `/root/e2e_c27_audit` | C27 gated CLEAN | optional C28 static gate | frontend implementation | no runtime target |
+| DevOps | `/root/devops_c17_commit` | C28 docs checkpoint in progress | C28 product commits | role acceptance | `9190bb9` |
+| MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | official web only |
