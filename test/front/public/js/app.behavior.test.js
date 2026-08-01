@@ -422,8 +422,9 @@ module.exports = async function testDisplayBehavior(assert) {
   const signalsImported = signalsSnapshot(1, [A, B, importedSignal], importedSignal);
   const signalsCalls = [], signalsResolvers = [];
   const signalsEnv = await boot((url, options) => { signalsCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, signalsInitial)) : new Promise(resolve => signalsResolvers.push(resolve)); });
-  signalsEnv.e.signalsAddAction.listeners.click({target:signalsEnv.e.signalsAddAction});
-  assert(signalsEnv.e.signalsAddMenu.hidden === false, "Signals Add opens its menu without a network mutation");
+  let addEnterPrevented = false;
+  signalsEnv.e.signalsAddAction.listeners.keydown({key:"Enter", target:signalsEnv.e.signalsAddAction, preventDefault() { addEnterPrevented = true; }}); await flush();
+  assert(addEnterPrevented && signalsEnv.e.signalsAddMenu.hidden === false && signalsEnv.e.signalsAddWorkspaceAction.focused === true, "Enter on Signals Add must mount the menu and focus Workspace after rendering without a network mutation");
   signalsEnv.e.signalsAddWorkspaceAction.listeners.click({target:signalsEnv.e.signalsAddWorkspaceAction});
   assert(signalsEnv.e.signalsAddMenu.hidden === true && signalsEnv.e.signalsWorkspaceDialog.hidden === false, "workspace menu action closes the menu and opens its dialog");
   signalsEnv.e.signalsWorkspaceVariable.value = "workspace"; signalsEnv.e.signalsWorkspaceName.value = "";
