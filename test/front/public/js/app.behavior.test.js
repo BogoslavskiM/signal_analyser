@@ -138,8 +138,8 @@ function environment(fetch, options) {
     "[data-testid='peaks-panel']": e.peaksPanel, "[data-peaks-content]": e.peaksContent,
     "[data-retry]": e.retry, "[data-testid='display-count-status']": e.displayCount, "[data-testid='active-display-status']": e.activeStatus,
   };
-  const calls = [];
-  const plotly = { react(host, data, layout) { calls.push({ plot: true, host, data, layout }); return Promise.resolve(); } };
+  const calls = [], plotResolvers = [], scriptResolvers = [];
+  const plotly = { react(host, data, layout) { calls.push({ plot: true, host, data, layout }); if (options && options.deferredPlotly) return new Promise((resolve, reject) => plotResolvers.push({resolve:() => { host.innerHTML = "settled-" + (data[0] && data[0].name || "plot"); resolve(); }, reject, host, data})); return Promise.resolve(); } };
   const scriptOutcomes = (options && options.scriptOutcomes || []).slice();
   const document = {
     activeElement: null,
@@ -157,7 +157,9 @@ function environment(fetch, options) {
     head: { appendChild(script) {
       calls.push({ script: script.src });
       const outcome = scriptOutcomes.shift() || "error";
-      if (outcome === "load") { window.Plotly = plotly; script.onload(); } else script.onerror();
+      if (outcome === "load") { window.Plotly = plotly; script.onload(); }
+      else if (outcome === "deferred") scriptResolvers.push({ load() { window.Plotly = plotly; script.onload(); }, reject() { script.onerror(); } });
+      else script.onerror();
     } },
   };
   const window = { fetch(url, options) { calls.push({ url, options: options || {} }); return fetch(url, options || {}); }, addEventListener() {}, setTimeout(callback) { callback(); return 0; }, clearTimeout() {}, Plotly: plotly };
@@ -172,7 +174,7 @@ function environment(fetch, options) {
   e.peaksBottomTab.classList = { toggle(on) { this.on = on; }, contains() { return false; } };
   if (options && options.moduleNameOnly) { window.moduleName = plotly; delete window.Plotly; }
   if (options && options.plotlyAbsent) delete window.Plotly;
-  return { e, window, document, calls };
+  return { e, window, document, calls, plotResolvers, scriptResolvers };
 }
 
 async function boot(fetch, options) {
@@ -204,6 +206,79 @@ module.exports = async function testDisplayBehavior(assert) {
   const plots = env.calls.filter((call) => call.plot);
   assert(plots.length === 1, "one Display page must render exactly one graph host");
   assert(JSON.stringify(plots[0].data.map((trace) => trace.name)) === JSON.stringify([A, B]), "the active graph must include every checked signal independently");
+  async function settleMicrotasks() { for (let i = 0; i < 8; i += 1) await Promise.resolve(); }
+  const c24 = await boot((url) => Promise.resolve(response(200, initial)), {deferredPlotly:true});
+  assert(c24.plotResolvers.length === 1 && c24.calls.filter(call => call.plot).length === 1, "C24 starts one controlled Time render");
+  c24.e.legend.checked = false; c24.e.legend.listeners.change({target:c24.e.legend}); await settleMicrotasks();
+  c24.plotResolvers.shift().resolve(); await settleMicrotasks();
+  assert(c24.calls.filter(call => call.plot).length === 2 && c24.plotResolvers.length === 1, "C24 stale Time completion serializes one latest render");
+  c24.plotResolvers.shift().resolve(); await settleMicrotasks();
+  assert(c24.e.host.dataset.plotReady === "true" && c24.calls.filter(call => call.plot).length === 2, "C24 current completion sets readiness once with bounded reassertion/no loop");
+
+  // C24: every delayed renderer completion must be fenced by the current
+  // authoritative Display/plot generation.  These are controlled promises,
+  // deliberately without clock-based waits.
+  function persistenceSnapshot(revision, activeId, definitions) {
+    const result = snapshot(revision, activeId || "display-1", definitions || [{ id:"display-1", name:"Display 1", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A] }], A);
+    const payload = { type:"heatmap", signal:A, x:[7, 9], y:[-30, -10], z:[[10, 20], [30, 40]], x_label:"Frequency", y_label:"Magnitude", color_label:"Occurrence" };
+    result.plot_payload.persistence = payload;
+    result.plots.persistence = payload;
+    return result;
+  }
+  async function settleControlledPlots(controlled, limit) {
+    for (let index = 0; index < limit && controlled.plotResolvers.length; index += 1) {
+      controlled.plotResolvers.shift().resolve();
+      await settleMicrotasks();
+    }
+  }
+  const c24Persistence = persistenceSnapshot(1);
+  const c24PlotSwitch = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? initial : c24Persistence)), { deferredPlotly:true });
+  c24PlotSwitch.e.plotSelect.value = "persistence"; c24PlotSwitch.e.plotSelect.listeners.change({target:c24PlotSwitch.e.plotSelect}); await settleMicrotasks();
+  assert(c24PlotSwitch.calls.filter(call => call.plot).length === 1 && c24PlotSwitch.plotResolvers.length === 1 && c24PlotSwitch.plotResolvers[0].data[0].type === "scatter" && c24PlotSwitch.e.title.textContent === "Persistence", "C24 Time→Persistence must leave zero latest Persistence resolver and only one stale Time Plotly.react before it settles");
+  c24PlotSwitch.plotResolvers.shift().resolve(); await settleMicrotasks();
+  const c24PersistenceRender = c24PlotSwitch.calls.filter(call => call.plot).at(-1);
+  assert(c24PersistenceRender.data[0].type === "heatmap" && c24PlotSwitch.e.title.textContent === "Persistence", "C24 Time→Persistence must serialize only the latest plot/title after the stale Time render settles");
+  await settleControlledPlots(c24PlotSwitch, 3);
+  assert(c24PlotSwitch.e.host.dataset.plotReady === "true" && c24PlotSwitch.calls.filter(call => call.plot).length <= 3, "C24 latest Persistence render settles with a bounded number of reassertions");
+
+  const c24OldReject = await boot((url) => Promise.resolve(response(200, initial)), { deferredPlotly:true });
+  c24OldReject.e.legend.checked = false; c24OldReject.e.legend.listeners.change({target:c24OldReject.e.legend}); await settleMicrotasks();
+  c24OldReject.plotResolvers.shift().reject(new Error("obsolete Time renderer failed")); await Promise.resolve();
+  assert(!c24OldReject.e.host.innerHTML.includes("plot-error-state") && c24OldReject.e.host.dataset.plotReady !== "false" && c24OldReject.e.title.textContent === "Time", "C24 obsolete rejection must publish neither the plot error nor false readiness before the authoritative render settles");
+  await settleMicrotasks();
+  await settleControlledPlots(c24OldReject, 3);
+  assert(!c24OldReject.e.host.innerHTML.includes("plot-error-state") && c24OldReject.e.host.dataset.plotReady === "true" && c24OldReject.e.title.textContent === "Time", "C24 rejection of an obsolete render must not replace successful authoritative Time with an error state");
+  assert(c24OldReject.calls.filter(call => call.plot).length <= 3 && c24OldReject.plotResolvers.length === 0, "C24 obsolete rejection cannot create an unbounded Plotly.react/reassertion loop");
+
+  const c24DelayedLoader = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? initial : c24Persistence)), { plotlyAbsent:true, scriptOutcomes:["deferred"] });
+  assert(c24DelayedLoader.scriptResolvers.length === 1, "C24 delayed local Plotly loader remains explicitly controllable");
+  c24DelayedLoader.e.plotSelect.value = "persistence"; c24DelayedLoader.e.plotSelect.listeners.change({target:c24DelayedLoader.e.plotSelect}); await settleMicrotasks();
+  c24DelayedLoader.scriptResolvers.shift().load(); await settleMicrotasks();
+  const c24LoaderPlots = c24DelayedLoader.calls.filter(call => call.plot);
+  assert(c24LoaderPlots.length === 1 && c24LoaderPlots[0].data[0].type === "heatmap" && c24DelayedLoader.e.title.textContent === "Persistence", "C24 a delayed Plotly loader must skip the stale Time react after an authoritative plot change");
+
+  const c24Empty = emptySnapshot(1, A);
+  const c24EmptyAfterOld = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? initial : c24Empty)), { deferredPlotly:true });
+  c24EmptyAfterOld.e.clearDisplayAction.listeners.click(); await settleMicrotasks();
+  assert(c24EmptyAfterOld.e.host.innerHTML.includes("empty-display-plot-state") && c24EmptyAfterOld.e.host.dataset.plotReady === "false", "C24 synchronous empty Display state must immediately replace a populated in-flight plot");
+  c24EmptyAfterOld.plotResolvers.shift().resolve(); await settleMicrotasks();
+  assert(c24EmptyAfterOld.e.host.innerHTML.includes("empty-display-plot-state") && c24EmptyAfterOld.e.host.dataset.plotReady === "false" && c24EmptyAfterOld.calls.filter(call => call.plot).length <= 1, "C24 stale populated completion must preserve the authoritative empty placeholder with bounded reassertion");
+
+  const c24DisplayDefinitions = [
+    { id:"display-1", name:"Display A", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A] },
+    { id:"display-2", name:"Display B", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A] },
+  ];
+  const c24DisplayA = snapshot(0, "display-1", c24DisplayDefinitions, A);
+  const c24DisplayB = persistenceSnapshot(1, "display-2", c24DisplayDefinitions);
+  const c24DisplaySwitch = await boot((url, options) => Promise.resolve(response(200, url === "./api/state" ? c24DisplayA : c24DisplayB)), { deferredPlotly:true });
+  c24DisplaySwitch.e.tabs.listeners.click({target:tabTarget("display-2")}); await settleMicrotasks();
+  assert(c24DisplaySwitch.calls.filter(call => call.plot).length === 1 && c24DisplaySwitch.plotResolvers.length === 1 && c24DisplaySwitch.plotResolvers[0].data[0].type === "scatter" && c24DisplaySwitch.e.activeStatus.textContent.includes("Display B"), "C24 Display A→B must leave zero latest Display B resolver and only one stale Display A Plotly.react before it settles");
+  c24DisplaySwitch.plotResolvers.shift().resolve(); await settleMicrotasks();
+  const c24DisplayRender = c24DisplaySwitch.calls.filter(call => call.plot).at(-1);
+  assert(c24DisplaySwitch.e.activeStatus.textContent.includes("Display B") && c24DisplaySwitch.e.title.textContent === "Persistence" && c24DisplayRender.data[0].type === "heatmap", "C24 actual Display A→B switch must let only Display B's latest Persistence graph win");
+  await settleControlledPlots(c24DisplaySwitch, 3);
+  assert(c24DisplaySwitch.calls.filter(call => call.plot).length <= 3 && c24DisplaySwitch.e.host.dataset.plotReady === "true", "C24 Display switch completion remains finite and leaves the current graph ready");
+
   const rowIds = Array.from(env.e.rows.innerHTML.matchAll(/data-testid='signal-checkbox-([^']+)'/g), (match) => match[1]);
   assert(rowIds.length === 2 && new Set(rowIds).size === 2, "Cyrillic signal names must receive collision-free checkbox test IDs");
 
