@@ -263,3 +263,18 @@ risks: True axes/shape/power and cost unknown; current typed invariants cannot
 be assumed.
 follow-ups: Retain matrix for upstream-fixed build; no C14 implementation now.
 next_task_candidates: C15 Spectrogram Frequency Limits matrix after evidence.
+
+## C15 Spectrogram Frequency Limits matrix — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c15_limits_matrix`.
+proposal_consumed: Exact three-key settings with nullable Auto or strict Hz
+object; typed Auto/Explicit/query/cache; real/complex topology; requested/
+effective metadata; cold no-op and Spectrogram-only isolation; atomic failures;
+A/B/Clear/re-add/source; frontend draft/Auto/422/409; E2E cleanup.
+guard: C10 power-mode multi-trace intersection/ROI behavior must not be copied.
+Spectrogram has one analysis source and frequency×time power. Provider evidence
+and DEC-021 resolve strict fully-inside range, source reset and N<2 metadata.
+changes: None; read-only matrix.
+follow-ups: Implement tests in role-owned paths after Backend/Frontend changes.
+next_task_candidates: C15 unit/API/Engee/frontend matrix.

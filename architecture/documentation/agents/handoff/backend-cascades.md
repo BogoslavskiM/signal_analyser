@@ -370,3 +370,25 @@ of application/test/network. Confirmed as ENGEE-20260801-004.
 risks: True topology/power/resource behavior remains unknown.
 follow-ups: Reprobe an upstream-fixed build before successor ADR.
 next_task_candidates: Spectrogram Frequency Limits capability slice.
+
+## C15 Spectrogram Frequency Limits prod probe — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c15_spectrogram_limits_probe`.
+scope: Public EngeeDSP read-only prod matrix; no repository changes.
+evidence: Real/complex Auto/full/partial/narrow/clipped grids are deterministic,
+1024×15 at N=256 and 1024×2 at N=2. Valid explicit ranges produce exact new
+frequency endpoints and changed power with unchanged time centers. Auto and
+explicit full are not bitwise identical. Outside/reversed/equal/nonfinite/wrong
+shape reject; provider accepts Bool containers and leaks MethodErrors for some
+bad types.
+policy: Strict product validation requires full interval inside authoritative
+topology, finite non-Bool ordered Hz; no provider clipping. Auto/Explicit are
+independent cache identities. Canonical options append FrequencyLimits after
+Leakage, OverlapPercent and TwoSided.
+candidate: Floating Nyquist-touch can return 1024 rows with only two unique
+frequencies; suspected intake ENGEE-20260801-005, product workaround strict.
+verification: Repeats and option order exact; no app/test/network layer used.
+risks: Package semantic version unavailable; partial clipping not exposed.
+follow-ups: Implement DEC-021 typed OOP contract.
+next_task_candidates: Backend C15 implementation.

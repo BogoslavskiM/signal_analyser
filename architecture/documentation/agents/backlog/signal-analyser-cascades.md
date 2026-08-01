@@ -159,6 +159,10 @@ Owner: Architect
   Nyquist-touch can produce a degenerate two-unique-value axis; product policy
   should validate fully inside authoritative topology and never delegate that
   edge. ADR must keep Spectrogram settings independent from Spectrum settings.
+- DEC-021 freezes C15: exact three-key settings, strict fully-inside Hz range,
+  independent Spectrum state, Auto/Explicit cache identity, stable metadata,
+  source reset policy and existing cold-cache/no-op guards. Implementation is
+  eligible after the contract-doc checkpoint.
 
 - SA-UI-005 through SA-UI-010 structured handoffs are consumed. SA-GRAPH-001
   researches Spectrum defaults/units for a future separately frozen slice.

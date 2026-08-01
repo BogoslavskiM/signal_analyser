@@ -825,3 +825,24 @@ confirms real/complex exact in-domain grids, clipping/outside behavior,
 determinism, option-order invariance and N=2 support. Architect must freeze a
 strict product policy rather than copy C10 Spectrum semantics or expose a
 provider Nyquist-touch degenerate grid.
+
+## Cascade 15 contract freeze — 2026-08-01
+
+Status: `contract-frozen`; implementation eligible after docs checkpoint.
+
+[DEC-20260801-021](../../user/decisions/DEC-20260801-021-spectrogram-frequency-limits.md)
+freezes an independent nullable Auto/strict Explicit Hz value inside the exact
+three-key Spectrogram settings object. Product requires the whole interval
+inside authoritative real/complex topology and rejects provider clipping.
+Auto/explicit full have different raw-cache identities; requested/effective
+metadata is always defined, including N<2 typed empty.
+
+Source change preserves only a fully valid interval, otherwise resets Auto.
+Changed limits calculate only Spectrogram; equal cold object calculates neither
+spectral provider. Frontend gets two fields in the existing section, fixed Hz,
+one full request and existing accepted rollback/bounded replay. Spectrum state
+remains independent as an explicit product delta from MATLAB shared-view bands.
+
+The suspected floating Nyquist-touch degenerate grid is recorded internally as
+ENGEE-20260801-005; strict product validation avoids it without claiming an
+upstream-confirmed defect.

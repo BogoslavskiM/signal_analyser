@@ -528,3 +528,22 @@ Analysis pages cross-checked; no app/runtime evidence claimed.
 risks: Docs capability cannot override prod Engee failure.
 follow-ups: Optional GUI default mapping only after safe clicker recovery.
 next_task_candidates: Consume prod NO-GO; research next safe slice.
+
+## C15 docs-only Spectrogram Frequency Limits — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c15_spectrogram_limits_docs`.
+scope: Official MathWorks web documentation only; MATLAB untouched.
+facts: Spectrogram exposes minimum/maximum Frequency Limits and unit selector;
+generated scripts pass limits into `pspectrum`, so this is a compute band, not
+optical zoom. Real default is one-sided, complex centered two-sided; Log is
+unsupported for complex. Power Limits are colormap bounds, while MinThreshold
+zeros bins. Frequency axes are Display-local; docs show a band shared across
+spectral views in one MATLAB display and not saved in sessions.
+gaps: Exact invalid-entry UI, partial clipping, log-with-zero and field writeback
+are undocumented. Product independence from Spectrum is an explicit portable
+delta, not a MATLAB parity claim.
+verification: Customize/Explore/Spectrogram/Spectrum/pspectrum/generated-script
+and limitations pages cross-checked; no runtime evidence.
+follow-ups: Optional bounded GUI validation later; not a C15 gate.
+next_task_candidates: C15 implementation/E2E from DEC-021.
