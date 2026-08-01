@@ -127,6 +127,7 @@ end
 function signal_analyser_spectrogram_plot(
     data::SignalSpectrogramData,
     frequency_limits_metadata::Dict{String,Any},
+    frequency_scale_metadata::Dict{String,Any},
 )::Dict{String,Any}
     x = Float64[data.segment_centers_s...]
     y = Float64[data.frequencies_hz...]
@@ -141,6 +142,7 @@ function signal_analyser_spectrogram_plot(
         "y_label" => "Частота, Гц",
         "color_label" => "Мощность, дБ",
         "frequency_limits" => frequency_limits_metadata,
+        "frequency_scale" => frequency_scale_metadata,
     )
 end
 
@@ -151,6 +153,7 @@ function signal_analyser_spectrogram_plot(
     signal_analyser_spectrogram_plot(
         data,
         signal_spectrogram_frequency_limits_metadata(settings, data),
+        signal_spectrogram_frequency_scale_metadata(settings, data),
     )
 end
 
@@ -162,6 +165,7 @@ function signal_analyser_spectrogram_plot(
     signal_analyser_spectrogram_plot(
         data,
         signal_spectrogram_frequency_limits_metadata(settings, signal),
+        signal_spectrogram_frequency_scale_metadata(settings, signal),
     )
 end
 

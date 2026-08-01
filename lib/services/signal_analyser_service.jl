@@ -27,6 +27,7 @@ const SIGNAL_SPECTROGRAM_SETTINGS_FIELDS = Set([
     "overlap_percent",
     "leakage",
     "frequency_limits",
+    "frequency_scale",
 ])
 
 const SIGNAL_SPECTRUM_SCALE_NAMES = Dict(
@@ -42,6 +43,13 @@ const SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES = Dict(
 )
 const SIGNAL_SPECTRUM_FREQUENCY_SCALES_BY_NAME = Dict(
     value => key for (key, value) in SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES
+)
+const SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES = Dict(
+    LINEAR_SPECTROGRAM_FREQUENCY_SCALE => "linear",
+    LOG_SPECTROGRAM_FREQUENCY_SCALE => "log",
+)
+const SIGNAL_SPECTROGRAM_FREQUENCY_SCALES_BY_NAME = Dict(
+    value => key for (key, value) in SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES
 )
 
 function signal_analyser_signal_payload(signal::AnalysedSignal)::Dict{String,Any}
@@ -116,6 +124,41 @@ function signal_spectrogram_settings_payload(
         "overlap_percent" => settings.overlap_percent,
         "leakage" => settings.leakage,
         "frequency_limits" => signal_spectrum_frequency_limits_payload(settings.frequency_limits),
+        "frequency_scale" => SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES[settings.frequency_scale],
+    )
+end
+
+function signal_spectrogram_frequency_scale_metadata(
+    settings::SignalSpectrogramSettings,
+    topology::SignalSpectrumTopology,
+)::Dict{String,Any}
+    effective = signal_spectrogram_effective_frequency_scale(settings, topology)
+    available = signal_spectrogram_available_frequency_scales(topology)
+    Dict{String,Any}(
+        "requested" => SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES[settings.frequency_scale],
+        "effective" => SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES[effective],
+        "available" => [SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES[scale] for scale in available],
+    )
+end
+
+signal_spectrogram_frequency_scale_metadata(
+    settings::SignalSpectrogramSettings,
+    signal::AnalysedSignal,
+) = signal_spectrogram_frequency_scale_metadata(settings, signal_spectrum_topology(signal))
+
+signal_spectrogram_frequency_scale_metadata(
+    settings::SignalSpectrogramSettings,
+    data::SignalSpectrogramData,
+) = signal_spectrogram_frequency_scale_metadata(settings, data.topology)
+
+function signal_spectrogram_frequency_scale_metadata(
+    settings::SignalSpectrogramSettings,
+    ::Nothing,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "requested" => SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES[settings.frequency_scale],
+        "effective" => nothing,
+        "available" => String[],
     )
 end
 
@@ -268,6 +311,10 @@ function signal_analyser_empty_plots(
             "y_label" => "Частота, Гц",
             "color_label" => "Мощность, дБ",
             "frequency_limits" => signal_spectrogram_frequency_limits_metadata(
+                spectrogram_settings,
+                nothing,
+            ),
+            "frequency_scale" => signal_spectrogram_frequency_scale_metadata(
                 spectrogram_settings,
                 nothing,
             ),
@@ -821,6 +868,7 @@ function signal_spectrogram_with_frequency_limits(
         settings.overlap_percent,
         settings.leakage,
         frequency_limits,
+        settings.frequency_scale,
     )
 end
 
@@ -1961,19 +2009,19 @@ function signal_analyser_validate_spectrogram_settings!(
 )::Union{Nothing,SignalSpectrogramSettings}
     if !(value isa AbstractDict)
         field_errors["spectrogram_settings"] =
-            "Требуется объект {overlap_percent, leakage, frequency_limits}"
+            "Требуется объект {overlap_percent, leakage, frequency_limits, frequency_scale}"
         return nothing
     end
     keys_set = signal_analyser_payload_keys(value)
-    if length(value) != 3 || keys_set != SIGNAL_SPECTROGRAM_SETTINGS_FIELDS
+    if length(value) != 4 || keys_set != SIGNAL_SPECTROGRAM_SETTINGS_FIELDS
         missing = sort!(collect(setdiff(SIGNAL_SPECTROGRAM_SETTINGS_FIELDS, keys_set)))
         unknown = sort!(collect(setdiff(keys_set, SIGNAL_SPECTROGRAM_SETTINGS_FIELDS)))
         details = String[]
         isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
         isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
-        length(value) == 3 || push!(details, "требуется ровно три поля")
+        length(value) == 4 || push!(details, "требуется ровно четыре поля")
         field_errors["spectrogram_settings"] =
-            "Ожидались только overlap_percent, leakage и frequency_limits ($(join(details, "; ")))"
+            "Ожидались только overlap_percent, leakage, frequency_limits и frequency_scale ($(join(details, "; ")))"
         return nothing
     end
 
@@ -1994,8 +2042,20 @@ function signal_analyser_validate_spectrogram_settings!(
         signal_analyser_payload_value(value, "frequency_limits"),
     )
     frequency_limits === nothing && return nothing
+    frequency_scale_value = signal_analyser_payload_value(value, "frequency_scale")
+    if !(frequency_scale_value isa AbstractString) ||
+        !haskey(SIGNAL_SPECTROGRAM_FREQUENCY_SCALES_BY_NAME, String(frequency_scale_value))
+        field_errors["spectrogram_settings"] =
+            "frequency_scale: допустимо только lowercase linear или log"
+        return nothing
+    end
     try
-        SignalSpectrogramSettings(overlap_value, leakage_value, frequency_limits)
+        SignalSpectrogramSettings(
+            overlap_value,
+            leakage_value,
+            frequency_limits,
+            SIGNAL_SPECTROGRAM_FREQUENCY_SCALES_BY_NAME[String(frequency_scale_value)],
+        )
     catch err
         if err isa ArgumentError || err isa InexactError || err isa OverflowError
             field_errors["spectrogram_settings"] = sprint(showerror, err)
@@ -2372,8 +2432,13 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         )
         changed = signal_analyser_has_changes(changes)
         spectrogram_settings_only = signal_analyser_only_spectrogram_settings_changed(changes)
+        spectrogram_presentation_only = spectrogram_settings_only &&
+            signal_spectrogram_provider_settings_equal(
+                display.spectrogram_settings,
+                prospective_display.spectrogram_settings,
+            )
         prepare_spectrum = changed && !spectrogram_settings_only
-        prepare_spectrogram = changed
+        prepare_spectrogram = changed && !spectrogram_presentation_only
 
         # Build every payload affected by the request before publishing the
         # mutation so a runtime DSP failure cannot leave state half-applied.

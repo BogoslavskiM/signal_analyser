@@ -55,6 +55,11 @@ end
     LOG_SPECTRUM_FREQUENCY_SCALE
 end
 
+@enum SignalSpectrogramFrequencyScale begin
+    LINEAR_SPECTROGRAM_FREQUENCY_SCALE
+    LOG_SPECTROGRAM_FREQUENCY_SCALE
+end
+
 @enum SignalSpectrumTopology begin
     ONE_SIDED_SPECTRUM
     CENTERED_TWO_SIDED_SPECTRUM
@@ -146,16 +151,18 @@ Base.isequal(left::SignalSpectrumSettings, right::SignalSpectrumSettings) = left
 Base.hash(settings::SignalSpectrumSettings, seed::UInt) =
     hash((settings.scale, settings.frequency_scale, settings.leakage, settings.frequency_limits), seed)
 
-"""Persistent per-Display Spectrogram provider settings."""
+"""Persistent per-Display Spectrogram provider and presentation settings."""
 struct SignalSpectrogramSettings
     overlap_percent::Float64
     leakage::Float64
     frequency_limits::AbstractSignalSpectrumFrequencyLimits
+    frequency_scale::SignalSpectrogramFrequencyScale
 
     function SignalSpectrogramSettings(
         overlap_percent::Real,
         leakage::Real,
         frequency_limits::AbstractSignalSpectrumFrequencyLimits,
+        frequency_scale::SignalSpectrogramFrequencyScale,
     )
         overlap_percent isa Bool && throw(ArgumentError(
             "Overlap Spectrogram должен быть числом, но не Bool",
@@ -175,10 +182,21 @@ struct SignalSpectrogramSettings
             overlap_value == 0.0 ? 0.0 : overlap_value,
             leakage_value == 0.0 ? 0.0 : leakage_value,
             frequency_limits,
+            frequency_scale,
         )
     end
 end
 
+SignalSpectrogramSettings(
+    overlap_percent::Real,
+    leakage::Real,
+    frequency_limits::AbstractSignalSpectrumFrequencyLimits,
+) = SignalSpectrogramSettings(
+    overlap_percent,
+    leakage,
+    frequency_limits,
+    LINEAR_SPECTROGRAM_FREQUENCY_SCALE,
+)
 SignalSpectrogramSettings(overlap_percent::Real, leakage::Real) =
     SignalSpectrogramSettings(
         overlap_percent,
@@ -192,10 +210,47 @@ SignalSpectrogramSettings() = SignalSpectrogramSettings(50.0, 0.5)
 Base.:(==)(left::SignalSpectrogramSettings, right::SignalSpectrogramSettings) =
     left.overlap_percent == right.overlap_percent &&
     left.leakage == right.leakage &&
-    left.frequency_limits == right.frequency_limits
+    left.frequency_limits == right.frequency_limits &&
+    left.frequency_scale == right.frequency_scale
 Base.isequal(left::SignalSpectrogramSettings, right::SignalSpectrogramSettings) = left == right
 Base.hash(settings::SignalSpectrogramSettings, seed::UInt) =
-    hash((settings.overlap_percent, settings.leakage, settings.frequency_limits), seed)
+    hash(
+        (
+            settings.overlap_percent,
+            settings.leakage,
+            settings.frequency_limits,
+            settings.frequency_scale,
+        ),
+        seed,
+    )
+
+"""Compare only settings that define raw Spectrogram provider data."""
+signal_spectrogram_provider_settings_equal(
+    left::SignalSpectrogramSettings,
+    right::SignalSpectrogramSettings,
+) =
+    left.overlap_percent == right.overlap_percent &&
+    left.leakage == right.leakage &&
+    left.frequency_limits == right.frequency_limits
+
+function signal_spectrogram_effective_frequency_scale(
+    settings::SignalSpectrogramSettings,
+    topology::SignalSpectrumTopology,
+)::SignalSpectrogramFrequencyScale
+    topology == CENTERED_TWO_SIDED_SPECTRUM ?
+        LINEAR_SPECTROGRAM_FREQUENCY_SCALE : settings.frequency_scale
+end
+
+function signal_spectrogram_available_frequency_scales(
+    topology::SignalSpectrumTopology,
+)::Vector{SignalSpectrogramFrequencyScale}
+    topology == CENTERED_TWO_SIDED_SPECTRUM ?
+        SignalSpectrogramFrequencyScale[LINEAR_SPECTROGRAM_FREQUENCY_SCALE] :
+        SignalSpectrogramFrequencyScale[
+            LINEAR_SPECTROGRAM_FREQUENCY_SCALE,
+            LOG_SPECTROGRAM_FREQUENCY_SCALE,
+        ]
+end
 
 """Inclusive 1-based raw sample range shared by ROI consumers."""
 struct SignalTimeSampleRange

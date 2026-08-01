@@ -9,7 +9,8 @@ function shell(page, config) { return id(page, config, "shell"); }
 function activeDisplay(snapshot) { return (snapshot.displays || []).find(function (item) { return item.id === snapshot.active_display_id; }); }
 function analysisSource(snapshot) { const display = activeDisplay(snapshot); return display && display.analysis_signal || ""; }
 function overlap(snapshot) { return snapshot && snapshot.spectrogram_settings; }
-const DEFAULT = { overlap_percent: 50, leakage: 0.5, frequency_limits: null };
+const DEFAULT = { overlap_percent: 50, leakage: 0.5, frequency_limits: null, frequency_scale: "linear" };
+function four(settings) { return Object.assign({ frequency_scale: "linear" }, settings || {}); }
 function same(left, right) { return JSON.stringify(left || null) === JSON.stringify(right || null); }
 async function state(page) { return page.evaluate(function () { return window.SignalAnalyserApi.getState(); }); }
 
@@ -29,8 +30,9 @@ async function mutation(page, config, action, log, label, expectedStatus, expect
     performanceLog(log, label, Date.now() - startedAt, undefined, `HTTP ${response.status()}; ${requests.length} request(s)`);
     if (response.status() !== expectedStatus || requests.length !== 1) throw new Error(`${label}: expected exactly one HTTP ${expectedStatus} /api/view request`);
     if (expectedSettings) {
+      expectedSettings = four(expectedSettings);
       const request = JSON.parse(requests[0].postData() || "{}");
-      if (!same(request.spectrogram_settings, expectedSettings) || Object.keys(request.spectrogram_settings || {}).length !== 3) throw new Error(`${label}: request must send exact full three-key spectrogram_settings`);
+      if (!same(request.spectrogram_settings, expectedSettings) || Object.keys(request.spectrogram_settings || {}).length !== 4) throw new Error(`${label}: request must send exact full four-key spectrogram_settings`);
     }
     if (expectedStatus === 200 && payload.state_revision !== before + 1) throw new Error(`${label}: valid mutation must increment revision exactly once`);
     if (expectedStatus === 422 && Number(await shell(page, config).getAttribute("data-state-revision")) !== before) throw new Error(`${label}: rejection must preserve revision`);
@@ -65,10 +67,11 @@ async function setOverlap(page, config, value, log, label, expectedStatus, expec
   return mutation(page, config, function () { return input.press("Enter"); }, log, label, expectedStatus, expectedSettings);
 }
 function assertSettings(assert, snapshot, expected, label) {
+  expected = four(expected);
   const display = activeDisplay(snapshot);
   assert(display && overlap(snapshot) && display.spectrogram_settings && same(overlap(snapshot), display.spectrogram_settings),
     `${label}: root and active Display must expose the same full spectrogram_settings`);
-  assert(Object.keys(overlap(snapshot)).sort().join(",") === "frequency_limits,leakage,overlap_percent", `${label}: Spectrogram settings must have exactly three keys`);
+  assert(Object.keys(overlap(snapshot)).sort().join(",") === "frequency_limits,frequency_scale,leakage,overlap_percent", `${label}: Spectrogram settings must have exactly four keys`);
   if (expected) assert(same(overlap(snapshot), expected), `${label}: must retain the expected Overlap intent`);
 }
 function providerSignature(assert, snapshot, label) {

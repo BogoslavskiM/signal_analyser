@@ -396,7 +396,7 @@ end
     state = SA_API.default_signal_analyser_state()
     first_name = state.signals[1].name
     initial = SA_API.signal_analyser_snapshot(state)
-    default_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing)
+    default_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
     @test initial["spectrogram_settings"] == default_settings
     @test all(display -> display["spectrogram_settings"] == default_settings, initial["displays"])
 
@@ -406,17 +406,17 @@ end
         Dict{String,Any}(),
         Dict("overlap_percent" => 50.0),
         Dict("leakage" => 0.5),
-        Dict("overlap_percent" => true, "leakage" => 0.5, "frequency_limits" => nothing),
-        Dict("overlap_percent" => 50.0, "leakage" => true, "frequency_limits" => nothing),
-        Dict("overlap_percent" => 50.0, "leakage" => "0.5", "frequency_limits" => nothing),
-        Dict("overlap_percent" => NaN, "leakage" => 0.5, "frequency_limits" => nothing),
-        Dict("overlap_percent" => 50.0, "leakage" => NaN, "frequency_limits" => nothing),
-        Dict("overlap_percent" => 50.0, "leakage" => Inf, "frequency_limits" => nothing),
-        Dict("overlap_percent" => 50.0, "leakage" => -0.1, "frequency_limits" => nothing),
-        Dict("overlap_percent" => 50.0, "leakage" => 1.1, "frequency_limits" => nothing),
-        Dict("overlap_percent" => -1.0, "leakage" => 0.5, "frequency_limits" => nothing),
-        Dict("overlap_percent" => 75.1, "leakage" => 0.5, "frequency_limits" => nothing),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "extra" => true),
+        Dict("overlap_percent" => true, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        Dict("overlap_percent" => 50.0, "leakage" => true, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        Dict("overlap_percent" => 50.0, "leakage" => "0.5", "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        Dict("overlap_percent" => NaN, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        Dict("overlap_percent" => 50.0, "leakage" => NaN, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        Dict("overlap_percent" => 50.0, "leakage" => Inf, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        Dict("overlap_percent" => 50.0, "leakage" => -0.1, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        Dict("overlap_percent" => 50.0, "leakage" => 1.1, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        Dict("overlap_percent" => -1.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        Dict("overlap_percent" => 75.1, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear"),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "extra" => true),
     )
         error = try
             SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => invalid))
@@ -432,7 +432,7 @@ end
         @test SA_API.signal_analyser_snapshot(state) == initial
     end
 
-    overlap_75 = Dict("overlap_percent" => 75.0, "leakage" => 0.5, "frequency_limits" => nothing)
+    overlap_75 = Dict("overlap_percent" => 75.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
     changed = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => overlap_75))
     @test changed["state_revision"] == 1
     @test changed["spectrogram_settings"] == overlap_75
@@ -449,7 +449,7 @@ end
     @test SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [first_name]))["spectrogram_settings"] == default_settings
 
     stale = try
-        SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 0.5, "frequency_limits" => nothing)))
+        SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")))
         nothing
     catch caught
         caught
@@ -627,4 +627,29 @@ end
     end
     @test stale isa SA_API.SignalAnalyserStaleStateError
     @test SA_API.signal_analyser_snapshot(state) == before_conflict
+end
+
+@testset "Cascade 16 API rejects non-exact Spectrogram Frequency Scale settings atomically" begin
+    SA_API.reset_pspectrum_double!()
+    state = SA_API.default_signal_analyser_state()
+    initial = SA_API.signal_analyser_snapshot(state)
+    exact = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "log")
+    accepted = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => exact))
+    @test accepted["state_revision"] == 1 && accepted["spectrogram_settings"] == exact
+    @test accepted["plots"]["spectrogram"]["frequency_scale"] == Dict("requested" => "log", "effective" => "log", "available" => ["linear", "log"])
+    for malformed in (
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => 1),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "Log"),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "unexpected" => true),
+    )
+        error = try SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => malformed)); nothing catch caught; caught end
+        @test error isa SA_API.SignalAnalyserValidationError
+        response = SA_API.signal_analyser_validation_response(error)
+        @test response.status == 422 && haskey(response.body["error"]["fields"], "spectrogram_settings")
+        @test SA_API.signal_analyser_snapshot(state) == accepted
+    end
+    stale = try SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => exact)); nothing catch caught; caught end
+    @test stale isa SA_API.SignalAnalyserStaleStateError
+    @test SA_API.signal_analyser_stale_response(state, stale).status == 409
 end

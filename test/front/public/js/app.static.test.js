@@ -131,6 +131,17 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
     assert(app.includes(term), `Cascade 15 frontend must preserve Spectrogram Frequency Limits term ${term}`)
   );
   assert(!/cropFrequency|frequencyCrop|fft|stft|window\(/i.test(app), "Cascade 15 must not add client-side frequency cropping or DSP");
+  ["spectrogram-frequency-scale-select", "spectrogram-frequency-scale-effective", "spectrogram-frequency-scale-error"].forEach((id) =>
+    assert(html.includes(`data-testid="${id}"`), `Cascade 16 must expose stable Spectrogram Frequency Scale selector ${id}`)
+  );
+  assert(app.includes("spectrogram-log-frequency-error-state") && app.includes("без положительных частот"), "Cascade 16 must expose a stable all-nonpositive Log-frequency plot error");
+  assert(/data-testid="spectrogram-frequency-scale-error"[^>]*role="alert"[^>]*hidden/.test(html), "Cascade 16 must reserve an accessible Frequency Scale error");
+  ["spectrogramSettings", "spectrogramFrequencyScaleErrors", "frequency_scale", "available", "effective", "min.apply", "spectrogramFrequencyScaleCommit"].forEach((term) =>
+    assert(app.includes(term), `Cascade 16 frontend must retain display-local Frequency Scale term ${term}`)
+  );
+  assert(app.includes('scale.disabled = !enabled || !Array.isArray(scaleMeta.available) || scaleMeta.available.length < 2'), "availability metadata must authoritatively disable Spectrogram Log");
+  assert(app.includes('type:spectrogramScale === "log" ? "log" : undefined'), "effective Spectrogram scale must control only the y axis");
+  assert(!/spectrogram.*(?:fft|stft|pspectrum)/i.test(app), "Cascade 16 must not add client-side Spectrogram DSP");
   assert((app.match(/function renderStatisticsControls\(/g) || []).length === 1, "Statistics settings must have exactly one render function");
   assert((app.match(/function render\(/g) || []).length === 1, "frontend must retain exactly one render declaration");
   assert(!app.includes("function bindStatisticsShortcut("), "Statistics shortcut must not retain a dead duplicate binding path");
