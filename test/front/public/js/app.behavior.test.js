@@ -37,6 +37,9 @@ function snapshot(revision, activeId, displayDefinitions, rowSelectedSignal) {
     row_selected_signal: rowSelectedSignal === undefined ? (selected || A) : rowSelectedSignal,
     analysis_signal: selected,
     selected_signal: selected,
+    // The root projection is authoritative for a valid active Display.  Keep
+    // this in the ordinary fixture, then corrupt it explicitly in C28 cases.
+    active_plot: active && active.active_plot,
     visible_signals: Array.isArray(active.visible_signals) ? active.visible_signals.slice() : [],
     displays: definitions,
     signals: [
@@ -662,6 +665,169 @@ module.exports = async function testDisplayBehavior(assert) {
   c27Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   assert(c27Recovery.e.error.hidden === true && c27Recovery.e.activeStatus.textContent.includes("Display B") && c27RecoveryCalls.filter(call => call.url === "./api/displays").length === 1 && c27RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C27 valid authoritative topology response must clear local quarantine without resurrecting its discarded View intent");
 
+  // C28/DEC-034 active-plot boundary.  Fixtures start canonical and mutate
+  // only the wire field under test after construction: no helper fallback may
+  // make a malformed response appear compatible.
+  function c28Base(definitions, activeId, revision) { return c27Base(definitions, activeId || "display-1", revision); }
+  function c28Local(env, calls) {
+    assert(env.e.error.hidden === true && env.e.host.dataset.plotReady === "false" && env.e.host.innerHTML.includes("display-active-plot-contract-error-state") && env.e.host.innerHTML.includes("Некорректный тип графика в ответе сервера.") && calls.filter(call => call.url === "./api/view").length === 0, "C28 malformed active plot must retain a stable local error and issue zero View POST");
+  }
+  const c28Definition = {id:"display-1", name:"Display 1", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A, B]};
+  for (const plot of ["time", "spectrum", "spectrogram", "persistence"]) {
+    const valid = c28Base([Object.assign({}, c28Definition, {active_plot:plot})]);
+    const env = await boot(() => Promise.resolve(response(200, valid)));
+    assert(env.e.error.hidden === true && env.e.plotSelect.value === plot && env.e.activeStatus.textContent.includes(plot === "time" ? "Time" : plot === "spectrum" ? "Spectrum" : plot === "spectrogram" ? "Spectrogram" : "Persistence"), "C28 must accept every exact active_plot enum value without normalization");
+  }
+  const c28InvalidPlots = [
+    d => { delete d.active_plot; }, d => { d.active_plot = null; }, d => { d.active_plot = ""; }, d => { d.active_plot = 7; },
+    d => { d.active_plot = "Time"; }, d => { d.active_plot = " time "; }, d => { d.active_plot = "unknown"; },
+  ];
+  for (const mutate of c28InvalidPlots) {
+    const invalid = c28Base([Object.assign({}, c28Definition)]), calls = []; mutate(invalid.displays[0]);
+    const env = await boot((url, options) => { calls.push({url, options}); return Promise.resolve(response(200, invalid)); });
+    c28Local(env, calls);
+    env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
+    assert(calls.filter(call => call.url === "./api/view").length === 0, "C28 every malformed active per-Display plot class must block a fabricated View target");
+  }
+  // Exercise every corrupt per-Display form after a previously valid state as
+  // well.  These fixtures deliberately retain the valid root projection: an
+  // invalid active Display owns precedence over root active_plot validation.
+  function c28Pair(activeId) {
+    return [
+      Object.assign({}, c28Definition, {id:"display-1", name:"Display A", visible_signals:[A], analysis_signal:A, selected_signal:A}),
+      Object.assign({}, c28Definition, {id:"display-2", name:"Display B", active_plot:"persistence", visible_signals:[B], analysis_signal:B, selected_signal:B}),
+    ];
+  }
+  function c28For(id) {
+    const result = c28Base(c28Pair(id || "display-1"), id || "display-1");
+    if (result.active_display_id === "display-2") { result.row_selected_signal = B; result.analysis_signal = B; result.selected_signal = B; result.visible_signals = [B]; result.signals.forEach(signal => { signal.visible = signal.name === B; }); }
+    return result;
+  }
+  for (const mutate of c28InvalidPlots) {
+    const valid = c28Base([Object.assign({}, c28Definition)]), invalid = c28Base([Object.assign({}, c28Definition)]), calls = [], resolvers = [];
+    valid.panel.fields = [{id:"valid-field", label:"Valid", value:"before"}]; mutate(invalid.displays[0]);
+    const env = await boot((url, options) => { calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, valid)) : new Promise(resolve => resolvers.push(resolve)); });
+    env.e.fields.innerHTML = "stale panel fields"; env.e.measurementContent.innerHTML = "stale measurements"; env.e.peaksContent.innerHTML = "stale peaks";
+    env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
+    env.e.plotSelect.value = "persistence"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
+    resolvers.shift()(response(200, invalid)); await flush();
+    assert(calls.filter(call => call.url === "./api/view").length === 1 && env.e.host.innerHTML.includes("display-active-plot-contract-error-state") && env.e.fields.innerHTML === "" && env.e.measurementContent.innerHTML === "" && env.e.peaksContent.innerHTML === "", "C28 every malformed 200 must purge same-ID work and clear graph fields, Measurements, and Peaks after a valid render");
+  }
+  for (const mutate of c28InvalidPlots) {
+    const validA = c28For("display-1"), badA = c28For("display-1"), validB = c28For("display-2"), calls = [], resolvers = [];
+    mutate(badA.displays[0]);
+    const env = await boot((url, options) => { calls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, validA)); if (url === "./api/view") return new Promise(resolve => resolvers.push(resolve)); return Promise.resolve(response(200, validB)); });
+    env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
+    env.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
+    resolvers.shift()(response(409, {current:badA})); await flush();
+    assert(calls.filter(call => call.url === "./api/view").length === 1 && calls.filter(call => call.url === "./api/displays").length === 1 && env.e.activeStatus.textContent.includes("Display B") && env.e.error.hidden === true, "C28 every malformed 409 current must purge its replay, recover only through the valid B topology response, and not resurrect A intent");
+    const inactive = c28For("display-2"); mutate(inactive.displays[0]);
+    const inactiveCalls = [], inactiveEnv = await boot((url, options) => { inactiveCalls.push({url, options}); return Promise.resolve(response(200, inactive)); });
+    inactiveEnv.e.plotSelect.value = "spectrum"; inactiveEnv.e.plotSelect.listeners.change({target:inactiveEnv.e.plotSelect}); await flush();
+    assert(inactiveEnv.e.activeStatus.textContent.includes("Display B") && inactiveCalls.filter(call => call.url === "./api/view").length === 1, "C28 every malformed inactive A form must preserve independent active B View availability");
+  }
+  for (const plot of ["time", "spectrum", "spectrogram", "persistence"]) {
+    const initial = c28Base([Object.assign({}, c28Definition)]), authoritative = c28Base([Object.assign({}, c28Definition, {active_plot:plot})]), calls = [], resolvers = [];
+    const env = await boot((url, options) => { calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, initial)) : new Promise(resolve => resolvers.push(resolve)); });
+    env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
+    resolvers.shift()(response(200, authoritative)); await flush();
+    assert(calls.filter(call => call.url === "./api/view").length === 1 && env.e.error.hidden === true && env.e.plotSelect.value === plot, "C28 every valid active_plot enum must be accepted from an authoritative lifecycle response");
+  }
+  // DEC-033 selection remains the active error when both per-Display fields
+  // are corrupt.  C28 must still clear every stale server-derived surface and
+  // keep the now-quarantined controls from issuing another View request.
+  const c28DualValid = c28Base([Object.assign({}, c28Definition)]), c28DualBad = c28Base([Object.assign({}, c28Definition)]), c28DualCalls = [], c28DualResolvers = [];
+  c28DualValid.panel.fields = [{id:"valid-field", label:"Valid", value:"before"}];
+  c28DualBad.displays[0].visible_signals = [A, A]; delete c28DualBad.displays[0].active_plot;
+  const c28Dual = await boot((url, options) => { c28DualCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28DualValid)) : new Promise(resolve => c28DualResolvers.push(resolve)); });
+  c28Dual.e.fields.innerHTML = "stale panel fields"; c28Dual.e.measurementContent.innerHTML = "stale measurements"; c28Dual.e.peaksContent.innerHTML = "stale peaks";
+  c28Dual.e.plotSelect.value = "spectrum"; c28Dual.e.plotSelect.listeners.change({target:c28Dual.e.plotSelect}); await flush();
+  c28DualResolvers.shift()(response(200, c28DualBad)); await flush();
+  assert(c28Dual.e.host.innerHTML.includes("display-selection-contract-error-state") && c28Dual.e.host.innerHTML.includes("Некорректный выбор сигналов в ответе сервера.") && !c28Dual.e.host.innerHTML.includes("display-active-plot-contract-error-state") && c28Dual.e.fields.innerHTML === "" && c28Dual.e.measurementContent.innerHTML === "" && c28Dual.e.peaksContent.innerHTML === "", "C28 valid-to-dual corruption must retain selection-quarantine precedence while clearing graph fields, Measurements, and Peaks");
+  c28Dual.e.plotSelect.value = "persistence"; c28Dual.e.plotSelect.listeners.change({target:c28Dual.e.plotSelect}); await flush();
+  assert(c28DualCalls.filter(call => call.url === "./api/view").length === 1, "C28 dual-corruption selection quarantine must issue zero View POST after the authoritative malformed response");
+  for (const plot of ["time", "spectrum", "spectrogram", "persistence"]) {
+    const current = c28Base([Object.assign({}, c28Definition, {active_plot:plot})]), calls = [], resolvers = [];
+    const env = await boot((url, options) => { calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, current)) : new Promise(resolve => resolvers.push(resolve)); });
+    env.e.rows.listeners.click({target:rowTarget(B)}); await flush();
+    resolvers.shift()(response(409, {current:current})); await flush();
+    assert(calls.filter(call => call.url === "./api/view").length === 2 && env.e.error.hidden === true && JSON.parse(calls.at(-1).options.body).active_plot === plot, "C28 every valid active_plot enum must survive a valid 409 current and replay its exact canonical target");
+    const fatal = c28Base([Object.assign({}, c28Definition)]); delete fatal.active_plot;
+    let gets = 0; const recovery = await boot(() => Promise.resolve(response(200, gets++ === 0 ? fatal : c28Base([Object.assign({}, c28Definition, {active_plot:plot})]))));
+    recovery.e.retry.listeners.click(); await flush();
+    assert(recovery.e.error.hidden === true && recovery.e.plotSelect.value === plot && recovery.e.tabs.innerHTML.includes("display-tab-display-1"), "C28 every valid active_plot enum must restore only through a valid Retry GET snapshot");
+  }
+  const c28RootCases = [
+    s => { delete s.active_plot; }, s => { s.active_plot = null; }, s => { s.active_plot = ""; }, s => { s.active_plot = 7; }, s => { s.active_plot = "Time"; }, s => { s.active_plot = " time "; }, s => { s.active_plot = "unknown"; }, s => { s.active_plot = "spectrum"; },
+  ];
+  for (const mutate of c28RootCases) {
+    const invalid = c28Base([Object.assign({}, c28Definition)]); mutate(invalid);
+    const env = await boot(() => Promise.resolve(response(200, invalid)));
+    assert(env.e.error.hidden === false && env.e.errorText.textContent === "Некорректная структура snapshot сервера." && env.e.tabs.innerHTML === "" && env.e.host.innerHTML === "", "C28 valid-active missing/type/unknown/mismatched root active_plot must use fatal DEC-032 reset");
+  }
+  for (const mutate of c28RootCases) {
+    const invalid = c28Base([Object.assign({}, c28Definition)]); mutate(invalid);
+    const successCalls = [], successResolvers = [];
+    const success = await boot((url, options) => { successCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => successResolvers.push(resolve)); });
+    success.e.plotSelect.value = "spectrum"; success.e.plotSelect.listeners.change({target:success.e.plotSelect}); await flush();
+    successResolvers.shift()(response(200, invalid)); await flush();
+    assert(successCalls.filter(call => call.url === "./api/view").length === 1 && success.e.error.hidden === false && success.e.tabs.innerHTML === "", "C28 every malformed root active_plot 200 must fatal-reset and globally prevent replay");
+    const staleCalls = [], staleResolvers = [];
+    const stale = await boot((url, options) => { staleCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => staleResolvers.push(resolve)); });
+    stale.e.plotSelect.value = "spectrum"; stale.e.plotSelect.listeners.change({target:stale.e.plotSelect}); await flush();
+    staleResolvers.shift()(response(409, {current:invalid})); await flush();
+    assert(staleCalls.filter(call => call.url === "./api/view").length === 1 && stale.e.error.hidden === false && stale.e.tabs.innerHTML === "", "C28 every malformed root active_plot 409 current must fatal-reset and never stale-replay");
+  }
+  const c28RootBad = c28Base([Object.assign({}, c28Definition)]); c28RootBad.active_plot = "spectrum";
+  const c28Root200Calls = [], c28Root200Resolvers = [];
+  const c28Root200 = await boot((url, options) => { c28Root200Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => c28Root200Resolvers.push(resolve)); });
+  c28Root200.e.plotSelect.value = "spectrum"; c28Root200.e.plotSelect.listeners.change({target:c28Root200.e.plotSelect}); await flush();
+  c28Root200Resolvers.shift()(response(200, c28RootBad)); await flush();
+  c28Root200.e.plotSelect.value = "persistence"; c28Root200.e.plotSelect.listeners.change({target:c28Root200.e.plotSelect}); await flush();
+  assert(c28Root200Calls.filter(call => call.url === "./api/view").length === 1 && c28Root200.e.error.hidden === false && c28Root200.e.tabs.innerHTML === "", "C28 malformed root 200 must globally purge View work with no replay or later POST");
+  const c28Root409Calls = [], c28Root409Resolvers = [];
+  const c28Root409 = await boot((url, options) => { c28Root409Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => c28Root409Resolvers.push(resolve)); });
+  c28Root409.e.plotSelect.value = "spectrum"; c28Root409.e.plotSelect.listeners.change({target:c28Root409.e.plotSelect}); await flush();
+  c28Root409Resolvers.shift()(response(409, {current:c28RootBad})); await flush();
+  assert(c28Root409Calls.filter(call => call.url === "./api/view").length === 1 && c28Root409.e.error.hidden === false && c28Root409.e.tabs.innerHTML === "", "C28 malformed root 409 current must be fatal and never stale-replay");
+  let c28RootRetry = 0; const c28RootRecovery = await boot((url) => Promise.resolve(response(200, c28RootRetry++ === 0 ? c28RootBad : c28Base([Object.assign({}, c28Definition)]))));
+  c28RootRecovery.e.retry.listeners.click(); await flush();
+  assert(c28RootRecovery.e.error.hidden === true && c28RootRecovery.e.tabs.innerHTML.includes("display-tab-display-1"), "C28 only a valid Retry GET may recover a root active_plot fatal reset");
+  const c28Precedence = c28Base([Object.assign({}, c28Definition)]); delete c28Precedence.displays[0].active_plot; delete c28Precedence.active_plot;
+  const c28PrecedenceCalls = [], c28PrecedenceEnv = await boot((url, options) => { c28PrecedenceCalls.push({url, options}); return Promise.resolve(response(200, c28Precedence)); });
+  c28Local(c28PrecedenceEnv, c28PrecedenceCalls);
+  const c28Definitions = [
+    Object.assign({}, c28Definition, {id:"display-1", name:"Display A", visible_signals:[A], analysis_signal:A, selected_signal:A}),
+    Object.assign({}, c28Definition, {id:"display-2", name:"Display B", active_plot:"persistence", visible_signals:[B], analysis_signal:B, selected_signal:B}),
+  ];
+  const c28InactiveBad = c28Base(c28Definitions.map(d => Object.assign({}, d, {visible_signals:d.visible_signals.slice()})), "display-2"); delete c28InactiveBad.displays[0].active_plot; c28InactiveBad.row_selected_signal = B; c28InactiveBad.analysis_signal = B; c28InactiveBad.selected_signal = B; c28InactiveBad.visible_signals = [B]; c28InactiveBad.signals.forEach(signal => { signal.visible = signal.name === B; });
+  const c28IsolationCalls = [], c28Isolation = await boot((url, options) => { c28IsolationCalls.push({url, options}); return Promise.resolve(response(200, c28InactiveBad)); });
+  c28Isolation.e.plotSelect.value = "spectrum"; c28Isolation.e.plotSelect.listeners.change({target:c28Isolation.e.plotSelect}); await flush();
+  assert(c28Isolation.e.error.hidden === true && c28Isolation.e.activeStatus.textContent.includes("Display B") && c28IsolationCalls.filter(call => call.url === "./api/view").length === 1, "C28 inactive A quarantine must preserve valid active B View availability");
+  const c28ValidA = c28Base(c28Definitions.map(d => Object.assign({}, d, {visible_signals:d.visible_signals.slice()})), "display-1"), c28BadA = c28Base(c28Definitions.map(d => Object.assign({}, d, {visible_signals:d.visible_signals.slice()})), "display-1"); delete c28BadA.displays[0].active_plot;
+  const c28PurgeCalls = [], c28PurgeResolvers = [];
+  const c28Purge = await boot((url, options) => { c28PurgeCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28ValidA)) : new Promise(resolve => c28PurgeResolvers.push(resolve)); });
+  c28Purge.e.plotSelect.value = "spectrum"; c28Purge.e.plotSelect.listeners.change({target:c28Purge.e.plotSelect}); await flush();
+  c28Purge.e.plotSelect.value = "persistence"; c28Purge.e.plotSelect.listeners.change({target:c28Purge.e.plotSelect}); await flush();
+  c28PurgeResolvers.shift()(response(200, c28BadA)); await flush();
+  assert(c28PurgeCalls.filter(call => call.url === "./api/view").length === 1 && c28Purge.e.host.innerHTML.includes("display-active-plot-contract-error-state"), "C28 malformed 200 must purge queued same-ID View work without replay");
+  const c28LifecycleCalls = [], c28LifecycleResolvers = [], c28ValidB = c28Base(c28Definitions.map(d => Object.assign({}, d, {visible_signals:d.visible_signals.slice()})), "display-2"); c28ValidB.row_selected_signal = B;
+  const c28Lifecycle = await boot((url, options) => { c28LifecycleCalls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c28ValidA)); if (url === "./api/view") return new Promise(resolve => c28LifecycleResolvers.push(resolve)); return Promise.resolve(response(200, c28ValidB)); });
+  c28Lifecycle.e.plotSelect.value = "spectrum"; c28Lifecycle.e.plotSelect.listeners.change({target:c28Lifecycle.e.plotSelect}); await flush();
+  c28Lifecycle.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
+  c28LifecycleResolvers.shift()(response(409, {current:c28BadA})); await flush();
+  assert(c28LifecycleCalls.filter(call => call.url === "./api/view").length === 1 && c28LifecycleCalls.filter(call => call.url === "./api/displays").length === 1 && c28Lifecycle.e.activeStatus.textContent.includes("Display B"), "C28 malformed 409 current must purge A replay while allowing queued topology work for B");
+  const c28RecoveryCalls = [];
+  const c28Recovery = await boot((url, options) => { c28RecoveryCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28BadA)) : Promise.resolve(response(200, c28ValidB)); });
+  c28Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
+  assert(c28Recovery.e.error.hidden === true && c28Recovery.e.activeStatus.textContent.includes("Display B") && c28RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C28 valid authoritative recovery must clear only A quarantine without resurrecting its discarded View intent");
+  const c28DeferredBad = c28Base([Object.assign({}, c28Definition)]); delete c28DeferredBad.displays[0].active_plot;
+  const c28Deferred = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? c28Base([Object.assign({}, c28Definition)]) : c28DeferredBad)), {deferredPlotly:true});
+  assert(c28Deferred.plotResolvers.length === 1, "C28 deferred bridge must start exactly one valid render");
+  c28Deferred.e.plotSelect.value = "spectrum"; c28Deferred.e.plotSelect.listeners.change({target:c28Deferred.e.plotSelect}); await flush();
+  c28Deferred.plotResolvers.shift().resolve(); await flush();
+  assert(c28Deferred.e.host.dataset.plotReady === "false" && c28Deferred.e.host.innerHTML.includes("display-active-plot-contract-error-state") && !c28Deferred.e.host.innerHTML.includes("settled-") && c28Deferred.calls.filter(call => call.plot).length === 1, "C28 late Plotly settlement must not replace local plot quarantine or cause unbounded reassertion");
+
   const rowRequests = [];
   const memberRow = await boot((url, options) => {
     rowRequests.push({ url, options });
@@ -1116,7 +1282,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c19TwiceRequests.filter(call => call.url === "./api/view").length === 2 && c19Twice.e.persistenceLeakage.value === "0.5" && c19Twice.e.persistenceLeakageError.hidden === false, "second Persistence 409 bounds replay, restores canonical state, and reports the failure");
 
   const c19NoSource = emptySnapshot(0, A);
-  c19NoSource.displays[0].active_plot = "persistence"; c19NoSource.displays[0].persistence_settings = { leakage:.25 };
+  c19NoSource.displays[0].active_plot = "persistence"; c19NoSource.active_plot = "persistence"; c19NoSource.displays[0].persistence_settings = { leakage:.25 };
   const c19Disabled = await boot((url) => Promise.resolve(response(200, c19NoSource)));
   assert(c19Disabled.e.persistenceSettings.hidden === false && c19Disabled.e.persistenceLeakage.disabled === true && c19Disabled.e.persistenceLeakage.value === "0.25", "Persistence without an analysis source disables but retains its display-scoped Leakage setting");
 
