@@ -14,3 +14,4 @@ const EXAMPLE_APP_STATE = Dict{String,Any}(
 )
 
 const SIGNAL_ANALYSER_STATE = default_signal_analyser_state()
+const SIGNAL_INVENTORY_SERVICE = SignalInventoryService(EngeeWorkspaceSignalSource())

@@ -1,5 +1,18 @@
 using Genie.Renderer.Json
 
+const SIGNAL_INVENTORY_REQUEST_FIELDS = Dict(
+    "import_workspace" => Set([
+        "state_revision",
+        "operation",
+        "variable_name",
+        "signal_name",
+        "sample_rate_hz",
+    ]),
+    "duplicate" => Set(["state_revision", "operation", "signal_name"]),
+    "extract_time_limits" => Set(["state_revision", "operation", "display_id"]),
+    "delete" => Set(["state_revision", "operation", "signal_name"]),
+)
+
 json_safe(value::AbstractFloat) = isfinite(value) ? value : nothing
 json_safe(value::Real) = value
 json_safe(value::AbstractString) = value
@@ -47,6 +60,132 @@ function signal_analyser_stale_response(state::SignalAnalyserState, err::SignalA
         "state" => current,
         "current" => current,
     ); status = 409)
+end
+
+function signal_inventory_request_exact_fields!(
+    field_errors::Dict{String,String},
+    data::AbstractDict,
+    expected::Set{String},
+)
+    actual = signal_analyser_payload_keys(data)
+    actual == expected && return
+    missing = sort!(collect(setdiff(expected, actual)))
+    unknown = sort!(collect(setdiff(actual, expected)))
+    details = String[]
+    isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
+    isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
+    field_errors["body"] = "Ожидался точный набор полей ($(join(details, "; ")))"
+end
+
+function signal_inventory_request_revision!(
+    field_errors::Dict{String,String},
+    data::AbstractDict,
+)::Union{Nothing,Int}
+    value = signal_analyser_payload_value(data, "state_revision")
+    if !(value isa Integer) || value isa Bool || value < 0
+        field_errors["state_revision"] = "Требуется неотрицательное целое число"
+        return nothing
+    end
+    Int(value)
+end
+
+function parse_signal_inventory_command(data)::AbstractSignalInventoryCommand
+    data isa AbstractDict || throw(signal_inventory_validation_error(
+        "body",
+        "Ожидался JSON-объект",
+    ))
+    field_errors = Dict{String,String}()
+    operation_value = signal_analyser_payload_value(data, "operation")
+    operation = if operation_value isa AbstractString &&
+        haskey(SIGNAL_INVENTORY_REQUEST_FIELDS, String(operation_value))
+        String(operation_value)
+    else
+        field_errors["operation"] =
+            "Допустимо: import_workspace, duplicate, extract_time_limits, delete"
+        nothing
+    end
+    expected_fields = operation === nothing ?
+        Set(["state_revision", "operation"]) :
+        SIGNAL_INVENTORY_REQUEST_FIELDS[operation]
+    signal_inventory_request_exact_fields!(field_errors, data, expected_fields)
+    revision = signal_inventory_request_revision!(field_errors, data)
+
+    if operation == "import_workspace"
+        variable_value = signal_analyser_payload_value(data, "variable_name")
+        variable_name = if variable_value isa AbstractString &&
+            !isempty(strip(String(variable_value)))
+            String(variable_value)
+        else
+            field_errors["variable_name"] = "Требуется непустая строка"
+            nothing
+        end
+        signal_value = signal_analyser_payload_value(data, "signal_name")
+        signal_name = if signal_value === nothing
+            nothing
+        elseif signal_value isa AbstractString && !isempty(strip(String(signal_value)))
+            String(signal_value)
+        else
+            field_errors["signal_name"] = "Требуется null или непустая строка"
+            nothing
+        end
+        sample_rate_value = signal_analyser_payload_value(data, "sample_rate_hz")
+        sample_rate = if sample_rate_value === nothing
+            nothing
+        elseif sample_rate_value isa Real && !(sample_rate_value isa Bool)
+            value = Float64(sample_rate_value)
+            if isfinite(value) && value > 0
+                value
+            else
+                field_errors["sample_rate_hz"] =
+                    "Требуется null или положительное конечное число"
+                nothing
+            end
+        else
+            field_errors["sample_rate_hz"] =
+                "Требуется null или положительное конечное число"
+            nothing
+        end
+        isempty(field_errors) || throw(SignalAnalyserValidationError(
+            "Некорректный запрос Signals",
+            field_errors,
+        ))
+        return ImportWorkspaceSignalCommand(
+            revision::Int,
+            variable_name::String,
+            signal_name,
+            sample_rate,
+        )
+    elseif operation == "extract_time_limits"
+        display_value = signal_analyser_payload_value(data, "display_id")
+        display_id = if display_value isa AbstractString &&
+            !isempty(strip(String(display_value)))
+            String(display_value)
+        else
+            field_errors["display_id"] = "Требуется непустая строка"
+            nothing
+        end
+        isempty(field_errors) || throw(SignalAnalyserValidationError(
+            "Некорректный запрос Signals",
+            field_errors,
+        ))
+        return ExtractTimeLimitsSignalCommand(revision::Int, display_id::String)
+    end
+
+    signal_value = signal_analyser_payload_value(data, "signal_name")
+    signal_name = if signal_value isa AbstractString &&
+        !isempty(strip(String(signal_value)))
+        String(signal_value)
+    else
+        field_errors["signal_name"] = "Требуется непустая строка"
+        nothing
+    end
+    isempty(field_errors) || throw(SignalAnalyserValidationError(
+        "Некорректный запрос Signals",
+        field_errors,
+    ))
+    operation == "duplicate" ?
+        DuplicateSignalCommand(revision::Int, signal_name::String) :
+        DeleteSignalCommand(revision::Int, signal_name::String)
 end
 
 function status_payload()

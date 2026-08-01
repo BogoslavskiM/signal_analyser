@@ -93,6 +93,9 @@ function environment(fetch, options) {
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
     legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), spectrogramSettings: node(), spectrogramContractError: node(), spectrogramOverlap: node(), spectrogramOverlapError: node(), spectrogramLeakage: node(), spectrogramLeakageError: node(), spectrogramFrequencyLimitsControls: node(), spectrogramFrequencyMin: node(), spectrogramFrequencyMax: node(), spectrogramFrequencyLimitsError: node(), spectrogramFrequencyScale: node(), spectrogramFrequencyScaleEffective: node(), spectrogramFrequencyScaleError: node(), spectrogramPowerLimitsControls: node(), spectrogramPowerMin: node(), spectrogramPowerMax: node(), spectrogramPowerLimitsEffective: node(), spectrogramPowerLimitsError: node(), persistenceSettings: node(), persistenceLeakage: node(), persistenceLeakageValue: node(), persistenceLeakageError: node(), spectrumSettings: node(), spectrumScale: node(), spectrumFrequency: node(), spectrumLeakage: node(), spectrumLeakageValue: node(), spectrumError: node(), spectrumFrequencyMin: node(), spectrumFrequencyMax: node(), spectrumFrequencyLimitsError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
+    signalsAddAction: node(), signalsAddMenu: node(), signalsAddWorkspaceAction: node(), signalsAddSelectionAction: node(), signalsCopyAction: node(), signalsDeleteAction: node(),
+    signalsWorkspaceDialog: node(), signalsWorkspaceVariable: node(), signalsWorkspaceName: node(), signalsWorkspaceRate: node(), signalsWorkspaceSubmit: node(), signalsWorkspaceCancel: node(), signalsWorkspaceClose: node(),
+    signalsDeleteDialog: node(), signalsDeleteName: node(), signalsDeleteConfirm: node(), signalsDeleteCancel: node(), signalsDeleteClose: node(), signalsActionError: node(), signalsActionErrorText: node(), signalsActionErrorClose: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
   e.displaySettingsTab = node(); e.displaySettingsTab.dataset.settingsTab = "display";
@@ -141,6 +144,14 @@ function environment(fetch, options) {
     "[data-signal-rows]": e.rows, "[data-testid='toggle-all-signals']": e.toggleAll,
     "[data-testid='display-overflow-trigger']": e.overflowTrigger, "[data-testid='display-overflow-menu']": e.overflowMenu, "[data-testid='clear-display-action']": e.clearDisplayAction,
     "[data-testid='signal-statistics-action']": e.statisticsAction, "[data-testid='find-peaks-action']": e.peaksAction,
+    "[data-testid='signals-add-action']": e.signalsAddAction, "[data-testid='signals-add-menu']": e.signalsAddMenu,
+    "[data-testid='signals-add-workspace-action']": e.signalsAddWorkspaceAction, "[data-testid='signals-add-selection-action']": e.signalsAddSelectionAction,
+    "[data-testid='signals-copy-action']": e.signalsCopyAction, "[data-testid='signals-delete-action']": e.signalsDeleteAction,
+    "[data-testid='signals-workspace-dialog']": e.signalsWorkspaceDialog, "[data-testid='signals-workspace-variable-input']": e.signalsWorkspaceVariable,
+    "[data-testid='signals-workspace-name-input']": e.signalsWorkspaceName, "[data-testid='signals-workspace-sample-rate-input']": e.signalsWorkspaceRate,
+    "[data-testid='signals-workspace-submit']": e.signalsWorkspaceSubmit, "[data-testid='signals-workspace-cancel']": e.signalsWorkspaceCancel, "[data-testid='signals-workspace-close']": e.signalsWorkspaceClose,
+    "[data-testid='signals-delete-dialog']": e.signalsDeleteDialog, "[data-testid='signals-delete-name']": e.signalsDeleteName, "[data-testid='signals-delete-confirm']": e.signalsDeleteConfirm,
+    "[data-testid='signals-delete-cancel']": e.signalsDeleteCancel, "[data-testid='signals-delete-close']": e.signalsDeleteClose, "[data-testid='signals-action-error']": e.signalsActionError, "[data-testid='signals-action-error-text']": e.signalsActionErrorText, "[data-testid='signals-action-error-close']": e.signalsActionErrorClose,
     "[role='tablist'][aria-label='Данные анализатора']": e.bottomTabs, "[data-testid='bottom-panel-signals']": e.signals,
     "[data-testid='measurements-panel']": e.measurements, "[data-measurements-content]": e.measurementContent,
     "[data-testid='peaks-panel']": e.peaksPanel, "[data-peaks-content]": e.peaksContent,
@@ -395,6 +406,67 @@ module.exports = async function testDisplayBehavior(assert) {
   const view = visibility.find((call) => call.url === "./api/view");
   assert(view, "per-display checkbox must update the active display through /api/view");
   assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, persistence_settings:{leakage:.5}, peaks_enabled: false }), "hiding the analysis source must retain complete canonical Spectrogram settings and disable Peaks");
+
+  // DEC-037 Signals inspector actions are authoritative server mutations;
+  // rows select globally while checkboxes retain active-Display membership.
+  function signalsSnapshot(revision, names, selected) {
+    const result = snapshot(revision, "display-1", [{id:"display-1", name:"Display 1", active_plot:"time", analysis_signal:selected, selected_signal:selected, visible_signals:names}], selected);
+    result.row_selected_signal = selected;
+    result.signals = names.map((name, index) => ({name, color:index === 0 ? "#2563eb" : index === 1 ? "#dc2626" : "#16a34a", sample_rate_hz:10, sample_count:3, duration_s:.2, data_type:"Вещественный", visible:true}));
+    result.plot_payload.selected_signal = selected; result.plot_payload.visible_signals = names.slice();
+    result.plot_payload.time_traces = names.map((name, index) => ({name, signal:name, x:[0, .1], y:[index, index + 1]}));
+    result.plot_payload.spectrum_traces = names.map((name, index) => ({name, signal:name, x:[0, 5], y:[index, index + 1]}));
+    return result;
+  }
+  const signalsInitial = signalsSnapshot(0, [A, B], A), importedSignal = "workspace";
+  const signalsImported = signalsSnapshot(1, [A, B, importedSignal], importedSignal);
+  const signalsCalls = [], signalsResolvers = [];
+  const signalsEnv = await boot((url, options) => { signalsCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, signalsInitial)) : new Promise(resolve => signalsResolvers.push(resolve)); });
+  signalsEnv.e.signalsAddAction.listeners.click({target:signalsEnv.e.signalsAddAction});
+  assert(signalsEnv.e.signalsAddMenu.hidden === false, "Signals Add opens its menu without a network mutation");
+  signalsEnv.e.signalsAddWorkspaceAction.listeners.click({target:signalsEnv.e.signalsAddWorkspaceAction});
+  assert(signalsEnv.e.signalsAddMenu.hidden === true && signalsEnv.e.signalsWorkspaceDialog.hidden === false, "workspace menu action closes the menu and opens its dialog");
+  signalsEnv.e.signalsWorkspaceVariable.value = "workspace"; signalsEnv.e.signalsWorkspaceName.value = "";
+  signalsEnv.e.signalsWorkspaceRate.value = "";
+  signalsEnv.e.signalsWorkspaceSubmit.listeners.click({target:signalsEnv.e.signalsWorkspaceSubmit}); await flush();
+  const blankRateCall = signalsCalls.find(call => call.url === "./api/signals");
+  assert(JSON.parse(blankRateCall.options.body).sample_rate_hz === null, "blank sample rate must serialize explicitly as null for a timed workspace value, without Number conversion");
+  signalsResolvers.shift()(response(422, {error:{fields:{sample_rate_hz:"Требуется частота дискретизации для raw array"}}})); await flush();
+  assert(signalsEnv.e.signalsWorkspaceDialog.hidden === false && signalsEnv.e.signalsWorkspaceVariable.value === "workspace" && signalsEnv.e.signalsWorkspaceRate.value === "" && signalsEnv.e.signalsActionError.hidden === false, "raw workspace 422 after blank sample rate must preserve the timed-import form and field feedback");
+  for (const invalidRate of ["NaN", "Infinity", "-Infinity", "0", "-1", "text"]) {
+    signalsEnv.e.signalsWorkspaceRate.value = invalidRate;
+    signalsEnv.e.signalsWorkspaceSubmit.listeners.click({target:signalsEnv.e.signalsWorkspaceSubmit}); await flush();
+    assert(signalsCalls.filter(call => call.url === "./api/signals").length === 1 && signalsEnv.e.signalsActionError.hidden === false, "workspace sample-rate " + JSON.stringify(invalidRate) + " must fail locally and never serialize non-finite/non-positive input");
+  }
+  signalsEnv.e.signalsWorkspaceRate.value = "10";
+  signalsEnv.e.signalsWorkspaceSubmit.listeners.click({target:signalsEnv.e.signalsWorkspaceSubmit}); await flush();
+  const importCall = signalsCalls.filter(call => call.url === "./api/signals").at(-1);
+  assert(JSON.stringify(JSON.parse(importCall.options.body)) === JSON.stringify({state_revision:0, operation:"import_workspace", variable_name:"workspace", signal_name:null, sample_rate_hz:10}), "workspace Add must send the strict import_workspace union body");
+  assert(signalsEnv.e.signalsWorkspaceSubmit.disabled && !signalsEnv.e.signalsCopyAction.disabled && !signalsEnv.e.signalsDeleteAction.disabled && !signalsEnv.e.rows.innerHTML.includes(importedSignal), "Signals mutation is action-local busy and never optimistically mutates rows");
+  signalsResolvers.shift()(response(200, signalsImported)); await flush();
+  assert(signalsEnv.e.signalsWorkspaceDialog.hidden === false && signalsEnv.e.rows.innerHTML.includes(importedSignal) && signalsEnv.e.rows.innerHTML.includes("data-signal='" + importedSignal + "'"), "authoritative full snapshot, not optimistic state, publishes an imported row while explicit dialog close remains user-controlled");
+  signalsEnv.e.signalsWorkspaceClose.listeners.click({target:signalsEnv.e.signalsWorkspaceClose});
+  assert(signalsEnv.e.signalsWorkspaceDialog.hidden === true, "workspace dialog close is a visible local action");
+
+  const copiedSignal = importedSignal + "_Copy", copiedSnapshot = signalsSnapshot(2, [A, B, importedSignal, copiedSignal], copiedSignal);
+  signalsEnv.e.signalsCopyAction.listeners.click({target:signalsEnv.e.signalsCopyAction}); await flush();
+  const copyCall = signalsCalls.filter(call => call.url === "./api/signals").at(-1);
+  assert(JSON.stringify(JSON.parse(copyCall.options.body)) === JSON.stringify({state_revision:1, operation:"duplicate", signal_name:importedSignal}), "Copy must use globally row-selected signal rather than a checkbox membership target");
+  signalsResolvers.shift()(response(200, copiedSnapshot)); await flush();
+  assert(signalsEnv.e.rows.innerHTML.includes(copiedSignal), "Copy becomes visible only from its authoritative full snapshot");
+  signalsEnv.e.signalsDeleteAction.listeners.click({target:signalsEnv.e.signalsDeleteAction});
+  assert(signalsEnv.e.signalsDeleteDialog.hidden === false && signalsCalls.filter(call => call.url === "./api/signals").length === 3, "Delete opens a confirmation dialog and does not mutate before confirm");
+  signalsEnv.e.signalsDeleteCancel.listeners.click({target:signalsEnv.e.signalsDeleteCancel});
+  assert(signalsEnv.e.signalsDeleteDialog.hidden === true && signalsCalls.filter(call => call.url === "./api/signals").length === 3, "Delete cancel closes without an API mutation");
+  signalsEnv.e.signalsDeleteAction.listeners.click({target:signalsEnv.e.signalsDeleteAction}); signalsEnv.e.signalsDeleteConfirm.listeners.click({target:signalsEnv.e.signalsDeleteConfirm}); await flush();
+  const deleteCall = signalsCalls.filter(call => call.url === "./api/signals").at(-1);
+  assert(JSON.stringify(JSON.parse(deleteCall.options.body)) === JSON.stringify({state_revision:2, operation:"delete", signal_name:copiedSignal}), "Delete confirm must send only the selected signal and current revision");
+  const staleDeleteSnapshot = signalsSnapshot(3, [A, B, importedSignal, copiedSignal], copiedSignal);
+  signalsResolvers.shift()(response(409, {current:staleDeleteSnapshot})); await flush();
+  const deleteReplay = signalsCalls.filter(call => call.url === "./api/signals");
+  assert(deleteReplay.length === 5 && JSON.parse(deleteReplay.at(-1).options.body).state_revision === 3, "first Signals 409 must canonicalize from a newer revision and retry exactly once when its selected source still exists");
+  signalsResolvers.shift()(response(422, {error:{fields:{signal_name:"Недопустимый сигнал"}}})); await flush();
+  assert(signalsEnv.e.signalsDeleteDialog.hidden === false && signalsEnv.e.signalsActionError.hidden === false && signalsCalls.filter(call => call.url === "./api/signals").length === 5, "Signals 422 preserves the visible error form and bounds retry without optimistic rollback");
 
   const localTabRequests = [];
   const localTabs = await boot((url, options) => {

@@ -1248,6 +1248,67 @@ function signal_spectrogram_with_frequency_limits(
     )
 end
 
+"""Reconciles persisted settings when a Display changes its analysis source."""
+struct SignalAnalysisSourceReconciler end
+
+struct ReconciledSignalAnalysisSettings
+    spectrum::SignalSpectrumSettings
+    spectrogram::SignalSpectrogramSettings
+end
+
+function signal_analyser_reconcile_carried_frequency_limits(
+    ::SignalAnalysisSourceReconciler,
+    settings::SignalSpectrumSettings,
+    signal::AnalysedSignal,
+)::SignalSpectrumSettings
+    signal_spectrum_frequency_limits_valid_for_signal(settings.frequency_limits, signal) &&
+        return settings
+    signal_spectrum_with_frequency_limits(
+        settings,
+        AutomaticSignalSpectrumFrequencyLimits(),
+    )
+end
+
+function signal_analyser_reconcile_carried_frequency_limits(
+    ::SignalAnalysisSourceReconciler,
+    settings::SignalSpectrogramSettings,
+    signal::AnalysedSignal,
+)::SignalSpectrogramSettings
+    signal_spectrum_frequency_limits_valid_for_signal(settings.frequency_limits, signal) &&
+        return settings
+    signal_spectrogram_with_frequency_limits(
+        settings,
+        AutomaticSignalSpectrumFrequencyLimits(),
+    )
+end
+
+function signal_analyser_reconcile_analysis_source(
+    reconciler::SignalAnalysisSourceReconciler,
+    display::SignalAnalyserDisplayState,
+    prospective_members::AbstractVector{AnalysedSignal},
+    prospective_source::AnalysedSignal,
+)::ReconciledSignalAnalysisSettings
+    if display.spectrum_settings.frequency_scale == LOG_SPECTRUM_FREQUENCY_SCALE &&
+        any(signal -> signal.is_complex, prospective_members)
+        throw(SignalAnalysisSourceCompatibilityError(
+            "spectrum_settings",
+            "frequency_scale=log недоступен, пока Display содержит комплексный сигнал",
+        ))
+    end
+    ReconciledSignalAnalysisSettings(
+        signal_analyser_reconcile_carried_frequency_limits(
+            reconciler,
+            display.spectrum_settings,
+            prospective_source,
+        ),
+        signal_analyser_reconcile_carried_frequency_limits(
+            reconciler,
+            display.spectrogram_settings,
+            prospective_source,
+        ),
+    )
+end
+
 """Intersect a Display Time ROI with one visible signal without resampling it."""
 function signal_spectrum_sample_range(
     ::SignalSpectrumService,
@@ -2747,6 +2808,7 @@ function validate_signal_analyser_view_payload(
     ))
 
     display = signal_analyser_active_display(state)
+    source_reconciler = SignalAnalysisSourceReconciler()
     field_errors = Dict{String,String}()
     unknown_fields = setdiff(signal_analyser_payload_keys(data), SIGNAL_ANALYSER_VIEW_FIELDS)
     isempty(unknown_fields) || (field_errors["body"] = "Неизвестные поля: $(join(sort!(collect(unknown_fields)), ", "))")
@@ -2945,9 +3007,10 @@ function validate_signal_analyser_view_payload(
                 )
                 frequency_limits_carried = requested_frequency_limits == current_frequency_limits
                 if source_changed && frequency_limits_carried
-                    requested_spectrum_settings = signal_spectrum_with_frequency_limits(
+                    requested_spectrum_settings = signal_analyser_reconcile_carried_frequency_limits(
+                        source_reconciler,
                         requested_spectrum_settings,
-                        AutomaticSignalSpectrumFrequencyLimits(),
+                        analysis_signal,
                     )
                 else
                     domain = signal_spectrum_topology_limits(analysis_signal)
@@ -2992,9 +3055,10 @@ function validate_signal_analyser_view_payload(
                 )
                 frequency_limits_carried = requested_frequency_limits == current_frequency_limits
                 if source_changed && frequency_limits_carried
-                    requested_spectrogram_settings = signal_spectrogram_with_frequency_limits(
+                    requested_spectrogram_settings = signal_analyser_reconcile_carried_frequency_limits(
+                        source_reconciler,
                         requested_spectrogram_settings,
-                        AutomaticSignalSpectrumFrequencyLimits(),
+                        analysis_signal,
                     )
                 else
                     domain = signal_spectrum_topology_limits(analysis_signal)
@@ -3316,3 +3380,6 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
         )
     end
 end
+
+include(joinpath(@__DIR__, "..", "adapters", "engee_workspace_signal_source.jl"))
+include(joinpath(@__DIR__, "signal_inventory_service.jl"))

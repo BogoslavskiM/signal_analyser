@@ -8,6 +8,191 @@ mutable struct FakePeaksProvider <: SA.AbstractPeaksProvider
     failure::Union{Nothing,Exception}
 end
 
+mutable struct FakeWorkspaceSignalSource <: SA.AbstractWorkspaceSignalSource
+    values::Dict{String,Any}
+    failure::Union{Nothing,Exception}
+end
+
+function SA.workspace_signal_value(source::FakeWorkspaceSignalSource, variable_name::String)
+    source.failure === nothing || throw(source.failure)
+    haskey(source.values, variable_name) || throw(ArgumentError("unknown deterministic workspace variable"))
+    source.values[variable_name]
+end
+
+@testset "Signals inspector mutation rollback protects active Log Spectrum" begin
+    workspace = FakeWorkspaceSignalSource(Dict{String,Any}("complex-import" => ComplexF64[1 + 2im, 3 + 4im, 5 + 6im]), nothing)
+    service = SA.SignalInventoryService(workspace)
+    state = SA.default_signal_analyser_state()
+    real_name, complex_name = [signal.name for signal in state.signals]
+    log_view = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "active_plot" => "spectrum", "visible_signals" => [real_name], "row_selected_signal" => complex_name, "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "log", "leakage" => 0.5, "frequency_limits" => nothing)))
+    before = SA.signal_analyser_snapshot(state)
+    caches = (deepcopy(state.plot_cache), deepcopy(state.spectrum_cache), deepcopy(state.spectrogram_cache), deepcopy(state.persistence_cache))
+    for command in (SA.DuplicateSignalCommand(log_view["state_revision"], complex_name), SA.ImportWorkspaceSignalCommand(log_view["state_revision"], "complex-import", nothing, 10.0))
+        err = try SA.apply_signal_inventory!(service, state, command) catch caught; caught end
+        @test err isa SA.SignalAnalyserValidationError
+        @test haskey(err.fields, "spectrum_settings") || haskey(err.fields, "signal_name")
+        @test SA.signal_analyser_snapshot(state) == before
+        @test (state.plot_cache, state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches
+    end
+    SA.SPECTRUM_FAILURE[] = true
+    err = try SA.apply_signal_inventory!(service, state, SA.DuplicateSignalCommand(log_view["state_revision"], real_name)) catch caught; caught end
+    @test err isa ArgumentError
+    @test SA.signal_analyser_snapshot(state) == before
+    @test (state.plot_cache, state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches
+    SA.SPECTRUM_FAILURE[] = false
+end
+
+@testset "Signals inventory lower-Fs source changes reset explicit limits without cache reuse" begin
+    workspace = FakeWorkspaceSignalSource(Dict{String,Any}("low-import" => [1.0, 2.0, 3.0]), nothing)
+    service = SA.SignalInventoryService(workspace)
+    state = SA.default_signal_analyser_state()
+    high_name = state.signals[1].name
+    low = SA.AnalysedSignal("low-source", "#111111", 10.0, ComplexF64[1, 2, 3], false, true)
+    push!(state.signals, low)
+    spectrum_limits = Dict("min_hz" => 100.0, "max_hz" => 500.0, "units" => "Hz")
+    view = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0, "active_plot" => "spectrum", "visible_signals" => [high_name], "row_selected_signal" => low.name,
+        "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => spectrum_limits),
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => spectrum_limits, "frequency_scale" => "linear", "power_limits" => nothing),
+    ))
+    before_cache = (deepcopy(state.spectrum_cache), deepcopy(state.spectrogram_cache), deepcopy(state.persistence_cache))
+    copied = SA.apply_signal_inventory!(service, state, SA.DuplicateSignalCommand(view["state_revision"], low.name))
+    @test copied["state_revision"] == view["state_revision"] + 1
+    @test copied["analysis_signal"] == copied["row_selected_signal"]
+    @test copied["spectrum_settings"]["frequency_limits"] === nothing
+    @test copied["spectrogram_settings"]["frequency_limits"] === nothing
+    @test copied["plots"]["spectrum"]["frequency_limits"]["requested"] === nothing
+    @test copied["plots"]["spectrogram"]["frequency_limits"]["requested"] === nothing
+    @test state.spectrum_cache != before_cache[1] || state.spectrogram_cache != before_cache[2] || state.persistence_cache != before_cache[3]
+
+    state = SA.default_signal_analyser_state()
+    high_name = state.signals[1].name
+    view = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0, "active_plot" => "spectrogram", "visible_signals" => [high_name],
+        "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => spectrum_limits),
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => spectrum_limits, "frequency_scale" => "linear", "power_limits" => nothing),
+    ))
+    imported = SA.apply_signal_inventory!(service, state, SA.ImportWorkspaceSignalCommand(view["state_revision"], "low-import", nothing, 10.0))
+    @test imported["state_revision"] == view["state_revision"] + 1
+    @test imported["analysis_signal"] == imported["row_selected_signal"]
+    @test imported["spectrum_settings"]["frequency_limits"] === nothing
+    @test imported["spectrogram_settings"]["frequency_limits"] === nothing
+    @test imported["plots"]["spectrogram"]["frequency_limits"]["requested"] === nothing
+end
+
+@testset "Signals inventory palette allocation cycles deterministically" begin
+    workspace = FakeWorkspaceSignalSource(Dict{String,Any}(), nothing)
+    service = SA.SignalInventoryService(workspace)
+    state = SA.default_signal_analyser_state()
+    source = state.signals[1].name
+    snapshot = SA.signal_analyser_snapshot(state)
+    for _ in 1:16
+        snapshot = SA.apply_signal_inventory!(service, state, SA.DuplicateSignalCommand(snapshot["state_revision"], source))
+    end
+    colors = [signal["color"] for signal in snapshot["signals"]]
+    palette = SA.SignalColorPalette().colors
+    @test all(color -> color in palette, colors)
+    source_color = first(colors)
+    expected_colors = [
+        index <= 2 ? palette[index] : begin
+            candidate = palette[mod1(index, length(palette))]
+            candidate == source_color && length(palette) > 1 ? palette[mod1(index + 1, length(palette))] : candidate
+        end
+        for index in eachindex(colors)
+    ]
+    @test colors == expected_colors
+    @test only(filter(signal -> signal["name"] == source * "_Copy", snapshot["signals"]))["color"] != only(filter(signal -> signal["name"] == source, snapshot["signals"]))["color"]
+    @test length(snapshot["signals"]) == 18 && snapshot["state_revision"] == 16
+
+    singleton = SA.SignalInventoryService(workspace, SA.SignalColorPalette(["#101010"]))
+    state = SA.default_signal_analyser_state()
+    source = state.signals[1].name
+    repeated = SA.apply_signal_inventory!(singleton, state, SA.DuplicateSignalCommand(0, source))
+    @test only(filter(signal -> signal["name"] == source * "_Copy", repeated["signals"]))["color"] == "#101010"
+end
+
+@testset "Signals inspector inventory commands are strict, atomic and raw-owned" begin
+    workspace = FakeWorkspaceSignalSource(Dict{String,Any}(
+        "vector" => [1.0, 2.0, 3.0],
+        "matrix" => [1.0 10.0; 2.0 20.0; 3.0 30.0],
+        "timed" => (time = [0.0, 0.25, 0.5], value = ComplexF64[1 + 2im, 3 + 4im, 5 + 6im]),
+        "one" => [1.0],
+        "nonfinite" => [1.0, Inf],
+    ), nothing)
+    service = SA.SignalInventoryService(workspace)
+    state = SA.default_signal_analyser_state()
+    initial = SA.signal_analyser_snapshot(state)
+    first_name, second_name = [signal.name for signal in state.signals]
+
+    imported = SA.apply_signal_inventory!(service, state, SA.ImportWorkspaceSignalCommand(0, "vector", nothing, 20.0))
+    imported_name = imported["row_selected_signal"]
+    @test imported["state_revision"] == 1
+    @test length(imported["signals"]) == length(initial["signals"]) + 1
+    @test imported_name == imported["selected_signal"] == imported["analysis_signal"]
+    @test imported_name in imported["visible_signals"]
+    @test imported["signals"][end]["name"] == imported_name
+    @test imported["signals"][end]["sample_rate_hz"] == 20.0
+    @test imported["signals"][end]["color"] != initial["signals"][end]["color"]
+
+    source_values = only(filter(signal -> signal.name == imported_name, state.signals)).values
+    copied = SA.apply_signal_inventory!(service, state, SA.DuplicateSignalCommand(1, imported_name))
+    copy_name = copied["row_selected_signal"]
+    copied_values = only(filter(signal -> signal.name == copy_name, state.signals)).values
+    @test copied["state_revision"] == 2
+    @test copy_name == imported_name * "_Copy"
+    @test copied_values == source_values && copied_values !== source_values
+    @test only(filter(signal -> signal["name"] == copy_name, copied["signals"]))["color"] != only(filter(signal -> signal["name"] == imported_name, copied["signals"]))["color"]
+    copied_values[1] = 99 + 0im
+    @test source_values[1] == 1 + 0im
+    copied_again = SA.apply_signal_inventory!(service, state, SA.DuplicateSignalCommand(2, imported_name))
+    @test copied_again["row_selected_signal"] == imported_name * "_Copy2" && copied_again["state_revision"] == 3
+
+    matrix = SA.apply_signal_inventory!(service, state, SA.ImportWorkspaceSignalCommand(3, "matrix", "matrix import", 4.0))
+    matrix_names = [signal["name"] for signal in matrix["signals"] if startswith(signal["name"], "matrix import")]
+    @test matrix["state_revision"] == 4 && length(matrix_names) == 2 && length(unique(matrix_names)) == 2
+    @test all(name -> name in matrix["visible_signals"], matrix_names)
+    @test all(signal -> signal["sample_rate_hz"] == 4.0, filter(signal -> signal["name"] in matrix_names, matrix["signals"]))
+
+    timed = SA.apply_signal_inventory!(service, state, SA.ImportWorkspaceSignalCommand(4, "timed", nothing, nothing))
+    timed_signal = only(filter(signal -> signal["name"] == timed["row_selected_signal"], timed["signals"]))
+    @test timed["state_revision"] == 5 && timed_signal["sample_rate_hz"] == 4.0
+    @test only(filter(signal -> signal.name == timed_signal["name"], state.signals)).is_complex
+
+    before_invalid = SA.signal_analyser_snapshot(state)
+    for command in (
+        SA.ImportWorkspaceSignalCommand(5, "one", nothing, 1.0),
+        SA.ImportWorkspaceSignalCommand(5, "nonfinite", nothing, 1.0),
+        SA.ImportWorkspaceSignalCommand(5, "vector", nothing, nothing),
+    )
+        @test_throws SA.SignalAnalyserValidationError SA.apply_signal_inventory!(service, state, command)
+        @test SA.signal_analyser_snapshot(state) == before_invalid
+    end
+    @test_throws ArgumentError SA.ImportWorkspaceSignalCommand(5, "vector", "   ", 1.0)
+    workspace.failure = ArgumentError("workspace receive failure")
+    @test_throws ArgumentError SA.apply_signal_inventory!(service, state, SA.ImportWorkspaceSignalCommand(5, "vector", nothing, 1.0))
+    @test SA.signal_analyser_snapshot(state) == before_invalid
+    workspace.failure = nothing
+
+    active_two = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 5, "operation" => "create"))
+    selected_one = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 6, "operation" => "select", "display_id" => "display-1"))
+    deleted = SA.apply_signal_inventory!(service, state, SA.DeleteSignalCommand(7, imported_name))
+    @test deleted["state_revision"] == 8 && !(imported_name in [signal["name"] for signal in deleted["signals"]])
+    @test all(display -> !(imported_name in display["visible_signals"]) && display["analysis_signal"] != imported_name, deleted["displays"])
+    @test deleted["active_display_id"] == selected_one["active_display_id"]
+
+    complex_state = SA.SignalAnalyserState([SA.AnalysedSignal("complex-roi", "#111111", 10.0, ComplexF64[1 + 2im, 3 + 4im, 5 + 6im], true, true)], SA.SignalAnalyserViewState(0, SA.TIME_PLOT, "complex-roi"), Dict{String,Dict{String,Any}}(), ReentrantLock())
+    SA.apply_signal_analyser_view!(complex_state, Dict("state_revision" => 0, "time_limits" => Dict("min_s" => 0.1, "max_s" => 0.2, "units" => "s")))
+    extracted = SA.apply_signal_inventory!(service, complex_state, SA.ExtractTimeLimitsSignalCommand(1, "display-1"))
+    extract_name = extracted["row_selected_signal"]
+    extract = only(filter(signal -> signal.name == extract_name, complex_state.signals))
+    @test extracted["state_revision"] == 2 && extract.is_complex && extract.sample_rate_hz == 10.0 && extract.values == ComplexF64[3 + 4im, 5 + 6im]
+
+    singleton = SA.SignalAnalyserState([SA.AnalysedSignal("only", "#111111", 10.0, ComplexF64[1, 2], false, true)], SA.SignalAnalyserViewState(0, SA.TIME_PLOT, "only"), Dict{String,Dict{String,Any}}(), ReentrantLock())
+    before_last = SA.signal_analyser_snapshot(singleton)
+    @test_throws SA.SignalAnalyserValidationError SA.apply_signal_inventory!(service, singleton, SA.DeleteSignalCommand(0, "only"))
+    @test SA.signal_analyser_snapshot(singleton) == before_last
+end
+
 @testset "Cascade 23 active-view-only Persistence materialization" begin
     empty_persistence_wire(snapshot) = begin
         plot = snapshot["plots"]["persistence"]

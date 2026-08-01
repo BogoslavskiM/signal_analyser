@@ -26,6 +26,25 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/id="measurements-panel"[^>]*role="tabpanel"[^>]*aria-labelledby="signal-panel-tab-measurements"/.test(html), "Measurements panel must be labelled by its tab");
   assert(!html.includes("plot-grid") && !html.includes("layout-chooser"), "MVP must not render a multi-layout plot grid");
   assert(html.includes("data-signal-rows") && app.includes("data-signal-visibility"), "signal list must contain per-signal checkbox controls at runtime");
+  ["signals-add-action", "signals-add-menu", "signals-add-workspace-action", "signals-add-selection-action", "signals-copy-action", "signals-delete-action", "signals-workspace-dialog", "signals-workspace-variable-input", "signals-workspace-name-input", "signals-workspace-sample-rate-input", "signals-workspace-submit", "signals-workspace-cancel", "signals-workspace-close", "signals-delete-dialog", "signals-delete-name", "signals-delete-confirm", "signals-delete-cancel", "signals-delete-close", "signals-action-error", "signals-action-error-text", "signals-action-error-close"].forEach((id) =>
+    assert(html.includes(`data-testid="${id}"`), `Signals inspector must expose stable selector ${id}`)
+  );
+  assert(/data-testid="signals-add-action"[^>]*aria-label="Добавить сигнал"[^>]*aria-haspopup="menu"[^>]*aria-controls="signals-add-menu"/.test(html), "Signals Add icon control must expose its exact accessible menu trigger semantics");
+  assert(/data-testid="signals-add-menu"[^>]*role="menu"[^>]*hidden/.test(html), "Signals Add menu must begin hidden with menu semantics");
+  assert(/data-testid="signals-add-workspace-action"[^>]*role="menuitem"/.test(html) && /data-testid="signals-add-selection-action"[^>]*role="menuitem"/.test(html), "both Signals Add sources must be semantic menu actions");
+  assert(/data-testid="signals-copy-action"[^>]*aria-label="Копировать выбранный сигнал"/.test(html), "Signals Copy must expose its exact accessible name");
+  assert(/data-testid="signals-delete-action"[^>]*aria-label="Удалить выбранный сигнал"/.test(html), "Signals Delete must expose its exact accessible name");
+  assert(/data-testid="signals-workspace-dialog"[^>]*role="dialog"[^>]*aria-modal="true"/.test(html), "workspace import must use a modal semantic dialog");
+  assert(/data-testid="signals-delete-dialog"[^>]*role="alertdialog"[^>]*aria-modal="true"/.test(html), "signal deletion must use a modal destructive confirmation dialog");
+  assert(/data-testid="signals-action-error"[^>]*role="alert"/.test(html), "Signals errors must have one accessible non-modal feedback surface");
+  ["signals-toolbar-error", "signals-delete-done"].forEach((id) => assert(html.includes(`data-testid="${id}"`), `Signals audit selector ${id} must exist`));
+  ["signals-workspace-success", "signals-workspace-done"].forEach((id) => assert(html.includes(`data-testid="${id}"`), `workspace success selector ${id} must exist`));
+  assert(/data-testid="signals-delete-dialog"[^>]*aria-describedby="signals-delete-(?:name|status)"/.test(html), "Delete dialog must describe its current name or acknowledged completion status");
+  assert(/data-testid="signals-workspace-variable-input"(?=[^>]*\brequired\b)(?=[^>]*aria-required="true")(?=[^>]*aria-describedby=)[^>]*>/.test(html), "workspace variable must expose required/describedby semantics");
+  assert(/data-testid="signals-workspace-sample-rate-input"[^>]*aria-describedby=/.test(html), "workspace sample rate must expose validation description semantics");
+  ["signals-toolbar-error", "signals-delete-done", "aria-invalid", "focusFirstInvalid", "Home", "End", "signalsToolbar"].forEach((term) => assert(app.includes(term), `frontend must preserve final Signals audit behavior ${term}`));
+  ["signals-workspace-success", "signals-workspace-done", "signals-delete-success", "focus", "Shift+Tab", "signals-copy-action", "signals-add-action"].forEach((term) => assert(app.includes(term), `frontend must preserve final Signals completion/menu focus behavior ${term}`));
+  assert(!/overflows*:s*hidden/i.test(css.slice(css.indexOf(".signals"), css.indexOf(".signals") + 1600)), "Signals toolbar/rows must not clip its menu or dialogs");
   assert(/<script\b[^>]*src=["']\.\/js\/api\.js["']/.test(html) && /<script\b[^>]*src=["']\.\/js\/app\.js["']/.test(html), "Genie-relative API and app scripts must be registered");
   assert(!/\b(?:href|src)\s*=\s*["']\/(?:css|js)\//i.test(html), "frontend assets must remain Genie-relative, not root-absolute");
   assert(html.includes('./js/vendor/plotly-cartesian-3.1.0.min.js'), "Plotly must be loaded from the pinned local vendor asset before the app");
@@ -36,6 +55,10 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(api.includes('request("./api/state")'), "state API must use ./api/state");
   assert(api.includes('request("./api/view", {'), "view API must use ./api/view");
   assert(api.includes('request("./api/displays", {'), "Display lifecycle API must use ./api/displays");
+  assert(api.includes('request("./api/signals", {'), "Signals inspector mutations must use the sole ./api/signals route");
+  ["import_workspace", "duplicate", "extract_time_limits", "delete", "signalsAction", "signals-add-menu", "signals-workspace-dialog", "signals-delete-dialog", "payload.current", "status===409"].forEach((term) =>
+    assert(app.includes(term), `frontend must preserve Signals inspector lifecycle term ${term}`)
+  );
   assert((api.match(/method: "POST"/g) || []).length >= 2, "view and displays mutations must POST JSON");
 
   ["active_display_id", "displays", "visible_signals", "row_selected_signal", "analysis_signal", "selected_signal", "displayMutation", "addDisplay", "selectDisplay", "closeDisplay", "pendingAction"].forEach((term) =>

@@ -79,6 +79,50 @@ end
     @test !occursin("\"num_power_bins\"", SA_API.source("lib", "services", "signal_analyser_service.jl"))
 end
 
+@testset "Signals inspector API route and adapter boundary" begin
+    routes_source = SA_API.source("app", "routes.jl")
+    domain_source = SA_API.source("lib", "domain", "signal_inventory.jl")
+    adapter_source = SA_API.source("lib", "adapters", "engee_workspace_signal_source.jl")
+    signals_routes = collect(eachmatch(r"route\(\"/api/signals\", method = POST\)", routes_source))
+
+    @test length(signals_routes) == 1
+    @test occursin("apply_signal_inventory!", routes_source)
+    @test occursin("jsonpayload()", routes_source)
+    @test occursin("signal_analyser_validation_response", routes_source)
+    @test occursin("signal_analyser_stale_response", routes_source)
+    @test occursin("ImportWorkspaceSignalCommand", domain_source)
+    @test occursin("DuplicateSignalCommand", domain_source)
+    @test occursin("ExtractTimeLimitsSignalCommand", domain_source)
+    @test occursin("DeleteSignalCommand", domain_source)
+    @test occursin("AbstractWorkspaceSignalSource", domain_source)
+    @test occursin("EngeeWorkspaceSignalSource", adapter_source)
+    @test occursin("engee.genie.recv", adapter_source)
+    @test !occursin("engee.genie.eval", adapter_source)
+    @test !occursin("Core.eval", adapter_source)
+end
+
+@testset "Signals inspector parser is a strict operation union" begin
+    @test SA_API.parse_signal_inventory_command(Dict("state_revision" => 3, "operation" => "import_workspace", "variable_name" => "x", "signal_name" => nothing, "sample_rate_hz" => 10.0)) isa SA_API.ImportWorkspaceSignalCommand
+    @test SA_API.parse_signal_inventory_command(Dict("state_revision" => 3, "operation" => "duplicate", "signal_name" => "x")) isa SA_API.DuplicateSignalCommand
+    @test SA_API.parse_signal_inventory_command(Dict("state_revision" => 3, "operation" => "extract_time_limits", "display_id" => "display-1")) isa SA_API.ExtractTimeLimitsSignalCommand
+    @test SA_API.parse_signal_inventory_command(Dict("state_revision" => 3, "operation" => "delete", "signal_name" => "x")) isa SA_API.DeleteSignalCommand
+
+    for payload in (
+        Dict{String,Any}(),
+        Dict("state_revision" => 3, "operation" => "unknown"),
+        Dict("state_revision" => 3, "operation" => "import_workspace", "variable_name" => "x", "sample_rate_hz" => 10.0),
+        Dict("state_revision" => 3, "operation" => "import_workspace", "variable_name" => "x", "signal_name" => "", "sample_rate_hz" => 10.0),
+        Dict("state_revision" => 3, "operation" => "import_workspace", "variable_name" => "x", "signal_name" => nothing, "sample_rate_hz" => true),
+        Dict("state_revision" => 3, "operation" => "duplicate", "signal_name" => "x", "extra" => true),
+        Dict("state_revision" => 3, "operation" => "extract_time_limits", "display_id" => "display-1", "signal_name" => "x"),
+        Dict("state_revision" => 3, "operation" => "delete", "signal_name" => "   "),
+        Dict("state_revision" => 3.0, "operation" => "delete", "signal_name" => "x"),
+        Dict("state_revision" => true, "operation" => "delete", "signal_name" => "x"),
+    )
+        @test_throws SA_API.SignalAnalyserValidationError SA_API.parse_signal_inventory_command(payload)
+    end
+end
+
 @testset "Cascade 19 API Persistence Leakage wire contract" begin
     SA_API.reset_pspectrum_double!()
     state = SA_API.default_signal_analyser_state()

@@ -1,3 +1,5 @@
+include(joinpath(@__DIR__, "signal_inventory.jl"))
+
 @enum SignalAnalyserPlot begin
     TIME_PLOT
     SPECTRUM_PLOT
@@ -203,6 +205,14 @@ Base.:(==)(left::SignalSpectrumSettings, right::SignalSpectrumSettings) =
 Base.isequal(left::SignalSpectrumSettings, right::SignalSpectrumSettings) = left == right
 Base.hash(settings::SignalSpectrumSettings, seed::UInt) =
     hash((settings.scale, settings.frequency_scale, settings.leakage, settings.frequency_limits), seed)
+
+"""A prospective Display/source combination violates a persisted semantic invariant."""
+struct SignalAnalysisSourceCompatibilityError <: Exception
+    field::String
+    message::String
+end
+
+Base.showerror(io::IO, err::SignalAnalysisSourceCompatibilityError) = print(io, err.message)
 
 """Persistent per-Display Spectrogram provider and presentation settings."""
 struct SignalSpectrogramSettings

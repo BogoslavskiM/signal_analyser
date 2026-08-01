@@ -73,6 +73,24 @@ route("/api/displays", method = POST) do
     end
 end
 
+route("/api/signals", method = POST) do
+    try
+        api_json(apply_signal_inventory!(
+            SIGNAL_INVENTORY_SERVICE,
+            SIGNAL_ANALYSER_STATE,
+            jsonpayload(),
+        ))
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)
+        else
+            api_error_response("Не удалось изменить Signals inventory", err; status = 500)
+        end
+    end
+end
+
 route("/api/example", method = GET) do
     try
         api_json(example_payload())
