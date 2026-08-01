@@ -56,6 +56,16 @@ function useCurrentPageFromArgs() {
   return process.argv.includes("--current") || process.env.PLAYWRIGHT_CURRENT === "1";
 }
 
+function assertAllowedTarget(url, source) {
+  const allowed = config.app && Array.isArray(config.app.allowedOrigins) ? config.app.allowedOrigins : [];
+  let origin;
+  try { origin = new URL(url).origin; }
+  catch (_error) { throw new Error(`${source} must be an absolute allowed production URL: ${url}`); }
+  if (!allowed.includes(origin)) {
+    throw new Error(`${source} origin ${origin} is forbidden; allowed origins: ${allowed.join(", ") || "(none)"}`);
+  }
+}
+
 function enabledFeatures() {
   const override = process.env.PLAYWRIGHT_FEATURES;
   if (override != null) {
@@ -145,6 +155,7 @@ async function currentPage(browser, urlMatch) {
     console.error(usage());
     process.exit(2);
   }
+  if (appUrl) assertAllowedTarget(appUrl, "application URL");
 
   const cdpUrl = process.env.PLAYWRIGHT_CDP_URL || "http://127.0.0.1:9222";
   const releaseRunnerLock = acquireRunnerLock(cdpUrl);
@@ -159,6 +170,7 @@ async function currentPage(browser, urlMatch) {
   const urlMatch = process.env.PLAYWRIGHT_PAGE_URL_MATCH ||
     (useCurrentPage ? config.app.pageUrlMatch || "" : "");
   const page = await currentPage(browser, urlMatch);
+  if (useCurrentPage) assertAllowedTarget(page.url(), "current browser page");
   runnerLog.log(`Using page: ${page.url() || "(blank)"}`);
 
   const specFilter = process.env.PLAYWRIGHT_SPEC || "";

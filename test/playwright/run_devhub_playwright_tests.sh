@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "${PLAYWRIGHT_DIR}/../.." && pwd)"
 CDP_PORT="${PLAYWRIGHT_CDP_PORT:-9222}"
 CDP_URL="${PLAYWRIGHT_CDP_URL:-http://127.0.0.1:${CDP_PORT}}"
 CHROME_PROFILE="${PLAYWRIGHT_CHROME_PROFILE:-/tmp/genie-playwright-chrome}"
-PAGE_URL_MATCH="${PLAYWRIGHT_PAGE_URL_MATCH:-/user/apps/signal_analyser}"
+PAGE_URL_MATCH="${PLAYWRIGHT_PAGE_URL_MATCH:-https://engee.com/prod/user/}"
 CURRENT=0
 NO_LAUNCH=0
 APP_URL=""
@@ -14,11 +14,11 @@ APP_URL=""
 usage() {
   cat <<'EOF'
 Usage:
-  ./test/playwright/run_devhub_playwright_tests.sh <prod-application-url>
+  ./test/playwright/run_devhub_playwright_tests.sh <engee.com-production-application-url>
   ./test/playwright/run_devhub_playwright_tests.sh --current
 
 Options:
-  --current     Use the already-open devhub tab and skip navigation.
+  --current     Use an already-open engee.com production tab and skip navigation.
   --no-launch   Connect only to an existing CDP Chrome.
   -h, --help    Show this help.
 
@@ -26,8 +26,8 @@ Environment:
   PLAYWRIGHT_CDP_PORT=9222
   PLAYWRIGHT_CDP_URL=http://127.0.0.1:9222
   PLAYWRIGHT_CHROME_PROFILE=/tmp/genie-playwright-chrome
-  PLAYWRIGHT_PAGE_URL_MATCH=/user/apps/signal_analyser
-  PLAYWRIGHT_APP_URL=https://example.invalid/user/apps/signal_analyser
+  PLAYWRIGHT_PAGE_URL_MATCH=https://engee.com/prod/user/
+  PLAYWRIGHT_APP_URL=https://engee.com/prod/user/example/genie/signal_analyser/
   PLAYWRIGHT_SPEC=signal_analyser/plot_contracts
   PLAYWRIGHT_FEATURES=layout-geometry,graph-output-zone
 EOF
@@ -65,6 +65,11 @@ fi
 
 if [[ "$CURRENT" -eq 0 && -z "$APP_URL" ]]; then
   usage >&2
+  exit 2
+fi
+
+if [[ -n "$APP_URL" && "$APP_URL" != https://engee.com/* ]]; then
+  echo "Forbidden application origin. SignalAnalyser Playwright accepts only https://engee.com production URLs." >&2
   exit 2
 fi
 
@@ -122,7 +127,7 @@ fi
 wait_for_cdp
 
 if [[ "$CURRENT" -eq 1 ]]; then
-  echo "Running Playwright tests against current devhub tab matching: ${PAGE_URL_MATCH}"
+  echo "Running Playwright tests against current engee.com production tab matching: ${PAGE_URL_MATCH}"
   PLAYWRIGHT_CDP_URL="$CDP_URL" \
   PLAYWRIGHT_PAGE_URL_MATCH="$PAGE_URL_MATCH" \
   npm --prefix "$PLAYWRIGHT_DIR" run test -- --current
