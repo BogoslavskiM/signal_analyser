@@ -79,7 +79,10 @@ struct ExplicitSignalSpectrumFrequencyLimits <: AbstractSignalSpectrumFrequencyL
         minimum_frequency < maximum_frequency || throw(ArgumentError(
             "Минимальная Frequency Limit должна быть меньше максимальной",
         ))
-        new(minimum_frequency, maximum_frequency)
+        new(
+            minimum_frequency == 0.0 ? 0.0 : minimum_frequency,
+            maximum_frequency == 0.0 ? 0.0 : maximum_frequency,
+        )
     end
 end
 
@@ -147,8 +150,13 @@ Base.hash(settings::SignalSpectrumSettings, seed::UInt) =
 struct SignalSpectrogramSettings
     overlap_percent::Float64
     leakage::Float64
+    frequency_limits::AbstractSignalSpectrumFrequencyLimits
 
-    function SignalSpectrogramSettings(overlap_percent::Real, leakage::Real)
+    function SignalSpectrogramSettings(
+        overlap_percent::Real,
+        leakage::Real,
+        frequency_limits::AbstractSignalSpectrumFrequencyLimits,
+    )
         overlap_percent isa Bool && throw(ArgumentError(
             "Overlap Spectrogram должен быть числом, но не Bool",
         ))
@@ -166,19 +174,28 @@ struct SignalSpectrogramSettings
         new(
             overlap_value == 0.0 ? 0.0 : overlap_value,
             leakage_value == 0.0 ? 0.0 : leakage_value,
+            frequency_limits,
         )
     end
 end
 
+SignalSpectrogramSettings(overlap_percent::Real, leakage::Real) =
+    SignalSpectrogramSettings(
+        overlap_percent,
+        leakage,
+        AutomaticSignalSpectrumFrequencyLimits(),
+    )
 SignalSpectrogramSettings(overlap_percent::Real) =
     SignalSpectrogramSettings(overlap_percent, 0.5)
 SignalSpectrogramSettings() = SignalSpectrogramSettings(50.0, 0.5)
 
 Base.:(==)(left::SignalSpectrogramSettings, right::SignalSpectrogramSettings) =
-    left.overlap_percent == right.overlap_percent && left.leakage == right.leakage
+    left.overlap_percent == right.overlap_percent &&
+    left.leakage == right.leakage &&
+    left.frequency_limits == right.frequency_limits
 Base.isequal(left::SignalSpectrogramSettings, right::SignalSpectrogramSettings) = left == right
 Base.hash(settings::SignalSpectrogramSettings, seed::UInt) =
-    hash((settings.overlap_percent, settings.leakage), seed)
+    hash((settings.overlap_percent, settings.leakage, settings.frequency_limits), seed)
 
 """Inclusive 1-based raw sample range shared by ROI consumers."""
 struct SignalTimeSampleRange
@@ -368,6 +385,7 @@ struct SignalSpectrogramQuery
     topology::SignalSpectrumTopology
     overlap_percent::Float64
     leakage::Float64
+    frequency_limits::AbstractSignalSpectrumFrequencyLimits
 
     function SignalSpectrogramQuery(
         signal_name::AbstractString,
@@ -376,6 +394,7 @@ struct SignalSpectrogramQuery
         topology::SignalSpectrumTopology,
         overlap_percent::Real,
         leakage::Real,
+        frequency_limits::AbstractSignalSpectrumFrequencyLimits,
     )
         isempty(signal_name) && throw(ArgumentError(
             "Имя сигнала Spectrogram query не может быть пустым",
@@ -391,7 +410,7 @@ struct SignalSpectrogramQuery
         isfinite(sample_rate_value) && sample_rate_value > 0 || throw(ArgumentError(
             "Частота дискретизации Spectrogram query должна быть положительной и конечной",
         ))
-        settings = SignalSpectrogramSettings(overlap_percent, leakage)
+        settings = SignalSpectrogramSettings(overlap_percent, leakage, frequency_limits)
         new(
             String(signal_name),
             samples,
@@ -399,9 +418,27 @@ struct SignalSpectrogramQuery
             topology,
             settings.overlap_percent,
             settings.leakage,
+            settings.frequency_limits,
         )
     end
 end
+
+SignalSpectrogramQuery(
+    signal_name::AbstractString,
+    values::AbstractVector{<:Number},
+    sample_rate_hz::Real,
+    topology::SignalSpectrumTopology,
+    overlap_percent::Real,
+    leakage::Real,
+) = SignalSpectrogramQuery(
+    signal_name,
+    values,
+    sample_rate_hz,
+    topology,
+    overlap_percent,
+    leakage,
+    AutomaticSignalSpectrumFrequencyLimits(),
+)
 
 SignalSpectrogramQuery(
     signal_name::AbstractString,
@@ -500,6 +537,7 @@ struct SignalSpectrogramCacheKey
     topology::SignalSpectrumTopology
     overlap_percent::Float64
     leakage::Float64
+    frequency_limits::AbstractSignalSpectrumFrequencyLimits
 
     function SignalSpectrogramCacheKey(
         signal_name::AbstractString,
@@ -508,6 +546,7 @@ struct SignalSpectrogramCacheKey
         topology::SignalSpectrumTopology,
         overlap_percent::Real,
         leakage::Real,
+        frequency_limits::AbstractSignalSpectrumFrequencyLimits,
     )
         isempty(signal_name) && throw(ArgumentError(
             "Имя сигнала Spectrogram cache key не может быть пустым",
@@ -525,7 +564,7 @@ struct SignalSpectrogramCacheKey
         sample_count >= 0 || throw(ArgumentError(
             "Число отсчётов Spectrogram cache key не может быть отрицательным",
         ))
-        settings = SignalSpectrogramSettings(overlap_percent, leakage)
+        settings = SignalSpectrogramSettings(overlap_percent, leakage, frequency_limits)
         new(
             String(signal_name),
             sample_rate_value,
@@ -533,9 +572,27 @@ struct SignalSpectrogramCacheKey
             topology,
             settings.overlap_percent,
             settings.leakage,
+            settings.frequency_limits,
         )
     end
 end
+
+SignalSpectrogramCacheKey(
+    signal_name::AbstractString,
+    sample_rate_hz::Real,
+    sample_count::Integer,
+    topology::SignalSpectrumTopology,
+    overlap_percent::Real,
+    leakage::Real,
+) = SignalSpectrogramCacheKey(
+    signal_name,
+    sample_rate_hz,
+    sample_count,
+    topology,
+    overlap_percent,
+    leakage,
+    AutomaticSignalSpectrumFrequencyLimits(),
+)
 
 SignalSpectrogramCacheKey(query::SignalSpectrogramQuery) = SignalSpectrogramCacheKey(
     query.signal_name,
@@ -544,6 +601,7 @@ SignalSpectrogramCacheKey(query::SignalSpectrogramQuery) = SignalSpectrogramCach
     query.topology,
     query.overlap_percent,
     query.leakage,
+    query.frequency_limits,
 )
 
 SignalSpectrogramCacheKey(
@@ -581,7 +639,8 @@ Base.:(==)(left::SignalSpectrogramCacheKey, right::SignalSpectrogramCacheKey) =
     left.sample_count == right.sample_count &&
     left.topology == right.topology &&
     left.overlap_percent == right.overlap_percent &&
-    left.leakage == right.leakage
+    left.leakage == right.leakage &&
+    left.frequency_limits == right.frequency_limits
 Base.isequal(left::SignalSpectrogramCacheKey, right::SignalSpectrogramCacheKey) = left == right
 Base.hash(key::SignalSpectrogramCacheKey, seed::UInt) = hash(
     (
@@ -591,6 +650,7 @@ Base.hash(key::SignalSpectrogramCacheKey, seed::UInt) = hash(
         key.topology,
         key.overlap_percent,
         key.leakage,
+        key.frequency_limits,
     ),
     seed,
 )

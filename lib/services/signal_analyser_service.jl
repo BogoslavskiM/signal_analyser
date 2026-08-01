@@ -23,7 +23,11 @@ const SIGNAL_SPECTRUM_SETTINGS_FIELDS = Set([
     "frequency_limits",
 ])
 const SIGNAL_SPECTRUM_FREQUENCY_LIMIT_FIELDS = Set(["min_hz", "max_hz", "units"])
-const SIGNAL_SPECTROGRAM_SETTINGS_FIELDS = Set(["overlap_percent", "leakage"])
+const SIGNAL_SPECTROGRAM_SETTINGS_FIELDS = Set([
+    "overlap_percent",
+    "leakage",
+    "frequency_limits",
+])
 
 const SIGNAL_SPECTRUM_SCALE_NAMES = Dict(
     DB_SPECTRUM_SCALE => "db",
@@ -111,6 +115,51 @@ function signal_spectrogram_settings_payload(
     Dict{String,Any}(
         "overlap_percent" => settings.overlap_percent,
         "leakage" => settings.leakage,
+        "frequency_limits" => signal_spectrum_frequency_limits_payload(settings.frequency_limits),
+    )
+end
+
+function signal_spectrogram_frequency_limits_metadata(
+    settings::SignalSpectrogramSettings,
+    signal::AnalysedSignal,
+)::Dict{String,Any}
+    requested = signal_spectrum_frequency_limits_payload(settings.frequency_limits)
+    effective_limits = settings.frequency_limits isa AutomaticSignalSpectrumFrequencyLimits ?
+        signal_spectrum_topology_limits(signal) : settings.frequency_limits
+    Dict{String,Any}(
+        "mode" => settings.frequency_limits isa AutomaticSignalSpectrumFrequencyLimits ?
+            "auto" : "explicit",
+        "requested" => requested,
+        "effective" => signal_spectrum_frequency_limits_payload(effective_limits),
+    )
+end
+
+function signal_spectrogram_frequency_limits_metadata(
+    settings::SignalSpectrogramSettings,
+    ::Nothing,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "mode" => settings.frequency_limits isa AutomaticSignalSpectrumFrequencyLimits ?
+            "auto" : "explicit",
+        "requested" => signal_spectrum_frequency_limits_payload(settings.frequency_limits),
+        "effective" => nothing,
+    )
+end
+
+function signal_spectrogram_frequency_limits_metadata(
+    settings::SignalSpectrogramSettings,
+    data::SignalSpectrogramData,
+)::Dict{String,Any}
+    effective = isempty(data.frequencies_hz) ? nothing :
+        signal_spectrum_frequency_limits_payload(ExplicitSignalSpectrumFrequencyLimits(
+            first(data.frequencies_hz),
+            last(data.frequencies_hz),
+        ))
+    Dict{String,Any}(
+        "mode" => settings.frequency_limits isa AutomaticSignalSpectrumFrequencyLimits ?
+            "auto" : "explicit",
+        "requested" => signal_spectrum_frequency_limits_payload(settings.frequency_limits),
+        "effective" => effective,
     )
 end
 
@@ -188,6 +237,7 @@ end
 
 function signal_analyser_empty_plots(
     spectrum_settings::SignalSpectrumSettings = SignalSpectrumSettings(),
+    spectrogram_settings::SignalSpectrogramSettings = SignalSpectrogramSettings(),
 )::Dict{String,Any}
     Dict{String,Any}(
         "time" => Dict{String,Any}(
@@ -217,6 +267,10 @@ function signal_analyser_empty_plots(
             "x_label" => "Время, с",
             "y_label" => "Частота, Гц",
             "color_label" => "Мощность, дБ",
+            "frequency_limits" => signal_spectrogram_frequency_limits_metadata(
+                spectrogram_settings,
+                nothing,
+            ),
         ),
         "persistence" => Dict{String,Any}(
             "type" => "heatmap",
@@ -439,7 +493,11 @@ function signal_analyser_plots_for_display!(
         materialize_missing = materialize_missing_spectrogram,
     )
     plots["spectrum"] = signal_analyser_spectrum_plot(spectrum_data, display.spectrum_settings)
-    plots["spectrogram"] = signal_analyser_spectrogram_plot(spectrogram_data)
+    plots["spectrogram"] = signal_analyser_spectrogram_plot(
+        spectrogram_data,
+        display.spectrogram_settings,
+        signal,
+    )
     plots
 end
 
@@ -567,7 +625,10 @@ function signal_analyser_multi_trace_payload(
     materialize_missing_spectrogram::Bool = true,
 )::Dict{String,Any}
     isempty(visible_names) || throw(ArgumentError("Пустой analysis source допустим только для пустого Display"))
-    plots = signal_analyser_empty_plots(display.spectrum_settings)
+    plots = signal_analyser_empty_plots(
+        display.spectrum_settings,
+        display.spectrogram_settings,
+    )
     spectrogram = copy(plots["spectrogram"])
     spectrogram["signal"] = nothing
     spectrogram["name"] = ""
@@ -678,29 +739,51 @@ signal_spectrum_topology(signal::AnalysedSignal)::SignalSpectrumTopology =
     signal.is_complex ? CENTERED_TWO_SIDED_SPECTRUM : ONE_SIDED_SPECTRUM
 
 function signal_spectrum_topology_limits(
-    signal::AnalysedSignal,
+    sample_rate_hz::Real,
+    topology::SignalSpectrumTopology,
 )::ExplicitSignalSpectrumFrequencyLimits
-    isfinite(signal.sample_rate_hz) && signal.sample_rate_hz > 0 || throw(ArgumentError(
+    sample_rate_hz isa Bool && throw(ArgumentError(
+        "Частота дискретизации сигнала должна быть числом, но не Bool",
+    ))
+    sample_rate_value = Float64(sample_rate_hz)
+    isfinite(sample_rate_value) && sample_rate_value > 0 || throw(ArgumentError(
         "Частота дискретизации сигнала должна быть положительным конечным числом",
     ))
-    nyquist_hz = signal.sample_rate_hz / 2
-    signal.is_complex ?
+    nyquist_hz = sample_rate_value / 2
+    topology == CENTERED_TWO_SIDED_SPECTRUM ?
         ExplicitSignalSpectrumFrequencyLimits(-nyquist_hz, nyquist_hz) :
         ExplicitSignalSpectrumFrequencyLimits(0.0, nyquist_hz)
 end
 
-signal_spectrum_frequency_limits_valid_for_signal(
+signal_spectrum_topology_limits(signal::AnalysedSignal)::ExplicitSignalSpectrumFrequencyLimits =
+    signal_spectrum_topology_limits(
+        signal.sample_rate_hz,
+        signal_spectrum_topology(signal),
+    )
+
+signal_spectrum_frequency_limits_valid(
     ::AutomaticSignalSpectrumFrequencyLimits,
-    ::AnalysedSignal,
+    ::Real,
+    ::SignalSpectrumTopology,
 ) = true
 
-function signal_spectrum_frequency_limits_valid_for_signal(
+function signal_spectrum_frequency_limits_valid(
     limits::ExplicitSignalSpectrumFrequencyLimits,
-    signal::AnalysedSignal,
+    sample_rate_hz::Real,
+    topology::SignalSpectrumTopology,
 )::Bool
-    domain = signal_spectrum_topology_limits(signal)
+    domain = signal_spectrum_topology_limits(sample_rate_hz, topology)
     domain.min_hz <= limits.min_hz && limits.max_hz <= domain.max_hz
 end
+
+signal_spectrum_frequency_limits_valid_for_signal(
+    limits::AbstractSignalSpectrumFrequencyLimits,
+    signal::AnalysedSignal,
+) = signal_spectrum_frequency_limits_valid(
+    limits,
+    signal.sample_rate_hz,
+    signal_spectrum_topology(signal),
+)
 
 signal_spectrum_effective_frequency_limits(
     ::AutomaticSignalSpectrumFrequencyLimits,
@@ -725,6 +808,17 @@ function signal_spectrum_with_frequency_limits(
     SignalSpectrumSettings(
         settings.scale,
         settings.frequency_scale,
+        settings.leakage,
+        frequency_limits,
+    )
+end
+
+function signal_spectrogram_with_frequency_limits(
+    settings::SignalSpectrogramSettings,
+    frequency_limits::AbstractSignalSpectrumFrequencyLimits,
+)::SignalSpectrogramSettings
+    SignalSpectrogramSettings(
+        settings.overlap_percent,
         settings.leakage,
         frequency_limits,
     )
@@ -902,6 +996,7 @@ function signal_spectrogram_cache_key(
         signal_spectrum_topology(signal),
         settings.overlap_percent,
         settings.leakage,
+        settings.frequency_limits,
     )
 end
 
@@ -919,6 +1014,7 @@ function signal_spectrogram_query(
         signal_spectrum_topology(signal),
         settings.overlap_percent,
         settings.leakage,
+        settings.frequency_limits,
     )
 end
 
@@ -939,16 +1035,20 @@ function signal_spectrogram_calculate(
     samples = query.topology == ONE_SIDED_SPECTRUM ?
         Float64.(real.(query.values)) : copy(query.values)
     times = collect(0:(length(samples) - 1)) ./ query.sample_rate_hz
-    power, frequencies, segment_centers = signal_analyser_pspectrum(
-        samples,
-        times,
-        "spectrogram",
+    options = Any[
         "Leakage",
         query.leakage,
         "OverlapPercent",
         query.overlap_percent,
         "TwoSided",
         query.topology == CENTERED_TWO_SIDED_SPECTRUM,
+    ]
+    append!(options, signal_spectrum_frequency_limits_options(query.frequency_limits))
+    power, frequencies, segment_centers = signal_analyser_pspectrum(
+        samples,
+        times,
+        "spectrogram",
+        options...,
     )
     power isa AbstractMatrix || throw(ArgumentError(
         "Spectrogram provider должен вернуть двумерную матрицу мощности",
@@ -965,6 +1065,13 @@ function signal_spectrogram_calculate(
     service::SignalSpectrogramService,
     query::SignalSpectrogramQuery,
 )::SignalSpectrogramData
+    signal_spectrum_frequency_limits_valid(
+        query.frequency_limits,
+        query.sample_rate_hz,
+        query.topology,
+    ) || throw(ArgumentError(
+        "Frequency Limits Spectrogram должны целиком лежать в topology query",
+    ))
     data = signal_spectrogram_calculate(service.provider, query)
     data.topology == query.topology || throw(ArgumentError(
         "Spectrogram provider вернул topology, не совпадающую с query",
@@ -989,7 +1096,24 @@ function signal_spectrogram_calculate(
     nyquist_hz = query.sample_rate_hz / 2
     frequency_tolerance_hz = sqrt(eps(Float64)) * max(query.sample_rate_hz, 1.0)
     frequencies = data.frequencies_hz
-    if query.topology == ONE_SIDED_SPECTRUM
+    if query.frequency_limits isa ExplicitSignalSpectrumFrequencyLimits
+        limits = query.frequency_limits::ExplicitSignalSpectrumFrequencyLimits
+        length(frequencies) >= 2 && all(>(0.0), diff(collect(frequencies))) || throw(ArgumentError(
+            "Spectrogram provider не вернул строго возрастающую explicit частотную ось",
+        ))
+        all(
+            frequency -> limits.min_hz - frequency_tolerance_hz <= frequency <=
+                limits.max_hz + frequency_tolerance_hz,
+            frequencies,
+        ) || throw(ArgumentError(
+            "Spectrogram provider вернул частоты вне explicit Frequency Limits",
+        ))
+        abs(first(frequencies) - limits.min_hz) <= frequency_tolerance_hz &&
+            abs(last(frequencies) - limits.max_hz) <= frequency_tolerance_hz ||
+            throw(ArgumentError(
+                "Spectrogram provider не сохранил explicit Frequency Limits",
+            ))
+    elseif query.topology == ONE_SIDED_SPECTRUM
         all(
             frequency -> -frequency_tolerance_hz <= frequency <= nyquist_hz + frequency_tolerance_hz,
             frequencies,
@@ -1023,6 +1147,12 @@ function signal_spectrogram_data(
     settings::SignalSpectrogramSettings,
 )::SignalSpectrogramData
     topology = signal_spectrum_topology(signal)
+    signal_spectrum_frequency_limits_valid_for_signal(
+        settings.frequency_limits,
+        signal,
+    ) || throw(ArgumentError(
+        "Frequency Limits Spectrogram должны целиком лежать в topology analysis source",
+    ))
     length(signal.values) < 2 && return SignalSpectrogramData(topology)
     signal_spectrogram_calculate(service, signal_spectrogram_query(signal, settings))
 end
@@ -1445,7 +1575,10 @@ function signal_analyser_snapshot_unlocked(
         ))
     end
     plots = signal === nothing ?
-        signal_analyser_empty_plots(active_display.spectrum_settings) :
+        signal_analyser_empty_plots(
+            active_display.spectrum_settings,
+            active_display.spectrogram_settings,
+        ) :
         signal_analyser_plots_for_display!(
             state,
             active_display,
@@ -1714,6 +1847,54 @@ function signal_analyser_validate_spectrum_frequency_limits!(
     end
 end
 
+function signal_analyser_validate_spectrogram_frequency_limits!(
+    field_errors::Dict{String,String},
+    value,
+)::Union{Nothing,AbstractSignalSpectrumFrequencyLimits}
+    value === nothing && return AutomaticSignalSpectrumFrequencyLimits()
+    if !(value isa AbstractDict)
+        field_errors["spectrogram_settings"] =
+            "frequency_limits: требуется null или объект {min_hz, max_hz, units}"
+        return nothing
+    end
+    keys_set = signal_analyser_payload_keys(value)
+    if length(value) != 3 || keys_set != SIGNAL_SPECTRUM_FREQUENCY_LIMIT_FIELDS
+        missing = sort!(collect(setdiff(SIGNAL_SPECTRUM_FREQUENCY_LIMIT_FIELDS, keys_set)))
+        unknown = sort!(collect(setdiff(keys_set, SIGNAL_SPECTRUM_FREQUENCY_LIMIT_FIELDS)))
+        details = String[]
+        isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
+        isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
+        length(value) == 3 || push!(details, "требуется ровно три поля")
+        field_errors["spectrogram_settings"] =
+            "frequency_limits: ожидались только min_hz, max_hz, units ($(join(details, "; ")))"
+        return nothing
+    end
+
+    minimum_value = signal_analyser_payload_value(value, "min_hz")
+    maximum_value = signal_analyser_payload_value(value, "max_hz")
+    units_value = signal_analyser_payload_value(value, "units")
+    if !(minimum_value isa Real) || minimum_value isa Bool ||
+        !(maximum_value isa Real) || maximum_value isa Bool
+        field_errors["spectrogram_settings"] =
+            "frequency_limits: min_hz и max_hz должны быть конечными JSON numbers, но не Bool"
+        return nothing
+    end
+    if units_value != "Hz"
+        field_errors["spectrogram_settings"] =
+            "frequency_limits: поддерживаются только units=Hz"
+        return nothing
+    end
+    try
+        ExplicitSignalSpectrumFrequencyLimits(minimum_value, maximum_value)
+    catch err
+        if err isa ArgumentError || err isa InexactError || err isa OverflowError
+            field_errors["spectrogram_settings"] = sprint(showerror, err)
+            return nothing
+        end
+        rethrow()
+    end
+end
+
 function signal_analyser_validate_spectrum_settings!(
     field_errors::Dict{String,String},
     value,
@@ -1780,19 +1961,19 @@ function signal_analyser_validate_spectrogram_settings!(
 )::Union{Nothing,SignalSpectrogramSettings}
     if !(value isa AbstractDict)
         field_errors["spectrogram_settings"] =
-            "Требуется объект {overlap_percent, leakage}"
+            "Требуется объект {overlap_percent, leakage, frequency_limits}"
         return nothing
     end
     keys_set = signal_analyser_payload_keys(value)
-    if length(value) != 2 || keys_set != SIGNAL_SPECTROGRAM_SETTINGS_FIELDS
+    if length(value) != 3 || keys_set != SIGNAL_SPECTROGRAM_SETTINGS_FIELDS
         missing = sort!(collect(setdiff(SIGNAL_SPECTROGRAM_SETTINGS_FIELDS, keys_set)))
         unknown = sort!(collect(setdiff(keys_set, SIGNAL_SPECTROGRAM_SETTINGS_FIELDS)))
         details = String[]
         isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
         isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
-        length(value) == 2 || push!(details, "требуется ровно два поля")
+        length(value) == 3 || push!(details, "требуется ровно три поля")
         field_errors["spectrogram_settings"] =
-            "Ожидались только overlap_percent и leakage ($(join(details, "; ")))"
+            "Ожидались только overlap_percent, leakage и frequency_limits ($(join(details, "; ")))"
         return nothing
     end
 
@@ -1808,8 +1989,13 @@ function signal_analyser_validate_spectrogram_settings!(
             "leakage: требуется конечное JSON number от 0 до 1, но не Bool"
         return nothing
     end
+    frequency_limits = signal_analyser_validate_spectrogram_frequency_limits!(
+        field_errors,
+        signal_analyser_payload_value(value, "frequency_limits"),
+    )
+    frequency_limits === nothing && return nothing
     try
-        SignalSpectrogramSettings(overlap_value, leakage_value)
+        SignalSpectrogramSettings(overlap_value, leakage_value, frequency_limits)
     catch err
         if err isa ArgumentError || err isa InexactError || err isa OverflowError
             field_errors["spectrogram_settings"] = sprint(showerror, err)
@@ -2093,6 +2279,37 @@ function validate_signal_analyser_view_payload(
         )
         validated_spectrogram_settings === nothing ||
             (requested_spectrogram_settings = validated_spectrogram_settings)
+    end
+    if !haskey(field_errors, "spectrogram_settings")
+        requested_frequency_limits = requested_spectrogram_settings.frequency_limits
+        current_frequency_limits = display.spectrogram_settings.frequency_limits
+        if requested_analysis_name === nothing
+            if requested_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits &&
+                requested_frequency_limits != current_frequency_limits
+                field_errors["spectrogram_settings"] =
+                    "frequency_limits: явный интервал требует analysis source"
+            end
+        else
+            analysis_signal = signal_by_name(state, requested_analysis_name)
+            if requested_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits &&
+                !signal_spectrum_frequency_limits_valid_for_signal(
+                    requested_frequency_limits,
+                    analysis_signal,
+                )
+                frequency_limits_carried = requested_frequency_limits == current_frequency_limits
+                if source_changed && frequency_limits_carried
+                    requested_spectrogram_settings = signal_spectrogram_with_frequency_limits(
+                        requested_spectrogram_settings,
+                        AutomaticSignalSpectrumFrequencyLimits(),
+                    )
+                else
+                    domain = signal_spectrum_topology_limits(analysis_signal)
+                    field_errors["spectrogram_settings"] =
+                        "frequency_limits: интервал должен целиком лежать в " *
+                        "[$(domain.min_hz), $(domain.max_hz)] Hz analysis source"
+                end
+            end
+        end
     end
 
     has_peaks_enabled = signal_analyser_payload_contains(data, "peaks_enabled")

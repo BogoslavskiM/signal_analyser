@@ -69,7 +69,14 @@ const SPECTROGRAM_FAILURE = Ref(false)
 function signal_spectrogram_calculate(::EngeeDSPSpectrogramProvider, query::SignalSpectrogramQuery)::SignalSpectrogramData
     push!(SPECTROGRAM_CALLS, query)
     SPECTROGRAM_FAILURE[] && throw(ArgumentError("deterministic Spectrogram provider failure"))
-    frequencies = query.topology == ONE_SIDED_SPECTRUM ? [0.0, query.sample_rate_hz / 2] : [-query.sample_rate_hz / 2, query.sample_rate_hz / 2]
+    frequencies = if query.frequency_limits isa ExplicitSignalSpectrumFrequencyLimits
+        limits = query.frequency_limits::ExplicitSignalSpectrumFrequencyLimits
+        [limits.min_hz, limits.max_hz]
+    elseif query.topology == ONE_SIDED_SPECTRUM
+        [0.0, query.sample_rate_hz / 2]
+    else
+        [-query.sample_rate_hz / 2, query.sample_rate_hz / 2]
+    end
     SignalSpectrogramData(frequencies, [0.0, (length(query.values) - 1) / query.sample_rate_hz], [1.0 4.0; 9.0 16.0], query.topology)
 end
 

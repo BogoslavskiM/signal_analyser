@@ -124,7 +124,10 @@ function signal_analyser_spectrum_plot(signal::AnalysedSignal)::Dict{String,Any}
     signal_analyser_spectrum_plot(data, settings)
 end
 
-function signal_analyser_spectrogram_plot(data::SignalSpectrogramData)::Dict{String,Any}
+function signal_analyser_spectrogram_plot(
+    data::SignalSpectrogramData,
+    frequency_limits_metadata::Dict{String,Any},
+)::Dict{String,Any}
     x = Float64[data.segment_centers_s...]
     y = Float64[data.frequencies_hz...]
     z = Float64.(10 .* log10.(data.power))
@@ -137,11 +140,38 @@ function signal_analyser_spectrogram_plot(data::SignalSpectrogramData)::Dict{Str
         "x_label" => "Время, с",
         "y_label" => "Частота, Гц",
         "color_label" => "Мощность, дБ",
+        "frequency_limits" => frequency_limits_metadata,
     )
 end
 
+function signal_analyser_spectrogram_plot(
+    data::SignalSpectrogramData,
+    settings::SignalSpectrogramSettings,
+)::Dict{String,Any}
+    signal_analyser_spectrogram_plot(
+        data,
+        signal_spectrogram_frequency_limits_metadata(settings, data),
+    )
+end
+
+function signal_analyser_spectrogram_plot(
+    data::SignalSpectrogramData,
+    settings::SignalSpectrogramSettings,
+    signal::Union{Nothing,AnalysedSignal},
+)::Dict{String,Any}
+    signal_analyser_spectrogram_plot(
+        data,
+        signal_spectrogram_frequency_limits_metadata(settings, signal),
+    )
+end
+
+signal_analyser_spectrogram_plot(data::SignalSpectrogramData)::Dict{String,Any} =
+    signal_analyser_spectrogram_plot(data, SignalSpectrogramSettings())
+
 function signal_analyser_spectrogram_plot(signal::AnalysedSignal)::Dict{String,Any}
-    signal_analyser_spectrogram_plot(signal_spectrogram_data(SignalSpectrogramService(), signal))
+    settings = SignalSpectrogramSettings()
+    data = signal_spectrogram_data(SignalSpectrogramService(), signal, settings)
+    signal_analyser_spectrogram_plot(data, settings, signal)
 end
 
 function signal_analyser_persistence_plot(signal::AnalysedSignal)::Dict{String,Any}
@@ -200,6 +230,8 @@ function signal_analyser_base_plots(signal::AnalysedSignal)::Dict{String,Any}
         ),
         "spectrogram" => signal_analyser_spectrogram_plot(
             SignalSpectrogramData(signal_spectrum_topology(signal)),
+            SignalSpectrogramSettings(),
+            signal,
         ),
         "persistence" => signal_analyser_persistence_plot(signal),
     )

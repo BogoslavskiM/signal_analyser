@@ -107,7 +107,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
     assert(app.includes(term), `frontend must preserve Cascade 10 Frequency Limits term ${term}`)
   );
   assert(!/log[-_ ]?floor/i.test(html) && !/log[-_ ]?floor/i.test(app), "Cascade 10 must not add a Log-floor field or client-side floor calculation");
-  ["spectrogram-time-resolution", "spectrogram-frequency-limits"].forEach((term) =>
+  ["spectrogram-time-resolution"].forEach((term) =>
     assert(!html.includes(term) && !app.includes(term), `Cascade 11 must not add unaccepted Spectrogram controls (${term})`)
   );
   assert((html.match(/data-settings-tab=/g) || []).length === 3, "Cascade 11 must preserve exactly three settings tabs");
@@ -116,12 +116,21 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/data-testid="spectrogram-overlap-percent-error"[^>]*role="alert"[^>]*hidden/.test(html), "Cascade 12 must reserve an accessible Overlap inline error");
   assert(/data-testid="spectrogram-leakage-input"[^>]*type="range"[^>]*min="0"[^>]*max="1"[^>]*step="0\.01"/.test(html), "Cascade 13 must expose normalized Leakage range control");
   assert(/data-testid="spectrogram-leakage-error"[^>]*role="alert"[^>]*hidden/.test(html), "Cascade 13 must reserve an accessible Leakage inline error");
+  ["spectrogram-frequency-min-input", "spectrogram-frequency-max-input", "spectrogram-frequency-limits-error"].forEach((id) =>
+    assert(html.includes(`data-testid="${id}"`), `Cascade 15 Spectrogram Frequency Limits must expose stable selector ${id}`)
+  );
+  assert(/data-testid="spectrogram-frequency-min-input"[^>]*inputmode="decimal"/.test(html) && /data-testid="spectrogram-frequency-max-input"[^>]*inputmode="decimal"/.test(html), "Cascade 15 must expose typed Spectrogram Hz inputs");
+  assert(/data-testid="spectrogram-frequency-limits-error"[^>]*role="alert"[^>]*hidden/.test(html), "Cascade 15 must reserve an accessible Spectrogram Frequency Limits error");
   ["spectrogram_settings", "overlap_percent", "leakage", "spectrogram-overlap-percent-input", "spectrogram-overlap-percent-error", "spectrogram-leakage-input", "spectrogram-leakage-error"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Cascade 13 Spectrogram settings term ${term}`)
   );
   assert((html.match(/data-settings-tab=/g) || []).length === 3, "Cascade 13 Leakage must remain inside exactly three settings tabs");
   assert(!api.includes("overlap") && !api.includes("leakage") && !api.includes("spectrogram_settings"), "Cascade 13 must reuse /api/view rather than add a Spectrogram settings route");
   assert(!/fft|stft|window\(/i.test(app), "Cascade 13 must not add client-side DSP");
+  ["spectrogramFrequencyLimits", "spectrogram-frequency-min-input", "spectrogram-frequency-max-input", "spectrogram-frequency-limits-error", "frequency_limits"].forEach((term) =>
+    assert(app.includes(term), `Cascade 15 frontend must preserve Spectrogram Frequency Limits term ${term}`)
+  );
+  assert(!/cropFrequency|frequencyCrop|fft|stft|window\(/i.test(app), "Cascade 15 must not add client-side frequency cropping or DSP");
   assert((app.match(/function renderStatisticsControls\(/g) || []).length === 1, "Statistics settings must have exactly one render function");
   assert((app.match(/function render\(/g) || []).length === 1, "frontend must retain exactly one render declaration");
   assert(!app.includes("function bindStatisticsShortcut("), "Statistics shortcut must not retain a dead duplicate binding path");

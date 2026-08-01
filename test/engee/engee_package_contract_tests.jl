@@ -118,6 +118,46 @@ end
         @test_throws ArgumentError pspectrum(real_signal, probe_time, "power", "Leakage", 0.5, "TwoSided", false, "FrequencyLimits", [NaN, 20.0])
     end
 
+    @testset "C15 spectrogram FrequencyLimits real/complex provider matrix" begin
+        probe_fs_hz = 100.0
+        probe_count = 256
+        probe_time = collect(0:(probe_count - 1)) ./ probe_fs_hz
+        real_signal = sin.(2pi .* 12.0 .* probe_time)
+        complex_signal = exp.(2im * pi .* 12.0 .* probe_time)
+        endpoint_tolerance = sqrt(eps(Float64)) * max(probe_fs_hz, 1.0)
+        for (values, two_sided, bands) in (
+            (real_signal, false, ([0.0, 50.0], [5.0, 20.0])),
+            (complex_signal, true, ([-50.0, 50.0], [-30.0, -5.0], [-5.0, 15.0])),
+        )
+            auto_power, auto_frequency, auto_times = pspectrum(values, probe_time, "spectrogram", "Leakage", 0.5, "OverlapPercent", 50.0, "TwoSided", two_sided)
+            assert_pspectrum_matrix(auto_power, auto_frequency, auto_times)
+            for band in bands
+                power, frequency, times = pspectrum(values, probe_time, "spectrogram", "Leakage", 0.5, "OverlapPercent", 50.0, "TwoSided", two_sided, "FrequencyLimits", band)
+                axis = Float64.(vec(collect(frequency)))
+                @test length(axis) == 1024 && all(diff(axis) .> 0.0)
+                @test abs(first(axis) - band[1]) <= endpoint_tolerance
+                @test abs(last(axis) - band[2]) <= endpoint_tolerance
+                @test times == auto_times
+                assert_pspectrum_matrix(power, frequency, times)
+                reordered = pspectrum(values, probe_time, "spectrogram", "FrequencyLimits", band, "TwoSided", two_sided, "OverlapPercent", 50.0, "Leakage", 0.5)
+                @test (power, frequency, times) == reordered
+            end
+            full = two_sided ? [-50.0, 50.0] : [0.0, 50.0]
+            full_result = pspectrum(values, probe_time, "spectrogram", "Leakage", 0.5, "OverlapPercent", 50.0, "TwoSided", two_sided, "FrequencyLimits", full)
+            @test full_result != (auto_power, auto_frequency, auto_times) # C15 cannot alias Auto/full cache identity.
+        end
+        @test_throws ArgumentError pspectrum(real_signal, probe_time, "spectrogram", "Leakage", 0.5, "OverlapPercent", 50.0, "TwoSided", false, "FrequencyLimits", [20.0, 20.0])
+        @test_throws ArgumentError pspectrum(real_signal, probe_time, "spectrogram", "Leakage", 0.5, "OverlapPercent", 50.0, "TwoSided", false, "FrequencyLimits", [NaN, 20.0])
+        # Suspected provider boundary intake: product must pre-reject this partial band;
+        # the result is intentionally not asserted as a provider defect here.
+        nyquist_touch = try
+            pspectrum(real_signal, probe_time, "spectrogram", "Leakage", 0.5, "OverlapPercent", 50.0, "TwoSided", false, "FrequencyLimits", [50.0, 60.0])
+        catch caught
+            caught
+        end
+        @test nyquist_touch isa Exception || length(unique(Float64.(vec(collect(nyquist_touch[2]))))) < 1024
+    end
+
     @testset "spectrogram" begin
         power, frequencies, times = pspectrum(signal, time, "spectrogram", "TwoSided", true)
         @test !isempty(vec(collect(times)))

@@ -396,7 +396,7 @@ end
     state = SA_API.default_signal_analyser_state()
     first_name = state.signals[1].name
     initial = SA_API.signal_analyser_snapshot(state)
-    default_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5)
+    default_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing)
     @test initial["spectrogram_settings"] == default_settings
     @test all(display -> display["spectrogram_settings"] == default_settings, initial["displays"])
 
@@ -406,17 +406,17 @@ end
         Dict{String,Any}(),
         Dict("overlap_percent" => 50.0),
         Dict("leakage" => 0.5),
-        Dict("overlap_percent" => true, "leakage" => 0.5),
-        Dict("overlap_percent" => 50.0, "leakage" => true),
-        Dict("overlap_percent" => 50.0, "leakage" => "0.5"),
-        Dict("overlap_percent" => NaN, "leakage" => 0.5),
-        Dict("overlap_percent" => 50.0, "leakage" => NaN),
-        Dict("overlap_percent" => 50.0, "leakage" => Inf),
-        Dict("overlap_percent" => 50.0, "leakage" => -0.1),
-        Dict("overlap_percent" => 50.0, "leakage" => 1.1),
-        Dict("overlap_percent" => -1.0, "leakage" => 0.5),
-        Dict("overlap_percent" => 75.1, "leakage" => 0.5),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "extra" => true),
+        Dict("overlap_percent" => true, "leakage" => 0.5, "frequency_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => true, "frequency_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => "0.5", "frequency_limits" => nothing),
+        Dict("overlap_percent" => NaN, "leakage" => 0.5, "frequency_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => NaN, "frequency_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => Inf, "frequency_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => -0.1, "frequency_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => 1.1, "frequency_limits" => nothing),
+        Dict("overlap_percent" => -1.0, "leakage" => 0.5, "frequency_limits" => nothing),
+        Dict("overlap_percent" => 75.1, "leakage" => 0.5, "frequency_limits" => nothing),
+        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "extra" => true),
     )
         error = try
             SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => invalid))
@@ -432,7 +432,7 @@ end
         @test SA_API.signal_analyser_snapshot(state) == initial
     end
 
-    overlap_75 = Dict("overlap_percent" => 75.0, "leakage" => 0.5)
+    overlap_75 = Dict("overlap_percent" => 75.0, "leakage" => 0.5, "frequency_limits" => nothing)
     changed = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => overlap_75))
     @test changed["state_revision"] == 1
     @test changed["spectrogram_settings"] == overlap_75
@@ -449,7 +449,7 @@ end
     @test SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [first_name]))["spectrogram_settings"] == default_settings
 
     stale = try
-        SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 0.5)))
+        SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 0.5, "frequency_limits" => nothing)))
         nothing
     catch caught
         caught
