@@ -112,3 +112,10 @@ deployment.
 34/34, frontend 2/2 и статические Playwright gates проходят. Runtime E2E,
 push, deployment и merge не выполнялись. Трёхключевой контракт DEC-021
 остаётся действующим до отдельного successor decision.
+
+## Successor note — 2026-08-01
+
+[DEC-20260801-022](DEC-20260801-022-spectrogram-frequency-scale.md) расширяет
+exact Spectrogram settings object четвёртым presentation-only полем
+`frequency_scale`. Все Frequency Limits state/query/cache/provider/metadata и
+lifecycle semantics этого решения сохраняются без изменений.

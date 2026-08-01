@@ -153,6 +153,10 @@ Owner: Architect
   implementation freeze exact four-key settings and authoritative
   requested/effective/available metadata. Scale is presentation-only and must
   never enter raw query/cache/provider identity. Power Limits move to C17.
+- DEC-022 freezes C16. Implement the exact four-key object, requested/effective/
+  available metadata, reversible real↔complex requested state, zero-provider
+  scale-only mutation and transient frontend zero-bin presentation. Do not add
+  Engee options, cache identity, shared Spectrum policy or Power Limits.
 - C14 discovery is restricted to Spectrogram Reassign. Official docs support a
   boolean `pspectrum` flag and display-local checkbox semantics, but app default
   remains inferred. Prod Engee false/true/default/invalid/order/topology probe

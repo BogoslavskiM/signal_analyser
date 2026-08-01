@@ -902,3 +902,27 @@ C16 discovery is active but no product contract is implemented. The selected
 candidate is presentation-only Spectrogram Frequency Scale. Contract freeze
 must add backend-authoritative requested/effective/available metadata and must
 exclude scale from raw query/cache/provider identity.
+
+## Cascade 16 contract freeze — 2026-08-01
+
+Status: `contract-frozen`; implementation eligible after documentation
+checkpoint.
+
+[DEC-20260801-022](../../user/decisions/DEC-20260801-022-spectrogram-frequency-scale.md)
+freezes a fourth exact `frequency_scale` key, requested/effective/available
+metadata and reversible real↔complex lifecycle. Scale is backend-authoritative
+Display state but presentation-only: query/cache/provider/x/y/z remain
+unchanged and scale-only mutation performs zero provider calls. Frontend uses
+effective metadata and a transient zero-bin coordinate floor without mutating
+the authoritative payload. Power Limits move to C17.
+
+### Persistent role queue for C16
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c15_spectrogram_limits_probe` | implementation after docs commit | final verification | docs checkpoint | typed state/API inventory complete |
+| Frontend | `/root/frontend_c13_impl` | implementation after docs commit | integrated front gate | backend metadata contract | render feasibility complete |
+| Tester | `/root/tester_c15_limits_matrix` | exact matrix after docs commit | full backend/front gates | product diff | C15 audit regressions complete |
+| E2E Tester | `/root/e2e_c13_impl` | static scenario after docs commit | runtime after deployment | product selectors/metadata | C15 cleanup complete |
+| DevOps | `/root/devops_c12_commit` | contract commit after handoff | product freeze | Architect docs paths | C15 docs `3259119` |
+| MATLAB Researcher | `/root/matlab_c16_next_slice` | completed standby | safe GUI scenario later | incomplete Command Window line | docs/passive evidence complete |
