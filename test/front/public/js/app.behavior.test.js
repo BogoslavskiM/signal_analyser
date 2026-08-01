@@ -83,7 +83,7 @@ function environment(fetch, options) {
   const e = {
     root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(), settingsTabs: node(), statisticsControls: node(), statisticsError: node(),
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
-    legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), spectrogramSettings: node(), spectrogramOverlap: node(), spectrogramOverlapError: node(), spectrogramLeakage: node(), spectrogramLeakageError: node(), spectrogramFrequencyLimitsControls: node(), spectrogramFrequencyMin: node(), spectrogramFrequencyMax: node(), spectrogramFrequencyLimitsError: node(), spectrogramFrequencyScale: node(), spectrogramFrequencyScaleEffective: node(), spectrogramFrequencyScaleError: node(), spectrogramPowerLimitsControls: node(), spectrogramPowerMin: node(), spectrogramPowerMax: node(), spectrogramPowerLimitsEffective: node(), spectrogramPowerLimitsError: node(), spectrumSettings: node(), spectrumScale: node(), spectrumFrequency: node(), spectrumLeakage: node(), spectrumLeakageValue: node(), spectrumError: node(), spectrumFrequencyMin: node(), spectrumFrequencyMax: node(), spectrumFrequencyLimitsError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
+    legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), spectrogramSettings: node(), spectrogramOverlap: node(), spectrogramOverlapError: node(), spectrogramLeakage: node(), spectrogramLeakageError: node(), spectrogramFrequencyLimitsControls: node(), spectrogramFrequencyMin: node(), spectrogramFrequencyMax: node(), spectrogramFrequencyLimitsError: node(), spectrogramFrequencyScale: node(), spectrogramFrequencyScaleEffective: node(), spectrogramFrequencyScaleError: node(), spectrogramPowerLimitsControls: node(), spectrogramPowerMin: node(), spectrogramPowerMax: node(), spectrogramPowerLimitsEffective: node(), spectrogramPowerLimitsError: node(), persistenceSettings: node(), persistenceLeakage: node(), persistenceLeakageValue: node(), persistenceLeakageError: node(), spectrumSettings: node(), spectrumScale: node(), spectrumFrequency: node(), spectrumLeakage: node(), spectrumLeakageValue: node(), spectrumError: node(), spectrumFrequencyMin: node(), spectrumFrequencyMax: node(), spectrumFrequencyLimitsError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
@@ -128,6 +128,8 @@ function environment(fetch, options) {
     "[data-testid='spectrogram-power-min-input']": e.spectrogramPowerMin, "[data-testid='spectrogram-power-max-input']": e.spectrogramPowerMax,
     "[data-testid='spectrogram-power-limits-effective']": e.spectrogramPowerLimitsEffective,
     "[data-testid='spectrogram-power-limits-error']": e.spectrogramPowerLimitsError,
+    "[data-testid='persistence-settings']": e.persistenceSettings, "[data-testid='persistence-leakage-input']": e.persistenceLeakage,
+    "[data-testid='persistence-leakage-value']": e.persistenceLeakageValue, "[data-testid='persistence-leakage-error']": e.persistenceLeakageError,
     "[data-signal-rows]": e.rows, "[data-testid='toggle-all-signals']": e.toggleAll,
     "[data-testid='display-overflow-trigger']": e.overflowTrigger, "[data-testid='display-overflow-menu']": e.overflowMenu, "[data-testid='clear-display-action']": e.clearDisplayAction,
     "[data-testid='signal-statistics-action']": e.statisticsAction, "[data-testid='find-peaks-action']": e.peaksAction,
@@ -309,7 +311,7 @@ module.exports = async function testDisplayBehavior(assert) {
   await flush();
   const view = visibility.find((call) => call.url === "./api/view");
   assert(view, "per-display checkbox must update the active display through /api/view");
-  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, peaks_enabled: false }), "hiding the analysis source must retain complete canonical Spectrogram settings and disable Peaks");
+  assert(JSON.stringify(JSON.parse(view.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: B, visible_signals: [B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, persistence_settings:{leakage:.5}, peaks_enabled: false }), "hiding the analysis source must retain complete canonical Spectrogram settings and disable Peaks");
 
   const localTabRequests = [];
   const localTabs = await boot((url, options) => {
@@ -373,7 +375,7 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   memberRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
-  assert(JSON.stringify(JSON.parse(rowRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, peaks_enabled: false }), "ordinary row mutations must retain complete canonical settings");
+  assert(JSON.stringify(JSON.parse(rowRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: B, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, persistence_settings:{leakage:.5}, peaks_enabled: false }), "ordinary row mutations must retain complete canonical settings");
   assert(memberRow.e.rows.innerHTML.includes("signal-row-") && memberRow.e.rows.innerHTML.includes(B), "the selected member row must be rendered from authoritative row and analysis state");
 
   const uncheckedRequests = [];
@@ -384,7 +386,7 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   uncheckedRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
-  assert(JSON.stringify(JSON.parse(uncheckedRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, peaks_enabled: false }), "membership mutations must retain complete canonical settings");
+  assert(JSON.stringify(JSON.parse(uncheckedRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: B, analysis_signal: A, visible_signals: [A], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, persistence_settings:{leakage:.5}, peaks_enabled: false }), "membership mutations must retain complete canonical settings");
 
   const clearRequests = [];
   const clear = await boot((url, options) => {
@@ -399,7 +401,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(clearRequests.length === 1 && clear.e.overflowMenu.hidden === false && clear.e.overflowTrigger.getAttribute("aria-expanded") === "true", "Display overflow must open Clear Display locally and accessibly without a request");
   clear.e.clearDisplayAction.listeners.click();
   await flush();
-  assert(JSON.stringify(JSON.parse(clearRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, peaks_enabled: false }), "Clear Display must preserve complete canonical settings");
+  assert(JSON.stringify(JSON.parse(clearRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, persistence_settings:{leakage:.5}, peaks_enabled: false }), "Clear Display must preserve complete canonical settings");
   assert(clear.e.overflowMenu.hidden === true && clear.e.overflowTrigger.getAttribute("aria-expanded") === "false", "Clear Display must close its menu after activation");
   assert(clear.e.host === clearHost && clear.e.host.innerHTML.includes("empty-display-plot-state") && clear.e.host.dataset.plotReady === "false", "an empty authoritative page must retain its one graph host while clearing stale rendering");
   assert((!clear.e.host.data || clear.e.host.data.length === 0) && (!clear.e.host._fullData || clear.e.host._fullData.length === 0) && (!clear.e.host.calcdata || clear.e.host.calcdata.length === 0), "an empty Display must purge stale Plotly data from the persistent graph host");
@@ -569,7 +571,7 @@ module.exports = async function testDisplayBehavior(assert) {
   peaks.e.peaksAction.listeners.click();
   await flush();
   const peakView = peakRequests.find((call) => call.url === "./api/view");
-  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, peaks_enabled: true }), "Find Peaks must retain complete canonical settings");
+  assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, persistence_settings:{leakage:.5}, peaks_enabled: true }), "Find Peaks must retain complete canonical settings");
   assert(peaks.e.peaksAction.getAttribute("aria-pressed") === "true" && peaks.e.peaksBottomTab.hidden === false && peaks.e.peaksPanel.hidden === false, "an enabled authoritative Peaks snapshot must press the action and open the local Peaks tab/panel");
   assert(peaks.e.peaksContent.innerHTML.includes("peak-row-peak-2") && peaks.e.peaksContent.innerHTML.includes("data-sample-index='2'"), "the Peaks table must render backend item fields without a client-side peak calculation");
   const marker = peaks.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");
@@ -667,7 +669,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c12Requests.filter(call => call.url === "./api/view").length === 1 && c12.e.spectrogramOverlapError.hidden === false, "unsafe Overlap is local error without request");
 
   function overlapBody(revision, overlapPercent, leakage = .5, frequencyLimits = null, frequencyScale = "linear") {
-    return { state_revision:revision, active_plot:"spectrogram", row_selected_signal:A, analysis_signal:A, visible_signals:[A], time_limits:null, measurement_kinds:["minimum", "maximum", "mean"], spectrum_settings:{ scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null }, spectrogram_settings:{ overlap_percent:overlapPercent, leakage, frequency_limits:frequencyLimits, frequency_scale:frequencyScale, power_limits:null }, peaks_enabled:false };
+    return { state_revision:revision, active_plot:"spectrogram", row_selected_signal:A, analysis_signal:A, visible_signals:[A], time_limits:null, measurement_kinds:["minimum", "maximum", "mean"], spectrum_settings:{ scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null }, spectrogram_settings:{ overlap_percent:overlapPercent, leakage, frequency_limits:frequencyLimits, frequency_scale:frequencyScale, power_limits:null }, persistence_settings:{leakage:.5}, peaks_enabled:false };
   }
   const overlap422Requests = [], overlap422Resolvers = [];
   const overlap422 = await boot((url, options) => {
@@ -739,6 +741,56 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(leakage409Requests.filter(call => call.url === "./api/view").length === 2 && JSON.stringify(JSON.parse(leakage409Requests.at(-1).options.body)) === JSON.stringify(overlapBody(0, 50, .25)), "one stale Leakage request replays exactly the latest desired two-key target");
   leakage409Resolvers.shift()(response(200, leakageReplay)); await flush();
   assert(leakage409Requests.filter(call => call.url === "./api/view").length === 2 && Number(leakage409.e.spectrogramLeakage.value) === .25, "Leakage stale replay settles once without a duplicate request");
+
+  // C19: Persistence Leakage is a display-scoped, server-owned one-key setting.
+  // Each mutation retains the complete canonical View target; the browser does no DSP.
+  const c19Def = { id:"display-1", name:"Display 1", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A], persistence_settings:{ leakage:.5 } };
+  const c19Initial = snapshot(0, "display-1", [c19Def], A);
+  c19Initial.plot_payload.persistence = { type:"heatmap", signal:A, x:[0], y:[0], z:[[0]] }; c19Initial.plots.persistence = c19Initial.plot_payload.persistence;
+  const c19Committed = snapshot(1, "display-1", [Object.assign({}, c19Def, { persistence_settings:{ leakage:1 } })], A);
+  c19Committed.plot_payload.persistence = c19Initial.plot_payload.persistence; c19Committed.plots.persistence = c19Initial.plots.persistence;
+  function persistenceBody(revision, leakage) {
+    return { state_revision:revision, active_plot:"persistence", row_selected_signal:A, analysis_signal:A, visible_signals:[A], time_limits:null, measurement_kinds:["minimum", "maximum", "mean"], spectrum_settings:{ scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null }, spectrogram_settings:{ overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null }, persistence_settings:{ leakage }, peaks_enabled:false };
+  }
+  const c19Requests = [];
+  const c19 = await boot((url, options) => { c19Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c19Initial : c19Committed)); });
+  assert(c19.e.persistenceSettings.hidden === false && c19.e.persistenceLeakage.value === "0.5" && c19.e.persistenceLeakageValue.textContent === "0.5" && c19.e.persistenceLeakage.disabled === false, "Persistence exposes its enabled canonical .5 Leakage control only on an active Persistence display");
+  c19.e.persistenceLeakage.value = "1"; c19.e.persistenceLeakage.listeners.input();
+  assert(c19Requests.filter(call => call.url === "./api/view").length === 0 && c19.e.persistenceLeakageValue.textContent === "1", "typing Persistence Leakage remains a local draft without API or DSP work");
+  c19.e.persistenceLeakage.listeners.change(); await flush();
+  assert(c19Requests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c19Requests.at(-1).options.body)) === JSON.stringify(persistenceBody(0, 1)), "Persistence Leakage commit posts the exact full C19 View target with one canonical persistence_settings key");
+  c19.e.persistenceLeakage.value = "1"; c19.e.persistenceLeakage.listeners.change(); await flush();
+  assert(c19Requests.filter(call => call.url === "./api/view").length === 1, "equal canonical Persistence Leakage is a no-op");
+  c19.e.persistenceLeakage.value = "1.1"; c19.e.persistenceLeakage.listeners.change();
+  assert(c19Requests.filter(call => call.url === "./api/view").length === 1 && c19.e.persistenceLeakageError.hidden === false, "out-of-range Persistence Leakage fails locally without a request");
+
+  const c19RejectedRequests = [];
+  const c19Rejected = await boot((url, options) => { c19RejectedRequests.push({url, options}); return Promise.resolve(response(url === "./api/state" ? 200 : 422, url === "./api/state" ? c19Initial : { error:{ fields:{ persistence_settings:"Leakage rejected" } } })); });
+  c19Rejected.e.persistenceLeakage.value = "0"; c19Rejected.e.persistenceLeakage.listeners.change(); await flush();
+  assert(c19RejectedRequests.filter(call => call.url === "./api/view").length === 1 && c19Rejected.e.persistenceLeakage.value === "0.5" && c19Rejected.e.persistenceLeakageError.hidden === false, "422 restores accepted Persistence Leakage and exposes the nested inline error");
+
+  const c19Replay = snapshot(2, "display-1", [Object.assign({}, c19Def, { persistence_settings:{ leakage:.25 } })], A);
+  c19Replay.plot_payload.persistence = c19Initial.plot_payload.persistence; c19Replay.plots.persistence = c19Initial.plots.persistence;
+  const c19StaleRequests = [], c19StaleResolvers = [];
+  const c19Stale = await boot((url, options) => { c19StaleRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c19Initial)) : new Promise(resolve => c19StaleResolvers.push(resolve)); });
+  c19Stale.e.persistenceLeakage.value = "0"; c19Stale.e.persistenceLeakage.listeners.change(); await flush();
+  c19Stale.e.persistenceLeakage.value = ".25"; c19Stale.e.persistenceLeakage.listeners.change(); await flush();
+  c19StaleResolvers.shift()(response(409, { current:c19Initial })); await flush();
+  assert(c19StaleRequests.filter(call => call.url === "./api/view").length === 2 && JSON.stringify(JSON.parse(c19StaleRequests.at(-1).options.body)) === JSON.stringify(persistenceBody(0, .25)), "first Persistence 409 replays exactly the newest desired canonical setting once");
+  c19StaleResolvers.shift()(response(200, c19Replay)); await flush();
+  assert(c19StaleRequests.filter(call => call.url === "./api/view").length === 2 && c19Stale.e.persistenceLeakage.value === "0.25", "Persistence stale replay settles without a duplicate request");
+
+  const c19TwiceRequests = [], c19TwiceResolvers = [];
+  const c19Twice = await boot((url, options) => { c19TwiceRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c19Initial)) : new Promise(resolve => c19TwiceResolvers.push(resolve)); });
+  c19Twice.e.persistenceLeakage.value = "0"; c19Twice.e.persistenceLeakage.listeners.change(); await flush();
+  c19TwiceResolvers.shift()(response(409, { current:c19Initial })); await flush();
+  c19TwiceResolvers.shift()(response(409, { current:c19Initial })); await flush();
+  assert(c19TwiceRequests.filter(call => call.url === "./api/view").length === 2 && c19Twice.e.persistenceLeakage.value === "0.5" && c19Twice.e.persistenceLeakageError.hidden === false, "second Persistence 409 bounds replay, restores canonical state, and reports the failure");
+
+  const c19NoSource = emptySnapshot(0, A);
+  c19NoSource.displays[0].active_plot = "persistence"; c19NoSource.displays[0].persistence_settings = { leakage:.25 };
+  const c19Disabled = await boot((url) => Promise.resolve(response(200, c19NoSource)));
+  assert(c19Disabled.e.persistenceSettings.hidden === false && c19Disabled.e.persistenceLeakage.disabled === true && c19Disabled.e.persistenceLeakage.value === "0.25", "Persistence without an analysis source disables but retains its display-scoped Leakage setting");
 
   const c15Auto = { overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null };
   const c15Limits = { min_hz:1, max_hz:4, units:"Hz" };

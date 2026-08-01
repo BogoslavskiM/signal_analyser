@@ -73,10 +73,41 @@ end
     @test occursin("signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)", routes_source)
     @test !occursin("signal_analyser_unavailable_response", routes_source)
     @test !occursin("/api/persistence", routes_source)
-    @test !occursin("persistence_settings", SA_API.source("lib", "services", "signal_analyser_service.jl"))
+    @test occursin("persistence_settings", SA_API.source("lib", "services", "signal_analyser_service.jl"))
     # `num_power_bins` is required as an internal immutable provider-query
     # invariant; only a serialized/request wire key is forbidden in C18.
     @test !occursin("\"num_power_bins\"", SA_API.source("lib", "services", "signal_analyser_service.jl"))
+end
+
+@testset "Cascade 19 API Persistence Leakage wire contract" begin
+    SA_API.reset_pspectrum_double!()
+    state = SA_API.default_signal_analyser_state()
+    initial = SA_API.signal_analyser_snapshot(state)
+    @test initial["persistence_settings"] == Dict("leakage" => 0.5)
+    @test initial["displays"][1]["persistence_settings"] == Dict("leakage" => 0.5)
+
+    changed = SA_API.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "persistence_settings" => Dict("leakage" => 0.25),
+    ))
+    @test changed["state_revision"] == 1
+    @test changed["persistence_settings"] == Dict("leakage" => 0.25)
+    accepted = SA_API.signal_analyser_snapshot(state)
+    for bad_settings in (Dict{String,Any}(), Dict("leakage" => true), Dict("leakage" => NaN), Dict("leakage" => 1.01), Dict("leakage" => 0.5, "unexpected" => 1))
+        err = try
+            SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "persistence_settings" => bad_settings))
+            nothing
+        catch caught
+            caught
+        end
+        @test err isa SA_API.SignalAnalyserValidationError
+        @test haskey(err.fields, "persistence_settings")
+        @test SA_API.signal_analyser_snapshot(state) == accepted
+    end
+    # Omitting the optional C19 field keeps the display-owned accepted value.
+    preserved = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "peaks_enabled" => false))
+    @test preserved["state_revision"] == 1
+    @test preserved["persistence_settings"] == Dict("leakage" => 0.25)
 end
 
 @testset "Signal Analyser API Peaks boolean view contract" begin

@@ -69,6 +69,10 @@ assert.equal(config.app.testIds.spectrogramPowerMinInput, "spectrogram-power-min
 assert.equal(config.app.testIds.spectrogramPowerMaxInput, "spectrogram-power-max-input");
 assert.equal(config.app.testIds.spectrogramPowerLimitsEffective, "spectrogram-power-limits-effective");
 assert.equal(config.app.testIds.spectrogramPowerLimitsError, "spectrogram-power-limits-error");
+assert.equal(config.app.testIds.persistenceSettings, "persistence-settings");
+assert.equal(config.app.testIds.persistenceLeakageInput, "persistence-leakage-input");
+assert.equal(config.app.testIds.persistenceLeakageValue, "persistence-leakage-value");
+assert.equal(config.app.testIds.persistenceLeakageError, "persistence-leakage-error");
 assert.equal(config.app.testIds.displayOverflowTrigger, "display-overflow-trigger");
 assert.equal(config.app.testIds.displayOverflowMenu, "display-overflow-menu");
 assert.equal(config.app.testIds.clearDisplayAction, "clear-display-action");
@@ -96,6 +100,7 @@ assert.equal(config.features["spectrum-settings-roi"], true);
 assert.equal(config.features["frequency-limits"], true);
 assert.equal(config.features["typed-spectrogram"], true);
 assert.equal(config.features["typed-persistence"], true);
+assert.equal(config.features["persistence-leakage"], true);
 assert.equal(config.features["spectrogram-overlap"], true);
 assert.equal(config.features["spectrogram-leakage"], true);
 assert.equal(config.features["spectrogram-frequency-limits"], true);

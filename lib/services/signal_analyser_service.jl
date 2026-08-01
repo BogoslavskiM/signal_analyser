@@ -11,6 +11,7 @@ const SIGNAL_ANALYSER_VIEW_FIELDS = Set([
     "measurement_kinds",
     "spectrum_settings",
     "spectrogram_settings",
+    "persistence_settings",
     "peaks_enabled",
 ])
 const SIGNAL_ANALYSER_DISPLAY_FIELDS = Set(["state_revision", "operation", "display_id"])
@@ -31,6 +32,7 @@ const SIGNAL_SPECTROGRAM_SETTINGS_FIELDS = Set([
     "power_limits",
 ])
 const SIGNAL_SPECTROGRAM_POWER_LIMIT_FIELDS = Set(["min_db", "max_db", "units"])
+const SIGNAL_PERSISTENCE_SETTINGS_FIELDS = Set(["leakage"])
 
 const SIGNAL_SPECTRUM_SCALE_NAMES = Dict(
     DB_SPECTRUM_SCALE => "db",
@@ -129,6 +131,12 @@ function signal_spectrogram_settings_payload(
         "frequency_scale" => SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES[settings.frequency_scale],
         "power_limits" => signal_spectrogram_power_limits_payload(settings.power_limits),
     )
+end
+
+function signal_persistence_settings_payload(
+    settings::SignalPersistenceSettings,
+)::Dict{String,Any}
+    Dict{String,Any}("leakage" => settings.leakage)
 end
 
 signal_spectrogram_power_limits_payload(
@@ -520,17 +528,22 @@ end
 
 function signal_analyser_prepared_persistences(
     state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
     signal::Union{Nothing,AnalysedSignal},
     ;
     materialize_missing::Bool = true,
 )::Dict{SignalPersistenceCacheKey,SignalPersistenceData}
     prepared = Dict{SignalPersistenceCacheKey,SignalPersistenceData}()
     signal === nothing && return prepared
-    key = signal_persistence_cache_key(signal)
+    key = signal_persistence_cache_key(signal, display.persistence_settings)
     if haskey(state.persistence_cache, key)
         prepared[key] = state.persistence_cache[key]
     elseif materialize_missing
-        prepared[key] = signal_persistence_data(state.persistence_service, signal)
+        prepared[key] = signal_persistence_data(
+            state.persistence_service,
+            signal,
+            display.persistence_settings,
+        )
     end
     prepared
 end
@@ -612,6 +625,7 @@ function signal_analyser_prepare_display_plots(
     )
     prepared_persistences = signal_analyser_prepared_persistences(
         state,
+        display,
         signal,
         materialize_missing = materialize_missing_persistence,
     )
@@ -629,7 +643,7 @@ function signal_analyser_prepare_display_plots(
         spectrogram_key,
         SignalSpectrogramData(signal_spectrum_topology(signal)),
     )
-    persistence_key = signal_persistence_cache_key(signal)
+    persistence_key = signal_persistence_cache_key(signal, display.persistence_settings)
     selected_persistence = get(
         prepared_persistences,
         persistence_key,
@@ -809,17 +823,18 @@ end
 
 function signal_analyser_cached_persistence_data!(
     state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
     signal::AnalysedSignal,
     ;
     materialize_missing::Bool = true,
 )::SignalPersistenceData
-    key = signal_persistence_cache_key(signal)
+    key = signal_persistence_cache_key(signal, display.persistence_settings)
     if haskey(state.persistence_cache, key)
         return state.persistence_cache[key]
     end
     materialize_missing || return SignalPersistenceData(signal_spectrum_topology(signal))
     get!(state.persistence_cache, key) do
-        signal_persistence_data(state.persistence_service, signal)
+        signal_persistence_data(state.persistence_service, signal, display.persistence_settings)
     end
 end
 
@@ -875,6 +890,7 @@ function signal_analyser_display_payload(display::SignalAnalyserDisplayState)::D
         "measurement_kinds" => signal_measurement_selection_payload(display.measurement_selection),
         "spectrum_settings" => signal_spectrum_settings_payload(display.spectrum_settings),
         "spectrogram_settings" => signal_spectrogram_settings_payload(display.spectrogram_settings),
+        "persistence_settings" => signal_persistence_settings_payload(display.persistence_settings),
         "peaks_enabled" => display.peaks_enabled,
     )
 end
@@ -1562,25 +1578,39 @@ signal_spectrogram_data(
     SignalSpectrogramSettings(),
 )
 
-function signal_persistence_cache_key(signal::AnalysedSignal)::SignalPersistenceCacheKey
+function signal_persistence_cache_key(
+    signal::AnalysedSignal,
+    settings::SignalPersistenceSettings,
+)::SignalPersistenceCacheKey
     SignalPersistenceCacheKey(
         signal.name,
         signal.sample_rate_hz,
         length(signal.values),
         signal_spectrum_topology(signal),
         SIGNAL_PERSISTENCE_DEFAULT_NUM_POWER_BINS,
+        settings.leakage,
     )
 end
 
-function signal_persistence_query(signal::AnalysedSignal)::SignalPersistenceQuery
+signal_persistence_cache_key(signal::AnalysedSignal)::SignalPersistenceCacheKey =
+    signal_persistence_cache_key(signal, SignalPersistenceSettings())
+
+function signal_persistence_query(
+    signal::AnalysedSignal,
+    settings::SignalPersistenceSettings,
+)::SignalPersistenceQuery
     SignalPersistenceQuery(
         signal.name,
         signal.values,
         signal.sample_rate_hz,
         signal_spectrum_topology(signal),
         SIGNAL_PERSISTENCE_DEFAULT_NUM_POWER_BINS,
+        settings.leakage,
     )
 end
+
+signal_persistence_query(signal::AnalysedSignal)::SignalPersistenceQuery =
+    signal_persistence_query(signal, SignalPersistenceSettings())
 
 function signal_persistence_calculate(
     provider::AbstractSignalPersistenceProvider,
@@ -1600,6 +1630,8 @@ function signal_persistence_calculate(
         samples,
         times,
         "persistence",
+        "Leakage",
+        query.leakage,
         "NumPowerBins",
         query.num_power_bins,
         "TwoSided",
@@ -1653,9 +1685,19 @@ end
 function signal_persistence_data(
     service::SignalPersistenceService,
     signal::AnalysedSignal,
+    settings::SignalPersistenceSettings,
 )::SignalPersistenceData
-    signal_persistence_calculate(service, signal_persistence_query(signal))
+    signal_persistence_calculate(service, signal_persistence_query(signal, settings))
 end
+
+signal_persistence_data(
+    service::SignalPersistenceService,
+    signal::AnalysedSignal,
+)::SignalPersistenceData = signal_persistence_data(
+    service,
+    signal,
+    SignalPersistenceSettings(),
+)
 
 function signal_time_limits_are_valid(
     service::SignalMeasurementsService,
@@ -2089,6 +2131,7 @@ function signal_analyser_snapshot_unlocked(
         "measurement_kinds" => signal_measurement_selection_payload(active_display.measurement_selection),
         "spectrum_settings" => signal_spectrum_settings_payload(active_display.spectrum_settings),
         "spectrogram_settings" => signal_spectrogram_settings_payload(active_display.spectrogram_settings),
+        "persistence_settings" => signal_persistence_settings_payload(active_display.persistence_settings),
         "signals" => [signal_analyser_signal_payload(item) for item in state.signals],
         "plots" => plots,
         "plot_payload" => prepared_display_plots.plot_payload,
@@ -2112,6 +2155,7 @@ struct SignalAnalyserViewChanges
     measurement_selection::Bool
     spectrum_settings::Bool
     spectrogram_settings::Bool
+    persistence_settings::Bool
     peaks_enabled::Bool
 end
 
@@ -2133,6 +2177,7 @@ function SignalAnalyserViewChanges(
         prospective_display.measurement_selection != current_display.measurement_selection,
         prospective_display.spectrum_settings != current_display.spectrum_settings,
         prospective_display.spectrogram_settings != current_display.spectrogram_settings,
+        prospective_display.persistence_settings != current_display.persistence_settings,
         prospective_display.peaks_enabled != current_display.peaks_enabled,
     )
 end
@@ -2147,6 +2192,7 @@ function signal_analyser_has_changes(changes::SignalAnalyserViewChanges)::Bool
         changes.measurement_selection,
         changes.spectrum_settings,
         changes.spectrogram_settings,
+        changes.persistence_settings,
         changes.peaks_enabled,
     ))
 end
@@ -2155,6 +2201,38 @@ function signal_analyser_only_spectrogram_settings_changed(
     changes::SignalAnalyserViewChanges,
 )::Bool
     changes.spectrogram_settings && !any((
+        changes.row_selection,
+        changes.active_plot,
+        changes.membership,
+        changes.analysis_source,
+        changes.time_limits,
+        changes.measurement_selection,
+        changes.spectrum_settings,
+        changes.persistence_settings,
+        changes.peaks_enabled,
+    ))
+end
+
+function signal_analyser_only_persistence_settings_changed(
+    changes::SignalAnalyserViewChanges,
+)::Bool
+    changes.persistence_settings && !any((
+        changes.row_selection,
+        changes.active_plot,
+        changes.membership,
+        changes.analysis_source,
+        changes.time_limits,
+        changes.measurement_selection,
+        changes.spectrum_settings,
+        changes.spectrogram_settings,
+        changes.peaks_enabled,
+    ))
+end
+
+function signal_analyser_only_secondary_provider_settings_changed(
+    changes::SignalAnalyserViewChanges,
+)::Bool
+    (changes.spectrogram_settings || changes.persistence_settings) && !any((
         changes.row_selection,
         changes.active_plot,
         changes.membership,
@@ -2555,6 +2633,44 @@ function signal_analyser_validate_spectrogram_settings!(
     end
 end
 
+function signal_analyser_validate_persistence_settings!(
+    field_errors::Dict{String,String},
+    value,
+)::Union{Nothing,SignalPersistenceSettings}
+    if !(value isa AbstractDict)
+        field_errors["persistence_settings"] = "Требуется объект {leakage}"
+        return nothing
+    end
+    keys_set = signal_analyser_payload_keys(value)
+    if length(value) != 1 || keys_set != SIGNAL_PERSISTENCE_SETTINGS_FIELDS
+        missing = sort!(collect(setdiff(SIGNAL_PERSISTENCE_SETTINGS_FIELDS, keys_set)))
+        unknown = sort!(collect(setdiff(keys_set, SIGNAL_PERSISTENCE_SETTINGS_FIELDS)))
+        details = String[]
+        isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
+        isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
+        length(value) == 1 || push!(details, "требуется ровно одно поле")
+        field_errors["persistence_settings"] =
+            "Ожидалось только leakage ($(join(details, "; ")))"
+        return nothing
+    end
+
+    leakage_value = signal_analyser_payload_value(value, "leakage")
+    if !(leakage_value isa Real) || leakage_value isa Bool
+        field_errors["persistence_settings"] =
+            "leakage: требуется конечное JSON number от 0 до 1, но не Bool"
+        return nothing
+    end
+    try
+        SignalPersistenceSettings(leakage_value)
+    catch err
+        if err isa ArgumentError || err isa InexactError || err isa OverflowError
+            field_errors["persistence_settings"] = sprint(showerror, err)
+            return nothing
+        end
+        rethrow()
+    end
+end
+
 function signal_analyser_validate_measurement_kinds!(
     field_errors::Dict{String,String},
     value,
@@ -2862,6 +2978,17 @@ function validate_signal_analyser_view_payload(
         end
     end
 
+    has_persistence_settings = signal_analyser_payload_contains(data, "persistence_settings")
+    requested_persistence_settings = display.persistence_settings
+    if has_persistence_settings
+        validated_persistence_settings = signal_analyser_validate_persistence_settings!(
+            field_errors,
+            signal_analyser_payload_value(data, "persistence_settings"),
+        )
+        validated_persistence_settings === nothing ||
+            (requested_persistence_settings = validated_persistence_settings)
+    end
+
     has_peaks_enabled = signal_analyser_payload_contains(data, "peaks_enabled")
     peaks_enabled_value = signal_analyser_payload_value(data, "peaks_enabled")
     requested_peaks_enabled = display.peaks_enabled
@@ -2893,6 +3020,7 @@ function validate_signal_analyser_view_payload(
         requested_measurement_selection,
         requested_spectrum_settings,
         requested_spectrogram_settings,
+        requested_persistence_settings,
         requested_peaks_enabled,
     )
     (
@@ -2922,15 +3050,20 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         )
         changed = signal_analyser_has_changes(changes)
         spectrogram_settings_only = signal_analyser_only_spectrogram_settings_changed(changes)
+        persistence_settings_only = signal_analyser_only_persistence_settings_changed(changes)
+        secondary_provider_settings_only =
+            signal_analyser_only_secondary_provider_settings_changed(changes)
         spectrogram_presentation_only = spectrogram_settings_only &&
             signal_spectrogram_provider_settings_equal(
                 display.spectrogram_settings,
                 prospective_display.spectrogram_settings,
             )
-        prepare_spectrum = changed && !spectrogram_settings_only
-        prepare_spectrogram = changed && !spectrogram_presentation_only
-        prepare_persistence = changed && prospective_analysis_name !=
-            signal_analyser_display_analysis_name(display)
+        prepare_spectrum = changed && !secondary_provider_settings_only
+        prepare_spectrogram = changed && !spectrogram_presentation_only &&
+            !persistence_settings_only
+        prepare_persistence = changed && (
+            changes.analysis_source || changes.persistence_settings
+        )
 
         # Build every payload affected by the request before publishing the
         # mutation so a runtime DSP failure cannot leave state half-applied.
@@ -2957,7 +3090,11 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             ) :
             Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}()
         prepared_persistences = prepare_persistence ?
-            signal_analyser_prepared_persistences(state, prospective_signal) :
+            signal_analyser_prepared_persistences(
+                state,
+                prospective_display,
+                prospective_signal,
+            ) :
             Dict{SignalPersistenceCacheKey,SignalPersistenceData}()
         prepared_measurements = signal_measurements_snapshot(
             state.measurements_service,
@@ -3093,7 +3230,11 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 display,
                 analysis_signal,
             )
-            prepared_persistences = signal_analyser_prepared_persistences(state, analysis_signal)
+            prepared_persistences = signal_analyser_prepared_persistences(
+                state,
+                display,
+                analysis_signal,
+            )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
@@ -3134,6 +3275,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 )
                 prepared_persistences = signal_analyser_prepared_persistences(
                     state,
+                    display,
                     signal_analyser_display_analysis_signal(state, display),
                 )
                 prepared_measurements = signal_measurements_snapshot(
@@ -3198,6 +3340,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             )
             prepared_persistences = signal_analyser_prepared_persistences(
                 state,
+                next_active_display,
                 signal_analyser_display_analysis_signal(state, next_active_display),
             )
             prepared_measurements = signal_measurements_snapshot(

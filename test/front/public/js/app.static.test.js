@@ -153,9 +153,15 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   );
   assert(!/spectrogram.*(?:fft|stft|pspectrum|minthreshold)/i.test(app), "Cascade 17 must not add client-side DSP or MinThreshold behavior");
   assert(html.includes('<option value="persistence">Persistence</option>'), "Cascade 18 must retain Persistence as the existing generic plot-kind option");
-  assert(!/persistence[-_ ]?(?:settings|limits|power|frequency|bins|controls)/i.test(html), "Cascade 18 must not add Persistence controls or settings surface");
-  assert(!/persistence[-_ ]?(?:settings|limits|power|frequency|bins|controls)/i.test(app), "Cascade 18 must not add client Persistence state or controls");
-  assert(!api.includes("persistence"), "Cascade 18 must retain the existing generic state/view wire without a Persistence route");
+  ["persistence-settings", "persistence-leakage-input", "persistence-leakage-value", "persistence-leakage-error"].forEach((id) =>
+    assert(html.includes(`data-testid="${id}"`), `Cascade 19 must expose stable Persistence Leakage selector ${id}`)
+  );
+  assert(/data-testid="persistence-leakage-input"[^>]*type="range"[^>]*min="0"[^>]*max="1"[^>]*step="0\.01"/.test(html), "Cascade 19 must expose bounded normalized Persistence Leakage range");
+  assert(/data-testid="persistence-leakage-error"[^>]*role="alert"[^>]*hidden/.test(html), "Cascade 19 must reserve accessible Persistence Leakage error");
+  ["persistence_settings", "persistenceSettings", "persistenceLeakageDrafts", "persistenceLeakageErrors", "persistenceLeakageCommit"].forEach((term) =>
+    assert(app.includes(term), `Cascade 19 must retain Persistence Leakage state term ${term}`)
+  );
+  assert(!api.includes("persistence"), "Cascade 19 must retain the existing generic state/view wire without a Persistence route");
   assert(!/persistence.*(?:fft|stft|pspectrum|histogram|minthreshold|log10)/i.test(app), "Cascade 18 must not calculate Persistence DSP, histogram, or dB conversion in JavaScript");
   assert((app.match(/function renderStatisticsControls\(/g) || []).length === 1, "Statistics settings must have exactly one render function");
   assert((app.match(/function render\(/g) || []).length === 1, "frontend must retain exactly one render declaration");

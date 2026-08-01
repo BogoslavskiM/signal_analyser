@@ -99,6 +99,69 @@ function SA.signal_persistence_calculate(::WrongTopologyPersistenceProvider, que
         zeros(Float64, query.num_power_bins, 2), SA.CENTERED_TWO_SIDED_SPECTRUM)
 end
 
+@testset "Cascade 19 Persistence Leakage typed defaults" begin
+    default = SA.SignalPersistenceSettings()
+    @test default.leakage == 0.5
+    @test copy(default) === default
+    zero = SA.SignalPersistenceSettings(-0.0)
+    @test zero.leakage == 0.0 && !signbit(zero.leakage)
+    @test SA.SignalPersistenceSettings(0.0) == zero
+    @test hash(SA.SignalPersistenceSettings(0.0)) == hash(zero)
+    @test SA.SignalPersistenceSettings(1.0).leakage == 1.0
+    for value in (true, NaN, Inf, -0.1, 1.1)
+        @test_throws ArgumentError SA.SignalPersistenceSettings(value)
+    end
+    base = SA.SignalPersistenceQuery("c19", ComplexF64[1, 2], 10.0, SA.ONE_SIDED_SPECTRUM)
+    changed = SA.SignalPersistenceQuery("c19", ComplexF64[1, 2], 10.0, SA.ONE_SIDED_SPECTRUM, 256, 1.0)
+    @test base.leakage == 0.5 && changed.leakage == 1.0
+    @test SA.SignalPersistenceCacheKey(base) != SA.SignalPersistenceCacheKey(changed)
+end
+
+@testset "Cascade 19 Persistence Leakage lifecycle and cache identity" begin
+    SA.reset_pspectrum_double!(); SA.reset_persistence_double!()
+    state = SA.default_signal_analyser_state()
+    first_name, second_name = [signal.name for signal in state.signals]
+    SA.signal_analyser_snapshot(state)
+    base_persistence = length(SA.PERSISTENCE_CALLS)
+    base_spectrum, base_spectrogram = length(SA.SPECTRUM_CALLS), length(SA.SPECTROGRAM_CALLS)
+    base_cache = length(state.persistence_cache)
+    changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "persistence_settings" => Dict("leakage" => 1.0)))
+    @test changed["state_revision"] == 1 && changed["persistence_settings"] == Dict("leakage" => 1.0)
+    @test length(SA.PERSISTENCE_CALLS) == base_persistence + 1 && SA.PERSISTENCE_CALLS[end].leakage == 1.0
+    @test length(state.persistence_cache) == base_cache + 1 && length(SA.SPECTRUM_CALLS) == base_spectrum && length(SA.SPECTROGRAM_CALLS) == base_spectrogram
+    equal = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "persistence_settings" => Dict("leakage" => 1.0)))
+    @test equal["state_revision"] == 1 && length(SA.PERSISTENCE_CALLS) == base_persistence + 1
+    created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "create"))
+    @test created["persistence_settings"] == Dict("leakage" => 0.5)
+    back_a = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))
+    @test back_a["persistence_settings"] == Dict("leakage" => 1.0)
+    cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 3, "visible_signals" => String[]))
+    @test cleared["persistence_settings"] == Dict("leakage" => 1.0) && length(SA.PERSISTENCE_CALLS) == base_persistence + 1
+    readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => [first_name]))
+    @test readded["persistence_settings"] == Dict("leakage" => 1.0) && length(SA.PERSISTENCE_CALLS) == base_persistence + 1
+    switched = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "analysis_signal" => second_name, "visible_signals" => [first_name, second_name]))
+    @test switched["persistence_settings"] == Dict("leakage" => 1.0) && length(SA.PERSISTENCE_CALLS) == base_persistence + 2
+    returned = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 6, "analysis_signal" => first_name, "visible_signals" => [first_name]))
+    @test returned["persistence_settings"] == Dict("leakage" => 1.0) && length(SA.PERSISTENCE_CALLS) == base_persistence + 2
+    before_failure = SA.signal_analyser_snapshot(state)
+    caches_before = (deepcopy(state.plot_cache), deepcopy(state.spectrum_cache), deepcopy(state.spectrogram_cache), deepcopy(state.persistence_cache))
+    SA.PERSISTENCE_FAILURE[] = true
+    failure = try SA.apply_signal_analyser_view!(state, Dict("state_revision" => 7, "persistence_settings" => Dict("leakage" => 0.0))) catch caught; caught end
+    SA.PERSISTENCE_FAILURE[] = false
+    @test failure isa ArgumentError && SA.signal_analyser_snapshot(state) == before_failure
+    @test (state.plot_cache, state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches_before
+    # A combined settings target delegates only its two affected providers.
+    SA.reset_pspectrum_double!(); SA.reset_persistence_double!()
+    combined = SA.default_signal_analyser_state(); SA.signal_analyser_snapshot(combined)
+    empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS); empty!(SA.PERSISTENCE_CALLS)
+    SA.apply_signal_analyser_view!(combined, Dict("state_revision" => 0,
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing),
+        "persistence_settings" => Dict("leakage" => 0.0)))
+    @test isempty(SA.SPECTRUM_CALLS) && length(SA.SPECTROGRAM_CALLS) == 1 && length(SA.PERSISTENCE_CALLS) == 1
+    @test SA.SPECTROGRAM_CALLS[end].leakage == 1.0 && SA.PERSISTENCE_CALLS[end].leakage == 0.0
+    SA.reset_pspectrum_double!(); SA.reset_persistence_double!()
+end
+
 @testset "Cascade 18 typed Persistence provider, presentation and cache foundation" begin
     values = ComplexF64[1, 2, 3]
     query = SA.SignalPersistenceQuery("persistence-copy", values, 100.0, SA.ONE_SIDED_SPECTRUM)
@@ -332,7 +395,7 @@ end
     state = SA.default_signal_analyser_state()
     snapshot = SA.signal_analyser_snapshot(state)
 
-    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "spectrum_settings", "spectrogram_settings", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
+    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "spectrum_settings", "spectrogram_settings", "persistence_settings", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
     @test snapshot["active_display_id"] == "display-1"
     @test snapshot["displays"] == [Dict(
         "id" => "display-1",
@@ -345,6 +408,7 @@ end
         "measurement_kinds" => ["minimum", "maximum", "mean"],
         "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing),
         "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing),
+        "persistence_settings" => Dict("leakage" => 0.5),
         "peaks_enabled" => false,
     )]
     @test snapshot["state_revision"] == 0
@@ -459,6 +523,7 @@ end
         "measurement_kinds" => ["minimum", "maximum", "mean"],
         "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing),
         "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing),
+        "persistence_settings" => Dict("leakage" => 0.5),
         "peaks_enabled" => false,
     )
 

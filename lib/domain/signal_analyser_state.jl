@@ -794,6 +794,30 @@ Base.hash(key::SignalSpectrogramCacheKey, seed::UInt) = hash(
 
 const SIGNAL_PERSISTENCE_DEFAULT_NUM_POWER_BINS = 256
 
+"""Persistent per-Display Persistence provider settings."""
+struct SignalPersistenceSettings
+    leakage::Float64
+
+    function SignalPersistenceSettings(leakage::Real)
+        leakage isa Bool && throw(ArgumentError(
+            "Leakage Persistence должен быть числом, но не Bool",
+        ))
+        leakage_value = Float64(leakage)
+        isfinite(leakage_value) && 0.0 <= leakage_value <= 1.0 || throw(ArgumentError(
+            "Leakage Persistence должен быть конечным числом от 0 до 1",
+        ))
+        new(leakage_value == 0.0 ? 0.0 : leakage_value)
+    end
+end
+
+SignalPersistenceSettings() = SignalPersistenceSettings(0.5)
+
+Base.copy(settings::SignalPersistenceSettings) = settings
+Base.:(==)(left::SignalPersistenceSettings, right::SignalPersistenceSettings) =
+    left.leakage == right.leakage
+Base.isequal(left::SignalPersistenceSettings, right::SignalPersistenceSettings) = left == right
+Base.hash(settings::SignalPersistenceSettings, seed::UInt) = hash(settings.leakage, seed)
+
 """Typed full-raw-signal query for the Persistence provider."""
 struct SignalPersistenceQuery
     signal_name::String
@@ -801,6 +825,7 @@ struct SignalPersistenceQuery
     sample_rate_hz::Float64
     topology::SignalSpectrumTopology
     num_power_bins::Int
+    leakage::Float64
 
     function SignalPersistenceQuery(
         signal_name::AbstractString,
@@ -808,6 +833,7 @@ struct SignalPersistenceQuery
         sample_rate_hz::Real,
         topology::SignalSpectrumTopology,
         num_power_bins::Integer,
+        leakage::Real,
     )
         isempty(signal_name) && throw(ArgumentError(
             "Имя сигнала Persistence query не может быть пустым",
@@ -828,15 +854,32 @@ struct SignalPersistenceQuery
         num_power_bins > 0 || throw(ArgumentError(
             "Число power bins Persistence query должно быть положительным",
         ))
+        persistence_settings = SignalPersistenceSettings(leakage)
         new(
             String(signal_name),
             samples,
             sample_rate_value,
             topology,
             Int(num_power_bins),
+            persistence_settings.leakage,
         )
     end
 end
+
+SignalPersistenceQuery(
+    signal_name::AbstractString,
+    values::AbstractVector{<:Number},
+    sample_rate_hz::Real,
+    topology::SignalSpectrumTopology,
+    num_power_bins::Integer,
+) = SignalPersistenceQuery(
+    signal_name,
+    values,
+    sample_rate_hz,
+    topology,
+    num_power_bins,
+    SignalPersistenceSettings().leakage,
+)
 
 SignalPersistenceQuery(
     signal_name::AbstractString,
@@ -934,6 +977,7 @@ struct SignalPersistenceCacheKey
     sample_count::Int
     topology::SignalSpectrumTopology
     num_power_bins::Int
+    leakage::Float64
 
     function SignalPersistenceCacheKey(
         signal_name::AbstractString,
@@ -941,6 +985,7 @@ struct SignalPersistenceCacheKey
         sample_count::Integer,
         topology::SignalSpectrumTopology,
         num_power_bins::Integer,
+        leakage::Real,
     )
         isempty(signal_name) && throw(ArgumentError(
             "Имя сигнала Persistence cache key не может быть пустым",
@@ -964,15 +1009,32 @@ struct SignalPersistenceCacheKey
         num_power_bins > 0 || throw(ArgumentError(
             "Число power bins Persistence cache key должно быть положительным",
         ))
+        persistence_settings = SignalPersistenceSettings(leakage)
         new(
             String(signal_name),
             sample_rate_value,
             Int(sample_count),
             topology,
             Int(num_power_bins),
+            persistence_settings.leakage,
         )
     end
 end
+
+SignalPersistenceCacheKey(
+    signal_name::AbstractString,
+    sample_rate_hz::Real,
+    sample_count::Integer,
+    topology::SignalSpectrumTopology,
+    num_power_bins::Integer,
+) = SignalPersistenceCacheKey(
+    signal_name,
+    sample_rate_hz,
+    sample_count,
+    topology,
+    num_power_bins,
+    SignalPersistenceSettings().leakage,
+)
 
 SignalPersistenceCacheKey(query::SignalPersistenceQuery) = SignalPersistenceCacheKey(
     query.signal_name,
@@ -980,6 +1042,7 @@ SignalPersistenceCacheKey(query::SignalPersistenceQuery) = SignalPersistenceCach
     length(query.values),
     query.topology,
     query.num_power_bins,
+    query.leakage,
 )
 
 Base.:(==)(left::SignalPersistenceCacheKey, right::SignalPersistenceCacheKey) =
@@ -987,7 +1050,8 @@ Base.:(==)(left::SignalPersistenceCacheKey, right::SignalPersistenceCacheKey) =
     left.sample_rate_hz == right.sample_rate_hz &&
     left.sample_count == right.sample_count &&
     left.topology == right.topology &&
-    left.num_power_bins == right.num_power_bins
+    left.num_power_bins == right.num_power_bins &&
+    left.leakage == right.leakage
 Base.isequal(left::SignalPersistenceCacheKey, right::SignalPersistenceCacheKey) = left == right
 Base.hash(key::SignalPersistenceCacheKey, seed::UInt) = hash(
     (
@@ -996,6 +1060,7 @@ Base.hash(key::SignalPersistenceCacheKey, seed::UInt) = hash(
         key.sample_count,
         key.topology,
         key.num_power_bins,
+        key.leakage,
     ),
     seed,
 )
@@ -1459,6 +1524,7 @@ mutable struct SignalAnalyserDisplayState
     measurement_selection::SignalMeasurementSelection
     spectrum_settings::SignalSpectrumSettings
     spectrogram_settings::SignalSpectrogramSettings
+    persistence_settings::SignalPersistenceSettings
     peaks_enabled::Bool
 
     function SignalAnalyserDisplayState(
@@ -1471,6 +1537,7 @@ mutable struct SignalAnalyserDisplayState
         measurement_selection::SignalMeasurementSelection,
         spectrum_settings::SignalSpectrumSettings,
         spectrogram_settings::SignalSpectrogramSettings,
+        persistence_settings::SignalPersistenceSettings,
         peaks_enabled::Bool,
     )
         analysis_name = signal_analysis_name(analysis_source)
@@ -1499,9 +1566,37 @@ mutable struct SignalAnalyserDisplayState
             measurement_selection,
             spectrum_settings,
             spectrogram_settings,
+            persistence_settings,
             peaks_enabled,
         )
     end
+end
+
+function SignalAnalyserDisplayState(
+    id::AbstractString,
+    name::AbstractString,
+    active_plot::SignalAnalyserPlot,
+    membership::SignalDisplayMembership,
+    analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
+    time_limits::Union{Nothing,SignalTimeLimits},
+    measurement_selection::SignalMeasurementSelection,
+    spectrum_settings::SignalSpectrumSettings,
+    spectrogram_settings::SignalSpectrogramSettings,
+    peaks_enabled::Bool,
+)
+    SignalAnalyserDisplayState(
+        id,
+        name,
+        active_plot,
+        membership,
+        analysis_source,
+        time_limits,
+        measurement_selection,
+        spectrum_settings,
+        spectrogram_settings,
+        SignalPersistenceSettings(),
+        peaks_enabled,
+    )
 end
 
 function SignalAnalyserDisplayState(
@@ -1570,6 +1665,34 @@ function SignalAnalyserDisplayState(
         time_limits,
         measurement_selection,
         SignalSpectrumSettings(),
+        peaks_enabled,
+    )
+end
+
+function SignalAnalyserDisplayState(
+    id::AbstractString,
+    name::AbstractString,
+    active_plot::SignalAnalyserPlot,
+    selected_signal::Union{Nothing,AbstractString},
+    visible_signals::AbstractVector{<:AbstractString},
+    time_limits::Union{Nothing,SignalTimeLimits},
+    measurement_selection::SignalMeasurementSelection,
+    spectrum_settings::SignalSpectrumSettings,
+    spectrogram_settings::SignalSpectrogramSettings,
+    persistence_settings::SignalPersistenceSettings,
+    peaks_enabled::Bool,
+)
+    SignalAnalyserDisplayState(
+        id,
+        name,
+        active_plot,
+        SignalDisplayMembership(visible_signals),
+        signal_analysis_source(selected_signal),
+        time_limits,
+        measurement_selection,
+        spectrum_settings,
+        spectrogram_settings,
+        persistence_settings,
         peaks_enabled,
     )
 end
@@ -1688,6 +1811,7 @@ function signal_analyser_publish_display_state!(
     display.measurement_selection = prospective.measurement_selection
     display.spectrum_settings = prospective.spectrum_settings
     display.spectrogram_settings = prospective.spectrogram_settings
+    display.persistence_settings = prospective.persistence_settings
     display.peaks_enabled = prospective.peaks_enabled
     nothing
 end

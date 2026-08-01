@@ -263,4 +263,46 @@ end
             @test all(value -> isfinite(value) && 0.0 <= value <= 100.0, vec(Float64.(collect(occurrence))))
         end
     end
+
+    @testset "C19 Persistence Leakage canonical provider matrix" begin
+        # The production adapter freezes this order: Leakage, NumPowerBins, TwoSided.
+        # Application validation rejects Bool/non-finite/out-of-range values before this boundary.
+        real_signal = sin.(2pi .* 32.0 .* time) .+ 0.25 .* sin.(2pi .* 72.0 .* time)
+        for (probe_signal, two_sided) in ((real_signal, false), (signal, true))
+            implicit = pspectrum(probe_signal, time, "persistence", "NumPowerBins", 256, "TwoSided", two_sided)
+            for leakage in (0.0, 0.5, 1.0)
+                occurrence, frequencies, power_levels = pspectrum(
+                    probe_signal,
+                    time,
+                    "persistence",
+                    "Leakage",
+                    leakage,
+                    "NumPowerBins",
+                    256,
+                    "TwoSided",
+                    two_sided,
+                )
+                frequency_axis = Float64.(vec(collect(frequencies)))
+                power_axis = Float64.(vec(collect(power_levels)))
+                @test length(power_axis) == 256
+                @test !isempty(frequency_axis) && all(isfinite, frequency_axis) && all(diff(frequency_axis) .> 0.0)
+                @test all(isfinite, power_axis) && all(diff(power_axis) .> 0.0)
+                @test size(occurrence) == (length(power_axis), length(frequency_axis))
+                @test all(value -> isfinite(value) && 0.0 <= value <= 100.0, vec(Float64.(collect(occurrence))))
+                if leakage == 0.5
+                    @test (occurrence, frequencies, power_levels) == implicit
+                end
+            end
+            canonical = pspectrum(probe_signal, time, "persistence", "Leakage", 0.0, "NumPowerBins", 256, "TwoSided", two_sided)
+            reordered = pspectrum(probe_signal, time, "persistence", "TwoSided", two_sided, "NumPowerBins", 256, "Leakage", 0.0)
+            @test canonical == reordered
+        end
+
+        # Provider delta: EngeeDSP accepts Bool at this layer; typed app settings must reject it.
+        bool_result = pspectrum(signal, time, "persistence", "Leakage", true, "NumPowerBins", 256, "TwoSided", true)
+        @test size(bool_result[1]) == (length(vec(collect(bool_result[3]))), length(vec(collect(bool_result[2]))))
+        @test_throws ArgumentError pspectrum(signal, time, "persistence", "Leakage", -0.01, "NumPowerBins", 256, "TwoSided", true)
+        @test_throws ArgumentError pspectrum(signal, time, "persistence", "Leakage", 1.01, "NumPowerBins", 256, "TwoSided", true)
+        @test_throws ArgumentError pspectrum(signal, time, "persistence", "Leakage", NaN, "NumPowerBins", 256, "TwoSided", true)
+    end
 end
