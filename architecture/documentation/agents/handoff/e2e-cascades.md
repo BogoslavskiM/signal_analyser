@@ -510,3 +510,26 @@ follow-ups: Enable only on an accepted C26-capable target and run through
 background CDP.
 commit: `33df821fe2faf776f90b11e3ed7a4338df2b4670`.
 browser_workspace_setup: Static-only; no browser, focus, Space or MATLAB action.
+
+## Cascade 27 display selection gated recovery — 2026-08-01
+
+canonical_role: E2E Tester
+sessions: `/root/e2e_c23_final_audit`, `/root/e2e_c27_audit`.
+goal: Gate browser-level local quarantine, global fatal and distinct-B Retry
+recovery without claiming unavailable runtime execution.
+scope: `test/playwright/**`.
+contracts: Active A selection corruption is local quarantine with exact alert,
+preserved tab/inventory/row identity, disabled View controls and zero mutation;
+valid-active root mismatch is exact global fatal; Retry restores distinct B.
+changes: Added disabled-by-default feature, route-controlled scenario and stable
+local error selector/support contract.
+verification: Node/static/support/diff gates PASS; independent E2E audit CLEAN
+after alert, tab identity, route sequencing, control and row-selector
+false-positive gaps were closed.
+risks: No compatible browser target executed; runtime remains unclaimed.
+follow-ups: Enable only on an accepted C27 target through background CDP.
+next_task_candidates: Focused C27 runtime on a compatible target; otherwise
+C28 static scenario only after DEC-034 checkpoint.
+commit: `a4edbc9fdbdcdce91eef3943a256b36c65776cc4`.
+browser_workspace_setup: Static-only; no browser/focus/Space/window/MATLAB.
+engee_bug_candidate: None.

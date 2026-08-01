@@ -571,3 +571,24 @@ source_evidence: DEC-033 and
 next_task_candidates: C27 frontend implementation plus deterministic Tester
 matrix after the docs checkpoint.
 engee_bug_candidate: None.
+
+## Cascade 27 selection snapshot implementation — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c26_bind_fix`.
+goal: Enforce DEC-033 without fabricated membership/source or global overreach.
+scope: `public/js/app.js`; vanilla JS.
+contracts: Strict global row and valid-active root projections; per-Display
+canonical membership/equal aliases; active-invalid precedence; per-ID View
+purge; topology availability; generation-safe local quarantine.
+changes: Added ordered selection validator, local/global failure routing,
+read-only inventory rows without membership state, stable accessible local
+error and C24 stale-settlement protection.
+verification: Frontend 2/2, syntax/diff and independent final audit CLEAN after
+strict-class, lifecycle, stale-Plotly and row-identity false-positive gaps were
+closed.
+risks: Runtime E2E remains gated; no browser claim.
+follow-ups: C28 owns strict `active_plot`; do not broaden C27.
+next_task_candidates: DEC-034 only after its checkpoint.
+commit: `f334e7fa3e5ef042d0898c29c37226d39be90b4b`.
+engee_bug_candidate: None.

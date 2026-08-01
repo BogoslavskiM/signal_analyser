@@ -1354,3 +1354,26 @@ does not validate plot payloads, settings, measurements, peaks or math.
 | E2E Tester | `/root/e2e_c26_audit` | C26 gated CLEAN | optional C27 static gate | frontend implementation | no runtime target |
 | DevOps | `/root/devops_c17_commit` | C26 current | C27 docs/product commits | role acceptance | no push/deploy |
 | MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | official web only |
+
+## Cascade 27 implementation close — 2026-08-01
+
+Status: `implemented-and-locally-verified`; not deployed.
+
+C27 frontend/test `f334e7f` passes frontend 2/2 and independent final audit.
+The matrix covers exact row/root/alias/membership classes, valid empty state,
+active/inactive A-B isolation, local/global precedence, successful 200 and 409
+queue behavior, topology recovery/no resurrection and deferred Plotly. Backend
+remained unchanged and passed 1582 assertions plus route-reachable projection
+probe. Gated E2E `a4edbc9` passed static/support and independent audit; runtime
+is unclaimed. Push, deployment and merge were not performed.
+
+### Persistent role queue after C27 implementation close
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c27_serializer_audit` | C27 conformance PASS | future import hardening only | new ADR required | no C27 delta |
+| Frontend | `/root/frontend_c26_bind_fix` | C27 CLEAN/committed | C28 active-plot boundary | DEC-034 checkpoint | `f334e7f` |
+| Tester | `/root/tester_c7_matrix` | C27 matrix CLEAN/committed | C28 lifecycle matrix | DEC-034 checkpoint | controlled 200/409 |
+| E2E Tester | `/root/e2e_c27_audit` | C27 static audit CLEAN | optional C28 static gate | compatible target absent | `a4edbc9` |
+| DevOps | `/root/devops_c17_commit` | C27 commits complete | C27 trace/C28 docs | exact path acceptance | no push/deploy |
+| MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | official web only |

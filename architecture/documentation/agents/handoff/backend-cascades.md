@@ -675,3 +675,22 @@ risks: Explicit active Persistence retains C22 resource risk; no cancellation.
 follow-ups: Runtime gated E2E only on matching target.
 commit: `84b21f390a64dab18f576b298ae698deb22432d7`.
 engee_bug_candidate: None.
+
+## Cascade 27 serializer conformance audit — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c27_serializer_audit`.
+goal: Prove whether route-reachable snapshots already satisfy DEC-033.
+scope: Read-only domain/service/API serializer and tests; no product edits.
+contracts: Owned known row, canonical Display membership, equal owned aliases,
+active root projections and boolean `signals[].visible`.
+changes: None; audit only.
+verification: Full backend suite 1582 assertions PASS; independent in-process
+initial/create/reorder/select/clear/reselect invariant probe PASS.
+risks: Direct low-level mutation of public aggregate arrays can construct
+noncanonical inactive membership or duplicate inventory outside HTTP routes.
+Current bootstrap and every route-reachable path remain conformant; harden the
+aggregate before any future import/CRUD/session restore.
+follow-ups: No backend/API change required for C27.
+next_task_candidates: Separate aggregate-hardening ADR before signal import.
+engee_bug_candidate: None.

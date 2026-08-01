@@ -562,3 +562,7 @@
   global fatal через обязательный known row.
 - Plot payloads, settings, Measurements, Peaks и DSP/math не входят в C27.
   Implementation evidence пока не заявляется.
+- Boundary затем реализован в `f334e7f`: frontend 2/2, strict classes,
+  local/global precedence, 200/409 queues, topology recovery, A/B isolation и
+  stale Plotly protection; independent final audit CLEAN. Backend 1582 PASS без
+  product delta. Gated E2E static — `a4edbc9`; runtime/deployment не заявляются.

@@ -131,3 +131,14 @@ resurrection старого intent.
 - `lib/domain/signal_analyser_state.jl`
 - `lib/services/signal_analyser_service.jl`
 - `public/js/app.js`
+
+## Реализация — 2026-08-01
+
+Frontend boundary и deterministic matrix приняты локально в `f334e7f`.
+Проверены strict row/root/alias/membership classes, local/global precedence,
+valid empty Display, 200/409 per-ID purge, независимый переход на B, topology
+recovery без resurrection и позднее завершение Plotly после quarantine.
+Frontend suite 2/2 и независимый финальный аудит CLEAN. Gated E2E contract
+`a4edbc9` прошёл static/support и независимый аудит; runtime, deployment, push
+и merge не заявляются. Backend/API не менялись; полный backend suite 1582
+assertions PASS.

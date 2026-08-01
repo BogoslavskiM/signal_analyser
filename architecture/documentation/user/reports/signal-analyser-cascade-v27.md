@@ -26,3 +26,12 @@ selection. Старые quarantined intents после valid snapshot не repla
 C27 не меняет backend/API/request compatibility, не валидирует graph payload,
 настройки, Measurements/Peaks и не затрагивает DSP или математику. Реализация,
 автоматические проверки, runtime-проверка и deployment пока не заявляются.
+
+## Реализация — 2026-08-01
+
+Boundary реализован локально в `f334e7f`: invalid selection сохраняет
+authoritative inventory/row как read-only, очищает только View intents своего
+Display и не мешает независимому B; row/root corruption использует global fatal
+reset. Frontend tests 2/2 и независимый аудит CLEAN. Gated E2E contract —
+`a4edbc9`; browser runtime и deployment не заявляются. Backend остаётся без
+изменений и прошёл 1582 assertions.

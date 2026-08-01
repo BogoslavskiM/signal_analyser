@@ -583,3 +583,23 @@ source_evidence: DEC-033 and
 `agents/reports/display-selection-snapshot-assessment-20260801.md`.
 next_task_candidates: Land RED matrix alongside Frontend implementation.
 engee_bug_candidate: None.
+
+## Cascade 27 selection snapshot acceptance matrix — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c7_matrix`.
+goal: Prove DEC-033 local/global precedence and lifecycle without fixture repair.
+scope: `test/front/public/js/app.behavior.test.js`.
+contracts: Exact row/root fatal classes; membership/alias local quarantine;
+read-only inventory identity; same-ID purge, independent B continuation and no
+intent resurrection; stale Plotly cannot replace local error.
+changes: Added isolated post-helper corruption classes, valid empty membership,
+A/B isolation, controlled 200/409 queues, topology recovery, deferred Plotly
+bridge and read-only row click zero-POST oracle.
+verification: Frontend 2/2, diff PASS; independent Frontend audit CLEAN after
+missing selected/root classes and shared-fixture aliasing were corrected.
+risks: Browser runtime remains gated in separate E2E contract.
+follow-ups: Preserve post-helper mutations and exact pre/post request counts.
+next_task_candidates: C28 active-plot matrix after DEC-034.
+commit: `f334e7fa3e5ef042d0898c29c37226d39be90b4b`.
+engee_bug_candidate: None.
