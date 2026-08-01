@@ -577,10 +577,10 @@ module.exports = async function testDisplayBehavior(assert) {
   const marker = peaks.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");
   assert(marker && JSON.stringify(marker.x) === JSON.stringify([.2]) && JSON.stringify(marker.y) === JSON.stringify([5]) && marker.meta.display_id === "display-1", "marker traces must use only authoritative backend peak items and scope");
 
-  const c9SpectrumDefinition = { id: "display-1", name: "Display 1", active_plot: "spectrum", analysis_signal: A, selected_signal: A, visible_signals: [A], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5 } };
+  const c9SpectrumDefinition = { id: "display-1", name: "Display 1", active_plot: "spectrum", analysis_signal: A, selected_signal: A, visible_signals: [A], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits:null } };
   const spectrumInitial = snapshot(0, "display-1", [c9SpectrumDefinition], A);
   spectrumInitial.plot_payload.spectrum_traces = [{ name: A, signal: A, x: [1, 2], y: [0, 10] }];
-  const spectrumCommittedDefinition = Object.assign({}, c9SpectrumDefinition, { spectrum_settings: { scale: "linear", frequency_scale: "log", leakage: .25 } });
+  const spectrumCommittedDefinition = Object.assign({}, c9SpectrumDefinition, { spectrum_settings: { scale: "linear", frequency_scale: "log", leakage: .25, frequency_limits:null } });
   const spectrumCommitted = snapshot(1, "display-1", [spectrumCommittedDefinition], A);
   spectrumCommitted.plot_payload.spectrum_traces = spectrumInitial.plot_payload.spectrum_traces;
   const spectrumRequests = [];
@@ -817,6 +817,22 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c19Page.e.persistenceLeakage.value === "0.5", "selecting Display B restores B's default Persistence Leakage without leaking A's preference");
   c19Page.e.tabs.listeners.click({target:tabTarget("display-1")}); await flush();
   assert(c19Page.e.persistenceLeakage.value === "0.25" && c19PageRequests.filter(call => call.url === "./api/displays").length === 2, "returning to Display A restores its retained Persistence Leakage through canonical display lifecycle state");
+
+  const spectrumExact = { scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null };
+  const spectrumAbsentDef = Object.assign({}, c9SpectrumDefinition); delete spectrumAbsentDef.spectrum_settings;
+  const spectrumAbsent = snapshot(0, "display-1", [spectrumAbsentDef], A); spectrumAbsent.plot_payload.spectrum_traces = spectrumInitial.plot_payload.spectrum_traces;
+  const spectrumCompatibility = await boot((url) => Promise.resolve(response(200, spectrumAbsent)));
+  assert(spectrumCompatibility.e.spectrumScale.value === "db" && spectrumCompatibility.e.spectrumFrequency.value === "linear" && Number(spectrumCompatibility.e.spectrumLeakage.value) === .5 && spectrumCompatibility.e.spectrumError.hidden === true, "missing legacy Spectrum settings remain compatible with the exact four-key default");
+  const malformedSpectrumSettings = [null, "db", [spectrumExact], {}, { scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null, extra:true }, { scale:"invalid", frequency_scale:"linear", leakage:.5, frequency_limits:null }, { scale:"db", frequency_scale:"invalid", leakage:.5, frequency_limits:null }, { scale:"db", frequency_scale:"linear", leakage:true, frequency_limits:null }, { scale:"db", frequency_scale:"linear", leakage:".5", frequency_limits:null }, { scale:"db", frequency_scale:"linear", leakage:NaN, frequency_limits:null }, { scale:"db", frequency_scale:"linear", leakage:Infinity, frequency_limits:null }, { scale:"db", frequency_scale:"linear", leakage:-.01, frequency_limits:null }, { scale:"db", frequency_scale:"linear", leakage:1.01, frequency_limits:null }, { scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:{} }, { scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:{min_hz:true,max_hz:1,units:"Hz"} }, { scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:{min_hz:NaN,max_hz:1,units:"Hz"} }, { scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:{min_hz:1,max_hz:1,units:"Hz"} }, { scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:{min_hz:2,max_hz:1,units:"Hz"} }, { scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:{min_hz:1,max_hz:2,units:"kHz"} }];
+  for (const malformedSpectrum of malformedSpectrumSettings) {
+    const malformedDef = Object.assign({}, c9SpectrumDefinition, { spectrum_settings:malformedSpectrum });
+    const malformedSnapshot = snapshot(0, "display-1", [malformedDef], A); malformedSnapshot.plot_payload.spectrum_traces = spectrumInitial.plot_payload.spectrum_traces;
+    const malformedRequests = [];
+    const malformed = await boot((url, options) => { malformedRequests.push({url, options}); return Promise.resolve(response(200, malformedSnapshot)); });
+    assert(malformed.e.spectrumError.hidden === false && malformed.e.spectrumError.textContent.includes("Некорректные настройки Spectrum") && malformed.e.spectrumScale.disabled && malformed.e.spectrumFrequency.disabled && malformed.e.spectrumLeakage.disabled && malformed.e.spectrumFrequencyMin.disabled && malformed.e.spectrumFrequencyMax.disabled, "malformed Spectrum settings must expose a stable disabled contract error");
+    malformed.e.plotSelect.value = "time"; malformed.e.plotSelect.listeners.change({target:malformed.e.plotSelect}); await flush();
+    assert(malformedRequests.filter(call => call.url === "./api/view").length === 0, "a Spectrum contract error must block unrelated server mutation without masking state");
+  }
 
   const c15Auto = { overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null };
   const c15Limits = { min_hz:1, max_hz:4, units:"Hz" };

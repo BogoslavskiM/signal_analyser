@@ -102,7 +102,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
     assert(app.includes(term), `frontend must preserve Cascade 9 Spectrum settings term ${term}`)
   );
   assert(app.includes('xaxis.type = spectrumSettings(d.spectrum_settings).frequency_scale'), "Spectrum frequency scale must map to Spectrum x-axis layout only");
-  assert(app.includes('option.value === "log") option.disabled = complex'), "Log Spectrum frequency scale must be unavailable with a visible complex signal");
+  assert(app.includes('option.value === "log") option.disabled = !enabled || complex'), "Log Spectrum frequency scale must be unavailable with a visible complex signal or quarantined contract");
   ["frequency_limits", "spectrumFrequencyLimits", "spectrum-frequency-min-input", "spectrum-frequency-max-input", "spectrum-frequency-limits-error"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Cascade 10 Frequency Limits term ${term}`)
   );
