@@ -218,6 +218,12 @@ Owner: Architect
   four-plot aggregate before publishing Display state, revision or caches.
   This does not make active omitted-overlap Persistence resource-safe and does
   not unblock C21 Frequency Limits.
+- SA-GRAPH-001 official-web research is complete. MathWorks documents dB power
+  as the Spectrum default, metadata-driven Hz/rad-sample units, real/complex
+  one-/two-sided bounds, complex Log prohibition, Leakage function default 0.5
+  and dynamic RBW. Fresh Linear/Log selection, engineering prefix, app
+  Leakage readout scale and resolution-mode defaults remain unobserved. Do not
+  touch MATLAB/clicker until the unsafe prior Command Window state is cleared.
 - C19 implemented and locally accepted at product/test commit `2f99ff8`:
   backend 1497/1497, C19 48/48, frontend 2/2, focused Playwright static and
   independent Frontend/E2E/Backend audits CLEAN. Local Engee gate retains the

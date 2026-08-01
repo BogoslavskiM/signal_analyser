@@ -792,3 +792,22 @@ positive-overlap MATLAB/Engee calls.
 changes: None.
 next_task_candidates: No further GUI-free parity evidence; runtime/resource
 foundation gate controls the decision.
+## SA-GRAPH-001 official Spectrum defaults — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c23_spectrum_defaults`.
+scope: Official MathWorks web documentation only; no MATLAB/clicker/server
+interaction.
+contracts: Default ordinate is dB power via `10*log10`; units are Hz with time
+metadata and normalized rad/sample otherwise; real is one-sided, complex is
+centered two-sided and Log-disabled; provider Leakage defaults to 0.5 on
+`[0,1]`; RBW is dynamic `max(ENBW/T, span/4095)`.
+unknowns: Fresh Linear/Log selection, engineering prefix, app Leakage readout
+mapping, initial resolution mode, invalid field behavior and preference
+persistence are not documented.
+changes: None by researcher. Architect persisted the structured report under
+`agents/reports/`.
+risks: Current Help is not release-frozen; app tutorial examples must not be
+promoted into defaults.
+next_task_candidates: Bounded fresh-session observation only after unsafe
+Command Window state is explicitly cleared.
