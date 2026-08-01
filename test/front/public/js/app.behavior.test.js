@@ -792,6 +792,32 @@ module.exports = async function testDisplayBehavior(assert) {
   const c19Disabled = await boot((url) => Promise.resolve(response(200, c19NoSource)));
   assert(c19Disabled.e.persistenceSettings.hidden === false && c19Disabled.e.persistenceLeakage.disabled === true && c19Disabled.e.persistenceLeakage.value === "0.25", "Persistence without an analysis source disables but retains its display-scoped Leakage setting");
 
+  const c19Absent = snapshot(0, "display-1", [{ id:"display-1", name:"Display 1", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A] }], A);
+  c19Absent.plot_payload.persistence = c19Initial.plot_payload.persistence;
+  const c19Compatibility = await boot((url) => Promise.resolve(response(200, c19Absent)));
+  assert(c19Compatibility.e.persistenceLeakage.value === "0.5" && c19Compatibility.e.persistenceLeakage.disabled === false && c19Compatibility.e.persistenceLeakageError.hidden === true, "missing legacy persistence_settings remains compatible with canonical .5");
+  for (const malformedPersistence of [null, "0.5", [{ leakage:.5 }], {}, { leakage:.5, extra:true }, { leakage:true }, { leakage:NaN }, { leakage:Infinity }, { leakage:-.01 }, { leakage:1.01 }]) {
+    const malformedDef = Object.assign({}, c19Def, { persistence_settings:malformedPersistence });
+    const malformedSnapshot = snapshot(0, "display-1", [malformedDef], A);
+    malformedSnapshot.plot_payload.persistence = c19Initial.plot_payload.persistence;
+    const malformedRequests = [];
+    const malformed = await boot((url, options) => { malformedRequests.push({url, options}); return Promise.resolve(response(200, malformedSnapshot)); });
+    assert(malformed.e.persistenceLeakage.disabled === true && malformed.e.persistenceLeakage.value === "" && malformed.e.persistenceLeakageError.hidden === false && malformed.e.persistenceLeakageError.textContent.includes("Некорректные настройки Persistence"), "malformed server Persistence settings surface a stable disabled contract error");
+    malformed.e.plotSelect.value = "time"; malformed.e.plotSelect.listeners.change({target:malformed.e.plotSelect}); await flush();
+    assert(malformedRequests.filter(call => call.url === "./api/view").length === 0, "a Persistence contract error must block unrelated server mutations rather than mask malformed state");
+  }
+
+  const c19Pages = [Object.assign({}, c19Def, { persistence_settings:{leakage:.25} }), { id:"display-2", name:"Display 2", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A], persistence_settings:{leakage:.5} }];
+  const c19PageA = snapshot(0, "display-1", c19Pages, A), c19PageB = snapshot(1, "display-2", c19Pages, A);
+  c19PageA.plot_payload.persistence = c19Initial.plot_payload.persistence; c19PageB.plot_payload.persistence = c19Initial.plot_payload.persistence;
+  const c19PageRequests = [];
+  const c19Page = await boot((url, options) => { c19PageRequests.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c19PageA)); const body = JSON.parse(options.body); return Promise.resolve(response(200, body.display_id === "display-2" ? c19PageB : c19PageA)); });
+  assert(c19Page.e.persistenceLeakage.value === "0.25", "Persistence Leakage starts from Display A's independent setting");
+  c19Page.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
+  assert(c19Page.e.persistenceLeakage.value === "0.5", "selecting Display B restores B's default Persistence Leakage without leaking A's preference");
+  c19Page.e.tabs.listeners.click({target:tabTarget("display-1")}); await flush();
+  assert(c19Page.e.persistenceLeakage.value === "0.25" && c19PageRequests.filter(call => call.url === "./api/displays").length === 2, "returning to Display A restores its retained Persistence Leakage through canonical display lifecycle state");
+
   const c15Auto = { overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null };
   const c15Limits = { min_hz:1, max_hz:4, units:"Hz" };
   const c15Definition = Object.assign({}, c12Def, { spectrogram_settings:c15Auto });

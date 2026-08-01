@@ -93,7 +93,7 @@ end
     @test changed["state_revision"] == 1
     @test changed["persistence_settings"] == Dict("leakage" => 0.25)
     accepted = SA_API.signal_analyser_snapshot(state)
-    for bad_settings in (Dict{String,Any}(), Dict("leakage" => true), Dict("leakage" => NaN), Dict("leakage" => 1.01), Dict("leakage" => 0.5, "unexpected" => 1))
+    for bad_settings in (nothing, "0.5", Dict{String,Any}(), Dict("leakage" => true), Dict("leakage" => NaN), Dict("leakage" => -Inf), Dict("leakage" => -0.01), Dict("leakage" => 1.01), Dict("leakage" => 0.5, "unexpected" => 1))
         err = try
             SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "persistence_settings" => bad_settings))
             nothing
@@ -108,6 +108,14 @@ end
     preserved = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "peaks_enabled" => false))
     @test preserved["state_revision"] == 1
     @test preserved["persistence_settings"] == Dict("leakage" => 0.25)
+    stale = try
+        SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "persistence_settings" => Dict("leakage" => 0.5)))
+        nothing
+    catch caught
+        caught
+    end
+    @test stale isa SA_API.SignalAnalyserStaleStateError
+    @test SA_API.signal_analyser_snapshot(state) == accepted
 end
 
 @testset "Signal Analyser API Peaks boolean view contract" begin
