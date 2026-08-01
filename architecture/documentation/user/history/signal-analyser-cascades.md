@@ -475,3 +475,16 @@
 - Local commits: Spectrum `01f96d9f9bc83b687e92846995ab4833a8c431cc`,
   Spectrogram `0fc78161430cf41e5d2fdc301d712686a46686c4`. Push, deployment
   и merge не выполнялись.
+
+## 2026-08-01 — Cascade 22 fixed Persistence segmentation NO-GO
+
+- Official web research отклонил MATLAB parity claim для fixed zero: fresh
+  Persistence default не опубликован, а explicit-zero generated example не
+  является default/resource recommendation.
+- Matched real N64 probe: explicit zero 369.33 MiB/1.53 s, current omitted
+  1231.86 MiB/6.14 s; F unchanged, PWR/occurrence materially different.
+- Hard guard остановил complex/Leakage/repeat/order/size matrix. DEC-028 не
+  принимает breaking foundation на partial evidence; DEC-027 остаётся blocked.
+- Current omitted cost записан как operational resource risk. Pod cleaned/
+  stopped, Engee bug не заявлен; следующий candidate — semantic-preserving
+  lazy materialization.

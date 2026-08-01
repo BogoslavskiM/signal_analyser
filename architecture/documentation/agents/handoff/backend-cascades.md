@@ -614,3 +614,21 @@ Overlap is not covered; zero would globally change C18/C19 output/cache.
 cleanup: live bytes reduced, pod stop 204 and follow-up stopped confirmed.
 changes: None.
 next_task_candidates: Fixed segmentation/resource foundation evidence and ADR.
+
+## Cascade 22 fixed-zero foundation probe — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c19_persistence_leakage_probe`.
+scope: Prod EngeeDSP 0.72.0, matched real N64 omitted/explicit-zero call;
+read-only in-memory, hard allocation guard.
+evidence: Explicit zero 369.33 MiB/1.530 s; omitted 1231.86 MiB/6.137 s.
+Frequency identical; max PWR delta 1.2798 and occurrence delta 50.
+decision: NO-GO. First omitted call crossed guard, so complex, Leakage 0/1,
+repeats, N128/N256, option order and limit composition were not run.
+architecture: Any future fixed policy needs query/cache algorithm epoch and
+cold backend restart; current and proposed entries must never alias.
+cleanup: Arrays cleared; pod stop 204 and stopped status confirmed.
+changes: None.
+risks: Current omitted product path itself has recorded >1.2 GiB allocation
+cost even at N64. This is not classified as Engee defect.
+next_task_candidates: Lazy/materialization containment assessment.

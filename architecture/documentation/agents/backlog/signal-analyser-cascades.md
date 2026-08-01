@@ -205,6 +205,11 @@ Owner: Architect
   absent legacy settings retain compatibility defaults. Spectrogram queued,
   stale-replay and successful-response intents are purged without POST. Front
   2/2 and repeated independent audit CLEAN.
+- C22 fixed-zero foundation closed NO-GO under DEC-028. The first matched N64
+  omitted call allocated 1231.86 MiB versus 369.33 MiB explicit zero, while
+  changing PWR/occurrence. Guard stopped all remaining mandatory evidence.
+  C21 remains blocked; current omitted cost is an operational risk. Next
+  candidate is semantic-preserving lazy Persistence materialization.
 - C19 implemented and locally accepted at product/test commit `2f99ff8`:
   backend 1497/1497, C19 48/48, frontend 2/2, focused Playwright static and
   independent Frontend/E2E/Backend audits CLEAN. Local Engee gate retains the

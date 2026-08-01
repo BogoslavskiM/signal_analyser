@@ -1173,3 +1173,24 @@ Spectrum and Spectrogram now enforce the same absent-versus-present snapshot
 boundary already added for Persistence. Exact corruption cannot be normalized
 into a later full view request; queue, stale replay and successful malformed
 response paths are quarantined. Front 2/2 and independent final audit CLEAN.
+
+## Cascade 22 close — 2026-08-01
+
+Status: `accepted-no-go`; DEC-028; no product implementation.
+
+Fixed zero is a measured lower-resource but breaking Persistence algorithm.
+The current omitted call crossed 512 MiB at the first N64 pair, so required
+foundation evidence could not be completed safely. C21 remains blocked. Queue
+the semantic-preserving lazy materialization assessment before any new
+Persistence feature or provider probe.
+
+### Persistent role queue after C22
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | C22 NO-GO/cleanup complete | lazy materialization audit | current service graph | 1.23 GiB risk |
+| Frontend | `/root/frontend_spectrogram_rescue` | no C22 UI delta | lazy wire inventory | backend policy | one-key Leakage stays |
+| Tester | `/root/tester_c18_persistence_matrix` | foundation matrix inventory complete | lazy/cold tests | next ADR | no overlap field |
+| E2E Tester | `/root/e2e_c18_persistence_inventory` | rebaseline inventory complete | lazy render scenario | foundation NO-GO | event-only oracle |
+| DevOps | `/root/devops_c17_commit` | snapshot docs committed | C22 docs checkpoint | Architect validation | `5f31a4a` |
+| MATLAB Researcher | `/root/matlab_c20_persistence_overlap` | parity claim rejected | standby | no safe GUI action | official web only |

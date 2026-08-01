@@ -775,3 +775,20 @@ Auto and PWR/occurrence effects required prod evidence.
 changes: None.
 follow-ups: Provider probe then ADR/prerequisite review; no copied Spectrum or
 Spectrogram state/UI policy.
+
+## C22 fixed-zero parity assessment — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c20_persistence_overlap`.
+scope: Official MathWorks/Engee web only; no GUI, clicker or repository action.
+decision: Fixed internal zero cannot claim MATLAB Signal Analyzer parity.
+facts: Provider omitted overlap is window/ENBW-derived. Persistence uses the
+specified overlap. An official interference example explicitly selects zero
+and generated code preserves it, but does not establish a fresh default or
+global resource policy.
+required_disclosure: If ever accepted, zero must be named a non-user-
+configurable product policy with possible numerical divergence from omitted/
+positive-overlap MATLAB/Engee calls.
+changes: None.
+next_task_candidates: No further GUI-free parity evidence; runtime/resource
+foundation gate controls the decision.
