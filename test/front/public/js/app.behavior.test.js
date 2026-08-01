@@ -23,6 +23,12 @@ function snapshot(revision, activeId, displayDefinitions, rowSelectedSignal) {
   const definitions = displayDefinitions || [
     { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B] },
   ];
+  definitions.forEach((definition) => {
+    if (!definition || typeof definition !== "object") return;
+    if (definition.analysis_signal === undefined) definition.analysis_signal = definition.selected_signal === undefined ? null : definition.selected_signal;
+    if (definition.selected_signal === undefined) definition.selected_signal = definition.analysis_signal;
+    if (definition.visible_signals === undefined) definition.visible_signals = [];
+  });
   const active = definitions.find((definition) => definition.id === (activeId || definitions[0].id)) || definitions[0];
   const selected = active.analysis_signal !== undefined ? active.analysis_signal : active.selected_signal;
   return {
@@ -30,10 +36,12 @@ function snapshot(revision, activeId, displayDefinitions, rowSelectedSignal) {
     active_display_id: activeId || definitions[0].id,
     row_selected_signal: rowSelectedSignal === undefined ? (selected || A) : rowSelectedSignal,
     analysis_signal: selected,
+    selected_signal: selected,
+    visible_signals: Array.isArray(active.visible_signals) ? active.visible_signals.slice() : [],
     displays: definitions,
     signals: [
-      { name: A, color: "#2563eb", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Вещественный" },
-      { name: B, color: "#dc2626", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Комплексный" },
+      { name: A, color: "#2563eb", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Вещественный", visible:Array.isArray(active.visible_signals) && active.visible_signals.indexOf(A) >= 0 },
+      { name: B, color: "#dc2626", sample_rate_hz: 10, sample_count: 3, duration_s: 0.2, data_type: "Комплексный", visible:Array.isArray(active.visible_signals) && active.visible_signals.indexOf(B) >= 0 },
     ],
     plots: { time: { type: "line", x: [0, .1], y: [0, 1], x_label: "Time", y_label: "Amplitude" } },
     plot_payload: {
@@ -295,8 +303,8 @@ module.exports = async function testDisplayBehavior(assert) {
 
   const displayCalls = [];
   const created = snapshot(1, "display-2", [
-    { id: "display-1", name: "Display 1", active_plot: "spectrum", selected_signal: B, visible_signals: [B] },
-    { id: "display-2", name: "Display 2", active_plot: "time", selected_signal: A, visible_signals: [A, B] },
+    { id: "display-1", name: "Display 1", active_plot: "spectrum", analysis_signal: B, selected_signal: B, visible_signals: [B] },
+    { id: "display-2", name: "Display 2", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B] },
   ]);
   const selected = snapshot(2, "display-1", created.displays);
   const lifecycle = await boot((url, options) => {
@@ -578,6 +586,81 @@ module.exports = async function testDisplayBehavior(assert) {
   c26Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   c26Recovery.e.plotSelect.value = "spectrum"; c26Recovery.e.plotSelect.listeners.change({target:c26Recovery.e.plotSelect}); await flush();
   assert(c26Recovery.e.activeStatus.textContent.includes("Display B") && c26RecoveryCalls.filter(call => call.url === "./api/view").length === 1, "C26 recovered valid Display B must regain deterministic controls and normal View mutation");
+
+  // C27/DEC-033 selection boundary.  The snapshot helper now emits the valid
+  // active root projection, so each case below changes exactly one contract
+  // dimension and cannot pass by a legacy root/default fallback.
+  function c27Base(definitions, activeId) { const result = snapshot(0, activeId || "display-1", definitions, A), active = result.displays.find(display => display.id === result.active_display_id), membership = Array.isArray(active.visible_signals) ? active.visible_signals : []; result.row_selected_signal = active.analysis_signal; result.analysis_signal = active.analysis_signal; result.selected_signal = active.selected_signal; result.visible_signals = membership.slice(); result.signals.forEach(signal => { signal.visible = membership.indexOf(signal.name) >= 0; }); return result; }
+  const c27ValidDefinition = {id:"display-1", name:"Display 1", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A, B]};
+  const c27RowCases = [
+    s => { delete s.row_selected_signal; }, s => { s.row_selected_signal = 7; }, s => { s.row_selected_signal = ""; }, s => { s.row_selected_signal = "unknown"; }, s => { s.signals = []; },
+    s => { delete s.visible_signals; }, s => { s.visible_signals = 7; }, s => { s.visible_signals = ["unknown"]; }, s => { s.visible_signals = [A]; },
+    s => { delete s.analysis_signal; }, s => { s.analysis_signal = 7; }, s => { s.analysis_signal = "unknown"; }, s => { s.analysis_signal = B; },
+    s => { delete s.selected_signal; }, s => { s.selected_signal = 7; }, s => { s.selected_signal = "unknown"; }, s => { s.selected_signal = B; }, s => { s.signals[0].visible = false; },
+  ];
+  for (const mutate of c27RowCases) {
+    const invalid = c27Base([c27ValidDefinition]); mutate(invalid);
+    const env = await boot(() => Promise.resolve(response(200, invalid)));
+    assert(env.e.error.hidden === false && env.e.errorText.textContent === "Некорректная структура snapshot сервера." && env.e.tabs.innerHTML === "" && env.e.rows.innerHTML === "", "C27 invalid global row, empty inventory, or valid-active root projection must use exact DEC-032 fatal reset");
+  }
+  const c27Empty = c27Base([Object.assign({}, c27ValidDefinition, {analysis_signal:null, selected_signal:null, visible_signals:[]})]);
+  c27Empty.row_selected_signal = A; c27Empty.analysis_signal = null; c27Empty.selected_signal = null; c27Empty.visible_signals = []; c27Empty.signals.forEach(signal => { signal.visible = false; });
+  const c27EmptyEnv = await boot(() => Promise.resolve(response(200, c27Empty)));
+  assert(c27EmptyEnv.e.error.hidden === true && c27EmptyEnv.e.clearDisplayAction.disabled && c27EmptyEnv.e.host.innerHTML.includes("empty-display-plot-state"), "C27 valid empty membership with two null aliases must remain a nonfatal empty Display");
+  const c27BridgeValid = c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]})]);
+  const c27BridgeCorrupt = c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]})]); c27BridgeCorrupt.displays[0].visible_signals = [A, A];
+  const c27Bridge = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? c27BridgeValid : c27BridgeCorrupt)), {deferredPlotly:true});
+  assert(c27Bridge.plotResolvers.length === 1 && c27Bridge.calls.filter(call => call.plot).length === 1, "C24→C27 bridge starts one controlled valid render");
+  c27Bridge.e.plotSelect.value = "spectrum"; c27Bridge.e.plotSelect.listeners.change({target:c27Bridge.e.plotSelect}); await flush();
+  assert(c27Bridge.e.host.dataset.plotReady === "false" && c27Bridge.e.errorText.textContent !== "Некорректная структура snapshot сервера.", "C27 selection-corrupt response must locally quarantine before stale Plotly settles");
+  c27Bridge.plotResolvers.shift().resolve(); await flush();
+  assert(c27Bridge.e.host.dataset.plotReady === "false" && !c27Bridge.e.host.innerHTML.includes("settled-") && c27Bridge.e.errorText.textContent !== "Некорректная структура snapshot сервера." && c27Bridge.calls.filter(call => call.plot).length === 1, "C24→C27 stale Plotly completion must not overwrite the authoritative local quarantine host or start another render");
+  const c27LocalMutations = [
+    d => { delete d.visible_signals; }, d => { d.visible_signals = {}; }, d => { d.visible_signals = [7]; }, d => { d.visible_signals = ["unknown"]; }, d => { d.visible_signals = [A, A]; }, d => { d.visible_signals = [B, A]; },
+    d => { delete d.analysis_signal; }, d => { d.analysis_signal = 7; }, d => { d.analysis_signal = "unknown"; }, d => { delete d.selected_signal; }, d => { d.selected_signal = 7; }, d => { d.selected_signal = "unknown"; }, d => { d.selected_signal = B; }, d => { d.visible_signals = []; d.analysis_signal = A; d.selected_signal = A; }, d => { d.visible_signals = [A]; d.analysis_signal = null; d.selected_signal = null; }, d => { d.visible_signals = [A]; d.analysis_signal = B; d.selected_signal = B; },
+  ];
+  for (const mutate of c27LocalMutations) {
+    const invalid = c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]}),]), calls = []; mutate(invalid.displays[0]);
+    // Root is intentionally not touched: active-invalid precedence must be local.
+    const env = await boot((url, options) => { calls.push({url, options}); return Promise.resolve(response(200, invalid)); });
+    assert(env.e.tabs.innerHTML.includes("display-tab-display-1") && env.e.errorText.textContent !== "Некорректная структура snapshot сервера." && env.e.host.dataset.plotReady === "false" && env.e.rows.innerHTML.includes("data-signal='" + A + "'") && env.e.rows.innerHTML.includes("data-signal='" + B + "'") && env.e.rows.innerHTML.includes("aria-disabled='true'") && !env.e.rows.innerHTML.includes("data-display-membership") && !env.e.rows.innerHTML.includes("data-signal-visibility"), "C27 local quarantine must retain read-only inventory rows with exact signal identity and no invented membership checkbox");
+    env.e.rows.listeners.click({target:rowTarget(A)}); await flush();
+    assert(calls.filter(call => call.url === "./api/view").length === 0, "C27 clicking a read-only quarantined inventory row must issue zero View POST");
+    env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
+    assert(calls.filter(call => call.url === "./api/view").length === 0, "C27 quarantined active Display must never serialize an invented View target");
+  }
+  const c27Definitions = [
+    Object.assign({}, c27ValidDefinition, {id:"display-1", name:"Display A", visible_signals:[A], analysis_signal:A, selected_signal:A}),
+    Object.assign({}, c27ValidDefinition, {id:"display-2", name:"Display B", visible_signals:[B], analysis_signal:B, selected_signal:B}),
+  ];
+  const c27InactiveBad = c27Base([Object.assign({}, c27Definitions[0], {visible_signals:[A, A]}), c27Definitions[1]], "display-2");
+  c27InactiveBad.row_selected_signal = B; c27InactiveBad.analysis_signal = B; c27InactiveBad.selected_signal = B; c27InactiveBad.visible_signals = [B]; c27InactiveBad.signals.forEach(signal => { signal.visible = signal.name === B; });
+  const c27IsolationCalls = [];
+  const c27Isolation = await boot((url, options) => { c27IsolationCalls.push({url, options}); return Promise.resolve(response(200, c27InactiveBad)); });
+  assert(c27Isolation.e.error.hidden === true && c27Isolation.e.activeStatus.textContent.includes("Display B"), "C27 invalid inactive Display A must not quarantine valid active Display B");
+  c27Isolation.e.plotSelect.value = "spectrum"; c27Isolation.e.plotSelect.listeners.change({target:c27Isolation.e.plotSelect}); await flush();
+  assert(c27IsolationCalls.filter(call => call.url === "./api/view").length === 1, "C27 valid active B continues independently while A remains quarantined");
+  const c27BadA = c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]})]); c27BadA.displays[0].visible_signals = [A, A];
+  const c27PurgeCalls = [], c27PurgeResolvers = [];
+  const c27Purge = await boot((url, options) => { c27PurgeCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]} )]))) : new Promise(resolve => c27PurgeResolvers.push(resolve)); });
+  c27Purge.e.plotSelect.value = "spectrum"; c27Purge.e.plotSelect.listeners.change({target:c27Purge.e.plotSelect}); await flush();
+  c27Purge.e.plotSelect.value = "persistence"; c27Purge.e.plotSelect.listeners.change({target:c27Purge.e.plotSelect}); await flush();
+  c27PurgeResolvers.shift()(response(200, c27BadA)); await flush();
+  assert(c27PurgeCalls.filter(call => call.url === "./api/view").length === 1 && c27Purge.e.errorText.textContent !== "Некорректная структура snapshot сервера.", "C27 malformed successful 200 must purge queued same-ID View intent without replay or global fatal");
+  const c27LifecycleDefinitions = [Object.assign({}, c27Definitions[0], {visible_signals:[A]}), Object.assign({}, c27Definitions[1], {visible_signals:[B]})];
+  const c27LifecycleA = c27Base(c27LifecycleDefinitions.map(item => Object.assign({}, item, {visible_signals:item.visible_signals.slice()})), "display-1");
+  const c27LifecycleBadA = c27Base(c27LifecycleDefinitions.map(item => Object.assign({}, item, {visible_signals:item.visible_signals.slice()})), "display-1"); c27LifecycleBadA.displays[0].visible_signals = [A, A];
+  const c27LifecycleB = c27Base(c27LifecycleDefinitions.map(item => Object.assign({}, item, {visible_signals:item.visible_signals.slice()})), "display-2"); c27LifecycleB.row_selected_signal = B;
+  const c27LifecycleCalls = [], c27LifecycleResolvers = [];
+  const c27Lifecycle = await boot((url, options) => { c27LifecycleCalls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c27LifecycleA)); if (url === "./api/view") return new Promise(resolve => c27LifecycleResolvers.push(resolve)); return Promise.resolve(response(200, c27LifecycleB)); });
+  c27Lifecycle.e.plotSelect.value = "spectrum"; c27Lifecycle.e.plotSelect.listeners.change({target:c27Lifecycle.e.plotSelect}); await flush();
+  c27Lifecycle.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
+  c27LifecycleResolvers.shift()(response(409, {current:c27LifecycleBadA})); await flush();
+  assert(c27LifecycleCalls.filter(call => call.url === "./api/view").length === 1 && c27LifecycleCalls.filter(call => call.url === "./api/displays").length === 1 && c27Lifecycle.e.activeStatus.textContent.includes("Display B") && c27Lifecycle.e.errorText.textContent !== "Некорректная структура snapshot сервера.", "C27 malformed 409 current must quarantine A with no stale third View replay while queued independent select B continues");
+  const c27RecoveryCalls = [];
+  const c27Recovery = await boot((url, options) => { c27RecoveryCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c27LifecycleBadA)) : Promise.resolve(response(200, c27LifecycleB)); });
+  c27Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
+  assert(c27Recovery.e.error.hidden === true && c27Recovery.e.activeStatus.textContent.includes("Display B") && c27RecoveryCalls.filter(call => call.url === "./api/displays").length === 1 && c27RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C27 valid authoritative topology response must clear local quarantine without resurrecting its discarded View intent");
 
   const rowRequests = [];
   const memberRow = await boot((url, options) => {
