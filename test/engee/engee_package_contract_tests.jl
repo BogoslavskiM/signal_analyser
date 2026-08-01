@@ -126,6 +126,50 @@ end
         assert_pspectrum_matrix(power, frequencies, times)
     end
 
+    @testset "C12 spectrogram OverlapPercent canonical provider matrix" begin
+        # This is deliberately the production adapter order: app-level JSON validation
+        # rejects Bool and values outside 0:75 before this provider boundary.
+        real_signal = sin.(2pi .* 32.0 .* time) .+ 0.25 .* sin.(2pi .* 72.0 .* time)
+        for (probe_signal, two_sided) in ((real_signal, false), (signal, true))
+            for overlap_percent in (0.0, 50.0, 75.0)
+                power, frequencies, times = pspectrum(
+                    probe_signal,
+                    time,
+                    "spectrogram",
+                    "OverlapPercent",
+                    overlap_percent,
+                    "TwoSided",
+                    two_sided,
+                )
+                @test !isempty(vec(collect(times)))
+                @test all(isfinite, vec(collect(times)))
+                if two_sided
+                    assert_frequency_axis(frequencies)
+                else
+                    @test !isempty(vec(collect(frequencies)))
+                    @test all(value -> value >= 0.0, Float64.(vec(collect(frequencies))))
+                end
+                assert_pspectrum_matrix(power, frequencies, times)
+            end
+        end
+
+        # Provider delta: EngeeDSP accepts Bool permissively; application/API tests
+        # prove Bool is rejected before this boundary and it is never dispatched.
+        bool_power, bool_frequencies, bool_times = pspectrum(
+            signal,
+            time,
+            "spectrogram",
+            "OverlapPercent",
+            true,
+            "TwoSided",
+            true,
+        )
+        @test !isempty(vec(collect(bool_times)))
+        @test all(isfinite, vec(collect(bool_times)))
+        assert_frequency_axis(bool_frequencies)
+        assert_pspectrum_matrix(bool_power, bool_frequencies, bool_times)
+    end
+
     @testset "persistence" begin
         occurrence, frequencies, power_levels = pspectrum(signal, time, "persistence", "TwoSided", true)
         @test !isempty(vec(collect(power_levels)))

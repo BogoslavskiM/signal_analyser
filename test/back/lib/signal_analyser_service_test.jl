@@ -108,7 +108,7 @@ end
     state = SA.default_signal_analyser_state()
     snapshot = SA.signal_analyser_snapshot(state)
 
-    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "spectrum_settings", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
+    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "spectrum_settings", "spectrogram_settings", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
     @test snapshot["active_display_id"] == "display-1"
     @test snapshot["displays"] == [Dict(
         "id" => "display-1",
@@ -120,6 +120,7 @@ end
         "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
         "measurement_kinds" => ["minimum", "maximum", "mean"],
         "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing),
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0),
         "peaks_enabled" => false,
     )]
     @test snapshot["state_revision"] == 0
@@ -233,6 +234,7 @@ end
         "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
         "measurement_kinds" => ["minimum", "maximum", "mean"],
         "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing),
+        "spectrogram_settings" => Dict("overlap_percent" => 50.0),
         "peaks_enabled" => false,
     )
 
@@ -1337,4 +1339,103 @@ end
     @test isempty(state.spectrogram_cache)
     SA.SPECTROGRAM_FAILURE[] = false
     @test SA.signal_analyser_snapshot(state) == baseline
+end
+
+@testset "Cascade 12 typed Spectrogram Overlap settings invariants" begin
+    @test SA.SignalSpectrogramSettings().overlap_percent == 50.0
+    @test SA.SignalSpectrogramSettings(0).overlap_percent == 0.0
+    @test SA.SignalSpectrogramSettings(75).overlap_percent == 75.0
+    @test_throws ArgumentError SA.SignalSpectrogramSettings(75.1)
+    @test_throws ArgumentError SA.SignalSpectrogramSettings(-1)
+    @test_throws ArgumentError SA.SignalSpectrogramSettings(Inf)
+    @test_throws ArgumentError SA.SignalSpectrogramSettings(true)
+    query_50 = SA.SignalSpectrogramQuery("overlap", [1.0, 2.0], 10.0, SA.ONE_SIDED_SPECTRUM, 50.0)
+    query_75 = SA.SignalSpectrogramQuery("overlap", [1.0, 2.0], 10.0, SA.ONE_SIDED_SPECTRUM, 75.0)
+    @test query_50.overlap_percent == 50.0
+    @test SA.SignalSpectrogramCacheKey(query_50) != SA.SignalSpectrogramCacheKey(query_75)
+    state = SA.default_signal_analyser_state()
+    initial = SA.signal_analyser_snapshot(state)
+    @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+    invalid = try SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => Dict("overlap_percent" => 75.1))); nothing catch e; e end
+    @test invalid isa SA.SignalAnalyserValidationError
+    @test SA.signal_analyser_snapshot(state) == initial
+    changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => Dict("overlap_percent" => 75.0)))
+    @test changed["state_revision"] == 1 && changed["spectrogram_settings"] == Dict("overlap_percent" => 75.0)
+end
+
+@testset "Cascade 12 Spectrogram Overlap mutation, cache and display lifecycle" begin
+    SA.reset_pspectrum_double!()
+    empty!(SA.SPECTROGRAM_CALLS)
+    SA.SPECTROGRAM_FAILURE[] = false
+    state = SA.default_signal_analyser_state()
+    first_name, second_name = [signal.name for signal in state.signals]
+    initial = SA.signal_analyser_snapshot(state)
+    @test all(display -> display["spectrogram_settings"] == Dict("overlap_percent" => 50.0), initial["displays"])
+    @test !isempty(SA.SPECTROGRAM_CALLS)
+    calls_at_default = length(SA.SPECTROGRAM_CALLS)
+
+    for invalid in (
+        nothing,
+        "50",
+        Dict{String,Any}(),
+        Dict("overlap_percent" => true),
+        Dict("overlap_percent" => NaN),
+        Dict("overlap_percent" => Inf),
+        Dict("overlap_percent" => -0.1),
+        Dict("overlap_percent" => 75.1),
+        Dict("overlap_percent" => 50.0, "extra" => 1),
+    )
+        error = try
+            SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => invalid))
+            nothing
+        catch caught
+            caught
+        end
+        @test error isa SA.SignalAnalyserValidationError
+        @test haskey(error.fields, "spectrogram_settings")
+        @test SA.signal_analyser_snapshot(state) == initial
+        @test length(SA.SPECTROGRAM_CALLS) == calls_at_default
+    end
+
+    overlap_75 = Dict("overlap_percent" => 75.0)
+    updated = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => overlap_75))
+    @test updated["state_revision"] == 1
+    @test updated["spectrogram_settings"] == overlap_75
+    @test updated["displays"][1]["spectrogram_settings"] == overlap_75
+    @test SA.SPECTROGRAM_CALLS[end].overlap_percent == 75.0
+    calls_at_75 = length(SA.SPECTROGRAM_CALLS)
+    @test SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => overlap_75))["state_revision"] == 1
+    @test length(SA.SPECTROGRAM_CALLS) == calls_at_75
+
+    created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "create"))
+    @test created["displays"][2]["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+    selected_first = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))
+    @test selected_first["spectrogram_settings"] == overlap_75
+    selected_second = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-2"))
+    @test selected_second["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+
+    calls_before_clear = length(SA.SPECTROGRAM_CALLS)
+    cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => String[]))
+    @test cleared["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+    @test length(SA.SPECTROGRAM_CALLS) == calls_before_clear
+    readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [first_name]))
+    @test readded["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+    @test length(SA.SPECTROGRAM_CALLS) == calls_before_clear + 1
+    changed_signal = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 6, "visible_signals" => [first_name, second_name], "analysis_signal" => second_name))
+    @test changed_signal["spectrogram_settings"] == Dict("overlap_percent" => 50.0)
+
+    before_failure = SA.signal_analyser_snapshot(state)
+    empty!(state.spectrogram_cache)
+    SA.SPECTROGRAM_FAILURE[] = true
+    failure = try
+        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 7, "spectrogram_settings" => Dict("overlap_percent" => 0.0)))
+        nothing
+    catch caught
+        caught
+    end
+    @test failure isa ArgumentError
+    @test state.view.state_revision == before_failure["state_revision"]
+    @test isempty(state.spectrogram_cache)
+    SA.SPECTROGRAM_FAILURE[] = false
+    @test SA.signal_analyser_snapshot(state) == before_failure
 end

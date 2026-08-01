@@ -10,6 +10,7 @@ const SIGNAL_ANALYSER_VIEW_FIELDS = Set([
     "time_limits",
     "measurement_kinds",
     "spectrum_settings",
+    "spectrogram_settings",
     "peaks_enabled",
 ])
 const SIGNAL_ANALYSER_DISPLAY_FIELDS = Set(["state_revision", "operation", "display_id"])
@@ -22,6 +23,7 @@ const SIGNAL_SPECTRUM_SETTINGS_FIELDS = Set([
     "frequency_limits",
 ])
 const SIGNAL_SPECTRUM_FREQUENCY_LIMIT_FIELDS = Set(["min_hz", "max_hz", "units"])
+const SIGNAL_SPECTROGRAM_SETTINGS_FIELDS = Set(["overlap_percent"])
 
 const SIGNAL_SPECTRUM_SCALE_NAMES = Dict(
     DB_SPECTRUM_SCALE => "db",
@@ -100,6 +102,14 @@ function signal_spectrum_settings_payload(
         "frequency_scale" => SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[settings.frequency_scale],
         "leakage" => settings.leakage,
         "frequency_limits" => signal_spectrum_frequency_limits_payload(settings.frequency_limits),
+    )
+end
+
+function signal_spectrogram_settings_payload(
+    settings::SignalSpectrogramSettings,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "overlap_percent" => settings.overlap_percent,
     )
 end
 
@@ -322,14 +332,17 @@ end
 
 function signal_analyser_prepared_spectrograms(
     state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
     signal::Union{Nothing,AnalysedSignal},
+    ;
+    refresh::Bool = false,
 )::Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}
     prepared = Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}()
     signal === nothing && return prepared
-    key = signal_spectrogram_cache_key(signal)
-    prepared[key] = haskey(state.spectrogram_cache, key) ?
+    key = signal_spectrogram_cache_key(signal, display.spectrogram_settings)
+    prepared[key] = !refresh && haskey(state.spectrogram_cache, key) ?
         state.spectrogram_cache[key] :
-        signal_spectrogram_data(state.spectrogram_service, signal)
+        signal_spectrogram_data(state.spectrogram_service, signal, display.spectrogram_settings)
     prepared
 end
 
@@ -382,11 +395,12 @@ end
 
 function signal_analyser_cached_spectrogram_data!(
     state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
     signal::AnalysedSignal,
 )::SignalSpectrogramData
-    key = signal_spectrogram_cache_key(signal)
+    key = signal_spectrogram_cache_key(signal, display.spectrogram_settings)
     get!(state.spectrogram_cache, key) do
-        signal_spectrogram_data(state.spectrogram_service, signal)
+        signal_spectrogram_data(state.spectrogram_service, signal, display.spectrogram_settings)
     end
 end
 
@@ -397,7 +411,7 @@ function signal_analyser_plots_for_display!(
 )::Dict{String,Any}
     plots = copy(signal_analyser_cached_plots!(state, signal))
     spectrum_data = signal_analyser_cached_spectrum_data!(state, display, signal)
-    spectrogram_data = signal_analyser_cached_spectrogram_data!(state, signal)
+    spectrogram_data = signal_analyser_cached_spectrogram_data!(state, display, signal)
     plots["spectrum"] = signal_analyser_spectrum_plot(spectrum_data, display.spectrum_settings)
     plots["spectrogram"] = signal_analyser_spectrogram_plot(spectrogram_data)
     plots
@@ -432,6 +446,7 @@ function signal_analyser_display_payload(display::SignalAnalyserDisplayState)::D
         "time_limits" => signal_time_limits_payload(display.time_limits),
         "measurement_kinds" => signal_measurement_selection_payload(display.measurement_selection),
         "spectrum_settings" => signal_spectrum_settings_payload(display.spectrum_settings),
+        "spectrogram_settings" => signal_spectrogram_settings_payload(display.spectrogram_settings),
         "peaks_enabled" => display.peaks_enabled,
     )
 end
@@ -833,23 +848,37 @@ function signal_spectrum_data(
     )
 end
 
-function signal_spectrogram_cache_key(signal::AnalysedSignal)::SignalSpectrogramCacheKey
+function signal_spectrogram_cache_key(
+    signal::AnalysedSignal,
+    settings::SignalSpectrogramSettings,
+)::SignalSpectrogramCacheKey
     SignalSpectrogramCacheKey(
         signal.name,
         signal.sample_rate_hz,
         length(signal.values),
         signal_spectrum_topology(signal),
+        settings.overlap_percent,
     )
 end
 
-function signal_spectrogram_query(signal::AnalysedSignal)::SignalSpectrogramQuery
+signal_spectrogram_cache_key(signal::AnalysedSignal)::SignalSpectrogramCacheKey =
+    signal_spectrogram_cache_key(signal, SignalSpectrogramSettings())
+
+function signal_spectrogram_query(
+    signal::AnalysedSignal,
+    settings::SignalSpectrogramSettings,
+)::SignalSpectrogramQuery
     SignalSpectrogramQuery(
         signal.name,
         signal.values,
         signal.sample_rate_hz,
         signal_spectrum_topology(signal),
+        settings.overlap_percent,
     )
 end
+
+signal_spectrogram_query(signal::AnalysedSignal)::SignalSpectrogramQuery =
+    signal_spectrogram_query(signal, SignalSpectrogramSettings())
 
 function signal_spectrogram_calculate(
     provider::AbstractSignalSpectrogramProvider,
@@ -869,6 +898,8 @@ function signal_spectrogram_calculate(
         samples,
         times,
         "spectrogram",
+        "OverlapPercent",
+        query.overlap_percent,
         "TwoSided",
         query.topology == CENTERED_TWO_SIDED_SPECTRUM,
     )
@@ -942,11 +973,22 @@ end
 function signal_spectrogram_data(
     service::SignalSpectrogramService,
     signal::AnalysedSignal,
+    settings::SignalSpectrogramSettings,
 )::SignalSpectrogramData
     topology = signal_spectrum_topology(signal)
     length(signal.values) < 2 && return SignalSpectrogramData(topology)
-    signal_spectrogram_calculate(service, signal_spectrogram_query(signal))
+    signal_spectrogram_calculate(service, signal_spectrogram_query(signal, settings))
 end
+
+
+signal_spectrogram_data(
+    service::SignalSpectrogramService,
+    signal::AnalysedSignal,
+)::SignalSpectrogramData = signal_spectrogram_data(
+    service,
+    signal,
+    SignalSpectrogramSettings(),
+)
 
 function signal_time_limits_are_valid(
     service::SignalMeasurementsService,
@@ -1368,6 +1410,7 @@ function signal_analyser_snapshot_unlocked(
         "time_limits" => signal_time_limits_payload(active_display.time_limits),
         "measurement_kinds" => signal_measurement_selection_payload(active_display.measurement_selection),
         "spectrum_settings" => signal_spectrum_settings_payload(active_display.spectrum_settings),
+        "spectrogram_settings" => signal_spectrogram_settings_payload(active_display.spectrogram_settings),
         "signals" => [signal_analyser_signal_payload(item) for item in state.signals],
         "plots" => plots,
         "plot_payload" => signal_analyser_multi_trace_payload(
@@ -1603,6 +1646,45 @@ function signal_analyser_validate_spectrum_settings!(
     catch err
         if err isa ArgumentError || err isa InexactError || err isa OverflowError
             field_errors["spectrum_settings"] = sprint(showerror, err)
+            return nothing
+        end
+        rethrow()
+    end
+end
+
+function signal_analyser_validate_spectrogram_settings!(
+    field_errors::Dict{String,String},
+    value,
+)::Union{Nothing,SignalSpectrogramSettings}
+    if !(value isa AbstractDict)
+        field_errors["spectrogram_settings"] =
+            "Требуется объект {overlap_percent}"
+        return nothing
+    end
+    keys_set = signal_analyser_payload_keys(value)
+    if length(value) != 1 || keys_set != SIGNAL_SPECTROGRAM_SETTINGS_FIELDS
+        missing = sort!(collect(setdiff(SIGNAL_SPECTROGRAM_SETTINGS_FIELDS, keys_set)))
+        unknown = sort!(collect(setdiff(keys_set, SIGNAL_SPECTROGRAM_SETTINGS_FIELDS)))
+        details = String[]
+        isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
+        isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
+        length(value) == 1 || push!(details, "требуется ровно одно поле")
+        field_errors["spectrogram_settings"] =
+            "Ожидался только overlap_percent ($(join(details, "; ")))"
+        return nothing
+    end
+
+    overlap_value = signal_analyser_payload_value(value, "overlap_percent")
+    if !(overlap_value isa Real) || overlap_value isa Bool
+        field_errors["spectrogram_settings"] =
+            "overlap_percent: требуется конечное JSON number от 0 до 75, но не Bool"
+        return nothing
+    end
+    try
+        SignalSpectrogramSettings(overlap_value)
+    catch err
+        if err isa ArgumentError || err isa InexactError || err isa OverflowError
+            field_errors["spectrogram_settings"] = sprint(showerror, err)
             return nothing
         end
         rethrow()
@@ -1874,6 +1956,17 @@ function validate_signal_analyser_view_payload(
             "frequency_scale=log недоступен, пока Display содержит комплексный сигнал"
     end
 
+    has_spectrogram_settings = signal_analyser_payload_contains(data, "spectrogram_settings")
+    requested_spectrogram_settings = display.spectrogram_settings
+    if has_spectrogram_settings
+        validated_spectrogram_settings = signal_analyser_validate_spectrogram_settings!(
+            field_errors,
+            signal_analyser_payload_value(data, "spectrogram_settings"),
+        )
+        validated_spectrogram_settings === nothing ||
+            (requested_spectrogram_settings = validated_spectrogram_settings)
+    end
+
     has_peaks_enabled = signal_analyser_payload_contains(data, "peaks_enabled")
     peaks_enabled_value = signal_analyser_payload_value(data, "peaks_enabled")
     requested_peaks_enabled = display.peaks_enabled
@@ -1904,6 +1997,7 @@ function validate_signal_analyser_view_payload(
         requested_time_limits,
         requested_measurement_selection,
         requested_spectrum_settings,
+        requested_spectrogram_settings,
         requested_peaks_enabled,
     )
     (
@@ -1932,6 +2026,7 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             !isequal(prospective_display.time_limits, display.time_limits) ||
             prospective_display.measurement_selection != display.measurement_selection ||
             prospective_display.spectrum_settings != display.spectrum_settings ||
+            prospective_display.spectrogram_settings != display.spectrogram_settings ||
             prospective_display.peaks_enabled != display.peaks_enabled
 
         # Build every payload affected by the request before publishing the
@@ -1950,7 +2045,9 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             signal_by_name(state, prospective_analysis_name)
         prepared_spectrograms = signal_analyser_prepared_spectrograms(
             state,
+            prospective_display,
             prospective_signal,
+            refresh = isempty(signal_analyser_display_members(display)) && !isempty(prospective_members),
         )
         prepared_measurements = signal_measurements_snapshot(
             state.measurements_service,
@@ -2074,6 +2171,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             )
             prepared_spectrograms = signal_analyser_prepared_spectrograms(
                 state,
+                display,
                 analysis_signal,
             )
             prepared_measurements = signal_measurements_snapshot(
@@ -2110,6 +2208,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 )
                 prepared_spectrograms = signal_analyser_prepared_spectrograms(
                     state,
+                    display,
                     signal_analyser_display_analysis_signal(state, display),
                 )
                 prepared_measurements = signal_measurements_snapshot(
@@ -2168,6 +2267,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             )
             prepared_spectrograms = signal_analyser_prepared_spectrograms(
                 state,
+                next_active_display,
                 signal_analyser_display_analysis_signal(state, next_active_display),
             )
             prepared_measurements = signal_measurements_snapshot(

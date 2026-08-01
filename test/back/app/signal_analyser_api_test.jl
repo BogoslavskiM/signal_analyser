@@ -389,6 +389,68 @@ end
     @test readded["spectrum_settings"] == auto
 end
 
+@testset "Cascade 12 API Spectrogram Overlap envelope and lifecycle" begin
+    SA_API.reset_pspectrum_double!()
+    empty!(SA_API.SPECTROGRAM_CALLS)
+    SA_API.SPECTROGRAM_FAILURE[] = false
+    state = SA_API.default_signal_analyser_state()
+    first_name = state.signals[1].name
+    initial = SA_API.signal_analyser_snapshot(state)
+    default_settings = Dict("overlap_percent" => 50.0)
+    @test initial["spectrogram_settings"] == default_settings
+    @test all(display -> display["spectrogram_settings"] == default_settings, initial["displays"])
+
+    for invalid in (
+        nothing,
+        "50",
+        Dict{String,Any}(),
+        Dict("overlap_percent" => true),
+        Dict("overlap_percent" => NaN),
+        Dict("overlap_percent" => Inf),
+        Dict("overlap_percent" => -1.0),
+        Dict("overlap_percent" => 75.1),
+        Dict("overlap_percent" => 50.0, "extra" => true),
+    )
+        error = try
+            SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => invalid))
+            nothing
+        catch caught
+            caught
+        end
+        @test error isa SA_API.SignalAnalyserValidationError
+        @test haskey(error.fields, "spectrogram_settings")
+        response = SA_API.signal_analyser_validation_response(error)
+        @test response.status == 422
+        @test response.body["error"]["fields"] == error.fields
+        @test SA_API.signal_analyser_snapshot(state) == initial
+    end
+
+    overlap_75 = Dict("overlap_percent" => 75.0)
+    changed = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => overlap_75))
+    @test changed["state_revision"] == 1
+    @test changed["spectrogram_settings"] == overlap_75
+    @test changed["displays"][1]["spectrogram_settings"] == overlap_75
+    @test SA_API.SPECTROGRAM_CALLS[end].overlap_percent == 75.0
+    @test SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => overlap_75))["state_revision"] == 1
+
+    created = SA_API.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "create"))
+    @test created["displays"][2]["spectrogram_settings"] == default_settings
+    @test SA_API.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))["spectrogram_settings"] == overlap_75
+    @test SA_API.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-2"))["spectrogram_settings"] == default_settings
+    cleared = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => String[]))
+    @test cleared["spectrogram_settings"] == default_settings
+    @test SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [first_name]))["spectrogram_settings"] == default_settings
+
+    stale = try
+        SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "spectrogram_settings" => Dict("overlap_percent" => 0.0)))
+        nothing
+    catch caught
+        caught
+    end
+    @test stale isa SA_API.SignalAnalyserStaleStateError
+    @test SA_API.signal_analyser_stale_response(state, stale).status == 409
+end
+
 @testset "Signal Analyser API view payload contract" begin
     SA_API.reset_pspectrum_double!()
     state = SA_API.default_signal_analyser_state()

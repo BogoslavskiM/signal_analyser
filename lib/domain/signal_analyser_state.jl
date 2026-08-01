@@ -143,6 +143,29 @@ Base.isequal(left::SignalSpectrumSettings, right::SignalSpectrumSettings) = left
 Base.hash(settings::SignalSpectrumSettings, seed::UInt) =
     hash((settings.scale, settings.frequency_scale, settings.leakage, settings.frequency_limits), seed)
 
+"""Persistent per-Display Spectrogram provider settings."""
+struct SignalSpectrogramSettings
+    overlap_percent::Float64
+
+    function SignalSpectrogramSettings(overlap_percent::Real)
+        overlap_percent isa Bool && throw(ArgumentError(
+            "Overlap Spectrogram должен быть числом, но не Bool",
+        ))
+        overlap_value = Float64(overlap_percent)
+        isfinite(overlap_value) && 0.0 <= overlap_value <= 75.0 || throw(ArgumentError(
+            "Overlap Spectrogram должен быть конечным числом от 0 до 75 процентов",
+        ))
+        new(overlap_value == 0.0 ? 0.0 : overlap_value)
+    end
+end
+
+SignalSpectrogramSettings() = SignalSpectrogramSettings(50.0)
+
+Base.:(==)(left::SignalSpectrogramSettings, right::SignalSpectrogramSettings) =
+    left.overlap_percent == right.overlap_percent
+Base.isequal(left::SignalSpectrogramSettings, right::SignalSpectrogramSettings) = left == right
+Base.hash(settings::SignalSpectrogramSettings, seed::UInt) = hash(settings.overlap_percent, seed)
+
 """Inclusive 1-based raw sample range shared by ROI consumers."""
 struct SignalTimeSampleRange
     first_index::Int
@@ -329,12 +352,14 @@ struct SignalSpectrogramQuery
     values::Vector{ComplexF64}
     sample_rate_hz::Float64
     topology::SignalSpectrumTopology
+    overlap_percent::Float64
 
     function SignalSpectrogramQuery(
         signal_name::AbstractString,
         values::AbstractVector{<:Number},
         sample_rate_hz::Real,
         topology::SignalSpectrumTopology,
+        overlap_percent::Real,
     )
         isempty(signal_name) && throw(ArgumentError(
             "Имя сигнала Spectrogram query не может быть пустым",
@@ -350,9 +375,23 @@ struct SignalSpectrogramQuery
         isfinite(sample_rate_value) && sample_rate_value > 0 || throw(ArgumentError(
             "Частота дискретизации Spectrogram query должна быть положительной и конечной",
         ))
-        new(String(signal_name), samples, sample_rate_value, topology)
+        settings = SignalSpectrogramSettings(overlap_percent)
+        new(String(signal_name), samples, sample_rate_value, topology, settings.overlap_percent)
     end
 end
+
+SignalSpectrogramQuery(
+    signal_name::AbstractString,
+    values::AbstractVector{<:Number},
+    sample_rate_hz::Real,
+    topology::SignalSpectrumTopology,
+) = SignalSpectrogramQuery(
+    signal_name,
+    values,
+    sample_rate_hz,
+    topology,
+    SignalSpectrogramSettings().overlap_percent,
+)
 
 """Validated raw Spectrogram provider data in frequency-by-segment-time orientation."""
 struct SignalSpectrogramData
@@ -420,6 +459,7 @@ struct SignalSpectrogramCacheKey
     sample_rate_hz::Float64
     sample_count::Int
     topology::SignalSpectrumTopology
+    overlap_percent::Float64
 end
 
 SignalSpectrogramCacheKey(query::SignalSpectrogramQuery) = SignalSpectrogramCacheKey(
@@ -427,16 +467,31 @@ SignalSpectrogramCacheKey(query::SignalSpectrogramQuery) = SignalSpectrogramCach
     query.sample_rate_hz,
     length(query.values),
     query.topology,
+    query.overlap_percent,
+)
+
+SignalSpectrogramCacheKey(
+    signal_name::AbstractString,
+    sample_rate_hz::Real,
+    sample_count::Int,
+    topology::SignalSpectrumTopology,
+) = SignalSpectrogramCacheKey(
+    String(signal_name),
+    Float64(sample_rate_hz),
+    sample_count,
+    topology,
+    SignalSpectrogramSettings().overlap_percent,
 )
 
 Base.:(==)(left::SignalSpectrogramCacheKey, right::SignalSpectrogramCacheKey) =
     left.signal_name == right.signal_name &&
     left.sample_rate_hz == right.sample_rate_hz &&
     left.sample_count == right.sample_count &&
-    left.topology == right.topology
+    left.topology == right.topology &&
+    left.overlap_percent == right.overlap_percent
 Base.isequal(left::SignalSpectrogramCacheKey, right::SignalSpectrogramCacheKey) = left == right
 Base.hash(key::SignalSpectrogramCacheKey, seed::UInt) = hash(
-    (key.signal_name, key.sample_rate_hz, key.sample_count, key.topology),
+    (key.signal_name, key.sample_rate_hz, key.sample_count, key.topology, key.overlap_percent),
     seed,
 )
 
@@ -898,6 +953,7 @@ mutable struct SignalAnalyserDisplayState
     time_limits::Union{Nothing,SignalTimeLimits}
     measurement_selection::SignalMeasurementSelection
     spectrum_settings::SignalSpectrumSettings
+    spectrogram_settings::SignalSpectrogramSettings
     peaks_enabled::Bool
 
     function SignalAnalyserDisplayState(
@@ -909,6 +965,7 @@ mutable struct SignalAnalyserDisplayState
         time_limits::Union{Nothing,SignalTimeLimits},
         measurement_selection::SignalMeasurementSelection,
         spectrum_settings::SignalSpectrumSettings,
+        spectrogram_settings::SignalSpectrogramSettings,
         peaks_enabled::Bool,
     )
         analysis_name = signal_analysis_name(analysis_source)
@@ -936,9 +993,35 @@ mutable struct SignalAnalyserDisplayState
             time_limits,
             measurement_selection,
             spectrum_settings,
+            spectrogram_settings,
             peaks_enabled,
         )
     end
+end
+
+function SignalAnalyserDisplayState(
+    id::AbstractString,
+    name::AbstractString,
+    active_plot::SignalAnalyserPlot,
+    membership::SignalDisplayMembership,
+    analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
+    time_limits::Union{Nothing,SignalTimeLimits},
+    measurement_selection::SignalMeasurementSelection,
+    spectrum_settings::SignalSpectrumSettings,
+    peaks_enabled::Bool,
+)
+    SignalAnalyserDisplayState(
+        id,
+        name,
+        active_plot,
+        membership,
+        analysis_source,
+        time_limits,
+        measurement_selection,
+        spectrum_settings,
+        SignalSpectrogramSettings(),
+        peaks_enabled,
+    )
 end
 
 function SignalAnalyserDisplayState(
@@ -995,6 +1078,7 @@ function SignalAnalyserDisplayState(
     time_limits::Union{Nothing,SignalTimeLimits},
     measurement_selection::SignalMeasurementSelection,
     spectrum_settings::SignalSpectrumSettings,
+    spectrogram_settings::SignalSpectrogramSettings,
     peaks_enabled::Bool,
 )
     SignalAnalyserDisplayState(
@@ -1006,6 +1090,32 @@ function SignalAnalyserDisplayState(
         time_limits,
         measurement_selection,
         spectrum_settings,
+        spectrogram_settings,
+        peaks_enabled,
+    )
+end
+
+function SignalAnalyserDisplayState(
+    id::AbstractString,
+    name::AbstractString,
+    active_plot::SignalAnalyserPlot,
+    selected_signal::Union{Nothing,AbstractString},
+    visible_signals::AbstractVector{<:AbstractString},
+    time_limits::Union{Nothing,SignalTimeLimits},
+    measurement_selection::SignalMeasurementSelection,
+    spectrum_settings::SignalSpectrumSettings,
+    peaks_enabled::Bool,
+)
+    SignalAnalyserDisplayState(
+        id,
+        name,
+        active_plot,
+        selected_signal,
+        visible_signals,
+        time_limits,
+        measurement_selection,
+        spectrum_settings,
+        SignalSpectrogramSettings(),
         peaks_enabled,
     )
 end
@@ -1072,6 +1182,7 @@ function signal_analyser_publish_display_state!(
     display.time_limits = prospective.time_limits
     display.measurement_selection = prospective.measurement_selection
     display.spectrum_settings = prospective.spectrum_settings
+    display.spectrogram_settings = prospective.spectrogram_settings
     display.peaks_enabled = prospective.peaks_enabled
     nothing
 end

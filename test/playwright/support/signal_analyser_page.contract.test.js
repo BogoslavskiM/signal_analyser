@@ -53,6 +53,9 @@ assert.equal(config.app.testIds.spectrumSettingsError, "spectrum-settings-error"
 assert.equal(config.app.testIds.spectrumFrequencyMinInput, "spectrum-frequency-min-input");
 assert.equal(config.app.testIds.spectrumFrequencyMaxInput, "spectrum-frequency-max-input");
 assert.equal(config.app.testIds.spectrumFrequencyLimitsError, "spectrum-frequency-limits-error");
+assert.equal(config.app.testIds.spectrogramSettings, "spectrogram-settings");
+assert.equal(config.app.testIds.spectrogramOverlapPercentInput, "spectrogram-overlap-percent-input");
+assert.equal(config.app.testIds.spectrogramOverlapPercentError, "spectrogram-overlap-percent-error");
 assert.equal(config.app.testIds.displayOverflowTrigger, "display-overflow-trigger");
 assert.equal(config.app.testIds.displayOverflowMenu, "display-overflow-menu");
 assert.equal(config.app.testIds.clearDisplayAction, "clear-display-action");
@@ -79,6 +82,7 @@ assert.equal(config.features["selectable-statistics"], true);
 assert.equal(config.features["spectrum-settings-roi"], true);
 assert.equal(config.features["frequency-limits"], true);
 assert.equal(config.features["typed-spectrogram"], true);
+assert.equal(config.features["spectrogram-overlap"], true);
 assert.deepEqual(Object.keys(config.app.testIds.plotCards).sort(), [
   "persistence",
   "spectrogram",
