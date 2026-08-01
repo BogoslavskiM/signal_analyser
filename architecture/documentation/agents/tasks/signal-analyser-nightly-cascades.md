@@ -1244,3 +1244,25 @@ backend, payload, Plotly artifact or DSP change is permitted.
 | E2E Tester | `/root/e2e_c23_final_audit` | C23 static CLEAN | optional fast-switch scenario | frontend implementation | no fixed sleeps |
 | DevOps | `/root/devops_c17_commit` | checkpoints current | C24 docs/product commits | role validation | no push/deploy |
 | MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | docs research complete | standby | unsafe GUI state | official web only |
+
+## Cascade 25 contract freeze — 2026-08-01
+
+Status: `contract-frozen-implementation-next`; DEC-031.
+
+`measurement_kinds` follows absent-versus-present snapshot semantics. Absent
+uses canonical first-three defaults. Present accepts a unique known string
+subset, including empty, and canonicalizes UI order. Present corruption
+quarantines the Display with accessible error, disabled Statistics controls,
+queue/pending/desired purge and zero malformed 200/409 replay or server POST.
+No backend/API/math/root-fallback or C24 render change belongs to this cascade.
+
+### Persistent role queue after C25 contract freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | no C25 delta | read-only schema confirmation only | none | serializer canonical |
+| Frontend | `/root/frontend_time_snapshot` | Time boundary complete | C25 exact validator/quarantine | C24 app.js commit | partial work removed |
+| Tester | `/root/tester_c18_persistence_matrix` | C25 discovery complete | corruption/replay matrix | frontend implementation | exact cases frozen |
+| E2E Tester | `/root/e2e_c23_final_audit` | standby | optional snapshot recovery static gate | frontend implementation | no backend oracle |
+| DevOps | `/root/devops_c17_commit` | C24 docs current | C25 docs/product commits | role validation | no push/deploy |
+| MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | direct web only |

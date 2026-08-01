@@ -516,3 +516,13 @@
   error и boundedly reasserts newest frame после unavoidable DOM mutation.
 - API/backend/wire/Plotly artifact/math не меняются. Deterministic controlled-
   promise matrix обязательна; implementation evidence пока не заявляется.
+
+## 2026-08-01 — Cascade 25 measurement snapshot contract
+
+- Backend trace подтвердил canonical unique string subset, valid empty и root
+  как projection active Display, а не отдельный fallback source.
+- DEC-031 разделяет absent legacy default и present corruption для
+  `measurement_kinds`. Malformed snapshot quarantines Display, disables
+  Statistics и очищает desired/queued/pending/replay intents.
+- Backend/API/math не меняются; C24 Plotly coordination не смешивается с этим
+  frontend boundary. Implementation evidence пока не заявляется.

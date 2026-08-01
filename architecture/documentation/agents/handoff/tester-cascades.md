@@ -464,3 +464,25 @@ verification: Frontend 2/2 and diff-check PASS; independent Frontend audit
 CLEAN.
 commit: `f24e60caf0be6f31b78b0ef0178954862222448d`.
 follow-ups: Preserve exact precedence and empty-only nullable semantics.
+
+## Cascade 25 measurement kinds snapshot discovery — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c18_persistence_matrix`.
+goal: Establish the strict absent-versus-present frontend snapshot matrix from
+the existing DEC-014 backend serializer and validator.
+scope: Read-only service/frontend/test trace; no files changed by Tester.
+changes: None; read-only discovery.
+contracts: Display absence uses first-three compatibility defaults and never
+root fallback; present accepts unique known string subset including empty and
+canonicalizes UI order; null/nonarray/non-string/unknown/duplicate quarantines.
+verification: Existing backend API canonical-order/omission tests and direct
+serializer/validator call-flow review.
+risks: Current frontend permissively fabricates defaults and lacks dedicated
+error/queue quarantine.
+source_evidence: `agents/reports/measurement-kinds-snapshot-assessment-20260801.md`
+and DEC-014.
+follow-ups: Frontend validator/quarantine and Tester malformed initial/200/409
+matrix after the C24 `app.js` checkpoint.
+next_task_candidates: Implement DEC-031 without backend/API/math changes.
+engee_bug_candidate: None.

@@ -33,4 +33,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260801-028: fixed Persistence segmentation NO-GO](DEC-20260801-028-fixed-persistence-segmentation-no-go.md)
 - [DEC-20260801-029: lazy Persistence materialization](DEC-20260801-029-lazy-persistence-materialization.md)
 - [DEC-20260801-030: latest Plotly render wins](DEC-20260801-030-latest-plot-render-wins.md)
+- [DEC-20260801-031: строгая граница snapshot для measurement_kinds](DEC-20260801-031-measurement-kinds-snapshot-boundary.md)
 - [Шаблон ADR](template.md)

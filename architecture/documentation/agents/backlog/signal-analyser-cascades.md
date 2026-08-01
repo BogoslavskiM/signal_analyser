@@ -228,6 +228,11 @@ Owner: Architect
   frontend-only generation-aware serialized render coordinator. Deterministic
   deferred-promise tests must prove stale success/rejection/loader/placeholder
   cases and bounded newest-frame reassertion; backend/API/wire stay unchanged.
+- DEC-031 freezes C25 `measurement_kinds` snapshot hardening. Absent keeps the
+  canonical first-three compatibility default; present null/nonarray/member
+  type/unknown/duplicate corruption quarantines the Display, disables
+  Statistics controls and purges queued/replayed full View intents. No root
+  fallback, backend/API/math change or partial C24 coupling is allowed.
 - C19 implemented and locally accepted at product/test commit `2f99ff8`:
   backend 1497/1497, C19 48/48, frontend 2/2, focused Playwright static and
   independent Frontend/E2E/Backend audits CLEAN. Local Engee gate retains the
