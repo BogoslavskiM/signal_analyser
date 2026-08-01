@@ -8,6 +8,143 @@ mutable struct FakePeaksProvider <: SA.AbstractPeaksProvider
     failure::Union{Nothing,Exception}
 end
 
+@testset "Cascade 23 active-view-only Persistence materialization" begin
+    empty_persistence_wire(snapshot) = begin
+        plot = snapshot["plots"]["persistence"]
+        payload = snapshot["plot_payload"]["persistence"]
+        source = only(filter(signal -> signal["name"] == payload["signal"], snapshot["signals"]))
+        @test Set(keys(plot)) == Set(["type", "x", "y", "z", "x_label", "y_label", "color_label"])
+        @test Set(keys(payload)) == Set(["type", "x", "y", "z", "x_label", "y_label", "color_label", "signal", "name", "color"])
+        @test plot["type"] == "heatmap"
+        @test plot["x_label"] == "Частота, Гц" && plot["y_label"] == "Мощность, дБ" && plot["color_label"] == "Встречаемость, %"
+        @test isempty(plot["x"]) && isempty(plot["y"]) && isempty(plot["z"])
+        @test isempty(payload["x"]) && isempty(payload["y"]) && isempty(payload["z"])
+        @test payload["name"] == payload["signal"] == source["name"]
+        @test payload["color"] == source["color"]
+        payload
+    end
+    cache_state(state) = (
+        deepcopy(state.plot_cache),
+        deepcopy(state.spectrum_cache),
+        deepcopy(state.spectrogram_cache),
+        deepcopy(state.persistence_cache),
+    )
+
+    # Ordinary Time GET is an inactive Persistence view: it must expose the
+    # established typed-empty heatmap while leaving the provider/cache cold.
+    SA.reset_persistence_double!()
+    state = SA.default_signal_analyser_state()
+    first_name, second_name = [signal.name for signal in state.signals]
+    initial = SA.signal_analyser_snapshot(state)
+    @test initial["active_plot"] == "time"
+    @test empty_persistence_wire(initial)["signal"] == first_name
+    @test isempty(SA.PERSISTENCE_CALLS) && isempty(state.persistence_cache)
+    repeated = SA.signal_analyser_snapshot(state)
+    @test empty_persistence_wire(repeated)["signal"] == first_name
+    @test repeated == initial # Typed-empty response never depends on cache history.
+    @test isempty(SA.PERSISTENCE_CALLS) && isempty(state.persistence_cache)
+
+    # Inactive source/leakage mutations preserve their Display-owned intent
+    # and revision but never pay the Persistence provider cost.
+    source_changed = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0, "analysis_signal" => second_name,
+    ))
+    @test source_changed["state_revision"] == 1
+    @test empty_persistence_wire(source_changed)["signal"] == second_name
+    leakage_changed = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 1, "persistence_settings" => Dict("leakage" => 0.25),
+    ))
+    @test leakage_changed["state_revision"] == 2
+    @test leakage_changed["persistence_settings"] == Dict("leakage" => 0.25)
+    @test leakage_changed["displays"][1]["persistence_settings"] == Dict("leakage" => 0.25)
+    @test empty_persistence_wire(leakage_changed)["signal"] == second_name
+    @test isempty(SA.PERSISTENCE_CALLS) && isempty(state.persistence_cache)
+
+    # A cold active switch calculates once, then atomically publishes the
+    # prospective display and all four cache families.
+    cold = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 2, "active_plot" => "persistence",
+    ))
+    @test cold["state_revision"] == 3 && cold["active_plot"] == "persistence"
+    @test length(SA.PERSISTENCE_CALLS) == 1
+    @test !isempty(cold["plots"]["persistence"]["x"])
+    @test !isempty(state.plot_cache) && !isempty(state.spectrum_cache) &&
+        !isempty(state.spectrogram_cache) && !isempty(state.persistence_cache)
+
+    # Source and Leakage are invalidating active-Persistence mutations; each
+    # materializes the new raw identity exactly once.
+    active_source = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 3, "analysis_signal" => first_name,
+    ))
+    @test active_source["state_revision"] == 4 && length(SA.PERSISTENCE_CALLS) == 2
+    active_leakage = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 4, "persistence_settings" => Dict("leakage" => 0.75),
+    ))
+    @test active_leakage["state_revision"] == 5 && length(SA.PERSISTENCE_CALLS) == 3
+    @test SA.PERSISTENCE_CALLS[end].leakage == 0.75
+
+    # Leaving Persistence publishes no raw data. Returning to an already warm
+    # identity reuses raw cache rather than calculating again.
+    away = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 5, "active_plot" => "time",
+    ))
+    @test away["state_revision"] == 6
+    @test empty_persistence_wire(away)["signal"] == first_name
+    @test length(SA.PERSISTENCE_CALLS) == 3 && !isempty(state.persistence_cache)
+    warm = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 6, "active_plot" => "persistence",
+    ))
+    @test warm["state_revision"] == 7 && !isempty(warm["plots"]["persistence"]["x"])
+    @test length(SA.PERSISTENCE_CALLS) == 3
+
+    # Cold provider failure cannot leak a prospective active plot, revision,
+    # or any of the four cache writes.
+    SA.reset_persistence_double!()
+    failing = SA.default_signal_analyser_state()
+    before_failure = SA.signal_analyser_snapshot(failing)
+    caches_before = cache_state(failing)
+    SA.PERSISTENCE_FAILURE[] = true
+    caught = try
+        SA.apply_signal_analyser_view!(failing, Dict(
+            "state_revision" => 0, "active_plot" => "persistence",
+        ))
+        nothing
+    catch err
+        err
+    end
+    SA.PERSISTENCE_FAILURE[] = false
+    @test caught isa ArgumentError
+    @test failing.view.state_revision == 0
+    @test SA.signal_analyser_snapshot(failing) == before_failure
+    @test cache_state(failing) == caches_before
+
+    # A/B Displays retain distinct intent. A cold Persistence B must not make
+    # inactive Time A publish its raw Persistence presentation.
+    SA.reset_persistence_double!()
+    displays = SA.default_signal_analyser_state()
+    SA.signal_analyser_snapshot(displays)
+    created = SA.apply_signal_analyser_display!(displays, Dict(
+        "state_revision" => 0, "operation" => "create",
+    ))
+    @test created["active_display_id"] == "display-2" && isempty(SA.PERSISTENCE_CALLS)
+    active_b = SA.apply_signal_analyser_view!(displays, Dict(
+        "state_revision" => 1, "active_plot" => "persistence",
+    ))
+    @test active_b["active_display_id"] == "display-2" && length(SA.PERSISTENCE_CALLS) == 1
+    selected_a = SA.apply_signal_analyser_display!(displays, Dict(
+        "state_revision" => 2, "operation" => "select", "display_id" => "display-1",
+    ))
+    @test selected_a["active_plot"] == "time"
+    @test empty_persistence_wire(selected_a)["signal"] == first_name
+    @test length(SA.PERSISTENCE_CALLS) == 1
+    returned_b = SA.apply_signal_analyser_display!(displays, Dict(
+        "state_revision" => 3, "operation" => "select", "display_id" => "display-2",
+    ))
+    @test returned_b["active_plot"] == "persistence" && !isempty(returned_b["plots"]["persistence"]["x"])
+    @test length(SA.PERSISTENCE_CALLS) == 1
+
+end
+
 @testset "Cascade 15 Spectrogram Frequency Limits typed state, cache and metadata" begin
     auto = SA.AutomaticSignalSpectrumFrequencyLimits()
     explicit = SA.ExplicitSignalSpectrumFrequencyLimits(-2.0, 4.0)
@@ -99,6 +236,97 @@ function SA.signal_persistence_calculate(::WrongTopologyPersistenceProvider, que
         zeros(Float64, query.num_power_bins, 2), SA.CENTERED_TWO_SIDED_SPECTRUM)
 end
 
+@testset "Cascade 23 cold aggregate, lifecycle and plan audit" begin
+    caches(state) = (
+        deepcopy(state.plot_cache),
+        deepcopy(state.spectrum_cache),
+        deepcopy(state.spectrogram_cache),
+        deepcopy(state.persistence_cache),
+    )
+
+    # This is deliberately not preceded by GET: all four prospective cache
+    # identities start absent, so successful active transition proves one
+    # prebuilt aggregate is published only after its provider completes.
+    SA.reset_persistence_double!(); SA.reset_pspectrum_double!()
+    empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
+    cold = SA.default_signal_analyser_state()
+    @test all(isempty, caches(cold))
+    cold_snapshot = SA.apply_signal_analyser_view!(cold, Dict(
+        "state_revision" => 0, "active_plot" => "persistence",
+    ))
+    @test cold_snapshot["state_revision"] == 1 && cold_snapshot["active_plot"] == "persistence"
+    @test length(SA.PERSISTENCE_CALLS) == 1
+    @test !isempty(cold.plot_cache) && !isempty(cold.spectrum_cache) &&
+        !isempty(cold.spectrogram_cache) && !isempty(cold.persistence_cache)
+
+    # A typed provider result that fails topology validation is a true cold
+    # transition error: no display/revision/cache publication is permitted.
+    invalid = SA.default_signal_analyser_state(persistence_provider = WrongTopologyPersistenceProvider())
+    display_before = SA.signal_analyser_display_payload(SA.signal_analyser_active_display(invalid))
+    caches_before = caches(invalid)
+    invalid_error = try
+        SA.apply_signal_analyser_view!(invalid, Dict(
+            "state_revision" => 0, "active_plot" => "persistence",
+        ))
+        nothing
+    catch caught
+        caught
+    end
+    @test invalid_error isa ArgumentError
+    @test invalid.view.state_revision == 0
+    @test SA.signal_analyser_display_payload(SA.signal_analyser_active_display(invalid)) == display_before
+    @test caches(invalid) == caches_before
+
+    # Clear/re-add under active Persistence publishes empty then warm data;
+    # closing the active Persistence Display prepares the remaining Time page.
+    SA.reset_persistence_double!()
+    lifecycle = SA.default_signal_analyser_state()
+    first_name = lifecycle.signals[1].name
+    active = SA.apply_signal_analyser_view!(lifecycle, Dict(
+        "state_revision" => 0, "active_plot" => "persistence",
+    ))
+    @test length(SA.PERSISTENCE_CALLS) == 1 && !isempty(active["plots"]["persistence"]["x"])
+    cleared = SA.apply_signal_analyser_view!(lifecycle, Dict(
+        "state_revision" => 1, "visible_signals" => String[],
+    ))
+    @test cleared["analysis_signal"] === nothing && isempty(cleared["plots"]["persistence"]["x"])
+    @test length(SA.PERSISTENCE_CALLS) == 1 && !isempty(lifecycle.persistence_cache)
+    readded = SA.apply_signal_analyser_view!(lifecycle, Dict(
+        "state_revision" => 2, "visible_signals" => [first_name], "analysis_signal" => first_name,
+    ))
+    @test readded["active_plot"] == "persistence" && !isempty(readded["plots"]["persistence"]["x"])
+    @test length(SA.PERSISTENCE_CALLS) == 1
+    created = SA.apply_signal_analyser_display!(lifecycle, Dict(
+        "state_revision" => 3, "operation" => "create",
+    ))
+    @test created["active_display_id"] == "display-2" && created["active_plot"] == "time"
+    restored = SA.apply_signal_analyser_display!(lifecycle, Dict(
+        "state_revision" => 4, "operation" => "select", "display_id" => "display-1",
+    ))
+    @test restored["active_plot"] == "persistence"
+    closed = SA.apply_signal_analyser_display!(lifecycle, Dict(
+        "state_revision" => 5, "operation" => "close", "display_id" => "display-1",
+    ))
+    @test closed["active_display_id"] == "display-2" && closed["active_plot"] == "time"
+    @test isempty(closed["plots"]["persistence"]["x"]) && length(SA.PERSISTENCE_CALLS) == 1
+
+    # N<2 is decided by the new preparation plan/state-service seam, not the
+    # legacy raw provider helper; it cannot populate Persistence cache.
+    SA.reset_persistence_double!()
+    short_state = SA.default_signal_analyser_state()
+    short_signal = SA.AnalysedSignal("c23-plan-short", "#333333", 10.0, ComplexF64[1], false, true)
+    short_display = SA.signal_analyser_active_display(short_state)
+    short_display.active_plot = SA.PERSISTENCE_PLOT
+    plan = SA.SignalAnalyserPersistencePreparationPlan(short_display, short_signal)
+    @test !SA.signal_analyser_persistence_required(plan)
+    two_signal = SA.AnalysedSignal("c23-plan-two", "#333333", 10.0, ComplexF64[1, 2], false, true)
+    @test SA.signal_analyser_persistence_required(
+        SA.SignalAnalyserPersistencePreparationPlan(short_display, two_signal),
+    )
+    prepared = SA.signal_analyser_prepared_persistences(short_state, short_display, short_signal)
+    @test isempty(prepared) && isempty(short_state.persistence_cache) && isempty(SA.PERSISTENCE_CALLS)
+end
+
 @testset "Cascade 19 Persistence Leakage typed defaults" begin
     default = SA.SignalPersistenceSettings()
     @test default.leakage == 0.5
@@ -120,45 +348,17 @@ end
 @testset "Cascade 19 Persistence Leakage lifecycle and cache identity" begin
     SA.reset_pspectrum_double!(); SA.reset_persistence_double!()
     state = SA.default_signal_analyser_state()
-    first_name, second_name = [signal.name for signal in state.signals]
     SA.signal_analyser_snapshot(state)
-    base_persistence = length(SA.PERSISTENCE_CALLS)
-    base_spectrum, base_spectrogram = length(SA.SPECTRUM_CALLS), length(SA.SPECTROGRAM_CALLS)
-    base_cache = length(state.persistence_cache)
+    @test isempty(SA.PERSISTENCE_CALLS) && isempty(state.persistence_cache)
     changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "persistence_settings" => Dict("leakage" => 1.0)))
     @test changed["state_revision"] == 1 && changed["persistence_settings"] == Dict("leakage" => 1.0)
-    @test length(SA.PERSISTENCE_CALLS) == base_persistence + 1 && SA.PERSISTENCE_CALLS[end].leakage == 1.0
-    @test length(state.persistence_cache) == base_cache + 1 && length(SA.SPECTRUM_CALLS) == base_spectrum && length(SA.SPECTROGRAM_CALLS) == base_spectrogram
+    @test isempty(SA.PERSISTENCE_CALLS) && isempty(state.persistence_cache)
     equal = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "persistence_settings" => Dict("leakage" => 1.0)))
-    @test equal["state_revision"] == 1 && length(SA.PERSISTENCE_CALLS) == base_persistence + 1
+    @test equal["state_revision"] == 1 && isempty(SA.PERSISTENCE_CALLS)
     created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "create"))
-    @test created["persistence_settings"] == Dict("leakage" => 0.5)
+    @test created["persistence_settings"] == Dict("leakage" => 0.5) && isempty(SA.PERSISTENCE_CALLS)
     back_a = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))
-    @test back_a["persistence_settings"] == Dict("leakage" => 1.0)
-    cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 3, "visible_signals" => String[]))
-    @test cleared["persistence_settings"] == Dict("leakage" => 1.0) && length(SA.PERSISTENCE_CALLS) == base_persistence + 1
-    readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => [first_name]))
-    @test readded["persistence_settings"] == Dict("leakage" => 1.0) && length(SA.PERSISTENCE_CALLS) == base_persistence + 1
-    switched = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "analysis_signal" => second_name, "visible_signals" => [first_name, second_name]))
-    @test switched["persistence_settings"] == Dict("leakage" => 1.0) && length(SA.PERSISTENCE_CALLS) == base_persistence + 2
-    returned = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 6, "analysis_signal" => first_name, "visible_signals" => [first_name]))
-    @test returned["persistence_settings"] == Dict("leakage" => 1.0) && length(SA.PERSISTENCE_CALLS) == base_persistence + 2
-    before_failure = SA.signal_analyser_snapshot(state)
-    caches_before = (deepcopy(state.plot_cache), deepcopy(state.spectrum_cache), deepcopy(state.spectrogram_cache), deepcopy(state.persistence_cache))
-    SA.PERSISTENCE_FAILURE[] = true
-    failure = try SA.apply_signal_analyser_view!(state, Dict("state_revision" => 7, "persistence_settings" => Dict("leakage" => 0.0))) catch caught; caught end
-    SA.PERSISTENCE_FAILURE[] = false
-    @test failure isa ArgumentError && SA.signal_analyser_snapshot(state) == before_failure
-    @test (state.plot_cache, state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches_before
-    # A combined settings target delegates only its two affected providers.
-    SA.reset_pspectrum_double!(); SA.reset_persistence_double!()
-    combined = SA.default_signal_analyser_state(); SA.signal_analyser_snapshot(combined)
-    empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS); empty!(SA.PERSISTENCE_CALLS)
-    SA.apply_signal_analyser_view!(combined, Dict("state_revision" => 0,
-        "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 1.0, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing),
-        "persistence_settings" => Dict("leakage" => 0.0)))
-    @test isempty(SA.SPECTRUM_CALLS) && length(SA.SPECTROGRAM_CALLS) == 1 && length(SA.PERSISTENCE_CALLS) == 1
-    @test SA.SPECTROGRAM_CALLS[end].leakage == 1.0 && SA.PERSISTENCE_CALLS[end].leakage == 0.0
+    @test back_a["persistence_settings"] == Dict("leakage" => 1.0) && isempty(SA.PERSISTENCE_CALLS)
     SA.reset_pspectrum_double!(); SA.reset_persistence_double!()
 end
 
@@ -216,87 +416,6 @@ end
     @test isempty(empty_data.frequencies_hz) && isempty(empty_data.power_levels) && size(empty_data.occurrence_percent) == (0, 0)
     @test length(SA.PERSISTENCE_CALLS) == before_short
 
-    SA.reset_persistence_double!()
-    state = SA.default_signal_analyser_state()
-    first_name, second_name = [signal.name for signal in state.signals]
-    initial = SA.signal_analyser_snapshot(state)
-    @test length(SA.PERSISTENCE_CALLS) == 1 && length(state.persistence_cache) == 1
-    @test initial["plot_payload"]["persistence"]["signal"] == first_name
-    repeated = SA.signal_analyser_snapshot(state)
-    @test repeated == initial && length(SA.PERSISTENCE_CALLS) == 1 && length(state.persistence_cache) == 1
-    membership = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "visible_signals" => [first_name]))
-    @test membership["analysis_signal"] == first_name && length(SA.PERSISTENCE_CALLS) == 1 && length(state.persistence_cache) == 1
-    changed = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "visible_signals" => [first_name, second_name], "analysis_signal" => second_name))
-    @test changed["plot_payload"]["persistence"]["signal"] == second_name && length(SA.PERSISTENCE_CALLS) == 2 && length(state.persistence_cache) == 2
-
-    # A/B pages share the identical selected-source raw key; Clear publishes
-    # typed empty wire only; re-add reuses the retained raw cache.
-    SA.reset_persistence_double!()
-    pages = SA.default_signal_analyser_state()
-    first_page_source = pages.signals[1].name
-    SA.signal_analyser_snapshot(pages)
-    created = SA.apply_signal_analyser_display!(pages, Dict("state_revision" => 0, "operation" => "create"))
-    @test created["active_display_id"] == "display-2" && length(SA.PERSISTENCE_CALLS) == 1 && length(pages.persistence_cache) == 1
-    selected_a = SA.apply_signal_analyser_display!(pages, Dict("state_revision" => 1, "operation" => "select", "display_id" => "display-1"))
-    @test selected_a["plot_payload"]["persistence"]["signal"] == first_page_source && length(SA.PERSISTENCE_CALLS) == 1
-    cleared = SA.apply_signal_analyser_view!(pages, Dict("state_revision" => 2, "visible_signals" => String[]))
-    @test cleared["plot_payload"]["persistence"]["signal"] === nothing && cleared["plots"]["persistence"]["x"] == Any[] && length(SA.PERSISTENCE_CALLS) == 1
-    readded = SA.apply_signal_analyser_view!(pages, Dict("state_revision" => 3, "visible_signals" => [first_page_source]))
-    @test readded["plot_payload"]["persistence"]["signal"] == first_page_source && length(SA.PERSISTENCE_CALLS) == 1 && length(pages.persistence_cache) == 1
-
-    # A provider failure must not publish a cold new source or mutate a warm
-    # source snapshot/cache. The call itself is observable, publication is not.
-    SA.reset_persistence_double!()
-    warm = SA.default_signal_analyser_state()
-    warm_before = SA.signal_analyser_snapshot(warm)
-    warm_caches_before = (
-        deepcopy(warm.plot_cache), deepcopy(warm.spectrum_cache),
-        deepcopy(warm.spectrogram_cache), deepcopy(warm.persistence_cache),
-    )
-    warm_second = warm.signals[2].name
-    SA.PERSISTENCE_FAILURE[] = true
-    warm_error = try
-        SA.apply_signal_analyser_view!(warm, Dict("state_revision" => 0, "analysis_signal" => warm_second, "visible_signals" => [warm.signals[1].name, warm_second]))
-        nothing
-    catch caught
-        caught
-    end
-    SA.PERSISTENCE_FAILURE[] = false
-    @test warm_error isa ArgumentError && sprint(showerror, warm_error) == "ArgumentError: deterministic Persistence provider failure"
-    @test SA.signal_analyser_snapshot(warm) == warm_before
-    @test (warm.plot_cache, warm.spectrum_cache, warm.spectrogram_cache, warm.persistence_cache) == warm_caches_before
-
-    SA.reset_persistence_double!(); SA.PERSISTENCE_FAILURE[] = true
-    cold = SA.default_signal_analyser_state()
-    cold_second = cold.signals[2].name
-    cold_revision_before = cold.view.state_revision
-    cold_display_before = SA.signal_analyser_display_payload(SA.signal_analyser_active_display(cold))
-    cold_caches_before = (
-        deepcopy(cold.plot_cache), deepcopy(cold.spectrum_cache),
-        deepcopy(cold.spectrogram_cache), deepcopy(cold.persistence_cache),
-    )
-    cold_error = try
-        SA.apply_signal_analyser_view!(cold, Dict("state_revision" => 0, "analysis_signal" => cold_second, "visible_signals" => [cold.signals[1].name, cold_second]))
-        nothing
-    catch caught
-        caught
-    end
-    SA.PERSISTENCE_FAILURE[] = false
-    @test cold_error isa ArgumentError
-    @test cold.view.state_revision == cold_revision_before
-    @test SA.signal_analyser_display_payload(SA.signal_analyser_active_display(cold)) == cold_display_before
-    @test (cold.plot_cache, cold.spectrum_cache, cold.spectrogram_cache, cold.persistence_cache) == cold_caches_before
-
-    invalid = SA.default_signal_analyser_state(persistence_provider = WrongTopologyPersistenceProvider())
-    invalid_caches_before = (
-        deepcopy(invalid.plot_cache), deepcopy(invalid.spectrum_cache),
-        deepcopy(invalid.spectrogram_cache), deepcopy(invalid.persistence_cache),
-    )
-    invalid_error = try SA.signal_analyser_snapshot(invalid) catch caught; caught end
-    @test invalid_error isa ArgumentError
-    @test (invalid.plot_cache, invalid.spectrum_cache, invalid.spectrogram_cache, invalid.persistence_cache) == invalid_caches_before
-    @test invalid.view.state_revision == 0
-    # Test context doubles are process-global; leave the legacy suite isolated.
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS); SA.reset_persistence_double!()
 end
 
@@ -432,7 +551,10 @@ end
     assert_line_plot(snapshot["plots"]["spectrum"])
     @test snapshot["plots"]["spectrum"]["method"] == "pspectrum"
     assert_heatmap_plot(snapshot["plots"]["spectrogram"])
-    assert_heatmap_plot(snapshot["plots"]["persistence"]; persistence = true)
+    @test snapshot["plots"]["persistence"]["type"] == "heatmap"
+    @test isempty(snapshot["plots"]["persistence"]["x"])
+    @test isempty(snapshot["plots"]["persistence"]["y"])
+    @test isempty(snapshot["plots"]["persistence"]["z"])
     @test Set(keys(snapshot["plot_payload"])) == Set(["selected_signal", "visible_signals", "time_traces", "spectrum_traces", "spectrogram", "persistence"])
     @test [trace["name"] for trace in snapshot["plot_payload"]["time_traces"]] == ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"]
     @test [trace["name"] for trace in snapshot["plot_payload"]["spectrum_traces"]] == ["Гармонический сигнал", "Комплексный ЛЧМ-сигнал"]
@@ -704,8 +826,8 @@ end
     SA.apply_signal_analyser_view!(failing_state, Dict("state_revision" => 0, "visible_signals" => [first_name]))
     failure_before = SA.signal_analyser_snapshot(failing_state)
 
-    # C18 prepares typed Persistence for the next analysis source before
-    # publication; make that provider failure the atomicity boundary.
+    # C23 defers Persistence while Time is active; its provider failure cannot
+    # block an inactive source mutation.
     SA.PERSISTENCE_FAILURE[] = true
     dsp_error = try
         SA.apply_signal_analyser_view!(
@@ -716,10 +838,9 @@ end
     catch caught
         caught
     end
-    @test dsp_error isa ArgumentError
-    @test sprint(showerror, dsp_error) == "ArgumentError: deterministic Persistence provider failure"
+    @test dsp_error === nothing
     SA.PERSISTENCE_FAILURE[] = false
-    @test SA.signal_analyser_snapshot(failing_state) == failure_before
+    @test failing_state.view.state_revision == failure_before["state_revision"] + 1
 end
 
 @testset "Signal Analyser visible signal mutation contract" begin

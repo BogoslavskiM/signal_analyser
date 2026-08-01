@@ -526,19 +526,41 @@ function signal_analyser_publish_prepared_spectrograms!(
     nothing
 end
 
+@enum SignalAnalyserPersistencePreparationMode begin
+    DEFER_PERSISTENCE_PREPARATION
+    REQUIRE_PERSISTENCE_PREPARATION
+end
+
+"""Service policy deciding whether Persistence belongs in a prospective Display payload."""
+struct SignalAnalyserPersistencePreparationPlan
+    mode::SignalAnalyserPersistencePreparationMode
+
+    function SignalAnalyserPersistencePreparationPlan(
+        display::SignalAnalyserDisplayState,
+        signal::Union{Nothing,AnalysedSignal},
+    )
+        required = display.active_plot == PERSISTENCE_PLOT &&
+            signal !== nothing && length(signal.values) >= 2
+        new(required ? REQUIRE_PERSISTENCE_PREPARATION : DEFER_PERSISTENCE_PREPARATION)
+    end
+end
+
+signal_analyser_persistence_required(plan::SignalAnalyserPersistencePreparationPlan)::Bool =
+    plan.mode == REQUIRE_PERSISTENCE_PREPARATION
+
 function signal_analyser_prepared_persistences(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
     signal::Union{Nothing,AnalysedSignal},
-    ;
-    materialize_missing::Bool = true,
 )::Dict{SignalPersistenceCacheKey,SignalPersistenceData}
     prepared = Dict{SignalPersistenceCacheKey,SignalPersistenceData}()
+    plan = SignalAnalyserPersistencePreparationPlan(display, signal)
+    signal_analyser_persistence_required(plan) || return prepared
     signal === nothing && return prepared
     key = signal_persistence_cache_key(signal, display.persistence_settings)
     if haskey(state.persistence_cache, key)
         prepared[key] = state.persistence_cache[key]
-    elseif materialize_missing
+    else
         prepared[key] = signal_persistence_data(
             state.persistence_service,
             signal,
@@ -605,7 +627,7 @@ function signal_analyser_prepare_display_plots(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
-    materialize_missing_persistence::Bool = true,
+    refresh_spectrogram::Bool = false,
 )::SignalAnalyserPreparedDisplayPlots
     signal.name in visible_names || throw(ArgumentError(
         "Analysis source должен входить в состав видимых сигналов Display",
@@ -621,13 +643,13 @@ function signal_analyser_prepare_display_plots(
         state,
         display,
         signal,
+        refresh = refresh_spectrogram,
         materialize_missing = materialize_missing_spectrogram,
     )
     prepared_persistences = signal_analyser_prepared_persistences(
         state,
         display,
         signal,
-        materialize_missing = materialize_missing_persistence,
     )
 
     selected_plots = copy(prepared_plots[signal.name])
@@ -715,7 +737,7 @@ function signal_analyser_prepare_display_plots(
     visible_names::Vector{String};
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
-    materialize_missing_persistence::Bool = true,
+    refresh_spectrogram::Bool = false,
 )::SignalAnalyserPreparedDisplayPlots
     isempty(visible_names) || throw(ArgumentError(
         "Пустой analysis source допустим только для пустого Display",
@@ -825,14 +847,14 @@ function signal_analyser_cached_persistence_data!(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
     signal::AnalysedSignal,
-    ;
-    materialize_missing::Bool = true,
 )::SignalPersistenceData
+    plan = SignalAnalyserPersistencePreparationPlan(display, signal)
+    signal_analyser_persistence_required(plan) ||
+        return SignalPersistenceData(signal_spectrum_topology(signal))
     key = signal_persistence_cache_key(signal, display.persistence_settings)
     if haskey(state.persistence_cache, key)
         return state.persistence_cache[key]
     end
-    materialize_missing || return SignalPersistenceData(signal_spectrum_topology(signal))
     get!(state.persistence_cache, key) do
         signal_persistence_data(state.persistence_service, signal, display.persistence_settings)
     end
@@ -845,7 +867,6 @@ function signal_analyser_plots_for_display!(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
-    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     prepared = signal_analyser_prepare_display_plots(
         state,
@@ -854,7 +875,6 @@ function signal_analyser_plots_for_display!(
         [signal.name],
         materialize_missing_spectra = materialize_missing_spectra,
         materialize_missing_spectrogram = materialize_missing_spectrogram,
-        materialize_missing_persistence = materialize_missing_persistence,
     )
     signal_analyser_publish_display_plots!(state, prepared)
     prepared.plots
@@ -942,7 +962,6 @@ function signal_analyser_multi_trace_payload(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
-    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     time_traces = Dict{String,Any}[]
     spectrum_traces = Dict{String,Any}[]
@@ -978,7 +997,6 @@ function signal_analyser_multi_trace_payload(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
-    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     selected_plots = signal_analyser_plots_for_display!(
         state,
@@ -986,7 +1004,6 @@ function signal_analyser_multi_trace_payload(
         selected_signal,
         materialize_missing_spectra = materialize_missing_spectra,
         materialize_missing_spectrogram = materialize_missing_spectrogram,
-        materialize_missing_persistence = materialize_missing_persistence,
     )
     signal_analyser_multi_trace_payload(
         state,
@@ -996,7 +1013,6 @@ function signal_analyser_multi_trace_payload(
         selected_plots,
         materialize_missing_spectra = materialize_missing_spectra,
         materialize_missing_spectrogram = materialize_missing_spectrogram,
-        materialize_missing_persistence = materialize_missing_persistence,
     )
 end
 
@@ -1009,7 +1025,6 @@ function signal_analyser_multi_trace_payload(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
-    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     isempty(visible_names) || throw(ArgumentError("Пустой analysis source допустим только для пустого Display"))
     spectrogram = copy(plots["spectrogram"])
@@ -1038,7 +1053,6 @@ function signal_analyser_multi_trace_payload(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
-    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     plots = signal_analyser_empty_plots(
         display.spectrum_settings,
@@ -1052,7 +1066,6 @@ function signal_analyser_multi_trace_payload(
         plots,
         materialize_missing_spectra = materialize_missing_spectra,
         materialize_missing_spectrogram = materialize_missing_spectrogram,
-        materialize_missing_persistence = materialize_missing_persistence,
     )
 end
 
@@ -2067,14 +2080,11 @@ function signal_peaks_payload(peaks::SignalPeaksSnapshot)::Dict{String,Any}
     )
 end
 
-function signal_analyser_snapshot_unlocked(
+function signal_analyser_snapshot_from_prepared_unlocked(
     state::SignalAnalyserState,
     measurements::SignalMeasurementsSnapshot,
     peaks::SignalPeaksSnapshot,
-    ;
-    materialize_missing_spectra::Bool = true,
-    materialize_missing_spectrogram::Bool = true,
-    materialize_missing_persistence::Bool = true,
+    prepared_display_plots::SignalAnalyserPreparedDisplayPlots,
 )::Dict{String,Any}
     active_display = signal_analyser_active_display(state)
     analysis_name = signal_analyser_display_analysis_name(active_display)
@@ -2108,17 +2118,8 @@ function signal_analyser_snapshot_unlocked(
         ))
     end
     visible_names = signal_analyser_visible_signal_names(state)
-    prepared_display_plots = signal_analyser_prepare_display_plots(
-        state,
-        active_display,
-        signal,
-        visible_names,
-        materialize_missing_spectra = materialize_missing_spectra,
-        materialize_missing_spectrogram = materialize_missing_spectrogram,
-        materialize_missing_persistence = materialize_missing_persistence,
-    )
     plots = prepared_display_plots.plots
-    snapshot = Dict{String,Any}(
+    Dict{String,Any}(
         "state_revision" => state.view.state_revision,
         "active_display_id" => state.active_display_id,
         "displays" => [signal_analyser_display_payload(display) for display in state.displays],
@@ -2140,6 +2141,33 @@ function signal_analyser_snapshot_unlocked(
         "panel" => signal === nothing ?
             signal_analyser_empty_panel_payload(state.view.active_plot) :
             signal_analyser_panel_payload(state.view.active_plot, signal, plots),
+    )
+end
+
+function signal_analyser_snapshot_unlocked(
+    state::SignalAnalyserState,
+    measurements::SignalMeasurementsSnapshot,
+    peaks::SignalPeaksSnapshot,
+    ;
+    materialize_missing_spectra::Bool = true,
+    materialize_missing_spectrogram::Bool = true,
+)::Dict{String,Any}
+    active_display = signal_analyser_active_display(state)
+    analysis_name = signal_analyser_display_analysis_name(active_display)
+    signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+    prepared_display_plots = signal_analyser_prepare_display_plots(
+        state,
+        active_display,
+        signal,
+        signal_analyser_visible_signal_names(state),
+        materialize_missing_spectra = materialize_missing_spectra,
+        materialize_missing_spectrogram = materialize_missing_spectrogram,
+    )
+    snapshot = signal_analyser_snapshot_from_prepared_unlocked(
+        state,
+        measurements,
+        peaks,
+        prepared_display_plots,
     )
     signal_analyser_publish_display_plots!(state, prepared_display_plots)
     snapshot
@@ -3061,41 +3089,24 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         prepare_spectrum = changed && !secondary_provider_settings_only
         prepare_spectrogram = changed && !spectrogram_presentation_only &&
             !persistence_settings_only
-        prepare_persistence = changed && (
-            changes.analysis_source || changes.persistence_settings
-        )
 
-        # Build every payload affected by the request before publishing the
-        # mutation so a runtime DSP failure cannot leave state half-applied.
-        prepared_plots = signal_analyser_prepared_plots(
-            state,
-            prospective_members,
-        )
-        prepared_spectra = prepare_spectrum ?
-            signal_analyser_prepared_spectra(
-                state,
-                prospective_display,
-                prospective_members,
-            ) :
-            Dict{SignalSpectrumCacheKey,SignalSpectrumData}()
+        # Render the complete prospective four-plot aggregate before publishing
+        # any cache or state mutation. Persistence eligibility is derived from
+        # the prospective active Display, never from cache history.
         next_revision = state.view.state_revision + (changed ? 1 : 0)
         prospective_signal = prospective_analysis_name === nothing ? nothing :
             signal_by_name(state, prospective_analysis_name)
-        prepared_spectrograms = prepare_spectrogram ?
-            signal_analyser_prepared_spectrograms(
-                state,
-                prospective_display,
-                prospective_signal,
-                refresh = isempty(signal_analyser_display_members(display)) && !isempty(prospective_members),
-            ) :
-            Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}()
-        prepared_persistences = prepare_persistence ?
-            signal_analyser_prepared_persistences(
-                state,
-                prospective_display,
-                prospective_signal,
-            ) :
-            Dict{SignalPersistenceCacheKey,SignalPersistenceData}()
+        prepared_display_plots = signal_analyser_prepare_display_plots(
+            state,
+            prospective_display,
+            prospective_signal,
+            prospective_members,
+            materialize_missing_spectra = prepare_spectrum,
+            materialize_missing_spectrogram = prepare_spectrogram,
+            refresh_spectrogram = prepare_spectrogram &&
+                isempty(signal_analyser_display_members(display)) &&
+                !isempty(prospective_members),
+        )
         prepared_measurements = signal_measurements_snapshot(
             state.measurements_service,
             next_revision,
@@ -3109,28 +3120,18 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             prospective_display,
             prospective_signal,
         )
+        signal_analyser_publish_display_plots!(state, prepared_display_plots)
         if changed
-            signal_analyser_publish_prepared_plots!(state, prepared_plots)
-            prepare_spectrum &&
-                signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
-            prepare_spectrogram &&
-                signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
-            prepare_persistence &&
-                signal_analyser_publish_prepared_persistences!(state, prepared_persistences)
             signal_analyser_publish_display_state!(display, prospective_display)
             signal_analyser_publish_row_selection!(state, requested.row_selection)
             signal_analyser_sync_active_display!(state, display)
             state.view.state_revision += 1
-        else
-            signal_analyser_publish_prepared_plots!(state, prepared_plots)
         end
-        signal_analyser_snapshot_unlocked(
+        signal_analyser_snapshot_from_prepared_unlocked(
             state,
             prepared_measurements,
             prepared_peaks,
-            materialize_missing_spectra = prepare_spectrum,
-            materialize_missing_spectrogram = prepare_spectrogram,
-            materialize_missing_persistence = prepare_persistence,
+            prepared_display_plots,
         )
     end
 end
@@ -3216,29 +3217,16 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 signal_full_time_limits(state.measurements_service, analysis_signal),
                 false,
             )
-            prepared_plots = signal_analyser_prepared_plots(
-                state,
-                signal_analyser_display_plot_names(display),
-            )
-            prepared_spectra = signal_analyser_prepared_spectra(
-                state,
-                display,
-                signal_analyser_display_plot_names(display),
-            )
-            prepared_spectrograms = signal_analyser_prepared_spectrograms(
+            prepared_display_plots = signal_analyser_prepare_display_plots(
                 state,
                 display,
                 analysis_signal,
-            )
-            prepared_persistences = signal_analyser_prepared_persistences(
-                state,
-                display,
-                analysis_signal,
+                signal_analyser_display_plot_names(display),
             )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
-                signal_analyser_display_analysis_signal(state, display),
+                analysis_signal,
                 display.time_limits,
                 display.measurement_selection,
             )
@@ -3246,71 +3234,41 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 state.peaks_service,
                 state.view.state_revision + 1,
                 display,
-                signal_analyser_display_analysis_signal(state, display),
+                analysis_signal,
             )
-            signal_analyser_publish_prepared_plots!(state, prepared_plots)
-            signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
-            signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
-            signal_analyser_publish_prepared_persistences!(state, prepared_persistences)
+            signal_analyser_publish_display_plots!(state, prepared_display_plots)
             push!(state.displays, display)
             state.next_display_number += 1
             signal_analyser_sync_active_display!(state, display)
             state.view.state_revision += 1
         elseif requested.operation == "select"
             display = signal_analyser_display_by_id(state, requested.display_id)
-            if display.id != state.active_display_id
-                prepared_plots = signal_analyser_prepared_plots(
-                    state,
-                    signal_analyser_display_plot_names(display),
-                )
-                prepared_spectra = signal_analyser_prepared_spectra(
-                    state,
-                    display,
-                    signal_analyser_display_plot_names(display),
-                )
-                prepared_spectrograms = signal_analyser_prepared_spectrograms(
-                    state,
-                    display,
-                    signal_analyser_display_analysis_signal(state, display),
-                )
-                prepared_persistences = signal_analyser_prepared_persistences(
-                    state,
-                    display,
-                    signal_analyser_display_analysis_signal(state, display),
-                )
-                prepared_measurements = signal_measurements_snapshot(
-                    state.measurements_service,
-                    state.view.state_revision + 1,
-                    signal_analyser_display_analysis_signal(state, display),
-                    display.time_limits,
-                    display.measurement_selection,
-                )
-                prepared_peaks = signal_peaks_snapshot(
-                    state.peaks_service,
-                    state.view.state_revision + 1,
-                    display,
-                    signal_analyser_display_analysis_signal(state, display),
-                )
-                signal_analyser_publish_prepared_plots!(state, prepared_plots)
-                signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
-                signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
-                signal_analyser_publish_prepared_persistences!(state, prepared_persistences)
+            changed = display.id != state.active_display_id
+            analysis_signal = signal_analyser_display_analysis_signal(state, display)
+            prepared_display_plots = signal_analyser_prepare_display_plots(
+                state,
+                display,
+                analysis_signal,
+                signal_analyser_display_plot_names(display),
+            )
+            next_revision = state.view.state_revision + (changed ? 1 : 0)
+            prepared_measurements = signal_measurements_snapshot(
+                state.measurements_service,
+                next_revision,
+                analysis_signal,
+                display.time_limits,
+                display.measurement_selection,
+            )
+            prepared_peaks = signal_peaks_snapshot(
+                state.peaks_service,
+                next_revision,
+                display,
+                analysis_signal,
+            )
+            signal_analyser_publish_display_plots!(state, prepared_display_plots)
+            if changed
                 signal_analyser_sync_active_display!(state, display)
                 state.view.state_revision += 1
-            else
-                prepared_measurements = signal_measurements_snapshot(
-                    state.measurements_service,
-                    state.view.state_revision,
-                    signal_analyser_display_analysis_signal(state, display),
-                    display.time_limits,
-                    display.measurement_selection,
-                )
-                prepared_peaks = signal_peaks_snapshot(
-                    state.peaks_service,
-                    state.view.state_revision,
-                    display,
-                    signal_analyser_display_analysis_signal(state, display),
-                )
             end
         else
             close_index = findfirst(display -> display.id == requested.display_id, state.displays)::Int
@@ -3324,29 +3282,17 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             else
                 signal_analyser_active_display(state)
             end
-            prepared_plots = signal_analyser_prepared_plots(
+            analysis_signal = signal_analyser_display_analysis_signal(state, next_active_display)
+            prepared_display_plots = signal_analyser_prepare_display_plots(
                 state,
+                next_active_display,
+                analysis_signal,
                 signal_analyser_display_plot_names(next_active_display),
-            )
-            prepared_spectra = signal_analyser_prepared_spectra(
-                state,
-                next_active_display,
-                signal_analyser_display_plot_names(next_active_display),
-            )
-            prepared_spectrograms = signal_analyser_prepared_spectrograms(
-                state,
-                next_active_display,
-                signal_analyser_display_analysis_signal(state, next_active_display),
-            )
-            prepared_persistences = signal_analyser_prepared_persistences(
-                state,
-                next_active_display,
-                signal_analyser_display_analysis_signal(state, next_active_display),
             )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
-                signal_analyser_display_analysis_signal(state, next_active_display),
+                analysis_signal,
                 next_active_display.time_limits,
                 next_active_display.measurement_selection,
             )
@@ -3354,17 +3300,19 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 state.peaks_service,
                 state.view.state_revision + 1,
                 next_active_display,
-                signal_analyser_display_analysis_signal(state, next_active_display),
+                analysis_signal,
             )
-            signal_analyser_publish_prepared_plots!(state, prepared_plots)
-            signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
-            signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
-            signal_analyser_publish_prepared_persistences!(state, prepared_persistences)
+            signal_analyser_publish_display_plots!(state, prepared_display_plots)
             state.displays = remaining_displays
             closing_active_display && signal_analyser_sync_active_display!(state, next_active_display)
             state.view.state_revision += 1
         end
 
-        signal_analyser_snapshot_unlocked(state, prepared_measurements, prepared_peaks)
+        signal_analyser_snapshot_from_prepared_unlocked(
+            state,
+            prepared_measurements,
+            prepared_peaks,
+            prepared_display_plots,
+        )
     end
 end
