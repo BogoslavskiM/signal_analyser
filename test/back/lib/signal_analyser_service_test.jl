@@ -206,6 +206,12 @@ end
     SA.reset_persistence_double!(); SA.PERSISTENCE_FAILURE[] = true
     cold = SA.default_signal_analyser_state()
     cold_second = cold.signals[2].name
+    cold_revision_before = cold.view.state_revision
+    cold_display_before = SA.signal_analyser_display_payload(SA.signal_analyser_active_display(cold))
+    cold_caches_before = (
+        deepcopy(cold.plot_cache), deepcopy(cold.spectrum_cache),
+        deepcopy(cold.spectrogram_cache), deepcopy(cold.persistence_cache),
+    )
     cold_error = try
         SA.apply_signal_analyser_view!(cold, Dict("state_revision" => 0, "analysis_signal" => cold_second, "visible_signals" => [cold.signals[1].name, cold_second]))
         nothing
@@ -213,7 +219,10 @@ end
         caught
     end
     SA.PERSISTENCE_FAILURE[] = false
-    @test cold_error isa ArgumentError && cold.view.state_revision == 0 && isempty(cold.persistence_cache) && isempty(cold.plot_cache)
+    @test cold_error isa ArgumentError
+    @test cold.view.state_revision == cold_revision_before
+    @test SA.signal_analyser_display_payload(SA.signal_analyser_active_display(cold)) == cold_display_before
+    @test (cold.plot_cache, cold.spectrum_cache, cold.spectrogram_cache, cold.persistence_cache) == cold_caches_before
 
     invalid = SA.default_signal_analyser_state(persistence_provider = WrongTopologyPersistenceProvider())
     invalid_caches_before = (
