@@ -63,6 +63,16 @@ function signal_spectrum_calculate(::EngeeDSPSpectrumProvider, query::SignalSpec
     SignalSpectrumData(frequencies, [1.0, 4.0], query.topology)
 end
 
+"""Deterministic typed Spectrogram provider double; EngeeDSP remains test/engee only."""
+const SPECTROGRAM_CALLS = Any[]
+const SPECTROGRAM_FAILURE = Ref(false)
+function signal_spectrogram_calculate(::EngeeDSPSpectrogramProvider, query::SignalSpectrogramQuery)::SignalSpectrogramData
+    push!(SPECTROGRAM_CALLS, query)
+    SPECTROGRAM_FAILURE[] && throw(ArgumentError("deterministic Spectrogram provider failure"))
+    frequencies = query.topology == ONE_SIDED_SPECTRUM ? [0.0, query.sample_rate_hz / 2] : [-query.sample_rate_hz / 2, query.sample_rate_hz / 2]
+    SignalSpectrogramData(frequencies, [0.0, (length(query.values) - 1) / query.sample_rate_hz], [1.0 4.0; 9.0 16.0], query.topology)
+end
+
 # The API helpers use the tiny Main.Genie renderer double above. This keeps
 # route/API tests in-process and deliberately avoids starting a Genie server.
 include(joinpath(PROJECT_ROOT, "app", "api.jl"))

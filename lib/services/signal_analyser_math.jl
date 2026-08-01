@@ -34,13 +34,6 @@ function signal_analyser_power_db(values, label::AbstractString)::Vector{Float64
     Float64.(10 .* log10.(max.(powers, eps(Float64))))
 end
 
-function signal_analyser_power_db_matrix(values, label::AbstractString)::Matrix{Float64}
-    powers = Float64.(abs.(Matrix(collect(values))))
-    isempty(powers) && throw(ArgumentError("EngeeDSP вернул пустую матрицу: $label"))
-    all(isfinite, powers) || throw(ArgumentError("EngeeDSP вернул нечисловые значения: $label"))
-    Float64.(10 .* log10.(max.(powers, eps(Float64))))
-end
-
 function signal_analyser_oriented_matrix(values, row_count::Int, column_count::Int, label::AbstractString)
     matrix = Matrix(collect(values))
     if size(matrix) == (row_count, column_count)
@@ -131,18 +124,10 @@ function signal_analyser_spectrum_plot(signal::AnalysedSignal)::Dict{String,Any}
     signal_analyser_spectrum_plot(data, settings)
 end
 
-function signal_analyser_spectrogram_plot(signal::AnalysedSignal)::Dict{String,Any}
-    power, frequencies, times = signal_analyser_pspectrum(
-        signal.values,
-        signal_time_values(signal),
-        "spectrogram",
-        "TwoSided",
-        true,
-    )
-    x = signal_analyser_finite_vector(times, "время спектрограммы")
-    y = signal_analyser_finite_vector(frequencies, "частоты спектрограммы")
-    oriented_power = signal_analyser_oriented_matrix(power, length(y), length(x), "Спектрограмма")
-    z = signal_analyser_power_db_matrix(oriented_power, "мощность спектрограммы")
+function signal_analyser_spectrogram_plot(data::SignalSpectrogramData)::Dict{String,Any}
+    x = Float64[data.segment_centers_s...]
+    y = Float64[data.frequencies_hz...]
+    z = Float64.(10 .* log10.(data.power))
     x, y, z = signal_analyser_bounded_heatmap(x, y, z)
     Dict{String,Any}(
         "type" => "heatmap",
@@ -153,6 +138,10 @@ function signal_analyser_spectrogram_plot(signal::AnalysedSignal)::Dict{String,A
         "y_label" => "Частота, Гц",
         "color_label" => "Мощность, дБ",
     )
+end
+
+function signal_analyser_spectrogram_plot(signal::AnalysedSignal)::Dict{String,Any}
+    signal_analyser_spectrogram_plot(signal_spectrogram_data(SignalSpectrogramService(), signal))
 end
 
 function signal_analyser_persistence_plot(signal::AnalysedSignal)::Dict{String,Any}
@@ -209,7 +198,9 @@ function signal_analyser_base_plots(signal::AnalysedSignal)::Dict{String,Any}
             SignalSpectrumData(signal.is_complex ? CENTERED_TWO_SIDED_SPECTRUM : ONE_SIDED_SPECTRUM),
             SignalSpectrumSettings(),
         ),
-        "spectrogram" => signal_analyser_spectrogram_plot(signal),
+        "spectrogram" => signal_analyser_spectrogram_plot(
+            SignalSpectrogramData(signal_spectrum_topology(signal)),
+        ),
         "persistence" => signal_analyser_persistence_plot(signal),
     )
 end

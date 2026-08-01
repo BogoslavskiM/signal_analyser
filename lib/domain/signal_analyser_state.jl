@@ -323,6 +323,123 @@ Base.hash(key::SignalSpectrumCacheKey, seed::UInt) = hash(
     seed,
 )
 
+"""Typed full-raw-signal query for the Spectrogram provider."""
+struct SignalSpectrogramQuery
+    signal_name::String
+    values::Vector{ComplexF64}
+    sample_rate_hz::Float64
+    topology::SignalSpectrumTopology
+
+    function SignalSpectrogramQuery(
+        signal_name::AbstractString,
+        values::AbstractVector{<:Number},
+        sample_rate_hz::Real,
+        topology::SignalSpectrumTopology,
+    )
+        isempty(signal_name) && throw(ArgumentError(
+            "Имя сигнала Spectrogram query не может быть пустым",
+        ))
+        samples = ComplexF64.(values)
+        length(samples) >= 2 || throw(ArgumentError(
+            "Spectrogram provider query требует не менее двух отсчётов",
+        ))
+        all(value -> isfinite(real(value)) && isfinite(imag(value)), samples) || throw(ArgumentError(
+            "Отсчёты Spectrogram query должны быть конечными",
+        ))
+        sample_rate_value = Float64(sample_rate_hz)
+        isfinite(sample_rate_value) && sample_rate_value > 0 || throw(ArgumentError(
+            "Частота дискретизации Spectrogram query должна быть положительной и конечной",
+        ))
+        new(String(signal_name), samples, sample_rate_value, topology)
+    end
+end
+
+"""Validated raw Spectrogram provider data in frequency-by-segment-time orientation."""
+struct SignalSpectrogramData
+    frequencies_hz::Tuple{Vararg{Float64}}
+    segment_centers_s::Tuple{Vararg{Float64}}
+    power::Matrix{Float64}
+    topology::SignalSpectrumTopology
+
+    function SignalSpectrogramData(
+        frequencies_hz::AbstractVector{<:Real},
+        segment_centers_s::AbstractVector{<:Real},
+        power::AbstractMatrix,
+        topology::SignalSpectrumTopology,
+    )
+        frequencies = Float64.(frequencies_hz)
+        segment_centers = Float64.(segment_centers_s)
+        all(isfinite, frequencies) || throw(ArgumentError(
+            "Spectrogram provider вернул нечисловые частоты",
+        ))
+        all(isfinite, segment_centers) || throw(ArgumentError(
+            "Spectrogram provider вернул нечисловые центры сегментов",
+        ))
+        issorted(frequencies) || throw(ArgumentError(
+            "Spectrogram provider вернул неупорядоченную частотную ось",
+        ))
+        issorted(segment_centers) || throw(ArgumentError(
+            "Spectrogram provider вернул неупорядоченную временную ось",
+        ))
+        provider_power = Matrix(collect(power))
+        size(provider_power) == (length(frequencies), length(segment_centers)) ||
+            throw(DimensionMismatch(
+                "Матрица Spectrogram provider имеет размер $(size(provider_power)), " *
+                "ожидался ($(length(frequencies)), $(length(segment_centers)))",
+            ))
+        all(value -> value isa Real, provider_power) || throw(ArgumentError(
+            "Spectrogram provider вернул комплексную мощность",
+        ))
+        powers = Float64.(provider_power)
+        all(value -> isfinite(value) && value >= 0.0, powers) || throw(ArgumentError(
+            "Spectrogram provider вернул некорректную мощность",
+        ))
+        new(Tuple(frequencies), Tuple(segment_centers), powers, topology)
+    end
+end
+
+SignalSpectrogramData(topology::SignalSpectrumTopology) = SignalSpectrogramData(
+    Float64[],
+    Float64[],
+    zeros(Float64, 0, 0),
+    topology,
+)
+
+abstract type AbstractSignalSpectrogramProvider end
+struct EngeeDSPSpectrogramProvider <: AbstractSignalSpectrogramProvider end
+
+struct SignalSpectrogramService{P<:AbstractSignalSpectrogramProvider}
+    provider::P
+end
+
+SignalSpectrogramService() = SignalSpectrogramService(EngeeDSPSpectrogramProvider())
+
+"""Runtime cache identity for full-resolution raw Spectrogram provider data."""
+struct SignalSpectrogramCacheKey
+    signal_name::String
+    sample_rate_hz::Float64
+    sample_count::Int
+    topology::SignalSpectrumTopology
+end
+
+SignalSpectrogramCacheKey(query::SignalSpectrogramQuery) = SignalSpectrogramCacheKey(
+    query.signal_name,
+    query.sample_rate_hz,
+    length(query.values),
+    query.topology,
+)
+
+Base.:(==)(left::SignalSpectrogramCacheKey, right::SignalSpectrogramCacheKey) =
+    left.signal_name == right.signal_name &&
+    left.sample_rate_hz == right.sample_rate_hz &&
+    left.sample_count == right.sample_count &&
+    left.topology == right.topology
+Base.isequal(left::SignalSpectrogramCacheKey, right::SignalSpectrogramCacheKey) = left == right
+Base.hash(key::SignalSpectrogramCacheKey, seed::UInt) = hash(
+    (key.signal_name, key.sample_rate_hz, key.sample_count, key.topology),
+    seed,
+)
+
 @enum SignalMeasurementOrdinate begin
     REAL_ORDINATE
     MAGNITUDE_ORDINATE
@@ -962,6 +1079,7 @@ end
 mutable struct SignalAnalyserState{
     P<:AbstractPeaksProvider,
     S<:AbstractSignalSpectrumProvider,
+    G<:AbstractSignalSpectrogramProvider,
 }
     signals::Vector{AnalysedSignal}
     view::SignalAnalyserViewState
@@ -971,9 +1089,11 @@ mutable struct SignalAnalyserState{
     next_display_number::Int
     plot_cache::Dict{String,Dict{String,Any}}
     spectrum_cache::Dict{SignalSpectrumCacheKey,SignalSpectrumData}
+    spectrogram_cache::Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}
     measurements_service::SignalMeasurementsService
     peaks_service::SignalPeaksService{P}
     spectrum_service::SignalSpectrumService{S}
+    spectrogram_service::SignalSpectrogramService{G}
     lock::ReentrantLock
 end
 
@@ -985,6 +1105,7 @@ function SignalAnalyserState(
     ;
     peaks_provider::AbstractPeaksProvider = EngeeDSPPeaksProvider(),
     spectrum_provider::AbstractSignalSpectrumProvider = EngeeDSPSpectrumProvider(),
+    spectrogram_provider::AbstractSignalSpectrogramProvider = EngeeDSPSpectrogramProvider(),
 )
     isempty(signals) && throw(ArgumentError("Signal Analyser требует хотя бы один сигнал в global inventory"))
     known_names = [signal.name for signal in signals]
@@ -1020,9 +1141,11 @@ function SignalAnalyserState(
         2,
         plot_cache,
         Dict{SignalSpectrumCacheKey,SignalSpectrumData}(),
+        Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}(),
         SignalMeasurementsService(),
         SignalPeaksService(peaks_provider),
         SignalSpectrumService(spectrum_provider),
+        SignalSpectrogramService(spectrogram_provider),
         lock,
     )
 end
@@ -1092,6 +1215,7 @@ end
 function default_signal_analyser_state(;
     peaks_provider::AbstractPeaksProvider = EngeeDSPPeaksProvider(),
     spectrum_provider::AbstractSignalSpectrumProvider = EngeeDSPSpectrumProvider(),
+    spectrogram_provider::AbstractSignalSpectrogramProvider = EngeeDSPSpectrogramProvider(),
 )::SignalAnalyserState
     signals = default_signal_catalog()
     SignalAnalyserState(
@@ -1101,6 +1225,7 @@ function default_signal_analyser_state(;
         ReentrantLock(),
         peaks_provider = peaks_provider,
         spectrum_provider = spectrum_provider,
+        spectrogram_provider = spectrogram_provider,
     )
 end
 

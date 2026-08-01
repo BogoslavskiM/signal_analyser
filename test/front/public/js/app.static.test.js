@@ -107,6 +107,11 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
     assert(app.includes(term), `frontend must preserve Cascade 10 Frequency Limits term ${term}`)
   );
   assert(!/log[-_ ]?floor/i.test(html) && !/log[-_ ]?floor/i.test(app), "Cascade 10 must not add a Log-floor field or client-side floor calculation");
+  ["spectrogram-settings", "spectrogram-time-resolution", "spectrogram-overlap", "spectrogram-frequency-limits"].forEach((term) =>
+    assert(!html.includes(term) && !app.includes(term), `Cascade 11 must not add unaccepted Spectrogram controls (${term})`)
+  );
+  assert((html.match(/data-settings-tab=/g) || []).length === 3, "Cascade 11 must preserve exactly three settings tabs");
+  assert(!api.includes("spectrogram"), "Cascade 11 must not add a Spectrogram-specific route");
   assert((app.match(/function renderStatisticsControls\(/g) || []).length === 1, "Statistics settings must have exactly one render function");
   assert((app.match(/function render\(/g) || []).length === 1, "frontend must retain exactly one render declaration");
   assert(!app.includes("function bindStatisticsShortcut("), "Statistics shortcut must not retain a dead duplicate binding path");

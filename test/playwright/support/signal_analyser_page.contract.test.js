@@ -78,6 +78,7 @@ assert.equal(config.features["time-limits"], true);
 assert.equal(config.features["selectable-statistics"], true);
 assert.equal(config.features["spectrum-settings-roi"], true);
 assert.equal(config.features["frequency-limits"], true);
+assert.equal(config.features["typed-spectrogram"], true);
 assert.deepEqual(Object.keys(config.app.testIds.plotCards).sort(), [
   "persistence",
   "spectrogram",

@@ -119,6 +119,7 @@ module.exports = {
     "selectable-statistics": true,
     "spectrum-settings-roi": true,
     "frequency-limits": true,
+    "typed-spectrogram": true,
     "inspector-ui": true,
     "multi-page-element": true,
     "graph-output-zone": true,

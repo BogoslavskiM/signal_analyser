@@ -320,6 +320,29 @@ function signal_analyser_publish_prepared_spectra!(
     nothing
 end
 
+function signal_analyser_prepared_spectrograms(
+    state::SignalAnalyserState,
+    signal::Union{Nothing,AnalysedSignal},
+)::Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}
+    prepared = Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}()
+    signal === nothing && return prepared
+    key = signal_spectrogram_cache_key(signal)
+    prepared[key] = haskey(state.spectrogram_cache, key) ?
+        state.spectrogram_cache[key] :
+        signal_spectrogram_data(state.spectrogram_service, signal)
+    prepared
+end
+
+function signal_analyser_publish_prepared_spectrograms!(
+    state::SignalAnalyserState,
+    prepared::Dict{SignalSpectrogramCacheKey,SignalSpectrogramData},
+)
+    for (key, data) in prepared
+        state.spectrogram_cache[key] = data
+    end
+    nothing
+end
+
 function signal_analyser_cached_spectrum_data!(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
@@ -357,6 +380,16 @@ function signal_analyser_cached_spectrum_data!(
     end
 end
 
+function signal_analyser_cached_spectrogram_data!(
+    state::SignalAnalyserState,
+    signal::AnalysedSignal,
+)::SignalSpectrogramData
+    key = signal_spectrogram_cache_key(signal)
+    get!(state.spectrogram_cache, key) do
+        signal_spectrogram_data(state.spectrogram_service, signal)
+    end
+end
+
 function signal_analyser_plots_for_display!(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
@@ -364,7 +397,9 @@ function signal_analyser_plots_for_display!(
 )::Dict{String,Any}
     plots = copy(signal_analyser_cached_plots!(state, signal))
     spectrum_data = signal_analyser_cached_spectrum_data!(state, display, signal)
+    spectrogram_data = signal_analyser_cached_spectrogram_data!(state, signal)
     plots["spectrum"] = signal_analyser_spectrum_plot(spectrum_data, display.spectrum_settings)
+    plots["spectrogram"] = signal_analyser_spectrogram_plot(spectrogram_data)
     plots
 end
 
@@ -456,7 +491,7 @@ function signal_analyser_multi_trace_payload(
         push!(spectrum_traces, signal_analyser_plot_for_payload(spectrum_plot, signal))
     end
 
-    selected_plots = signal_analyser_cached_plots!(state, selected_signal)
+    selected_plots = signal_analyser_plots_for_display!(state, display, selected_signal)
     Dict{String,Any}(
         "selected_signal" => selected_signal.name,
         "visible_signals" => visible_names,
@@ -796,6 +831,120 @@ function signal_spectrum_data(
         service,
         signal_spectrum_query(signal, sample_range, settings, frequency_limits),
     )
+end
+
+function signal_spectrogram_cache_key(signal::AnalysedSignal)::SignalSpectrogramCacheKey
+    SignalSpectrogramCacheKey(
+        signal.name,
+        signal.sample_rate_hz,
+        length(signal.values),
+        signal_spectrum_topology(signal),
+    )
+end
+
+function signal_spectrogram_query(signal::AnalysedSignal)::SignalSpectrogramQuery
+    SignalSpectrogramQuery(
+        signal.name,
+        signal.values,
+        signal.sample_rate_hz,
+        signal_spectrum_topology(signal),
+    )
+end
+
+function signal_spectrogram_calculate(
+    provider::AbstractSignalSpectrogramProvider,
+    query::SignalSpectrogramQuery,
+)::SignalSpectrogramData
+    throw(MethodError(signal_spectrogram_calculate, (provider, query)))
+end
+
+function signal_spectrogram_calculate(
+    ::EngeeDSPSpectrogramProvider,
+    query::SignalSpectrogramQuery,
+)::SignalSpectrogramData
+    samples = query.topology == ONE_SIDED_SPECTRUM ?
+        Float64.(real.(query.values)) : copy(query.values)
+    times = collect(0:(length(samples) - 1)) ./ query.sample_rate_hz
+    power, frequencies, segment_centers = signal_analyser_pspectrum(
+        samples,
+        times,
+        "spectrogram",
+        "TwoSided",
+        query.topology == CENTERED_TWO_SIDED_SPECTRUM,
+    )
+    power isa AbstractMatrix || throw(ArgumentError(
+        "Spectrogram provider должен вернуть двумерную матрицу мощности",
+    ))
+    SignalSpectrogramData(
+        vec(collect(frequencies)),
+        vec(collect(segment_centers)),
+        power,
+        query.topology,
+    )
+end
+
+function signal_spectrogram_calculate(
+    service::SignalSpectrogramService,
+    query::SignalSpectrogramQuery,
+)::SignalSpectrogramData
+    data = signal_spectrogram_calculate(service.provider, query)
+    data.topology == query.topology || throw(ArgumentError(
+        "Spectrogram provider вернул topology, не совпадающую с query",
+    ))
+    isempty(data.frequencies_hz) && throw(ArgumentError(
+        "Spectrogram provider вернул пустую частотную ось для двух или более отсчётов",
+    ))
+    isempty(data.segment_centers_s) && throw(ArgumentError(
+        "Spectrogram provider вернул пустую временную ось для двух или более отсчётов",
+    ))
+
+    duration_s = (length(query.values) - 1) / query.sample_rate_hz
+    time_tolerance_s = sqrt(eps(Float64)) * max(duration_s, 1 / query.sample_rate_hz, 1.0)
+    all(
+        center -> -time_tolerance_s <= center <= duration_s + time_tolerance_s,
+        data.segment_centers_s,
+    ) || throw(ArgumentError(
+        "Spectrogram provider вернул центры сегментов вне временного домена сигнала",
+    ))
+
+    nyquist_hz = query.sample_rate_hz / 2
+    frequency_tolerance_hz = sqrt(eps(Float64)) * max(query.sample_rate_hz, 1.0)
+    frequencies = data.frequencies_hz
+    if query.topology == ONE_SIDED_SPECTRUM
+        all(
+            frequency -> -frequency_tolerance_hz <= frequency <= nyquist_hz + frequency_tolerance_hz,
+            frequencies,
+        ) || throw(ArgumentError(
+            "Spectrogram provider вернул частоты вне one-sided Nyquist-диапазона",
+        ))
+        abs(first(frequencies)) <= frequency_tolerance_hz &&
+            abs(last(frequencies) - nyquist_hz) <= frequency_tolerance_hz ||
+            throw(ArgumentError(
+                "Spectrogram provider не вернул полный one-sided Nyquist-диапазон",
+            ))
+    else
+        all(
+            frequency -> -nyquist_hz - frequency_tolerance_hz <= frequency <= nyquist_hz + frequency_tolerance_hz,
+            frequencies,
+        ) || throw(ArgumentError(
+            "Spectrogram provider вернул частоты вне centered Nyquist-диапазона",
+        ))
+        abs(first(frequencies) + nyquist_hz) <= frequency_tolerance_hz &&
+            abs(last(frequencies) - nyquist_hz) <= frequency_tolerance_hz ||
+            throw(ArgumentError(
+                "Spectrogram provider не вернул полный centered Nyquist-диапазон",
+            ))
+    end
+    data
+end
+
+function signal_spectrogram_data(
+    service::SignalSpectrogramService,
+    signal::AnalysedSignal,
+)::SignalSpectrogramData
+    topology = signal_spectrum_topology(signal)
+    length(signal.values) < 2 && return SignalSpectrogramData(topology)
+    signal_spectrogram_calculate(service, signal_spectrogram_query(signal))
 end
 
 function signal_time_limits_are_valid(
@@ -1798,6 +1947,10 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         next_revision = state.view.state_revision + (changed ? 1 : 0)
         prospective_signal = prospective_analysis_name === nothing ? nothing :
             signal_by_name(state, prospective_analysis_name)
+        prepared_spectrograms = signal_analyser_prepared_spectrograms(
+            state,
+            prospective_signal,
+        )
         prepared_measurements = signal_measurements_snapshot(
             state.measurements_service,
             next_revision,
@@ -1814,6 +1967,7 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         if changed
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
+            signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
             signal_analyser_publish_display_state!(display, prospective_display)
             signal_analyser_publish_row_selection!(state, requested.row_selection)
             signal_analyser_sync_active_display!(state, display)
@@ -1821,6 +1975,7 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         else
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
+            signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
         end
         signal_analyser_snapshot_unlocked(state, prepared_measurements, prepared_peaks)
     end
@@ -1916,6 +2071,10 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 display,
                 signal_analyser_display_plot_names(display),
             )
+            prepared_spectrograms = signal_analyser_prepared_spectrograms(
+                state,
+                analysis_signal,
+            )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
@@ -1931,6 +2090,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             )
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
+            signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
             push!(state.displays, display)
             state.next_display_number += 1
             signal_analyser_sync_active_display!(state, display)
@@ -1947,6 +2107,10 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                     display,
                     signal_analyser_display_plot_names(display),
                 )
+                prepared_spectrograms = signal_analyser_prepared_spectrograms(
+                    state,
+                    signal_analyser_display_analysis_signal(state, display),
+                )
                 prepared_measurements = signal_measurements_snapshot(
                     state.measurements_service,
                     state.view.state_revision + 1,
@@ -1962,6 +2126,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 )
                 signal_analyser_publish_prepared_plots!(state, prepared_plots)
                 signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
+                signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
                 signal_analyser_sync_active_display!(state, display)
                 state.view.state_revision += 1
             else
@@ -2000,6 +2165,10 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 next_active_display,
                 signal_analyser_display_plot_names(next_active_display),
             )
+            prepared_spectrograms = signal_analyser_prepared_spectrograms(
+                state,
+                signal_analyser_display_analysis_signal(state, next_active_display),
+            )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
                 state.view.state_revision + 1,
@@ -2015,6 +2184,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             )
             signal_analyser_publish_prepared_plots!(state, prepared_plots)
             signal_analyser_publish_prepared_spectra!(state, prepared_spectra)
+            signal_analyser_publish_prepared_spectrograms!(state, prepared_spectrograms)
             state.displays = remaining_displays
             closing_active_display && signal_analyser_sync_active_display!(state, next_active_display)
             state.view.state_revision += 1

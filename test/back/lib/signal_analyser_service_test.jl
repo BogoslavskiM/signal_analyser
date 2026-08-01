@@ -8,6 +8,11 @@ mutable struct FakePeaksProvider <: SA.AbstractPeaksProvider
     failure::Union{Nothing,Exception}
 end
 
+struct InvalidSpectrogramProvider <: SA.AbstractSignalSpectrogramProvider
+    data::SA.SignalSpectrogramData
+end
+SA.signal_spectrogram_calculate(provider::InvalidSpectrogramProvider, query::SA.SignalSpectrogramQuery) = provider.data
+
 function SA.signal_peaks_detect(provider::FakePeaksProvider, query::SA.SignalPeaksQuery)
     push!(provider.calls, query)
     isnothing(provider.failure) || throw(provider.failure)
@@ -1253,4 +1258,79 @@ end
     reset = SA.apply_signal_analyser_view!(transitions, Dict("state_revision" => 2, "analysis_signal" => "narrow"))
     @test reset["state_revision"] == 3
     @test reset["spectrum_settings"]["frequency_limits"] === nothing
+end
+
+@testset "Cascade 11 typed Spectrogram query and raw-data invariants" begin
+    real_query = SA.SignalSpectrogramQuery("real", [1.0, 2.0], 10.0, SA.ONE_SIDED_SPECTRUM)
+    complex_query = SA.SignalSpectrogramQuery("complex", ComplexF64[1 + 2im, 3 + 4im], 10.0, SA.CENTERED_TWO_SIDED_SPECTRUM)
+    @test real_query.values == ComplexF64[1, 2]
+    @test complex_query.values == ComplexF64[1 + 2im, 3 + 4im]
+    @test SA.SignalSpectrogramCacheKey(real_query) != SA.SignalSpectrogramCacheKey(complex_query)
+    @test_throws ArgumentError SA.SignalSpectrogramQuery("one", [1.0], 10.0, SA.ONE_SIDED_SPECTRUM)
+    @test_throws ArgumentError SA.SignalSpectrogramQuery("bad", [NaN, 1.0], 10.0, SA.ONE_SIDED_SPECTRUM)
+    @test_throws ArgumentError SA.SignalSpectrogramQuery("rate", [1.0, 2.0], 0.0, SA.ONE_SIDED_SPECTRUM)
+    owned_samples = ComplexF64[1, 2]
+    owned_query = SA.SignalSpectrogramQuery("owned", owned_samples, 10.0, SA.ONE_SIDED_SPECTRUM)
+    owned_samples[1] = 99
+    @test owned_query.values[1] == 1
+
+    data = SA.SignalSpectrogramData([0.0, 5.0], [0.1, 0.2], [0.0 1.0; 4.0 9.0], SA.ONE_SIDED_SPECTRUM)
+    @test size(data.power) == (2, 2)
+    @test collect(data.frequencies_hz) == [0.0, 5.0]
+    zero_plot = SA.signal_analyser_spectrogram_plot(data)
+    @test zero_plot["z"][1][1] == -Inf
+    @test SA.json_safe(zero_plot)["z"][1][1] === nothing
+    dense_axis = collect(0.0:160.0)
+    dense_power = reshape(collect(0.0:(161 * 161 - 1)), 161, 161)
+    dense_data = SA.SignalSpectrogramData(dense_axis, dense_axis, dense_power, SA.ONE_SIDED_SPECTRUM)
+    dense_plot = SA.signal_analyser_spectrogram_plot(dense_data)
+    @test size(dense_data.power) == (161, 161)
+    @test length(dense_plot["x"]) == 160 && length(dense_plot["y"]) == 160
+    @test length(dense_plot["z"]) == 160 && all(row -> length(row) == 160, dense_plot["z"])
+    @test_throws DimensionMismatch SA.SignalSpectrogramData([0.0, 5.0], [0.1, 0.2], [0.0 1.0 2.0; 3.0 4.0 5.0], SA.ONE_SIDED_SPECTRUM)
+    @test_throws ArgumentError SA.SignalSpectrogramData([5.0, 0.0], [0.1, 0.2], [0.0 1.0; 4.0 9.0], SA.ONE_SIDED_SPECTRUM)
+    @test_throws ArgumentError SA.SignalSpectrogramData([0.0, 5.0], [0.2, 0.1], [0.0 1.0; 4.0 9.0], SA.ONE_SIDED_SPECTRUM)
+    @test_throws ArgumentError SA.SignalSpectrogramData([0.0, 5.0], [0.1, 0.2], [0.0 -1.0; 4.0 9.0], SA.ONE_SIDED_SPECTRUM)
+    @test_throws ArgumentError SA.SignalSpectrogramData([0.0, 5.0], [0.1, 0.2], ComplexF64[0 1; 4 9im], SA.ONE_SIDED_SPECTRUM)
+    mismatch = InvalidSpectrogramProvider(SA.SignalSpectrogramData([-5.0, 5.0], [0.0, 0.1], [1.0 2.0; 3.0 4.0], SA.CENTERED_TWO_SIDED_SPECTRUM))
+    @test_throws ArgumentError SA.signal_spectrogram_calculate(SA.SignalSpectrogramService(mismatch), real_query)
+    outside_time = InvalidSpectrogramProvider(SA.SignalSpectrogramData([0.0, 5.0], [0.0, 0.2], [1.0 2.0; 3.0 4.0], SA.ONE_SIDED_SPECTRUM))
+    @test_throws ArgumentError SA.signal_spectrogram_calculate(SA.SignalSpectrogramService(outside_time), real_query)
+    outside_frequency = InvalidSpectrogramProvider(SA.SignalSpectrogramData([-1.0, 5.0], [0.0, 0.1], [1.0 2.0; 3.0 4.0], SA.ONE_SIDED_SPECTRUM))
+    @test_throws ArgumentError SA.signal_spectrogram_calculate(SA.SignalSpectrogramService(outside_frequency), real_query)
+
+    empty!(SA.SPECTROGRAM_CALLS)
+    state = p0_measurement_state()
+    first = SA.signal_analyser_snapshot(state)
+    @test length(SA.SPECTROGRAM_CALLS) == 1
+    @test only(SA.SPECTROGRAM_CALLS).topology == SA.ONE_SIDED_SPECTRUM
+    @test only(SA.SPECTROGRAM_CALLS).values == state.signals[1].values
+    @test size(only(values(state.spectrogram_cache)).power) == (2, 2)
+    SA.signal_analyser_snapshot(state)
+    @test length(SA.SPECTROGRAM_CALLS) == 1
+    second = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "analysis_signal" => "raw-complex"))
+    @test length(SA.SPECTROGRAM_CALLS) == 2
+    @test SA.SPECTROGRAM_CALLS[2].topology == SA.CENTERED_TWO_SIDED_SPECTRUM
+    @test any(value -> imag(value) != 0.0, SA.SPECTROGRAM_CALLS[2].values)
+    @test second["plots"]["spectrogram"]["z"] == [0.0 10 * log10(4.0); 10 * log10(9.0) 10 * log10(16.0)] |> x -> [collect(row) for row in eachrow(x)]
+
+    short = SA.AnalysedSignal("short-spectrogram", "#555555", 10.0, ComplexF64[1], false, true)
+    calls_before_short = length(SA.SPECTROGRAM_CALLS)
+    short_data = SA.signal_spectrogram_data(SA.SignalSpectrogramService(SA.EngeeDSPSpectrogramProvider()), short)
+    @test length(SA.SPECTROGRAM_CALLS) == calls_before_short
+    @test isempty(short_data.frequencies_hz) && size(short_data.power) == (0, 0)
+
+    baseline = SA.signal_analyser_snapshot(state)
+    empty!(state.spectrogram_cache)
+    SA.SPECTROGRAM_FAILURE[] = true
+    failed = try
+        SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "analysis_signal" => "raw-real"))
+        nothing
+    catch caught
+        caught
+    end
+    @test failed isa ArgumentError
+    @test isempty(state.spectrogram_cache)
+    SA.SPECTROGRAM_FAILURE[] = false
+    @test SA.signal_analyser_snapshot(state) == baseline
 end
