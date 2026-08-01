@@ -1331,3 +1331,26 @@ deployment and merge were not performed.
 | E2E Tester | `/root/e2e_c26_audit` | C26 static audit CLEAN | optional C27 gated scenario | compatible target absent | `33df821` |
 | DevOps | `/root/devops_c17_commit` | C26 commits complete | C26 trace/C27 docs commits | exact path acceptance | no push/deploy |
 | MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | official web only |
+
+## Cascade 27 contract freeze — 2026-08-01
+
+Status: `contract-frozen-implementation-next`; DEC-033.
+
+After the DEC-032 envelope, require owned known `row_selected_signal`, strict
+canonical per-Display membership and two owned equal selection aliases. Invalid
+Display selection quarantines only that ID; if the active Display is invalid,
+its root projections are ignored so quarantine does not escalate. With a valid
+active Display, mismatched root aliases/membership or `signals[].visible` are
+global fatal. Empty inventory is now global fatal through the row gate. C27
+does not validate plot payloads, settings, measurements, peaks or math.
+
+### Persistent role queue after C27 contract freeze
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | no C27 delta | read-only serializer support | none | canonical response confirmed |
+| Frontend | `/root/frontend_c26_bind_fix` | C26 current | C27 validator/quarantine | docs checkpoint | DEC-033 exact precedence |
+| Tester | `/root/tester_c7_matrix` | C26 current | C27 corruption/lifecycle matrix | frontend implementation | controlled queue seams |
+| E2E Tester | `/root/e2e_c26_audit` | C26 gated CLEAN | optional C27 static gate | frontend implementation | no runtime target |
+| DevOps | `/root/devops_c17_commit` | C26 current | C27 docs/product commits | role acceptance | no push/deploy |
+| MATLAB Researcher | `/root/matlab_c23_spectrum_defaults` | standby | none | no GUI need | official web only |

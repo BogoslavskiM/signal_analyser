@@ -284,3 +284,10 @@ Owner: Architect
   Markers and SA-UI-010 selectable Statistics are saved and consumed. Product
   Clear recovery remains an explicit DEC-012 decision, not observed MATLAB
   re-add.
+- DEC-033 freezes C27 strict selection snapshots. A known owned global row and
+  valid-active root projections are global boundaries; malformed membership or
+  malformed/unequal source aliases quarantine only their Display. Active
+  quarantine ignores
+  root projections by precedence. Empty inventory becomes global fatal through
+  the row gate. Implementation is eligible after the documentation checkpoint;
+  plot payloads, settings, Measurements, Peaks and math remain out of scope.

@@ -557,3 +557,29 @@ follow-ups: Preserve controlled promise settlement assertions.
 next_task_candidates: C27 selection/root corruption matrix after DEC-033.
 commit: `f5820bd64c165daba9781aff87528c09bdd08576`.
 engee_bug_candidate: None.
+
+## Cascade 27 selection snapshot matrix contract — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c7_matrix`.
+goal: Prove strict response selection semantics and the local/global failure
+precedence without false replay.
+scope: `test/front/public/js/app.behavior.test.js`.
+contracts: Global fatal for missing/unknown row and valid-active root projection
+corruption; per-ID quarantine for membership/alias/source corruption; invalid
+active selection suppresses root validation; empty inventory is row-gate fatal.
+verification_plan: Row missing/type/empty/unknown; valid empty membership and
+its null-source invariant; nonempty membership with required member source;
+membership missing/type/unknown/duplicate/unordered; aliases missing/invalid/
+conflicting; active-invalid versus inactive-invalid A-B isolation; root and
+`signals[].visible` mismatch; initial/200/409 queue counts; valid recovery with
+no old intent resurrection.
+risks: A matrix that checks only disabled UI can miss queued B loss or same-ID
+replay; every lifecycle case needs explicit pre/post request counts.
+follow-ups: Preserve all C24-C26 controlled-promise oracles unchanged.
+changes: None; contract only.
+verification: Not run; matrix is planned after checkpoint.
+source_evidence: DEC-033 and
+`agents/reports/display-selection-snapshot-assessment-20260801.md`.
+next_task_candidates: Land RED matrix alongside Frontend implementation.
+engee_bug_candidate: None.

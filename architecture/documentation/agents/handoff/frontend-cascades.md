@@ -542,3 +542,32 @@ follow-ups: C27 owns selection/membership/root projection validation.
 next_task_candidates: Implement DEC-033 only after its docs checkpoint.
 commit: `f5820bd64c165daba9781aff87528c09bdd08576`.
 engee_bug_candidate: None.
+
+## Cascade 27 selection snapshot implementation contract — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c26_bind_fix`.
+goal: Prevent snapshot selection/membership coercion while preserving valid
+Display isolation.
+scope: `public/js/app.js`; vanilla JS; no backend/API/HTML/math delta.
+contracts: Validate owned known global row first. For each Display require a
+canonical known unique membership and owned equal nullable analysis aliases;
+quarantine the invalid selection block under its already DEC-032-validated
+Display ID without invented checkbox/source state. Ignore root
+selection projections while the active Display is quarantined. Otherwise
+require exact root aliases/membership and boolean `signals[].visible`
+projection or enter DEC-032 global fatal state.
+verification_plan: Initial/200/409/recovery, active/inactive A-B isolation,
+same-ID queue purge with independent B continuation, exact root/row fatal reset
+and no quarantined intent resurrection.
+risks: Validating root before active Display would incorrectly escalate local
+corruption; silently sorting membership would fabricate authoritative order.
+follow-ups: Implement only the DEC-033 boundary; payload/settings/measurements/
+peaks remain deferred.
+changes: None; contract only.
+verification: Not run; implementation and matrix are planned after checkpoint.
+source_evidence: DEC-033 and
+`agents/reports/display-selection-snapshot-assessment-20260801.md`.
+next_task_candidates: C27 frontend implementation plus deterministic Tester
+matrix after the docs checkpoint.
+engee_bug_candidate: None.

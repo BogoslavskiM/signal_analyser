@@ -548,3 +548,17 @@
   Peaks/second-stale, fatal controls, Retry A/B и deferred Plotly settlement;
   independent final audit CLEAN. Gated E2E static — `33df821`; runtime и
   deployment не заявляются.
+
+## 2026-08-01 — Cascade 27 selection snapshot contract
+
+- DEC-033 разделяет selection corruption после глобальной envelope: malformed
+  membership/source quarantines только конкретный Display, а unknown global row
+  и противоречивые projections valid active Display переводят приложение в
+  global fatal state.
+- Invalid active Display проверяется раньше root projections; его projections
+  игнорируются, иначе локальная quarantine ошибочно стала бы глобальной.
+- Response обязан содержать canonical membership и оба равных selection alias;
+  request-side legacy compatibility не меняется. Пустой inventory становится
+  global fatal через обязательный known row.
+- Plot payloads, settings, Measurements, Peaks и DSP/math не входят в C27.
+  Implementation evidence пока не заявляется.
