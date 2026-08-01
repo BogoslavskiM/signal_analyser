@@ -758,3 +758,20 @@ changes: None.
 verification: Official public pages only; no GUI observation claim.
 follow-ups: Prod cross-probe before ADR; its resource cutoff controls NO-GO.
 next_task_candidates: Persistence Frequency Limits docs reconciliation.
+
+## C21 Persistence Frequency Limits official-web research — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c20_persistence_overlap`.
+scope: Direct official MathWorks/Engee web only; no MATLAB GUI, Add-On Explorer,
+Command Window, clicker or repository use.
+documented_contract: FrequencyLimits applies to Persistence and Signal Analyzer
+documents min/max controls. Omitted spans Nyquist; partial ranges clip; external
+reject. Persistence computes the limited spectrogram before histogramming.
+important_delta: `RBWperformance=4*fspan/(1024-1)` means Auto and explicit full
+need not be generally equivalent and narrower bands are not guaranteed cheaper.
+ambiguities: Exact endpoint inclusion/grid length, invalid shapes/Bool, complex
+Auto and PWR/occurrence effects required prod evidence.
+changes: None.
+follow-ups: Provider probe then ADR/prerequisite review; no copied Spectrum or
+Spectrogram state/UI policy.

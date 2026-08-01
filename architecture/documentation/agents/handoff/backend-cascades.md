@@ -594,3 +594,23 @@ warmed allocation signal; full order/interaction gate intentionally incomplete.
 risks: Allocation is volatile and not pod RSS, but repeated hard-limit
 crossings are decisive. No Engee bug is claimed.
 next_task_candidates: Bounded Persistence Frequency Limits provider matrix.
+
+## Cascade 21 Persistence Frequency Limits provider probe — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c19_persistence_leakage_probe`.
+scope: Prod EngeeDSP 0.72.0, N=64 deterministic real/complex, fixed Leakage,
+explicit Overlap=0, bins/topology; no repository or external state mutation.
+contracts: Auto/full fixture equality; exact in-domain endpoints/new 1024 grid;
+partial clipping equals canonical boundary; outside/equal/reversed reject;
+PWR/occurrence materially change; repeats/order and Leakage interaction PASS.
+validation: Provider accepts Bool pair and 1x2 matrix and leaks MethodError for
+string endpoints. Product requires exact flat finite non-Bool pair and whole
+interval inside analysis-source topology.
+resources: 28 accepted warmed observations, max 382.46 MiB/1.994 s, no guard
+crossing. Conditional on N=64 and explicit zero only.
+decision: Capability PASS; DEC-027 product BLOCKED. Current adapter omitted
+Overlap is not covered; zero would globally change C18/C19 output/cache.
+cleanup: live bytes reduced, pod stop 204 and follow-up stopped confirmed.
+changes: None.
+next_task_candidates: Fixed segmentation/resource foundation evidence and ADR.

@@ -1143,3 +1143,24 @@ default was frozen. Persistence Frequency Limits is the active successor.
 | E2E Tester | `/root/e2e_c18_persistence_inventory` | fallback inventory complete | event scenario after ADR | provider output oracle | no fixed waits |
 | DevOps | `/root/devops_c17_commit` | C19 hardening commit complete | C20 docs checkpoint | Architect validation | `fec3dbf` |
 | MATLAB Researcher | `/root/matlab_c20_persistence_overlap` | official formula complete | Frequency Limits docs-only delta | direct web only | no GUI/clicker |
+
+## Cascade 21 close — 2026-08-01
+
+Status: `provider-capability-pass-product-blocked`; DEC-027.
+
+Frequency Limits exact geometry/validation/raw-output capability is confirmed
+under a resource-bounded explicit-zero-overlap probe. It cannot be implemented
+against current C19 omitted-overlap semantics or smuggle fixed zero as an
+implementation detail. The next task is a separate fixed Persistence
+segmentation/resource foundation with numerical/cache/deployment migration.
+
+### Persistent role queue after C21
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | C21 PASS/cleanup complete | fixed-segmentation assessment | actual-scale evidence | DEC-027 blocked |
+| Frontend | `/root/frontend_c18_persistence_inventory` | Frequency Limits inventory complete | no product work | foundation + successor ADR | exact UI unknowns |
+| Tester | `/root/tester_c18_persistence_matrix` | Frequency Limits matrix complete | foundation matrix | new algorithm contract | no copied semantics |
+| E2E Tester | `/root/e2e_c18_persistence_inventory` | Frequency Limits inventory complete | rebaseline then limits scenario | foundation | event-driven plan |
+| DevOps | `/root/devops_c17_commit` | C20 docs committed | C21 docs checkpoint | Architect validation | `c6b8dd9` |
+| MATLAB Researcher | `/root/matlab_c20_persistence_overlap` | C21 docs research complete | fixed policy docs risk | direct web only | no GUI/clicker |

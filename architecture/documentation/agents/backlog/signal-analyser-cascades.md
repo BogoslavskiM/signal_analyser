@@ -194,6 +194,12 @@ Owner: Architect
   the guard even at 0. Values 99/99.9 and the remaining interaction/order
   matrix were not run. No cap/default/state/API/UI is accepted. Pod cleanup and
   stopped status are confirmed; Persistence Frequency Limits is now active.
+- C21 Frequency Limits provider capability PASS under explicit probe-only
+  OverlapPercent=0: exact in-domain grids/endpoints, reject-not-clip product
+  direction, raw PWR/occurrence effect, max 382.46 MiB. DEC-027 blocks product
+  implementation because current C19 omits Overlap and fixed zero is a global
+  breaking algorithm/cache migration. Next work is a separate fixed Persistence
+  segmentation/resource foundation; C21 evidence remains reusable afterward.
 - C19 implemented and locally accepted at product/test commit `2f99ff8`:
   backend 1497/1497, C19 48/48, frontend 2/2, focused Playwright static and
   independent Frontend/E2E/Backend audits CLEAN. Local Engee gate retains the

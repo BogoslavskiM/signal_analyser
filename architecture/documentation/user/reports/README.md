@@ -21,3 +21,4 @@
 - [Cascade 18: typed Persistence foundation](signal-analyser-cascade-v18.md)
 - [Cascade 19: контракт Persistence Leakage](signal-analyser-cascade-v19.md)
 - [Cascade 20: Persistence OverlapPercent NO-GO](signal-analyser-cascade-v20.md)
+- [Cascade 21: Persistence Frequency Limits capability](signal-analyser-cascade-v21.md)

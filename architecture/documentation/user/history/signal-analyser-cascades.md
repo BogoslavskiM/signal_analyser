@@ -443,3 +443,19 @@
   pod очищен, остановлен и подтверждён `stopped`.
 - DEC-026 запрещает product exposure и выбирает Persistence Frequency Limits
   как fallback. Engee bug не заявлен.
+
+## 2026-08-01 — Cascade 21 Persistence Frequency Limits capability
+
+- Official web research подтвердил provider/UI direction и RBW/grid влияние;
+  prod probe на N=64 с explicit overlap zero подтвердил exact real/complex
+  endpoints, new dense grid, PWR/occurrence deltas, validation и Leakage
+  independence.
+- Partial external ranges provider-clips bit-exact к canonical boundary; product
+  direction — reject before dispatch. Bool и matrix shape provider принимает,
+  поэтому required exact flat finite non-Bool pair.
+- 28 accepted observations прошли guard, максимум 382.46 MiB; cleanup и stopped
+  pod подтверждены.
+- DEC-027 сохраняет capability evidence, но блокирует product implementation:
+  current adapter omits overlap, а fixed zero является отдельной breaking
+  numerical/cache/deployment migration. Следующий cascade — fixed-segmentation
+  foundation discovery, не Frequency Limits code.

@@ -29,4 +29,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260801-024: typed Persistence foundation](DEC-20260801-024-typed-persistence-foundation.md)
 - [DEC-20260801-025: Persistence Leakage](DEC-20260801-025-persistence-leakage.md)
 - [DEC-20260801-026: Persistence OverlapPercent NO-GO](DEC-20260801-026-persistence-overlap-no-go.md)
+- [DEC-20260801-027: Persistence Frequency Limits blocked](DEC-20260801-027-persistence-frequency-limits-blocked.md)
 - [Шаблон ADR](template.md)
