@@ -398,3 +398,21 @@
   MATLAB GUI. Spectrum и Spectrogram остаются полностью независимыми.
 - `not yet implemented`: product/test/runtime evidence, commit SHA, deploy и
   merge появятся только после реализации и отдельного audit.
+
+## 2026-08-01 — Cascade 19 Persistence Leakage implementation
+
+- `implemented`: immutable `SignalPersistenceSettings`, exact root/display/API
+  object, Leakage-aware query/cache key и provider order перед fixed bins/
+  topology. Spectrum и Spectrogram остаются изолированными.
+- Vanilla UI получил условную Persistence section, normalized range, per-
+  Display draft/accepted state, 422 rollback и bounded 409 retry. Client DSP и
+  новый route/tab не добавлены.
+- Durable matrix закрывает default/validation, Leakage cache identity, A/B,
+  Clear/re-add/source warm reuse, combined provider calls и exact rollback всех
+  четырёх caches. E2E scenario имеет event-based waits/timing/exact cleanup.
+- `verified locally`: backend 1497/1497, C19 48/48, frontend 2/2, Julia parse,
+  Playwright static/support/help, docs/skills/vanilla/adapter/diff PASS; audits
+  CLEAN. Product/test checkpoint `2f99ff875141a70888195c5718f437765b7ef591`.
+- Runtime E2E, push, deployment и merge не выполнялись. Local Engee gate
+  проходит findpeaks 16/16 и затем падает только из-за отсутствующего EngeeDSP;
+  prod provider probe PASS, новый Engee defect не заявлен.

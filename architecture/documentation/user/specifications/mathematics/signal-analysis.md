@@ -49,14 +49,16 @@
    `signal_analyser_spectrogram_plot`.
 4. Persistence копирует полный raw analysis source в immutable
    `SignalPersistenceQuery` и вызывает representation `persistence` с
-   `NumPowerBins=256`, затем topology-derived `TwoSided`. Provider matrix
+   explicit `Leakage=lambda`, затем `NumPowerBins=256` и topology-derived
+   `TwoSided`. `lambda` — конечное non-Bool число `0 <= lambda <= 1`, default
+   `0.5`. Provider matrix
    обязана иметь exact orientation power × frequency; frequency и positive
    linear-power axes конечны и строго возрастают, occurrence конечна в
    `[0,100]`. Transpose, clamp, `abs`, epsilon floor и fallback запрещены.
    Presentation вычисляет `P_dB=10 log10(P)` до 160×160 bounding. Отдельный
-   raw cache принадлежит signal identity/topology и вычисляется только для
-   analysis source. `N<2` даёт typed empty без provider. Code anchors:
-   `SignalPersistenceQuery`, `SignalPersistenceData`,
+   raw cache принадлежит signal identity/topology/Leakage и вычисляется только
+   для analysis source. `N<2` даёт typed empty без provider. Code anchors:
+   `SignalPersistenceSettings`, `SignalPersistenceQuery`, `SignalPersistenceData`,
    `SignalPersistenceCacheKey`, `SignalPersistenceService`,
    `signal_analyser_persistence_plot`.
 5. Линии прореживаются равномерно до 1024 точек; heatmap — до 160×160, включая
@@ -136,6 +138,12 @@ power/RBW, но при фиксированном overlap не меняет freq
 Requested Frequency Scale в query/cache/provider identity не входит и не меняет
 raw/wire `x/y/z`; eligibility и effective metadata выводятся только из topology
 analysis source.
+
+Persistence settings нового Display: independent `Leakage=0.5`. Exact Leakage,
+source, samples, sample rate, topology и fixed `NumPowerBins=256` входят в typed
+raw-cache identity; signed zero канонизируется. Leakage меняет provider power
+axis и occurrence, но не frequency axis в подтверждённом prod contract. A/B и
+Clear сохраняют preference; empty Display и `N<2` provider не вызывают.
 
 Power Limits также не входят в query/cache/provider identity. Для Auto
 effective extrema вычисляются по полной raw matrix до wire bounding: каждое
@@ -296,6 +304,13 @@ revision mutation.
   atomic rollback всех четырёх cache maps. Frontend 2/2; Julia parse,
   Playwright static/support/help и финальный audit PASS. Runtime E2E не
   выполнялся.
+- Cascade 19 backend — 1497/1497 PASS; C19 typed 13/13, lifecycle/cache 14/14
+  и API 21/21. Проверены exact one-key settings, provider order, Leakage cache
+  identity, A/B/Clear/re-add/source warm reuse, combined provider isolation и
+  rollback четырёх caches. Frontend 2/2; Playwright static/support/help и два
+  независимых audit CLEAN. Prod EngeeDSP `0.72.0` probe подтвердил omitted=.5,
+  endpoints/order/topology; локальный Engee gate честно останавливается после
+  findpeaks 16/16 из-за отсутствующего пакета. Runtime E2E не выполнялся.
 
 ## Источники и наблюдаемые различия
 

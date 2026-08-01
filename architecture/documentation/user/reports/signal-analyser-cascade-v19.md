@@ -1,7 +1,7 @@
-# Cascade 19: контракт Persistence Leakage
+# Cascade 19: Persistence Leakage
 
 Дата: 2026-08-01
-Статус: контракт принят; реализация запланирована; не развёрнуто
+Статус: реализовано и локально проверено; не развёрнуто
 
 ## Результат исследования
 
@@ -17,7 +17,7 @@ Number, не Bool, inclusive `[0,1]`, signed-zero canonicalization. Состоя
 зеркалом active Display; Clear сохраняет intent; A/B и source/cache identity
 разделены.
 
-Frontend получит normalized native range `0..1` в существующей Display tab.
+Frontend получил normalized native range `0..1` в существующей Display tab.
 Это сознательное product/API представление, а не неподтверждённая копия шкалы
 MATLAB GUI. Новые route, settings tab, client DSP или Persistence metadata не
 добавляются.
@@ -28,8 +28,10 @@ MATLAB GUI. Новые route, settings tab, client DSP или Persistence metada
 - temporary prod pod остановлен, cleanup подтверждён;
 - MATLAB GUI, Command Window и Add-On Explorer не использовались;
 - рабочая ветка была чистой до документационного checkpoint;
-- implementation, verification, runtime E2E, push, deployment и merge пока не
-  заявляются.
+- backend 1497/1497 PASS; C19 48/48 PASS; frontend 2/2 PASS;
+- Playwright syntax/support/static/help и независимые audits CLEAN;
+- product/test commit `2f99ff875141a70888195c5718f437765b7ef591`;
+- runtime E2E, push, deployment и merge не выполнялись.
 
 Связано с [DEC-025](../decisions/DEC-20260801-025-persistence-leakage.md),
 [DEC-024](../decisions/DEC-20260801-024-typed-persistence-foundation.md) и

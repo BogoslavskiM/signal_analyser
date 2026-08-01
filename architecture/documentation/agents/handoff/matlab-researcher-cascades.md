@@ -686,3 +686,55 @@ and choose another narrow slice.
 source_evidence: MathWorks `pspectrum` and Persistence Spectrum in Signal
 Analyzer public documentation.
 engee_bug_candidate: None pending provider probe.
+
+## C20 Persistence Overlap docs-only discovery — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c20_persistence_overlap`.
+goal: Select the safest successor probe after DEC-025 without freezing product
+state.
+scope: Official MathWorks/Engee web documentation and read-only repository
+evidence. MATLAB GUI, Command Window, Add-On Explorer and clicker were forbidden
+and untouched.
+recommendation: GO only for a bounded prod capability/resource probe of
+independent Display-local Persistence OverlapPercent. No ADR or implementation
+is yet justified. Persistence Frequency Limits is fallback; Power Limits stays
+deferred.
+documented_contract: Provider domain is `[0,100)`, but omitted overlap is
+derived from spectral-window ENBW and therefore indirectly depends on Leakage.
+Explicit overlap changes stride/segment participation; Persistence then bins
+the spectrogram into a power-frequency percentage histogram.
+ambiguities: Fresh MATLAB Persistence value/widget/rounding/validation are not
+documented. Percentage-to-sample flooring may make several values output-equal,
+so provider equality cannot by itself prove a semantic GUI default.
+required_probe: Reuse C19 real/complex `N=256`, `Fs=100` plus a deterministic
+transient fixture; omitted repeats; explicit 0/25/50/75/99/99.9; invalid
+range/nonfinite/string/Bool; bounded Leakage interaction; option permutations;
+exact output invariants/deltas and warmed allocation/elapsed evidence.
+resource_guard: Probe 0/50/75 first. Stop high-overlap sequence when 99 exceeds
+512 MiB warmed allocation, eight times 50%, or timeout. Any product maximum
+must be evidence-backed and may be narrower than provider `[0,100)`.
+pass_gate: Deterministic bounded interval including zero/nominal, material
+transient output change, stable 256x1024 topology/orientation, option-order
+invariance, no TimeResolution dependency and a safe resource-backed cap.
+no_go: Ignored/nondeterministic/order-dependent option; invariant failure;
+nominal resource blow-up; broken TimeResolution dependency; or a default policy
+that falsely claims MATLAB parity.
+changes: None.
+verification: Role/skill, DEC-018/024/025, C12/C18/C19 reports and official
+public docs reviewed read-only.
+follow-ups: Run only the bounded prod probe after C19 closes.
+next_task_candidates: Persistence Overlap probe; fallback Persistence Frequency
+Limits matrix; later safe Power Limits semantics research.
+docs_sources: MathWorks `pspectrum`, Persistence Spectrum, Spectrogram
+Computation, Explore Signals and Find Interference pages; Engee `pspectrum`.
+documented_direction: Persistence uses an overlap-controlled spectrogram before
+constructing the power-frequency percentage histogram.
+clicker_setup: Not invoked by assignment.
+observed_undocumented_behavior: None.
+docs_vs_app_delta: Control existence is documented; fresh value and exact UI
+behavior are not.
+product_tasks: None before probe and successor ADR.
+e2e_scenarios: None; no MATLAB scenario was created.
+source_evidence: Official URLs and repository C12/C18/C19 evidence only.
+engee_bug_candidate: None.

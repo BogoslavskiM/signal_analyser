@@ -457,3 +457,22 @@ next_task_candidates: C19 static scenario after ADR and selectors.
 browser_workspace_setup: No browser action; future background CDP only, MATLAB
 unchanged.
 engee_bug_candidate: None pending provider probe.
+
+## Cascade 19 Persistence Leakage static scenario and audit — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c18_persistence_inventory`.
+scope: `test/playwright/**`.
+contracts: Exact one-key/full view body; default/endpoints; provider-derived
+y-or-z change; finite source-only heatmap; equal/invalid/422/two-409; isolation;
+A/B/Clear/re-add/source; event-based waits/timing and exact cleanup.
+changes: Registered four selectors/feature and added independent
+`persistence_leakage.test.js`. Self-audit hardened native range invalid path to
+require visible correction or inline error.
+verification: All Playwright syntax, support/static/help, fixed-sleep and diff
+gates PASS; independent verdict CLEAN.
+browser_workspace_setup: Static-only; no CDP/browser/window/MATLAB action.
+risks: Runtime target absent; N<2 remains backend-owned.
+follow-ups: Run focused then full enabled suite against exact C19 target.
+next_task_candidates: Runtime C19 or C20 static only after frozen contract.
+engee_bug_candidate: None.

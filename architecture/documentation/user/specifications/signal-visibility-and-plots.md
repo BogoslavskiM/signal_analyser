@@ -14,8 +14,9 @@
 - Time и Spectrum отображают отдельный цветной trace каждого видимого сигнала
   и легенду.
 - Spectrogram и Persistence относятся к page-local analysis source.
-- Persistence сохраняет прежний heatmap wire без controls: x — частота в Hz,
-  y — power level в dB, z — occurrence в %. Secondary visible signals не
+- Persistence сохраняет прежний heatmap wire: x — частота в Hz, y — power
+  level в dB, z — occurrence в %. Единственный control — независимый
+  Display-local normalized Leakage. Secondary visible signals не
   создают дополнительные Persistence traces или provider calls; empty Display
   очищает тот же host без stale heatmap.
 - Можно добавлять, выбирать и закрывать Display pages; на активной странице
@@ -71,6 +72,12 @@
   пустому значению или Linear. Empty/non-Spectrogram скрывает секцию без потери
   preferences. Frontend не
   рассчитывает hop, segment count, Kaiser window, RBW или matrix.
+- Для активного Persistence в существующей Display tab показывается отдельный
+  Leakage range `0..1` с шагом `0.01`, default `0.5` и текстовым значением.
+  Настройка независима от Spectrum/Spectrogram Leakage и принадлежит Display.
+  No-source control disabled, но preference сохраняется; новая settings tab не
+  создаётся. `input` меняет только draft, `change` отправляет один полный view.
+  Frontend не вычисляет Persistence DSP, histogram, window или dB.
 - Overflow menu активного Display содержит доступное действие Clear Display.
   Пустая страница показывает явные empty states графика, Measurements и Peaks;
   тот же graph host сохраняется, а stale Plotly traces очищаются.
@@ -115,7 +122,7 @@ A/B независимы. При смене analysis source допустимый
 отвергаются атомарно.
 
 Additive `spectrogram_settings` — строгий полный объект
-`{overlap_percent:number,leakage:number,frequency_limits:null|object,frequency_scale:"linear|log"}`.
+`{overlap_percent:number,leakage:number,frequency_limits:null|object,frequency_scale:"linear|log",power_limits:null|object}`.
 Overlap/Leakage обязаны быть конечными JSON Number, но не Bool; диапазоны
 `[0,75]` и `[0,1]`, defaults нового Display `50` и `0.5`. Frequency Limits
 равны Auto `null` либо exact `{min_hz,max_hz,units:"Hz"}` с конечными non-Bool
@@ -132,6 +139,16 @@ requested scale сохраняется всегда. Для отсутствую
 равна `{requested,effective:null,available:[]}`, для real —
 `{requested,effective:requested,available:["linear","log"]}`, для complex —
 `{requested,effective:"linear",available:["linear"]}`.
+
+Additive `persistence_settings` — строгий полный объект `{leakage:number}`.
+Единственный ключ обязателен при наличии объекта; отсутствие всего объекта
+сохраняет preference. Leakage — конечный JSON Number, но не Bool, inclusive
+`[0,1]`; default нового Display `0.5`, signed zero канонизируется. Missing/
+extra key, неверный type, non-finite или выход за диапазон дают field-level 422
+без mutation/cache publication. Equal canonical object — cold no-op; valid
+change — одна revision; stale — 409 с максимум одним frontend replay. Root
+зеркалирует active Display, A/B независимы, Clear сохраняет preference без
+provider, re-add/source используют settings-aware raw cache key.
 
 Snapshot добавляет non-null `row_selected_signal`, nullable root
 `analysis_signal` и `displays[].analysis_signal`; root/display
@@ -223,6 +240,12 @@ strict effective pair как Plotly `zmin/zmax`; для `{v,v}` только ren
 Spectrogram-settings-only mutation не материализует missing Spectrum cache.
 Canonical no-op не вызывает missing Spectrum/Spectrogram provider: response
 сохраняет wire keys с typed-empty representation и переиспользует cached data.
+
+Persistence-settings-only mutation не материализует Spectrum/Spectrogram и не
+меняет их settings/payload. Raw Persistence cache identity включает signal,
+sample rate/count, topology, fixed 256 power bins и exact Leakage. Provider
+получает canonical `Leakage`, `NumPowerBins`, `TwoSided`; existing heatmap wire
+и dB presentation не получают metadata или дополнительных traces.
 Следующий обычный GET материализует missing data. Другие semantic changes
 (membership/source/time/Spectrum/active plot) сохраняют полную atomic
 preparation.

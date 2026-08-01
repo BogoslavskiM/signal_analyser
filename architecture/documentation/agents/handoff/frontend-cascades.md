@@ -380,3 +380,20 @@ blocked until prod provider evidence and an accepted ADR freeze defaults,
 validation and wire shape.
 follow-ups: Implement only after the C19 documentation checkpoint.
 next_task_candidates: Exact state/UI/request implementation after probe PASS.
+
+## Cascade 19 Persistence Leakage UI and audit — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c18_persistence_inventory`.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Exact full desired `persistence_settings`; normalized range 0..1
+step .01; separate per-Display draft/accepted/error; no-source disabled;
+equal/local-invalid no request; 422 and bounded 409 rollback; no new tab/route,
+metadata, client DSP or Spectrum/Spectrogram coupling.
+changes: Added four stable selectors, conditional section, exact state/request
+branches and recovery lifecycle.
+verification: JS syntax, frontend 2/2, targeted invariants and diff PASS.
+Independent post-test audit verdict CLEAN; no additional edits were required.
+risks: Runtime browser verification remains external.
+follow-ups: Runtime focused scenario only on accepted target.
+next_task_candidates: Later Persistence controls only after successor ADR.

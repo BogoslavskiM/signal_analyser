@@ -183,6 +183,17 @@ Owner: Architect
   UI is an explicit product decision; it is not a MATLAB GUI-parity claim.
   Backend, Frontend, Tester and E2E implementation is eligible after the
   contract documentation checkpoint. Overlap/ROI/limits/scale remain deferred.
+- C20 discovery nominates independent Persistence OverlapPercent for a bounded
+  prod capability/resource probe only. Provider `[0,100)` is not a product
+  range: omitted default depends on window/Leakage and high overlap may amplify
+  allocations. Probe transient real/complex output, invalids/order and guarded
+  0/25/50/75/99/99.9 resources; no ADR until a safe cap and explicit non-GUI-
+  parity default policy exist. Persistence Frequency Limits is the fallback.
+- C19 implemented and locally accepted at product/test commit `2f99ff8`:
+  backend 1497/1497, C19 48/48, frontend 2/2, focused Playwright static and
+  independent Frontend/E2E/Backend audits CLEAN. Local Engee gate retains the
+  known missing-package failure after findpeaks 16/16; prod 0.72.0 probe PASS.
+  Runtime E2E, push, deployment and merge remain unclaimed.
 - C14 discovery is restricted to Spectrogram Reassign. Official docs support a
   boolean `pspectrum` flag and display-local checkbox semantics, but app default
   remains inferred. Prod Engee false/true/default/invalid/order/topology probe

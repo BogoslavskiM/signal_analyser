@@ -1088,3 +1088,37 @@ is a product/API representation, not an unobserved MATLAB GUI fact.
 | E2E Tester | `/root/e2e_c18_persistence_inventory` | inventory complete | focused static scenario | selectors + docs commit | event-driven plan |
 | DevOps | `/root/devops_c17_commit` | clean gate complete | contract docs commit | Architect validation | clean/ahead 49 |
 | MATLAB Researcher | `/root/matlab_c18_docs_discovery` | docs-only complete standby | next independent research | no safe GUI need | official Leakage map |
+
+## Cascade 20 research candidate — 2026-08-01
+
+Status: `docs-discovery-complete`; prod probe queued after C19 integration.
+
+Persistence OverlapPercent is the next narrow candidate only for a bounded
+capability/resource probe. Documentation gives provider `[0,100)` but no fixed
+omitted default: it is window/Leakage-dependent. High overlap is guarded by a
+512 MiB/eight-times-nominal/timeout stop. A successor ADR requires deterministic
+real/complex transient effects, stable topology, option-order invariance and an
+evidence-backed product cap. No MATLAB GUI or clicker action is required.
+
+## Cascade 19 implementation close — 2026-08-01
+
+Status: `implemented-and-locally-verified`; product/test checkpoint
+`2f99ff875141a70888195c5718f437765b7ef591`; not pushed or deployed.
+
+DEC-025 is implemented across Backend, Frontend, Tester and E2E ownership.
+Backend 1497/1497 and C19 48/48, frontend 2/2, Julia parse, Playwright static,
+documentation/skills/vanilla/adapter/diff and final independent audits are
+green. Runtime E2E is blocked only by absent CDP/application target. Local
+Engee gate passes findpeaks 16/16 then fails the known absent EngeeDSP import;
+prod provider evidence and cleanup are complete.
+
+### Persistent role queue after C19
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c19_persistence_leakage_probe` | C19 complete/audited | C20 bounded prod probe | final docs commit | 1497/1497 CLEAN |
+| Frontend | `/root/frontend_c18_persistence_inventory` | C19 UI/audit complete | C20 feasibility after ADR | C20 probe/decision | front 2/2 CLEAN |
+| Tester | `/root/tester_c18_persistence_matrix` | C19 matrix complete | C20 matrix after ADR | C20 probe/decision | C19 48/48 |
+| E2E Tester | `/root/e2e_c18_persistence_inventory` | C19 static/audit complete | runtime C19 / C20 after ADR | no runtime target | static CLEAN |
+| DevOps | `/root/devops_c17_commit` | C19 product checkpoint complete | final docs checkpoint | Architect validation | `2f99ff8` |
+| MATLAB Researcher | `/root/matlab_c20_persistence_overlap` | C20 docs discovery complete | bounded provider probe | C19 docs close | probe plan ready |

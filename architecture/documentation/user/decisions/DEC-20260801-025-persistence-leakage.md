@@ -4,7 +4,7 @@ ID: `DEC-20260801-025`
 Дата: `2026-08-01`
 Статус: accepted
 Extends: [DEC-024 typed Persistence foundation](DEC-20260801-024-typed-persistence-foundation.md)
-Implementation: planned in Cascade 19; not deployed
+Implementation: implemented and locally verified in Cascade 19; not deployed
 
 ## Контекст
 
@@ -104,3 +104,14 @@ provider-derived изменение `y` или `z`, один source-only heatmap
   https://www.mathworks.com/help/signal/ug/persistence-spectrum-in-signal-analyzer.html
 - Engee `pspectrum`:
   https://engee.com/helpcenter/stable/en/func-dsp-transforms-correlation-and-modeling/func-pspectrum.html
+
+## Implementation note — 2026-08-01
+
+Cascade 19 реализовал решение локально в product/test commit
+`2f99ff875141a70888195c5718f437765b7ef591`. Backend 1497/1497; C19 typed,
+lifecycle/cache и API 48/48; frontend 2/2; Julia parse, Playwright static/
+support/help, documentation/skills/vanilla/adapter/diff gates и два независимых
+integration audit PASS/CLEAN. Local Engee gate проходит findpeaks 16/16 и затем
+честно падает из-за отсутствующего EngeeDSP; prod `0.72.0` probe остаётся
+authoritative provider evidence. Runtime E2E, push, deployment и merge не
+выполнялись.

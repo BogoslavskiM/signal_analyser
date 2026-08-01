@@ -412,3 +412,23 @@ follow-ups: Freeze provider output oracle before writing assertions.
 next_task_candidates: Implement C19 tests concurrently with product owners
 after contract checkpoint.
 engee_bug_candidate: None pending provider probe.
+
+## Cascade 19 Persistence Leakage verification — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c18_persistence_matrix`.
+scope: `test/back/**`, `test/front/**`, `test/engee/**`.
+coverage: Typed default/copy/signed-zero/query/cache; exact root/display/API
+object and strict invalids; Leakage-specific cache/provider calls, equal no-op,
+A/B/Clear/re-add/source warm reuse, combined Spectrogram+Persistence isolation,
+failure equality of four caches; frontend draft/422/two-409/disabled; prod
+provider default/endpoints/order/Bool delta contract.
+changes: Migrated every affected exact body/snapshot fixture without weakening
+comparisons and added durable C19 matrices.
+verification: Backend 1497/1497; C19 13+14+21 = 48/48; frontend 2/2; diff PASS.
+Local Engee gate passes findpeaks 16/16 then fails required EngeeDSP import.
+risks: C19 Engee assertions require provisioned runtime; prod probe supplies
+current 0.72.0 evidence.
+follow-ups: Run target Engee gate and runtime E2E on an accepted SHA.
+next_task_candidates: C20 matrix only after probe and ADR.
+engee_bug_candidate: None.

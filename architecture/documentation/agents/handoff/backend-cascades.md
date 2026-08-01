@@ -549,3 +549,25 @@ canonical Leakage, NumPowerBins, TwoSided order.
 next_task_candidates: C19 Backend OOP implementation after docs checkpoint.
 source_evidence: Exact report under `agents/reports/` and official docs.
 engee_bug_candidate: None.
+
+## Cascade 19 Persistence Leakage implementation — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c19_persistence_leakage_probe`.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_service.jl`.
+contracts: Immutable finite non-Bool Leakage settings; exact root/display/API
+object; query/cache identity; Leakage, NumPowerBins, TwoSided provider order;
+Persistence-only isolation; A/B/Clear/re-add/source lifecycle; N<2/empty;
+prepared failure rollback of Display/revision/four caches; unchanged C18 wire.
+changes: Added typed settings and Display field, compatibility constructors,
+payload/validator, settings-aware query/key/service and semantic preparation
+planner. No custom DSP/fallback.
+verification: Julia parse/diff PASS; full backend 1497/1497; C19 typed 13/13,
+lifecycle/cache 14/14 and API 21/21. Final source audit CLEAN.
+risks: No synthetic renderer-failure seam; renderer consumes already validated
+typed C18 data. Prod provider evidence remains scoped to EngeeDSP 0.72.0.
+follow-ups: Runtime target only; later settings require successor ADR.
+next_task_candidates: Bounded C20 Persistence Overlap prod probe.
+source_evidence: DEC-025, prod C19 report, product commit `2f99ff8`.
+engee_bug_candidate: None.

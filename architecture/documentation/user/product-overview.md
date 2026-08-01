@@ -19,6 +19,9 @@
   reference context, но не требование к Genie UI.
 - Time и spectrum могут содержать отдельные traces всех visible signals;
   spectrogram и persistence относятся к selected visible signal.
+- Persistence имеет отдельный per-Display normalized Leakage `0..1`, default
+  `0.5`; он не связан с одноимёнными Spectrum/Spectrogram настройками и
+  пересчитывается только backend EngeeDSP provider.
 - Find Peaks — явно включаемая time-domain capability активной Display page.
   Она использует только EngeeDSP provider, публикует таблицу и markers из
   backend snapshot и не имеет скрытого JavaScript/Julia fallback.
