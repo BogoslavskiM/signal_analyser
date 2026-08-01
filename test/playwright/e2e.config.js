@@ -23,6 +23,7 @@ module.exports = {
       displayCanvas: "display-canvas",
       displayPlotTitle: "display-plot-title",
       activePlotHost: "active-plot-host",
+      displaySelectionContractErrorState: "display-selection-contract-error-state",
       plotErrorState: "plot-error-state",
       plotInvalidDataState: "plot-invalid-data-state",
       findPeaksAction: "find-peaks-action",
@@ -149,6 +150,9 @@ module.exports = {
     // scenario routes only /api/state and is disabled until the fatal/Retry
     // behavior is available in the selected frontend target.
     "global-snapshot-envelope": false,
+    // DEC-033 / Cascade 27 is a planned browser contract for the local
+    // selection quarantine versus global active-root-fatal boundary.
+    "display-selection-snapshot": false,
     "spectrogram-overlap": true,
     "spectrogram-leakage": true,
     "spectrogram-frequency-limits": true,
