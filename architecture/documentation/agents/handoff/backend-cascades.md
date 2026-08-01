@@ -431,3 +431,29 @@ final integration audit CLEAN.
 risks: Local EngeeDSP and Devhub MCP unavailable; no runtime deployment.
 follow-ups: Power Limits requires separate evidence/ADR and OOP contract.
 next_task_candidates: C17 read-only inventory after research.
+
+## C17 Power Limits OOP inventory — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c17_power_inventory`.
+goal: Design the exact typed/OOP C17 backend boundary without product edits.
+scope: Read-only domain/math/service inspection.
+contracts: Add typed Auto/Explicit power limits to settings only; keep query,
+raw data, provider and cache key unchanged. A separate finite
+`SignalSpectrogramPowerExtent` must allow equality for truthful constant Auto
+data while explicit input remains strictly ordered. One projection traversal
+converts full raw power to dB and accumulates finite extrema before bounding.
+effective state stays transient and is never stored in Display.
+implementation_note: Reuse the already-created selected Spectrogram projection
+in multi-trace snapshot assembly to avoid a second full-matrix scan.
+changes: None; inventory only.
+verification: Read-only code-anchor and lifecycle review; no behavior test was
+required because no file changed.
+risks: Reusing the strict explicit type for Auto extent would reject `{v,v}`;
+deriving from bounded z would miss extrema.
+follow-ups: Implement DEC-023 after its documentation checkpoint and return the
+five-key payload handoff to Frontend/Tester.
+next_task_candidates: Implement DEC-023 in the three existing Julia modules.
+source_evidence: Current conversion/bounding and presentation-only semantic
+preparation anchors plus MATLAB Researcher C17 recommendation.
+engee_bug_candidate: None; the slice never changes provider behavior.

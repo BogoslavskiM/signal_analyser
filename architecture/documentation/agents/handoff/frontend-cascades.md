@@ -304,3 +304,25 @@ verification: Frontend 2/2, JS syntax/diff and final audit PASS.
 risks: Live Plotly/network behavior awaits exact deployment.
 follow-ups: Do not infer or add Power Limits before C17 ADR.
 next_task_candidates: C17 feasibility inventory after frozen contract.
+
+## C17 Power Limits UI inventory — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c17_power_inventory`.
+goal: Define the smallest vanilla-JS C17 control/render state before editing.
+scope: Read-only `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Atomic P min/P max fieldset, effective readout and inline error in the
+existing Spectrogram section. Mirror Frequency Limits per-Display draft/commit
+state; no request on intra-pair focus. Consume backend effective metadata as
+Plotly zmin/zmax only and never derive from bounded z.
+selectors: `spectrogram-power-limits-controls`,
+`spectrogram-power-min-input`, `spectrogram-power-max-input`,
+`spectrogram-power-limits-effective`, `spectrogram-power-limits-error`.
+changes: None; feasibility inventory only.
+verification: Read-only implementation-anchor review; no frontend test was
+required because no file changed.
+risks: Constant equal Plotly bounds are version-sensitive; DEC-023 freezes a
+renderer-only ±1 dB fallback without changing metadata/z.
+follow-ups: Consume backend effective metadata, keep exact five-key queue and
+hand stable selectors/workflows to E2E Tester.
+next_task_candidates: Implement after backend five-key metadata is available.

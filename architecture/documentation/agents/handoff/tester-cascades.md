@@ -309,3 +309,27 @@ diff PASS. Final integration audit CLEAN.
 risks: Local EngeeDSP absent and Devhub MCP SSE returned 404; no defect claim.
 follow-ups: Rerun Engee gate when environment is provisioned.
 next_task_candidates: C17 test matrix only after decision freeze.
+
+## C17 Power Limits test matrix — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c17_power_matrix`.
+goal: Define the exact C17 unit/API/frontend/E2E regression matrix.
+scope: Read-only backend/API/frontend/E2E fixture inventory.
+contracts: Exact five-key parser/API; Auto/Explicit/full-raw extrema;
+empty/zero/mixed/constant matrices; no provider/cache/query/x/y/z effect;
+cold/equal/combined mutation; A/B/Clear/re-add/source/scale lifecycle; atomic UI
+pair, Auto clear, 422 and bounded 409. Oversized fake matrix must place extrema
+outside transported 160×160 cells.
+migration: Backend/API/front fixtures plus four exact Spectrogram E2E scenarios
+must move from four to five keys without weakening assertions.
+estimate: 139–183 new/modified assertions across Tester and E2E ownership.
+changes: None; test planning only.
+verification: Existing C15/C16 fixture and lifecycle coverage inspected; no
+suite run was required because no test changed.
+risks: No Engee test is warranted because DEC-023 forbids provider work.
+follow-ups: Implement role-owned matrix after Backend/Frontend changes, then
+run full backend/frontend gates and preserve exact five-key assertions.
+next_task_candidates: Implement matrix after Backend/Frontend product diff.
+source_evidence: DEC-023 inputs plus C15 pair and C16 presentation-only tests.
+engee_bug_candidate: None; no Engee contract is introduced.

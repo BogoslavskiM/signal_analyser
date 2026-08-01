@@ -153,9 +153,12 @@ Owner: Architect
   state, requested/effective/available lifecycle, zero-provider scale-only
   mutation, transient zero-bin presentation, C16 47/47 + API 16/16, frontend
   2/2 and final audit CLEAN. Runtime E2E/deployment remain pending authority.
-- C17 is research-only until Power Limits defaults, paired validation, units,
-  scale interaction, Fit Colormap lifecycle and compute-versus-presentation
-  boundary are evidenced and frozen in a successor decision.
+- DEC-023 freezes C17 Power Limits: exact fifth key, Auto/null or strict dB pair,
+  full-raw finite-dB effective metadata, Display/source lifecycle and Plotly
+  zmin/zmax presentation only. Query/cache/provider/x/y/z remain unchanged.
+  Constant Auto `{v,v}` keeps exact metadata and receives only a renderer-local
+  `[v-1,v+1]` fallback. Fit Colormap, viewport state и изменения/shared Power
+  Limits существующего Spectrum dB/linear остаются deferred.
 - C14 discovery is restricted to Spectrogram Reassign. Official docs support a
   boolean `pspectrum` flag and display-local checkbox semantics, but app default
   remains inferred. Prod Engee false/true/default/invalid/order/topology probe

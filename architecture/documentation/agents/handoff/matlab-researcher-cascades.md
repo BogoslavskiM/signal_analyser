@@ -579,3 +579,56 @@ an API field; later safe GUI recovery should save real Linear/Log and complex
 locked-Linear scenarios before any MATLAB-parity claim.
 next_task_candidates: C16 Frequency Scale contract/implementation; C17 Power
 Limits research after exact default/validation/Fit Colormap evidence.
+
+## C17 Spectrogram Power Limits recommendation — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c17_power_limits`.
+goal: Establish a docs-backed smallest C17 Power Limits direction without
+touching the unsafe MATLAB Command Window.
+scope: Official public MathWorks docs/screenshots, saved evidence and read-only
+current product inventory.
+contracts: Power Limits are full-Spectrogram colormap bounds and a
+presentation-only C17 candidate; exact product schema remains Architect-owned.
+method: Official MathWorks internet docs and saved evidence only; Add-On
+Explorer/Help and MATLAB GUI/Command Window were not touched because an
+incomplete unexecuted command remains unsafe.
+documented_contract: Power Limits bound the colormap magnitude range over the
+full Spectrogram and do not follow zoom/pan; Fit Colormap is a separate visible-
+region action. Spectrogram defaults to dB display. Power Limits are not
+computational `pspectrum` MinThreshold.
+observed_limits: Saved SA-UI-003 proves dB/complex Linear context but field
+values are truncated. Official screenshot pairs -50/-10 and -45/-20 are example
+settings, not universal defaults.
+recommendation: Product Auto `null` or strict explicit dB pair; full-raw finite
+dB effective extrema before 160×160 bounding; presentation-only zmin/zmax;
+exclude provider/query/cache; preserve Display/source lifecycle. Defer Spectrum
+power-limit changes/shared behavior, Fit Colormap and viewport persistence;
+the existing Spectrum dB/linear feature remains unchanged.
+changes: None; repository and MATLAB GUI/Command Window remained unchanged.
+verification: Direct docs inventory and clicker health/bootstrap complete; no
+GUI mutation and no scenario save was claimed. Clicker CLI stale status differs
+from healthy `/health`, an infrastructure observation only.
+risks: Exact MATLAB validation/rounding and Fit writeback remain unobserved.
+follow-ups: Implement DEC-023; perform a later safe GUI validation/Fit probe
+only after Command Window recovery.
+next_task_candidates: DEC-023 implementation; later safe Fit/validation probe.
+source_evidence: Official MathWorks docs below and saved SA-UI-003 only.
+engee_bug_candidate: None; clicker status mismatch is infrastructure
+bookkeeping and not isolated as an Engee defect.
+docs_sources: MathWorks Spectrogram Computation, Explore Signals, Customize
+Signal Analyzer and Signal Analyzer app public pages; official example images.
+documented_direction: Full-data Power Limits are stable under zoom/pan; Fit
+Colormap is a separate visible-region action; dB is the existing display mode.
+clicker_setup: `/health` and full `/agent/bootstrap` succeeded; stale CLI PID
+was not trusted. No typing occurred, so the English/ASCII and double-Enter guard
+was not invoked; the incomplete command remains untouched.
+observed_undocumented_behavior: SA-UI-003 shows complex Linear context and
+truncated Power Limit fields only; exact values/validation are unclaimed.
+docs_vs_app_delta: Current backend has no full-raw power metadata and current
+frontend lets Plotly derive colors from bounded z.
+product_tasks: Typed fifth key/metadata; atomic UI pair/zmin/zmax; exact unit,
+frontend and E2E matrices; Fit/viewport in a later contract.
+e2e_scenarios: Proposed Auto full-raw range, explicit pair with unchanged z,
+invalid pair, Clear/source/A-B/scale lifecycle and exact cleanup. No saved path
+exists because authorized GUI evidence was intentionally not created.

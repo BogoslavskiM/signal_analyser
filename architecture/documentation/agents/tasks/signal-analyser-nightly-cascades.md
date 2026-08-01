@@ -949,3 +949,27 @@ this is not isolated as an Engee defect.
 | E2E Tester | `/root/e2e_c13_impl` | C16 static complete | C17 after implementation | no runtime target | final audit CLEAN |
 | DevOps | `/root/devops_c16_commit` | C16 product commit complete | docs commit | Architect docs validation | `8330822` |
 | MATLAB Researcher | `/root/matlab_c17_power_limits` | C17 docs-only research active | exact recommendation | unsafe MATLAB Command Window | C16 docs evidence |
+
+## Cascade 17 contract freeze — 2026-08-01
+
+Status: `contract-frozen`; implementation eligible after documentation
+checkpoint.
+
+[DEC-20260801-023](../../user/decisions/DEC-20260801-023-spectrogram-power-limits.md)
+freezes the fifth exact `power_limits` key, product Auto/null and strict explicit
+dB pair. Auto effective extrema come from full raw finite power before 160×160
+wire bounding. Power Limits remain presentation-only and never enter query,
+cache or provider identity. Constant finite Auto metadata remains exact `{v,v}`;
+only Plotly rendering uses deterministic `[v-1,v+1]`. Fit Colormap и любые
+изменения/shared Power Limits существующего Spectrum dB/linear отложены.
+
+### Persistent role queue for C17
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c17_power_inventory` | OOP inventory complete | implementation after docs commit | docs checkpoint | typed projection plan |
+| Frontend | `/root/frontend_c17_power_inventory` | feasibility complete | implementation after docs commit | backend metadata | selector/state proposal |
+| Tester | `/root/tester_c17_power_matrix` | matrix complete | tests after docs commit | product diff | 139–183 assertion estimate |
+| E2E Tester | `/root/e2e_c13_impl` | C16 complete | five-key migration/scenario | product selectors | C16 CLEAN |
+| DevOps | `/root/devops_c16_commit` | C16 docs complete | C17 contract checkpoint | Architect validation | `0324849` |
+| MATLAB Researcher | `/root/matlab_c17_power_limits` | docs-only complete | later safe Fit probe | unsafe Command Window | direct-doc handoff |

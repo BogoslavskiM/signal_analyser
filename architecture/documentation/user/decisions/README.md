@@ -25,4 +25,5 @@ ADR immutable по смыслу. Старое решение не перепис
 - [DEC-20260801-020: Spectrogram Reassign NO-GO](DEC-20260801-020-spectrogram-reassign-no-go.md)
 - [DEC-20260801-021: Spectrogram Frequency Limits](DEC-20260801-021-spectrogram-frequency-limits.md)
 - [DEC-20260801-022: Spectrogram Frequency Scale](DEC-20260801-022-spectrogram-frequency-scale.md)
+- [DEC-20260801-023: Spectrogram Power Limits](DEC-20260801-023-spectrogram-power-limits.md)
 - [Шаблон ADR](template.md)

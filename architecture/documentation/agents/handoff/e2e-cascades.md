@@ -346,3 +346,26 @@ browser_workspace_setup: Static-only; browser and MATLAB untouched.
 risks: Runtime network/timing/Plotly path awaits authorized exact deployment.
 follow-ups: Run isolated C16 on the accepted SHA with artifacts.
 next_task_candidates: C17 E2E only after implementation.
+
+## C17 Power Limits static scenario inventory — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c13_impl`.
+goal: Define acceptance-grade five-key C17 browser coverage before edits.
+scope: Read-only `test/playwright/**` inventory against DEC-023.
+contracts: Migrate all four exact Spectrogram scenarios, then add Auto/manual,
+atomic pair, exact zmin/zmax/zauto, unchanged x/y/z, local invalid, 422/two-409,
+no-source/re-add, A/B/Clear/source/scale isolation and exact cleanup.
+changes: None; planning only.
+verification: Static scenario/selector/fixture review; no runtime or file change.
+risks: Browser wire cannot prove extrema came from pre-bounding raw data; that
+is a Backend/Tester oracle. Constant fallback needs deterministic front fixture.
+follow-ups: Register five stable Power Limit selectors and implement after the
+Backend/Frontend contract lands; use observable conditions, never fixed sleeps.
+next_task_candidates: Five-key migration and `spectrogram_power_limits.test.js`.
+performance_evidence: Plan retains per-mutation timing/request logging; no new
+runtime evidence exists before deployment.
+browser_workspace_setup: Read-only static inventory; no CDP, focus, Space or
+MATLAB action.
+source_evidence: DEC-023 and existing C12/C13/C15/C16 Playwright scenarios.
+engee_bug_candidate: None; C17 does not invoke Engee provider behavior.
