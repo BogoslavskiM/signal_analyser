@@ -900,8 +900,9 @@ function signal_spectrogram_calculate(
 
     duration_s = (length(query.values) - 1) / query.sample_rate_hz
     time_tolerance_s = sqrt(eps(Float64)) * max(duration_s, 1 / query.sample_rate_hz, 1.0)
+    latest_segment_center_s = duration_s + 0.5 / query.sample_rate_hz
     all(
-        center -> -time_tolerance_s <= center <= duration_s + time_tolerance_s,
+        center -> -time_tolerance_s <= center <= latest_segment_center_s + time_tolerance_s,
         data.segment_centers_s,
     ) || throw(ArgumentError(
         "Spectrogram provider вернул центры сегментов вне временного домена сигнала",

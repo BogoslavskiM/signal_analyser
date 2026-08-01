@@ -1296,6 +1296,10 @@ end
     @test_throws ArgumentError SA.signal_spectrogram_calculate(SA.SignalSpectrogramService(mismatch), real_query)
     outside_time = InvalidSpectrogramProvider(SA.SignalSpectrogramData([0.0, 5.0], [0.0, 0.2], [1.0 2.0; 3.0 4.0], SA.ONE_SIDED_SPECTRUM))
     @test_throws ArgumentError SA.signal_spectrogram_calculate(SA.SignalSpectrogramService(outside_time), real_query)
+    short_center = InvalidSpectrogramProvider(SA.SignalSpectrogramData([0.0, 5.0], [0.0, 0.15], [1.0 2.0; 3.0 4.0], SA.ONE_SIDED_SPECTRUM))
+    @test SA.signal_spectrogram_calculate(SA.SignalSpectrogramService(short_center), real_query).segment_centers_s[end] == 0.15
+    beyond_short_center = InvalidSpectrogramProvider(SA.SignalSpectrogramData([0.0, 5.0], [0.0, 0.16], [1.0 2.0; 3.0 4.0], SA.ONE_SIDED_SPECTRUM))
+    @test_throws ArgumentError SA.signal_spectrogram_calculate(SA.SignalSpectrogramService(beyond_short_center), real_query)
     outside_frequency = InvalidSpectrogramProvider(SA.SignalSpectrogramData([-1.0, 5.0], [0.0, 0.1], [1.0 2.0; 3.0 4.0], SA.ONE_SIDED_SPECTRUM))
     @test_throws ArgumentError SA.signal_spectrogram_calculate(SA.SignalSpectrogramService(outside_frequency), real_query)
 
