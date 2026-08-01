@@ -51,11 +51,13 @@
   `change`, целиком и через существующую revision queue. Log недоступен, пока
   в membership есть комплексный сигнал. Normalize Y остаётся локальным
   presentation control и не меняет Spectrum payload/revision.
-- Внутри той же Display tab для непустого Spectrogram показывается только
-  `Overlap (%)` и normalized `Leakage`. Overlap принадлежит Display, default
-  50, product range 0..75; Leakage независима от Spectrum Leakage, default 0.5,
-  range 0..1. Drafts локальны; Overlap change/blur/Enter и Leakage change
-  коммитят один full view через существующую revision queue.
+- Внутри той же Display tab для непустого Spectrogram показываются
+  `Overlap (%)`, normalized `Leakage` и пара `F min`/`F max` в фиксированных
+  Hz. Overlap принадлежит Display, default 50, product range 0..75; Leakage
+  независима от Spectrum Leakage, default 0.5, range 0..1. Auto-границы
+  показывают backend-effective topology. Frequency draft коммитится атомарно
+  только по Enter либо после выхода фокуса из всей пары; переход между полями
+  запроса не создаёт. Очистка обоих полей возвращает Auto.
   Empty/non-Spectrogram скрывает секцию без потери preferences. Frontend не
   рассчитывает hop, segment count, Kaiser window, RBW или matrix.
 - Overflow menu активного Display содержит доступное действие Clear Display.
@@ -102,13 +104,18 @@ A/B независимы. При смене analysis source допустимый
 отвергаются атомарно.
 
 Additive `spectrogram_settings` — строгий полный объект
-`{overlap_percent:number,leakage:number}`. Оба значения обязаны быть конечными
-JSON Number, но не Bool; диапазоны `[0,75]` и `[0,1]`, defaults нового Display
-`50` и `0.5`. Signed zero канонизируется. Missing/extra key, неверный тип,
-non-finite и выход за диапазон дают
-field-level 422 без mutation/cache publication. Equal canonical input — no-op,
-изменение — одна revision, stale — 409. A/B независимы, Clear сохраняет
-preference и не вызывает provider, первый re-add пересчитывает Spectrogram.
+`{overlap_percent:number,leakage:number,frequency_limits:null|object}`.
+Overlap/Leakage обязаны быть конечными JSON Number, но не Bool; диапазоны
+`[0,75]` и `[0,1]`, defaults нового Display `50` и `0.5`. Frequency Limits
+равны Auto `null` либо exact `{min_hz,max_hz,units:"Hz"}` с конечными non-Bool
+границами, `min_hz < max_hz` и всем interval внутри topology analysis source:
+real `[0,Fs/2]`, complex `[-Fs/2,Fs/2]`. Signed zero канонизируется.
+Missing/extra key, неверный type/units, non-finite, диапазон или внешний
+interval дают field-level 422 без mutation/cache publication. Equal canonical
+input — cold no-op, изменение — одна revision, stale — 409 с максимум одним
+replay. A/B независимы, Clear сохраняет preference и не вызывает provider,
+первый re-add пересчитывает Spectrogram. Source change сохраняет только
+полностью допустимый explicit interval, иначе атомарно возвращает Auto.
 
 Snapshot добавляет non-null `row_selected_signal`, nullable root
 `analysis_signal` и `displays[].analysis_signal`; root/display
@@ -160,12 +167,22 @@ Plotly renderer без изменения state.
 
 Root и каждый Display snapshot содержат canonical `spectrogram_settings`.
 Spectrogram использует только analysis source, полный raw signal и exact
-Leakage/overlap в typed query/cache. EngeeDSP получает `Leakage`,
-`OverlapPercent`, затем explicit `TwoSided`: real one-sided, complex centered
-two-sided. Raw power и axes
+Leakage/overlap/requested Frequency Limits в typed query/cache. EngeeDSP
+получает `Leakage`, `OverlapPercent`, explicit `TwoSided`, затем только для
+explicit режима `FrequencyLimits`: real one-sided, complex centered two-sided.
+Auto и explicit полный domain имеют разные cache identities, поскольку их
+provider outputs не считаются bitwise эквивалентными. Raw power и axes
 backend-owned; wire применяет exact `10log10(P)` и только presentation bounding
 160×160. Source change сохраняет overlap, но меняет cache identity. `N<2` и
 empty Display возвращают typed empty без provider.
+
+`plots.spectrogram.frequency_limits` всегда содержит `mode`, `requested` и
+`effective`. Для Auto effective равен полному authoritative topology, для
+explicit — requested interval; metadata сохраняется и для typed-empty `N<2`.
+Explicit provider axis обязана иметь минимум две строго возрастающие точки,
+лежать внутри interval и сохранять обе границы с tolerance
+`sqrt(eps(Float64))*max(Fs,1)`. Post-hoc crop, собственная FFT/STFT и fallback
+запрещены. Spectrum Frequency Limits полностью независимы.
 
 Spectrogram-settings-only mutation не материализует missing Spectrum cache.
 Canonical no-op не вызывает missing Spectrum/Spectrogram provider: response

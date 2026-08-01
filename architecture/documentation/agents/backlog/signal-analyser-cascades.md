@@ -146,6 +146,13 @@ Owner: Architect
   1229/1229, frontend 2/2 and Playwright static gates pass. Audit corrections
   cover cold-cache/no-op independence, signed-zero hash and bounded stale replay.
   Runtime target E2E, push and deployment remain unperformed.
+- C15 implementation is complete at local checkpoint `5602ccb`: backend
+  1263/1263, C15 34/34, frontend 2/2 and Playwright static gates pass. Runtime
+  target E2E, push and deployment remain unperformed.
+- C16 selected candidate is Spectrogram Frequency Scale only. Before
+  implementation freeze exact four-key settings and authoritative
+  requested/effective/available metadata. Scale is presentation-only and must
+  never enter raw query/cache/provider identity. Power Limits move to C17.
 - C14 discovery is restricted to Spectrogram Reassign. Official docs support a
   boolean `pspectrum` flag and display-local checkbox semantics, but app default
   remains inferred. Prod Engee false/true/default/invalid/order/topology probe

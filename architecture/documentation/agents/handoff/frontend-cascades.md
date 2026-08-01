@@ -271,3 +271,20 @@ verification: JavaScript syntax/diff and frontend 2/2 PASS.
 risks: Runtime browser timing remains unverified.
 follow-ups: No MATLAB slider-scale parity claim; normalized provider value only.
 next_task_candidates: C14 control only after typed ADR/backend.
+
+## Cascade 15 Spectrogram Frequency Limits UI — 2026-08-01
+
+canonical_role: Frontend
+session: `/root/frontend_c13_impl`.
+scope: `public/index.html`, `public/js/app.js`, `public/css/app.css`.
+contracts: Exact three-key normalization; backend-effective Auto fields;
+per-Display pair draft; atomic Enter/group-focusout commit; accepted 422
+rollback; one bounded 409 replay; Spectrum independence.
+changes: Added F min/F max/error selectors. Audit consolidated Spectrogram to
+one render/bind implementation and removed per-input blur/change submission;
+intra-pair focus is request-free.
+verification: Frontend 2/2, JS syntax and diff PASS.
+risks: Runtime browser behavior awaits exact target; source markup uses a safe
+dynamic mount into the existing compact one-line Spectrogram section.
+follow-ups: C16 requires backend-authoritative requested/effective state.
+next_task_candidates: C16 scale select only after successor ADR.

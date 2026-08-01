@@ -115,11 +115,13 @@ Leakage конечна и лежит в `[0,1]`. Scale/frequency scale искл�
 identity; Leakage, effective Frequency Limits, inclusive sample range,
 signal/sample rate и one/two-sided topology входят в typed key.
 
-Spectrogram settings нового Display: explicit `OverlapPercent=50` и
-`Leakage=0.5`. Оба значения принадлежат Display, сохраняются при Clear и
+Spectrogram settings нового Display: explicit `OverlapPercent=50`,
+`Leakage=0.5` и Auto Frequency Limits. Все значения принадлежат Display,
+сохраняются при Clear и
 независимо восстанавливаются при A/B; первый re-add пересчитывает raw
-Spectrogram. Exact overlap, Leakage, source, samples, sample rate и topology
-входят в typed raw-cache identity. Signed zero канонизируется. Leakage меняет
+Spectrogram. Exact overlap, Leakage, requested Auto/Explicit interval, source,
+samples, sample rate и topology входят в typed raw-cache identity. Signed zero
+канонизируется. Auto и explicit полный domain различаются. Leakage меняет
 power/RBW, но при фиксированном overlap не меняет frequency/time axes в
 подтверждённом provider contract. Empty Display и `N<2` provider не вызывают.
 
@@ -148,6 +150,14 @@ units строго `Hz`. При смене source сохранённый interva
 Provider output для explicit query обязан быть отсортированным, лежать внутри
 effective limits и сохранять обе границы с tolerance
 `sqrt(eps(Float64))*max(f_s,1)`.
+
+Для Spectrogram exact explicit Frequency Limits передаются после Leakage,
+OverlapPercent и TwoSided. Весь interval должен лежать внутри topology одного
+analysis source; provider clipping не является продуктовым контрактом. Axis
+должна содержать минимум две строго возрастающие точки и сохранять обе
+requested границы с той же tolerance. Auto metadata берёт полный topology, а
+explicit metadata равна requested даже при typed-empty short input. Никакой
+post-hoc обрезки матрицы или собственной спектральной оценки нет.
 
 Для raw statistics пустые/non-finite samples и неположительная либо
 неконечная `f_s` отвергаются до публикации view/display mutation. Позиции
@@ -239,6 +249,12 @@ revision mutation.
   unchanged grids, bounded 409 и ordinary-GET materialization after typed-empty
   no-op response. Frontend 2/2 и Playwright static PASS; runtime E2E не
   выполнялся.
+- Cascade 15 backend — 1263/1263 PASS, C15 34/34. Проверены strict
+  Auto/Explicit Hz state, real/complex topology, source preserve/reset,
+  distinct Auto/full cache identity, provider order/output guard, N<2
+  metadata, Spectrum independence и atomic failures. Frontend 2/2 покрывает
+  полный natural-focus pair, 422, first/second 409; Playwright static PASS.
+  Runtime E2E не выполнялся.
 
 ## Источники и наблюдаемые различия
 

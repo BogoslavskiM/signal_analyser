@@ -392,3 +392,23 @@ verification: Repeats and option order exact; no app/test/network layer used.
 risks: Package semantic version unavailable; partial clipping not exposed.
 follow-ups: Implement DEC-021 typed OOP contract.
 next_task_candidates: Backend C15 implementation.
+
+## Cascade 15 implementation — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c15_spectrogram_limits_probe`.
+scope: `lib/domain/signal_analyser_state.jl`,
+`lib/services/signal_analyser_service.jl`,
+`lib/services/signal_analyser_math.jl`.
+contracts: Exact three-key settings; nullable Auto/strict Explicit Hz; real and
+complex topology validation; independent Spectrum state; requested/effective
+metadata; distinct Auto/full cache identity; canonical provider order and
+strict explicit output-axis guard; source preserve/reset and cold no-op.
+changes: Extended typed Display settings, query/cache key, parser, lifecycle,
+provider adapter and plot metadata. No fallback, crop, route or dependency.
+verification: Backend 1263/1263 after audit regressions, C15 34/34, Julia parse
+and diff PASS. Local EngeeDSP remains unavailable after findpeaks 16/16.
+risks: Runtime provider/E2E remains undeployed; suspected Nyquist-touch edge is
+blocked by strict input/output guards.
+follow-ups: C16 Frequency Scale must not enter query/cache/provider.
+next_task_candidates: Typed presentation-only C16 state after successor ADR.

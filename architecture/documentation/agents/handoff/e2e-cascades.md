@@ -308,3 +308,22 @@ and diff PASS. Static-only; browser/MATLAB untouched.
 risks: Runtime Plotly/network/timing remains pending exact deployment.
 follow-ups: Run isolated C13 scenario on accepted SHA.
 next_task_candidates: C14 static scenario only after implementation.
+
+## Cascade 15 Spectrogram Frequency Limits static scenario — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c13_impl`.
+scope: `test/playwright/**`.
+contracts: Auto/effective, explicit real/conditional complex, y/z provider
+change with invariant time centers, Spectrum independence, A/B/Clear/source,
+local/422/bounded 409 and exact cleanup. Legacy C12/C13 specs now require the
+three-key object.
+changes: Added `spectrogram_frequency_limits.test.js`, selectors and feature.
+Audit moved the request listener before the first natural F-min edit: Tab proves
+zero requests/revision change; final commit proves exactly one full request and
+`+1`. Cleanup restores exact Spectrum and Spectrogram state and rethrows errors.
+verification: All Playwright JS syntax, support contract, runner help and diff
+PASS. Static-only; browser and MATLAB untouched.
+risks: Conditional complex/N<2 and live timing await exact deployed target.
+follow-ups: Run C12/C13/C15 on accepted SHA with timing/network artifacts.
+next_task_candidates: Runtime E2E after explicit deployment authority.

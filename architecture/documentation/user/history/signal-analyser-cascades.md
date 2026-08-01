@@ -303,3 +303,23 @@
 - DEC-020 запрещает payload/state/UI/control, silent downgrade, fallback и
   custom DSP до upstream fix и повторного public-provider matrix.
 - Product/test files не менялись; цикл переключён на C15 Frequency Limits.
+
+## 2026-08-01 — Cascade 15 Spectrogram Frequency Limits
+
+- `implemented`: independent Display-local Auto/Explicit Hz limits в exact
+  трёхключевом Spectrogram settings object. Interval строго целиком лежит в
+  topology единственного analysis source; provider clipping не экспонируется.
+- Auto и explicit полный domain имеют разные query/cache identities. Provider
+  order: Leakage, OverlapPercent, TwoSided, FrequencyLimits. Metadata
+  `mode/requested/effective` определена и для `N<2` typed-empty.
+- Frontend получил атомарную пару F min/F max. Переход фокуса между полями не
+  отправляет смешанный request; Enter или выход из группы создаёт один полный
+  запрос. 422 и оба уровня bounded 409 возвращают accepted state.
+- Три последовательных cross-role audit pass исправили natural-focus blind
+  spot, старые E2E object shapes и точное восстановление Spectrum settings.
+- `verified locally`: backend 1263/1263, C15 34/34, frontend 2/2, Julia parse,
+  Playwright syntax/support/help, skills/vanilla/docs/diff PASS.
+- Product/test checkpoint `5602ccb20c773c00bac29bb66d8e602a866114c9`.
+  Runtime E2E, push, deployment и merge не выполнялись. Local Engee gate
+  проходит findpeaks 16/16 и затем падает только из-за отсутствующего EngeeDSP;
+  prod provider probe остаётся runtime capability evidence.

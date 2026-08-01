@@ -278,3 +278,19 @@ and DEC-021 resolve strict fully-inside range, source reset and N<2 metadata.
 changes: None; read-only matrix.
 follow-ups: Implement tests in role-owned paths after Backend/Frontend changes.
 next_task_candidates: C15 unit/API/Engee/frontend matrix.
+
+## Cascade 15 verification — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c15_limits_matrix`.
+scope: `test/back/**`, `test/front/**`, `test/engee/**`.
+coverage: Strict three-key parser/API; Auto/Explicit/cache/provider/metadata;
+real/complex source preserve/reset; provider order and Engee matrix; exact
+frontend drafts, full natural fieldset focus transition, 422 and bounded first/
+second 409. Legacy exact bodies were migrated without weakening assertions.
+verification: Backend 1263/1263, C15 34/34, frontend 2/2, diff PASS. Local
+Engee gate passes findpeaks 16/16 then fails required absent EngeeDSP import.
+risks: Real package gate remains prod-only; state aggregate cannot construct a
+zero-duration N=1 fixture, so N<2 metadata is tested through the typed path.
+follow-ups: Provisioned Engee rerun and runtime E2E only.
+next_task_candidates: C16 presentation-only zero-provider matrix after ADR.

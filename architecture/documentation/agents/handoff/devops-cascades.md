@@ -246,3 +246,19 @@ frontend 2/2, Playwright static, prod Engee matrix.
 risks: Local EngeeDSP package unavailable; runtime E2E not run.
 follow-ups: Separate Architect documentation checkpoint; no push/deploy/merge.
 next_task_candidates: C14 local checkpoint only after frozen implementation.
+
+## Cascade 15 product/test commit-freeze — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c12_commit`.
+scope: Seventeen explicit completed paths under `lib/**`, `public/**` and
+`test/**`; Architect documentation excluded.
+changes: Local commit `5602ccb20c773c00bac29bb66d8e602a866114c9`,
+message `feat: добавить границы частот Spectrogram`.
+verification: Exact staged set and cached diff PASS; Julia parse; backend
+1263/1263 with C15 34/34; frontend 2/2. Local Engee environment limitation was
+retained honestly after findpeaks 16/16.
+risks: Runtime E2E and Engee package gate remain external.
+follow-ups: Separate Architect documentation checkpoint. No push/deploy/merge
+was requested or performed.
+next_task_candidates: C16 only after frozen successor contract.

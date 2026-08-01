@@ -104,3 +104,11 @@ deployment.
   https://www.mathworks.com/help/signal/ug/customize-signal-analyzer.html
 - MathWorks `pspectrum`:
   https://www.mathworks.com/help/signal/ref/pspectrum.html
+
+## Implementation note — 2026-08-01
+
+Решение реализовано и локально проверено в product/test checkpoint
+`5602ccb20c773c00bac29bb66d8e602a866114c9`. Backend 1263/1263, целевой C15
+34/34, frontend 2/2 и статические Playwright gates проходят. Runtime E2E,
+push, deployment и merge не выполнялись. Трёхключевой контракт DEC-021
+остаётся действующим до отдельного successor decision.

@@ -547,3 +547,35 @@ verification: Customize/Explore/Spectrogram/Spectrum/pspectrum/generated-script
 and limitations pages cross-checked; no runtime evidence.
 follow-ups: Optional bounded GUI validation later; not a C15 gate.
 next_task_candidates: C15 implementation/E2E from DEC-021.
+
+## C16 Spectrogram Frequency Scale recommendation — 2026-08-01
+
+canonical_role: MATLAB Researcher
+session: `/root/matlab_c16_next_slice`.
+scope: Official public MathWorks documentation, fresh matlab_clicker bootstrap,
+passive screenshot and existing saved Signal Analyzer evidence; repository and
+MATLAB state were not changed.
+documented_contract: Spectrogram Frequency Scale is presentation-only. Real
+one-sided data supports Linear and Log; complex centered two-sided data does
+not support Log. Power Limits are also presentation-only but form a larger
+paired numeric/colormap lifecycle and are deferred.
+observed_delta: Existing saved evidence confirms complex Spectrogram locks the
+control to Linear. A new real-Spectrogram transition was not observed; the
+current Command Window contains an incomplete unexecuted line, so no Enter,
+click, key, cleanup or scenario save was attempted. The passive temporary
+artifact is internal-only and is not promoted into client documentation.
+recommendation: Queue Frequency Scale as the sole C16 candidate. Preserve a
+stored Linear/Log preference per Display, derive effective Linear for complex
+sources, keep computed Spectrogram bins/power/cache unchanged, and preserve a
+stored zero minimum while deriving a positive render floor in Log.
+verification: Fresh health/bootstrap, all server skill/API/OpenAPI/scenario
+documents and relevant metadata were read. Live health succeeded while CLI
+status reported a stale PID; this remains suspected infrastructure bookkeeping,
+not a confirmed defect.
+risks: Real Spectrogram zero-to-Log behavior and complex-to-real preference
+restoration remain documentation-backed inference rather than new GUI evidence.
+follow-ups: Backend inventory decides whether the existing Display state needs
+an API field; later safe GUI recovery should save real Linear/Log and complex
+locked-Linear scenarios before any MATLAB-parity claim.
+next_task_candidates: C16 Frequency Scale contract/implementation; C17 Power
+Limits research after exact default/validation/Fit Colormap evidence.

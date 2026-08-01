@@ -846,3 +846,59 @@ remains independent as an explicit product delta from MATLAB shared-view bands.
 The suspected floating Nyquist-touch degenerate grid is recorded internally as
 ENGEE-20260801-005; strict product validation avoids it without claiming an
 upstream-confirmed defect.
+
+## Cascade 15 implementation audit — 2026-08-01
+
+Status: `fixes-in-progress`; product/test commit is blocked until repeat audit.
+
+The first integrated implementation passed backend 1259/1259, C15 30/30,
+frontend 2/2, Julia parse, Playwright syntax/support/help and diff checks. The
+formal local Engee gate again passed findpeaks 16/16 and then failed because the
+local environment does not contain EngeeDSP.
+
+A separate read-only integration audit found three cross-role regressions not
+caught by the first matrix: per-input blur could dispatch a mixed frequency
+pair, legacy Overlap/Leakage E2E specs still asserted pre-C15 Spectrogram object
+shapes, and the new scenario did not restore modified Spectrum limits. Frontend,
+Tester and E2E Tester are correcting these in their own ownership zones. Backend
+semantics matched DEC-021; it remains standby pending regression findings.
+
+## Cascade 16 discovery started — 2026-08-01
+
+Status: `research-recommendation-only`; no C16 contract or product changes.
+
+MATLAB Researcher recommends Spectrogram Frequency Scale as the only next slice:
+presentation-only Linear/Log for real one-sided data and effective locked Linear
+for complex two-sided data. Power Limits are deferred to C17 because exact
+defaults, paired validation, dB/linear behavior and Fit Colormap lifecycle are
+not yet evidenced. New GUI mutation was safely blocked by an incomplete
+unexecuted Command Window line; no scenario was saved or transferred.
+
+### Persistent role heartbeat during C15 audit fixes
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c15_spectrogram_limits_probe` | C16 state/API inventory | C16 contract input | read-only until Architect decision | C15 implementation 1259/1259 |
+| Frontend | `/root/frontend_c13_impl` | atomic C15 pair fix | integration rerun | Tester natural-focus regression | initial C15 2/2 |
+| Tester | `/root/tester_c15_limits_matrix` | C15 audit regression expansion | full gates | concurrent Frontend behavior | initial C15 matrix complete |
+| E2E Tester | `/root/e2e_c13_impl` | legacy migration and cleanup fix | static rerun | no runtime target | initial C15 scenario complete |
+| DevOps | `/root/devops_c12_commit` | completed standby | exact C15 commit after sign-off | audit fixes not accepted | contract commit `034ccec` |
+| MATLAB Researcher | `/root/matlab_c16_next_slice` | completed standby | safe GUI scenarios later | incomplete Command Window line | C16 docs/passive handoff |
+
+## Cascade 15 local freeze — 2026-08-01
+
+Status: `implemented-and-locally-verified`; product/test checkpoint
+`5602ccb20c773c00bac29bb66d8e602a866114c9`; not pushed, not deployed, runtime
+E2E not run.
+
+DEC-021 is implemented across Backend, Frontend, Tester and E2E ownership.
+Final gates are backend 1263/1263 with C15 34/34, frontend 2/2, Julia parse,
+Playwright syntax/support/help, skills/vanilla/docs and diff PASS. Three audit
+passes closed cold/natural-focus/request-shape/cleanup gaps; final read-only
+verdict is CLEAN. Local Engee remains an honest absent-package failure after
+findpeaks 16/16; prod provider evidence is authoritative.
+
+C16 discovery is active but no product contract is implemented. The selected
+candidate is presentation-only Spectrogram Frequency Scale. Contract freeze
+must add backend-authoritative requested/effective/available metadata and must
+exclude scale from raw query/cache/provider identity.
