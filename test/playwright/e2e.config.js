@@ -145,6 +145,10 @@ module.exports = {
     // DEC-029 / Cascade 23 is a planned runtime contract.  Keep its E2E
     // scenario parseable and explicitly gated until its target is available.
     "lazy-persistence-materialization": false,
+    // DEC-032 / Cascade 26 remains a target-gated browser contract.  Its
+    // scenario routes only /api/state and is disabled until the fatal/Retry
+    // behavior is available in the selected frontend target.
+    "global-snapshot-envelope": false,
     "spectrogram-overlap": true,
     "spectrogram-leakage": true,
     "spectrogram-frequency-limits": true,

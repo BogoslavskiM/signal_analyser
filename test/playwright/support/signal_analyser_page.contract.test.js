@@ -102,6 +102,7 @@ assert.equal(config.features["typed-spectrogram"], true);
 assert.equal(config.features["typed-persistence"], true);
 assert.equal(config.features["persistence-leakage"], true);
 assert.equal(config.features["lazy-persistence-materialization"], false);
+assert.equal(config.features["global-snapshot-envelope"], false);
 assert.equal(config.features["spectrogram-overlap"], true);
 assert.equal(config.features["spectrogram-leakage"], true);
 assert.equal(config.features["spectrogram-frequency-limits"], true);
