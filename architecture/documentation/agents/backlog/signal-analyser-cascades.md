@@ -170,6 +170,12 @@ Owner: Architect
   occurrence 0..100, exact dB then 160×160 bounding and analysis-source-only
   computation. Wire stays unchanged; no settings/API/UI controls are added.
   Persistence ROI/settings/Fit Colormap remain separately deferred.
+- C18 implemented and locally accepted at product/test commit `3b16cd9` plus
+  atomicity-oracle hardening `27fcdef`: backend 1449/1449, focused 49/49,
+  frontend 2/2, typed Persistence E2E static
+  and final audit CLEAN. P1 ordinary-snapshot partial cache publication was
+  found by audit and fixed with a four-cache prepared aggregate. Runtime
+  Engee/E2E and deployment remain external; no new Engee bug is claimed.
 - C14 discovery is restricted to Spectrogram Reassign. Official docs support a
   boolean `pspectrum` flag and display-local checkbox semantics, but app default
   remains inferred. Prod Engee false/true/default/invalid/order/topology probe

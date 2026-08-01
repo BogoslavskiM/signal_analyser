@@ -406,3 +406,22 @@ revive disabled `legacy-fixed-workspace` Persistence cards.
 next_task_candidates: C18 static scenario, then runtime on an accepted target.
 browser_workspace_setup: Background CDP only when available; MATLAB untouched.
 engee_bug_candidate: None.
+
+## Cascade 18 typed Persistence static scenario — 2026-08-01
+
+canonical_role: E2E Tester
+session: `/root/e2e_c18_persistence_inventory`.
+scope: `test/playwright/**`.
+contracts: Real one-sided full domain, conditional complex centered,
+multi-visible analysis-source-only, exact payload/Plotly heatmap, A/B,
+Clear/re-add/source and exact cleanup with no fixed sleeps.
+changes: Registered `typed-persistence` and added independent
+`typed_persistence.test.js`; disabled legacy fixed-workspace was not revived.
+verification: All Playwright syntax, support contract, runner help and diff
+PASS; final audit CLEAN. Runtime target absent; MATLAB untouched.
+risks: Complex branch conditionally skips when fixture has no complex signal;
+`N<2` remains backend-only by contract.
+follow-ups: Run focused then full suite on an accepted C18 target.
+next_task_candidates: Runtime C18 or C19 static after ADR.
+browser_workspace_setup: Background CDP only; no MATLAB/window action.
+engee_bug_candidate: None.

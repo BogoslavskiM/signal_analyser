@@ -365,3 +365,23 @@
 - Product/test checkpoint `290c057a05c7ebeab68a69632fcec462bd893339`.
   Runtime E2E, push, deployment и merge не выполнялись; Engee provider не
   затронут, поэтому новый Engee contract test не требуется.
+
+## 2026-08-01 — Cascade 18 typed Persistence foundation
+
+- `implemented`: legacy Persistence заменён отдельными immutable query/data/
+  cache-key, injectable provider/service и raw cache без изменения wire/UI.
+- Real теперь one-sided, complex centered two-sided; provider явно получает
+  `NumPowerBins=256`. Matrix принимается только как power × frequency,
+  positive power переводится точным `10log10(P)` до heatmap bounding.
+- Persistence вычисляется только для analysis source; secondary visible
+  signals не создают provider calls. `N<2` возвращает typed empty.
+- Финальный аудит обнаружил и закрыл частичную cache publication при failed
+  cold GET: ordinary snapshot теперь готовит весь payload и четыре cache maps,
+  затем публикует их одной фазой только после полного success.
+- `verified locally`: backend 1449/1449, C18 49/49, frontend 2/2, Julia parse,
+  Playwright syntax/support/help и diff PASS; final verdict `CLEAN`.
+- Product/test checkpoint `3b16cd96e64fab9654811baa69d83f59d2eac295`.
+  Test hardening checkpoint `27fcdef177061fed3a69f42899e680ba04ba1a87`.
+  Runtime E2E, push, deployment и merge не выполнялись. Local Engee gate
+  проходит findpeaks 16/16 и затем честно падает из-за отсутствующего EngeeDSP;
+  новый Engee defect не заявлен.

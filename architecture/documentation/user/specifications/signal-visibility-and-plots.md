@@ -14,6 +14,10 @@
 - Time и Spectrum отображают отдельный цветной trace каждого видимого сигнала
   и легенду.
 - Spectrogram и Persistence относятся к page-local analysis source.
+- Persistence сохраняет прежний heatmap wire без controls: x — частота в Hz,
+  y — power level в dB, z — occurrence в %. Secondary visible signals не
+  создают дополнительные Persistence traces или provider calls; empty Display
+  очищает тот же host без stale heatmap.
 - Можно добавлять, выбирать и закрывать Display pages; на активной странице
   расположен один график. MATLAB docking/multi-layout пока не переносится.
 - Тип графика, nullable analysis source и checkbox membership принадлежат

@@ -289,3 +289,19 @@ commit; accepted backend 1397/1397, C17 49/49 + API 22/22, frontend 2/2.
 risks: Branch remains local; runtime Playwright not run.
 follow-ups: Separate Architect documentation checkpoint; no push/deploy/merge.
 next_task_candidates: Commit accepted C17 documentation only.
+
+## Cascade 18 product/test checkpoint — 2026-08-01
+
+canonical_role: DevOps
+session: `/root/devops_c17_commit`.
+scope: Commit-only over 12 accepted non-architecture C18 product/test paths.
+changes: Local commit `3b16cd96e64fab9654811baa69d83f59d2eac295`
+(`feat: добавить typed Persistence foundation`).
+verification: Exact staged set and cached diff PASS; accepted backend
+1449/1449, C18 49/49, frontend 2/2, final audit CLEAN. Follow-up test-only
+commit `27fcdef177061fed3a69f42899e680ba04ba1a87` hardens the cold four-cache
+oracle; only architecture docs remain dirty.
+risks: Runtime E2E/Engee provider and deployment not performed.
+follow-ups: Separate Architect C18 implementation documentation checkpoint;
+no push/deploy/merge.
+next_task_candidates: Commit accepted C18 docs only.

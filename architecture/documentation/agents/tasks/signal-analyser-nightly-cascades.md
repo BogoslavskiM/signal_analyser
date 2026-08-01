@@ -1019,3 +1019,27 @@ Display analysis source is computed; secondary visible signals are excluded.
 | E2E Tester | `/root/e2e_c18_persistence_inventory` | static inventory complete | typed Persistence scenario | backend product diff | selectors available |
 | DevOps | `/root/devops_c17_commit` | C17 docs complete | C18 contract checkpoint | Architect validation | `7af17ec` |
 | MATLAB Researcher | `/root/matlab_c18_docs_discovery` | docs-only complete | no runtime follow-up | MATLAB GUI remains untouched | DEC-024 evidence |
+
+## Cascade 18 implementation close — 2026-08-01
+
+Status: `implemented-and-locally-verified`; product/test checkpoint
+`3b16cd96e64fab9654811baa69d83f59d2eac295`; test hardening
+`27fcdef177061fed3a69f42899e680ba04ba1a87`; not pushed or deployed.
+
+DEC-024 is implemented across Backend, Tester and E2E ownership; Frontend wire
+required no product migration. Backend 1449/1449, C18 49/49, frontend 2/2,
+parse/static/support/help/diff gates and final audit are green. Backend
+`/root/backend_c18_atomic_replacement` replaced a stalled P1-fix turn and
+closed atomic publication of all four caches. Runtime E2E remains unavailable;
+local EngeeDSP import remains the only required target-gate limitation.
+
+### Persistent role queue after C18
+
+| Canonical role | Session | Current task/status | Next queued task | Blocker/dependency | Last handoff |
+| --- | --- | --- | --- | --- | --- |
+| Backend | `/root/backend_c18_atomic_replacement` | C18 complete | C19 inventory after evidence | C19 decision | 49/49 + full PASS |
+| Frontend | `/root/frontend_c18_persistence_inventory` | zero product migration; tests complete | C19 feasibility | C19 decision | front 2/2 |
+| Tester | `/root/tester_c18_persistence_matrix` | C18 complete | C19 matrix after ADR | C19 decision | 49/49 |
+| E2E Tester | `/root/e2e_c18_persistence_inventory` | C18 static complete | runtime C18 / C19 after ADR | no runtime target | static PASS |
+| DevOps | `/root/devops_c17_commit` | product + test hardening complete | C18 docs checkpoint | Architect validation | `27fcdef` |
+| MATLAB Researcher | `/root/matlab_c18_docs_discovery` | C18 docs complete | C19 docs-only discovery | no MATLAB GUI use | DEC-024 consumed |

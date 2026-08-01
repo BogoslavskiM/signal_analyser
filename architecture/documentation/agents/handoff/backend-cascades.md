@@ -501,3 +501,23 @@ follow-ups: Implement DEC-024 after documentation checkpoint.
 next_task_candidates: Backend C18 implementation in the three existing Julia
 modules without API/UI expansion.
 engee_bug_candidate: None.
+
+## Cascade 18 typed Persistence implementation — 2026-08-01
+
+canonical_role: Backend
+session: `/root/backend_c18_atomic_replacement`; completes product work from
+`/root/backend_c18_inventory_replacement` and replaces its stalled P1 fix.
+scope: three existing `lib/domain|services` Julia modules.
+contracts: Dedicated immutable query/data/cache/provider/service; fixed 256;
+strict topology/orientation/axes/range; exact dB before bound; `N<2` empty;
+selected-only cache; unchanged wire and constructor compatibility.
+changes: Added typed Persistence OOP path and raw cache. Final P1 correction
+adds `SignalAnalyserPreparedDisplayPlots`: ordinary snapshot renders full
+plots/plot_payload and panel before publishing all four cache maps.
+verification: Backend 1449/1449, C18 49/49; Julia parse/diff and final audit
+CLEAN.
+risks: Prod Engee runtime not rerun; same-name/same-size raw replacement would
+need future generation identity.
+follow-ups: Runtime target gates only; no implicit settings expansion.
+next_task_candidates: C19 inventory after separate evidence/ADR.
+engee_bug_candidate: None.

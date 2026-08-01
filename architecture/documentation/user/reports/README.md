@@ -18,3 +18,4 @@
 - [Cascade 15: Spectrogram Frequency Limits](signal-analyser-cascade-v15.md)
 - [Cascade 16: Spectrogram Frequency Scale](signal-analyser-cascade-v16.md)
 - [Cascade 17: Spectrogram Power Limits](signal-analyser-cascade-v17.md)
+- [Cascade 18: typed Persistence foundation](signal-analyser-cascade-v18.md)

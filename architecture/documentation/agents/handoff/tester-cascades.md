@@ -370,3 +370,21 @@ follow-ups: Implement after Backend product types land; do not encode legacy
 transpose/abs/epsilon behavior as compatibility.
 next_task_candidates: C18 unit/API/front/Engee contract tests.
 engee_bug_candidate: None.
+
+## Cascade 18 verification — 2026-08-01
+
+canonical_role: Tester
+session: `/root/tester_c18_persistence_matrix`.
+scope: `test/back/**`, `test/front/**`, `test/engee/**`.
+coverage: 49 focused assertions over types/options/topology/orientation/dB,
+`N<2`, selected-only/repeat/A-B/Clear/re-add/source, warm/cold failure and
+wrong-topology exact equality of four caches/revision. API forbids only wire
+keys/routes, not internal typed names. Front covers positive/empty generic
+heatmap and no client DSP/control; Engee suite records explicit 256-bin path.
+verification: Backend 1449/1449; C18 49/49; frontend 2/2; diff PASS. Cold
+four-cache/revision/display oracle is checkpointed in `27fcdef`. Mandatory
+local Engee gate passes findpeaks 16/16 then fails absent EngeeDSP import.
+risks: Prod runtime contract remains evidence-backed but not rerun in C18.
+follow-ups: Provisioned Engee and runtime E2E only.
+next_task_candidates: C19 matrix after contract freeze.
+engee_bug_candidate: None.

@@ -109,3 +109,15 @@ A/B/Clear/re-add/source и exact cleanup. `N<2` остаётся unit/provider c
   https://www.mathworks.com/help/signal/ug/explore-signals.html
 - Engee `pspectrum`:
   https://engee.com/helpcenter/stable/en/func-dsp-transforms-correlation-and-modeling/func-pspectrum.html
+
+## Implementation note — 2026-08-01
+
+Cascade 18 реализовал решение локально в product/test commit
+`3b16cd96e64fab9654811baa69d83f59d2eac295`; cold-failure oracle усилен
+отдельным test commit `27fcdef177061fed3a69f42899e680ba04ba1a87`.
+Backend 1449/1449, C18 49/49, frontend 2/2, Julia parse, Playwright static/support/help и
+финальный integration audit PASS. P1-аудит дополнительно потребовал атомарный
+ordinary snapshot: все четыре cache maps теперь публикуются только после
+полного provider/data/render/panel success. Runtime E2E, push, deployment и
+merge не выполнялись; локальный Engee gate честно останавливается после
+findpeaks 16/16 из-за отсутствующего пакета EngeeDSP.

@@ -9,9 +9,8 @@
 - `N` — число отсчётов; `f_s` — частота дискретизации, Гц.
 - `x[n]` — входной сигнал, вещественный либо комплексный.
 - `t[n]` — время, с; частотные оси — Гц; power scale — дБ.
-- Spectrum и Spectrogram для real вызываются one-sided (`TwoSided=false`), для
-  complex — centered two-sided (`TwoSided=true`). Persistence пока сохраняет
-  legacy two-sided contract.
+- Spectrum, Spectrogram и Persistence для real вызываются one-sided
+  (`TwoSided=false`), для complex — centered two-sided (`TwoSided=true`).
 
 ## Реализованные формулы и algorithms
 
@@ -48,10 +47,18 @@
    `SignalSpectrogramQuery`, `SignalSpectrogramData`,
    `SignalSpectrogramService`, `SignalSpectrogramCacheKey`,
    `signal_analyser_spectrogram_plot`.
-4. Persistence вызывает representation `persistence`, `TwoSided=true`.
-   Power-level axis переводится в дБ по той же формуле; occurrence обязана быть
-   конечной в диапазоне 0–100 % с tolerance `1e-9`, затем clamp в `[0,100]`.
-   Code anchor: `signal_analyser_persistence_plot`.
+4. Persistence копирует полный raw analysis source в immutable
+   `SignalPersistenceQuery` и вызывает representation `persistence` с
+   `NumPowerBins=256`, затем topology-derived `TwoSided`. Provider matrix
+   обязана иметь exact orientation power × frequency; frequency и positive
+   linear-power axes конечны и строго возрастают, occurrence конечна в
+   `[0,100]`. Transpose, clamp, `abs`, epsilon floor и fallback запрещены.
+   Presentation вычисляет `P_dB=10 log10(P)` до 160×160 bounding. Отдельный
+   raw cache принадлежит signal identity/topology и вычисляется только для
+   analysis source. `N<2` даёт typed empty без provider. Code anchors:
+   `SignalPersistenceQuery`, `SignalPersistenceData`,
+   `SignalPersistenceCacheKey`, `SignalPersistenceService`,
+   `signal_analyser_persistence_plot`.
 5. Линии прореживаются равномерно до 1024 точек; heatmap — до 160×160, включая
    края через rounded indices. Code anchors:
    `signal_analyser_bounded_indices`, `signal_analyser_bounded_line`,
@@ -282,6 +289,13 @@ revision mutation.
   A/B/Clear/re-add/source/scale lifecycle и bit-identical backend `x/y/z`.
   Frontend 2/2; Julia parse, Playwright syntax/support/help и финальный
   integration audit PASS. Runtime E2E не выполнялся.
+- Cascade 18 backend — 1449/1449 PASS, C18 49/49. Проверены copied typed
+  query/cache identity, fixed 256 provider options, real/complex topology,
+  strict orientation/axes/range, exact dB-before-bound, `N<2`, selected-only
+  calls, repeat/A-B/Clear/re-add/source lifecycle и warm/cold/invalid-provider
+  atomic rollback всех четырёх cache maps. Frontend 2/2; Julia parse,
+  Playwright static/support/help и финальный audit PASS. Runtime E2E не
+  выполнялся.
 
 ## Источники и наблюдаемые различия
 
