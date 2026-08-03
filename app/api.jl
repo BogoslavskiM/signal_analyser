@@ -91,6 +91,55 @@ function signal_analyser_stale_response(state::SignalAnalyserState, err::SignalA
     ); status = 409)
 end
 
+function signal_setting_validation_response(
+    service::SignalSettingsService,
+    state::SignalAnalyserState,
+    err::SignalSettingValidationError,
+)
+    settings = if isempty(err.display_id)
+        nothing
+    else
+        try
+            signal_settings_document(service, state, err.display_id)
+        catch nested
+            nested isa SignalAnalyserValidationError || rethrow()
+            nothing
+        end
+    end
+    api_json(Dict{String,Any}(
+        "ok" => false,
+        "code" => "invalid_setting",
+        "field_id" => err.field_id,
+        "error" => Dict{String,Any}(
+            "code" => "invalid_setting",
+            "message" => err.message,
+            "field_id" => err.field_id,
+        ),
+        "settings" => settings,
+    ); status = 422)
+end
+
+function signal_setting_stale_response(
+    service::SignalSettingsService,
+    state::SignalAnalyserState,
+    err::SignalAnalyserStaleStateError,
+    display_id::AbstractString,
+)
+    current = signal_analyser_snapshot(state)
+    settings = signal_settings_document(service, state, display_id)
+    api_json(Dict{String,Any}(
+        "ok" => false,
+        "code" => "stale_state",
+        "error" => Dict{String,Any}(
+            "code" => "stale_state",
+            "message" => sprint(showerror, err),
+        ),
+        "state" => current,
+        "current" => current,
+        "settings" => settings,
+    ); status = 409)
+end
+
 function signal_inventory_request_exact_fields!(
     field_errors::Dict{String,String},
     data::AbstractDict,

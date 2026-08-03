@@ -45,6 +45,72 @@ route("/api/state", method = GET) do
     end
 end
 
+route("/api/settings", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        display_id = try
+            params(:display_id)
+        catch err
+            err isa KeyError || rethrow()
+            nothing
+        end
+        display_id isa AbstractString && !isempty(String(display_id)) || throw(
+            SignalAnalyserValidationError(
+                "Некорректный запрос Settings",
+                Dict("display_id" => "Требуется непустой идентификатор Display"),
+            ),
+        )
+        api_json(
+            signal_settings_document(
+                SIGNAL_SETTINGS_SERVICE,
+                SIGNAL_ANALYSER_STATE,
+                String(display_id),
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        else
+            api_error_response("Не удалось получить Settings Signal Analyser", err; status = 500)
+        end
+    end
+end
+
+route("/api/settings", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    request_data = nothing
+    try
+        request_data = jsonpayload()
+        api_json(
+            apply_signal_setting!(
+                SIGNAL_SETTINGS_SERVICE,
+                SIGNAL_ANALYSER_STATE,
+                request_data,
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalSettingValidationError
+            signal_setting_validation_response(
+                SIGNAL_SETTINGS_SERVICE,
+                SIGNAL_ANALYSER_STATE,
+                err,
+            )
+        elseif err isa SignalAnalyserStaleStateError
+            display_id = signal_analyser_payload_value(request_data, "display_id")
+            signal_setting_stale_response(
+                SIGNAL_SETTINGS_SERVICE,
+                SIGNAL_ANALYSER_STATE,
+                err,
+                String(display_id),
+            )
+        else
+            api_error_response("Не удалось обновить Settings Signal Analyser", err; status = 500)
+        end
+    end
+end
+
 route("/api/workspace/variables", method = GET) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try

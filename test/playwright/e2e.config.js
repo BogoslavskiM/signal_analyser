@@ -154,6 +154,7 @@ module.exports = {
       displays: "/api/displays",
       signals: "/api/signals",
       workspaceVariables: "/api/workspace/variables",
+      settings: "/api/settings",
     },
     // Signal rows are buttons; selection is their native pressed state.
     selectedState: ["aria-pressed"],
@@ -215,5 +216,8 @@ module.exports = {
     "legacy-fixed-workspace": false,
     "signal-analyser-displays": true,
     "signal-inventory-actions": true,
+    // DEC-040 complete Settings catalog/storage inspector.  The spec is
+    // production-target gated by Architect → DevOps deployment confirmation.
+    "settings-storage": true,
   },
 };

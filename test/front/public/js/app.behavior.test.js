@@ -47,8 +47,8 @@ function snapshot(revision, activeId, displayDefinitions, rowSelectedSignal) {
       visible_signals: Array.isArray(active.visible_signals) ? active.visible_signals.slice() : [],
       time_traces: (Array.isArray(active.visible_signals) ? active.visible_signals : []).map((signal, index) => ({ name:signal, signal, x:[0, .1], y:index === 0 ? [0, 1] : [1, 0] })),
       spectrum_traces: (Array.isArray(active.visible_signals) ? active.visible_signals : []).map((signal, index) => ({ name:signal, signal, x:[0, 5], y:index === 0 ? [0, 1] : [1, 0] })),
-      spectrogram: { type:"heatmap", signal:selected, x:[0, .1], y:[0, 5], z:[[0, 1], [1, 0]], power_limits:{mode:"auto", requested:null, effective:null} },
-      persistence: { type:"heatmap", signal:selected, x:[0, 5], y:[-30, -10], z:[[10, 20], [30, 40]] },
+      spectrogram: { type:"heatmap", signal:selected, x:[0, .1], y:[0, 5], z:[[0, 1], [1, 0]], power_limits:{mode:"auto", requested:null, effective:null, rendered:null} },
+      persistence: { type:"heatmap", signal:selected, x:[0, 5], y:[-30, -10], z:[[10, 20], [30, 40]], density_limits:{mode:"auto",requested:null,effective:{min:10,max:40,units:"percent"},rendered:{min:10,max:40,units:"percent"}} },
     },
     panel: { fields: [] },
     measurements: {
@@ -69,7 +69,7 @@ function emptySnapshot(revision, rowSelectedSignal) {
   const result = snapshot(revision, "display-1", [
     { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: null, selected_signal: null, visible_signals: [] },
   ], rowSelectedSignal);
-  result.plot_payload = { selected_signal: null, visible_signals: [], time_traces: [], spectrum_traces: [], spectrogram: { type: "heatmap", signal: null, x: [], y: [], z: [], power_limits:{mode:"auto", requested:null, effective:null} }, persistence: { type: "heatmap", signal: null, x: [], y: [], z: [] } };
+  result.plot_payload = { selected_signal: null, visible_signals: [], time_traces: [], spectrum_traces: [], spectrogram: { type: "heatmap", signal: null, x: [], y: [], z: [], power_limits:{mode:"auto", requested:null, effective:null, rendered:null} }, persistence: { type: "heatmap", signal: null, x: [], y: [], z: [], density_limits:{mode:"auto",requested:null,effective:null,rendered:null} } };
   result.plots = { time: { type: "line", x: [], y: [], x_label: "Time", y_label: "Amplitude" }, spectrum: { type: "line", x: [], y: [] }, spectrogram: result.plot_payload.spectrogram, persistence: result.plot_payload.persistence };
   result.measurements = { state_revision: revision, signal_name: null, ordinate: null, units: { value: "1", time: "s" }, items: [] };
   result.peaks = { enabled: false, state_revision: revision, display_id: "display-1", signal_name: null, ordinate: null, units: { value: "1", time: "s", width: "samples", prominence: "1" }, items: [] };
@@ -244,7 +244,7 @@ module.exports = async function testDisplayBehavior(assert) {
   // deliberately without clock-based waits.
   function persistenceSnapshot(revision, activeId, definitions) {
     const result = snapshot(revision, activeId || "display-1", definitions || [{ id:"display-1", name:"Display 1", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A] }], A);
-    const payload = { type:"heatmap", signal:A, x:[7, 9], y:[-30, -10], z:[[10, 20], [30, 40]], x_label:"Frequency", y_label:"Magnitude", color_label:"Occurrence" };
+    const payload = { type:"heatmap", signal:A, x:[7, 9], y:[-30, -10], z:[[10, 20], [30, 40]], x_label:"Frequency", y_label:"Magnitude", color_label:"Occurrence", density_limits:{mode:"auto",requested:null,effective:{min:10,max:40,units:"percent"},rendered:{min:10,max:40,units:"percent"}} };
     result.plot_payload.persistence = payload;
     result.plots.persistence = payload;
     return result;
@@ -992,8 +992,8 @@ module.exports = async function testDisplayBehavior(assert) {
       selected_signal:source, visible_signals:members.slice(),
       time_traces:members.map((signal, i) => ({signal, name:signal, x:[0, 1], y:[i, i + 1]})),
       spectrum_traces:members.map((signal, i) => ({signal, name:signal, x:[0, 5], y:[i, i + 1]})),
-      spectrogram:{signal:source, type:"heatmap", x:[0], y:[0], z:[[0]], power_limits:{mode:"auto", requested:null, effective:null}},
-      persistence:{signal:source, type:"heatmap", x:[0], y:[0], z:[[0]]},
+      spectrogram:{signal:source, type:"heatmap", x:[0], y:[0], z:[[0]], power_limits:{mode:"auto", requested:null, effective:null, rendered:null}},
+      persistence:{signal:source, type:"heatmap", x:[0], y:[0], z:[[0]], density_limits:{mode:"auto",requested:null,effective:{min:0,max:1,units:"percent"},rendered:{min:0,max:1,units:"percent"}}},
     };
     return result;
   }
@@ -1372,7 +1372,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c10Rejected.e.spectrumFrequencyMin.value === "0" && c10Rejected.e.spectrumFrequencyMax.value === "5" && c10Rejected.e.spectrumFrequencyLimitsError.hidden === false, "422 must restore the exact authoritative Auto presentation and inline field error");
 
   const c12Def = { id:"display-1", name:"Display 1", active_plot:"spectrogram", analysis_signal:A, selected_signal:A, visible_signals:[A], spectrogram_settings:{ overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null } };
-  const c12Initial = snapshot(0, "display-1", [c12Def], A); c12Initial.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0], z:[[0]], power_limits:{mode:"auto", requested:null, effective:null} };
+  const c12Initial = snapshot(0, "display-1", [c12Def], A); c12Initial.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0], z:[[0]], power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   const c12Committed = snapshot(1, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:75, leakage:.5, frequency_limits:null , frequency_scale:"linear", power_limits:null} })], A); c12Committed.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
   const c12Requests = [];
   const c12 = await boot((url, options) => { c12Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c12Initial : c12Committed)); });
@@ -1498,7 +1498,7 @@ module.exports = async function testDisplayBehavior(assert) {
   // Each mutation retains the complete canonical View target; the browser does no DSP.
   const c19Def = { id:"display-1", name:"Display 1", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A], persistence_settings:{ leakage:.5 } };
   const c19Initial = snapshot(0, "display-1", [c19Def], A);
-  c19Initial.plot_payload.persistence = { type:"heatmap", signal:A, x:[0], y:[0], z:[[0]] }; c19Initial.plots.persistence = c19Initial.plot_payload.persistence;
+  c19Initial.plot_payload.persistence = { type:"heatmap", signal:A, x:[0], y:[0], z:[[0]], density_limits:{mode:"auto",requested:null,effective:{min:0,max:1,units:"percent"},rendered:{min:0,max:1,units:"percent"}} }; c19Initial.plots.persistence = c19Initial.plot_payload.persistence;
   const c19Committed = snapshot(1, "display-1", [Object.assign({}, c19Def, { persistence_settings:{ leakage:1 } })], A);
   c19Committed.plot_payload.persistence = c19Initial.plot_payload.persistence; c19Committed.plots.persistence = c19Initial.plots.persistence;
   function persistenceBody(revision, leakage) {
@@ -1613,7 +1613,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c15Limits = { min_hz:1, max_hz:4, units:"Hz" };
   const c15Definition = Object.assign({}, c12Def, { spectrogram_settings:c15Auto });
   const c15Initial = snapshot(0, "display-1", [c15Definition], A);
-  c15Initial.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0, 5], z:[[0], [1]], frequency_limits:{ mode:"auto", requested:null, effective:{ min_hz:0, max_hz:5, units:"Hz" } }, power_limits:{mode:"auto", requested:null, effective:null} };
+  c15Initial.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0, 5], z:[[0], [1]], frequency_limits:{ mode:"auto", requested:null, effective:{ min_hz:0, max_hz:5, units:"Hz" } }, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   c15Initial.plots.spectrogram = Object.assign({}, c15Initial.plot_payload.spectrogram, { frequency_limits:{ mode:"auto", requested:null, effective:{ min_hz:0, max_hz:5, units:"Hz" } } });
   const c15Committed = snapshot(1, "display-1", [Object.assign({}, c15Definition, { spectrogram_settings:Object.assign({}, c15Auto, { frequency_limits:c15Limits }) })], A);
   c15Committed.plot_payload.spectrogram = Object.assign({}, c15Initial.plot_payload.spectrogram, { frequency_limits:{ mode:"explicit", requested:c15Limits, effective:c15Limits } });
@@ -1670,10 +1670,10 @@ module.exports = async function testDisplayBehavior(assert) {
   const c16Log = Object.assign({}, c16Auto, { frequency_scale:"log" });
   const c16Definition = { id:"display-1", name:"Display 1", active_plot:"spectrogram", analysis_signal:A, selected_signal:A, visible_signals:[A], spectrogram_settings:c16Auto };
   const c16Initial = snapshot(0, "display-1", [c16Definition], A);
-  c16Initial.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0, 4], z:[[1], [2]], frequency_scale:{requested:"linear", effective:"linear", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null} };
+  c16Initial.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0, 4], z:[[1], [2]], frequency_scale:{requested:"linear", effective:"linear", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   c16Initial.plots.spectrogram = c16Initial.plot_payload.spectrogram;
   const c16Committed = snapshot(1, "display-1", [Object.assign({}, c16Definition, {spectrogram_settings:c16Log})], A);
-  c16Committed.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0, 4], z:[[1], [2]], frequency_scale:{requested:"log", effective:"log", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null} };
+  c16Committed.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0, 4], z:[[1], [2]], frequency_scale:{requested:"log", effective:"log", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   c16Committed.plots.spectrogram = c16Committed.plot_payload.spectrogram;
   const c16Requests = [];
   const c16 = await boot((url, options) => { c16Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c16Initial : c16Committed)); });
@@ -1684,24 +1684,24 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c16Plot.layout.yaxis.type === "log" && JSON.stringify(c16Plot.data[0].y) === JSON.stringify([2,4]) && JSON.stringify(c16Committed.plot_payload.spectrogram.y) === JSON.stringify([0,4]) && JSON.stringify(c16Plot.data[0].z) === JSON.stringify(c16Committed.plot_payload.spectrogram.z), "effective Log must floor only a transient y clone and never mutate authoritative y/z");
 
   const c16NoPositive = snapshot(3, "display-1", [Object.assign({}, c16Definition, {spectrogram_settings:c16Log})], A);
-  c16NoPositive.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0, -4], z:[[1], [2]], frequency_scale:{requested:"log", effective:"log", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null} };
+  c16NoPositive.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0, -4], z:[[1], [2]], frequency_scale:{requested:"log", effective:"log", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   c16NoPositive.plots.spectrogram = c16NoPositive.plot_payload.spectrogram;
   const c16NoPositiveEnv = await boot((url) => Promise.resolve(response(200, c16NoPositive)));
   assert(c16NoPositiveEnv.e.host.innerHTML.includes("spectrogram-log-frequency-error-state") && c16NoPositiveEnv.e.host.dataset.plotReady === "false", "effective Log with nonempty all-nonpositive y must show the stable plot error");
   const c16EmptyY = snapshot(4, "display-1", [Object.assign({}, c16Definition, {spectrogram_settings:c16Log})], A);
-  c16EmptyY.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[], y:[], z:[], frequency_scale:{requested:"log", effective:"log", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null} };
+  c16EmptyY.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[], y:[], z:[], frequency_scale:{requested:"log", effective:"log", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   c16EmptyY.plots.spectrogram = c16EmptyY.plot_payload.spectrogram;
   const c16EmptyYEnv = await boot((url) => Promise.resolve(response(200, c16EmptyY)));
   assert(c16EmptyYEnv.e.host.innerHTML.includes("plot-empty-state") && !c16EmptyYEnv.e.host.innerHTML.includes("spectrogram-log-frequency-error-state"), "empty Log y must remain the ordinary empty state without an invented floor");
 
   const c16NoSource = snapshot(5, "display-1", [Object.assign({}, c16Definition, {analysis_signal:null, selected_signal:null, visible_signals:[], spectrogram_settings:c16Log})], A);
-  c16NoSource.plot_payload.spectrogram = { type:"heatmap", signal:null, x:[], y:[], z:[], frequency_scale:{requested:"log", effective:null, available:[]}, power_limits:{mode:"auto", requested:null, effective:null} };
+  c16NoSource.plot_payload.spectrogram = { type:"heatmap", signal:null, x:[], y:[], z:[], frequency_scale:{requested:"log", effective:null, available:[]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   c16NoSource.plots.spectrogram = c16NoSource.plot_payload.spectrogram;
   const c16NoSourceEnv = await boot((url) => Promise.resolve(response(200, c16NoSource)));
   assert(c16NoSourceEnv.e.spectrogramFrequencyScale.value === "log" && c16NoSourceEnv.e.spectrogramFrequencyScale.disabled === true && c16NoSourceEnv.e.spectrogramFrequencyScaleEffective.textContent === "", "no-source Spectrogram must retain requested Log while authoritative empty availability disables the control and clears effective state");
 
   const c16Complex = snapshot(2, "display-1", [Object.assign({}, c16Definition, {analysis_signal:B, selected_signal:B, visible_signals:[B], spectrogram_settings:c16Log})], B);
-  c16Complex.plot_payload.spectrogram = { type:"heatmap", signal:B, x:[0], y:[0, 4], z:[[1], [2]], frequency_scale:{requested:"log", effective:"linear", available:["linear"]}, power_limits:{mode:"auto", requested:null, effective:null} };
+  c16Complex.plot_payload.spectrogram = { type:"heatmap", signal:B, x:[0], y:[0, 4], z:[[1], [2]], frequency_scale:{requested:"log", effective:"linear", available:["linear"]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   c16Complex.plots.spectrogram = c16Complex.plot_payload.spectrogram;
   const c16ComplexEnv = await boot((url) => Promise.resolve(response(200, c16Complex)));
   assert(c16ComplexEnv.e.spectrogramFrequencyScale.value === "log" && c16ComplexEnv.e.spectrogramFrequencyScale.disabled === true && c16ComplexEnv.e.spectrogramFrequencyScaleEffective.textContent === "Linear", "complex Spectrogram must preserve requested Log while authoritative availability disables the select");
@@ -1724,10 +1724,10 @@ module.exports = async function testDisplayBehavior(assert) {
   const c17Pair = { min_db:-80, max_db:-20, units:"dB" };
   const c17Definition = { id:"display-1", name:"Display 1", active_plot:"spectrogram", analysis_signal:A, selected_signal:A, visible_signals:[A], spectrogram_settings:c17Auto };
   const c17Initial = snapshot(0, "display-1", [c17Definition], A);
-  c17Initial.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0, .1], y:[0, 5], z:[[-100, -10], [-80, -20]], power_limits:{mode:"auto", requested:null, effective:{min_db:-100, max_db:-10, units:"dB"}} };
+  c17Initial.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0, .1], y:[0, 5], z:[[-100, -10], [-80, -20]], power_limits:{mode:"auto", requested:null, effective:{min_db:-100, max_db:-10, units:"dB"}, rendered:{min:-100,max:-10,units:"dB"}} };
   c17Initial.plots.spectrogram = c17Initial.plot_payload.spectrogram;
   const c17Committed = snapshot(1, "display-1", [Object.assign({}, c17Definition, {spectrogram_settings:Object.assign({}, c17Auto, {power_limits:c17Pair})})], A);
-  c17Committed.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0, .1], y:[0, 5], z:[[-100, -10], [-80, -20]], power_limits:{mode:"explicit", requested:c17Pair, effective:c17Pair} };
+  c17Committed.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0, .1], y:[0, 5], z:[[-100, -10], [-80, -20]], power_limits:{mode:"explicit", requested:c17Pair, effective:c17Pair, rendered:{min:-80,max:-20,units:"dB"}} };
   c17Committed.plots.spectrogram = c17Committed.plot_payload.spectrogram;
   const c17Requests = [];
   const c17 = await boot((url, options) => { c17Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c17Initial : c17Committed)); });
@@ -1748,12 +1748,12 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c17Requests.filter(call => call.url === "./api/view").length === 2 && c17.e.spectrogramPowerLimitsError.hidden === false, "reversed Power Limits must fail locally without a request");
 
   const c17Constant = snapshot(2, "display-1", [c17Definition], A);
-  c17Constant.plot_payload.spectrogram = {type:"heatmap", signal:A, x:[0], y:[0], z:[[-42]], power_limits:{mode:"auto", requested:null, effective:{min_db:-42, max_db:-42, units:"dB"}}}; c17Constant.plots.spectrogram = c17Constant.plot_payload.spectrogram;
+  c17Constant.plot_payload.spectrogram = {type:"heatmap", signal:A, x:[0], y:[0], z:[[-42]], power_limits:{mode:"auto", requested:null, effective:{min_db:-42, max_db:-42, units:"dB"}, rendered:{min:-43,max:-41,units:"dB"}}}; c17Constant.plots.spectrogram = c17Constant.plot_payload.spectrogram;
   const c17ConstantEnv = await boot(() => Promise.resolve(response(200, c17Constant)));
   const c17ConstantPlot = c17ConstantEnv.calls.filter(call => call.plot).at(-1);
   assert(c17ConstantPlot.data[0].zauto === false && c17ConstantPlot.data[0].zmin === -43 && c17ConstantPlot.data[0].zmax === -41 && c17Constant.plot_payload.spectrogram.power_limits.effective.min_db === -42, "constant Auto Power Limits must use renderer-only ±1 fallback while preserving exact metadata");
   const c17Empty = snapshot(3, "display-1", [c17Definition], A);
-  c17Empty.plot_payload.spectrogram = {type:"heatmap", signal:A, x:[], y:[], z:[], power_limits:{mode:"auto", requested:null, effective:null}}; c17Empty.plots.spectrogram = c17Empty.plot_payload.spectrogram;
+  c17Empty.plot_payload.spectrogram = {type:"heatmap", signal:A, x:[], y:[], z:[], power_limits:{mode:"auto", requested:null, effective:null, rendered:null}}; c17Empty.plots.spectrogram = c17Empty.plot_payload.spectrogram;
   const c17EmptyEnv = await boot(() => Promise.resolve(response(200, c17Empty)));
   const c17EmptyPlot = c17EmptyEnv.calls.filter(call => call.plot).at(-1);
   assert(c17EmptyEnv.e.spectrogramPowerLimitsEffective.textContent === "Effective: —" && c17EmptyPlot.data[0].zauto === true && !Object.prototype.hasOwnProperty.call(c17EmptyPlot.data[0], "zmin"), "empty or zero-only effective null must retain zauto without invented extrema");
@@ -1773,7 +1773,7 @@ module.exports = async function testDisplayBehavior(assert) {
     assert(env.e.host.innerHTML.includes("spectrogram-power-limits-contract-error-state") && !env.calls.some(call => call.plot), "every malformed C17 power metadata shape must be a stable no-Plotly contract error");
   }
   const c17NoSource = snapshot(4, "display-1", [Object.assign({}, c17Definition, {analysis_signal:null, selected_signal:null, visible_signals:[], spectrogram_settings:Object.assign({}, c17Auto, {power_limits:c17Pair})})], A);
-  c17NoSource.plot_payload.spectrogram = {type:"heatmap", signal:null, x:[], y:[], z:[], power_limits:{mode:"explicit", requested:c17Pair, effective:c17Pair}}; c17NoSource.plots.spectrogram = c17NoSource.plot_payload.spectrogram;
+  c17NoSource.plot_payload.spectrogram = {type:"heatmap", signal:null, x:[], y:[], z:[], power_limits:{mode:"explicit", requested:c17Pair, effective:c17Pair, rendered:{min:-80,max:-20,units:"dB"}}}; c17NoSource.plots.spectrogram = c17NoSource.plot_payload.spectrogram;
   const c17NoSourceEnv = await boot(() => Promise.resolve(response(200, c17NoSource)));
   assert(c17NoSourceEnv.e.spectrogramPowerMin.disabled === true && c17NoSourceEnv.e.spectrogramPowerMax.disabled === true && c17NoSourceEnv.e.spectrogramPowerMin.value === "-80", "no-source must disable the pair while retaining explicit preference");
 
@@ -1794,14 +1794,14 @@ module.exports = async function testDisplayBehavior(assert) {
 
   const c18Definition = { id:"display-1", name:"Display 1", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A, B] };
   const c18Positive = snapshot(5, "display-1", [c18Definition], A);
-  c18Positive.plot_payload.persistence = {type:"heatmap", signal:A, x:[0, 5], y:[-30, -10], z:[[10, 20], [30, 40]], x_label:"Частота, Гц", y_label:"Мощность, дБ", color_label:"Встречаемость, %"};
+  c18Positive.plot_payload.persistence = {type:"heatmap", signal:A, x:[0, 5], y:[-30, -10], z:[[10, 20], [30, 40]], x_label:"Частота, Гц", y_label:"Мощность, дБ", color_label:"Встречаемость, %", density_limits:{mode:"auto",requested:null,effective:{min:10,max:40,units:"percent"},rendered:{min:10,max:40,units:"percent"}}};
   c18Positive.plots.persistence = c18Positive.plot_payload.persistence;
   const c18PositiveEnv = await boot(() => Promise.resolve(response(200, c18Positive)));
   const c18PositivePlot = c18PositiveEnv.calls.filter(call => call.plot).at(-1);
   assert(c18PositiveEnv.e.plotSelect.value === "persistence" && c18PositivePlot.data.length === 1 && c18PositivePlot.data[0].type === "heatmap" && JSON.stringify(c18PositivePlot.data[0].x) === JSON.stringify([0, 5]) && JSON.stringify(c18PositivePlot.data[0].y) === JSON.stringify([-30, -10]) && JSON.stringify(c18PositivePlot.data[0].z) === JSON.stringify([[10, 20], [30, 40]]), "Cascade 18 positive Persistence must remain one generic server heatmap without client reshaping");
   assert(c18PositivePlot.data[0].colorbar.title.text === "Встречаемость, %" && c18PositivePlot.layout.yaxis.type === undefined, "Cascade 18 Persistence keeps its backend labels and linear generic heatmap y-axis");
   const c18Empty = snapshot(6, "display-1", [c18Definition], A);
-  c18Empty.plot_payload.persistence = {type:"heatmap", signal:A, x:[], y:[], z:[], x_label:"Частота, Гц", y_label:"Мощность, дБ", color_label:"Встречаемость, %"};
+  c18Empty.plot_payload.persistence = {type:"heatmap", signal:A, x:[], y:[], z:[], x_label:"Частота, Гц", y_label:"Мощность, дБ", color_label:"Встречаемость, %", density_limits:{mode:"auto",requested:null,effective:null,rendered:null}};
   c18Empty.plots.persistence = c18Empty.plot_payload.persistence;
   const c18EmptyEnv = await boot(() => Promise.resolve(response(200, c18Empty)));
   const c18EmptyPlot = c18EmptyEnv.calls.filter(call => call.plot).at(-1);

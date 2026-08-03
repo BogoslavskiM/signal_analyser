@@ -50,5 +50,15 @@
         body: JSON.stringify(payload),
       });
     },
+    settings: function (displayId) {
+      return request("./api/settings?display_id=" + encodeURIComponent(displayId));
+    },
+    updateSetting: function (payload) {
+      return request("./api/settings", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    },
   };
 })(window);

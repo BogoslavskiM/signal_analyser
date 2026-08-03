@@ -41,18 +41,46 @@ function workspace_catalog_expect_exact_keys!(
     nothing
 end
 
-function workspace_catalog_shape(value)::Tuple{Vararg{Int}}
-    (value isa AbstractVector || value isa Tuple) || return ()
-    length(value) <= WORKSPACE_CATALOG_MAX_DIMENSIONS || return ()
+function workspace_catalog_shape(value)::NamedTuple{(:shape, :bounded),Tuple{Tuple{Vararg{Int}},Bool}}
+    (value isa AbstractVector || value isa Tuple) || return (shape = (), bounded = false)
+    length(value) <= WORKSPACE_CATALOG_MAX_DIMENSIONS || return (shape = (), bounded = false)
     dimensions = Int[]
     for dimension in value
         if !(dimension isa Integer) || dimension isa Bool ||
             dimension < 0 || dimension > WORKSPACE_CATALOG_JSON_SAFE_INTEGER
-            return ()
+            return (shape = (), bounded = false)
         end
         push!(dimensions, Int(dimension))
     end
-    Tuple(dimensions)
+    (shape = Tuple(dimensions), bounded = true)
+end
+
+function workspace_catalog_structure(
+    shape_result::NamedTuple{(:shape, :bounded),Tuple{Tuple{Vararg{Int}},Bool}},
+    source_kind::WorkspaceVariableSourceKind,
+)::NamedTuple{(:shape, :source_kind),Tuple{Tuple{Vararg{Int}},WorkspaceVariableSourceKind}}
+    shape = shape_result.shape
+    expected_rank = if source_kind in (
+        RAW_VECTOR_WORKSPACE_SOURCE,
+        TIMED_VECTOR_WORKSPACE_SOURCE,
+    )
+        1
+    elseif source_kind in (
+        RAW_MATRIX_WORKSPACE_SOURCE,
+        TIMED_MATRIX_WORKSPACE_SOURCE,
+    )
+        2
+    else
+        0
+    end
+    structurally_supported = shape_result.bounded &&
+        expected_rank > 0 &&
+        length(shape) == expected_rank &&
+        first(shape) >= 2 &&
+        (expected_rank == 1 || 1 <= shape[2] <= WORKSPACE_CATALOG_MAX_OUTPUTS)
+    structurally_supported ?
+        (shape = shape, source_kind = source_kind) :
+        (shape = (), source_kind = UNSUPPORTED_WORKSPACE_SOURCE)
 end
 
 function workspace_catalog_metadata(value)::WorkspaceVariableMetadata
@@ -87,14 +115,19 @@ function workspace_catalog_metadata(value)::WorkspaceVariableMetadata
     haskey(WORKSPACE_SOURCE_KINDS_BY_NAME, source_name) || throw(WorkspaceProviderError(
         "Source kind переменной каталога не поддерживается",
     ))
-    shape = workspace_catalog_shape(workspace_catalog_payload_value(value, "shape"))
+    shape_result = workspace_catalog_shape(workspace_catalog_payload_value(value, "shape"))
+    structure = workspace_catalog_structure(
+        shape_result,
+        WORKSPACE_SOURCE_KINDS_BY_NAME[source_name],
+    )
+    shape = structure.shape
     sample_count = isempty(shape) ? 0 : first(shape)
     WorkspaceVariableMetadata(
         name,
         type_label,
         shape,
         sample_count,
-        WORKSPACE_SOURCE_KINDS_BY_NAME[source_name],
+        structure.source_kind,
     )
 end
 

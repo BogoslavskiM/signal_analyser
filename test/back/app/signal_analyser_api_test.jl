@@ -2,6 +2,38 @@ using Test
 
 const SA_API = Main.AppTestContext
 
+@testset "Settings API retains the narrow settings route boundary" begin
+    routes_source = SA_API.source("app", "routes.jl")
+
+    @test length(collect(eachmatch(r"route\(\"/api/settings\", method = GET\)", routes_source))) == 1
+    @test length(collect(eachmatch(r"route\(\"/api/settings\", method = POST\)", routes_source))) == 1
+    @test occursin("signal_settings_document", routes_source)
+    @test occursin("apply_signal_setting!", routes_source)
+    @test occursin("signal_setting_validation_response", routes_source)
+    @test occursin("signal_analyser_stale_response", routes_source)
+
+    state = SA_API.default_signal_analyser_state()
+    service = SA_API.SignalSettingsService()
+    @test hasmethod(SA_API.parse_signal_setting_command, Tuple{SA_API.SignalSettingsService, typeof(state), Any})
+    command = SA_API.parse_signal_setting_command(service, state, Dict(
+        "state_revision" => 7,
+        "display_id" => "display-1",
+        "field_id" => "time.units",
+        "value" => "minutes",
+    ))
+    @test command isa SA_API.UpdateSignalSettingCommand
+    @test command.state_revision == 7 && command.display_id == "display-1" && command.field_id == "time.units"
+    for invalid in (
+        Dict{String,Any}(),
+        Dict("state_revision" => true, "display_id" => "display-1", "field_id" => "time.units", "value" => "seconds"),
+        Dict("state_revision" => 0, "display_id" => "", "field_id" => "time.units", "value" => "seconds"),
+        Dict("state_revision" => 0, "display_id" => "display-1", "field_id" => "", "value" => "seconds"),
+        Dict("state_revision" => 0, "display_id" => "display-1", "field_id" => "time.units", "value" => "seconds", "extra" => true),
+    )
+        @test_throws SA_API.SignalSettingValidationError SA_API.parse_signal_setting_command(service, state, invalid)
+    end
+end
+
 function api_measurement_contract_state()
     real_values = fill(ComplexF64(2.0, 9.0), 1100)
     real_values[1026] = 25.0 + 0.0im
@@ -555,7 +587,7 @@ end
     explicit = merge(copy(auto), Dict("power_limits" => pair))
     changed = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => explicit))
     @test changed["state_revision"] == 1 && changed["spectrogram_settings"] == explicit
-    @test changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => pair, "effective" => pair)
+    @test changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => pair, "effective" => pair, "rendered" => Dict("min" => -80.0, "max" => -20.0, "units" => "dB"))
     for power in (Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB", "extra" => true), Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "Hz"), Dict("min_db" => true, "max_db" => -20.0, "units" => "dB"), Dict("min_db" => NaN, "max_db" => -20.0, "units" => "dB"), Dict("min_db" => -20.0, "max_db" => -20.0, "units" => "dB"), Dict("min_db" => -20.0, "max_db" => -80.0, "units" => "dB"))
         before = SA_API.signal_analyser_snapshot(state)
         error = try SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => merge(copy(auto), Dict("power_limits" => power)))); nothing catch caught; caught end

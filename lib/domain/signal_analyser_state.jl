@@ -1525,6 +1525,8 @@ mutable struct SignalAnalyserViewState
     selected_signal::Union{Nothing,String}
 end
 
+include(joinpath(@__DIR__, "signal_settings.jl"))
+
 mutable struct SignalAnalyserDisplayState
     id::String
     name::String
@@ -1536,6 +1538,7 @@ mutable struct SignalAnalyserDisplayState
     spectrum_settings::SignalSpectrumSettings
     spectrogram_settings::SignalSpectrogramSettings
     persistence_settings::SignalPersistenceSettings
+    stored_settings::SignalDisplayStoredSettings
     peaks_enabled::Bool
 
     function SignalAnalyserDisplayState(
@@ -1549,6 +1552,7 @@ mutable struct SignalAnalyserDisplayState
         spectrum_settings::SignalSpectrumSettings,
         spectrogram_settings::SignalSpectrogramSettings,
         persistence_settings::SignalPersistenceSettings,
+        stored_settings::SignalDisplayStoredSettings,
         peaks_enabled::Bool,
     )
         analysis_name = signal_analysis_name(analysis_source)
@@ -1578,9 +1582,39 @@ mutable struct SignalAnalyserDisplayState
             spectrum_settings,
             spectrogram_settings,
             persistence_settings,
+            stored_settings,
             peaks_enabled,
         )
     end
+end
+
+function SignalAnalyserDisplayState(
+    id::AbstractString,
+    name::AbstractString,
+    active_plot::SignalAnalyserPlot,
+    membership::SignalDisplayMembership,
+    analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
+    time_limits::Union{Nothing,SignalTimeLimits},
+    measurement_selection::SignalMeasurementSelection,
+    spectrum_settings::SignalSpectrumSettings,
+    spectrogram_settings::SignalSpectrogramSettings,
+    persistence_settings::SignalPersistenceSettings,
+    peaks_enabled::Bool,
+)
+    SignalAnalyserDisplayState(
+        id,
+        name,
+        active_plot,
+        membership,
+        analysis_source,
+        time_limits,
+        measurement_selection,
+        spectrum_settings,
+        spectrogram_settings,
+        persistence_settings,
+        SignalDisplayStoredSettings(),
+        peaks_enabled,
+    )
 end
 
 function SignalAnalyserDisplayState(
@@ -1823,6 +1857,7 @@ function signal_analyser_publish_display_state!(
     display.spectrum_settings = prospective.spectrum_settings
     display.spectrogram_settings = prospective.spectrogram_settings
     display.persistence_settings = prospective.persistence_settings
+    display.stored_settings = prospective.stored_settings
     display.peaks_enabled = prospective.peaks_enabled
     nothing
 end

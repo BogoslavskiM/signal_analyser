@@ -198,8 +198,8 @@ end
         plot = snapshot["plots"]["persistence"]
         payload = snapshot["plot_payload"]["persistence"]
         source = only(filter(signal -> signal["name"] == payload["signal"], snapshot["signals"]))
-        @test Set(keys(plot)) == Set(["type", "x", "y", "z", "x_label", "y_label", "color_label"])
-        @test Set(keys(payload)) == Set(["type", "x", "y", "z", "x_label", "y_label", "color_label", "signal", "name", "color"])
+        @test Set(keys(plot)) == Set(["type", "x", "y", "z", "x_label", "y_label", "color_label", "density_limits"])
+        @test Set(keys(payload)) == Set(["type", "x", "y", "z", "x_label", "y_label", "color_label", "density_limits", "signal", "name", "color"])
         @test plot["type"] == "heatmap"
         @test plot["x_label"] == "Частота, Гц" && plot["y_label"] == "Мощность, дБ" && plot["color_label"] == "Встречаемость, %"
         @test isempty(plot["x"]) && isempty(plot["y"]) && isempty(plot["z"])
@@ -2279,8 +2279,8 @@ end
     @test projection.values_db[2, 2] == -Inf
     _, _, bounded_db = SA.signal_analyser_bounded_heatmap(collect(raw.segment_centers_s), collect(raw.frequencies_hz), projection.values_db)
     @test !any(value -> value == -120.0 || value == 30.0, bounded_db)
-    @test SA.signal_spectrogram_power_limits_metadata(SA.SignalSpectrogramSettings(50, .5, SA.AutomaticSignalSpectrumFrequencyLimits(), SA.LINEAR_SPECTROGRAM_FREQUENCY_SCALE, auto), raw) == Dict("mode" => "auto", "requested" => nothing, "effective" => Dict("min_db" => -120.0, "max_db" => 30.0, "units" => "dB"))
-    @test SA.signal_spectrogram_power_limits_metadata(SA.SignalSpectrogramSettings(50, .5, SA.AutomaticSignalSpectrumFrequencyLimits(), SA.LINEAR_SPECTROGRAM_FREQUENCY_SCALE, explicit), raw) == Dict("mode" => "explicit", "requested" => Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB"), "effective" => Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB"))
+    @test SA.signal_spectrogram_power_limits_metadata(SA.SignalSpectrogramSettings(50, .5, SA.AutomaticSignalSpectrumFrequencyLimits(), SA.LINEAR_SPECTROGRAM_FREQUENCY_SCALE, auto), raw) == Dict("mode" => "auto", "requested" => nothing, "effective" => Dict("min_db" => -120.0, "max_db" => 30.0, "units" => "dB"), "rendered" => Dict("min" => -120.0, "max" => 30.0, "units" => "dB"))
+    @test SA.signal_spectrogram_power_limits_metadata(SA.SignalSpectrogramSettings(50, .5, SA.AutomaticSignalSpectrumFrequencyLimits(), SA.LINEAR_SPECTROGRAM_FREQUENCY_SCALE, explicit), raw) == Dict("mode" => "explicit", "requested" => Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB"), "effective" => Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB"), "rendered" => Dict("min" => -80.0, "max" => -20.0, "units" => "dB"))
     zero = SA.SignalSpectrogramData([0.0], [0.0], zeros(1, 1), SA.ONE_SIDED_SPECTRUM)
     constant = SA.SignalSpectrogramData([0.0], [0.0], fill(0.01, 1, 1), SA.ONE_SIDED_SPECTRUM)
     mixed = SA.SignalSpectrogramData([0.0, 1.0], [0.0], reshape([0.0, 0.01], 2, 1), SA.ONE_SIDED_SPECTRUM)
@@ -2299,7 +2299,7 @@ end
     cold = SA.default_signal_analyser_state()
     empty!(cold.spectrum_cache); empty!(cold.spectrogram_cache); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
     cold_changed = SA.apply_signal_analyser_view!(cold, Dict("state_revision" => 0, "spectrogram_settings" => explicit_settings))
-    @test cold_changed["state_revision"] == 1 && cold_changed["plots"]["spectrogram"]["x"] == Float64[] && cold_changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload)
+    @test cold_changed["state_revision"] == 1 && cold_changed["plots"]["spectrogram"]["x"] == Float64[] && cold_changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload, "rendered" => Dict("min" => -80.0, "max" => -20.0, "units" => "dB"))
     @test isempty(SA.SPECTRUM_CALLS) && isempty(SA.SPECTROGRAM_CALLS) && isempty(cold.spectrum_cache) && isempty(cold.spectrogram_cache)
     @test SA.apply_signal_analyser_view!(cold, Dict("state_revision" => 1, "spectrogram_settings" => explicit_settings))["state_revision"] == 1
     @test isempty(SA.SPECTRUM_CALLS) && isempty(SA.SPECTROGRAM_CALLS) && isempty(cold.spectrum_cache) && isempty(cold.spectrogram_cache)
@@ -2311,7 +2311,7 @@ end
     empty!(combined_cold.spectrum_cache); empty!(combined_cold.spectrogram_cache); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
     combined_settings = Dict("overlap_percent" => 25.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => explicit_payload)
     combined_changed = SA.apply_signal_analyser_view!(combined_cold, Dict("state_revision" => 0, "spectrogram_settings" => combined_settings))
-    @test combined_changed["state_revision"] == 1 && combined_changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload)
+    @test combined_changed["state_revision"] == 1 && combined_changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload, "rendered" => Dict("min" => -80.0, "max" => -20.0, "units" => "dB"))
     @test isempty(SA.SPECTRUM_CALLS) && length(SA.SPECTROGRAM_CALLS) == 1 && isempty(combined_cold.spectrum_cache) && length(combined_cold.spectrogram_cache) == 1
     @test initial["spectrogram_settings"] == auto_settings
     @test initial["plots"]["spectrogram"]["power_limits"]["mode"] == "auto"
@@ -2322,7 +2322,7 @@ end
     @test changed["state_revision"] == 1 && changed["spectrogram_settings"] == explicit_settings
     @test (length(SA.SPECTRUM_CALLS), length(SA.SPECTROGRAM_CALLS), length(state.spectrum_cache), length(state.spectrogram_cache)) == calls_before
     @test (changed["plots"]["spectrogram"]["x"], changed["plots"]["spectrogram"]["y"], changed["plots"]["spectrogram"]["z"]) == xyz_before
-    @test changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload)
+    @test changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload, "rendered" => Dict("min" => -80.0, "max" => -20.0, "units" => "dB"))
     @test SA.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => explicit_settings))["state_revision"] == 1
 
     for bad in (nothing, true, Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB", "extra" => true), Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "Hz"), Dict("min_db" => true, "max_db" => -20.0, "units" => "dB"), Dict("min_db" => -20.0, "max_db" => -20.0, "units" => "dB"), Dict("min_db" => -20.0, "max_db" => -80.0, "units" => "dB"))
@@ -2341,9 +2341,9 @@ end
     @test selected["spectrogram_settings"] == explicit_settings
     cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 3, "visible_signals" => String[]))
     @test cleared["spectrogram_settings"] == explicit_settings
-    @test cleared["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload)
+    @test cleared["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload, "rendered" => Dict("min" => -80.0, "max" => -20.0, "units" => "dB"))
     readded = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => [state.signals[1].name]))
     @test readded["spectrogram_settings"] == explicit_settings
     switched = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [state.signals[1].name, state.signals[2].name], "analysis_signal" => state.signals[2].name))
-    @test switched["spectrogram_settings"] == explicit_settings && switched["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload)
+    @test switched["spectrogram_settings"] == explicit_settings && switched["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => explicit_payload, "effective" => explicit_payload, "rendered" => Dict("min" => -80.0, "max" => -20.0, "units" => "dB"))
 end

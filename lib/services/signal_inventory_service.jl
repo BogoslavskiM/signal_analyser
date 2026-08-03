@@ -198,6 +198,7 @@ function signal_inventory_clone_display(display::SignalAnalyserDisplayState)
         display.spectrum_settings,
         display.spectrogram_settings,
         display.persistence_settings,
+        display.stored_settings,
         display.peaks_enabled,
     )
 end
@@ -286,13 +287,17 @@ function signal_inventory_add_candidates!(
         active_display.id,
         active_display.name,
         active_display.active_plot,
-        first_added,
-        members,
+        SignalDisplayMembership(members),
+        signal_analysis_source(first_added),
         signal_full_time_limits(state.measurements_service, selected_signal),
         active_display.measurement_selection,
         reconciled_settings.spectrum,
         reconciled_settings.spectrogram,
         active_display.persistence_settings,
+        signal_settings_reconcile_stored_for_source(
+            active_display.stored_settings,
+            selected_signal,
+        ),
         active_display.peaks_enabled,
     )
     signal_inventory_replace_display!(state, prospective_display)
@@ -424,13 +429,17 @@ function signal_inventory_reconciled_display(
         display.id,
         display.name,
         display.active_plot,
-        analysis_name,
-        members,
+        SignalDisplayMembership(members),
+        signal_analysis_source(analysis_name),
         limits,
         display.measurement_selection,
         display.spectrum_settings,
         display.spectrogram_settings,
         display.persistence_settings,
+        signal_settings_reconcile_stored_for_source(
+            display.stored_settings,
+            analysis_name === nothing ? nothing : signal_by_name(state, analysis_name),
+        ),
         analysis_name === nothing ? false : display.peaks_enabled,
     )
 end

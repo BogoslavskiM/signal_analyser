@@ -139,11 +139,16 @@ function signal_persistence_settings_payload(
     Dict{String,Any}("leakage" => settings.leakage)
 end
 
-signal_spectrogram_power_limits_payload(
+"""Serializer boundary for canonical and scale-specific Spectrogram presentation metadata."""
+struct SignalSpectrogramPresentationSerializer end
+
+signal_spectrogram_requested_power_limits_payload(
+    ::SignalSpectrogramPresentationSerializer,
     ::AutomaticSignalSpectrogramPowerLimits,
 ) = nothing
 
-function signal_spectrogram_power_limits_payload(
+function signal_spectrogram_requested_power_limits_payload(
+    ::SignalSpectrogramPresentationSerializer,
     limits::ExplicitSignalSpectrogramPowerLimits,
 )::Dict{String,Any}
     Dict{String,Any}(
@@ -153,9 +158,29 @@ function signal_spectrogram_power_limits_payload(
     )
 end
 
-signal_spectrogram_power_extent_payload(::Nothing) = nothing
+signal_spectrogram_power_limits_payload(
+    limits::AutomaticSignalSpectrogramPowerLimits,
+) = signal_spectrogram_requested_power_limits_payload(
+    SignalSpectrogramPresentationSerializer(),
+    limits,
+)
 
-function signal_spectrogram_power_extent_payload(
+function signal_spectrogram_power_limits_payload(
+    limits::ExplicitSignalSpectrogramPowerLimits,
+)::Dict{String,Any}
+    signal_spectrogram_requested_power_limits_payload(
+        SignalSpectrogramPresentationSerializer(),
+        limits,
+    )
+end
+
+signal_spectrogram_effective_power_limits_payload(
+    ::SignalSpectrogramPresentationSerializer,
+    ::Nothing,
+) = nothing
+
+function signal_spectrogram_effective_power_limits_payload(
+    ::SignalSpectrogramPresentationSerializer,
     extent::SignalSpectrogramPowerExtent,
 )::Dict{String,Any}
     Dict{String,Any}(
@@ -165,27 +190,199 @@ function signal_spectrogram_power_extent_payload(
     )
 end
 
-function signal_spectrogram_power_limits_metadata(
-    resolution::SignalSpectrogramPowerLimitsResolution,
+signal_spectrogram_power_extent_payload(::Nothing) =
+    signal_spectrogram_effective_power_limits_payload(
+        SignalSpectrogramPresentationSerializer(),
+        nothing,
+    )
+
+signal_spectrogram_power_extent_payload(extent::SignalSpectrogramPowerExtent) =
+    signal_spectrogram_effective_power_limits_payload(
+        SignalSpectrogramPresentationSerializer(),
+        extent,
+    )
+
+signal_spectrogram_rendered_power_limits_payload(
+    ::SignalSpectrogramPresentationSerializer,
+    ::Nothing,
+) = nothing
+
+function signal_spectrogram_rendered_power_limits_payload(
+    ::SignalSpectrogramPresentationSerializer,
+    limits::SignalSpectrogramRenderedPowerLimits,
 )::Dict{String,Any}
+    Dict{String,Any}(
+        "min" => limits.minimum,
+        "max" => limits.maximum,
+        "units" => limits.scale == DB_SPECTRUM_SCALE ? "dB" : "power",
+    )
+end
+
+signal_spectrogram_rendered_power_limits_payload(::Nothing) =
+    signal_spectrogram_rendered_power_limits_payload(
+        SignalSpectrogramPresentationSerializer(),
+        nothing,
+    )
+
+signal_spectrogram_rendered_power_limits_payload(
+    limits::SignalSpectrogramRenderedPowerLimits,
+) = signal_spectrogram_rendered_power_limits_payload(
+    SignalSpectrogramPresentationSerializer(),
+    limits,
+)
+
+function signal_spectrogram_power_limits_metadata(
+    serializer::SignalSpectrogramPresentationSerializer,
+    plan::SignalSpectrogramPresentationPlan,
+)::Dict{String,Any}
+    resolution = plan.power_limits
     Dict{String,Any}(
         "mode" => resolution.requested isa AutomaticSignalSpectrogramPowerLimits ?
             "auto" : "explicit",
-        "requested" => signal_spectrogram_power_limits_payload(resolution.requested),
-        "effective" => signal_spectrogram_power_extent_payload(resolution.effective),
+        "requested" => signal_spectrogram_requested_power_limits_payload(
+            serializer,
+            resolution.requested,
+        ),
+        "effective" => signal_spectrogram_effective_power_limits_payload(
+            serializer,
+            resolution.effective,
+        ),
+        "rendered" => signal_spectrogram_rendered_power_limits_payload(
+            serializer,
+            plan.rendered_limits,
+        ),
     )
+end
+
+signal_spectrogram_power_limits_metadata(
+    plan::SignalSpectrogramPresentationPlan,
+)::Dict{String,Any} = signal_spectrogram_power_limits_metadata(
+    SignalSpectrogramPresentationSerializer(),
+    plan,
+)
+
+function signal_spectrogram_power_limits_metadata(
+    resolution::SignalSpectrogramPowerLimitsResolution,
+)::Dict{String,Any}
+    extent = resolution.effective
+    rendered = if extent === nothing
+        nothing
+    elseif extent.min_db < extent.max_db
+        SignalSpectrogramRenderedPowerLimits(extent.min_db, extent.max_db, DB_SPECTRUM_SCALE)
+    else
+        SignalSpectrogramRenderedPowerLimits(extent.min_db - 1.0, extent.max_db + 1.0, DB_SPECTRUM_SCALE)
+    end
+    signal_spectrogram_power_limits_metadata(SignalSpectrogramPresentationPlan(
+        zeros(Float64, 0, 0),
+        DB_SPECTRUM_SCALE,
+        resolution,
+        rendered,
+    ))
 end
 
 function signal_spectrogram_power_limits_metadata(
     settings::SignalSpectrogramSettings,
     data::SignalSpectrogramData,
+    scale::SignalSpectrumScale,
 )::Dict{String,Any}
-    projection = SignalSpectrogramPowerProjection(data)
-    signal_spectrogram_power_limits_metadata(SignalSpectrogramPowerLimitsResolution(
-        settings.power_limits,
-        projection,
-    ))
+    plan = signal_spectrogram_presentation_plan(
+        SignalSpectrogramPresentationPlanner(),
+        data,
+        SignalSpectrogramPresentationSettings(scale, settings.power_limits),
+    )
+    signal_spectrogram_power_limits_metadata(plan)
 end
+
+
+signal_spectrogram_power_limits_metadata(
+    settings::SignalSpectrogramSettings,
+    data::SignalSpectrogramData,
+)::Dict{String,Any} = signal_spectrogram_power_limits_metadata(
+    settings,
+    data,
+    DB_SPECTRUM_SCALE,
+)
+
+"""Serializer boundary for canonical and renderer-ready Persistence density metadata."""
+struct SignalPersistencePresentationSerializer end
+
+signal_persistence_requested_density_limits_payload(
+    ::SignalPersistencePresentationSerializer,
+    ::AutomaticSignalPersistenceDensityLimits,
+) = nothing
+
+function signal_persistence_requested_density_limits_payload(
+    ::SignalPersistencePresentationSerializer,
+    limits::ExplicitSignalPersistenceDensityLimits,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "min" => limits.minimum,
+        "max" => limits.maximum,
+        "units" => "percent",
+    )
+end
+
+signal_persistence_effective_density_limits_payload(
+    ::SignalPersistencePresentationSerializer,
+    ::Nothing,
+) = nothing
+
+function signal_persistence_effective_density_limits_payload(
+    ::SignalPersistencePresentationSerializer,
+    limits::SignalPersistenceDensityExtent,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "min" => limits.minimum,
+        "max" => limits.maximum,
+        "units" => "percent",
+    )
+end
+
+signal_persistence_rendered_density_limits_payload(
+    ::SignalPersistencePresentationSerializer,
+    ::Nothing,
+) = nothing
+
+function signal_persistence_rendered_density_limits_payload(
+    ::SignalPersistencePresentationSerializer,
+    limits::SignalPersistenceRenderedDensityLimits,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "min" => limits.minimum,
+        "max" => limits.maximum,
+        "units" => "percent",
+    )
+end
+
+function signal_persistence_density_limits_metadata(
+    serializer::SignalPersistencePresentationSerializer,
+    plan::SignalPersistencePresentationPlan,
+)::Dict{String,Any}
+    resolution = plan.density_limits
+    Dict{String,Any}(
+        "mode" => resolution.requested isa AutomaticSignalPersistenceDensityLimits ?
+            "auto" : "explicit",
+        "requested" => signal_persistence_requested_density_limits_payload(
+            serializer,
+            resolution.requested,
+        ),
+        "effective" => signal_persistence_effective_density_limits_payload(
+            serializer,
+            resolution.effective,
+        ),
+        "rendered" => signal_persistence_rendered_density_limits_payload(
+            serializer,
+            plan.rendered_limits,
+        ),
+    )
+end
+
+signal_persistence_density_limits_metadata(
+    plan::SignalPersistencePresentationPlan,
+)::Dict{String,Any} = signal_persistence_density_limits_metadata(
+    SignalPersistencePresentationSerializer(),
+    plan,
+)
 
 function signal_spectrogram_frequency_scale_metadata(
     settings::SignalSpectrogramSettings,
@@ -340,6 +537,8 @@ end
 function signal_analyser_empty_plots(
     spectrum_settings::SignalSpectrumSettings = SignalSpectrumSettings(),
     spectrogram_settings::SignalSpectrogramSettings = SignalSpectrogramSettings(),
+    spectrogram_scale::SignalSpectrumScale = DB_SPECTRUM_SCALE,
+    persistence_density_limits::Union{Nothing,SignalSettingRange} = nothing,
 )::Dict{String,Any}
     Dict{String,Any}(
         "time" => Dict{String,Any}(
@@ -368,7 +567,7 @@ function signal_analyser_empty_plots(
             "z" => Vector{Vector{Float64}}(),
             "x_label" => "Время, с",
             "y_label" => "Частота, Гц",
-            "color_label" => "Мощность, дБ",
+            "color_label" => spectrogram_scale == DB_SPECTRUM_SCALE ? "Мощность, дБ" : "Мощность",
             "frequency_limits" => signal_spectrogram_frequency_limits_metadata(
                 spectrogram_settings,
                 nothing,
@@ -380,10 +579,12 @@ function signal_analyser_empty_plots(
             "power_limits" => signal_spectrogram_power_limits_metadata(
                 spectrogram_settings,
                 SignalSpectrogramData(ONE_SIDED_SPECTRUM),
+                spectrogram_scale,
             ),
         ),
         "persistence" => signal_analyser_persistence_plot(
             SignalPersistenceData(ONE_SIDED_SPECTRUM),
+            persistence_density_limits,
         ),
     )
 end
@@ -552,6 +753,8 @@ function signal_analyser_prepared_persistences(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
     signal::Union{Nothing,AnalysedSignal},
+    ;
+    materialize_missing::Bool = true,
 )::Dict{SignalPersistenceCacheKey,SignalPersistenceData}
     prepared = Dict{SignalPersistenceCacheKey,SignalPersistenceData}()
     plan = SignalAnalyserPersistencePreparationPlan(display, signal)
@@ -560,7 +763,7 @@ function signal_analyser_prepared_persistences(
     key = signal_persistence_cache_key(signal, display.persistence_settings)
     if haskey(state.persistence_cache, key)
         prepared[key] = state.persistence_cache[key]
-    else
+    elseif materialize_missing
         prepared[key] = signal_persistence_data(
             state.persistence_service,
             signal,
@@ -627,6 +830,7 @@ function signal_analyser_prepare_display_plots(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
     refresh_spectrogram::Bool = false,
 )::SignalAnalyserPreparedDisplayPlots
     signal.name in visible_names || throw(ArgumentError(
@@ -650,6 +854,7 @@ function signal_analyser_prepare_display_plots(
         state,
         display,
         signal,
+        materialize_missing = materialize_missing_persistence,
     )
 
     selected_plots = copy(prepared_plots[signal.name])
@@ -679,8 +884,12 @@ function signal_analyser_prepare_display_plots(
         selected_spectrogram,
         display.spectrogram_settings,
         signal,
+        display.stored_settings.spectrogram.scale,
     )
-    selected_plots["persistence"] = signal_analyser_persistence_plot(selected_persistence)
+    selected_plots["persistence"] = signal_analyser_persistence_plot(
+        selected_persistence,
+        display.stored_settings.persistence.density_limits,
+    )
 
     time_traces = Dict{String,Any}[]
     spectrum_traces = Dict{String,Any}[]
@@ -737,6 +946,7 @@ function signal_analyser_prepare_display_plots(
     visible_names::Vector{String};
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
     refresh_spectrogram::Bool = false,
 )::SignalAnalyserPreparedDisplayPlots
     isempty(visible_names) || throw(ArgumentError(
@@ -745,6 +955,8 @@ function signal_analyser_prepare_display_plots(
     plots = signal_analyser_empty_plots(
         display.spectrum_settings,
         display.spectrogram_settings,
+        display.stored_settings.spectrogram.scale,
+        display.stored_settings.persistence.density_limits,
     )
     spectrogram = copy(plots["spectrogram"])
     spectrogram["signal"] = nothing
@@ -1057,6 +1269,8 @@ function signal_analyser_multi_trace_payload(
     plots = signal_analyser_empty_plots(
         display.spectrum_settings,
         display.spectrogram_settings,
+        display.stored_settings.spectrogram.scale,
+        display.stored_settings.persistence.density_limits,
     )
     signal_analyser_multi_trace_payload(
         state,
@@ -3069,6 +3283,18 @@ function validate_signal_analyser_view_payload(
             end
         end
     end
+    if !haskey(field_errors, "spectrogram_settings")
+        try
+            SignalSpectrogramPresentationSettings(
+                display.stored_settings.spectrogram.scale,
+                requested_spectrogram_settings.power_limits,
+            )
+        catch err
+            err isa ArgumentError || rethrow()
+            field_errors["spectrogram_settings"] =
+                "power_limits: $(sprint(showerror, err))"
+        end
+    end
 
     has_persistence_settings = signal_analyser_payload_contains(data, "persistence_settings")
     requested_persistence_settings = display.persistence_settings
@@ -3102,17 +3328,24 @@ function validate_signal_analyser_view_payload(
     end
 
     isempty(field_errors) || throw(SignalAnalyserValidationError("Некорректный запрос отображения", field_errors))
+    prospective_source_signal = requested_analysis_name === nothing ? nothing :
+        signal_by_name(state, requested_analysis_name)
+    requested_stored_settings = signal_settings_reconcile_stored_for_source(
+        display.stored_settings,
+        prospective_source_signal,
+    )
     prospective_display = SignalAnalyserDisplayState(
         display.id,
         display.name,
         requested_plot,
-        requested_analysis_name,
-        visible_names,
+        SignalDisplayMembership(visible_names),
+        signal_analysis_source(requested_analysis_name),
         requested_time_limits,
         requested_measurement_selection,
         requested_spectrum_settings,
         requested_spectrogram_settings,
         requested_persistence_settings,
+        requested_stored_settings,
         requested_peaks_enabled,
     )
     (
@@ -3384,5 +3617,6 @@ end
 include(joinpath(@__DIR__, "..", "adapters", "engee_workspace_variable_provider.jl"))
 include(joinpath(@__DIR__, "..", "adapters", "engee_workspace_signal_source.jl"))
 include(joinpath(@__DIR__, "workspace_catalog_service.jl"))
+include(joinpath(@__DIR__, "signal_settings_service.jl"))
 include(joinpath(@__DIR__, "signal_inventory_service.jl"))
 include(joinpath(@__DIR__, "workspace_batch_import_service.jl"))

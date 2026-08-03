@@ -206,6 +206,26 @@ end
     ], truncated = false, total = 3), nothing, Dict{String,Any}())
     snapshot = WC.load_workspace_catalog!(WC.WorkspaceCatalogService(provider); catalog_revision = "wc_00000000-0000-4000-8000-000000000000")
     @test all(!entry.selectable && entry.compatibility == WC.INCOMPATIBLE_WORKSPACE_COMPATIBILITY for entry in snapshot.variables)
+
+    # The service must fail closed even when a provider incorrectly labels an
+    # invalid shape as one of the supported raw/timed source kinds.
+    invalid_by_declared_source = [
+        (name = "invalid raw vector", type = "V", shape = [2, 2], source_kind = "raw_vector"),
+        (name = "invalid raw matrix", type = "M", shape = [2, 1001], source_kind = "raw_matrix"),
+        (name = "invalid timed vector", type = "T", shape = [1], source_kind = "timed_vector"),
+        (name = "invalid timed matrix", type = "TM", shape = [1, 2], source_kind = "timed_matrix"),
+    ]
+    provider = FakeWorkspaceCatalogProvider((entries = invalid_by_declared_source, truncated = false, total = 4), nothing, Dict{String,Any}())
+    snapshot = WC.load_workspace_catalog!(WC.WorkspaceCatalogService(provider); catalog_revision = "wc_bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+    entries = Dict(entry.name => entry for entry in snapshot.variables)
+    for item in invalid_by_declared_source
+        entry = entries[item.name]
+        @test entry.shape == ()
+        @test entry.source_kind == WC.UNSUPPORTED_WORKSPACE_SOURCE
+        @test entry.sample_rate_requirement == WC.UNSUPPORTED_WORKSPACE_SAMPLE_RATE
+        @test !entry.selectable && entry.compatibility == WC.INCOMPATIBLE_WORKSPACE_COMPATIBILITY
+        @test !isempty(entry.reason) && ncodeunits(entry.reason) <= WC.WORKSPACE_CATALOG_MAX_REASON_LENGTH
+    end
     @test valid.name == "x" # protects the exact fixture shape from accidental drift
 end
 
