@@ -1,0 +1,19 @@
+schema_version: 2
+name: task-analysis
+version: 1.1.0
+title: "Анализ задачи Frontend"
+description: >
+  Первый этап Frontend: определяет UI scope, анализирует используемые и
+  изменённые API contracts и при нехватке данных формирует task handoff
+  Backender перед implementation.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Перед implementation для любой frontend-задачи"
+when-not:
+  - "Для задачи вне frontend ownership"
+requires-tools: []
+requires-products: []
+reference-files: []
+requires-skills: [frontend-workflow]

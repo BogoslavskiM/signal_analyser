@@ -1,0 +1,19 @@
+schema_version: 2
+name: handoff-management
+version: 1.1.0
+title: "Handoff Management"
+description: >
+  Минимальный формат межагентного handoff типов task, report, research и FYI:
+  id, type, from, to, title и опциональные task section, description и
+  acceptance criteria.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "При любом сообщении или результате между агентами"
+when-not:
+  - "Для локального рассуждения, не передаваемого другому агенту"
+requires-tools: []
+requires-products: []
+reference-files: []
+requires-skills: [orchestrator-workflow]

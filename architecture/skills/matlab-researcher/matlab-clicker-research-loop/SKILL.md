@@ -3,205 +3,43 @@ name: matlab-clicker-research-loop
 ---
 # MATLAB Clicker Research Loop
 
-## When to Use
-- Architect запросил автономное исследование конкретного MATLAB-приложения.
-- Другому агенту нужен новый reference-сценарий или уточнение поведения MATLAB.
+## Подготовка
 
-## When NOT to Use
-- Нужно написать Playwright, unit/API test или исправить Genie-приложение.
-- Нужно изменить `matlab_clicker`, его API, профиль или координаты.
+1. Проверить `matlab_clicker status`; при необходимости выполнить
+   `matlab_clicker up`.
+2. Проверить `/health` и заново прочитать `/agent/bootstrap`, server skills,
+   API/OpenAPI и рекомендуемый workflow. Не использовать старый bootstrap.
+3. Работать только с MATLAB workspace, Command Window и исследуемым
+   приложением. Не открывать Help, Documentation или Add-On Explorer.
 
-## Official Documentation Research Map
-1. До clicker-исследования найди релевантные official MathWorks pages через
-   обычный internet search/browser вне MATLAB непосредственно на официальном
-   сайте MathWorks. Используй official docs как primary source и сохрани прямые
-   URL в `docs_sources`.
-2. Для поиска или чтения документации запрещено нажимать в MATLAB кнопки
-   `Documentation`, `Help`, `Learn`, ссылки справки и любые аналогичные UI
-   controls. Не открывай встроенный documentation browser MATLAB.
-3. Никогда не открывай и не используй MATLAB Add-On Explorer. Если он уже
-   открыт, не взаимодействуй с ним; пользователь может закрыть его. MATLAB app
-   не является инструментом поиска документации.
-4. Преобразуй документацию в `documented_direction`: список заявленных
-   workflows, операций, представлений, ограничений и вопросов, которые должен
-   проверить clicker. Это research map, а не исчерпывающая спецификация UI.
-5. После каждого существенного clicker handoff уточняй internet research map,
-   если фактическое приложение открыло новый workflow или термин. Цикл docs ->
-   clicker -> delta -> новые product/tests tasks является постоянным.
+## Безопасное управление
 
-## Bootstrap
-1. Выполни `matlab_clicker status`.
-2. Если сервер остановлен, запусти его через `matlab_clicker up`.
-3. Получи актуальный URL из `matlab_clicker status`.
-4. Вызови `GET /health`, затем `GET /agent/bootstrap`.
-5. Прочитай всё содержимое `documents` с `kind=skill`.
-6. Прочитай API guides, OpenAPI, `recommended_workflow`,
-   `coordination_rules`, `vision_cycle`, существующие reference-сценарии и
-   metadata артефактов.
-7. Не используй сохранённую копию bootstrap от предыдущего запуска сервера.
+- MATLAB GUI изменяет только один MATLAB Researcher.
+- Перед каждой командой Command Window получить свежий prompt, включить
+  English/ASCII, набрать команду, визуально проверить её и только затем
+  выполнить.
+- Double-click и drag-and-drop выполнять нативными mouse actions.
+- После каждого действия визуально проверять результат. HTTP success не
+  подтверждает изменение GUI.
+- На одну гипотезу давать не более трёх осмысленных попыток. При повторении
+  состояния остановиться и сохранить evidence.
 
-Если detached server завершается вместе с exec-командой, удерживай startup в
-долгоживущей exec-сессии и выполняй HTTP-запросы, пока эта сессия активна.
+## Исследование
 
-## Keyboard Layout Precondition
-1. Для каждой отдельной команды Command Window заново выполни полный цикл:
-   focus Command Window -> pre-input Enter для получения fresh prompt -> явно
-   проверь текущий язык ввода -> при необходимости переключи и повторно
-   подтверди English/ASCII -> type -> visual verification набранной строки ->
-   execution Enter. Оба Enter обязательны: один непосредственно перед циклом
-   ввода, второй только после визуальной проверки команды. Цикл нельзя
-   переиспользовать между командами.
-2. Для text fields вне Command Window pre-input Enter не выполняй: перед каждым
-   text/name/path input установи English/ASCII, набери и визуально проверь текст,
-   затем используй штатное действие поля.
-3. HTTP success или отправленные key events не подтверждают правильность
-   набранного текста; выполнение разрешено только после visual verification.
-4. После любого ввода русского текста в UI снова принудительно установи
-   English/ASCII до следующего command/name/path input.
-5. Если команда или путь повреждены раскладкой либо смешанными символами, не
-   выполняй их: полностью очисти поле/Command Window line и набери заново.
-6. Выполнение этого precondition обязательно перед каждым соответствующим
-   clicker action и фиксируется в `clicker_setup` handoff.
+1. Идти от карты, созданной по документации и предметной области.
+2. Фиксировать зоны, controls, labels, defaults, состояния, зависимости,
+   workflow, ошибки, графики, export и persistence.
+3. Для числовых полей проверять обычное, граничное и невалидное значение, если
+   это безопасно и связано с исследуемым сценарием.
+4. Проверять значимые пользовательские пути, а не полный перебор настроек.
+5. Завершать значимый этап screenshot и проверять его через vision.
 
-## Native Mouse Actions
-- Double-click: выбери подтверждённый stable center цели, выполни нативные два
-  быстрых LMB clicks в пределах системного double-click interval без движения
-  мыши между clicks, затем сделай screenshot и визуально подтверди результат.
-  Не подменяй double-click двумя медленными single-click действиями.
-- Drag-and-drop: начни в подтверждённом stable center источника, удерживай ЛКМ
-  (`mouseDown`), перемести указатель к подтверждённой target point, выдержи
-  короткую pause, затем отпусти (`mouseUp`) и визуально проверь результат. Не
-  подменяй drag-and-drop последовательностью click-click.
-- Если visual verification не подтверждает ожидаемый state transition, action
-  не считается успешным; зафиксируй observed result и повторяй только после
-  проверки координат/состояния.
+## Evidence
 
-## Bounded GUI Hypothesis Loop
-
-1. Каждая GUI hypothesis получает bounded attempt budget: по умолчанию не более
-   трёх осмысленных попыток.
-2. После каждого действия визуально сравни фактическое состояние с ожидаемым.
-3. Если состояние не меняется либо чередуются те же окна/экраны без нового
-   evidence, немедленно прекрати GUI mutation. Не повторяй click, hotkey или
-   drag.
-4. Проверь `matlab_clicker status`/health и сохрани ссылку на последнюю
-   подтверждённую screenshot/evidence. При down/stale PID сначала восстанови
-   server и заново выполни bootstrap; не кликай через недостоверное состояние.
-5. Для fullscreen или empty layout cell допустима одна безопасная попытка
-   вернуться к последнему подтверждённому app/display state. Если она не
-   помогла, не перебирай пустые cells: сохрани partial scenario, отправь
-   Architect postmortem/blocker и перейди в standby либо к новой bounded задаче.
-
-## Research Loop
-1. В MATLAB используй только workspace/Command Window и Signal Analyzer app.
-   Никогда не открывай Add-On Explorer и не переходи в другие MATLAB apps для
-   поиска документации или расширений.
-2. Найди запрошенный Signal Analyzer и используй одно существующее окно.
-   Открывай приложение только при его отсутствии.
-3. На основании `documented_direction`, server-side skills, профиля, live
-   controls и уже сохранённых сценариев определи непокрытые смысловые области.
-4. Не ограничивайся подтверждением документации. Целенаправленно фиксируй
-   undocumented controls, labels, defaults, enabled/disabled states, state
-   transitions, dependent workflows, edge cases, errors и visual outcomes.
-5. Не перебирай полное декартово произведение настроек. Покрывай значимые
-   пользовательские workflow, состояния, зависимости, ошибки, dialogs,
-   графики, exports и persistence.
-6. Включай static profile commands, live controls и dropdown options.
-7. Для каждого числового input проверь минимум три значения: обычное валидное,
-   граничное валидное и невалидное.
-8. Для одиночной стабильной команды предпочитай `/app/click`.
-9. Popup-dependent и многошаговые действия объединяй в один `/run` с настройками
-   `exclusive_mouse=true` и `restore_mouse_after_run=true`.
-10. Завершай значимые batches screenshot-действием по пути под `/private/tmp`.
-11. Открывай PNG через vision tool и проверяй фактическое состояние. HTTP 200 не
-   считается доказательством изменения UI.
-12. Используй generic `/run`, если named profile command отсутствует, но API
-    позволяет надёжно выполнить и подтвердить действие.
-13. Перед сообщёнными E2E Tester Space/focus/window actions подтверди безопасный
-    coordination point. E2E не получает права перемещать/закрывать MATLAB;
-    MATLAB Researcher сохраняет текущее MATLAB window/Space state.
-
-## Scenario Stream
-1. Один сохранённый сценарий отвечает на один исследовательский вопрос.
-2. Как только сценарий готов, найди в актуальном OpenAPI server-side endpoint
-   сохранения и отправь сценарий в требуемом формате.
-3. Используй только путь файла или каталога, возвращённый сервером. Не угадывай
-   локальное расположение и не записывай сценарий напрямую.
-4. Немедленно отправь E2E Tester и Architect структурированный research
-   handoff. Поля `product_tasks` и `e2e_scenarios` должны быть actionable, а не
-   общими пожеланиями:
-
-```text
-docs_sources:
-documented_direction:
-clicker_setup:
-observed_undocumented_behavior:
-docs_vs_app_delta:
-product_tasks:
-e2e_scenarios:
-engee_bug_candidate: optional
-```
-
-Каждый элемент `e2e_scenarios` содержит `scenario_id`, возвращённый сервером
-`system_path`, research question, observable behavior, numeric artifacts и
-uncertainties.
-
-5. Одновременно уведомь Architect и продолжай исследование, не ожидая E2E.
-6. При вопросе любого агента исследуй недостающее поведение и верни новый либо
-   уточнённый сценарий тем же способом.
-
-## Completion
-- Все смысловые области приложения представлены сохранёнными сценариями.
-- Для каждого направления сохранены official docs source, фактические
-  undocumented observations и явный docs/app delta.
-- Каждый новый сценарий передан E2E Tester.
-- Непокрытые области отсутствуют либо перечислены как `blocked` с
-  доказательствами.
-- `blocked` допустим только когда действие невозможно выполнить или подтвердить
-  через API текущего запуска. Отправь handoff владельцу clicker и Architect:
-
-```text
-application:
-blocked_control_or_action:
-attempted_api_operations:
-observed_result:
-diagnostics:
-required_human_change:
-```
-
-- Не изменяй clicker самостоятельно.
-- Не останавливай сервер после завершения.
-- Не ожидай результатов E2E перед завершением исследования.
-
-## Guardrails
-- Только один MATLAB Researcher изменяет MATLAB GUI.
-- Остальные агенты могут работать параллельно.
-- Никогда не открывай и не используй MATLAB Add-On Explorer.
-- Документацию ищи только обычным internet search/browser вне MATLAB на
-  официальном сайте MathWorks. Не нажимай в MATLAB `Documentation`, `Help`,
-  `Learn` или другие кнопки/ссылки справки и не используй встроенный
-  documentation browser.
-- В MATLAB clicker ограничен workspace/Command Window и Signal Analyzer app.
-- English/ASCII layout и проверка набранного текста до Enter обязательны для
-  каждого command/name/path input; повреждённый ввод очищается и набирается
-  заново.
-- Каждая Command Window команда начинает новый focus -> pre-input Enter ->
-  явная проверка языка -> подтверждённый English/ASCII -> type -> verify ->
-  execution Enter цикл. Не пропускай ни Enter до ввода, ни Enter после
-  проверки. В text fields вне Command Window pre-input Enter не используется.
-- Double-click и drag-and-drop выполняются только нативными mouse primitives с
-  удержанием/системным timing и обязательной visual verification; click-click
-  и медленные single-click substitutes запрещены.
-- GUI hypothesis ограничена bounded attempt budget (по умолчанию максимум три
-  осмысленные попытки), visual comparison после каждого действия и немедленной
-  остановкой повторяющегося mutation loop без нового evidence. Down/stale
-  clicker восстанавливается до bootstrap; fullscreen/empty cell получает одну
-  safe recovery attempt, затем partial scenario и blocker handoff.
-- Не пиши тесты и не сравнивай MATLAB с Genie.
-- Не создавай отдельную coverage matrix: покрытие фиксируют сохранённые сценарии
-  и явный список блокеров.
-- Не редактируй файлы текущего проекта или `matlab_clicker`.
-- Не считай скриншот точным численным oracle.
-- Не повторяй сохранённые сценарии без причины считать их устаревшими.
-- При вероятном дефекте Engee верни candidate evidence Architect, но не
-  классифицируй `confirmed` без safe repeat и isolation от MATLAB/clicker/app.
+- Один сохранённый сценарий отвечает на один исследовательский вопрос.
+- Сохранять сценарий только через endpoint из актуального API и использовать
+  возвращённый сервером путь.
+- В `description` handoff указывать источники, вопрос, действия, наблюдение,
+  отличие от документации, scenario ID/path и неопределённости.
+- При невозможности проверки отправить Orchestrator blocker evidence. Не
+  изменять clicker и не останавливать его сервер.

@@ -1,0 +1,22 @@
+schema_version: 2
+name: tester-workflow
+version: 1.2.1
+title: "Tester Workflow"
+description: >
+  Обязательный процесс Tester, типовая архитектура и стек тестов, regression,
+  evidence report и единый формат bug report.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Всегда при работе Tester"
+when-not:
+  - "Для реализации product code"
+requires-tools:
+  - "Julia"
+  - "Node.js"
+requires-products:
+  - "Genie"
+  - "Engee"
+reference-files: []
+requires-skills: []

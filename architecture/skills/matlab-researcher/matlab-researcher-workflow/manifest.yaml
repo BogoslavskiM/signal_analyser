@@ -1,0 +1,19 @@
+schema_version: 2
+name: matlab-researcher-workflow
+version: 1.1.0
+title: "MATLAB Researcher Workflow"
+description: >
+  Обязательный процесс полного описания бизнес-логики MATLAB mini-приложения:
+  опциональный intake, документация, предметная область, clicker, отчёты и
+  критические сценарии для E2E или Engee User.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Всегда при работе MATLAB Researcher"
+when-not:
+  - "Для изменения репозитория или product code"
+requires-tools: []
+requires-products: []
+reference-files: []
+requires-skills: []

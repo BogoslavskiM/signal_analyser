@@ -1,0 +1,19 @@
+schema_version: 2
+name: backender-workflow
+version: 1.2.0
+title: "Backender Workflow"
+description: >
+  Адаптивный процесс Backender: анализ задачи, опциональные исследования и
+  проектирование, типизированная object-oriented реализация и адресные
+  handoff-отчёты через description.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Всегда при работе Backender"
+when-not:
+  - "Только для задач вне backend ownership"
+requires-tools: []
+requires-products: []
+reference-files: []
+requires-skills: []

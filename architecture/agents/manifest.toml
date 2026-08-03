@@ -1,30 +1,21 @@
-schema_version = "1"
+schema_version = "2"
 source_of_truth = "architecture/agents"
 strict_boundaries = true
-role_import_mode = "one-role-file-plus-manifest-entry"
 
 required_project_layout = [
   "architecture/README.md",
-  "architecture/agents/README.md",
   "architecture/agents/manifest.toml",
   "architecture/agents/roles/*.toml",
-  "architecture/agents/adapt.sh",
-  "architecture/documentation/**",
+  "architecture/tasks/**",
+  "architecture/handoffs/**",
+  "architecture/backend_documentation/**",
+  "architecture/frontend_documentation/**",
+  "architecture/engee_bugs/**",
   "architecture/skills/**",
   "app/**",
   "lib/**",
-  "run.jl",
-  "public/js/**",
-  "public/css/**",
-  "public/html/**",
-  "public/index.html",
-  "public/icons/**",
-  "public/fonts/**",
-  "docs/**",
-  "test/back/**",
-  "test/engee/**",
-  "test/front/**",
-  "test/playwright/**",
+  "public/**",
+  "test/**",
 ]
 
 verification_commands = [
@@ -32,34 +23,18 @@ verification_commands = [
   "julia --project=. test/back/runtests.jl",
   "julia --startup-file=no test/engee/engee_package_contract_tests.jl",
   "node test/front/run_front_tests.js",
-  "./test/playwright/run_devhub_playwright_tests.sh",
+  "./test/playwright/run_playwright_tests.js",
 ]
 
 [workflow]
-lead_role = "architect"
-deployment_role = "devops"
-accepted_task_target = "dev"
+lead_role = "orchestrator"
 reporting = "chat-first"
+task_order = "orchestrator-decides-sequential-or-parallel"
 handoff_policy = "handoff-instead-of-crossing-boundaries"
-durable_documentation = "architect-continuous"
-handoff_record_path = "architecture/documentation/agents/handoff"
-role_thread_policy = "one-reusable-thread-per-declared-role"
-role_thread_standby = "completed-standby-without-fake-activity"
-role_next_task_queue = "rolling-per-persistent-role"
-handoff_reassignment = "same-orchestration-cycle-or-record-exact-blocker"
-e2e_scheduling = "feature-milestone-after-product-and-unit-ready"
-optimization_scheduling = "after-functional-features-and-regression"
-parallel_lanes = ["product", "tests", "e2e", "deployment", "documentation", "research", "commit-freeze"]
-milestone_heartbeat_fields = ["canonical role", "agent ID/session", "active task", "next queued task", "blocker", "last handoff"]
-restart_policy = "bootstrap-registry-and-resume-same-role-ids"
-documentation_path = "architecture/documentation/**"
-documentation_user_path = "architecture/documentation/user/**"
-documentation_agents_path = "architecture/documentation/agents/**"
-documentation_audience_boundary = "physical-user-agents-split-with-cross-links"
-skills_path = "architecture/skills/**"
+documentation_owner = "orchestrator"
+archive_path = "template/"
 
 [model_selection]
-reasoning_effort_policy = "match-model-level"
 high_reasoning_effort = "xhigh"
 medium_reasoning_effort = "medium"
 low_reasoning_effort = "low"
@@ -74,19 +49,19 @@ allow_fallback = false
 credential_source = "protected root AGENTS instructions"
 
 [[roles]]
-name = "architect"
-file = "architecture/agents/roles/architect.toml"
-owns = ["architecture/**", "docs/**", "AGENTS.md", "CLAUDE.md", ".codex/**", ".claude/**", ".cursor/**", ".windsurf/**", ".clinerules/**", ".roo/**", ".gemini/**", "GEMINI.md", "README.md"]
+name = "orchestrator"
+file = "architecture/agents/roles/orchestrator.toml"
+owns = ["architecture/**", "docs/**", "AGENTS.md", ".codex/**", "README.md"]
 
 [[roles]]
-name = "backend"
-file = "architecture/agents/roles/backend.toml"
+name = "backender"
+file = "architecture/agents/roles/backender.toml"
 owns = ["app/**", "lib/**", "app.jl", "run.jl", "config/**", "Project.toml"]
 
 [[roles]]
 name = "frontend"
 file = "architecture/agents/roles/frontend.toml"
-owns = ["public/js/**", "public/css/**", "public/html/**", "public/index.html", "public/icons/**", "public/fonts/**"]
+owns = ["public/**"]
 
 [[roles]]
 name = "tester"
@@ -94,16 +69,16 @@ file = "architecture/agents/roles/tester.toml"
 owns = ["test/back/**", "test/engee/**", "test/front/**"]
 
 [[roles]]
-name = "e2e_tester"
-file = "architecture/agents/roles/e2e-tester.toml"
-owns = ["test/playwright/**"]
-
-[[roles]]
-name = "devops"
-file = "architecture/agents/roles/devops.toml"
-owns = []
-
-[[roles]]
 name = "matlab_researcher"
 file = "architecture/agents/roles/matlab-researcher.toml"
 owns = []
+
+[[roles]]
+name = "engee_user"
+file = "architecture/agents/roles/engee-user.toml"
+owns = ["architecture/engee_bugs/**"]
+
+[[roles]]
+name = "e2e"
+file = "architecture/agents/roles/e2e.toml"
+owns = ["test/playwright/**"]

@@ -1,55 +1,6 @@
-# Скиллы
+# Workflow skills
 
-`architecture/skills/` содержит проектные переиспользуемые скиллы для агентов.
-
-Скиллы не являются контрактами ролей. Контракты ролей определяют зоны
-ответственности и границы в `architecture/agents/roles/`. Скиллы описывают
-повторяемые рабочие процедуры, которые роль может загрузить для задачи.
-
-## Универсальная модель
-
-- Каталог универсален для Genie-приложений. Проектные требования и статусы
-  хранятся в `architecture/documentation/`, а не в универсальных skills.
-- Наличие skill не делает product capability обязательной. Blueprint выбирает
-  возможности, после чего Architect подключает только подходящие skills.
-- Составной skill разделяет `Core Contract` и `Optional Capabilities`.
-  Указание skill id означает соблюдение ядра. Handoff отдельно перечисляет
-  стабильные ids расширений в `enabled_optional_capabilities`.
-- `requires-skills` в manifest перечисляет обязательные core contracts других
-  skills. Их optional capabilities автоматически не включаются.
-- Версия хранится только в `manifest.yaml`; frontmatter `SKILL.md` хранит
-  только `name`.
-
-## Defaults
-
-- Frontend по умолчанию использует vanilla JavaScript без bundler. Другой стек
-  разрешён только по прямому решению пользователя и фиксируется ADR вместе с
-  отдельной технологической инструкцией.
-- Visual profile по умолчанию: светлая тема, локальный Roboto, Engee-подобный
-  язык и fixed canvas минимум `920 × 680` без responsive-перестройки. Другой
-  профиль требует прямого решения пользователя и ADR.
-- API по умолчанию использует HTTP 200 для semantic validation и HTTP 500 для
-  неверного API type. `409`, `422`, revisions и другие схемы требуют явного
-  проектного решения и ADR.
-- Worker queue/revision/cancellation — optional capability, включаемая после
-  измерений либо явного требования. После включения её инварианты обязательны.
-
-## Frontend assets
-
-Frontend bundles используют vanilla JavaScript contract
-`create(options) → { state, actions, render, mount, unmount }`. HTML-assets
-являются mount points без framework directives. Проверяй их командой:
-
-```bash
-node architecture/skills/frontend/validate_vanilla_assets.js
-```
-
-Не используй скиллы для повторения базовых правил поведения агента: отчетности,
-передачи задач, проверки или границ каталогов. Эти правила находятся в
-`architecture/agents/roles/*.toml`.
-
-Скиллы сгруппированы по ролям. Каждый конкретный скилл хранится в отдельном
-каталоге в формате содержимого Engee MCP:
+Каждый skill хранится в формате Engee MCP:
 
 ```text
 <role>/<skill-name>/
@@ -57,23 +8,20 @@ node architecture/skills/frontend/validate_vanilla_assets.js
   SKILL.md
 ```
 
-Каталоги ролей:
+У каждой роли есть обязательный workflow skill. Для роли с независимыми
+режимами role-инструкция выбирает один обязательный mode skill. Затем перед
+каждым этапом агент читает соответствующий stage skill и фиксирует его
+применение в TS/handoff.
 
-- `architect/`
-- `backend/`
-- `frontend/`
-- `tester/`
-- `e2e-tester/`
-- `devops/`
-- `matlab-researcher/`
+Минимальные группы:
 
-Используй один каталог скилла на каждую повторяемую проектную процедуру. Зоны
-ответственности ролей храни в `architecture/agents/roles/`, а память конкретных
-задач — в `architecture/documentation/agents/`, а клиентские спецификации,
-решения и история — в `architecture/documentation/user/`.
+- `orchestrator/` — intake, task separation, review, reporting;
+- `backender/` — backend architecture, API contract, math, implementation;
+- `frontend/` — zoning, API connection, styling;
+- `tester/` — unit, contract, regression;
+- `matlab-researcher/` — browser/docs/clicker research;
+- `engee-user/` — function analysis and deployment;
+- `e2e/` — feature scenario and runtime report.
 
-Проверка каталога:
-
-```bash
-ruby architecture/skills/validate_skills.rb
-```
+Каждый `manifest.yaml` обязан использовать schema 2 и хранить версию только в
+manifest. Frontmatter `SKILL.md` содержит только `name`.

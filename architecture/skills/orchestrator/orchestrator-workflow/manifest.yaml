@@ -1,0 +1,18 @@
+schema_version: 2
+name: orchestrator-workflow
+version: 1.1.0
+title: "Orchestrator Workflow"
+description: >
+  Обязательный жизненный цикл Orchestrator: backlogging, выбор model/reasoning,
+  task separation, handoffs, review, status updates и пользовательский отчёт.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Всегда при работе Orchestrator"
+when-not:
+  - "Никогда не пропускается; stage skills подключаются дополнительно"
+requires-tools: []
+requires-products: []
+reference-files: []
+requires-skills: []

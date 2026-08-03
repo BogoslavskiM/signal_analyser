@@ -1,0 +1,19 @@
+schema_version: 2
+name: backlogging
+version: 1.1.0
+title: "Backlogging"
+description: >
+  Детализация feature ideas в unified task registry: группировка, подзадачи,
+  зависимости, priority, model, reasoning, acceptance criteria и queue order.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Когда нет активной задачи для распределения"
+  - "После review handoff с нерешёнными follow-ups"
+when-not:
+  - "Когда Orchestrator уже распределяет queued task"
+requires-tools: []
+requires-products: []
+reference-files: []
+requires-skills: []

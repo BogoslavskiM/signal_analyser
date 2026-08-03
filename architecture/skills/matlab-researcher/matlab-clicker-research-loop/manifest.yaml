@@ -1,26 +1,21 @@
 schema_version: 2
 name: matlab-clicker-research-loop
-version: 0.6.0
-title: "MATLAB Clicker Research Loop"
+version: 1.0.0
+title: "Исследование через MATLAB Clicker"
 description: >
-  Постоянный цикл MATLAB Researcher: official MathWorks internet research вне
-  MATLAB формирует карту направлений без встроенной справки/Add-On Explorer, а
-  системный matlab_clicker дополняет её фактическими UI/default/state/workflow
-  наблюдениями и передаёт product/E2E handoff.
+  Безопасное исследование фактического поведения MATLAB-приложения через
+  matlab_clicker с визуальной проверкой и сохранением evidence-сценариев.
 language: ru
 audience: [assistant]
 priority: 1.0
 when-to-use:
-  - "Architect запросил исследование MATLAB-приложения"
-  - "Другому агенту нужен reference-сценарий или уточнение поведения MATLAB"
+  - "На этапе исследования MATLAB-приложения через GUI"
 when-not:
-  - "Нужно написать тест или исправить Genie-приложение"
-  - "Нужно изменить matlab_clicker"
+  - "Для поиска документации, изменения clicker или product code"
 requires-tools:
-  - "Обычный internet research вне MATLAB"
-  - "Системная утилита matlab_clicker"
+  - "matlab_clicker"
   - "HTTP client"
-  - "Vision tool для локальных screenshots"
+  - "Vision tool"
 requires-products:
   - "MATLAB"
   - "matlab_clicker API"

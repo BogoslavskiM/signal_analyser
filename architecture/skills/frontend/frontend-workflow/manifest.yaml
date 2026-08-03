@@ -1,0 +1,19 @@
+schema_version: 2
+name: frontend-workflow
+version: 1.4.0
+title: "Workflow Frontend"
+description: >
+  Обязательный процесс Frontend: объединённый анализ задачи и API contracts,
+  implementation в базовом формате HTML, JS и CSS с root-only zoning, zone
+  structure/API по patterns и styling по Figma либо examples, затем отчёты.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Всегда при работе Frontend"
+when-not:
+  - "Только для задач вне public ownership"
+requires-tools: []
+requires-products: []
+reference-files: []
+requires-skills: []
