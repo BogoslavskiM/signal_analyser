@@ -106,6 +106,24 @@ backlog → queued → in_progress → done
 `done` — терминальный статус. Блокировка не является отдельным статусом:
 используются `blocked_by` и `blocker_reason`.
 
+## E2E после закрытия task
+
+Каждый переход task в `done` немедленно создаёт отдельный E2E `task` handoff,
+связанный с завершённой registry task. Обычная task получает
+`quick_regression`; новая пользовательская функциональность получает
+`new_functionality_regression`, который включает новые scenarios и quick
+suite. E2E handoff не является отдельной registry task, поэтому не создаёт
+рекурсивный post-task запуск.
+
+Quick operational threshold — 75% passed от всех planned checks при
+обязательной доступности приложения. E2E findings не открывают terminal
+`done`: Orchestrator создаёт новые follow-up tasks.
+
+Когда после backlogging нет открытых actionable backlog items, `queued` и
+`in_progress` work, Orchestrator один раз запускает `analysis_regression`.
+Следующий idle-анализ допускается после completed task, изменения backlog или
+явного запроса пользователя.
+
 ## Backlogging
 
 В свободное от распределения задач время Orchestrator запускает backlogging:

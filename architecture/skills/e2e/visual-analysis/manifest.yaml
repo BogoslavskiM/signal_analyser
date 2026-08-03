@@ -1,0 +1,23 @@
+schema_version: 2
+name: visual-analysis
+version: 1.0.0
+title: "E2E-анализ изображений и screenshots"
+description: >
+  Детерминированные screenshots, визуальный анализ layout/geometry и полное
+  Playwright-покрытие динамических элементов и transient states.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Любой UI-affecting E2E regression handoff"
+  - "Проверка таблиц, settings, dialogs, popovers, tooltips или hover states"
+when-not:
+  - "Deployment mode или чисто backend/API regression без UI"
+requires-tools:
+  - "Chromium/CDP"
+  - "Playwright screenshots"
+  - "Visual image inspection"
+requires-products:
+  - "Playwright Core"
+reference-files: []
+requires-skills: []

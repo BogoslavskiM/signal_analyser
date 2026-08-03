@@ -1,0 +1,22 @@
+schema_version: 2
+name: genie-deploy
+version: 1.1.0
+title: "Развёртывание Genie ролью E2E"
+description: >
+  Явное production-развёртывание Genie ролью E2E с обязательной веткой neuro_,
+  выборочным commit/push, Engee checkout, запуском и report handoff.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "E2E получил отдельный явный deployment handoff с выбранными файлами"
+when-not:
+  - "Для regression или автоматического deployment после тестов"
+requires-tools:
+  - "Git"
+  - "Engee MCP"
+requires-products:
+  - "Engee"
+  - "Genie"
+reference-files: []
+requires-skills: []

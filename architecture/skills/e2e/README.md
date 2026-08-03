@@ -1,4 +1,9 @@
 # E2E skills
 
-Use this group only after a coherent feature and ordinary regression gate.
-Record target, browser setup, timing and visible evidence.
+- `e2e-workflow` — post-task quick, idle analysis и new-functionality
+  regression с target, timing и visible evidence.
+- `visual-analysis` — screenshots, layout/geometry review и dynamic UI coverage.
+- `genie-deploy` — отдельное явно запрошенное production-развёртывание.
+
+Regression и deployment всегда выполняются по разным handoff и не запускают
+друг друга автоматически.

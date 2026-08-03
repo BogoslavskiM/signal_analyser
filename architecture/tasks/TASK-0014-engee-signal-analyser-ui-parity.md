@@ -13,7 +13,7 @@ parent: null
 depends_on: []
 blocks: []
 source_handoffs: []
-related_handoffs: []
+related_handoffs: [HND-0023]
 blocked_by: []
 blocker_reason: null
 ---

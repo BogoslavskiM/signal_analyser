@@ -6,8 +6,8 @@ name: orchestrator-workflow
 Обязательный workflow Orchestrator: прямой user request проходит user-intake
 один раз; затем все последующие циклы берут работу только из unified task
 registry через backlogging. Далее: выбор queued task → model selection →
-декомпозиция → numbered handoffs → review отчётов → user report → backlogging
-→ новая разработка.
+декомпозиция → numbered handoffs → review отчётов → закрытие task → E2E
+handoff → review E2E report → user report → backlogging → новая разработка.
 Orchestrator сохраняет tasks и handoffs, выбирает порядок
 последовательной/параллельной работы и не пишет product code.
 
@@ -20,14 +20,77 @@ Orchestrator сохраняет tasks и handoffs, выбирает порядо
 - Tester получает unit, API, contract and regression tests.
 - MATLAB Researcher получает MATLAB documentation/app research and reference
   scenarios.
-- Engee User получает Engee function comparison, bug evidence and explicitly
-  requested deployment.
-- E2E получает complete user workflows after feature/regression readiness.
+- Engee User получает только Engee function comparison и bug evidence.
+- E2E получает отдельный regression handoff после каждой завершённой task,
+  `analysis_regression` при переходе к пустому actionable backlog и все явно
+  запрошенные deployment handoff.
 
 Если результат требует изменения в нескольких ownership-зонах, Orchestrator
 создаёт отдельные handoff для владельцев и явно фиксирует контракт между ними.
 Пограничные вопросы решаются по месту изменения authoritative behavior:
 backend для source of truth и API, frontend для presentation and interaction.
+
+## Обязательный E2E dispatch
+
+Сразу после перевода task в `done` создай и отправь один E2E handoff с
+глобальным `type: task`. Не создавай отдельную registry task только ради этого
+запуска: свяжи handoff с завершённой task, чтобы E2E-проверка не порождала
+бесконечную цепочку post-task запусков.
+
+Перед dispatch проверь `related_handoffs` завершённой task. После dispatch
+добавь туда E2E handoff ID; наличие post-task E2E handoff для этой task
+запрещает повторную автоматическую отправку того же gate.
+
+- Для новой пользовательской функциональности выбери
+  `e2e_mode: new_functionality_regression`. Этот режим включает написание
+  новых E2E tests и обязательный quick regression.
+- Для любой другой завершённой task выбери
+  `e2e_mode: quick_regression`.
+- Укажи production target link. Если runnable target отсутствует, всё равно
+  отправь handoff с явным `target_status: unavailable`; E2E обязан вернуть
+  blocker report без devhub/fallback.
+
+Новой пользовательской функциональностью считается task, acceptance criteria
+которой добавляют новый наблюдаемый пользователем workflow или действие. Чистая
+архитектура, refactor, docs, test-only и bugfix tasks используют quick mode.
+Первая строка regression handoff — точный `e2e_mode`; далее укажи
+`trigger_task`, `target_status`, `target_link` и planned scope.
+
+Quick regression считается operational при `success_rate >= 75%`, где
+`success_rate = passed / planned * 100`. Failed, skipped, timed-out и not-run
+planned checks не входят в passed. Доступность приложения обязательна даже при
+формальном проценте выше порога. Результат ниже 75% или недоступность runtime
+порождает follow-up functional task; результат выше порога не стирает
+оставшиеся findings.
+
+Если backlogging подтверждает, что нет открытых actionable backlog items,
+`queued` или `in_progress` work, один раз отправь
+`e2e_mode: analysis_regression`. Повторяй idle-анализ только после следующей
+завершённой task, материального изменения backlog или явного запроса
+пользователя.
+
+После analysis report:
+
+1. дождись, пока E2E исправит test-owned defects в `test/playwright/**` и
+   повторит suite;
+2. если после исправления тестов остаются runtime/product failures, создай
+   role-owned functional-fix tasks и handoffs;
+3. если все tests зелёные, но есть подтверждённые slow paths, создай
+   optimization tasks и handoffs;
+4. если tests зелёные и performance findings нет, зафиксируй clean report.
+
+Task со статусом `done` не открывается заново по E2E finding: исправление
+всегда получает новую task и новый handoff.
+
+## Deployment routing
+
+Все роли адресуют deployment только E2E. Orchestrator сохраняет отдельный
+`type: task` handoff с явным deployment mode, production target и точным
+списком выбранных файлов. Deployment нельзя объединять с E2E regression,
+запускать автоматически после tests или направлять Engee User. E2E применяет
+`e2e/genie-deploy` и возвращает отдельный deployment report.
+Первая строка deployment handoff — `e2e_action: deployment`; поле
+`e2e_mode` в нём не используется.
 
 ## Model selection
 

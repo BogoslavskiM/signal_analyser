@@ -51,3 +51,9 @@ Orchestrator может точно запросить быструю прове�
 
 Обновлены E2E workflow и role. Проверены 15 skill manifests, 19 TOML-файлов
 и generated Codex adapter.
+
+## Supersession note
+
+TASK-0025 уточняет routing: quick после обычной done task, new-functionality с
+новым coverage и quick после новой функции, analysis при пустом actionable
+backlog. Quick operational threshold равен 75% planned checks.

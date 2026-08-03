@@ -3,7 +3,8 @@ name: genie-deploy
 ---
 # Genie Deploy
 
-Запускать только по явному deploy handoff с выбранными файлами.
+Этот skill принадлежит E2E. Запускать только по отдельному явному deployment
+handoff с выбранными файлами; не совмещать с regression mode.
 
 1. Прочитать `[engee_target]` project manifest и использовать только
    зафиксированный environment.
@@ -16,8 +17,9 @@ name: genie-deploy
 6. В Engee проверить отсутствие посторонних изменений, выполнить checkout
    нужной ветки и fast-forward pull. Убедиться, что развернут нужный commit.
 7. Запустить Genie-приложение с постоянным log-файлом и получить его статус.
-8. Вернуть `report` handoff: branch, commit, committed files, start status,
-   логи, диагностику и application link. Ссылку не открывать.
+8. Вернуть Orchestrator `report` handoff: branch, commit, committed files,
+   start status, логи, диагностику и application link. Ссылку не открывать.
 
 Не применять reset, clean или stash; не добавлять посторонние файлы; не
-сохранять PAT и другие секреты.
+сохранять PAT и другие секреты. Завершение deployment само по себе не означает
+успешный regression: для него нужен отдельный E2E handoff.

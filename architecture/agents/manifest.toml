@@ -33,6 +33,10 @@ task_order = "orchestrator-decides-sequential-or-parallel"
 handoff_policy = "handoff-instead-of-crossing-boundaries"
 documentation_owner = "orchestrator"
 archive_path = "template/"
+post_task_e2e = "quick_or_new_functionality_regression"
+idle_e2e = "analysis_regression"
+quick_regression_success_threshold_percent = 75
+deployment_owner = "e2e"
 
 [model_selection]
 high_reasoning_effort = "xhigh"

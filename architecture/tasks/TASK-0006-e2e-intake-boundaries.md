@@ -51,3 +51,9 @@ Deployment, изменение frontend-кода и детализация Playw
 
 Обновлены E2E workflow и role. Проверены 15 skill manifests, 19 TOML-файлов
 и generated Codex adapter.
+
+## Supersession note
+
+Политика readiness gate заменена TASK-0025: E2E handoff теперь отправляется
+после каждой завершённой task; отсутствие runnable production target
+фиксируется в handoff и возвращается blocker report, а не отменяет dispatch.

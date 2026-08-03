@@ -1,0 +1,4 @@
+interface:
+  display_name: "Critical Scenario Coverage"
+  short_description: "Audit MATLAB critical scenario coverage"
+  default_prompt: "Use $critical-scenario-coverage to audit the saved MATLAB scenario catalog and produce an evidence-backed coverage verdict."

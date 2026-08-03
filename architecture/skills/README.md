@@ -20,8 +20,8 @@
 - `frontend/` — zoning, API connection, styling;
 - `tester/` — unit, contract, regression;
 - `matlab-researcher/` — browser/docs/clicker research;
-- `engee-user/` — function analysis and deployment;
-- `e2e/` — feature scenario and runtime report.
+- `engee-user/` — function analysis and bug evidence;
+- `e2e/` — regression scenarios, runtime reports and explicit deployment.
 
 Каждый `manifest.yaml` обязан использовать schema 2 и хранить версию только в
 manifest. Frontmatter `SKILL.md` содержит только `name`.

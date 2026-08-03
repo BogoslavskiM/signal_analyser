@@ -1,17 +1,18 @@
 schema_version: 2
 name: e2e-workflow
-version: 1.3.0
+version: 1.4.0
 title: "Workflow E2E"
 description: >
   Обязательный процесс E2E, типовая архитектура test/playwright, стек Node.js,
-  Playwright Core, Chromium/CDP и три режима regression.
+  Playwright Core, Chromium/CDP и три режима regression с post-task/idle
+  routing, quick threshold, test repair и performance follow-up.
 language: ru
 audience: [assistant]
 priority: 1.0
 when-to-use:
-  - "После product completion и ordinary regression"
+  - "После каждой завершённой task, для новой функции или при пустом backlog"
 when-not:
-  - "Для частично реализованной функции или deployment"
+  - "Для unit/contract tests; deployment использует отдельный e2e/genie-deploy"
 requires-tools:
   - "Node.js"
   - "Chromium/CDP"

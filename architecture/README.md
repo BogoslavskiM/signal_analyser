@@ -13,11 +13,13 @@ Backender / Frontend / Research / Engee User (последовательно и�
        ↓
 Tester: unit + regression
        ↓
-E2E: сценарий большой готовой фичи
+E2E: quick после обычной task / new-functionality + quick после новой feature
+       ↓ при отдельном явном deploy handoff
+E2E: production deployment
        ↓
-Engee User: deployment при отдельном запросе
-       ↓
-Orchestrator: review → user report → backlogging → next development cycle
+Orchestrator: review → user report → backlogging
+       ↓ при пустом actionable backlog
+E2E: analysis regression → test fixes → functional/performance follow-up
 ```
 
 ## Порядок чтения
@@ -40,3 +42,13 @@ Orchestrator: review → user report → backlogging → next development cycle
   runtime target или fallback.
 - Backlogging может выполняться в фоне, пока независимые агенты реализуют
   текущие handoff: он не должен задерживать уже начатую разработку.
+- После каждой `done` task Orchestrator немедленно отправляет E2E handoff:
+  `quick_regression` для обычной task либо `new_functionality_regression` для
+  новой функциональности; второй режим уже включает quick regression.
+- Quick regression использует порог 75% от planned checks при обязательной
+  доступности приложения. При пустом actionable backlog запускается один
+  `analysis_regression`, который допускает исправление E2E tests только внутри
+  `test/playwright/**` и порождает functional или performance follow-up.
+- E2E — единственный владелец deployment skill. Все роли направляют deployment
+  requests E2E отдельным handoff; Engee User выполняет только analysis/bug
+  evidence. Regression никогда не запускает deployment автоматически.

@@ -19,6 +19,38 @@ human-readable user report, then return to backlogging for the next cycle.
 Backlogging may run in the background while independent agents implement active
 handoffs; it must not delay already-started development.
 
+Immediately after a task becomes done, dispatch exactly one separate E2E task
+handoff. Use `new_functionality_regression` when the completed task adds new
+user-facing functionality; this mode includes both new scenario coverage and
+the quick regression suite. Use `quick_regression` for every other completed
+task. Record the dispatched handoff ID in the completed task's
+`related_handoffs` and never auto-dispatch the same post-task gate twice. Quick
+regression considers the application operational at 75 percent or
+more passed planned checks, but application availability is mandatory and all
+failed, skipped, timed-out or not-run planned checks remain findings. Do not
+reopen a terminal done task after E2E; create follow-up bug tasks from the E2E
+report.
+
+For UI-affecting tasks, include reference images, required viewports, zone and
+dynamic-element inventory in the E2E handoff. Require E2E to apply
+`e2e/visual-analysis`, capture screenshots, inspect layout and convert every
+dynamic state into durable Playwright semantic or geometry assertions.
+
+When backlogging confirms that no actionable backlog, queued or in-progress
+work remains, dispatch one `analysis_regression` handoff for that transition to
+idle. Do not dispatch it repeatedly without a completed task, backlog change or
+explicit user request. Review the analysis report after E2E has repaired any
+stale or incorrect tests in `test/playwright/**`. If product failures remain,
+create owning-role functional-fix handoffs and tasks. If all tests pass but
+slow paths remain, create optimization handoffs and tasks.
+
+E2E is the sole deployment owner. Route every deployment request from any role
+to E2E as a separate explicit task handoff with the production target and the
+selected files. Never combine deployment with a regression handoff or infer it
+from successful tests. Deployment handoffs start with
+`e2e_action: deployment`; regression handoffs start with `e2e_mode`. Engee User
+performs analysis and bug evidence only.
+
 Only you persist task statuses, handoffs, user reports and architecture
 decisions. Engee User may create evidence files only under
 architecture/engee_bugs; you receive their link and short summary. Keep internal and user audiences

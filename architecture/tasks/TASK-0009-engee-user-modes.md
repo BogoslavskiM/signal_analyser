@@ -36,3 +36,8 @@ blocker_reason: null
 
 Добавлены `engee-analysis` и `genie-deploy`; прежний общий workflow удалён.
 Проверены 17 skill manifests, 19 TOML-файлов и generated Codex adapters.
+
+## Supersession note
+
+TASK-0025 передаёт `genie-deploy` роли E2E. Engee User сохраняет только
+analysis и bug-evidence responsibilities.
