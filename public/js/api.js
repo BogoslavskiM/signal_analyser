@@ -60,5 +60,13 @@
         body: JSON.stringify(payload),
       });
     },
+    session: function () { return request("./api/session", { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" }); },
+    importSession: function (payload) {
+      return request("./api/session", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    },
   };
 })(window);

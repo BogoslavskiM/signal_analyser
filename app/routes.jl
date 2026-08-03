@@ -45,6 +45,50 @@ route("/api/state", method = GET) do
     end
 end
 
+route("/api/session", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            export_signal_analyser_session(SIGNAL_SESSION_SERVICE, SIGNAL_ANALYSER_STATE);
+            headers = response_headers,
+        )
+    catch err
+        api_error_response(
+            "Не удалось экспортировать сессию Signal Analyser",
+            err;
+            status = 500,
+            headers = response_headers,
+        )
+    end
+end
+
+route("/api/session", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            import_signal_analyser_session!(
+                SIGNAL_SESSION_SERVICE,
+                SIGNAL_ANALYSER_STATE,
+                jsonpayload(),
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalAnalyserSessionValidationError
+            signal_analyser_session_validation_response(err)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_session_stale_response(SIGNAL_ANALYSER_STATE, err)
+        else
+            api_error_response(
+                "Не удалось импортировать сессию Signal Analyser",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+        end
+    end
+end
+
 route("/api/settings", method = GET) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try

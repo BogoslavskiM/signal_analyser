@@ -215,6 +215,21 @@ function addTarget() { return { closest(selector) { return selector === "[data-t
 function closeTarget(id) { return { closest(selector) { return selector === "[data-close-display]" ? { dataset: { closeDisplay: id } } : null; } }; }
 function checkboxTarget(name, checked) { return { checked, dataset: { signalVisibility: name }, closest(selector) { return selector === "[data-signal-visibility]" ? this : null; }, matches() { return true; } }; }
 function rowTarget(name) { return { closest(selector) { return selector === "[data-signal]" ? { dataset: { signal: name } } : null; }, matches() { return false; } }; }
+function rowActionTarget(kind, name) {
+  const attribute = `[data-signal-${kind}]`;
+  const dataset = kind === "duplicate" ? { signalDuplicate: name } : { signalDelete: name };
+  return { closest(selector) { return selector === attribute ? { dataset } : null; }, matches() { return false; } };
+}
+function rowInfoTarget(name) {
+  const attributes = { "aria-expanded": "false" };
+  return {
+    dataset: { signalInfo: name },
+    closest(selector) { return selector === "[data-signal-info]" ? this : null; },
+    getAttribute(name) { return attributes[name] || null; },
+    setAttribute(name, value) { attributes[name] = String(value); },
+    matches() { return false; },
+  };
+}
 function workspaceTarget(testId) { return { closest(selector) { return String(selector).includes(`data-testid='${testId}'`) ? {} : null; } }; }
 
 module.exports = async function testDisplayBehavior(assert) {
@@ -553,6 +568,32 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(deleteReplay.length === 3 && JSON.parse(deleteReplay.at(-1).options.body).state_revision === 2, "first Signals 409 must canonicalize from a newer revision and retry exactly once when its selected source still exists");
   signalsResolvers.shift()(response(422, {error:{fields:{signal_name:"Недопустимый сигнал"}}})); await flush();
   assert(signalsEnv.e.signalsDeleteDialog.hidden === false && signalsEnv.e.signalsActionError.hidden === false && signalsCalls.filter(call => call.url === "./api/signals").length === 3, "Signals 422 preserves the visible error form and bounds retry without optimistic rollback");
+
+  // TASK-0018: per-row Inspector controls must retain the same authoritative
+  // lifecycle as the toolbar without relying on rendered table positions.
+  const rowActionCalls = [], rowActionResolvers = [];
+  const rowActions = await boot((url, options) => {
+    rowActionCalls.push({url, options});
+    return url === "./api/state" ? Promise.resolve(response(200, signalsInitial)) : new Promise(resolve => rowActionResolvers.push(resolve));
+  });
+  assert(rowActions.e.rows.innerHTML.includes("signal-info-action-") && rowActions.e.rows.innerHTML.includes("Samples") && rowActions.e.rows.innerHTML.includes("Sample rate") && rowActions.e.rows.innerHTML.includes("Duration") && rowActions.e.rows.innerHTML.includes("Type"), "each rendered Info control must expose the canonical snapshot details through stable per-signal selectors");
+  const info = rowInfoTarget(B);
+  rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
+  assert(info.getAttribute("aria-expanded") === "true" && rowActionCalls.length === 1, "Info row control must toggle locally without a server mutation");
+  rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
+  assert(info.getAttribute("aria-expanded") === "false" && rowActionCalls.length === 1, "Info row control must remain a reversible local disclosure");
+  rowActions.e.rows.listeners.click({target:rowActionTarget("duplicate", B), stopPropagation() {}});
+  await flush();
+  const rowDuplicate = rowActionCalls.find(call => call.url === "./api/signals");
+  assert(rowDuplicate && JSON.stringify(JSON.parse(rowDuplicate.options.body)) === JSON.stringify({state_revision:0, operation:"duplicate", signal_name:B}), "row Duplicate must mutate its own stable signal identity, not the current toolbar selection");
+  assert(rowActions.e.rows.innerHTML.includes("data-signal-duplicate") && rowActions.e.rows.innerHTML.includes("aria-busy='true'"), "row actions must become busy and disabled while their authoritative mutation is pending");
+  rowActionResolvers.shift()(response(200, signalsSnapshot(1, [A, B, B + "_Copy"], B + "_Copy")));
+  await flush();
+  rowActions.e.rows.listeners.click({target:rowActionTarget("delete", B), stopPropagation() {}});
+  assert(rowActions.e.signalsDeleteDialog.hidden === false && rowActionCalls.filter(call => call.url === "./api/signals").length === 1, "row Delete must open confirmation before mutating its own stable signal identity");
+  const oneSignal = signalsSnapshot(0, [A], A);
+  const lastRow = await boot((url) => Promise.resolve(response(200, oneSignal)));
+  assert(lastRow.e.rows.innerHTML.includes("data-signal-delete") && /data-signal-delete='[^']+'[^>]* disabled/.test(lastRow.e.rows.innerHTML), "last remaining row must expose a disabled Delete action while preserving its stable selector");
 
   const localTabRequests = [];
   const localTabs = await boot((url, options) => {

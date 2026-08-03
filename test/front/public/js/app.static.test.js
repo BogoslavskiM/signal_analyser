@@ -26,6 +26,16 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/id="measurements-panel"[^>]*role="tabpanel"[^>]*aria-labelledby="signal-panel-tab-measurements"/.test(html), "Measurements panel must be labelled by its tab");
   assert(!html.includes("plot-grid") && !html.includes("layout-chooser"), "MVP must not render a multi-layout plot grid");
   assert(html.includes("data-signal-rows") && app.includes("data-signal-visibility"), "signal list must contain per-signal checkbox controls at runtime");
+  ["data-signal-info", "data-signal-duplicate", "data-signal-delete", "signal-info-card-", "signal-duplicate-action-", "signal-delete-action-"].forEach((term) =>
+    assert(app.includes(term), `Inspector rows must retain the stable Info/row-action contract term ${term}`)
+  );
+  ["Samples", "Sample rate", "Duration", "Type"].forEach((label) =>
+    assert(app.includes(`<dt>${label}</dt>`), `Inspector Info card must render the canonical ${label} snapshot field`)
+  );
+  assert(app.includes("names().length <= 1") && app.includes("deleteDisabled"), "last remaining signal must render its row Delete action disabled");
+  assert(/\.signal-row:hover \.signal-row-actions,\.signal-row:focus-within \.signal-row-actions\{[^}]*opacity:1[^}]*pointer-events:auto/.test(css), "row actions must become available on hover and keyboard focus");
+  assert(/\.signal-info-cell:hover \.signal-info-card,\.signal-info-cell:focus-within \.signal-info-card,\.signal-info-trigger\[aria-expanded='true'\] \+ \.signal-info-card\{[^}]*opacity:1[^}]*pointer-events:auto/.test(css), "Info card must be available on hover, focus, and explicit toggle");
+  assert(/\.signal-row-action:focus-visible,\.signal-info-trigger:focus-visible\{[^}]*outline:2px solid var\(--accent\)/.test(css), "row actions and Info trigger must retain visible keyboard focus");
   ["signals-add-action", "signals-add-menu", "signals-add-workspace-action", "signals-add-selection-action", "signals-copy-action", "signals-delete-action", "signals-workspace-dialog", "signals-workspace-refresh", "signals-workspace-loading", "signals-workspace-empty", "signals-workspace-list", "signals-workspace-selection-count", "signals-workspace-sample-rate-group", "signals-workspace-sample-rate-input", "signals-workspace-sample-rate-error", "signals-workspace-batch-error", "signals-workspace-retry", "signals-workspace-submit", "signals-workspace-cancel", "signals-workspace-close", "signals-workspace-success", "signals-workspace-success-count", "signals-workspace-done", "signals-delete-dialog", "signals-delete-name", "signals-delete-confirm", "signals-delete-cancel", "signals-delete-close"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `Signals inspector must expose stable selector ${id}`)
   );
@@ -68,6 +78,28 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
     assert(app.includes(term), `frontend must preserve Signals inspector lifecycle term ${term}`)
   );
   assert((api.match(/method: "POST"/g) || []).length >= 2, "view and displays mutations must POST JSON");
+  ["export-action", "import-session-action", "session-action-status", "session-import-dialog", "session-file-input", "session-import-error", "session-import-success", "session-import-submit"].forEach((id) =>
+    assert(html.includes(`data-testid="${id}"`), `session UI must expose stable selector ${id}`)
+  );
+  assert(/data-testid="session-import-dialog"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="session-import-title"/.test(html), "session import must expose a labelled modal dialog");
+  assert(/id="session-file-input"[^>]*type="file"[^>]*accept="application\/json,\.json"[^>]*data-testid="session-file-input"/.test(html), "session import must constrain file selection to JSON");
+  assert(/data-testid="session-action-status"[^>]*role="status"[^>]*aria-live="polite"/.test(html), "session feedback must expose a polite live status");
+  assert(/data-testid="session-import-error"[^>]*role="alert"/.test(html) && /data-testid="session-import-success"[^>]*role="status"/.test(html), "session import must reserve accessible error and success feedback");
+  ["./api/session", "session", "importSession", "cache: \"no-store\""].forEach((term) => assert(api.includes(term), `session API must retain ${term}`));
+  ["downloadSession", "readSessionFile", "importSession", "reloadSessionState", "state_revision:state.state_revision", "JSON.parse", "error.status === 409", "aria-busy"].forEach((term) => assert(app.includes(term), `session lifecycle must retain ${term}`));
+  assert(app.includes("return reloadSessionState();") && app.includes("sessionUi.success = true"), "successful session import must reload authoritative state before success feedback");
+  const iconDirectory = path.join(root, "public", "icons");
+  ["save.svg", "import.svg", "help-circle.svg", "copy.svg", "trash.svg"].forEach((file) => {
+    const asset = path.join(iconDirectory, file);
+    assert(fs.existsSync(asset) && /<svg\b/.test(fs.readFileSync(asset, "utf8")), `approved Engee icon must be a local SVG asset: ${file}`);
+  });
+  [
+    ["export-action", "save.svg"], ["import-session-action", "import.svg"], ["help-action", "help-circle.svg"],
+    ["signals-copy-action", "copy.svg"], ["signals-delete-action", "trash.svg"],
+  ].forEach(([control, icon]) =>
+    assert(new RegExp(`data-testid="${control}"[^>]*>[\\s\\S]*?<img[^>]*src="\\./icons/${icon}"[^>]*alt=""[^>]*aria-hidden="true"`).test(html), `${control} must retain its accessible control while using local ${icon}`)
+  );
+  assert(app.includes("data-testid='signal-duplicate-action-") && app.includes("data-testid='signal-delete-action-") && app.includes("./icons/copy.svg") && app.includes("./icons/trash.svg"), "dynamic row actions must retain stable IDs while using local icons");
 
   ["active_display_id", "displays", "visible_signals", "row_selected_signal", "analysis_signal", "selected_signal", "displayMutation", "addDisplay", "selectDisplay", "closeDisplay", "pendingAction"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Display state contract term ${term}`)

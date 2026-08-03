@@ -77,6 +77,37 @@ function signal_analyser_validation_response(err::SignalAnalyserValidationError)
     ); status = 422)
 end
 
+function signal_analyser_session_validation_response(err)
+    api_json(Dict{String,Any}(
+        "ok" => false,
+        "code" => err.code,
+        "error" => Dict{String,Any}(
+            "code" => err.code,
+            "message" => err.message,
+            "fields" => err.fields,
+        ),
+    ); status = 422)
+end
+
+function signal_analyser_session_stale_response(
+    state::SignalAnalyserState,
+    err::SignalAnalyserStaleStateError,
+)
+    lock(state.lock) do
+        current = Dict{String,Any}("state_revision" => state.view.state_revision)
+        api_json(Dict{String,Any}(
+            "ok" => false,
+            "code" => "stale_state",
+            "error" => Dict{String,Any}(
+                "code" => "stale_state",
+                "message" => sprint(showerror, err),
+            ),
+            "state" => current,
+            "current" => current,
+        ); status = 409)
+    end
+end
+
 function signal_analyser_stale_response(state::SignalAnalyserState, err::SignalAnalyserStaleStateError)
     current = signal_analyser_snapshot(state)
     api_json(Dict(
