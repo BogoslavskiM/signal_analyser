@@ -1150,7 +1150,7 @@ function signal_display_pane_payload(pane::SignalDisplayPaneState)::Dict{String,
     Dict{String,Any}(
         "id" => pane.id,
         "plot_type" => signal_analyser_plot_name(pane.plot_type),
-        "signal_bindings" => copy(pane.signal_bindings),
+        "signal_bindings" => signal_display_pane_members(pane),
     )
 end
 
@@ -1218,7 +1218,7 @@ function signal_analyser_display_for_layout(
     layout::SignalDisplayLayoutState,
 )::SignalAnalyserDisplayState
     pane = signal_display_active_pane(layout)
-    members = copy(pane.signal_bindings)
+    members = signal_display_pane_members(pane)
     current_analysis = signal_analyser_display_analysis_name(display)
     analysis_name = if isempty(members)
         nothing
@@ -1654,11 +1654,12 @@ end
 
 function signal_analyser_reconcile_analysis_source(
     reconciler::SignalAnalysisSourceReconciler,
-    display::SignalAnalyserDisplayState,
+    spectrum_settings::SignalSpectrumSettings,
+    spectrogram_settings::SignalSpectrogramSettings,
     prospective_members::AbstractVector{AnalysedSignal},
     prospective_source::AnalysedSignal,
 )::ReconciledSignalAnalysisSettings
-    if display.spectrum_settings.frequency_scale == LOG_SPECTRUM_FREQUENCY_SCALE &&
+    if spectrum_settings.frequency_scale == LOG_SPECTRUM_FREQUENCY_SCALE &&
         any(signal -> signal.is_complex, prospective_members)
         throw(SignalAnalysisSourceCompatibilityError(
             "spectrum_settings",
@@ -1668,14 +1669,84 @@ function signal_analyser_reconcile_analysis_source(
     ReconciledSignalAnalysisSettings(
         signal_analyser_reconcile_carried_frequency_limits(
             reconciler,
-            display.spectrum_settings,
+            spectrum_settings,
             prospective_source,
         ),
         signal_analyser_reconcile_carried_frequency_limits(
             reconciler,
-            display.spectrogram_settings,
+            spectrogram_settings,
             prospective_source,
         ),
+    )
+end
+
+function signal_analyser_reconcile_analysis_source(
+    reconciler::SignalAnalysisSourceReconciler,
+    display::SignalAnalyserDisplayState,
+    prospective_members::AbstractVector{AnalysedSignal},
+    prospective_source::AnalysedSignal,
+)::ReconciledSignalAnalysisSettings
+    signal_analyser_reconcile_analysis_source(
+        reconciler,
+        display.spectrum_settings,
+        display.spectrogram_settings,
+        prospective_members,
+        prospective_source,
+    )
+end
+
+function signal_display_pane_reconfigured(
+    state::SignalAnalyserState,
+    pane::SignalDisplayPaneState,
+    plot_type::SignalAnalyserPlot,
+    signal_bindings::AbstractVector{<:AbstractString},
+)::SignalDisplayPaneState
+    membership = SignalDisplayMembership(signal_bindings)
+    members = collect(membership.signal_names)
+    current_analysis = signal_display_pane_analysis_name(pane)
+    analysis_name = if isempty(members)
+        nothing
+    elseif current_analysis !== nothing && current_analysis in members
+        current_analysis
+    else
+        first(members)
+    end
+    analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+    prospective_members = AnalysedSignal[signal_by_name(state, name) for name in members]
+    reconciled_settings = analysis_signal === nothing ? ReconciledSignalAnalysisSettings(
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+    ) : signal_analyser_reconcile_analysis_source(
+        SignalAnalysisSourceReconciler(),
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        prospective_members,
+        analysis_signal,
+    )
+    time_limits = if analysis_signal === nothing
+        nothing
+    elseif current_analysis == analysis_name && pane.time_limits !== nothing &&
+        signal_time_limits_are_valid(
+            state.measurements_service,
+            analysis_signal,
+            pane.time_limits,
+        )
+        pane.time_limits
+    else
+        signal_full_time_limits(state.measurements_service, analysis_signal)
+    end
+    SignalDisplayPaneState(
+        pane.id,
+        plot_type,
+        membership,
+        signal_analysis_source(analysis_name),
+        time_limits,
+        pane.measurement_selection,
+        reconciled_settings.spectrum,
+        reconciled_settings.spectrogram,
+        pane.persistence_settings,
+        signal_settings_reconcile_stored_for_source(pane.stored_settings, analysis_signal),
+        analysis_signal !== nothing && plot_type == TIME_PLOT && pane.peaks_enabled,
     )
 end
 
@@ -3522,10 +3593,12 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         display = signal_analyser_active_display(state)
         prospective_display = requested.display
         prospective_members = signal_analyser_display_members(prospective_display)
+        active_pane = signal_display_active_pane(
+            signal_analyser_layout_by_display_id(state, display.id),
+        )
         prospective_layout = signal_display_layout_replace_active_pane(
             signal_analyser_layout_by_display_id(state, display.id),
-            prospective_display.active_plot,
-            prospective_members,
+            signal_display_pane_from_display(active_pane.id, prospective_display),
         )
         prospective_analysis_name = signal_analyser_display_analysis_name(prospective_display)
         changes = SignalAnalyserViewChanges(
@@ -3697,10 +3770,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             )
             signal_analyser_publish_display_plots!(state, prepared_display_plots)
             push!(state.displays, display)
-            state.display_layouts[display.id] = signal_display_default_layout(
-                display.active_plot,
-                signal_analyser_display_members(display),
-            )
+            state.display_layouts[display.id] = signal_display_default_layout(display)
             state.next_display_number += 1
             signal_analyser_sync_active_display!(state, display)
             state.view.state_revision += 1
@@ -4003,10 +4073,24 @@ function validate_signal_analyser_layout_payload(
             if layout !== nothing && pane_id !== nothing && plot_type !== nothing &&
                 !haskey(field_errors, "pane_id") &&
                 !haskey(field_errors, "signal_bindings")
-                prospective_layout = signal_display_layout_replace_pane(
-                    layout,
-                    SignalDisplayPaneState(pane_id, plot_type, bindings),
-                )
+                pane_index = findfirst(pane -> pane.id == pane_id, layout.panes)::Int
+                replacement = try
+                    signal_display_pane_reconfigured(
+                        state,
+                        layout.panes[pane_index],
+                        plot_type,
+                        bindings,
+                    )
+                catch err
+                    if err isa SignalAnalysisSourceCompatibilityError
+                        field_errors[err.field] = sprint(showerror, err)
+                        nothing
+                    else
+                        rethrow()
+                    end
+                end
+                replacement === nothing || (prospective_layout =
+                    signal_display_layout_replace_pane(layout, replacement))
             end
         end
     end

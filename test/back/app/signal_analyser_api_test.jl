@@ -111,6 +111,75 @@ end
     @test !occursin("\"num_power_bins\"", SA_API.source("lib", "services", "signal_analyser_service.jl"))
 end
 
+@testset "TASK-0037 bootstrap and Layout update_pane API contract" begin
+    routes_source = SA_API.source("app", "routes.jl")
+    bootstrap_source = SA_API.source("app", "bootstrap.jl")
+
+    @test length(collect(eachmatch(r"route\(\"/\"\) do", routes_source))) == 1
+    @test length(collect(eachmatch(r"route\(\"/api/status\", method = GET\)", routes_source))) == 1
+    @test length(collect(eachmatch(r"route\(\"/api/state\", method = GET\)", routes_source))) == 1
+    @test length(collect(eachmatch(r"route\(\"/api/layouts\", method = GET\)", routes_source))) == 1
+    @test length(collect(eachmatch(r"route\(\"/api/layouts\", method = POST\)", routes_source))) == 1
+    @test occursin("const SIGNAL_ANALYSER_STATE = default_signal_analyser_state()", bootstrap_source)
+    @test occursin("apply_signal_analyser_layout!(SIGNAL_ANALYSER_STATE, jsonpayload())", routes_source)
+
+    state = SA_API.default_signal_analyser_state()
+    names = [signal.name for signal in state.signals]
+    before = SA_API.signal_analyser_snapshot(state)
+    original_pane = SA_API.signal_display_active_pane(state.display_layouts["display-1"])
+
+    preserved = SA_API.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => 0,
+        "operation" => "update_pane",
+        "display_id" => "display-1",
+        "version" => 1,
+        "pane_id" => "pane-1",
+        "plot_type" => "spectrum",
+        "signal_bindings" => names,
+    ))
+    preserved_pane = SA_API.signal_display_active_pane(state.display_layouts["display-1"])
+    @test preserved["state_revision"] == 1
+    @test preserved_pane.plot_type == SA_API.SPECTRUM_PLOT
+    @test SA_API.signal_display_pane_members(preserved_pane) == names
+    @test preserved_pane.time_limits == original_pane.time_limits
+    @test preserved_pane.measurement_selection == original_pane.measurement_selection
+    @test preserved_pane.spectrum_settings == original_pane.spectrum_settings
+    @test preserved_pane.spectrogram_settings == original_pane.spectrogram_settings
+    @test preserved_pane.persistence_settings == original_pane.persistence_settings
+    @test preserved_pane.stored_settings == original_pane.stored_settings
+    @test preserved_pane.peaks_enabled === false
+
+    rebound = SA_API.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => 1,
+        "operation" => "update_pane",
+        "display_id" => "display-1",
+        "version" => 1,
+        "pane_id" => "pane-1",
+        "plot_type" => "time",
+        "signal_bindings" => [names[2]],
+    ))
+    rebound_pane = SA_API.signal_display_active_pane(state.display_layouts["display-1"])
+    @test rebound["state_revision"] == 2
+    @test SA_API.signal_display_pane_analysis_name(rebound_pane) == names[2]
+    @test rebound_pane.time_limits == SA_API.signal_full_time_limits(state.measurements_service, state.signals[2])
+
+    emptied = SA_API.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => 2,
+        "operation" => "update_pane",
+        "display_id" => "display-1",
+        "version" => 1,
+        "pane_id" => "pane-1",
+        "plot_type" => "time",
+        "signal_bindings" => String[],
+    ))
+    empty_pane = SA_API.signal_display_active_pane(state.display_layouts["display-1"])
+    @test emptied["state_revision"] == 3
+    @test isempty(SA_API.signal_display_pane_members(empty_pane))
+    @test SA_API.signal_display_pane_analysis_name(empty_pane) === nothing
+    @test empty_pane.time_limits === nothing && empty_pane.peaks_enabled === false
+    @test before["state_revision"] == 0
+end
+
 @testset "Signals inspector API route and adapter boundary" begin
     routes_source = SA_API.source("app", "routes.jl")
     domain_source = SA_API.source("lib", "domain", "signal_inventory.jl")

@@ -13,9 +13,9 @@ parent: null
 depends_on: [TASK-0035]
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0042, HND-0044, HND-0045, HND-0046, HND-0047, HND-0048, HND-0051, HND-0052, HND-0053, HND-0054, HND-0055, HND-0056]
-blocked_by: []
-blocker_reason: null
+related_handoffs: [HND-0042, HND-0044, HND-0045, HND-0046, HND-0047, HND-0048, HND-0051, HND-0052, HND-0053, HND-0054, HND-0055, HND-0056, HND-0057, HND-0058, HND-0059, HND-0060, HND-0061, HND-0062, HND-0063]
+blocked_by: [TASK-0037]
+blocker_reason: "Genie.loadapp registers zero routes because TASK-0037 constructor mismatch aborts app bootstrap."
 feature_slug: signal_analyser_ui_patterns
 development_branch: neuro_signal_analyser_ui_patterns
 integration_sha: null
@@ -134,3 +134,24 @@ focused behavior 1/1, full frontend 4/4 и coverage-run 4/4 PASS; V8 functions
 в существующую TASK-0034 и не расширяют standalone scope TASK-0036.
 
 Deploy exact feature revision выдан DevOps как HND-0056.
+
+DevOps report HND-0057: local/remote/production checkout совпадают на
+`d170f87`, но restart blocked — production Julia project требует
+`Pkg.instantiate()`, HTTP status 000. Пользователь явно разрешил самостоятельно
+поднять приложение; ограниченный dependency/restart retry отправлен HND-0058.
+
+DevOps report HND-0059: `Pkg.instantiate()` успешно установил recorded Genie
+v6.0.4 и зависимости, repository unchanged/clean. PID 416 и precompile worker
+активны, но HTTP 8080 ещё не ready после ~8 минут. Bounded readiness monitoring
+без повторного restart отправлен HND-0060.
+
+DevOps report HND-0061: precompile workers завершились, PID 416 остаётся жив
+~10 минут без logs и listener; HTTP 000. `run.jl` contract требует explicit
+production env `GENIE_HOST=0.0.0.0`, `GENIE_PORT=8080` вместо defaults
+127.0.0.1:8000. Разрешён controlled replacement hung PID как HND-0062.
+
+DevOps report HND-0063: replacement PID слушает 8080, но runtime routes дают
+404. Exact-revision probe `Genie.loadapp()` воспроизвёл root cause:
+`SignalDisplayPaneState(::String, ::SignalAnalyserPlot, ::Vector{String})`
+constructor mismatch в `signal_display_default_layout`, после чего routes=0.
+Создана P0 TASK-0037; TASK-0036 заблокирована до runtime fix.

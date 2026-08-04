@@ -1733,10 +1733,8 @@ Base.copy(layout::SignalDisplayLayoutState) = SignalDisplayLayoutState(
 )
 
 function signal_display_default_layout(
-    plot_type::SignalAnalyserPlot,
-    signal_bindings::AbstractVector{<:AbstractString},
+    pane::SignalDisplayPaneState,
 )::SignalDisplayLayoutState
-    pane = SignalDisplayPaneState("pane-1", plot_type, signal_bindings)
     SignalDisplayLayoutState(
         SIGNAL_DISPLAY_LAYOUT_VERSION,
         "1x1",
@@ -1777,13 +1775,15 @@ end
 
 function signal_display_layout_replace_active_pane(
     layout::SignalDisplayLayoutState,
-    plot_type::SignalAnalyserPlot,
-    signal_bindings::AbstractVector{<:AbstractString},
+    replacement::SignalDisplayPaneState,
 )::SignalDisplayLayoutState
     pane = signal_display_active_pane(layout)
+    replacement.id == pane.id || throw(ArgumentError(
+        "Replacement pane должна иметь идентификатор active pane",
+    ))
     signal_display_layout_replace_pane(
         layout,
-        SignalDisplayPaneState(pane.id, plot_type, signal_bindings),
+        replacement,
     )
 end
 
@@ -1817,7 +1817,7 @@ function signal_display_layout_resize(
     panes = SignalDisplayPaneState[copy(layout.panes[index]) for index in 1:surviving_count]
     next_pane_number = layout.next_pane_number
     while length(panes) < requested_count
-        push!(panes, SignalDisplayPaneState("pane-$next_pane_number", TIME_PLOT, String[]))
+        push!(panes, signal_display_empty_pane("pane-$next_pane_number"))
         next_pane_number += 1
     end
     active_pane_id = any(pane -> pane.id == layout.active_pane_id, panes) ?
@@ -1838,11 +1838,7 @@ function signal_display_layout_without_signal(
     signal_name::AbstractString,
 )::SignalDisplayLayoutState
     panes = SignalDisplayPaneState[
-        SignalDisplayPaneState(
-            pane.id,
-            pane.plot_type,
-            [name for name in pane.signal_bindings if name != signal_name],
-        )
+        signal_display_pane_without_signal(pane, signal_name)
         for pane in layout.panes
     ]
     SignalDisplayLayoutState(
@@ -1853,6 +1849,37 @@ function signal_display_layout_without_signal(
         panes,
         layout.active_pane_id,
         layout.next_pane_number,
+    )
+end
+
+function signal_display_pane_without_signal(
+    pane::SignalDisplayPaneState,
+    signal_name::AbstractString,
+)::SignalDisplayPaneState
+    members = [
+        name for name in signal_display_pane_members(pane)
+        if name != signal_name
+    ]
+    current_analysis = signal_display_pane_analysis_name(pane)
+    analysis_name = if isempty(members)
+        nothing
+    elseif current_analysis !== nothing && current_analysis in members
+        current_analysis
+    else
+        first(members)
+    end
+    SignalDisplayPaneState(
+        pane.id,
+        pane.plot_type,
+        SignalDisplayMembership(members),
+        signal_analysis_source(analysis_name),
+        analysis_name === nothing ? nothing : pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        analysis_name !== nothing && pane.plot_type == TIME_PLOT && pane.peaks_enabled,
     )
 end
 
@@ -2172,6 +2199,31 @@ signal_analyser_display_members(display::SignalAnalyserDisplayState)::Vector{Str
 signal_analyser_display_analysis_name(display::SignalAnalyserDisplayState) =
     signal_analysis_name(display.analysis_source)
 
+function signal_display_pane_from_display(
+    id::AbstractString,
+    display::SignalAnalyserDisplayState,
+)::SignalDisplayPaneState
+    SignalDisplayPaneState(
+        id,
+        display.active_plot,
+        display.membership,
+        display.analysis_source,
+        display.time_limits,
+        display.measurement_selection,
+        display.spectrum_settings,
+        display.spectrogram_settings,
+        display.persistence_settings,
+        display.stored_settings,
+        display.peaks_enabled,
+    )
+end
+
+signal_display_default_layout(
+    display::SignalAnalyserDisplayState,
+)::SignalDisplayLayoutState = signal_display_default_layout(
+    signal_display_pane_from_display("pane-1", display),
+)
+
 function signal_analyser_publish_display_state!(
     display::SignalAnalyserDisplayState,
     prospective::SignalAnalyserDisplayState,
@@ -2259,10 +2311,7 @@ function SignalAnalyserState(
         SignalAnalyserDisplayState[display],
         display.id,
         2,
-        Dict(display.id => signal_display_default_layout(
-            display.active_plot,
-            signal_analyser_display_members(display),
-        )),
+        Dict(display.id => signal_display_default_layout(display)),
         plot_cache,
         Dict{SignalSpectrumCacheKey,SignalSpectrumData}(),
         Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}(),
