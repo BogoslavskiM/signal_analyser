@@ -13,11 +13,11 @@ parent: TASK-0014
 depends_on: [TASK-0035]
 blocks: []
 source_handoffs: []
-related_handoffs: []
+related_handoffs: [HND-0042, HND-0044, HND-0045]
 blocked_by: []
 blocker_reason: null
 feature_slug: signal_analyser_ui_patterns
-development_branch: null
+development_branch: neuro_signal_analyser_ui_patterns
 integration_sha: null
 ---
 
@@ -78,8 +78,8 @@ frontend design-pattern skills в `architecture/skills/frontend/`.
   всего текущего UI backlog и должно следовать за консолидацией канонических
   skills.
 - Queue order: null до DevOps branch report.
-- Eligibility: TASK-0035 завершена; перед dispatch требуется branch report по
-  HND-0042 и фиксация `development_branch`.
+- Eligibility: TASK-0035 завершена; local branch создана по HND-0042, dispatch
+  ожидает успешный push/retry report HND-0045.
 
 ## Stage matrix
 
@@ -100,3 +100,7 @@ frontend design-pattern skills в `architecture/skills/frontend/`.
 ## Verification and results
 
 Не начиналась: создана только backlog-запись.
+
+DevOps HND-0044 создал branch от base `7ed0ef5` и commit `ceafd4e`, но push
+остановлен из-за параллельно появившегося Orchestrator-owned E2E report. Retry
+того же branch request отправлен как HND-0045.

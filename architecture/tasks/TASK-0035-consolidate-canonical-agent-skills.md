@@ -13,7 +13,7 @@ parent: null
 depends_on: []
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0041]
+related_handoffs: [HND-0041, HND-0043]
 blocked_by: []
 blocker_reason: null
 ---
@@ -79,3 +79,6 @@ E2E и DevOps responsibilities.
   регенерацию; generated adapters и `AGENTS.md` зафиксированы в `7ed0ef5`.
 - Повторная проверка: skills validator PASS, все role/manifest TOML parsed.
 - Post-task quick regression отправлен E2E как HND-0041.
+- E2E report HND-0043: production runtime revision не передавалась,
+  availability failed, planned 1 / passed 0 / failed 1, operational 0%; это
+  отдельный runtime blocker и не переоткрывает terminal architecture task.
