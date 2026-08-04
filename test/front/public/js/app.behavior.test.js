@@ -238,7 +238,7 @@ function rowInfoTarget(name) {
     setAttribute(name, value) { attributes[name] = String(value); },
     focus() { this.focused = true; },
     blur() { this.focused = false; },
-    matches() { return false; },
+    matches(selector) { return selector === "input,button"; },
   };
 }
 function workspaceTarget(testId) { return { closest(selector) { return String(selector).includes(`data-testid='${testId}'`) ? {} : null; } }; }
@@ -670,6 +670,21 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(info.getAttribute("aria-expanded") === "true" && info.row.dataset.infoExpanded === "true" && info.getAttribute("aria-label") === "Скрыть информацию о " + B && rowActionCalls.length === 1, "Info row control must expose one synchronized expanded row state without a server mutation");
   rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
   assert(info.getAttribute("aria-expanded") === "false" && info.row.dataset.infoExpanded === "false" && info.getAttribute("aria-label") === "Показать информацию о " + B && rowActionCalls.length === 1, "Info row control must restore its compact state and accessible name without a server mutation");
+  for (const key of ["Enter", " "]) {
+    let prevented = false;
+    const callsBeforeKey = rowActionCalls.length;
+    rowActions.e.rows.listeners.keydown({key, target:info, preventDefault() { prevented = true; }});
+    assert(!prevented && info.getAttribute("aria-expanded") === "false" && rowActionCalls.length === callsBeforeKey, `${key === "Enter" ? "Enter" : "Space"} keydown on native Info must remain available to the browser without row activation or API mutation`);
+    rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
+    assert(info.getAttribute("aria-expanded") === "true" && info.row.dataset.infoExpanded === "true" && rowActionCalls.length === callsBeforeKey, `${key === "Enter" ? "Enter" : "Space"} native click must toggle Info exactly once and remain frontend-local`);
+    rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
+    assert(info.getAttribute("aria-expanded") === "false" && info.row.dataset.infoExpanded === "false" && rowActionCalls.length === callsBeforeKey, `${key === "Enter" ? "Enter" : "Space"} repeat activation must close Info exactly once`);
+  }
+  let rowEnterPrevented = false;
+  rowActions.e.rows.listeners.keydown({key:"Enter", target:rowTarget(B), preventDefault() { rowEnterPrevented = true; }});
+  assert(rowEnterPrevented && rowActionCalls.some(call => call.url === "./api/view"), "Enter on the row itself must retain its existing authoritative row-selection shortcut");
+  rowActionResolvers.shift()(response(200, signalsInitial));
+  await flush();
   assert(info.focused === true, "collapsing an explicitly expanded Info row must preserve focus on its trigger");
   rowActions.e.rows.listeners.click({target:rowActionTarget("duplicate", B), stopPropagation() {}});
   await flush();

@@ -230,7 +230,7 @@
       update({ row_selected_signal:row.dataset.signal, analysis_signal:member ? row.dataset.signal : d.analysis_signal });
     });
     document.querySelector("[data-signal-rows]").addEventListener("keydown", function(e) {
-      if (fatalSnapshotError || ["Enter", " ", "Spacebar"].indexOf(e.key) < 0 || e.target.matches("input")) return;
+      if (fatalSnapshotError || ["Enter", " ", "Spacebar"].indexOf(e.key) < 0 || e.target.matches("input,button")) return;
       var row = e.target.closest("[data-signal]"), d = active();
       if (!row || !d) return;
       e.preventDefault();
