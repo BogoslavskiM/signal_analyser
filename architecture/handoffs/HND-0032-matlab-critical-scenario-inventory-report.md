@@ -14,8 +14,8 @@ description: >
   unchanged on repeat. Expanded inventory: 28 critical requirements, 8 covered
   and 20 gaps. New R-SA-19..28 multi-layout/UI-cleanup requirements have no
   target saved artifact and remain gaps. Original downstream inputs are
-  HND-0024 for E2E and HND-0026 for Engee User; expanded routing is HND-0037
-  and HND-0038. No SignalAnalyser, matlab_clicker or MATLAB GUI state was
+  HND-0024 for E2E and HND-0026 for Engee User; expanded routing is HND-0039
+  and HND-0040. No SignalAnalyser, matlab_clicker or MATLAB GUI state was
   changed by the Researcher.
 acceptance_criteria:
   - all_critical_scenarios_covered remains false for 8/28 coverage until all documented gaps and routing are resolved.

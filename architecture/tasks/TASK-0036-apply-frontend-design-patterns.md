@@ -16,6 +16,9 @@ source_handoffs: []
 related_handoffs: []
 blocked_by: []
 blocker_reason: null
+feature_slug: signal_analyser_ui_patterns
+development_branch: null
+integration_sha: null
 ---
 
 # Привести UI-элементы к применимым frontend design-pattern skills
@@ -74,9 +77,25 @@ frontend design-pattern skills в `architecture/skills/frontend/`.
 - Rationale: прямое требование пользователя устанавливает единый критерий для
   всего текущего UI backlog и должно следовать за консолидацией канонических
   skills.
-- Queue order: null; задача остаётся в backlog по прямому указанию пользователя.
-- Eligibility: ожидает завершения TASK-0035; после этого требует отдельного
-  решения Orchestrator о выдаче Frontend.
+- Queue order: null до DevOps branch report.
+- Eligibility: TASK-0035 завершена; перед dispatch требуется branch report по
+  HND-0042 и фиксация `development_branch`.
+
+## Stage matrix
+
+| Stage | Decision | Reason |
+|---|---|---|
+| MATLAB research | not_applicable | Scope задаётся локальными design-pattern skills, новое MATLAB behavior не вводится. |
+| Engee functionality analysis | not_applicable | Engee API/math contract не меняется. |
+| Backend implementation | not_applicable | Authoritative state/API остаются без изменений; contract gap создаст отдельный handoff. |
+| Frontend implementation | required | Меняются UI structure, interaction и styling в `public/**`. |
+| Backend tests | not_applicable | Backend contract не меняется. |
+| Frontend tests | required_after_frontend | Tester закрепляет structure/behavior после Frontend report. |
+| Engee contract tests | not_applicable | Engee functionality не затрагивается. |
+| Feature branch | required | Новый крупный UI cycle использует `neuro_signal_analyser_ui_patterns`. |
+| Runtime deployment | required_after_tests | Production revision нужна для visual E2E. |
+| E2E regression | required_after_deploy | Quick regression + `e2e/visual-analysis`. |
+| Accepted integration | explicit_user_acceptance | Merge только после принятия пользователем. |
 
 ## Verification and results
 

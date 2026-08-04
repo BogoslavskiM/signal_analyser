@@ -13,7 +13,7 @@ parent: TASK-0014
 depends_on: []
 blocks: [TASK-0030]
 source_handoffs: []
-related_handoffs: [HND-0025, HND-0030, HND-0038]
+related_handoffs: [HND-0025, HND-0030, HND-0040]
 blocked_by: []
 blocker_reason: null
 ---

@@ -2,7 +2,7 @@
 id: TASK-0035
 kind: task
 title: Собрать каноническую архитектуру ролей и вызываемых subskills
-status: in_progress
+status: done
 priority: P1
 queue_order: 33
 model: gpt-5.6-sol
@@ -13,7 +13,7 @@ parent: null
 depends_on: []
 blocks: []
 source_handoffs: []
-related_handoffs: []
+related_handoffs: [HND-0041]
 blocked_by: []
 blocker_reason: null
 ---
@@ -55,8 +55,8 @@ E2E и DevOps responsibilities.
   для branch/deploy/accepted merge intake.
 - [x] Согласованные backend/frontend/tester skills перенесены в schema 2.
 - [x] Role-to-skill references валидируются.
-- [ ] Закрыты решения по оставшимся спорным frontend skills.
-- [ ] Source adapters перегенерированы после финального review.
+- [x] Закрыты решения по оставшимся спорным frontend skills.
+- [x] Source adapters перегенерированы после финального review.
 
 ## Queue decision
 
@@ -73,3 +73,9 @@ E2E и DevOps responsibilities.
 - Все source role TOML успешно разобраны Julia TOML parser.
 - Перенесённые frontend/tester JavaScript assets проходят `node --check`.
 - Julia templates Tester проходят `Meta.parseall`.
+- Спорные frontend-направления закрыты trigger-based component skills вместо
+  неясных placeholder skills; role-to-skill validator подтверждает ссылки.
+- `bash architecture/agents/adapt.sh --adapter=codex --force` выполнил финальную
+  регенерацию; generated adapters и `AGENTS.md` зафиксированы в `7ed0ef5`.
+- Повторная проверка: skills validator PASS, все role/manifest TOML parsed.
+- Post-task quick regression отправлен E2E как HND-0041.

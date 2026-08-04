@@ -13,7 +13,7 @@ parent: TASK-0014
 depends_on: []
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0023, HND-0024, HND-0025, HND-0026, HND-0031, HND-0032, HND-0037, HND-0038]
+related_handoffs: [HND-0023, HND-0024, HND-0025, HND-0026, HND-0031, HND-0032, HND-0039, HND-0040]
 blocked_by: []
 blocker_reason: null
 ---
@@ -84,7 +84,7 @@ skill MATLAB Researcher для чтения сохранённого clicker-к�
 generated adapters contain the new contracts. HND-0032 records the expanded
 inventory: API/bootstrap provenance followed by stable filesystem fallback,
 coverage 8/28 with 20 gaps and all three verdict booleans explicitly false.
-HND-0024/HND-0026 route original inputs; HND-0037/HND-0038 route R-SA-19..28.
+HND-0024/HND-0026 route original inputs; HND-0039/HND-0040 route R-SA-19..28.
 HND-0031 is the required post-task quick E2E handoff.
 
 ## Risks, blockers and follow-ups
