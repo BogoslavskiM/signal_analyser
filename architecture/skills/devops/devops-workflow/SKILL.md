@@ -3,9 +3,9 @@ name: devops-workflow
 ---
 # DevOps Workflow
 
-DevOps получает один из трёх intake requests и самостоятельно проводит весь
-Git → Engee pipeline. Orchestrator не дробит его на branch, commit, push и
-deployment handoffs.
+DevOps получает один из четырёх intake requests и самостоятельно проводит весь
+Git → Engee pipeline. Orchestrator не дробит его на clone, branch, commit, push
+и deployment handoffs.
 
 ## Branch model
 
@@ -22,15 +22,25 @@ deployment handoffs.
 Handoff содержит ровно один `devops_request`:
 
 ```yaml
-devops_request: deploy | new_feature_branch | merge_feature
+devops_request: clone_repo | deploy | new_feature_branch | merge_feature
+repository_url: <required for clone_repo; HTTPS URL without credentials>
+repository_name: <optional for clone_repo; derived from URL by default>
+engee_apps_dir: /user/apps # optional; this is the default and only allowed root
+git_username: <required for private HTTPS clone>
+credential_source: <required protected PAT identifier; never the PAT value>
 feature_slug: <required for new/merge feature>
-source_branch: <optional; defaults to current/derived feature branch>
+source_branch: <optional; defaults to neuro_dev for clone_repo or current/derived feature branch otherwise>
 target_branch: <optional for deploy; merge target is always neuro_dev>
 paths: # optional
   - app/
   - public/
 accepted_by_user: true # required for merge_feature
 ```
+
+Clone-поля применимы к `clone_repo` и к другому request только когда его
+pipeline должен bootstrap отсутствующий Engee checkout. PAT никогда не
+включается в handoff: передаётся только идентификатор защищённого credential
+source, доступного DevOps во время исполнения.
 
 Если `paths` задан, Git add ограничен только этими файлами/папками. Если список
 не задан, DevOps сначала перечисляет все изменения и может включить только те,
@@ -43,7 +53,23 @@ accepted_by_user: true # required for merge_feature
 Для каждого request последовательно оцени все этапы. Каждый получает статус
 `performed`, `not_needed`, `blocked` или `not_run`.
 
-1. **Resolve and checkout**
+1. **Clone into Engee apps**
+   - при `clone_repo` stage обязателен; для остальных requests выполняется
+     только если требуемый Engee checkout отсутствует и clone context задан;
+   - нормализовать HTTPS `repository_url` без credentials и вычислить exact
+     target `/user/apps/<repository_name>`; другой root запрещён;
+   - получить Git username и PAT из указанного protected credential source;
+     отсутствие PAT возвращает `blocked`, но значение секрета не попадает в
+     report;
+   - выполнить clone non-interactively с `GIT_TERMINAL_PROMPT=0` и временным
+     askpass/environment helper; PAT запрещено включать в URL, argv, Git config
+     или persisted credential store; удалить helper после команды;
+   - клонировать `source_branch`, по умолчанию `neuro_dev`, затем проверить
+     `remote.origin.url`, фактический branch и HEAD SHA;
+   - если target существует, ничего не перезаписывать: совпадающий origin
+     переиспользовать, а mismatched/non-Git/non-empty чужой target вернуть как
+     `blocked`.
+2. **Resolve and checkout**
    - определить current branch, HEAD, worktree и remote state;
    - если `neuro_dev` существует только remote — создать local tracking
      branch; если только local — подготовить её к push; если отсутствует везде
@@ -56,33 +82,33 @@ accepted_by_user: true # required for merge_feature
    - при `deploy` использовать явно переданную branch либо текущую;
    - при `merge_feature` checkout source feature branch; переход на
      `neuro_dev` выполняется после source add/commit/push на integration stage.
-2. **Add**
+3. **Add**
    - при наличии относящихся к request изменений выполнить add;
    - при `paths` stage только этот scope;
    - перед продолжением показать staged files и проверить отсутствие соседних
      изменений.
-3. **Commit**
+4. **Commit**
    - создать commit только при непустом staged diff;
    - сообщение кратко описывает feature/result на русском языке;
    - существующие commits не переписывать без отдельного требования.
-4. **Push**
+5. **Push**
    - push нужен для новой remote feature branch, новых commits, merge commit
      или отсутствующего upstream;
    - feature branch публикуется до deploy/merge;
    - новая пустая feature branch также получает upstream.
-5. **Integrate accepted feature**
+6. **Integrate accepted feature**
    - только для `merge_feature`: после source push перейти на `neuro_dev`,
      обновить её fast-forward способом, выполнить squash merge source branch,
      создать integration commit и push `neuro_dev`;
    - для остальных requests этап `not_needed`.
-6. **Update Engee checkout**
+7. **Update Engee checkout**
    - при `deploy` переключить Engee checkout на requested branch и обновить до
      exact pushed SHA через fetch/checkout и fast-forward pull, затем проверить
      фактический HEAD;
    - при `merge_feature` после push обновить Engee checkout до нового SHA
      `neuro_dev` тем же способом;
    - при одном только `new_feature_branch` этот этап обычно `not_needed`.
-7. **Restart application**
+8. **Restart application**
    - restart выполнить, если приложение не запущено, явно запрошен restart,
      изменились backend/runtime/config/dependencies либо текущий process не
      обслуживает обновлённую revision;
@@ -95,6 +121,17 @@ accepted_by_user: true # required for merge_feature
 автоматически.
 
 ## Request semantics
+
+### `devops_request: clone_repo`
+
+Используется для первичного размещения repository checkout в production Engee.
+`repository_url`, `git_username` и `credential_source` обязательны;
+`repository_name` выводится из URL, `engee_apps_dir` по умолчанию `/user/apps`,
+а `source_branch` — `neuro_dev`. DevOps создаёт `/user/apps`, если каталог
+отсутствует, безопасно клонирует repository в
+`/user/apps/<repository_name>`, проверяет origin, branch и exact SHA и
+возвращает эти данные. Остальные этапы для чистого clone request обычно
+`not_needed`.
 
 ### `devops_request: new_feature_branch`
 
@@ -126,6 +163,9 @@ blocker Orchestrator. Feature branch не удалять автоматичес�
 request:
 feature/source/target:
 paths policy:
+clone: performed | not_needed | blocked | not_run
+clone source/target:
+clone origin/branch/SHA:
 checkout: performed | not_needed | blocked | not_run
 add: performed | not_needed | blocked | not_run
 commit: performed | not_needed | blocked | not_run
@@ -142,6 +182,11 @@ logs/findings:
 `applied_skills` всегда содержит только `devops/devops-workflow`: DevOps
 subskills отсутствуют.
 
+Report считается успешным для `clone_repo` только после сверки target, origin,
+branch и SHA; для requests с push — после сверки опубликованного branch/SHA; а
+для deployment — после фактического подтверждения Engee checkout и
+обслуживаемой revision.
+
 ## Guardrails
 
 - DevOps не пишет и не исправляет source/tests/config/architecture.
@@ -151,4 +196,6 @@ subskills отсутствуют.
 - Нельзя force-push, reset, clean, stash, разрешать merge conflict или удалять
   feature branch автоматически.
 - Engee target только production; devhub/fallback запрещены.
-- Credentials не записывать в repository, handoff, commands или logs.
+- Clone root только `/user/apps`; target не удалять и не перезаписывать.
+- Credentials не записывать в repository, handoff, commands, Git config,
+  persisted credential stores или logs.

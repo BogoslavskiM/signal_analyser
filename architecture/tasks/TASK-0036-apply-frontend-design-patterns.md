@@ -2,7 +2,7 @@
 id: TASK-0036
 kind: task
 title: Привести UI-элементы к применимым frontend design-pattern skills
-status: in_progress
+status: done
 priority: P1
 queue_order: 34
 model: gpt-5.6-terra
@@ -13,9 +13,9 @@ parent: null
 depends_on: [TASK-0035]
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0042, HND-0044, HND-0045, HND-0046, HND-0047, HND-0048, HND-0051, HND-0052, HND-0053, HND-0054, HND-0055, HND-0056, HND-0057, HND-0058, HND-0059, HND-0060, HND-0061, HND-0062, HND-0063, HND-0071, HND-0072]
-blocked_by: [TASK-0037]
-blocker_reason: "Genie.loadapp registers zero routes because TASK-0037 constructor mismatch aborts app bootstrap."
+related_handoffs: [HND-0042, HND-0044, HND-0045, HND-0046, HND-0047, HND-0048, HND-0051, HND-0052, HND-0053, HND-0054, HND-0055, HND-0056, HND-0057, HND-0058, HND-0059, HND-0060, HND-0061, HND-0062, HND-0063, HND-0071, HND-0072, HND-0073, HND-0074, HND-0075, HND-0076, HND-0088, HND-0090]
+blocked_by: []
+blocker_reason: null
 feature_slug: signal_analyser_ui_patterns
 development_branch: neuro_signal_analyser_ui_patterns
 integration_sha: null
@@ -160,3 +160,19 @@ DevOps report HND-0071: TASK-0037 fix опубликован и production check
 до exact SHA `7d1329e2f930ee8348439afd4a0c406fde88e2ef`. Replacement PID 2073 жив, но
 в первом bounded startup window HTTP ещё не открылся; readiness continuation
 выдано HND-0072 до возобновления visual E2E.
+
+HND-0073/HND-0074: production runtime exact SHA `3c06387` отвечает 200 на `/`
+и `/api/status`, но `/api/state` возвращает 500: required EngeeDSP отсутствует
+и в project contract, и во всех production depots. Visual E2E остаётся
+заблокирован P0 TASK-0038; package identity research выдан HND-0075.
+
+Frontend implementation и independent frontend regressions завершены; exact
+feature revision опубликована. Constructor blocker TASK-0037 закрыт отдельно,
+а dependency finding TASK-0038 по решению пользователя deferred и не входит в
+UI-pattern scope. Task закрыта; обязательный UI post-task quick regression с
+visual-analysis выдан E2E как HND-0088.
+
+E2E visual report HND-0090: exact application runtime не был внешне доступен;
+0/20 planned checks PASS, три viewport screenshots показывают empty Engee SPA
+shell, zones/states not-run. UI regression не установлен, terminal task не
+переоткрыта; routing finding передан TASK-0039.

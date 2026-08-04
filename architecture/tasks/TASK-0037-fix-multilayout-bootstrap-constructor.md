@@ -2,7 +2,7 @@
 id: TASK-0037
 kind: task
 title: Исправить multi-layout constructor mismatch, блокирующий Genie bootstrap
-status: in_progress
+status: done
 priority: P0
 queue_order: 35
 model: gpt-5.6-sol
@@ -13,7 +13,7 @@ parent: TASK-0029
 depends_on: []
 blocks: [TASK-0036]
 source_handoffs: [HND-0063]
-related_handoffs: [HND-0064, HND-0065, HND-0066, HND-0067, HND-0068, HND-0069, HND-0070, HND-0071, HND-0072]
+related_handoffs: [HND-0064, HND-0065, HND-0066, HND-0067, HND-0068, HND-0069, HND-0070, HND-0071, HND-0072, HND-0073, HND-0074, HND-0075, HND-0076, HND-0087, HND-0089]
 blocked_by: []
 blocker_reason: null
 development_branch: neuro_signal_analyser_ui_patterns
@@ -104,3 +104,21 @@ SHA `7d1329e2f930ee8348439afd4a0c406fde88e2ef`; replacement PID 2073 запущ�
 `GENIE_HOST=0.0.0.0` и `GENIE_PORT=8080`, но в первом bounded window HTTP ещё
 возвращал 000 при пустом startup log. Продолжение readiness живого процесса
 без преждевременного replacement отправлено HND-0072.
+
+DevOps reports HND-0073/HND-0074: runtime exact SHA
+`3c06387ea5f4c6617b67a8081922fe52be22f381` поднялся (`/` и `/api/status` —
+200), но `/api/state` — 500. Active project содержит только Genie/Test,
+`Base.find_package("EngeeDSP") == nothing`; пакет отсутствует во всех доступных
+production environments/depots. Создан P0 TASK-0038; identity/source contract
+EngeeDSP выдан Engee User как HND-0075.
+
+Task закрыта по собственному constructor/bootstrap scope: implementation,
+focused/default/session probes и backend suite PASS; routes зарегистрированы,
+`/` и `/api/status` отвечают 200. Отдельный EngeeDSP runtime finding не входит
+в constructor scope и оставлен deferred TASK-0038 по решению пользователя.
+Обязательный post-task quick regression выдан E2E как HND-0087.
+
+E2E report HND-0089: transport доступен, но указанный external target отдаёт
+пустую Engee SPA shell вместо exact Genie runtime; 1/5 checks PASS, success
+20%, constructor regression не установлен. Terminal task не переоткрыта;
+external routing finding передан отдельной TASK-0039.
