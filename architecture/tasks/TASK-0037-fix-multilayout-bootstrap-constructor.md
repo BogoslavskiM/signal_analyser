@@ -13,7 +13,7 @@ parent: TASK-0029
 depends_on: []
 blocks: [TASK-0036]
 source_handoffs: [HND-0063]
-related_handoffs: [HND-0064, HND-0065, HND-0066, HND-0067, HND-0068, HND-0069, HND-0070]
+related_handoffs: [HND-0064, HND-0065, HND-0066, HND-0067, HND-0068, HND-0069, HND-0070, HND-0071, HND-0072]
 blocked_by: []
 blocker_reason: null
 development_branch: neuro_signal_analyser_ui_patterns
@@ -98,3 +98,9 @@ fix revision выдан DevOps как HND-0068.
 DevOps report HND-0069: deploy остановлен до staging из-за 26 untracked test
 coverage `*.cov` artifacts. Они точно перечислены, удалены как воспроизводимые
 generated files; retry того же deploy отправлен HND-0070.
+
+DevOps report HND-0071: fix опубликован и production checkout обновлён до exact
+SHA `7d1329e2f930ee8348439afd4a0c406fde88e2ef`; replacement PID 2073 запущен с
+`GENIE_HOST=0.0.0.0` и `GENIE_PORT=8080`, но в первом bounded window HTTP ещё
+возвращал 000 при пустом startup log. Продолжение readiness живого процесса
+без преждевременного replacement отправлено HND-0072.

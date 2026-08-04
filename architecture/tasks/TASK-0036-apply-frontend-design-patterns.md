@@ -13,7 +13,7 @@ parent: null
 depends_on: [TASK-0035]
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0042, HND-0044, HND-0045, HND-0046, HND-0047, HND-0048, HND-0051, HND-0052, HND-0053, HND-0054, HND-0055, HND-0056, HND-0057, HND-0058, HND-0059, HND-0060, HND-0061, HND-0062, HND-0063]
+related_handoffs: [HND-0042, HND-0044, HND-0045, HND-0046, HND-0047, HND-0048, HND-0051, HND-0052, HND-0053, HND-0054, HND-0055, HND-0056, HND-0057, HND-0058, HND-0059, HND-0060, HND-0061, HND-0062, HND-0063, HND-0071, HND-0072]
 blocked_by: [TASK-0037]
 blocker_reason: "Genie.loadapp registers zero routes because TASK-0037 constructor mismatch aborts app bootstrap."
 feature_slug: signal_analyser_ui_patterns
@@ -155,3 +155,8 @@ DevOps report HND-0063: replacement PID слушает 8080, но runtime routes
 `SignalDisplayPaneState(::String, ::SignalAnalyserPlot, ::Vector{String})`
 constructor mismatch в `signal_display_default_layout`, после чего routes=0.
 Создана P0 TASK-0037; TASK-0036 заблокирована до runtime fix.
+
+DevOps report HND-0071: TASK-0037 fix опубликован и production checkout обновлён
+до exact SHA `7d1329e2f930ee8348439afd4a0c406fde88e2ef`. Replacement PID 2073 жив, но
+в первом bounded startup window HTTP ещё не открылся; readiness continuation
+выдано HND-0072 до возобновления visual E2E.
