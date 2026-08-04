@@ -230,11 +230,14 @@ function rowActionTarget(kind, name) {
 }
 function rowInfoTarget(name) {
   const attributes = { "aria-expanded": "false" };
+  const row = { dataset: { infoExpanded: "false" } };
   return {
-    dataset: { signalInfo: name },
-    closest(selector) { return selector === "[data-signal-info]" ? this : null; },
+    dataset: { signalInfo: name }, row, focused: false,
+    closest(selector) { return selector === "[data-signal-info]" ? this : selector === ".signal-row" ? row : null; },
     getAttribute(name) { return attributes[name] || null; },
     setAttribute(name, value) { attributes[name] = String(value); },
+    focus() { this.focused = true; },
+    blur() { this.focused = false; },
     matches() { return false; },
   };
 }
@@ -662,10 +665,12 @@ module.exports = async function testDisplayBehavior(assert) {
   });
   assert(rowActions.e.rows.innerHTML.includes("signal-info-action-") && rowActions.e.rows.innerHTML.includes("Samples") && rowActions.e.rows.innerHTML.includes("Sample rate") && rowActions.e.rows.innerHTML.includes("Duration") && rowActions.e.rows.innerHTML.includes("Type"), "each rendered Info control must expose the canonical snapshot details through stable per-signal selectors");
   const info = rowInfoTarget(B);
+  info.focus();
   rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
-  assert(info.getAttribute("aria-expanded") === "true" && rowActionCalls.length === 1, "Info row control must toggle locally without a server mutation");
+  assert(info.getAttribute("aria-expanded") === "true" && info.row.dataset.infoExpanded === "true" && info.getAttribute("aria-label") === "Скрыть информацию о " + B && rowActionCalls.length === 1, "Info row control must expose one synchronized expanded row state without a server mutation");
   rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
-  assert(info.getAttribute("aria-expanded") === "false" && rowActionCalls.length === 1, "Info row control must remain a reversible local disclosure");
+  assert(info.getAttribute("aria-expanded") === "false" && info.row.dataset.infoExpanded === "false" && info.getAttribute("aria-label") === "Показать информацию о " + B && rowActionCalls.length === 1, "Info row control must restore its compact state and accessible name without a server mutation");
+  assert(info.focused === true, "collapsing an explicitly expanded Info row must preserve focus on its trigger");
   rowActions.e.rows.listeners.click({target:rowActionTarget("duplicate", B), stopPropagation() {}});
   await flush();
   const rowDuplicate = rowActionCalls.find(call => call.url === "./api/signals");

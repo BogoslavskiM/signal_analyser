@@ -222,7 +222,7 @@
       var duplicate = e.target.closest("[data-signal-duplicate]"), remove = e.target.closest("[data-signal-delete]"), info = e.target.closest("[data-signal-info]");
       if (duplicate) { e.stopPropagation(); if (!signalsActionBusy) signalsAction({ operation:"duplicate", signal_name:duplicate.dataset.signalDuplicate }); return; }
       if (remove) { e.stopPropagation(); if (!signalsActionBusy && names().length > 1) { signalsDeleteTarget = remove.dataset.signalDelete; signalsFocusRestore = remove; signalsDeleteOpen = true; setSignalsModalBackground(true); renderSignalsActions(); focusLater(document.querySelector("[data-testid='signals-delete-confirm']")); } return; }
-      if (info) { e.stopPropagation(); info.setAttribute("aria-expanded", info.getAttribute("aria-expanded") === "true" ? "false" : "true"); return; }
+      if (info) { var expanded = info.getAttribute("aria-expanded") !== "true", infoRow = info.closest(".signal-row"); e.stopPropagation(); info.setAttribute("aria-expanded", expanded ? "true" : "false"); info.setAttribute("aria-label", (expanded ? "Скрыть" : "Показать") + " информацию о " + info.dataset.signalInfo); if (infoRow) infoRow.dataset.infoExpanded = expanded ? "true" : "false"; return; }
       if (fatalSnapshotError || e.target.matches("input,button")) return;
       var row = e.target.closest("[data-signal]"), d = active();
       if (!row || !d) return;
