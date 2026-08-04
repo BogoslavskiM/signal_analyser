@@ -35,8 +35,17 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/\.bottom-zone\{min-height:270px/.test(css), "TASK-0027 bottom table zone must use its enlarged minimum height");
   assert(/\.settings-field\{grid-template-columns:minmax\(118px,42%\) minmax\(0,1fr\)/.test(fs.readFileSync(path.join(root, "public/css/settings.css"), "utf8")), "TASK-0027 Settings fields must use stable label/control columns");
   const obsoleteWorkspaceNodes = ["open-window-action", "signals-add-selection-action", "signals-copy-action", "signals-delete-action", "display-count-status", "active-display-status"];
-  const retainedCleanupNodes = obsoleteWorkspaceNodes.filter((id) => html.includes(`data-testid="${id}"`));
-  assert(retainedCleanupNodes.length === 0, `obsolete workspace controls/status nodes must be removed, not merely hidden; still present: ${retainedCleanupNodes.join(", ")}`);
+  const publicSources = [];
+  function collectPublicSources(directory) {
+    fs.readdirSync(directory, { withFileTypes: true }).forEach((entry) => {
+      const fullPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) collectPublicSources(fullPath);
+      else if (/\.(?:html|js|css)$/i.test(entry.name)) publicSources.push({ path: fullPath, text: fs.readFileSync(fullPath, "utf8") });
+    });
+  }
+  collectPublicSources(path.join(root, "public"));
+  const retainedCleanupNodes = obsoleteWorkspaceNodes.flatMap((id) => publicSources.filter((source) => source.text.includes(id)).map((source) => `${id} in ${path.relative(root, source.path)}`));
+  assert(retainedCleanupNodes.length === 0, `obsolete workspace controls/status selectors must be physically absent from public sources, not merely hidden; still present: ${retainedCleanupNodes.join(", ")}`);
   assert((html.match(/data-testid="active-plot-host"/g) || []).length === 1, "each active Display must own one graph host");
   assert(/data-testid="active-plot-host"[^>]*role="region"[^>]*aria-labelledby="display-plot-title"/.test(html), "the active graph host must expose its labelled region semantics");
   assert(/data-bottom-tab="signals"[^>]*role="tab"[^>]*aria-controls="bottom-panel-signals"[^>]*aria-selected="true"[^>]*tabindex="0"/.test(html), "Signals must initialize as the sole roving-tabindex tab");

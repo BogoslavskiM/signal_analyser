@@ -92,8 +92,8 @@ function environment(fetch, options) {
     root: node(), loading: node(), loadingText: node(), error: node(), errorText: node(), settingsTabs: node(), statisticsControls: node(), statisticsError: node(),
     tabs: node(), host: node(), title: node(), plotSelect: node(), settingsSelect: node(),
     legend: node(), normalize: node(), markers: node(), minInput: node(), maxInput: node(), limitsError: node(), spectrogramSettings: node(), spectrogramContractError: node(), spectrogramOverlap: node(), spectrogramOverlapError: node(), spectrogramLeakage: node(), spectrogramLeakageError: node(), spectrogramFrequencyLimitsControls: node(), spectrogramFrequencyMin: node(), spectrogramFrequencyMax: node(), spectrogramFrequencyLimitsError: node(), spectrogramFrequencyScale: node(), spectrogramFrequencyScaleEffective: node(), spectrogramFrequencyScaleError: node(), spectrogramPowerLimitsControls: node(), spectrogramPowerMin: node(), spectrogramPowerMax: node(), spectrogramPowerLimitsEffective: node(), spectrogramPowerLimitsError: node(), persistenceSettings: node(), persistenceLeakage: node(), persistenceLeakageValue: node(), persistenceLeakageError: node(), spectrumSettings: node(), spectrumScale: node(), spectrumFrequency: node(), spectrumLeakage: node(), spectrumLeakageValue: node(), spectrumError: node(), spectrumFrequencyMin: node(), spectrumFrequencyMax: node(), spectrumFrequencyLimitsError: node(), fields: node(), count: node(), rows: node(), toggleAll: node(), overflowTrigger: node(), overflowMenu: node(), clearDisplayAction: node(), statisticsAction: node(), peaksAction: node(),
-    bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(), displayCount: node(), activeStatus: node(),
-    signalsAddAction: node(), signalsAddMenu: node(), signalsAddWorkspaceAction: node(), signalsAddSelectionAction: node(), signalsCopyAction: node(), signalsDeleteAction: node(),
+    bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(),
+    signalsAddAction: node(), signalsAddMenu: node(), signalsAddWorkspaceAction: node(),
     signalsWorkspaceDialog: node(), signalsWorkspaceTitle: node(), signalsWorkspaceForm: node(), signalsWorkspaceRefresh: node(), signalsWorkspaceLoading: node(), signalsWorkspaceEmpty: node(), signalsWorkspaceList: node(), signalsWorkspaceSelectionCount: node(), signalsWorkspaceSampleRateGroup: node(), signalsWorkspaceVariable: node(), signalsWorkspaceName: node(), signalsWorkspaceRate: node(), signalsWorkspaceRateError: node(), signalsWorkspaceBatchError: node(), signalsWorkspaceRetry: node(), signalsWorkspaceSuccess: node(), signalsWorkspaceSuccessCount: node(), signalsWorkspaceDone: node(), signalsWorkspaceSubmit: node(), signalsWorkspaceCancel: node(), signalsWorkspaceClose: node(),
     signalsDeleteDialog: node(), signalsDeleteName: node(), signalsDeleteConfirm: node(), signalsDeleteCancel: node(), signalsDeleteClose: node(), signalsActionError: node(), signalsActionErrorText: node(), signalsActionErrorClose: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
@@ -145,8 +145,7 @@ function environment(fetch, options) {
     "[data-testid='display-overflow-trigger']": e.overflowTrigger, "[data-testid='display-overflow-menu']": e.overflowMenu, "[data-testid='clear-display-action']": e.clearDisplayAction,
     "[data-testid='signal-statistics-action']": e.statisticsAction, "[data-testid='find-peaks-action']": e.peaksAction,
     "[data-testid='signals-add-action']": e.signalsAddAction, "[data-testid='signals-add-menu']": e.signalsAddMenu,
-    "[data-testid='signals-add-workspace-action']": e.signalsAddWorkspaceAction, "[data-testid='signals-add-selection-action']": e.signalsAddSelectionAction,
-    "[data-testid='signals-copy-action']": e.signalsCopyAction, "[data-testid='signals-delete-action']": e.signalsDeleteAction,
+    "[data-testid='signals-add-workspace-action']": e.signalsAddWorkspaceAction,
     "[data-testid='signals-workspace-dialog']": e.signalsWorkspaceDialog, "[data-testid='signals-workspace-form']": e.signalsWorkspaceForm, "[data-testid='signals-workspace-refresh']": e.signalsWorkspaceRefresh, "[data-testid='signals-workspace-loading']": e.signalsWorkspaceLoading, "[data-testid='signals-workspace-empty']": e.signalsWorkspaceEmpty, "[data-testid='signals-workspace-list']": e.signalsWorkspaceList, "[data-testid='signals-workspace-selection-count']": e.signalsWorkspaceSelectionCount, "[data-testid='signals-workspace-sample-rate-group']": e.signalsWorkspaceSampleRateGroup, "[data-testid='signals-workspace-variable-input']": e.signalsWorkspaceVariable,
     "[data-testid='signals-workspace-name-input']": e.signalsWorkspaceName, "[data-testid='signals-workspace-sample-rate-input']": e.signalsWorkspaceRate,
     "[data-testid='signals-workspace-sample-rate-error']": e.signalsWorkspaceRateError, "[data-testid='signals-workspace-batch-error']": e.signalsWorkspaceBatchError, "[data-testid='signals-workspace-retry']": e.signalsWorkspaceRetry, "[data-testid='signals-workspace-success']": e.signalsWorkspaceSuccess, "[data-testid='signals-workspace-success-count']": e.signalsWorkspaceSuccessCount, "[data-testid='signals-workspace-done']": e.signalsWorkspaceDone, "[data-testid='signals-workspace-submit']": e.signalsWorkspaceSubmit, "[data-testid='signals-workspace-cancel']": e.signalsWorkspaceCancel, "[data-testid='signals-workspace-close']": e.signalsWorkspaceClose,
@@ -155,7 +154,7 @@ function environment(fetch, options) {
     "[role='tablist'][aria-label='Данные анализатора']": e.bottomTabs, "[data-testid='bottom-panel-signals']": e.signals,
     "[data-testid='measurements-panel']": e.measurements, "[data-measurements-content]": e.measurementContent,
     "[data-testid='peaks-panel']": e.peaksPanel, "[data-peaks-content]": e.peaksContent,
-    "[data-retry]": e.retry, "[data-testid='display-count-status']": e.displayCount, "[data-testid='active-display-status']": e.activeStatus,
+    "[data-retry]": e.retry,
   };
   const calls = [], plotResolvers = [], scriptResolvers = [];
   const plotly = { react(host, data, layout) { calls.push({ plot: true, host, data, layout }); if (options && options.deferredPlotly) return new Promise((resolve, reject) => plotResolvers.push({resolve:() => { host.innerHTML = "settled-" + (data[0] && data[0].name || "plot"); resolve(); }, reject, host, data})); return Promise.resolve(); } };
@@ -211,6 +210,7 @@ async function boot(fetch, options) {
 }
 
 function tabTarget(id) { return { closest(selector) { return selector === "[data-display-id]" ? { dataset: { displayId: id } } : null; } }; }
+function activeTab(e, id) { return new RegExp(`data-display-id='${id}'[^>]*aria-selected='true'`).test(e.tabs.innerHTML); }
 function addTarget() { return { closest(selector) { return selector === "[data-testid='add-display']" ? {} : null; } }; }
 function closeTarget(id) { return { closest(selector) { return selector === "[data-close-display]" ? { dataset: { closeDisplay: id } } : null; } }; }
 function checkboxTarget(name, checked) { return { checked, dataset: { signalVisibility: name }, closest(selector) { return selector === "[data-signal-visibility]" ? this : null; }, matches() { return true; } }; }
@@ -311,10 +311,10 @@ module.exports = async function testDisplayBehavior(assert) {
   const c24DisplayB = persistenceSnapshot(1, "display-2", c24DisplayDefinitions);
   const c24DisplaySwitch = await boot((url, options) => Promise.resolve(response(200, url === "./api/state" ? c24DisplayA : c24DisplayB)), { deferredPlotly:true });
   c24DisplaySwitch.e.tabs.listeners.click({target:tabTarget("display-2")}); await settleMicrotasks();
-  assert(c24DisplaySwitch.calls.filter(call => call.plot).length === 1 && c24DisplaySwitch.plotResolvers.length === 1 && c24DisplaySwitch.plotResolvers[0].data[0].type === "scatter" && c24DisplaySwitch.e.activeStatus.textContent.includes("Display B"), "C24 Display A→B must leave zero latest Display B resolver and only one stale Display A Plotly.react before it settles");
+  assert(c24DisplaySwitch.calls.filter(call => call.plot).length === 1 && c24DisplaySwitch.plotResolvers.length === 1 && c24DisplaySwitch.plotResolvers[0].data[0].type === "scatter" && activeTab(c24DisplaySwitch.e, "display-2") && c24DisplaySwitch.e.title.textContent === "Persistence", "C24 Display A→B must retain Display B as the authoritative tab/title while only stale Display A Plotly.react remains before it settles");
   c24DisplaySwitch.plotResolvers.shift().resolve(); await settleMicrotasks();
   const c24DisplayRender = c24DisplaySwitch.calls.filter(call => call.plot).at(-1);
-  assert(c24DisplaySwitch.e.activeStatus.textContent.includes("Display B") && c24DisplaySwitch.e.title.textContent === "Persistence" && c24DisplayRender.data[0].type === "heatmap", "C24 actual Display A→B switch must let only Display B's latest Persistence graph win");
+  assert(activeTab(c24DisplaySwitch.e, "display-2") && c24DisplaySwitch.e.title.textContent === "Persistence" && c24DisplayRender.data[0].type === "heatmap", "C24 actual Display A→B switch must let only Display B's latest Persistence graph win");
   await settleControlledPlots(c24DisplaySwitch, 3);
   assert(c24DisplaySwitch.calls.filter(call => call.plot).length <= 3 && c24DisplaySwitch.e.host.dataset.plotReady === "true", "C24 Display switch completion remains finite and leaves the current graph ready");
 
@@ -531,44 +531,11 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(browserEnv.e.signalsWorkspaceForm.getAttribute("aria-busy") === "false" && browserEnv.e.signalsWorkspaceEmpty.hidden === true && browserEnv.e.signalsWorkspaceList.innerHTML.includes("timed vector") && browserEnv.e.signalsWorkspaceSubmit.disabled, "a nonempty truncated catalog completion must end loading, render its available row, and still prohibit an empty batch mutation");
   assert(browserEnv.e.signalsWorkspaceSelectionCount.textContent.includes("Каталог обновлён. Выберите переменные снова.") && browserEnv.e.signalsWorkspaceSelectionCount.textContent.includes("1 из 1001") && browserEnv.e.signalsWorkspaceSelectionCount.textContent.includes("лимит 1000"), "Retry must show the reset instruction and truncated shown/total/cap metadata simultaneously");
 
-  const extractInitial = signalsSnapshot(0, [A, B], A);
-  extractInitial.time_limits = {min_s:0, max_s:.2, units:"s"};
-  extractInitial.displays[0].time_limits = {min_s:0, max_s:.2, units:"s"};
-  const extractCalls = [], extractResolvers = [];
-  const extractEnv = await boot((url, options) => {
-    extractCalls.push({url, options});
-    return url === "./api/state" ? Promise.resolve(response(200, extractInitial)) : new Promise(resolve => extractResolvers.push(resolve));
-  });
-  extractEnv.e.signalsAddSelectionAction.listeners.click({target:extractEnv.e.signalsAddSelectionAction});
-  await flush();
-  const extractCall = extractCalls.find(call => call.url === "./api/signals");
-  assert(extractCall && JSON.stringify(JSON.parse(extractCall.options.body)) === JSON.stringify({state_revision:0, operation:"extract_time_limits", display_id:"display-1"}), "Extract must submit only the authoritative active Display ID and revision, never plot payload/ROI samples");
-
-  const signalsCalls = [], signalsResolvers = [];
-  const signalsEnv = await boot((url, options) => { signalsCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, signalsInitial)) : new Promise(resolve => signalsResolvers.push(resolve)); });
+  const signalsCalls = [];
+  const signalsEnv = await boot((url, options) => { signalsCalls.push({url, options}); return Promise.resolve(response(200, signalsInitial)); });
   let addEnterPrevented = false;
   signalsEnv.e.signalsAddAction.listeners.keydown({key:"Enter", target:signalsEnv.e.signalsAddAction, preventDefault() { addEnterPrevented = true; }}); await flush();
   assert(addEnterPrevented && signalsEnv.e.signalsAddMenu.hidden === false && signalsEnv.e.signalsAddWorkspaceAction.focused === true, "Enter on Signals Add must mount the menu and focus Workspace after rendering without a network mutation");
-  const copiedSignal = A + "_Copy", copiedSnapshot = signalsSnapshot(1, [A, B, copiedSignal], copiedSignal);
-  signalsEnv.e.signalsCopyAction.listeners.click({target:signalsEnv.e.signalsCopyAction}); await flush();
-  const copyCall = signalsCalls.filter(call => call.url === "./api/signals").at(-1);
-  assert(JSON.stringify(JSON.parse(copyCall.options.body)) === JSON.stringify({state_revision:0, operation:"duplicate", signal_name:A}), "Copy must use globally row-selected signal rather than a checkbox membership target");
-  signalsResolvers.shift()(response(200, copiedSnapshot)); await flush();
-  assert(signalsEnv.e.rows.innerHTML.includes(copiedSignal), "Copy becomes visible only from its authoritative full snapshot");
-  signalsEnv.e.signalsDeleteAction.listeners.click({target:signalsEnv.e.signalsDeleteAction});
-  assert(signalsEnv.e.signalsDeleteDialog.hidden === false && signalsCalls.filter(call => call.url === "./api/signals").length === 1, "Delete opens a confirmation dialog and does not mutate before confirm");
-  signalsEnv.e.signalsDeleteCancel.listeners.click({target:signalsEnv.e.signalsDeleteCancel});
-  assert(signalsEnv.e.signalsDeleteDialog.hidden === true && signalsCalls.filter(call => call.url === "./api/signals").length === 1, "Delete cancel closes without an API mutation");
-  signalsEnv.e.signalsDeleteAction.listeners.click({target:signalsEnv.e.signalsDeleteAction}); signalsEnv.e.signalsDeleteConfirm.listeners.click({target:signalsEnv.e.signalsDeleteConfirm}); await flush();
-  const deleteCall = signalsCalls.filter(call => call.url === "./api/signals").at(-1);
-  assert(JSON.stringify(JSON.parse(deleteCall.options.body)) === JSON.stringify({state_revision:1, operation:"delete", signal_name:copiedSignal}), "Delete confirm must send only the selected signal and current revision");
-  const staleDeleteSnapshot = signalsSnapshot(2, [A, B, copiedSignal], copiedSignal);
-  signalsResolvers.shift()(response(409, {current:staleDeleteSnapshot})); await flush();
-  const deleteReplay = signalsCalls.filter(call => call.url === "./api/signals");
-  assert(deleteReplay.length === 3 && JSON.parse(deleteReplay.at(-1).options.body).state_revision === 2, "first Signals 409 must canonicalize from a newer revision and retry exactly once when its selected source still exists");
-  signalsResolvers.shift()(response(422, {error:{fields:{signal_name:"Недопустимый сигнал"}}})); await flush();
-  assert(signalsEnv.e.signalsDeleteDialog.hidden === false && signalsEnv.e.signalsActionError.hidden === false && signalsCalls.filter(call => call.url === "./api/signals").length === 3, "Signals 422 preserves the visible error form and bounds retry without optimistic rollback");
-
   // TASK-0018: per-row Inspector controls must retain the same authoritative
   // lifecycle as the toolbar without relying on rendered table positions.
   const rowActionCalls = [], rowActionResolvers = [];
@@ -784,7 +751,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c26Recovery.e.error.hidden === true && c26Recovery.e.tabs.innerHTML.includes("display-tab-display-1") && c26Recovery.e.rows.innerHTML.includes("signal-row"), "C26 valid Retry GET must clear fatal state and restore valid A topology");
   c26Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   c26Recovery.e.plotSelect.value = "spectrum"; c26Recovery.e.plotSelect.listeners.change({target:c26Recovery.e.plotSelect}); await flush();
-  assert(c26Recovery.e.activeStatus.textContent.includes("Display B") && c26RecoveryCalls.filter(call => call.url === "./api/view").length === 1, "C26 recovered valid Display B must regain deterministic controls and normal View mutation");
+  assert(activeTab(c26Recovery.e, "display-2") && c26RecoveryCalls.filter(call => call.url === "./api/view").length === 1, "C26 recovered valid Display B must regain deterministic controls and normal View mutation");
 
   // C27/DEC-033 selection boundary.  The snapshot helper now emits the valid
   // active root projection, so each case below changes exactly one contract
@@ -836,7 +803,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c27InactiveBad.row_selected_signal = B; c27InactiveBad.analysis_signal = B; c27InactiveBad.selected_signal = B; c27InactiveBad.visible_signals = [B]; c27InactiveBad.signals.forEach(signal => { signal.visible = signal.name === B; });
   const c27IsolationCalls = [];
   const c27Isolation = await boot((url, options) => { c27IsolationCalls.push({url, options}); return Promise.resolve(response(200, c27InactiveBad)); });
-  assert(c27Isolation.e.error.hidden === true && c27Isolation.e.activeStatus.textContent.includes("Display B"), "C27 invalid inactive Display A must not quarantine valid active Display B");
+  assert(c27Isolation.e.error.hidden === true && activeTab(c27Isolation.e, "display-2"), "C27 invalid inactive Display A must not quarantine valid active Display B");
   c27Isolation.e.plotSelect.value = "spectrum"; c27Isolation.e.plotSelect.listeners.change({target:c27Isolation.e.plotSelect}); await flush();
   assert(c27IsolationCalls.filter(call => call.url === "./api/view").length === 1, "C27 valid active B continues independently while A remains quarantined");
   const c27BadA = c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]})]); c27BadA.displays[0].visible_signals = [A, A];
@@ -855,11 +822,11 @@ module.exports = async function testDisplayBehavior(assert) {
   c27Lifecycle.e.plotSelect.value = "spectrum"; c27Lifecycle.e.plotSelect.listeners.change({target:c27Lifecycle.e.plotSelect}); await flush();
   c27Lifecycle.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   c27LifecycleResolvers.shift()(response(409, {current:c27LifecycleBadA})); await flush();
-  assert(c27LifecycleCalls.filter(call => call.url === "./api/view").length === 1 && c27LifecycleCalls.filter(call => call.url === "./api/displays").length === 1 && c27Lifecycle.e.activeStatus.textContent.includes("Display B") && c27Lifecycle.e.errorText.textContent !== "Некорректная структура snapshot сервера.", "C27 malformed 409 current must quarantine A with no stale third View replay while queued independent select B continues");
+  assert(c27LifecycleCalls.filter(call => call.url === "./api/view").length === 1 && c27LifecycleCalls.filter(call => call.url === "./api/displays").length === 1 && activeTab(c27Lifecycle.e, "display-2") && c27Lifecycle.e.errorText.textContent !== "Некорректная структура snapshot сервера.", "C27 malformed 409 current must quarantine A with no stale third View replay while queued independent select B continues");
   const c27RecoveryCalls = [];
   const c27Recovery = await boot((url, options) => { c27RecoveryCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c27LifecycleBadA)) : Promise.resolve(response(200, c27LifecycleB)); });
   c27Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
-  assert(c27Recovery.e.error.hidden === true && c27Recovery.e.activeStatus.textContent.includes("Display B") && c27RecoveryCalls.filter(call => call.url === "./api/displays").length === 1 && c27RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C27 valid authoritative topology response must clear local quarantine without resurrecting its discarded View intent");
+  assert(c27Recovery.e.error.hidden === true && activeTab(c27Recovery.e, "display-2") && c27RecoveryCalls.filter(call => call.url === "./api/displays").length === 1 && c27RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C27 valid authoritative topology response must clear local quarantine without resurrecting its discarded View intent");
 
   // C28/DEC-034 active-plot boundary.  Fixtures start canonical and mutate
   // only the wire field under test after construction: no helper fallback may
@@ -872,7 +839,7 @@ module.exports = async function testDisplayBehavior(assert) {
   for (const plot of ["time", "spectrum", "spectrogram", "persistence"]) {
     const valid = c28Base([Object.assign({}, c28Definition, {active_plot:plot})]);
     const env = await boot(() => Promise.resolve(response(200, valid)));
-    assert(env.e.error.hidden === true && env.e.plotSelect.value === plot && env.e.activeStatus.textContent.includes(plot === "time" ? "Time" : plot === "spectrum" ? "Spectrum" : plot === "spectrogram" ? "Spectrogram" : "Persistence"), "C28 must accept every exact active_plot enum value without normalization");
+    assert(env.e.error.hidden === true && env.e.plotSelect.value === plot && env.e.title.textContent === (plot === "time" ? "Time" : plot === "spectrum" ? "Spectrum" : plot === "spectrogram" ? "Spectrogram" : "Persistence"), "C28 must accept every exact active_plot enum value without normalization");
   }
   const c28InvalidPlots = [
     d => { delete d.active_plot; }, d => { d.active_plot = null; }, d => { d.active_plot = ""; }, d => { d.active_plot = 7; },
@@ -916,11 +883,11 @@ module.exports = async function testDisplayBehavior(assert) {
     env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
     env.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
     resolvers.shift()(response(409, {current:badA})); await flush();
-    assert(calls.filter(call => call.url === "./api/view").length === 1 && calls.filter(call => call.url === "./api/displays").length === 1 && env.e.activeStatus.textContent.includes("Display B") && env.e.error.hidden === true, "C28 every malformed 409 current must purge its replay, recover only through the valid B topology response, and not resurrect A intent");
+    assert(calls.filter(call => call.url === "./api/view").length === 1 && calls.filter(call => call.url === "./api/displays").length === 1 && activeTab(env.e, "display-2") && env.e.error.hidden === true, "C28 every malformed 409 current must purge its replay, recover only through the valid B topology response, and not resurrect A intent");
     const inactive = c28For("display-2"); mutate(inactive.displays[0]);
     const inactiveCalls = [], inactiveEnv = await boot((url, options) => { inactiveCalls.push({url, options}); return Promise.resolve(response(200, inactive)); });
     inactiveEnv.e.plotSelect.value = "spectrum"; inactiveEnv.e.plotSelect.listeners.change({target:inactiveEnv.e.plotSelect}); await flush();
-    assert(inactiveEnv.e.activeStatus.textContent.includes("Display B") && inactiveCalls.filter(call => call.url === "./api/view").length === 1, "C28 every malformed inactive A form must preserve independent active B View availability");
+    assert(activeTab(inactiveEnv.e, "display-2") && inactiveCalls.filter(call => call.url === "./api/view").length === 1, "C28 every malformed inactive A form must preserve independent active B View availability");
   }
   for (const plot of ["time", "spectrum", "spectrogram", "persistence"]) {
     const initial = c28Base([Object.assign({}, c28Definition)]), authoritative = c28Base([Object.assign({}, c28Definition, {active_plot:plot})]), calls = [], resolvers = [];
@@ -999,7 +966,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c28InactiveBad = c28Base(c28Definitions.map(d => Object.assign({}, d, {visible_signals:d.visible_signals.slice()})), "display-2"); delete c28InactiveBad.displays[0].active_plot; c28InactiveBad.row_selected_signal = B; c28InactiveBad.analysis_signal = B; c28InactiveBad.selected_signal = B; c28InactiveBad.visible_signals = [B]; c28InactiveBad.signals.forEach(signal => { signal.visible = signal.name === B; });
   const c28IsolationCalls = [], c28Isolation = await boot((url, options) => { c28IsolationCalls.push({url, options}); return Promise.resolve(response(200, c28InactiveBad)); });
   c28Isolation.e.plotSelect.value = "spectrum"; c28Isolation.e.plotSelect.listeners.change({target:c28Isolation.e.plotSelect}); await flush();
-  assert(c28Isolation.e.error.hidden === true && c28Isolation.e.activeStatus.textContent.includes("Display B") && c28IsolationCalls.filter(call => call.url === "./api/view").length === 1, "C28 inactive A quarantine must preserve valid active B View availability");
+  assert(c28Isolation.e.error.hidden === true && activeTab(c28Isolation.e, "display-2") && c28IsolationCalls.filter(call => call.url === "./api/view").length === 1, "C28 inactive A quarantine must preserve valid active B View availability");
   const c28ValidA = c28Base(c28Definitions.map(d => Object.assign({}, d, {visible_signals:d.visible_signals.slice()})), "display-1"), c28BadA = c28Base(c28Definitions.map(d => Object.assign({}, d, {visible_signals:d.visible_signals.slice()})), "display-1"); delete c28BadA.displays[0].active_plot;
   const c28PurgeCalls = [], c28PurgeResolvers = [];
   const c28Purge = await boot((url, options) => { c28PurgeCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28ValidA)) : new Promise(resolve => c28PurgeResolvers.push(resolve)); });
@@ -1012,11 +979,11 @@ module.exports = async function testDisplayBehavior(assert) {
   c28Lifecycle.e.plotSelect.value = "spectrum"; c28Lifecycle.e.plotSelect.listeners.change({target:c28Lifecycle.e.plotSelect}); await flush();
   c28Lifecycle.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   c28LifecycleResolvers.shift()(response(409, {current:c28BadA})); await flush();
-  assert(c28LifecycleCalls.filter(call => call.url === "./api/view").length === 1 && c28LifecycleCalls.filter(call => call.url === "./api/displays").length === 1 && c28Lifecycle.e.activeStatus.textContent.includes("Display B"), "C28 malformed 409 current must purge A replay while allowing queued topology work for B");
+  assert(c28LifecycleCalls.filter(call => call.url === "./api/view").length === 1 && c28LifecycleCalls.filter(call => call.url === "./api/displays").length === 1 && activeTab(c28Lifecycle.e, "display-2"), "C28 malformed 409 current must purge A replay while allowing queued topology work for B");
   const c28RecoveryCalls = [];
   const c28Recovery = await boot((url, options) => { c28RecoveryCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28BadA)) : Promise.resolve(response(200, c28ValidB)); });
   c28Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
-  assert(c28Recovery.e.error.hidden === true && c28Recovery.e.activeStatus.textContent.includes("Display B") && c28RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C28 valid authoritative recovery must clear only A quarantine without resurrecting its discarded View intent");
+  assert(c28Recovery.e.error.hidden === true && activeTab(c28Recovery.e, "display-2") && c28RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C28 valid authoritative recovery must clear only A quarantine without resurrecting its discarded View intent");
   const c28DeferredBad = c28Base([Object.assign({}, c28Definition)]); delete c28DeferredBad.displays[0].active_plot;
   const c28Deferred = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? c28Base([Object.assign({}, c28Definition)]) : c28DeferredBad)), {deferredPlotly:true});
   assert(c28Deferred.plotResolvers.length === 1, "C28 deferred bridge must start exactly one valid render");
@@ -1118,11 +1085,11 @@ module.exports = async function testDisplayBehavior(assert) {
   c29Conflict.e.plotSelect.value = "spectrum"; c29Conflict.e.plotSelect.listeners.change({target:c29Conflict.e.plotSelect}); await flush();
   c29Conflict.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   c29ConflictResolvers.shift()(response(409, {current:c29ConflictA})); await flush();
-  assert(c29ConflictCalls.filter(call => call.url === "./api/view").length === 1 && c29ConflictCalls.filter(call => call.url === "./api/displays").length === 1 && c29Conflict.e.activeStatus.textContent.includes("Display B") && c29Conflict.e.error.hidden === true, "C29 malformed 409 current must discard A replay while preserving independent queued B topology work");
+  assert(c29ConflictCalls.filter(call => call.url === "./api/view").length === 1 && c29ConflictCalls.filter(call => call.url === "./api/displays").length === 1 && activeTab(c29Conflict.e, "display-2") && c29Conflict.e.error.hidden === true, "C29 malformed 409 current must discard A replay while preserving independent queued B topology work");
   const c29RecoveryCalls = [];
   const c29Recovery = await boot((url, options) => { c29RecoveryCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c29ConflictA)) : Promise.resolve(response(200, c29ValidB)); });
   c29Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
-  assert(c29Recovery.e.activeStatus.textContent.includes("Display B") && c29Recovery.e.error.hidden === true && c29RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C29 valid authoritative B topology recovery clears only A quarantine and never resurrects its dropped View intent");
+  assert(activeTab(c29Recovery.e, "display-2") && c29Recovery.e.error.hidden === true && c29RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C29 valid authoritative B topology recovery clears only A quarantine and never resurrects its dropped View intent");
 
   const rowRequests = [];
   const memberRow = await boot((url, options) => {
