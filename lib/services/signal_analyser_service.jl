@@ -14,8 +14,13 @@ const SIGNAL_ANALYSER_VIEW_FIELDS = Set([
     "persistence_settings",
     "peaks_enabled",
 ])
-const SIGNAL_ANALYSER_DISPLAY_FIELDS = Set(["state_revision", "operation", "display_id"])
-const SIGNAL_ANALYSER_DISPLAY_OPERATIONS = Set(["create", "select", "close"])
+const SIGNAL_ANALYSER_DISPLAY_OPERATIONS = Set(["create", "select", "close", "reorder"])
+const SIGNAL_ANALYSER_DISPLAY_REQUEST_FIELDS = Dict(
+    "create" => Set(["state_revision", "operation"]),
+    "select" => Set(["state_revision", "operation", "display_id"]),
+    "close" => Set(["state_revision", "operation", "display_id"]),
+    "reorder" => Set(["state_revision", "operation", "order"]),
+)
 const SIGNAL_ANALYSER_LAYOUT_OPERATIONS = Set(["resize", "select_pane", "update_pane"])
 const SIGNAL_ANALYSER_LAYOUT_REQUEST_FIELDS = Dict(
     "resize" => Set([
@@ -3678,27 +3683,44 @@ function validate_signal_analyser_display_payload(
     ))
 
     field_errors = Dict{String,String}()
-    unknown_fields = setdiff(signal_analyser_payload_keys(data), SIGNAL_ANALYSER_DISPLAY_FIELDS)
-    isempty(unknown_fields) || (field_errors["body"] = "Неизвестные поля: $(join(sort!(collect(unknown_fields)), ", "))")
-
-    revision_value = signal_analyser_payload_value(data, "state_revision")
-    revision_value isa Integer && !(revision_value isa Bool) || (field_errors["state_revision"] = "Требуется целое число")
-
     operation_value = signal_analyser_payload_value(data, "operation")
     operation = if operation_value isa AbstractString && String(operation_value) in SIGNAL_ANALYSER_DISPLAY_OPERATIONS
         String(operation_value)
     else
-        field_errors["operation"] = "Допустимо: create, select, close"
+        field_errors["operation"] = "Допустимо: create, select, close, reorder"
+        nothing
+    end
+    expected_fields = operation === nothing ?
+        Set(["state_revision", "operation"]) :
+        SIGNAL_ANALYSER_DISPLAY_REQUEST_FIELDS[operation]
+    actual_fields = signal_analyser_payload_keys(data)
+    if actual_fields != expected_fields
+        missing = sort!(collect(setdiff(expected_fields, actual_fields)))
+        unknown = sort!(collect(setdiff(actual_fields, expected_fields)))
+        details = String[]
+        isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
+        isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
+        field_errors["body"] = "Ожидался точный набор полей ($(join(details, "; ")))"
+    end
+
+    revision_value = signal_analyser_payload_value(data, "state_revision")
+    revision = if revision_value isa Integer && !(revision_value isa Bool) && revision_value >= 0
+        try
+            Int(revision_value)
+        catch err
+            (err isa InexactError || err isa OverflowError) || rethrow()
+            field_errors["state_revision"] = "Требуется целое число в диапазоне Int"
+            nothing
+        end
+    else
+        field_errors["state_revision"] = "Требуется неотрицательное целое число"
         nothing
     end
 
-    has_display_id = signal_analyser_payload_contains(data, "display_id")
     display_id_value = signal_analyser_payload_value(data, "display_id")
     display_id = nothing
-    if operation == "create"
-        has_display_id && (field_errors["display_id"] = "Поле не допускается для create")
-    elseif operation == "select" || operation == "close"
-        if !has_display_id || !(display_id_value isa AbstractString) || isempty(String(display_id_value))
+    if operation == "select" || operation == "close"
+        if !(display_id_value isa AbstractString) || isempty(String(display_id_value))
             field_errors["display_id"] = "Требуется непустой идентификатор Display"
         else
             display_id = String(display_id_value)
@@ -3709,11 +3731,50 @@ function validate_signal_analyser_display_payload(
             (field_errors["operation"] = "Нужно оставить хотя бы один Display")
     end
 
+    requested_order = String[]
+    if operation == "reorder"
+        order_value = signal_analyser_payload_value(data, "order")
+        if order_value isa AbstractVector
+            for (index, value) in enumerate(order_value)
+                if !(value isa AbstractString) || isempty(String(value))
+                    field_errors["order"] = "Элемент order $index должен быть непустой строкой"
+                    break
+                end
+                push!(requested_order, String(value))
+            end
+            if !haskey(field_errors, "order")
+                current_order = [display.id for display in state.displays]
+                duplicate_ids = sort!(unique([
+                    id for id in requested_order if count(==(id), requested_order) > 1
+                ]))
+                unknown_ids = sort!(collect(setdiff(Set(requested_order), Set(current_order))))
+                missing_ids = [id for id in current_order if !(id in requested_order)]
+                order_errors = String[]
+                isempty(duplicate_ids) || push!(
+                    order_errors,
+                    "Повторяющиеся идентификаторы Display: $(join(duplicate_ids, ", "))",
+                )
+                isempty(unknown_ids) || push!(
+                    order_errors,
+                    "Неизвестные идентификаторы Display: $(join(unknown_ids, ", "))",
+                )
+                isempty(missing_ids) || push!(
+                    order_errors,
+                    "Отсутствующие идентификаторы Display: $(join(missing_ids, ", "))",
+                )
+                isempty(order_errors) || (field_errors["order"] = join(order_errors, "; "))
+            end
+        else
+            field_errors["order"] = "Требуется массив идентификаторов Display"
+        end
+    end
+
     isempty(field_errors) || throw(SignalAnalyserValidationError("Некорректный запрос Display", field_errors))
     (
-        revision = Int(revision_value),
+        revision = revision::Int,
         operation = operation::String,
         display_id = display_id,
+        order = requested_order,
     )
 end
 
@@ -3737,7 +3798,46 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             state.view.state_revision,
         ))
 
-        if requested.operation == "create"
+        if requested.operation == "reorder"
+            current_order = [display.id for display in state.displays]
+            changed = requested.order != current_order
+            next_revision = state.view.state_revision + (changed ? 1 : 0)
+            active_display = signal_analyser_active_display(state)
+            analysis_signal = signal_analyser_display_analysis_signal(state, active_display)
+            prepared_display_plots = signal_analyser_prepare_display_plots(
+                state,
+                active_display,
+                analysis_signal,
+                signal_analyser_display_plot_names(active_display),
+            )
+            prepared_measurements = signal_measurements_snapshot(
+                state.measurements_service,
+                next_revision,
+                analysis_signal,
+                active_display.time_limits,
+                active_display.measurement_selection,
+            )
+            prepared_peaks = signal_peaks_snapshot(
+                state.peaks_service,
+                next_revision,
+                active_display,
+                analysis_signal,
+            )
+            if changed
+                displays_by_id = Dict(display.id => display for display in state.displays)
+                state.displays = SignalAnalyserDisplayState[
+                    displays_by_id[display_id] for display_id in requested.order
+                ]
+                state.view.state_revision += 1
+            end
+            signal_analyser_publish_display_plots!(state, prepared_display_plots)
+            return signal_analyser_snapshot_from_prepared_unlocked(
+                state,
+                prepared_measurements,
+                prepared_peaks,
+                prepared_display_plots,
+            )
+        elseif requested.operation == "create"
             display_number = state.next_display_number
             analysis_signal = first(state.signals)
             display = SignalAnalyserDisplayState(
