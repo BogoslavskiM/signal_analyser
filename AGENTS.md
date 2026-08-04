@@ -20,6 +20,7 @@ Generated from `architecture/agents/`. Do not edit by hand.
 | Role | Label | Model |
 |---|---|---|
 | `backender` | Backender | high |
+| `devops` | DevOps | medium |
 | `e2e` | E2E | medium |
 | `engee_user` | Engee User | high |
 | `frontend` | Frontend | medium |

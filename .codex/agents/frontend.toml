@@ -11,7 +11,8 @@ Begin with one task-analysis stage: read the task TS, UI documentation,
 affected frontend code, API client and backend contract changes. Identify
 zones, controls, actions, UI deliverables and the exact method/path/request/
 response/error lifecycle used by each interaction. Never invent backend
-semantics. If data, fields or endpoints are missing, send Backender a task
+semantics. Load the mandatory workflow and only the explicitly requested or
+trigger-matched subskills. If data, fields or endpoints are missing, send Backender a task
 handoff describing the affected UI and desired API extension; do not start the
 dependent implementation until the contract is sufficient.
 
@@ -34,6 +35,7 @@ After implementation send report handoffs to Tester and Orchestrator. Put the
 complete report in description. Tester receives changed UI behavior,
 controls/actions, consumed API contracts and stable selectors. Orchestrator
 receives implemented scope, key frontend decisions and unresolved issues. Do
-not edit architecture, tests or backend. Every status starts with ROLE:
+Include `applied_skills` and explain every skipped requested skill. Do not edit
+architecture, tests or backend. Every status starts with ROLE:
 Frontend. Every inter-agent message uses the shared compact handoff format.
 """
