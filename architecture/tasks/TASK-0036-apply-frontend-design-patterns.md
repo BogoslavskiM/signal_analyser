@@ -2,18 +2,18 @@
 id: TASK-0036
 kind: task
 title: Привести UI-элементы к применимым frontend design-pattern skills
-status: backlog
+status: in_progress
 priority: P1
-queue_order: null
-model: null
-reasoning: null
+queue_order: 34
+model: gpt-5.6-terra
+reasoning: high
 owner: orchestrator
 assignees: [frontend]
-parent: TASK-0014
+parent: null
 depends_on: [TASK-0035]
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0042, HND-0044, HND-0045, HND-0046, HND-0047]
+related_handoffs: [HND-0042, HND-0044, HND-0045, HND-0046, HND-0047, HND-0048, HND-0051, HND-0052, HND-0053, HND-0054, HND-0055, HND-0056]
 blocked_by: []
 blocker_reason: null
 feature_slug: signal_analyser_ui_patterns
@@ -77,9 +77,11 @@ frontend design-pattern skills в `architecture/skills/frontend/`.
 - Rationale: прямое требование пользователя устанавливает единый критерий для
   всего текущего UI backlog и должно следовать за консолидацией канонических
   skills.
-- Queue order: null до DevOps branch report.
-- Eligibility: TASK-0035 завершена; local branch создана по HND-0042, dispatch
-  ожидает успешный push/retry report HND-0045.
+- Queue order: 34.
+- Model/reasoning: `gpt-5.6-terra` / `high` из-за широкого frontend scope и
+  нескольких component contracts.
+- Eligibility: TASK-0035 завершена; отдельная branch опубликована HND-0048;
+  TASK-0036 явно отделена от незавершённой TASK-0014 и выдана HND-0052.
 
 ## Stage matrix
 
@@ -97,6 +99,10 @@ frontend design-pattern skills в `architecture/skills/frontend/`.
 | E2E regression | required_after_deploy | Quick regression + `e2e/visual-analysis`. |
 | Accepted integration | explicit_user_acceptance | Merge только после принятия пользователем. |
 
+Branch boundary: этот новый пользовательский cycle не поглощает незавершённые
+TASK-0014/TASK-0027/TASK-0029/TASK-0034. В новой ветке одновременно работает
+только один Frontend writer HND-0052.
+
 ## Verification and results
 
 Не начиналась: создана только backlog-запись.
@@ -108,3 +114,23 @@ DevOps HND-0044 создал branch от base `7ed0ef5` и commit `ceafd4e`, н�
 HND-0046: retry сформировал clean branch SHA `4623200`, но push потребовал
 явного подтверждения публикации в configured `origin`. Подтверждение в рамках
 авторизованного autonomous cycle отправлено HND-0047.
+
+HND-0048: branch опубликована в `origin` на SHA `ce65c02`, upstream настроен,
+worktree был clean; Engee update/restart не требовались.
+
+HND-0051 подтвердил role/stage matrix и branch boundary. Frontend implementation
+выдана HND-0052; старые подготовленные HND-0049/HND-0050 не dispatch и удалены
+до запуска агентов.
+
+Frontend report HND-0053: изменены `public/index.html`, `public/css/theme.css`,
+`public/css/app.css`; syntax/focused behavior/diff checks PASS. Full frontend
+runner blocked на противоречивых test-owned static assertions, одновременно
+требующих отсутствия и наличия obsolete selectors. Независимое исправление и
+regression выданы Tester как HND-0054.
+
+Tester report HND-0055: test-owned contradiction исправлен; focused static 1/1,
+focused behavior 1/1, full frontend 4/4 и coverage-run 4/4 PASS; V8 functions
+370/499 (74.15%). Stale product JS references к obsolete selectors возвращены
+в существующую TASK-0034 и не расширяют standalone scope TASK-0036.
+
+Deploy exact feature revision выдан DevOps как HND-0056.

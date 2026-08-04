@@ -20,7 +20,7 @@ description: >
   Orchestrator records принадлежат этому циклу; добавь только их, commit при
   необходимости, затем push. Product/test paths не добавляй; не deploy.
 acceptance_criteria:
-  - `origin/neuro_signal_analyser_ui_patterns` опубликована с upstream.
+  - "`origin/neuro_signal_analyser_ui_patterns` опубликована с upstream."
   - Report возвращает exact local/remote SHA и clean worktree.
 requested_skills: []
 ---

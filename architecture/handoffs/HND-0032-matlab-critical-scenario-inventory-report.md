@@ -3,7 +3,7 @@ id: HND-0032
 type: report
 from: matlab_researcher
 to: orchestrator
-title: Critical scenario inventory: first background cycle
+title: "Critical scenario inventory: first background cycle"
 task_section: ../tasks/TASK-0028-background-matlab-critical-scenarios.md#verification-and-results
 description: >
   GET /agent/bootstrap initially returned embedded reference_scenario documents

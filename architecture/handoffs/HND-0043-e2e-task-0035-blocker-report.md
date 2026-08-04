@@ -3,7 +3,7 @@ id: HND-0043
 type: report
 from: e2e
 to: orchestrator
-title: Blocker: quick regression TASK-0035 не запущен
+title: "Blocker: quick regression TASK-0035 не запущен"
 task_section: ../tasks/TASK-0035-consolidate-canonical-agent-skills.md#verification-and-results
 applied_skills: [e2e/e2e-workflow]
 description: |
