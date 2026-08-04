@@ -106,6 +106,8 @@ function environment(fetch, options) {
   e.timeSettingsPanel = node(); e.timeSettingsPanel.dataset.settingsPanel = "time";
   e.measurementsSettingsPanel = node(); e.measurementsSettingsPanel.dataset.settingsPanel = "measurements";
   e.settingsPanels = [e.displaySettingsPanel, e.timeSettingsPanel, e.measurementsSettingsPanel];
+  e.displayTabNodes = {};
+  ["display-1", "display-2", "display-3", "display-4"].forEach((id) => { e.displayTabNodes[id] = node(); e.displayTabNodes[id].dataset.displayId = id; });
   e.settingsTabs.querySelectorAll = (selector) => selector === "[data-settings-tab]" ? e.settingsTabNodes : [];
   e.statisticsOptions = ["minimum", "maximum", "mean", "median", "peak_to_peak", "rms"].map((value) => {
     const option = node(); option.value = value; option.type = "checkbox"; return option;
@@ -163,7 +165,11 @@ function environment(fetch, options) {
     activeElement: null,
     listeners: {},
     documentElement: { dataset: {} },
-    querySelector(selector) { return selectors[selector] || null; },
+    querySelector(selector) {
+      const displayTabMatch = /^\[data-display-id='([^']+)'\]$/.exec(selector);
+      if (displayTabMatch) return e.displayTabNodes[displayTabMatch[1]] || null;
+      return selectors[selector] || null;
+    },
     getElementById(id) { return id === "signals-workspace-title" ? e.signalsWorkspaceTitle : null; },
     querySelectorAll(selector) {
       if (selector === "[data-bottom-tab]") return [e.signalBottomTab, e.measurementsBottomTab, e.peaksBottomTab];
@@ -211,6 +217,7 @@ async function boot(fetch, options) {
 
 function tabTarget(id) { return { closest(selector) { return selector === "[data-display-id]" ? { dataset: { displayId: id } } : null; } }; }
 function activeTab(e, id) { return new RegExp(`data-display-id='${id}'[^>]*aria-selected='true'`).test(e.tabs.innerHTML); }
+function displayTabOrder(e) { return Array.from(e.tabs.innerHTML.matchAll(/data-display-id='([^']+)'/g), (match) => match[1]); }
 function addTarget() { return { closest(selector) { return selector === "[data-testid='add-display']" ? {} : null; } }; }
 function closeTarget(id) { return { closest(selector) { return selector === "[data-close-display]" ? { dataset: { closeDisplay: id } } : null; } }; }
 function checkboxTarget(name, checked) { return { checked, dataset: { signalVisibility: name }, closest(selector) { return selector === "[data-signal-visibility]" ? this : null; }, matches() { return true; } }; }
@@ -363,6 +370,97 @@ module.exports = async function testDisplayBehavior(assert) {
   lifecycle.e.tabs.listeners.click({ target: closeTarget("display-1") });
   await flush();
   assert(JSON.parse(displayCalls[3].options.body).operation === "close", "close control must request the close operation");
+
+  // HND-0119: Display reorder is an authoritative serialized mutation. The
+  // VM keeps every response controlled so pending, rollback, and focus states
+  // do not depend on clocks or browser drag implementation details.
+  const reorderDefinitions = {
+    "display-1": { id:"display-1", name:"Display 1", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A] },
+    "display-2": { id:"display-2", name:"Display 2", active_plot:"spectrum", analysis_signal:B, selected_signal:B, visible_signals:[B] },
+    "display-3": { id:"display-3", name:"Display 3", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A] },
+  };
+  function reorderSnapshot(revision, order, activeId) {
+    const definitions = order.map((id) => Object.assign({}, reorderDefinitions[id], { visible_signals:reorderDefinitions[id].visible_signals.slice() }));
+    return snapshot(revision, activeId, definitions, reorderDefinitions[activeId].analysis_signal);
+  }
+  const reorderInitial = reorderSnapshot(40, ["display-1", "display-2", "display-3"], "display-2");
+  const mouseAuthoritative = reorderSnapshot(41, ["display-2", "display-1", "display-3"], "display-3");
+  const mouseCalls = [];
+  let resolveMouseReorder;
+  const mouseReorder = await boot((url, options) => {
+    mouseCalls.push({url, options});
+    if (url === "./api/state") return Promise.resolve(response(200, reorderInitial));
+    const payload = JSON.parse(options.body);
+    if (payload.operation === "reorder") return new Promise((resolve) => { resolveMouseReorder = resolve; });
+    return Promise.resolve(response(200, mouseAuthoritative));
+  });
+  const dragTransfer = {};
+  mouseReorder.e.tabs.listeners.dragstart({target:tabTarget("display-1"), dataTransfer:dragTransfer, preventDefault() { this.prevented = true; }});
+  let dropPrevented = false;
+  mouseReorder.e.tabs.listeners.drop({target:tabTarget("display-3"), preventDefault() { dropPrevented = true; }});
+  await flush();
+  const mouseDisplayCalls = mouseCalls.filter((call) => call.url === "./api/displays");
+  assert(dropPrevented && dragTransfer.effectAllowed === "move", "mouse reorder must accept an eligible Display drag/drop as a move");
+  assert(mouseDisplayCalls.length === 1 && JSON.stringify(JSON.parse(mouseDisplayCalls[0].options.body)) === JSON.stringify({state_revision:40, operation:"reorder", order:["display-2", "display-3", "display-1"]}), "mouse drop must POST the exact full Display-ID permutation and current revision");
+  assert(JSON.stringify(displayTabOrder(mouseReorder.e)) === JSON.stringify(["display-1", "display-2", "display-3"]), "mouse reorder must not optimistically change the authoritative tab order");
+  assert(mouseReorder.e.tabs.getAttribute("aria-busy") === "true" && mouseReorder.e.tabs.dataset.reorderBusy === "true" && mouseReorder.e.tabs.innerHTML.includes("draggable='false'"), "pending reorder must expose aria/data busy guards and non-draggable tabs");
+  let guardedDragPrevented = false;
+  mouseReorder.e.tabs.listeners.dragstart({target:tabTarget("display-2"), dataTransfer:{}, preventDefault() { guardedDragPrevented = true; }});
+  mouseReorder.e.tabs.listeners.keydown({target:tabTarget("display-2"), altKey:true, key:"ArrowRight", preventDefault() { throw new Error("pending Alt+Arrow must be ignored"); }});
+  mouseReorder.e.tabs.listeners.click({target:addTarget()});
+  await flush();
+  assert(guardedDragPrevented && mouseCalls.filter((call) => call.url === "./api/displays").length === 1, "pending guard must reject repeated reorder input while serializing a later Display intent");
+  resolveMouseReorder(response(200, mouseAuthoritative));
+  await flush();
+  const serializedMouseCalls = mouseCalls.filter((call) => call.url === "./api/displays");
+  assert(JSON.stringify(displayTabOrder(mouseReorder.e)) === JSON.stringify(["display-2", "display-1", "display-3"]) && activeTab(mouseReorder.e, "display-3"), "HTTP 200 reorder must apply only the full authoritative snapshot order and active Display ID");
+  assert(serializedMouseCalls.length === 2 && JSON.stringify(JSON.parse(serializedMouseCalls[1].options.body)) === JSON.stringify({state_revision:41, operation:"create"}), "a later Display intent must wait for reorder and use its confirmed revision");
+  assert(mouseReorder.e.tabs.getAttribute("aria-busy") === "false" && mouseReorder.e.tabs.dataset.reorderBusy === "false" && mouseReorder.e.displayTabNodes["display-1"].focused === true, "successful mouse reorder must clear pending state and restore focus to the moved tab");
+
+  const altCalls = [];
+  let resolveAltReorder;
+  const altReorder = await boot((url, options) => {
+    altCalls.push({url, options});
+    if (url === "./api/state") return Promise.resolve(response(200, reorderInitial));
+    return new Promise((resolve) => { resolveAltReorder = resolve; });
+  });
+  let altPrevented = false;
+  altReorder.e.tabs.listeners.keydown({target:tabTarget("display-3"), altKey:true, key:"ArrowLeft", preventDefault() { altPrevented = true; }});
+  await flush();
+  const altDisplayCall = altCalls.find((call) => call.url === "./api/displays");
+  assert(altPrevented && JSON.stringify(JSON.parse(altDisplayCall.options.body)) === JSON.stringify({state_revision:40, operation:"reorder", order:["display-1", "display-3", "display-2"]}), "Alt+Arrow must prevent local movement and POST its exact full permutation");
+  assert(JSON.stringify(displayTabOrder(altReorder.e)) === JSON.stringify(["display-1", "display-2", "display-3"]), "Alt+Arrow must retain server order while its request is pending");
+  resolveAltReorder(response(200, reorderSnapshot(41, ["display-1", "display-3", "display-2"], "display-2")));
+  await flush();
+  assert(JSON.stringify(displayTabOrder(altReorder.e)) === JSON.stringify(["display-1", "display-3", "display-2"]) && activeTab(altReorder.e, "display-2") && altReorder.e.displayTabNodes["display-3"].focused === true, "Alt+Arrow 200 must apply authoritative order/active ID and restore moved-tab focus");
+
+  const conflictCalls = [];
+  const conflictCurrent = reorderSnapshot(51, ["display-3", "display-1", "display-2"], "display-1");
+  const conflictReorder = await boot((url, options) => {
+    conflictCalls.push({url, options});
+    return Promise.resolve(url === "./api/state" ? response(200, reorderInitial) : response(409, {current:conflictCurrent}));
+  });
+  conflictReorder.e.tabs.listeners.keydown({target:tabTarget("display-1"), altKey:true, key:"ArrowRight", preventDefault() {}});
+  await flush();
+  assert(conflictCalls.filter((call) => call.url === "./api/displays").length === 1, "reorder 409 current must never replay the stale permutation");
+  assert(JSON.stringify(displayTabOrder(conflictReorder.e)) === JSON.stringify(["display-3", "display-1", "display-2"]) && activeTab(conflictReorder.e, "display-1"), "reorder 409 must replace local state with payload.current order and active ID");
+  assert(conflictReorder.e.error.hidden === false && conflictReorder.e.errorText.textContent === "Порядок Display изменился на сервере. Повторите перестановку." && conflictReorder.e.displayTabNodes["display-1"].focused === true, "reorder 409 must expose recoverable conflict feedback and restore focus");
+
+  for (const failure of [
+    {name:"422", result:() => Promise.resolve(response(422, {error:{fields:{order:"invalid order"}}})), message:"Сервер отклонил порядок Display."},
+    {name:"network", result:() => Promise.reject(new Error("connection lost")), message:"Не удалось изменить порядок Display."},
+  ]) {
+    const failureCalls = [];
+    const failedReorder = await boot((url, options) => {
+      failureCalls.push({url, options});
+      return url === "./api/state" ? Promise.resolve(response(200, reorderInitial)) : failure.result();
+    });
+    failedReorder.e.tabs.listeners.keydown({target:tabTarget("display-2"), altKey:true, key:"ArrowRight", preventDefault() {}});
+    await flush();
+    assert(failureCalls.filter((call) => call.url === "./api/displays").length === 1 && JSON.stringify(displayTabOrder(failedReorder.e)) === JSON.stringify(["display-1", "display-2", "display-3"]), `reorder ${failure.name} must retain the authoritative pre-request order without replay`);
+    assert(activeTab(failedReorder.e, "display-2") && failedReorder.e.error.hidden === false && failedReorder.e.errorText.textContent === failure.message, `reorder ${failure.name} must preserve active ID and expose its recoverable error`);
+    assert(failedReorder.e.tabs.getAttribute("aria-busy") === "false" && failedReorder.e.tabs.dataset.reorderBusy === "false" && failedReorder.e.displayTabNodes["display-2"].focused === true, `reorder ${failure.name} must clear pending state and restore moved-tab focus`);
+  }
 
   let resolveFirst;
   const queued = [];

@@ -7,6 +7,8 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   const root = path.resolve(__dirname, "../../../..");
   const html = fs.readFileSync(path.join(root, "public/index.html"), "utf8");
   const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8");
+  const settingsCss = fs.readFileSync(path.join(root, "public/css/settings.css"), "utf8");
+  const theme = fs.readFileSync(path.join(root, "public/css/theme.css"), "utf8");
   const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   const api = fs.readFileSync(path.join(root, "public/js/api.js"), "utf8");
   const plotlyPath = path.join(root, "public/js/vendor/plotly-cartesian-3.1.0.min.js");
@@ -33,7 +35,15 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/\.signal-table \.signal-actions-column\{position:sticky;right:0/.test(css), "TASK-0027 right action column must remain fixed at the table edge");
   assert(/\.display-tabs\{overflow-x:auto;overflow-y:hidden/.test(css), "TASK-0027 Display tabs must be horizontally scrollable on overflow");
   assert(/\.bottom-zone\{min-height:270px/.test(css), "TASK-0027 bottom table zone must use its enlarged minimum height");
-  assert(/\.settings-field\{grid-template-columns:minmax\(118px,42%\) minmax\(0,1fr\)/.test(fs.readFileSync(path.join(root, "public/css/settings.css"), "utf8")), "TASK-0027 Settings fields must use stable label/control columns");
+  assert(/\.settings-field\{grid-template-columns:minmax\(118px,42%\) minmax\(0,1fr\)/.test(settingsCss), "TASK-0027 Settings fields must use stable label/control columns");
+  assert(/\.main-stage\{[^}]*grid-template-columns:minmax\(650px,1fr\) 370px/.test(css), "design-v1 1440 source contract must retain the base 370px Settings column");
+  assert(/@media \(max-width:1280px\)\{\.main-stage\{[^}]*grid-template-columns:minmax\(520px,1fr\) 340px/.test(css), "design-v1 1280 source contract must use the 340px Settings column");
+  assert(/@media \(max-width:1080px\)\{\.main-stage\{[^}]*grid-template-columns:minmax\(0,1fr\) 300px/.test(css), "design-v1 1024 source contract must use the 300px Settings column");
+  assert(/@media \(max-width:1080px\)\{\.settings-field,\.settings-scalar,\.settings-enum\{grid-template-columns:1fr/.test(settingsCss), "design-v1 1024 Settings fields must stack labels and controls");
+  assert(/\.settings-tabs,\.bottom-tablist\{[^}]*flex-wrap:nowrap[^}]*overflow-x:auto[^}]*white-space:nowrap/.test(css), "design-v1 tabs must remain nonwrapping and horizontally scrollable");
+  assert(/\.signal-table\{min-width:960px\}/.test(css) && /\.signal-table \[data-column='type'\]\{width:126px\}/.test(css) && /\.signal-table \.signal-actions-column,\.signal-table \.signal-actions-cell\{width:128px!important\}/.test(css), "design-v1 table must retain its 960px minimum and 126/128px type/action columns");
+  assert(/\.signal-columns-menu\{width:224px/.test(css) && /\.signal-info-card\{width:248px/.test(css), "design-v1 column menu and signal Info geometry must remain 224/248px");
+  ["--warning", "--warning-soft", "--success", "--success-soft"].forEach((token) => assert(theme.includes(token), `design-v1 feedback token ${token} must remain defined`));
   const obsoleteWorkspaceNodes = ["open-window-action", "signals-add-selection-action", "signals-copy-action", "signals-delete-action", "display-count-status", "active-display-status"];
   const publicSources = [];
   function collectPublicSources(directory) {
@@ -130,7 +140,6 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   const toolbarPositions = toolbarActionOrder.map((id) => html.indexOf(`data-testid="${id}"`));
   assert(toolbarPositions.every((position) => position >= 0) && toolbarPositions.every((position, index) => index === 0 || toolbarPositions[index - 1] < position), "toolbar must keep Import, Export, Help action order");
   assert(/data-testid="help-action"[^>]*aria-label="Справка недоступна"[^>]*disabled/.test(html), "disabled Help must retain its accessible unavailable state");
-  const theme = fs.readFileSync(path.join(root, "public/css/theme.css"), "utf8");
   ["--warning", "--warning-soft", "--accent-hover", "--accent-active", "--shadow", "--shadow-dialog", "--control-height"].forEach((token) =>
     assert(theme.includes(token), `shared interaction token ${token} must be defined in theme.css`)
   );
@@ -145,6 +154,10 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   ["active_display_id", "displays", "visible_signals", "row_selected_signal", "analysis_signal", "selected_signal", "displayMutation", "addDisplay", "selectDisplay", "closeDisplay", "pendingAction"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Display state contract term ${term}`)
   );
+  ["requestDisplayReorder", "reorderedDisplayIds", "displayReorderPending", "reorderBusy", "focusDisplayTab", 'operation:"reorder"'].forEach((term) =>
+    assert(app.includes(term), `persistent Display reorder must retain source contract term ${term}`)
+  );
+  assert(app.includes('if (intent.kind === "reorder") { if (!accept(e.payload.current)) return;') && app.includes("Порядок Display изменился на сервере. Повторите перестановку."), "reorder 409 must accept current and return without generic replay");
   assert(app.includes('displayMutation("create"') && app.includes('displayMutation("select"') && app.includes('displayMutation("close"'), "frontend must emit create/select/close Display operations");
   assert(app.includes("data-testid='close-display-"), "close controls must have stable per-display test IDs");
   assert(app.includes("data-signal-visibility") && app.includes("visible_signals"), "checkbox actions must update active Display membership");
