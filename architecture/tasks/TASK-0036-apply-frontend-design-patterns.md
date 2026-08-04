@@ -13,7 +13,7 @@ parent: TASK-0014
 depends_on: [TASK-0035]
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0042, HND-0044, HND-0045]
+related_handoffs: [HND-0042, HND-0044, HND-0045, HND-0046, HND-0047]
 blocked_by: []
 blocker_reason: null
 feature_slug: signal_analyser_ui_patterns
@@ -104,3 +104,7 @@ frontend design-pattern skills в `architecture/skills/frontend/`.
 DevOps HND-0044 создал branch от base `7ed0ef5` и commit `ceafd4e`, но push
 остановлен из-за параллельно появившегося Orchestrator-owned E2E report. Retry
 того же branch request отправлен как HND-0045.
+
+HND-0046: retry сформировал clean branch SHA `4623200`, но push потребовал
+явного подтверждения публикации в configured `origin`. Подтверждение в рамках
+авторизованного autonomous cycle отправлено HND-0047.
