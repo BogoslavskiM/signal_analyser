@@ -16,6 +16,10 @@ source_handoffs: []
 related_handoffs: []
 blocked_by: []
 blocker_reason: null
+# Для крупной feature/group после DevOps handoff:
+# feature_slug: <stable-slug>
+# development_branch: neuro_<stable-slug>
+# integration_sha: <neuro_dev SHA after accepted merge>
 ---
 
 # <title>

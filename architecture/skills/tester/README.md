@@ -1,4 +1,5 @@
 # Tester skills
 
-Use this group to derive unit and contract tests from handoffs, then execute
-focused and regression verification.
+Use this group for `backend-unit-testing`, `backend-api-testing` and
+`frontend-static-behavior-testing`, followed by focused and regression
+verification. Engee contract tests belong to Engee User.

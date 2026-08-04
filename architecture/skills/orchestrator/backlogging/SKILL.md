@@ -12,12 +12,19 @@ registry for the next development cycle.
 2. Remove duplicates and preserve the source handoff/task ID.
 3. Define user value, scope, exclusions and evidence; group related candidates
    under `kind: group` when they share an outcome or foundation.
-4. Split a chosen idea/group into role-owned `kind: task` records.
-5. Add assignees, acceptance criteria, dependencies, priority, exact
+4. Classify whether the group is a major feature accepted as one result. If it
+   is, assign a stable `feature_slug`; before its first repository-changing
+   task request `new_feature_branch` from DevOps and persist the returned
+   `development_branch`.
+5. Split a chosen idea/group into role-owned `kind: task` records. Child tasks
+   inherit the group's feature branch; do not create per-task branches.
+6. Add assignees, acceptance criteria, dependencies, priority, exact
    deliverables, `model` and `reasoning` according to `architecture/tasks/README.md`.
-6. Set `queued` only for an unblocked task whose dependencies are `done`.
-7. Assign queue_order and record the priority rationale and linked handoff.
-8. Select the next eligible task by P0 → P3, then queue_order.
+7. Set `queued` only for an unblocked task whose dependencies are `done`; a
+   repository-changing child of a major feature also requires its
+   `development_branch`.
+8. Assign queue_order and record the priority rationale and linked handoff.
+9. Select the next eligible task by P0 → P3, then queue_order.
 
 ## Dynamic reprioritization
 

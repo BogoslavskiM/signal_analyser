@@ -1,10 +1,11 @@
 schema_version: 2
 name: backlogging
-version: 1.1.0
+version: 1.2.0
 title: "Backlogging"
 description: >
   Детализация feature ideas в unified task registry: группировка, подзадачи,
-  зависимости, priority, model, reasoning, acceptance criteria и queue order.
+  зависимости, priority, model, reasoning, major-feature branch lifecycle,
+  acceptance criteria и queue order.
 language: ru
 audience: [assistant]
 priority: 1.0

@@ -12,7 +12,7 @@ when-to-use:
   - "Любой UI-affecting E2E regression handoff"
   - "Проверка таблиц, settings, dialogs, popovers, tooltips или hover states"
 when-not:
-  - "Deployment mode или чисто backend/API regression без UI"
+  - "Чисто backend/API regression без UI"
 requires-tools:
   - "Chromium/CDP"
   - "Playwright screenshots"

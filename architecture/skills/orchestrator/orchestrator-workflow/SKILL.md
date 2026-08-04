@@ -18,18 +18,87 @@ Orchestrator сохраняет tasks и handoffs, выбирает порядо
   adapters, API routes and authoritative state.
 - Frontend получает zones, controls, frontend state, API consumption, rendering
   and styling.
-- Tester получает unit, API, contract and regression tests.
+- Tester получает backend unit/API и frontend static/behavior regression tests.
 - MATLAB Researcher получает MATLAB documentation/app research and reference
   scenarios.
-- Engee User получает только Engee function comparison и bug evidence.
+- Engee User получает required-functionality research, persistent Engee
+  contract tests, discrepancy localization и bug evidence.
 - E2E получает отдельный regression handoff после каждой завершённой task,
-  `analysis_regression` при переходе к пустому actionable backlog и все явно
-  запрошенные deployment handoff.
+  а также `analysis_regression` при переходе к пустому actionable backlog.
+- DevOps получает один из трёх полных pipeline requests: новая ветка крупной
+  feature, deploy или merge принятой feature в `neuro_dev`.
 
 Если результат требует изменения в нескольких ownership-зонах, Orchestrator
 создаёт отдельные handoff для владельцев и явно фиксирует контракт между ними.
 Пограничные вопросы решаются по месту изменения authoritative behavior:
 backend для source of truth и API, frontend для presentation and interaction.
+
+## Subskill routing и полнота запуска
+
+Каждый агент всегда начинает с обязательного workflow skill. В role-specific
+handoff указывай только применимые `requested_skills` из `available_subskills`
+получателя. Не перечисляй весь каталог на всякий случай. Агент может добавить
+trigger-matched subskill самостоятельно, но обязан вернуть фактический список
+в `applied_skills`; неприменимый явно запрошенный skill сопровождается причиной
+в `skipped_requested_skills`.
+
+Перед dispatch зафиксируй stage matrix задачи:
+
+| Stage | Когда нужен | Получатель |
+|---|---|---|
+| MATLAB research | MATLAB-derived scope или неизвестное reference behavior | MATLAB Researcher |
+| Engee functionality analysis | backend зависит от функции/контракта Engee | Engee User |
+| Backend implementation | меняется authoritative state, math или API | Backender |
+| Frontend implementation | меняются UI, frontend state или interaction | Frontend |
+| Backend/frontend tests | меняется соответствующий product contract | Tester |
+| Engee contract tests | используется или меняется Engee contract | Engee User |
+| Feature branch | начинается новый крупный feature-cycle | DevOps `new_feature_branch` до первой repository mutation |
+| Runtime publication/deployment | E2E target должен содержать новую revision | DevOps `deploy` |
+| Accepted feature integration | пользователь принял крупную feature | DevOps `merge_feature` в `neuro_dev` |
+| E2E regression | post-task или idle regression trigger | E2E |
+
+Независимые stages запускай параллельно. Зависимые stages запускай только после
+получения достаточного контракта: Engee analysis до Engee-dependent backend,
+backend API до зависимого frontend, implementation reports до tests, DevOps
+runtime report до E2E проверки новой revision. Для каждого пропущенного stage
+зафиксируй `not_applicable` и причину в task review; это защищает от забытого
+этапа без создания лишних handoff.
+
+## Lifecycle крупной feature
+
+`neuro_dev` — постоянная основная ветка автономной разработки. Крупной feature
+считай registry group или пользовательский scope, который объединяет несколько
+связанных implementation/test tasks и принимается как единый результат.
+
+1. При старте нового крупного цикла, до первого изменения repository, создай
+   один DevOps handoff:
+
+   ```yaml
+   devops_request: new_feature_branch
+   feature_slug: <stable slug>
+   paths: <optional initial scope>
+   ```
+
+2. Дождись report с `neuro_<feature_slug>` и base SHA `neuro_dev`. Зафиксируй
+   branch в group/task context и выдавай все subtasks этой feature в неё.
+3. Не создавай новую branch для каждой task, bugfix или test внутри feature.
+4. Для runtime/E2E проверки feature отправляй `devops_request: deploy`; DevOps
+   сам выполняет необходимые add/commit/push/update/restart stages.
+5. После implementation, tests, required E2E и явного принятия feature
+   пользователем отправь:
+
+   ```yaml
+   devops_request: merge_feature
+   feature_slug: <same slug>
+   source_branch: neuro_<feature_slug>
+   target_branch: neuro_dev
+   accepted_by_user: true
+   paths: <optional final scope>
+   ```
+
+6. Feature считается integrated только после report с resulting
+   `neuro_dev` SHA. Merge conflict или missing acceptance создаёт blocker; не
+   меняй target и не обходи DevOps.
 
 ## Немедленный background MATLAB research
 
@@ -112,15 +181,27 @@ planned checks не входят в passed. Доступность прилож�
 Task со статусом `done` не открывается заново по E2E finding: исправление
 всегда получает новую task и новый handoff.
 
-## Deployment routing
+## DevOps routing
 
-Все роли адресуют deployment только E2E. Orchestrator сохраняет отдельный
-`type: task` handoff с явным deployment mode, production target и точным
-списком выбранных файлов. Deployment нельзя объединять с E2E regression,
-запускать автоматически после tests или направлять Engee User. E2E применяет
-`e2e/genie-deploy` и возвращает отдельный deployment report.
-Первая строка deployment handoff — `e2e_action: deployment`; поле
-`e2e_mode` в нём не используется.
+Все роли адресуют Git/runtime requests только DevOps через Orchestrator. DevOps
+не получает цепочку микрозадач: один request запускает полный conditional
+pipeline checkout/create → add → commit → push → accepted integration → Engee
+update → restart.
+Ненужные этапы возвращаются как `not_needed`; blocker останавливает дальнейшие
+этапы без rollback.
+
+- `new_feature_branch` обязателен один раз при старте крупного feature-cycle;
+- `deploy` используется, когда Engee/E2E должен получить current feature или
+  `neuro_dev` revision;
+- `merge_feature` обязателен сразу после явного принятия крупной feature и
+  всегда вливает её в `neuro_dev`.
+
+Передавай optional `paths`, если Git add нужно ограничить конкретными файлами
+или папками. Для deploy передай branch/expected scope; для merge — source
+feature branch и `accepted_by_user: true`. Если E2E должен проверить новую
+revision, сначала получи DevOps report с URL и exact SHA, затем отправь E2E
+handoff. При отсутствии актуального runtime передай `target_status:
+unavailable`; E2E вернёт blocker, а не проверит старую revision.
 
 ## Model selection
 

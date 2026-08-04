@@ -28,6 +28,10 @@ source_handoffs: []
 related_handoffs: []
 blocked_by: []
 blocker_reason: null
+# only for a major feature/group lifecycle:
+feature_slug: null
+development_branch: null
+integration_sha: null
 ```
 
 `kind` определяет назначение записи:
@@ -38,6 +42,20 @@ blocker_reason: null
   одному или нескольким агентам через handoff.
 
 Только `kind: task` может получить статус `queued` и быть выдан агенту.
+
+## Ветка крупной feature
+
+Для крупной feature обычно создаётся `kind: group`. До первой
+repository-changing task Orchestrator отправляет DevOps
+`devops_request: new_feature_branch`, затем записывает в group стабильные
+`feature_slug` и `development_branch: neuro_<feature_slug>`. Все дочерние tasks
+наследуют эту branch и не создают собственные.
+
+После явного принятия крупной feature Orchestrator отправляет
+`devops_request: merge_feature` с `accepted_by_user: true`. Target всегда
+`neuro_dev`. После успешного report поле `integration_sha` получает resulting
+SHA `neuro_dev`. До этого feature не считается интегрированной, даже если её
+subtasks имеют `status: done`.
 
 ## Модель и reasoning
 

@@ -1,0 +1,152 @@
+.dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 96000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(33, 33, 33, 0.2);
+}
+
+.dialog-level-file-browser {
+  z-index: 97000;
+}
+
+.dialog-level-error {
+  z-index: 98000;
+}
+
+.dialog-card {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  color: var(--text, #24292d);
+  box-shadow: 0 18px 45px rgba(29, 42, 48, 0.22);
+}
+
+.dialog-size-message {
+  width: min(480px, calc(100vw - 32px));
+}
+
+.dialog-titlebar {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 16px;
+}
+
+.dialog-title {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.dialog-close-button {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted, #687278);
+  cursor: pointer;
+}
+
+.dialog-close-button::before,
+.dialog-close-button::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 15px;
+  width: 14px;
+  height: 2px;
+  background: currentColor;
+}
+
+.dialog-close-button::before {
+  transform: rotate(45deg);
+}
+
+.dialog-close-button::after {
+  transform: rotate(-45deg);
+}
+
+.dialog-close-button:hover:not(:disabled) {
+  border-color: var(--line, #d5dadd);
+  background: var(--surface-muted, #f5f7f8);
+  color: var(--text, #24292d);
+}
+
+.dialog-close-button:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+
+.dialog-body {
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+}
+
+.dialog-actions {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 16px 16px;
+}
+
+.dialog-button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border: 1px solid var(--line, #d5dadd);
+  border-radius: 6px;
+  background: var(--surface, #fff);
+  color: var(--text, #24292d);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.dialog-button-primary {
+  border-color: var(--accent, #187da8);
+  background: var(--accent, #187da8);
+  color: #fff;
+}
+
+.dialog-button:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+
+.dialog-alert-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #eca7ab;
+  border-radius: 6px;
+  background: #fff3f2;
+}
+
+.dialog-message {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}

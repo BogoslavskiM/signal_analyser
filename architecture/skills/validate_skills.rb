@@ -9,6 +9,7 @@ semver = /\A\d+\.\d+\.\d+\z/
 skill_id = /\A[a-z0-9]+(?:-[a-z0-9]+)*\z/
 errors = []
 names = {}
+paths = {}
 
 Dir.glob(File.join(root, "*", "*", "manifest.yaml")).sort.each do |manifest_path|
   directory = File.dirname(manifest_path)
@@ -33,6 +34,7 @@ Dir.glob(File.join(root, "*", "*", "manifest.yaml")).sort.each do |manifest_path
   errors << "#{relative}: requires-skills must be an array" unless manifest["requires-skills"].is_a?(Array)
   errors << "#{relative}: duplicate name" if names.key?(name)
   names[name] = relative
+  paths[relative] = manifest_path
   skill_path = File.join(directory, "SKILL.md")
   unless File.file?(skill_path)
     errors << "#{relative}: SKILL.md is missing"
@@ -51,8 +53,29 @@ names.each_value do |relative|
   end
 end
 
+role_dir = File.expand_path("../agents/roles", root)
+Dir.glob(File.join(role_dir, "*.toml")).sort.each do |role_path|
+  role = File.basename(role_path, ".toml")
+  source = File.read(role_path, encoding: "UTF-8")
+  mandatory = source[/^mandatory_workflow_skill\s*=\s*"([^"]+)"/, 1]
+  errors << "role #{role}: mandatory_workflow_skill is missing" unless mandatory
+
+  references = []
+  references << mandatory if mandatory
+  source.scan(/^(?:stage_skills|available_subskills|optional_stage_skills)\s*=\s*\[([^\]]*)\]/) do |match|
+    references.concat(match.first.scan(/"([^"]+)"/).flatten)
+  end
+  source.scan(/^mode_skills\s*=\s*\{([^}]*)\}/) do |match|
+    references.concat(match.first.scan(/"([^"]+)"/).flatten)
+  end
+  references.uniq.each do |skill_path|
+    errors << "role #{role}: unknown skill #{skill_path}" unless paths.key?(skill_path)
+  end
+end
+
 if errors.empty?
-  puts "PASS skills: #{names.length} manifests, schema=2, versions=manifest-only"
+  role_count = Dir.glob(File.join(role_dir, "*.toml")).length
+  puts "PASS skills: #{names.length} manifests, #{role_count} role catalogs, schema=2, references valid"
   exit 0
 end
 warn errors.join("\n")

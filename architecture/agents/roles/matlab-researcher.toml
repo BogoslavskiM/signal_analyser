@@ -9,7 +9,7 @@ workflow = ["accept or continue one background research lane", "load saved click
 mandatory_workflow_skill = "matlab-researcher/matlab-researcher-workflow"
 stage_skills = ["matlab-researcher/critical-scenario-coverage", "matlab-researcher/matlab-clicker-research-loop"]
 handoff_required_fields = ["id", "type", "from", "to", "title"]
-handoff_optional_fields = ["task_section", "description", "acceptance_criteria"]
+handoff_optional_fields = ["task_section", "description", "acceptance_criteria", "requested_skills", "applied_skills", "skipped_requested_skills"]
 
 developer_instructions = """
 ROLE: MATLAB Researcher

@@ -1,11 +1,11 @@
 schema_version: 2
 name: handoff-management
-version: 1.1.0
+version: 1.2.0
 title: "Handoff Management"
 description: >
   Минимальный формат межагентного handoff типов task, report, research и FYI:
   id, type, from, to, title и опциональные task section, description и
-  acceptance criteria.
+  acceptance criteria и явный requested/applied subskill trace.
 language: ru
 audience: [assistant]
 priority: 1.0

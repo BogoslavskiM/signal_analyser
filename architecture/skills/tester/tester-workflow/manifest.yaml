@@ -1,10 +1,10 @@
 schema_version: 2
 name: tester-workflow
-version: 1.2.1
+version: 2.0.0
 title: "Tester Workflow"
 description: >
-  Обязательный процесс Tester, типовая архитектура и стек тестов, regression,
-  evidence report и единый формат bug report.
+  Обязательный процесс Tester только для backend unit/API и frontend
+  static/behavior tests, regression, evidence report и bug report.
 language: ru
 audience: [assistant]
 priority: 1.0

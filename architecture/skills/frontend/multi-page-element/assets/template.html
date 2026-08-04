@@ -1,0 +1,123 @@
+<section class="multi-page-element">
+  <div v-if="multiPageUi.title" class="multi-page-titlebar">
+    <h2 class="multi-page-title">{{ multiPageUi.title }}</h2>
+  </div>
+
+  <div class="multi-page-header">
+    <div class="multi-page-tabs-wrap">
+      <button
+        v-if="multiPageUi.tabsCanScrollLeft"
+        class="multi-page-tab-scroll multi-page-tab-scroll-prev"
+        type="button"
+        aria-label="Прокрутить вкладки влево"
+        data-tooltip="Прокрутить вкладки влево"
+        data-testid="multi-page-scroll-left"
+        @click="scrollMultiPageTabs('left')"
+      ><span class="multi-page-tab-scroll-chevron" aria-hidden="true"></span></button>
+
+      <div class="multi-page-tabs" data-testid="multi-page-tabs" ref="multiPageTabs" @scroll="updateMultiPageTabsScroll">
+        <div
+          v-for="page in openedPageMetadata"
+          :key="page.id"
+          class="multi-page-tab"
+          :class="{ active: String(page.id) === activePageId }"
+          :data-page-id="page.id"
+          :data-testid="'multi-page-tab-' + page.id"
+          @click="selectMultiPage(page.id)"
+        >
+          <span class="multi-page-tab-title" :data-tooltip="page.title">{{ page.title }}</span>
+          <button
+            v-if="page.closable !== false"
+            class="multi-page-tab-close"
+            type="button"
+            :aria-label="'Закрыть вкладку ' + page.title"
+            :data-testid="'multi-page-close-' + page.id"
+            @click.stop="closeMultiPage(page)"
+          ></button>
+        </div>
+      </div>
+
+      <button
+        v-if="multiPageUi.tabsCanScrollRight"
+        class="multi-page-tab-scroll multi-page-tab-scroll-next"
+        type="button"
+        aria-label="Прокрутить вкладки вправо"
+        data-tooltip="Прокрутить вкладки вправо"
+        data-testid="multi-page-scroll-right"
+        @click="scrollMultiPageTabs('right')"
+      ><span class="multi-page-tab-scroll-chevron" aria-hidden="true"></span></button>
+    </div>
+
+    <div class="multi-page-header-actions">
+      <button
+        class="multi-page-menu-button icon-plus"
+        type="button"
+        aria-label="Добавить страницу"
+        data-tooltip="Добавить страницу"
+        data-multi-page-menu-toggle
+        data-testid="multi-page-menu-toggle"
+        @click="toggleMultiPageMenu"
+      ><span class="visually-hidden">Добавить страницу</span></button>
+
+      <teleport to="body">
+        <div
+          v-if="multiPageUi.pageMenuOpen"
+          class="multi-page-menu"
+          data-multi-page-menu
+          data-testid="multi-page-menu"
+          :style="multiPageUi.pageMenuStyle"
+        >
+          <section v-for="section in pageMenuSections" :key="section.title || '__default__'" class="multi-page-menu-section">
+            <div v-if="section.title" class="multi-page-menu-section-title">{{ section.title }}</div>
+            <label v-for="page in section.pages" :key="page.id" class="multi-page-menu-item">
+              <input
+                class="multi-page-menu-checkbox"
+                type="checkbox"
+                :data-testid="'multi-page-visible-' + page.id"
+                :checked="multiPageState.opened_pages.map(String).includes(String(page.id))"
+                @change="toggleMultiPage(page.id, $event.target.checked)"
+              >
+              <span class="multi-page-menu-copy">
+                <span class="multi-page-menu-title">{{ page.title }}</span>
+                <span v-if="page.description" class="multi-page-menu-description">{{ page.description }}</span>
+              </span>
+            </label>
+          </section>
+        </div>
+      </teleport>
+    </div>
+  </div>
+
+  <div class="multi-page-body">
+    <div
+      v-if="activePageLoading && !activePageRendersOutputState"
+      class="multi-page-status"
+      role="status"
+      aria-label="Загрузка"
+      data-testid="multi-page-loading"
+    >
+      <span class="multi-page-spinner" aria-hidden="true"></span>
+    </div>
+
+    <div
+      v-else-if="activePageError && !activePageRendersOutputState"
+      class="multi-page-status multi-page-error"
+      role="alert"
+      data-testid="multi-page-error"
+    >
+      {{ activePageError }}
+    </div>
+
+    <component
+      v-else-if="activePageRendersOutputState || (!activePageLoading && !activePageError)"
+      :is="activePageComponent"
+      :key="activePageId"
+      class="multi-page-content"
+      :data-testid="'multi-page-content-' + activePageId"
+      :page-id="activePageId"
+      :page-metadata="activePageMetadata"
+      :page-state="activePageRuntime"
+      :page-data="activePageRuntime.data"
+    ></component>
+  </div>
+</section>

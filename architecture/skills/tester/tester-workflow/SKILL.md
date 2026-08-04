@@ -6,9 +6,16 @@ name: tester-workflow
 ## Порядок работы
 
 1. Принять Backend/Frontend report или E2E handoff.
-2. Добавить unit, API, Engee contract или frontend behavior tests.
-3. Запустить сначала затронутый набор, затем релевантную регрессию.
-4. Вернуть `report` handoff с командами, counts, failures и gaps.
+2. Прочитать `requested_skills` и выбрать только применимые subskills:
+   - domain/state/helper logic → `tester/backend-unit-testing`;
+   - Genie routes/handlers/payloads → `tester/backend-api-testing`;
+   - frontend source/state/API coordination →
+     `tester/frontend-static-behavior-testing`.
+3. Добавить backend unit/API или frontend static/behavior tests. Engee
+   contract testing передать Engee User.
+4. Запустить сначала затронутый набор, затем релевантную регрессию.
+5. Вернуть `report` handoff с командами, counts, failures, gaps,
+   `applied_skills` и причинами для `skipped_requested_skills`.
 
 ## Типовая архитектура
 
@@ -19,9 +26,6 @@ test/
     support/                 # context, fixtures, helpers
     app/                     # routes и API
     lib/                     # domain и services
-  engee/
-    *_contract_tests.jl      # публичные контракты Engee
-    *_contract_matrix.jl     # матрицы совместимости
   front/
     run_front_tests.js       # единая точка запуска
     public/js/               # зеркало public/js
@@ -31,17 +35,17 @@ test/
 
 Тесты повторяют структуру product code. Общие setup и fixtures хранить только
 в `support/`; сценарные ожидания оставлять в соответствующем test-файле.
+`test/engee/**` является отдельной ownership-зоной Engee User.
 
 ## Стек
 
-- Backend и Engee: Julia, стандартный `Test`, project environment и Genie для
-  API boundary.
+- Backend: Julia, стандартный `Test`, project environment и Genie для API
+  boundary.
 - Frontend: Node.js CommonJS, встроенные `fs`, `path`, `vm`, project assertions
   и лёгкий runner без browser automation.
 - Playwright относится только к E2E.
 
-Основные команды: `julia --project=. test/back/runtests.jl`,
-`julia --startup-file=no test/engee/engee_package_contract_tests.jl`,
+Основные команды: `julia --project=. test/back/runtests.jl` и
 `node test/front/run_front_tests.js`.
 
 ## Формат bug report

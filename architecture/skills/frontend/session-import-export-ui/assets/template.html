@@ -1,0 +1,69 @@
+<base-dialog
+  :open="sessionExportDialog.open"
+  title="Экспорт сессии"
+  title-id="session-export-title"
+  size="form"
+  level="primary"
+  :busy="sessionExportDialog.busy"
+  @close="closeSessionExportDialog"
+>
+  <div class="session-dialog-fields">
+    <label class="session-dialog-row" for="session-export-directory">
+      <span class="session-dialog-label">Папка</span>
+      <path-input
+        input-id="session-export-directory"
+        :model-value="sessionExportDialog.directory"
+        :disabled="sessionExportDialog.busy"
+        @update:model-value="sessionExportDialog.directory = $event"
+        @browse="openFileBrowser('session-export-directory')"
+      ></path-input>
+    </label>
+    <label class="session-dialog-row" for="session-export-file-name">
+      <span class="session-dialog-label">Имя файла</span>
+      <input id="session-export-file-name" data-testid="session-export-file-name" class="dialog-text-input" type="text" v-model="sessionExportDialog.file_name" :disabled="sessionExportDialog.busy">
+    </label>
+    <label class="session-dialog-checkbox-row">
+      <input type="checkbox" data-testid="session-export-overwrite" v-model="sessionExportDialog.overwrite" :disabled="sessionExportDialog.busy">
+      <span>Перезаписывать существующий файл</span>
+    </label>
+  </div>
+  <template #actions>
+    <button class="dialog-button" data-testid="session-export-cancel" type="button" :disabled="sessionExportDialog.busy" @click="closeSessionExportDialog">Отмена</button>
+    <button class="dialog-button dialog-button-primary" data-testid="session-export-submit" type="button" :disabled="sessionExportDialog.busy" @click="exportSession">
+      {{ sessionExportDialog.busy ? "Сохранение..." : "Сохранить" }}
+    </button>
+  </template>
+</base-dialog>
+
+<base-dialog
+  :open="sessionImportDialog.open"
+  title="Импорт сессии"
+  title-id="session-import-title"
+  size="form"
+  level="primary"
+  :busy="sessionImportDialog.busy"
+  @close="closeSessionImportDialog"
+>
+  <div class="session-dialog-fields">
+    <label class="session-dialog-row" for="session-import-file">
+      <span class="session-dialog-label">Файл</span>
+      <path-input
+        input-id="session-import-file"
+        :model-value="sessionImportDialog.file_path"
+        :disabled="sessionImportDialog.busy"
+        @update:model-value="sessionImportDialog.file_path = $event"
+        @browse="openFileBrowser('session-import-file')"
+      ></path-input>
+    </label>
+    <label class="session-dialog-checkbox-row">
+      <input type="checkbox" data-testid="session-import-replace" v-model="sessionImportDialog.replace_current" :disabled="sessionImportDialog.busy">
+      <span>Заменить текущую сессию</span>
+    </label>
+  </div>
+  <template #actions>
+    <button class="dialog-button" data-testid="session-import-cancel" type="button" :disabled="sessionImportDialog.busy" @click="closeSessionImportDialog">Отмена</button>
+    <button class="dialog-button dialog-button-primary" data-testid="session-import-submit" type="button" :disabled="sessionImportDialog.busy" @click="importSession">
+      {{ sessionImportDialog.busy ? "Импорт..." : "Импортировать" }}
+    </button>
+  </template>
+</base-dialog>

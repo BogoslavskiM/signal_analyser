@@ -1,24 +1,29 @@
 # Архитектура workflow
 
 `architecture/` — новая каноническая система управления задачами и агентами.
-Старая версия сохранена в [`../template/`](../template/) и не является
-источником истины для новых задач.
+Архивы [`../architecture_0/`](../architecture_0/) и
+[`../architecture_1/`](../architecture_1/) не являются источником истины для
+новых задач.
 
 ## Цикл задачи
 
 ```text
 Orchestrator: intake → background MATLAB scenario research ↘
-             backlogging → task separation → agent TS
+             backlogging → новая крупная feature → DevOps feature branch от neuro_dev
+             → task separation → agent TS
        ↓
-Backender / Frontend / Research / Engee User (последовательно или параллельно)
+Backender / Frontend / MATLAB Researcher (последовательно или параллельно)
        ↓
-Tester: unit + regression
+Tester: backend unit/API + frontend static/behavior
+Engee User: functionality analysis + persistent Engee contract tests
+       ↓
+DevOps: полный deploy pipeline, когда runtime должен получить revision
        ↓
 E2E: quick после обычной task / new-functionality + quick после новой feature
-       ↓ при отдельном явном deploy handoff
-E2E: production deployment
        ↓
 Orchestrator: review → user report → backlogging
+       ↓ после явного принятия крупной feature
+DevOps: полный merge pipeline feature → neuro_dev
        ↓ при пустом actionable backlog
 E2E: analysis regression → test fixes → functional/performance follow-up
 ```
@@ -57,6 +62,12 @@ E2E: analysis regression → test fixes → functional/performance follow-up
   доступности приложения. При пустом actionable backlog запускается один
   `analysis_regression`, который допускает исправление E2E tests только внутри
   `test/playwright/**` и порождает functional или performance follow-up.
-- E2E — единственный владелец deployment skill. Все роли направляют deployment
-  requests E2E отдельным handoff; Engee User выполняет только analysis/bug
-  evidence. Regression никогда не запускает deployment автоматически.
+- Engee User владеет required-functionality analysis, `test/engee/**`,
+  discrepancy localization и bug evidence.
+- E2E владеет только Playwright/runtime/visual regression.
+- `neuro_dev` — постоянная основная ветка автономной разработки. Перед каждым
+  новым крупным feature-cycle Orchestrator запрашивает у DevOps feature branch
+  от `neuro_dev`; после явного принятия feature запрашивает её merge обратно.
+- DevOps — единственный владелец Git publication и deployment. Один request
+  запускает полный conditional pipeline checkout/add/commit/push/Engee
+  update/restart; ненужные этапы помечаются `not_needed`.

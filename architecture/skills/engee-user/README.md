@@ -1,5 +1,11 @@
 # Скиллы Engee User
 
-- `engee-analysis` — исследование совместимости и bug evidence.
+- `engee-user-workflow` — обязательный evidence cycle и subskill router;
+- `required-functionality-analysis` — MATLAB/Engee docs, call sites и Engee
+  help для определения требуемого публичного контракта;
+- `engee-contract-testing` — persistent `test/engee/**` scripts, execution,
+  MATLAB comparison и iterative discrepancy localization;
+- `bug-reporting` — confirmed/suspected evidence в `architecture/engee_bugs`.
 
-Deployment принадлежит E2E и запрашивается через отдельный handoff.
+Общий `analysis` skill не нужен: его роль выполняет обязательный workflow.
+Deployment и Git принадлежат DevOps; browser regression принадлежит E2E.

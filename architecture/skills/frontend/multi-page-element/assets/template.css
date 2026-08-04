@@ -1,0 +1,319 @@
+.multi-page-element {
+    --multi-page-surface: var(--surface, #fff);
+    --multi-page-surface-muted: var(--surface-muted, #f6f7f8);
+    --multi-page-text: var(--text, #212121);
+    --multi-page-muted: var(--muted, #66707a);
+    --multi-page-line: var(--line, #d8dee4);
+    --multi-page-accent: var(--teal, #087c3a);
+    --multi-page-accent-soft: var(--teal-soft, #e9f6fb);
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    overflow: hidden;
+    background: var(--multi-page-surface);
+    color: var(--multi-page-text);
+}
+
+.multi-page-titlebar {
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    padding: 10px 16px 8px;
+    border-bottom: 1px solid var(--multi-page-line);
+}
+
+.multi-page-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.multi-page-header {
+    min-width: 0;
+    min-height: 32px;
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid var(--multi-page-line);
+    background: var(--multi-page-surface-muted);
+}
+
+.multi-page-tabs-wrap {
+    position: relative;
+    min-width: 0;
+    min-height: 32px;
+    flex: 1 1 auto;
+}
+
+.multi-page-tabs {
+    width: 100%;
+    height: 32px;
+    min-width: 0;
+    display: flex;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--multi-page-line) transparent;
+}
+
+.multi-page-tabs::-webkit-scrollbar {
+    height: 6px;
+}
+
+.multi-page-tabs::-webkit-scrollbar-thumb {
+    border-radius: 3px;
+    background: var(--multi-page-line);
+}
+
+.multi-page-tab {
+    min-width: 132px;
+    max-width: 240px;
+    height: 32px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 8px 0 16px;
+    overflow: hidden;
+    border-right: 1px solid var(--multi-page-line);
+    background: var(--multi-page-surface-muted);
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.multi-page-tab.active {
+    background: var(--multi-page-accent-soft);
+    box-shadow: inset 0 -3px 0 var(--multi-page-accent);
+}
+
+.multi-page-tab-title {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.multi-page-tab-close {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    flex: 0 0 16px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--multi-page-muted);
+    cursor: pointer;
+}
+
+.multi-page-tab-close::before,
+.multi-page-tab-close::after {
+    position: absolute;
+    top: 7px;
+    left: 3px;
+    width: 10px;
+    height: 1.5px;
+    background: currentColor;
+    content: "";
+}
+
+.multi-page-tab-close::before {
+    transform: rotate(45deg);
+}
+
+.multi-page-tab-close::after {
+    transform: rotate(-45deg);
+}
+
+.multi-page-tab-close:hover {
+    background: rgba(100, 115, 123, 0.12);
+}
+
+.multi-page-tab-scroll {
+    position: absolute;
+    top: 0;
+    z-index: 12;
+    width: 24px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: rgba(248, 248, 248, 0.9);
+    color: var(--multi-page-muted);
+    cursor: pointer;
+}
+
+.multi-page-tab-scroll-prev {
+    left: 0;
+}
+
+.multi-page-tab-scroll-next {
+    right: 0;
+}
+
+.multi-page-tab-scroll-chevron {
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+}
+
+.multi-page-tab-scroll-prev .multi-page-tab-scroll-chevron {
+    transform: rotate(135deg);
+}
+
+.multi-page-tab-scroll-next .multi-page-tab-scroll-chevron {
+    transform: rotate(-45deg);
+}
+
+.multi-page-header-actions {
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+    border-left: 1px solid var(--multi-page-line);
+}
+
+.multi-page-menu-button {
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: var(--multi-page-surface-muted);
+    color: var(--multi-page-muted);
+    cursor: pointer;
+}
+
+.multi-page-menu-button:hover {
+    background: #eee;
+}
+
+.multi-page-body {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.multi-page-content {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+.multi-page-status,
+.multi-page-missing {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+    color: var(--multi-page-muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+.multi-page-error {
+    color: #c62828;
+}
+
+.multi-page-spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid var(--multi-page-line);
+    border-top-color: var(--multi-page-accent);
+    border-radius: 50%;
+    animation: multi-page-spin 800ms linear infinite;
+}
+
+@keyframes multi-page-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.multi-page-menu {
+    z-index: 50000;
+    width: 320px;
+    max-height: min(480px, calc(100vh - 96px));
+    overflow-y: auto;
+    padding: 6px;
+    border-radius: 6px;
+    background: var(--multi-page-surface, #fff);
+    box-shadow: 0 2px 8px rgba(31, 30, 36, 0.16);
+    color: var(--multi-page-text, #212121);
+}
+
+.multi-page-menu-section + .multi-page-menu-section {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--multi-page-line, #d8dee4);
+}
+
+.multi-page-menu-section-title {
+    padding: 4px 8px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.multi-page-menu-item {
+    min-height: 42px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 6px 8px;
+    cursor: pointer;
+}
+
+.multi-page-menu-item:hover {
+    background: var(--multi-page-surface-muted, #f6f7f8);
+}
+
+.multi-page-menu-checkbox {
+    width: 16px;
+    height: 16px;
+    margin: 2px 0 0;
+    accent-color: var(--multi-page-accent, #087c3a);
+}
+
+.multi-page-menu-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.multi-page-menu-title {
+    font-size: 14px;
+}
+
+.multi-page-menu-description {
+    margin-top: 2px;
+    color: var(--multi-page-muted, #66707a);
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

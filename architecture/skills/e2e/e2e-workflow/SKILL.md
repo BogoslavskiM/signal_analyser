@@ -8,6 +8,11 @@ handoff приходит после каждой завершённой task л�
 actionable backlog. Handoff содержит mode, production target link или явный
 `target_status: unavailable`, а также ожидаемый scope проверки.
 
+Feature intake, первичный анализ страницы, написание scenario, запуск и report
+являются последовательными шагами этого обязательного workflow, а не
+отдельными subskills. Для UI-affecting scope подключается один
+специализированный subskill `e2e/visual-analysis`.
+
 ## Типовая архитектура
 
 ```text
@@ -105,6 +110,6 @@ overlays и expandable/collapsible controls.
    fail/not-run counts, success rate для quick, timing, retries, failures,
    test fixes и follow-up classification.
 
-Deployment не входит в regression mode. Для отдельного явного deployment
-handoff E2E использует `e2e/genie-deploy`. Runtime failure не считается
-static pass.
+Deployment и Git не входят в E2E ownership. Если target отсутствует или не
+содержит требуемую revision, верни blocker для отдельного DevOps handoff.
+Runtime failure не считается static pass.

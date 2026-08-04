@@ -1,0 +1,21 @@
+schema_version: 2
+name: devops-workflow
+version: 2.0.0
+title: "DevOps Workflow"
+description: >
+  Единый автономный neuro_dev pipeline для new-feature-branch, deploy и
+  accepted-feature-merge intake с условными Git/Engee/restart этапами.
+language: ru
+audience: [assistant]
+priority: 1.0
+when-to-use:
+  - "Всегда при работе DevOps"
+when-not:
+  - "Для изменения product, test или architecture files"
+requires-tools:
+  - "Git для repository actions"
+  - "Engee MCP для deployment action"
+requires-products:
+  - "Engee для deployment action"
+reference-files: []
+requires-skills: []

@@ -11,9 +11,13 @@ name: handoff-management
 3. Укажи `from` и одного `to`.
 4. Если есть task, добавь точную ссылку `task_section` на её раздел. Не
    дублируй содержание task.
-5. При необходимости добавь короткие `description` и
-   `acceptance_criteria`; оба поля опциональны.
-6. Сохрани handoff в `architecture/handoffs/`.
+5. В task/research handoff при необходимости добавь `requested_skills` с
+   canonical ids `<role>/<skill>`. Запрашивай только skills адресата.
+6. В report добавь `applied_skills`; для неприменимого явно запрошенного skill
+   добавь причину в `skipped_requested_skills`.
+7. При необходимости добавь короткие `description` и
+   `acceptance_criteria`; все дополнительные поля опциональны.
+8. Сохрани handoff в `architecture/handoffs/`.
 
 Handoff без task разрешён для прямого обмена между агентами. Blocker, ошибка,
 тестовый результат и follow-up оформляются как `type: report`.
@@ -21,3 +25,9 @@ Handoff без task разрешён для прямого обмена межд
 Используй `FYI`, когда агент только сообщает другому агенту о выполненном
 изменении и не ждёт ответа. Получатель сам решает, создавать ли следующий
 handoff или task.
+
+Skill request не расширяет ownership, не заменяет acceptance criteria и не
+разрешает deployment/Git/external mutation. Такие действия получают отдельный
+role-specific handoff. Для DevOps это один полный `devops_request` (`deploy`,
+`new_feature_branch` или `merge_feature`), а не цепочка checkout/add/commit/
+push/restart handoff.

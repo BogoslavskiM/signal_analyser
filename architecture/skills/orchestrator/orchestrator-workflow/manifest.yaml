@@ -1,11 +1,11 @@
 schema_version: 2
 name: orchestrator-workflow
-version: 1.3.0
+version: 2.1.0
 title: "Orchestrator Workflow"
 description: >
   Обязательный жизненный цикл Orchestrator: немедленный background MATLAB
-  research, backlogging, task separation, handoffs, post-task E2E dispatch,
-  idle analysis regression, review и пользовательский отчёт.
+  research, role/subskill dispatch matrix, Engee contracts, major-feature
+  branch lifecycle через neuro_dev, DevOps deploy/merge, E2E и review.
 language: ru
 audience: [assistant]
 priority: 1.0

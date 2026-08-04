@@ -1,0 +1,22 @@
+schema_version: 2
+name: inspector-ui
+version: 0.2.0
+title: "Inspector UI"
+description: >
+  Frontend skill и JS/CSS/HTML bundle для inspector table или headerless list:
+  main object, selection, CRUD, name search, columns, typed cells, units,
+  abbreviations, sticky layout и hover actions.
+language: ru
+audience: [assistant]
+priority: 0.9
+when-to-use:
+  - "Нужно реализовать inspector объектов"
+  - "Нужна таблица или список с main object и selection"
+  - "Нужно добавить CRUD, поиск, управление колонками или форматирование cells"
+when-not:
+  - "Нужно реализовать backend inspector state"
+  - "Нужны pagination, sorting или reorder"
+requires-tools: []
+requires-products: []
+reference-files: []
+requires-skills: [frontend-workflow]

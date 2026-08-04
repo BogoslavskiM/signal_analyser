@@ -1,0 +1,50 @@
+<base-dialog
+  :open="formDialog.open"
+  title="Действие"
+  title-id="action-dialog-title"
+  size="form"
+  level="primary"
+  :busy="formDialog.busy"
+  @close="cancelFormDialog"
+>
+  <div class="action-dialog-fields">
+    <!-- Поля предметного диалога. -->
+  </div>
+  <template #actions>
+    <button class="dialog-button" type="button" :disabled="formDialog.busy" @click="cancelFormDialog">Отмена</button>
+    <button class="dialog-button dialog-button-primary" type="button" :disabled="formDialog.busy" @click="submitFormDialog">
+      {{ formDialog.busy ? "Выполнение..." : "Применить" }}
+    </button>
+  </template>
+</base-dialog>
+
+<base-dialog
+  :open="unexpectedErrorDialog.open"
+  title="Ошибка"
+  title-id="unexpected-error-title"
+  size="message"
+  level="error"
+  @close="closeUnexpectedError"
+>
+  <div class="dialog-alert-error">
+    <p class="dialog-message">{{ unexpectedErrorDialog.text }}</p>
+  </div>
+  <template #actions>
+    <button class="dialog-button" type="button" @click="closeUnexpectedError">Закрыть</button>
+    <button class="dialog-button dialog-button-primary" type="button" @click="closeUnexpectedError">Ок</button>
+  </template>
+</base-dialog>
+
+<base-dialog
+  :open="successDialog.open"
+  :title="successDialog.title"
+  title-id="success-dialog-title"
+  size="message"
+  level="primary"
+  @close="closeSuccessDialog"
+>
+  <p class="dialog-message">{{ successDialog.text }}</p>
+  <template #actions>
+    <button class="dialog-button dialog-button-primary" type="button" @click="closeSuccessDialog">Ок</button>
+  </template>
+</base-dialog>
