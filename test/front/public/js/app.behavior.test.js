@@ -190,7 +190,8 @@ function environment(fetch, options) {
       else script.onerror();
     } },
   };
-  const window = { fetch(url, options) { calls.push({ url, options: options || {} }); return fetch(url, options || {}); }, addEventListener() {}, setTimeout(callback) { callback(); return 0; }, clearTimeout() {}, Plotly: plotly };
+  const windowListeners = {};
+  const window = { fetch(url, options) { calls.push({ url, options: options || {} }); return fetch(url, options || {}); }, addEventListener(type, handler) { (windowListeners[type] || (windowListeners[type] = [])).push(handler); }, dispatchEvent(event) { for (const handler of windowListeners[event.type] || []) handler(event); }, setTimeout(callback) { callback(); return 0; }, clearTimeout() {}, Plotly: plotly };
   e.signalBottomTab.dataset.bottomTab = "signals";
   e.measurementsBottomTab.dataset.bottomTab = "measurements";
   e.peaksBottomTab.dataset.bottomTab = "peaks";
@@ -252,6 +253,24 @@ module.exports = async function testDisplayBehavior(assert) {
   const plots = env.calls.filter((call) => call.plot);
   assert(plots.length === 1, "one Display page must render exactly one graph host");
   assert(JSON.stringify(plots[0].data.map((trace) => trace.name)) === JSON.stringify([A, B]), "the active graph must include every checked signal independently");
+
+  let rejectRecoveredState;
+  const layoutRecovered = await boot(() => new Promise((resolve, reject) => { rejectRecoveredState = reject; }));
+  layoutRecovered.window.dispatchEvent({type:"signal-analyser-settings-state", detail:snapshot(2)});
+  rejectRecoveredState(new Error("initial state request failed after layout recovery"));
+  await flush();
+  assert(layoutRecovered.e.root.dataset.stateRevision === "2" && layoutRecovered.e.tabs.innerHTML.includes("display-tab-display-1"), "a canonical layout-owned state must independently materialize the shell while the initial state request is pending");
+  assert(layoutRecovered.e.loading.hidden === true && layoutRecovered.e.error.hidden === true, "layout-owned authoritative publication must clear startup busy/error and a later request rejection must not restore a false error");
+
+  let resolveStaleState;
+  const stateOutOfOrder = await boot(() => new Promise((resolve) => { resolveStaleState = resolve; }));
+  stateOutOfOrder.window.dispatchEvent({type:"signal-analyser-settings-state", detail:snapshot(4)});
+  resolveStaleState(response(200, snapshot(3)));
+  await flush();
+  assert(stateOutOfOrder.e.root.dataset.stateRevision === "4", "a delayed older initial state response must not replace a newer layout-owned authoritative state");
+
+  const genuineStateFailure = await boot(() => Promise.reject(new Error("state unavailable")));
+  assert(genuineStateFailure.e.loading.hidden === true && genuineStateFailure.e.error.hidden === false && genuineStateFailure.e.errorText.textContent === "Не удалось загрузить данные Signal Analyzer.", "genuine state failure without layout recovery must clear busy and retain explicit Retry error");
   async function settleMicrotasks() { for (let i = 0; i < 8; i += 1) await Promise.resolve(); }
   const c24 = await boot((url) => Promise.resolve(response(200, initial)), {deferredPlotly:true});
   assert(c24.plotResolvers.length === 1 && c24.calls.filter(call => call.plot).length === 1, "C24 starts one controlled Time render");

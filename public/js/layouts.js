@@ -4,7 +4,7 @@
   var PLOTS = ["time", "spectrum", "spectrogram", "persistence"];
   var TITLES = { time:"Time", spectrum:"Spectrum", spectrogram:"Spectrogram", persistence:"Persistence" };
   var api = window.SignalAnalyserApi;
-  var root, grid, runtime, popover, activeHost;
+  var root, grid, runtime, popover, activeHost, plotControl, overflowTrigger, overflowMenu;
   var layoutsByDisplay = {};
   var outputsByDisplay = {};
   var signalColors = {};
@@ -13,6 +13,7 @@
   var appRevision = null;
   var refreshRequestId = 0;
   var refreshPending = false;
+  var refreshQueued = false;
   var pending = null;
   var toastTimer = null;
   var paneRenderGeneration = 0;
@@ -153,7 +154,7 @@
 
   function returnRuntimeNodes() {
     if (!runtime) return;
-    [document.querySelector(".plot-type-control"), node("display-overflow-trigger"), node("display-overflow-menu"), activeHost || node("active-plot-host")].forEach(function(control) {
+    [plotControl, overflowTrigger, overflowMenu, activeHost].forEach(function(control) {
       if (control && control.parentNode !== runtime) runtime.appendChild(control);
     });
   }
@@ -263,10 +264,7 @@
   function renderGrid() {
     var layout = currentLayout();
     var outputs = currentOutputs();
-    var plotControl = document.querySelector(".plot-type-control");
-    var overflowTrigger = node("display-overflow-trigger");
-    var overflowMenu = node("display-overflow-menu");
-    var host = activeHost || node("active-plot-host");
+    var host = activeHost;
     if (!grid) return;
     purgePaneHosts();
     [plotControl, overflowTrigger, overflowMenu, host].forEach(function(control) { if (control && control.parentNode) control.parentNode.removeChild(control); });
@@ -542,19 +540,27 @@
 
   function refresh() {
     var requestId;
-    if (!api || typeof api.layouts !== "function" || refreshPending) return;
+    if (!api || typeof api.layouts !== "function") return;
+    if (refreshPending) { refreshQueued = true; return; }
     requestId = ++refreshRequestId;
     refreshPending = true;
+    refreshQueued = false;
     render();
-    api.layouts().then(function(envelope) {
+    window.Promise.resolve().then(function() { return api.layouts(); }).then(function(envelope) {
       if (requestId !== refreshRequestId) return;
+      if (integer(appRevision) && integer(envelope && envelope.state_revision) && envelope.state_revision < appRevision) {
+        refreshQueued = true;
+        return;
+      }
       if (!acceptEnvelope(envelope, envelope.state_revision !== appRevision)) throw new Error("Некорректный layout snapshot.");
+      refreshQueued = false;
     }).catch(function() {
       if (requestId === refreshRequestId && !currentLayout()) render();
     }).finally(function() {
       if (requestId !== refreshRequestId) return;
       refreshPending = false;
       render();
+      if (refreshQueued) { refreshQueued = false; refresh(); }
     });
   }
 
@@ -657,7 +663,7 @@
     window.Promise.resolve().then(function() {
       render();
       syncContext();
-      if (integer(appRevision) && envelopeRevision !== appRevision && !refreshPending && !pending) refresh();
+      if (integer(appRevision) && envelopeRevision !== appRevision && !pending) refresh();
     });
   }
 
@@ -668,6 +674,9 @@
     grid = node("pane-grid");
     runtime = node("active-pane-runtime");
     activeHost = node("active-plot-host");
+    plotControl = document.querySelector(".plot-type-control");
+    overflowTrigger = node("display-overflow-trigger");
+    overflowMenu = node("display-overflow-menu");
     popover = node("layout-popover");
     if (!root || !grid || !runtime || !popover) return;
     popover.id = "layout-popover";
@@ -683,6 +692,7 @@
     window.addEventListener("scroll", positionPopover, true);
     window.addEventListener("signal-analyser-rendered", onAppRendered);
     render();
+    refresh();
   }
 
   window.SignalAnalyserLayouts = {

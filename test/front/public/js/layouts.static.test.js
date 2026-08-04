@@ -45,6 +45,8 @@ module.exports = async function testMultiLayoutStaticContract(assert) {
   assert(source.includes('operation:"resize"') && source.includes('operation:"select_pane"') && source.includes('operation:"update_pane"'), "frontend must emit only the three accepted layout operations");
   assert(source.includes("error.status === 409") && source.includes("acceptEnvelope(error.payload.current, true)") && source.includes("The stale draft was discarded"), "409 must consume current and discard stale draft");
   assert(source.includes("ui.error = message(error") && source.includes("ui.open = true"), "422/network resize failures must retain the draft dialog with recoverable error feedback");
+  assert(source.includes("refreshQueued") && source.includes("render();\n    refresh();") && source.includes("envelope.state_revision < appRevision"), "bootstrap must start layouts at mount and queue one monotonic refresh when a delayed response is stale");
+  assert(source.includes("window.Promise.resolve().then(function() { return api.layouts(); })"), "layout startup must normalize synchronous adapter failures into its cleanup path");
   assert(source.includes('event.key === "Escape"') && source.includes("ui.returnFocus") && source.includes("button:not([disabled])"), "Cancel/Escape/focus containment and restoration must remain explicit");
   assert(source.includes("target.checked = bindings.indexOf(name) >= 0") && source.includes("bindings.push(name)") && source.includes("bindings.filter"), "active-pane checkbox changes must avoid optimistic state and preserve ordered bindings");
 

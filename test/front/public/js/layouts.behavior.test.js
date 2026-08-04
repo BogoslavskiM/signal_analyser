@@ -171,8 +171,13 @@ class FakeDocument {
 
   querySelector(selector) {
     const testId = /^\[data-testid='([^']+)'\]$/.exec(selector);
-    if (testId) return this.nodes[testId[1]] || null;
-    if (selector === ".plot-type-control") return this.plotControl;
+    if (testId) {
+      const candidate = this.nodes[testId[1]] || null;
+      if (["display-overflow-trigger", "display-overflow-menu"].includes(testId[1])) return candidate && candidate.parentNode ? candidate : null;
+      if (testId[1] === "plot-type-select") return candidate && candidate.parentNode && candidate.parentNode.parentNode ? candidate : null;
+      return candidate;
+    }
+    if (selector === ".plot-type-control") return this.plotControl.parentNode ? this.plotControl : null;
     return null;
   }
   querySelectorAll(selector) { return selector === "[data-signal-visibility]" ? this.signalControls : []; }
@@ -242,11 +247,13 @@ function envelope(revision, rows, columns, options) {
 
 function deepClone(value) { return JSON.parse(JSON.stringify(value)); }
 
-function boot() {
+function boot(initialResponder) {
   const document = new FakeDocument();
   const apiCalls = [];
   const responders = [];
+  if (initialResponder) responders.push(initialResponder);
   const plotCalls = [];
+  const dispatched = [];
   const windowListeners = {};
   const window = {
     Promise,
@@ -264,17 +271,62 @@ function boot() {
     },
     CustomEvent:function CustomEvent(type, init) { this.type = type; this.detail = init.detail; },
     addEventListener(type, handler) { (windowListeners[type] || (windowListeners[type] = [])).push(handler); },
-    dispatchEvent(event) { for (const handler of windowListeners[event.type] || []) handler(event); },
+    dispatchEvent(event) { dispatched.push(event); for (const handler of windowListeners[event.type] || []) handler(event); },
     requestAnimationFrame(callback) { callback(); return 1; },
     setTimeout() { return 1; },
     clearTimeout() {},
   };
   const root = path.resolve(__dirname, "../../../..");
   vm.runInNewContext(fs.readFileSync(path.join(root, "public/js/layouts.js"), "utf8"), {window, document, Promise, console}, {filename:"layouts.js"});
-  return {window, document, apiCalls, responders, plotCalls};
+  return {window, document, apiCalls, responders, plotCalls, dispatched};
 }
 
 module.exports = async function testMultiLayoutBehavior(assert) {
+  let resolveDelayed;
+  const delayed = boot(() => new Promise((resolve) => { resolveDelayed = resolve; }));
+  await flush();
+  assert(delayed.apiCalls.length === 1 && delayed.apiCalls[0] === null && delayed.document.nodes["pane-grid"].dataset.layoutState === "loading", "layout mount must start one parallel authoritative GET and remain locally loading while it is delayed");
+  assert(delayed.document.plotControl.parentNode === delayed.document.nodes["active-pane-runtime"] && delayed.document.nodes["display-overflow-trigger"].parentNode === delayed.document.nodes["active-pane-runtime"] && delayed.document.nodes["display-overflow-menu"].parentNode === delayed.document.nodes["active-pane-runtime"], "initial no-layout render must retain detached runtime controls through persistent references");
+  resolveDelayed(envelope(1, 1, 1));
+  await flush();
+  assert(delayed.document.nodes["pane-grid"].dataset.layoutState === "ready" && delayed.document.nodes["pane-grid"].dataset.layoutVariant === "1x1" && !delayed.document.nodes["pane-grid"].innerHTML.includes("layout-load-error"), "delayed healthy bootstrap must publish panes and clear loading/error state");
+
+  let resolveOld;
+  const outOfOrder = boot(() => new Promise((resolve) => { resolveOld = resolve; }));
+  await flush();
+  outOfOrder.responders.push(() => Promise.resolve(envelope(3, 2, 2)));
+  outOfOrder.window.dispatchEvent(new outOfOrder.window.CustomEvent("signal-analyser-rendered", {detail:{activeDisplayId:"display-1", revision:3}}));
+  await flush();
+  resolveOld(envelope(2, 1, 1));
+  await flush();
+  assert(outOfOrder.apiCalls.length === 2 && outOfOrder.apiCalls.every((payload) => payload === null), "a newer app revision arriving during a delayed layout GET must queue exactly one replacement GET");
+  assert(outOfOrder.document.nodes["pane-grid"].dataset.layoutVariant === "2x2" && !outOfOrder.dispatched.some((event) => event.type === "signal-analyser-settings-state" && event.detail.state_revision === 2), "the delayed stale layout response must never publish over the queued newer authoritative envelope");
+
+  let resolveCoalescedOld;
+  const coalesced = boot(() => new Promise((resolve) => { resolveCoalescedOld = resolve; }));
+  await flush();
+  coalesced.responders.push(() => Promise.resolve(envelope(6, 2, 1)));
+  for (const revision of [2, 4, 6]) {
+    coalesced.window.dispatchEvent(new coalesced.window.CustomEvent("signal-analyser-rendered", {detail:{activeDisplayId:"display-1", revision}}));
+  }
+  await flush();
+  assert(coalesced.apiCalls.length === 1, "multiple newer app revisions during one delayed layout GET must coalesce without starting a parallel duplicate");
+  resolveCoalescedOld(envelope(1, 1, 1));
+  await flush();
+  assert(coalesced.apiCalls.length === 2 && coalesced.document.nodes["pane-grid"].dataset.layoutVariant === "2x1" && !coalesced.dispatched.some((event) => event.type === "signal-analyser-settings-state" && event.detail.state_revision === 1), "coalesced refresh must issue exactly one replacement and publish only the latest authoritative revision");
+
+  const failed = boot(() => Promise.reject(new Error("layout unavailable")));
+  await flush();
+  assert(failed.document.nodes["pane-grid"].dataset.layoutState === "error" && failed.document.nodes["pane-grid"].innerHTML.includes("layout-load-error"), "genuine asynchronous layout failure must clear busy and expose retryable local error");
+  failed.responders.push(() => Promise.resolve(envelope(4, 1, 2)));
+  failed.window.SignalAnalyserLayouts.refresh();
+  await flush();
+  assert(failed.document.nodes["pane-grid"].dataset.layoutState === "ready" && failed.document.nodes["pane-grid"].dataset.layoutVariant === "1x2", "explicit Retry after genuine failure must recover from a canonical response");
+
+  const synchronousFailure = boot(() => { throw new Error("synchronous adapter failure"); });
+  await flush();
+  assert(synchronousFailure.document.nodes["pane-grid"].dataset.layoutState === "error" && !synchronousFailure.document.nodes["pane-grid"].innerHTML.includes("layout-loading"), "synchronous adapter failure must enter the same cleanup path instead of stranding refreshPending");
+
   const env = boot();
   const layouts = env.window.SignalAnalyserLayouts;
   const grid = env.document.nodes["pane-grid"];
