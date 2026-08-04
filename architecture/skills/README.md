@@ -19,7 +19,8 @@
 - `backender/` — backend architecture, API contract, math, implementation;
 - `frontend/` — zoning, API connection, styling;
 - `tester/` — unit, contract, regression;
-- `matlab-researcher/` — browser/docs/clicker research;
+- `matlab-researcher/` — browser/docs/clicker research и evidence-backed
+  critical scenario coverage;
 - `engee-user/` — function analysis and bug evidence;
 - `e2e/` — regression scenarios, runtime reports and explicit deployment.
 

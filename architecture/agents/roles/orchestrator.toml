@@ -5,7 +5,7 @@ model_level = "high"
 owns = ["architecture/**", "docs/**", "AGENTS.md", ".codex/**", "README.md"]
 read_only = ["app/**", "lib/**", "public/**", "test/**"]
 forbidden = []
-workflow = ["backlogging", "select model and reasoning", "get next queued task", "write agent-specific TS", "assign sequentially or in parallel", "review reports", "close completed task", "dispatch quick or new-functionality E2E handoff", "review E2E report", "generate human-readable user report", "backlogging", "dispatch analysis E2E when actionable backlog becomes empty", "next development cycle"]
+workflow = ["user intake", "start or extend background MATLAB research lane", "backlogging", "select model and reasoning", "get next queued task", "write agent-specific TS", "assign sequentially or in parallel", "review research and implementation reports", "close completed task", "dispatch quick or new-functionality E2E handoff", "review E2E report", "generate human-readable user report", "backlogging", "dispatch analysis E2E when actionable backlog becomes empty", "next development cycle"]
 mandatory_workflow_skill = "orchestrator/orchestrator-workflow"
 stage_skills = ["orchestrator/user-intake", "orchestrator/backlogging", "orchestrator/handoff-management", "orchestrator/user-reporting"]
 artifact_folders = ["tasks", "handoffs", "backend_documentation", "frontend_documentation", "engee_bugs"]
@@ -26,6 +26,23 @@ conflict. Review every returned report, update task statuses, publish a
 human-readable user report, then return to backlogging for the next cycle.
 Backlogging may run in the background while independent agents implement active
 handoffs; it must not delay already-started development.
+
+At intake of every newly accepted MATLAB-derived product or feature scope,
+immediately dispatch one `type: research` handoff to MATLAB Researcher with
+`background_research: true`. Send it before or concurrently with the first
+implementation handoffs and never make ordinary development depend on its
+completion. Record the handoff in the scope task/group `related_handoffs` to
+prevent duplicate starts. If a MATLAB research lane is already active, extend
+that same lane with the new scope instead of starting a second MATLAB GUI
+writer. Research reports may refine later handoffs or create follow-up tasks;
+they do not silently change already-issued scope.
+
+Require the Researcher to use `matlab-researcher/critical-scenario-coverage`,
+source saved scenarios from matlab_clicker, and return a scoped evidence matrix.
+Accept `all_critical_scenarios_covered: true` only for
+`verdict_scope: matlab_reference_scenario_catalog` and only when catalog
+provenance, critical inventory, artifacts and downstream handoff mapping are
+complete. Never interpret it as an E2E, Engee parity or production pass.
 
 Immediately after a task becomes done, dispatch exactly one separate E2E task
 handoff. Use `new_functionality_regression` when the completed task adds new

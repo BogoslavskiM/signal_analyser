@@ -1,85 +1,122 @@
 ---
 name: critical-scenario-coverage
-description: [TODO: Complete and informative explanation of what the skill does and when to use it. Include WHEN to use this skill - specific scenarios, file types, or tasks that trigger it.]
 ---
-
 # Critical Scenario Coverage
 
-## Overview
+Формируй доказуемый verdict о полноте сохранённых MATLAB reference scenarios.
+Verdict относится только к объявленному research scope и не подменяет
+результат E2E, Engee comparison или production regression.
 
-[TODO: 1-2 sentences explaining what this skill enables]
+## 1. Зафиксировать независимый scope
 
-## Structuring This Skill
+1. Задай `coverage_scope_id`, приложение/feature, включённые зоны и timestamp.
+2. Построй requirement inventory независимо от уже сохранённых scenarios:
+   используй user TS, официальную MathWorks документацию, карту контролов и
+   наблюдения приложения. Иначе отсутствующий scenario невозможно обнаружить.
+3. Пометь requirement как `critical`, если его отказ блокирует основной
+   пользовательский workflow, меняет математический результат/единицы,
+   повреждает или теряет данные/session, ломает переход между ключевыми
+   режимами либо не даёт восстановиться после validation/error state.
+4. Зафиксируй причину criticality. Не размножай варианты, если у них одинаковы
+   действия и oracle; разделяй их, когда меняется поведение или риск.
 
-[TODO: Choose the structure that best fits this skill's purpose. Common patterns:
+## 2. Получить сохранённый catalog
 
-**1. Workflow-Based** (best for sequential processes)
-- Works well when there are clear step-by-step procedures
-- Example: DOCX skill with "Workflow Decision Tree" -> "Reading" -> "Creating" -> "Editing"
-- Structure: ## Overview -> ## Workflow Decision Tree -> ## Step 1 -> ## Step 2...
+1. Канонический и наиболее надёжный read source — локальный catalog
+   `/Users/makar/work/matlab_clicker/research_output/signal-analyzer-reference-scenarios/scenarios/`.
+   Прочитай его read-only и построй отсортированный manifest из relative path,
+   bytes и SHA-256 каждого `*.md` до и после audit.
+2. Если runtime устойчиво доступен, используй `GET /agent/bootstrap` только
+   для дополнительной проверки. Возьми `documents[]` с
+   `kind == "reference_scenario"` и exact path prefix
+   `research_output/signal-analyzer-reference-scenarios/scenarios/`; сравни
+   `path`, `local_path`, `bytes` и `sha256` с filesystem manifest.
+3. У clicker нет `GET /research/scenarios`. `POST /research/scenarios` — только
+   write endpoint и не может служить listing API. Не угадывай другие endpoints.
+4. Для bootstrap проверь `ok`, `schema_version`, ожидаемый `project_root` и
+   полное совпадение catalog. Connection refusal или stale PID означает
+   `api_verification: unavailable`, а не пустой catalog.
+5. Не копируй scenarios в SignalAnalyser. В отчёте храни только стабильные
+   scenario ID/path и provenance.
+6. Запиши `acquisition_mode`, API verification status, абсолютный catalog path,
+   retrieved-at, число/bytes artifacts и fingerprint отсортированного manifest.
+   При изменении membership/content между начальным и конечным snapshot начни
+   audit заново.
+7. Если API и filesystem доступны одновременно, но расходятся, либо artifact
+   не читается/не соответствует schema, выставь отрицательный verdict и gap.
 
-**2. Task-Based** (best for tool collections)
-- Works well when the skill offers different operations/capabilities
-- Example: PDF skill with "Quick Start" -> "Merge PDFs" -> "Split PDFs" -> "Extract Text"
-- Structure: ## Overview -> ## Quick Start -> ## Task Category 1 -> ## Task Category 2...
+Catalog состоит из неформализованного Markdown без обязательного frontmatter.
+Проверяй содержимое, а не ожидай структурные metadata. SHA-256 подтверждает
+content identity, но не доказывает актуальность поведения. Ссылку на screenshot
+или другой evidence считай доступной только если ресурс действительно
+retrievable; отсутствующий `/private/tmp/...` attachment остаётся gap.
 
-**3. Reference/Guidelines** (best for standards or specifications)
-- Works well for brand guidelines, coding standards, or requirements
-- Example: Brand styling with "Brand Guidelines" -> "Colors" -> "Typography" -> "Features"
-- Structure: ## Overview -> ## Guidelines -> ## Specifications -> ## Usage...
+Недоступный runtime не мешает анализу устойчивого filesystem snapshot, но
+запрещает заявлять новое live-observation evidence.
 
-**4. Capabilities-Based** (best for integrated systems)
-- Works well when the skill provides multiple interrelated features
-- Example: Product Management with "Core Capabilities" -> numbered capability list
-- Structure: ## Overview -> ## Core Capabilities -> ### 1. Feature -> ### 2. Feature...
+## 3. Построить coverage matrix
 
-Patterns can be mixed and matched as needed. Most skills combine patterns (e.g., start with task-based, add workflow for complex operations).
+Одна строка соответствует одному requirement/scenario и содержит:
 
-Delete this entire "Structuring This Skill" section when done - it's just guidance.]
+| Поле | Содержание |
+|---|---|
+| `requirement_id` | стабильный ID requirement из независимого inventory |
+| `scenario_id` / `artifact_path` | ID и возвращённый clicker path либо gap |
+| `criticality` / `criticality_reason` | `critical`/`noncritical` и причина |
+| `source_evidence` | user TS, docs и/или observation |
+| `preconditions_actions_oracle` | проверяемая полнота самого scenario |
+| `artifact_status` | `covered`, `missing`, `stale`, `invalid`, `conflict` |
+| `downstream_owner` | `e2e`, `engee_user` или `both` |
+| `handoff_id` | сохранённый Orchestrator handoff либо `pending` gap |
+| `latest_result` | `passed`, `failed`, `blocked` или `not_run` с источником |
+| `gap_or_blocker` | конкретный незакрытый разрыв |
 
-## [TODO: Replace with the first main section based on chosen structure]
+`covered` допустим только для retrievable artifact с preconditions, actions,
+наблюдаемым oracle и evidence. Имя файла без проверяемого содержимого не
+считается покрытием.
 
-[TODO: Add content here. See examples in existing skills:
-- Code samples for technical skills
-- Decision trees for complex workflows
-- Concrete examples with realistic user requests
-- References to scripts/templates/references as needed]
+## 4. Рассчитать verdict
 
-## Resources (optional)
+Верни машинно-читаемый блок:
 
-Create only the resource directories this skill actually needs. Delete this section if no resources are required.
+```yaml
+coverage_scope_id: <stable-id>
+verdict_scope: matlab_reference_scenario_catalog
+catalog_snapshot: <provenance-and-fingerprint>
+critical_scenarios_total: <integer>
+critical_scenarios_covered: <integer>
+critical_scenario_gaps: <integer>
+all_critical_scenarios_covered: false
+all_critical_scenarios_executed: false
+all_critical_scenarios_passing: false
+verdict_reason: <concise evidence>
+```
 
-### scripts/
-Executable code (Python/Bash/etc.) that can be run directly to perform specific operations.
+Установи `all_critical_scenarios_covered: true` только одновременно при всех
+условиях:
 
-**Examples from other skills:**
-- PDF skill: `fill_fillable_fields.py`, `extract_form_field_info.py` - utilities for PDF manipulation
-- DOCX skill: `document.py`, `utilities.py` - Python modules for document processing
+- scope и critical requirement inventory объявлены независимо от catalog;
+- catalog snapshot читаем, стабилен и имеет provenance;
+- каждый critical requirement имеет ровно один актуальный `covered` artifact
+  либо явно обоснованный набор variants;
+- нет missing/stale/invalid/conflict artifacts, неизвестных critical зон,
+  противоречий или незакрытых gaps;
+- у каждого critical scenario есть downstream owner и сохранённый handoff ID.
 
-**Appropriate for:** Python scripts, shell scripts, or any executable code that performs automation, data processing, or specific operations.
+Нулевой critical inventory не даёт автоматический `true`: сначала докажи, что
+scope действительно не содержит критических workflows. Любое расширение scope
+сбрасывает verdict до повторного audit.
 
-**Note:** Scripts may be executed without loading into context, but can still be read by Codex for patching or environment adjustments.
+`covered` означает полноту reference-scenario catalog. Отдельно и честно
+показывай `executed` и `passing`: не превращай `not_run` в успех и не называй
+этот verdict E2E/production coverage.
 
-### references/
-Documentation and reference material intended to be loaded into context to inform Codex's process and thinking.
+## 5. Маршрутизировать результат
 
-**Examples from other skills:**
-- Product management: `communication.md`, `context_building.md` - detailed workflow guides
-- BigQuery: API reference documentation and query examples
-- Finance: Schema documentation, company policies
+- UI, dynamic states и пользовательские workflows → E2E.
+- Математика, functional parity и compatibility → Engee User.
+- Смешанные scenarios → обоим.
+- Полную matrix, snapshot и verdict → Orchestrator.
 
-**Appropriate for:** In-depth documentation, API references, database schemas, comprehensive guides, or any detailed information that Codex should reference while working.
-
-### assets/
-Files not intended to be loaded into context, but rather used within the output Codex produces.
-
-**Examples from other skills:**
-- Brand styling: PowerPoint template files (.pptx), logo files
-- Frontend builder: HTML/React boilerplate project directories
-- Typography: Font files (.ttf, .woff2)
-
-**Appropriate for:** Templates, boilerplate code, document templates, images, icons, fonts, or any files meant to be copied or used in the final output.
-
----
-
-**Not every skill requires all three types of resources.**
+Не поддерживай отдельный backlog. Missing coverage, `pending` routing и
+blockers передавай Orchestrator как task candidates.

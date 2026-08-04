@@ -122,6 +122,23 @@ function signal_analyser_stale_response(state::SignalAnalyserState, err::SignalA
     ); status = 409)
 end
 
+function signal_analyser_layout_stale_response(
+    state::SignalAnalyserState,
+    err::SignalAnalyserStaleStateError,
+)
+    current = signal_analyser_layouts_snapshot(state)
+    api_json(Dict{String,Any}(
+        "ok" => false,
+        "code" => "stale_state",
+        "error" => Dict{String,Any}(
+            "code" => "stale_state",
+            "message" => sprint(showerror, err),
+        ),
+        "state" => current["state"],
+        "current" => current,
+    ); status = 409)
+end
+
 function signal_setting_validation_response(
     service::SignalSettingsService,
     state::SignalAnalyserState,

@@ -2,7 +2,7 @@
 id: TASK-0025
 kind: task
 title: Обновить E2E regression routing и ownership deployment
-status: in_progress
+status: done
 priority: P1
 queue_order: 23
 model: gpt-5.6-sol
@@ -13,7 +13,7 @@ parent: null
 depends_on: []
 blocks: []
 source_handoffs: []
-related_handoffs: []
+related_handoffs: [HND-0027]
 blocked_by: []
 blocker_reason: null
 ---
@@ -50,7 +50,7 @@ policy.
 - [x] Deployment skill принадлежит только E2E и запускается отдельным явным
   handoff, не смешанным с regression.
 - [x] Engee User больше не принимает deployment requests.
-- [ ] Generated adapters и manifests проверены.
+- [x] Generated adapters и manifests проверены.
 
 ## Queue decision
 
@@ -62,4 +62,6 @@ policy.
 
 ## Verification and results
 
-Ожидается regeneration и validation.
+`ruby architecture/skills/validate_skills.rb` passed; изменённые TOML parsed;
+`bash architecture/agents/adapt.sh --adapter=codex --force` обновил adapters.
+Отправлен обязательный post-task quick E2E handoff HND-0027.

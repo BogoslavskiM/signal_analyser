@@ -2,7 +2,7 @@
 id: TASK-0026
 kind: task
 title: Добавить E2E skill визуального анализа и screenshots
-status: in_progress
+status: done
 priority: P1
 queue_order: 24
 model: gpt-5.6-sol
@@ -13,7 +13,7 @@ parent: null
 depends_on: [TASK-0025]
 blocks: []
 source_handoffs: []
-related_handoffs: []
+related_handoffs: [HND-0028]
 blocked_by: []
 blocker_reason: null
 ---
@@ -44,7 +44,7 @@ elements, dialogs, menus, popovers и tooltips.
 - [x] Dynamic UI coverage matrix включает все transient element classes и
   keyboard/mouse/error/success states.
 - [x] Baseline нельзя обновлять без явного approval/task.
-- [ ] Skill manifest, role adapters и links проверены.
+- [x] Skill manifest, role adapters и links проверены.
 
 ## Queue decision
 
@@ -55,4 +55,6 @@ elements, dialogs, menus, popovers и tooltips.
 
 ## Verification and results
 
-Ожидается validation.
+`ruby architecture/skills/validate_skills.rb` passed; source role and generated
+adapters reference visual-analysis. Отправлен обязательный post-task quick E2E
+handoff HND-0028.

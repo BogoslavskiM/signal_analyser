@@ -216,6 +216,41 @@ route("/api/displays", method = POST) do
     end
 end
 
+route("/api/layouts", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            signal_analyser_layouts_snapshot(SIGNAL_ANALYSER_STATE);
+            headers = response_headers,
+        )
+    catch err
+        api_error_response(
+            "Не удалось получить Layout Signal Analyser",
+            err;
+            status = 500,
+            headers = response_headers,
+        )
+    end
+end
+
+route("/api/layouts", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            apply_signal_analyser_layout!(SIGNAL_ANALYSER_STATE, jsonpayload());
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_layout_stale_response(SIGNAL_ANALYSER_STATE, err)
+        else
+            api_error_response("Не удалось обновить Layout Signal Analyser", err; status = 500)
+        end
+    end
+end
+
 route("/api/signals", method = POST) do
     try
         api_json(apply_signal_inventory!(

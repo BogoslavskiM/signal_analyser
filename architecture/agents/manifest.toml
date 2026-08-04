@@ -37,6 +37,9 @@ post_task_e2e = "quick_or_new_functionality_regression"
 idle_e2e = "analysis_regression"
 quick_regression_success_threshold_percent = 75
 deployment_owner = "e2e"
+background_matlab_research = "immediate_non_blocking_single_lane"
+matlab_scenario_source = "matlab_clicker_saved_catalog"
+critical_scenario_verdict_scope = "matlab_reference_scenario_catalog"
 
 [model_selection]
 high_reasoning_effort = "xhigh"

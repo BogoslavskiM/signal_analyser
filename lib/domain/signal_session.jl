@@ -9,6 +9,7 @@ struct SignalAnalyserSessionDocument
     signals::Vector{AnalysedSignal}
     row_selection::GlobalSignalSelection
     displays::Vector{SignalAnalyserDisplayState}
+    display_layouts::Dict{String,SignalDisplayLayoutState}
     active_display_id::String
     next_display_number::Int
 end

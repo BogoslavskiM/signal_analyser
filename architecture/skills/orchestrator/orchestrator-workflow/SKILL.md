@@ -6,7 +6,8 @@ name: orchestrator-workflow
 Обязательный workflow Orchestrator: прямой user request проходит user-intake
 один раз; затем все последующие циклы берут работу только из unified task
 registry через backlogging. Далее: выбор queued task → model selection →
-декомпозиция → numbered handoffs → review отчётов → закрытие task → E2E
+background MATLAB research → декомпозиция → numbered handoffs → review
+отчётов → закрытие task → E2E
 handoff → review E2E report → user report → backlogging → новая разработка.
 Orchestrator сохраняет tasks и handoffs, выбирает порядок
 последовательной/параллельной работы и не пишет product code.
@@ -29,6 +30,35 @@ Orchestrator сохраняет tasks и handoffs, выбирает порядо
 создаёт отдельные handoff для владельцев и явно фиксирует контракт между ними.
 Пограничные вопросы решаются по месту изменения authoritative behavior:
 backend для source of truth и API, frontend для presentation and interaction.
+
+## Немедленный background MATLAB research
+
+При intake каждого нового MATLAB-derived product/feature scope сразу создай
+один `type: research` handoff с `background_research: true`. Свяжи его со scope
+task/group через `related_handoffs` и отправь до или одновременно с первым
+implementation handoff. Research выполняется параллельно и не становится
+dependency обычной разработки.
+
+Перед отправкой проверь активный research lane. Если MATLAB Researcher уже
+работает, добавь новый scope в тот же lane; второй MATLAB GUI writer запрещён.
+Повторный автоматический запуск для того же scope запрещает уже записанный
+background handoff ID.
+
+Research handoff обязан требовать:
+
+- `matlab-researcher/critical-scenario-coverage`;
+- чтение сохранённого scenario catalog из matlab_clicker API или канонического
+  read-only catalog fallback;
+- независимый critical requirement inventory, snapshot/provenance и coverage
+  matrix;
+- downstream mapping: UI → E2E, math/compatibility → Engee User, mixed → оба;
+- scoped boolean `all_critical_scenarios_covered`.
+
+Положительный verdict принимается только для
+`verdict_scope: matlab_reference_scenario_catalog` и не означает, что E2E,
+Engee comparison или production regression выполнены. Поздний research finding
+не меняет молча выданный scope: создай новый handoff или follow-up registry
+task через backlogging.
 
 ## Обязательный E2E dispatch
 

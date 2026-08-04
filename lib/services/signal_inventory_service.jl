@@ -215,6 +215,10 @@ function signal_inventory_clone_state(state::SignalAnalyserState)
         [signal_inventory_clone_display(display) for display in state.displays],
         state.active_display_id,
         state.next_display_number,
+        Dict(
+            display_id => copy(layout)
+            for (display_id, layout) in state.display_layouts
+        ),
         deepcopy(state.plot_cache),
         copy(state.spectrum_cache),
         copy(state.spectrogram_cache),
@@ -301,6 +305,11 @@ function signal_inventory_add_candidates!(
         active_display.peaks_enabled,
     )
     signal_inventory_replace_display!(state, prospective_display)
+    state.display_layouts[active_display.id] = signal_display_layout_replace_active_pane(
+        signal_analyser_layout_by_display_id(state, active_display.id),
+        prospective_display.active_plot,
+        members,
+    )
     state.row_selection = GlobalSignalSelection(first_added)
     signal_analyser_sync_active_display!(state, prospective_display)
     added_names
@@ -457,6 +466,10 @@ function signal_inventory_execute!(
         throw(signal_inventory_validation_error("signal_name", "Неизвестное имя сигнала"))
 
     state.signals = [signal for signal in state.signals if signal.name != command.signal_name]
+    state.display_layouts = Dict(
+        display_id => signal_display_layout_without_signal(layout, command.signal_name)
+        for (display_id, layout) in state.display_layouts
+    )
     state.displays = [
         signal_inventory_reconciled_display(state, display, command.signal_name)
         for display in state.displays
@@ -520,6 +533,7 @@ function publish_signal_inventory_mutation!(
     state.displays = prospective.displays
     state.active_display_id = prospective.active_display_id
     state.next_display_number = prospective.next_display_number
+    state.display_layouts = prospective.display_layouts
     state.plot_cache = prospective.plot_cache
     state.spectrum_cache = prospective.spectrum_cache
     state.spectrogram_cache = prospective.spectrogram_cache

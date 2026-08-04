@@ -1527,6 +1527,335 @@ end
 
 include(joinpath(@__DIR__, "signal_settings.jl"))
 
+const SIGNAL_DISPLAY_LAYOUT_VERSION = 1
+const SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION = 1
+const SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION = 4
+const SIGNAL_DISPLAY_PANE_ID_REGEX = r"^pane-[1-9][0-9]*$"
+const SIGNAL_DISPLAY_LAYOUT_VARIANTS = (
+    "single",
+    "rows",
+    "columns",
+    "grid",
+    "top-emphasis",
+    "right-emphasis",
+    "bottom-emphasis",
+    "left-emphasis",
+)
+
+"""One stable plot aggregate inside a Display layout."""
+struct SignalDisplayPaneState
+    id::String
+    plot_type::SignalAnalyserPlot
+    membership::SignalDisplayMembership
+    analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource}
+    time_limits::Union{Nothing,SignalTimeLimits}
+    measurement_selection::SignalMeasurementSelection
+    spectrum_settings::SignalSpectrumSettings
+    spectrogram_settings::SignalSpectrogramSettings
+    persistence_settings::SignalPersistenceSettings
+    stored_settings::SignalDisplayStoredSettings
+    peaks_enabled::Bool
+
+    function SignalDisplayPaneState(
+        id::AbstractString,
+        plot_type::SignalAnalyserPlot,
+        membership::SignalDisplayMembership,
+        analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
+        time_limits::Union{Nothing,SignalTimeLimits},
+        measurement_selection::SignalMeasurementSelection,
+        spectrum_settings::SignalSpectrumSettings,
+        spectrogram_settings::SignalSpectrogramSettings,
+        persistence_settings::SignalPersistenceSettings,
+        stored_settings::SignalDisplayStoredSettings,
+        peaks_enabled::Bool,
+    )
+        pane_id = String(id)
+        occursin(SIGNAL_DISPLAY_PANE_ID_REGEX, pane_id) || throw(ArgumentError(
+            "Идентификатор pane должен иметь формат pane-N",
+        ))
+        analysis_name = signal_analysis_name(analysis_source)
+        isempty(membership.signal_names) == (analysis_name === nothing) || throw(ArgumentError(
+            "Analysis source должна отсутствовать только у пустой pane",
+        ))
+        analysis_name === nothing || analysis_name in membership.signal_names || throw(ArgumentError(
+            "Analysis source должна входить в signal bindings pane",
+        ))
+        (analysis_name === nothing) == (time_limits === nothing) || throw(ArgumentError(
+            "Time Limits должны отсутствовать только у пустой pane",
+        ))
+        peaks_enabled && plot_type != TIME_PLOT && throw(ArgumentError(
+            "Поиск пиков доступен только для Time pane",
+        ))
+        peaks_enabled && analysis_name === nothing && throw(ArgumentError(
+            "Поиск пиков требует analysis source pane",
+        ))
+        new(
+            pane_id,
+            plot_type,
+            membership,
+            analysis_source,
+            time_limits,
+            measurement_selection,
+            spectrum_settings,
+            spectrogram_settings,
+            persistence_settings,
+            stored_settings,
+            peaks_enabled,
+        )
+    end
+end
+
+Base.:(==)(left::SignalDisplayPaneState, right::SignalDisplayPaneState) =
+    left.id == right.id &&
+    left.plot_type == right.plot_type &&
+    left.membership.signal_names == right.membership.signal_names &&
+    isequal(signal_analysis_name(left.analysis_source), signal_analysis_name(right.analysis_source)) &&
+    isequal(left.time_limits, right.time_limits) &&
+    left.measurement_selection == right.measurement_selection &&
+    left.spectrum_settings == right.spectrum_settings &&
+    left.spectrogram_settings == right.spectrogram_settings &&
+    left.persistence_settings == right.persistence_settings &&
+    left.stored_settings == right.stored_settings &&
+    left.peaks_enabled == right.peaks_enabled
+Base.isequal(left::SignalDisplayPaneState, right::SignalDisplayPaneState) = left == right
+Base.copy(pane::SignalDisplayPaneState) = SignalDisplayPaneState(
+    pane.id,
+    pane.plot_type,
+    pane.membership,
+    pane.analysis_source,
+    pane.time_limits,
+    pane.measurement_selection,
+    pane.spectrum_settings,
+    pane.spectrogram_settings,
+    pane.persistence_settings,
+    pane.stored_settings,
+    pane.peaks_enabled,
+)
+
+signal_display_pane_members(pane::SignalDisplayPaneState)::Vector{String} =
+    collect(pane.membership.signal_names)
+signal_display_pane_analysis_name(pane::SignalDisplayPaneState) =
+    signal_analysis_name(pane.analysis_source)
+
+function signal_display_empty_pane(id::AbstractString)::SignalDisplayPaneState
+    SignalDisplayPaneState(
+        id,
+        TIME_PLOT,
+        SignalDisplayMembership(String[]),
+        NoSignalAnalysisSource(),
+        nothing,
+        SignalMeasurementSelection(),
+        SignalSpectrumSettings(),
+        SignalSpectrogramSettings(),
+        SignalPersistenceSettings(),
+        SignalDisplayStoredSettings(),
+        false,
+    )
+end
+
+signal_display_layout_variant(rows::Int, columns::Int)::String = "$(rows)x$(columns)"
+
+"""Versioned rectangular topology and ordered pane configuration for one Display."""
+struct SignalDisplayLayoutState
+    version::Int
+    variant::String
+    rows::Int
+    columns::Int
+    panes::Vector{SignalDisplayPaneState}
+    active_pane_id::String
+    next_pane_number::Int
+
+    function SignalDisplayLayoutState(
+        version::Int,
+        variant::AbstractString,
+        rows::Int,
+        columns::Int,
+        panes::AbstractVector{SignalDisplayPaneState},
+        active_pane_id::AbstractString,
+        next_pane_number::Int,
+    )
+        version == SIGNAL_DISPLAY_LAYOUT_VERSION || throw(ArgumentError(
+            "Неподдерживаемая версия layout: $version",
+        ))
+        SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= rows <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
+            throw(ArgumentError("Число строк layout должно быть от 1 до 4"))
+        SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= columns <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
+            throw(ArgumentError("Число столбцов layout должно быть от 1 до 4"))
+        canonical_variant = signal_display_layout_variant(rows, columns)
+        String(variant) == canonical_variant || throw(ArgumentError(
+            "Variant layout должен быть равен $canonical_variant",
+        ))
+        pane_values = SignalDisplayPaneState[copy(pane) for pane in panes]
+        length(pane_values) == rows * columns || throw(ArgumentError(
+            "Число panes должно совпадать с topology layout",
+        ))
+        pane_ids = [pane.id for pane in pane_values]
+        allunique(pane_ids) || throw(ArgumentError(
+            "Идентификаторы panes не должны повторяться",
+        ))
+        active_id = String(active_pane_id)
+        active_id in pane_ids || throw(ArgumentError(
+            "Active pane должна входить в panes layout",
+        ))
+        pane_numbers = Int[parse(Int, split(id, '-')[2]) for id in pane_ids]
+        next_pane_number > maximum(pane_numbers) || throw(ArgumentError(
+            "Следующий номер pane должен быть больше всех сохранённых номеров",
+        ))
+        new(
+            version,
+            canonical_variant,
+            rows,
+            columns,
+            pane_values,
+            active_id,
+            next_pane_number,
+        )
+    end
+end
+
+Base.:(==)(left::SignalDisplayLayoutState, right::SignalDisplayLayoutState) =
+    left.version == right.version &&
+    left.variant == right.variant &&
+    left.rows == right.rows &&
+    left.columns == right.columns &&
+    left.panes == right.panes &&
+    left.active_pane_id == right.active_pane_id &&
+    left.next_pane_number == right.next_pane_number
+Base.isequal(left::SignalDisplayLayoutState, right::SignalDisplayLayoutState) = left == right
+Base.copy(layout::SignalDisplayLayoutState) = SignalDisplayLayoutState(
+    layout.version,
+    layout.variant,
+    layout.rows,
+    layout.columns,
+    layout.panes,
+    layout.active_pane_id,
+    layout.next_pane_number,
+)
+
+function signal_display_default_layout(
+    plot_type::SignalAnalyserPlot,
+    signal_bindings::AbstractVector{<:AbstractString},
+)::SignalDisplayLayoutState
+    pane = SignalDisplayPaneState("pane-1", plot_type, signal_bindings)
+    SignalDisplayLayoutState(
+        SIGNAL_DISPLAY_LAYOUT_VERSION,
+        "1x1",
+        1,
+        1,
+        SignalDisplayPaneState[pane],
+        pane.id,
+        2,
+    )
+end
+
+function signal_display_active_pane(
+    layout::SignalDisplayLayoutState,
+)::SignalDisplayPaneState
+    index = findfirst(pane -> pane.id == layout.active_pane_id, layout.panes)
+    index === nothing && throw(ArgumentError("Active pane отсутствует в layout"))
+    layout.panes[index]
+end
+
+function signal_display_layout_replace_pane(
+    layout::SignalDisplayLayoutState,
+    replacement::SignalDisplayPaneState,
+)::SignalDisplayLayoutState
+    index = findfirst(pane -> pane.id == replacement.id, layout.panes)
+    index === nothing && throw(ArgumentError("Pane не найдена: $(replacement.id)"))
+    panes = copy(layout.panes)
+    panes[index] = replacement
+    SignalDisplayLayoutState(
+        layout.version,
+        layout.variant,
+        layout.rows,
+        layout.columns,
+        panes,
+        layout.active_pane_id,
+        layout.next_pane_number,
+    )
+end
+
+function signal_display_layout_replace_active_pane(
+    layout::SignalDisplayLayoutState,
+    plot_type::SignalAnalyserPlot,
+    signal_bindings::AbstractVector{<:AbstractString},
+)::SignalDisplayLayoutState
+    pane = signal_display_active_pane(layout)
+    signal_display_layout_replace_pane(
+        layout,
+        SignalDisplayPaneState(pane.id, plot_type, signal_bindings),
+    )
+end
+
+function signal_display_layout_select_pane(
+    layout::SignalDisplayLayoutState,
+    pane_id::AbstractString,
+)::SignalDisplayLayoutState
+    requested_id = String(pane_id)
+    any(pane -> pane.id == requested_id, layout.panes) || throw(ArgumentError(
+        "Pane не найдена: $requested_id",
+    ))
+    SignalDisplayLayoutState(
+        layout.version,
+        layout.variant,
+        layout.rows,
+        layout.columns,
+        layout.panes,
+        requested_id,
+        layout.next_pane_number,
+    )
+end
+
+"""Resize preserves the ordered prefix, drops only its suffix, and never reuses IDs."""
+function signal_display_layout_resize(
+    layout::SignalDisplayLayoutState,
+    rows::Int,
+    columns::Int,
+)::SignalDisplayLayoutState
+    requested_count = rows * columns
+    surviving_count = min(length(layout.panes), requested_count)
+    panes = SignalDisplayPaneState[copy(layout.panes[index]) for index in 1:surviving_count]
+    next_pane_number = layout.next_pane_number
+    while length(panes) < requested_count
+        push!(panes, SignalDisplayPaneState("pane-$next_pane_number", TIME_PLOT, String[]))
+        next_pane_number += 1
+    end
+    active_pane_id = any(pane -> pane.id == layout.active_pane_id, panes) ?
+        layout.active_pane_id : first(panes).id
+    SignalDisplayLayoutState(
+        layout.version,
+        signal_display_layout_variant(rows, columns),
+        rows,
+        columns,
+        panes,
+        active_pane_id,
+        next_pane_number,
+    )
+end
+
+function signal_display_layout_without_signal(
+    layout::SignalDisplayLayoutState,
+    signal_name::AbstractString,
+)::SignalDisplayLayoutState
+    panes = SignalDisplayPaneState[
+        SignalDisplayPaneState(
+            pane.id,
+            pane.plot_type,
+            [name for name in pane.signal_bindings if name != signal_name],
+        )
+        for pane in layout.panes
+    ]
+    SignalDisplayLayoutState(
+        layout.version,
+        layout.variant,
+        layout.rows,
+        layout.columns,
+        panes,
+        layout.active_pane_id,
+        layout.next_pane_number,
+    )
+end
+
 mutable struct SignalAnalyserDisplayState
     id::String
     name::String
@@ -1874,6 +2203,7 @@ mutable struct SignalAnalyserState{
     displays::Vector{SignalAnalyserDisplayState}
     active_display_id::String
     next_display_number::Int
+    display_layouts::Dict{String,SignalDisplayLayoutState}
     plot_cache::Dict{String,Dict{String,Any}}
     spectrum_cache::Dict{SignalSpectrumCacheKey,SignalSpectrumData}
     spectrogram_cache::Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}
@@ -1929,6 +2259,10 @@ function SignalAnalyserState(
         SignalAnalyserDisplayState[display],
         display.id,
         2,
+        Dict(display.id => signal_display_default_layout(
+            display.active_plot,
+            signal_analyser_display_members(display),
+        )),
         plot_cache,
         Dict{SignalSpectrumCacheKey,SignalSpectrumData}(),
         Dict{SignalSpectrogramCacheKey,SignalSpectrogramData}(),

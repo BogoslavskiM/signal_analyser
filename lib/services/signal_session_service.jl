@@ -34,6 +34,22 @@ const SIGNAL_ANALYSER_SESSION_DISPLAY_FIELDS = Set([
     "stored_settings",
     "peaks_enabled",
 ])
+const SIGNAL_ANALYSER_SESSION_DISPLAY_WITH_LAYOUT_FIELDS =
+    union(SIGNAL_ANALYSER_SESSION_DISPLAY_FIELDS, Set(["layout"]))
+const SIGNAL_ANALYSER_SESSION_LAYOUT_FIELDS = Set([
+    "version",
+    "variant",
+    "rows",
+    "columns",
+    "active_pane_id",
+    "next_pane_number",
+    "panes",
+])
+const SIGNAL_ANALYSER_SESSION_PANE_FIELDS = Set([
+    "id",
+    "plot_type",
+    "signal_bindings",
+])
 const SIGNAL_ANALYSER_SESSION_REQUEST_FIELDS = Set(["state_revision", "document"])
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
     "display.show_legend",
@@ -180,8 +196,9 @@ end
 
 function signal_analyser_session_display_payload(
     display::SignalAnalyserDisplayState,
+    layout::SignalDisplayLayoutState,
 )::Dict{String,Any}
-    Dict{String,Any}(
+    payload = Dict{String,Any}(
         "id" => display.id,
         "name" => display.name,
         "active_plot" => signal_analyser_plot_name(display.active_plot),
@@ -195,6 +212,12 @@ function signal_analyser_session_display_payload(
         "stored_settings" => signal_analyser_session_settings_payload(display),
         "peaks_enabled" => display.peaks_enabled,
     )
+    legacy_layout = signal_display_default_layout(
+        display.active_plot,
+        signal_analyser_display_members(display),
+    )
+    layout == legacy_layout || (payload["layout"] = signal_display_layout_payload(layout))
+    payload
 end
 
 function signal_analyser_session_document_unlocked(
@@ -207,6 +230,10 @@ function signal_analyser_session_document_unlocked(
         copy(state.signals),
         state.row_selection,
         copy(state.displays),
+        Dict(
+            display_id => copy(layout)
+            for (display_id, layout) in state.display_layouts
+        ),
         state.active_display_id,
         state.next_display_number,
     )
@@ -225,7 +252,10 @@ function signal_analyser_session_payload(
             ],
             "row_selected_signal" => document.row_selection.signal_name,
             "displays" => [
-                signal_analyser_session_display_payload(display) for display in document.displays
+                signal_analyser_session_display_payload(
+                    display,
+                    document.display_layouts[display.id],
+                ) for display in document.displays
             ],
             "active_display_id" => document.active_display_id,
             "next_display_number" => document.next_display_number,
@@ -355,11 +385,16 @@ end
 
 function signal_analyser_session_parse_display(value, index::Int)::SignalAnalyserDisplayState
     path = "document.state.displays[$index]"
-    data = signal_analyser_session_exact_object(
-        value,
+    value isa AbstractDict || throw(signal_analyser_session_error(path, "Требуется JSON-объект"))
+    actual_fields = signal_analyser_payload_keys(value)
+    actual_fields in (
         SIGNAL_ANALYSER_SESSION_DISPLAY_FIELDS,
+        SIGNAL_ANALYSER_SESSION_DISPLAY_WITH_LAYOUT_FIELDS,
+    ) || throw(signal_analyser_session_error(
         path,
-    )
+        "Ожидался exact legacy Display или Display с полем layout",
+    ))
+    data = value
     id = signal_analyser_session_string(signal_analyser_payload_value(data, "id"), "$path.id")
     occursin(SIGNAL_ANALYSER_SESSION_DISPLAY_ID_REGEX, id) || throw(
         signal_analyser_session_error("$path.id", "Ожидался идентификатор display-N"),
@@ -454,6 +489,143 @@ function signal_analyser_session_parse_display(value, index::Int)::SignalAnalyse
     end
 end
 
+function signal_analyser_session_parse_layout_pane(
+    value,
+    display_index::Int,
+    pane_index::Int,
+)::SignalDisplayPaneState
+    path = "document.state.displays[$display_index].layout.panes[$pane_index]"
+    data = signal_analyser_session_exact_object(
+        value,
+        SIGNAL_ANALYSER_SESSION_PANE_FIELDS,
+        path,
+    )
+    pane_id = signal_analyser_session_string(
+        signal_analyser_payload_value(data, "id"),
+        "$path.id",
+    )
+    occursin(SIGNAL_DISPLAY_PANE_ID_REGEX, pane_id) || throw(
+        signal_analyser_session_error("$path.id", "Ожидался идентификатор pane-N"),
+    )
+    plot_value = signal_analyser_payload_value(data, "plot_type")
+    plot_value isa AbstractString && haskey(SIGNAL_ANALYSER_PLOTS_BY_NAME, String(plot_value)) ||
+        throw(signal_analyser_session_error(
+            "$path.plot_type",
+            "Допустимо: time, spectrum, spectrogram, persistence",
+        ))
+    bindings_value = signal_analyser_payload_value(data, "signal_bindings")
+    bindings_value isa AbstractVector || throw(signal_analyser_session_error(
+        "$path.signal_bindings",
+        "Требуется массив",
+    ))
+    bindings = String[
+        signal_analyser_session_string(
+            item,
+            "$path.signal_bindings[$binding_index]",
+        )
+        for (binding_index, item) in enumerate(bindings_value)
+    ]
+    allunique(bindings) || throw(signal_analyser_session_error(
+        "$path.signal_bindings",
+        "Имена сигналов не должны повторяться",
+    ))
+    SignalDisplayPaneState(
+        pane_id,
+        SIGNAL_ANALYSER_PLOTS_BY_NAME[String(plot_value)],
+        bindings,
+    )
+end
+
+function signal_analyser_session_parse_layout(
+    value,
+    display::SignalAnalyserDisplayState,
+    display_index::Int,
+)::SignalDisplayLayoutState
+    value === nothing && return signal_display_default_layout(
+        display.active_plot,
+        signal_analyser_display_members(display),
+    )
+    path = "document.state.displays[$display_index].layout"
+    data = signal_analyser_session_exact_object(
+        value,
+        SIGNAL_ANALYSER_SESSION_LAYOUT_FIELDS,
+        path,
+    )
+    version = signal_analyser_session_integer(
+        signal_analyser_payload_value(data, "version"),
+        "$path.version",
+        minimum = 1,
+    )
+    version == SIGNAL_DISPLAY_LAYOUT_VERSION || throw(signal_analyser_session_error(
+        "$path.version",
+        "Поддерживается только layout version 1",
+    ))
+    rows = signal_analyser_session_integer(
+        signal_analyser_payload_value(data, "rows"),
+        "$path.rows",
+        minimum = SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION,
+    )
+    rows <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION || throw(signal_analyser_session_error(
+        "$path.rows",
+        "Максимальное значение: 4",
+    ))
+    columns = signal_analyser_session_integer(
+        signal_analyser_payload_value(data, "columns"),
+        "$path.columns",
+        minimum = SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION,
+    )
+    columns <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION || throw(signal_analyser_session_error(
+        "$path.columns",
+        "Максимальное значение: 4",
+    ))
+    variant = signal_analyser_session_string(
+        signal_analyser_payload_value(data, "variant"),
+        "$path.variant",
+    )
+    variant == signal_display_layout_variant(rows, columns) || throw(
+        signal_analyser_session_error(
+            "$path.variant",
+            "Требуется canonical variant $(signal_display_layout_variant(rows, columns))",
+        ),
+    )
+    panes_value = signal_analyser_payload_value(data, "panes")
+    panes_value isa AbstractVector || throw(signal_analyser_session_error(
+        "$path.panes",
+        "Требуется массив",
+    ))
+    length(panes_value) == rows * columns || throw(signal_analyser_session_error(
+        "$path.panes",
+        "Число panes должно совпадать с topology layout",
+    ))
+    panes = SignalDisplayPaneState[
+        signal_analyser_session_parse_layout_pane(item, display_index, pane_index)
+        for (pane_index, item) in enumerate(panes_value)
+    ]
+    active_pane_id = signal_analyser_session_string(
+        signal_analyser_payload_value(data, "active_pane_id"),
+        "$path.active_pane_id",
+    )
+    next_pane_number = signal_analyser_session_integer(
+        signal_analyser_payload_value(data, "next_pane_number"),
+        "$path.next_pane_number",
+        minimum = 2,
+    )
+    try
+        SignalDisplayLayoutState(
+            version,
+            variant,
+            rows,
+            columns,
+            panes,
+            active_pane_id,
+            next_pane_number,
+        )
+    catch err
+        err isa ArgumentError || rethrow()
+        throw(signal_analyser_session_error(path, sprint(showerror, err)))
+    end
+end
+
 function signal_analyser_session_validate_candidate!(
     state::SignalAnalyserState,
 )::Nothing
@@ -467,6 +639,12 @@ function signal_analyser_session_validate_candidate!(
         "document.state.displays",
         "Идентификаторы Display не должны повторяться",
     ))
+    Set(keys(state.display_layouts)) == Set(display_ids) || throw(
+        signal_analyser_session_error(
+            "document.state.displays",
+            "Каждый Display должен иметь ровно один layout",
+        ),
+    )
     state.active_display_id in display_ids || throw(signal_analyser_session_error(
         "document.state.active_display_id",
         "Active Display отсутствует в displays",
@@ -487,7 +665,29 @@ function signal_analyser_session_validate_candidate!(
     ))
     for display in state.displays
         path = "document.state.displays.$(display.id)"
+        layout = signal_analyser_layout_by_display_id(state, display.id)
+        for pane in layout.panes
+            all(name -> name in known_names, pane.signal_bindings) || throw(
+                signal_analyser_session_error(
+                    "$path.layout.panes.$(pane.id).signal_bindings",
+                    "Pane ссылается на неизвестный сигнал",
+                ),
+            )
+        end
+        active_pane = signal_display_active_pane(layout)
         members = signal_analyser_display_members(display)
+        active_pane.plot_type == display.active_plot || throw(
+            signal_analyser_session_error(
+                "$path.layout.active_pane_id",
+                "Plot type active pane не совпадает с legacy Display projection",
+            ),
+        )
+        active_pane.signal_bindings == members || throw(
+            signal_analyser_session_error(
+                "$path.layout.active_pane_id",
+                "Bindings active pane не совпадают с legacy Display projection",
+            ),
+        )
         all(name -> name in known_names, members) || throw(signal_analyser_session_error(
             "$path.visible_signals",
             "Display ссылается на неизвестный сигнал",
@@ -659,10 +859,19 @@ function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDoc
             "Допустимо от 1 до $(SIGNAL_ANALYSER_SESSION_MAX_DISPLAYS) Display",
         ),
     )
-    displays = SignalAnalyserDisplayState[
-        signal_analyser_session_parse_display(value, index)
-        for (index, value) in enumerate(display_values)
-    ]
+    displays = SignalAnalyserDisplayState[]
+    display_layouts = Dict{String,SignalDisplayLayoutState}()
+    for (index, value) in enumerate(display_values)
+        display = signal_analyser_session_parse_display(value, index)
+        push!(displays, display)
+        layout_value = signal_analyser_payload_contains(value, "layout") ?
+            signal_analyser_payload_value(value, "layout") : nothing
+        display_layouts[display.id] = signal_analyser_session_parse_layout(
+            layout_value,
+            display,
+            index,
+        )
+    end
     active_display_id = signal_analyser_session_string(
         signal_analyser_payload_value(state_data, "active_display_id"),
         "document.state.active_display_id",
@@ -679,6 +888,7 @@ function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDoc
         signals,
         row_selection,
         displays,
+        display_layouts,
         active_display_id,
         next_display_number,
     )
@@ -735,6 +945,10 @@ function signal_analyser_session_candidate(
     end
     candidate.row_selection = document.row_selection
     candidate.displays = copy(document.displays)
+    candidate.display_layouts = Dict(
+        display_id => copy(layout)
+        for (display_id, layout) in document.display_layouts
+    )
     candidate.active_display_id = document.active_display_id
     candidate.next_display_number = document.next_display_number
     candidate.view.active_plot = active_display.active_plot
@@ -751,6 +965,7 @@ function signal_analyser_publish_session!(
     state.view = candidate.view
     state.row_selection = candidate.row_selection
     state.displays = candidate.displays
+    state.display_layouts = candidate.display_layouts
     state.active_display_id = candidate.active_display_id
     state.next_display_number = candidate.next_display_number
     state.plot_cache = candidate.plot_cache

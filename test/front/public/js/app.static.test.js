@@ -15,9 +15,27 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   const license = fs.readFileSync(plotlyLicensePath, "utf8");
   const crypto = require("crypto");
 
-  ["app-shell", "display-tabs", "display-canvas", "active-plot-host", "plot-type-select", "settings-view-select", "signal-table", "toggle-all-signals", "bottom-panel-signals", "measurements-panel", "display-count-status", "active-display-status"].forEach((id) =>
+  ["app-shell", "display-tabs", "display-canvas", "active-plot-host", "plot-type-select", "settings-view-select", "signal-table", "toggle-all-signals", "bottom-panel-signals", "measurements-panel"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `missing stable Display UI selector ${id}`)
   );
+  ["engee-logo.svg", "eye.svg"].forEach((file) => {
+    const asset = path.join(root, "public", "icons", file);
+    assert(fs.existsSync(asset) && /<svg\b/.test(fs.readFileSync(asset, "utf8")), `TASK-0027 must use the approved local ${file} asset`);
+  });
+  assert(/class="app-brand"[^>]*aria-label="Engee"[\s\S]*?<img[^>]*src="\.\/icons\/engee-logo\.svg"[^>]*aria-hidden="true"[\s\S]*?<span class="engee-name">Engee<\/span>/.test(html), "TASK-0027 must render the local Engee mark and capitalized Engee name");
+  ["signal-columns-visibility-trigger", "signal-columns-menu-trigger", "signal-columns-menu"].forEach((id) =>
+    assert(html.includes(`data-testid="${id}"`), `TASK-0027 column controls must expose stable selector ${id}`)
+  );
+  assert(/data-testid="signal-columns-menu"[^>]*role="menu"[^>]*hidden/.test(html), "TASK-0027 column menu must start hidden with menu semantics");
+  assert(app.includes("data-hidden-columns") && app.includes("data-signal-column-toggle") && app.includes("menuitemcheckbox"), "TASK-0027 column visibility must use optional-column state and accessible toggle semantics");
+  assert(/\.signal-table\[data-hidden-columns~="color"\][\s\S]*\[data-column="color"\][\s\S]*display:none/.test(css), "TASK-0027 optional columns must be visually hidden without removing row data");
+  assert(app.includes("class='signal-actions-cell'") && app.includes("data-column='actions'"), "TASK-0027 duplicate/delete controls must render in the dedicated right action column");
+  assert(/\.signal-table \.signal-actions-column\{position:sticky;right:0/.test(css), "TASK-0027 right action column must remain fixed at the table edge");
+  assert(/\.display-tabs\{overflow-x:auto;overflow-y:hidden/.test(css), "TASK-0027 Display tabs must be horizontally scrollable on overflow");
+  assert(/\.bottom-zone\{min-height:270px/.test(css), "TASK-0027 bottom table zone must use its enlarged minimum height");
+  assert(/\.settings-field\{grid-template-columns:minmax\(118px,42%\) minmax\(0,1fr\)/.test(fs.readFileSync(path.join(root, "public/css/settings.css"), "utf8")), "TASK-0027 Settings fields must use stable label/control columns");
+  const retainedCleanupNodes = ["open-window-action", "signals-add-selection-action", "signals-copy-action", "signals-delete-action", "display-count-status", "active-display-status"].filter((id) => html.includes(`data-testid="${id}"`));
+  assert(retainedCleanupNodes.length === 0, `TASK-0027 requires obsolete controls/status nodes to be removed, not merely hidden; still present: ${retainedCleanupNodes.join(", ")}`);
   assert((html.match(/data-testid="active-plot-host"/g) || []).length === 1, "each active Display must own one graph host");
   assert(/data-testid="active-plot-host"[^>]*role="region"[^>]*aria-labelledby="display-plot-title"/.test(html), "the active graph host must expose its labelled region semantics");
   assert(/data-bottom-tab="signals"[^>]*role="tab"[^>]*aria-controls="bottom-panel-signals"[^>]*aria-selected="true"[^>]*tabindex="0"/.test(html), "Signals must initialize as the sole roving-tabindex tab");

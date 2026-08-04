@@ -2,7 +2,7 @@
 id: TASK-0028
 kind: task
 title: Запускать MATLAB research в фоне и проверять полноту критических сценариев
-status: in_progress
+status: done
 priority: P1
 queue_order: 25
 model: gpt-5.6-sol
@@ -13,7 +13,7 @@ parent: TASK-0014
 depends_on: []
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0023]
+related_handoffs: [HND-0023, HND-0024, HND-0025, HND-0026, HND-0031, HND-0032, HND-0037, HND-0038]
 blocked_by: []
 blocker_reason: null
 ---
@@ -46,28 +46,28 @@ skill MATLAB Researcher для чтения сохранённого clicker-к�
 
 ## Acceptance criteria
 
-- [ ] Orchestrator сразу запускает один фоновый MATLAB research handoff для
+- [x] Orchestrator сразу запускает один фоновый MATLAB research handoff для
   каждого нового MATLAB-derived product scope и не блокирует им разработку.
-- [ ] Уже работающий research lane переиспользуется; параллельные владельцы
+- [x] Уже работающий research lane переиспользуется; параллельные владельцы
   MATLAB GUI запрещены.
-- [ ] Researcher читает сохранённые scenarios из clicker API либо из
+- [x] Researcher читает сохранённые scenarios из clicker API либо из
   канонического clicker-каталога с явной provenance/freshness.
-- [ ] Новый skill задаёт coverage matrix и однозначные условия для
+- [x] Новый skill задаёт coverage matrix и однозначные условия для
   `all_critical_scenarios_covered: true`.
-- [ ] Неизвестный, устаревший, противоречивый или неотслеживаемый critical
+- [x] Неизвестный, устаревший, противоречивый или неотслеживаемый critical
   scenario запрещает положительный verdict и возвращается как gap/blocker.
-- [ ] Critical UI workflows маршрутизируются E2E, mathematical/compatibility
+- [x] Critical UI workflows маршрутизируются E2E, mathematical/compatibility
   workflows — Engee User, смешанные — обоим; результат также получает
   Orchestrator.
-- [ ] Source manifests, generated adapters и skill validators проходят.
+- [x] Source manifests, generated adapters и skill validators проходят.
 
 ## Decomposition
 
 | ID | Role | Deliverable | Depends on | Status |
 |---|---|---|---|---|
-| TASK-0028-A | Orchestrator | Background dispatch и lifecycle contract | — | in_progress |
-| TASK-0028-B | MATLAB Researcher | Saved-catalog coverage skill и verdict schema | — | in_progress |
-| TASK-0028-C | MATLAB Researcher | Первый фоновый inventory текущего Signal Analyzer scope | TASK-0028-B | in_progress |
+| TASK-0028-A | Orchestrator | Background dispatch и lifecycle contract | — | done |
+| TASK-0028-B | MATLAB Researcher | Saved-catalog coverage skill и verdict schema | — | done |
+| TASK-0028-C | MATLAB Researcher | Первый фоновый inventory текущего Signal Analyzer scope | TASK-0028-B | done |
 
 ## Queue decision
 
@@ -80,8 +80,12 @@ skill MATLAB Researcher для чтения сохранённого clicker-к�
 
 ## Verification and results
 
-Ожидаются validation skill/role manifests, regeneration adapters и report
-первого background inventory.
+`ruby architecture/skills/validate_skills.rb` and source TOML parse passed;
+generated adapters contain the new contracts. HND-0032 records the expanded
+inventory: API/bootstrap provenance followed by stable filesystem fallback,
+coverage 8/28 with 20 gaps and all three verdict booleans explicitly false.
+HND-0024/HND-0026 route original inputs; HND-0037/HND-0038 route R-SA-19..28.
+HND-0031 is the required post-task quick E2E handoff.
 
 ## Risks, blockers and follow-ups
 

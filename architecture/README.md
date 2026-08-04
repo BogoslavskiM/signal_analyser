@@ -7,7 +7,8 @@
 ## Цикл задачи
 
 ```text
-Orchestrator: intake/backlogging → task separation → agent TS
+Orchestrator: intake → background MATLAB scenario research ↘
+             backlogging → task separation → agent TS
        ↓
 Backender / Frontend / Research / Engee User (последовательно или параллельно)
        ↓
@@ -42,6 +43,13 @@ E2E: analysis regression → test fixes → functional/performance follow-up
   runtime target или fallback.
 - Backlogging может выполняться в фоне, пока независимые агенты реализуют
   текущие handoff: он не должен задерживать уже начатую разработку.
+- Для каждого нового MATLAB-derived product scope Orchestrator сразу запускает
+  или расширяет единственный background MATLAB research lane. Он читает
+  сохранённые clicker scenarios, строит critical coverage matrix и не блокирует
+  implementation.
+- `all_critical_scenarios_covered: true` относится только к объявленному
+  MATLAB reference catalog scope; E2E execution, Engee parity и production
+  regression отражаются отдельными результатами.
 - После каждой `done` task Orchestrator немедленно отправляет E2E handoff:
   `quick_regression` для обычной task либо `new_functionality_regression` для
   новой функциональности; второй режим уже включает quick regression.

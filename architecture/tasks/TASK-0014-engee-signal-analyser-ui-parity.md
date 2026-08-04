@@ -13,7 +13,7 @@ parent: null
 depends_on: []
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0023]
+related_handoffs: [HND-0023, HND-0025]
 blocked_by: []
 blocker_reason: null
 ---
@@ -33,6 +33,8 @@ Signal Analyzer должен по структуре, доступным зон�
   Settings и нижним inspector.
 - `signal-analyzer-layout-05-spectrum.png`: Spectrum-страница с тремя
   графическими панелями, настройками Spectrum и тем же inspector.
+- `/Users/makar/Desktop/Снимок экрана 2026-08-04 в 00.03.09.png`: сетка
+  графиков и popover выбора rows/columns/layout variant.
 - Допустимые источники иконок/визуальных паттернов для последующего review:
   `../pulse_waveform_analyser/public/icons` и
   `../windowdesigner/public/icons`.
@@ -45,19 +47,28 @@ Signal Analyzer должен по структуре, доступным зон�
 - Справа: действия export/share, open in new window и help.
 - Требование: заменить временные текстовые символы на согласованные Engee
   иконки и довести их состояния, подсказки и доступность.
+- Убрать лишние/дублирующие кнопки верхней строки; оставить только действия с
+  подтверждённой семантикой.
+- Использовать корректный локальный знак Engee и заголовок `Engee` с заглавной
+  буквы.
 
 ### Рабочая область Display
 
 - Вкладки `Display N`, закрытие вкладки, создание Display (`+`), а также
   control выбора/управления раскладкой, видимый на референсах.
-- Каждый видимый график имеет заголовок, селектор типа и overflow-меню.
+- Вкладки Display горизонтально прокручиваются при переполнении и меняют
+  порядок drag-and-drop без потери active state.
+- Каждый видимый график имеет заголовок и собственный селектор типа.
 - Наблюдаемые типы: `Time`, `Spectrum`, `Spectrogram`, `Persistence`.
 - Требование: тип каждого отдельного графика должен быть явно задан и
   отображён; унифицировать заголовок, селектор и overflow для каждого
   графика.
-- Исключение: мультилейаут/одновременная сетка графиков в этой идее не
-  реализуется. Она будет отдельной задачей, даже если присутствует на
-  референсах.
+- Добавить мультилейаут до `4 × 4`. Кнопка layout остаётся и открывает popover,
+  структурно повторяющий новый reference: rows, columns, набор layout variants,
+  Cancel/Apply и явный selected state.
+- Каждый plot pane имеет стабильную identity, собственный type dropdown и
+  независимый набор отмеченных сигналов из таблицы; active pane визуально
+  выделен, а table checkboxes отражают binding именно active pane.
 
 ### Правая панель Display settings
 
@@ -89,8 +100,19 @@ Signal Analyzer должен по структуре, доступным зон�
   rate, Duration и Type.
 - При наведении строки в её правом краю появляются row actions. Состав и
   семантика кнопок закрепляются отдельным TS до реализации.
+- Inline actions `duplicate` и `delete` находятся в крайнем правом столбце и
+  не сдвигают данные строки при hover/focus.
+- Убрать действие `Добавить из выбранного диапазона`, нижнюю status-плашку
+  наподобие `4 displays ready` и лишнее троеточие после checkbox controls.
+- Добавить column visibility: кнопка-глаз и соседнее меню `…` в header
+  позволяют скрывать и возвращать доступные столбцы без удаления данных.
+- Сделать нижнюю table zone выше по вертикали, чтобы строки и tabs были реально
+  видимы при поддерживаемых viewport.
 - Требование: добавить недостающие таблицы/страницы нижней зоны и оформить
   многостраничную навигацию без смешения её с мультилейаутом графиков.
+- Settings должны быть оформлены как единая форма: label/control columns,
+  одинаковые размеры, gaps и wrapping; controls не перекрывают друг друга ни в
+  одном поддерживаемом type/page state.
 
 ### Диалоги и сессия
 
@@ -127,17 +149,16 @@ hover row actions, toolbar/страницы нижней зоны, session save/
 
 ## Out of scope
 
-- Реализация мультилейаута графиков.
 - Копирование CSS/стилей с референсных изображений.
-- Начало реализации, dispatch handoff или deployment в рамках текущей intake
-  итерации.
+- Layout крупнее `4 × 4` и deployment без отдельного handoff.
 
 ## Acceptance criteria for this intake
 
 - [x] Изображения и прямые требования пользователя сохранены как источник ТЗ.
 - [x] Все видимые зоны и controls внесены без выдумывания поведения
   не подписанных иконок.
-- [x] Явно зафиксировано исключение мультилейаута.
+- [x] Мультилейаут повторно включён явным запросом пользователя от 2026-08-04
+  и ограничен размером `4 × 4`.
 - [x] Отделены существующие возможности от backlog gaps.
 - [x] Следующие итерации могут уточнять идею без начала реализации.
 
@@ -158,7 +179,11 @@ hover row actions, toolbar/страницы нижней зоны, session save/
 | TASK-0016 | Backender | Typed session export/import contract and persistence implementation | — | done |
 | TASK-0017 | Frontend | Session import/export UI against TASK-0016 contract | TASK-0016 | done |
 | TASK-0018/TASK-0020/TASK-0021/TASK-0024 | Tester | Unit and frontend regression coverage | implementation tasks | done |
-| TASK-0023 | E2E | Complete ready-feature browser workflow | production target URL | blocked before dispatch |
+| TASK-0027 | Frontend | UI cleanup, table controls, tabs, Settings geometry | — | queued |
+| TASK-0029 | Backender | Multi-layout state/API/session contract | — | queued |
+| TASK-0030 | Frontend | Multi-layout UI, plot bindings and drag/scroll tabs | TASK-0027, TASK-0029 | queued |
+| TASK-0031 | Tester | Backend/frontend regression for new work | TASK-0027, TASK-0029, TASK-0030 | queued |
+| TASK-0023 | E2E | Complete ready-feature browser workflow | production target URL | backlog follow-up |
 
 ## Queue decision
 
