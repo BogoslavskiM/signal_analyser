@@ -43,6 +43,13 @@
         body: JSON.stringify(payload),
       });
     },
+    layouts: function (payload) {
+      return request("./api/layouts", payload ? {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      } : { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" });
+    },
     signals: function (payload) {
       return request("./api/signals", {
         method: "POST",

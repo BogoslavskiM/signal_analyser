@@ -1151,6 +1151,181 @@ function signal_analyser_layout_by_display_id(
     layout
 end
 
+const SignalAnalyserPaneRendererData = Union{
+    Vector{Dict{String,Any}},
+    Dict{String,Any},
+}
+
+"""Derived renderer output for one authoritative pane; never persisted in session state."""
+struct SignalAnalyserPaneOutput
+    pane_id::String
+    plot_type::SignalAnalyserPlot
+    signal_bindings::Vector{String}
+    analysis_signal::Union{Nothing,String}
+    isready::Bool
+    success::Bool
+    error::String
+    data::SignalAnalyserPaneRendererData
+end
+
+function signal_analyser_display_for_pane(
+    display::SignalAnalyserDisplayState,
+    pane::SignalDisplayPaneState,
+)::SignalAnalyserDisplayState
+    SignalAnalyserDisplayState(
+        display.id,
+        display.name,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+    )
+end
+
+function signal_analyser_ordered_trace_data(
+    traces::Vector{Dict{String,Any}},
+    signal_bindings::Vector{String},
+)::Vector{Dict{String,Any}}
+    traces_by_signal = Dict{String,Dict{String,Any}}(
+        String(trace["signal"]) => trace for trace in traces
+    )
+    Dict{String,Any}[traces_by_signal[name] for name in signal_bindings]
+end
+
+function signal_analyser_pane_renderer_data(
+    prepared::SignalAnalyserPreparedDisplayPlots,
+    plot_type::SignalAnalyserPlot,
+    signal_bindings::Vector{String},
+    spectrum_settings::SignalSpectrumSettings,
+)::SignalAnalyserPaneRendererData
+    if plot_type == TIME_PLOT
+        return signal_analyser_ordered_trace_data(
+            prepared.plot_payload["time_traces"]::Vector{Dict{String,Any}},
+            signal_bindings,
+        )
+    elseif plot_type == SPECTRUM_PLOT
+        traces = signal_analyser_ordered_trace_data(
+            prepared.plot_payload["spectrum_traces"]::Vector{Dict{String,Any}},
+            signal_bindings,
+        )
+        frequency_scale = SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[
+            spectrum_settings.frequency_scale
+        ]
+        for trace in traces
+            trace["frequency_scale"] = frequency_scale
+        end
+        return traces
+    elseif plot_type == SPECTROGRAM_PLOT
+        return prepared.plot_payload["spectrogram"]::Dict{String,Any}
+    end
+    prepared.plot_payload["persistence"]::Dict{String,Any}
+end
+
+function signal_analyser_pane_output_error(err)::String
+    message = sprint(showerror, err)
+    length(message) <= 240 ? message : string(first(message, 237), "...")
+end
+
+function signal_analyser_prepare_pane_output!(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    pane::SignalDisplayPaneState,
+)::SignalAnalyserPaneOutput
+    pane_display = signal_analyser_display_for_pane(display, pane)
+    signal_bindings = signal_display_pane_members(pane)
+    analysis_name = signal_display_pane_analysis_name(pane)
+    analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+    try
+        prepared = signal_analyser_prepare_display_plots(
+            state,
+            pane_display,
+            analysis_signal,
+            signal_bindings,
+            materialize_missing_spectra = pane.plot_type == SPECTRUM_PLOT,
+            materialize_missing_spectrogram = pane.plot_type == SPECTROGRAM_PLOT,
+            materialize_missing_persistence = pane.plot_type == PERSISTENCE_PLOT,
+        )
+        data = signal_analyser_pane_renderer_data(
+            prepared,
+            pane.plot_type,
+            signal_bindings,
+            pane.spectrum_settings,
+        )
+        signal_analyser_publish_display_plots!(state, prepared)
+        return SignalAnalyserPaneOutput(
+            pane.id,
+            pane.plot_type,
+            signal_bindings,
+            analysis_name,
+            true,
+            true,
+            "",
+            data,
+        )
+    catch err
+        empty_prepared = signal_analyser_prepare_display_plots(
+            state,
+            pane_display,
+            nothing,
+            String[],
+            materialize_missing_spectra = false,
+            materialize_missing_spectrogram = false,
+            materialize_missing_persistence = false,
+        )
+        return SignalAnalyserPaneOutput(
+            pane.id,
+            pane.plot_type,
+            signal_bindings,
+            analysis_name,
+            true,
+            false,
+            signal_analyser_pane_output_error(err),
+            signal_analyser_pane_renderer_data(
+                empty_prepared,
+                pane.plot_type,
+                String[],
+                pane.spectrum_settings,
+            ),
+        )
+    end
+end
+
+function signal_analyser_pane_output_payload(
+    output::SignalAnalyserPaneOutput,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "pane_id" => output.pane_id,
+        "plot_type" => signal_analyser_plot_name(output.plot_type),
+        "signal_bindings" => output.signal_bindings,
+        "analysis_signal" => output.analysis_signal,
+        "output" => Dict{String,Any}(
+            "isready" => output.isready,
+            "success" => output.success,
+            "error" => output.error,
+            "data" => output.data,
+        ),
+    )
+end
+
+function signal_analyser_layout_outputs_payload(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    layout::SignalDisplayLayoutState,
+)::Vector{Dict{String,Any}}
+    Dict{String,Any}[
+        signal_analyser_pane_output_payload(
+            signal_analyser_prepare_pane_output!(state, display, pane),
+        )
+        for pane in layout.panes
+    ]
+end
+
 function signal_display_pane_payload(pane::SignalDisplayPaneState)::Dict{String,Any}
     Dict{String,Any}(
         "id" => pane.id,
@@ -1179,12 +1354,17 @@ function signal_analyser_layout_entries_payload(
     state::SignalAnalyserState,
 )::Vector{Dict{String,Any}}
     Dict{String,Any}[
-        Dict{String,Any}(
-            "display_id" => display.id,
-            "layout" => signal_display_layout_payload(
-                signal_analyser_layout_by_display_id(state, display.id),
-            ),
-        )
+        let layout = signal_analyser_layout_by_display_id(state, display.id)
+            Dict{String,Any}(
+                "display_id" => display.id,
+                "layout" => signal_display_layout_payload(layout),
+                "outputs" => signal_analyser_layout_outputs_payload(
+                    state,
+                    display,
+                    layout,
+                ),
+            )
+        end
         for display in state.displays
     ]
 end
