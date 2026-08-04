@@ -34,7 +34,8 @@ route("/fonts/:file", method = GET) do
 end
 
 route("/api/status", method = GET) do
-    api_json(status_payload())
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    api_json(status_payload(); headers = response_headers)
 end
 
 route("/api/state", method = GET) do
