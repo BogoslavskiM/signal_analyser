@@ -1,41 +1,94 @@
 using Test
 
 const RUNTIME_API = Main.AppTestContext
-const RUNTIME_REVISION_ENV_KEY = "SIGNAL_ANALYSER_RUNTIME_REVISION"
 const RUNTIME_REVISION_FIXTURE_SHA = "0123456789abcdef0123456789abcdef01234567"
-const RUNTIME_REVISION_OTHER_SHA = "fedcba9876543210fedcba9876543210fedcba98"
 const RUNTIME_REVISION_CONFIG_PATH = joinpath(
     RUNTIME_API.PROJECT_ROOT,
     "lib",
     "config.jl",
 )
 
-function with_runtime_revision_environment(
-    callback::Function,
-    value::Union{Nothing,String},
-)
-    was_present = haskey(ENV, RUNTIME_REVISION_ENV_KEY)
-    previous = get(ENV, RUNTIME_REVISION_ENV_KEY, nothing)
+module RuntimeRevisionConfigFixture end
+Base.include(RuntimeRevisionConfigFixture, RUNTIME_REVISION_CONFIG_PATH)
+
+function runtime_git_command(repository::String, arguments::String...)
+    Cmd(vcat(["git", "-C", repository], collect(arguments)))
+end
+
+function run_runtime_git(repository::String, arguments::String...)
+    run(runtime_git_command(repository, arguments...))
+end
+
+function read_runtime_git(repository::String, arguments::String...)
+    readchomp(runtime_git_command(repository, arguments...))
+end
+
+function write_runtime_fixture(path::String, contents::String)
+    mkpath(dirname(path))
+    write(path, contents)
+end
+
+function append_runtime_fixture(path::String, contents::String)
+    open(path, "a") do io
+        write(io, contents)
+    end
+end
+
+function with_runtime_repository(callback::Function)
+    mktempdir() do repository
+        run(`git init --quiet $repository`)
+        run_runtime_git(repository, "config", "user.name", "Runtime Revision Test")
+        run_runtime_git(
+            repository,
+            "config",
+            "user.email",
+            "runtime-revision@example.invalid",
+        )
+
+        write_runtime_fixture(joinpath(repository, "app", "runtime.txt"), "app\n")
+        write_runtime_fixture(joinpath(repository, "lib", "runtime.txt"), "lib\n")
+        write_runtime_fixture(joinpath(repository, "public", "runtime.txt"), "public\n")
+        write_runtime_fixture(joinpath(repository, "run.jl"), "# runtime entrypoint\n")
+        write_runtime_fixture(joinpath(repository, "notes.txt"), "outside runtime surface\n")
+        run_runtime_git(repository, "add", "--all")
+        run_runtime_git(repository, "commit", "--quiet", "-m", "initial runtime fixture")
+
+        callback(repository)
+    end
+end
+
+function with_runtime_path(callback::Function, path::String)
+    was_present = haskey(ENV, "PATH")
+    previous = get(ENV, "PATH", nothing)
     try
-        if value === nothing
-            pop!(ENV, RUNTIME_REVISION_ENV_KEY, nothing)
-        else
-            ENV[RUNTIME_REVISION_ENV_KEY] = value
-        end
+        ENV["PATH"] = path
         callback()
     finally
         if was_present
-            ENV[RUNTIME_REVISION_ENV_KEY] = previous::String
+            ENV["PATH"] = previous::String
         else
-            pop!(ENV, RUNTIME_REVISION_ENV_KEY, nothing)
+            pop!(ENV, "PATH", nothing)
         end
     end
 end
 
-module RuntimeRevisionConfigFixture end
-Base.include(RuntimeRevisionConfigFixture, RUNTIME_REVISION_CONFIG_PATH)
+function captured_exception(callback::Function)
+    try
+        callback()
+        nothing
+    catch exception
+        exception
+    end
+end
 
-@testset "TASK-0043 strict runtime revision source and ENV restoration" begin
+function write_fake_git(directory::String, contents::String)
+    path = joinpath(directory, "git")
+    write(path, contents)
+    chmod(path, 0o755)
+    path
+end
+
+@testset "TASK-0043 strict runtime revision value" begin
     revision = RuntimeRevisionConfigFixture.RuntimeRevision(
         RUNTIME_REVISION_FIXTURE_SHA,
     )
@@ -43,7 +96,6 @@ Base.include(RuntimeRevisionConfigFixture, RUNTIME_REVISION_CONFIG_PATH)
     @test typeof(revision) === RuntimeRevisionConfigFixture.RuntimeRevision
 
     invalid_values = (
-        ("missing", nothing),
         ("empty", ""),
         ("padded", " $RUNTIME_REVISION_FIXTURE_SHA "),
         ("uppercase", uppercase(RUNTIME_REVISION_FIXTURE_SHA)),
@@ -53,53 +105,185 @@ Base.include(RuntimeRevisionConfigFixture, RUNTIME_REVISION_CONFIG_PATH)
     )
     for (label, value) in invalid_values
         @testset "$label is rejected" begin
-            with_runtime_revision_environment(value) do
-                @test_throws ArgumentError RuntimeRevisionConfigFixture.runtime_revision_from_environment()
-            end
+            @test_throws ArgumentError RuntimeRevisionConfigFixture.RuntimeRevision(value)
         end
     end
-
-    with_runtime_revision_environment(RUNTIME_REVISION_FIXTURE_SHA) do
-        loaded = RuntimeRevisionConfigFixture.runtime_revision_from_environment()
-        @test loaded.sha == RUNTIME_REVISION_FIXTURE_SHA
-    end
-
-    environment_was_present = haskey(ENV, RUNTIME_REVISION_ENV_KEY)
-    environment_before = get(ENV, RUNTIME_REVISION_ENV_KEY, nothing)
-    @test_throws ErrorException with_runtime_revision_environment(
-        RUNTIME_REVISION_FIXTURE_SHA,
-    ) do
-        error("runtime revision ENV restoration probe")
-    end
-    @test haskey(ENV, RUNTIME_REVISION_ENV_KEY) == environment_was_present
-    @test get(ENV, RUNTIME_REVISION_ENV_KEY, nothing) == environment_before
 end
 
-module RuntimeRevisionBootstrapFixture end
-with_runtime_revision_environment(RUNTIME_REVISION_FIXTURE_SHA) do
-    Base.include(RuntimeRevisionBootstrapFixture, RUNTIME_REVISION_CONFIG_PATH)
-    Core.eval(
-        RuntimeRevisionBootstrapFixture,
-        :(const RUNTIME_REVISION = runtime_revision_from_environment()),
-    )
+@testset "TASK-0043 clean Git checkout attestation" begin
+    with_runtime_repository() do repository
+        expected_sha = read_runtime_git(
+            repository,
+            "rev-parse",
+            "--verify",
+            "HEAD^{commit}",
+        )
+        revision = RuntimeRevisionConfigFixture.runtime_revision_from_git_checkout(
+            repository,
+        )
+
+        @test revision.sha == expected_sha
+        @test occursin(r"\A[0-9a-f]{40}\z", revision.sha)
+        @test typeof(revision) === RuntimeRevisionConfigFixture.RuntimeRevision
+    end
 end
 
 @testset "TASK-0043 runtime revision is immutable for process lifetime" begin
-    initialized = RuntimeRevisionBootstrapFixture.RUNTIME_REVISION
-    @test initialized.sha == RUNTIME_REVISION_FIXTURE_SHA
-    with_runtime_revision_environment(RUNTIME_REVISION_OTHER_SHA) do
-        @test RuntimeRevisionBootstrapFixture.RUNTIME_REVISION === initialized
-        @test RuntimeRevisionBootstrapFixture.RUNTIME_REVISION.sha ==
-            RUNTIME_REVISION_FIXTURE_SHA
-        @test RuntimeRevisionBootstrapFixture.runtime_revision_from_environment().sha ==
-            RUNTIME_REVISION_OTHER_SHA
+    with_runtime_repository() do repository
+        initial_sha = read_runtime_git(repository, "rev-parse", "HEAD")
+        process_fixture = Module(gensym(:RuntimeRevisionProcessFixture))
+        Core.eval(
+            process_fixture,
+            :(const RUNTIME_REVISION = Main.RuntimeRevisionConfigFixture.runtime_revision_from_git_checkout($repository)),
+        )
+        initialized = Base.invokelatest(
+            getfield,
+            process_fixture,
+            :RUNTIME_REVISION,
+        )
+
+        append_runtime_fixture(joinpath(repository, "app", "runtime.txt"), "next\n")
+        run_runtime_git(repository, "add", "--", "app/runtime.txt")
+        run_runtime_git(repository, "commit", "--quiet", "-m", "next runtime fixture")
+        current_sha = read_runtime_git(repository, "rev-parse", "HEAD")
+
+        @test current_sha != initial_sha
+        @test Base.invokelatest(
+            getfield,
+            process_fixture,
+            :RUNTIME_REVISION,
+        ) === initialized
+        @test initialized.sha == initial_sha
+        @test RuntimeRevisionConfigFixture.runtime_revision_from_git_checkout(repository).sha ==
+            current_sha
     end
 
     bootstrap_source = RUNTIME_API.source("app", "bootstrap.jl")
     @test length(collect(eachmatch(
-        r"const RUNTIME_REVISION = runtime_revision_from_environment\(\)",
+        r"const RUNTIME_REVISION = runtime_revision_from_git_checkout\(\s*normpath\(joinpath\(@__DIR__, \"\.\.\"\)\),\s*\)",
         bootstrap_source,
     ))) == 1
+end
+
+@testset "TASK-0043 Git attestation failures are fail-closed" begin
+    mktempdir() do non_repository
+        @test_throws ProcessFailedException RuntimeRevisionConfigFixture.runtime_revision_from_git_checkout(
+            non_repository,
+        )
+    end
+
+    with_runtime_repository() do repository
+        mktempdir() do empty_path
+            missing_git_error = with_runtime_path(empty_path) do
+                captured_exception() do
+                    RuntimeRevisionConfigFixture.runtime_revision_from_git_checkout(
+                        repository,
+                    )
+                end
+            end
+            @test missing_git_error !== nothing
+            @test missing_git_error isa Base.IOError
+        end
+
+        mktempdir() do fake_path
+            write_fake_git(fake_path, "#!/bin/sh\nexit 17\n")
+            command_error = with_runtime_path(fake_path) do
+                captured_exception() do
+                    RuntimeRevisionConfigFixture.runtime_revision_from_git_checkout(
+                        repository,
+                    )
+                end
+            end
+            @test command_error isa ProcessFailedException
+        end
+
+        mktempdir() do fake_path
+            write_fake_git(
+                fake_path,
+                "#!/bin/sh\ncase \"\$*\" in\n*rev-parse*) printf 'not-a-sha\\n'; exit 0 ;;\n*status*) exit 0 ;;\nesac\nexit 17\n",
+            )
+            with_runtime_path(fake_path) do
+                @test_throws ArgumentError RuntimeRevisionConfigFixture.runtime_revision_from_git_checkout(
+                    repository,
+                )
+            end
+        end
+    end
+end
+
+@testset "TASK-0043 dirty runtime surface is rejected" begin
+    dirty_cases = (
+        (
+            "staged app change",
+            repository -> begin
+                append_runtime_fixture(joinpath(repository, "app", "runtime.txt"), "staged\n")
+                run_runtime_git(repository, "add", "--", "app/runtime.txt")
+            end,
+        ),
+        (
+            "unstaged lib change",
+            repository -> append_runtime_fixture(
+                joinpath(repository, "lib", "runtime.txt"),
+                "unstaged\n",
+            ),
+        ),
+        (
+            "untracked public change",
+            repository -> write_runtime_fixture(
+                joinpath(repository, "public", "untracked.txt"),
+                "untracked\n",
+            ),
+        ),
+        (
+            "run.jl change",
+            repository -> append_runtime_fixture(
+                joinpath(repository, "run.jl"),
+                "# dirty\n",
+            ),
+        ),
+    )
+
+    for (label, make_dirty) in dirty_cases
+        @testset "$label is rejected" begin
+            with_runtime_repository() do repository
+                make_dirty(repository)
+                @test_throws ArgumentError RuntimeRevisionConfigFixture.runtime_revision_from_git_checkout(
+                    repository,
+                )
+            end
+        end
+    end
+end
+
+@testset "TASK-0043 changes outside runtime surface are allowed" begin
+    with_runtime_repository() do repository
+        expected_sha = read_runtime_git(repository, "rev-parse", "HEAD")
+        append_runtime_fixture(joinpath(repository, "notes.txt"), "unstaged\n")
+        write_runtime_fixture(joinpath(repository, "docs", "staged.txt"), "staged\n")
+        run_runtime_git(repository, "add", "--", "docs/staged.txt")
+        write_runtime_fixture(joinpath(repository, "scratch.txt"), "untracked\n")
+
+        revision = RuntimeRevisionConfigFixture.runtime_revision_from_git_checkout(
+            repository,
+        )
+        @test revision.sha == expected_sha
+        @test !isempty(read_runtime_git(repository, "status", "--porcelain=v1"))
+    end
+end
+
+@testset "TASK-0043 implementation source contracts" begin
+    config_source = RUNTIME_API.source("lib", "config.jl")
+    bootstrap_source = RUNTIME_API.source("app", "bootstrap.jl")
+    implementation_source = config_source * bootstrap_source
+
+    @test occursin(
+        r"status --porcelain=v1 -z --untracked-files=all --ignore-submodules=none -- app lib public run\.jl",
+        config_source,
+    )
+    @test !occursin("Project.toml", implementation_source)
+    @test !occursin("Manifest.toml", implementation_source)
+    @test !occursin(r"\bENV\b", implementation_source)
+    @test !occursin("runtime_revision_from_environment", implementation_source)
 end
 
 if !isdefined(RUNTIME_API, :RuntimeRevision)
