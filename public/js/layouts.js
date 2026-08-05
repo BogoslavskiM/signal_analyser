@@ -2,7 +2,7 @@
   "use strict";
 
   var PLOTS = ["time", "spectrum", "spectrogram", "persistence"];
-  var TITLES = { time:"Time", spectrum:"Spectrum", spectrogram:"Spectrogram", persistence:"Persistence" };
+  var TITLES = { time:"Временная область", spectrum:"Спектр", spectrogram:"Спектрограмма", persistence:"Спектр персистентности" };
   var api = window.SignalAnalyserApi;
   var root, grid, runtime, popover, activeHost, plotControl, overflowTrigger, overflowMenu;
   var layoutsByDisplay = {};
@@ -17,6 +17,12 @@
   var pending = null;
   var toastTimer = null;
   var paneRenderGeneration = 0;
+  // Payloads are active-pane only.  Keep the last accepted payload per pane so
+  // changing the active pane never turns an already live Plotly graph into an
+  // image or a synthetic browser-side plot.
+  var panePayloadCache = {};
+  var paneRenderQueue = {};
+  var paneResizeObservers = {};
   var mounted = false;
   var ui = {
     open:false,
@@ -68,8 +74,8 @@
   function validLayout(layout, knownBindings) {
     var paneIds = {};
     if (!layout || typeof layout !== "object" || Array.isArray(layout) || layout.version !== 1 ||
-        !integer(layout.rows) || layout.rows < 1 || layout.rows > 4 ||
-        !integer(layout.columns) || layout.columns < 1 || layout.columns > 4 ||
+        !integer(layout.rows) || layout.rows < 1 || layout.rows > 10 ||
+        !integer(layout.columns) || layout.columns < 1 || layout.columns > 10 ||
         layout.variant !== variant(layout.rows, layout.columns) ||
         !integer(layout.next_pane_number) || layout.next_pane_number < 2 ||
         !Array.isArray(layout.panes) || layout.panes.length !== paneCount(layout)) return false;
@@ -123,8 +129,12 @@
     if (state.state_revision !== envelope.state_revision || state.active_display_id !== envelope.active_display_id || !seenDisplays[envelope.active_display_id] || envelope.layouts.length !== displayIds.length) return null;
     if (!envelope.layouts.every(function(entry) {
       if (!exactKeys(entry, ["display_id", "layout", "outputs"]) || typeof entry.display_id !== "string" || !seenDisplays[entry.display_id] || own(normalized, entry.display_id) || !validLayout(entry.layout, signalMap) ||
-          !Array.isArray(entry.outputs) || entry.outputs.length !== entry.layout.panes.length ||
-          !entry.outputs.every(function(record, index) { return validPaneOutput(record, entry.layout.panes[index], signalMap); })) return false;
+          !Array.isArray(entry.outputs)) return false;
+      // TASK-0070: only the active Display has exactly its active pane output;
+      // inactive Displays deliberately carry an empty array.
+      if (entry.display_id === envelope.active_display_id) {
+        if (entry.outputs.length !== 1 || !validPaneOutput(entry.outputs[0], activePane(entry.layout), signalMap)) return false;
+      } else if (entry.outputs.length !== 0) return false;
       normalized[entry.display_id] = entry.layout;
       normalizedOutputs[entry.display_id] = entry.outputs;
       return true;
@@ -139,13 +149,24 @@
     }
   }
 
+  function latestKnownRevision() {
+    var revisions = [envelopeRevision, appRevision].filter(integer);
+    return revisions.length ? Math.max.apply(null, revisions) : null;
+  }
+
   function acceptEnvelope(envelope, notifyApp) {
-    var accepted = normalizeEnvelope(envelope);
+    var accepted = normalizeEnvelope(envelope), revisionFloor = latestKnownRevision();
     if (!accepted) return false;
+    if (revisionFloor !== null && accepted.revision < revisionFloor) return false;
     envelopeRevision = accepted.revision;
     activeDisplayId = accepted.activeDisplayId;
     layoutsByDisplay = accepted.layouts;
     outputsByDisplay = accepted.outputs;
+    accepted.outputs[accepted.activeDisplayId].forEach(function(record) {
+      if (record.output && record.output.isready && record.output.success && hasOutputData(record)) {
+        panePayloadCache[record.pane_id] = record;
+      }
+    });
     signalColors = accepted.colors;
     render();
     if (notifyApp) dispatchState(accepted.state);
@@ -167,20 +188,15 @@
 
   function paneOutputMarkup(pane, index, isActive, record) {
     var prefix = "<div class='pane-output", suffix = "' data-testid='pane-output-" + esc(pane.id) + "'";
-    if (!record.output.isready) return prefix + " pane-output-loading" + suffix + " data-pane-output-state='loading' role='status'><span class='spinner'></span><span>Loading Pane " + index + "…</span></div>";
-    if (!record.output.success) return prefix + " pane-output-error" + suffix + " data-pane-output-state='error' role='alert'><strong>Pane " + index + " could not render</strong><span>" + esc(record.output.error) + "</span></div>";
-    if (!pane.signal_bindings.length || !hasOutputData(record)) return prefix + " pane-output-empty" + suffix + " data-pane-output-state='empty'><strong>" + (!pane.signal_bindings.length ? "No signals bound" : "No renderable data") + "</strong><span>" + (!pane.signal_bindings.length ? "Use Signals checkboxes for this pane." : "Adjust this pane’s signals or settings.") + "</span></div>";
-    return prefix + suffix + " data-pane-output-state='ready'>" + (isActive ? "" : "<div class='pane-plot-host' data-pane-plot-host='" + esc(pane.id) + "' data-testid='pane-plot-host-" + esc(pane.id) + "' role='img' aria-label='Pane " + index + " " + TITLES[pane.plot_type] + " plot'></div>") + "</div>";
+    record = record || panePayloadCache[pane.id] || null;
+    if (!record) return prefix + " pane-output-empty" + suffix + " data-pane-output-state='empty'><strong>Нет данных области</strong><span>Выберите область, чтобы загрузить её график.</span></div>";
+    if (!record.output.isready) return prefix + " pane-output-loading" + suffix + " data-pane-output-state='loading' role='status'><span class='spinner'></span><span>Обновление графика…</span></div>";
+    if (!record.output.success) return prefix + " pane-output-error" + suffix + " data-pane-output-state='error' role='alert'><strong>График не обновлён</strong><span>" + esc(record.output.error) + "</span></div>";
+    if (!pane.signal_bindings.length || !hasOutputData(record)) return prefix + " pane-output-empty" + suffix + " data-pane-output-state='empty'><strong>Нет видимых сигналов</strong><span>Выберите сигналы для активной области.</span></div>";
+    return prefix + suffix + " data-pane-output-state='ready'>" + (isActive ? "" : "<div class='pane-plot-host' data-pane-plot-host='" + esc(pane.id) + "' data-testid='pane-plot-host-" + esc(pane.id) + "' role='img' aria-label='График области " + index + "'></div>") + "</div>";
   }
 
-  function purgePaneHosts() {
-    var Plotly = window.Plotly || window.moduleName;
-    ++paneRenderGeneration;
-    if (!Plotly || typeof Plotly.purge !== "function" || !grid) return;
-    Array.prototype.slice.call(grid.querySelectorAll("[data-pane-plot-host]")).forEach(function(host) {
-      try { Plotly.purge(host); } catch (ignored) {}
-    });
-  }
+  function purgePaneHosts() { ++paneRenderGeneration; }
 
   function panePlotData(record) {
     var data = record.output.data;
@@ -210,8 +226,9 @@
       font:{ family:"Roboto, Arial, sans-serif", color:"#202938", size:compact ? 8 : 10 },
       xaxis:{ title:{ text:compact ? "" : metadata.x_label || "" }, gridcolor:"#e7edf3", type:record.plot_type === "spectrum" && metadata.frequency_scale === "log" ? "log" : undefined },
       yaxis:{ title:{ text:compact ? "" : metadata.y_label || "" }, gridcolor:"#e7edf3", type:frequencyScale === "log" ? "log" : undefined },
+      dragmode:"zoom",
       showlegend:!heat && !compact,
-      legend:{ orientation:"h", y:-.2 },
+      legend:{ orientation:"h", x:.99, y:.99, xanchor:"right", yanchor:"top", font:{ size:10 }, bgcolor:"rgba(255,255,255,.78)", borderwidth:0 },
     };
   }
 
@@ -220,7 +237,7 @@
     var output = host.parentNode;
     output.classList.add("pane-output-error");
     output.dataset.paneOutputState = "error";
-    output.innerHTML = "<strong>Pane could not render</strong><span>" + esc(copy) + "</span>";
+    output.innerHTML = "<strong>Не удалось отрисовать область</strong><span>" + esc(copy) + "</span>";
   }
 
   function resizeActivePlot(host) {
@@ -232,32 +249,43 @@
     });
   }
 
-  function renderPanePlots(layout, outputs) {
-    var Plotly = window.Plotly || window.moduleName;
-    var generation = ++paneRenderGeneration;
-    if (!Plotly || typeof Plotly.react !== "function") {
-      Array.prototype.slice.call(grid.querySelectorAll("[data-pane-plot-host]")).forEach(function(host) {
-        renderLocalPaneError(host, "Plot renderer unavailable. Reload the application to retry.");
+  function queuePaneRender(host, record, compact) {
+    var key = record.pane_id;
+    if (!paneResizeObservers[key] && window.ResizeObserver) {
+      paneResizeObservers[key] = new window.ResizeObserver(function() {
+        var task = paneRenderQueue[key];
+        if (!task || task.resizeQueued) return;
+        task.resizeQueued = true;
+        window.requestAnimationFrame(function() { task.resizeQueued = false; resizeActivePlot(task.host); });
       });
-      return;
+      paneResizeObservers[key].observe(host);
     }
-    outputs.forEach(function(record, index) {
-      var renderPromise;
-      if (record.pane_id === layout.active_pane_id || !record.output.isready || !record.output.success || !hasOutputData(record)) return;
-      var host = grid.querySelector("[data-pane-plot-host='" + record.pane_id + "']");
-      if (!host) return;
-      try {
-        renderPromise = Plotly.react(host, panePlotData(record), panePlotLayout(record, layout.rows === 4 && layout.columns === 4), { responsive:true, displaylogo:false, displayModeBar:false });
-      } catch (error) {
-        renderLocalPaneError(host, "Local renderer failed. Retry by changing this pane.");
-        return;
-      }
-      Promise.resolve(renderPromise).then(function() {
-        if (generation === paneRenderGeneration && host.isConnected) host.dataset.plotReady = "true";
-      }, function() {
-        if (generation !== paneRenderGeneration || !host.isConnected) return;
-        renderLocalPaneError(host, "Local renderer failed for Pane " + (index + 1) + ". Retry by changing this pane.");
+    paneRenderQueue[key] = { host:host, record:record, compact:compact };
+    if (paneRenderQueue[key].scheduled || paneRenderQueue[key].inFlight) return;
+    paneRenderQueue[key].scheduled = true;
+    window.requestAnimationFrame(function renderLatestPane() {
+      var task = paneRenderQueue[key], Plotly = window.Plotly || window.moduleName;
+      if (!task) return;
+      task.scheduled = false;
+      if (task.inFlight) return;
+      if (!Plotly || typeof Plotly.react !== "function" || !task.host.isConnected || !task.host.getBoundingClientRect().width || !task.host.getBoundingClientRect().height) return;
+      task.inFlight = true;
+      Promise.resolve(Plotly.react(task.host, panePlotData(task.record), panePlotLayout(task.record, task.compact), { responsive:true, displaylogo:false, displayModeBar:false, showTips:false })).then(function() {
+        task.host.dataset.plotReady = "true";
+      }, function() { renderLocalPaneError(task.host, "Не удалось обновить интерактивный график."); }).finally(function() {
+        task.inFlight = false;
+        if (paneRenderQueue[key] !== task) window.requestAnimationFrame(renderLatestPane);
       });
+    });
+  }
+
+  function renderPanePlots(layout, outputs) {
+    var activeRecord = outputs[0];
+    if (activeRecord && activeRecord.output && activeRecord.output.isready && activeRecord.output.success && hasOutputData(activeRecord)) panePayloadCache[activeRecord.pane_id] = activeRecord;
+    layout.panes.forEach(function(pane) {
+      var record = pane.id === layout.active_pane_id ? activeRecord : panePayloadCache[pane.id];
+      var host = pane.id === layout.active_pane_id ? activeHost : grid.querySelector("[data-pane-plot-host='" + pane.id + "']");
+      if (record && host) queuePaneRender(host, record, layout.rows * layout.columns > 16);
     });
   }
 
@@ -271,7 +299,7 @@
     if (!layout) {
       var loadingTrigger = node("layout-trigger");
       grid.dataset.layoutState = refreshPending ? "loading" : "error";
-      grid.innerHTML = refreshPending ? "<div class='pane-grid-state' data-testid='layout-loading' role='status'><span class='spinner'></span><span>Loading layout…</span></div>" : "<div class='pane-grid-state is-error' data-testid='layout-load-error' role='alert'><span>Не удалось загрузить layout.</span><button type='button' data-testid='layout-retry'>Retry</button></div>";
+      grid.innerHTML = refreshPending ? "<div class='pane-grid-state' data-testid='layout-loading' role='status'><span class='spinner'></span><span>Загрузка макета…</span></div>" : "<div class='pane-grid-state is-error' data-testid='layout-load-error' role='alert'><span>Не удалось загрузить макет.</span><button type='button' data-testid='layout-retry'>Повторить</button></div>";
       returnRuntimeNodes();
       if (loadingTrigger) loadingTrigger.disabled = true;
       if (node("layout-trigger-label")) node("layout-trigger-label").textContent = "—";
@@ -284,14 +312,14 @@
     grid.dataset.activePaneId = layout.active_pane_id;
     grid.style.setProperty("--layout-rows", layout.rows);
     grid.style.setProperty("--layout-columns", layout.columns);
-    grid.classList.toggle("is-compact", layout.rows === 4 && layout.columns === 4);
+    grid.classList.toggle("is-compact", layout.rows * layout.columns > 16);
     grid.innerHTML = layout.panes.map(function(pane, offset) {
       var index = offset + 1;
       var isActive = pane.id === layout.active_pane_id;
       var panePending = pending && pending.paneId === pane.id;
-      var select = isActive ? "" : "<select class='pane-type-select' data-pane-plot-type data-pane-id='" + esc(pane.id) + "' data-testid='pane-plot-type-" + esc(pane.id) + "' aria-label='Plot type for Pane " + index + "'" + (panePending ? " disabled aria-busy='true'" : "") + ">" + PLOTS.map(function(plot) { return "<option value='" + plot + "'" + (pane.plot_type === plot ? " selected" : "") + ">" + TITLES[plot] + "</option>"; }).join("") + "</select>";
-      return "<article class='plot-pane" + (isActive ? " is-active" : "") + (panePending ? " is-pending" : "") + "' data-pane-id='" + esc(pane.id) + "' data-testid='plot-pane-" + esc(pane.id) + "' tabindex='0' aria-current='" + (isActive ? "true" : "false") + "' aria-busy='" + (panePending ? "true" : "false") + "' aria-label='Pane " + index + ", " + TITLES[pane.plot_type] + ", " + pane.signal_bindings.length + " bound signals'>" +
-        "<header class='pane-header'><div class='pane-title'><strong>Pane " + index + "</strong><span class='pane-server-id'>" + esc(pane.id) + "</span>" + (isActive ? "<span class='pane-active-badge'>Active</span>" : "") + "</div><span class='pane-runtime-slot' data-pane-runtime-slot='" + (isActive ? "true" : "false") + "'>" + select + "</span></header>" + paneOutputMarkup(pane, index, isActive, outputs[offset]) + "</article>";
+      var select = isActive ? "" : "<select class='pane-type-select' data-pane-plot-type data-pane-id='" + esc(pane.id) + "' data-testid='pane-plot-type-" + esc(pane.id) + "' aria-label='Тип графика области " + index + "'" + (panePending ? " disabled aria-busy='true'" : "") + ">" + PLOTS.map(function(plot) { return "<option value='" + plot + "'" + (pane.plot_type === plot ? " selected" : "") + ">" + TITLES[plot] + "</option>"; }).join("") + "</select>";
+      return "<article class='plot-pane" + (isActive ? " is-active" : "") + (panePending ? " is-pending" : "") + "' data-pane-id='" + esc(pane.id) + "' data-testid='plot-pane-" + esc(pane.id) + "' tabindex='0' aria-current='" + (isActive ? "true" : "false") + "' aria-busy='" + (panePending ? "true" : "false") + "' aria-label='Область " + index + ", " + TITLES[pane.plot_type] + "'>" +
+        "<header class='pane-header'><div class='pane-title'><strong>Область " + index + "</strong><span class='pane-server-id'>" + esc(pane.id) + "</span>" + (isActive ? "<span class='pane-active-badge'>Активная</span>" : "") + "</div><span class='pane-runtime-slot' data-pane-runtime-slot='" + (isActive ? "true" : "false") + "'>" + select + "</span></header>" + paneOutputMarkup(pane, index, isActive, isActive ? outputs[0] : panePayloadCache[pane.id]) + "</article>";
     }).join("");
     var activeSlot = grid.querySelector("[data-pane-runtime-slot='true']");
     var activeOutput = grid.querySelector("[data-pane-id='" + layout.active_pane_id + "'] [data-pane-output-state='ready']");
@@ -304,8 +332,7 @@
     }
     if (overflowTrigger && activeSlot) activeSlot.appendChild(overflowTrigger);
     if (overflowMenu && activeSlot) activeSlot.appendChild(overflowMenu);
-    if (host && activeOutput) { activeOutput.appendChild(host); resizeActivePlot(host); }
-    else if (host && runtime && host.parentNode !== runtime) runtime.appendChild(host);
+    if (host && activeOutput && host.parentNode !== activeOutput) activeOutput.appendChild(host);
     var activeTypePending = !!(pending && pending.kind === "update_pane" && pending.paneId === active.id && pending.controlName === "plot_type");
     setLayoutDisabled(plotControl && plotControl.querySelector("select"), activeTypePending);
     setLayoutDisabled(node("settings-view-select"), activeTypePending);
@@ -329,15 +356,15 @@
       trigger.setAttribute("aria-expanded", ui.open ? "true" : "false");
       node("layout-trigger-label").textContent = pretty(layout.rows, layout.columns);
     }
-    if (title) title.textContent = "Pane " + index + " · " + TITLES[pane.plot_type];
-    if (bindingTitle) bindingTitle.textContent = "Bindings for Pane " + index;
+    if (title) title.textContent = "Область " + index + " · " + TITLES[pane.plot_type];
+    if (bindingTitle) bindingTitle.textContent = "Связи области " + index;
     if (bindingType) bindingType.textContent = TITLES[pane.plot_type];
     Array.prototype.slice.call(document.querySelectorAll("[data-signal-visibility]")).forEach(function(control) {
       var name = control.dataset.signalVisibility;
       var checked = pane.signal_bindings.indexOf(name) >= 0;
       control.checked = checked;
       control.setAttribute("aria-checked", checked ? "true" : "false");
-      control.setAttribute("aria-label", (checked ? "Убрать " : "Добавить ") + name + " " + (checked ? "из" : "в") + " Pane " + index);
+      control.setAttribute("aria-label", (checked ? "Убрать " : "Добавить ") + name + " " + (checked ? "из" : "в") + " области " + index);
       setLayoutDisabled(control, !!(pending && pending.controlName === name));
     });
     var all = node("toggle-all-signals");
@@ -346,14 +373,14 @@
       all.checked = inventory.length > 0 && pane.signal_bindings.length === inventory.length;
       all.indeterminate = pane.signal_bindings.length > 0 && pane.signal_bindings.length < inventory.length;
       setLayoutDisabled(all, !!(pending && pending.controlName === "*"));
-      all.setAttribute("aria-label", "Bind all signals to Pane " + index);
+      all.setAttribute("aria-label", "Связать все сигналы с областью " + index);
     }
   }
 
   function renderDimensionOptions(testId, key, value) {
     var host = node(testId);
     if (!host) return;
-    host.innerHTML = [1, 2, 3, 4].map(function(option) {
+    host.innerHTML = Array.from({ length:10 }, function(_, index) { return index + 1; }).map(function(option) {
       return "<button type='button' data-layout-dimension='" + key + "' data-layout-value='" + option + "' data-testid='layout-" + key + "-" + option + "' aria-pressed='" + (option === value ? "true" : "false") + "' class='" + (option === value ? "is-selected" : "") + "'" + (pending ? " disabled" : "") + ">" + option + "</button>";
     }).join("");
   }
@@ -367,22 +394,24 @@
     total = ui.draftRows * ui.draftColumns;
     oldTotal = paneCount(layout);
     preserved = Math.min(oldTotal, total);
-    node("layout-current-copy").textContent = "Current " + pretty(layout.rows, layout.columns);
-    node("layout-draft-copy").textContent = "Draft " + pretty(ui.draftRows, ui.draftColumns);
+    node("layout-current-copy").textContent = "Текущий макет " + pretty(layout.rows, layout.columns);
+    node("layout-draft-copy").textContent = "Черновик " + pretty(ui.draftRows, ui.draftColumns);
     renderDimensionOptions("layout-row-options", "rows", ui.draftRows);
     renderDimensionOptions("layout-column-options", "columns", ui.draftColumns);
     node("layout-topology").textContent = ui.draftRows + " × " + ui.draftColumns;
-    node("layout-pane-count").textContent = total + (total === 1 ? " pane" : " panes");
+    node("layout-pane-count").textContent = total + " " + (total === 1 ? "область" : "областей");
     preview = node("layout-preview");
     preview.style.setProperty("--preview-rows", ui.draftRows);
     preview.style.setProperty("--preview-columns", ui.draftColumns);
     preview.innerHTML = Array.from({ length:total }).map(function() { return "<span></span>"; }).join("");
-    node("layout-preserve-copy").textContent = preserved === 1 ? "Pane 1 keeps its ID, type, and bindings." : "Panes 1–" + preserved + " keep IDs, types, and bindings.";
+    node("layout-preserve-copy").textContent = preserved === 1 ? "Область 1 сохраняет идентификатор, тип и привязки." : "Области 1–" + preserved + " сохраняют идентификаторы, типы и привязки.";
     var warning = node("layout-warning");
-    warning.hidden = total >= oldTotal;
-    if (total < oldTotal) {
+    warning.hidden = total >= oldTotal && total <= 16;
+    if (total > 16) {
+      node("layout-warning-copy").textContent = "Макет больше 4 × 4 может снизить читаемость графиков. Применение остаётся доступно.";
+    } else if (total < oldTotal) {
       var firstDropped = total + 1;
-      node("layout-warning-copy").textContent = "Panes " + firstDropped + (oldTotal > firstDropped ? "–" + oldTotal : "") + " are the ordered suffix and will be dropped." + (activePaneIndex(layout) > total ? " Active pane falls back to Pane 1." : "");
+      node("layout-warning-copy").textContent = "Области " + firstDropped + (oldTotal > firstDropped ? "–" + oldTotal : "") + " являются конечной частью макета и будут удалены." + (activePaneIndex(layout) > total ? " Активной станет область 1." : "");
     }
     node("layout-conflict").hidden = !ui.conflict;
     node("layout-error").hidden = !ui.error;
@@ -390,7 +419,7 @@
     [node("layout-cancel-close"), node("layout-cancel")].forEach(function(control) { if (control) control.disabled = !!pending; });
     apply = node("layout-apply");
     apply.disabled = !!pending || ui.conflict || (ui.draftRows === layout.rows && ui.draftColumns === layout.columns);
-    apply.textContent = pending && pending.kind === "resize" ? "Applying…" : "Apply";
+    apply.textContent = pending && pending.kind === "resize" ? "Применение…" : "Применить";
     positionPopover();
   }
 
@@ -473,7 +502,7 @@
         ui.open = false;
         ui.conflict = false;
         ui.error = "";
-        showToast("success", "Layout " + pretty(applied.rows, applied.columns) + " applied. Pane IDs were preserved.");
+        showToast("success", "Макет " + pretty(applied.rows, applied.columns) + " применён. Идентификаторы областей сохранены.");
       }
     }).catch(function(error) {
       if (error && error.status === 409 && error.payload && error.payload.current && acceptEnvelope(error.payload.current, true)) {
@@ -484,14 +513,14 @@
           ui.draftColumns = layout.columns;
           ui.conflict = true;
           ui.error = "";
-          node("layout-conflict-copy").textContent = "Server state is now " + pretty(layout.rows, layout.columns) + ". The stale draft was discarded.";
+          node("layout-conflict-copy").textContent = "Состояние сервера: " + pretty(layout.rows, layout.columns) + ". Устаревший черновик отброшен.";
         } else {
-          showToast("warning", "Pane changed on the server. Current state was restored.");
+          showToast("warning", "Область изменилась на сервере. Восстановлено текущее состояние.");
         }
         return;
       }
       if (metadata.kind === "resize") {
-        ui.error = message(error, "Server rejected the draft. Review dimensions and retry.");
+        ui.error = message(error, "Сервер отклонил черновик. Проверьте размеры и повторите попытку.");
         ui.open = true;
       } else {
         showToast("error", message(error, "Не удалось обновить pane."));
@@ -527,7 +556,7 @@
   }
 
   function changeDimension(key, value, focus) {
-    if (pending || (key !== "rows" && key !== "columns") || value < 1 || value > 4) return;
+    if (pending || (key !== "rows" && key !== "columns") || value < 1 || value > 10) return;
     if (key === "rows") ui.draftRows = value; else ui.draftColumns = value;
     ui.conflict = false;
     ui.error = "";
@@ -641,8 +670,8 @@
       event.preventDefault();
       var value = Number(dimension.dataset.layoutValue);
       if (event.key === "Home") value = 1;
-      else if (event.key === "End") value = 4;
-      else value = Math.max(1, Math.min(4, value + (event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1)));
+      else if (event.key === "End") value = 10;
+      else value = Math.max(1, Math.min(10, value + (event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1)));
       changeDimension(dimension.dataset.layoutDimension, value, true);
       return;
     }

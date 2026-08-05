@@ -673,6 +673,7 @@ function signal_analyser_prepared_spectra(
     signal_names::Vector{String},
     ;
     materialize_missing::Bool = true,
+    materialize_signal_names::Vector{String} = signal_names,
 )::Dict{SignalSpectrumCacheKey,SignalSpectrumData}
     isempty(signal_names) && return Dict{SignalSpectrumCacheKey,SignalSpectrumData}()
     limits = display.time_limits
@@ -700,7 +701,7 @@ function signal_analyser_prepared_spectra(
         )
         if haskey(state.spectrum_cache, key)
             prepared[key] = state.spectrum_cache[key]
-        elseif !materialize_missing
+        elseif !materialize_missing || !(name in materialize_signal_names)
             continue
         elseif length(sample_range) == 1
             prepared[key] = SignalSpectrumData(signal_spectrum_topology(signal))
@@ -864,6 +865,7 @@ function signal_analyser_prepare_display_plots(
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
     materialize_missing_persistence::Bool = true,
+    materialize_spectrum_signal_names::Vector{String} = visible_names,
     refresh_spectrogram::Bool = false,
 )::SignalAnalyserPreparedDisplayPlots
     signal.name in visible_names || throw(ArgumentError(
@@ -875,6 +877,7 @@ function signal_analyser_prepare_display_plots(
         display,
         visible_names,
         materialize_missing = materialize_missing_spectra,
+        materialize_signal_names = materialize_spectrum_signal_names,
     )
     prepared_spectrograms = signal_analyser_prepared_spectrograms(
         state,
@@ -980,6 +983,7 @@ function signal_analyser_prepare_display_plots(
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
     materialize_missing_persistence::Bool = true,
+    materialize_spectrum_signal_names::Vector{String} = String[],
     refresh_spectrogram::Bool = false,
 )::SignalAnalyserPreparedDisplayPlots
     isempty(visible_names) || throw(ArgumentError(
@@ -1129,6 +1133,20 @@ function signal_analyser_visible_signal_names(state::SignalAnalyserState)::Vecto
     [signal.name for signal in state.signals if signal.visible]
 end
 
+function signal_analyser_inventory_ordered_names(
+    state::SignalAnalyserState,
+    signal_names::AbstractVector{<:AbstractString},
+)::Vector{String}
+    requested_names = Set(String.(signal_names))
+    ordered_names = String[
+        signal.name for signal in state.signals if signal.name in requested_names
+    ]
+    length(ordered_names) == length(signal_names) || throw(ArgumentError(
+        "Signal membership ссылается на неизвестный или повторяющийся сигнал",
+    ))
+    ordered_names
+end
+
 function signal_analyser_display_by_id(
     state::SignalAnalyserState,
     display_id::AbstractString,
@@ -1250,6 +1268,8 @@ function signal_analyser_prepare_pane_output!(
             materialize_missing_spectra = pane.plot_type == SPECTRUM_PLOT,
             materialize_missing_spectrogram = pane.plot_type == SPECTROGRAM_PLOT,
             materialize_missing_persistence = pane.plot_type == PERSISTENCE_PLOT,
+            materialize_spectrum_signal_names = analysis_name === nothing ?
+                String[] : String[analysis_name],
         )
         data = signal_analyser_pane_renderer_data(
             prepared,
@@ -1318,11 +1338,12 @@ function signal_analyser_layout_outputs_payload(
     display::SignalAnalyserDisplayState,
     layout::SignalDisplayLayoutState,
 )::Vector{Dict{String,Any}}
+    display.id == state.active_display_id || return Dict{String,Any}[]
+    active_pane = signal_display_active_pane(layout)
     Dict{String,Any}[
         signal_analyser_pane_output_payload(
-            signal_analyser_prepare_pane_output!(state, display, pane),
+            signal_analyser_prepare_pane_output!(state, display, active_pane),
         )
-        for pane in layout.panes
     ]
 end
 
@@ -1373,6 +1394,7 @@ function signal_analyser_layouts_snapshot_from_state_unlocked(
     state::SignalAnalyserState,
     snapshot::Dict{String,Any},
 )::Dict{String,Any}
+    signal_analyser_validate_selection_layout_invariants(state)
     Dict{String,Any}(
         "ok" => true,
         "state_revision" => state.view.state_revision,
@@ -1387,7 +1409,12 @@ function signal_analyser_layouts_snapshot_unlocked(
 )::Dict{String,Any}
     signal_analyser_layouts_snapshot_from_state_unlocked(
         state,
-        signal_analyser_snapshot_unlocked(state),
+        signal_analyser_snapshot_unlocked(
+            state,
+            materialize_missing_spectra = false,
+            materialize_missing_spectrogram = false,
+            materialize_missing_persistence = false,
+        ),
     )
 end
 
@@ -1397,20 +1424,99 @@ function signal_analyser_layouts_snapshot(state::SignalAnalyserState)::Dict{Stri
     end
 end
 
+function signal_analyser_validate_selection_layout_invariants(
+    state::SignalAnalyserState,
+)::Nothing
+    inventory = String[signal.name for signal in state.signals]
+    allunique(inventory) || throw(ArgumentError(
+        "Имена authoritative signals не должны повторяться",
+    ))
+    known_names = Set(inventory)
+    state.row_selection.signal_name in known_names || throw(ArgumentError(
+        "Row-selected signal отсутствует в authoritative signals",
+    ))
+
+    display_ids = String[display.id for display in state.displays]
+    allunique(display_ids) || throw(ArgumentError(
+        "Идентификаторы Display не должны повторяться",
+    ))
+    state.active_display_id in display_ids || throw(ArgumentError(
+        "Active Display отсутствует в authoritative displays",
+    ))
+    Set(keys(state.display_layouts)) == Set(display_ids) || throw(ArgumentError(
+        "Каждый Display должен иметь ровно один authoritative layout",
+    ))
+
+    for display in state.displays
+        members = signal_analyser_display_members(display)
+        members == signal_analyser_inventory_ordered_names(state, members) || throw(
+            ArgumentError(
+                "Visible signals Display $(display.id) не следуют authoritative inventory order",
+            ),
+        )
+        analysis_name = signal_analyser_display_analysis_name(display)
+        isempty(members) == (analysis_name === nothing) || throw(ArgumentError(
+            "Analysis signal Display $(display.id) должна отсутствовать только при пустом membership",
+        ))
+        analysis_name === nothing || analysis_name in members || throw(ArgumentError(
+            "Analysis signal Display $(display.id) отсутствует в authoritative membership",
+        ))
+
+        layout = signal_analyser_layout_by_display_id(state, display.id)
+        for pane in layout.panes
+            pane_members = signal_display_pane_members(pane)
+            signal_analyser_inventory_ordered_names(state, pane_members)
+            pane_analysis = signal_display_pane_analysis_name(pane)
+            isempty(pane_members) == (pane_analysis === nothing) || throw(ArgumentError(
+                "Analysis signal pane $(pane.id) должна отсутствовать только при пустых bindings",
+            ))
+            pane_analysis === nothing || pane_analysis in pane_members || throw(ArgumentError(
+                "Analysis signal pane $(pane.id) отсутствует в authoritative bindings",
+            ))
+        end
+
+        active_pane = signal_display_active_pane(layout)
+        active_members = signal_display_pane_members(active_pane)
+        Set(active_members) == Set(members) || throw(ArgumentError(
+            "Bindings active pane не совпадают с membership Display $(display.id)",
+        ))
+        active_pane.plot_type == display.active_plot || throw(ArgumentError(
+            "Plot type active pane не совпадает с Display $(display.id)",
+        ))
+    end
+
+    active_display = signal_analyser_active_display(state)
+    active_members = Set(signal_analyser_display_members(active_display))
+    all(signal -> signal.visible == (signal.name in active_members), state.signals) || throw(
+        ArgumentError("Visible flags signals не совпадают с active Display membership"),
+    )
+    state.view.active_plot == active_display.active_plot || throw(ArgumentError(
+        "Active plot view не совпадает с active Display",
+    ))
+    isequal(
+        state.view.selected_signal,
+        signal_analyser_display_analysis_name(active_display),
+    ) || throw(ArgumentError(
+        "Selected signal view не совпадает с active Display analysis signal",
+    ))
+    nothing
+end
+
 function signal_analyser_display_for_layout(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
     layout::SignalDisplayLayoutState,
 )::SignalAnalyserDisplayState
     pane = signal_display_active_pane(layout)
-    members = signal_display_pane_members(pane)
+    pane_members = signal_display_pane_members(pane)
+    members = signal_analyser_inventory_ordered_names(state, pane_members)
     current_analysis = signal_analyser_display_analysis_name(display)
-    analysis_name = if isempty(members)
+    analysis_name = if isempty(pane_members)
         nothing
-    elseif current_analysis !== nothing && current_analysis in members
+    elseif current_analysis !== nothing && current_analysis in pane_members
         current_analysis
     else
-        first(members)
+        first(pane_members)
     end
     analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
     prospective_members = AnalysedSignal[signal_by_name(state, name) for name in members]
@@ -2838,6 +2944,7 @@ function signal_analyser_snapshot_unlocked(
     ;
     materialize_missing_spectra::Bool = true,
     materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
 )::Dict{String,Any}
     active_display = signal_analyser_active_display(state)
     analysis_name = signal_analyser_display_analysis_name(active_display)
@@ -2849,6 +2956,7 @@ function signal_analyser_snapshot_unlocked(
         signal_analyser_visible_signal_names(state),
         materialize_missing_spectra = materialize_missing_spectra,
         materialize_missing_spectrogram = materialize_missing_spectrogram,
+        materialize_missing_persistence = materialize_missing_persistence,
     )
     snapshot = signal_analyser_snapshot_from_prepared_unlocked(
         state,
@@ -2959,7 +3067,12 @@ function signal_analyser_only_secondary_provider_settings_changed(
     ))
 end
 
-function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{String,Any}
+function signal_analyser_snapshot_unlocked(
+    state::SignalAnalyserState;
+    materialize_missing_spectra::Bool = true,
+    materialize_missing_spectrogram::Bool = true,
+    materialize_missing_persistence::Bool = true,
+)::Dict{String,Any}
     display = signal_analyser_active_display(state)
     analysis_name = signal_analyser_display_analysis_name(display)
     signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
@@ -2976,7 +3089,14 @@ function signal_analyser_snapshot_unlocked(state::SignalAnalyserState)::Dict{Str
         display,
         signal,
     )
-    signal_analyser_snapshot_unlocked(state, measurements, peaks)
+    signal_analyser_snapshot_unlocked(
+        state,
+        measurements,
+        peaks,
+        materialize_missing_spectra = materialize_missing_spectra,
+        materialize_missing_spectrogram = materialize_missing_spectrogram,
+        materialize_missing_persistence = materialize_missing_persistence,
+    )
 end
 
 function signal_analyser_snapshot(state::SignalAnalyserState)::Dict{String,Any}
@@ -3989,6 +4109,11 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 active_display,
                 analysis_signal,
                 signal_analyser_display_plot_names(active_display),
+                materialize_missing_spectra = active_display.active_plot == SPECTRUM_PLOT,
+                materialize_missing_spectrogram = active_display.active_plot == SPECTROGRAM_PLOT,
+                materialize_missing_persistence = active_display.active_plot == PERSISTENCE_PLOT,
+                materialize_spectrum_signal_names = analysis_signal === nothing ?
+                    String[] : String[analysis_signal.name],
             )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
@@ -4034,6 +4159,11 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 display,
                 analysis_signal,
                 signal_analyser_display_plot_names(display),
+                materialize_missing_spectra = display.active_plot == SPECTRUM_PLOT,
+                materialize_missing_spectrogram = display.active_plot == SPECTROGRAM_PLOT,
+                materialize_missing_persistence = display.active_plot == PERSISTENCE_PLOT,
+                materialize_spectrum_signal_names = analysis_signal === nothing ?
+                    String[] : String[analysis_signal.name],
             )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
@@ -4063,6 +4193,11 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 display,
                 analysis_signal,
                 signal_analyser_display_plot_names(display),
+                materialize_missing_spectra = display.active_plot == SPECTRUM_PLOT,
+                materialize_missing_spectrogram = display.active_plot == SPECTROGRAM_PLOT,
+                materialize_missing_persistence = display.active_plot == PERSISTENCE_PLOT,
+                materialize_spectrum_signal_names = analysis_signal === nothing ?
+                    String[] : String[analysis_signal.name],
             )
             next_revision = state.view.state_revision + (changed ? 1 : 0)
             prepared_measurements = signal_measurements_snapshot(
@@ -4101,6 +4236,14 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
                 next_active_display,
                 analysis_signal,
                 signal_analyser_display_plot_names(next_active_display),
+                materialize_missing_spectra =
+                    next_active_display.active_plot == SPECTRUM_PLOT,
+                materialize_missing_spectrogram =
+                    next_active_display.active_plot == SPECTROGRAM_PLOT,
+                materialize_missing_persistence =
+                    next_active_display.active_plot == PERSISTENCE_PLOT,
+                materialize_spectrum_signal_names = analysis_signal === nothing ?
+                    String[] : String[analysis_signal.name],
             )
             prepared_measurements = signal_measurements_snapshot(
                 state.measurements_service,
@@ -4291,9 +4434,13 @@ function validate_signal_analyser_layout_payload(
             0
         end : 0
         SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= rows <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
-            (field_errors["rows"] = "Требуется целое число от 1 до 4")
+            (field_errors["rows"] =
+                "Требуется целое число от $(SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION) " *
+                "до $(SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION)")
         SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= columns <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
-            (field_errors["columns"] = "Требуется целое число от 1 до 4")
+            (field_errors["columns"] =
+                "Требуется целое число от $(SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION) " *
+                "до $(SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION)")
         variant_value = signal_analyser_payload_value(data, "variant")
         expected_variant = signal_display_layout_variant(rows, columns)
         variant_value isa AbstractString && String(variant_value) == expected_variant ||
@@ -4397,29 +4544,41 @@ function apply_signal_analyser_layout!(
             SignalAnalyserStaleStateError(requested.revision, state.view.state_revision),
         )
         current_layout = signal_analyser_layout_by_display_id(state, requested.display_id)
-        changed = requested.layout != current_layout
+        layout_changed = requested.layout != current_layout
         candidate = signal_analyser_clone_state_for_layout(state)
-        if changed
-            display = signal_analyser_display_by_id(candidate, requested.display_id)
-            candidate.display_layouts[requested.display_id] = requested.layout
-            prospective_display = try
-                signal_analyser_display_for_layout(candidate, display, requested.layout)
-            catch err
-                if err isa SignalAnalysisSourceCompatibilityError
-                    throw(SignalAnalyserValidationError(
-                        "Некорректный запрос Layout",
-                        Dict(err.field => sprint(showerror, err)),
-                    ))
-                end
-                rethrow()
+        display = signal_analyser_display_by_id(candidate, requested.display_id)
+        candidate.display_layouts[requested.display_id] = requested.layout
+        prospective_display = try
+            signal_analyser_display_for_layout(candidate, display, requested.layout)
+        catch err
+            if err isa SignalAnalysisSourceCompatibilityError
+                throw(SignalAnalyserValidationError(
+                    "Некорректный запрос Layout",
+                    Dict(err.field => sprint(showerror, err)),
+                ))
             end
+            rethrow()
+        end
+        projection_changes = SignalAnalyserViewChanges(
+            candidate.row_selection,
+            display,
+            candidate.row_selection,
+            prospective_display,
+        )
+        changed = layout_changed || signal_analyser_has_changes(projection_changes)
+        if changed
             signal_analyser_replace_display!(candidate, prospective_display)
             if candidate.active_display_id == requested.display_id
                 signal_analyser_sync_active_display!(candidate, prospective_display)
             end
             candidate.view.state_revision += 1
         end
-        snapshot = signal_analyser_snapshot_unlocked(candidate)
+        snapshot = signal_analyser_snapshot_unlocked(
+            candidate,
+            materialize_missing_spectra = false,
+            materialize_missing_spectrogram = false,
+            materialize_missing_persistence = false,
+        )
         response = signal_analyser_layouts_snapshot_from_state_unlocked(candidate, snapshot)
         changed && signal_analyser_publish_layout_candidate!(state, candidate)
         response

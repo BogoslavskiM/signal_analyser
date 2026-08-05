@@ -1529,7 +1529,7 @@ include(joinpath(@__DIR__, "signal_settings.jl"))
 
 const SIGNAL_DISPLAY_LAYOUT_VERSION = 1
 const SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION = 1
-const SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION = 4
+const SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION = 10
 const SIGNAL_DISPLAY_PANE_ID_REGEX = r"^pane-[1-9][0-9]*$"
 const SIGNAL_DISPLAY_LAYOUT_VARIANTS = (
     "single",
@@ -1655,6 +1655,20 @@ end
 
 signal_display_layout_variant(rows::Int, columns::Int)::String = "$(rows)x$(columns)"
 
+function signal_display_layout_validate_dimensions(rows::Int, columns::Int)::Nothing
+    SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= rows <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
+        throw(ArgumentError(
+            "Число строк layout должно быть от $(SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION) " *
+            "до $(SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION)",
+        ))
+    SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= columns <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
+        throw(ArgumentError(
+            "Число столбцов layout должно быть от $(SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION) " *
+            "до $(SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION)",
+        ))
+    nothing
+end
+
 """Versioned rectangular topology and ordered pane configuration for one Display."""
 struct SignalDisplayLayoutState
     version::Int
@@ -1677,10 +1691,7 @@ struct SignalDisplayLayoutState
         version == SIGNAL_DISPLAY_LAYOUT_VERSION || throw(ArgumentError(
             "Неподдерживаемая версия layout: $version",
         ))
-        SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= rows <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
-            throw(ArgumentError("Число строк layout должно быть от 1 до 4"))
-        SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= columns <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
-            throw(ArgumentError("Число столбцов layout должно быть от 1 до 4"))
+        signal_display_layout_validate_dimensions(rows, columns)
         canonical_variant = signal_display_layout_variant(rows, columns)
         String(variant) == canonical_variant || throw(ArgumentError(
             "Variant layout должен быть равен $canonical_variant",
@@ -1812,6 +1823,7 @@ function signal_display_layout_resize(
     rows::Int,
     columns::Int,
 )::SignalDisplayLayoutState
+    signal_display_layout_validate_dimensions(rows, columns)
     requested_count = rows * columns
     surviving_count = min(length(layout.panes), requested_count)
     panes = SignalDisplayPaneState[copy(layout.panes[index]) for index in 1:surviving_count]

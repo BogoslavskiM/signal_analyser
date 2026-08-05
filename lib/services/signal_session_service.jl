@@ -530,9 +530,27 @@ function signal_analyser_session_parse_layout_pane(
         "Имена сигналов не должны повторяться",
     ))
     plot_type = SIGNAL_ANALYSER_PLOTS_BY_NAME[String(plot_value)]
+    display_members = signal_analyser_display_members(display)
     if pane_id == active_pane_id && plot_type == display.active_plot &&
-        bindings == signal_analyser_display_members(display)
-        return signal_display_pane_from_display(pane_id, display)
+        Set(bindings) == Set(display_members)
+        return try
+            SignalDisplayPaneState(
+                pane_id,
+                plot_type,
+                SignalDisplayMembership(bindings),
+                display.analysis_source,
+                display.time_limits,
+                display.measurement_selection,
+                display.spectrum_settings,
+                display.spectrogram_settings,
+                display.persistence_settings,
+                display.stored_settings,
+                display.peaks_enabled,
+            )
+        catch err
+            err isa ArgumentError || rethrow()
+            throw(signal_analyser_session_error(path, sprint(showerror, err)))
+        end
     end
     known_names = Set(signal.name for signal in signals)
     unknown_name = findfirst(name -> !(name in known_names), bindings)
@@ -595,7 +613,7 @@ function signal_analyser_session_parse_layout(
     )
     rows <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION || throw(signal_analyser_session_error(
         "$path.rows",
-        "Максимальное значение: 4",
+        "Максимальное значение: $(SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION)",
     ))
     columns = signal_analyser_session_integer(
         signal_analyser_payload_value(data, "columns"),
@@ -604,7 +622,7 @@ function signal_analyser_session_parse_layout(
     )
     columns <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION || throw(signal_analyser_session_error(
         "$path.columns",
-        "Максимальное значение: 4",
+        "Максимальное значение: $(SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION)",
     ))
     variant = signal_analyser_session_string(
         signal_analyser_payload_value(data, "variant"),
@@ -711,22 +729,28 @@ function signal_analyser_session_validate_candidate!(
         end
         active_pane = signal_display_active_pane(layout)
         members = signal_analyser_display_members(display)
+        all(name -> name in known_names, members) || throw(signal_analyser_session_error(
+            "$path.visible_signals",
+            "Display ссылается на неизвестный сигнал",
+        ))
+        members == signal_analyser_inventory_ordered_names(state, members) || throw(
+            signal_analyser_session_error(
+                "$path.visible_signals",
+                "Порядок должен совпадать с authoritative inventory",
+            ),
+        )
         active_pane.plot_type == display.active_plot || throw(
             signal_analyser_session_error(
                 "$path.layout.active_pane_id",
                 "Plot type active pane не совпадает с legacy Display projection",
             ),
         )
-        signal_display_pane_members(active_pane) == members || throw(
+        Set(signal_display_pane_members(active_pane)) == Set(members) || throw(
             signal_analyser_session_error(
                 "$path.layout.active_pane_id",
-                "Bindings active pane не совпадают с legacy Display projection",
+                "Состав bindings active pane не совпадает с legacy Display projection",
             ),
         )
-        all(name -> name in known_names, members) || throw(signal_analyser_session_error(
-            "$path.visible_signals",
-            "Display ссылается на неизвестный сигнал",
-        ))
         analysis_name = signal_analyser_display_analysis_name(display)
         analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
         if analysis_signal !== nothing

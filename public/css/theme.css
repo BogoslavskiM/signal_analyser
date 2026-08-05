@@ -22,7 +22,26 @@
   --control-height: 32px;
   --space-3: 12px;
   --font: Roboto, Arial, sans-serif;
+  --layer-sticky: 100;
+  --layer-layout-popover: 1000;
+  --layer-passive-toast: 1050;
+  --layer-menu: 1100;
+  --layer-graph-help: 1200;
+  --layer-tooltip: 90000;
+  --layer-main-modal-backdrop: 94990;
+  --layer-main-modal: 95000;
+  --layer-main-modal-tooltip: 95100;
+  --layer-screen-delete-backdrop: 95990;
+  --layer-screen-delete: 96000;
+  --layer-nested-confirmation-backdrop: 96990;
+  --layer-nested-confirmation: 97000;
+  --layer-critical: 98000;
 }
+
+@font-face { font-family: Roboto; font-style: normal; font-weight: 400; src: url("../fonts/roboto-v51-cyrillic-regular.ttf") format("truetype"); unicode-range: U+0000-04FF; }
+@font-face { font-family: Roboto; font-style: normal; font-weight: 500; src: url("../fonts/roboto-v51-cyrillic-medium.ttf") format("truetype"); unicode-range: U+0000-04FF; }
+@font-face { font-family: Roboto; font-style: normal; font-weight: 400; src: url("../fonts/roboto-v51-latin-regular.ttf") format("truetype"); unicode-range: U+0000-00FF; }
+@font-face { font-family: Roboto; font-style: normal; font-weight: 500; src: url("../fonts/roboto-v51-latin-medium.ttf") format("truetype"); unicode-range: U+0000-00FF; }
 
 * { box-sizing: border-box; }
 html, body { width: 100%; min-width: 1024px; min-height: 768px; height: 100%; margin: 0; background: var(--app-bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.35; }

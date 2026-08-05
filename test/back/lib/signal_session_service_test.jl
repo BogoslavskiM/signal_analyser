@@ -78,6 +78,25 @@ end
     @test invalid isa SS.SignalAnalyserSessionValidationError
     @test haskey(invalid.fields, "document.state.signals[1].values.imag[1]")
     @test SS.export_signal_analyser_session(service, target)["document"]["state"] == before && session_cache_families(target) == caches
+
+    invalid_selection = deepcopy(document)
+    invalid_selection["state"]["displays"][1]["visible_signals"] = reverse(
+        invalid_selection["state"]["displays"][1]["visible_signals"],
+    )
+    selection_error = try
+        SS.import_signal_analyser_session!(service, target, Dict(
+            "state_revision" => 1,
+            "document" => invalid_selection,
+        ))
+        nothing
+    catch caught
+        caught
+    end
+    @test selection_error isa SS.SignalAnalyserSessionValidationError
+    @test haskey(selection_error.fields, "document.state.displays.display-1.visible_signals")
+    @test target.view.state_revision == 1
+    @test SS.export_signal_analyser_session(service, target)["document"]["state"] == before &&
+        session_cache_families(target) == caches
 end
 
 @testset "TASK-0020 session parser and API error envelopes are exact" begin

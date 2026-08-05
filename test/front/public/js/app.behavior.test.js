@@ -8,7 +8,7 @@ const A = "Гармонический сигнал";
 const B = "Комплексный ЛЧМ-сигнал";
 
 function flush() {
-  return Promise.resolve().then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve()).then(() => Promise.resolve());
+  return Array.from({ length: 16 }).reduce((pending) => pending.then(() => Promise.resolve()), Promise.resolve());
 }
 function response(status, payload) {
   return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(payload) };
@@ -79,11 +79,11 @@ function emptySnapshot(revision, rowSelectedSignal) {
 function node(attrs) {
   const attributes = Object.assign({}, attrs || {});
   return {
-    hidden: false, disabled: false, textContent: "", innerHTML: "", checked: false, value: "", dataset: {}, listeners: {}, clientWidth: 800, clientHeight: 400,
+    hidden: false, disabled: false, textContent: "", innerHTML: "", checked: false, value: "", dataset: {}, listeners: {}, clientWidth: 800, clientHeight: 400, isConnected: true,
     classList: { toggle() {}, contains() { return false; } },
     setAttribute(k, v) { attributes[k] = String(v); }, getAttribute(k) { return attributes[k] || null; },
     addEventListener(k, fn) { this.listeners[k] = fn; },
-    focus() { this.focused = true; }, closest() { return null; }, matches() { return false; }, querySelectorAll() { return []; }, contains() { return false; },
+    focus() { this.focused = true; }, remove() { this.removed = true; }, closest() { return null; }, matches() { return false; }, querySelector() { return this; }, querySelectorAll() { return []; }, contains() { return false; },
   };
 }
 
@@ -161,11 +161,13 @@ function environment(fetch, options) {
   const calls = [], plotResolvers = [], scriptResolvers = [];
   const plotly = { react(host, data, layout) { calls.push({ plot: true, host, data, layout }); if (options && options.deferredPlotly) return new Promise((resolve, reject) => plotResolvers.push({resolve:() => { host.innerHTML = "settled-" + (data[0] && data[0].name || "plot"); resolve(); }, reject, host, data})); return Promise.resolve(); } };
   const scriptOutcomes = (options && options.scriptOutcomes || []).slice();
+  let screenDialog = null;
   const document = {
     activeElement: null,
     listeners: {},
     documentElement: { dataset: {} },
     querySelector(selector) {
+      if (selector === "[data-testid='screen-delete-dialog']") return screenDialog;
       const displayTabMatch = /^\[data-display-id='([^']+)'\]$/.exec(selector);
       if (displayTabMatch) return e.displayTabNodes[displayTabMatch[1]] || null;
       return selectors[selector] || null;
@@ -189,9 +191,10 @@ function environment(fetch, options) {
       else if (outcome === "deferred") scriptResolvers.push({ load() { window.Plotly = plotly; script.onload(); }, reject() { script.onerror(); } });
       else script.onerror();
     } },
+    body: { appendChild(child) { screenDialog = child; child.parentNode = this; child.remove = function remove() { screenDialog = null; child.parentNode = null; }; return child; } },
   };
   const windowListeners = {};
-  const window = { fetch(url, options) { calls.push({ url, options: options || {} }); return fetch(url, options || {}); }, addEventListener(type, handler) { (windowListeners[type] || (windowListeners[type] = [])).push(handler); }, dispatchEvent(event) { for (const handler of windowListeners[event.type] || []) handler(event); }, setTimeout(callback) { callback(); return 0; }, clearTimeout() {}, Plotly: plotly };
+  const window = { fetch(url, options) { calls.push({ url, options: options || {} }); return fetch(url, options || {}); }, addEventListener(type, handler) { (windowListeners[type] || (windowListeners[type] = [])).push(handler); }, dispatchEvent(event) { for (const handler of windowListeners[event.type] || []) handler(event); }, requestAnimationFrame(callback) { callback(); return 0; }, setTimeout(callback) { callback(); return 0; }, clearTimeout() {}, Plotly: plotly };
   e.signalBottomTab.dataset.bottomTab = "signals";
   e.measurementsBottomTab.dataset.bottomTab = "measurements";
   e.peaksBottomTab.dataset.bottomTab = "peaks";
@@ -209,7 +212,7 @@ function environment(fetch, options) {
 async function boot(fetch, options) {
   const env = environment(fetch, options);
   const root = path.resolve(__dirname, "../../../..");
-  const context = { window: env.window, document: env.document, Promise, console, setTimeout(callback) { callback(); return 0; }, clearTimeout() {} };
+  const context = { window: env.window, document: env.document, Promise, console, requestAnimationFrame(callback) { callback(); return 0; }, setTimeout(callback) { callback(); return 0; }, clearTimeout() {} };
   vm.runInNewContext(fs.readFileSync(path.join(root, "public/js/api.js"), "utf8"), context, { filename: "api.js" });
   vm.runInNewContext(fs.readFileSync(path.join(root, "public/js/app.js"), "utf8"), context, { filename: "app.js" });
   await flush();
@@ -254,7 +257,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(env.e.tabs.innerHTML.includes("display-tab-display-1"), "initial snapshot must render the active display tab");
   assert(env.e.tabs.innerHTML.includes("add-display"), "display workspace must render the add page control");
   const plots = env.calls.filter((call) => call.plot);
-  assert(plots.length === 1, "one Display page must render exactly one graph host");
+  assert(plots.length === 1 && plots[0].host === env.e.host, "the app-owned active Display host must render exactly one live graph; multi-pane hosts are owned by layouts.js");
   assert(JSON.stringify(plots[0].data.map((trace) => trace.name)) === JSON.stringify([A, B]), "the active graph must include every checked signal independently");
 
   let rejectRecoveredState;
@@ -273,7 +276,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(stateOutOfOrder.e.root.dataset.stateRevision === "4", "a delayed older initial state response must not replace a newer layout-owned authoritative state");
 
   const genuineStateFailure = await boot(() => Promise.reject(new Error("state unavailable")));
-  assert(genuineStateFailure.e.loading.hidden === true && genuineStateFailure.e.error.hidden === false && genuineStateFailure.e.errorText.textContent === "Не удалось загрузить данные Signal Analyzer.", "genuine state failure without layout recovery must clear busy and retain explicit Retry error");
+  assert(genuineStateFailure.e.loading.hidden === true && genuineStateFailure.e.error.hidden === false && genuineStateFailure.e.errorText.textContent === "Не удалось загрузить данные анализатора сигналов.", "genuine state failure without layout recovery must clear busy and retain explicit Retry error");
   async function settleMicrotasks() { for (let i = 0; i < 8; i += 1) await Promise.resolve(); }
   const c24 = await boot((url) => Promise.resolve(response(200, initial)), {deferredPlotly:true});
   assert(c24.plotResolvers.length === 1 && c24.calls.filter(call => call.plot).length === 1, "C24 starts one controlled Time render");
@@ -302,20 +305,20 @@ module.exports = async function testDisplayBehavior(assert) {
   const c24Persistence = persistenceSnapshot(1);
   const c24PlotSwitch = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? initial : c24Persistence)), { deferredPlotly:true });
   c24PlotSwitch.e.plotSelect.value = "persistence"; c24PlotSwitch.e.plotSelect.listeners.change({target:c24PlotSwitch.e.plotSelect}); await settleMicrotasks();
-  assert(c24PlotSwitch.calls.filter(call => call.plot).length === 1 && c24PlotSwitch.plotResolvers.length === 1 && c24PlotSwitch.plotResolvers[0].data[0].type === "scatter" && c24PlotSwitch.e.title.textContent === "Persistence", "C24 Time→Persistence must leave zero latest Persistence resolver and only one stale Time Plotly.react before it settles");
+  assert(c24PlotSwitch.calls.filter(call => call.plot).length === 1 && c24PlotSwitch.plotResolvers.length === 1 && c24PlotSwitch.plotResolvers[0].data[0].type === "scatter" && c24PlotSwitch.e.title.textContent === "Спектр персистентности", "C24 Time→Persistence must preserve the stale Time render until the serialized Persistence render can replace it");
   c24PlotSwitch.plotResolvers.shift().resolve(); await settleMicrotasks();
   const c24PersistenceRender = c24PlotSwitch.calls.filter(call => call.plot).at(-1);
-  assert(c24PersistenceRender.data[0].type === "heatmap" && c24PlotSwitch.e.title.textContent === "Persistence", "C24 Time→Persistence must serialize only the latest plot/title after the stale Time render settles");
+  assert(c24PersistenceRender.data[0].type === "heatmap" && c24PlotSwitch.e.title.textContent === "Спектр персистентности", "C24 Time→Persistence must serialize only the latest plot/title after the stale Time render settles");
   await settleControlledPlots(c24PlotSwitch, 3);
   assert(c24PlotSwitch.e.host.dataset.plotReady === "true" && c24PlotSwitch.calls.filter(call => call.plot).length <= 3, "C24 latest Persistence render settles with a bounded number of reassertions");
 
   const c24OldReject = await boot((url) => Promise.resolve(response(200, initial)), { deferredPlotly:true });
   c24OldReject.e.legend.checked = false; c24OldReject.e.legend.listeners.change({target:c24OldReject.e.legend}); await settleMicrotasks();
   c24OldReject.plotResolvers.shift().reject(new Error("obsolete Time renderer failed")); await Promise.resolve();
-  assert(!c24OldReject.e.host.innerHTML.includes("plot-error-state") && c24OldReject.e.host.dataset.plotReady !== "false" && c24OldReject.e.title.textContent === "Time", "C24 obsolete rejection must publish neither the plot error nor false readiness before the authoritative render settles");
+  assert(!c24OldReject.e.host.innerHTML.includes("plot-error-state") && c24OldReject.e.host.dataset.plotReady !== "false" && c24OldReject.e.title.textContent === "Временная область", "C24 obsolete rejection must publish neither the plot error nor false readiness before the authoritative render settles");
   await settleMicrotasks();
   await settleControlledPlots(c24OldReject, 3);
-  assert(!c24OldReject.e.host.innerHTML.includes("plot-error-state") && c24OldReject.e.host.dataset.plotReady === "true" && c24OldReject.e.title.textContent === "Time", "C24 rejection of an obsolete render must not replace successful authoritative Time with an error state");
+  assert(!c24OldReject.e.host.innerHTML.includes("plot-error-state") && c24OldReject.e.host.dataset.plotReady === "true" && c24OldReject.e.title.textContent === "Временная область", "C24 rejection of an obsolete render must not replace successful authoritative Time with an error state");
   assert(c24OldReject.calls.filter(call => call.plot).length <= 3 && c24OldReject.plotResolvers.length === 0, "C24 obsolete rejection cannot create an unbounded Plotly.react/reassertion loop");
 
   const c24DelayedLoader = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? initial : c24Persistence)), { plotlyAbsent:true, scriptOutcomes:["deferred"] });
@@ -323,7 +326,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c24DelayedLoader.e.plotSelect.value = "persistence"; c24DelayedLoader.e.plotSelect.listeners.change({target:c24DelayedLoader.e.plotSelect}); await settleMicrotasks();
   c24DelayedLoader.scriptResolvers.shift().load(); await settleMicrotasks();
   const c24LoaderPlots = c24DelayedLoader.calls.filter(call => call.plot);
-  assert(c24LoaderPlots.length === 1 && c24LoaderPlots[0].data[0].type === "heatmap" && c24DelayedLoader.e.title.textContent === "Persistence", "C24 a delayed Plotly loader must skip the stale Time react after an authoritative plot change");
+  assert(c24LoaderPlots.length === 1 && c24LoaderPlots[0].data[0].type === "heatmap" && c24DelayedLoader.e.title.textContent === "Спектр персистентности", "C24 a delayed Plotly loader must skip the stale Time react after an authoritative plot change");
 
   const c24Empty = emptySnapshot(1, A);
   const c24EmptyAfterOld = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? initial : c24Empty)), { deferredPlotly:true });
@@ -340,10 +343,10 @@ module.exports = async function testDisplayBehavior(assert) {
   const c24DisplayB = persistenceSnapshot(1, "display-2", c24DisplayDefinitions);
   const c24DisplaySwitch = await boot((url, options) => Promise.resolve(response(200, url === "./api/state" ? c24DisplayA : c24DisplayB)), { deferredPlotly:true });
   c24DisplaySwitch.e.tabs.listeners.click({target:tabTarget("display-2")}); await settleMicrotasks();
-  assert(c24DisplaySwitch.calls.filter(call => call.plot).length === 1 && c24DisplaySwitch.plotResolvers.length === 1 && c24DisplaySwitch.plotResolvers[0].data[0].type === "scatter" && activeTab(c24DisplaySwitch.e, "display-2") && c24DisplaySwitch.e.title.textContent === "Persistence", "C24 Display A→B must retain Display B as the authoritative tab/title while only stale Display A Plotly.react remains before it settles");
+  assert(c24DisplaySwitch.calls.filter(call => call.plot).length === 1 && c24DisplaySwitch.plotResolvers.length === 1 && c24DisplaySwitch.plotResolvers[0].data[0].type === "scatter" && activeTab(c24DisplaySwitch.e, "display-2") && c24DisplaySwitch.e.title.textContent === "Спектр персистентности", "C24 Display A→B must retain Display B as the authoritative tab/title while only stale Display A Plotly.react remains before it settles");
   c24DisplaySwitch.plotResolvers.shift().resolve(); await settleMicrotasks();
   const c24DisplayRender = c24DisplaySwitch.calls.filter(call => call.plot).at(-1);
-  assert(activeTab(c24DisplaySwitch.e, "display-2") && c24DisplaySwitch.e.title.textContent === "Persistence" && c24DisplayRender.data[0].type === "heatmap", "C24 actual Display A→B switch must let only Display B's latest Persistence graph win");
+  assert(activeTab(c24DisplaySwitch.e, "display-2") && c24DisplaySwitch.e.title.textContent === "Спектр персистентности" && c24DisplayRender.data[0].type === "heatmap", "C24 actual Display A→B switch must let only Display B's latest Persistence graph win");
   await settleControlledPlots(c24DisplaySwitch, 3);
   assert(c24DisplaySwitch.calls.filter(call => call.plot).length <= 3 && c24DisplaySwitch.e.host.dataset.plotReady === "true", "C24 Display switch completion remains finite and leaves the current graph ready");
 
@@ -386,10 +389,12 @@ module.exports = async function testDisplayBehavior(assert) {
   lifecycle.e.tabs.listeners.click({ target: tabTarget("display-1") });
   await flush();
   assert(JSON.stringify(JSON.parse(displayCalls[2].options.body)) === JSON.stringify({ state_revision: 1, operation: "select", display_id: "display-1" }), "select Display must use confirmed revision and display id");
-  assert(lifecycle.e.title.textContent === "Spectrum", "selecting a page must restore its graph type");
+  assert(lifecycle.e.title.textContent === "Спектр", "selecting a page must restore its graph type");
   assert(lifecycle.e.measurementContent.innerHTML.includes(B), "switching Display must render the server-authoritative measurements for the newly active selected signal");
   assert(lifecycle.e.measurements.hidden === false && lifecycle.e.signals.hidden === true, "a Display switch must preserve the local Measurements tab while replacing only its authoritative content");
   lifecycle.e.tabs.listeners.click({ target: closeTarget("display-1") });
+  assert(displayCalls.length === 3 && lifecycle.document.querySelector("[data-testid='screen-delete-dialog']"), "close control must open confirmation without deleting the Display");
+  lifecycle.document.querySelector("[data-testid='screen-delete-dialog']").listeners.click();
   await flush();
   assert(JSON.parse(displayCalls[3].options.body).operation === "close", "close control must request the close operation");
 
@@ -425,7 +430,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(dropPrevented && dragTransfer.effectAllowed === "move", "mouse reorder must accept an eligible Display drag/drop as a move");
   assert(mouseDisplayCalls.length === 1 && JSON.stringify(JSON.parse(mouseDisplayCalls[0].options.body)) === JSON.stringify({state_revision:40, operation:"reorder", order:["display-2", "display-3", "display-1"]}), "mouse drop must POST the exact full Display-ID permutation and current revision");
   assert(JSON.stringify(displayTabOrder(mouseReorder.e)) === JSON.stringify(["display-1", "display-2", "display-3"]), "mouse reorder must not optimistically change the authoritative tab order");
-  assert(mouseReorder.e.tabs.getAttribute("aria-busy") === "true" && mouseReorder.e.tabs.dataset.reorderBusy === "true" && mouseReorder.e.tabs.innerHTML.includes("draggable='false'"), "pending reorder must expose aria/data busy guards and non-draggable tabs");
+  assert(mouseReorder.e.tabs.getAttribute("aria-busy") === "true" && mouseReorder.e.tabs.dataset.reorderBusy === "true" && JSON.stringify(displayTabOrder(mouseReorder.e)) === JSON.stringify(["display-1", "display-2", "display-3"]), "pending reorder must expose aria/data busy guards while preserving authoritative tab order");
   let guardedDragPrevented = false;
   mouseReorder.e.tabs.listeners.dragstart({target:tabTarget("display-2"), dataTransfer:{}, preventDefault() { guardedDragPrevented = true; }});
   mouseReorder.e.tabs.listeners.keydown({target:tabTarget("display-2"), altKey:true, key:"ArrowRight", preventDefault() { throw new Error("pending Alt+Arrow must be ignored"); }});
@@ -663,29 +668,14 @@ module.exports = async function testDisplayBehavior(assert) {
     rowActionCalls.push({url, options});
     return url === "./api/state" ? Promise.resolve(response(200, signalsInitial)) : new Promise(resolve => rowActionResolvers.push(resolve));
   });
-  assert(rowActions.e.rows.innerHTML.includes("signal-info-action-") && rowActions.e.rows.innerHTML.includes("Samples") && rowActions.e.rows.innerHTML.includes("Sample rate") && rowActions.e.rows.innerHTML.includes("Duration") && rowActions.e.rows.innerHTML.includes("Type"), "each rendered Info control must expose the canonical snapshot details through stable per-signal selectors");
-  const info = rowInfoTarget(B);
-  info.focus();
-  rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
-  assert(info.getAttribute("aria-expanded") === "true" && info.row.dataset.infoExpanded === "true" && info.getAttribute("aria-label") === "Скрыть информацию о " + B && rowActionCalls.length === 1, "Info row control must expose one synchronized expanded row state without a server mutation");
-  rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
-  assert(info.getAttribute("aria-expanded") === "false" && info.row.dataset.infoExpanded === "false" && info.getAttribute("aria-label") === "Показать информацию о " + B && rowActionCalls.length === 1, "Info row control must restore its compact state and accessible name without a server mutation");
-  for (const key of ["Enter", " "]) {
-    let prevented = false;
-    const callsBeforeKey = rowActionCalls.length;
-    rowActions.e.rows.listeners.keydown({key, target:info, preventDefault() { prevented = true; }});
-    assert(!prevented && info.getAttribute("aria-expanded") === "false" && rowActionCalls.length === callsBeforeKey, `${key === "Enter" ? "Enter" : "Space"} keydown on native Info must remain available to the browser without row activation or API mutation`);
-    rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
-    assert(info.getAttribute("aria-expanded") === "true" && info.row.dataset.infoExpanded === "true" && rowActionCalls.length === callsBeforeKey, `${key === "Enter" ? "Enter" : "Space"} native click must toggle Info exactly once and remain frontend-local`);
-    rowActions.e.rows.listeners.click({target:info, stopPropagation() {}});
-    assert(info.getAttribute("aria-expanded") === "false" && info.row.dataset.infoExpanded === "false" && rowActionCalls.length === callsBeforeKey, `${key === "Enter" ? "Enter" : "Space"} repeat activation must close Info exactly once`);
-  }
+  assert(rowActions.e.rows.innerHTML.includes("class='signal-type-cell'") && rowActions.e.rows.innerHTML.includes("data-signal-duplicate") && rowActions.e.rows.innerHTML.includes("data-signal-delete"), "each rendered Type cell must expose stable inline Duplicate/Delete controls");
+  assert(!rowActions.e.rows.innerHTML.includes("signal-info-action-") && !rowActions.e.rows.innerHTML.includes("data-signal-info"), "removed Info control must not return in rendered signal rows");
   let rowEnterPrevented = false;
   rowActions.e.rows.listeners.keydown({key:"Enter", target:rowTarget(B), preventDefault() { rowEnterPrevented = true; }});
   assert(rowEnterPrevented && rowActionCalls.some(call => call.url === "./api/view"), "Enter on the row itself must retain its existing authoritative row-selection shortcut");
   rowActionResolvers.shift()(response(200, signalsInitial));
   await flush();
-  assert(info.focused === true, "collapsing an explicitly expanded Info row must preserve focus on its trigger");
+  assert(rowActions.e.rows.innerHTML.includes("data-signal-duplicate") && rowActions.e.rows.innerHTML.includes("data-signal-delete"), "authoritative row selection must preserve inline action controls");
   rowActions.e.rows.listeners.click({target:rowActionTarget("duplicate", B), stopPropagation() {}});
   await flush();
   const rowDuplicate = rowActionCalls.find(call => call.url === "./api/signals");
@@ -766,7 +756,7 @@ module.exports = async function testDisplayBehavior(assert) {
   for (const malformedKinds of [null, "minimum", ["minimum", "minimum"], ["unknown"], ["minimum", "unknown"], [true]]) {
     const def = Object.assign({}, statsDefinition, {measurement_kinds:malformedKinds}), bad = snapshot(0, "display-1", [def], A), calls = [];
     const env = await boot((url, options) => { calls.push({url, options}); return Promise.resolve(response(200, bad)); });
-    assert(env.e.statisticsError.hidden === false && env.e.statisticsError.textContent.includes("Некорректный набор Statistics") && env.e.statisticsOptions.every(option => option.disabled), "malformed snapshot Statistics quarantines and disables every metric control");
+    assert(env.e.statisticsError.hidden === false && env.e.statisticsError.textContent.includes("Некорректный набор Статистики") && env.e.statisticsOptions.every(option => option.disabled), "malformed snapshot Statistics quarantines and disables every metric control");
     env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
     assert(calls.filter(call => call.url === "./api/view").length === 0, "Statistics corruption blocks unrelated View POST");
   }
@@ -976,7 +966,7 @@ module.exports = async function testDisplayBehavior(assert) {
   for (const plot of ["time", "spectrum", "spectrogram", "persistence"]) {
     const valid = c28Base([Object.assign({}, c28Definition, {active_plot:plot})]);
     const env = await boot(() => Promise.resolve(response(200, valid)));
-    assert(env.e.error.hidden === true && env.e.plotSelect.value === plot && env.e.title.textContent === (plot === "time" ? "Time" : plot === "spectrum" ? "Spectrum" : plot === "spectrogram" ? "Spectrogram" : "Persistence"), "C28 must accept every exact active_plot enum value without normalization");
+    assert(env.e.error.hidden === true && env.e.plotSelect.value === plot && env.e.title.textContent === (plot === "time" ? "Временная область" : plot === "spectrum" ? "Спектр" : plot === "spectrogram" ? "Спектрограмма" : "Спектр персистентности"), "C28 must accept every exact active_plot enum value without normalization while rendering its Russian title");
   }
   const c28InvalidPlots = [
     d => { delete d.active_plot; }, d => { d.active_plot = null; }, d => { d.active_plot = ""; }, d => { d.active_plot = 7; },
@@ -1533,7 +1523,7 @@ module.exports = async function testDisplayBehavior(assert) {
     const malformedSnapshot = snapshot(0, "display-1", [malformedDef], A); malformedSnapshot.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
     const malformedRequests = [];
     const malformed = await boot((url, options) => { malformedRequests.push({url, options}); return Promise.resolve(response(200, malformedSnapshot)); });
-    assert(malformed.e.spectrogramSettings.hidden === false && malformed.e.spectrogramContractError.hidden === false && malformed.e.spectrogramContractError.textContent.includes("Некорректные настройки Spectrogram") && malformed.e.spectrogramOverlap.disabled && malformed.e.spectrogramLeakage.disabled && malformed.e.spectrogramFrequencyMin.disabled && malformed.e.spectrogramFrequencyMax.disabled && malformed.e.spectrogramFrequencyScale.disabled && malformed.e.spectrogramPowerMin.disabled && malformed.e.spectrogramPowerMax.disabled, "malformed Spectrogram settings expose visible quarantine and disable all server controls");
+    assert(malformed.e.spectrogramSettings.hidden === false && malformed.e.spectrogramContractError.hidden === false && malformed.e.spectrogramContractError.textContent.includes("Некорректные настройки спектрограммы") && malformed.e.spectrogramOverlap.disabled && malformed.e.spectrogramLeakage.disabled && malformed.e.spectrogramFrequencyMin.disabled && malformed.e.spectrogramFrequencyMax.disabled && malformed.e.spectrogramFrequencyScale.disabled && malformed.e.spectrogramPowerMin.disabled && malformed.e.spectrogramPowerMax.disabled, "malformed Spectrogram settings expose visible quarantine and disable all server controls");
     malformed.e.plotSelect.value = "time"; malformed.e.plotSelect.listeners.change({target:malformed.e.plotSelect}); await flush();
     assert(malformedRequests.filter(call => call.url === "./api/view").length === 0, "Spectrogram contract corruption blocks unrelated server mutation");
   }
@@ -1699,7 +1689,7 @@ module.exports = async function testDisplayBehavior(assert) {
     malformedSnapshot.plot_payload.persistence = c19Initial.plot_payload.persistence;
     const malformedRequests = [];
     const malformed = await boot((url, options) => { malformedRequests.push({url, options}); return Promise.resolve(response(200, malformedSnapshot)); });
-    assert(malformed.e.persistenceLeakage.disabled === true && malformed.e.persistenceLeakage.value === "" && malformed.e.persistenceLeakageError.hidden === false && malformed.e.persistenceLeakageError.textContent.includes("Некорректные настройки Persistence"), "malformed server Persistence settings surface a stable disabled contract error");
+    assert(malformed.e.persistenceLeakage.disabled === true && malformed.e.persistenceLeakage.value === "" && malformed.e.persistenceLeakageError.hidden === false && malformed.e.persistenceLeakageError.textContent.includes("Некорректные настройки спектра персистентности"), "malformed server Persistence settings surface a stable disabled contract error");
     malformed.e.plotSelect.value = "time"; malformed.e.plotSelect.listeners.change({target:malformed.e.plotSelect}); await flush();
     assert(malformedRequests.filter(call => call.url === "./api/view").length === 0, "a Persistence contract error must block unrelated server mutations rather than mask malformed state");
   }
@@ -1749,7 +1739,7 @@ module.exports = async function testDisplayBehavior(assert) {
     const malformedSnapshot = snapshot(0, "display-1", [malformedDef], A); malformedSnapshot.plot_payload.spectrum_traces = spectrumInitial.plot_payload.spectrum_traces;
     const malformedRequests = [];
     const malformed = await boot((url, options) => { malformedRequests.push({url, options}); return Promise.resolve(response(200, malformedSnapshot)); });
-    assert(malformed.e.spectrumError.hidden === false && malformed.e.spectrumError.textContent.includes("Некорректные настройки Spectrum") && malformed.e.spectrumScale.disabled && malformed.e.spectrumFrequency.disabled && malformed.e.spectrumLeakage.disabled && malformed.e.spectrumFrequencyMin.disabled && malformed.e.spectrumFrequencyMax.disabled, "malformed Spectrum settings must expose a stable disabled contract error");
+    assert(malformed.e.spectrumError.hidden === false && malformed.e.spectrumError.textContent.includes("Некорректные настройки спектра") && malformed.e.spectrumScale.disabled && malformed.e.spectrumFrequency.disabled && malformed.e.spectrumLeakage.disabled && malformed.e.spectrumFrequencyMin.disabled && malformed.e.spectrumFrequencyMax.disabled, "malformed Spectrum settings must expose a stable disabled contract error");
     malformed.e.plotSelect.value = "time"; malformed.e.plotSelect.listeners.change({target:malformed.e.plotSelect}); await flush();
     assert(malformedRequests.filter(call => call.url === "./api/view").length === 0, "a Spectrum contract error must block unrelated server mutation without masking state");
   }
@@ -1822,7 +1812,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c16Committed.plots.spectrogram = c16Committed.plot_payload.spectrogram;
   const c16Requests = [];
   const c16 = await boot((url, options) => { c16Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c16Initial : c16Committed)); });
-  assert(c16.e.spectrogramFrequencyScale.value === "linear" && c16.e.spectrogramFrequencyScale.disabled === false && c16.e.spectrogramFrequencyScaleEffective.textContent === "Linear", "real Spectrogram must render backend requested/effective/available metadata");
+  assert(c16.e.spectrogramFrequencyScale.value === "linear" && c16.e.spectrogramFrequencyScale.disabled === false && c16.e.spectrogramFrequencyScaleEffective.textContent === "Линейная", "real Spectrogram must render backend requested/effective/available metadata");
   c16.e.spectrogramFrequencyScale.value = "log"; c16.e.spectrogramFrequencyScale.listeners.change(); await flush();
   assert(c16Requests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c16Requests.at(-1).options.body).spectrogram_settings) === JSON.stringify(c16Log), "Frequency Scale change must send one exact full four-key desired target");
   const c16Plot = c16.calls.filter(call => call.plot).at(-1);
@@ -1849,7 +1839,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c16Complex.plot_payload.spectrogram = { type:"heatmap", signal:B, x:[0], y:[0, 4], z:[[1], [2]], frequency_scale:{requested:"log", effective:"linear", available:["linear"]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   c16Complex.plots.spectrogram = c16Complex.plot_payload.spectrogram;
   const c16ComplexEnv = await boot((url) => Promise.resolve(response(200, c16Complex)));
-  assert(c16ComplexEnv.e.spectrogramFrequencyScale.value === "log" && c16ComplexEnv.e.spectrogramFrequencyScale.disabled === true && c16ComplexEnv.e.spectrogramFrequencyScaleEffective.textContent === "Linear", "complex Spectrogram must preserve requested Log while authoritative availability disables the select");
+  assert(c16ComplexEnv.e.spectrogramFrequencyScale.value === "log" && c16ComplexEnv.e.spectrogramFrequencyScale.disabled === true && c16ComplexEnv.e.spectrogramFrequencyScaleEffective.textContent === "Линейная", "complex Spectrogram must preserve requested Log while authoritative availability disables the select");
 
   const c16RejectRequests = [], c16RejectResolvers = [];
   const c16Reject = await boot((url, options) => { c16RejectRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c16Initial)) : new Promise(resolve => c16RejectResolvers.push(resolve)); });
@@ -1901,7 +1891,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c17Empty.plot_payload.spectrogram = {type:"heatmap", signal:A, x:[], y:[], z:[], power_limits:{mode:"auto", requested:null, effective:null, rendered:null}}; c17Empty.plots.spectrogram = c17Empty.plot_payload.spectrogram;
   const c17EmptyEnv = await boot(() => Promise.resolve(response(200, c17Empty)));
   const c17EmptyPlot = c17EmptyEnv.calls.filter(call => call.plot).at(-1);
-  assert(c17EmptyEnv.e.spectrogramPowerLimitsEffective.textContent === "Effective: —" && c17EmptyPlot.data[0].zauto === true && !Object.prototype.hasOwnProperty.call(c17EmptyPlot.data[0], "zmin"), "empty or zero-only effective null must retain zauto without invented extrema");
+  assert(c17EmptyEnv.e.spectrogramPowerLimitsEffective.textContent === "Фактический диапазон: —" && c17EmptyPlot.data[0].zauto === true && !Object.prototype.hasOwnProperty.call(c17EmptyPlot.data[0], "zmin"), "empty or zero-only effective null must retain zauto without invented extrema");
   const c17Malformed = snapshot(4, "display-1", [c17Definition], A);
   c17Malformed.plot_payload.spectrogram = {type:"heatmap", signal:A, x:[0], y:[0], z:[[-20]], power_limits:{mode:"auto", requested:null, effective:{min_db:0, max_db:-20, units:"dB"}}}; c17Malformed.plots.spectrogram = c17Malformed.plot_payload.spectrogram;
   const c17MalformedEnv = await boot(() => Promise.resolve({ok:true, status:200, json:() => Promise.resolve(c17Malformed)}));

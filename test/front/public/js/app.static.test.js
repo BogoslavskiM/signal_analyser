@@ -17,6 +17,25 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   const license = fs.readFileSync(plotlyLicensePath, "utf8");
   const crypto = require("crypto");
 
+  const layouts = fs.readFileSync(path.join(root, "public/js/layouts.js"), "utf8");
+  const layoutCss = fs.readFileSync(path.join(root, "public/css/layouts.css"), "utf8");
+  const publicText = [app, layouts, html].join("\n");
+  assert((html.match(/data-testid="active-plot-host"/g) || []).length === 1, "exactly one detached app-owned active graph host must remain available to layouts.js");
+  assert(layouts.includes("data-pane-plot-host") && layouts.includes("Plotly.react(task.host") && layouts.includes("data-pane-output-state='ready'"), "each ready pane must own its own live Plotly.react host");
+  [app, layouts].forEach((source) => {
+    assert(source.includes('dragmode:"zoom"') && source.includes("displayModeBar:false") && source.includes("displaylogo:false") && source.includes("showTips:false"), "every Plotly render path must preserve zoom while hiding modebar/logo/tips");
+  });
+  ["staticPlot", "fixedrange", "Plotly.newPlot", "Plotly.toImage", "backgroundImage"].forEach((forbidden) => assert(!publicText.includes(forbidden), `interactive graph source must not contain ${forbidden}`));
+  assert(/\.pane-plot-host \.modebar[^}]*display:none!important/.test(layoutCss), "no visible Plotly modebar or reserved modebar container may survive CSS");
+  assert(layoutCss.includes(".compact-legend{pointer-events:none") && layoutCss.includes(".graph-help-overlay{position:absolute;z-index:var(--layer-graph-help)") && theme.includes("--layer-graph-help: 1200"), "compact legend and graph-help must be pointer-inert/overlayed at the canonical layer without plot flow changes");
+  ["Перетаскивать график: Shift + ЛКМ", "Автомасштабирование: двойной клик", "Зум: зажать ЛКМ и выделить область"].forEach((copy) => assert(app.includes(copy), `Russian graph-help must retain ${copy}`));
+  assert(/<th data-column="name">Имя<\/th>/.test(html) && (html.match(/<th data-column=/g) || []).length === 7, "Signals table must expose exactly seven columns including mandatory Name");
+  assert(layoutCss.includes(".signal-table th[data-column='name'],.signal-table td[data-column='name']{display:table-cell!important}") && !app.includes('name:"Имя"'), "Name column must be restored as mandatory and absent from the optional-column menu");
+  assert(app.includes("class='color-swatch'") && layoutCss.includes(".color-swatch{width:16px;height:16px;padding:0;border:0;outline:0") && layoutCss.includes(".color-swatch:hover,.color-swatch:active{opacity:.72}"), "signal swatches must be borderless color-only controls with opacity-only interaction");
+  assert(app.includes("class='signal-row-actions'") && app.includes("data-signal-duplicate") && app.includes("data-signal-delete") && !app.includes("data-signal-info"), "Type cell must retain inline duplicate/delete actions and omit removed Info action");
+  assert(app.includes("display-scroll-left") && app.includes("display-scroll-right") && app.includes("add-display") && app.includes("close-display-") && !app.includes(">Добавить экран</button>"), "Display navigation must expose edge arrows, icon-only add, and separate close controls");
+  assert(html.includes("graph-help-action") && html.includes("clear-display-action") && /data-testid="display-overflow-menu"[^>]*role="menu"/.test(html), "clear and graph-help actions must share the semantic area menu");
+  assert(layoutCss.includes("height:calc(clamp(270px,36vh,324px) - 18px)") && layoutCss.includes(".pane-header .pane-type-select") && layoutCss.includes("height:28px;width:212px"), "pinned v2 table and pane-control geometry must remain source-derived");
   ["app-shell", "display-tabs", "display-canvas", "active-plot-host", "plot-type-select", "settings-view-select", "signal-table", "toggle-all-signals", "bottom-panel-signals", "measurements-panel"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `missing stable Display UI selector ${id}`)
   );
@@ -25,24 +44,24 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
     assert(fs.existsSync(asset) && /<svg\b/.test(fs.readFileSync(asset, "utf8")), `TASK-0027 must use the approved local ${file} asset`);
   });
   assert(/class="app-brand"[^>]*aria-label="Engee"[\s\S]*?<img[^>]*src="\.\/icons\/engee-logo\.svg"[^>]*aria-hidden="true"[\s\S]*?<span class="engee-name">Engee<\/span>/.test(html), "TASK-0027 must render the local Engee mark and capitalized Engee name");
-  ["signal-columns-visibility-trigger", "signal-columns-menu-trigger", "signal-columns-menu"].forEach((id) =>
+  ["signals-add-action", "signal-columns-menu-trigger", "signal-columns-menu"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `TASK-0027 column controls must expose stable selector ${id}`)
   );
   assert(/data-testid="signal-columns-menu"[^>]*role="menu"[^>]*hidden/.test(html), "TASK-0027 column menu must start hidden with menu semantics");
-  assert(app.includes("data-hidden-columns") && app.includes("data-signal-column-toggle") && app.includes("menuitemcheckbox"), "TASK-0027 column visibility must use optional-column state and accessible toggle semantics");
+  assert(app.includes("data-hidden-columns") && app.includes("data-signal-column-toggle") && app.includes("role='menuitem'"), "TASK-0027 column visibility must use optional-column state and accessible menu semantics");
   assert(/\.signal-table\[data-hidden-columns~="color"\][\s\S]*\[data-column="color"\][\s\S]*display:none/.test(css), "TASK-0027 optional columns must be visually hidden without removing row data");
-  assert(app.includes("class='signal-actions-cell'") && app.includes("data-column='actions'"), "TASK-0027 duplicate/delete controls must render in the dedicated right action column");
-  assert(/\.signal-table \.signal-actions-column\{position:sticky;right:0/.test(css), "TASK-0027 right action column must remain fixed at the table edge");
-  assert(/\.display-tabs\{overflow-x:auto;overflow-y:hidden/.test(css), "TASK-0027 Display tabs must be horizontally scrollable on overflow");
-  assert(/\.bottom-zone\{min-height:270px/.test(css), "TASK-0027 bottom table zone must use its enlarged minimum height");
+  assert(app.includes("class='signal-type-cell'") && app.includes("class='signal-row-actions'") && !app.includes("data-column='actions'"), "TASK-0058 duplicate/delete controls must render inline in the Type cell without a dedicated action column");
+  assert(/\.signal-type-cell\{position:relative;padding-right:72px!important\}/.test(layoutCss), "TASK-0058 Type cell must reserve stable inline-action geometry");
+  assert(/\.display-tab-scroll[\s\S]*overflow-x:\s*auto/.test(layoutCss), "TASK-0058 Display tab owner must be horizontally scrollable on overflow");
+  assert(/\.bottom-zone\{height:calc\(clamp\(270px,36vh,324px\) - 18px\);min-height:0\}/.test(layoutCss), "TASK-0058 bottom table zone must use the pinned v2 reduced height");
   assert(/\.settings-field\{grid-template-columns:minmax\(118px,42%\) minmax\(0,1fr\)/.test(settingsCss), "TASK-0027 Settings fields must use stable label/control columns");
   assert(/\.main-stage\{[^}]*grid-template-columns:minmax\(650px,1fr\) 370px/.test(css), "design-v1 1440 source contract must retain the base 370px Settings column");
   assert(/@media \(max-width:1280px\)\{\.main-stage\{[^}]*grid-template-columns:minmax\(520px,1fr\) 340px/.test(css), "design-v1 1280 source contract must use the 340px Settings column");
   assert(/@media \(max-width:1080px\)\{\.main-stage\{[^}]*grid-template-columns:minmax\(0,1fr\) 300px/.test(css), "design-v1 1024 source contract must use the 300px Settings column");
-  assert(/@media \(max-width:1080px\)\{\.settings-field,\.settings-scalar,\.settings-enum\{grid-template-columns:1fr/.test(settingsCss), "design-v1 1024 Settings fields must stack labels and controls");
+  assert(/\.setting-row\{display:grid;grid-template-columns:140px minmax\(0,1fr\)/.test(settingsCss), "design-v2 Settings rows must retain the pinned 140px label/control mapping");
   assert(/\.settings-tabs,\.bottom-tablist\{[^}]*flex-wrap:nowrap[^}]*overflow-x:auto[^}]*white-space:nowrap/.test(css), "design-v1 tabs must remain nonwrapping and horizontally scrollable");
-  assert(/\.signal-table\{min-width:960px\}/.test(css) && /\.signal-table \[data-column='type'\]\{width:126px\}/.test(css) && /\.signal-table \.signal-actions-column,\.signal-table \.signal-actions-cell\{width:128px!important\}/.test(css), "design-v1 table must retain its 960px minimum and 126/128px type/action columns");
-  assert(/\.signal-columns-menu\{width:224px/.test(css) && /\.signal-info-card\{width:248px/.test(css), "design-v1 column menu and signal Info geometry must remain 224/248px");
+  assert(/\.signal-table\{min-width:960px\}/.test(css) && /\.signal-table \[data-column='type'\]\{width:126px\}/.test(css) && /\.signal-row-actions\{float:right;width:60px;min-width:60px;height:24px\}/.test(css), "design-v2 table must retain its 960px minimum and reserved 60x24 inline-action zone");
+  assert(/\.signal-columns-menu\{z-index:var\(--layer-menu\);width:244px/.test(layoutCss) && theme.includes("--layer-menu: 1100") && !app.includes("signal-info-card"), "design-v2 column menu must be 244px at the canonical menu layer and removed Signal Info must stay absent");
   ["--warning", "--warning-soft", "--success", "--success-soft"].forEach((token) => assert(theme.includes(token), `design-v1 feedback token ${token} must remain defined`));
   const obsoleteWorkspaceNodes = ["open-window-action", "signals-add-selection-action", "signals-copy-action", "signals-delete-action", "display-count-status", "active-display-status"];
   const publicSources = [];
@@ -62,30 +81,23 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/data-bottom-tab="measurements"[^>]*role="tab"[^>]*aria-controls="measurements-panel"[^>]*aria-selected="false"[^>]*tabindex="-1"/.test(html), "Measurements must initialize outside the tab sequence");
   assert(/id="bottom-panel-signals"[^>]*role="tabpanel"[^>]*aria-labelledby="signal-panel-tab-signals"/.test(html), "Signals panel must be labelled by its tab");
   assert(/id="measurements-panel"[^>]*role="tabpanel"[^>]*aria-labelledby="signal-panel-tab-measurements"/.test(html), "Measurements panel must be labelled by its tab");
-  assert(!html.includes("plot-grid") && !html.includes("layout-chooser"), "MVP must not render a multi-layout plot grid");
+  assert(html.includes('data-testid="pane-grid"') && !html.includes("layout-chooser"), "multi-pane Display must expose one canonical pane grid without the obsolete layout chooser");
   assert(html.includes("data-signal-rows") && app.includes("data-signal-visibility"), "signal list must contain per-signal checkbox controls at runtime");
-  ["data-signal-info", "data-signal-duplicate", "data-signal-delete", "signal-info-card-", "signal-duplicate-action-", "signal-delete-action-"].forEach((term) =>
-    assert(app.includes(term), `Inspector rows must retain the stable Info/row-action contract term ${term}`)
+  ["data-signal-duplicate", "data-signal-delete", "signal-duplicate-action-", "signal-delete-action-"].forEach((term) =>
+    assert(app.includes(term), `Inspector rows must retain the stable inline row-action contract term ${term}`)
   );
-  ["Samples", "Sample rate", "Duration", "Type"].forEach((label) =>
-    assert(app.includes(`<dt>${label}</dt>`), `Inspector Info card must render the canonical ${label} snapshot field`)
-  );
+  assert(!app.includes("data-signal-info") && !app.includes("signal-info-card-"), "removed inline Info control and card must stay absent");
   assert(app.includes("names().length <= 1") && app.includes("deleteDisabled"), "last remaining signal must render its row Delete action disabled");
   assert(/\.signal-row:hover \.signal-row-actions,\.signal-row:focus-within \.signal-row-actions\{[^}]*opacity:1[^}]*pointer-events:auto/.test(css), "row actions must become available on hover and keyboard focus");
-  assert(/\.signal-info-cell:hover \.signal-info-card,\.signal-info-cell:focus-within \.signal-info-card,\.signal-info-trigger\[aria-expanded='true'\] \+ \.signal-info-card\{[^}]*opacity:1[^}]*pointer-events:auto/.test(css), "Info card must be available on hover, focus, and explicit toggle");
-  assert(app.includes('infoRow = info.closest(".signal-row")') && app.includes('infoRow.dataset.infoExpanded = expanded ? "true" : "false"'), "Info disclosure must keep row geometry state synchronized with aria-expanded");
   assert(app.includes('if (fatalSnapshotError || ["Enter", " ", "Spacebar"].indexOf(e.key) < 0 || e.target.matches("input,button")) return;'), "native row buttons must bypass delegated Enter/Space row activation");
-  assert(/\.signal-row\[data-info-expanded='true'\] \.signal-actions-cell\{[^}]*overflow:visible!important[^}]*padding-bottom:116px!important[^}]*vertical-align:top\}/.test(css), "expanded Info row must reserve metadata height and release only its action-cell clip");
-  assert(/\.signal-row\[data-info-expanded='true'\] \.signal-info-card\{[^}]*top:36px[^}]*bottom:auto[^}]*opacity:1[^}]*pointer-events:auto/.test(css), "expanded Info card must render below the retained row actions");
-  assert(/\.signal-row\[data-info-expanded='false'\] \.signal-info-card\{[^}]*opacity:0[^}]*pointer-events:none/.test(css), "explicitly collapsed Info must hide metadata even while trigger focus is preserved");
-  assert(/\.signal-row-action:focus-visible,\.signal-info-trigger:focus-visible\{[^}]*outline:2px solid var\(--accent\)/.test(css), "row actions and Info trigger must retain visible keyboard focus");
-  ["signals-add-action", "signals-add-menu", "signals-add-workspace-action", "signals-workspace-dialog", "signals-workspace-refresh", "signals-workspace-loading", "signals-workspace-empty", "signals-workspace-list", "signals-workspace-selection-count", "signals-workspace-sample-rate-group", "signals-workspace-sample-rate-input", "signals-workspace-sample-rate-error", "signals-workspace-batch-error", "signals-workspace-retry", "signals-workspace-submit", "signals-workspace-cancel", "signals-workspace-close", "signals-workspace-success", "signals-workspace-success-count", "signals-workspace-done", "signals-delete-dialog", "signals-delete-name", "signals-delete-confirm", "signals-delete-cancel", "signals-delete-close"].forEach((id) =>
+  assert(/\.signal-row:hover \.signal-row-actions,\.signal-row:focus-within \.signal-row-actions\{[^}]*opacity:1[^}]*pointer-events:auto/.test(css), "inline actions must reveal without geometry shift on hover and focus-within");
+  assert(css.includes(".signal-row-action:focus-visible") && css.includes("outline:2px solid var(--accent)"), "inline row actions must retain visible keyboard focus");
+  ["signals-add-action", "signals-workspace-dialog", "signals-workspace-refresh", "signals-workspace-loading", "signals-workspace-empty", "signals-workspace-list", "signals-workspace-selection-count", "signals-workspace-sample-rate-group", "signals-workspace-sample-rate-input", "signals-workspace-sample-rate-error", "signals-workspace-batch-error", "signals-workspace-retry", "signals-workspace-submit", "signals-workspace-cancel", "signals-workspace-close", "signals-workspace-success", "signals-workspace-success-count", "signals-workspace-done", "signals-delete-dialog", "signals-delete-name", "signals-delete-confirm", "signals-delete-cancel", "signals-delete-close"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `Signals inspector must expose stable selector ${id}`)
   );
   assert(/id="signals-workspace-title"[^>]*tabindex="-1"/.test(html), "workspace catalog must expose a focusable stable dialog-title anchor without inventing a data-testid");
-  assert(/data-testid="signals-add-action"[^>]*aria-label="Добавить сигнал"[^>]*aria-haspopup="menu"[^>]*aria-controls="signals-add-menu"/.test(html), "Signals Add icon control must expose its exact accessible menu trigger semantics");
-  assert(/data-testid="signals-add-menu"[^>]*role="menu"[^>]*hidden/.test(html), "Signals Add menu must begin hidden with menu semantics");
-  assert(/data-testid="signals-add-workspace-action"[^>]*role="menuitem"/.test(html), "the supported Signals workspace import source must remain a semantic menu action");
+  assert(/data-testid="signals-add-action"[^>]*aria-label="Добавить сигнал"[^>]*title="Добавить сигнал"/.test(html), "Signals Add icon control must expose its direct-dialog accessible semantics");
+  assert(!html.includes('data-testid="signals-add-menu"') && !html.includes('data-testid="signals-add-workspace-action"'), "Signals Add must open the primary dialog directly without an intermediate popup control");
   assert(/data-testid="signals-workspace-dialog"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="signals-workspace-title"/.test(html), "workspace catalog must use the labelled modal dialog contract");
   assert(/data-testid="signals-workspace-success"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="signals-workspace-success-count"/.test(html), "workspace success must use its own labelled modal dialog");
   assert(/data-testid="signals-delete-dialog"[^>]*role="alertdialog"[^>]*aria-modal="true"/.test(html), "signal deletion must use a modal destructive confirmation dialog");
@@ -115,7 +127,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(api.includes('request("./api/view", {'), "view API must use ./api/view");
   assert(api.includes('request("./api/displays", {'), "Display lifecycle API must use ./api/displays");
   assert(api.includes('request("./api/signals", {'), "Signals inspector mutations must use the sole ./api/signals route");
-  ["import_workspace", "import_workspace_batch", "catalog_revision", "selections", "duplicate", "extract_time_limits", "delete", "signalsAction", "signals-add-menu", "signals-workspace-dialog", "signals-delete-dialog", "payload.current", "status===409"].forEach((term) =>
+  ["import_workspace", "import_workspace_batch", "catalog_revision", "selections", "duplicate", "extract_time_limits", "delete", "signalsAction", "signals-workspace-dialog", "signals-delete-dialog", "payload.current", "status===409"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Signals inspector lifecycle term ${term}`)
   );
   assert((api.match(/method: "POST"/g) || []).length >= 2, "view and displays mutations must POST JSON");
@@ -152,7 +164,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/button:not\(:disabled\), select:not\(:disabled\), input:not\(:disabled\)\s*\{[^}]*transition:/.test(theme), "enabled controls must share transition states");
   assert(/button:focus-visible, select:focus-visible, input:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--accent\)/.test(theme), "shared controls must retain visible focus styling");
   assert(/\.toolbar-actions \.icon-button:hover,[\s\S]*\.toolbar-actions \.icon-button:active,[\s\S]*\.toolbar-actions \.icon-button:focus-visible/.test(css), "toolbar actions must retain hover, active, and keyboard-focus states");
-  assert(/\.signals-dialog-layer\{z-index:95000\}/.test(css) && /\.signals-workspace-success\{z-index:95010\}/.test(css), "modal layer and success dialog must retain deterministic stacking order");
+  assert(/\.signals-dialog-layer\{[^}]*z-index:var\(--layer-main-modal-backdrop\)/.test(css) && /\.signals-dialog\{position:relative;z-index:var\(--layer-main-modal\)/.test(css) && theme.includes("--layer-main-modal-backdrop: 94990") && theme.includes("--layer-main-modal: 95000"), "modal backdrop/card must retain deterministic tokenized stacking order");
   assert(/\.display-settings\s*\.panel-content\{[^}]*min-height:0[^}]*overflow:auto/.test(css), "inspector settings content must scroll instead of overflowing its panel");
   assert(/\.signal-table td\[data-column='name'\],\.signal-table td\[data-column='type'\]\{[^}]*overflow:hidden[^}]*text-overflow:ellipsis[^}]*white-space:nowrap/.test(css), "inspector name/type cells must clip long values without widening the table");
 
@@ -180,7 +192,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   ["ArrowLeft", "ArrowRight", "Home", "End"].forEach((key) => assert(app.includes(`"${key}"`), `bottom tab keyboard navigation must support ${key}`));
   assert(app.includes("function activateBottomTab(tabId, focus)") && app.includes('tab.setAttribute("tabindex", selected ? "0" : "-1")') && app.includes("target.focus()"), "bottom tabs must apply roving tabindex through the shared activator and move focus to the selected tab");
   assert(/data-testid="find-peaks-action"[^>]*aria-pressed="false"[^>]*aria-controls="peaks-panel"/.test(html), "Find Peaks must expose a controlled capability toggle");
-  assert(/data-testid="signal-statistics-action"[^>]*aria-controls="measurements-panel"[^>]*aria-label="Открыть измерения активного Display"/.test(html), "Signal statistics must expose its local Measurements destination accessibly");
+  assert(/data-testid="signal-statistics-action"[^>]*aria-controls="measurements-panel"[^>]*aria-label="Открыть измерения активного отображения"/.test(html), "Signal statistics must expose its Russian local Measurements destination accessibly");
   assert(/data-testid="time-min-input"[^>]*inputmode="decimal"/.test(html) && /data-testid="time-max-input"[^>]*inputmode="decimal"/.test(html), "Time Limits must expose typed seconds inputs");
   assert(/data-testid="time-limits-error"[^>]*role="alert"[^>]*hidden/.test(html), "Time Limits must reserve an accessible inline validation state");
   assert(/data-testid="peaks-panel-tab"[^>]*data-bottom-tab="peaks"[^>]*role="tab"[^>]*aria-controls="peaks-panel"[^>]*hidden/.test(html), "the local Peaks tab must start hidden and retain tab semantics");
@@ -274,7 +286,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
     assert(app.includes(term), `Cascade 17 frontend must retain Power Limits term ${term}`)
   );
   assert(!/spectrogram.*(?:fft|stft|pspectrum|minthreshold)/i.test(app), "Cascade 17 must not add client-side DSP or MinThreshold behavior");
-  assert(html.includes('<option value="persistence">Persistence</option>'), "Cascade 18 must retain Persistence as the existing generic plot-kind option");
+  assert(html.includes('<option value="persistence">Спектр персистентности</option>'), "Cascade 18 must retain Persistence as the Russian generic plot-kind option");
   ["persistence-settings", "persistence-leakage-input", "persistence-leakage-value", "persistence-leakage-error"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `Cascade 19 must expose stable Persistence Leakage selector ${id}`)
   );
