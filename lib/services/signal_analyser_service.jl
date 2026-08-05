@@ -14,8 +14,13 @@ const SIGNAL_ANALYSER_VIEW_FIELDS = Set([
     "persistence_settings",
     "peaks_enabled",
 ])
-const SIGNAL_ANALYSER_DISPLAY_FIELDS = Set(["state_revision", "operation", "display_id"])
-const SIGNAL_ANALYSER_DISPLAY_OPERATIONS = Set(["create", "select", "close"])
+const SIGNAL_ANALYSER_DISPLAY_OPERATIONS = Set(["create", "select", "close", "reorder"])
+const SIGNAL_ANALYSER_DISPLAY_REQUEST_FIELDS = Dict(
+    "create" => Set(["state_revision", "operation"]),
+    "select" => Set(["state_revision", "operation", "display_id"]),
+    "close" => Set(["state_revision", "operation", "display_id"]),
+    "reorder" => Set(["state_revision", "operation", "order"]),
+)
 const SIGNAL_ANALYSER_LAYOUT_OPERATIONS = Set(["resize", "select_pane", "update_pane"])
 const SIGNAL_ANALYSER_LAYOUT_REQUEST_FIELDS = Dict(
     "resize" => Set([
@@ -1146,11 +1151,186 @@ function signal_analyser_layout_by_display_id(
     layout
 end
 
+const SignalAnalyserPaneRendererData = Union{
+    Vector{Dict{String,Any}},
+    Dict{String,Any},
+}
+
+"""Derived renderer output for one authoritative pane; never persisted in session state."""
+struct SignalAnalyserPaneOutput
+    pane_id::String
+    plot_type::SignalAnalyserPlot
+    signal_bindings::Vector{String}
+    analysis_signal::Union{Nothing,String}
+    isready::Bool
+    success::Bool
+    error::String
+    data::SignalAnalyserPaneRendererData
+end
+
+function signal_analyser_display_for_pane(
+    display::SignalAnalyserDisplayState,
+    pane::SignalDisplayPaneState,
+)::SignalAnalyserDisplayState
+    SignalAnalyserDisplayState(
+        display.id,
+        display.name,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+    )
+end
+
+function signal_analyser_ordered_trace_data(
+    traces::Vector{Dict{String,Any}},
+    signal_bindings::Vector{String},
+)::Vector{Dict{String,Any}}
+    traces_by_signal = Dict{String,Dict{String,Any}}(
+        String(trace["signal"]) => trace for trace in traces
+    )
+    Dict{String,Any}[traces_by_signal[name] for name in signal_bindings]
+end
+
+function signal_analyser_pane_renderer_data(
+    prepared::SignalAnalyserPreparedDisplayPlots,
+    plot_type::SignalAnalyserPlot,
+    signal_bindings::Vector{String},
+    spectrum_settings::SignalSpectrumSettings,
+)::SignalAnalyserPaneRendererData
+    if plot_type == TIME_PLOT
+        return signal_analyser_ordered_trace_data(
+            prepared.plot_payload["time_traces"]::Vector{Dict{String,Any}},
+            signal_bindings,
+        )
+    elseif plot_type == SPECTRUM_PLOT
+        traces = signal_analyser_ordered_trace_data(
+            prepared.plot_payload["spectrum_traces"]::Vector{Dict{String,Any}},
+            signal_bindings,
+        )
+        frequency_scale = SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[
+            spectrum_settings.frequency_scale
+        ]
+        for trace in traces
+            trace["frequency_scale"] = frequency_scale
+        end
+        return traces
+    elseif plot_type == SPECTROGRAM_PLOT
+        return prepared.plot_payload["spectrogram"]::Dict{String,Any}
+    end
+    prepared.plot_payload["persistence"]::Dict{String,Any}
+end
+
+function signal_analyser_pane_output_error(err)::String
+    message = sprint(showerror, err)
+    length(message) <= 240 ? message : string(first(message, 237), "...")
+end
+
+function signal_analyser_prepare_pane_output!(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    pane::SignalDisplayPaneState,
+)::SignalAnalyserPaneOutput
+    pane_display = signal_analyser_display_for_pane(display, pane)
+    signal_bindings = signal_display_pane_members(pane)
+    analysis_name = signal_display_pane_analysis_name(pane)
+    analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+    try
+        prepared = signal_analyser_prepare_display_plots(
+            state,
+            pane_display,
+            analysis_signal,
+            signal_bindings,
+            materialize_missing_spectra = pane.plot_type == SPECTRUM_PLOT,
+            materialize_missing_spectrogram = pane.plot_type == SPECTROGRAM_PLOT,
+            materialize_missing_persistence = pane.plot_type == PERSISTENCE_PLOT,
+        )
+        data = signal_analyser_pane_renderer_data(
+            prepared,
+            pane.plot_type,
+            signal_bindings,
+            pane.spectrum_settings,
+        )
+        signal_analyser_publish_display_plots!(state, prepared)
+        return SignalAnalyserPaneOutput(
+            pane.id,
+            pane.plot_type,
+            signal_bindings,
+            analysis_name,
+            true,
+            true,
+            "",
+            data,
+        )
+    catch err
+        empty_prepared = signal_analyser_prepare_display_plots(
+            state,
+            pane_display,
+            nothing,
+            String[],
+            materialize_missing_spectra = false,
+            materialize_missing_spectrogram = false,
+            materialize_missing_persistence = false,
+        )
+        return SignalAnalyserPaneOutput(
+            pane.id,
+            pane.plot_type,
+            signal_bindings,
+            analysis_name,
+            true,
+            false,
+            signal_analyser_pane_output_error(err),
+            signal_analyser_pane_renderer_data(
+                empty_prepared,
+                pane.plot_type,
+                String[],
+                pane.spectrum_settings,
+            ),
+        )
+    end
+end
+
+function signal_analyser_pane_output_payload(
+    output::SignalAnalyserPaneOutput,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "pane_id" => output.pane_id,
+        "plot_type" => signal_analyser_plot_name(output.plot_type),
+        "signal_bindings" => output.signal_bindings,
+        "analysis_signal" => output.analysis_signal,
+        "output" => Dict{String,Any}(
+            "isready" => output.isready,
+            "success" => output.success,
+            "error" => output.error,
+            "data" => output.data,
+        ),
+    )
+end
+
+function signal_analyser_layout_outputs_payload(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    layout::SignalDisplayLayoutState,
+)::Vector{Dict{String,Any}}
+    Dict{String,Any}[
+        signal_analyser_pane_output_payload(
+            signal_analyser_prepare_pane_output!(state, display, pane),
+        )
+        for pane in layout.panes
+    ]
+end
+
 function signal_display_pane_payload(pane::SignalDisplayPaneState)::Dict{String,Any}
     Dict{String,Any}(
         "id" => pane.id,
         "plot_type" => signal_analyser_plot_name(pane.plot_type),
-        "signal_bindings" => copy(pane.signal_bindings),
+        "signal_bindings" => signal_display_pane_members(pane),
     )
 end
 
@@ -1174,12 +1354,17 @@ function signal_analyser_layout_entries_payload(
     state::SignalAnalyserState,
 )::Vector{Dict{String,Any}}
     Dict{String,Any}[
-        Dict{String,Any}(
-            "display_id" => display.id,
-            "layout" => signal_display_layout_payload(
-                signal_analyser_layout_by_display_id(state, display.id),
-            ),
-        )
+        let layout = signal_analyser_layout_by_display_id(state, display.id)
+            Dict{String,Any}(
+                "display_id" => display.id,
+                "layout" => signal_display_layout_payload(layout),
+                "outputs" => signal_analyser_layout_outputs_payload(
+                    state,
+                    display,
+                    layout,
+                ),
+            )
+        end
         for display in state.displays
     ]
 end
@@ -1218,7 +1403,7 @@ function signal_analyser_display_for_layout(
     layout::SignalDisplayLayoutState,
 )::SignalAnalyserDisplayState
     pane = signal_display_active_pane(layout)
-    members = copy(pane.signal_bindings)
+    members = signal_display_pane_members(pane)
     current_analysis = signal_analyser_display_analysis_name(display)
     analysis_name = if isempty(members)
         nothing
@@ -1654,11 +1839,12 @@ end
 
 function signal_analyser_reconcile_analysis_source(
     reconciler::SignalAnalysisSourceReconciler,
-    display::SignalAnalyserDisplayState,
+    spectrum_settings::SignalSpectrumSettings,
+    spectrogram_settings::SignalSpectrogramSettings,
     prospective_members::AbstractVector{AnalysedSignal},
     prospective_source::AnalysedSignal,
 )::ReconciledSignalAnalysisSettings
-    if display.spectrum_settings.frequency_scale == LOG_SPECTRUM_FREQUENCY_SCALE &&
+    if spectrum_settings.frequency_scale == LOG_SPECTRUM_FREQUENCY_SCALE &&
         any(signal -> signal.is_complex, prospective_members)
         throw(SignalAnalysisSourceCompatibilityError(
             "spectrum_settings",
@@ -1668,14 +1854,84 @@ function signal_analyser_reconcile_analysis_source(
     ReconciledSignalAnalysisSettings(
         signal_analyser_reconcile_carried_frequency_limits(
             reconciler,
-            display.spectrum_settings,
+            spectrum_settings,
             prospective_source,
         ),
         signal_analyser_reconcile_carried_frequency_limits(
             reconciler,
-            display.spectrogram_settings,
+            spectrogram_settings,
             prospective_source,
         ),
+    )
+end
+
+function signal_analyser_reconcile_analysis_source(
+    reconciler::SignalAnalysisSourceReconciler,
+    display::SignalAnalyserDisplayState,
+    prospective_members::AbstractVector{AnalysedSignal},
+    prospective_source::AnalysedSignal,
+)::ReconciledSignalAnalysisSettings
+    signal_analyser_reconcile_analysis_source(
+        reconciler,
+        display.spectrum_settings,
+        display.spectrogram_settings,
+        prospective_members,
+        prospective_source,
+    )
+end
+
+function signal_display_pane_reconfigured(
+    state::SignalAnalyserState,
+    pane::SignalDisplayPaneState,
+    plot_type::SignalAnalyserPlot,
+    signal_bindings::AbstractVector{<:AbstractString},
+)::SignalDisplayPaneState
+    membership = SignalDisplayMembership(signal_bindings)
+    members = collect(membership.signal_names)
+    current_analysis = signal_display_pane_analysis_name(pane)
+    analysis_name = if isempty(members)
+        nothing
+    elseif current_analysis !== nothing && current_analysis in members
+        current_analysis
+    else
+        first(members)
+    end
+    analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+    prospective_members = AnalysedSignal[signal_by_name(state, name) for name in members]
+    reconciled_settings = analysis_signal === nothing ? ReconciledSignalAnalysisSettings(
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+    ) : signal_analyser_reconcile_analysis_source(
+        SignalAnalysisSourceReconciler(),
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        prospective_members,
+        analysis_signal,
+    )
+    time_limits = if analysis_signal === nothing
+        nothing
+    elseif current_analysis == analysis_name && pane.time_limits !== nothing &&
+        signal_time_limits_are_valid(
+            state.measurements_service,
+            analysis_signal,
+            pane.time_limits,
+        )
+        pane.time_limits
+    else
+        signal_full_time_limits(state.measurements_service, analysis_signal)
+    end
+    SignalDisplayPaneState(
+        pane.id,
+        plot_type,
+        membership,
+        signal_analysis_source(analysis_name),
+        time_limits,
+        pane.measurement_selection,
+        reconciled_settings.spectrum,
+        reconciled_settings.spectrogram,
+        pane.persistence_settings,
+        signal_settings_reconcile_stored_for_source(pane.stored_settings, analysis_signal),
+        analysis_signal !== nothing && plot_type == TIME_PLOT && pane.peaks_enabled,
     )
 end
 
@@ -3522,10 +3778,12 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
         display = signal_analyser_active_display(state)
         prospective_display = requested.display
         prospective_members = signal_analyser_display_members(prospective_display)
+        active_pane = signal_display_active_pane(
+            signal_analyser_layout_by_display_id(state, display.id),
+        )
         prospective_layout = signal_display_layout_replace_active_pane(
             signal_analyser_layout_by_display_id(state, display.id),
-            prospective_display.active_plot,
-            prospective_members,
+            signal_display_pane_from_display(active_pane.id, prospective_display),
         )
         prospective_analysis_name = signal_analyser_display_analysis_name(prospective_display)
         changes = SignalAnalyserViewChanges(
@@ -3605,27 +3863,44 @@ function validate_signal_analyser_display_payload(
     ))
 
     field_errors = Dict{String,String}()
-    unknown_fields = setdiff(signal_analyser_payload_keys(data), SIGNAL_ANALYSER_DISPLAY_FIELDS)
-    isempty(unknown_fields) || (field_errors["body"] = "Неизвестные поля: $(join(sort!(collect(unknown_fields)), ", "))")
-
-    revision_value = signal_analyser_payload_value(data, "state_revision")
-    revision_value isa Integer && !(revision_value isa Bool) || (field_errors["state_revision"] = "Требуется целое число")
-
     operation_value = signal_analyser_payload_value(data, "operation")
     operation = if operation_value isa AbstractString && String(operation_value) in SIGNAL_ANALYSER_DISPLAY_OPERATIONS
         String(operation_value)
     else
-        field_errors["operation"] = "Допустимо: create, select, close"
+        field_errors["operation"] = "Допустимо: create, select, close, reorder"
+        nothing
+    end
+    expected_fields = operation === nothing ?
+        Set(["state_revision", "operation"]) :
+        SIGNAL_ANALYSER_DISPLAY_REQUEST_FIELDS[operation]
+    actual_fields = signal_analyser_payload_keys(data)
+    if actual_fields != expected_fields
+        missing = sort!(collect(setdiff(expected_fields, actual_fields)))
+        unknown = sort!(collect(setdiff(actual_fields, expected_fields)))
+        details = String[]
+        isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
+        isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
+        field_errors["body"] = "Ожидался точный набор полей ($(join(details, "; ")))"
+    end
+
+    revision_value = signal_analyser_payload_value(data, "state_revision")
+    revision = if revision_value isa Integer && !(revision_value isa Bool) && revision_value >= 0
+        try
+            Int(revision_value)
+        catch err
+            (err isa InexactError || err isa OverflowError) || rethrow()
+            field_errors["state_revision"] = "Требуется целое число в диапазоне Int"
+            nothing
+        end
+    else
+        field_errors["state_revision"] = "Требуется неотрицательное целое число"
         nothing
     end
 
-    has_display_id = signal_analyser_payload_contains(data, "display_id")
     display_id_value = signal_analyser_payload_value(data, "display_id")
     display_id = nothing
-    if operation == "create"
-        has_display_id && (field_errors["display_id"] = "Поле не допускается для create")
-    elseif operation == "select" || operation == "close"
-        if !has_display_id || !(display_id_value isa AbstractString) || isempty(String(display_id_value))
+    if operation == "select" || operation == "close"
+        if !(display_id_value isa AbstractString) || isempty(String(display_id_value))
             field_errors["display_id"] = "Требуется непустой идентификатор Display"
         else
             display_id = String(display_id_value)
@@ -3636,11 +3911,50 @@ function validate_signal_analyser_display_payload(
             (field_errors["operation"] = "Нужно оставить хотя бы один Display")
     end
 
+    requested_order = String[]
+    if operation == "reorder"
+        order_value = signal_analyser_payload_value(data, "order")
+        if order_value isa AbstractVector
+            for (index, value) in enumerate(order_value)
+                if !(value isa AbstractString) || isempty(String(value))
+                    field_errors["order"] = "Элемент order $index должен быть непустой строкой"
+                    break
+                end
+                push!(requested_order, String(value))
+            end
+            if !haskey(field_errors, "order")
+                current_order = [display.id for display in state.displays]
+                duplicate_ids = sort!(unique([
+                    id for id in requested_order if count(==(id), requested_order) > 1
+                ]))
+                unknown_ids = sort!(collect(setdiff(Set(requested_order), Set(current_order))))
+                missing_ids = [id for id in current_order if !(id in requested_order)]
+                order_errors = String[]
+                isempty(duplicate_ids) || push!(
+                    order_errors,
+                    "Повторяющиеся идентификаторы Display: $(join(duplicate_ids, ", "))",
+                )
+                isempty(unknown_ids) || push!(
+                    order_errors,
+                    "Неизвестные идентификаторы Display: $(join(unknown_ids, ", "))",
+                )
+                isempty(missing_ids) || push!(
+                    order_errors,
+                    "Отсутствующие идентификаторы Display: $(join(missing_ids, ", "))",
+                )
+                isempty(order_errors) || (field_errors["order"] = join(order_errors, "; "))
+            end
+        else
+            field_errors["order"] = "Требуется массив идентификаторов Display"
+        end
+    end
+
     isempty(field_errors) || throw(SignalAnalyserValidationError("Некорректный запрос Display", field_errors))
     (
-        revision = Int(revision_value),
+        revision = revision::Int,
         operation = operation::String,
         display_id = display_id,
+        order = requested_order,
     )
 end
 
@@ -3664,7 +3978,46 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             state.view.state_revision,
         ))
 
-        if requested.operation == "create"
+        if requested.operation == "reorder"
+            current_order = [display.id for display in state.displays]
+            changed = requested.order != current_order
+            next_revision = state.view.state_revision + (changed ? 1 : 0)
+            active_display = signal_analyser_active_display(state)
+            analysis_signal = signal_analyser_display_analysis_signal(state, active_display)
+            prepared_display_plots = signal_analyser_prepare_display_plots(
+                state,
+                active_display,
+                analysis_signal,
+                signal_analyser_display_plot_names(active_display),
+            )
+            prepared_measurements = signal_measurements_snapshot(
+                state.measurements_service,
+                next_revision,
+                analysis_signal,
+                active_display.time_limits,
+                active_display.measurement_selection,
+            )
+            prepared_peaks = signal_peaks_snapshot(
+                state.peaks_service,
+                next_revision,
+                active_display,
+                analysis_signal,
+            )
+            if changed
+                displays_by_id = Dict(display.id => display for display in state.displays)
+                state.displays = SignalAnalyserDisplayState[
+                    displays_by_id[display_id] for display_id in requested.order
+                ]
+                state.view.state_revision += 1
+            end
+            signal_analyser_publish_display_plots!(state, prepared_display_plots)
+            return signal_analyser_snapshot_from_prepared_unlocked(
+                state,
+                prepared_measurements,
+                prepared_peaks,
+                prepared_display_plots,
+            )
+        elseif requested.operation == "create"
             display_number = state.next_display_number
             analysis_signal = first(state.signals)
             display = SignalAnalyserDisplayState(
@@ -3697,10 +4050,7 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             )
             signal_analyser_publish_display_plots!(state, prepared_display_plots)
             push!(state.displays, display)
-            state.display_layouts[display.id] = signal_display_default_layout(
-                display.active_plot,
-                signal_analyser_display_members(display),
-            )
+            state.display_layouts[display.id] = signal_display_default_layout(display)
             state.next_display_number += 1
             signal_analyser_sync_active_display!(state, display)
             state.view.state_revision += 1
@@ -4003,10 +4353,24 @@ function validate_signal_analyser_layout_payload(
             if layout !== nothing && pane_id !== nothing && plot_type !== nothing &&
                 !haskey(field_errors, "pane_id") &&
                 !haskey(field_errors, "signal_bindings")
-                prospective_layout = signal_display_layout_replace_pane(
-                    layout,
-                    SignalDisplayPaneState(pane_id, plot_type, bindings),
-                )
+                pane_index = findfirst(pane -> pane.id == pane_id, layout.panes)::Int
+                replacement = try
+                    signal_display_pane_reconfigured(
+                        state,
+                        layout.panes[pane_index],
+                        plot_type,
+                        bindings,
+                    )
+                catch err
+                    if err isa SignalAnalysisSourceCompatibilityError
+                        field_errors[err.field] = sprint(showerror, err)
+                        nothing
+                    else
+                        rethrow()
+                    end
+                end
+                replacement === nothing || (prospective_layout =
+                    signal_display_layout_replace_pane(layout, replacement))
             end
         end
     end

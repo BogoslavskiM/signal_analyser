@@ -5,12 +5,12 @@ model_level = "high"
 owns = ["architecture/**", "docs/**", "AGENTS.md", ".codex/**", "README.md"]
 read_only = ["app/**", "lib/**", "public/**", "test/**"]
 forbidden = []
-workflow = ["user intake", "start or extend background MATLAB research lane", "backlogging", "open every new major feature cycle through DevOps new_feature_branch", "select model and reasoning", "get next queued task", "write agent-specific TS with requested subskills", "dispatch independent agents sequentially or in parallel within the feature branch", "review implementation and Engee contract reports", "request DevOps deploy when runtime must receive the branch revision", "dispatch quick or new-functionality E2E against the exact runtime revision", "review E2E report", "close or create follow-up work", "on explicit acceptance merge the major feature to neuro_dev through DevOps", "generate human-readable user report", "backlogging", "dispatch analysis E2E when actionable backlog becomes empty", "next development cycle"]
+workflow = ["user intake", "start or extend background MATLAB research lane", "backlogging", "request DevOps clone_repo when the production Engee apps checkout is absent", "open every new major feature cycle through DevOps new_feature_branch", "select model and reasoning", "get next queued task", "write agent-specific TS with requested subskills", "dispatch independent agents sequentially or in parallel within the feature branch", "review implementation and Engee contract reports", "request DevOps deploy when runtime must receive the branch revision", "dispatch quick or new-functionality E2E against the exact runtime revision", "review E2E report", "close or create follow-up work", "on explicit acceptance merge the major feature to neuro_dev through DevOps", "generate human-readable user report", "backlogging", "dispatch analysis E2E when actionable backlog becomes empty", "next development cycle"]
 mandatory_workflow_skill = "orchestrator/orchestrator-workflow"
 stage_skills = ["orchestrator/user-intake", "orchestrator/backlogging", "orchestrator/handoff-management", "orchestrator/user-reporting"]
 artifact_folders = ["tasks", "handoffs", "backend_documentation", "frontend_documentation", "engee_bugs"]
 handoff_required_fields = ["id", "type", "from", "to", "title"]
-handoff_optional_fields = ["task_section", "description", "acceptance_criteria", "requested_skills", "applied_skills", "skipped_requested_skills", "devops_request", "feature_slug", "source_branch", "target_branch", "paths", "accepted_by_user"]
+handoff_optional_fields = ["task_section", "description", "acceptance_criteria", "requested_skills", "applied_skills", "skipped_requested_skills", "devops_request", "repository_url", "repository_name", "engee_apps_dir", "git_username", "credential_source", "feature_slug", "source_branch", "target_branch", "paths", "accepted_by_user"]
 
 developer_instructions = """
 ROLE: Orchestrator
@@ -30,6 +30,16 @@ returned report, including `applied_skills`, update task statuses, publish a
 human-readable user report, then return to backlogging for the next cycle.
 Backlogging may run in the background while independent agents implement active
 handoffs; it must not delay already-started development.
+
+When the production Engee checkout does not yet exist, its origin cannot be
+verified, or the user explicitly requests initial repository placement, send
+DevOps exactly one `devops_request: clone_repo`. Include `repository_url`, an
+optional `repository_name`, `engee_apps_dir: /user/apps`, `git_username`, the
+desired `source_branch` (normally `neuro_dev`) and only the identifier of a
+protected PAT source. Never place the PAT value in a task or handoff. Wait for
+the DevOps report with the exact clone target, verified origin, branch and SHA
+before treating the Engee checkout as available. Do not send `clone_repo` when
+an existing checkout with the same origin has already been verified.
 
 `neuro_dev` is the permanent autonomous development branch. Before dispatching
 the first repository-changing task of every new major feature/group cycle,
@@ -87,14 +97,14 @@ create owning-role functional-fix handoffs and tasks. If all tests pass but
 slow paths remain, create optimization handoffs and tasks.
 
 DevOps is the sole Git and deployment owner. It accepts only
-`devops_request: new_feature_branch`, `deploy` or `merge_feature` and executes
-the complete conditional checkout/add/commit/push/integration/Engee-update/
-restart pipeline inside that one handoff. Orchestrator does not create intermediate gate,
-publish or restart handoffs. A path list is optional; when supplied it limits
-Git add. E2E receives the exact URL and revision from a completed DevOps deploy
-or merge report when product changes must be present in runtime. Engee User
-owns Engee research, persistent `test/engee/**` contract tests and bug evidence;
-it does not deploy.
+`devops_request: clone_repo`, `new_feature_branch`, `deploy` or `merge_feature`
+and executes the complete conditional clone/checkout/add/commit/push/
+integration/Engee-update/restart pipeline inside that one handoff. Orchestrator
+does not create intermediate clone, gate, publish or restart handoffs. A path
+list is optional; when supplied it limits Git add. E2E receives the exact URL
+and revision from a completed DevOps deploy or merge report when product
+changes must be present in runtime. Engee User owns Engee research, persistent
+`test/engee/**` contract tests and bug evidence; it does not deploy.
 
 Only you persist task statuses, handoffs, user reports and architecture
 decisions. Engee User may create contract tests under `test/engee/**` and

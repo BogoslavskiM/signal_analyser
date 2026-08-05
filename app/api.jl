@@ -404,5 +404,6 @@ function status_payload()
         "ok" => true,
         "project" => EXAMPLE_APP_STATE["project_name"],
         "ready" => EXAMPLE_APP_STATE["ready"],
+        "runtime_revision" => RUNTIME_REVISION.sha,
     )
 end

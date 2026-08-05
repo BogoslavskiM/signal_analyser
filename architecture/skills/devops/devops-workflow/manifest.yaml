@@ -1,15 +1,15 @@
 schema_version: 2
 name: devops-workflow
-version: 2.0.0
+version: 3.0.0
 title: "DevOps Workflow"
 description: >
-  Единый автономный neuro_dev pipeline для new-feature-branch, deploy и
+  Единый автономный pipeline для clone-repo, new-feature-branch, deploy и
   accepted-feature-merge intake с условными Git/Engee/restart этапами.
 language: ru
 audience: [assistant]
 priority: 1.0
 when-to-use:
-  - "Всегда при работе DevOps"
+  - "Получен devops_request: clone_repo, new_feature_branch, deploy или merge_feature"
 when-not:
   - "Для изменения product, test или architecture files"
 requires-tools:

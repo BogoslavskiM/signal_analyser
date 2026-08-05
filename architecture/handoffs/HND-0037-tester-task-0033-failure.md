@@ -3,7 +3,7 @@ id: HND-0037
 type: report
 from: tester
 to: orchestrator
-title: Strict UI cleanup regression failed: obsolete DOM nodes were hidden only
+title: "Strict UI cleanup regression failed: obsolete DOM nodes were hidden only"
 task_section: ../tasks/TASK-0033-test-ui-cleanup.md#acceptance-criteria
 description: >
   Static assertions for branding, column visibility/a11y, right action column,

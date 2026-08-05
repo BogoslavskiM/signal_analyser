@@ -25,8 +25,9 @@ Orchestrator сохраняет tasks и handoffs, выбирает порядо
   contract tests, discrepancy localization и bug evidence.
 - E2E получает отдельный regression handoff после каждой завершённой task,
   а также `analysis_regression` при переходе к пустому actionable backlog.
-- DevOps получает один из трёх полных pipeline requests: новая ветка крупной
-  feature, deploy или merge принятой feature в `neuro_dev`.
+- DevOps получает один из четырёх полных pipeline requests: первичный clone
+  repository в Engee apps, новая ветка крупной feature, deploy или merge
+  принятой feature в `neuro_dev`.
 
 Если результат требует изменения в нескольких ownership-зонах, Orchestrator
 создаёт отдельные handoff для владельцев и явно фиксирует контракт между ними.
@@ -52,6 +53,7 @@ trigger-matched subskill самостоятельно, но обязан вер�
 | Frontend implementation | меняются UI, frontend state или interaction | Frontend |
 | Backend/frontend tests | меняется соответствующий product contract | Tester |
 | Engee contract tests | используется или меняется Engee contract | Engee User |
+| Initial Engee checkout | checkout repository отсутствует или его origin не подтверждён | DevOps `clone_repo` до deploy/update |
 | Feature branch | начинается новый крупный feature-cycle | DevOps `new_feature_branch` до первой repository mutation |
 | Runtime publication/deployment | E2E target должен содержать новую revision | DevOps `deploy` |
 | Accepted feature integration | пользователь принял крупную feature | DevOps `merge_feature` в `neuro_dev` |
@@ -63,6 +65,28 @@ backend API до зависимого frontend, implementation reports до test
 runtime report до E2E проверки новой revision. Для каждого пропущенного stage
 зафиксируй `not_applicable` и причину в task review; это защищает от забытого
 этапа без создания лишних handoff.
+
+## Первичное клонирование repository в Engee
+
+`devops_request: clone_repo` — отдельный bootstrap intake. Вызывай его, когда
+production Engee ещё не содержит checkout нужного repository, существующий
+checkout не имеет подтверждённого origin либо пользователь прямо запросил
+первичное размещение repository. Если DevOps ранее вернул тот же clone target,
+origin и SHA, повторный clone не отправляй.
+
+```yaml
+devops_request: clone_repo
+repository_url: https://github.com/<owner>/<repository>.git
+repository_name: <optional; derived from URL>
+engee_apps_dir: /user/apps
+git_username: <GitHub login>
+credential_source: protected_github_pat
+source_branch: neuro_dev
+```
+
+PAT запрещено записывать в task, handoff или report. Orchestrator указывает
+только protected credential source и ждёт report с target, origin, branch и
+SHA; до этого checkout считается недоступным.
 
 ## Lifecycle крупной feature
 
@@ -185,23 +209,27 @@ Task со статусом `done` не открывается заново по 
 
 Все роли адресуют Git/runtime requests только DevOps через Orchestrator. DevOps
 не получает цепочку микрозадач: один request запускает полный conditional
-pipeline checkout/create → add → commit → push → accepted integration → Engee
-update → restart.
+pipeline clone into Engee apps → checkout/create → add → commit → push →
+accepted integration → Engee update → restart.
 Ненужные этапы возвращаются как `not_needed`; blocker останавливает дальнейшие
 этапы без rollback.
 
+- `clone_repo` используется для первичного checkout private repository в
+  `/user/apps` с PAT из protected credential source;
 - `new_feature_branch` обязателен один раз при старте крупного feature-cycle;
 - `deploy` используется, когда Engee/E2E должен получить current feature или
   `neuro_dev` revision;
 - `merge_feature` обязателен сразу после явного принятия крупной feature и
   всегда вливает её в `neuro_dev`.
 
-Передавай optional `paths`, если Git add нужно ограничить конкретными файлами
-или папками. Для deploy передай branch/expected scope; для merge — source
-feature branch и `accepted_by_user: true`. Если E2E должен проверить новую
-revision, сначала получи DevOps report с URL и exact SHA, затем отправь E2E
-handoff. При отсутствии актуального runtime передай `target_status:
-unavailable`; E2E вернёт blocker, а не проверит старую revision.
+Для clone передавай URL без credentials, `/user/apps`, Git username, branch и
+только имя protected PAT source. Передавай optional `paths`, если Git add нужно
+ограничить конкретными файлами или папками. Для deploy передай branch/expected
+scope; для merge — source feature branch и `accepted_by_user: true`. Если E2E
+должен проверить новую revision, сначала получи DevOps report с URL и exact
+SHA, затем отправь E2E handoff. При отсутствии актуального runtime передай
+`target_status: unavailable`; E2E вернёт blocker, а не проверит старую
+revision.
 
 ## Model selection
 

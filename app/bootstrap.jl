@@ -1,4 +1,9 @@
 include(joinpath(@__DIR__, "..", "lib", "config.jl"))
+
+const RUNTIME_REVISION = runtime_revision_from_git_checkout(
+    normpath(joinpath(@__DIR__, "..")),
+)
+
 include(joinpath(@__DIR__, "..", "lib", "helpers.jl"))
 include(joinpath(@__DIR__, "..", "lib", "domain", "example_model.jl"))
 include(joinpath(@__DIR__, "..", "lib", "domain", "signal_analyser_state.jl"))

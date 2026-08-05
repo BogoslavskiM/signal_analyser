@@ -28,6 +28,8 @@ handoff или task.
 
 Skill request не расширяет ownership, не заменяет acceptance criteria и не
 разрешает deployment/Git/external mutation. Такие действия получают отдельный
-role-specific handoff. Для DevOps это один полный `devops_request` (`deploy`,
-`new_feature_branch` или `merge_feature`), а не цепочка checkout/add/commit/
-push/restart handoff.
+role-specific handoff. Для DevOps это один полный `devops_request`
+(`clone_repo`, `deploy`, `new_feature_branch` или `merge_feature`), а не
+цепочка clone/checkout/add/commit/push/restart handoff. Для `clone_repo`
+передавай только URL без credentials и идентификатор protected PAT source;
+секрет в handoff запрещён.

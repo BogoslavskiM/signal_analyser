@@ -13,7 +13,7 @@ parent: TASK-0014
 depends_on: []
 blocks: [TASK-0027]
 source_handoffs: [HND-0037]
-related_handoffs: [HND-0038]
+related_handoffs: [HND-0038, HND-0055]
 blocked_by: []
 blocker_reason: null
 ---
@@ -40,3 +40,9 @@ session/import/help workflows и не трогать persistent tab reorder.
   невыполнение acceptance criterion.
 - Queue order: 32.
 - Eligibility: готова к немедленному Frontend follow-up.
+
+## Follow-up evidence
+
+HND-0055 подтвердил, что nodes отсутствуют в HTML, но `public/js/app.js` всё
+ещё содержит lifecycle/render references к шести obsolete selectors. Это
+product-owned остаток TASK-0034; Tester его не менял.
