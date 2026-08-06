@@ -45,6 +45,8 @@
   function variant(rows, columns) { return String(rows) + "x" + String(columns); }
   function pretty(rows, columns) { return String(rows) + "×" + String(columns); }
   function node(testId) { return document.querySelector("[data-testid='" + testId + "']"); }
+  function setText(testId, value) { var target = node(testId); if (target) target.textContent = value; return target; }
+  function setHidden(testId, hidden) { var target = node(testId); if (target) target.hidden = hidden; return target; }
   function setLayoutDisabled(control, disabled) {
     if (!control) return;
     if (disabled) {
@@ -302,7 +304,7 @@
       grid.innerHTML = refreshPending ? "<div class='pane-grid-state' data-testid='layout-loading' role='status'><span class='spinner'></span><span>Загрузка макета…</span></div>" : "<div class='pane-grid-state is-error' data-testid='layout-load-error' role='alert'><span>Не удалось загрузить макет.</span><button type='button' data-testid='layout-retry'>Повторить</button></div>";
       returnRuntimeNodes();
       if (loadingTrigger) loadingTrigger.disabled = true;
-      if (node("layout-trigger-label")) node("layout-trigger-label").textContent = "—";
+      setText("layout-trigger-label", "—");
       [node("plot-type-select"), node("settings-view-select"), node("toggle-all-signals"), node("clear-display-action")].forEach(function(control) { setLayoutDisabled(control, true); });
       Array.prototype.slice.call(document.querySelectorAll("[data-signal-visibility]")).forEach(function(control) { setLayoutDisabled(control, true); });
       return;
@@ -354,7 +356,7 @@
     if (trigger) {
       trigger.disabled = !!pending;
       trigger.setAttribute("aria-expanded", ui.open ? "true" : "false");
-      node("layout-trigger-label").textContent = pretty(layout.rows, layout.columns);
+      setText("layout-trigger-label", pretty(layout.rows, layout.columns));
     }
     if (title) title.textContent = "Область " + index + " · " + TITLES[pane.plot_type];
     if (bindingTitle) bindingTitle.textContent = "Связи области " + index;
@@ -394,32 +396,36 @@
     total = ui.draftRows * ui.draftColumns;
     oldTotal = paneCount(layout);
     preserved = Math.min(oldTotal, total);
-    node("layout-current-copy").textContent = "Текущий макет " + pretty(layout.rows, layout.columns);
-    node("layout-draft-copy").textContent = "Черновик " + pretty(ui.draftRows, ui.draftColumns);
+    setText("layout-current-copy", "Текущий макет " + pretty(layout.rows, layout.columns));
+    setText("layout-draft-copy", "Черновик " + pretty(ui.draftRows, ui.draftColumns));
     renderDimensionOptions("layout-row-options", "rows", ui.draftRows);
     renderDimensionOptions("layout-column-options", "columns", ui.draftColumns);
-    node("layout-topology").textContent = ui.draftRows + " × " + ui.draftColumns;
-    node("layout-pane-count").textContent = total + " " + (total === 1 ? "область" : "областей");
+    setText("layout-topology", ui.draftRows + " × " + ui.draftColumns);
+    setText("layout-pane-count", total + " " + (total === 1 ? "область" : "областей"));
     preview = node("layout-preview");
-    preview.style.setProperty("--preview-rows", ui.draftRows);
-    preview.style.setProperty("--preview-columns", ui.draftColumns);
-    preview.innerHTML = Array.from({ length:total }).map(function() { return "<span></span>"; }).join("");
-    node("layout-preserve-copy").textContent = preserved === 1 ? "Область 1 сохраняет идентификатор, тип и привязки." : "Области 1–" + preserved + " сохраняют идентификаторы, типы и привязки.";
+    if (preview) {
+      preview.style.setProperty("--preview-rows", ui.draftRows);
+      preview.style.setProperty("--preview-columns", ui.draftColumns);
+      preview.innerHTML = Array.from({ length:total }).map(function() { return "<span></span>"; }).join("");
+    }
+    setText("layout-preserve-copy", preserved === 1 ? "Область 1 сохраняет идентификатор, тип и привязки." : "Области 1–" + preserved + " сохраняют идентификаторы, типы и привязки.");
     var warning = node("layout-warning");
-    warning.hidden = total >= oldTotal && total <= 16;
+    if (warning) warning.hidden = total >= oldTotal && total <= 16;
     if (total > 16) {
-      node("layout-warning-copy").textContent = "Макет больше 4 × 4 может снизить читаемость графиков. Применение остаётся доступно.";
+      setText("layout-warning-copy", "Макет больше 4 × 4 может снизить читаемость графиков. Применение остаётся доступно.");
     } else if (total < oldTotal) {
       var firstDropped = total + 1;
-      node("layout-warning-copy").textContent = "Области " + firstDropped + (oldTotal > firstDropped ? "–" + oldTotal : "") + " являются конечной частью макета и будут удалены." + (activePaneIndex(layout) > total ? " Активной станет область 1." : "");
+      setText("layout-warning-copy", "Области " + firstDropped + (oldTotal > firstDropped ? "–" + oldTotal : "") + " являются конечной частью макета и будут удалены." + (activePaneIndex(layout) > total ? " Активной станет область 1." : ""));
     }
-    node("layout-conflict").hidden = !ui.conflict;
-    node("layout-error").hidden = !ui.error;
-    node("layout-error-copy").textContent = ui.error;
+    setHidden("layout-conflict", !ui.conflict);
+    setHidden("layout-error", !ui.error);
+    setText("layout-error-copy", ui.error);
     [node("layout-cancel-close"), node("layout-cancel")].forEach(function(control) { if (control) control.disabled = !!pending; });
     apply = node("layout-apply");
-    apply.disabled = !!pending || ui.conflict || (ui.draftRows === layout.rows && ui.draftColumns === layout.columns);
-    apply.textContent = pending && pending.kind === "resize" ? "Применение…" : "Применить";
+    if (apply) {
+      apply.disabled = !!pending || ui.conflict || (ui.draftRows === layout.rows && ui.draftColumns === layout.columns);
+      apply.textContent = pending && pending.kind === "resize" ? "Применение…" : "Применить";
+    }
     positionPopover();
   }
 
@@ -487,8 +493,8 @@
     if (!toast) return;
     if (toastTimer) window.clearTimeout(toastTimer);
     toast.className = "layout-toast is-" + kind;
-    node("layout-toast-icon").textContent = kind === "success" ? "✓" : kind === "warning" ? "!" : "×";
-    node("layout-toast-copy").textContent = copy;
+    setText("layout-toast-icon", kind === "success" ? "✓" : kind === "warning" ? "!" : "×");
+    setText("layout-toast-copy", copy);
     toast.hidden = false;
     toastTimer = window.setTimeout(function() { toast.hidden = true; }, 5000);
   }
@@ -515,7 +521,7 @@
           ui.draftColumns = layout.columns;
           ui.conflict = true;
           ui.error = "";
-          node("layout-conflict-copy").textContent = "Состояние сервера: " + pretty(layout.rows, layout.columns) + ". Устаревший черновик отброшен.";
+          setText("layout-conflict-copy", "Состояние сервера: " + pretty(layout.rows, layout.columns) + ". Устаревший черновик отброшен.");
         } else {
           showToast("warning", "Область изменилась на сервере. Восстановлено текущее состояние.");
         }
@@ -605,7 +611,7 @@
     if (dimension) { changeDimension(dimension.dataset.layoutDimension, Number(dimension.dataset.layoutValue), false); return; }
     if (target.closest && target.closest("[data-testid='layout-apply']")) { applyDraft(); return; }
     if (target.closest && target.closest("[data-testid='layout-cancel'],[data-testid='layout-cancel-close']")) { closePopover(true); return; }
-    if (target.closest && target.closest("[data-testid='layout-toast-close']")) { node("layout-toast").hidden = true; return; }
+    if (target.closest && target.closest("[data-testid='layout-toast-close']")) { setHidden("layout-toast", true); return; }
     if (pane && !target.closest("select,button") && !pending) selectPane(pane.dataset.paneId);
   }
 
@@ -756,7 +762,9 @@
   }
 
   function liteOutputRecord(status, pane) {
-    if (!status || status.display_id !== activeDisplayId || status.pane_id !== pane.id || status.plot_type !== pane.plot_type) return null;
+    if (!status || status.display_id !== activeDisplayId || status.pane_id !== pane.id || status.plot_type !== pane.plot_type ||
+        !integer(status.calculation_revision) || typeof status.context_key !== "string" || !status.context_key ||
+        typeof status.isready !== "boolean" || typeof status.success !== "boolean" || typeof status.error !== "string") return null;
     return { pane_id:pane.id, plot_type:pane.plot_type, signal_bindings:pane.signal_bindings.slice(), analysis_signal:status.analysis_signal, calculation_revision:status.calculation_revision, context_key:status.context_key, output:{ isready:status.isready === true, success:status.success === true, error:String(status.error || ""), data:[] } };
   }
   function normalizeEnvelope(snapshot) {
@@ -843,7 +851,9 @@
   }
   function renderPanePlots(layout, outputs) {
     var record = outputs[0], pane = activePane(layout), host = activeHost;
-    if (record && pane && host && record.pane_id === pane.id && record.output.isready && record.output.success && hasOutputData(record)) queuePaneRender(host, record);
+    if (record && pane && host && record.pane_id === pane.id && record.output.isready && record.output.success && hasOutputData(record)) {
+      queuePaneRender(host, record);
+    }
   }
   function postLayout(payload, metadata) {
     if (!api || typeof api.layouts !== "function" || pending || !currentLayout()) return;
@@ -870,6 +880,7 @@
       paneResizeObservers[key] = resizeEntry;
       resizeEntry.observer.observe(host);
     }
+    host.dataset.plotReady = "false";
     paneRenderQueue[key] = task;
     if (previous && previous.inFlight) return;
     task.scheduled = true;

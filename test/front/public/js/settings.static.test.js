@@ -15,4 +15,30 @@ module.exports = async function testCatalogSettingsResolutionStaticContract(asse
     assert(renderer.includes(term), `catalog settings renderer must retain ${term} for resolution visibility/status/selectors`)
   );
   assert(!/\b(?:pspectrum|fft|dft)\s*\(/i.test(settings), "DFT Points controls must not calculate DSP in the browser");
+
+  const visibleControl = (testId) => new RegExp(`<[^>]+data-testid=["']${testId}["'][^>]*>`, "g");
+  const count = (pattern) => (html.match(pattern) || []).length;
+  assert(count(visibleControl("plot-type-select")) === 1, "the current design-v2 DOM must expose exactly one pane-inline plot-type control");
+  assert(count(visibleControl("settings-view-select")) === 1, "Display settings must expose exactly one first-row plot-type control alongside the pane-inline control");
+  assert(count(visibleControl("show-legend-checkbox")) === 1, "Display settings must expose exactly one legend control");
+  assert((html.match(/for="settings-view">Тип графика/g) || []).length === 1, "Display settings must retain one Russian plot-type label for its one owned select");
+  assert(!/\b(?:plot type|show legend|legend settings)\b/i.test(html), "visible settings markup must not retain English legacy plot/legend labels");
+
+  ["RUSSIAN_GROUP_LABELS", "RUSSIAN_SECTION_LABELS", "RUSSIAN_FIELD_LABELS", "RUSSIAN_VALUE_LABELS", "presentationLabel", "optionPresentationLabel"].forEach((term) =>
+    assert(settings.includes(term), `catalog presentation must normalize ${term} before rendering`)
+  );
+  ["График", "Время", "Спектр", "Спектрограмма", "Спектр персистентности", "Показывать легенду", "Линейная", "Логарифмическая", "Прямоугольное"].forEach((label) =>
+    assert(settings.includes(`\"${label}\"`), `catalog presentation must provide the Russian label ${label}`)
+  );
+  [
+    "display.show_legend", "time.normalize_y", "time.show_markers", "time.units", "time.x_limits", "time.y_limits", "time.link_time",
+    "spectrum.frequency_units", "spectrum.frequency_limits", "spectrum.y_limits", "spectrum.frequency_scale", "spectrum.scale", "spectrum.resolution_type", "spectrum.leakage", "spectrum.rbw", "spectrum.window_length", "spectrum.nfft", "spectrum.window", "spectrum.sidelobe_attenuation_db", "spectrum.overlap_percent",
+    "spectrogram.time_units", "spectrogram.frequency_units", "spectrogram.frequency_limits", "spectrogram.power_limits", "spectrogram.frequency_scale", "spectrogram.scale", "spectrogram.leakage", "spectrogram.time_resolution", "spectrogram.overlap_percent", "spectrogram.reassign",
+    "persistence.time_units", "persistence.frequency_units", "persistence.frequency_limits", "persistence.power_limits", "persistence.density_limits", "persistence.frequency_scale", "persistence.scale", "persistence.leakage", "persistence.time_resolution", "persistence.overlap_percent", "persistence.power_bins",
+    "spectrum.frequency_resolution", "spectrogram.actual_rbw", "persistence.rbw",
+  ].forEach((fieldId) => assert(settings.includes(`\"${fieldId}\":`), `catalog field ${fieldId} must have a source-owned Russian presentation label`));
+  ["linear", "log", "db", "leakage", "rbw", "window_length", "auto", "specified", "hamming", "hann", "blackman_harris", "chebyshev", "flat_top", "kaiser", "rectangular", "picoseconds", "nanoseconds", "microseconds", "milliseconds", "seconds", "minutes", "hours", "days", "years", "cycles_per_year", "cycles_per_day", "cycles_per_hour", "cycles_per_minute", "millihertz", "hertz", "kilohertz", "megahertz", "gigahertz", "terahertz"].forEach((value) =>
+    assert(new RegExp(`(?:\\"${value}\\"|\\b${value})\\s*:`).test(settings), `catalog enum ${value} must have a source-owned Russian presentation label`)
+  );
+  assert(/function render(?:Enum|Range|Resolution|Field)\([\s\S]*?(?:presentationLabel|optionPresentationLabel)/.test(settings), "all rendered catalog field and enum surfaces must consume the Russian presentation maps");
 };

@@ -110,7 +110,8 @@ class FakeElement {
 }
 
 class FakeDocument {
-  constructor() {
+  constructor(options) {
+    const settings = options || {};
     this.readyState = "complete";
     this.activeElement = null;
     this.listeners = {};
@@ -130,7 +131,8 @@ class FakeDocument {
       "layout-conflict", "layout-conflict-copy", "layout-error", "layout-error-copy", "layout-cancel-close", "layout-cancel",
       "layout-apply", "layout-toast", "layout-toast-icon", "layout-toast-copy", "layout-toast-close", "pane-settings-context",
       "pane-binding-title", "pane-binding-type",
-    ].forEach((id) => this.make(id, /(?:apply|cancel|close|trigger)$/.test(id) ? "BUTTON" : "DIV"));
+    ].filter((id) => !(settings.omitLegacyLayoutTriggerLabel && id === "layout-trigger-label"))
+      .forEach((id) => this.make(id, /(?:apply|cancel|close|trigger)$/.test(id) ? "BUTTON" : "DIV"));
     for (const key of ["rows", "columns"]) for (let value = 1; value <= 10; value += 1) {
       const control = this.make(`layout-${key}-${value}`, "BUTTON");
       control.dataset.layoutDimension = key;
@@ -269,7 +271,7 @@ function deferred() {
 
 function boot(options) {
   const settings = options || {};
-  const document = new FakeDocument();
+  const document = new FakeDocument(settings);
   const apiCalls = [];
   const activeResponders = [];
   const stateResponders = [];
@@ -338,6 +340,15 @@ function boot(options) {
 }
 
 module.exports = async function testStateLiteLayoutBehavior(assert) {
+  const productionDom = boot({omitLegacyLayoutTriggerLabel:true});
+  const productionSnapshot = stateLite(1, {calculationRevision:101, contextKey:"production-dom-ready"});
+  productionDom.activeResponders.push(activeOutput(productionSnapshot, "production-dom-ready"));
+  productionDom.publish(productionSnapshot);
+  await productionDom.runTimer();
+  assert(!productionDom.document.nodes["layout-trigger-label"], "the production design-v2 DOM fixture must omit the optional legacy layout-trigger-label node");
+  assert(productionDom.document.nodes["active-plot-host"].parentNode.dataset.paneOutputState === "ready", "the active pane must create the ready output host without depending on a legacy layout label");
+  assert(productionDom.apiCalls.filter((call) => call.kind === "active").length === 1 && productionDom.plotCalls.length === 1 && productionDom.plotCalls[0].data[0].name === "production-dom-ready", "the production DOM must poll only the active output and reach lazy Plotly.react without a syncContext null crash");
+
   const cold = boot();
   await flush();
   assert(cold.apiCalls.length === 0, "layout mount must not start a parallel cold-start request; app.js owns the sole state-lite startup");
