@@ -1914,7 +1914,8 @@ end
 function apply_signal_setting!(
     service::SignalSettingsService,
     state::SignalAnalyserState,
-    data,
+    data;
+    lightweight::Bool = false,
 )::Dict{String,Any}
     lock(state.lock) do
         command = parse_signal_setting_command(service, state, data)
@@ -1925,52 +1926,89 @@ function apply_signal_setting!(
         display = signal_analyser_display_by_id(state, command.display_id)
         prospective = signal_settings_apply_command(state, display, command)
         changed = !signal_settings_displays_equal(display, prospective)
+        if !changed
+            target = signal_analyser_display_by_id(state, command.display_id)
+            return Dict{String,Any}(
+                "state" => lightweight ?
+                    signal_analyser_state_lite_unlocked(state) :
+                    signal_settings_passive_snapshot_unlocked(state),
+                "settings" => signal_settings_document_unlocked(service, state, target),
+            )
+        end
+
+        candidate = signal_analyser_clone_state_for_layout(state)
+        candidate_display = signal_analyser_display_by_id(candidate, command.display_id)
+        layout = signal_analyser_layout_by_display_id(candidate, candidate_display.id)
+        active_pane = signal_display_active_pane(layout)
+        candidate.display_layouts[candidate_display.id] = signal_display_layout_replace_active_pane(
+            layout,
+            signal_display_pane_from_display(active_pane.id, prospective),
+        )
         response_preparation = SignalSettingsResponsePreparationPlan(
-            state,
-            display,
+            candidate,
+            candidate_display,
             command.field_id,
         )
-        snapshot = if !changed
-            signal_settings_passive_snapshot_unlocked(state)
+        page_id = signal_analyser_output_page_id(candidate_display.id, active_pane.id)
+        snapshot = if lightweight
+            if candidate_display.id == candidate.active_display_id
+                signal_analyser_publish_display_state!(candidate_display, prospective)
+                signal_analyser_sync_active_display!(candidate, candidate_display)
+            else
+                signal_settings_replace_display_unlocked!(candidate, prospective)
+            end
+            candidate.view.state_revision += 1
+            signal_analyser_invalidate_output_pages_unlocked!(
+                candidate,
+                String[page_id],
+            )
+            signal_analyser_state_lite_unlocked(candidate)
         elseif response_preparation.mode == ACTIVE_EFFECTIVE_SETTINGS_RESPONSE
             signal_settings_apply_active_effective_unlocked!(
-                state,
-                display,
+                candidate,
+                candidate_display,
                 prospective,
                 command.field_id,
             )
         elseif response_preparation.mode == ACTIVE_BACKEND_PRESENTATION_SETTINGS_RESPONSE
             signal_settings_apply_active_presentation_unlocked!(
-                state,
-                display,
+                candidate,
+                candidate_display,
                 prospective,
             )
         else
-            next_revision = state.view.state_revision + 1
-            prospective_active_display = display.id == state.active_display_id ?
-                prospective : signal_analyser_active_display(state)
+            next_revision = candidate.view.state_revision + 1
+            prospective_active_display = candidate_display.id == candidate.active_display_id ?
+                prospective : signal_analyser_active_display(candidate)
             prepared = signal_settings_prepare_passive_snapshot_unlocked(
-                state,
+                candidate,
                 prospective_active_display,
                 next_revision,
             )
-            if display.id == state.active_display_id
-                signal_analyser_publish_display_state!(display, prospective)
+            if candidate_display.id == candidate.active_display_id
+                signal_analyser_publish_display_state!(candidate_display, prospective)
+                signal_analyser_sync_active_display!(candidate, candidate_display)
             else
-                signal_settings_replace_display_unlocked!(state, prospective)
+                signal_settings_replace_display_unlocked!(candidate, prospective)
             end
-            state.view.state_revision = next_revision
+            candidate.view.state_revision = next_revision
             signal_analyser_snapshot_from_prepared_unlocked(
-                state,
+                candidate,
                 prepared.measurements,
                 prepared.peaks,
                 prepared.plots,
             )
         end
-        target = signal_analyser_display_by_id(state, command.display_id)
-        Dict{String,Any}(
-            "state" => snapshot,
-            "settings" => signal_settings_document_unlocked(service, state, target),
+        lightweight || signal_analyser_invalidate_output_pages_unlocked!(
+            candidate,
+            String[page_id],
         )
+        target = signal_analyser_display_by_id(candidate, command.display_id)
+        response = Dict{String,Any}(
+            "state" => snapshot,
+            "settings" => signal_settings_document_unlocked(service, candidate, target),
+        )
+        signal_analyser_publish_layout_candidate!(state, candidate)
+        response
     end
 end

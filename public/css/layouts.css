@@ -191,7 +191,7 @@ body {
   display: grid;
   place-items: center;
   background: rgba(248, 250, 252, .72);
-  content: "Updating…";
+  content: "Обновление графика…";
   color: var(--muted);
   font-size: 12px;
 }

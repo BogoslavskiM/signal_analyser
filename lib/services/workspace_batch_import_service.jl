@@ -171,6 +171,7 @@ function apply_workspace_batch_import!(
     state::SignalAnalyserState,
     command::ImportWorkspaceBatchCommand;
     now::Dates.DateTime = Dates.now(Dates.UTC),
+    lightweight::Bool = false,
 )::Dict{String,Any}
     lock(state.lock) do
         command.revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
@@ -193,7 +194,8 @@ function apply_workspace_batch_import!(
         prepared = prepare_signal_inventory_batch_mutation(
             service.inventory_service,
             state,
-            candidates,
+            candidates;
+            lightweight = lightweight,
         )
         publish_signal_inventory_mutation!(state, prepared)
         prepared.snapshot
@@ -203,24 +205,44 @@ end
 function apply_signal_inventory!(
     service::WorkspaceBatchImportService,
     state::SignalAnalyserState,
-    command::AbstractSignalInventoryCommand,
+    command::AbstractSignalInventoryCommand;
+    lightweight::Bool = false,
 )::Dict{String,Any}
     command isa ImportWorkspaceBatchCommand ?
-        apply_workspace_batch_import!(service, state, command) :
-        apply_signal_inventory!(service.inventory_service, state, command)
+        apply_workspace_batch_import!(service, state, command; lightweight = lightweight) :
+        apply_signal_inventory!(
+            service.inventory_service,
+            state,
+            command;
+            lightweight = lightweight,
+        )
 end
 
 function apply_signal_inventory!(
     service::WorkspaceBatchImportService,
     state::SignalAnalyserState,
-    data,
+    data;
+    lightweight::Bool = false,
 )::Dict{String,Any}
-    apply_signal_inventory!(service, state, parse_signal_inventory_command(data))
+    apply_signal_inventory!(
+        service,
+        state,
+        parse_signal_inventory_command(data);
+        lightweight = lightweight,
+    )
 end
 
 
-apply_signal_inventory_command!(
+function apply_signal_inventory_command!(
     service::WorkspaceBatchImportService,
     state::SignalAnalyserState,
-    command_or_data,
-) = apply_signal_inventory!(service, state, command_or_data)
+    command_or_data;
+    lightweight::Bool = false,
+)
+    apply_signal_inventory!(
+        service,
+        state,
+        command_or_data;
+        lightweight = lightweight,
+    )
+end

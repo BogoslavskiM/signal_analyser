@@ -139,8 +139,8 @@ end
     @test [entry["display_id"] for entry in entries] == ["display-1", "display-2"]
     @test isempty(entries[1]["outputs"])
     @test length(entries[2]["outputs"]) == 1
-    @test isempty(PANE_OUTPUTS.SPECTRUM_CALLS)
-    @test isempty(PANE_OUTPUTS.SPECTROGRAM_CALLS)
+    @test state.output_manager.active_page_id == "display-2::pane-1"
+    @test state.output_manager.need_update_pages["display-1::pane-2"]
     @test isempty(PANE_OUTPUTS.PERSISTENCE_CALLS)
 
     selected_display = PANE_OUTPUTS.apply_signal_analyser_display!(state, Dict(
@@ -154,8 +154,8 @@ end
     @test active["layouts"][1]["display_id"] == "display-1"
     @test only(active["layouts"][1]["outputs"])["pane_id"] == "pane-2"
     @test isempty(active["layouts"][2]["outputs"])
-    @test length(PANE_OUTPUTS.SPECTRUM_CALLS) == 1
-    @test isempty(PANE_OUTPUTS.SPECTROGRAM_CALLS)
+    @test state.output_manager.active_page_id == "display-1::pane-2"
+    @test state.output_manager.need_update_pages["display-1::pane-2"]
     @test isempty(PANE_OUTPUTS.PERSISTENCE_CALLS)
 end
 
@@ -380,7 +380,9 @@ end
         PANE_OUTPUTS.SignalAnalyserStaleStateError(revision - 1, revision),
     )
     @test stale.status == 409
-    @test Set(keys(stale.body["current"])) == Set(keys(recovered))
+    @test Set(keys(stale.body["current"])) == Set([
+        "ok", "state_revision", "calculation_revision", "active_display_id", "layouts", "state",
+    ])
     @test Set(keys(only(stale.body["current"]["layouts"]))) == Set([
         "display_id", "layout", "outputs",
     ])

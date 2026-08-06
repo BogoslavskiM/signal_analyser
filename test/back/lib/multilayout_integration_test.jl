@@ -149,8 +149,8 @@ end
     routes = ML_INTEGRATION.source("app", "routes.jl")
     @test length(collect(eachmatch(r"route\(\"/api/layouts\", method = GET\)", routes))) == 1
     @test length(collect(eachmatch(r"route\(\"/api/layouts\", method = POST\)", routes))) == 1
-    @test occursin("signal_analyser_layouts_snapshot(SIGNAL_ANALYSER_STATE)", routes)
-    @test occursin("apply_signal_analyser_layout!(SIGNAL_ANALYSER_STATE, jsonpayload())", routes)
+    @test occursin("signal_analyser_layouts_lite_snapshot(SIGNAL_ANALYSER_STATE)", routes)
+    @test occursin("lightweight = true", routes)
     @test occursin("signal_analyser_layout_stale_response(SIGNAL_ANALYSER_STATE, err)", routes)
 
     state = ML_INTEGRATION.default_signal_analyser_state()
@@ -164,7 +164,7 @@ end
         ),
     )
     revision = post_snapshot["state_revision"]
-    before_stale = ML_INTEGRATION.signal_analyser_layouts_snapshot(state)
+    before_stale = ML_INTEGRATION.signal_analyser_layouts_lite_snapshot(state)
     stale = ML_INTEGRATION.signal_analyser_layout_stale_response(
         state,
         ML_INTEGRATION.SignalAnalyserStaleStateError(revision - 1, revision),
@@ -177,7 +177,7 @@ end
     @test stale.body["ok"] === false && stale.body["code"] == "stale_state"
     @test stale.body["state"]["state_revision"] == revision
     @test stale.body["current"] == before_stale
-    @test Set(keys(stale.body["current"])) == Set(keys(post_snapshot))
+    @test Set(keys(stale.body["current"])) == Set(keys(before_stale))
     @test only(task0031_layout_entry(stale.body["current"])["outputs"])["pane_id"] ==
         task0031_layout_entry(stale.body["current"])["layout"]["active_pane_id"]
     @test state.view.state_revision == revision

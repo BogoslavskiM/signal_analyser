@@ -97,8 +97,8 @@ end
     @test isempty(measurement_routes)
     @test isempty(peaks_routes)
     @test occursin("api_json(signal_analyser_snapshot(SIGNAL_ANALYSER_STATE))", routes_source)
-    @test occursin("api_json(apply_signal_analyser_view!(SIGNAL_ANALYSER_STATE, jsonpayload()))", routes_source)
-    @test occursin("api_json(apply_signal_analyser_display!(SIGNAL_ANALYSER_STATE, jsonpayload()))", routes_source)
+    @test occursin(r"apply_signal_analyser_view!\(\s*SIGNAL_ANALYSER_STATE,\s*jsonpayload\(\);\s*lightweight = true,\s*\)", routes_source)
+    @test occursin(r"apply_signal_analyser_display!\(\s*SIGNAL_ANALYSER_STATE,\s*jsonpayload\(\);\s*lightweight = true,\s*\)", routes_source)
     @test !occursin("signal_analyser_measurements", routes_source)
     @test occursin("\"visible_signals\"", SA_API.source("lib", "services", "signal_analyser_service.jl"))
     @test occursin("signal_analyser_validation_response(err)", routes_source)
@@ -121,7 +121,8 @@ end
     @test length(collect(eachmatch(r"route\(\"/api/layouts\", method = GET\)", routes_source))) == 1
     @test length(collect(eachmatch(r"route\(\"/api/layouts\", method = POST\)", routes_source))) == 1
     @test occursin("const SIGNAL_ANALYSER_STATE = default_signal_analyser_state()", bootstrap_source)
-    @test occursin("apply_signal_analyser_layout!(SIGNAL_ANALYSER_STATE, jsonpayload())", routes_source)
+    @test occursin("signal_analyser_layouts_lite_snapshot(SIGNAL_ANALYSER_STATE)", routes_source)
+    @test occursin("lightweight = true", routes_source)
 
     state = SA_API.default_signal_analyser_state()
     names = [signal.name for signal in state.signals]
@@ -367,7 +368,7 @@ end
         Dict("state_revision" => 0, "active_plot" => "spectrum", "visible_signals" => [first_name]),
     )
     stale_response = SA_API.signal_analyser_stale_response(state, SA_API.SignalAnalyserStaleStateError(0, 1))
-    expected_snapshot = SA_API.signal_analyser_snapshot(state)
+    expected_state_lite = SA_API.signal_analyser_state_lite(state)
     @test stale_response.status == 409
     @test Set(keys(stale_response.body)) == Set(["ok", "code", "error", "state", "current"])
     @test stale_response.body["ok"] === false
@@ -376,11 +377,16 @@ end
         "code" => "stale_state",
         "message" => "Состояние устарело: ожидалась ревизия 0, текущая ревизия 1",
     )
-    @test stale_response.body["state"] == expected_snapshot
-    @test stale_response.body["current"] == expected_snapshot
+    @test stale_response.body["state"] == expected_state_lite
+    @test stale_response.body["current"] == expected_state_lite
     @test stale_response.body["state"] == stale_response.body["current"]
+    @test stale_response.body["current"]["state_revision"] == 1
     @test stale_response.body["current"]["visible_signals"] == [first_name]
-    @test stale_response.body["current"]["plot_payload"]["visible_signals"] == [first_name]
+    @test stale_response.body["current"]["active_output"]["signal_bindings"] == [first_name]
+    @test stale_response.body["current"]["active_output"]["output"]["data"] == Dict{String,Any}[]
+    @test only(only(stale_response.body["current"]["layouts"])["outputs"])["output"]["data"] == Dict{String,Any}[]
+    @test !haskey(stale_response.body["current"], "plot_payload")
+    @test !haskey(stale_response.body["current"], "plots")
 end
 
 @testset "Cascade 7 API Time Limits validation envelope" begin
@@ -521,8 +527,15 @@ end
     end
     @test stale isa SA_API.SignalAnalyserStaleStateError
     stale_envelope = SA_API.signal_analyser_stale_response(state, stale)
+    expected_state_lite = SA_API.signal_analyser_state_lite(state)
     @test stale_envelope.status == 409
-    @test stale_envelope.body["current"] == canonical
+    @test stale_envelope.body["state"] == expected_state_lite
+    @test stale_envelope.body["current"] == expected_state_lite
+    @test stale_envelope.body["current"]["state_revision"] == canonical["state_revision"]
+    @test stale_envelope.body["current"]["spectrum_settings"] == canonical["spectrum_settings"]
+    @test stale_envelope.body["current"]["active_output"]["output"]["data"] == Dict{String,Any}[]
+    @test !haskey(stale_envelope.body["current"], "plot_payload")
+    @test !haskey(stale_envelope.body["current"], "plots")
 end
 
 @testset "Cascade 10 API Frequency Limits envelope and lifecycle" begin

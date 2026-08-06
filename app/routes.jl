@@ -46,6 +46,78 @@ route("/api/state", method = GET) do
     end
 end
 
+route("/api/state-lite", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            signal_analyser_state_lite_api_payload(SIGNAL_ANALYSER_STATE);
+            headers = response_headers,
+        )
+    catch err
+        api_error_response(
+            "Не удалось получить лёгкое состояние Signal Analyser",
+            err;
+            status = 500,
+            headers = response_headers,
+        )
+    end
+end
+
+route("/api/outputs/active", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        display_id = try
+            params(:display_id)
+        catch err
+            err isa KeyError || rethrow()
+            nothing
+        end
+        pane_id = try
+            params(:pane_id)
+        catch err
+            err isa KeyError || rethrow()
+            nothing
+        end
+        display_id isa AbstractString && !isempty(String(display_id)) || throw(
+            SignalAnalyserValidationError(
+                "Некорректный запрос active output",
+                Dict("display_id" => "Требуется непустой идентификатор Display"),
+            ),
+        )
+        pane_id isa AbstractString && !isempty(String(pane_id)) || throw(
+            SignalAnalyserValidationError(
+                "Некорректный запрос active output",
+                Dict("pane_id" => "Требуется непустой идентификатор pane"),
+            ),
+        )
+        api_json(
+            signal_analyser_active_output(
+                SIGNAL_ANALYSER_STATE,
+                String(display_id),
+                String(pane_id),
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        elseif err isa SignalAnalyserInactiveOutputError
+            signal_analyser_inactive_output_response(
+                SIGNAL_ANALYSER_STATE,
+                err;
+                headers = response_headers,
+            )
+        else
+            api_error_response(
+                "Не удалось получить active output Signal Analyser",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+        end
+    end
+end
+
 route("/api/session", method = GET) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try
@@ -131,7 +203,8 @@ route("/api/settings", method = POST) do
             apply_signal_setting!(
                 SIGNAL_SETTINGS_SERVICE,
                 SIGNAL_ANALYSER_STATE,
-                request_data,
+                request_data;
+                lightweight = true,
             );
             headers = response_headers,
         )
@@ -191,7 +264,11 @@ end
 
 route("/api/view", method = POST) do
     try
-        api_json(apply_signal_analyser_view!(SIGNAL_ANALYSER_STATE, jsonpayload()))
+        api_json(apply_signal_analyser_view!(
+            SIGNAL_ANALYSER_STATE,
+            jsonpayload();
+            lightweight = true,
+        ))
     catch err
         if err isa SignalAnalyserValidationError
             signal_analyser_validation_response(err)
@@ -205,7 +282,11 @@ end
 
 route("/api/displays", method = POST) do
     try
-        api_json(apply_signal_analyser_display!(SIGNAL_ANALYSER_STATE, jsonpayload()))
+        api_json(apply_signal_analyser_display!(
+            SIGNAL_ANALYSER_STATE,
+            jsonpayload();
+            lightweight = true,
+        ))
     catch err
         if err isa SignalAnalyserValidationError
             signal_analyser_validation_response(err)
@@ -221,7 +302,7 @@ route("/api/layouts", method = GET) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try
         api_json(
-            signal_analyser_layouts_snapshot(SIGNAL_ANALYSER_STATE);
+            signal_analyser_layouts_lite_snapshot(SIGNAL_ANALYSER_STATE);
             headers = response_headers,
         )
     catch err
@@ -238,7 +319,11 @@ route("/api/layouts", method = POST) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try
         api_json(
-            apply_signal_analyser_layout!(SIGNAL_ANALYSER_STATE, jsonpayload());
+            apply_signal_analyser_layout!(
+                SIGNAL_ANALYSER_STATE,
+                jsonpayload();
+                lightweight = true,
+            );
             headers = response_headers,
         )
     catch err
@@ -257,7 +342,8 @@ route("/api/signals", method = POST) do
         api_json(apply_signal_inventory!(
             WORKSPACE_BATCH_IMPORT_SERVICE,
             SIGNAL_ANALYSER_STATE,
-            jsonpayload(),
+            jsonpayload();
+            lightweight = true,
         ))
     catch err
         if err isa SignalAnalyserValidationError

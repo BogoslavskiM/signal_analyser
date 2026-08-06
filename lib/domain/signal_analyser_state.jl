@@ -2255,6 +2255,106 @@ function signal_analyser_publish_display_state!(
     nothing
 end
 
+"""Stable identity of one pane output calculation and its cache generation."""
+struct SignalAnalyserOutputContextKey
+    display_id::String
+    pane_id::String
+    plot_type::SignalAnalyserPlot
+    calculation_revision::Int
+
+    function SignalAnalyserOutputContextKey(
+        display_id::AbstractString,
+        pane_id::AbstractString,
+        plot_type::SignalAnalyserPlot,
+        calculation_revision::Int,
+    )
+        isempty(display_id) && throw(ArgumentError("Display id output context не может быть пустым"))
+        isempty(pane_id) && throw(ArgumentError("Pane id output context не может быть пустым"))
+        calculation_revision >= 0 || throw(ArgumentError(
+            "Calculation revision output context не может быть отрицательной",
+        ))
+        new(String(display_id), String(pane_id), plot_type, calculation_revision)
+    end
+end
+
+Base.:(==)(left::SignalAnalyserOutputContextKey, right::SignalAnalyserOutputContextKey) =
+    left.display_id == right.display_id &&
+    left.pane_id == right.pane_id &&
+    left.plot_type == right.plot_type &&
+    left.calculation_revision == right.calculation_revision
+Base.isequal(left::SignalAnalyserOutputContextKey, right::SignalAnalyserOutputContextKey) =
+    left == right
+Base.hash(key::SignalAnalyserOutputContextKey, seed::UInt) = hash(
+    (key.display_id, key.pane_id, key.plot_type, key.calculation_revision),
+    seed,
+)
+
+"""Last fully published Plotly payload for one pane; stale entries remain last-good."""
+struct SignalAnalyserPlotCacheEntry
+    context::SignalAnalyserOutputContextKey
+    plots::Vector{Dict{String,Any}}
+end
+
+"""API-visible readiness state kept separately from stale/dirty state."""
+struct SignalAnalyserOutputStatus
+    context::SignalAnalyserOutputContextKey
+    isready::Bool
+    success::Bool
+    error::String
+end
+
+"""Cooperative cancellation flag shared with exactly one active calculation task."""
+mutable struct SignalAnalyserCancellationToken
+    cancelled::Threads.Atomic{Bool}
+end
+
+SignalAnalyserCancellationToken() = SignalAnalyserCancellationToken(Threads.Atomic{Bool}(false))
+
+"""Runtime-only active-page calculation state; it is never session-serialized."""
+mutable struct SignalAnalyserCalculationManager
+    calculation_revision::Int
+    page_calculation_revisions::Dict{String,Int}
+    plot_cache::Dict{String,SignalAnalyserPlotCacheEntry}
+    need_update_pages::Dict{String,Bool}
+    output_statuses::Dict{String,SignalAnalyserOutputStatus}
+    active_page_id::Union{Nothing,String}
+    active_context::Union{Nothing,SignalAnalyserOutputContextKey}
+    active_task::Union{Nothing,Task}
+    cancellation_token::Union{Nothing,SignalAnalyserCancellationToken}
+end
+
+function SignalAnalyserCalculationManager(page_ids::AbstractVector{<:AbstractString})
+    ids = String.(page_ids)
+    allunique(ids) || throw(ArgumentError("Page ids calculation manager не должны повторяться"))
+    SignalAnalyserCalculationManager(
+        0,
+        Dict(id => 0 for id in ids),
+        Dict{String,SignalAnalyserPlotCacheEntry}(),
+        Dict(id => true for id in ids),
+        Dict{String,SignalAnalyserOutputStatus}(),
+        nothing,
+        nothing,
+        nothing,
+        nothing,
+    )
+end
+
+function signal_analyser_clone_calculation_manager(
+    manager::SignalAnalyserCalculationManager,
+)::SignalAnalyserCalculationManager
+    SignalAnalyserCalculationManager(
+        manager.calculation_revision,
+        copy(manager.page_calculation_revisions),
+        copy(manager.plot_cache),
+        copy(manager.need_update_pages),
+        copy(manager.output_statuses),
+        manager.active_page_id,
+        nothing,
+        nothing,
+        nothing,
+    )
+end
+
 mutable struct SignalAnalyserState{
     P<:AbstractPeaksProvider,
     S<:AbstractSignalSpectrumProvider,
@@ -2277,6 +2377,7 @@ mutable struct SignalAnalyserState{
     spectrum_service::SignalSpectrumService{S}
     spectrogram_service::SignalSpectrogramService{G}
     persistence_service::SignalPersistenceService{R}
+    output_manager::SignalAnalyserCalculationManager
     lock::ReentrantLock
 end
 
@@ -2333,6 +2434,7 @@ function SignalAnalyserState(
         SignalSpectrumService(spectrum_provider),
         SignalSpectrogramService(spectrogram_provider),
         SignalPersistenceService(persistence_provider),
+        SignalAnalyserCalculationManager(["$(display.id)::pane-1"]),
         lock,
     )
 end

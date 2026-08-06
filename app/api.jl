@@ -109,7 +109,7 @@ function signal_analyser_session_stale_response(
 end
 
 function signal_analyser_stale_response(state::SignalAnalyserState, err::SignalAnalyserStaleStateError)
-    current = signal_analyser_snapshot(state)
+    current = signal_analyser_state_lite(state)
     api_json(Dict(
         "ok" => false,
         "code" => "stale_state",
@@ -126,7 +126,7 @@ function signal_analyser_layout_stale_response(
     state::SignalAnalyserState,
     err::SignalAnalyserStaleStateError,
 )
-    current = signal_analyser_layouts_snapshot(state)
+    current = signal_analyser_layouts_lite_snapshot(state)
     api_json(Dict{String,Any}(
         "ok" => false,
         "code" => "stale_state",
@@ -173,7 +173,7 @@ function signal_setting_stale_response(
     err::SignalAnalyserStaleStateError,
     display_id::AbstractString,
 )
-    current = signal_analyser_snapshot(state)
+    current = signal_analyser_state_lite(state)
     settings = signal_settings_document(service, state, display_id)
     api_json(Dict{String,Any}(
         "ok" => false,
@@ -186,6 +186,57 @@ function signal_setting_stale_response(
         "current" => current,
         "settings" => settings,
     ); status = 409)
+end
+
+function signal_analyser_inactive_output_response(
+    state::SignalAnalyserState,
+    err::SignalAnalyserInactiveOutputError;
+    headers = nothing,
+)
+    current = signal_analyser_state_lite(state)
+    api_json(Dict{String,Any}(
+        "ok" => false,
+        "code" => "inactive_output",
+        "error" => Dict{String,Any}(
+            "code" => "inactive_output",
+            "message" => sprint(showerror, err),
+        ),
+        "state" => current,
+        "current" => current,
+    ); status = 409, headers = headers)
+end
+
+function signal_analyser_state_lite_api_payload(
+    state::SignalAnalyserState,
+)::Dict{String,Any}
+    payload = signal_analyser_state_lite(state)
+    payload["app_version"] = RUNTIME_REVISION.sha
+    payload["toolbar"] = Dict{String,Any}(
+        "import" => Dict{String,Any}(
+            "visible" => true,
+            "disabled" => false,
+            "icon" => "import",
+        ),
+        "export" => Dict{String,Any}(
+            "visible" => true,
+            "disabled" => false,
+            "icon" => "download",
+            "default_operation" => "session",
+            "operations" => String["session"],
+        ),
+        "other" => Dict{String,Any}(
+            "visible" => false,
+            "disabled" => true,
+            "icon" => "more-vertical",
+        ),
+        "help" => Dict{String,Any}(
+            "visible" => false,
+            "disabled" => true,
+            "icon" => "help-circle",
+            "href" => "",
+        ),
+    )
+    payload
 end
 
 function signal_inventory_request_exact_fields!(

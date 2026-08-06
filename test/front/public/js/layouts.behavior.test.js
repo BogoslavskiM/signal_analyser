@@ -219,246 +219,183 @@ function pane(id, plotType, bindings) {
   return {id, plot_type:plotType, signal_bindings:bindings.slice()};
 }
 
-function readyData(item) {
-  if (item.plot_type === "time") return item.signal_bindings.map((signal) => ({signal, type:"line", x:[0, 1], y:[1, 2], x_label:"Time", y_label:"Amplitude"}));
-  if (item.plot_type === "spectrum") return item.signal_bindings.map((signal) => ({signal, type:"line", x:[1, 10], y:[2, 3], frequency_scale:"log", x_label:"Frequency", y_label:"Power"}));
-  return {type:"heatmap", signal:item.signal_bindings[0] || null, x:item.signal_bindings.length ? [0, 1] : [], y:item.signal_bindings.length ? [1, 2] : [], z:item.signal_bindings.length ? [[1, 2], [3, 4]] : [], x_label:"X", y_label:"Y", color_label:"Power", frequency_scale:{requested:"linear", effective:"linear", available:["linear", "log"]}, power_limits:{rendered:null}, density_limits:{rendered:null}};
-}
+function deepClone(value) { return JSON.parse(JSON.stringify(value)); }
 
-function outputFor(item, override) {
-  const output = Object.assign({isready:true, success:true, error:"", data:readyData(item)}, override || {});
-  return {pane_id:item.id, plot_type:item.plot_type, signal_bindings:item.signal_bindings.slice(), analysis_signal:item.signal_bindings[0] || null, output};
-}
-
-function envelope(revision, rows, columns, options) {
+function stateLite(revision, options) {
   const settings = options || {};
-  const count = rows * columns;
-  const panes = settings.panes || Array.from({length:count}, (_, index) => pane(`pane-${index + 1}`, PLOTS[index % PLOTS.length], index === 0 ? [A] : []));
+  const panes = settings.panes || [pane("pane-1", "time", [A])];
   const activePaneId = settings.activePaneId || panes[0].id;
   const activePane = panes.find((item) => item.id === activePaneId);
-  const outputs = settings.outputs || [outputFor(activePane)];
+  const calculationRevision = settings.calculationRevision === undefined ? revision + 100 : settings.calculationRevision;
+  const contextKey = settings.contextKey || `display-1|${activePane.id}|${activePane.plot_type}|${calculationRevision}`;
   return {
-    ok:true,
     state_revision:revision,
+    calculation_revision:calculationRevision,
     active_display_id:"display-1",
-    layouts:[{display_id:"display-1", layout:{version:1, variant:`${rows}x${columns}`, rows, columns, active_pane_id:activePaneId, next_pane_number:count + 1, panes}, outputs}],
-    state:{state_revision:revision, active_display_id:"display-1", signals:[{name:A,color:"#111111"},{name:B,color:"#222222"}], displays:[{id:"display-1"}]},
+    signals:[{name:A,color:"#111111"},{name:B,color:"#222222"}],
+    displays:[{id:"display-1"}],
+    layouts:[{
+      display_id:"display-1",
+      layout:{version:1, variant:`1x${panes.length}`, rows:1, columns:panes.length, active_pane_id:activePaneId, next_pane_number:panes.length + 1, panes},
+      outputs:[{display_id:"display-1", pane_id:activePane.id, plot_type:activePane.plot_type, analysis_signal:activePane.signal_bindings[0] || null, calculation_revision:calculationRevision, context_key:contextKey, isready:false, success:true, error:""}],
+    }],
   };
 }
 
-function deepClone(value) { return JSON.parse(JSON.stringify(value)); }
+function activeOutput(snapshot, label, override) {
+  const entry = snapshot.layouts[0];
+  const paneItem = entry.layout.panes.find((item) => item.id === entry.layout.active_pane_id);
+  const status = entry.outputs[0];
+  return Object.assign({
+    state_revision:snapshot.state_revision,
+    calculation_revision:status.calculation_revision,
+    context_key:status.context_key,
+    display_id:entry.display_id,
+    pane_id:paneItem.id,
+    plot_type:paneItem.plot_type,
+    isready:true,
+    success:true,
+    error:"",
+    data:[{data:[{type:"scatter", mode:"lines", name:label, x:[0, 1], y:[1, 2]}], layout:{dragmode:"zoom", paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff"}, config:{responsive:true}}],
+  }, override || {});
+}
 
-function boot(initialResponder) {
+function deferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((onResolve, onReject) => { resolve = onResolve; reject = onReject; });
+  return {promise, resolve, reject};
+}
+
+function boot(options) {
+  const settings = options || {};
   const document = new FakeDocument();
   const apiCalls = [];
-  const responders = [];
-  if (initialResponder) responders.push(initialResponder);
+  const activeResponders = [];
+  const stateResponders = [];
+  const layoutResponders = [];
   const plotCalls = [];
+  const plotResolvers = [];
+  const scripts = [];
+  const timers = [];
   const dispatched = [];
   const windowListeners = {};
+  let timerId = 0;
+
+  function take(responders, fallback, ...args) {
+    const responder = responders.shift();
+    if (typeof responder === "function") return responder(...args);
+    if (responder && typeof responder.then === "function") return responder;
+    return responder === undefined ? Promise.reject(new Error(fallback)) : Promise.resolve(responder);
+  }
+
+  document.createElement = (tagName) => ({tagName:String(tagName).toUpperCase(), src:"", async:false, onload:null, onerror:null});
+  document.head = {appendChild(script) { scripts.push(script); return script; }};
+
+  const Plotly = {
+    react(host, data, layout, config) {
+      plotCalls.push({host, data, layout, config});
+      if (!settings.deferredPlotly) return Promise.resolve();
+      return new Promise((resolve, reject) => plotResolvers.push({host, data, resolve, reject}));
+    },
+    purge() {},
+    Plots:{resize() { return Promise.resolve(); }},
+  };
   const window = {
     Promise,
     innerWidth:1024,
     innerHeight:768,
-    SignalAnalyserApi:{ layouts(payload) {
-      apiCalls.push(payload === undefined ? null : deepClone(payload));
-      const responder = responders.shift();
-      return responder ? responder(payload) : Promise.reject(new Error("unexpected layout API call"));
-    }},
-    Plotly:{
-      react(host, data, layout, config) { plotCalls.push({host, data, layout, config}); return Promise.resolve(); },
-      purge() {},
-      Plots:{resize() { return Promise.resolve(); }},
+    SignalAnalyserApi:{
+      getState() { apiCalls.push({kind:"state"}); return take(stateResponders, "unexpected state-lite request"); },
+      layouts(payload) { apiCalls.push({kind:"layouts", payload:deepClone(payload)}); return take(layoutResponders, "unexpected layout mutation", payload); },
+      activeOutput(displayId, paneId) { apiCalls.push({kind:"active", displayId, paneId}); return take(activeResponders, "unexpected active-output request", displayId, paneId); },
     },
     CustomEvent:function CustomEvent(type, init) { this.type = type; this.detail = init.detail; },
     addEventListener(type, handler) { (windowListeners[type] || (windowListeners[type] = [])).push(handler); },
     dispatchEvent(event) { dispatched.push(event); for (const handler of windowListeners[event.type] || []) handler(event); },
     requestAnimationFrame(callback) { callback(); return 1; },
-    setTimeout() { return 1; },
-    clearTimeout() {},
+    setTimeout(callback, delay) { const timer = {id:++timerId, callback, delay:Number(delay) || 0, cancelled:false}; timers.push(timer); return timer.id; },
+    clearTimeout(id) { const timer = timers.find((item) => item.id === id); if (timer) timer.cancelled = true; },
   };
+  if (!settings.plotlyAbsent) window.Plotly = Plotly;
+
   const root = path.resolve(__dirname, "../../../..");
   vm.runInNewContext(fs.readFileSync(path.join(root, "public/js/layouts.js"), "utf8"), {window, document, Promise, console}, {filename:"layouts.js"});
-  return {window, document, apiCalls, responders, plotCalls, dispatched};
+
+  function publish(snapshot) {
+    window.dispatchEvent(new window.CustomEvent("signal-analyser-rendered", {detail:{activeDisplayId:snapshot.active_display_id, revision:snapshot.state_revision, snapshot}}));
+  }
+  async function runTimer() {
+    const timer = timers.find((item) => !item.cancelled && !item.ran);
+    if (!timer) throw new Error("no runnable timer");
+    timer.ran = true;
+    timer.callback();
+    await flush();
+    return timer;
+  }
+
+  return {window, document, apiCalls, activeResponders, stateResponders, layoutResponders, plotCalls, plotResolvers, scripts, timers, dispatched, publish, runTimer};
 }
 
-module.exports = async function testMultiLayoutBehavior(assert) {
-  let resolveDelayed;
-  const delayed = boot(() => new Promise((resolve) => { resolveDelayed = resolve; }));
+module.exports = async function testStateLiteLayoutBehavior(assert) {
+  const cold = boot();
   await flush();
-  assert(delayed.apiCalls.length === 1 && delayed.apiCalls[0] === null && delayed.document.nodes["pane-grid"].dataset.layoutState === "loading", "layout mount must start one parallel authoritative GET and remain locally loading while it is delayed");
-  assert(delayed.document.plotControl.parentNode === delayed.document.nodes["active-pane-runtime"] && delayed.document.nodes["display-overflow-trigger"].parentNode === delayed.document.nodes["active-pane-runtime"] && delayed.document.nodes["display-overflow-menu"].parentNode === delayed.document.nodes["active-pane-runtime"], "initial no-layout render must retain detached runtime controls through persistent references");
-  resolveDelayed(envelope(1, 1, 1));
-  await flush();
-  assert(delayed.document.nodes["pane-grid"].dataset.layoutState === "ready" && delayed.document.nodes["pane-grid"].dataset.layoutVariant === "1x1" && !delayed.document.nodes["pane-grid"].innerHTML.includes("layout-load-error"), "delayed healthy bootstrap must publish panes and clear loading/error state");
+  assert(cold.apiCalls.length === 0, "layout mount must not start a parallel cold-start request; app.js owns the sole state-lite startup");
+  assert(cold.document.plotControl.parentNode === cold.document.nodes["active-pane-runtime"] && cold.document.nodes["display-overflow-trigger"].parentNode === cold.document.nodes["active-pane-runtime"], "metadata-owned cold start must retain detached runtime controls until app publishes state-lite");
 
-  let resolveOld;
-  const outOfOrder = boot(() => new Promise((resolve) => { resolveOld = resolve; }));
+  const startup = stateLite(1);
+  cold.activeResponders.push(activeOutput(startup, "startup-ready", {isready:false, data:[]}));
+  cold.publish(startup);
   await flush();
-  outOfOrder.responders.push(() => Promise.resolve(envelope(3, 2, 2)));
-  outOfOrder.window.dispatchEvent(new outOfOrder.window.CustomEvent("signal-analyser-rendered", {detail:{activeDisplayId:"display-1", revision:3}}));
-  await flush();
-  resolveOld(envelope(2, 1, 1));
-  await flush();
-  assert(outOfOrder.apiCalls.length === 2 && outOfOrder.apiCalls.every((payload) => payload === null), "a newer app revision arriving during a delayed layout GET must queue exactly one replacement GET");
-  assert(outOfOrder.document.nodes["pane-grid"].dataset.layoutVariant === "2x2" && !outOfOrder.dispatched.some((event) => event.type === "signal-analyser-settings-state" && event.detail.state_revision === 2), "the delayed stale layout response must never publish over the queued newer authoritative envelope");
+  assert(cold.document.nodes["pane-grid"].dataset.layoutState === "ready" && cold.document.nodes["pane-grid"].dataset.layoutVariant === "1x1", "app-published state-lite must materialize the canonical layout without a second metadata GET");
+  assert(cold.apiCalls.length === 0 && cold.timers.some((timer) => !timer.cancelled), "accepted state-lite must schedule only active-output polling");
+  await cold.runTimer();
+  assert(cold.apiCalls.filter((call) => call.kind === "active").length === 1 && cold.document.nodes["pane-grid"].innerHTML.includes("pane-output-loading"), "lightweight pending output must remain loading and schedule a bounded retry");
+  cold.activeResponders.push(activeOutput(startup, "startup-ready"));
+  await cold.runTimer();
+  assert(cold.plotCalls.length === 1 && cold.plotCalls[0].host === cold.document.nodes["active-plot-host"] && cold.plotCalls[0].config.displayModeBar === false, "one current ready output must render exactly once through the layouts-owned live Plotly host");
+  assert(cold.document.nodes["active-plot-host"].dataset.plotReady === "true", "the sole current Plotly.react completion must mark the layouts-owned host ready");
 
-  let resolveCoalescedOld;
-  const coalesced = boot(() => new Promise((resolve) => { resolveCoalescedOld = resolve; }));
+  const race = boot();
+  const paneOne = stateLite(10, {panes:[pane("pane-1", "time", [A]), pane("pane-2", "spectrum", [B])], activePaneId:"pane-1", calculationRevision:201, contextKey:"context-old"});
+  const paneTwo = stateLite(11, {panes:[pane("pane-1", "time", [A]), pane("pane-2", "spectrum", [B])], activePaneId:"pane-2", calculationRevision:202, contextKey:"context-current"});
+  const oldResponse = deferred();
+  race.activeResponders.push(oldResponse.promise);
+  race.publish(paneOne);
+  await race.runTimer();
+  race.activeResponders.push(activeOutput(paneTwo, "current-ready"));
+  race.publish(paneTwo);
+  await race.runTimer();
+  assert(race.plotCalls.length === 1 && race.plotCalls[0].data[0].name === "current-ready", "a pane/context switch must render only the current ready active output");
+  oldResponse.resolve(activeOutput(paneOne, "stale-ready"));
   await flush();
-  coalesced.responders.push(() => Promise.resolve(envelope(6, 2, 1)));
-  for (const revision of [2, 4, 6]) {
-    coalesced.window.dispatchEvent(new coalesced.window.CustomEvent("signal-analyser-rendered", {detail:{activeDisplayId:"display-1", revision}}));
-  }
+  assert(race.plotCalls.length === 1 && race.document.nodes["active-plot-host"].dataset.plotReady === "true", "a stale pre-switch completion must not render or overwrite the current host");
+
+  const latest = boot({deferredPlotly:true});
+  const first = stateLite(20, {calculationRevision:301, contextKey:"render-first"});
+  latest.activeResponders.push(activeOutput(first, "first-ready"));
+  latest.publish(first);
+  await latest.runTimer();
+  assert(latest.plotCalls.length === 1 && latest.plotResolvers.length === 1, "the first current ready output must create one controlled render in flight");
+  const second = stateLite(21, {calculationRevision:302, contextKey:"render-latest"});
+  latest.activeResponders.push(activeOutput(second, "latest-ready"));
+  latest.publish(second);
+  await latest.runTimer();
+  assert(latest.plotCalls.length === 1, "a newer ready output must queue behind the one render already in flight");
+  latest.plotResolvers.shift().resolve();
   await flush();
-  assert(coalesced.apiCalls.length === 1, "multiple newer app revisions during one delayed layout GET must coalesce without starting a parallel duplicate");
-  resolveCoalescedOld(envelope(1, 1, 1));
+  assert(latest.plotCalls.length === 2 && latest.plotCalls[1].data[0].name === "latest-ready" && latest.plotResolvers.length === 1, "settling an obsolete render must start exactly one latest ready render");
+  latest.plotResolvers.shift().resolve();
   await flush();
-  assert(coalesced.apiCalls.length === 2 && coalesced.document.nodes["pane-grid"].dataset.layoutVariant === "2x1" && !coalesced.dispatched.some((event) => event.type === "signal-analyser-settings-state" && event.detail.state_revision === 1), "coalesced refresh must issue exactly one replacement and publish only the latest authoritative revision");
+  assert(latest.plotCalls.length === 2 && latest.document.nodes["active-plot-host"].dataset.plotReady === "true", "latest-only serialization must settle with exactly one current ready completion and no loop");
 
-  const failed = boot(() => Promise.reject(new Error("layout unavailable")));
+  const lazyFailure = boot({plotlyAbsent:true});
+  const lazySnapshot = stateLite(30, {calculationRevision:401, contextKey:"lazy-failure"});
+  lazyFailure.activeResponders.push(activeOutput(lazySnapshot, "lazy-ready"));
+  lazyFailure.publish(lazySnapshot);
+  await lazyFailure.runTimer();
+  assert(lazyFailure.scripts.length === 1 && lazyFailure.scripts[0].src === "./js/vendor/plotly-cartesian-3.1.0.min.js", "ready output must lazily request exactly one package-local Plotly artifact");
+  lazyFailure.scripts[0].onerror();
   await flush();
-  assert(failed.document.nodes["pane-grid"].dataset.layoutState === "error" && failed.document.nodes["pane-grid"].innerHTML.includes("layout-load-error"), "genuine asynchronous layout failure must clear busy and expose retryable local error");
-  failed.responders.push(() => Promise.resolve(envelope(4, 1, 2)));
-  failed.window.SignalAnalyserLayouts.refresh();
-  await flush();
-  assert(failed.document.nodes["pane-grid"].dataset.layoutState === "ready" && failed.document.nodes["pane-grid"].dataset.layoutVariant === "1x2", "explicit Retry after genuine failure must recover from a canonical response");
-
-  const synchronousFailure = boot(() => { throw new Error("synchronous adapter failure"); });
-  await flush();
-  assert(synchronousFailure.document.nodes["pane-grid"].dataset.layoutState === "error" && !synchronousFailure.document.nodes["pane-grid"].innerHTML.includes("layout-loading"), "synchronous adapter failure must enter the same cleanup path instead of stranding refreshPending");
-
-  const env = boot();
-  const layouts = env.window.SignalAnalyserLayouts;
-  const grid = env.document.nodes["pane-grid"];
-
-  for (let rows = 1; rows <= 10; rows += 1) for (let columns = 1; columns <= 10; columns += 1) {
-    const accepted = layouts.acceptEnvelope(envelope(rows * 10 + columns, rows, columns), false);
-    await flush();
-    assert(accepted, `layout ${rows}x${columns} must accept its exact authoritative envelope`);
-    assert(grid.dataset.layoutVariant === `${rows}x${columns}` && grid.style.values["--layout-rows"] === String(rows) && grid.style.values["--layout-columns"] === String(columns), `layout ${rows}x${columns} must set exact grid dimensions`);
-    assert((grid.innerHTML.match(/data-testid='plot-pane-/g) || []).length === rows * columns, `layout ${rows}x${columns} must render exactly ${rows * columns} panes`);
-  }
-
-  const strictBase = envelope(200, 1, 2, {panes:[pane("pane-1", "time", [A]), pane("pane-2", "spectrum", [B])], activePaneId:"pane-2"});
-  assert(layouts.acceptEnvelope(strictBase, false), "strict baseline envelope must be accepted");
-  const retainedVariant = grid.dataset.layoutVariant;
-  const wrongOrder = deepClone(strictBase);
-  wrongOrder.layouts[0].outputs[0] = outputFor(wrongOrder.layouts[0].layout.panes[0]);
-  assert(layouts.acceptEnvelope(wrongOrder, false) === false && grid.dataset.layoutVariant === retainedVariant, "output/active-pane identity mismatch must be rejected without replacing accepted state");
-  const readyEmptyLine = deepClone(strictBase);
-  readyEmptyLine.layouts[0].outputs[0].output.data = [];
-  assert(layouts.acceptEnvelope(readyEmptyLine, false) === false, "successful nonempty line output must reject empty data");
-  const failedLine = deepClone(strictBase);
-  failedLine.state_revision = failedLine.state.state_revision = 201;
-  failedLine.layouts[0].outputs[0].output = {isready:true, success:false, error:"pane failed", data:[]};
-  assert(layouts.acceptEnvelope(failedLine, false), "failed line output must accept typed empty data with an error");
-  const notReadyLine = deepClone(strictBase);
-  notReadyLine.state_revision = notReadyLine.state.state_revision = 202;
-  notReadyLine.layouts[0].outputs[0].output = {isready:false, success:true, error:"", data:[]};
-  assert(layouts.acceptEnvelope(notReadyLine, false), "not-ready line output must accept typed empty data without fabricating traces");
-
-  const realPanes = [pane("pane-1", "time", [A]), pane("pane-2", "spectrum", [B]), pane("pane-3", "spectrogram", [A]), pane("pane-4", "persistence", [B])];
-  for (const [offset, activePane] of realPanes.slice(1).entries()) {
-    assert(layouts.acceptEnvelope(envelope(210 + offset, 2, 2, {panes:realPanes, activePaneId:activePane.id}), false), `active-only ${activePane.plot_type} output must be accepted and cached for its pane`);
-    await flush();
-  }
-  const plotsBefore = env.plotCalls.length;
-  assert(layouts.acceptEnvelope(envelope(213, 2, 2, {panes:realPanes, activePaneId:"pane-1"}), false), "the final active-only output must compose with three authoritative cached pane outputs");
-  await flush();
-  const simultaneous = env.plotCalls.slice(plotsBefore);
-  assert(Object.keys(env.document.paneHosts).length === 3 && env.document.nodes["active-plot-host"].parentNode === env.document.paneOutputs["pane-1"], "one active and three independent inactive plot hosts must coexist in 2x2");
-  assert(simultaneous.length === 4 && simultaneous.some((call) => call.host === env.document.nodes["active-plot-host"]) && simultaneous.some((call) => call.host.dataset.panePlotHost === "pane-2" && call.layout.xaxis.type === "log") && simultaneous.filter((call) => call.data[0].type === "heatmap").length === 2, "all four ready panes must render through live Plotly.react hosts, including the app-owned active host");
-
-  const statePanes = [pane("pane-11", "time", [A]), pane("pane-12", "spectrum", [B]), pane("pane-13", "spectrogram", [A]), pane("pane-14", "persistence", [])];
-  assert(layouts.acceptEnvelope(envelope(220, 2, 2, {panes:statePanes, activePaneId:"pane-11"}), false), "a ready active output must seed only its own pane cache");
-  assert(grid.innerHTML.includes("data-pane-output-state='ready'") && grid.innerHTML.includes("data-pane-output-state='empty'"), "ready and never-loaded inactive panes must remain independently visible");
-  assert(layouts.acceptEnvelope(envelope(221, 2, 2, {panes:statePanes, activePaneId:"pane-12", outputs:[outputFor(statePanes[1], {isready:false, success:true, error:"", data:[]})]}), false), "an active loading output must remain valid");
-  assert(grid.innerHTML.includes("data-pane-output-state='ready'") && grid.innerHTML.includes("data-pane-output-state='loading'") && grid.innerHTML.includes("data-pane-output-state='empty'"), "active loading must not replace cached ready or untouched empty sibling states");
-  assert(layouts.acceptEnvelope(envelope(222, 2, 2, {panes:statePanes, activePaneId:"pane-13", outputs:[outputFor(statePanes[2], {isready:true, success:false, error:"isolated failure", data:{type:"heatmap", signal:A, x:[], y:[], z:[]}})]}), false), "an active failed output must remain valid");
-  assert(grid.innerHTML.includes("data-pane-output-state='ready'") && grid.innerHTML.includes("data-pane-output-state='error'") && grid.innerHTML.includes("data-pane-output-state='empty'"), "active error must stay isolated from cached ready and untouched empty siblings");
-  assert(grid.innerHTML.includes("isolated failure") && grid.innerHTML.includes("Нет данных области"), "pane error and empty Russian copy must stay isolated to their own panes");
-
-  layouts.acceptEnvelope(envelope(230, 2, 2), false);
-  const trigger = env.document.nodes["layout-trigger"];
-  env.document.fire("click", trigger);
-  assert(env.document.nodes["layout-popover"].hidden === false && env.document.nodes["layout-cancel-close"].focused === true, "opening selector must copy current draft and focus Close");
-  env.document.fire("click", env.document.nodes["layout-rows-3"]);
-  env.document.fire("click", env.document.nodes["layout-columns-2"]);
-  assert(env.document.nodes["layout-draft-copy"].textContent === "Черновик 3×2" && env.document.nodes["layout-apply"].disabled === false && grid.dataset.layoutVariant === "2x2", "draft editing must enable Apply without mutating visible panes");
-  trigger.focused = false;
-  env.document.fire("click", env.document.nodes["layout-cancel"]);
-  assert(env.document.nodes["layout-popover"].hidden === true && trigger.focused === true && grid.dataset.layoutVariant === "2x2", "Cancel must discard draft and restore trigger focus");
-  env.document.fire("click", trigger);
-  env.document.fire("click", env.document.nodes["layout-rows-4"]);
-  trigger.focused = false;
-  const escape = env.document.fire("keydown", env.document.nodes["layout-popover"], {key:"Escape"});
-  assert(escape.prevented && env.document.nodes["layout-popover"].hidden === true && trigger.focused === true, "Escape must equal Cancel and restore focus");
-
-  let resolveApply;
-  env.responders.push(() => new Promise((resolve) => { resolveApply = resolve; }));
-  env.document.fire("click", trigger);
-  env.document.fire("click", env.document.nodes["layout-rows-3"]);
-  env.document.fire("click", env.document.nodes["layout-columns-2"]);
-  env.document.fire("click", env.document.nodes["layout-apply"]);
-  await flush();
-  assert(JSON.stringify(env.apiCalls.at(-1)) === JSON.stringify({state_revision:230, display_id:"display-1", version:1, operation:"resize", variant:"3x2", rows:3, columns:2}), "Apply must POST one exact resize payload");
-  assert(grid.dataset.layoutVariant === "2x2" && env.document.nodes["layout-apply"].textContent === "Применение…" && env.document.nodes["layout-cancel"].disabled === true, "pending Apply must preserve authoritative panes and lock draft exits");
-  resolveApply(envelope(231, 3, 2));
-  await flush();
-  assert(grid.dataset.layoutVariant === "3x2" && env.document.nodes["layout-popover"].hidden === true && trigger.focused === true, "200 Apply must render the returned layout and restore trigger focus");
-  assert(env.document.nodes["layout-toast"].hidden === false && env.document.nodes["layout-toast"].className.includes("is-success"), "200 Apply must publish non-modal success feedback");
-
-  env.responders.push(() => Promise.reject({status:422, payload:{error:{fields:{rows:"rows rejected"}}}}));
-  env.document.fire("click", trigger);
-  env.document.fire("click", env.document.nodes["layout-rows-4"]);
-  env.document.fire("click", env.document.nodes["layout-apply"]);
-  await flush();
-  assert(grid.dataset.layoutVariant === "3x2" && env.document.nodes["layout-popover"].hidden === false && env.document.nodes["layout-draft-copy"].textContent === "Черновик 4×2", "422 must retain authoritative grid and retryable draft");
-  assert(env.document.nodes["layout-error"].hidden === false && env.document.nodes["layout-error-copy"].textContent === "rows rejected" && env.document.nodes["layout-apply"].disabled === false, "422 must re-enable Apply with inline field feedback");
-  env.document.fire("click", env.document.nodes["layout-cancel"]);
-
-  const conflictCurrent = envelope(232, 2, 2);
-  env.responders.push(() => Promise.reject({status:409, payload:{current:conflictCurrent}}));
-  env.document.fire("click", trigger);
-  env.document.fire("click", env.document.nodes["layout-rows-4"]);
-  env.document.fire("click", env.document.nodes["layout-apply"]);
-  await flush();
-  assert(grid.dataset.layoutVariant === "2x2" && env.document.nodes["layout-popover"].hidden === false && env.document.nodes["layout-conflict"].hidden === false, "409 must consume current while keeping selector open in conflict state");
-  assert(env.document.nodes["layout-draft-copy"].textContent === "Черновик 2×2" && env.document.nodes["layout-apply"].disabled === true && env.document.nodes["layout-conflict-copy"].textContent.includes("Устаревший черновик отброшен"), "409 must reset stale draft and block unchanged Apply");
-  env.document.fire("click", env.document.nodes["layout-rows-3"]);
-  assert(env.document.nodes["layout-conflict"].hidden === true && env.document.nodes["layout-apply"].disabled === false, "fresh draft edit must acknowledge conflict and re-enable Apply");
-  env.document.fire("click", env.document.nodes["layout-cancel"]);
-
-  const isolatedPanes = [pane("pane-1", "time", [A]), pane("pane-2", "spectrum", [B]), pane("pane-3", "spectrogram", [A, B]), pane("pane-4", "persistence", [])];
-  layouts.acceptEnvelope(envelope(240, 2, 2, {panes:isolatedPanes, activePaneId:"pane-1"}), false);
-  const typeChangedPanes = isolatedPanes.map((item) => pane(item.id, item.id === "pane-2" ? "persistence" : item.plot_type, item.signal_bindings));
-  env.responders.push(() => Promise.resolve(envelope(241, 2, 2, {panes:typeChangedPanes, activePaneId:"pane-1"})));
-  const paneType = new FakeElement(env.document, "", "SELECT");
-  paneType.dataset.panePlotType = "";
-  paneType.dataset.paneId = "pane-2";
-  paneType.value = "persistence";
-  env.document.fire("change", paneType);
-  await flush();
-  assert(JSON.stringify(env.apiCalls.at(-1)) === JSON.stringify({state_revision:240, display_id:"display-1", version:1, operation:"update_pane", pane_id:"pane-2", plot_type:"persistence", signal_bindings:[B]}), "inactive pane type change must target only that pane with its ordered bindings");
-  assert(grid.innerHTML.includes("data-testid='pane-plot-type-pane-2'") && grid.innerHTML.includes("<option value='persistence' selected>"), "authoritative type response must update only the addressed inactive pane");
-
-  env.responders.push(() => Promise.resolve(envelope(242, 2, 2, {panes:typeChangedPanes, activePaneId:"pane-3"})));
-  const paneThree = new FakeElement(env.document, "", "ARTICLE");
-  paneThree.dataset.paneId = "pane-3";
-  env.document.fire("click", paneThree);
-  await flush();
-  assert(JSON.stringify(env.apiCalls.at(-1)) === JSON.stringify({state_revision:241, display_id:"display-1", version:1, operation:"select_pane", pane_id:"pane-3"}), "pane activation must POST only the selected server pane ID");
-  assert(grid.dataset.activePaneId === "pane-3" && env.document.nodes["pane-settings-context"].textContent === "Область 3 · Спектрограмма" && env.document.nodes["pane-binding-title"].textContent === "Связи области 3", "Settings and binding labels must follow authoritative active pane context");
-  assert(env.document.signalControls.every((control) => control.checked) && env.document.nodes["toggle-all-signals"].checked === true, "active Pane 3 checkboxes must reflect only Pane 3 bindings");
-
-  const reboundPanes = typeChangedPanes.map((item) => pane(item.id, item.plot_type, item.id === "pane-3" ? [A] : item.signal_bindings));
-  env.responders.push(() => Promise.resolve(envelope(243, 2, 2, {panes:reboundPanes, activePaneId:"pane-3"})));
-  const signalB = env.document.signalControls[1];
-  signalB.checked = false;
-  env.document.fire("change", signalB);
-  assert(signalB.checked === true && signalB.disabled === true, "binding control must roll back optimistic checkbox state and disable only the pending control");
-  await flush();
-  assert(JSON.stringify(env.apiCalls.at(-1)) === JSON.stringify({state_revision:242, display_id:"display-1", version:1, operation:"update_pane", pane_id:"pane-3", plot_type:"spectrogram", signal_bindings:[A]}), "active checkbox must submit only active pane type and ordered survivor bindings");
-  assert(env.document.signalControls[0].checked === true && env.document.signalControls[1].checked === false && signalB.disabled === false, "authoritative binding response must restore active-pane checkbox context without changing sibling pane state");
+  assert(lazyFailure.plotCalls.length === 0 && lazyFailure.document.nodes["active-plot-host"].parentNode.dataset.paneOutputState === "error", "local Plotly load failure must become an explicit layouts-owned pane error without a fake render");
 };

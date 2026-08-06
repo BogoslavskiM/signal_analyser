@@ -158,9 +158,7 @@ function environment(fetch, options) {
     "[data-testid='peaks-panel']": e.peaksPanel, "[data-peaks-content]": e.peaksContent,
     "[data-retry]": e.retry,
   };
-  const calls = [], plotResolvers = [], scriptResolvers = [];
-  const plotly = { react(host, data, layout) { calls.push({ plot: true, host, data, layout }); if (options && options.deferredPlotly) return new Promise((resolve, reject) => plotResolvers.push({resolve:() => { host.innerHTML = "settled-" + (data[0] && data[0].name || "plot"); resolve(); }, reject, host, data})); return Promise.resolve(); } };
-  const scriptOutcomes = (options && options.scriptOutcomes || []).slice();
+  const calls = [];
   let screenDialog = null;
   const document = {
     activeElement: null,
@@ -168,6 +166,7 @@ function environment(fetch, options) {
     documentElement: { dataset: {} },
     querySelector(selector) {
       if (selector === "[data-testid='screen-delete-dialog']") return screenDialog;
+      if (options && options.omitLegacyPlotTitle && selector === "[data-testid='display-plot-title']") return null;
       const displayTabMatch = /^\[data-display-id='([^']+)'\]$/.exec(selector);
       if (displayTabMatch) return e.displayTabNodes[displayTabMatch[1]] || null;
       return selectors[selector] || null;
@@ -179,22 +178,13 @@ function environment(fetch, options) {
       if (selector === "[data-settings-panel]") return e.settingsPanels;
       return [];
     },
-    createElement(tag) {
-      if (tag !== "script") return node();
-      return { src: "", async: false, onload: null, onerror: null };
-    },
+    createElement() { return node(); },
     addEventListener(type, handler) { (this.listeners[type] || (this.listeners[type] = [])).push(handler); },
-    head: { appendChild(script) {
-      calls.push({ script: script.src });
-      const outcome = scriptOutcomes.shift() || "error";
-      if (outcome === "load") { window.Plotly = plotly; script.onload(); }
-      else if (outcome === "deferred") scriptResolvers.push({ load() { window.Plotly = plotly; script.onload(); }, reject() { script.onerror(); } });
-      else script.onerror();
-    } },
+    head: { appendChild() {} },
     body: { appendChild(child) { screenDialog = child; child.parentNode = this; child.remove = function remove() { screenDialog = null; child.parentNode = null; }; return child; } },
   };
   const windowListeners = {};
-  const window = { fetch(url, options) { calls.push({ url, options: options || {} }); return fetch(url, options || {}); }, addEventListener(type, handler) { (windowListeners[type] || (windowListeners[type] = [])).push(handler); }, dispatchEvent(event) { for (const handler of windowListeners[event.type] || []) handler(event); }, requestAnimationFrame(callback) { callback(); return 0; }, setTimeout(callback) { callback(); return 0; }, clearTimeout() {}, Plotly: plotly };
+  const window = { fetch(url, options) { calls.push({ url, options: options || {} }); return fetch(url, options || {}); }, addEventListener(type, handler) { (windowListeners[type] || (windowListeners[type] = [])).push(handler); }, dispatchEvent(event) { for (const handler of windowListeners[event.type] || []) handler(event); }, requestAnimationFrame(callback) { callback(); return 0; }, setTimeout(callback) { callback(); return 0; }, clearTimeout() {} };
   e.signalBottomTab.dataset.bottomTab = "signals";
   e.measurementsBottomTab.dataset.bottomTab = "measurements";
   e.peaksBottomTab.dataset.bottomTab = "peaks";
@@ -204,9 +194,7 @@ function environment(fetch, options) {
   e.signalBottomTab.classList = { toggle(on) { this.on = on; }, contains() { return false; } };
   e.measurementsBottomTab.classList = { toggle(on) { this.on = on; }, contains() { return false; } };
   e.peaksBottomTab.classList = { toggle(on) { this.on = on; }, contains() { return false; } };
-  if (options && options.moduleNameOnly) { window.moduleName = plotly; delete window.Plotly; }
-  if (options && options.plotlyAbsent) delete window.Plotly;
-  return { e, window, document, calls, plotResolvers, scriptResolvers };
+  return { e, window, document, calls };
 }
 
 async function boot(fetch, options) {
@@ -253,12 +241,10 @@ module.exports = async function testDisplayBehavior(assert) {
     requests.push({ url, options });
     return Promise.resolve(response(200, initial));
   });
-  assert(requests.length === 1 && requests[0].url === "./api/state", "startup must request the authoritative state once");
+  assert(requests.length === 1 && requests[0].url === "./api/state-lite", "startup must request the authoritative state once");
   assert(env.e.tabs.innerHTML.includes("display-tab-display-1"), "initial snapshot must render the active display tab");
   assert(env.e.tabs.innerHTML.includes("add-display"), "display workspace must render the add page control");
-  const plots = env.calls.filter((call) => call.plot);
-  assert(plots.length === 1 && plots[0].host === env.e.host, "the app-owned active Display host must render exactly one live graph; multi-pane hosts are owned by layouts.js");
-  assert(JSON.stringify(plots[0].data.map((trace) => trace.name)) === JSON.stringify([A, B]), "the active graph must include every checked signal independently");
+  assert(env.calls.filter((call) => call.plot).length === 0, "state-lite startup must not eagerly render Plotly from app.js; layouts.js owns the lazy active-output lifecycle");
 
   let rejectRecoveredState;
   const layoutRecovered = await boot(() => new Promise((resolve, reject) => { rejectRecoveredState = reject; }));
@@ -277,92 +263,49 @@ module.exports = async function testDisplayBehavior(assert) {
 
   const genuineStateFailure = await boot(() => Promise.reject(new Error("state unavailable")));
   assert(genuineStateFailure.e.loading.hidden === true && genuineStateFailure.e.error.hidden === false && genuineStateFailure.e.errorText.textContent === "Не удалось загрузить данные анализатора сигналов.", "genuine state failure without layout recovery must clear busy and retain explicit Retry error");
-  async function settleMicrotasks() { for (let i = 0; i < 8; i += 1) await Promise.resolve(); }
-  const c24 = await boot((url) => Promise.resolve(response(200, initial)), {deferredPlotly:true});
-  assert(c24.plotResolvers.length === 1 && c24.calls.filter(call => call.plot).length === 1, "C24 starts one controlled Time render");
-  c24.e.legend.checked = false; c24.e.legend.listeners.change({target:c24.e.legend}); await settleMicrotasks();
-  c24.plotResolvers.shift().resolve(); await settleMicrotasks();
-  assert(c24.calls.filter(call => call.plot).length === 2 && c24.plotResolvers.length === 1, "C24 stale Time completion serializes one latest render");
-  c24.plotResolvers.shift().resolve(); await settleMicrotasks();
-  assert(c24.e.host.dataset.plotReady === "true" && c24.calls.filter(call => call.plot).length === 2, "C24 current completion sets readiness once with bounded reassertion/no loop");
-
-  // C24: every delayed renderer completion must be fenced by the current
-  // authoritative Display/plot generation.  These are controlled promises,
-  // deliberately without clock-based waits.
-  function persistenceSnapshot(revision, activeId, definitions) {
-    const result = snapshot(revision, activeId || "display-1", definitions || [{ id:"display-1", name:"Display 1", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A] }], A);
-    const payload = { type:"heatmap", signal:A, x:[7, 9], y:[-30, -10], z:[[10, 20], [30, 40]], x_label:"Frequency", y_label:"Magnitude", color_label:"Occurrence", density_limits:{mode:"auto",requested:null,effective:{min:10,max:40,units:"percent"},rendered:{min:10,max:40,units:"percent"}} };
-    result.plot_payload.persistence = payload;
-    result.plots.persistence = payload;
-    return result;
-  }
-  async function settleControlledPlots(controlled, limit) {
-    for (let index = 0; index < limit && controlled.plotResolvers.length; index += 1) {
-      controlled.plotResolvers.shift().resolve();
-      await settleMicrotasks();
-    }
-  }
-  const c24Persistence = persistenceSnapshot(1);
-  const c24PlotSwitch = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? initial : c24Persistence)), { deferredPlotly:true });
-  c24PlotSwitch.e.plotSelect.value = "persistence"; c24PlotSwitch.e.plotSelect.listeners.change({target:c24PlotSwitch.e.plotSelect}); await settleMicrotasks();
-  assert(c24PlotSwitch.calls.filter(call => call.plot).length === 1 && c24PlotSwitch.plotResolvers.length === 1 && c24PlotSwitch.plotResolvers[0].data[0].type === "scatter" && c24PlotSwitch.e.title.textContent === "Спектр персистентности", "C24 Time→Persistence must preserve the stale Time render until the serialized Persistence render can replace it");
-  c24PlotSwitch.plotResolvers.shift().resolve(); await settleMicrotasks();
-  const c24PersistenceRender = c24PlotSwitch.calls.filter(call => call.plot).at(-1);
-  assert(c24PersistenceRender.data[0].type === "heatmap" && c24PlotSwitch.e.title.textContent === "Спектр персистентности", "C24 Time→Persistence must serialize only the latest plot/title after the stale Time render settles");
-  await settleControlledPlots(c24PlotSwitch, 3);
-  assert(c24PlotSwitch.e.host.dataset.plotReady === "true" && c24PlotSwitch.calls.filter(call => call.plot).length <= 3, "C24 latest Persistence render settles with a bounded number of reassertions");
-
-  const c24OldReject = await boot((url) => Promise.resolve(response(200, initial)), { deferredPlotly:true });
-  c24OldReject.e.legend.checked = false; c24OldReject.e.legend.listeners.change({target:c24OldReject.e.legend}); await settleMicrotasks();
-  c24OldReject.plotResolvers.shift().reject(new Error("obsolete Time renderer failed")); await Promise.resolve();
-  assert(!c24OldReject.e.host.innerHTML.includes("plot-error-state") && c24OldReject.e.host.dataset.plotReady !== "false" && c24OldReject.e.title.textContent === "Временная область", "C24 obsolete rejection must publish neither the plot error nor false readiness before the authoritative render settles");
-  await settleMicrotasks();
-  await settleControlledPlots(c24OldReject, 3);
-  assert(!c24OldReject.e.host.innerHTML.includes("plot-error-state") && c24OldReject.e.host.dataset.plotReady === "true" && c24OldReject.e.title.textContent === "Временная область", "C24 rejection of an obsolete render must not replace successful authoritative Time with an error state");
-  assert(c24OldReject.calls.filter(call => call.plot).length <= 3 && c24OldReject.plotResolvers.length === 0, "C24 obsolete rejection cannot create an unbounded Plotly.react/reassertion loop");
-
-  const c24DelayedLoader = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? initial : c24Persistence)), { plotlyAbsent:true, scriptOutcomes:["deferred"] });
-  assert(c24DelayedLoader.scriptResolvers.length === 1, "C24 delayed local Plotly loader remains explicitly controllable");
-  c24DelayedLoader.e.plotSelect.value = "persistence"; c24DelayedLoader.e.plotSelect.listeners.change({target:c24DelayedLoader.e.plotSelect}); await settleMicrotasks();
-  c24DelayedLoader.scriptResolvers.shift().load(); await settleMicrotasks();
-  const c24LoaderPlots = c24DelayedLoader.calls.filter(call => call.plot);
-  assert(c24LoaderPlots.length === 1 && c24LoaderPlots[0].data[0].type === "heatmap" && c24DelayedLoader.e.title.textContent === "Спектр персистентности", "C24 a delayed Plotly loader must skip the stale Time react after an authoritative plot change");
-
-  const c24Empty = emptySnapshot(1, A);
-  const c24EmptyAfterOld = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? initial : c24Empty)), { deferredPlotly:true });
-  c24EmptyAfterOld.e.clearDisplayAction.listeners.click(); await settleMicrotasks();
-  assert(c24EmptyAfterOld.e.host.innerHTML.includes("empty-display-plot-state") && c24EmptyAfterOld.e.host.dataset.plotReady === "false", "C24 synchronous empty Display state must immediately replace a populated in-flight plot");
-  c24EmptyAfterOld.plotResolvers.shift().resolve(); await settleMicrotasks();
-  assert(c24EmptyAfterOld.e.host.innerHTML.includes("empty-display-plot-state") && c24EmptyAfterOld.e.host.dataset.plotReady === "false" && c24EmptyAfterOld.calls.filter(call => call.plot).length <= 1, "C24 stale populated completion must preserve the authoritative empty placeholder with bounded reassertion");
-
-  const c24DisplayDefinitions = [
-    { id:"display-1", name:"Display A", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A] },
-    { id:"display-2", name:"Display B", active_plot:"persistence", analysis_signal:A, selected_signal:A, visible_signals:[A] },
-  ];
-  const c24DisplayA = snapshot(0, "display-1", c24DisplayDefinitions, A);
-  const c24DisplayB = persistenceSnapshot(1, "display-2", c24DisplayDefinitions);
-  const c24DisplaySwitch = await boot((url, options) => Promise.resolve(response(200, url === "./api/state" ? c24DisplayA : c24DisplayB)), { deferredPlotly:true });
-  c24DisplaySwitch.e.tabs.listeners.click({target:tabTarget("display-2")}); await settleMicrotasks();
-  assert(c24DisplaySwitch.calls.filter(call => call.plot).length === 1 && c24DisplaySwitch.plotResolvers.length === 1 && c24DisplaySwitch.plotResolvers[0].data[0].type === "scatter" && activeTab(c24DisplaySwitch.e, "display-2") && c24DisplaySwitch.e.title.textContent === "Спектр персистентности", "C24 Display A→B must retain Display B as the authoritative tab/title while only stale Display A Plotly.react remains before it settles");
-  c24DisplaySwitch.plotResolvers.shift().resolve(); await settleMicrotasks();
-  const c24DisplayRender = c24DisplaySwitch.calls.filter(call => call.plot).at(-1);
-  assert(activeTab(c24DisplaySwitch.e, "display-2") && c24DisplaySwitch.e.title.textContent === "Спектр персистентности" && c24DisplayRender.data[0].type === "heatmap", "C24 actual Display A→B switch must let only Display B's latest Persistence graph win");
-  await settleControlledPlots(c24DisplaySwitch, 3);
-  assert(c24DisplaySwitch.calls.filter(call => call.plot).length <= 3 && c24DisplaySwitch.e.host.dataset.plotReady === "true", "C24 Display switch completion remains finite and leaves the current graph ready");
 
   const rowIds = Array.from(env.e.rows.innerHTML.matchAll(/data-testid='signal-checkbox-([^']+)'/g), (match) => match[1]);
   assert(rowIds.length === 2 && new Set(rowIds).size === 2, "Cyrillic signal names must receive collision-free checkbox test IDs");
 
-  const umd = await boot((url) => Promise.resolve(response(200, initial)), { moduleNameOnly: true });
-  assert(umd.window.Plotly === umd.window.moduleName, "local Plotly UMD moduleName export must normalize to window.Plotly");
-  assert(umd.calls.some((call) => call.plot), "UMD-normalized local Plotly must render the active graph without CDN loading");
 
-  const recovered = await boot((url) => Promise.resolve(response(200, initial)), { plotlyAbsent: true, scriptOutcomes: ["error"] });
-  const scriptLoads = recovered.calls.filter((call) => call.script).map((call) => call.script);
-  assert(scriptLoads.length === 1, "missing Plotly must attempt exactly one local load without a CDN fallback");
-  assert(scriptLoads[0].includes("vendor/plotly-cartesian-3.1.0.min.js"), "the first Plotly recovery request must target the bundled local artifact");
-  assert(!scriptLoads.some((url) => /https?:\/\/|cdn\./i.test(url)), "Plotly recovery must never request a CDN");
-  assert(recovered.e.host.dataset.plotReady === "false" && recovered.e.host.innerHTML.includes("plot-error-state"), "a missing local Plotly artifact must expose the stable error state");
+  // HND-0313: production uses the pane-owned title topology.  The retired
+  // display-plot-title must therefore be genuinely absent while mutation
+  // dispatch still reaches its normal authoritative API boundary.
+  const paneOwnedDisplays = [
+    { id:"display-1", name:"Display 1", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A] },
+    { id:"display-2", name:"Display 2", active_plot:"spectrum", analysis_signal:B, selected_signal:B, visible_signals:[B] },
+  ];
+  const paneOwnedInitial = snapshot(60, "display-1", paneOwnedDisplays, A);
+  const paneOwnedPlot = snapshot(61, "display-1", [Object.assign({}, paneOwnedDisplays[0], {active_plot:"spectrum"}), paneOwnedDisplays[1]], A);
+  const paneOwnedDelete = snapshot(62, "display-2", [paneOwnedDisplays[1]], B);
+  const paneOwnedCalls = [];
+  const paneOwnedResolvers = [];
+  const paneOwned = await boot((url, options) => {
+    paneOwnedCalls.push({url, options});
+    if (url === "./api/state-lite") return Promise.resolve(response(200, paneOwnedInitial));
+    return new Promise((resolve) => paneOwnedResolvers.push(resolve));
+  }, {omitLegacyPlotTitle:true});
+  assert(paneOwned.document.querySelector("[data-testid='display-plot-title']") === null && paneOwned.e.root.dataset.stateRevision === "60", "HND-0313 must boot the pane-owned topology with the legacy display title absent");
+  paneOwned.e.plotSelect.value = "spectrum";
+  paneOwned.e.plotSelect.listeners.change({target:paneOwned.e.plotSelect});
+  await flush();
+  const paneOwnedPlotCalls = paneOwnedCalls.filter((call) => call.url === "./api/view");
+  assert(paneOwnedPlotCalls.length === 1 && JSON.stringify(JSON.parse(paneOwnedPlotCalls[0].options.body)) === JSON.stringify({state_revision:60, active_plot:"spectrum", row_selected_signal:A, analysis_signal:A, visible_signals:[A], time_limits:null, measurement_kinds:["minimum","maximum","mean"], spectrum_settings:{scale:"db",frequency_scale:"linear",leakage:.5,frequency_limits:null}, spectrogram_settings:{overlap_percent:50,leakage:.5,frequency_limits:null,frequency_scale:"linear",power_limits:null}, persistence_settings:{leakage:.5}, peaks_enabled:false}), "HND-0313 plot-type with no legacy title must dispatch exactly one normal /api/view mutation");
+  assert(paneOwned.e.loading.hidden === false && paneOwned.e.root.getAttribute("aria-busy") === "true", "HND-0313 plot-type request must expose busy state until the authoritative response settles");
+  paneOwnedResolvers.shift()(response(200, paneOwnedPlot));
+  await flush();
+  assert(paneOwnedCalls.filter((call) => call.url === "./api/view").length === 1 && paneOwned.e.root.dataset.stateRevision === "61" && paneOwned.e.loading.hidden === true && paneOwned.e.root.getAttribute("aria-busy") === "false", "HND-0313 authoritative plot-type response must settle without a throw or duplicate request");
+  paneOwned.e.tabs.listeners.click({target:closeTarget("display-1")});
+  const paneOwnedDialog = paneOwned.document.querySelector("[data-testid='screen-delete-dialog']");
+  assert(paneOwnedDialog && paneOwnedCalls.filter((call) => call.url === "./api/displays").length === 0, "HND-0313 delete must retain its confirmation lifecycle before dispatch");
+  paneOwnedDialog.listeners.click();
+  await flush();
+  const paneOwnedDeleteCalls = paneOwnedCalls.filter((call) => call.url === "./api/displays");
+  assert(paneOwnedDeleteCalls.length === 1 && JSON.stringify(JSON.parse(paneOwnedDeleteCalls[0].options.body)) === JSON.stringify({state_revision:61, operation:"close", display_id:"display-1"}) && paneOwned.document.querySelector("[data-testid='screen-delete-dialog']") === null, "HND-0313 confirmed delete with no legacy title must dispatch exactly one normal /api/displays mutation and close its overlay");
+  assert(paneOwned.e.loading.hidden === false && paneOwned.e.root.getAttribute("aria-busy") === "true", "HND-0313 confirmed delete must remain busy until the authoritative response settles");
+  paneOwnedResolvers.shift()(response(200, paneOwnedDelete));
+  await flush();
+  assert(paneOwnedCalls.filter((call) => call.url === "./api/displays").length === 1 && paneOwned.e.root.dataset.stateRevision === "62" && activeTab(paneOwned.e, "display-2") && paneOwned.e.loading.hidden === true && paneOwned.e.root.getAttribute("aria-busy") === "false", "HND-0313 authoritative delete response must settle the pane-owned topology without a throw or duplicate request");
 
   const displayCalls = [];
   const created = snapshot(1, "display-2", [
@@ -372,7 +315,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const selected = snapshot(2, "display-1", created.displays);
   const lifecycle = await boot((url, options) => {
     displayCalls.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, initial));
     const payload = JSON.parse(options.body);
     return Promise.resolve(response(200, payload.operation === "create" ? created : selected));
   });
@@ -416,7 +359,7 @@ module.exports = async function testDisplayBehavior(assert) {
   let resolveMouseReorder;
   const mouseReorder = await boot((url, options) => {
     mouseCalls.push({url, options});
-    if (url === "./api/state") return Promise.resolve(response(200, reorderInitial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, reorderInitial));
     const payload = JSON.parse(options.body);
     if (payload.operation === "reorder") return new Promise((resolve) => { resolveMouseReorder = resolve; });
     return Promise.resolve(response(200, mouseAuthoritative));
@@ -448,7 +391,7 @@ module.exports = async function testDisplayBehavior(assert) {
   let resolveAltReorder;
   const altReorder = await boot((url, options) => {
     altCalls.push({url, options});
-    if (url === "./api/state") return Promise.resolve(response(200, reorderInitial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, reorderInitial));
     return new Promise((resolve) => { resolveAltReorder = resolve; });
   });
   let altPrevented = false;
@@ -465,7 +408,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const conflictCurrent = reorderSnapshot(51, ["display-3", "display-1", "display-2"], "display-1");
   const conflictReorder = await boot((url, options) => {
     conflictCalls.push({url, options});
-    return Promise.resolve(url === "./api/state" ? response(200, reorderInitial) : response(409, {current:conflictCurrent}));
+    return Promise.resolve(url === "./api/state-lite" ? response(200, reorderInitial) : response(409, {current:conflictCurrent}));
   });
   conflictReorder.e.tabs.listeners.keydown({target:tabTarget("display-1"), altKey:true, key:"ArrowRight", preventDefault() {}});
   await flush();
@@ -480,7 +423,7 @@ module.exports = async function testDisplayBehavior(assert) {
     const failureCalls = [];
     const failedReorder = await boot((url, options) => {
       failureCalls.push({url, options});
-      return url === "./api/state" ? Promise.resolve(response(200, reorderInitial)) : failure.result();
+      return url === "./api/state-lite" ? Promise.resolve(response(200, reorderInitial)) : failure.result();
     });
     failedReorder.e.tabs.listeners.keydown({target:tabTarget("display-2"), altKey:true, key:"ArrowRight", preventDefault() {}});
     await flush();
@@ -493,7 +436,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const queued = [];
   const queue = await boot((url, options) => {
     queued.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, initial));
     return new Promise((resolve) => { resolveFirst = resolve; });
   });
   queue.e.tabs.listeners.click({ target: addTarget() });
@@ -510,7 +453,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const stale = [];
   const staleReplay = await boot((url, options) => {
     stale.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, initial));
     viewAttempt += 1;
     if (viewAttempt === 1) return Promise.resolve(response(409, { current: snapshot(7) }));
     return Promise.resolve(response(200, snapshot(8, "display-1", [{ id: "display-1", name: "Display 1", active_plot: "spectrum", selected_signal: A, visible_signals: [A, B] }])));
@@ -526,7 +469,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const staleDisplay = [];
   const displayReplay = await boot((url, options) => {
     staleDisplay.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, initial));
     displayAttempt += 1;
     if (displayAttempt === 1) return Promise.resolve(response(409, { current: snapshot(4) }));
     return Promise.resolve(response(200, snapshot(5, "display-2", [
@@ -543,7 +486,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const visibility = [];
   const selection = await boot((url, options) => {
     visibility.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, initial));
     return Promise.resolve(response(200, snapshot(1, "display-1", [{ id: "display-1", name: "Display 1", active_plot: "time", selected_signal: B, visible_signals: [B] }])));
   });
   selection.e.rows.listeners.change({ target: checkboxTarget(A, false) });
@@ -573,7 +516,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const catalogCalls = [], catalogResolvers = [];
   const catalogEnv = await boot((url, options) => {
     catalogCalls.push({url, options});
-    if (url === "./api/state") return Promise.resolve(response(200, signalsInitial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, signalsInitial));
     if (url === "./api/workspace/variables") return Promise.resolve(response(200, catalog));
     return new Promise(resolve => catalogResolvers.push(resolve));
   });
@@ -641,7 +584,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(catalogCalls.filter(call => call.url === "./api/signals").length === 3 && catalogCalls.filter(call => call.url === "./api/workspace/variables").length === 5 && !catalogEnv.e.signalsWorkspaceList.innerHTML.includes("checked") && catalogEnv.e.signalsWorkspaceSubmit.disabled, "catalog conflict must refresh into an unselected fail-closed dialog and never replay the mutation automatically");
 
   const browserLoads = [], browserEnv = await boot((url) => {
-    if (url === "./api/state") return Promise.resolve(response(200, signalsInitial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, signalsInitial));
     return new Promise(resolve => browserLoads.push(resolve));
   });
   const browserClick = browserEnv.document.listeners.click.at(-1);
@@ -666,7 +609,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const rowActionCalls = [], rowActionResolvers = [];
   const rowActions = await boot((url, options) => {
     rowActionCalls.push({url, options});
-    return url === "./api/state" ? Promise.resolve(response(200, signalsInitial)) : new Promise(resolve => rowActionResolvers.push(resolve));
+    return url === "./api/state-lite" ? Promise.resolve(response(200, signalsInitial)) : new Promise(resolve => rowActionResolvers.push(resolve));
   });
   assert(rowActions.e.rows.innerHTML.includes("class='signal-type-cell'") && rowActions.e.rows.innerHTML.includes("data-signal-duplicate") && rowActions.e.rows.innerHTML.includes("data-signal-delete"), "each rendered Type cell must expose stable inline Duplicate/Delete controls");
   assert(!rowActions.e.rows.innerHTML.includes("signal-info-action-") && !rowActions.e.rows.innerHTML.includes("data-signal-info"), "removed Info control must not return in rendered signal rows");
@@ -695,7 +638,7 @@ module.exports = async function testDisplayBehavior(assert) {
     return Promise.resolve(response(200, initial));
   });
   localTabs.e.bottomTabs.listeners.click({ target: { closest(selector) { return selector === "[data-bottom-tab]" ? localTabs.e.measurementsBottomTab : null; } } });
-  assert(localTabRequests.length === 1 && localTabRequests[0].url === "./api/state", "opening Measurements must not make a backend request");
+  assert(localTabRequests.length === 1 && localTabRequests[0].url === "./api/state-lite", "opening Measurements must not make a backend request");
   assert(localTabs.e.signals.hidden === true && localTabs.e.measurements.hidden === false, "Measurements tab must swap only local panels");
   assert(localTabs.e.measurementsBottomTab.getAttribute("aria-selected") === "true", "Measurements tab must expose its local selected state accessibly");
 
@@ -705,7 +648,7 @@ module.exports = async function testDisplayBehavior(assert) {
     return Promise.resolve(response(200, initial));
   });
   statistics.e.statisticsAction.listeners.click();
-  assert(statisticsRequests.length === 1 && statisticsRequests[0].url === "./api/state", "Signal statistics must open Measurements without an API request or revision mutation");
+  assert(statisticsRequests.length === 1 && statisticsRequests[0].url === "./api/state-lite", "Signal statistics must open Measurements without an API request or revision mutation");
   assert(statistics.e.signals.hidden === true && statistics.e.measurements.hidden === false && statistics.e.peaksPanel.hidden === true, "Signal statistics must locally show Measurements and hide Signals/Peaks panels");
   assert(statistics.e.measurementsBottomTab.getAttribute("aria-selected") === "true" && statistics.e.measurementsBottomTab.getAttribute("tabindex") === "0", "Signal statistics must make Measurements the accessible roving tab");
   assert(statistics.e.measurementsBottomTab.focused === true, "Signal statistics must transfer focus to Measurements when the tab supports focus");
@@ -723,7 +666,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const statsSelectionRequests = [];
   const statsSelection = await boot((url, options) => {
     statsSelectionRequests.push({ url, options });
-    return Promise.resolve(response(200, url === "./api/state" ? statsInitial : statsCommitted));
+    return Promise.resolve(response(200, url === "./api/state-lite" ? statsInitial : statsCommitted));
   });
   assert(statsSelection.e.statisticsOptions.slice(0, 3).every((option) => option.checked) && statsSelection.e.statisticsOptions.slice(3).every((option) => !option.checked), "Measurements settings must render default checked kinds in canonical order");
   const medianOption = statsSelection.e.statisticsOptions[3];
@@ -735,7 +678,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(statsSelection.e.statisticsOptions[3].checked === true, "authoritative Statistics response must retain the newly selected checkbox");
 
   const rejectedStatistics = await boot((url) => {
-    if (url === "./api/state") return Promise.resolve(response(200, statsInitial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, statsInitial));
     return Promise.resolve(response(422, { ok: false, code: "invalid_request", error: { code: "invalid_request", message: "Некорректный запрос отображения", fields: { measurement_kinds: "Недопустимый набор показателей" } } }));
   });
   const rejectedMedian = rejectedStatistics.e.statisticsOptions[3];
@@ -773,13 +716,13 @@ module.exports = async function testDisplayBehavior(assert) {
     controlled.e.statisticsControls.listeners.change({ target:{ closest(selector) { return selector === "input[type='checkbox']" ? option : null; } } });
   }
   const c25Malformed409Calls = [], c25Malformed409Resolvers = [];
-  const c25Malformed409 = await boot((url, options) => { c25Malformed409Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, statsInitial)) : new Promise(resolve => c25Malformed409Resolvers.push(resolve)); });
+  const c25Malformed409 = await boot((url, options) => { c25Malformed409Calls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, statsInitial)) : new Promise(resolve => c25Malformed409Resolvers.push(resolve)); });
   c25StatisticsChange(c25Malformed409, 3); await flush();
   c25StatisticsChange(c25Malformed409, 4); await flush();
   c25Malformed409Resolvers.shift()(response(409, {current:c25Malformed})); await flush();
   assert(c25Malformed409Calls.filter(call => call.url === "./api/view").length === 1 && c25Malformed409.e.statisticsError.hidden === false && c25Malformed409.e.statisticsOptions.every(option => option.disabled), "C25 malformed 409 current after an in-flight Statistics edit drains same-Display queue with no replay POST");
   const c25Malformed200Calls = [], c25Malformed200Resolvers = [];
-  const c25Malformed200 = await boot((url, options) => { c25Malformed200Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, statsInitial)) : new Promise(resolve => c25Malformed200Resolvers.push(resolve)); });
+  const c25Malformed200 = await boot((url, options) => { c25Malformed200Calls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, statsInitial)) : new Promise(resolve => c25Malformed200Resolvers.push(resolve)); });
   c25StatisticsChange(c25Malformed200, 3); await flush();
   c25StatisticsChange(c25Malformed200, 4); await flush();
   c25Malformed200Resolvers.shift()(response(200, c25Malformed)); await flush();
@@ -790,7 +733,7 @@ module.exports = async function testDisplayBehavior(assert) {
   ];
   const c25A = snapshot(0, "display-1", c25Displays, A), c25B = snapshot(1, "display-2", c25Displays, A);
   const c25IsolationCalls = [];
-  const c25Isolation = await boot((url, options) => { c25IsolationCalls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c25A)); return Promise.resolve(response(200, url === "./api/displays" ? c25B : snapshot(2, "display-2", [Object.assign({}, c25Displays[0]), Object.assign({}, c25Displays[1], {measurement_kinds:["minimum", "median", "rms"]})], A))); });
+  const c25Isolation = await boot((url, options) => { c25IsolationCalls.push({url, options}); if (url === "./api/state-lite") return Promise.resolve(response(200, c25A)); return Promise.resolve(response(200, url === "./api/displays" ? c25B : snapshot(2, "display-2", [Object.assign({}, c25Displays[0]), Object.assign({}, c25Displays[1], {measurement_kinds:["minimum", "median", "rms"]})], A))); });
   assert(c25Isolation.e.statisticsOptions.every(option => option.disabled), "C25 malformed Display A disables only A's Statistics controls");
   c25Isolation.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   assert(c25Isolation.e.statisticsOptions.every(option => !option.disabled) && c25Isolation.e.statisticsOptions[0].checked && c25Isolation.e.statisticsOptions[5].checked, "C25 valid active Display B remains independently enabled after quarantined Display A");
@@ -799,7 +742,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c25CanonicalInitial = snapshot(0, "display-1", [Object.assign({}, statsDefinition, {measurement_kinds:["rms", "minimum", "median"]})], A);
   const c25CanonicalCommitted = snapshot(1, "display-1", [Object.assign({}, statsDefinition, {measurement_kinds:["minimum", "median", "peak_to_peak", "rms"]})], A);
   const c25CanonicalCalls = [];
-  const c25Canonical = await boot((url, options) => { c25CanonicalCalls.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c25CanonicalInitial : c25CanonicalCommitted)); });
+  const c25Canonical = await boot((url, options) => { c25CanonicalCalls.push({url, options}); return Promise.resolve(response(200, url === "./api/state-lite" ? c25CanonicalInitial : c25CanonicalCommitted)); });
   c25StatisticsChange(c25Canonical, 4); await flush();
   const c25CanonicalBody = JSON.parse(c25CanonicalCalls.find(call => call.url === "./api/view").options.body);
   assert(JSON.stringify(c25CanonicalBody) === JSON.stringify({state_revision:0, active_plot:"time", row_selected_signal:A, analysis_signal:A, visible_signals:[A, B], time_limits:null, measurement_kinds:["minimum", "median", "peak_to_peak", "rms"], spectrum_settings:{scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null}, spectrogram_settings:{overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null}, persistence_settings:{leakage:.5}, peaks_enabled:false}), "C25 unordered valid subset mutation must serialize one exact canonical full View body");
@@ -819,42 +762,38 @@ module.exports = async function testDisplayBehavior(assert) {
   for (const malformedEnvelope of c26MalformedEnvelopes) {
     const c26Calls = [];
     const c26Fatal = await boot((url, options) => { c26Calls.push({url, options}); return Promise.resolve(response(200, malformedEnvelope)); });
-    assert(c26Fatal.e.error.hidden === false && c26Fatal.e.errorText.textContent === "Некорректная структура snapshot сервера." && c26Fatal.e.host.innerHTML === "" && c26Fatal.e.tabs.innerHTML === "" && c26Fatal.e.rows.innerHTML === "", "C26 every malformed outer envelope must reset UI into the exact fatal Retry state without fallback");
-    assert(c26Calls.filter(call => call.url !== "./api/state").length === 0 && c26Fatal.e.retry.hidden === false, "C26 malformed initial envelope must issue no mutation and retain Retry");
+    assert(c26Fatal.e.error.hidden === false && c26Fatal.e.errorText.textContent === "Некорректная структура состояния сервера." && c26Fatal.e.host.innerHTML === "" && c26Fatal.e.tabs.innerHTML === "" && c26Fatal.e.rows.innerHTML === "", "C26 every malformed outer envelope must reset UI into the exact fatal Retry state without fallback");
+    assert(c26Calls.filter(call => call.url !== "./api/state-lite").length === 0 && c26Fatal.e.retry.hidden === false, "C26 malformed initial envelope must issue no mutation and retain Retry");
   }
   function c26StatisticsChange(controlled, index) { const option = controlled.e.statisticsOptions[index]; option.checked = true; controlled.e.statisticsControls.listeners.change({target:{closest(selector) { return selector === "input[type='checkbox']" ? option : null; }}}); }
   const c26FatalCurrent = c26Snapshot(s => { s.active_display_id = "unknown-display"; });
-  const c26StalePlotCalls = [];
-  const c26StalePlot = await boot((url, options) => { c26StalePlotCalls.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? initial : c26FatalCurrent)); }, {deferredPlotly:true});
-  assert(c26StalePlot.plotResolvers.length === 1 && c26StalePlot.calls.filter(call => call.plot).length === 1, "C26 bridge starts exactly one controlled pre-fatal Plotly render");
-  c26StalePlot.e.plotSelect.value = "spectrum"; c26StalePlot.e.plotSelect.listeners.change({target:c26StalePlot.e.plotSelect}); await flush();
-  assert(c26StalePlot.e.host.innerHTML === "" && c26StalePlot.e.host.dataset.plotReady === "false" && c26StalePlot.e.errorText.textContent === "Некорректная структура snapshot сервера.", "C26 malformed snapshot must reset the host and publish exact fatal state before stale Plotly settles");
-  c26StalePlot.plotResolvers.shift().resolve(); await flush();
-  assert(c26StalePlot.e.host.innerHTML === "" && c26StalePlot.e.host.dataset.plotReady === "false" && c26StalePlot.e.errorText.textContent === "Некорректная структура snapshot сервера." && c26StalePlot.calls.filter(call => call.plot).length === 1, "C24→C26 stale Plotly settlement after fatal reset must not re-render or overwrite the empty fatal host");
+  const c26FatalTransition = await boot((url) => Promise.resolve(response(200, url === "./api/state-lite" ? initial : c26FatalCurrent)));
+  c26FatalTransition.e.plotSelect.value = "spectrum"; c26FatalTransition.e.plotSelect.listeners.change({target:c26FatalTransition.e.plotSelect}); await flush();
+  assert(c26FatalTransition.e.host.innerHTML === "" && c26FatalTransition.e.errorText.textContent === "Некорректная структура состояния сервера.", "C26 malformed mutation metadata must reset the app-owned metadata surfaces; stale Plotly completion is layouts-owned");
   const c26Malformed409Calls = [], c26Malformed409Resolvers = [];
-  const c26Malformed409 = await boot((url, options) => { c26Malformed409Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26Malformed409Resolvers.push(resolve)); });
+  const c26Malformed409 = await boot((url, options) => { c26Malformed409Calls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26Malformed409Resolvers.push(resolve)); });
   c26Malformed409.e.plotSelect.value = "spectrum"; c26Malformed409.e.plotSelect.listeners.change({target:c26Malformed409.e.plotSelect}); await flush();
   c26Malformed409.e.plotSelect.value = "persistence"; c26Malformed409.e.plotSelect.listeners.change({target:c26Malformed409.e.plotSelect}); await flush();
   c26Malformed409Resolvers.shift()(response(409, {current:c26FatalCurrent})); await flush();
   assert(c26Malformed409Calls.filter(call => call.url === "./api/view").length === 1 && c26Malformed409.e.error.hidden === false && c26Malformed409.e.tabs.innerHTML === "", "C26 malformed 409 current after queued same-Display intents must globally purge queue and skip replay");
   const c26Malformed200Calls = [], c26Malformed200Resolvers = [];
-  const c26Malformed200 = await boot((url, options) => { c26Malformed200Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26Malformed200Resolvers.push(resolve)); });
+  const c26Malformed200 = await boot((url, options) => { c26Malformed200Calls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26Malformed200Resolvers.push(resolve)); });
   c26Malformed200.e.plotSelect.value = "spectrum"; c26Malformed200.e.plotSelect.listeners.change({target:c26Malformed200.e.plotSelect}); await flush();
   c26Malformed200.e.plotSelect.value = "persistence"; c26Malformed200.e.plotSelect.listeners.change({target:c26Malformed200.e.plotSelect}); await flush();
   c26Malformed200Resolvers.shift()(response(200, c26FatalCurrent)); await flush();
   assert(c26Malformed200Calls.filter(call => call.url === "./api/view").length === 1 && c26Malformed200.e.error.hidden === false && c26Malformed200.e.host.innerHTML === "", "C26 malformed successful 200 after queued intent must immediately purge globally without a later POST");
   const c26Peaks200Calls = [], c26Peaks200Resolvers = [];
-  const c26Peaks200 = await boot((url, options) => { c26Peaks200Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26Peaks200Resolvers.push(resolve)); });
+  const c26Peaks200 = await boot((url, options) => { c26Peaks200Calls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26Peaks200Resolvers.push(resolve)); });
   c26Peaks200.e.peaksAction.listeners.click(); await flush();
   c26Peaks200Resolvers.shift()(response(200, c26FatalCurrent)); await flush();
-  assert(c26Peaks200Calls.filter(call => call.url === "./api/view").length === 1 && c26Peaks200.e.error.hidden === false && c26Peaks200.e.errorText.textContent === "Некорректная структура snapshot сервера." && c26Peaks200.e.tabs.innerHTML === "" && c26Peaks200.e.host.innerHTML === "", "C26 malformed successful 200 resolving a Peaks intent must enter exact fatal state without a null dereference or later POST");
+  assert(c26Peaks200Calls.filter(call => call.url === "./api/view").length === 1 && c26Peaks200.e.error.hidden === false && c26Peaks200.e.errorText.textContent === "Некорректная структура состояния сервера." && c26Peaks200.e.tabs.innerHTML === "" && c26Peaks200.e.host.innerHTML === "", "C26 malformed successful 200 resolving a Peaks intent must enter exact fatal state without a null dereference or later POST");
   const c26SecondStaleCalls = [], c26SecondStaleResolvers = [];
-  const c26SecondStale = await boot((url, options) => { c26SecondStaleCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26SecondStaleResolvers.push(resolve)); });
+  const c26SecondStale = await boot((url, options) => { c26SecondStaleCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, initial)) : new Promise(resolve => c26SecondStaleResolvers.push(resolve)); });
   c26SecondStale.e.plotSelect.value = "spectrum"; c26SecondStale.e.plotSelect.listeners.change({target:c26SecondStale.e.plotSelect}); await flush();
   c26SecondStaleResolvers.shift()(response(409, {current:initial})); await flush();
   assert(c26SecondStaleResolvers.length === 1 && c26SecondStaleCalls.filter(call => call.url === "./api/view").length === 2, "C26 first valid stale response must begin exactly one controlled replay cycle");
   c26SecondStaleResolvers.shift()(response(409, {current:c26FatalCurrent})); await flush();
-  assert(c26SecondStaleCalls.filter(call => call.url === "./api/view").length === 2 && c26SecondStale.e.error.hidden === false && c26SecondStale.e.errorText.textContent === "Некорректная структура snapshot сервера." && c26SecondStale.e.tabs.innerHTML === "" && c26SecondStale.e.host.innerHTML === "", "C26 malformed 409 current on the second stale-replay cycle must preserve exact fatal state and purge without a third replay or overwrite");
+  assert(c26SecondStaleCalls.filter(call => call.url === "./api/view").length === 2 && c26SecondStale.e.error.hidden === false && c26SecondStale.e.errorText.textContent === "Некорректная структура состояния сервера." && c26SecondStale.e.tabs.innerHTML === "" && c26SecondStale.e.host.innerHTML === "", "C26 malformed 409 current on the second stale-replay cycle must preserve exact fatal state and purge without a third replay or overwrite");
   const c26FatalCalls = [];
   const c26Fatal = await boot((url, options) => { c26FatalCalls.push({url, options}); return Promise.resolve(response(200, c26FatalCurrent)); });
   c26Fatal.e.plotSelect.value = "spectrum"; c26Fatal.e.plotSelect.listeners.change({target:c26Fatal.e.plotSelect});
@@ -866,14 +805,14 @@ module.exports = async function testDisplayBehavior(assert) {
   c26Fatal.e.clearDisplayAction.listeners.click(); c26Fatal.e.peaksAction.listeners.click();
   c26Fatal.e.bottomTabs.listeners.click({target:{closest(selector) { return selector === "[data-bottom-tab]" ? c26Fatal.e.measurementsBottomTab : null; }}});
   await flush();
-  assert(c26FatalCalls.filter(call => call.url !== "./api/state").length === 0 && c26Fatal.e.error.hidden === false, "C26 every fatal-state server-mutating control must be harmless with zero POST while local bottom tabs remain harmless");
+  assert(c26FatalCalls.filter(call => call.url !== "./api/state-lite").length === 0 && c26Fatal.e.error.hidden === false, "C26 every fatal-state server-mutating control must be harmless with zero POST while local bottom tabs remain harmless");
   const c26RecoveryDisplays = [
     {id:"display-1", name:"Display A", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A]},
     {id:"display-2", name:"Display B", active_plot:"time", analysis_signal:B, selected_signal:B, visible_signals:[B]},
   ];
   const c26RecoveryA = snapshot(1, "display-1", c26RecoveryDisplays, A), c26RecoveryB = snapshot(2, "display-2", c26RecoveryDisplays, B);
   const c26RecoveryCalls = []; let c26GetCount = 0;
-  const c26Recovery = await boot((url, options) => { c26RecoveryCalls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c26GetCount++ === 0 ? c26FatalCurrent : c26RecoveryA)); return Promise.resolve(response(200, url === "./api/displays" ? c26RecoveryB : c26RecoveryB)); });
+  const c26Recovery = await boot((url, options) => { c26RecoveryCalls.push({url, options}); if (url === "./api/state-lite") return Promise.resolve(response(200, c26GetCount++ === 0 ? c26FatalCurrent : c26RecoveryA)); return Promise.resolve(response(200, url === "./api/displays" ? c26RecoveryB : c26RecoveryB)); });
   c26Recovery.e.retry.listeners.click(); await flush();
   assert(c26Recovery.e.error.hidden === true && c26Recovery.e.tabs.innerHTML.includes("display-tab-display-1") && c26Recovery.e.rows.innerHTML.includes("signal-row"), "C26 valid Retry GET must clear fatal state and restore valid A topology");
   c26Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
@@ -894,20 +833,17 @@ module.exports = async function testDisplayBehavior(assert) {
   for (const mutate of c27RowCases) {
     const invalid = c27Base([c27ValidDefinition]); mutate(invalid);
     const env = await boot(() => Promise.resolve(response(200, invalid)));
-    assert(env.e.error.hidden === false && env.e.errorText.textContent === "Некорректная структура snapshot сервера." && env.e.tabs.innerHTML === "" && env.e.rows.innerHTML === "", "C27 invalid global row, empty inventory, or valid-active root projection must use exact DEC-032 fatal reset");
+    assert(env.e.error.hidden === false && env.e.errorText.textContent === "Некорректная структура состояния сервера." && env.e.tabs.innerHTML === "" && env.e.rows.innerHTML === "", "C27 invalid global row, empty inventory, or valid-active root projection must use exact DEC-032 fatal reset");
   }
   const c27Empty = c27Base([Object.assign({}, c27ValidDefinition, {analysis_signal:null, selected_signal:null, visible_signals:[]})]);
   c27Empty.row_selected_signal = A; c27Empty.analysis_signal = null; c27Empty.selected_signal = null; c27Empty.visible_signals = []; c27Empty.signals.forEach(signal => { signal.visible = false; });
   const c27EmptyEnv = await boot(() => Promise.resolve(response(200, c27Empty)));
-  assert(c27EmptyEnv.e.error.hidden === true && c27EmptyEnv.e.clearDisplayAction.disabled && c27EmptyEnv.e.host.innerHTML.includes("empty-display-plot-state"), "C27 valid empty membership with two null aliases must remain a nonfatal empty Display");
+  assert(c27EmptyEnv.e.error.hidden === true && c27EmptyEnv.e.clearDisplayAction.disabled, "C27 valid empty membership with two null aliases must remain nonfatal metadata; empty graph state is layouts-owned");
   const c27BridgeValid = c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]})]);
   const c27BridgeCorrupt = c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]})]); c27BridgeCorrupt.displays[0].visible_signals = [A, A];
-  const c27Bridge = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? c27BridgeValid : c27BridgeCorrupt)), {deferredPlotly:true});
-  assert(c27Bridge.plotResolvers.length === 1 && c27Bridge.calls.filter(call => call.plot).length === 1, "C24→C27 bridge starts one controlled valid render");
+  const c27Bridge = await boot((url) => Promise.resolve(response(200, url === "./api/state-lite" ? c27BridgeValid : c27BridgeCorrupt)));
   c27Bridge.e.plotSelect.value = "spectrum"; c27Bridge.e.plotSelect.listeners.change({target:c27Bridge.e.plotSelect}); await flush();
-  assert(c27Bridge.e.host.dataset.plotReady === "false" && c27Bridge.e.errorText.textContent !== "Некорректная структура snapshot сервера.", "C27 selection-corrupt response must locally quarantine before stale Plotly settles");
-  c27Bridge.plotResolvers.shift().resolve(); await flush();
-  assert(c27Bridge.e.host.dataset.plotReady === "false" && !c27Bridge.e.host.innerHTML.includes("settled-") && c27Bridge.e.errorText.textContent !== "Некорректная структура snapshot сервера." && c27Bridge.calls.filter(call => call.plot).length === 1, "C24→C27 stale Plotly completion must not overwrite the authoritative local quarantine host or start another render");
+  assert(c27Bridge.e.errorText.textContent !== "Некорректная структура snapshot сервера.", "C27 selection-corrupt response must remain a local metadata quarantine; stale Plotly completion is layouts-owned");
   const c27LocalMutations = [
     d => { delete d.visible_signals; }, d => { d.visible_signals = {}; }, d => { d.visible_signals = [7]; }, d => { d.visible_signals = ["unknown"]; }, d => { d.visible_signals = [A, A]; }, d => { d.visible_signals = [B, A]; },
     d => { delete d.analysis_signal; }, d => { d.analysis_signal = 7; }, d => { d.analysis_signal = "unknown"; }, d => { delete d.selected_signal; }, d => { d.selected_signal = 7; }, d => { d.selected_signal = "unknown"; }, d => { d.selected_signal = B; }, d => { d.visible_signals = []; d.analysis_signal = A; d.selected_signal = A; }, d => { d.visible_signals = [A]; d.analysis_signal = null; d.selected_signal = null; }, d => { d.visible_signals = [A]; d.analysis_signal = B; d.selected_signal = B; },
@@ -935,7 +871,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c27IsolationCalls.filter(call => call.url === "./api/view").length === 1, "C27 valid active B continues independently while A remains quarantined");
   const c27BadA = c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]})]); c27BadA.displays[0].visible_signals = [A, A];
   const c27PurgeCalls = [], c27PurgeResolvers = [];
-  const c27Purge = await boot((url, options) => { c27PurgeCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]} )]))) : new Promise(resolve => c27PurgeResolvers.push(resolve)); });
+  const c27Purge = await boot((url, options) => { c27PurgeCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c27Base([Object.assign({}, c27ValidDefinition, {visible_signals:[A, B]} )]))) : new Promise(resolve => c27PurgeResolvers.push(resolve)); });
   c27Purge.e.plotSelect.value = "spectrum"; c27Purge.e.plotSelect.listeners.change({target:c27Purge.e.plotSelect}); await flush();
   c27Purge.e.plotSelect.value = "persistence"; c27Purge.e.plotSelect.listeners.change({target:c27Purge.e.plotSelect}); await flush();
   c27PurgeResolvers.shift()(response(200, c27BadA)); await flush();
@@ -945,13 +881,13 @@ module.exports = async function testDisplayBehavior(assert) {
   const c27LifecycleBadA = c27Base(c27LifecycleDefinitions.map(item => Object.assign({}, item, {visible_signals:item.visible_signals.slice()})), "display-1"); c27LifecycleBadA.displays[0].visible_signals = [A, A];
   const c27LifecycleB = c27Base(c27LifecycleDefinitions.map(item => Object.assign({}, item, {visible_signals:item.visible_signals.slice()})), "display-2"); c27LifecycleB.row_selected_signal = B;
   const c27LifecycleCalls = [], c27LifecycleResolvers = [];
-  const c27Lifecycle = await boot((url, options) => { c27LifecycleCalls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c27LifecycleA)); if (url === "./api/view") return new Promise(resolve => c27LifecycleResolvers.push(resolve)); return Promise.resolve(response(200, c27LifecycleB)); });
+  const c27Lifecycle = await boot((url, options) => { c27LifecycleCalls.push({url, options}); if (url === "./api/state-lite") return Promise.resolve(response(200, c27LifecycleA)); if (url === "./api/view") return new Promise(resolve => c27LifecycleResolvers.push(resolve)); return Promise.resolve(response(200, c27LifecycleB)); });
   c27Lifecycle.e.plotSelect.value = "spectrum"; c27Lifecycle.e.plotSelect.listeners.change({target:c27Lifecycle.e.plotSelect}); await flush();
   c27Lifecycle.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   c27LifecycleResolvers.shift()(response(409, {current:c27LifecycleBadA})); await flush();
   assert(c27LifecycleCalls.filter(call => call.url === "./api/view").length === 1 && c27LifecycleCalls.filter(call => call.url === "./api/displays").length === 1 && activeTab(c27Lifecycle.e, "display-2") && c27Lifecycle.e.errorText.textContent !== "Некорректная структура snapshot сервера.", "C27 malformed 409 current must quarantine A with no stale third View replay while queued independent select B continues");
   const c27RecoveryCalls = [];
-  const c27Recovery = await boot((url, options) => { c27RecoveryCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c27LifecycleBadA)) : Promise.resolve(response(200, c27LifecycleB)); });
+  const c27Recovery = await boot((url, options) => { c27RecoveryCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c27LifecycleBadA)) : Promise.resolve(response(200, c27LifecycleB)); });
   c27Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   assert(c27Recovery.e.error.hidden === true && activeTab(c27Recovery.e, "display-2") && c27RecoveryCalls.filter(call => call.url === "./api/displays").length === 1 && c27RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C27 valid authoritative topology response must clear local quarantine without resurrecting its discarded View intent");
 
@@ -996,7 +932,7 @@ module.exports = async function testDisplayBehavior(assert) {
   for (const mutate of c28InvalidPlots) {
     const valid = c28Base([Object.assign({}, c28Definition)]), invalid = c28Base([Object.assign({}, c28Definition)]), calls = [], resolvers = [];
     valid.panel.fields = [{id:"valid-field", label:"Valid", value:"before"}]; mutate(invalid.displays[0]);
-    const env = await boot((url, options) => { calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, valid)) : new Promise(resolve => resolvers.push(resolve)); });
+    const env = await boot((url, options) => { calls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, valid)) : new Promise(resolve => resolvers.push(resolve)); });
     env.e.fields.innerHTML = "stale panel fields"; env.e.measurementContent.innerHTML = "stale measurements"; env.e.peaksContent.innerHTML = "stale peaks";
     env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
     env.e.plotSelect.value = "persistence"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
@@ -1006,7 +942,7 @@ module.exports = async function testDisplayBehavior(assert) {
   for (const mutate of c28InvalidPlots) {
     const validA = c28For("display-1"), badA = c28For("display-1"), validB = c28For("display-2"), calls = [], resolvers = [];
     mutate(badA.displays[0]);
-    const env = await boot((url, options) => { calls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, validA)); if (url === "./api/view") return new Promise(resolve => resolvers.push(resolve)); return Promise.resolve(response(200, validB)); });
+    const env = await boot((url, options) => { calls.push({url, options}); if (url === "./api/state-lite") return Promise.resolve(response(200, validA)); if (url === "./api/view") return new Promise(resolve => resolvers.push(resolve)); return Promise.resolve(response(200, validB)); });
     env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
     env.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
     resolvers.shift()(response(409, {current:badA})); await flush();
@@ -1018,7 +954,7 @@ module.exports = async function testDisplayBehavior(assert) {
   }
   for (const plot of ["time", "spectrum", "spectrogram", "persistence"]) {
     const initial = c28Base([Object.assign({}, c28Definition)]), authoritative = c28Base([Object.assign({}, c28Definition, {active_plot:plot})]), calls = [], resolvers = [];
-    const env = await boot((url, options) => { calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, initial)) : new Promise(resolve => resolvers.push(resolve)); });
+    const env = await boot((url, options) => { calls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, initial)) : new Promise(resolve => resolvers.push(resolve)); });
     env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
     resolvers.shift()(response(200, authoritative)); await flush();
     assert(calls.filter(call => call.url === "./api/view").length === 1 && env.e.error.hidden === true && env.e.plotSelect.value === plot, "C28 every valid active_plot enum must be accepted from an authoritative lifecycle response");
@@ -1029,7 +965,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c28DualValid = c28Base([Object.assign({}, c28Definition)]), c28DualBad = c28Base([Object.assign({}, c28Definition)]), c28DualCalls = [], c28DualResolvers = [];
   c28DualValid.panel.fields = [{id:"valid-field", label:"Valid", value:"before"}];
   c28DualBad.displays[0].visible_signals = [A, A]; delete c28DualBad.displays[0].active_plot;
-  const c28Dual = await boot((url, options) => { c28DualCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28DualValid)) : new Promise(resolve => c28DualResolvers.push(resolve)); });
+  const c28Dual = await boot((url, options) => { c28DualCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c28DualValid)) : new Promise(resolve => c28DualResolvers.push(resolve)); });
   c28Dual.e.fields.innerHTML = "stale panel fields"; c28Dual.e.measurementContent.innerHTML = "stale measurements"; c28Dual.e.peaksContent.innerHTML = "stale peaks";
   c28Dual.e.plotSelect.value = "spectrum"; c28Dual.e.plotSelect.listeners.change({target:c28Dual.e.plotSelect}); await flush();
   c28DualResolvers.shift()(response(200, c28DualBad)); await flush();
@@ -1038,7 +974,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c28DualCalls.filter(call => call.url === "./api/view").length === 1, "C28 dual-corruption selection quarantine must issue zero View POST after the authoritative malformed response");
   for (const plot of ["time", "spectrum", "spectrogram", "persistence"]) {
     const current = c28Base([Object.assign({}, c28Definition, {active_plot:plot})]), calls = [], resolvers = [];
-    const env = await boot((url, options) => { calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, current)) : new Promise(resolve => resolvers.push(resolve)); });
+    const env = await boot((url, options) => { calls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, current)) : new Promise(resolve => resolvers.push(resolve)); });
     env.e.rows.listeners.click({target:rowTarget(B)}); await flush();
     resolvers.shift()(response(409, {current:current})); await flush();
     assert(calls.filter(call => call.url === "./api/view").length === 2 && env.e.error.hidden === true && JSON.parse(calls.at(-1).options.body).active_plot === plot, "C28 every valid active_plot enum must survive a valid 409 current and replay its exact canonical target");
@@ -1053,30 +989,30 @@ module.exports = async function testDisplayBehavior(assert) {
   for (const mutate of c28RootCases) {
     const invalid = c28Base([Object.assign({}, c28Definition)]); mutate(invalid);
     const env = await boot(() => Promise.resolve(response(200, invalid)));
-    assert(env.e.error.hidden === false && env.e.errorText.textContent === "Некорректная структура snapshot сервера." && env.e.tabs.innerHTML === "" && env.e.host.innerHTML === "", "C28 valid-active missing/type/unknown/mismatched root active_plot must use fatal DEC-032 reset");
+    assert(env.e.error.hidden === false && env.e.errorText.textContent === "Некорректная структура состояния сервера." && env.e.tabs.innerHTML === "" && env.e.host.innerHTML === "", "C28 valid-active missing/type/unknown/mismatched root active_plot must use fatal DEC-032 reset");
   }
   for (const mutate of c28RootCases) {
     const invalid = c28Base([Object.assign({}, c28Definition)]); mutate(invalid);
     const successCalls = [], successResolvers = [];
-    const success = await boot((url, options) => { successCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => successResolvers.push(resolve)); });
+    const success = await boot((url, options) => { successCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => successResolvers.push(resolve)); });
     success.e.plotSelect.value = "spectrum"; success.e.plotSelect.listeners.change({target:success.e.plotSelect}); await flush();
     successResolvers.shift()(response(200, invalid)); await flush();
     assert(successCalls.filter(call => call.url === "./api/view").length === 1 && success.e.error.hidden === false && success.e.tabs.innerHTML === "", "C28 every malformed root active_plot 200 must fatal-reset and globally prevent replay");
     const staleCalls = [], staleResolvers = [];
-    const stale = await boot((url, options) => { staleCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => staleResolvers.push(resolve)); });
+    const stale = await boot((url, options) => { staleCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => staleResolvers.push(resolve)); });
     stale.e.plotSelect.value = "spectrum"; stale.e.plotSelect.listeners.change({target:stale.e.plotSelect}); await flush();
     staleResolvers.shift()(response(409, {current:invalid})); await flush();
     assert(staleCalls.filter(call => call.url === "./api/view").length === 1 && stale.e.error.hidden === false && stale.e.tabs.innerHTML === "", "C28 every malformed root active_plot 409 current must fatal-reset and never stale-replay");
   }
   const c28RootBad = c28Base([Object.assign({}, c28Definition)]); c28RootBad.active_plot = "spectrum";
   const c28Root200Calls = [], c28Root200Resolvers = [];
-  const c28Root200 = await boot((url, options) => { c28Root200Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => c28Root200Resolvers.push(resolve)); });
+  const c28Root200 = await boot((url, options) => { c28Root200Calls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => c28Root200Resolvers.push(resolve)); });
   c28Root200.e.plotSelect.value = "spectrum"; c28Root200.e.plotSelect.listeners.change({target:c28Root200.e.plotSelect}); await flush();
   c28Root200Resolvers.shift()(response(200, c28RootBad)); await flush();
   c28Root200.e.plotSelect.value = "persistence"; c28Root200.e.plotSelect.listeners.change({target:c28Root200.e.plotSelect}); await flush();
   assert(c28Root200Calls.filter(call => call.url === "./api/view").length === 1 && c28Root200.e.error.hidden === false && c28Root200.e.tabs.innerHTML === "", "C28 malformed root 200 must globally purge View work with no replay or later POST");
   const c28Root409Calls = [], c28Root409Resolvers = [];
-  const c28Root409 = await boot((url, options) => { c28Root409Calls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => c28Root409Resolvers.push(resolve)); });
+  const c28Root409 = await boot((url, options) => { c28Root409Calls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c28Base([Object.assign({}, c28Definition)]))) : new Promise(resolve => c28Root409Resolvers.push(resolve)); });
   c28Root409.e.plotSelect.value = "spectrum"; c28Root409.e.plotSelect.listeners.change({target:c28Root409.e.plotSelect}); await flush();
   c28Root409Resolvers.shift()(response(409, {current:c28RootBad})); await flush();
   assert(c28Root409Calls.filter(call => call.url === "./api/view").length === 1 && c28Root409.e.error.hidden === false && c28Root409.e.tabs.innerHTML === "", "C28 malformed root 409 current must be fatal and never stale-replay");
@@ -1096,27 +1032,25 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c28Isolation.e.error.hidden === true && activeTab(c28Isolation.e, "display-2") && c28IsolationCalls.filter(call => call.url === "./api/view").length === 1, "C28 inactive A quarantine must preserve valid active B View availability");
   const c28ValidA = c28Base(c28Definitions.map(d => Object.assign({}, d, {visible_signals:d.visible_signals.slice()})), "display-1"), c28BadA = c28Base(c28Definitions.map(d => Object.assign({}, d, {visible_signals:d.visible_signals.slice()})), "display-1"); delete c28BadA.displays[0].active_plot;
   const c28PurgeCalls = [], c28PurgeResolvers = [];
-  const c28Purge = await boot((url, options) => { c28PurgeCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28ValidA)) : new Promise(resolve => c28PurgeResolvers.push(resolve)); });
+  const c28Purge = await boot((url, options) => { c28PurgeCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c28ValidA)) : new Promise(resolve => c28PurgeResolvers.push(resolve)); });
   c28Purge.e.plotSelect.value = "spectrum"; c28Purge.e.plotSelect.listeners.change({target:c28Purge.e.plotSelect}); await flush();
   c28Purge.e.plotSelect.value = "persistence"; c28Purge.e.plotSelect.listeners.change({target:c28Purge.e.plotSelect}); await flush();
   c28PurgeResolvers.shift()(response(200, c28BadA)); await flush();
   assert(c28PurgeCalls.filter(call => call.url === "./api/view").length === 1 && c28Purge.e.host.innerHTML.includes("display-active-plot-contract-error-state"), "C28 malformed 200 must purge queued same-ID View work without replay");
   const c28LifecycleCalls = [], c28LifecycleResolvers = [], c28ValidB = c28Base(c28Definitions.map(d => Object.assign({}, d, {visible_signals:d.visible_signals.slice()})), "display-2"); c28ValidB.row_selected_signal = B;
-  const c28Lifecycle = await boot((url, options) => { c28LifecycleCalls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c28ValidA)); if (url === "./api/view") return new Promise(resolve => c28LifecycleResolvers.push(resolve)); return Promise.resolve(response(200, c28ValidB)); });
+  const c28Lifecycle = await boot((url, options) => { c28LifecycleCalls.push({url, options}); if (url === "./api/state-lite") return Promise.resolve(response(200, c28ValidA)); if (url === "./api/view") return new Promise(resolve => c28LifecycleResolvers.push(resolve)); return Promise.resolve(response(200, c28ValidB)); });
   c28Lifecycle.e.plotSelect.value = "spectrum"; c28Lifecycle.e.plotSelect.listeners.change({target:c28Lifecycle.e.plotSelect}); await flush();
   c28Lifecycle.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   c28LifecycleResolvers.shift()(response(409, {current:c28BadA})); await flush();
   assert(c28LifecycleCalls.filter(call => call.url === "./api/view").length === 1 && c28LifecycleCalls.filter(call => call.url === "./api/displays").length === 1 && activeTab(c28Lifecycle.e, "display-2"), "C28 malformed 409 current must purge A replay while allowing queued topology work for B");
   const c28RecoveryCalls = [];
-  const c28Recovery = await boot((url, options) => { c28RecoveryCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c28BadA)) : Promise.resolve(response(200, c28ValidB)); });
+  const c28Recovery = await boot((url, options) => { c28RecoveryCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c28BadA)) : Promise.resolve(response(200, c28ValidB)); });
   c28Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   assert(c28Recovery.e.error.hidden === true && activeTab(c28Recovery.e, "display-2") && c28RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C28 valid authoritative recovery must clear only A quarantine without resurrecting its discarded View intent");
   const c28DeferredBad = c28Base([Object.assign({}, c28Definition)]); delete c28DeferredBad.displays[0].active_plot;
-  const c28Deferred = await boot((url) => Promise.resolve(response(200, url === "./api/state" ? c28Base([Object.assign({}, c28Definition)]) : c28DeferredBad)), {deferredPlotly:true});
-  assert(c28Deferred.plotResolvers.length === 1, "C28 deferred bridge must start exactly one valid render");
+  const c28Deferred = await boot((url) => Promise.resolve(response(200, url === "./api/state-lite" ? c28Base([Object.assign({}, c28Definition)]) : c28DeferredBad)));
   c28Deferred.e.plotSelect.value = "spectrum"; c28Deferred.e.plotSelect.listeners.change({target:c28Deferred.e.plotSelect}); await flush();
-  c28Deferred.plotResolvers.shift().resolve(); await flush();
-  assert(c28Deferred.e.host.dataset.plotReady === "false" && c28Deferred.e.host.innerHTML.includes("display-active-plot-contract-error-state") && !c28Deferred.e.host.innerHTML.includes("settled-") && c28Deferred.calls.filter(call => call.plot).length === 1, "C28 late Plotly settlement must not replace local plot quarantine or cause unbounded reassertion");
+  assert(c28Deferred.e.host.innerHTML.includes("display-active-plot-contract-error-state"), "C28 invalid active-plot metadata must retain its local quarantine; stale Plotly completion is layouts-owned");
 
   // C29/DEC-035: plot_payload is a canonical, exact routing envelope.  These
   // helpers construct it once and each case corrupts only its declared wire.
@@ -1173,10 +1107,10 @@ module.exports = async function testDisplayBehavior(assert) {
   for (const plot of ["time", "spectrum", "spectrogram", "persistence"]) {
     const empty = c29Base(plot, null, []); empty.row_selected_signal = A;
     const env = await boot(() => Promise.resolve(response(200, empty)));
-    assert(env.e.error.hidden === true && env.e.host.innerHTML.includes("empty-display-plot-state"), "C29 must accept exact routing-empty active route: " + plot);
+    assert(env.e.error.hidden === true, "C29 must accept exact routing-empty active metadata; empty graph rendering is layouts-owned: " + plot);
     const inactive = c29Base(plot); inactive.plot_payload[plot === "time" ? "spectrum_traces" : "time_traces"] = 7; inactive.plot_payload[plot === "spectrogram" ? "persistence" : "spectrogram"] = null;
     const inactiveEnv = await boot(() => Promise.resolve(response(200, inactive)));
-    assert(inactiveEnv.e.error.hidden === true && !inactiveEnv.e.host.innerHTML.includes("display-active-plot-payload-contract-error-state"), "C29 must ignore malformed inactive branch internals: " + plot + " / " + inactiveEnv.e.errorText.textContent);
+    assert(inactiveEnv.e.error.hidden === true, "C29 must ignore malformed inactive branch internals: " + plot + " / " + inactiveEnv.e.errorText.textContent);
   }
   const c29Fallback = c29Base("time"); c29Fallback.plot_payload.time_traces = null; c29Fallback.plots.time = {type:"line", traces:[{signal:A, x:[0], y:[99]}]};
   const c29FallbackCalls = [], c29FallbackEnv = await boot((url, options) => { c29FallbackCalls.push({url, options}); return Promise.resolve(response(200, c29Fallback)); }); c29Local(c29FallbackEnv, c29FallbackCalls);
@@ -1188,13 +1122,10 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c29PlotPrecedenceEnv.e.host.innerHTML.includes("display-active-plot-contract-error-state") && !c29PlotPrecedenceEnv.e.host.innerHTML.includes("display-active-plot-payload-contract-error-state"), "C28 active-plot quarantine must skip C29 payload classification");
   const c29Valid = c29Base("time"), c29Bad = c29Base("time"); c29Bad.plot_payload.time_traces = null;
   const c29LifecycleCalls = [], c29Resolvers = [];
-  const c29Lifecycle = await boot((url, options) => { c29LifecycleCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c29Valid)) : new Promise(resolve => c29Resolvers.push(resolve)); }, {deferredPlotly:true});
-  assert(c29Lifecycle.plotResolvers.length === 1, "C29 bridge begins with exactly one controlled valid Plotly call");
+  const c29Lifecycle = await boot((url, options) => { c29LifecycleCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c29Valid)) : new Promise(resolve => c29Resolvers.push(resolve)); });
   c29Lifecycle.e.plotSelect.value = "spectrum"; c29Lifecycle.e.plotSelect.listeners.change({target:c29Lifecycle.e.plotSelect}); await flush();
   c29Resolvers.shift()(response(200, c29Bad)); await flush();
   assert(c29LifecycleCalls.filter(call => call.url === "./api/view").length === 1 && c29Lifecycle.e.host.innerHTML.includes("display-active-plot-payload-contract-error-state") && c29Lifecycle.e.fields.innerHTML === "" && c29Lifecycle.e.measurementContent.innerHTML === "" && c29Lifecycle.e.peaksContent.innerHTML === "", "C29 malformed 200 must purge same-ID queue and clear stale server surfaces");
-  c29Lifecycle.plotResolvers.shift().resolve(); await flush();
-  assert(c29Lifecycle.e.host.dataset.plotReady === "false" && !c29Lifecycle.e.host.innerHTML.includes("settled-") && c29Lifecycle.calls.filter(call => call.plot).length === 1, "C29 late Plotly settlement must stay bounded and cannot resurrect the quarantined host");
   const c29A = c29Base("time"), c29BadA = c29Base("time"), c29B = c29Base("persistence", B, [B]); c29BadA.plot_payload.time_traces = null;
   const c29Definitions = [
     {id:"display-1", name:"Display A", active_plot:"time", analysis_signal:A, selected_signal:A, visible_signals:[A]},
@@ -1208,20 +1139,20 @@ module.exports = async function testDisplayBehavior(assert) {
     return result;
   }
   const c29ConflictCalls = [], c29ConflictResolvers = [], c29InitialA = c29Pair("display-1"), c29ConflictA = c29Pair("display-1", true), c29ValidB = c29Pair("display-2");
-  const c29Conflict = await boot((url, options) => { c29ConflictCalls.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c29InitialA)); if (url === "./api/view") return new Promise(resolve => c29ConflictResolvers.push(resolve)); return Promise.resolve(response(200, c29ValidB)); });
+  const c29Conflict = await boot((url, options) => { c29ConflictCalls.push({url, options}); if (url === "./api/state-lite") return Promise.resolve(response(200, c29InitialA)); if (url === "./api/view") return new Promise(resolve => c29ConflictResolvers.push(resolve)); return Promise.resolve(response(200, c29ValidB)); });
   c29Conflict.e.plotSelect.value = "spectrum"; c29Conflict.e.plotSelect.listeners.change({target:c29Conflict.e.plotSelect}); await flush();
   c29Conflict.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   c29ConflictResolvers.shift()(response(409, {current:c29ConflictA})); await flush();
   assert(c29ConflictCalls.filter(call => call.url === "./api/view").length === 1 && c29ConflictCalls.filter(call => call.url === "./api/displays").length === 1 && activeTab(c29Conflict.e, "display-2") && c29Conflict.e.error.hidden === true, "C29 malformed 409 current must discard A replay while preserving independent queued B topology work");
   const c29RecoveryCalls = [];
-  const c29Recovery = await boot((url, options) => { c29RecoveryCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c29ConflictA)) : Promise.resolve(response(200, c29ValidB)); });
+  const c29Recovery = await boot((url, options) => { c29RecoveryCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c29ConflictA)) : Promise.resolve(response(200, c29ValidB)); });
   c29Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   assert(activeTab(c29Recovery.e, "display-2") && c29Recovery.e.error.hidden === true && c29RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C29 valid authoritative B topology recovery clears only A quarantine and never resurrects its dropped View intent");
 
   const rowRequests = [];
   const memberRow = await boot((url, options) => {
     rowRequests.push({ url, options });
-    return Promise.resolve(response(200, url === "./api/state" ? initial : snapshot(1, "display-1", undefined, B)));
+    return Promise.resolve(response(200, url === "./api/state-lite" ? initial : snapshot(1, "display-1", undefined, B)));
   });
   memberRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
@@ -1232,7 +1163,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const singleMember = snapshot(0, "display-1", [{ id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A] }], A);
   const uncheckedRow = await boot((url, options) => {
     uncheckedRequests.push({ url, options });
-    return Promise.resolve(response(200, url === "./api/state" ? singleMember : snapshot(1, "display-1", [{ id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A] }], B)));
+    return Promise.resolve(response(200, url === "./api/state-lite" ? singleMember : snapshot(1, "display-1", [{ id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A] }], B)));
   });
   uncheckedRow.e.rows.listeners.click({ target: rowTarget(B) });
   await flush();
@@ -1241,20 +1172,14 @@ module.exports = async function testDisplayBehavior(assert) {
   const clearRequests = [];
   const clear = await boot((url, options) => {
     clearRequests.push({ url, options });
-    return Promise.resolve(response(200, url === "./api/state" ? initial : emptySnapshot(1, A)));
+    return Promise.resolve(response(200, url === "./api/state-lite" ? initial : emptySnapshot(1, A)));
   });
-  const clearHost = clear.e.host;
-  clearHost.data = [{ name: A }];
-  clearHost._fullData = [{ name: A }];
-  clearHost.calcdata = [[{ x: 0, y: 1 }]];
   clear.e.overflowTrigger.listeners.click();
   assert(clearRequests.length === 1 && clear.e.overflowMenu.hidden === false && clear.e.overflowTrigger.getAttribute("aria-expanded") === "true", "Display overflow must open Clear Display locally and accessibly without a request");
   clear.e.clearDisplayAction.listeners.click();
   await flush();
   assert(JSON.stringify(JSON.parse(clearRequests.find((call) => call.url === "./api/view").options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: null, visible_signals: [], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, persistence_settings:{leakage:.5}, peaks_enabled: false }), "Clear Display must preserve complete canonical settings");
   assert(clear.e.overflowMenu.hidden === true && clear.e.overflowTrigger.getAttribute("aria-expanded") === "false", "Clear Display must close its menu after activation");
-  assert(clear.e.host === clearHost && clear.e.host.innerHTML.includes("empty-display-plot-state") && clear.e.host.dataset.plotReady === "false", "an empty authoritative page must retain its one graph host while clearing stale rendering");
-  assert((!clear.e.host.data || clear.e.host.data.length === 0) && (!clear.e.host._fullData || clear.e.host._fullData.length === 0) && (!clear.e.host.calcdata || clear.e.host.calcdata.length === 0), "an empty Display must purge stale Plotly data from the persistent graph host");
   assert(clear.e.measurementContent.innerHTML.includes("empty-display-measurements-state") && clear.e.peaksContent.innerHTML.includes("empty-display-peaks-state"), "an empty authoritative page must render typed empty analysis panels locally");
 
   const timeDefinition = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: B, selected_signal: B, visible_signals: [A, B], peaks_enabled: true };
@@ -1271,63 +1196,22 @@ module.exports = async function testDisplayBehavior(assert) {
   const presentationRequests = [];
   const presentation = await boot((url, options) => {
     presentationRequests.push({ url, options });
-    return Promise.resolve(response(200, url === "./api/state" ? timePresentation : spectrumPresentation));
+    return Promise.resolve(response(200, url === "./api/state-lite" ? timePresentation : spectrumPresentation));
   });
-  const presentationHost = presentation.e.host;
   const rawTraceArrays = timePresentation.plot_payload.time_traces.map((trace) => trace.y.slice());
   presentation.e.normalize.checked = true;
   presentation.e.normalize.listeners.change({ target: presentation.e.normalize });
   await flush();
-  const normalizedPlot = presentation.calls.filter((call) => call.plot).at(-1);
-  const normalizedOrdinary = normalizedPlot.data.filter((trace) => !trace.meta);
-  const normalizedPeak = normalizedPlot.data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");
-  assert(presentationRequests.length === 1 && presentation.e.host === presentationHost, "Time presentation preferences must be local, revision-free and retain the single Plotly host");
-  assert(JSON.stringify(normalizedOrdinary.map((trace) => trace.y)) === JSON.stringify([[0, .5, 1], [0, 0, 0]]), "Normalize Y must independently map every finite Time trace to exact [0,1] and map a constant trace to zero");
-  assert(JSON.stringify(normalizedPeak.y) === JSON.stringify([0]) && normalizedPeak.meta.signal_name === B, "Peaks markers must normalize against the analysis-source extrema only");
+  assert(presentationRequests.length === 1 && presentation.e.normalize.checked === true, "Time presentation preferences must remain local and revision-free without requiring app-owned Plotly rendering");
   assert(JSON.stringify(timePresentation.plot_payload.time_traces.map((trace) => trace.y)) === JSON.stringify(rawTraceArrays), "Time normalization must not mutate authoritative source arrays");
   presentation.e.markers.checked = true;
   presentation.e.markers.listeners.change({ target: presentation.e.markers });
   await flush();
-  const markedPlot = presentation.calls.filter((call) => call.plot).at(-1);
-  assert(markedPlot.data.filter((trace) => !trace.meta).every((trace) => trace.mode === "lines+markers") && markedPlot.data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace").mode === "markers", "Show Markers must affect ordinary Time traces only and preserve the Peaks marker mode");
-  assert(presentationRequests.length === 1, "both Time presentation toggles must make zero API requests");
+  assert(presentation.e.markers.checked === true && presentationRequests.length === 1, "both Time presentation toggles must remain local and make zero API requests");
   presentation.e.settingsSelect.value = "spectrum";
   presentation.e.settingsSelect.listeners.change({ target: presentation.e.settingsSelect });
   await flush();
   assert(presentation.e.normalize.disabled === true && presentation.e.markers.disabled === true && presentation.e.normalize.checked === true && presentation.e.markers.checked === true, "non-Time plots must disable presentation controls without discarding per-Display preferences");
-  const spectrumPlot = presentation.calls.filter((call) => call.plot).at(-1);
-  assert(spectrumPlot.layout.yaxis.autorange === undefined && spectrumPlot.data.filter((trace) => !trace.meta).every((trace) => trace.mode !== "lines+markers"), "Spectrum must preserve disabled Time preferences without Normalize-specific layout or ordinary markers");
-
-  const peakAffineDefinition = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B], peaks_enabled: true };
-  const peakAffine = snapshot(0, "display-1", [peakAffineDefinition], A);
-  peakAffine.plot_payload.time_traces = [
-    { name: A, signal: A, x: [0, .1, .2], y: [-2, 0, 2] },
-    { name: B, signal: B, x: [0, .1, .2], y: [10, 20, 30] },
-  ];
-  peakAffine.peaks = { enabled: true, state_revision: 0, display_id: "display-1", signal_name: A, ordinate: "real", units: { value: "1", time: "s", width: "samples", prominence: "1" }, items: [{ id: "peak-outside", value: 4, time_s: .1, sample_index: 1, width_samples: 1, prominence: 2 }] };
-  const affine = await boot((url) => Promise.resolve(response(200, peakAffine)));
-  affine.e.normalize.checked = true;
-  affine.e.normalize.listeners.change({ target: affine.e.normalize });
-  await flush();
-  const affinePeak = affine.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");
-  assert(JSON.stringify(affinePeak.x) === JSON.stringify([.1]) && JSON.stringify(affinePeak.y) === JSON.stringify([1.5]) && affinePeak.meta.normalization === "analysis-source-affine-unclipped", "raw backend Peaks values outside source extrema must use the same affine source transform without clipping");
-
-  const invalidDefinition = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B] };
-  const invalidPresentation = snapshot(0, "display-1", [invalidDefinition], A);
-  invalidPresentation.plot_payload.time_traces = [
-    { name: A, signal: A, x: [0, .1], y: [0, NaN] },
-    { name: B, signal: B, x: [0, .1], y: [1, 2] },
-  ];
-  const invalid = await boot((url) => Promise.resolve(response(200, invalidPresentation)));
-  const invalidHost = invalid.e.host;
-  assert(invalid.calls.filter((call) => call.plot).length === 0 && invalidHost.innerHTML.includes("plot-invalid-data-state") && invalidHost.dataset.plotReady === "false", "a visible Time trace with nonfinite data must skip Plotly.react and render the stable invalid-data state");
-  invalidHost.data = [{ stale: true }];
-  invalidHost._fullData = [{ stale: true }];
-  invalidHost.calcdata = [[{ stale: true }]];
-  invalid.e.normalize.checked = true;
-  invalid.e.normalize.listeners.change({ target: invalid.e.normalize });
-  await flush();
-  assert(invalid.e.host === invalidHost && invalid.calls.filter((call) => call.plot).length === 0 && (!invalidHost.data || invalidHost.data.length === 0) && (!invalidHost._fullData || invalidHost._fullData.length === 0) && (!invalidHost.calcdata || invalidHost.calcdata.length === 0), "invalid Time data must purge the persistent host and remain Plotly-free with Normalize enabled");
 
   const emptyPresentation = await boot((url) => Promise.resolve(response(200, emptySnapshot(0, A))));
   assert(emptyPresentation.e.normalize.disabled === true && emptyPresentation.e.markers.disabled === true, "an empty Display must disable Time-only presentation controls");
@@ -1339,7 +1223,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const preferenceRestored = snapshot(2, "display-1", [preferenceDisplayOne, preferenceDisplayTwo], A);
   const displayPreferences = await boot((url, options) => {
     displayPreferenceRequests.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, initial));
     return Promise.resolve(response(200, JSON.parse(options.body).operation === "create" ? preferenceCreated : preferenceRestored));
   });
   displayPreferences.e.normalize.checked = true;
@@ -1364,7 +1248,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const limitsRequests = [];
   const limits = await boot((url, options) => {
     limitsRequests.push({ url, options });
-    return Promise.resolve(response(200, url === "./api/state" ? limitsInitial : limitsCommitted));
+    return Promise.resolve(response(200, url === "./api/state-lite" ? limitsInitial : limitsCommitted));
   });
   assert(limits.e.minInput.value === "0" && limits.e.maxInput.value === "0.2" && limits.e.minInput.disabled === false && limits.e.maxInput.disabled === false, "a nonempty Time Display must render authoritative seconds limits exactly");
   limits.e.minInput.value = ".1";
@@ -1373,13 +1257,12 @@ module.exports = async function testDisplayBehavior(assert) {
   limits.e.minInput.listeners.keydown({ key: "Enter", preventDefault() {} });
   await flush();
   assert(limitsRequests.filter((call) => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(limitsRequests[1].options.body).time_limits) === JSON.stringify({ min_s: .1, max_s: .2, units: "s" }), "Enter must commit one canonical serialized Time Limits request");
-  const limitsPlot = limits.calls.filter((call) => call.plot).at(-1);
-  assert(JSON.stringify(limitsPlot.layout.xaxis.range) === JSON.stringify([.1, .2]) && JSON.stringify(limitsInitial.plot_payload.time_traces[0].y) === JSON.stringify([-2, 1, 5]), "authoritative Time Limits must set Plotly xaxis.range without slicing or mutating backend traces");
+  assert(JSON.stringify(limitsInitial.plot_payload.time_traces[0].y) === JSON.stringify([-2, 1, 5]), "Time Limits metadata reconciliation must not mutate backend-owned trace arrays");
 
   const invalidLimitsRequests = [];
   const invalidLimits = await boot((url, options) => {
     invalidLimitsRequests.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, limitsInitial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, limitsInitial));
     return Promise.resolve(response(422, {
       ok: false, code: "invalid_request",
       error: { code: "invalid_request", message: "Некорректный запрос отображения", fields: { time_limits: "Максимальная Time Limit превышает длительность analysis source" } },
@@ -1416,7 +1299,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const peakRequests = [];
   const peaks = await boot((url, options) => {
     peakRequests.push({ url, options });
-    return Promise.resolve(response(200, url === "./api/state" ? initial : peaksEnabled));
+    return Promise.resolve(response(200, url === "./api/state-lite" ? initial : peaksEnabled));
   });
   peaks.e.peaksAction.listeners.click();
   await flush();
@@ -1424,8 +1307,6 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(peakView && JSON.stringify(JSON.parse(peakView.options.body)) === JSON.stringify({ state_revision: 0, active_plot: "time", row_selected_signal: A, analysis_signal: A, visible_signals: [A, B], time_limits: null, measurement_kinds: ["minimum", "maximum", "mean"], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits: null }, spectrogram_settings: { overlap_percent: 50, leakage: .5, frequency_limits: null, frequency_scale:"linear", power_limits:null }, persistence_settings:{leakage:.5}, peaks_enabled: true }), "Find Peaks must retain complete canonical settings");
   assert(peaks.e.peaksAction.getAttribute("aria-pressed") === "true" && peaks.e.peaksBottomTab.hidden === false && peaks.e.peaksPanel.hidden === false, "an enabled authoritative Peaks snapshot must press the action and open the local Peaks tab/panel");
   assert(peaks.e.peaksContent.innerHTML.includes("peak-row-peak-2") && peaks.e.peaksContent.innerHTML.includes("data-sample-index='2'"), "the Peaks table must render backend item fields without a client-side peak calculation");
-  const marker = peaks.calls.filter((call) => call.plot).at(-1).data.find((trace) => trace.meta && trace.meta.test_id === "peak-marker-trace");
-  assert(marker && JSON.stringify(marker.x) === JSON.stringify([.2]) && JSON.stringify(marker.y) === JSON.stringify([5]) && marker.meta.display_id === "display-1", "marker traces must use only authoritative backend peak items and scope");
 
   const c9SpectrumDefinition = { id: "display-1", name: "Display 1", active_plot: "spectrum", analysis_signal: A, selected_signal: A, visible_signals: [A], spectrum_settings: { scale: "db", frequency_scale: "linear", leakage: .5, frequency_limits:null } };
   const spectrumInitial = snapshot(0, "display-1", [c9SpectrumDefinition], A);
@@ -1436,7 +1317,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const spectrumRequests = [];
   const spectrum = await boot((url, options) => {
     spectrumRequests.push({ url, options });
-    return Promise.resolve(response(200, url === "./api/state" ? spectrumInitial : spectrumCommitted));
+    return Promise.resolve(response(200, url === "./api/state-lite" ? spectrumInitial : spectrumCommitted));
   });
   assert(spectrum.e.spectrumSettings.hidden === false && spectrum.e.spectrumScale.disabled === false, "Spectrum settings must be visible and enabled only for a nonempty Spectrum Display");
   spectrum.e.spectrumScale.value = "linear";
@@ -1447,12 +1328,11 @@ module.exports = async function testDisplayBehavior(assert) {
   const spectrumViews = spectrumRequests.filter((call) => call.url === "./api/view");
   assert(spectrumViews.length === 1, "a Spectrum setting commit must make exactly one view request");
   assert(JSON.stringify(JSON.parse(spectrumViews[0].options.body).spectrum_settings) === JSON.stringify({ scale: "linear", frequency_scale: "log", leakage: .25, frequency_limits: null }), "Spectrum controls must submit the complete canonical nested object");
-  assert(spectrum.calls.filter((call) => call.plot).at(-1).layout.xaxis.type === "log", "authoritative Spectrum frequency_scale must control only the Spectrum x axis");
 
   const rejectedRequests = [];
   const rejected = await boot((url, options) => {
     rejectedRequests.push({ url, options });
-    return Promise.resolve(response(url === "./api/state" ? 200 : 422, url === "./api/state" ? spectrumInitial : { error: { fields: { spectrum_settings: "Недопустимая настройка Spectrum" } } }));
+    return Promise.resolve(response(url === "./api/state-lite" ? 200 : 422, url === "./api/state-lite" ? spectrumInitial : { error: { fields: { spectrum_settings: "Недопустимая настройка Spectrum" } } }));
   });
   rejected.e.spectrumLeakage.value = ".3";
   rejected.e.spectrumLeakage.listeners.change();
@@ -1481,7 +1361,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c10Requests = [];
   const c10 = await boot((url, options) => {
     c10Requests.push({ url, options });
-    return Promise.resolve(response(200, url === "./api/state" ? c10Initial : c10Committed));
+    return Promise.resolve(response(200, url === "./api/state-lite" ? c10Initial : c10Committed));
   });
   assert(c10.e.spectrumFrequencyMin.value === "0" && c10.e.spectrumFrequencyMax.value === "5", "Auto Frequency Limits must show only backend effective Hz values");
   c10.e.spectrumFrequencyMin.value = "1";
@@ -1497,7 +1377,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c10RejectedRequests = [];
   const c10Rejected = await boot((url, options) => {
     c10RejectedRequests.push({ url, options });
-    return Promise.resolve(response(url === "./api/state" ? 200 : 422, url === "./api/state" ? c10Initial : { error: { fields: { spectrum_settings: "Frequency Limits outside topology" } } }));
+    return Promise.resolve(response(url === "./api/state-lite" ? 200 : 422, url === "./api/state-lite" ? c10Initial : { error: { fields: { spectrum_settings: "Frequency Limits outside topology" } } }));
   });
   c10Rejected.e.spectrumFrequencyMin.value = "6";
   c10Rejected.e.spectrumFrequencyMax.value = "7";
@@ -1510,7 +1390,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c12Initial = snapshot(0, "display-1", [c12Def], A); c12Initial.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0], z:[[0]], power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   const c12Committed = snapshot(1, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:75, leakage:.5, frequency_limits:null , frequency_scale:"linear", power_limits:null} })], A); c12Committed.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
   const c12Requests = [];
-  const c12 = await boot((url, options) => { c12Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c12Initial : c12Committed)); });
+  const c12 = await boot((url, options) => { c12Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state-lite" ? c12Initial : c12Committed)); });
   assert(c12.e.spectrogramSettings.hidden === false && c12.e.spectrogramOverlap.value === "50" && Number(c12.e.spectrogramLeakage.value) === .5, "Spectrogram controls default canonically to overlap 50 and independent Leakage .5");
   const spectrogramExact = { overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null };
   const spectrogramAbsentDef = Object.assign({}, c12Def); delete spectrogramAbsentDef.spectrogram_settings;
@@ -1530,18 +1410,18 @@ module.exports = async function testDisplayBehavior(assert) {
   const c19StaleMalformedDef = Object.assign({}, c12Def, {spectrogram_settings:null});
   const c19StaleMalformed = snapshot(1, "display-1", [c19StaleMalformedDef], A); c19StaleMalformed.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
   const c19StaleMalformedRequests = [], c19StaleMalformedResolvers = [];
-  const c19StaleMalformedEnv = await boot((url, options) => { c19StaleMalformedRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c12Initial)) : new Promise(resolve => c19StaleMalformedResolvers.push(resolve)); });
+  const c19StaleMalformedEnv = await boot((url, options) => { c19StaleMalformedRequests.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c12Initial)) : new Promise(resolve => c19StaleMalformedResolvers.push(resolve)); });
   c19StaleMalformedEnv.e.spectrogramOverlap.value = "75"; c19StaleMalformedEnv.e.spectrogramOverlap.listeners.change(); await flush();
   c19StaleMalformedResolvers.shift()(response(409, {current:c19StaleMalformed})); await flush();
   assert(c19StaleMalformedRequests.filter(call => call.url === "./api/view").length === 1 && c19StaleMalformedEnv.e.spectrogramContractError.hidden === false, "malformed 409 current quarantines Spectrogram and prevents stale replay");
   const c19QueuedMalformedRequests = [], c19QueuedMalformedResolvers = [];
-  const c19QueuedMalformed = await boot((url, options) => { c19QueuedMalformedRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c12Initial)) : new Promise(resolve => c19QueuedMalformedResolvers.push(resolve)); });
+  const c19QueuedMalformed = await boot((url, options) => { c19QueuedMalformedRequests.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c12Initial)) : new Promise(resolve => c19QueuedMalformedResolvers.push(resolve)); });
   c19QueuedMalformed.e.spectrogramOverlap.value = "75"; c19QueuedMalformed.e.spectrogramOverlap.listeners.change(); await flush();
   c19QueuedMalformed.e.spectrogramOverlap.value = "60"; c19QueuedMalformed.e.spectrogramOverlap.listeners.change(); await flush();
   c19QueuedMalformedResolvers.shift()(response(409, {current:c19StaleMalformed})); await flush();
   assert(c19QueuedMalformedRequests.filter(call => call.url === "./api/view").length === 1 && c19QueuedMalformed.e.spectrogramContractError.hidden === false, "malformed 409 current drains already queued Spectrogram intent without sending it");
   const c19SuccessMalformedRequests = [], c19SuccessMalformedResolvers = [];
-  const c19SuccessMalformed = await boot((url, options) => { c19SuccessMalformedRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c12Initial)) : new Promise(resolve => c19SuccessMalformedResolvers.push(resolve)); });
+  const c19SuccessMalformed = await boot((url, options) => { c19SuccessMalformedRequests.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c12Initial)) : new Promise(resolve => c19SuccessMalformedResolvers.push(resolve)); });
   c19SuccessMalformed.e.spectrogramOverlap.value = "75"; c19SuccessMalformed.e.spectrogramOverlap.listeners.change(); await flush();
   c19SuccessMalformed.e.spectrogramOverlap.value = "60"; c19SuccessMalformed.e.spectrogramOverlap.listeners.change(); await flush();
   c19SuccessMalformedResolvers.shift()(response(200, c19StaleMalformed)); await flush();
@@ -1561,7 +1441,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const overlap422Requests = [], overlap422Resolvers = [];
   const overlap422 = await boot((url, options) => {
     overlap422Requests.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, c12Initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, c12Initial));
     return new Promise((resolve) => overlap422Resolvers.push(resolve));
   });
   overlap422.e.spectrogramOverlap.value = "75"; overlap422.e.spectrogramOverlap.listeners.change(); await flush();
@@ -1578,7 +1458,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const overlap409Requests = [], overlap409Resolvers = [];
   const overlap409 = await boot((url, options) => {
     overlap409Requests.push({ url, options });
-    if (url === "./api/state") return Promise.resolve(response(200, c12Initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, c12Initial));
     return new Promise((resolve) => overlap409Resolvers.push(resolve));
   });
   overlap409.e.spectrogramOverlap.value = "75"; overlap409.e.spectrogramOverlap.listeners.change(); await flush();
@@ -1592,7 +1472,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const overlap409TwiceRequests = [], overlap409TwiceResolvers = [];
   const overlap409Twice = await boot((url, options) => {
     overlap409TwiceRequests.push({url, options});
-    if (url === "./api/state") return Promise.resolve(response(200, c12Initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, c12Initial));
     return new Promise(resolve => overlap409TwiceResolvers.push(resolve));
   });
   overlap409Twice.e.spectrogramOverlap.value = "75"; overlap409Twice.e.spectrogramOverlap.listeners.change(); await flush();
@@ -1604,7 +1484,7 @@ module.exports = async function testDisplayBehavior(assert) {
 
   const leakageCommitted = snapshot(1, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:50, leakage:1, frequency_limits:null , frequency_scale:"linear", power_limits:null} })], A); leakageCommitted.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
   const leakageRequests = [];
-  const leakage = await boot((url, options) => { leakageRequests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c12Initial : leakageCommitted)); });
+  const leakage = await boot((url, options) => { leakageRequests.push({url, options}); return Promise.resolve(response(200, url === "./api/state-lite" ? c12Initial : leakageCommitted)); });
   leakage.e.spectrogramLeakage.value = "1"; leakage.e.spectrogramLeakage.listeners.input();
   assert(leakageRequests.filter(call => call.url === "./api/view").length === 0, "typing Leakage is draft-only");
   leakage.e.spectrogramLeakage.listeners.change(); await flush();
@@ -1615,13 +1495,13 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(leakageRequests.filter(call => call.url === "./api/view").length === 1 && leakage.e.spectrogramLeakageError.hidden === false, "unsafe Leakage is a local error without request");
 
   const leakage422Requests = [];
-  const leakage422 = await boot((url, options) => { leakage422Requests.push({url, options}); return Promise.resolve(response(url === "./api/state" ? 200 : 422, url === "./api/state" ? c12Initial : { error:{ fields:{ spectrogram_settings:"Leakage rejected" } } })); });
+  const leakage422 = await boot((url, options) => { leakage422Requests.push({url, options}); return Promise.resolve(response(url === "./api/state-lite" ? 200 : 422, url === "./api/state-lite" ? c12Initial : { error:{ fields:{ spectrogram_settings:"Leakage rejected" } } })); });
   leakage422.e.spectrogramLeakage.value = "0"; leakage422.e.spectrogramLeakage.listeners.change(); await flush();
   assert(leakage422Requests.filter(call => call.url === "./api/view").length === 1 && Number(leakage422.e.spectrogramLeakage.value) === .5 && leakage422.e.spectrogramLeakageError.hidden === false, "422 rolls Leakage back to the last accepted normalized control value");
 
   const leakageReplay = snapshot(2, "display-1", [Object.assign({}, c12Def, { spectrogram_settings:{ overlap_percent:50, leakage:.25, frequency_limits:null , frequency_scale:"linear", power_limits:null} })], A); leakageReplay.plot_payload.spectrogram = c12Initial.plot_payload.spectrogram;
   const leakage409Requests = [], leakage409Resolvers = [];
-  const leakage409 = await boot((url, options) => { leakage409Requests.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c12Initial)); return new Promise(resolve => leakage409Resolvers.push(resolve)); });
+  const leakage409 = await boot((url, options) => { leakage409Requests.push({url, options}); if (url === "./api/state-lite") return Promise.resolve(response(200, c12Initial)); return new Promise(resolve => leakage409Resolvers.push(resolve)); });
   leakage409.e.spectrogramLeakage.value = "0"; leakage409.e.spectrogramLeakage.listeners.change(); await flush();
   leakage409.e.spectrogramLeakage.value = ".25"; leakage409.e.spectrogramLeakage.listeners.change(); await flush();
   leakage409Resolvers.shift()(response(409, { current:c12Initial })); await flush();
@@ -1640,7 +1520,7 @@ module.exports = async function testDisplayBehavior(assert) {
     return { state_revision:revision, active_plot:"persistence", row_selected_signal:A, analysis_signal:A, visible_signals:[A], time_limits:null, measurement_kinds:["minimum", "maximum", "mean"], spectrum_settings:{ scale:"db", frequency_scale:"linear", leakage:.5, frequency_limits:null }, spectrogram_settings:{ overlap_percent:50, leakage:.5, frequency_limits:null, frequency_scale:"linear", power_limits:null }, persistence_settings:{ leakage }, peaks_enabled:false };
   }
   const c19Requests = [];
-  const c19 = await boot((url, options) => { c19Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c19Initial : c19Committed)); });
+  const c19 = await boot((url, options) => { c19Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state-lite" ? c19Initial : c19Committed)); });
   assert(c19.e.persistenceSettings.hidden === false && c19.e.persistenceLeakage.value === "0.5" && c19.e.persistenceLeakageValue.textContent === "0.5" && c19.e.persistenceLeakage.disabled === false, "Persistence exposes its enabled canonical .5 Leakage control only on an active Persistence display");
   c19.e.persistenceLeakage.value = "1"; c19.e.persistenceLeakage.listeners.input();
   assert(c19Requests.filter(call => call.url === "./api/view").length === 0 && c19.e.persistenceLeakageValue.textContent === "1", "typing Persistence Leakage remains a local draft without API or DSP work");
@@ -1652,14 +1532,14 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c19Requests.filter(call => call.url === "./api/view").length === 1 && c19.e.persistenceLeakageError.hidden === false, "out-of-range Persistence Leakage fails locally without a request");
 
   const c19RejectedRequests = [];
-  const c19Rejected = await boot((url, options) => { c19RejectedRequests.push({url, options}); return Promise.resolve(response(url === "./api/state" ? 200 : 422, url === "./api/state" ? c19Initial : { error:{ fields:{ persistence_settings:"Leakage rejected" } } })); });
+  const c19Rejected = await boot((url, options) => { c19RejectedRequests.push({url, options}); return Promise.resolve(response(url === "./api/state-lite" ? 200 : 422, url === "./api/state-lite" ? c19Initial : { error:{ fields:{ persistence_settings:"Leakage rejected" } } })); });
   c19Rejected.e.persistenceLeakage.value = "0"; c19Rejected.e.persistenceLeakage.listeners.change(); await flush();
   assert(c19RejectedRequests.filter(call => call.url === "./api/view").length === 1 && c19Rejected.e.persistenceLeakage.value === "0.5" && c19Rejected.e.persistenceLeakageError.hidden === false, "422 restores accepted Persistence Leakage and exposes the nested inline error");
 
   const c19Replay = snapshot(2, "display-1", [Object.assign({}, c19Def, { persistence_settings:{ leakage:.25 } })], A);
   c19Replay.plot_payload.persistence = c19Initial.plot_payload.persistence; c19Replay.plots.persistence = c19Initial.plots.persistence;
   const c19StaleRequests = [], c19StaleResolvers = [];
-  const c19Stale = await boot((url, options) => { c19StaleRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c19Initial)) : new Promise(resolve => c19StaleResolvers.push(resolve)); });
+  const c19Stale = await boot((url, options) => { c19StaleRequests.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c19Initial)) : new Promise(resolve => c19StaleResolvers.push(resolve)); });
   c19Stale.e.persistenceLeakage.value = "0"; c19Stale.e.persistenceLeakage.listeners.change(); await flush();
   c19Stale.e.persistenceLeakage.value = ".25"; c19Stale.e.persistenceLeakage.listeners.change(); await flush();
   c19StaleResolvers.shift()(response(409, { current:c19Initial })); await flush();
@@ -1668,7 +1548,7 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c19StaleRequests.filter(call => call.url === "./api/view").length === 2 && c19Stale.e.persistenceLeakage.value === "0.25", "Persistence stale replay settles without a duplicate request");
 
   const c19TwiceRequests = [], c19TwiceResolvers = [];
-  const c19Twice = await boot((url, options) => { c19TwiceRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c19Initial)) : new Promise(resolve => c19TwiceResolvers.push(resolve)); });
+  const c19Twice = await boot((url, options) => { c19TwiceRequests.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c19Initial)) : new Promise(resolve => c19TwiceResolvers.push(resolve)); });
   c19Twice.e.persistenceLeakage.value = "0"; c19Twice.e.persistenceLeakage.listeners.change(); await flush();
   c19TwiceResolvers.shift()(response(409, { current:c19Initial })); await flush();
   c19TwiceResolvers.shift()(response(409, { current:c19Initial })); await flush();
@@ -1712,7 +1592,7 @@ module.exports = async function testDisplayBehavior(assert) {
   }
   const badTime = snapshot(1, "display-1", [Object.assign({}, timeRootDef, {time_limits:{min_s:1,max_s:0,units:"s"}})], A);
   const staleTimeCalls = [], staleTimeResolvers = [];
-  const staleTime = await boot((url, options) => { staleTimeCalls.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, timeRoot)) : new Promise(resolve => staleTimeResolvers.push(resolve)); });
+  const staleTime = await boot((url, options) => { staleTimeCalls.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, timeRoot)) : new Promise(resolve => staleTimeResolvers.push(resolve)); });
   staleTime.e.minInput.value = ".05"; staleTime.e.maxInput.value = ".15"; staleTime.e.maxInput.listeners.change(); await flush();
   staleTime.e.minInput.value = ".06"; staleTime.e.maxInput.value = ".16"; staleTime.e.maxInput.listeners.change(); await flush();
   staleTimeResolvers.shift()(response(409, {current:badTime})); await flush();
@@ -1721,7 +1601,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c19PageA = snapshot(0, "display-1", c19Pages, A), c19PageB = snapshot(1, "display-2", c19Pages, A);
   c19PageA.plot_payload.persistence = c19Initial.plot_payload.persistence; c19PageB.plot_payload.persistence = c19Initial.plot_payload.persistence;
   const c19PageRequests = [];
-  const c19Page = await boot((url, options) => { c19PageRequests.push({url, options}); if (url === "./api/state") return Promise.resolve(response(200, c19PageA)); const body = JSON.parse(options.body); return Promise.resolve(response(200, body.display_id === "display-2" ? c19PageB : c19PageA)); });
+  const c19Page = await boot((url, options) => { c19PageRequests.push({url, options}); if (url === "./api/state-lite") return Promise.resolve(response(200, c19PageA)); const body = JSON.parse(options.body); return Promise.resolve(response(200, body.display_id === "display-2" ? c19PageB : c19PageA)); });
   assert(c19Page.e.persistenceLeakage.value === "0.25", "Persistence Leakage starts from Display A's independent setting");
   c19Page.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   assert(c19Page.e.persistenceLeakage.value === "0.5", "selecting Display B restores B's default Persistence Leakage without leaking A's preference");
@@ -1754,7 +1634,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c15Committed.plot_payload.spectrogram = Object.assign({}, c15Initial.plot_payload.spectrogram, { frequency_limits:{ mode:"explicit", requested:c15Limits, effective:c15Limits } });
   c15Committed.plots.spectrogram = Object.assign({}, c15Initial.plots.spectrogram, { frequency_limits:{ mode:"explicit", requested:c15Limits, effective:c15Limits } });
   const c15Requests = [];
-  const c15 = await boot((url, options) => { c15Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c15Initial : c15Committed)); });
+  const c15 = await boot((url, options) => { c15Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state-lite" ? c15Initial : c15Committed)); });
   assert(c15.e.spectrogramFrequencyMin.value === "0" && c15.e.spectrogramFrequencyMax.value === "5", "Spectrogram Auto must render backend effective limits only");
   c15.e.spectrogramFrequencyMin.value = "1"; c15.e.spectrogramFrequencyMax.value = "4";
   c15.e.spectrogramFrequencyMin.listeners.input();
@@ -1769,7 +1649,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c15PairRequests = [], c15PairResolvers = [];
   const c15Pair = await boot((url, options) => {
     c15PairRequests.push({url, options});
-    if (url === "./api/state") return Promise.resolve(response(200, c15Initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, c15Initial));
     return new Promise(resolve => c15PairResolvers.push(resolve));
   });
   c15Pair.e.spectrogramFrequencyMin.value = "1";
@@ -1789,7 +1669,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c15ReplayRequests = [], c15ReplayResolvers = [];
   const c15Replay = await boot((url, options) => {
     c15ReplayRequests.push({url, options});
-    if (url === "./api/state") return Promise.resolve(response(200, c15Initial));
+    if (url === "./api/state-lite") return Promise.resolve(response(200, c15Initial));
     return new Promise(resolve => c15ReplayResolvers.push(resolve));
   });
   c15Replay.e.spectrogramFrequencyMin.value = "1"; c15Replay.e.spectrogramFrequencyMax.value = "4";
@@ -1811,23 +1691,10 @@ module.exports = async function testDisplayBehavior(assert) {
   c16Committed.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0, 4], z:[[1], [2]], frequency_scale:{requested:"log", effective:"log", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
   c16Committed.plots.spectrogram = c16Committed.plot_payload.spectrogram;
   const c16Requests = [];
-  const c16 = await boot((url, options) => { c16Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c16Initial : c16Committed)); });
+  const c16 = await boot((url, options) => { c16Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state-lite" ? c16Initial : c16Committed)); });
   assert(c16.e.spectrogramFrequencyScale.value === "linear" && c16.e.spectrogramFrequencyScale.disabled === false && c16.e.spectrogramFrequencyScaleEffective.textContent === "Линейная", "real Spectrogram must render backend requested/effective/available metadata");
   c16.e.spectrogramFrequencyScale.value = "log"; c16.e.spectrogramFrequencyScale.listeners.change(); await flush();
   assert(c16Requests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c16Requests.at(-1).options.body).spectrogram_settings) === JSON.stringify(c16Log), "Frequency Scale change must send one exact full four-key desired target");
-  const c16Plot = c16.calls.filter(call => call.plot).at(-1);
-  assert(c16Plot.layout.yaxis.type === "log" && JSON.stringify(c16Plot.data[0].y) === JSON.stringify([2,4]) && JSON.stringify(c16Committed.plot_payload.spectrogram.y) === JSON.stringify([0,4]) && JSON.stringify(c16Plot.data[0].z) === JSON.stringify(c16Committed.plot_payload.spectrogram.z), "effective Log must floor only a transient y clone and never mutate authoritative y/z");
-
-  const c16NoPositive = snapshot(3, "display-1", [Object.assign({}, c16Definition, {spectrogram_settings:c16Log})], A);
-  c16NoPositive.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0], y:[0, -4], z:[[1], [2]], frequency_scale:{requested:"log", effective:"log", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
-  c16NoPositive.plots.spectrogram = c16NoPositive.plot_payload.spectrogram;
-  const c16NoPositiveEnv = await boot((url) => Promise.resolve(response(200, c16NoPositive)));
-  assert(c16NoPositiveEnv.e.host.innerHTML.includes("spectrogram-log-frequency-error-state") && c16NoPositiveEnv.e.host.dataset.plotReady === "false", "effective Log with nonempty all-nonpositive y must show the stable plot error");
-  const c16EmptyY = snapshot(4, "display-1", [Object.assign({}, c16Definition, {spectrogram_settings:c16Log})], A);
-  c16EmptyY.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[], y:[], z:[], frequency_scale:{requested:"log", effective:"log", available:["linear", "log"]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
-  c16EmptyY.plots.spectrogram = c16EmptyY.plot_payload.spectrogram;
-  const c16EmptyYEnv = await boot((url) => Promise.resolve(response(200, c16EmptyY)));
-  assert(c16EmptyYEnv.e.host.innerHTML.includes("plot-empty-state") && !c16EmptyYEnv.e.host.innerHTML.includes("spectrogram-log-frequency-error-state"), "empty Log y must remain the ordinary empty state without an invented floor");
 
   const c16NoSource = snapshot(5, "display-1", [Object.assign({}, c16Definition, {analysis_signal:null, selected_signal:null, visible_signals:[], spectrogram_settings:c16Log})], A);
   c16NoSource.plot_payload.spectrogram = { type:"heatmap", signal:null, x:[], y:[], z:[], frequency_scale:{requested:"log", effective:null, available:[]}, power_limits:{mode:"auto", requested:null, effective:null, rendered:null} };
@@ -1842,13 +1709,13 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(c16ComplexEnv.e.spectrogramFrequencyScale.value === "log" && c16ComplexEnv.e.spectrogramFrequencyScale.disabled === true && c16ComplexEnv.e.spectrogramFrequencyScaleEffective.textContent === "Линейная", "complex Spectrogram must preserve requested Log while authoritative availability disables the select");
 
   const c16RejectRequests = [], c16RejectResolvers = [];
-  const c16Reject = await boot((url, options) => { c16RejectRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c16Initial)) : new Promise(resolve => c16RejectResolvers.push(resolve)); });
+  const c16Reject = await boot((url, options) => { c16RejectRequests.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c16Initial)) : new Promise(resolve => c16RejectResolvers.push(resolve)); });
   c16Reject.e.spectrogramFrequencyScale.value = "log"; c16Reject.e.spectrogramFrequencyScale.listeners.change(); await flush();
   c16RejectResolvers.shift()(response(422, {error:{fields:{spectrogram_settings:"Frequency Scale rejected"}}})); await flush();
   assert(c16Reject.e.spectrogramFrequencyScale.value === "linear" && c16Reject.e.spectrogramFrequencyScaleError.hidden === false && c16RejectRequests.filter(call => call.url === "./api/view").length === 1, "Frequency Scale 422 must restore accepted settings without retry");
 
   const c16ReplayRequests = [], c16ReplayResolvers = [];
-  const c16Replay = await boot((url, options) => { c16ReplayRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c16Initial)) : new Promise(resolve => c16ReplayResolvers.push(resolve)); });
+  const c16Replay = await boot((url, options) => { c16ReplayRequests.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c16Initial)) : new Promise(resolve => c16ReplayResolvers.push(resolve)); });
   c16Replay.e.spectrogramFrequencyScale.value = "log"; c16Replay.e.spectrogramFrequencyScale.listeners.change(); await flush();
   c16ReplayResolvers.shift()(response(409, {current:c16Initial})); await flush();
   assert(c16ReplayRequests.filter(call => call.url === "./api/view").length === 2 && JSON.stringify(JSON.parse(c16ReplayRequests.at(-1).options.body).spectrogram_settings) === JSON.stringify(c16Log), "first Frequency Scale 409 must replay one latest full target");
@@ -1865,7 +1732,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c17Committed.plot_payload.spectrogram = { type:"heatmap", signal:A, x:[0, .1], y:[0, 5], z:[[-100, -10], [-80, -20]], power_limits:{mode:"explicit", requested:c17Pair, effective:c17Pair, rendered:{min:-80,max:-20,units:"dB"}} };
   c17Committed.plots.spectrogram = c17Committed.plot_payload.spectrogram;
   const c17Requests = [];
-  const c17 = await boot((url, options) => { c17Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state" ? c17Initial : c17Committed)); });
+  const c17 = await boot((url, options) => { c17Requests.push({url, options}); return Promise.resolve(response(200, url === "./api/state-lite" ? c17Initial : c17Committed)); });
   assert(c17.e.spectrogramPowerMin.value === "" && c17.e.spectrogramPowerMax.value === "" && c17.e.spectrogramPowerLimitsEffective.textContent.includes("-100"), "Auto Power Limits must retain blank editable intent and render authoritative effective dB bounds");
   c17.e.spectrogramPowerMin.value = "-80"; c17.e.spectrogramPowerMax.value = "-20"; c17.e.spectrogramPowerMin.listeners.input();
   c17.document.activeElement = c17.e.spectrogramPowerMax;
@@ -1874,8 +1741,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c17.document.activeElement = c17.e.spectrogramLeakage;
   c17.e.spectrogramPowerLimitsControls.listeners.focusout({target:c17.e.spectrogramPowerMax, relatedTarget:c17.e.spectrogramLeakage}); await flush();
   assert(c17Requests.filter(call => call.url === "./api/view").length === 1 && JSON.stringify(JSON.parse(c17Requests.at(-1).options.body).spectrogram_settings) === JSON.stringify(Object.assign({}, c17Auto, {power_limits:c17Pair})), "Power Limits pair must commit exactly one full five-key target");
-  const c17Plot = c17.calls.filter(call => call.plot).at(-1);
-  assert(c17Plot.data[0].zauto === false && c17Plot.data[0].zmin === -80 && c17Plot.data[0].zmax === -20 && JSON.stringify(c17Plot.data[0].z) === JSON.stringify(c17Committed.plot_payload.spectrogram.z), "strict explicit effective pair must set Plotly z bounds without mutating authoritative z");
+  assert(c17.e.spectrogramPowerLimitsEffective.textContent.includes("-80") && JSON.stringify(c17Committed.plot_payload.spectrogram.z) === JSON.stringify([[-100, -10], [-80, -20]]), "strict explicit effective metadata must render without mutating backend-owned z values");
   c17.e.spectrogramPowerMin.value = ""; c17.e.spectrogramPowerMax.value = ""; c17.document.activeElement = c17.e.spectrogramLeakage;
   c17.e.spectrogramPowerLimitsControls.listeners.focusout({target:c17.e.spectrogramPowerMax, relatedTarget:c17.e.spectrogramLeakage}); await flush();
   assert(JSON.parse(c17Requests.at(-1).options.body).spectrogram_settings.power_limits === null, "clearing both Power Limits fields must restore Auto through the full object");
@@ -1885,41 +1751,24 @@ module.exports = async function testDisplayBehavior(assert) {
   const c17Constant = snapshot(2, "display-1", [c17Definition], A);
   c17Constant.plot_payload.spectrogram = {type:"heatmap", signal:A, x:[0], y:[0], z:[[-42]], power_limits:{mode:"auto", requested:null, effective:{min_db:-42, max_db:-42, units:"dB"}, rendered:{min:-43,max:-41,units:"dB"}}}; c17Constant.plots.spectrogram = c17Constant.plot_payload.spectrogram;
   const c17ConstantEnv = await boot(() => Promise.resolve(response(200, c17Constant)));
-  const c17ConstantPlot = c17ConstantEnv.calls.filter(call => call.plot).at(-1);
-  assert(c17ConstantPlot.data[0].zauto === false && c17ConstantPlot.data[0].zmin === -43 && c17ConstantPlot.data[0].zmax === -41 && c17Constant.plot_payload.spectrogram.power_limits.effective.min_db === -42, "constant Auto Power Limits must use renderer-only ±1 fallback while preserving exact metadata");
+  assert(c17ConstantEnv.e.spectrogramPowerLimitsEffective.textContent.includes("-42") && c17Constant.plot_payload.spectrogram.power_limits.effective.min_db === -42, "constant Auto Power Limits must preserve exact authoritative metadata");
   const c17Empty = snapshot(3, "display-1", [c17Definition], A);
   c17Empty.plot_payload.spectrogram = {type:"heatmap", signal:A, x:[], y:[], z:[], power_limits:{mode:"auto", requested:null, effective:null, rendered:null}}; c17Empty.plots.spectrogram = c17Empty.plot_payload.spectrogram;
   const c17EmptyEnv = await boot(() => Promise.resolve(response(200, c17Empty)));
-  const c17EmptyPlot = c17EmptyEnv.calls.filter(call => call.plot).at(-1);
-  assert(c17EmptyEnv.e.spectrogramPowerLimitsEffective.textContent === "Фактический диапазон: —" && c17EmptyPlot.data[0].zauto === true && !Object.prototype.hasOwnProperty.call(c17EmptyPlot.data[0], "zmin"), "empty or zero-only effective null must retain zauto without invented extrema");
-  const c17Malformed = snapshot(4, "display-1", [c17Definition], A);
-  c17Malformed.plot_payload.spectrogram = {type:"heatmap", signal:A, x:[0], y:[0], z:[[-20]], power_limits:{mode:"auto", requested:null, effective:{min_db:0, max_db:-20, units:"dB"}}}; c17Malformed.plots.spectrogram = c17Malformed.plot_payload.spectrogram;
-  const c17MalformedEnv = await boot(() => Promise.resolve({ok:true, status:200, json:() => Promise.resolve(c17Malformed)}));
-  assert(c17MalformedEnv.e.host.innerHTML.includes("spectrogram-power-limits-contract-error-state") && c17MalformedEnv.e.host.dataset.plotReady === "false" && !c17MalformedEnv.calls.some(call => call.plot), "malformed Power Limits metadata must enter the stable contract error without bounded-wire fallback");
-  for (const malformedMeta of [
-    {mode:"explicit", requested:null, effective:c17Pair},
-    {mode:"explicit", requested:c17Pair, effective:{min_db:-81, max_db:-20, units:"dB"}},
-    {mode:"unknown", requested:null, effective:null},
-    {mode:"auto", requested:c17Pair, effective:null, extra:true},
-  ]) {
-    const invalid = snapshot(4, "display-1", [c17Definition], A);
-    invalid.plot_payload.spectrogram = {type:"heatmap", signal:A, x:[0], y:[0], z:[[-20]], power_limits:malformedMeta}; invalid.plots.spectrogram = invalid.plot_payload.spectrogram;
-    const env = await boot(() => Promise.resolve({ok:true, status:200, json:() => Promise.resolve(invalid)}));
-    assert(env.e.host.innerHTML.includes("spectrogram-power-limits-contract-error-state") && !env.calls.some(call => call.plot), "every malformed C17 power metadata shape must be a stable no-Plotly contract error");
-  }
+  assert(c17EmptyEnv.e.spectrogramPowerLimitsEffective.textContent === "Фактический диапазон: —", "empty effective metadata must retain its explicit unavailable state");
   const c17NoSource = snapshot(4, "display-1", [Object.assign({}, c17Definition, {analysis_signal:null, selected_signal:null, visible_signals:[], spectrogram_settings:Object.assign({}, c17Auto, {power_limits:c17Pair})})], A);
   c17NoSource.plot_payload.spectrogram = {type:"heatmap", signal:null, x:[], y:[], z:[], power_limits:{mode:"explicit", requested:c17Pair, effective:c17Pair, rendered:{min:-80,max:-20,units:"dB"}}}; c17NoSource.plots.spectrogram = c17NoSource.plot_payload.spectrogram;
   const c17NoSourceEnv = await boot(() => Promise.resolve(response(200, c17NoSource)));
   assert(c17NoSourceEnv.e.spectrogramPowerMin.disabled === true && c17NoSourceEnv.e.spectrogramPowerMax.disabled === true && c17NoSourceEnv.e.spectrogramPowerMin.value === "-80", "no-source must disable the pair while retaining explicit preference");
 
   const c17RollbackRequests = [], c17RollbackResolvers = [];
-  const c17Rollback = await boot((url, options) => { c17RollbackRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c17Initial)) : new Promise(resolve => c17RollbackResolvers.push(resolve)); });
+  const c17Rollback = await boot((url, options) => { c17RollbackRequests.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c17Initial)) : new Promise(resolve => c17RollbackResolvers.push(resolve)); });
   c17Rollback.e.spectrogramPowerMin.value = "-80"; c17Rollback.e.spectrogramPowerMax.value = "-20"; c17Rollback.document.activeElement = c17Rollback.e.spectrogramLeakage;
   c17Rollback.e.spectrogramPowerLimitsControls.listeners.focusout({target:c17Rollback.e.spectrogramPowerMax, relatedTarget:c17Rollback.e.spectrogramLeakage}); await flush();
   c17RollbackResolvers.shift()(response(422, {error:{fields:{spectrogram_settings:"Power Limits rejected"}}})); await flush();
   assert(c17Rollback.e.spectrogramPowerMin.value === "" && c17Rollback.e.spectrogramPowerLimitsError.hidden === false && c17RollbackRequests.filter(call => call.url === "./api/view").length === 1, "422 must restore the accepted Auto intent without retry");
   const c17ReplayRequests = [], c17ReplayResolvers = [];
-  const c17Replay = await boot((url, options) => { c17ReplayRequests.push({url, options}); return url === "./api/state" ? Promise.resolve(response(200, c17Initial)) : new Promise(resolve => c17ReplayResolvers.push(resolve)); });
+  const c17Replay = await boot((url, options) => { c17ReplayRequests.push({url, options}); return url === "./api/state-lite" ? Promise.resolve(response(200, c17Initial)) : new Promise(resolve => c17ReplayResolvers.push(resolve)); });
   c17Replay.e.spectrogramPowerMin.value = "-80"; c17Replay.e.spectrogramPowerMax.value = "-20"; c17Replay.document.activeElement = c17Replay.e.spectrogramLeakage;
   c17Replay.e.spectrogramPowerLimitsControls.listeners.focusout({target:c17Replay.e.spectrogramPowerMax, relatedTarget:c17Replay.e.spectrogramLeakage}); await flush();
   c17ReplayResolvers.shift()(response(409, {current:c17Initial})); await flush();
@@ -1932,15 +1781,12 @@ module.exports = async function testDisplayBehavior(assert) {
   c18Positive.plot_payload.persistence = {type:"heatmap", signal:A, x:[0, 5], y:[-30, -10], z:[[10, 20], [30, 40]], x_label:"Частота, Гц", y_label:"Мощность, дБ", color_label:"Встречаемость, %", density_limits:{mode:"auto",requested:null,effective:{min:10,max:40,units:"percent"},rendered:{min:10,max:40,units:"percent"}}};
   c18Positive.plots.persistence = c18Positive.plot_payload.persistence;
   const c18PositiveEnv = await boot(() => Promise.resolve(response(200, c18Positive)));
-  const c18PositivePlot = c18PositiveEnv.calls.filter(call => call.plot).at(-1);
-  assert(c18PositiveEnv.e.plotSelect.value === "persistence" && c18PositivePlot.data.length === 1 && c18PositivePlot.data[0].type === "heatmap" && JSON.stringify(c18PositivePlot.data[0].x) === JSON.stringify([0, 5]) && JSON.stringify(c18PositivePlot.data[0].y) === JSON.stringify([-30, -10]) && JSON.stringify(c18PositivePlot.data[0].z) === JSON.stringify([[10, 20], [30, 40]]), "Cascade 18 positive Persistence must remain one generic server heatmap without client reshaping");
-  assert(c18PositivePlot.data[0].colorbar.title.text === "Встречаемость, %" && c18PositivePlot.layout.yaxis.type === undefined, "Cascade 18 Persistence keeps its backend labels and linear generic heatmap y-axis");
+  assert(c18PositiveEnv.e.plotSelect.value === "persistence" && c18PositiveEnv.e.error.hidden === true, "Cascade 18 positive Persistence metadata must remain accepted without app-owned rendering");
   const c18Empty = snapshot(6, "display-1", [c18Definition], A);
   c18Empty.plot_payload.persistence = {type:"heatmap", signal:A, x:[], y:[], z:[], x_label:"Частота, Гц", y_label:"Мощность, дБ", color_label:"Встречаемость, %", density_limits:{mode:"auto",requested:null,effective:null,rendered:null}};
   c18Empty.plots.persistence = c18Empty.plot_payload.persistence;
   const c18EmptyEnv = await boot(() => Promise.resolve(response(200, c18Empty)));
-  const c18EmptyPlot = c18EmptyEnv.calls.filter(call => call.plot).at(-1);
-  assert(c18EmptyPlot.data.length === 1 && c18EmptyPlot.data[0].type === "heatmap" && c18EmptyPlot.data[0].x.length === 0 && c18EmptyPlot.data[0].y.length === 0 && c18EmptyPlot.data[0].z.length === 0, "Cascade 18 typed-empty Persistence must retain the existing generic empty heatmap wire without a new frontend state");
+  assert(c18EmptyEnv.e.error.hidden === true, "Cascade 18 typed-empty Persistence metadata must remain accepted without an app-owned graph state");
 
   // DEC-039 release matrix: the catalog token is a time-bounded authority.
   // Keep this isolated from the larger Signals sequence so each stale branch
@@ -1950,7 +1796,7 @@ module.exports = async function testDisplayBehavior(assert) {
     const scenarioCatalog = { catalog_revision:"wc_6393fd37-ecdc-4be2-9f27-19be23219618", expires_at:expiresAt, truncated:false, total:1, variables:[Object.assign({}, timedVariable)] };
     const env = await boot((url, options) => {
       requests.push({url, options});
-      if (url === "./api/state") return Promise.resolve(response(200, signalsInitial));
+      if (url === "./api/state-lite") return Promise.resolve(response(200, signalsInitial));
       if (url === "./api/workspace/variables") return ++catalogFetches === 1 ? Promise.resolve(response(200, scenarioCatalog)) : new Promise(resolve => catalogResolvers.push(resolve));
       return new Promise(resolve => signalResolvers.push(resolve));
     });

@@ -3887,7 +3887,68 @@ function validate_signal_analyser_view_payload(
     )
 end
 
-function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{String,Any}
+function signal_analyser_prepare_view_snapshot_unlocked(
+    state::SignalAnalyserState,
+    previous_display::SignalAnalyserDisplayState,
+    prospective_display::SignalAnalyserDisplayState,
+    changes::SignalAnalyserViewChanges,
+)::Dict{String,Any}
+    prospective_members = signal_analyser_display_members(prospective_display)
+    prospective_analysis_name = signal_analyser_display_analysis_name(prospective_display)
+    prospective_signal = prospective_analysis_name === nothing ? nothing :
+        signal_by_name(state, prospective_analysis_name)
+    changed = signal_analyser_has_changes(changes)
+    spectrogram_settings_only = signal_analyser_only_spectrogram_settings_changed(changes)
+    persistence_settings_only = signal_analyser_only_persistence_settings_changed(changes)
+    secondary_provider_settings_only =
+        signal_analyser_only_secondary_provider_settings_changed(changes)
+    spectrogram_presentation_only = spectrogram_settings_only &&
+        signal_spectrogram_provider_settings_equal(
+            previous_display.spectrogram_settings,
+            prospective_display.spectrogram_settings,
+        )
+    prepare_spectrum = changed && !secondary_provider_settings_only
+    prepare_spectrogram = changed && !spectrogram_presentation_only &&
+        !persistence_settings_only
+    prepared_display_plots = signal_analyser_prepare_display_plots(
+        state,
+        prospective_display,
+        prospective_signal,
+        prospective_members,
+        materialize_missing_spectra = prepare_spectrum,
+        materialize_missing_spectrogram = prepare_spectrogram,
+        refresh_spectrogram = prepare_spectrogram &&
+            isempty(signal_analyser_display_members(previous_display)) &&
+            !isempty(prospective_members),
+    )
+    prepared_measurements = signal_measurements_snapshot(
+        state.measurements_service,
+        state.view.state_revision,
+        prospective_signal,
+        prospective_display.time_limits,
+        prospective_display.measurement_selection,
+    )
+    prepared_peaks = signal_peaks_snapshot(
+        state.peaks_service,
+        state.view.state_revision,
+        prospective_display,
+        prospective_signal,
+    )
+    snapshot = signal_analyser_snapshot_from_prepared_unlocked(
+        state,
+        prepared_measurements,
+        prepared_peaks,
+        prepared_display_plots,
+    )
+    signal_analyser_publish_display_plots!(state, prepared_display_plots)
+    snapshot
+end
+
+function apply_signal_analyser_view!(
+    state::SignalAnalyserState,
+    data;
+    lightweight::Bool = false,
+)::Dict{String,Any}
     lock(state.lock) do
         requested = validate_signal_analyser_view_payload(state, data)
         requested.revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
@@ -3897,7 +3958,6 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
 
         display = signal_analyser_active_display(state)
         prospective_display = requested.display
-        prospective_members = signal_analyser_display_members(prospective_display)
         active_pane = signal_display_active_pane(
             signal_analyser_layout_by_display_id(state, display.id),
         )
@@ -3905,7 +3965,6 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             signal_analyser_layout_by_display_id(state, display.id),
             signal_display_pane_from_display(active_pane.id, prospective_display),
         )
-        prospective_analysis_name = signal_analyser_display_analysis_name(prospective_display)
         changes = SignalAnalyserViewChanges(
             state.row_selection,
             display,
@@ -3913,63 +3972,37 @@ function apply_signal_analyser_view!(state::SignalAnalyserState, data)::Dict{Str
             prospective_display,
         )
         changed = signal_analyser_has_changes(changes)
-        spectrogram_settings_only = signal_analyser_only_spectrogram_settings_changed(changes)
-        persistence_settings_only = signal_analyser_only_persistence_settings_changed(changes)
-        secondary_provider_settings_only =
-            signal_analyser_only_secondary_provider_settings_changed(changes)
-        spectrogram_presentation_only = spectrogram_settings_only &&
-            signal_spectrogram_provider_settings_equal(
-                display.spectrogram_settings,
-                prospective_display.spectrogram_settings,
-            )
-        prepare_spectrum = changed && !secondary_provider_settings_only
-        prepare_spectrogram = changed && !spectrogram_presentation_only &&
-            !persistence_settings_only
-
-        # Render the complete prospective four-plot aggregate before publishing
-        # any cache or state mutation. Persistence eligibility is derived from
-        # the prospective active Display, never from cache history.
-        next_revision = state.view.state_revision + (changed ? 1 : 0)
-        prospective_signal = prospective_analysis_name === nothing ? nothing :
-            signal_by_name(state, prospective_analysis_name)
-        prepared_display_plots = signal_analyser_prepare_display_plots(
-            state,
-            prospective_display,
-            prospective_signal,
-            prospective_members,
-            materialize_missing_spectra = prepare_spectrum,
-            materialize_missing_spectrogram = prepare_spectrogram,
-            refresh_spectrogram = prepare_spectrogram &&
-                isempty(signal_analyser_display_members(display)) &&
-                !isempty(prospective_members),
-        )
-        prepared_measurements = signal_measurements_snapshot(
-            state.measurements_service,
-            next_revision,
-            prospective_signal,
-            prospective_display.time_limits,
-            prospective_display.measurement_selection,
-        )
-        prepared_peaks = signal_peaks_snapshot(
-            state.peaks_service,
-            next_revision,
-            prospective_display,
-            prospective_signal,
-        )
-        signal_analyser_publish_display_plots!(state, prepared_display_plots)
-        if changed
-            signal_analyser_publish_display_state!(display, prospective_display)
-            state.display_layouts[display.id] = prospective_layout
-            signal_analyser_publish_row_selection!(state, requested.row_selection)
-            signal_analyser_sync_active_display!(state, display)
-            state.view.state_revision += 1
+        if !changed
+            return lightweight ?
+                signal_analyser_state_lite_unlocked(state) :
+                signal_analyser_prepare_view_snapshot_unlocked(
+                    state,
+                    display,
+                    prospective_display,
+                    changes,
+                )
         end
-        signal_analyser_snapshot_from_prepared_unlocked(
-            state,
-            prepared_measurements,
-            prepared_peaks,
-            prepared_display_plots,
-        )
+
+        candidate = signal_analyser_clone_state_for_layout(state)
+        candidate_display = signal_analyser_active_display(candidate)
+        signal_analyser_publish_display_state!(candidate_display, prospective_display)
+        candidate.display_layouts[candidate_display.id] = prospective_layout
+        signal_analyser_publish_row_selection!(candidate, requested.row_selection)
+        signal_analyser_sync_active_display!(candidate, candidate_display)
+        candidate.view.state_revision += 1
+        signal_analyser_invalidate_active_output_unlocked!(candidate)
+        snapshot = if lightweight
+            signal_analyser_state_lite_unlocked(candidate)
+        else
+            signal_analyser_prepare_view_snapshot_unlocked(
+                candidate,
+                display,
+                candidate_display,
+                changes,
+            )
+        end
+        signal_analyser_publish_layout_candidate!(state, candidate)
+        snapshot
     end
 end
 
@@ -4090,7 +4123,11 @@ function signal_analyser_display_analysis_signal(
     analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
 end
 
-function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{String,Any}
+function apply_signal_analyser_display!(
+    state::SignalAnalyserState,
+    data;
+    lightweight::Bool = false,
+)::Dict{String,Any}
     lock(state.lock) do
         requested = validate_signal_analyser_display_payload(state, data)
         requested.revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
@@ -4098,179 +4135,80 @@ function apply_signal_analyser_display!(state::SignalAnalyserState, data)::Dict{
             state.view.state_revision,
         ))
 
+        if requested.operation == "reorder" &&
+            requested.order == [display.id for display in state.displays]
+            return lightweight ?
+                signal_analyser_state_lite_unlocked(state) :
+                signal_analyser_snapshot_unlocked(state)
+        elseif requested.operation == "select" &&
+            requested.display_id == state.active_display_id
+            return lightweight ?
+                signal_analyser_state_lite_unlocked(state) :
+                signal_analyser_snapshot_unlocked(state)
+        end
+
+        candidate = signal_analyser_clone_state_for_layout(state)
         if requested.operation == "reorder"
-            current_order = [display.id for display in state.displays]
-            changed = requested.order != current_order
-            next_revision = state.view.state_revision + (changed ? 1 : 0)
-            active_display = signal_analyser_active_display(state)
-            analysis_signal = signal_analyser_display_analysis_signal(state, active_display)
-            prepared_display_plots = signal_analyser_prepare_display_plots(
-                state,
-                active_display,
-                analysis_signal,
-                signal_analyser_display_plot_names(active_display),
-                materialize_missing_spectra = active_display.active_plot == SPECTRUM_PLOT,
-                materialize_missing_spectrogram = active_display.active_plot == SPECTROGRAM_PLOT,
-                materialize_missing_persistence = active_display.active_plot == PERSISTENCE_PLOT,
-                materialize_spectrum_signal_names = analysis_signal === nothing ?
-                    String[] : String[analysis_signal.name],
-            )
-            prepared_measurements = signal_measurements_snapshot(
-                state.measurements_service,
-                next_revision,
-                analysis_signal,
-                active_display.time_limits,
-                active_display.measurement_selection,
-            )
-            prepared_peaks = signal_peaks_snapshot(
-                state.peaks_service,
-                next_revision,
-                active_display,
-                analysis_signal,
-            )
-            if changed
-                displays_by_id = Dict(display.id => display for display in state.displays)
-                state.displays = SignalAnalyserDisplayState[
-                    displays_by_id[display_id] for display_id in requested.order
-                ]
-                state.view.state_revision += 1
-            end
-            signal_analyser_publish_display_plots!(state, prepared_display_plots)
-            return signal_analyser_snapshot_from_prepared_unlocked(
-                state,
-                prepared_measurements,
-                prepared_peaks,
-                prepared_display_plots,
-            )
+            displays_by_id = Dict(display.id => display for display in candidate.displays)
+            candidate.displays = SignalAnalyserDisplayState[
+                displays_by_id[display_id] for display_id in requested.order
+            ]
+            candidate.view.state_revision += 1
         elseif requested.operation == "create"
-            display_number = state.next_display_number
-            analysis_signal = first(state.signals)
+            display_number = candidate.next_display_number
+            analysis_signal = first(candidate.signals)
             display = SignalAnalyserDisplayState(
                 "display-$display_number",
                 "Display $display_number",
                 TIME_PLOT,
                 analysis_signal.name,
-                [signal.name for signal in state.signals],
-                signal_full_time_limits(state.measurements_service, analysis_signal),
+                [signal.name for signal in candidate.signals],
+                signal_full_time_limits(candidate.measurements_service, analysis_signal),
                 false,
             )
-            prepared_display_plots = signal_analyser_prepare_display_plots(
-                state,
-                display,
-                analysis_signal,
-                signal_analyser_display_plot_names(display),
-                materialize_missing_spectra = display.active_plot == SPECTRUM_PLOT,
-                materialize_missing_spectrogram = display.active_plot == SPECTROGRAM_PLOT,
-                materialize_missing_persistence = display.active_plot == PERSISTENCE_PLOT,
-                materialize_spectrum_signal_names = analysis_signal === nothing ?
-                    String[] : String[analysis_signal.name],
-            )
-            prepared_measurements = signal_measurements_snapshot(
-                state.measurements_service,
-                state.view.state_revision + 1,
-                analysis_signal,
-                display.time_limits,
-                display.measurement_selection,
-            )
-            prepared_peaks = signal_peaks_snapshot(
-                state.peaks_service,
-                state.view.state_revision + 1,
-                display,
-                analysis_signal,
-            )
-            signal_analyser_publish_display_plots!(state, prepared_display_plots)
-            push!(state.displays, display)
-            state.display_layouts[display.id] = signal_display_default_layout(display)
-            state.next_display_number += 1
-            signal_analyser_sync_active_display!(state, display)
-            state.view.state_revision += 1
+            push!(candidate.displays, display)
+            candidate.display_layouts[display.id] = signal_display_default_layout(display)
+            candidate.next_display_number += 1
+            signal_analyser_sync_active_display!(candidate, display)
+            candidate.view.state_revision += 1
+            signal_analyser_invalidate_active_output_unlocked!(candidate)
         elseif requested.operation == "select"
-            display = signal_analyser_display_by_id(state, requested.display_id)
-            changed = display.id != state.active_display_id
-            analysis_signal = signal_analyser_display_analysis_signal(state, display)
-            prepared_display_plots = signal_analyser_prepare_display_plots(
-                state,
-                display,
-                analysis_signal,
-                signal_analyser_display_plot_names(display),
-                materialize_missing_spectra = display.active_plot == SPECTRUM_PLOT,
-                materialize_missing_spectrogram = display.active_plot == SPECTROGRAM_PLOT,
-                materialize_missing_persistence = display.active_plot == PERSISTENCE_PLOT,
-                materialize_spectrum_signal_names = analysis_signal === nothing ?
-                    String[] : String[analysis_signal.name],
-            )
-            next_revision = state.view.state_revision + (changed ? 1 : 0)
-            prepared_measurements = signal_measurements_snapshot(
-                state.measurements_service,
-                next_revision,
-                analysis_signal,
-                display.time_limits,
-                display.measurement_selection,
-            )
-            prepared_peaks = signal_peaks_snapshot(
-                state.peaks_service,
-                next_revision,
-                display,
-                analysis_signal,
-            )
-            signal_analyser_publish_display_plots!(state, prepared_display_plots)
-            if changed
-                signal_analyser_sync_active_display!(state, display)
-                state.view.state_revision += 1
-            end
+            display = signal_analyser_display_by_id(candidate, requested.display_id)
+            signal_analyser_sync_active_display!(candidate, display)
+            candidate.view.state_revision += 1
+            signal_analyser_invalidate_active_output_unlocked!(candidate)
         else
-            close_index = findfirst(display -> display.id == requested.display_id, state.displays)::Int
-            closing_active_display = requested.display_id == state.active_display_id
+            close_index = findfirst(
+                display -> display.id == requested.display_id,
+                candidate.displays,
+            )::Int
+            closing_active_display = requested.display_id == candidate.active_display_id
             remaining_displays = [
-                display for display in state.displays
+                display for display in candidate.displays
                 if display.id != requested.display_id
             ]
             next_active_display = if closing_active_display
                 remaining_displays[max(1, close_index - 1)]
             else
-                signal_analyser_active_display(state)
+                signal_analyser_active_display(candidate)
             end
-            analysis_signal = signal_analyser_display_analysis_signal(state, next_active_display)
-            prepared_display_plots = signal_analyser_prepare_display_plots(
-                state,
-                next_active_display,
-                analysis_signal,
-                signal_analyser_display_plot_names(next_active_display),
-                materialize_missing_spectra =
-                    next_active_display.active_plot == SPECTRUM_PLOT,
-                materialize_missing_spectrogram =
-                    next_active_display.active_plot == SPECTROGRAM_PLOT,
-                materialize_missing_persistence =
-                    next_active_display.active_plot == PERSISTENCE_PLOT,
-                materialize_spectrum_signal_names = analysis_signal === nothing ?
-                    String[] : String[analysis_signal.name],
-            )
-            prepared_measurements = signal_measurements_snapshot(
-                state.measurements_service,
-                state.view.state_revision + 1,
-                analysis_signal,
-                next_active_display.time_limits,
-                next_active_display.measurement_selection,
-            )
-            prepared_peaks = signal_peaks_snapshot(
-                state.peaks_service,
-                state.view.state_revision + 1,
-                next_active_display,
-                analysis_signal,
-            )
-            signal_analyser_publish_display_plots!(state, prepared_display_plots)
-            state.displays = remaining_displays
-            delete!(state.display_layouts, requested.display_id)
-            closing_active_display && signal_analyser_sync_active_display!(state, next_active_display)
-            state.view.state_revision += 1
+            candidate.displays = remaining_displays
+            delete!(candidate.display_layouts, requested.display_id)
+            closing_active_display &&
+                signal_analyser_sync_active_display!(candidate, next_active_display)
+            candidate.view.state_revision += 1
+            if closing_active_display
+                signal_analyser_invalidate_active_output_unlocked!(candidate)
+            else
+                signal_analyser_sync_output_pages_unlocked!(candidate)
+            end
         end
 
-        signal_analyser_snapshot_from_prepared_unlocked(
-            state,
-            prepared_measurements,
-            prepared_peaks,
-            prepared_display_plots,
-        )
+        snapshot = lightweight ?
+            signal_analyser_state_lite_unlocked(candidate) :
+            signal_analyser_snapshot_unlocked(candidate)
+        signal_analyser_publish_layout_candidate!(state, candidate)
+        snapshot
     end
 end
 
@@ -4322,6 +4260,7 @@ function signal_analyser_clone_state_for_layout(
         state.spectrum_service,
         state.spectrogram_service,
         state.persistence_service,
+        signal_analyser_clone_calculation_manager(state.output_manager),
         ReentrantLock(),
     )
 end
@@ -4330,6 +4269,7 @@ function signal_analyser_publish_layout_candidate!(
     state::SignalAnalyserState,
     candidate::SignalAnalyserState,
 )::Nothing
+    signal_analyser_cancel_active_output_unlocked!(state)
     state.signals = candidate.signals
     state.view = candidate.view
     state.row_selection = candidate.row_selection
@@ -4341,6 +4281,7 @@ function signal_analyser_publish_layout_candidate!(
     state.spectrum_cache = candidate.spectrum_cache
     state.spectrogram_cache = candidate.spectrogram_cache
     state.persistence_cache = candidate.persistence_cache
+    state.output_manager = candidate.output_manager
     nothing
 end
 
@@ -4536,7 +4477,8 @@ end
 
 function apply_signal_analyser_layout!(
     state::SignalAnalyserState,
-    data,
+    data;
+    lightweight::Bool = false,
 )::Dict{String,Any}
     lock(state.lock) do
         requested = validate_signal_analyser_layout_payload(state, data)
@@ -4573,18 +4515,17 @@ function apply_signal_analyser_layout!(
             end
             candidate.view.state_revision += 1
         end
-        snapshot = signal_analyser_snapshot_unlocked(
-            candidate,
-            materialize_missing_spectra = false,
-            materialize_missing_spectrogram = false,
-            materialize_missing_persistence = false,
-        )
-        response = signal_analyser_layouts_snapshot_from_state_unlocked(candidate, snapshot)
-        changed && signal_analyser_publish_layout_candidate!(state, candidate)
-        response
+        if changed
+            signal_analyser_publish_layout_candidate!(state, candidate)
+            signal_analyser_invalidate_display_outputs_unlocked!(state, requested.display_id)
+        end
+        lightweight ?
+            signal_analyser_layouts_lite_snapshot_unlocked(state) :
+            signal_analyser_layouts_snapshot_unlocked(state)
     end
 end
 
+include(joinpath(@__DIR__, "signal_output_service.jl"))
 include(joinpath(@__DIR__, "..", "adapters", "engee_workspace_variable_provider.jl"))
 include(joinpath(@__DIR__, "..", "adapters", "engee_workspace_signal_source.jl"))
 include(joinpath(@__DIR__, "workspace_catalog_service.jl"))

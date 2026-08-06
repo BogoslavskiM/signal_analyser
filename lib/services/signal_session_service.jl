@@ -1021,6 +1021,7 @@ function signal_analyser_publish_session!(
     state::SignalAnalyserState,
     candidate::SignalAnalyserState,
 )::Nothing
+    signal_analyser_cancel_active_output_unlocked!(state)
     state.signals = candidate.signals
     state.view = candidate.view
     state.row_selection = candidate.row_selection
@@ -1032,6 +1033,8 @@ function signal_analyser_publish_session!(
     state.spectrum_cache = candidate.spectrum_cache
     state.spectrogram_cache = candidate.spectrogram_cache
     state.persistence_cache = candidate.persistence_cache
+    signal_analyser_sync_output_pages_unlocked!(state)
+    signal_analyser_invalidate_all_outputs_unlocked!(state)
     nothing
 end
 

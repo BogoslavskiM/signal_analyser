@@ -3,6 +3,51 @@
 const fs = require("fs");
 const path = require("path");
 
+function lineAt(source, offset) {
+  return source.slice(0, offset).split("\n").length;
+}
+
+function visibleHtmlCopy(source) {
+  const copy = [];
+  source.replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)>|<[^>]+>|([^<]+)/gi, (match, text, offset) => {
+    if (text && text.trim()) copy.push({ value: text.trim(), offset: offset + match.indexOf(text) });
+    return match;
+  });
+  source.replace(/\b(?:aria-label|title|placeholder|alt)=(['"])(.*?)\1/gi, (match, _quote, value, offset) => {
+    if (value) copy.push({ value, offset: offset + match.indexOf(value) });
+    return match;
+  });
+  return copy;
+}
+
+function dynamicProductCopy(source) {
+  const copy = [];
+  // Only text between markup delimiters is copied.  This avoids treating JS
+  // comparison operators and DOM/API identifiers as UI text.
+  source.replace(/(?:^|[^=])>([A-Za-zА-Яа-яЁё][^<>]*)</g, (match, value, offset) => {
+    if (value.trim()) copy.push({ value: value.trim(), offset: offset + match.indexOf(value) });
+    return match;
+  });
+  source.replace(/\btextContent\s*=\s*(['"])([^'"\\]*(?:\\.[^'"\\]*)*)\1/g, (match, _quote, value, offset) => {
+    copy.push({ value, offset: offset + match.lastIndexOf(value) });
+    return match;
+  });
+  return copy;
+}
+
+function untranslatedEnglish(copy) {
+  // This is deliberately a small, exact vocabulary.  API values, stable DOM
+  // identifiers and user-provided names never enter the visible-copy inventory.
+  const conventionalTokens = new Set(["Engee", "Hz", "kHz", "MHz", "GHz", "THz", "dB", "RMS", "DFT", "FFT", "Plotly", "F", "P", "Y", "JSON", "t", "x", "y", "Shift", "Esc", "log", "linear", "s"]);
+  const interpolationsRemoved = copy.replace(/(['"])\s*\+[\s\S]*\+\s*\1/g, "");
+  const remaining = interpolationsRemoved.replace(/[A-Za-z]+/g, (token) => conventionalTokens.has(token) ? "" : token);
+  return /[A-Za-z]/.test(remaining);
+}
+
+function localizationFindings(file, source, entries) {
+  return entries.filter((entry) => untranslatedEnglish(entry.value)).map((entry) => `${path.relative(process.cwd(), file)}:${lineAt(source, entry.offset)}: ${JSON.stringify(entry.value)}`);
+}
+
 module.exports = async function testSignalAnalyserDisplayStaticContract(assert) {
   const root = path.resolve(__dirname, "../../../..");
   const html = fs.readFileSync(path.join(root, "public/index.html"), "utf8");
@@ -20,11 +65,45 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   const layouts = fs.readFileSync(path.join(root, "public/js/layouts.js"), "utf8");
   const layoutCss = fs.readFileSync(path.join(root, "public/css/layouts.css"), "utf8");
   const publicText = [app, layouts, html].join("\n");
+
+  // TASK-0064: source-only inventory.  It covers static markup plus dynamic
+  // HTML/text/ARIA sinks and CSS generated copy; browser translation is
+  // intentionally forbidden because it would conceal a product-owned string.
+  const localizationSources = [
+    [path.join(root, "public/index.html"), html],
+    [path.join(root, "public/js/app.js"), app],
+    [path.join(root, "public/js/layouts.js"), layouts],
+    [path.join(root, "public/js/settings.js"), fs.readFileSync(path.join(root, "public/js/settings.js"), "utf8")],
+    [path.join(root, "public/js/api.js"), api],
+    [path.join(root, "public/css/app.css"), css],
+    [path.join(root, "public/css/layouts.css"), layoutCss],
+    [path.join(root, "public/css/settings.css"), settingsCss],
+    [path.join(root, "public/css/theme.css"), theme],
+  ];
+  const localizationFailures = [];
+  localizationSources.forEach(([file, source]) => {
+    const extension = path.extname(file);
+    if (extension === ".html") localizationFailures.push(...localizationFindings(file, source, visibleHtmlCopy(source)));
+    if (extension === ".css") {
+      const generated = [];
+      source.replace(/\bcontent\s*:\s*(['"])(.*?)\1/gi, (match, _quote, value, offset) => {
+        generated.push({ value, offset: offset + match.indexOf(value) });
+        return match;
+      });
+      localizationFailures.push(...localizationFindings(file, source, generated));
+    }
+    if (extension === ".js") localizationFailures.push(...localizationFindings(file, source, dynamicProductCopy(source)));
+  });
+  assert(!/\b(?:i18n|locali[sz]e|translateText)\b/i.test(localizationSources.map(([, source]) => source).join("\n")), "TASK-0064 must keep product copy in source; a runtime translation layer is not an accepted localization contract");
+  assert(localizationFailures.length === 0, `TASK-0064 English product-copy inventory failures (${localizationFailures.length}):\n- ${localizationFailures.join("\n- ")}`);
+  [
+    "aria-label='Область ", "role='alert'", "Загрузка макета…", "Не удалось загрузить макет.",
+    "График не обновлён", "Спектрограмма", "некорректные метаданные", "содержат ошибку контракта",
+  ].forEach((copy) => assert((app + layouts).includes(copy), `TASK-0064 must inventory Russian dynamic/accessibility/error/quarantine copy: ${copy}`));
   assert((html.match(/data-testid="active-plot-host"/g) || []).length === 1, "exactly one detached app-owned active graph host must remain available to layouts.js");
   assert(layouts.includes("data-pane-plot-host") && layouts.includes("Plotly.react(task.host") && layouts.includes("data-pane-output-state='ready'"), "each ready pane must own its own live Plotly.react host");
-  [app, layouts].forEach((source) => {
-    assert(source.includes('dragmode:"zoom"') && source.includes("displayModeBar:false") && source.includes("displaylogo:false") && source.includes("showTips:false"), "every Plotly render path must preserve zoom while hiding modebar/logo/tips");
-  });
+  assert(!app.includes("Plotly.react") && !app.includes("loadPlotlyScript"), "app.js must remain metadata-only and must not own a Plotly render/loader lifecycle");
+  assert(layouts.includes('dragmode:"zoom"') && layouts.includes("displayModeBar:false") && layouts.includes("displaylogo:false") && layouts.includes("showTips:false"), "the layouts-owned Plotly render path must preserve zoom while hiding modebar/logo/tips");
   ["staticPlot", "fixedrange", "Plotly.newPlot", "Plotly.toImage", "backgroundImage"].forEach((forbidden) => assert(!publicText.includes(forbidden), `interactive graph source must not contain ${forbidden}`));
   assert(/\.pane-plot-host \.modebar[^}]*display:none!important/.test(layoutCss), "no visible Plotly modebar or reserved modebar container may survive CSS");
   assert(layoutCss.includes(".compact-legend{pointer-events:none") && layoutCss.includes(".graph-help-overlay{position:absolute;z-index:var(--layer-graph-help)") && theme.includes("--layer-graph-help: 1200"), "compact legend and graph-help must be pointer-inert/overlayed at the canonical layer without plot flow changes");
@@ -118,12 +197,11 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(!/overflows*:s*hidden/i.test(css.slice(css.indexOf(".signals"), css.indexOf(".signals") + 1600)), "Signals toolbar/rows must not clip its menu or dialogs");
   assert(/<script\b[^>]*src=["']\.\/js\/api\.js["']/.test(html) && /<script\b[^>]*src=["']\.\/js\/app\.js["']/.test(html), "Genie-relative API and app scripts must be registered");
   assert(!/\b(?:href|src)\s*=\s*["']\/(?:css|js)\//i.test(html), "frontend assets must remain Genie-relative, not root-absolute");
-  assert(html.includes('./js/vendor/plotly-cartesian-3.1.0.min.js'), "Plotly must be loaded from the pinned local vendor asset before the app");
-  assert(html.indexOf('./js/vendor/plotly-cartesian-3.1.0.min.js') < html.indexOf('./js/app.js'), "local Plotly must load before app.js");
+  assert(!html.includes('./js/vendor/plotly-cartesian-3.1.0.min.js'), "Plotly must not be eagerly registered by index.html; layouts.js must load the pinned local asset lazily for ready active output only");
   assert(crypto.createHash("sha256").update(plotly).digest("hex") === "c462b40a1a542e16c3533f97d39fbbb91af4f5267f3cbf23bd70d785efc44c38", "the bundled Plotly artifact must retain its reviewed SHA-256");
   assert(license.includes("MIT License") && license.includes("Plotly Technologies Inc."), "the bundled Plotly artifact must retain its matching MIT license notice");
 
-  assert(api.includes('request("./api/state")'), "state API must use ./api/state");
+  assert(api.includes('request("./api/state-lite",'), "state API must use ./api/state-lite");
   assert(api.includes('request("./api/view", {'), "view API must use ./api/view");
   assert(api.includes('request("./api/displays", {'), "Display lifecycle API must use ./api/displays");
   assert(api.includes('request("./api/signals", {'), "Signals inspector mutations must use the sole ./api/signals route");
@@ -185,9 +263,9 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
     assert(app.includes(term), `frontend must preserve Cascade 5 state/control term ${term}`)
   );
   assert(app.includes("payload.current") && app.includes("status===409"), "stale API responses must canonicalize from the authoritative snapshot");
-  assert(app.includes("moduleName") && app.includes("window.Plotly"), "the local Plotly UMD moduleName export must normalize before rendering");
-  assert(app.includes("loadPlotlyScript(localPlotlyUrl())"), "Plotly recovery must address only the pinned local artifact");
-  assert(!/https?:\/\/|cdn\./i.test(app), "Plotly runtime must not load a CDN asset");
+  assert(layouts.includes("window.moduleName") && layouts.includes("window.Plotly"), "the layouts-owned local Plotly loader must normalize the UMD moduleName export before rendering");
+  assert(layouts.includes("./js/vendor/plotly-cartesian-3.1.0.min.js"), "layouts-owned Plotly recovery must address only the pinned local artifact");
+  assert(!/https?:\/\/|cdn\./i.test(layouts), "layouts-owned Plotly runtime must not load a CDN asset");
   assert(app.includes("activeBottomTab") && !app.includes("api.bottom"), "bottom Signals/Measurements tabs must remain frontend-local state");
   ["ArrowLeft", "ArrowRight", "Home", "End"].forEach((key) => assert(app.includes(`"${key}"`), `bottom tab keyboard navigation must support ${key}`));
   assert(app.includes("function activateBottomTab(tabId, focus)") && app.includes('tab.setAttribute("tabindex", selected ? "0" : "-1")') && app.includes("target.focus()"), "bottom tabs must apply roving tabindex through the shared activator and move focus to the selected tab");
@@ -208,8 +286,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   );
   assert(app.includes("plot === \"time\" && display.normalizeY") && app.includes("plot === \"time\" && display.showMarkers"), "normalization and ordinary markers must be constrained to Time traces");
   assert(app.includes("peakMarkerTrace(display, sourceScale)") && app.includes("normalizedValues(p.items.map"), "Peaks markers must align to the analysis-source normalization scale");
-  assert(app.includes("analysis-source-affine-unclipped") && app.includes("plot-invalid-data-state") && app.includes("clearPlotHost()"), "Time presentation must retain unclipped Peak provenance and the stable invalid-data host state");
-  assert(app.includes('plot === "time" && d.normalizeY ? true : undefined'), "Normalize-specific y-axis layout must be constrained to Time");
+  assert(app.includes("analysis-source-affine-unclipped"), "metadata presentation must retain unclipped Peak provenance without requiring an app-owned Plotly host state");
   assert(app.includes("Object.keys(change).every") && app.includes("showLegend") && app.includes("normalizeY") && app.includes("showMarkers"), "presentation toggles must remain local rather than create a view mutation");
   ["time_limits", "time-min-input", "time-max-input", "time-limits-error"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Cascade 7 Time Limits term ${term}`)
@@ -235,7 +312,6 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   ["spectrum_settings", "spectrumSettingsErrors", "bindSpectrumSettings", "renderSpectrumSettings", "frequency_scale", "hasVisibleComplexSignal"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Cascade 9 Spectrum settings term ${term}`)
   );
-  assert(app.includes('xaxis.type = spectrumSettings(d.spectrum_settings).frequency_scale'), "Spectrum frequency scale must map to Spectrum x-axis layout only");
   assert(app.includes('option.value === "log") option.disabled = !enabled || complex'), "Log Spectrum frequency scale must be unavailable with a visible complex signal or quarantined contract");
   ["frequency_limits", "spectrumFrequencyLimits", "spectrum-frequency-min-input", "spectrum-frequency-max-input", "spectrum-frequency-limits-error"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Cascade 10 Frequency Limits term ${term}`)
@@ -268,13 +344,11 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   ["spectrogram-frequency-scale-select", "spectrogram-frequency-scale-effective", "spectrogram-frequency-scale-error"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `Cascade 16 must expose stable Spectrogram Frequency Scale selector ${id}`)
   );
-  assert(app.includes("spectrogram-log-frequency-error-state") && app.includes("без положительных частот"), "Cascade 16 must expose a stable all-nonpositive Log-frequency plot error");
   assert(/data-testid="spectrogram-frequency-scale-error"[^>]*role="alert"[^>]*hidden/.test(html), "Cascade 16 must reserve an accessible Frequency Scale error");
-  ["spectrogramSettings", "spectrogramFrequencyScaleErrors", "frequency_scale", "available", "effective", "min.apply", "spectrogramFrequencyScaleCommit"].forEach((term) =>
+  ["spectrogramSettings", "spectrogramFrequencyScaleErrors", "frequency_scale", "available", "effective", "spectrogramFrequencyScaleCommit"].forEach((term) =>
     assert(app.includes(term), `Cascade 16 frontend must retain display-local Frequency Scale term ${term}`)
   );
   assert(app.includes('scale.disabled = !enabled || !Array.isArray(scaleMeta.available) || scaleMeta.available.length < 2'), "availability metadata must authoritatively disable Spectrogram Log");
-  assert(app.includes('type:spectrogramScale === "log" ? "log" : undefined'), "effective Spectrogram scale must control only the y axis");
   assert(!/spectrogram.*(?:fft|stft|pspectrum)/i.test(app), "Cascade 16 must not add client-side Spectrogram DSP");
   ["spectrogram-power-min-input", "spectrogram-power-max-input", "spectrogram-power-limits-effective", "spectrogram-power-limits-error"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `Cascade 17 must expose stable Spectrogram Power Limits selector ${id}`)

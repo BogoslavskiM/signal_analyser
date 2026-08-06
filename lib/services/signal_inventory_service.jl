@@ -228,6 +228,7 @@ function signal_inventory_clone_state(state::SignalAnalyserState)
         state.spectrum_service,
         state.spectrogram_service,
         state.persistence_service,
+        signal_analyser_clone_calculation_manager(state.output_manager),
         ReentrantLock(),
     )
 end
@@ -491,6 +492,8 @@ function prepare_signal_inventory_mutation(
     service::SignalInventoryService,
     state::SignalAnalyserState,
     command::AbstractSignalInventoryCommand,
+    ;
+    lightweight::Bool = false,
 )
     prospective = signal_inventory_clone_state(state)
     try
@@ -503,7 +506,10 @@ function prepare_signal_inventory_mutation(
         ))
     end
     prospective.view.state_revision += 1
-    snapshot = signal_analyser_snapshot_unlocked(prospective)
+    signal_analyser_invalidate_all_outputs_unlocked!(prospective)
+    snapshot = lightweight ?
+        signal_analyser_state_lite_unlocked(prospective) :
+        signal_analyser_snapshot_unlocked(prospective)
     PreparedSignalInventoryMutation(prospective, snapshot)
 end
 
@@ -511,6 +517,8 @@ function prepare_signal_inventory_batch_mutation(
     service::SignalInventoryService,
     state::SignalAnalyserState,
     candidates::AbstractVector{WorkspaceSignalCandidate},
+    ;
+    lightweight::Bool = false,
 )::PreparedSignalInventoryMutation
     prospective = signal_inventory_clone_state(state)
     try
@@ -520,7 +528,10 @@ function prepare_signal_inventory_batch_mutation(
         throw(signal_inventory_validation_error(err.field, sprint(showerror, err)))
     end
     prospective.view.state_revision += 1
-    snapshot = signal_analyser_snapshot_unlocked(prospective)
+    signal_analyser_invalidate_all_outputs_unlocked!(prospective)
+    snapshot = lightweight ?
+        signal_analyser_state_lite_unlocked(prospective) :
+        signal_analyser_snapshot_unlocked(prospective)
     PreparedSignalInventoryMutation(prospective, snapshot)
 end
 
@@ -529,6 +540,7 @@ function publish_signal_inventory_mutation!(
     prepared::PreparedSignalInventoryMutation,
 )
     prospective = prepared.state
+    signal_analyser_cancel_active_output_unlocked!(state)
     state.signals = prospective.signals
     state.view = prospective.view
     state.row_selection = prospective.row_selection
@@ -540,13 +552,15 @@ function publish_signal_inventory_mutation!(
     state.spectrum_cache = prospective.spectrum_cache
     state.spectrogram_cache = prospective.spectrogram_cache
     state.persistence_cache = prospective.persistence_cache
+    state.output_manager = prospective.output_manager
     nothing
 end
 
 function apply_signal_inventory!(
     service::SignalInventoryService,
     state::SignalAnalyserState,
-    command::AbstractSignalInventoryCommand,
+    command::AbstractSignalInventoryCommand;
+    lightweight::Bool = false,
 )::Dict{String,Any}
     lock(state.lock) do
         requested_revision = signal_inventory_command_revision(command)
@@ -554,7 +568,12 @@ function apply_signal_inventory!(
             requested_revision,
             state.view.state_revision,
         ))
-        prepared = prepare_signal_inventory_mutation(service, state, command)
+        prepared = prepare_signal_inventory_mutation(
+            service,
+            state,
+            command;
+            lightweight = lightweight,
+        )
         publish_signal_inventory_mutation!(state, prepared)
         prepared.snapshot
     end
@@ -563,7 +582,13 @@ end
 function apply_signal_inventory!(
     service::SignalInventoryService,
     state::SignalAnalyserState,
-    data,
+    data;
+    lightweight::Bool = false,
 )::Dict{String,Any}
-    apply_signal_inventory!(service, state, parse_signal_inventory_command(data))
+    apply_signal_inventory!(
+        service,
+        state,
+        parse_signal_inventory_command(data);
+        lightweight = lightweight,
+    )
 end
