@@ -177,6 +177,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/id="signals-workspace-title"[^>]*tabindex="-1"/.test(html), "workspace catalog must expose a focusable stable dialog-title anchor without inventing a data-testid");
   assert(/data-testid="signals-add-action"[^>]*aria-label="Добавить сигнал"[^>]*title="Добавить сигнал"/.test(html), "Signals Add icon control must expose its direct-dialog accessible semantics");
   assert(!html.includes('data-testid="signals-add-menu"') && !html.includes('data-testid="signals-add-workspace-action"'), "Signals Add must open the primary dialog directly without an intermediate popup control");
+  assert(!app.includes("signals-add-workspace-action") && !app.includes("signals-add-menu"), "obsolete Signals Add popup selectors must not remain as an active trigger or focus-restoration owner in app source");
   assert(/data-testid="signals-workspace-dialog"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="signals-workspace-title"/.test(html), "workspace catalog must use the labelled modal dialog contract");
   assert(/data-testid="signals-workspace-success"[^>]*role="dialog"[^>]*aria-modal="true"[^>]*aria-labelledby="signals-workspace-success-count"/.test(html), "workspace success must use its own labelled modal dialog");
   assert(/data-testid="signals-delete-dialog"[^>]*role="alertdialog"[^>]*aria-modal="true"/.test(html), "signal deletion must use a modal destructive confirmation dialog");
@@ -187,7 +188,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/data-testid="signals-workspace-sample-rate-input"[^>]*aria-describedby=/.test(html), "workspace sample rate must expose validation description semantics");
   assert(!html.includes("signals-workspace-variable-input") && !html.includes("signals-workspace-name-input"), "catalog browser must not retain manual variable-name or rename controls");
   ["signals-toolbar-error", "signals-delete-done", "aria-invalid", "Home", "End", "signalsToolbar"].forEach((term) => assert(app.includes(term), `frontend must preserve final Signals audit behavior ${term}`));
-  ["workspaceBrowser", "workspaceVariables", "signals-workspace-success", "signals-workspace-done", "signals-delete-success", "focus", "Shift+Tab", "signals-add-action"].forEach((term) => assert(app.includes(term), `frontend must preserve catalog completion/menu focus behavior ${term}`));
+  ["workspaceBrowser", "workspaceVariables", "signals-workspace-success", "signals-workspace-done", "signals-delete-success", "focus", "signals-add-action"].forEach((term) => assert(app.includes(term), `frontend must preserve catalog completion and direct-dialog focus behavior ${term}`));
   ["workspace/variables", "Cache-Control", "no-store"].forEach((term) => assert(api.includes(term), `catalog API must retain ${term}`));
   ["aria-busy", "signals-workspace-loading", "signals-workspace-empty", "signals-workspace-retry", "signals-workspace-selection-count", "Не поддерживается", "Тип:", "Размер:", "Отсчёты:", "Источник:", "Совместимость:", "Частота дискретизации:"].forEach((term) => assert(html.includes(term) || app.includes(term), `catalog must retain visible/auditable metadata and busy term ${term}`));
   ["workspace_changed", "stale_workspace_catalog", "stale_state", "catalog_revision", "loadWorkspaceCatalog", "workspaceBrowser.catalog = null", "Escape", "Tab"].forEach((term) => assert(app.includes(term), `catalog stale/focus fail-closed behavior must retain ${term}`));
@@ -238,7 +239,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   ["--warning", "--warning-soft", "--accent-hover", "--accent-active", "--shadow", "--shadow-dialog", "--control-height"].forEach((token) =>
     assert(theme.includes(token), `shared interaction token ${token} must be defined in theme.css`)
   );
-  assert(/html, body\s*\{[^}]*min-width:\s*1024px[^}]*min-height:\s*768px/.test(theme), "application minimum viewport must be 1024x768");
+  assert(!/(?:html\s*,\s*body|html,body|\.signal-analyser)\s*\{[^}]*(?:(?<!min-)(?:width|height|max-width|max-height)\s*:\s*\d+(?:\.\d+)?px)/i.test(`${theme}\n${css}`), "application may retain readable minimum dimensions but must not hard-lock page/app canvas width, height, or max size");
   assert(/button:not\(:disabled\), select:not\(:disabled\), input:not\(:disabled\)\s*\{[^}]*transition:/.test(theme), "enabled controls must share transition states");
   assert(/button:focus-visible, select:focus-visible, input:focus-visible\s*\{[^}]*outline:\s*2px solid var\(--accent\)/.test(theme), "shared controls must retain visible focus styling");
   assert(/\.toolbar-actions \.icon-button:hover,[\s\S]*\.toolbar-actions \.icon-button:active,[\s\S]*\.toolbar-actions \.icon-button:focus-visible/.test(css), "toolbar actions must retain hover, active, and keyboard-focus states");

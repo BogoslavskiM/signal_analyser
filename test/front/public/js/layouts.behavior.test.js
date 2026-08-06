@@ -34,6 +34,7 @@ class FakeElement {
     this.className = "";
     this.isConnected = true;
     this._innerHTML = "";
+    this.generatedModebar = [];
     this.style = {
       values: {},
       setProperty: (name, value) => { this.style.values[name] = String(value); },
@@ -103,6 +104,7 @@ class FakeElement {
     return null;
   }
   querySelectorAll(selector) {
+    if (selector === ".modebar, .modebar-container") return this.generatedModebar;
     if (this.testId === "pane-grid" && selector === "[data-pane-plot-host]") return Object.values(this.document.paneHosts);
     if (this.testId === "layout-popover" && selector === "button:not([disabled])") return this.document.popoverControls().filter((control) => !control.disabled);
     return [];
@@ -297,6 +299,12 @@ function boot(options) {
   const Plotly = {
     react(host, data, layout, config) {
       plotCalls.push({host, data, layout, config});
+      ["modebar", "modebar-container"].forEach((kind) => {
+        const generated = new FakeElement(document, kind);
+        generated.className = kind;
+        host.generatedModebar.push(generated);
+        host.appendChild(generated);
+      });
       if (!settings.deferredPlotly) return Promise.resolve();
       return new Promise((resolve, reject) => plotResolvers.push({host, data, resolve, reject}));
     },
@@ -366,6 +374,7 @@ module.exports = async function testStateLiteLayoutBehavior(assert) {
   await cold.runTimer();
   assert(cold.plotCalls.length === 1 && cold.plotCalls[0].host === cold.document.nodes["active-plot-host"] && cold.plotCalls[0].config.displayModeBar === false, "one current ready output must render exactly once through the layouts-owned live Plotly host");
   assert(cold.document.nodes["active-plot-host"].dataset.plotReady === "true", "the sole current Plotly.react completion must mark the layouts-owned host ready");
+  assert(cold.document.nodes["active-plot-host"].generatedModebar.every((node) => node.parentNode === null), "active Plotly render completion must remove generated modebar and modebar-container DOM while preserving readiness");
 
   const terminal = boot();
   const terminalSnapshot = stateLite(2, {calculationRevision:102, contextKey:"terminal-error"});

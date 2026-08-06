@@ -49,7 +49,7 @@
 @font-face { font-family: Roboto; font-style: normal; font-weight: 500; src: url("../fonts/roboto-v51-latin-medium.ttf") format("truetype"); unicode-range: U+0000-00FF; }
 
 * { box-sizing: border-box; }
-html, body { width: 100%; min-width: 1024px; min-height: 768px; height: 100%; margin: 0; background: var(--app-bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.35; }
+html, body { width: 100%; height: 100%; margin: 0; background: var(--app-bg); color: var(--text); font-family: var(--font); font-size: 14px; line-height: 1.35; }
 button, input, select, textarea { font: inherit; }
 button:disabled { cursor: not-allowed; opacity: .65; }
 

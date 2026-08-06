@@ -95,6 +95,7 @@ function environment(fetch, options) {
     bottomTabs: node(), signals: node(), measurements: node(), measurementContent: node(), retry: node(),
     signalsAddAction: node(), signalsAddMenu: node(), signalsAddWorkspaceAction: node(),
     signalsWorkspaceDialog: node(), signalsWorkspaceTitle: node(), signalsWorkspaceForm: node(), signalsWorkspaceRefresh: node(), signalsWorkspaceLoading: node(), signalsWorkspaceEmpty: node(), signalsWorkspaceList: node(), signalsWorkspaceSelectionCount: node(), signalsWorkspaceSampleRateGroup: node(), signalsWorkspaceVariable: node(), signalsWorkspaceName: node(), signalsWorkspaceRate: node(), signalsWorkspaceRateError: node(), signalsWorkspaceBatchError: node(), signalsWorkspaceRetry: node(), signalsWorkspaceSuccess: node(), signalsWorkspaceSuccessCount: node(), signalsWorkspaceDone: node(), signalsWorkspaceSubmit: node(), signalsWorkspaceCancel: node(), signalsWorkspaceClose: node(),
+    nestedConfirmationDialog: node(), nestedConfirmationStay: node(), nestedConfirmationLeave: node(),
     signalsDeleteDialog: node(), signalsDeleteName: node(), signalsDeleteConfirm: node(), signalsDeleteCancel: node(), signalsDeleteClose: node(), signalsActionError: node(), signalsActionErrorText: node(), signalsActionErrorClose: node(),
     signalBottomTab: node(), measurementsBottomTab: node(), peaksBottomTab: node(), peaksPanel: node(), peaksContent: node(),
   };
@@ -151,6 +152,7 @@ function environment(fetch, options) {
     "[data-testid='signals-workspace-dialog']": e.signalsWorkspaceDialog, "[data-testid='signals-workspace-form']": e.signalsWorkspaceForm, "[data-testid='signals-workspace-refresh']": e.signalsWorkspaceRefresh, "[data-testid='signals-workspace-loading']": e.signalsWorkspaceLoading, "[data-testid='signals-workspace-empty']": e.signalsWorkspaceEmpty, "[data-testid='signals-workspace-list']": e.signalsWorkspaceList, "[data-testid='signals-workspace-selection-count']": e.signalsWorkspaceSelectionCount, "[data-testid='signals-workspace-sample-rate-group']": e.signalsWorkspaceSampleRateGroup, "[data-testid='signals-workspace-variable-input']": e.signalsWorkspaceVariable,
     "[data-testid='signals-workspace-name-input']": e.signalsWorkspaceName, "[data-testid='signals-workspace-sample-rate-input']": e.signalsWorkspaceRate,
     "[data-testid='signals-workspace-sample-rate-error']": e.signalsWorkspaceRateError, "[data-testid='signals-workspace-batch-error']": e.signalsWorkspaceBatchError, "[data-testid='signals-workspace-retry']": e.signalsWorkspaceRetry, "[data-testid='signals-workspace-success']": e.signalsWorkspaceSuccess, "[data-testid='signals-workspace-success-count']": e.signalsWorkspaceSuccessCount, "[data-testid='signals-workspace-done']": e.signalsWorkspaceDone, "[data-testid='signals-workspace-submit']": e.signalsWorkspaceSubmit, "[data-testid='signals-workspace-cancel']": e.signalsWorkspaceCancel, "[data-testid='signals-workspace-close']": e.signalsWorkspaceClose,
+    "[data-testid='nested-confirmation-dialog']": e.nestedConfirmationDialog, "[data-testid='nested-confirmation-stay']": e.nestedConfirmationStay, "[data-testid='nested-confirmation-leave']": e.nestedConfirmationLeave,
     "[data-testid='signals-delete-dialog']": e.signalsDeleteDialog, "[data-testid='signals-delete-name']": e.signalsDeleteName, "[data-testid='signals-delete-confirm']": e.signalsDeleteConfirm,
     "[data-testid='signals-delete-cancel']": e.signalsDeleteCancel, "[data-testid='signals-delete-close']": e.signalsDeleteClose, "[data-testid='signals-action-error']": e.signalsActionError, "[data-testid='signals-action-error-text']": e.signalsActionErrorText, "[data-testid='signals-action-error-close']": e.signalsActionErrorClose,
     "[role='tablist'][aria-label='Данные анализатора']": e.bottomTabs, "[data-testid='bottom-panel-signals']": e.signals,
@@ -233,6 +235,19 @@ function rowInfoTarget(name) {
   };
 }
 function workspaceTarget(testId) { return { closest(selector) { return String(selector).includes(`data-testid='${testId}'`) ? {} : null; } }; }
+function dispatchDocumentEvent(document, type, event) {
+  let stopped = false;
+  const originalStop = event.stopImmediatePropagation;
+  event.stopImmediatePropagation = function stopImmediatePropagation() {
+    stopped = true;
+    if (typeof originalStop === "function") originalStop.call(event);
+  };
+  for (const handler of document.listeners[type] || []) {
+    handler(event);
+    if (stopped) break;
+  }
+}
+function directSignalsAddTarget(env) { return env.e.signalsAddAction; }
 
 module.exports = async function testDisplayBehavior(assert) {
   const initial = snapshot(0);
@@ -520,8 +535,8 @@ module.exports = async function testDisplayBehavior(assert) {
     if (url === "./api/workspace/variables") return Promise.resolve(response(200, catalog));
     return new Promise(resolve => catalogResolvers.push(resolve));
   });
-  const workspaceClick = catalogEnv.document.listeners.click.at(-1);
-  workspaceClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  const workspaceClick = (event) => dispatchDocumentEvent(catalogEnv.document, "click", event);
+  workspaceClick({target:directSignalsAddTarget(catalogEnv), preventDefault() {}, stopImmediatePropagation() {}});
   await flush();
   assert(catalogCalls.filter(call => call.url === "./api/workspace/variables").length === 1 && catalogEnv.e.signalsWorkspaceDialog.hidden === false, "workspace Add must open one catalog dialog and load only the server-owned catalog");
   workspaceClick({target:{closest() { return null; }}, preventDefault() {}, stopImmediatePropagation() {}});
@@ -558,16 +573,16 @@ module.exports = async function testDisplayBehavior(assert) {
   workspaceClick({target:{closest() { return null; }}, preventDefault() {}, stopImmediatePropagation() {}});
   assert(successTabPrevented && successShiftTabPrevented && catalogEnv.e.signalsWorkspaceDone.focused && successEscapePrevented && successEnterPrevented && catalogEnv.e.signalsWorkspaceSuccess.hidden === false && catalogCalls.filter(call => call.url === "./api/signals").length === successPosts, "Done-only success dialog must self-wrap Tab/Shift+Tab and keep Escape, Enter, and overlay inert");
   workspaceClick({target:workspaceTarget("signals-workspace-done"), preventDefault() {}, stopImmediatePropagation() {}});
-  assert(catalogEnv.e.signalsWorkspaceSuccess.hidden === true && catalogEnv.e.signalsAddWorkspaceAction.focused === true, "Done must not repeat the batch and must restore focus to the workspace Add menu action");
-  workspaceClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  assert(catalogEnv.e.signalsWorkspaceSuccess.hidden === true && catalogEnv.e.signalsAddAction.focused === true, "Done must not repeat the batch and must restore focus to Signals Add");
+  workspaceClick({target:directSignalsAddTarget(catalogEnv), preventDefault() {}, stopImmediatePropagation() {}});
   await flush();
   workspaceClick({target:workspaceTarget("signals-workspace-cancel"), preventDefault() {}, stopImmediatePropagation() {}});
-  assert(catalogEnv.e.signalsWorkspaceDialog.hidden === true && catalogEnv.e.signalsAddWorkspaceAction.focused === true, "visible Cancel must dismiss the browser and restore the workspace Add trigger");
-  workspaceClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  assert(catalogEnv.e.signalsWorkspaceDialog.hidden === true && catalogEnv.e.signalsAddAction.focused === true, "visible Cancel must dismiss the browser and restore Signals Add");
+  workspaceClick({target:directSignalsAddTarget(catalogEnv), preventDefault() {}, stopImmediatePropagation() {}});
   await flush();
   workspaceClick({target:workspaceTarget("signals-workspace-close"), preventDefault() {}, stopImmediatePropagation() {}});
-  assert(catalogEnv.e.signalsWorkspaceDialog.hidden === true && catalogEnv.e.signalsAddWorkspaceAction.focused === true, "visible Close must dismiss the browser and restore the workspace Add trigger");
-  workspaceClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  assert(catalogEnv.e.signalsWorkspaceDialog.hidden === true && catalogEnv.e.signalsAddAction.focused === true, "visible Close must dismiss the browser and restore Signals Add");
+  workspaceClick({target:directSignalsAddTarget(catalogEnv), preventDefault() {}, stopImmediatePropagation() {}});
   await flush();
   workspaceChange({target:{dataset:{workspaceVariableId:"wv_raw"}, checked:true}});
   catalogEnv.e.signalsWorkspaceRate.value = "48000";
@@ -587,23 +602,42 @@ module.exports = async function testDisplayBehavior(assert) {
     if (url === "./api/state-lite") return Promise.resolve(response(200, signalsInitial));
     return new Promise(resolve => browserLoads.push(resolve));
   });
-  const browserClick = browserEnv.document.listeners.click.at(-1);
-  browserClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  const browserClick = (event) => dispatchDocumentEvent(browserEnv.document, "click", event);
+  browserClick({target:directSignalsAddTarget(browserEnv), preventDefault() {}, stopImmediatePropagation() {}});
   assert(browserEnv.e.signalsWorkspaceForm.getAttribute("aria-busy") === "true" && browserEnv.e.signalsWorkspaceLoading.hidden === false && browserEnv.e.signalsWorkspaceRefresh.disabled && browserEnv.e.signalsWorkspaceClose.disabled && browserEnv.e.signalsWorkspaceTitle.focused, "catalog loading must expose one busy form, lock every visible dismissal/control and focus the title");
   browserLoads.shift()(response(502, {error:{message:"provider unavailable"}}));
   await flush();
-  assert(browserEnv.e.signalsWorkspaceRetry.hidden === false && browserEnv.e.signalsWorkspaceBatchError.hidden === false && browserEnv.e.signalsWorkspaceRetry.focused, "catalog provider failure must retain a recoverable Retry destination rather than fabricate an empty catalog");
+  assert(browserEnv.e.signalsWorkspaceForm.getAttribute("aria-busy") === "false" && browserEnv.e.signalsWorkspaceRetry.hidden === false && browserEnv.e.signalsWorkspaceBatchError.hidden === false && browserEnv.e.signalsWorkspaceRetry.focused, "catalog 502 must exit loading and retain a focused recoverable Retry destination rather than fabricate an empty catalog");
   browserClick({target:workspaceTarget("signals-workspace-retry"), preventDefault() {}, stopImmediatePropagation() {}});
   browserLoads.shift()(response(200, {catalog_revision:"wc_123e4567-e89b-42d3-a456-426614174000", expires_at:"2099-01-01T00:00:00Z", truncated:true, total:1001, variables:[Object.assign({}, timedVariable)]}));
   await flush();
   assert(browserEnv.e.signalsWorkspaceForm.getAttribute("aria-busy") === "false" && browserEnv.e.signalsWorkspaceEmpty.hidden === true && browserEnv.e.signalsWorkspaceList.innerHTML.includes("timed vector") && browserEnv.e.signalsWorkspaceSubmit.disabled, "a nonempty truncated catalog completion must end loading, render its available row, and still prohibit an empty batch mutation");
   assert(browserEnv.e.signalsWorkspaceSelectionCount.textContent.includes("Каталог обновлён. Выберите переменные снова.") && browserEnv.e.signalsWorkspaceSelectionCount.textContent.includes("1 из 1001") && browserEnv.e.signalsWorkspaceSelectionCount.textContent.includes("лимит 1000"), "Retry must show the reset instruction and truncated shown/total/cap metadata simultaneously");
+  let failedCatalogEscapePrevented = false;
+  browserEnv.document.listeners.keydown.forEach(handler => handler({key:"Escape", preventDefault() { failedCatalogEscapePrevented = true; }, stopImmediatePropagation() {}}));
+  await flush();
+  assert(failedCatalogEscapePrevented && browserEnv.e.signalsWorkspaceDialog.hidden === true && browserEnv.e.signalsAddAction.focused === true, "Escape after a recoverable catalog 502 lifecycle must close the main blocking dialog and restore focus to direct Signals Add");
+
+  const nestedEnv = await boot((url) => {
+    if (url === "./api/state-lite") return Promise.resolve(response(200, signalsInitial));
+    if (url === "./api/workspace/variables") return Promise.resolve(response(200, catalog));
+    throw new Error(`unexpected request ${url}`);
+  });
+  const nestedClick = (event) => dispatchDocumentEvent(nestedEnv.document, "click", event);
+  nestedClick({target:directSignalsAddTarget(nestedEnv), preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  nestedEnv.document.listeners.change.at(-1)({target:{dataset:{workspaceVariableId:"wv_timed"}, checked:true}});
+  nestedClick({target:workspaceTarget("signals-workspace-close"), preventDefault() {}, stopImmediatePropagation() {}});
+  assert(nestedEnv.e.nestedConfirmationDialog.hidden === false && nestedEnv.e.nestedConfirmationStay.focused && nestedEnv.e.signalsWorkspaceDialog.hidden === false, "dirty workspace dismissal must give nested confirmation the visible focus and Escape priority");
+  dispatchDocumentEvent(nestedEnv.document, "keydown", {key:"Escape", preventDefault() {}, stopImmediatePropagation() {}});
+  await flush();
+  assert(nestedEnv.e.nestedConfirmationDialog.hidden === true && nestedEnv.e.signalsWorkspaceDialog.hidden === false && nestedEnv.e.signalsWorkspaceClose.focused, "Escape must dismiss only nested dirty confirmation and return focus to the still-open workspace dialog");
 
   const signalsCalls = [];
   const signalsEnv = await boot((url, options) => { signalsCalls.push({url, options}); return Promise.resolve(response(200, signalsInitial)); });
   let addEnterPrevented = false;
   signalsEnv.e.signalsAddAction.listeners.keydown({key:"Enter", target:signalsEnv.e.signalsAddAction, preventDefault() { addEnterPrevented = true; }}); await flush();
-  assert(addEnterPrevented && signalsEnv.e.signalsAddMenu.hidden === false && signalsEnv.e.signalsAddWorkspaceAction.focused === true, "Enter on Signals Add must mount the menu and focus Workspace after rendering without a network mutation");
+  assert(addEnterPrevented && signalsEnv.e.signalsWorkspaceDialog.hidden === false && signalsCalls.filter(call => call.url === "./api/workspace/variables").length === 1 && signalsEnv.e.signalsWorkspaceTitle.focused, "Enter on Signals Add must open the blocking catalog directly, request it once, and focus its title");
   // TASK-0018: per-row Inspector controls must retain the same authoritative
   // lifecycle as the toolbar without relying on rendered table positions.
   const rowActionCalls = [], rowActionResolvers = [];
@@ -1800,8 +1834,8 @@ module.exports = async function testDisplayBehavior(assert) {
       if (url === "./api/workspace/variables") return ++catalogFetches === 1 ? Promise.resolve(response(200, scenarioCatalog)) : new Promise(resolve => catalogResolvers.push(resolve));
       return new Promise(resolve => signalResolvers.push(resolve));
     });
-    const click = env.document.listeners.click.at(-1), change = env.document.listeners.change.at(-1);
-    click({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+    const click = (event) => dispatchDocumentEvent(env.document, "click", event), change = env.document.listeners.change.at(-1);
+    click({target:directSignalsAddTarget(env), preventDefault() {}, stopImmediatePropagation() {}});
     await flush();
     change({target:{dataset:{workspaceVariableId:"wv_timed"}, checked:true}});
     click({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
@@ -1816,7 +1850,7 @@ module.exports = async function testDisplayBehavior(assert) {
   replayable.signalResolvers.shift()(response(409, {error:{code:"stale_state"}, current:signalsSnapshot(2, [A, B], A)}));
   await flush();
   assert(replayable.requests.filter(call => call.url === "./api/signals").length === 2 && replayable.env.e.signalsWorkspaceBatchError.hidden === false, "a second stale_state must stop visibly and never issue a third automatic replay");
-  replayable.env.document.listeners.click.at(-1)({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
+  dispatchDocumentEvent(replayable.env.document, "click", {target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
   await flush();
   const explicitRetry = replayable.requests.filter(call => call.url === "./api/signals");
   assert(explicitRetry.length === 3 && JSON.parse(explicitRetry.at(-1).options.body).state_revision === 2, "after bounded stale stop, an explicit user retry must serialize the accepted authoritative current revision");
@@ -1828,7 +1862,7 @@ module.exports = async function testDisplayBehavior(assert) {
     expired.catalogResolvers.shift()(response(200, {catalog_revision:"wc_c5fe791f-1760-42f3-a8fb-7b50d452aef3", expires_at:"2099-01-01T00:00:00Z", truncated:false, total:1, variables:[Object.assign({}, timedVariable)]}));
     await flush();
     expired.env.document.listeners.change.at(-1)({target:{dataset:{workspaceVariableId:"wv_timed"}, checked:true}});
-    expired.env.document.listeners.click.at(-1)({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
+    dispatchDocumentEvent(expired.env.document, "click", {target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
     await flush();
     const explicitRetry = expired.requests.filter(call => call.url === "./api/signals");
     assert(explicitRetry.length === 2 && JSON.parse(explicitRetry.at(-1).options.body).state_revision === 1, "after expiry fail-closed refresh, the explicit retry must serialize accepted authoritative current state_revision");
@@ -1840,7 +1874,7 @@ module.exports = async function testDisplayBehavior(assert) {
   ], A);
   const changedActive = await workspaceStaleScenario("2099-01-01T00:00:00Z", "stale_state", changedActiveCurrent);
   assert(changedActive.requests.filter(call => call.url === "./api/signals").length === 1 && changedActive.env.e.signalsWorkspaceBatchError.hidden === false, "stale_state with a changed active Display must visibly stop without replaying the prior Display mutation");
-  changedActive.env.document.listeners.click.at(-1)({target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
+  dispatchDocumentEvent(changedActive.env.document, "click", {target:workspaceTarget("signals-workspace-submit"), preventDefault() {}, stopImmediatePropagation() {}});
   await flush();
   const changedActiveRetry = changedActive.requests.filter(call => call.url === "./api/signals");
   assert(changedActiveRetry.length === 2 && JSON.parse(changedActiveRetry.at(-1).options.body).state_revision === 1, "changed-active stale stop must retain canonical current state for an explicit retry, never the stale source Display revision");
@@ -1857,8 +1891,8 @@ module.exports = async function testDisplayBehavior(assert) {
   // focus trap rather than a synthetic index-only list.
   keyboard.signalResolvers.shift()(response(200, signalsSnapshot(1, [A, B, "timed vector"], "timed vector")));
   await flush();
-  const keyboardClick = keyboard.env.document.listeners.click.at(-1);
-  keyboardClick({target:workspaceTarget("signals-add-workspace-action"), preventDefault() {}, stopImmediatePropagation() {}});
+  const keyboardClick = (event) => dispatchDocumentEvent(keyboard.env.document, "click", event);
+  keyboardClick({target:directSignalsAddTarget(keyboard.env), preventDefault() {}, stopImmediatePropagation() {}});
   keyboard.catalogResolvers.shift()(response(200, { catalog_revision:"wc_9a44062c-7236-48d7-8f07-2c89f63991f0", expires_at:"2099-01-01T00:00:00Z", truncated:false, total:1, variables:[Object.assign({}, timedVariable)] }));
   await flush();
   keyboard.env.document.listeners.change.at(-1)({target:{dataset:{workspaceVariableId:"wv_timed"}, checked:true}});
@@ -1878,7 +1912,9 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(forwardWrapped && keyboard.env.e.signalsWorkspaceClose.focused, "workspace modal Tab must wrap from Add to Close in native visible-control order");
   const postsBeforeModalKeys = keyboard.requests.filter(call => call.url === "./api/signals").length;
   let escapePrevented = false, enterPrevented = false;
-  keyboard.env.document.listeners.keydown.forEach(handler => handler({key:"Escape", preventDefault() { escapePrevented = true; }, stopImmediatePropagation() {}}));
-  keyboard.env.document.listeners.keydown.forEach(handler => handler({key:"Enter", preventDefault() { enterPrevented = true; }, stopImmediatePropagation() {}}));
-  assert(escapePrevented && enterPrevented && keyboard.env.e.signalsWorkspaceDialog.hidden === false && keyboard.requests.filter(call => call.url === "./api/signals").length === postsBeforeModalKeys, "workspace modal Escape/Enter must be inert: neither dismiss nor submit may bypass visible actions");
+  dispatchDocumentEvent(keyboard.env.document, "keydown", {key:"Enter", preventDefault() { enterPrevented = true; }, stopImmediatePropagation() {}});
+  dispatchDocumentEvent(keyboard.env.document, "keydown", {key:"Escape", preventDefault() { escapePrevented = true; }, stopImmediatePropagation() {}});
+  assert(escapePrevented && enterPrevented && keyboard.env.e.nestedConfirmationDialog.hidden === false && keyboard.env.e.signalsWorkspaceDialog.hidden === false && keyboard.requests.filter(call => call.url === "./api/signals").length === postsBeforeModalKeys, "dirty workspace Escape must open nested confirmation while Enter remains inert and no mutation is sent");
+  dispatchDocumentEvent(keyboard.env.document, "keydown", {key:"Escape", preventDefault() {}, stopImmediatePropagation() {}});
+  assert(keyboard.env.e.nestedConfirmationDialog.hidden === true && keyboard.env.e.signalsWorkspaceDialog.hidden === false && keyboard.env.e.signalsWorkspaceClose.focused, "nested confirmation Escape must retain the workspace dialog and return focus to Close");
 };

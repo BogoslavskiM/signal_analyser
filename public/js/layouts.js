@@ -47,6 +47,7 @@
   function node(testId) { return document.querySelector("[data-testid='" + testId + "']"); }
   function setText(testId, value) { var target = node(testId); if (target) target.textContent = value; return target; }
   function setHidden(testId, hidden) { var target = node(testId); if (target) target.hidden = hidden; return target; }
+  function removeGeneratedModebar(host) { if (!host || typeof host.querySelectorAll !== "function") return; Array.prototype.slice.call(host.querySelectorAll(".modebar, .modebar-container")).forEach(function(node) { if (node && typeof node.remove === "function") node.remove(); else if (node && node.parentNode) node.parentNode.removeChild(node); }); }
   function setLayoutDisabled(control, disabled) {
     if (!control) return;
     if (disabled) {
@@ -273,6 +274,7 @@
       if (!Plotly || typeof Plotly.react !== "function" || !task.host.isConnected || !task.host.getBoundingClientRect().width || !task.host.getBoundingClientRect().height) return;
       task.inFlight = true;
       Promise.resolve(Plotly.react(task.host, panePlotData(task.record), panePlotLayout(task.record, task.compact), { responsive:true, displaylogo:false, displayModeBar:false, showTips:false })).then(function() {
+        removeGeneratedModebar(task.host);
         task.host.dataset.plotReady = "true";
       }, function() { renderLocalPaneError(task.host, "Не удалось обновить интерактивный график."); }).finally(function() {
         task.inFlight = false;
@@ -893,7 +895,7 @@
       ensureLocalPlotly().then(function(Plotly) {
         if (!current.host.isConnected || paneRenderQueue[key] !== current) return null;
         return Plotly.react(current.host, plot.data, plot.layout, Object.assign({ responsive:true, displaylogo:false, displayModeBar:false, showTips:false }, plot.config || {}));
-      }).then(function(result) { if (result !== null && paneRenderQueue[key] === current) current.host.dataset.plotReady = "true"; }, function() { if (paneRenderQueue[key] === current) renderLocalPaneError(current.host, "Не удалось обновить интерактивный график."); }).finally(function() {
+      }).then(function(result) { if (result !== null && paneRenderQueue[key] === current) { removeGeneratedModebar(current.host); current.host.dataset.plotReady = "true"; } }, function() { if (paneRenderQueue[key] === current) renderLocalPaneError(current.host, "Не удалось обновить интерактивный график."); }).finally(function() {
         var latest = paneRenderQueue[key];
         current.inFlight = false;
         if (paneRenderQueue[key] !== current) { latest.inFlight = false; latest.scheduled = true; window.requestAnimationFrame(renderLatestPane); }

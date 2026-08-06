@@ -43,6 +43,9 @@ module.exports = async function testDesignV2StaticContract(assert) {
     expect(fs.existsSync(path.join(root, "public/icons", asset)), `local SVG ${asset} must exist`);
   });
   expect(!/https?:\/\/(?:[^"']+\.)?(?:googleapis|gstatic|cdnjs|unpkg|jsdelivr)\./i.test(html + css + app + layouts), "design-v2 shell must not introduce runtime CDN assets");
+  expect(/html\s*,\s*body\s*\{(?=[^}]*\bwidth\s*:\s*100%)(?=[^}]*\bheight\s*:\s*100%)/.test(layoutsCss), "page shell must fill its available viewport/container without a minimum canvas lock");
+  expect(/\.signal-analyser\s*\{(?=[^}]*\bwidth\s*:\s*100%)(?=[^}]*\bheight\s*:\s*100%)/.test(layoutsCss), "application shell must fill its containing block rather than a checkpoint-sized canvas");
+  expect(!/(?:html\s*,\s*body|html,body|\.signal-analyser)\s*\{[^}]*(?:(?<!min-)(?:width|height|max-width|max-height)\s*:\s*\d+(?:\.\d+)?px)/i.test(layoutsCss), "page and application shells may retain readable minimums but must not use fixed or max pixel canvas locks that prevent filling a larger container");
   expect(lastDeclaration(css, ".app-toolbar", "height") === "44px", "zone 1 toolbar must finish at exactly 44px");
   expect(lastDeclaration(css, ".display-workspace", "grid-template-rows") === "42px 32px minmax(0,1fr)", "zone 2 workspace/title/navigation rows must finish at exactly 42px/32px");
   expect(lastDeclaration(css, ".display-tabs", "height") === "32px", "zone 2 Display navigation must finish at exactly 32px");
@@ -77,7 +80,6 @@ module.exports = async function testDesignV2StaticContract(assert) {
     ["layout-toast", "--layer-passive-toast", "layout toast"],
     ["display-overflow-menu", "--layer-menu", "pane menu"],
     ["signal-columns-menu", "--layer-menu", "inspector menu"],
-    ["signals-add-menu", "--layer-menu", "signal add menu"],
     ["graph-help-overlay", "--layer-graph-help", "graph help"],
     ["overlay-tooltip", "--layer-tooltip", "tooltip"],
     ["signals-dialog-layer", "--layer-main-modal-backdrop", "primary dialog backdrop"],
