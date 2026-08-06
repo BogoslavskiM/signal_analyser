@@ -356,6 +356,19 @@ module.exports = async function testStateLiteLayoutBehavior(assert) {
   assert(cold.plotCalls.length === 1 && cold.plotCalls[0].host === cold.document.nodes["active-plot-host"] && cold.plotCalls[0].config.displayModeBar === false, "one current ready output must render exactly once through the layouts-owned live Plotly host");
   assert(cold.document.nodes["active-plot-host"].dataset.plotReady === "true", "the sole current Plotly.react completion must mark the layouts-owned host ready");
 
+  const terminal = boot();
+  const terminalSnapshot = stateLite(2, {calculationRevision:102, contextKey:"terminal-error"});
+  terminal.activeResponders.push(activeOutput(terminalSnapshot, "", {
+    isready:true,
+    success:false,
+    error:"Расчёт активного графика не завершился за допустимое число опросов",
+    data:[],
+  }));
+  terminal.publish(terminalSnapshot);
+  await terminal.runTimer();
+  assert(terminal.document.nodes["pane-grid"].innerHTML.includes("pane-output-error") && !terminal.document.nodes["pane-grid"].innerHTML.includes("pane-output-loading"), "a typed terminal active-output error must replace loading with the visible blocker state");
+  assert(terminal.apiCalls.filter((call) => call.kind === "active").length === 1 && !terminal.timers.some((timer) => !timer.cancelled && !timer.ran), "a terminal active-output error must not restart polling or issue a replacement calculation request");
+
   const race = boot();
   const paneOne = stateLite(10, {panes:[pane("pane-1", "time", [A]), pane("pane-2", "spectrum", [B])], activePaneId:"pane-1", calculationRevision:201, contextKey:"context-old"});
   const paneTwo = stateLite(11, {panes:[pane("pane-1", "time", [A]), pane("pane-2", "spectrum", [B])], activePaneId:"pane-2", calculationRevision:202, contextKey:"context-current"});

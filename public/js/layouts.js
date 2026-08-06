@@ -459,6 +459,7 @@
     ui.error = "";
     ui.returnFocus = trigger || document.activeElement;
     render();
+    window.dispatchEvent(new window.CustomEvent("signal-analyser-layout-popover", { detail:{ open:true, node:popover, trigger:ui.returnFocus } }));
     window.requestAnimationFrame(function() {
       positionPopover();
       var close = node("layout-cancel-close");
@@ -474,6 +475,7 @@
     ui.error = "";
     if (layout) { ui.draftRows = layout.rows; ui.draftColumns = layout.columns; }
     render();
+    window.dispatchEvent(new window.CustomEvent("signal-analyser-layout-popover", { detail:{ open:false } }));
     if (restoreFocus !== false) {
       var focus = ui.returnFocus || node("layout-trigger");
       if (focus && typeof focus.focus === "function") focus.focus();
@@ -727,6 +729,7 @@
   window.SignalAnalyserLayouts = {
     refresh:refresh,
     acceptEnvelope:acceptEnvelope,
+    closePopover:function() { closePopover(true); },
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);

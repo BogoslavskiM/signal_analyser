@@ -79,6 +79,28 @@ function active_output_publish!(
     )
 end
 
+"""Install a controlled background task without running a calculation."""
+function active_output_install_task!(state, context, task; poll_count::Int = 1)
+    lock(state.lock) do
+        page_id = ACTIVE_OUTPUT.signal_analyser_output_page_id(
+            context.display_id,
+            context.pane_id,
+        )
+        state.output_manager.active_context = context
+        state.output_manager.active_task = task
+        state.output_manager.active_poll_count = poll_count
+        state.output_manager.cancellation_token = ACTIVE_OUTPUT.SignalAnalyserCancellationToken()
+        state.output_manager.need_update_pages[page_id] = true
+        state.output_manager.output_statuses[page_id] = ACTIVE_OUTPUT.SignalAnalyserOutputStatus(
+            context,
+            false,
+            false,
+            "",
+        )
+    end
+    nothing
+end
+
 @testset "TASK-0065 lite metadata and legacy state contracts" begin
     state = ACTIVE_OUTPUT.default_signal_analyser_state()
     lite = ACTIVE_OUTPUT.signal_analyser_state_lite(state)
@@ -208,4 +230,95 @@ end
     @test !occursin("calculation_revision", serialized)
     @test !occursin("need_update_pages", serialized)
     @test !occursin("plot_cache", serialized)
+end
+
+@testset "TASK-0075 active output terminalizes no-wait polling without restart" begin
+    # The public polling path must yield the scheduler itself: no test-side
+    # wait(task) is allowed before a ready response can be observed.
+    ACTIVE_OUTPUT.reset_pspectrum_double!()
+    state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    context = active_output_context(state)
+    response = ACTIVE_OUTPUT.signal_analyser_active_output(state, context.display_id, context.pane_id)
+    @test response["isready"] === false && response["success"] === false && isempty(response["data"])
+    for _ in 1:16
+        response["isready"] && break
+        response = ACTIVE_OUTPUT.signal_analyser_active_output(state, context.display_id, context.pane_id)
+    end
+    @test response["isready"] === true && response["success"] === true
+    @test !isempty(response["data"])
+
+    # A completed task which failed is not another pending poll and cannot
+    # silently launch a replacement task.
+    failed_state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    failed_context = active_output_context(failed_state)
+    failed_task = Task(() -> error("deterministic task failure"))
+    schedule(failed_task)
+    yield()
+    @test istaskdone(failed_task) && istaskfailed(failed_task)
+    active_output_install_task!(failed_state, failed_context, failed_task)
+    failed = ACTIVE_OUTPUT.signal_analyser_active_output(
+        failed_state,
+        failed_context.display_id,
+        failed_context.pane_id,
+    )
+    @test failed["isready"] === true && failed["success"] === false && isempty(failed["data"])
+    @test occursin("завершился с ошибкой", failed["error"])
+    @test failed_state.output_manager.active_task === nothing
+    failed_again = ACTIVE_OUTPUT.signal_analyser_active_output(
+        failed_state,
+        failed_context.display_id,
+        failed_context.pane_id,
+    )
+    @test failed_again == failed && failed_state.output_manager.active_task === nothing
+
+    # A normally completed task that did not publish is likewise terminal.
+    unpublished_state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    unpublished_context = active_output_context(unpublished_state)
+    unpublished_task = Task(() -> nothing)
+    schedule(unpublished_task)
+    yield()
+    @test istaskdone(unpublished_task) && !istaskfailed(unpublished_task)
+    active_output_install_task!(unpublished_state, unpublished_context, unpublished_task)
+    unpublished = ACTIVE_OUTPUT.signal_analyser_active_output(
+        unpublished_state,
+        unpublished_context.display_id,
+        unpublished_context.pane_id,
+    )
+    @test unpublished["isready"] === true && unpublished["success"] === false && isempty(unpublished["data"])
+    @test occursin("без публикации", unpublished["error"])
+    @test unpublished_state.output_manager.active_task === nothing
+
+    # The first task counts as poll one. Exactly 63 further pending responses
+    # are permitted; the 64th becomes one terminal lightweight error.
+    bounded_state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    bounded_context = active_output_context(bounded_state)
+    blocker = Channel{Nothing}(1)
+    stuck_task = @async take!(blocker)
+    active_output_install_task!(bounded_state, bounded_context, stuck_task; poll_count = 1)
+    for _ in 1:62
+        pending = ACTIVE_OUTPUT.signal_analyser_active_output(
+            bounded_state,
+            bounded_context.display_id,
+            bounded_context.pane_id,
+        )
+        @test pending["isready"] === false && pending["success"] === false && isempty(pending["data"])
+    end
+    @test bounded_state.output_manager.active_poll_count == 63
+    bounded = ACTIVE_OUTPUT.signal_analyser_active_output(
+        bounded_state,
+        bounded_context.display_id,
+        bounded_context.pane_id,
+    )
+    @test bounded["isready"] === true && bounded["success"] === false && isempty(bounded["data"])
+    @test bounded["error"] == ACTIVE_OUTPUT.SIGNAL_ANALYSER_ACTIVE_OUTPUT_POLL_LIMIT_ERROR
+    @test bounded_state.output_manager.active_task === nothing
+    @test bounded_state.output_manager.cancellation_token === nothing
+    @test bounded_state.output_manager.active_poll_count == 0
+    bounded_again = ACTIVE_OUTPUT.signal_analyser_active_output(
+        bounded_state,
+        bounded_context.display_id,
+        bounded_context.pane_id,
+    )
+    @test bounded_again == bounded && bounded_state.output_manager.active_task === nothing
+    put!(blocker, nothing)
 end

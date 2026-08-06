@@ -2320,6 +2320,7 @@ mutable struct SignalAnalyserCalculationManager
     active_page_id::Union{Nothing,String}
     active_context::Union{Nothing,SignalAnalyserOutputContextKey}
     active_task::Union{Nothing,Task}
+    active_poll_count::Int
     cancellation_token::Union{Nothing,SignalAnalyserCancellationToken}
 end
 
@@ -2335,6 +2336,7 @@ function SignalAnalyserCalculationManager(page_ids::AbstractVector{<:AbstractStr
         nothing,
         nothing,
         nothing,
+        0,
         nothing,
     )
 end
@@ -2351,6 +2353,7 @@ function signal_analyser_clone_calculation_manager(
         manager.active_page_id,
         nothing,
         nothing,
+        0,
         nothing,
     )
 end

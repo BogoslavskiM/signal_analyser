@@ -17,7 +17,8 @@
       <div class="toolbar-actions" aria-label="Действия"><button class="icon-button" type="button" data-testid="import-session-action" aria-label="Импортировать сессию" title="Импортировать сессию"><img class="icon-asset" src="./icons/import.svg" alt="" aria-hidden="true"></button><button class="icon-button" type="button" data-testid="export-action" aria-label="Сохранить сессию" title="Сохранить сессию"><img class="icon-asset" src="./icons/save.svg" alt="" aria-hidden="true"></button><button class="icon-button" type="button" data-testid="help-action" aria-label="Справка недоступна" title="Справка пока недоступна" disabled><img class="icon-asset" src="./icons/help-circle.svg" alt="" aria-hidden="true"></button><p class="session-action-status" data-testid="session-action-status" role="status" aria-live="polite" hidden></p></div>
     </header>
     <div class="main-stage">
-      <section class="display-workspace" aria-label="Отображение сигналов">
+      <section class="display-workspace" aria-label="Отображение сигналов" data-testid="display-workspace">
+        <header class="workspace-titlebar"><h2>Отображение сигналов</h2></header>
         <nav class="display-tabs" data-testid="display-tabs" aria-label="Страницы отображения" role="tablist"></nav>
         <section class="layout-stage" data-testid="display-canvas" aria-label="Панели активного отображения">
           <div class="pane-grid" data-testid="pane-grid" data-layout-state="loading" aria-live="polite"></div>
