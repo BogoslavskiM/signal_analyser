@@ -1,18 +1,19 @@
-schema_version: 2
+schema_version: 1
 name: engee-user-workflow
-version: 1.0.0
+version: 3.0.0
 title: "Engee User Workflow"
 description: >
-  Обязательный evidence workflow Engee User: required functionality analysis,
-  executable contract tests, discrepancy localization и bug reporting.
+  Ранний pre-backend evidence workflow Engee User: required functionality
+  analysis, executable contract tests, deployment-failure localization,
+  explicit blocker verdict и bug reporting.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 1
 when-to-use:
-  - "Всегда при работе Engee User"
+  - "Получен Engee research или contract-testing handoff"
 when-not:
-  - "Для product implementation, E2E или deployment"
+  - "Для product implementation, browser E2E, Git или deployment"
 requires-tools: []
-requires-products: []
+requires-products:
+  - "Engee"
 reference-files: []
-requires-skills: []

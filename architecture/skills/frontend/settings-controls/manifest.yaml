@@ -1,12 +1,12 @@
-schema_version: 2
+schema_version: 1
 name: settings-controls
-version: 0.3.0
+version: 3.1.0
 title: "Settings Controls"
 description: >
-  Frontend skill для типизированных scalar controls панели настроек:
-  numeric input, string, searchable enum, checkbox, readonly, metadata,
-  validation errors, warnings, units, сворачиваемые группы и готовый
-  JS/CSS/HTML template bundle.
+  Техническая реализация typed scalar settings controls: drafts, parsing,
+  150 ms batching, state-revision guard, trailing-decimal drafts, canonical
+  settings menus, searchable enum open/not-active lifecycle, outside-click
+  closing, validation mapping and Apply lifecycle по Designer contract.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -19,5 +19,5 @@ when-not:
   - "Нужно реализовать backend settings state"
 requires-tools: []
 requires-products: []
-reference-files: []
-requires-skills: [frontend-workflow]
+reference-files:
+  - "reference/template.js"

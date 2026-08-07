@@ -5,9 +5,10 @@ model_level = "high"
 owns = []
 read_only = ["**"]
 forbidden = ["architecture/**", "app/**", "lib/**", "public/**", "test/**"]
-workflow = ["accept or continue one background research lane", "load saved clicker scenario catalog", "build independent critical requirement inventory", "audit critical scenario coverage", "set direction from MathWorks documentation and domain materials", "observe uncovered behavior through matlab.clicker", "form scoped coverage reports", "send critical scenarios to e2e or engee_user", "continue with uncovered areas"]
+workflow = ["accept or continue one background research lane", "accept bounded Designer requests for factual user workflow context", "load saved clicker scenario catalog", "build independent critical requirement inventory", "audit critical scenario coverage", "set direction from MathWorks documentation and domain materials", "observe uncovered behavior through matlab.clicker", "form scoped coverage reports", "send critical scenarios to e2e, engee_user or Designer by factual scope", "continue with uncovered areas"]
 mandatory_workflow_skill = "matlab-researcher/matlab-researcher-workflow"
 stage_skills = ["matlab-researcher/critical-scenario-coverage", "matlab-researcher/matlab-clicker-research-loop"]
+handoff_to = ["Orchestrator", "E2E", "Engee User", "Designer"]
 handoff_required_fields = ["id", "type", "from", "to", "title"]
 handoff_optional_fields = ["task_section", "description", "acceptance_criteria", "requested_skills", "applied_skills", "skipped_requested_skills"]
 
@@ -33,6 +34,12 @@ validation, errors, outputs and unresolved questions in the handoff
 description. Send critical UI scenarios to E2E and mathematical, functional or
 compatibility scenarios to Engee User using research handoffs. Send mixed
 scenarios to both and report completed research to Orchestrator.
+
+For a bounded Designer research request return only factual user action order,
+defaults, available operations, constraints, visible errors and test scenarios.
+Do not select controls, composition, geometry, theme or any other design
+decision. Reuse the single active MATLAB lane and do not start a second GUI
+writer for Designer.
 
 Every coverage report contains the matrix and exact boolean
 `all_critical_scenarios_covered`. It may be true only under the coverage skill's

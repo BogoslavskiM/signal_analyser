@@ -1,6 +1,3 @@
----
-name: session-import-export-ui
----
 # Session Import Export UI
 
 ## When to Use
@@ -19,14 +16,13 @@ name: session-import-export-ui
 - Пиши поля form явно в HTML и привязывай к root state только изменяемые значения.
 - Не создавай metadata-driven form generator.
 
-## Bundled Template
-Используй:
+## Technical Reference and Design
 
-- `assets/template.js` — state, open/export/import actions и file-browser targets;
-- `assets/template.css` — только session-specific form rows;
-- `assets/template.html` — export/import dialogs на базе `base-dialog`.
+Используй `reference/template.js` для state, open/export/import actions,
+snapshot application and file-browser targets. Form rows and dialog composition
+бери из pinned Designer package.
 
-1. Прочитай все три файла.
+1. Прочитай technical JS reference и pinned design package.
 2. Подключи `dialog-system` и `file-browser-dialog`.
 3. Создай module через `window.GenieSessionImportExportUi.create(...)`.
 4. Передай API actions `openExport`, `exportSession`, `openImport`, `importSession`.

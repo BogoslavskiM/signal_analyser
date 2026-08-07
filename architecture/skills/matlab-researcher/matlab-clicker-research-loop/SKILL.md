@@ -1,6 +1,3 @@
----
-name: matlab-clicker-research-loop
----
 # MATLAB Clicker Research Loop
 
 ## Подготовка
@@ -43,3 +40,8 @@ name: matlab-clicker-research-loop
   отличие от документации, scenario ID/path и неопределённости.
 - При невозможности проверки отправить Orchestrator blocker evidence. Не
   изменять clicker и не останавливать его сервер.
+
+Перед завершением проверь, что использован актуальный bootstrap/API, каждое
+значимое действие подтверждено визуально, а сохранённый scenario path
+действительно возвращён clicker. Сообщи вопрос, actions, observation,
+artifact path и остающуюся неопределённость.

@@ -1,9 +1,11 @@
----
-name: matlab-researcher-workflow
----
 # MATLAB Researcher Workflow
 
 Цель — максимально полно описать бизнес-логику MATLAB mini-приложения.
+
+Вход: research handoff или явно заданный application scope, user TS,
+доступная MathWorks documentation, актуальный clicker bootstrap и существующий
+scenario catalog. Явные требования пользователя выше исследовательских
+эвристик; непроверенное наблюдение не выдавай за документированный contract.
 
 ## 1. Intake и фоновый lane
 
@@ -51,3 +53,7 @@ name: matlab-researcher-workflow
 
 Не вести отдельный backlog. Неисследованные направления передавать
 Orchestrator. Репозиторий не редактировать.
+
+Перед завершением проверь provenance каждого утверждения, наличие scenario
+ID/path у наблюдений, полную coverage matrix и downstream handoff для каждого
+critical scenario. Не объявляй coverage, execution и passing одним verdict.

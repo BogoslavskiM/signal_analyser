@@ -1,0 +1,21 @@
+capture_time_utc: 2026-08-05T13:03:31.937Z
+target: https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/
+probe_policy: one bounded production GET after pod reached running; no application restart
+redirect_chain: none observed
+final_http_status: 404
+safe_response_headers:
+  date: Wed, 05 Aug 2026 13:03:33 GMT
+  content-type: */*
+  content-length: 246
+response_body_excerpt:
+  <head><title>Server maintenance</title></head>
+  <body>
+  <style type="text/css">
+  body {
+      background-image: url(https://storage.yandexcloud.net/nwo-cdn2/file.svg);
+      background-repeat: no-repeat;
+      background-size: contain;
+  }
+  </style>
+  </body>
+sanitization: Authorization, Cookie and Set-Cookie headers excluded; no credentials persisted

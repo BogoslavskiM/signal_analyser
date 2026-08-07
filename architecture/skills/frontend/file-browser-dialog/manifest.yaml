@@ -1,11 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: file-browser-dialog
-version: 0.3.0
+version: 2.0.0
 title: "File Browser Dialog"
 description: >
-  Frontend skill и JS/CSS/HTML bundle для server-side file browser: directory
-  и single-file modes, root boundary, structured entries, sorting, targets,
-  busy state и dialog stacking.
+  Техническая реализация server-side file browser: directory и single-file
+  modes, root boundary, structured entries, request guards, targets и dialog
+  lifecycle по готовому Designer contract.
 language: ru
 audience: [assistant]
 priority: 0.85
@@ -18,5 +18,5 @@ when-not:
   - "Нужны rename, delete, create directory или multi-select"
 requires-tools: []
 requires-products: []
-reference-files: []
-requires-skills: [frontend-workflow, dialog-system]
+reference-files:
+  - "reference/template.js"

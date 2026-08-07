@@ -2,7 +2,7 @@
 id: TASK-0039
 kind: task
 title: Предоставить внешний exact-revision URL production Genie runtime
-status: in_progress
+status: done
 priority: P1
 queue_order: 37
 model: gpt-5.6-terra
@@ -13,7 +13,7 @@ parent: null
 depends_on: []
 blocks: []
 source_handoffs: [HND-0089, HND-0090]
-related_handoffs: [HND-0091]
+related_handoffs: [HND-0091, HND-0092, HND-0093, HND-0097]
 blocked_by: []
 blocker_reason: null
 development_branch: neuro_signal_analyser_ui_patterns
@@ -47,11 +47,11 @@ installation/resolution, product source fixes, devhub/fallback и feature merge.
 
 ## Acceptance criteria
 
-- [ ] Local/private remote/production checkout SHA совпадают.
-- [ ] External URL возвращает product DOM, а `/api/status` — runtime response,
+- [x] Local/private remote/production checkout SHA совпадают.
+- [x] External URL возвращает product DOM, а `/api/status` — runtime response,
   либо возвращён точный terminal platform routing blocker.
-- [ ] Existing application process/listener/proxy state и relevant logs указаны.
-- [ ] Dependency files untouched; credentials not persisted or reported.
+- [x] Existing application process/listener/proxy state и relevant logs указаны.
+- [x] Dependency files untouched; credentials not persisted or reported.
 
 ## Queue decision
 
@@ -71,4 +71,18 @@ installation/resolution, product source fixes, devhub/fallback и feature merge.
 
 ## Verification and results
 
-Полный checkpoint/deploy/runtime diagnostic выдан DevOps как HND-0091.
+DevOps HND-0092 подтвердил один exact SHA
+`18cfe33b4cf170547adba23c76c744c9e79b42ed` локально, в private remote и
+production checkout. Platform-managed Genie application имеет статус RUNNING.
+Внешний URL
+`https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/`
+возвращает HTTP 200, `<title>Signal Analyzer</title>`, `#app-shell` и
+`.signal-analyser`; `/api/status` возвращает HTTP 200 JSON runtime response без
+redirect. `Project.toml` и `Manifest.toml` не использовались и не изменялись.
+Post-task E2E назначен отдельным HND-0093 и не переоткрывает terminal task.
+
+E2E report `HND-0097` подтвердил mandatory availability и product DOM:
+`8/9` checks PASS, `88.89%`, operational threshold пройден. Runtime не
+раскрывает exact SHA браузеру и в UI присутствовал load-error при HTTP 200 API;
+эти findings вынесены в отдельные follow-up records и terminal TASK-0039 не
+переоткрыта.

@@ -1,28 +1,18 @@
-schema_version: 2
+schema_version: 1
 name: zone-structure-api
-version: 1.1.0
+version: 4.0.0
 title: "Структура зон и подключение API"
 description: >
-  Этап Frontend implementation для типовых зон app_data_inspector,
-  data_item_settings, data_display и multi_page_zone с сохранёнными JS/HTML
-  patterns, возможностью нестандартных зон и реализацией в HTML, JS и CSS по
-  подтверждённым API contracts.
+  Реализует заданные Designer zones как production DOM/modules и связывает UI
+  actions с подтверждёнными API contracts, state-lite/revision/debounce и
+  active-output lifecycle без выбора визуальной композиции.
 language: ru
 audience: [assistant]
 priority: 0.95
 when-to-use:
-  - "После zoning при реализации структуры зон и API"
+  - "После готового design package при реализации структуры зон и API"
 when-not:
   - "До получения достаточного API contract"
 requires-tools: []
 requires-products: []
-reference-files:
-  - "assets/app_data_inspector/template.js"
-  - "assets/app_data_inspector/template.html"
-  - "assets/data_item_settings/template.js"
-  - "assets/data_item_settings/template.html"
-  - "assets/data_display/template.js"
-  - "assets/data_display/template.html"
-  - "assets/multi_page_zone/template.js"
-  - "assets/multi_page_zone/template.html"
-requires-skills: [frontend-workflow, task-analysis]
+reference-files: []

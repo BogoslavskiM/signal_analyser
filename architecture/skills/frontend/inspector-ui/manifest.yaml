@@ -1,11 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: inspector-ui
-version: 0.2.0
+version: 3.0.0
 title: "Inspector UI"
 description: >
-  Frontend skill и JS/CSS/HTML bundle для inspector table или headerless list:
-  main object, selection, CRUD, name search, columns, typed cells, units,
-  abbreviations, sticky layout и hover actions.
+  Техническая реализация inspector table/list: authoritative snapshots, main
+  object, selection, CRUD actions, search, columns, typed cells and stale
+  request guards и eye/eye-off column visibility по Designer contract.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -18,5 +18,5 @@ when-not:
   - "Нужны pagination, sorting или reorder"
 requires-tools: []
 requires-products: []
-reference-files: []
-requires-skills: [frontend-workflow]
+reference-files:
+  - "reference/template.js"

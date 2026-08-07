@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Анализатор сигналов — TASK-0057 design prototype</title>
+  <link rel="stylesheet" href="../assets/theme.css">
+  <link rel="stylesheet" href="design.css">
+</head>
+<body>
+  <main class="app-shell" data-design-id="app-shell">
+    <header class="application-toolbar ui-panel" aria-label="Панель приложения">
+      <div class="application-toolbar-brand">
+        <img class="application-toolbar-logo" src="../assets/icons/engee-logo.svg" alt="Engee">
+        <h1 class="application-toolbar-title">Анализатор сигналов</h1>
+        <span class="application-toolbar-separator" aria-hidden="true"></span>
+        <span class="application-toolbar-version">Версия 0.1.0</span>
+      </div>
+      <div class="application-toolbar-actions">
+        <button class="toolbar-button" type="button" data-tooltip="Импортировать сессию" aria-label="Импортировать сессию">
+          <img src="../assets/icons/import.svg" alt="">
+        </button>
+        <button class="toolbar-button" type="button" data-tooltip="Сохранить сессию" aria-label="Сохранить сессию">
+          <img src="../assets/icons/save.svg" alt="">
+        </button>
+        <button class="toolbar-button" type="button" disabled data-tooltip="Справка недоступна" aria-label="Справка недоступна">
+          <img src="../assets/icons/help-circle.svg" alt="">
+        </button>
+      </div>
+    </header>
+
+    <section class="main-stage" aria-label="Рабочая область и настройки">
+      <section class="workspace ui-panel" aria-labelledby="workspace-title">
+        <header class="workspace-titlebar">
+          <h2 id="workspace-title">Отображение сигналов</h2>
+        </header>
+        <div class="display-tabs" aria-label="Экраны и действия">
+          <div class="display-tabs-wrap" data-design-id="display-tabs-wrap">
+            <button class="display-tab-scroll display-tab-scroll-prev" type="button" data-design-id="display-scroll-left" aria-label="Прокрутить экраны влево" data-tooltip="Прокрутить экраны влево" hidden>
+              <span class="display-tab-scroll-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="display-tablist" role="tablist" aria-label="Экраны" data-design-id="display-tablist" tabindex="-1">
+              <div class="display-tab-shell is-selected" data-screen-id="1">
+                <button class="display-tab" type="button" role="tab" aria-selected="true"><span>Экран 1</span></button>
+                <button class="display-tab-close" type="button" data-screen-close aria-label="Удалить экран 1" data-tooltip="Удалить экран 1"><img src="../assets/icons/close.svg" alt=""></button>
+              </div>
+            </div>
+            <button class="display-tab-scroll display-tab-scroll-next" type="button" data-design-id="display-scroll-right" aria-label="Прокрутить экраны вправо" data-tooltip="Прокрутить экраны вправо">
+              <span class="display-tab-scroll-chevron" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div class="display-action-cluster" aria-label="Действия с экранами">
+            <button class="display-add" type="button" data-design-id="display-add" data-tooltip="Добавить экран" aria-label="Добавить экран">
+              <img src="../assets/icons/plus.svg" alt="">
+            </button>
+            <button class="layout-trigger" type="button" data-design-id="layout-trigger" aria-haspopup="dialog" aria-expanded="false" data-tooltip="Изменить макет">
+              <span class="layout-grid-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+              <span>2 × 2</span>
+            </button>
+          </div>
+        </div>
+        <div class="plot-grid" data-design-id="plot-grid" aria-label="Графики экрана"></div>
+      </section>
+
+      <aside class="settings-panel ui-panel" aria-labelledby="settings-title">
+        <header class="settings-heading">
+          <h2 id="settings-title">Настройки отображения</h2>
+        </header>
+        <div class="settings-tabs" role="tablist" aria-label="Страницы настроек">
+          <button type="button" role="tab" aria-selected="true" data-settings-page="display" data-design-id="settings-tab-display">Отображение</button>
+          <button type="button" role="tab" aria-selected="false" data-settings-page="time" data-design-id="settings-tab-time">Время</button>
+          <button type="button" role="tab" aria-selected="false" data-settings-page="measurements" data-design-id="settings-tab-measurements">Измерения</button>
+        </div>
+        <div class="settings-scroll" data-settings-content></div>
+        <footer class="settings-apply-block">
+          <span class="settings-status" role="status" aria-live="polite" data-settings-status></span>
+          <button class="button button-primary settings-apply" type="button" data-design-id="settings-apply">Применить</button>
+        </footer>
+      </aside>
+    </section>
+
+    <section class="inspector ui-panel" aria-labelledby="signals-tab">
+      <header class="inspector-header">
+        <div class="inspector-tabs" role="tablist" aria-label="Данные анализатора">
+          <button id="signals-tab" type="button" role="tab" aria-selected="true" data-inspector-page="signals">Сигналы</button>
+          <button type="button" role="tab" aria-selected="false" data-inspector-page="measurements">Измерения</button>
+          <button type="button" role="tab" aria-selected="false" data-inspector-page="peaks">Пики</button>
+        </div>
+        <div class="inspector-actions" aria-label="Действия с сигналами">
+          <button class="inspector-action" type="button" data-design-id="signals-add" data-tooltip="Добавить сигнал" aria-label="Добавить сигнал">
+            <img src="../assets/icons/plus.svg" alt="">
+          </button>
+          <button class="inspector-action" type="button" data-design-id="signals-overflow" data-tooltip="Другие действия" aria-label="Другие действия" aria-haspopup="menu" aria-expanded="false">
+            <img src="../assets/icons/more-vertical.svg" alt="">
+          </button>
+        </div>
+      </header>
+      <div class="inspector-body" data-inspector-content>
+        <div class="inspector-search-row">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input type="search" data-design-id="signals-search" aria-label="Поиск сигналов" placeholder="Введите название">
+        </div>
+        <div class="signal-table-scroll">
+          <table class="signal-table">
+            <thead><tr data-table-head></tr></thead>
+            <tbody data-table-body></tbody>
+          </table>
+          <div class="table-empty" role="status" data-table-empty hidden>Сигналы не найдены</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="menu select-menu" role="listbox" data-design-id="select-menu" hidden></div>
+  <div class="menu compact-menu plot-menu" role="menu" data-design-id="plot-menu" hidden>
+    <button type="button" role="menuitem" data-plot-clear>
+      <img src="../assets/icons/trash.svg" alt="">
+      <span>Очистить область</span>
+    </button>
+    <button type="button" role="menuitem" data-plot-help aria-haspopup="dialog" aria-expanded="false">
+      <img src="../assets/icons/help-circle.svg" alt="">
+      <span>Управление графиком</span>
+    </button>
+  </div>
+  <section class="graph-help" role="dialog" aria-modal="false" aria-label="Справка по управлению графиком" data-design-id="graph-help" hidden>
+    <div class="graph-help-copy">
+      <span>Перетаскивать график: Shift + ЛКМ</span>
+      <span>Автомасштабирование: двойной клик</span>
+      <span>Зум: зажать ЛКМ и выделить область</span>
+    </div>
+    <button class="graph-help-close" type="button" data-graph-help-close aria-label="Закрыть справку по управлению графиком" data-tooltip="Закрыть справку">
+      <img src="../assets/icons/close.svg" alt="">
+    </button>
+  </section>
+  <div class="menu inspector-menu" role="menu" data-design-id="inspector-menu" aria-label="Другие действия с сигналами" hidden></div>
+
+  <section class="layout-popover" role="dialog" aria-modal="false" aria-labelledby="layout-title" data-design-id="layout-popover" hidden>
+    <header>
+      <div><h2 id="layout-title">Макет экрана</h2><p>Настройка областей без потери контекста</p></div>
+      <button class="icon-button" type="button" data-layout-close data-tooltip="Закрыть настройку макета" aria-label="Закрыть настройку макета"><img src="../assets/icons/close.svg" alt=""></button>
+    </header>
+    <div class="layout-body">
+      <fieldset><legend>Строки</legend><div class="segments" data-layout-rows></div></fieldset>
+      <fieldset><legend>Столбцы</legend><div class="segments" data-layout-columns></div></fieldset>
+      <div class="layout-preview" aria-hidden="true"></div>
+      <div class="layout-warning" role="status" data-layout-warning hidden>
+        <strong>Макет не рекомендуется</strong>
+        <span>Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.</span>
+      </div>
+    </div>
+    <footer><button class="button" type="button" data-layout-cancel>Отмена</button><button class="button button-primary" type="button" data-layout-apply>Применить</button></footer>
+  </section>
+
+  <div class="toast" role="status" aria-live="polite" data-design-id="success-toast" hidden>
+    <img src="../assets/icons/tick-figma.svg" alt="">
+    <span data-toast-copy>Настройки применены</span>
+    <button type="button" data-toast-close aria-label="Закрыть уведомление">×</button>
+  </div>
+  <div class="tooltip" role="tooltip" data-design-id="tooltip" hidden></div>
+
+  <div class="modal-layer primary-modal-layer" data-design-id="add-dialog-layer" hidden>
+    <section class="dialog-card add-dialog" role="dialog" aria-modal="true" aria-labelledby="add-dialog-title">
+      <header class="dialog-titlebar">
+        <h2 id="add-dialog-title" tabindex="-1">Добавление сигналов</h2>
+        <button class="icon-button dialog-close" type="button" data-add-close data-design-id="add-dialog-close" data-tooltip="Закрыть диалог" aria-label="Закрыть добавление сигналов"><img src="../assets/icons/close.svg" alt=""></button>
+      </header>
+      <div class="dialog-body">
+        <p class="dialog-intro">Выберите поддерживаемые переменные из рабочей области.</p>
+        <div class="workspace-list" role="group" aria-label="Переменные рабочей области">
+          <label><span><strong>radarPulse</strong><small>Временной ряд · 12 000 отсчётов</small></span><input type="checkbox" value="radarPulse" data-dialog-signal></label>
+          <label><span><strong>echoComplex</strong><small>Комплексный массив · 8 192 отсчёта</small></span><input type="checkbox" value="echoComplex" data-dialog-signal></label>
+          <label class="is-disabled"><span><strong>comment</strong><small>Строка · неподдерживаемый тип</small></span><input type="checkbox" disabled></label>
+        </div>
+        <div class="dialog-field-row">
+          <label for="sample-rate">Частота дискретизации <span>Hz</span></label>
+          <input id="sample-rate" class="control" type="text" inputmode="decimal" value="1000000" aria-describedby="sample-rate-hint">
+          <small id="sample-rate-hint">Требуется для raw-массивов без временной шкалы.</small>
+        </div>
+      </div>
+      <footer class="dialog-footer">
+        <button class="button" type="button" data-add-cancel>Отмена</button>
+        <button class="button button-primary" type="button" data-add-submit disabled>Добавить</button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="modal-layer nested-modal-layer" data-design-id="nested-confirm-layer" hidden>
+    <section class="dialog-card message-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-copy">
+      <header class="dialog-titlebar"><h2 id="confirm-title" tabindex="-1">Закрыть без добавления?</h2></header>
+      <div class="dialog-body"><p id="confirm-copy">Выбранные сигналы не будут добавлены.</p></div>
+      <footer class="dialog-footer">
+        <button class="button" type="button" data-confirm-stay>Остаться</button>
+        <button class="button button-danger" type="button" data-confirm-leave>Закрыть</button>
+      </footer>
+    </section>
+  </div>
+
+  <div class="modal-layer screen-delete-layer" data-design-id="screen-delete-layer" hidden>
+    <section class="dialog-card message-dialog" role="alertdialog" aria-modal="true" aria-labelledby="screen-delete-title" aria-describedby="screen-delete-copy">
+      <header class="dialog-titlebar">
+        <h2 id="screen-delete-title" tabindex="-1">Удалить экран?</h2>
+        <button class="icon-button dialog-close" type="button" data-screen-delete-close aria-label="Закрыть подтверждение удаления экрана" data-tooltip="Закрыть"><img src="../assets/icons/close.svg" alt=""></button>
+      </header>
+      <div class="dialog-body"><p id="screen-delete-copy">Экран и его текущий макет будут удалены.</p></div>
+      <footer class="dialog-footer">
+        <button class="button" type="button" data-screen-delete-cancel>Отмена</button>
+        <button class="button button-danger" type="button" data-screen-delete-confirm>Удалить</button>
+      </footer>
+    </section>
+  </div>
+
+  <script src="../assets/vendor/plotly-cartesian-3.1.0.min.js"></script>
+  <script src="demo.js"></script>
+</body>
+</html>

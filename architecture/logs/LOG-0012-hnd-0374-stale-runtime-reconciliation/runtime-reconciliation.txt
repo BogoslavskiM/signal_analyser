@@ -1,0 +1,25 @@
+Target: https://engee.com (production, project-locked pod)
+Checkout: /user/apps/signal_analyser
+Branch: neuro_signal_analyser_ui_refinement
+Checkout SHA before/after: 545bef2d6f5fbf76f32f6afb4bfe88f6a962e48c
+Remote worktree: clean
+
+Pre-mutation ownership evidence:
+- SignalAnalyser runtime PID 158:
+  /usr/local/julia/bin/julia --threads=2 --project=/user/apps/signal_analyser --sysimage /usr/local/genie/sys.so --startup-file=no /usr/local/genie/bin/userapp.jl /user/apps/signal_analyser/app.jl
+- The exact SignalAnalyser process family had no listener visible in the command-execution namespace.
+- The separate /user/apps/RadarCalculate runtime was observed and not stopped or changed.
+- Supported Engee lifecycle API reported: STOPPED /user/apps/signal_analyser/app.jl.
+
+Restart evidence:
+- Supported Engee start reported: STARTED /user/apps/signal_analyser/app.jl.
+- Exact start call: engee.genie.start("/user/apps/signal_analyser/app.jl"; wait=true, log_file="/user/apps/signal_analyser/app_log.log")
+- Application URL: https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/
+- GET /: HTTP 200
+- GET /api/status: HTTP 200
+- /api/status body: {"runtime_revision":"545bef2d6f5fbf76f32f6afb4bfe88f6a962e48c","project":"example_project","ready":true,"ok":true}
+- Supported Engee registry: 1 RUNNING record for /user/apps/signal_analyser/app.jl.
+
+Listener note:
+- `ss` and `lsof` are unavailable on this Engee command-execution image.
+- After start, the application process is not visible in that namespace, but the supported path-scoped lifecycle API, its one-record registry result, external HTTP checks, and runtime-revision API confirm the restarted production registration. No unrelated process was stopped.

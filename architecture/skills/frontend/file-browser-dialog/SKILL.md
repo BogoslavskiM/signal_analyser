@@ -1,6 +1,3 @@
----
-name: file-browser-dialog
----
 # File Browser Dialog
 
 ## When to Use
@@ -13,20 +10,18 @@ name: file-browser-dialog
 - Нужны upload, rename, delete, create directory или multi-select.
 - Нужно реализовать сам import/export workflow.
 
-## Bundled Template
-Используй готовый комплект:
+## Technical Reference and Design
 
-- `assets/template.js` — Vue 3 global module, typed `path-input`, state, API actions и target integration;
-- `assets/template.css` — tree/list, path bar, loading overlay и compact dialog layout;
-- `assets/template.html` — file browser поверх `base-dialog`.
+Используй `reference/template.js` для typed `path-input`, state, API actions,
+request guards and target integration. Tree/list geometry, path bar, overlays
+and dialog markup бери из pinned Designer package.
 
-1. Прочитай все три файла.
-2. Скопируй их в соответствующие JS/CSS/HTML пути приложения.
-3. Подключи `frontend/dialog-system` до file browser.
-4. Создай module через `window.GenieFileBrowserDialog.create(...)`.
-5. Передай API actions `open`, `path`, `toggle`, `sort`, `select`, `cancel`.
-6. Зарегистрируй targets родительских полей с mode, allowed extensions, getter и setter.
-7. Не зашивай в generic module конкретные имена target fields приложения-источника.
+1. Прочитай technical JS reference и pinned design package.
+2. Подключи `frontend/dialog-system` до file browser.
+3. Создай module через `window.GenieFileBrowserDialog.create(...)`.
+4. Передай API actions `open`, `path`, `toggle`, `sort`, `select`, `cancel`.
+5. Зарегистрируй targets родительских полей с mode, allowed extensions, getter и setter.
+6. Не зашивай в generic module конкретные имена target fields приложения-источника.
 
 ## Typed Path Control
 - Регистрируй возвращённый component `path-input` один раз в root app.

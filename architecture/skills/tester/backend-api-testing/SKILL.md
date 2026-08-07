@@ -1,6 +1,3 @@
----
-name: backend-api-testing
----
 # Backend API Testing
 
 ## When to Use
@@ -16,8 +13,8 @@ name: backend-api-testing
 ## Bundled Templates
 Используй:
 
-- `assets/api-test-template.jl` — route и handler testsets;
-- `assets/report-template.md` — endpoint/ТЗ/coverage report.
+- `reference/api-test-template.jl` — route и handler testsets;
+- `reference/report-template.md` — endpoint/ТЗ/coverage report.
 
 ## Current Project Pattern
 Сохраняй структуру:
@@ -70,6 +67,17 @@ typed assertions и небольшие reusable assertion helpers в `test/back/
 - unexpected handler error;
 - regression cases подтверждённых API bugs.
 
+Для endpoint с подтверждённым Engee blocker отдельно проверь:
+
+- request проходит через ту же production ручку, а не через test-only route;
+- response имеет согласованный status и типизированные поля `success=false`,
+  стабильный unavailable code, короткий error и `blocker_ref`;
+- payload не содержит output/result, который можно принять за успешный расчёт;
+- state не получает фиктивный ready/result и не остаётся в busy;
+- соседний реальный Engee call и recovery marker существуют как source
+  contract. Исполнение самого Engee call принадлежит `test/engee/**`, а не
+  Backend API suite.
+
 Закрепляй согласованную семантику:
 
 - validation error: HTTP 200 и contract-specific `success=false`/field errors;
@@ -88,11 +96,23 @@ typed assertions и небольшие reusable assertion helpers в `test/back/
 - Проверь, что Apply сначала инвалидирует старую revision/queue, затем
   валидирует settings.
 - Apply не выполняет calculation и не возвращает output data/`isready`.
-- Success Apply возвращает HTTP 200 и `success=true`; invalid settings —
-  HTTP 200, `success=false`, короткий `error`.
-- Проверь dirty flags всех расчётных зон, cancellation и перестроение queue.
-- Для каждой output route проверь typed `data`, `isready`, `success`, `error`
-  во всех состояниях.
+- Success Apply возвращает HTTP 200, `success=true`, monotonic
+  `state_revision`; invalid settings — HTTP 200, `success=false`, revision и
+  короткий `error`.
+- Проверь `/api/state-lite`: form/navigation/capabilities присутствуют, graph
+  arrays отсутствуют, `state_revision` присутствует.
+- Проверь `need_update_pages` всех затронутых зон и отсутствие eager worker
+  queue/calculation после Apply.
+- Первый data request current active stale page запускает ровно одну task и
+  возвращает lightweight typed pending без large graph arrays; duplicate
+  polling не создаёт вторую task.
+- Inactive page request не запускает calculation. При page switch старая task
+  отменяется/не публикуется, а новая active page получает приоритет.
+- Для каждой output route проверь typed `data`, `isready`, `success`, `error`,
+  `state_revision`, cache hit/miss, pending, success и calculation error.
+- Проверь, что медленный response имеет меньшую revision и не может считаться
+  актуальным client snapshot; publication stale `calculation_revision`
+  отклоняется backend.
 
 ## Files and Sessions
 - Используй временную директорию с cleanup.
@@ -118,5 +138,9 @@ typed assertions и небольшие reusable assertion helpers в `test/back/
 
 ## Verification
 - Запусти `julia --project=. test/back/runtests.jl`.
+- Не запускай `app.jl` или отдельный/local Genie server и не используй
+  localhost как runtime evidence.
 - Проверь полный route list и все endpoint matrix rows.
-- Заполни `assets/report-template.md`.
+- Проверь active-only CPU/network contract через task/cache counters и payload
+  shape, а не через timing-only assertion.
+- Заполни `reference/report-template.md`.

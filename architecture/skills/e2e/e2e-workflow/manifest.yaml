@@ -1,22 +1,24 @@
-schema_version: 2
+schema_version: 1
 name: e2e-workflow
-version: 2.0.0
+version: 6.2.0
 title: "Workflow E2E"
 description: >
   Обязательный процесс E2E, типовая архитектура test/playwright, стек Node.js,
   Playwright Core, Chromium/CDP и три режима regression без deployment
-  ownership; intake, page inspection, authoring и report остаются этапами workflow.
+  ownership; clickable local design-contract analysis, Engee-only product
+  runtime, user-visible foreground Chrome, maintenance-screen routing и
+  overlay-stack/page-sizing verification и cleanup только созданных run
+  Chrome-вкладок обязательны.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 1
 when-to-use:
-  - "После каждой завершённой task, для новой функции или при пустом backlog"
+  - "Получен E2E handoff после завершённой task, для новой функции или idle analysis"
 when-not:
-  - "Для unit/contract tests или deployment; deployment принадлежит DevOps"
-requires-tools:
-  - "Node.js"
-  - "Chromium/CDP"
+  - "Для unit/contract tests, Git или deployment"
+requires-tools: []
 requires-products:
+  - "Node.js"
   - "Playwright Core"
+  - "Google Chrome"
 reference-files: []
-requires-skills: []

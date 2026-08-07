@@ -8,7 +8,7 @@
 ```yaml
 ---
 id: HND-0001
-type: task # task | report | research | FYI
+type: task # task | report | research | FYI | design_task | design_report | design_revision | design_revision_report
 from: orchestrator
 to: backender
 title: Короткий смысловой заголовок
@@ -22,13 +22,34 @@ applied_skills: # optional; normally returned by report
   - backender/api-contract-planning
 skipped_requested_skills: # optional; skill id plus reason
   - <role/skill>: <reason>
+# Design-only fields when applicable:
+design_mode: autonomous # autonomous | review
+design_ref: ../design/TASK-0001-short-slug/DESIGN.md
+design_version: 1
+design_status: ready # ready | partial | user_decision_required
+required_states: [default, loading, empty, error]
+required_viewports: [1280x720]
+design_evidence: []
 ---
 ```
 
 Обязательны: `id`, `type`, `from`, `to`, `title`.
 
 Опциональны: `task_section`, `description`, `acceptance_criteria`,
-`requested_skills`, `applied_skills`, `skipped_requested_skills`.
+`requested_skills`, `applied_skills`, `skipped_requested_skills` and
+design-specific fields.
+
+## Design handoffs
+
+- `design_task`: Orchestrator → Designer with mode, scope, states/viewports.
+- `design_report`: Designer → Orchestrator with ready package ref/version.
+- `design_revision`: Frontend → Designer with current ref/version, affected
+  screen/state/viewport, technical constraint and evidence.
+- `design_revision_report`: Designer → Frontend with bumped version and delta;
+  Orchestrator receives FYI and pins the new version.
+
+Designer package живёт в `architecture/design/**`; handoff не копирует
+prototype/screenshots. Frontend реализует только pinned version.
 
 ## Вызов subskills
 

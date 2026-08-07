@@ -1,11 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: session-import-export-ui
-version: 0.3.0
+version: 2.0.0
 title: "Session Import Export UI"
 description: >
-  Наследуемый frontend skill для JLD2 session export/import: explicit form
-  fields, typed path control, backend defaults, global loader, atomic import и
-  полное применение imported state.
+  Техническая реализация session export/import: path state, backend defaults,
+  global loader, atomic import and complete snapshot application по готовому
+  Designer contract.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -18,5 +18,5 @@ when-not:
   - "Нужно изменить общий modal contract"
 requires-tools: []
 requires-products: []
-reference-files: []
-requires-skills: [frontend-workflow, dialog-system, file-browser-dialog]
+reference-files:
+  - "reference/template.js"

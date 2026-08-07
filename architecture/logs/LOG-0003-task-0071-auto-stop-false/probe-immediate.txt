@@ -1,0 +1,13 @@
+captured_at_utc: 2026-08-05T13:49:22.809Z
+probe: TASK-0069 read-only lifecycle checks
+exact_revision: cac83c5f445352a50f04aeeeb269b47007766d79
+start_result: STARTED
+registry:
+  matching_app_count_for_legacy_location_/genie_apps/signal_analyser: 0
+  actual_entry_location: /user/apps/signal_analyser/app.jl
+  actual_entry_status: running
+http:
+  root: 200, title "Signal Analyzer"
+  api_status: 200, exact revision present
+result: failed
+reason: the pre-existing probe's registry location/state assertions do not match the current production Genie registry representation. HTTP and start checks passed.

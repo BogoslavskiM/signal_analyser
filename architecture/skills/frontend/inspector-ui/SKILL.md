@@ -1,6 +1,3 @@
----
-name: inspector-ui
----
 # Inspector UI
 
 ## When to Use
@@ -12,19 +9,18 @@ name: inspector-ui
 - Нужно реализовать backend inspector state или mutation helpers.
 - Нужна серверная фильтрация, pagination, virtualization, sorting или reorder.
 
-## Bundled Template
-Используй готовый комплект:
+## Technical Reference and Design
 
-- `assets/template.js` — Vue 3 global module для state, computed, actions и форматирования cells;
-- `assets/template.css` — таблица, headerless list, sticky cells, toolbar, hover actions и column menu;
-- `assets/template.html` — явный inspector template.
+Используй `reference/template.js` для state, computed, actions, request guards
+and cell formatting. Table/list composition, sticky geometry, toolbar, hover
+actions and column-menu visuals бери из pinned Designer package.
 
-1. Прочитай все три файла.
-2. Скопируй их содержимое в соответствующие JS/CSS/HTML пути целевого приложения.
-3. Создай модуль через `window.GenieInspectorUi.create(...)`.
-4. Передай API actions: `create`, `duplicate`, `delete`, `setMain`, `setSelected`, `setBulkSelected`.
+1. Прочитай technical JS reference и pinned design package.
+2. Создай модуль через `window.GenieInspectorUi.create(...)`.
+3. Передай API actions: `create`, `duplicate`, `delete`, `setMain`, `setSelected`, `setBulkSelected`.
+4. Передай `contextKey(vm)`, возвращающий stable id текущего inspector context.
 5. Зарегистрируй module sections в одном root Vue app.
-6. Замени generic title, description и action icon classes на значения текущего приложения.
+6. Реализуй title, columns, actions and states из design package.
 7. Не переноси namespace и domain fields приложения-источника.
 
 ## Table Contract
@@ -93,6 +89,9 @@ abbreviations
 - Храни search query и visible column ids только на frontend.
 - Показывай column menu по кнопке с тремя точками в toolbar.
 - Разрешай скрывать только дополнительные columns.
+- Показывай visibility каждой колонки локальной иконкой `eye.svg` для visible
+  и `eye-off.svg` для hidden. Не используй checkbox, checkmark или текстовую
+  галочку; button обязан иметь `aria-pressed` и доступное имя.
 - Всегда показывай checkbox, name и row actions.
 - Используй backend `order`; не добавляй sorting и reorder.
 - Не добавляй pagination и virtualization без отдельного требования.
@@ -123,7 +122,11 @@ abbreviations
 - Проверь main row, checkbox selection и нажатие checkbox main object.
 - Проверь select-all с name filter и сохранение selection вне фильтра.
 - Проверь отсутствие `indeterminate`.
+- Проверь eye/eye-off state, `aria-pressed`, исходный SVG aspect ratio и
+  отсутствие checkmark в column menu.
 - Проверь frontend rounding, units, `null`, abbreviations и tooltip.
 - Проверь sticky header, checkbox/name cells и горизонтальный scroll.
 - Проверь toolbar actions, hover row actions и backend error последнего delete.
+- Проверь, что поздний response более раннего request и response старого context
+  не заменяют актуальную таблицу.
 - Запусти `node --check` для перенесённого JS и `node test/front/run_front_tests.js`.

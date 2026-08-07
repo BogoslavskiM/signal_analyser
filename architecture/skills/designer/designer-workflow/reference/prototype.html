@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Design prototype</title>
+  <link rel="stylesheet" href="design.css">
+</head>
+<body>
+  <header class="demo-toolbar">
+    <div class="demo-brand">
+      <img src="../../visual-system/reference/icons/engee-logo.svg" alt="Engee">
+      <h1>Engee application prototype</h1>
+    </div>
+    <nav aria-label="Prototype states">
+      <button type="button" data-demo-state="default" data-design-id="state-default">Default</button>
+      <button type="button" data-demo-state="loading" data-design-id="state-loading">Loading</button>
+      <button type="button" data-demo-state="empty" data-design-id="state-empty">Empty</button>
+      <button type="button" data-demo-state="error" data-design-id="state-error">Error</button>
+    </nav>
+  </header>
+  <main class="demo-layout" data-demo-root data-state="default">
+    <aside class="demo-panel">Inspector or settings zone</aside>
+    <section class="demo-content" data-design-id="state-view">
+      <div data-state-view="default">Mock application content</div>
+      <div data-state-view="loading" hidden>Loading…</div>
+      <div data-state-view="empty" hidden>No data</div>
+      <div data-state-view="error" hidden role="alert">Unable to display data</div>
+    </section>
+  </main>
+  <script src="demo.js"></script>
+</body>
+</html>

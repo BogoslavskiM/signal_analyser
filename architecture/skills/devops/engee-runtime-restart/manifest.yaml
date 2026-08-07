@@ -1,0 +1,27 @@
+schema_version: 1
+name: engee-runtime-restart
+version: 1.2.0
+title: "Engee Runtime Restart"
+description: >
+  DevOps subskill для отдельного восстановления production Engee runtime:
+  перезапуска Genie-приложения без Git pipeline либо полного restart pod с
+  обязательным remote-only cleanup dirty checkout, последующим восстановлением
+  приложения, readiness-проверкой, диагностикой и немедленным task-lock release
+  до формирования report.
+language: ru
+audience: [assistant]
+priority: 1
+when-to-use:
+  - "Получен devops_request: restart_application"
+  - "Получен devops_request: restart_engee"
+  - "Системное состояние pod или Genie process требует отдельного restart без deploy"
+when-not:
+  - "Обычный deploy уже выполняет необходимый application start/restart"
+  - "Для исправления Backend, Frontend, tests или Engee contract"
+requires-tools:
+  - "Production Engee pod status, start and stop tools"
+  - "Production Engee Julia execution for engee.genie.start"
+  - "Production Engee logs or readiness probe"
+requires-products:
+  - "Engee"
+reference-files: []

@@ -1,7 +1,11 @@
----
-name: frontend-project-structure
----
 # Frontend Project Structure
+
+## Входные данные
+
+Прочитай текущий `public/**` tree, способ подключения scripts/styles, frontend
+stack и список новых zones/controls/dialogs/pages. Сохраняй существующий
+согласованный stack; reference layout является default только для нового
+типового приложения.
 
 ## When to Use
 - Нужно создать frontend типового Genie-приложения.
@@ -13,7 +17,7 @@ name: frontend-project-structure
 - Нужно только исправить локальный стиль или текст без изменения структуры.
 
 ## Mandatory Stack
-- Используй Vue 3 global build, обычный JavaScript и прямое подключение файлов через `index.html`.
+- Используй Vue 3 production global build, обычный JavaScript и прямое подключение файлов через `index.html`.
 - Не добавляй npm, bundler или TypeScript без явного требования либо доказанной невозможности разумно реализовать приложение на стандартном стеке.
 - Храни JS, CSS и HTML раздельно по типу файлов, сохраняя одинаковую предметную структуру каталогов.
 - Используй один root Vue app. Не создавай отдельное Vue-приложение для каждой зоны.
@@ -50,10 +54,14 @@ public/
 ```
 
 - Создавай HTML-файл только там, где элементу нужен собственный шаблон.
-- Создавай `theme.css` из assets `frontend/styling` и подключай его раньше CSS
-  controls, dialogs, zones и pages.
-- Копируй локальный Roboto в `public/fonts` и только реально используемые
-  общие SVG в `public/icons`; не подключай runtime font CDN.
+- Создавай production `theme.css` по pinned Designer package и подключай его
+  раньше CSS controls, dialogs, zones и pages. Не выбирай visual tokens внутри
+  этого skill.
+- Копируй четыре файла Roboto Regular/Medium с Cyrillic/Latin subsets из
+  pinned design package в `public/fonts`, объявляй их локальными `@font-face`
+  и используй Roboto Medium 500 для headings. Копируй только реально
+  используемые общие SVG в `public/icons`, сохраняя filename, `viewBox` и
+  aspect ratio; не подключай runtime font/icon CDN.
 - Подключай общий `tooltip.js` один раз до `app.js`.
 - Создавай обязательную верхнюю zone через `frontend/application-toolbar`;
   сохраняй её JS/CSS/HTML в симметричных `app/zones/toolbar` paths.
@@ -115,6 +123,9 @@ beforeUnmount
 
 ## Root App
 - Оставляй в `app.js` сборку модулей, создание root Vue app и общую frontend-координацию.
+- Загружай сначала лёгкий `/api/state-lite` без plot arrays, публикуй form,
+  zones и controls, затем запрашивай output только активной страницы. Не
+  задерживай готовность формы загрузкой Plotly или graph data.
 - Публикуй `data-testid="app-ready"` только после завершения обязательного
   startup state и задавай общему loader `data-testid="app-loader"`. Если
   приложение использует другие ids, передай их E2E через app config.
@@ -127,6 +138,8 @@ beforeUnmount
 - Предпочитай единый `api.js` для повторяемых endpoints, общей обработки JSON, HTTP errors, logging и cancellation.
 - Прямой `fetch` внутри модуля не запрещён, если запрос локален для элемента и общий API client не даёт практической пользы.
 - Не дублируй в нескольких модулях одинаковую request/error логику.
+- Храни последнюю принятую backend `state_revision` в root app. Не применяй
+  response с меньшей revision, даже если его HTTP request завершился позже.
 
 ## Guardrails
 - Не складывай всю frontend-логику в `app.js`.
@@ -141,4 +154,6 @@ beforeUnmount
 ## Verification
 - Проверь порядок `<script>` и `<link>` в `public/index.html`.
 - Проверь отсутствие ссылок на исходное приложение в перенесённых блоках.
+- Проверь Vue production build, локальные Roboto/SVG, порядок `theme.css`,
+  быстрый `state-lite` startup и отсутствие runtime CDN.
 - Запусти `node test/front/run_front_tests.js`.

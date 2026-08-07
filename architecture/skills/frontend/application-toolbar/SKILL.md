@@ -1,7 +1,10 @@
----
-name: application-toolbar
----
 # Application Toolbar
+
+## Входные данные
+
+Используй frontend config приложения, backend capability payload, локальный
+icon mapping и общие theme/tooltip contracts. Не выводи capability из наличия
+иконки или reference template.
 
 ## When to Use
 - Создаётся верхняя панель типового Genie-приложения.
@@ -11,24 +14,24 @@ name: application-toolbar
 - Действие относится только к конкретной zone или table row.
 - Нужна локальная панель управления графиком.
 
-## Bundled Template
-Используй:
+## Technical Reference and Design
 
-- `assets/template.js` — capability state, actions и export menu;
-- `assets/template.css` — fixed toolbar и split button;
-- `assets/template.html` — бренд и порядок глобальных действий.
+Используй `reference/template.js` только для capability state, trusted icon
+mapping, actions и export menu. Геометрию, HTML composition, CSS, states и
+assets бери из pinned Designer package.
 
 1. Подключи module до root `app.js`.
 2. Передай frontend config: `appName`, `logoPath`, action handlers и mapping
    trusted icon ids на локальные SVG paths.
 3. Примени backend payload версии и доступных export operations.
-4. Скопируй только SVG, реально используемые действиями.
-5. Используй tooltip/tokens из `frontend/styling`.
+4. Подключи только SVG, утверждённые дизайном и реально используемые действиями.
+5. Сохрани visual contract и version из frontend handoff.
 
-## Inheritance
-- Наследуй tokens, local font, icon mask, tooltip и fixed canvas из
-  `frontend/styling`.
-- Не создавай отдельную палитру или responsive toolbar.
+## Design Boundary
+
+- Не выбирай палитру, toolbar geometry или responsive layout.
+- Если design package не покрывает capability/state, отправь Designer
+  `design_revision`, а не адаптируй старый visual template.
 
 ## Brand
 - Toolbar обязателен для типового приложения.
@@ -99,6 +102,8 @@ toolbar:
 
 - `icon` — stable id из frontend icon mapping, не произвольный path или remote
   URL.
+- Неизвестный `icon` id оставляй без изображения и фиксируй как contract error;
+  никогда не подставляй его строку напрямую в CSS URL.
 - Полностью замещай capability payload после backend response.
 - Open state export menu является временным frontend state и не сохраняется в
   session.
@@ -127,5 +132,6 @@ toolbar:
 - Убедись, что hover/focus не открывает export menu.
 - Проверь закрытие menu после выбора, outside click, scroll и resize.
 - Проверь tooltip/accessible labels и help href.
+- Проверь, что неизвестный backend icon id не загружается как URL.
 - Уменьши viewport: toolbar не должен перестраиваться.
 - Запусти `node test/front/run_front_tests.js`.

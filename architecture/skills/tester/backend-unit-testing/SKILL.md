@@ -1,6 +1,3 @@
----
-name: backend-unit-testing
----
 # Backend Unit Testing
 
 ## When to Use
@@ -17,9 +14,9 @@ name: backend-unit-testing
 ## Bundled Templates
 Используй:
 
-- `assets/unit-test-template.jl` — структура testset;
-- `assets/coverage-summary.jl` — сводка built-in Julia `.cov`;
-- `assets/report-template.md` — итог unit-прогона и coverage ТЗ.
+- `reference/unit-test-template.jl` — структура testset;
+- `reference/coverage-summary.jl` — сводка built-in Julia `.cov`;
+- `reference/report-template.md` — итог unit-прогона и coverage ТЗ.
 
 ## Project Structure
 Сохраняй текущую структуру:
@@ -82,7 +79,7 @@ test/back/
 - Минимальный процент coverage не устанавливается.
 - Фактический line coverage обязательно укажи в отчёте.
 - Запускай Julia с built-in `--code-coverage=user`, затем сформируй сводку
-  через `assets/coverage-summary.jl` или существующий эквивалент проекта.
+  через `reference/coverage-summary.jl` или существующий эквивалент проекта.
 - Отдельно веди coverage map пунктов ТЗ/contract: требование → testset.
 - Высокий line coverage не заменяет проверку contract и критических границ.
 
@@ -102,4 +99,4 @@ test/back/
 - Запусти `julia --project=. test/back/runtests.jl`.
 - Для финального отчёта запусти suite с coverage.
 - Проверь независимость test order и отсутствие оставшихся files/tasks.
-- Заполни `assets/report-template.md`.
+- Заполни `reference/report-template.md`.

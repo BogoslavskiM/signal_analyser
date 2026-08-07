@@ -1,6 +1,3 @@
----
-name: required-functionality-analysis
----
 # Required Functionality Analysis
 
 Используй до реализации или contract testing, когда нужно установить, какую
@@ -47,3 +44,7 @@ unresolved:
 
 Не объявляй текущее фактическое поведение Engee правильным только потому, что
 оно воспроизводится. Не записывай secrets и не создавай product fallback.
+
+Перед завершением проверь, что каждая функция связана с реальным call site,
+версией и источником, а каждый unresolved contract превращён в конкретный
+execution scenario или blocker.

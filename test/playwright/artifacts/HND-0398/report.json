@@ -1,0 +1,1238 @@
+{
+  "handoff_id": "HND-0398",
+  "mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "76cb9c6a360ed6d852203f9be0ed7a1a4003e156",
+  "design_ref": "architecture/design/TASK-0057-ui-overlay-refinement/DESIGN.md",
+  "design_version": 2,
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "started_at": "2026-08-06T13:02:16.985Z",
+  "checks": [
+    {
+      "suite": "quick_regression",
+      "name": "availability-exact-revision",
+      "pass": true,
+      "actual": {
+        "main_document_status": 200,
+        "exact_url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+        "status": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "76cb9c6a360ed6d852203f9be0ed7a1a4003e156",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      },
+      "expected": "HTTP 2xx, ready/ok, 76cb9c6a360ed6d852203f9be0ed7a1a4003e156"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "full-page-shell-zones-1024x768",
+      "pass": true,
+      "actual": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "documentClientWidth": 1024,
+          "documentClientHeight": 768,
+          "documentScrollWidth": 1024,
+          "documentScrollHeight": 768,
+          "bodyScrollWidth": 1024,
+          "bodyScrollHeight": 768
+        },
+        "zones": {
+          "shell": {
+            "x": 6,
+            "y": 6,
+            "width": 1012,
+            "height": 756,
+            "right": 1018,
+            "bottom": 762,
+            "clientWidth": 1012,
+            "clientHeight": 756,
+            "scrollWidth": 1012,
+            "scrollHeight": 756,
+            "overflow": "hidden",
+            "minWidth": "920px",
+            "minHeight": "680px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "toolbar": {
+            "x": 6,
+            "y": 6,
+            "width": 1012,
+            "height": 44,
+            "right": 1018,
+            "bottom": 50,
+            "clientWidth": 1010,
+            "clientHeight": 42,
+            "scrollWidth": 1010,
+            "scrollHeight": 42,
+            "overflow": "visible",
+            "minWidth": "auto",
+            "minHeight": "44px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "main": {
+            "x": 6,
+            "y": 58,
+            "width": 1012,
+            "height": 429.5234375,
+            "right": 1018,
+            "bottom": 487.5234375,
+            "clientWidth": 1012,
+            "clientHeight": 430,
+            "scrollWidth": 1012,
+            "scrollHeight": 430,
+            "overflow": "hidden",
+            "minWidth": "auto",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "workspace": {
+            "x": 6,
+            "y": 58,
+            "width": 706,
+            "height": 429.5234375,
+            "right": 712,
+            "bottom": 487.5234375,
+            "clientWidth": 704,
+            "clientHeight": 428,
+            "scrollWidth": 704,
+            "scrollHeight": 428,
+            "overflow": "hidden",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "canvas": {
+            "x": 7,
+            "y": 133,
+            "width": 704,
+            "height": 353.5234375,
+            "right": 711,
+            "bottom": 486.5234375,
+            "clientWidth": 704,
+            "clientHeight": 354,
+            "scrollWidth": 704,
+            "scrollHeight": 354,
+            "overflow": "hidden",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "settings": {
+            "x": 718,
+            "y": 58,
+            "width": 300,
+            "height": 429.5234375,
+            "right": 1018,
+            "bottom": 487.5234375,
+            "clientWidth": 298,
+            "clientHeight": 428,
+            "scrollWidth": 298,
+            "scrollHeight": 428,
+            "overflow": "hidden",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "inspector": {
+            "x": 6,
+            "y": 495.5234375,
+            "width": 1012,
+            "height": 258.4765625,
+            "right": 1018,
+            "bottom": 754,
+            "clientWidth": 1010,
+            "clientHeight": 256,
+            "scrollWidth": 1010,
+            "scrollHeight": 256,
+            "overflow": "hidden",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "signals": {
+            "x": 7,
+            "y": 538.5234375,
+            "width": 1010,
+            "height": 214.4765625,
+            "right": 1017,
+            "bottom": 753,
+            "clientWidth": 1010,
+            "clientHeight": 214,
+            "scrollWidth": 1010,
+            "scrollHeight": 214,
+            "overflow": "hidden",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "tableScroll": {
+            "x": 15,
+            "y": 570.5234375,
+            "width": 994,
+            "height": 174.4765625,
+            "right": 1009,
+            "bottom": 745,
+            "clientWidth": 994,
+            "clientHeight": 174,
+            "scrollWidth": 994,
+            "scrollHeight": 174,
+            "overflow": "auto",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          }
+        }
+      },
+      "expected": "all listed zones reachable within a viewport-filling shell"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "display-settings-alignment-1024x768",
+      "pass": true,
+      "actual": {
+        "settings": {
+          "x": 718,
+          "y": 58,
+          "width": 300,
+          "height": 429.5234375,
+          "right": 1018,
+          "bottom": 487.5234375
+        },
+        "workspace": {
+          "x": 6,
+          "y": 58,
+          "width": 706,
+          "height": 429.5234375,
+          "right": 712,
+          "bottom": 487.5234375
+        },
+        "tabs": {
+          "x": 719,
+          "y": 101,
+          "width": 298,
+          "height": 32,
+          "right": 1017,
+          "bottom": 133
+        },
+        "rows": [
+          {
+            "box": {
+              "x": 785,
+              "y": 302,
+              "width": 206,
+              "height": 40,
+              "right": 991,
+              "bottom": 342
+            },
+            "gridTemplateColumns": "140px 2px",
+            "gap": "8px",
+            "display": "grid"
+          }
+        ]
+      },
+      "expected": "workspace-aligned panel and 140px/8px/40px rows"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "screen-close-blue-hover-focus-1024x768",
+      "pass": false,
+      "actual": {
+        "closeBox": {
+          "x": 138,
+          "y": 101,
+          "width": 28,
+          "height": 32
+        },
+        "hover": {
+          "color": "rgb(95, 111, 118)",
+          "background": "rgba(230, 245, 252, 0.15)",
+          "box": {
+            "x": 138,
+            "y": 101,
+            "width": 28,
+            "height": 32
+          }
+        },
+        "focus": {
+          "active": true,
+          "color": "rgb(71, 118, 142)",
+          "background": "rgba(230, 245, 252, 0.455)",
+          "outline": "rgb(27, 132, 184) solid 2px",
+          "outlineColor": "rgb(27, 132, 184)",
+          "box": {
+            "x": 138,
+            "y": 101,
+            "width": 28,
+            "height": 32
+          }
+        },
+        "controls": {
+          "add": {
+            "text": "",
+            "aria": "Добавить экран",
+            "box": {
+              "x": 532.59375,
+              "y": 100.5,
+              "width": 32,
+              "height": 32,
+              "right": 564.59375,
+              "bottom": 132.5
+            },
+            "icon": {
+              "x": 540.09375,
+              "y": 108.5,
+              "width": 16,
+              "height": 16,
+              "right": 556.09375,
+              "bottom": 124.5
+            },
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center"
+          },
+          "layout": {
+            "text": "Изменить макет",
+            "aria": "Изменить макет",
+            "box": {
+              "x": 564.59375,
+              "y": 100.5,
+              "width": 146.40625,
+              "height": 32,
+              "right": 711,
+              "bottom": 132.5
+            },
+            "icon": null,
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center"
+          }
+        }
+      },
+      "expected": "blue hover/focus, focus outline, unchanged 28x32 geometry"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "centered-add-canonical-layout-1024x768",
+      "pass": false,
+      "actual": {
+        "add": {
+          "text": "",
+          "aria": "Добавить экран",
+          "box": {
+            "x": 532.59375,
+            "y": 100.5,
+            "width": 32,
+            "height": 32,
+            "right": 564.59375,
+            "bottom": 132.5
+          },
+          "icon": {
+            "x": 540.09375,
+            "y": 108.5,
+            "width": 16,
+            "height": 16,
+            "right": 556.09375,
+            "bottom": 124.5
+          },
+          "display": "flex",
+          "alignItems": "center",
+          "justifyContent": "center"
+        },
+        "layout": {
+          "text": "Изменить макет",
+          "aria": "Изменить макет",
+          "box": {
+            "x": 564.59375,
+            "y": 100.5,
+            "width": 146.40625,
+            "height": 32,
+            "right": 711,
+            "bottom": 132.5
+          },
+          "icon": null,
+          "display": "flex",
+          "alignItems": "center",
+          "justifyContent": "center"
+        }
+      },
+      "expected": "32px centered +, adjacent 32px canonical layout action"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "small-legend-no-control-help-overlap-1024x768",
+      "pass": true,
+      "actual": {
+        "base": {
+          "legend": {
+            "x": 546,
+            "y": 180,
+            "width": 148,
+            "height": 46,
+            "right": 694,
+            "bottom": 226
+          },
+          "controls": {
+            "x": 495,
+            "y": 141.5,
+            "width": 207,
+            "height": 28,
+            "right": 702,
+            "bottom": 169.5
+          }
+        },
+        "opened": {
+          "legend": {
+            "x": 546,
+            "y": 180,
+            "width": 148,
+            "height": 46,
+            "right": 694,
+            "bottom": 226
+          },
+          "controls": {
+            "x": 495,
+            "y": 141.5,
+            "width": 207,
+            "height": 28,
+            "right": 702,
+            "bottom": 169.5
+          },
+          "help": {
+            "x": 396,
+            "y": 234,
+            "width": 300,
+            "height": 76,
+            "right": 696,
+            "bottom": 310
+          },
+          "focus": "graph-help-close"
+        }
+      },
+      "expected": "legend <=148px; legend, controls and help do not overlap"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "contained-table-header-checkbox-1024x768",
+      "pass": true,
+      "actual": {
+        "input": {
+          "x": 23,
+          "y": 576.5234375,
+          "width": 16,
+          "height": 16,
+          "right": 39,
+          "bottom": 592.5234375
+        },
+        "cell": {
+          "x": 15,
+          "y": 570.5234375,
+          "width": 56.9296875,
+          "height": 33.046875,
+          "right": 71.9296875,
+          "bottom": 603.5703125
+        },
+        "accentColor": "rgb(27, 132, 184)"
+      },
+      "expected": "checkbox fully inside header cell"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "inline-row-actions-final-cell-1024x768",
+      "pass": false,
+      "actual": {
+        "header": {
+          "input": {
+            "x": 23,
+            "y": 576.5234375,
+            "width": 16,
+            "height": 16,
+            "right": 39,
+            "bottom": 592.5234375
+          },
+          "cell": {
+            "x": 15,
+            "y": 570.5234375,
+            "width": 56.9296875,
+            "height": 33.046875,
+            "right": 71.9296875,
+            "bottom": 603.5703125
+          },
+          "accentColor": "rgb(27, 132, 184)"
+        },
+        "before": {
+          "opacity": "0",
+          "pointerEvents": "none"
+        },
+        "revealed": {
+          "cell": {
+            "x": 917.3671875,
+            "y": 603.5703125,
+            "width": 91.1328125,
+            "height": 33.546875,
+            "right": 1008.5,
+            "bottom": 637.1171875
+          },
+          "copy": {
+            "x": 925.8671875,
+            "y": 611.5703125,
+            "width": 10.1328125,
+            "height": 17.546875,
+            "right": 936,
+            "bottom": 629.1171875
+          },
+          "actions": {
+            "x": 944,
+            "y": 607.0703125,
+            "width": 60,
+            "height": 24,
+            "right": 1004,
+            "bottom": 631.0703125
+          },
+          "buttons": [
+            {
+              "x": 952,
+              "y": 607.0703125,
+              "width": 24,
+              "height": 24,
+              "right": 976,
+              "bottom": 631.0703125
+            },
+            {
+              "x": 980,
+              "y": 607.0703125,
+              "width": 24,
+              "height": 24,
+              "right": 1004,
+              "bottom": 631.0703125
+            }
+          ],
+          "copyOverflow": "hidden",
+          "textOverflow": "ellipsis",
+          "whiteSpace": "nowrap",
+          "opacity": "0",
+          "pointerEvents": "auto",
+          "actionsParentIsCell": true
+        },
+        "ordinary": {
+          "color": "rgb(107, 107, 107)",
+          "background": "rgba(0, 0, 0, 0)",
+          "width": "24px",
+          "height": "24px"
+        },
+        "danger": {
+          "color": "rgb(107, 107, 107)",
+          "background": "rgba(0, 0, 0, 0)",
+          "width": "24px",
+          "height": "24px"
+        }
+      },
+      "expected": "60x24 actions in final cell, 24x24 buttons, ellipsis, ordinary accent and danger states"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "russian-local-search-1024x768",
+      "pass": true,
+      "actual": {
+        "initial": [
+          {
+            "name": "Гармонический сигнал",
+            "selected": "true"
+          },
+          {
+            "name": "Комплексный ЛЧМ-сигнал",
+            "selected": "false"
+          }
+        ],
+        "selected": {
+          "name": "Гармонический сигнал",
+          "selected": "true"
+        },
+        "query": "ГАРМОНИЧ",
+        "filtered": [
+          {
+            "name": "Гармонический сигнал",
+            "selected": "true"
+          }
+        ],
+        "clearedValue": "",
+        "restored": [
+          {
+            "name": "Гармонический сигнал",
+            "selected": "true"
+          },
+          {
+            "name": "Комплексный ЛЧМ-сигнал",
+            "selected": "false"
+          }
+        ],
+        "mutationRequests": []
+      },
+      "expected": "case-insensitive filter; Escape clear; selection preserved; no mutation requests"
+    },
+    {
+      "suite": "quick_regression",
+      "name": "live-plotly-modebar-free-1024x768",
+      "pass": true,
+      "actual": {
+        "fullLayout": true,
+        "fullData": true,
+        "svg": true,
+        "staticPlot": false,
+        "fixedrange": false,
+        "modebarNodes": 0
+      },
+      "expected": "live interactive Plotly with no modebar DOM"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "full-page-shell-zones-1440x900",
+      "pass": true,
+      "actual": {
+        "viewport": {
+          "width": 1440,
+          "height": 900,
+          "documentClientWidth": 1440,
+          "documentClientHeight": 900,
+          "documentScrollWidth": 1440,
+          "documentScrollHeight": 900,
+          "bodyScrollWidth": 1440,
+          "bodyScrollHeight": 900
+        },
+        "zones": {
+          "shell": {
+            "x": 8,
+            "y": 8,
+            "width": 1424,
+            "height": 884,
+            "right": 1432,
+            "bottom": 892,
+            "clientWidth": 1424,
+            "clientHeight": 884,
+            "scrollWidth": 1424,
+            "scrollHeight": 884,
+            "overflow": "hidden",
+            "minWidth": "920px",
+            "minHeight": "680px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "toolbar": {
+            "x": 8,
+            "y": 8,
+            "width": 1424,
+            "height": 44,
+            "right": 1432,
+            "bottom": 52,
+            "clientWidth": 1422,
+            "clientHeight": 42,
+            "scrollWidth": 1422,
+            "scrollHeight": 42,
+            "overflow": "visible",
+            "minWidth": "auto",
+            "minHeight": "44px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "main": {
+            "x": 8,
+            "y": 60,
+            "width": 1424,
+            "height": 510,
+            "right": 1432,
+            "bottom": 570,
+            "clientWidth": 1424,
+            "clientHeight": 510,
+            "scrollWidth": 1424,
+            "scrollHeight": 510,
+            "overflow": "hidden",
+            "minWidth": "auto",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "workspace": {
+            "x": 8,
+            "y": 60,
+            "width": 1046,
+            "height": 510,
+            "right": 1054,
+            "bottom": 570,
+            "clientWidth": 1044,
+            "clientHeight": 508,
+            "scrollWidth": 1044,
+            "scrollHeight": 508,
+            "overflow": "hidden",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "canvas": {
+            "x": 9,
+            "y": 135,
+            "width": 1044,
+            "height": 434,
+            "right": 1053,
+            "bottom": 569,
+            "clientWidth": 1044,
+            "clientHeight": 434,
+            "scrollWidth": 1044,
+            "scrollHeight": 434,
+            "overflow": "hidden",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "settings": {
+            "x": 1062,
+            "y": 60,
+            "width": 370,
+            "height": 510,
+            "right": 1432,
+            "bottom": 570,
+            "clientWidth": 368,
+            "clientHeight": 508,
+            "scrollWidth": 368,
+            "scrollHeight": 508,
+            "overflow": "hidden",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "inspector": {
+            "x": 8,
+            "y": 578,
+            "width": 1424,
+            "height": 306,
+            "right": 1432,
+            "bottom": 884,
+            "clientWidth": 1422,
+            "clientHeight": 304,
+            "scrollWidth": 1422,
+            "scrollHeight": 304,
+            "overflow": "hidden",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "signals": {
+            "x": 9,
+            "y": 621,
+            "width": 1422,
+            "height": 262,
+            "right": 1431,
+            "bottom": 883,
+            "clientWidth": 1422,
+            "clientHeight": 262,
+            "scrollWidth": 1422,
+            "scrollHeight": 262,
+            "overflow": "hidden",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          },
+          "tableScroll": {
+            "x": 17,
+            "y": 653,
+            "width": 1406,
+            "height": 222,
+            "right": 1423,
+            "bottom": 875,
+            "clientWidth": 1406,
+            "clientHeight": 222,
+            "scrollWidth": 1406,
+            "scrollHeight": 222,
+            "overflow": "auto",
+            "minWidth": "0px",
+            "minHeight": "0px",
+            "maxWidth": "none",
+            "maxHeight": "none"
+          }
+        }
+      },
+      "expected": "all listed zones reachable within a viewport-filling shell"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "display-settings-alignment-1440x900",
+      "pass": true,
+      "actual": {
+        "settings": {
+          "x": 1062,
+          "y": 60,
+          "width": 370,
+          "height": 510,
+          "right": 1432,
+          "bottom": 570
+        },
+        "workspace": {
+          "x": 8,
+          "y": 60,
+          "width": 1046,
+          "height": 510,
+          "right": 1054,
+          "bottom": 570
+        },
+        "tabs": {
+          "x": 1063,
+          "y": 103,
+          "width": 368,
+          "height": 32,
+          "right": 1431,
+          "bottom": 135
+        },
+        "rows": [
+          {
+            "box": {
+              "x": 1129,
+              "y": 304,
+              "width": 276,
+              "height": 40,
+              "right": 1405,
+              "bottom": 344
+            },
+            "gridTemplateColumns": "140px 72px",
+            "gap": "8px",
+            "display": "grid"
+          }
+        ]
+      },
+      "expected": "workspace-aligned panel and 140px/8px/40px rows"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "screen-close-blue-hover-focus-1440x900",
+      "pass": false,
+      "actual": {
+        "closeBox": {
+          "x": 140,
+          "y": 103,
+          "width": 28,
+          "height": 32
+        },
+        "hover": {
+          "color": "rgb(107, 107, 107)",
+          "background": "rgba(0, 0, 0, 0)",
+          "box": {
+            "x": 140,
+            "y": 103,
+            "width": 28,
+            "height": 32
+          }
+        },
+        "focus": {
+          "active": true,
+          "color": "rgb(71, 118, 142)",
+          "background": "rgba(230, 245, 252, 0.45)",
+          "outline": "rgb(27, 132, 184) solid 2px",
+          "outlineColor": "rgb(27, 132, 184)",
+          "box": {
+            "x": 140,
+            "y": 103,
+            "width": 28,
+            "height": 32
+          }
+        },
+        "controls": {
+          "add": {
+            "text": "",
+            "aria": "Добавить экран",
+            "box": {
+              "x": 874.59375,
+              "y": 102.5,
+              "width": 32,
+              "height": 32,
+              "right": 906.59375,
+              "bottom": 134.5
+            },
+            "icon": {
+              "x": 882.09375,
+              "y": 110.5,
+              "width": 16,
+              "height": 16,
+              "right": 898.09375,
+              "bottom": 126.5
+            },
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center"
+          },
+          "layout": {
+            "text": "Изменить макет",
+            "aria": "Изменить макет",
+            "box": {
+              "x": 906.59375,
+              "y": 102.5,
+              "width": 146.40625,
+              "height": 32,
+              "right": 1053,
+              "bottom": 134.5
+            },
+            "icon": null,
+            "display": "flex",
+            "alignItems": "center",
+            "justifyContent": "center"
+          }
+        }
+      },
+      "expected": "blue hover/focus, focus outline, unchanged 28x32 geometry"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "centered-add-canonical-layout-1440x900",
+      "pass": false,
+      "actual": {
+        "add": {
+          "text": "",
+          "aria": "Добавить экран",
+          "box": {
+            "x": 874.59375,
+            "y": 102.5,
+            "width": 32,
+            "height": 32,
+            "right": 906.59375,
+            "bottom": 134.5
+          },
+          "icon": {
+            "x": 882.09375,
+            "y": 110.5,
+            "width": 16,
+            "height": 16,
+            "right": 898.09375,
+            "bottom": 126.5
+          },
+          "display": "flex",
+          "alignItems": "center",
+          "justifyContent": "center"
+        },
+        "layout": {
+          "text": "Изменить макет",
+          "aria": "Изменить макет",
+          "box": {
+            "x": 906.59375,
+            "y": 102.5,
+            "width": 146.40625,
+            "height": 32,
+            "right": 1053,
+            "bottom": 134.5
+          },
+          "icon": null,
+          "display": "flex",
+          "alignItems": "center",
+          "justifyContent": "center"
+        }
+      },
+      "expected": "32px centered +, adjacent 32px canonical layout action"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "small-legend-no-control-help-overlap-1440x900",
+      "pass": true,
+      "actual": {
+        "base": {
+          "legend": {
+            "x": 886,
+            "y": 184,
+            "width": 148,
+            "height": 46,
+            "right": 1034,
+            "bottom": 230
+          },
+          "controls": {
+            "x": 791,
+            "y": 145.5,
+            "width": 251,
+            "height": 28,
+            "right": 1042,
+            "bottom": 173.5
+          }
+        },
+        "opened": {
+          "legend": {
+            "x": 886,
+            "y": 184,
+            "width": 148,
+            "height": 46,
+            "right": 1034,
+            "bottom": 230
+          },
+          "controls": {
+            "x": 791,
+            "y": 145.5,
+            "width": 251,
+            "height": 28,
+            "right": 1042,
+            "bottom": 173.5
+          },
+          "help": {
+            "x": 736,
+            "y": 238,
+            "width": 300,
+            "height": 76,
+            "right": 1036,
+            "bottom": 314
+          },
+          "focus": "graph-help-close"
+        }
+      },
+      "expected": "legend <=148px; legend, controls and help do not overlap"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "contained-table-header-checkbox-1440x900",
+      "pass": true,
+      "actual": {
+        "input": {
+          "x": 25,
+          "y": 659,
+          "width": 16,
+          "height": 16,
+          "right": 41,
+          "bottom": 675
+        },
+        "cell": {
+          "x": 17,
+          "y": 653,
+          "width": 80.5390625,
+          "height": 33.046875,
+          "right": 97.5390625,
+          "bottom": 686.046875
+        },
+        "accentColor": "rgb(27, 132, 184)"
+      },
+      "expected": "checkbox fully inside header cell"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "inline-row-actions-final-cell-1440x900",
+      "pass": false,
+      "actual": {
+        "header": {
+          "input": {
+            "x": 25,
+            "y": 659,
+            "width": 16,
+            "height": 16,
+            "right": 41,
+            "bottom": 675
+          },
+          "cell": {
+            "x": 17,
+            "y": 653,
+            "width": 80.5390625,
+            "height": 33.046875,
+            "right": 97.5390625,
+            "bottom": 686.046875
+          },
+          "accentColor": "rgb(27, 132, 184)"
+        },
+        "before": {
+          "opacity": "0",
+          "pointerEvents": "none"
+        },
+        "revealed": {
+          "cell": {
+            "x": 1293.6015625,
+            "y": 686.046875,
+            "width": 128.8984375,
+            "height": 33.546875,
+            "right": 1422.5,
+            "bottom": 719.59375
+          },
+          "copy": {
+            "x": 1302.1015625,
+            "y": 694.046875,
+            "width": 47.8984375,
+            "height": 17.546875,
+            "right": 1350,
+            "bottom": 711.59375
+          },
+          "actions": {
+            "x": 1358,
+            "y": 689.546875,
+            "width": 60,
+            "height": 24,
+            "right": 1418,
+            "bottom": 713.546875
+          },
+          "buttons": [
+            {
+              "x": 1366,
+              "y": 689.546875,
+              "width": 24,
+              "height": 24,
+              "right": 1390,
+              "bottom": 713.546875
+            },
+            {
+              "x": 1394,
+              "y": 689.546875,
+              "width": 24,
+              "height": 24,
+              "right": 1418,
+              "bottom": 713.546875
+            }
+          ],
+          "copyOverflow": "hidden",
+          "textOverflow": "ellipsis",
+          "whiteSpace": "nowrap",
+          "opacity": "0",
+          "pointerEvents": "auto",
+          "actionsParentIsCell": true
+        },
+        "ordinary": {
+          "color": "rgb(107, 107, 107)",
+          "background": "rgba(0, 0, 0, 0)",
+          "width": "24px",
+          "height": "24px"
+        },
+        "danger": {
+          "color": "rgb(107, 107, 107)",
+          "background": "rgba(0, 0, 0, 0)",
+          "width": "24px",
+          "height": "24px"
+        }
+      },
+      "expected": "60x24 actions in final cell, 24x24 buttons, ellipsis, ordinary accent and danger states"
+    },
+    {
+      "suite": "new_functionality",
+      "name": "russian-local-search-1440x900",
+      "pass": true,
+      "actual": {
+        "initial": [
+          {
+            "name": "Гармонический сигнал",
+            "selected": "true"
+          },
+          {
+            "name": "Комплексный ЛЧМ-сигнал",
+            "selected": "false"
+          }
+        ],
+        "selected": {
+          "name": "Гармонический сигнал",
+          "selected": "true"
+        },
+        "query": "ГАРМОНИЧ",
+        "filtered": [
+          {
+            "name": "Гармонический сигнал",
+            "selected": "true"
+          }
+        ],
+        "clearedValue": "",
+        "restored": [
+          {
+            "name": "Гармонический сигнал",
+            "selected": "true"
+          },
+          {
+            "name": "Комплексный ЛЧМ-сигнал",
+            "selected": "false"
+          }
+        ],
+        "mutationRequests": []
+      },
+      "expected": "case-insensitive filter; Escape clear; selection preserved; no mutation requests"
+    },
+    {
+      "suite": "quick_regression",
+      "name": "live-plotly-modebar-free-1440x900",
+      "pass": true,
+      "actual": {
+        "fullLayout": true,
+        "fullData": true,
+        "svg": true,
+        "staticPlot": false,
+        "fixedrange": false,
+        "modebarNodes": 0
+      },
+      "expected": "live interactive Plotly with no modebar DOM"
+    },
+    {
+      "suite": "quick_regression",
+      "name": "zero-page-errors",
+      "pass": false,
+      "actual": {
+        "page_errors": [],
+        "console_errors": [
+          "Failed to load resource: the server responded with a status of 404 ()"
+        ]
+      },
+      "expected": "zero page/console errors"
+    }
+  ],
+  "prototype_checks": [],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0398/production-legend-help-1024x768.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0398/production-row-actions-1024x768.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0398/production-default-1024x768.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0398/production-legend-help-1440x900.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0398/production-row-actions-1440x900.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0398/production-default-1440x900.png"
+  ],
+  "page_errors": [],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "pass",
+  "prototype_reused_from": "HND-0396",
+  "availability": {
+    "main_document_status": 200,
+    "exact_url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+    "status": {
+      "status": 200,
+      "body": {
+        "runtime_revision": "76cb9c6a360ed6d852203f9be0ed7a1a4003e156",
+        "project": "example_project",
+        "ready": true,
+        "ok": true
+      }
+    }
+  },
+  "new_functionality": {
+    "planned": 16,
+    "passed": 10,
+    "failed": 6,
+    "not_run": 0,
+    "success_rate": 62.5
+  },
+  "quick_regression": {
+    "planned": 4,
+    "passed": 3,
+    "failed": 1,
+    "not_run": 0,
+    "success_rate": 75
+  },
+  "completed_at": "2026-08-06T13:02:32.083Z",
+  "verdict": "fail"
+}

@@ -1,0 +1,20 @@
+schema_version: 1
+name: product-question-resolution
+version: 1.0.0
+title: "Product Question Resolution"
+description: >
+  Классифицирует неразрешённые вопросы субагентов как продуктовые, подключает
+  ai_manager и установленный ask-to-ceo при доступности, а без него выбирает
+  автономное решение или останавливается для вопроса пользователю по mode.
+language: ru
+audience: [assistant]
+priority: 0.95
+when-to-use:
+  - "Субагент вернул неоднозначность, которую не разрешил один наиболее релевантный skill"
+  - "Нужно выбрать продуктовый scope, default, пользовательское поведение или приоритет"
+when-not:
+  - "Ответ уже прямо задан пользователем или authoritative contract"
+  - "Вопрос является техническим дефектом, отсутствием evidence или обычным ownership routing"
+requires-tools: []
+requires-products: []
+reference-files: []

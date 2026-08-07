@@ -2,7 +2,7 @@
 id: TASK-0014
 kind: group
 title: Довести интерфейс Signal Analyzer до Engee-ориентированного ТЗ
-status: in_progress
+status: done
 priority: P2
 queue_order: null
 model: null
@@ -13,9 +13,12 @@ parent: null
 depends_on: []
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0023, HND-0025]
+related_handoffs: [HND-0023, HND-0025, HND-0221, HND-0223, HND-0224]
 blocked_by: []
 blocker_reason: null
+feature_slug: signal_analyser_ui_patterns
+development_branch: neuro_signal_analyser_ui_patterns
+integration_sha: cac83c5f445352a50f04aeeeb269b47007766d79
 ---
 
 # Довести интерфейс Signal Analyzer до Engee-ориентированного ТЗ
@@ -179,29 +182,34 @@ hover row actions, toolbar/страницы нижней зоны, session save/
 | TASK-0016 | Backender | Typed session export/import contract and persistence implementation | — | done |
 | TASK-0017 | Frontend | Session import/export UI against TASK-0016 contract | TASK-0016 | done |
 | TASK-0018/TASK-0020/TASK-0021/TASK-0024 | Tester | Unit and frontend regression coverage | implementation tasks | done |
-| TASK-0027 | Frontend | UI cleanup, table controls, tabs, Settings geometry | — | queued |
-| TASK-0029 | Backender | Multi-layout state/API/session contract | — | queued |
-| TASK-0030 | Frontend | Multi-layout UI, plot bindings and drag/scroll tabs | TASK-0027, TASK-0029 | queued |
-| TASK-0031 | Tester | Backend/frontend regression for new work | TASK-0027, TASK-0029, TASK-0030 | queued |
-| TASK-0023 | E2E | Complete ready-feature browser workflow | production target URL | backlog follow-up |
+| TASK-0027 | Frontend | UI cleanup, table controls, tabs, Settings geometry | — | done |
+| TASK-0029 | Backender | Multi-layout state/API/session contract | — | done |
+| TASK-0030 | Frontend | Multi-layout UI, plot bindings and drag/scroll tabs | TASK-0027, TASK-0029 | done |
+| TASK-0031 | Tester | Backend/frontend regression for new work | TASK-0027, TASK-0029, TASK-0030 | done |
+| TASK-0023 | E2E | Complete ready-feature browser workflow | production target URL | done |
 
 ## Queue decision
 
 - Priority: P2.
-- Rationale: крупное улучшение UX и функциональности без текущего P0/P1
-  blocker; сначала нужна дополнительная декомпозиция.
-- Queue order: не назначен, так как `kind: idea` остаётся в backlog.
-- Eligibility: не готова к выдаче до фиксации открытых продуктовых решений и
-  разделения на frontend, backend, tester и E2E tasks.
+- Final decision: декомпозиция выполнена, все дочерние задачи завершены и
+  production/browser gates пройдены; группа закрыта.
 
 ## Verification and results
 
 Реализованы Inspector Info/row actions, session export/import с
-server-authoritative reload, строгий backend session contract и локальные
-Engee SVG. Локальные frontend/backend test gates прошли. E2E не запускался,
-поскольку production target URL не предоставлен, а deployment не запрашивался.
+server-authoritative reload, строгий backend session contract, локальные Engee
+SVG, детальный design package, responsive geometry и независимый multi-layout
+до 4×4. Все перечисленные child tasks имеют статус done. Production RUNNING на
+точной browser-visible ревизии
+`38d4134ea962b264ebabe0e7e9814c48368a975c`; финальный keyboard E2E прошёл
+28/28, runtime-revision E2E 21/21, а предыдущие bootstrap/session/multilayout/
+Inspector проверки также завершены. Closure зафиксирован как `HND-0221`.
+Automatic technical integration gate passed from TASK-0014/HND-0221/HND-0197/
+HND-0220. DevOps squash-merged the feature into `neuro_dev` as
+`cac83c5f445352a50f04aeeeb269b47007766d79`; report `HND-0224`.
 
 ## Risks, blockers and follow-ups
 
-Полный состав настроек и session format нельзя выводить только по скриншотам:
-их следует подтвердить отдельным TS и, при необходимости, research handoff.
+Нереализованных eligible child tasks нет. TASK-0038 относится к отдельному
+dependency contract и остаётся отложенной по прямому запрету пользователя на
+использование `Project.toml`/`Manifest.toml`.

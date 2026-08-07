@@ -1,0 +1,55 @@
+{
+  "id": "HND-0416",
+  "mode": "quick_regression",
+  "trigger_task": "TASK-0078",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "bba7f2528abccf14dcdd313681c8fd8bf538d40c",
+  "applied_skills": [
+    "e2e/e2e-workflow"
+  ],
+  "ui_impact": "none",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "started_at": "2026-08-06T15:09:24.706Z",
+  "checks": [
+    {
+      "name": "availability-root",
+      "pass": false,
+      "evidence": {
+        "status": 404,
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+        "maintenance": false,
+        "observed_at": "2026-08-06T15:09:26.558Z"
+      }
+    }
+  ],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0416/production-availability-failure-1440x900.png"
+  ],
+  "page_errors": [],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "responses_500": [],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "passed",
+  "preexisting_pages": [],
+  "root": {
+    "status": 404,
+    "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+    "maintenance": false,
+    "observed_at": "2026-08-06T15:09:26.558Z"
+  },
+  "run_error": "Error: Production availability failed; functional checks stopped.\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/hnd0416_post_matlab_baseline.js:64:13",
+  "finished_at": "2026-08-06T15:09:26.775Z",
+  "planned": 6,
+  "passed": 0,
+  "failed": 1,
+  "not_run": 5,
+  "success_rate_percent": 0,
+  "availability": false,
+  "operational": false
+}

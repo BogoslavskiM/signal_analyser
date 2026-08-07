@@ -1,11 +1,13 @@
-schema_version: 2
+schema_version: 1
 name: frontend-static-behavior-testing
-version: 0.1.0
+version: 3.1.0
 title: "Frontend Static and Behavior Testing"
 description: >
   Tester skill для dependency-free Node frontend tests: зеркальная структура,
   sorted runner, static JS/CSS/HTML contracts, VM/Vue/API behavior, stale and
-  debounce scenarios, V8 coverage и frontend skill/ТЗ matrix.
+  exact debounce/revision/state-lite/lazy-Plotly scenarios, local visual assets,
+  canonical Plotly modebar source contract, explicit Engee-unavailable UI,
+  V8 coverage и frontend skill/ТЗ matrix.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -16,6 +18,11 @@ when-not:
   - "Нужно проверить реальный browser layout или E2E workflow"
   - "Нужно проверить backend или Engee"
 requires-tools: []
-requires-products: []
-reference-files: []
-requires-skills: [tester-workflow]
+requires-products:
+  - "Node.js"
+reference-files:
+  - "reference/run_front_tests.js"
+  - "reference/static-test-template.js"
+  - "reference/behavior-test-template.js"
+  - "reference/v8-coverage-summary.js"
+  - "reference/report-template.md"

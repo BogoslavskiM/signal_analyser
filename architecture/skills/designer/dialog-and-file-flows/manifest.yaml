@@ -1,0 +1,27 @@
+schema_version: 1
+name: dialog-and-file-flows
+version: 2.0.0
+title: "Dialog and File Flows Designer"
+description: >
+  Проектирует modal dialogs, file browser, session import/export and object
+  export flows, semantic overlay priority, stacking, progress and visible
+  result states.
+language: ru
+audience: [assistant]
+priority: 0.85
+when-to-use:
+  - "Нужен modal, file browser, import, session export или object export design"
+  - "Нужно спроектировать stacking, busy, error или success dialog state"
+when-not:
+  - "Нужно реализовать modal lifecycle, focus trap, file API или export backend"
+requires-tools: []
+requires-products: []
+reference-files:
+  - "reference/dialog-system.css"
+  - "reference/dialog-system.html"
+  - "reference/file-browser-dialog.css"
+  - "reference/file-browser-dialog.html"
+  - "reference/session-import-export-ui.css"
+  - "reference/session-import-export-ui.html"
+  - "reference/object-export-dialog.css"
+  - "reference/object-export-dialog.html"

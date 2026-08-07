@@ -2,7 +2,7 @@
 id: TASK-0029
 kind: task
 title: Реализовать authoritative multi-layout state и session contract
-status: in_progress
+status: done
 priority: P1
 queue_order: 27
 model: gpt-5.6-sol
@@ -13,7 +13,7 @@ parent: TASK-0014
 depends_on: []
 blocks: [TASK-0030]
 source_handoffs: []
-related_handoffs: [HND-0025, HND-0030, HND-0040]
+related_handoffs: [HND-0025, HND-0030, HND-0040, HND-0095, HND-0096, HND-0098]
 blocked_by: []
 blocker_reason: null
 ---
@@ -65,4 +65,20 @@ HTML/CSS, layout popover rendering, drag UI, tests и deployment.
 
 ## Verification and results
 
-Backender handoff HND-0030 отправлен; ожидается API/session contract и report.
+Backender final report `HND-0095` подтвердил, что authoritative multi-layout
+contract уже полностью присутствует в текущем backend: typed version-1 layout
+и panes, strict revision-aware `GET/POST /api/layouts`, atomic validation and
+rollback, deterministic prefix-preserve/suffix-drop resize, active-pane
+fallback и version-1 session round-trip/legacy `1 × 1` migration.
+
+Backender focused regression прошёл `64/64`; Orchestrator независимо выполнил
+`julia --startup-file=no test/back/runtests.jl`, все backend testsets прошли с
+exit code 0. Команды не использовали `--project=.`; `Project.toml` и
+`Manifest.toml` не читались и не изменялись. Новые product changes для
+закрытия task не потребовались. Отдельный post-task quick regression выдан E2E
+как `HND-0096` на production SHA из `HND-0092`.
+
+E2E report `HND-0098`: exact target перешёл в platform maintenance HTTP 404
+между routing smoke и layout checks; availability обязательна, поэтому
+`0/8`, семь checks not-run, layout state не менялся. Terminal TASK-0029 не
+переоткрыта; восстановление runtime выделено в TASK-0041/HND-0099.

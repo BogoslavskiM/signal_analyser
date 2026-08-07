@@ -1,0 +1,1178 @@
+[
+  {
+    "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/index.html",
+    "title": "Анализатор сигналов — TASK-0057 design prototype",
+    "viewport": [
+      1024,
+      768
+    ],
+    "text": "Анализатор сигналов\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n5\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал\nОбласть 2\nСпектр\n0\n200\n400\n−80\n−60\n−40\n−20\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал\nНастройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить\nСигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nreferenceWave\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nnoiseFloor\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд с очень длинным описанием для проверки крайней ячейки",
+    "ids": [],
+    "plots": [
+      {
+        "testid": null,
+        "cls": "plot-chart plotly-host js-plotly-plot",
+        "rect": {
+          "x": 14,
+          "y": 170,
+          "width": 341,
+          "height": 319.5234375
+        },
+        "fullLayout": true,
+        "fullData": true,
+        "svg": true,
+        "traces": 2,
+        "img": false
+      },
+      {
+        "testid": null,
+        "cls": "plot-container plotly",
+        "rect": {
+          "x": 14,
+          "y": 170,
+          "width": 341,
+          "height": 319.5234375
+        },
+        "fullLayout": false,
+        "fullData": false,
+        "svg": true,
+        "traces": 2,
+        "img": false
+      },
+      {
+        "testid": null,
+        "cls": "plot-chart plotly-host js-plotly-plot",
+        "rect": {
+          "x": 363,
+          "y": 170,
+          "width": 341,
+          "height": 319.5234375
+        },
+        "fullLayout": true,
+        "fullData": true,
+        "svg": true,
+        "traces": 1,
+        "img": false
+      },
+      {
+        "testid": null,
+        "cls": "plot-container plotly",
+        "rect": {
+          "x": 363,
+          "y": 170,
+          "width": 341,
+          "height": 319.5234375
+        },
+        "fullLayout": false,
+        "fullData": false,
+        "svg": true,
+        "traces": 1,
+        "img": false
+      }
+    ],
+    "elements": [
+      {
+        "tag": "MAIN",
+        "id": "",
+        "cls": "app-shell",
+        "testid": null,
+        "rect": {
+          "x": 6,
+          "y": 6,
+          "width": 1012,
+          "height": 756
+        },
+        "text": "Анализатор сигналов\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n5\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигн"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "application-toolbar ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 6,
+          "y": 6,
+          "width": 1012,
+          "height": 44
+        },
+        "text": "Анализатор сигналов"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "main-stage",
+        "testid": null,
+        "rect": {
+          "x": 6,
+          "y": 56,
+          "width": 1012,
+          "height": 441.5234375
+        },
+        "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n5\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опо"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "workspace ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 6,
+          "y": 56,
+          "width": 706,
+          "height": 441.5234375
+        },
+        "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n5\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опо"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "workspace-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 7,
+          "y": 57,
+          "width": 704,
+          "height": 42
+        },
+        "text": "Отображение сигналов"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "plot-pane is-active",
+        "testid": null,
+        "rect": {
+          "x": 13,
+          "y": 137,
+          "width": 343,
+          "height": 353.5234375
+        },
+        "text": "Область 1\nВременная область\n0\n5\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "plot-pane-header",
+        "testid": null,
+        "rect": {
+          "x": 14,
+          "y": 138,
+          "width": 341,
+          "height": 32
+        },
+        "text": "Область 1\nВременная область"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "plot-pane",
+        "testid": null,
+        "rect": {
+          "x": 362,
+          "y": 137,
+          "width": 343,
+          "height": 353.5234375
+        },
+        "text": "Область 2\nСпектр\n0\n200\n400\n−80\n−60\n−40\n−20\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "plot-pane-header",
+        "testid": null,
+        "rect": {
+          "x": 363,
+          "y": 138,
+          "width": 341,
+          "height": 32
+        },
+        "text": "Область 2\nСпектр"
+      },
+      {
+        "tag": "ASIDE",
+        "id": "",
+        "cls": "settings-panel ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 718,
+          "y": 56,
+          "width": 300,
+          "height": 441.5234375
+        },
+        "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "settings-heading",
+        "testid": null,
+        "rect": {
+          "x": 719,
+          "y": 57,
+          "width": 298,
+          "height": 42
+        },
+        "text": "Настройки отображения"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "settings-group",
+        "testid": null,
+        "rect": {
+          "x": 719,
+          "y": 141,
+          "width": 292,
+          "height": 188
+        },
+        "text": "График\nТип графика\nВременная область\nПоказывать легенду"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "inspector ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 6,
+          "y": 503.5234375,
+          "width": 1012,
+          "height": 258.4765625
+        },
+        "text": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nК"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "inspector-header",
+        "testid": null,
+        "rect": {
+          "x": 7,
+          "y": 504.5234375,
+          "width": 1010,
+          "height": 32
+        },
+        "text": "Сигналы\nИзмерения\nПики"
+      },
+      {
+        "tag": "TABLE",
+        "id": "",
+        "cls": "signal-table",
+        "testid": null,
+        "rect": {
+          "x": 16,
+          "y": 568.5234375,
+          "width": 992,
+          "height": 162.5
+        },
+        "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nref"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "graph-help",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Перетаскивать график: Shift + ЛКМ\n      Автомасштабирование: двойной клик\n      Зум: зажать ЛКМ и выделить область"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "layout-popover",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Макет экранаНастройка областей без потери контекста\n      \n    \n    \n      Строки12345678910\n      Столбцы12345678910\n      \n      \n        Макет не рекомендуется\n        Для читае"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Макет экранаНастройка областей без потери контекста"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "dialog-card add-dialog",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Добавление сигналов\n        \n      \n      \n        Выберите поддерживаемые переменные из рабочей области.\n        \n          radarPulseВременной ряд · 12 000 отсчётов\n          ech"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "dialog-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Добавление сигналов"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "dialog-card message-dialog",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Закрыть без добавления?\n      Выбранные сигналы не будут добавлены.\n      \n        Остаться\n        Закрыть"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "dialog-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Закрыть без добавления?"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "dialog-card message-dialog",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Удалить экран?\n        \n      \n      Экран и его текущий макет будут удалены.\n      \n        Отмена\n        Удалить"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "dialog-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Удалить экран?"
+      }
+    ],
+    "bodyClass": "",
+    "expectedSha": false,
+    "scripts": [
+      "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js",
+      "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/demo.js"
+    ]
+  },
+  {
+    "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/index.html",
+    "title": "Анализатор сигналов — TASK-0057 design prototype",
+    "viewport": [
+      1280,
+      720
+    ],
+    "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n0\n0.5\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал\nОбласть 2\nСпектр\n0\n100\n200\n300\n400\n500\n−80\n−60\n−40\n−20\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал\nНастройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить\nСигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nreferenceWave\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nnoiseFloor\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд с очень длинным описанием для проверки крайней ячейки",
+    "ids": [],
+    "plots": [
+      {
+        "testid": null,
+        "cls": "plot-chart plotly-host js-plotly-plot",
+        "rect": {
+          "x": 16,
+          "y": 174,
+          "width": 446,
+          "height": 270
+        },
+        "fullLayout": true,
+        "fullData": true,
+        "svg": true,
+        "traces": 2,
+        "img": false
+      },
+      {
+        "testid": null,
+        "cls": "plot-container plotly",
+        "rect": {
+          "x": 16,
+          "y": 174,
+          "width": 446,
+          "height": 270
+        },
+        "fullLayout": false,
+        "fullData": false,
+        "svg": true,
+        "traces": 2,
+        "img": false
+      },
+      {
+        "testid": null,
+        "cls": "plot-chart plotly-host js-plotly-plot",
+        "rect": {
+          "x": 470,
+          "y": 174,
+          "width": 446,
+          "height": 270
+        },
+        "fullLayout": true,
+        "fullData": true,
+        "svg": true,
+        "traces": 1,
+        "img": false
+      },
+      {
+        "testid": null,
+        "cls": "plot-container plotly",
+        "rect": {
+          "x": 470,
+          "y": 174,
+          "width": 446,
+          "height": 270
+        },
+        "fullLayout": false,
+        "fullData": false,
+        "svg": true,
+        "traces": 1,
+        "img": false
+      }
+    ],
+    "elements": [
+      {
+        "tag": "MAIN",
+        "id": "",
+        "cls": "app-shell",
+        "testid": null,
+        "rect": {
+          "x": 8,
+          "y": 8,
+          "width": 1264,
+          "height": 704
+        },
+        "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n0\n0.5\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\n"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "application-toolbar ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 8,
+          "y": 8,
+          "width": 1264,
+          "height": 44
+        },
+        "text": "Анализатор сигналов\nВерсия 0.1.0"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "main-stage",
+        "testid": null,
+        "rect": {
+          "x": 8,
+          "y": 60,
+          "width": 1264,
+          "height": 392
+        },
+        "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n0\n0.5\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "workspace ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 8,
+          "y": 60,
+          "width": 916,
+          "height": 392
+        },
+        "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n0\n0.5\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "workspace-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 9,
+          "y": 61,
+          "width": 914,
+          "height": 42
+        },
+        "text": "Отображение сигналов"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "plot-pane is-active",
+        "testid": null,
+        "rect": {
+          "x": 15,
+          "y": 141,
+          "width": 448,
+          "height": 304
+        },
+        "text": "Область 1\nВременная область\n0\n2\n4\n6\n8\n10\n0\n0.5\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "plot-pane-header",
+        "testid": null,
+        "rect": {
+          "x": 16,
+          "y": 142,
+          "width": 446,
+          "height": 32
+        },
+        "text": "Область 1\nВременная область"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "plot-pane",
+        "testid": null,
+        "rect": {
+          "x": 469,
+          "y": 141,
+          "width": 448,
+          "height": 304
+        },
+        "text": "Область 2\nСпектр\n0\n100\n200\n300\n400\n500\n−80\n−60\n−40\n−20\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "plot-pane-header",
+        "testid": null,
+        "rect": {
+          "x": 470,
+          "y": 142,
+          "width": 446,
+          "height": 32
+        },
+        "text": "Область 2\nСпектр"
+      },
+      {
+        "tag": "ASIDE",
+        "id": "",
+        "cls": "settings-panel ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 932,
+          "y": 60,
+          "width": 340,
+          "height": 392
+        },
+        "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "settings-heading",
+        "testid": null,
+        "rect": {
+          "x": 933,
+          "y": 61,
+          "width": 338,
+          "height": 42
+        },
+        "text": "Настройки отображения"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "settings-group",
+        "testid": null,
+        "rect": {
+          "x": 933,
+          "y": 141,
+          "width": 332,
+          "height": 132
+        },
+        "text": "График\nТип графика\nВременная область\nПоказывать легенду"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "inspector ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 8,
+          "y": 460,
+          "width": 1264,
+          "height": 252
+        },
+        "text": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nК"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "inspector-header",
+        "testid": null,
+        "rect": {
+          "x": 9,
+          "y": 461,
+          "width": 1262,
+          "height": 32
+        },
+        "text": "Сигналы\nИзмерения\nПики"
+      },
+      {
+        "tag": "TABLE",
+        "id": "",
+        "cls": "signal-table",
+        "testid": null,
+        "rect": {
+          "x": 18,
+          "y": 525,
+          "width": 1244,
+          "height": 162.5
+        },
+        "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nref"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "graph-help",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Перетаскивать график: Shift + ЛКМ\n      Автомасштабирование: двойной клик\n      Зум: зажать ЛКМ и выделить область"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "layout-popover",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Макет экранаНастройка областей без потери контекста\n      \n    \n    \n      Строки12345678910\n      Столбцы12345678910\n      \n      \n        Макет не рекомендуется\n        Для читае"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Макет экранаНастройка областей без потери контекста"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "dialog-card add-dialog",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Добавление сигналов\n        \n      \n      \n        Выберите поддерживаемые переменные из рабочей области.\n        \n          radarPulseВременной ряд · 12 000 отсчётов\n          ech"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "dialog-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Добавление сигналов"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "dialog-card message-dialog",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Закрыть без добавления?\n      Выбранные сигналы не будут добавлены.\n      \n        Остаться\n        Закрыть"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "dialog-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Закрыть без добавления?"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "dialog-card message-dialog",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Удалить экран?\n        \n      \n      Экран и его текущий макет будут удалены.\n      \n        Отмена\n        Удалить"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "dialog-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Удалить экран?"
+      }
+    ],
+    "bodyClass": "",
+    "expectedSha": false,
+    "scripts": [
+      "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js",
+      "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/demo.js"
+    ]
+  },
+  {
+    "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/index.html",
+    "title": "Анализатор сигналов — TASK-0057 design prototype",
+    "viewport": [
+      1440,
+      900
+    ],
+    "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал\nОбласть 2\nСпектр\n0\n100\n200\n300\n400\n500\n−80\n−70\n−60\n−50\n−40\n−30\n−20\n−10\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал\nНастройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить\nСигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nreferenceWave\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nnoiseFloor\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд с очень длинным описанием для проверки крайней ячейки",
+    "ids": [],
+    "plots": [
+      {
+        "testid": null,
+        "cls": "plot-chart plotly-host js-plotly-plot",
+        "rect": {
+          "x": 18,
+          "y": 176,
+          "width": 508,
+          "height": 392
+        },
+        "fullLayout": true,
+        "fullData": true,
+        "svg": true,
+        "traces": 2,
+        "img": false
+      },
+      {
+        "testid": null,
+        "cls": "plot-container plotly",
+        "rect": {
+          "x": 18,
+          "y": 176,
+          "width": 508,
+          "height": 392
+        },
+        "fullLayout": false,
+        "fullData": false,
+        "svg": true,
+        "traces": 2,
+        "img": false
+      },
+      {
+        "testid": null,
+        "cls": "plot-chart plotly-host js-plotly-plot",
+        "rect": {
+          "x": 536,
+          "y": 176,
+          "width": 508,
+          "height": 392
+        },
+        "fullLayout": true,
+        "fullData": true,
+        "svg": true,
+        "traces": 1,
+        "img": false
+      },
+      {
+        "testid": null,
+        "cls": "plot-container plotly",
+        "rect": {
+          "x": 536,
+          "y": 176,
+          "width": 508,
+          "height": 392
+        },
+        "fullLayout": false,
+        "fullData": false,
+        "svg": true,
+        "traces": 1,
+        "img": false
+      }
+    ],
+    "elements": [
+      {
+        "tag": "MAIN",
+        "id": "",
+        "cls": "app-shell",
+        "testid": null,
+        "rect": {
+          "x": 8,
+          "y": 8,
+          "width": 1424,
+          "height": 884
+        },
+        "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной "
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "application-toolbar ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 8,
+          "y": 8,
+          "width": 1424,
+          "height": 44
+        },
+        "text": "Анализатор сигналов\nВерсия 0.1.0"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "main-stage",
+        "testid": null,
+        "rect": {
+          "x": 8,
+          "y": 60,
+          "width": 1424,
+          "height": 518
+        },
+        "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "workspace ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 8,
+          "y": 60,
+          "width": 1046,
+          "height": 518
+        },
+        "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "workspace-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 9,
+          "y": 61,
+          "width": 1044,
+          "height": 42
+        },
+        "text": "Отображение сигналов"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "plot-pane is-active",
+        "testid": null,
+        "rect": {
+          "x": 17,
+          "y": 143,
+          "width": 510,
+          "height": 426
+        },
+        "text": "Область 1\nВременная область\n0\n2\n4\n6\n8\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "plot-pane-header",
+        "testid": null,
+        "rect": {
+          "x": 18,
+          "y": 144,
+          "width": 508,
+          "height": 32
+        },
+        "text": "Область 1\nВременная область"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "plot-pane",
+        "testid": null,
+        "rect": {
+          "x": 535,
+          "y": 143,
+          "width": 510,
+          "height": 426
+        },
+        "text": "Область 2\nСпектр\n0\n100\n200\n300\n400\n500\n−80\n−70\n−60\n−50\n−40\n−30\n−20\n−10\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "plot-pane-header",
+        "testid": null,
+        "rect": {
+          "x": 536,
+          "y": 144,
+          "width": 508,
+          "height": 32
+        },
+        "text": "Область 2\nСпектр"
+      },
+      {
+        "tag": "ASIDE",
+        "id": "",
+        "cls": "settings-panel ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 1062,
+          "y": 60,
+          "width": 370,
+          "height": 518
+        },
+        "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "settings-heading",
+        "testid": null,
+        "rect": {
+          "x": 1063,
+          "y": 61,
+          "width": 368,
+          "height": 42
+        },
+        "text": "Настройки отображения"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "settings-group",
+        "testid": null,
+        "rect": {
+          "x": 1063,
+          "y": 145,
+          "width": 362,
+          "height": 132
+        },
+        "text": "График\nТип графика\nВременная область\nПоказывать легенду"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "inspector ui-panel",
+        "testid": null,
+        "rect": {
+          "x": 8,
+          "y": 586,
+          "width": 1424,
+          "height": 306
+        },
+        "text": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nК"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "inspector-header",
+        "testid": null,
+        "rect": {
+          "x": 9,
+          "y": 587,
+          "width": 1422,
+          "height": 32
+        },
+        "text": "Сигналы\nИзмерения\nПики"
+      },
+      {
+        "tag": "TABLE",
+        "id": "",
+        "cls": "signal-table",
+        "testid": null,
+        "rect": {
+          "x": 18,
+          "y": 651,
+          "width": 1404,
+          "height": 162.5
+        },
+        "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nref"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "graph-help",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Перетаскивать график: Shift + ЛКМ\n      Автомасштабирование: двойной клик\n      Зум: зажать ЛКМ и выделить область"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "layout-popover",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Макет экранаНастройка областей без потери контекста\n      \n    \n    \n      Строки12345678910\n      Столбцы12345678910\n      \n      \n        Макет не рекомендуется\n        Для читае"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Макет экранаНастройка областей без потери контекста"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "dialog-card add-dialog",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Добавление сигналов\n        \n      \n      \n        Выберите поддерживаемые переменные из рабочей области.\n        \n          radarPulseВременной ряд · 12 000 отсчётов\n          ech"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "dialog-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Добавление сигналов"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "dialog-card message-dialog",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Закрыть без добавления?\n      Выбранные сигналы не будут добавлены.\n      \n        Остаться\n        Закрыть"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "dialog-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Закрыть без добавления?"
+      },
+      {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "dialog-card message-dialog",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Удалить экран?\n        \n      \n      Экран и его текущий макет будут удалены.\n      \n        Отмена\n        Удалить"
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "cls": "dialog-titlebar",
+        "testid": null,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "text": "Удалить экран?"
+      }
+    ],
+    "bodyClass": "",
+    "expectedSha": false,
+    "scripts": [
+      "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js",
+      "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/demo.js"
+    ]
+  }
+]

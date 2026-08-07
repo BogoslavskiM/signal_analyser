@@ -1,11 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: backend-design
-version: 1.0.0
+version: 3.0.0
 title: "Backend Design"
 description: >
   Компактный опциональный skill для структуры Julia/Genie backend: aggregate
-  root, domain/services/adapters/routes, settings validation, lazy dirty
-  outputs, Plotly payload и optional worker queue.
+  root, domain/services/adapters/routes, state-lite, active-page plot cache,
+  Plotly payload, revisions и optional background worker.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -18,4 +18,3 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills: [backender-workflow]

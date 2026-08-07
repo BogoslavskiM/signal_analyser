@@ -1,19 +1,20 @@
-schema_version: 2
+schema_version: 1
 name: frontend-workflow
-version: 1.5.0
+version: 5.1.0
 title: "Workflow Frontend"
 description: >
-  Обязательный процесс Frontend: объединённый анализ задачи и API contracts,
-  implementation в базовом формате HTML, JS и CSS, trigger-based component
-  subskills, zone/API patterns, styling и skill-traced reports.
+  Обязательный процесс Frontend: design-coverage gate, API/state analysis,
+  trigger-based technical subskills, zone/API implementation, применение
+  versioned Designer package и page sizing contract, explicit
+  Engee-unavailable UI и skill-traced
+  reports и обязательная architecture быстрого data-heavy UI.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 1
 when-to-use:
-  - "Всегда при работе Frontend"
+  - "Получен frontend handoff в ownership Frontend"
 when-not:
-  - "Только для задач вне public ownership"
+  - "Задача не затрагивает public frontend ownership"
 requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills: []

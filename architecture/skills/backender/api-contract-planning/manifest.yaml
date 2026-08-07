@@ -1,13 +1,13 @@
-schema_version: 2
+schema_version: 1
 name: api-contract-planning
-version: 1.5.0
+version: 3.0.0
 title: "API Contract Planning"
 description: >
   Backend skill для Genie API contracts: full inspector table payload, typed
   settings metadata, one-field draft updates, validation, apply, outputs,
-  inspector bulk selection, separate zone routes, fast Apply response,
-  boolean dirty flags, optional worker manager, view sync, session и
-  optional object export и toolbar capabilities.
+  inspector bulk selection, state-lite, state revisions, active-page plot
+  cache/pending, view sync, session, optional object export и toolbar
+  capabilities.
 language: ru
 audience: [assistant]
 priority: 0.8
@@ -17,6 +17,6 @@ when-to-use:
 when-not:
   - "Нужно только изменить frontend rendering без изменения payload"
 requires-tools: []
-requires-products: []
+requires-products:
+  - "Genie"
 reference-files: []
-requires-skills: [backender-workflow]

@@ -1,14 +1,16 @@
-schema_version: 2
+schema_version: 1
 name: handoff-management
-version: 1.2.0
+version: 3.3.0
 title: "Handoff Management"
 description: >
-  Минимальный формат межагентного handoff типов task, report, research и FYI:
-  id, type, from, to, title и опциональные task section, description и
-  acceptance criteria и явный requested/applied subskill trace.
+  Минимальный формат task/report/research/FYI и design handoff: общие поля,
+  requested/applied skill trace, versioned design references, deployment
+  diagnostics/log links, standalone DevOps restart requests and evidence-based
+  owner routing, product-question metadata, Designer page-sizing contract и
+  E2E owned-tab cleanup status.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 0.95
 when-to-use:
   - "При любом сообщении или результате между агентами"
 when-not:
@@ -16,4 +18,3 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills: [orchestrator-workflow]

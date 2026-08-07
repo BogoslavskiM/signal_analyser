@@ -1,11 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: object-export-dialog
-version: 0.2.0
+version: 2.0.0
 title: "Object Export Dialog"
 description: >
-  Наследуемый frontend skill для optional object export operations: backend
-  availability/defaults, always-visible selector, explicit operation forms,
-  field validation и global export flow.
+  Техническая реализация optional object export: backend availability/defaults,
+  operation state, field validation and export API flow по готовому Designer
+  contract.
 language: ru
 audience: [assistant]
 priority: 0.85
@@ -18,5 +18,5 @@ when-not:
   - "Нужно сформировать математическое содержимое экспортируемого объекта"
 requires-tools: []
 requires-products: []
-reference-files: []
-requires-skills: [frontend-workflow, dialog-system]
+reference-files:
+  - "reference/template.js"

@@ -1,11 +1,12 @@
-schema_version: 2
+schema_version: 1
 name: backend-api-testing
-version: 0.1.0
+version: 3.0.0
 title: "Backend API Testing"
 description: >
   Tester skill для Genie API: точный ordered route contract без локального
   server, прямые tests именованных handlers, field-by-field payload assertions,
-  validation/programmer errors, state flows и endpoint coverage report.
+  state-lite/revisions, active-only plot cache/pending, validation/programmer
+  errors, confirmed-Engee unavailable stub и endpoint coverage report.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -16,6 +17,9 @@ when-not:
   - "Нужно проверить чистую domain-функцию или браузерный workflow"
   - "Нужно проверить Engee function contract"
 requires-tools: []
-requires-products: []
-reference-files: []
-requires-skills: [tester-workflow, backend-unit-testing]
+requires-products:
+  - "Julia"
+  - "Genie"
+reference-files:
+  - "reference/api-test-template.jl"
+  - "reference/report-template.md"

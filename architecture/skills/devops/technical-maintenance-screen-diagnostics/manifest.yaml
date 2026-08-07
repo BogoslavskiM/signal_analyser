@@ -1,0 +1,25 @@
+schema_version: 1
+name: technical-maintenance-screen-diagnostics
+version: 1.1.0
+title: "Technical Maintenance Screen Diagnostics"
+description: >
+  Узкий DevOps subskill для triage production экрана технических работ:
+  сопоставляет screenshot и HTTP status с pod, Genie start/readiness и logs,
+  не считает branded fallback автоматическим багом Engee и возвращает
+  evidence-based Backender/Frontend/DevOps owner либо undetermined result в
+  общую deployment diagnostics; Engee User не используется для availability.
+language: ru
+audience: [assistant]
+priority: 1
+when-to-use:
+  - "Production browser показывает экран технических работ или generic maintenance/error page"
+  - "Вместо приложения наблюдается branded fallback и нужно отличить HTTP 500 от Engee failure"
+when-not:
+  - "Обычная deployment diagnostics без maintenance screen"
+  - "Для исправления product code или подтверждения Engee bug"
+requires-tools:
+  - "Production Engee pod status and start tools"
+  - "Production browser/network probe"
+requires-products:
+  - "Engee"
+reference-files: []

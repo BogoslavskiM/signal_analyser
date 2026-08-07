@@ -1,6 +1,3 @@
----
-name: multi-page-element
----
 # Multi-page Element
 
 ## When to Use
@@ -13,20 +10,18 @@ name: multi-page-element
 - Нужна динамически создаваемая frontend-страница без заранее зарегистрированного page module.
 - Нужно реализовать математический расчёт или backend calculation queue.
 
-## Bundled Template
-Используй готовый комплект:
+## Technical Reference and Design
 
-- `assets/template.js` — Vue 3 global module, page registry, tabs, sync и output polling;
-- `assets/template.css` — titlebar, tabs, scroll controls, page menu, body, preloader и error;
-- `assets/template.html` — aggregator с dynamic active-page component.
+Используй `reference/template.js` для page registry, opened/main page state,
+sync and output polling. Titlebar, tabs, overflow controls, page menu,
+preloader/error visuals and markup composition бери из pinned Designer package.
 
-1. Прочитай все три файла.
-2. Скопируй их в соответствующие JS/CSS/HTML пути приложения.
-3. Зарегистрируй каждую страницу отдельным frontend module по stable page id.
-4. Создай агрегатор через `window.GenieMultiPageElement.create(...)`.
-5. Передай `defaultPageId`, page registry и backend action `syncPages`.
-6. Размести page-specific controls внутри шаблона самой страницы, ниже её основного содержимого.
-7. Не копируй domain page ids, titles или namespace приложения-источника.
+1. Прочитай technical JS reference и pinned design package.
+2. Зарегистрируй каждую страницу отдельным frontend module по stable page id.
+3. Создай агрегатор через `window.GenieMultiPageElement.create(...)`.
+4. Передай `defaultPageId`, page registry и backend action `syncPages`.
+5. Размести page-specific controls в позиции, заданной design package.
+6. Не копируй domain page ids, titles или namespace приложения-источника.
 
 ## Backend View Contract
 Backend возвращает:
@@ -89,6 +84,7 @@ data
 isready
 success
 error
+state_revision
 ```
 
 - Для `isready=false` показывай page preloader и продолжай polling только активной страницы.
@@ -102,6 +98,9 @@ error
 ## Tabs and Main Page
 - Считай `main_page` единственной непосредственно видимой страницей и открытой зоной с максимальным backend-приоритетом.
 - При клике переключай `main_page` на frontend немедленно, затем синхронизируй backend.
+- Сразу запроси data newly active output page. Сериализацию noncritical view
+  state (`main_page`, opened pages и подобное UI state) группируй trailing
+  debounce 350 ms; semantic actions create/delete/apply не задерживай.
 - При backend sync error показывай общий error dialog и не откатывай выбранную вкладку.
 - При открытии страницы через menu сразу делай её `main_page`.
 - При закрытии активной страницы выбирай первую оставшуюся по backend `order`.
@@ -120,7 +119,11 @@ error
 ## Async Guardrails
 - Для rapid tab changes применяй только последний backend sync response.
 - Для page data применяй ответ только к совпадающим page id и request id.
-- Останавливай frontend polling страницы после её деактивации; backend calculation queue продолжает работать независимо.
+- Любой backend response применяй только если его `state_revision` не меньше
+  уже принятой root revision.
+- Останавливай frontend polling страницы после её деактивации. Не запускай и
+  не загружай inactive output pages; уже начатая backend task завершается или
+  отменяется по backend revision/cancellation contract.
 - Очищай timers и listeners в `beforeUnmount`.
 - Обычный polling не должен изменять backend calculation priority.
 
@@ -133,5 +136,7 @@ error
 - Проверь static page без HTTP request.
 - Проверь output page в pending, success и calculation error.
 - Проверь stale sync/data responses и остановку polling неактивной страницы.
+- Проверь 350 ms batching noncritical UI state, immediate active rendering и
+  rejection stale `state_revision`.
 - Проверь, что в DOM находится только active page component.
 - Запусти `node --check` для перенесённого JS и `node test/front/run_front_tests.js`.

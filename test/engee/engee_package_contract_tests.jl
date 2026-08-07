@@ -38,7 +38,7 @@ function assert_pspectrum_matrix(values, row_axis, column_axis)
     matrix = Matrix(collect(values))
     rows = length(vec(collect(row_axis)))
     columns = length(vec(collect(column_axis)))
-    @test size(matrix) == (rows, columns) || size(matrix) == (columns, rows)
+    @test size(matrix) == (rows, columns)
     @test finite_values(matrix)
 end
 
@@ -52,6 +52,68 @@ end
     # A deterministic complex two-tone signal requires the TwoSided path.
     signal = ComplexF64.(cis.(2pi .* 32.0 .* time) .+ 0.25 .* cis.(2pi .* 72.0 .* time))
     pspectrum = dsp.Functions.pspectrum
+
+    @testset "HND-0413 MATLAB-compatible power normalization and topology" begin
+        real_tone = cos.(2pi .* 32.0 .* time)
+        real_power, real_frequencies, real_metadata = pspectrum(
+            real_tone,
+            time,
+            "power",
+            "Leakage",
+            0.5,
+            "TwoSided",
+            false,
+        )
+        real_axis = Float64.(vec(collect(real_frequencies)))
+        real_values = Float64.(vec(collect(real_power)))
+        real_peak = argmax(real_values)
+        real_bin_width_hz = maximum(diff(real_axis))
+        @test size(real_power) == (length(real_axis), 1)
+        @test isempty(real_metadata)
+        @test first(real_axis) == 0.0
+        @test last(real_axis) == fs_hz / 2
+        @test abs(real_axis[real_peak] - 32.0) <= real_bin_width_hz
+        # MATLAB/Engee public contract: unit real cosine has average power 1/2.
+        @test isapprox(real_values[real_peak], 0.5; rtol = 1e-3, atol = 0.0)
+        @test pspectrum(real_tone, time) == (real_power, real_frequencies, real_metadata)
+
+        for (complex_tone, expected_frequency_hz) in (
+            (cis.(2pi .* 32.0 .* time), 32.0),
+            (cis.(-2pi .* 32.0 .* time), -32.0),
+        )
+            complex_power, complex_frequencies, complex_metadata = pspectrum(
+                complex_tone,
+                time,
+                "power",
+                "Leakage",
+                0.5,
+                "TwoSided",
+                true,
+            )
+            complex_axis = Float64.(vec(collect(complex_frequencies)))
+            complex_values = Float64.(vec(collect(complex_power)))
+            complex_peak = argmax(complex_values)
+            complex_bin_width_hz = maximum(diff(complex_axis))
+            @test size(complex_power) == (length(complex_axis), 1)
+            @test isempty(complex_metadata)
+            @test first(complex_axis) == -fs_hz / 2
+            @test last(complex_axis) == fs_hz / 2
+            @test abs(complex_axis[complex_peak] - expected_frequency_hz) <= complex_bin_width_hz
+            # MATLAB/Engee public contract: a unit complex exponential has unit power.
+            @test isapprox(complex_values[complex_peak], 1.0; rtol = 1e-3, atol = 0.0)
+        end
+
+        complex_positive = cis.(2pi .* 32.0 .* time)
+        @test pspectrum(complex_positive, time) == pspectrum(
+            complex_positive,
+            time,
+            "power",
+            "Leakage",
+            0.5,
+            "TwoSided",
+            true,
+        )
+    end
 
     @testset "power / Welch" begin
         power, frequencies, metadata = pspectrum(
@@ -174,6 +236,50 @@ end
         @test all(isfinite, vec(collect(times)))
         assert_frequency_axis(frequencies)
         assert_pspectrum_matrix(power, frequencies, times)
+    end
+
+    @testset "HND-0413 documented defaults and exact output orientation" begin
+        real_signal = cos.(2pi .* 32.0 .* time)
+        implicit_spectrogram = pspectrum(real_signal, time, "spectrogram")
+        explicit_spectrogram = pspectrum(
+            real_signal,
+            time,
+            "spectrogram",
+            "Leakage",
+            0.5,
+            "OverlapPercent",
+            75.0,
+            "TwoSided",
+            false,
+        )
+        # The public default overlap depends on the Kaiser window.  For this
+        # fixed Leakage=0.5 probe it resolves to 75%, not the application's
+        # explicit Spectrogram default of 50%.
+        @test implicit_spectrogram == explicit_spectrogram
+        assert_pspectrum_matrix(
+            implicit_spectrogram[1],
+            implicit_spectrogram[2],
+            implicit_spectrogram[3],
+        )
+
+        implicit_persistence = pspectrum(real_signal, time, "persistence")
+        explicit_persistence = pspectrum(
+            real_signal,
+            time,
+            "persistence",
+            "Leakage",
+            0.5,
+            "NumPowerBins",
+            256,
+            "TwoSided",
+            false,
+        )
+        @test implicit_persistence == explicit_persistence
+        assert_pspectrum_matrix(
+            implicit_persistence[1],
+            implicit_persistence[3],
+            implicit_persistence[2],
+        )
     end
 
     @testset "C13 spectrogram Leakage + OverlapPercent canonical provider matrix" begin
@@ -314,5 +420,149 @@ end
         @test_throws ArgumentError pspectrum(signal, time, "persistence", "Leakage", -0.01, "NumPowerBins", 256, "TwoSided", true)
         @test_throws ArgumentError pspectrum(signal, time, "persistence", "Leakage", 1.01, "NumPowerBins", 256, "TwoSided", true)
         @test_throws ArgumentError pspectrum(signal, time, "persistence", "Leakage", NaN, "NumPowerBins", 256, "TwoSided", true)
+    end
+
+
+    @testset "HND-0413 short, zero and non-finite edge contract" begin
+        short_time = [0.0, 1.0 / fs_hz]
+        for (probe_signal, two_sided) in (
+            ([1.0, -1.0], false),
+            (ComplexF64[1.0, 1.0im], true),
+        )
+            power, frequencies, metadata = pspectrum(
+                probe_signal,
+                short_time,
+                "power",
+                "Leakage",
+                0.5,
+                "TwoSided",
+                two_sided,
+            )
+            @test size(power) == (length(vec(collect(frequencies))), 1)
+            @test isempty(metadata)
+            @test finite_values(power)
+
+            spectrogram_power, spectrogram_frequencies, segment_centers = pspectrum(
+                probe_signal,
+                short_time,
+                "spectrogram",
+                "Leakage",
+                0.5,
+                "OverlapPercent",
+                50.0,
+                "TwoSided",
+                two_sided,
+            )
+            assert_pspectrum_matrix(
+                spectrogram_power,
+                spectrogram_frequencies,
+                segment_centers,
+            )
+
+            occurrence, persistence_frequencies, power_levels = pspectrum(
+                probe_signal,
+                short_time,
+                "persistence",
+                "Leakage",
+                0.5,
+                "NumPowerBins",
+                256,
+                "TwoSided",
+                two_sided,
+            )
+            @test length(vec(collect(power_levels))) == 256
+            assert_pspectrum_matrix(occurrence, power_levels, persistence_frequencies)
+        end
+
+        zero_signal = zeros(sample_count)
+        zero_power, _, _ = pspectrum(
+            zero_signal,
+            time,
+            "power",
+            "Leakage",
+            0.5,
+            "TwoSided",
+            false,
+        )
+        @test all(iszero, zero_power)
+        zero_spectrogram, _, _ = pspectrum(
+            zero_signal,
+            time,
+            "spectrogram",
+            "Leakage",
+            0.5,
+            "OverlapPercent",
+            50.0,
+            "TwoSided",
+            false,
+        )
+        @test all(iszero, zero_spectrogram)
+        zero_occurrence, _, zero_power_levels = pspectrum(
+            zero_signal,
+            time,
+            "persistence",
+            "Leakage",
+            0.5,
+            "NumPowerBins",
+            256,
+            "TwoSided",
+            false,
+        )
+        @test all(iszero, zero_occurrence)
+        @test length(vec(collect(zero_power_levels))) == 256
+        @test all(value -> isfinite(value) && value > 0.0, vec(collect(zero_power_levels)))
+
+        for spectrum_type in ("power", "spectrogram", "persistence")
+            @test_throws ArgumentError pspectrum([1.0], [0.0], spectrum_type)
+        end
+        @test_throws ArgumentError pspectrum(
+            [signal[1:end-1]; ComplexF64(NaN)],
+            time,
+            "power",
+            "TwoSided",
+            true,
+        )
+        @test_throws ArgumentError pspectrum(
+            real.(signal),
+            fill(0.0, sample_count),
+            "power",
+            "TwoSided",
+            false,
+        )
+    end
+
+    @testset "HND-0413 documented validation regressions" begin
+        # Both official Engee and MATLAB contracts restrict one-sided output to
+        # real input.  Production EngeeDSP 0.72.0 currently accepts this call.
+        @test_throws Exception pspectrum(
+            signal,
+            time,
+            "power",
+            "TwoSided",
+            false,
+        )
+
+        real_signal = real.(signal)
+        # Both official contracts constrain NumPowerBins to the inclusive
+        # interval 20:1024.  Production EngeeDSP 0.72.0 currently accepts both
+        # out-of-contract values and returns matrices with those row counts.
+        @test_throws Exception pspectrum(
+            real_signal,
+            time,
+            "persistence",
+            "NumPowerBins",
+            19,
+            "TwoSided",
+            false,
+        )
+        @test_throws Exception pspectrum(
+            real_signal,
+            time,
+            "persistence",
+            "NumPowerBins",
+            1025,
+            "TwoSided",
+            false,
+        )
     end
 end

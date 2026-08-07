@@ -1,6 +1,3 @@
----
-name: graph-output-zone
----
 # Graph Output Zone
 
 ## When to Use
@@ -13,21 +10,21 @@ name: graph-output-zone
 - Требуется другая библиотека графиков.
 - Страница не имеет расчётного output contract.
 
-## Bundled Template
-Используй готовый комплект:
+## Technical Reference and Design
 
-- `assets/template.js` — общий Plotly component, локальная загрузка библиотеки и русской locale;
-- `assets/template.css` — canvas, frontend-defined grid, overlay, spinner и controls;
-- `assets/template.html` — пример graph page внутри multi-page element.
+Используй `reference/template.js` для Plotly component, local library/locale,
+payload rendering, controls and resize. Canvas geometry, grid, overlays,
+spinner and visual control placement бери из pinned Designer package.
 
-1. Прочитай все три файла.
-2. Скопируй их в соответствующие JS/CSS/HTML пути приложения.
-3. Положи Plotly и русскую locale в локальную vendor-директорию приложения.
-4. Создай модуль через `window.GenieGraphOutputZone.create(...)`.
-5. Зарегистрируй возвращённые `components` в root Vue app.
-6. В page registry установи `rendersOutputState: true`, чтобы graph page сама разместила preloader и error.
-7. Определи сетку и responsive rules в JS/CSS конкретной страницы.
-8. Не копируй названия страниц, объектов или namespace приложения-источника.
+1. Прочитай technical JS reference и pinned design package.
+2. Положи Plotly и русскую locale в локальную vendor-директорию приложения.
+3. Создай модуль через `window.GenieGraphOutputZone.create(...)`.
+4. Зарегистрируй возвращённые `components` в root Vue app.
+5. В page registry установи `rendersOutputState: true`, чтобы graph page сама разместила preloader и error.
+6. Реализуй grid/responsive rules из design version без самостоятельного выбора geometry.
+7. Не копируй названия страниц, объектов или namespace приложения-источника.
+8. Не меняй canonical proportions graph frame, settings controls, modebar и
+   menus; изменяй только layout/grid, явно требуемую ТЗ и pinned design.
 
 ## Plot Contract
 Отдельная data route страницы возвращает:
@@ -37,6 +34,7 @@ data
 isready
 success
 error
+state_revision
 ```
 
 Для graph page поле `data` является упорядоченным массивом:
@@ -50,8 +48,11 @@ data:
 
 - Не добавляй plot ids без отдельной необходимости.
 - Связывай ячейки frontend-сетки с элементами массива по порядку.
-- Backend формирует traces, цвета, `name`, legend, title, axes, ticks, units, hover и Plotly config.
-- Frontend не пересчитывает и не интерпретирует математические данные.
+- Backend в Julia рассчитывает signals, spectra, spectrograms, ambiguity
+  functions и формирует готовые traces, colors, `name`, legend, title, axes,
+  ticks, units, hover и Plotly config.
+- Frontend не выполняет DSP, не готовит derived graph arrays и не
+  интерпретирует математические данные.
 - Пустой массив отображай как пустую область без сообщения.
 - Если элементов меньше, чем рассчитано сеткой страницы, оставляй остальные места пустыми.
 
@@ -71,6 +72,8 @@ data:
 - Оставляй controls под canvas видимыми, но блокируй их во время pending.
 - Ошибку расчёта возвращай с HTTP 200. Ошибки HTTP, транспорта, локальной Plotly-библиотеки и повреждённого payload показывай в общем error dialog.
 - Продолжай polling pending активной страницы по правилам `frontend/output-loading-flow`.
+- Не применяй graph payload с `state_revision` меньше уже принятой root
+  revision или из неактивного page/request context.
 
 ## Page Controls
 - Размещай page controls ниже canvas внутри component конкретной страницы.
@@ -84,9 +87,19 @@ data:
 
 ## Plotly Component
 - Используй локальные Plotly bundle и русскую locale; не загружай библиотеку с CDN.
-- Оставляй стандартную modebar и скрывай логотип Plotly.
-- Запускай `Plotly.react` только для контейнера с ненулевыми размерами.
-- Отслеживай контейнер через `ResizeObserver` и адаптируй график к доступной ширине и высоте.
+- Подключай Plotly лениво только при первом реальном render графика, чтобы он
+  не входил в critical path `/api/state-lite` и initial controls.
+- Оставляй стандартные glyphs, порядок и geometry modebar, скрывай логотип
+  Plotly. Принудительно применяй canonical contract: белые `paper`, `plot` и
+  непрозрачная modebar `#ffffff`; default icons `#b8b8b8`, hover icons
+  `#7a7a7a` на `#f8f8f8`, active icons `#5f5f5f` на `#f2f2f2`. Не допускай
+  тёмной/полупрозрачной общей подложки, border, shadow или layout shift.
+- Сериализуй render через `requestAnimationFrame`: одновременно выполняется
+  не более одного render, а очередь хранит только последнее requested update.
+- Используй `Plotly.react`, а не полное пересоздание graph DOM. Запускай его
+  только для mounted контейнера с ненулевыми размерами.
+- Отслеживай контейнер через `ResizeObserver`, coalesce промежуточные events и
+  выполняй один отложенный resize после стабилизации layout.
 - Очищай observer, animation frames, listeners и `Plotly.purge` при размонтировании.
 - Не стандартизируй click, selection и range events без отдельного требования.
 - Используй встроенный экспорт изображения Plotly; отдельный механизм экспорта графиков не добавляй.
@@ -102,4 +115,11 @@ data:
 - Проверь page-control update без общего Apply и восстановление из сессии.
 - Проверь, что zoom/pan не входят в backend payload и сессию.
 - Проверь resize, tab remount, русскую modebar, отсутствие логотипа и локальную загрузку Plotly.
+- Проверь белый canvas/modebar и exact default/hover/active grey states
+  инструментов через source tests и передай реальную visual проверку E2E.
+- Проверь lazy Plotly load, one-render-in-flight, latest-only queue,
+  `requestAnimationFrame`, `Plotly.react`, coalesced `ResizeObserver` и stale
+  `state_revision` rejection.
+- Замерь отдельно cold load локального Plotly bundle и payload size больших
+  arrays: это оставшиеся возможные bottlenecks, а не повод переносить DSP в JS.
 - Запусти `node --check` для перенесённого JS и `node test/front/run_front_tests.js`.

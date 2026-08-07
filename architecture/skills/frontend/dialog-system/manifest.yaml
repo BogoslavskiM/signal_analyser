@@ -1,11 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: dialog-system
-version: 0.3.0
+version: 3.0.0
 title: "Dialog System"
 description: >
-  Frontend skill и JS/CSS/HTML bundle для modal dialogs: base component,
-  explicit-button close, busy state, form/error/success flow, stacking и
-  unexpected error без очереди.
+  Техническая реализация modal lifecycle: base component, explicit close,
+  focus, busy/form/error/success state, semantic overlay stacking и recovery по
+  готовому Designer contract.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -18,5 +18,5 @@ when-not:
   - "Нужно реализовать backend import/export"
 requires-tools: []
 requires-products: []
-reference-files: []
-requires-skills: [frontend-workflow]
+reference-files:
+  - "reference/template.js"

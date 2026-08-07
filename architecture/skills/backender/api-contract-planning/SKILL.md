@@ -1,7 +1,11 @@
----
-name: api-contract-planning
----
 # API Contract Planning
+
+## Входные данные и приоритет
+
+Прочитай task acceptance criteria, текущие routes/handlers, domain operations,
+frontend contract gaps и относящиеся component skills. Применяй только
+относящиеся к scope разделы ниже. Явное требование пользователя выше этих
+project defaults; отсутствующую capability не добавляй «на будущее».
 
 ## When to Use
 - Нужно добавить или изменить Genie API route.
@@ -13,21 +17,32 @@ name: api-contract-planning
 - Нужно только изменить calculation function без нового route contract.
 
 ## Mandatory Contracts
+- Создавай лёгкий `GET /api/state-lite` для startup: form, inspector,
+  navigation/view state, capabilities и `state_revision`, но без output/Plotly
+  arrays. Graph data всегда загружается отдельной active-page route.
 - Обновляй draft одним field endpoint и возвращай HTTP 200 с полным settings payload.
 - Выполняй Apply над уже сохранённым backend draft. Не отправляй settings snapshot повторно в Apply request.
 - При Apply сначала останови активную долгую задачу inspector и только затем валидируй draft.
 - Остановка в Apply означает немедленную логическую инвалидацию старой revision/очереди; не жди физического завершения worker-задачи.
-- При невалидном draft возвращай из Apply HTTP 200, `success=false` и короткий `error`.
-- При успешном Apply возвращай только HTTP 200 и `success=true`. Не добавляй `isready`, results, job envelope или состояние зон.
-- Не принимай `requested_outputs`: успешный Apply всегда планирует все outputs объекта.
-- Создавай отдельную data route для каждой расчётной зоны и возвращай её состояние через `data`, `isready`, `success`, `error`.
+- При невалидном draft возвращай из Apply HTTP 200, `success=false`, новую
+  `state_revision` и короткий `error`.
+- При успешном Apply возвращай HTTP 200, `success=true` и новую
+  `state_revision`. Не добавляй `isready`, results, job envelope или state зон.
+- Не принимай `requested_outputs`: успешный Apply помечает затронутые outputs в
+  `need_update_pages`, но не запускает eager calculation. Data request запускает
+  только current active page.
+- Создавай отдельную data route для каждой расчётной зоны и возвращай её
+  состояние через `data`, `isready`, `success`, `error`, `state_revision`.
 - Возвращай `data` как типизированную структуру зоны. До первого результата используй её типизированное пустое значение, а не `null`.
 - Возвращай HTTP 500 при неверном JSON/API type: это programmer error.
 - Добавляй inspector bulk-selection route с `selected` и необязательным `object_ids`.
-- Не вводи `422`, idempotency keys, state/settings revisions или обобщённый API envelope без явного требования задачи.
+- Не вводи `422`, idempotency keys или обобщённый API envelope без явного
+  требования задачи. Monotonic `state_revision` обязателен для state-bearing
+  responses и не заменяется client request id.
 
 ## Workflow
-1. Определи группу route: initial state, inspector CRUD, view sync, settings get/update/validate/apply, output data, import/export.
+1. Определи группу route: lightweight `/api/state-lite`, inspector CRUD, view
+   sync, settings get/update/validate/apply, active output data, import/export.
 2. Для каждого endpoint запиши method, request fields, response fields и error behavior.
 3. Привяжи endpoint к backend helper; route handler не должен содержать business logic.
 4. Раздели domain mutation и view-state mutation, если у них разный lifecycle.
@@ -42,12 +57,22 @@ name: api-contract-planning
 13. Считай неверный JSON/API type programmer error, не сохраняй такое значение и отвечай HTTP 500.
 14. В начале Apply синхронно инвалидируй старую revision и очередь, чтобы они больше не могли публиковать данные. Не жди физического завершения worker-задачи; затем выполни валидацию settings.
 15. Для Apply с невалидными settings отвечай HTTP 200, `success=false` и коротким текстом ошибки. Полную диагностику записывай в backend log, не запускай новую очередь и сохрани ранее рассчитанные данные зон.
-16. Для успешного Apply выставь boolean dirty flags расчётных зон, передай план менеджеру только если приложение использует worker, и сразу верни HTTP 200 с `success=true`. Расчётные данные и их статусы получаются отдельными zone-specific requests.
-17. Во время расчёта возвращай последнее успешно рассчитанное типизированное `data`, `isready=false`, `success=false`, `error=""`. Если успешного результата ещё не было, возвращай типизированное пустое `data`.
-18. После успешного расчёта возвращай `data`, `isready=true`, `success=true`, `error=""`.
-19. После ошибки расчёта возвращай прежнее типизированное `data`, `isready=true`, `success=false` и короткий текст в `error`.
+16. Для successful Apply выставь `need_update_pages=true` затронутым pages,
+    увеличь `state_revision` и сразу верни HTTP 200 с `success=true` и revision.
+    Не передавай eager full-page plan worker manager.
+17. При data request active page сначала проверь `plot_cache`/cache key. Current
+    cache верни сразу. При stale/missing cache atomically запусти или переиспользуй
+    task только этой page и верни lightweight `data` (например `[]`),
+    `isready=false`, `success=false`, `error=""`, `state_revision`.
+18. После успешного расчёта возвращай cached `data`, `isready=true`,
+    `success=true`, `error=""`, `state_revision`.
+19. После calculation error возвращай typed last-good `data` либо typed empty,
+    `isready=true`, `success=false`, короткий `error` и `state_revision`; выбор
+    стабилен для конкретной route и зафиксирован contract test.
 20. Публикуй каждую расчётную зону через собственную ручку. Завершённая зона доступна сразу и не ждёт результатов других зон.
-21. При смене `main_object`, `main_page`, `selection` или импорте сессии отменяй активную задачу и ожидающую очередь inspector, затем автоматически перестраивай очередь по новому состоянию.
+21. При смене `main_object`, `main_page`, `selection` или импорте сессии
+    отменяй неактуальную active task, инвалидируй затронутые cache keys,
+    увеличивай `state_revision`; не создавай очередь inactive pages.
 22. Сохраняй сессию немедленно, не ожидая активного расчёта. Сериализуй последнее полностью записанное `data` и текущие статусы расчётных зон непосредственно из persistent-структур объектов, а также `selection` и `main_object`.
 23. При импорте восстанавливай `data`, `isready`, `success` и `error` расчётных зон из файла без принудительного изменения статусов.
 24. Требуй в корне сессии поле `__genie_app_name` со стабильным именем текущего приложения. Отклоняй файл без поля или с другим значением.
@@ -56,11 +81,17 @@ name: api-contract-planning
 27. Не создавай endpoint автоматического retry calculation error: повторный расчёт запускает Apply.
 28. Добавь API tests на route registration, payload mapping, validation semantics и ключевые state mutation.
 29. Возвращай для multi-page element stable page metadata, backend order, opened page ids и `main_page`.
-30. Не создавай data route для статической frontend-страницы. Для каждой расчётной страницы создавай отдельную route с `data`, `isready`, `success`, `error`.
+30. Не создавай data route для статической frontend-страницы. Для каждой
+    расчётной страницы создавай отдельную route с `data`, `isready`, `success`,
+    `error`, `state_revision`; route принимает/проверяет current active page
+    context и не запускает inactive calculation.
 31. Для graph page возвращай в `data` упорядоченный массив готовых Plotly-объектов `{data, layout, config}`. Порядок соответствует frontend-сетке страницы; дополнительные plot ids не требуются.
 32. Формируй на backend traces, colors, names, legend, title, axes, units, hover и config. Для сравнимого графика включай `main_object + selected_objects` без дубликата; для несравниваемого используй только `main_object`, скрывай legend и добавляй имя объекта в title.
 33. Храни page controls в backend view state, обновляй их без общего Apply и включай в session export/import. Plotly zoom, pan и selection не принимай и не сохраняй.
-34. Если page control требует расчёта, помечай dirty только его расчётную страницу; если меняется только представление, сохрани control без общего Apply.
+34. Если page control требует расчёта, помечай `need_update_pages=true` только
+    его страницу; data request active page запускает calculation. Если меняется
+    только представление, сохрани control без общего Apply и увеличь
+    `state_revision`.
 35. Для server-side file browser создай отдельные действия `open`, `path`, `toggle`, `sort`, `select`, `cancel`, принимающие текущий browser state и target по стилю приложения.
 36. Возвращай после каждого file-browser action полный state: `open`, root/current/parent/selected paths, sort direction и structured `entries`; не используй параллельные массивы.
 37. Нормализуй paths, запрещай выход выше backend root, исключай hidden entries и разрешай symlink только если его real path остаётся внутри root.
@@ -86,12 +117,12 @@ name: api-contract-planning
 48. Возвращай field validation с HTTP 200, `success=false`, полным
     `operation_state` и `field_errors`. При успехе возвращай `success=true` и
     короткий message с нормализованным target.
-49. Реализацию формата передавай соответствующему skill:
-    `export-to-workspace`, `export-to-julia-script`, `export-to-jld2` или
-    `export-to-engee-model`. Эти skills получают подготовленное значение или
-    описание и не вычисляют предметную математику.
-50. В initial state возвращай `app_version` и полный `toolbar` capability
-    payload для глобальных import/export/other/help actions.
+49. Реализацию формата передавай `backender/object-export` с operation
+    `workspace`, `julia_script`, `jld2` или `engee_model`. Этот skill получает
+    подготовленное значение либо описание и не вычисляет предметную математику.
+50. В `/api/state-lite` возвращай `app_version`, `state_revision` и полный
+    `toolbar` capability payload для global import/export/other/help actions,
+    но не graph payload/cache arrays.
 51. Для неподдерживаемого toolbar action возвращай `visible=false`; для
     поддерживаемого, но временно недоступного — `visible=true`,
     `disabled=true`.
@@ -109,9 +140,11 @@ name: api-contract-planning
 - Не храни warning: рассчитывай его при формировании settings response.
 - Не возвращай frontend stack trace или внутренний отчёт об ошибке.
 - Не возвращай `isready` или zone data из Apply.
+- Не включай output arrays в `/api/state-lite` или stale-page pending response.
 - Не выполняй расчёт данных зоны и не ожидай worker внутри Apply route.
 - Не заменяй типизированное пустое `data` значением `null`.
 - Не подменяй согласованные простые payloads универсальной job/state схемой.
+- Не рассчитывай, не сериализуй и не отправляй inactive page data.
 - Не сохраняй file-browser dialog state в сессию приложения.
 - Не доверяй frontend extension/path/overwrite: повторно нормализуй и валидируй их на backend.
 - Не включай settings и outputs в table payload без явного table contract.
@@ -146,6 +179,7 @@ Apply response:
 
 ```text
 success:
+state_revision:
 error: только при success=false
 ```
 
@@ -156,7 +190,11 @@ data:
 isready:
 success:
 error:
+state_revision:
 ```
+
+Lightweight startup response `/api/state-lite` содержит `state_revision`, form,
+inspector/navigation/view state и capabilities, но не outputs/Plotly arrays.
 
 Минимальный settings field contract должен содержать `id`, `label`, `type`,
 typed `value`, `error`, `warning`, `readonly`, `visible`, `required`, `units`,
@@ -167,3 +205,12 @@ numeric, integer, boolean и enum fields, если единая форма со�
 Идентифицируй формат сессии стабильным ключом `__genie_app_name`. Имя
 константы и функция проверки принадлежат конкретному приложению и не должны
 содержать имя другого проекта.
+
+## Проверка и завершение
+
+Составь endpoint matrix `method/path/request/response/mutates/errors/tests` и
+проверь её против routes, named handlers и frontend needs. Запусти API tests
+для registration, state-lite payload weight, active-only cache hit/miss,
+lightweight pending, duplicate polling, monotonic revisions, validation/
+programmer errors и state mutations. В handoff Frontend перечисли только
+изменённые contracts, а Tester — точные cases и stable field IDs.

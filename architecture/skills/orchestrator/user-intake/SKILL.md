@@ -1,6 +1,3 @@
----
-name: user-intake
----
 # User Intake
 
 ## When to Use
@@ -26,9 +23,18 @@ separation. Не используй для task, которая уже нахо�
 6. Сохрани результат как законченное user TS в связанной `kind: idea`
    task-записи со статусом `backlog`:
    цель, зоны, элементы, пользовательские действия, scope и out of scope.
-7. После фиксации user TS считай его исходным законом для дальнейшей работы.
-   Недостающие продуктовые детали, defaults, transitions и MATLAB-аналогии
-   запрашивай у MATLAB Researcher через numbered handoff, а не выводи сам.
+7. Классифицируй `ui_impact`: `none`, `covered` или `new_or_changed`. Для
+   UI-affecting scope зафиксируй `design_mode: autonomous|review`, required
+   states и viewports. Не выбирай visual solution на intake.
+8. После фиксации user TS считай его исходным законом для дальнейшей работы.
+   MATLAB-аналогии и иные factual gaps передавай MATLAB Researcher. Вопросы о
+   product scope, defaults и visible transitions передавай Orchestrator для
+   `orchestrator/product-question-resolution`; не проси другого агента принять
+   продуктовое решение.
+
+Явный текст пользователя имеет приоритет над изображением, существующим
+template и любым значением по умолчанию. Неразрешённое противоречие не скрывай:
+запиши его как gap и передай Orchestrator для решения.
 
 ## Output
 
@@ -40,6 +46,11 @@ User-intake handoff должен содержать:
 - прямые словесные требования;
 - выявленные противоречия и пробелы;
 - зафиксированный scope/out of scope;
+- `ui_impact`, design mode, required states and viewports;
 - handoff для MATLAB Researcher с вопросами только по отсутствующим деталям.
 
 Изменить зафиксированное user TS может только новый явный запрос пользователя.
+
+Перед завершением проверь, что каждая наблюдаемая зона и control попали в
+inventory, scope/out of scope не противоречат друг другу, а все придуманные
+семантики удалены или оформлены вопросами.

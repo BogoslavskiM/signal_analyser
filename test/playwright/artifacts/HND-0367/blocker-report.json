@@ -1,0 +1,82 @@
+{
+  "id": "HND-0367",
+  "type": "report",
+  "from": "e2e",
+  "to": "orchestrator",
+  "title": "Production acceptance blocked: supplied visible Chrome CDP session is unavailable",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "eb4f81eb695ddafef032646aff6245f4f380c4f8",
+  "status": "failed",
+  "blocker": {
+    "kind": "browser_evidence_unavailable",
+    "observed_at": "2026-08-06T00:00:00+03:00",
+    "endpoint": "http://127.0.0.1:9222",
+    "evidence": [
+      "Initial CDP attach failed with EPERM in the sandbox.",
+      "Approved retry to the same endpoint failed with ECONNREFUSED.",
+      "The Google Chrome application was activated in the foreground.",
+      "Listener inspection found no Chrome/Chromium TCP debugging listener.",
+      "The visible Google Chrome main process (PID 81303) has no --remote-debugging-port argument."
+    ],
+    "impact": "No observable browser page can be inspected; therefore target availability, exact runtime revision, screenshots, visual geometry, overlay interactions, and live Plotly gestures cannot be evidenced."
+  },
+  "p0_failures": [
+    {
+      "id": "P0-live-plotly-absent",
+      "status": "failed",
+      "user_visible_symptom": "No live Plotly graph is visible in production.",
+      "runtime_root_cause": "The deployed frontend's `public/js/layouts.js` accepts only the state-lite envelope: `normalizeEnvelope()` requires `state_revision`, `calculation_revision`, `layouts`, exactly one active output, and active-output metadata. Production `GET /api/state` returned HTTP 200 with the legacy `plots` payload, but without `layouts` or `calculation_revision`. The envelope is rejected, so `acceptEnvelope()` does not populate `layoutsByDisplay`/`outputsByDisplay`; no ready pane host reaches `queuePaneRender()` or `Plotly.react()`.",
+      "evidence": {
+        "state_url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state",
+        "state_http_status": 200,
+        "state_response_fields_present": ["state_revision", "displays", "plots"],
+        "state_response_fields_missing": ["calculation_revision", "layouts"],
+        "plotly_asset_url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/vendor/plotly-cartesian-3.1.0.min.js",
+        "plotly_asset_http_status": 200,
+        "affected_files": [
+          "public/js/layouts.js: normalizeEnvelope(), acceptEnvelope(), refresh(), renderPanePlots(), queuePaneRender()",
+          "app/lib production state-envelope provider for GET /api/state and GET /api/outputs/active"
+        ]
+      },
+      "owner": "Orchestrator -> DevOps for exact revision/runtime correlation; then Backender and Frontend for the state-envelope contract."
+    },
+    {
+      "id": "P0-design-v2-mixed-legacy-zones",
+      "status": "failed",
+      "user_visible_symptom": "Production contains incomplete styling and mixed legacy zones.",
+      "evidence": {
+        "main_document_http_status": 200,
+        "document_url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+        "legacy_shell_surfaces": [
+          "public/index.html: pre-v2 active-pane runtime markup (`active-pane-runtime`, `active-plot-host`) remains in the document shell",
+          "public/index.html: legacy native `<select>` settings markup and legacy bottom-zone/table shell",
+          "public/css/layouts.css: original legacy rules remain before the appended DESIGN v2 overrides, creating cascade-dependent mixed zones"
+        ],
+        "design_contract_zones_affected": [
+          "plot workspace / pane header and canvas",
+          "Display settings",
+          "lower inspector/table",
+          "popup/overlay entry surfaces dependent on the legacy shell"
+        ]
+      },
+      "owner": "Frontend after DevOps confirms the runtime revision; the current visible result must not be accepted as design v2."
+    }
+  ],
+  "browser": {
+    "channel": "Google Chrome",
+    "headless": false,
+    "foreground_visibility": "activated, but not CDP-controllable",
+    "worker_count": 0
+  },
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "planned": 3,
+  "passed": 0,
+  "failed": 2,
+  "not_run": 1,
+  "success_rate_percent": 0,
+  "required_follow_up": "1. Orchestrator must request DevOps correlation of expected SHA eb4f81eb695ddafef032646aff6245f4f380c4f8 with the deployed frontend and backend/API runtime; production returns a legacy state schema to a state-lite frontend. 2. Frontend/Backender must restore one compatible state/output contract and remove the mixed legacy/v2 visual composition. 3. Provide a CDP attachment to an already-visible Chrome window for the required popup, hit-test, focus, screenshot, geometry, and real Plotly-gesture acceptance rerun. Do not treat this as a production pass."
+}

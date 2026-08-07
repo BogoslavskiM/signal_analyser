@@ -1,20 +1,25 @@
-schema_version: 2
+schema_version: 1
 name: orchestrator-workflow
-version: 3.0.0
+version: 7.2.0
 title: "Orchestrator Workflow"
 description: >
-  Обязательный жизненный цикл Orchestrator: немедленный background MATLAB
-  research, role/subskill dispatch matrix, Engee contracts, initial repository
-  clone в Engee apps, major-feature branch lifecycle через neuro_dev, DevOps
-  deploy/merge, E2E и review.
+  Обязательный жизненный цикл Orchestrator: intake, backlogging, role/subskill
+  dispatch, параллельные MATLAB/Engee/design evidence lanes, Engee contract
+  gate перед Backend, initial repository clone, feature branches от neuro_dev,
+  clickable design и performance gates, serialized DevOps pod task lock,
+  explicit production pod gate и standalone pod/application restart,
+  Engee-only deploy с HTTP-500/maintenance-screen диагностикой и
+  conditional package-environment/TOML sync, Designer page-sizing gate, E2E
+  foreground-Chrome visual/overlay gate with owned-tab cleanup, product-question
+  resolution через ai_manager/mode fallback, confirmed-Engee stub protocol и automatic neuro_dev
+  merge.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 1
 when-to-use:
-  - "Всегда при работе Orchestrator"
+  - "Получен пользовательский запрос или межагентный report для координации"
 when-not:
-  - "Никогда не пропускается; stage skills подключаются дополнительно"
+  - "Для выполнения product code, tests, Git или deployment вместо owning role"
 requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills: []

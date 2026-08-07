@@ -1,13 +1,14 @@
-schema_version: 2
+schema_version: 1
 name: user-intake
-version: 1.0.0
+version: 2.2.0
 title: "User Intake"
 description: >
-  Преобразует изображение и словесное описание пользователя в завершённое
-  user TS: зоны, controls, scope и вопросы для MATLAB Researcher.
+  Преобразует изображение и словесное описание пользователя в завершённое user
+  TS: scope, UI-impact/design mode, zones, controls, states, viewports и
+  factual вопросы для MATLAB Researcher и product ambiguity для Orchestrator.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 0.9
 when-to-use:
   - "При новом запросе пользователя с изображением или словесным описанием"
 when-not:
@@ -15,4 +16,3 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills: [orchestrator-workflow]

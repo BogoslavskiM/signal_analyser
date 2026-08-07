@@ -1,0 +1,27 @@
+schema_version: 1
+name: engee-project-environment-sync
+version: 1.0.0
+title: "Engee Project Environment Sync"
+description: >
+  Узкий DevOps subskill для восстановления package environment через
+  geniepkg_instantiate только при проблеме развёртывания и атомарной загрузки
+  Project.toml вместе с Manifest.toml из успешно запущенного production Engee
+  project в корень локального проекта.
+language: ru
+audience: [assistant]
+priority: 1
+when-to-use:
+  - "Deployment diagnostics подтвердил package/environment failure, устранимый instantiate в Engee"
+  - "Явно запрошена синхронизация Project.toml и Manifest.toml после успешного Engee start"
+when-not:
+  - "Обычный успешный deploy без package/environment problem или explicit sync"
+  - "Приложение в Engee ещё не прошло start/readiness"
+  - "Для ручного выбора, добавления или изменения зависимостей и compat"
+  - "Для локального instantiate или локального запуска приложения"
+requires-tools:
+  - "Production Engee command execution"
+  - "Production Engee typed file listing and download"
+  - "Local TOML parser and atomic pair replacement"
+requires-products:
+  - "Engee"
+reference-files: []

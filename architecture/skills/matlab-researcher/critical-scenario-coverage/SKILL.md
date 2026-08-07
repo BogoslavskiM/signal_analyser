@@ -1,6 +1,3 @@
----
-name: critical-scenario-coverage
----
 # Critical Scenario Coverage
 
 Формируй доказуемый verdict о полноте сохранённых MATLAB reference scenarios.
@@ -22,34 +19,37 @@ Verdict относится только к объявленному research sco
 
 ## 2. Получить сохранённый catalog
 
-1. Канонический и наиболее надёжный read source — локальный catalog
-   `/Users/makar/work/matlab_clicker/research_output/signal-analyzer-reference-scenarios/scenarios/`.
-   Прочитай его read-only и построй отсортированный manifest из relative path,
-   bytes и SHA-256 каждого `*.md` до и после audit.
-2. Если runtime устойчиво доступен, используй `GET /agent/bootstrap` только
-   для дополнительной проверки. Возьми `documents[]` с
-   `kind == "reference_scenario"` и exact path prefix
-   `research_output/signal-analyzer-reference-scenarios/scenarios/`; сравни
-   `path`, `local_path`, `bytes` и `sha256` с filesystem manifest.
-3. У clicker нет `GET /research/scenarios`. `POST /research/scenarios` — только
+1. Получи `catalog_path` и ожидаемый project/scope из handoff либо актуального
+   `GET /agent/bootstrap`. Не подставляй путь конкретного приложения и не
+   угадывай каталог.
+2. Проверь, что resolved catalog существует и относится к заявленному project
+   root. Прочитай его read-only и построй отсортированный manifest из relative
+   path, bytes и SHA-256 каждого scenario artifact до и после audit.
+3. Если runtime устойчиво доступен, используй `GET /agent/bootstrap` для
+   дополнительной проверки: отфильтруй `documents[]` по
+   `kind == "reference_scenario"` и scope/path, возвращённым bootstrap или
+   handoff; сравни `path`, `local_path`, `bytes` и `sha256` с filesystem
+   manifest.
+4. У clicker нет `GET /research/scenarios`. `POST /research/scenarios` — только
    write endpoint и не может служить listing API. Не угадывай другие endpoints.
-4. Для bootstrap проверь `ok`, `schema_version`, ожидаемый `project_root` и
+5. Для bootstrap проверь `ok`, `schema_version`, ожидаемый `project_root` и
    полное совпадение catalog. Connection refusal или stale PID означает
    `api_verification: unavailable`, а не пустой catalog.
-5. Не копируй scenarios в SignalAnalyser. В отчёте храни только стабильные
+6. Не копируй scenarios в product repository. В отчёте храни только стабильные
    scenario ID/path и provenance.
-6. Запиши `acquisition_mode`, API verification status, абсолютный catalog path,
+7. Запиши `acquisition_mode`, API verification status, resolved catalog path,
    retrieved-at, число/bytes artifacts и fingerprint отсортированного manifest.
    При изменении membership/content между начальным и конечным snapshot начни
    audit заново.
-7. Если API и filesystem доступны одновременно, но расходятся, либо artifact
-   не читается/не соответствует schema, выставь отрицательный verdict и gap.
+8. Если path не определён, API и filesystem расходятся либо artifact не
+   читается/не соответствует ожидаемому содержанию, выставь отрицательный
+   verdict и конкретный gap.
 
 Catalog состоит из неформализованного Markdown без обязательного frontmatter.
 Проверяй содержимое, а не ожидай структурные metadata. SHA-256 подтверждает
 content identity, но не доказывает актуальность поведения. Ссылку на screenshot
 или другой evidence считай доступной только если ресурс действительно
-retrievable; отсутствующий `/private/tmp/...` attachment остаётся gap.
+retrievable; исчезнувший ephemeral attachment остаётся gap.
 
 Недоступный runtime не мешает анализу устойчивого filesystem snapshot, но
 запрещает заявлять новое live-observation evidence.
@@ -120,3 +120,6 @@ scope действительно не содержит критических wo
 
 Не поддерживай отдельный backlog. Missing coverage, `pending` routing и
 blockers передавай Orchestrator как task candidates.
+
+Перед завершением повтори snapshot, проверь полноту matrix и убедись, что
+boolean verdict следует перечисленным условиям, а не субъективной оценке.

@@ -1,0 +1,25 @@
+schema_version: 1
+name: designer-workflow
+version: 3.3.0
+title: "Workflow Designer"
+description: >
+  Обязательный процесс Designer: design intake, source priority, полный
+  inventory состояний, локальный mock-прототип, autonomous/review gate,
+  versioned design package с local assets и clickable walkthrough,
+  source-derived visual profile, overlay-priority/proportion/page-sizing
+  contracts и revision loop с Frontend.
+language: ru
+audience: [assistant]
+priority: 1
+when-to-use:
+  - "Получен design_task от Orchestrator"
+  - "Получен design_revision от Frontend"
+when-not:
+  - "Нужно реализовать production frontend, backend или tests"
+requires-tools: []
+requires-products: []
+reference-files:
+  - "reference/DESIGN.template.md"
+  - "reference/prototype.html"
+  - "reference/design.css"
+  - "reference/demo.js"

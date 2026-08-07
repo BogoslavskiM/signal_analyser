@@ -1,22 +1,19 @@
-schema_version: 2
+schema_version: 1
 name: tester-workflow
-version: 2.0.0
+version: 4.0.0
 title: "Tester Workflow"
 description: >
-  Обязательный процесс Tester только для backend unit/API и frontend
-  static/behavior tests, regression, evidence report и bug report.
+  Обязательный процесс Tester для backend unit/API и frontend static/behavior
+  tests: выбор subskills, focused run, regression, evidence и bug report; Engee
+  contracts принадлежат Engee User; confirmed blocker покрывается explicit
+  Backend stub и Frontend unavailable-state tests.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 1
 when-to-use:
-  - "Всегда при работе Tester"
+  - "Получен test handoff для backend unit/API или frontend static/behavior проверки"
 when-not:
-  - "Для реализации product code"
-requires-tools:
-  - "Julia"
-  - "Node.js"
-requires-products:
-  - "Genie"
-  - "Engee"
+  - "Для product implementation, Engee contract tests или browser E2E"
+requires-tools: []
+requires-products: []
 reference-files: []
-requires-skills: []

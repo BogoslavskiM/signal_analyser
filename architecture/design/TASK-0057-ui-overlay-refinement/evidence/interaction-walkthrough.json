@@ -1,0 +1,1933 @@
+{
+  "role": "Designer",
+  "task": [
+    "TASK-0057",
+    "TASK-0067"
+  ],
+  "design_version": 2,
+  "status": "pass",
+  "generated_at": "2026-08-05T13:23:21.904Z",
+  "entry": "prototype/index.html",
+  "viewports": [
+    "1440x900",
+    "1280x720",
+    "1024x768"
+  ],
+  "interaction_count": 52,
+  "screenshot_count": 189,
+  "interactions": [
+    {
+      "id": "default-one-screen-1440x900",
+      "viewport": "1440x900",
+      "action": "Открыть prototype",
+      "expected": "Ровно один screen; две pane с axes/traces/legend; icon-only add; borderless swatches",
+      "status": "pass",
+      "duration_ms": 231
+    },
+    {
+      "id": "screen-overflow-1440x900",
+      "viewport": "1440x900",
+      "action": "Нажать icon-only + восемь раз",
+      "expected": "Возникает реальный overflow из девяти screen tabs; каждый screen сохраняет representative graphs",
+      "status": "pass",
+      "duration_ms": 4040
+    },
+    {
+      "id": "screen-delete-1440x900",
+      "viewport": "1440x900",
+      "action": "Открыть delete confirmation крестиком; проверить cancel, close и confirm",
+      "expected": "До confirm screen сохранён; cancel/close возвращают focus на крестик; confirm удаляет выбранный screen",
+      "status": "pass",
+      "duration_ms": 752
+    },
+    {
+      "id": "plotly-interactions-1440x900",
+      "viewport": "1440x900",
+      "action": "На package-local Plotly выполнить ЛКМ drag-zoom, double-click autoscale и Shift+ЛКМ pan",
+      "expected": "Axis ranges подтверждают zoom, reset и pan; modebar/container отсутствуют",
+      "status": "pass",
+      "duration_ms": 1884
+    },
+    {
+      "id": "area-menu-help-1440x900",
+      "viewport": "1440x900",
+      "action": "Открыть ellipsis, затем Управление графиком",
+      "expected": "Один menu содержит clear/help; новый help layer не меняет ни один graph bounding box; focus возвращается",
+      "status": "pass",
+      "duration_ms": 502
+    },
+    {
+      "id": "delete-over-pane-help-1440x900",
+      "viewport": "1440x900",
+      "action": "Оставить pane menu/help открытыми и активировать screen cross",
+      "expected": "Delete confirmation становится focus/pointer owner поверх stale menu/help; cancel сохраняет screen и возвращает focus",
+      "status": "pass",
+      "duration_ms": 391
+    },
+    {
+      "id": "clear-area-menu-1440x900",
+      "viewport": "1440x900",
+      "action": "Активировать Очистить область в общем ellipsis menu",
+      "expected": "Открывается confirmation; cancel возвращает focus на ellipsis",
+      "status": "pass",
+      "duration_ms": 232
+    },
+    {
+      "id": "settings-matrix-1440x900",
+      "viewport": "1440x900",
+      "action": "Для четырёх plot types прокликать три settings pages",
+      "expected": "Все 12 combinations детализированы; Display plot type — первая строка; pane/settings selectors синхронны",
+      "status": "pass",
+      "duration_ms": 2392
+    },
+    {
+      "id": "dropdown-checkbox-states-1440x900",
+      "viewport": "1440x900",
+      "action": "Прокликать canonical dropdown и ordinary checkbox states",
+      "expected": "28px pane cluster центрирован; 34px options не переносятся; default/hover/pressed/selected/focus/disabled и canonical marks точны",
+      "status": "pass",
+      "duration_ms": 2141
+    },
+    {
+      "id": "primary-button-states-1440x900",
+      "viewport": "1440x900",
+      "action": "Проверить hover/focus/active Применить",
+      "expected": "32px primary target сохраняет geometry во всех states",
+      "status": "pass",
+      "duration_ms": 364
+    },
+    {
+      "id": "table-swatches-1440x900",
+      "viewport": "1440x900",
+      "action": "Прокликать borderless color swatches",
+      "expected": "Нет visible text/border/outline; tooltip/accessible name сохранены; hover/focus/selected без layout shift",
+      "status": "pass",
+      "duration_ms": 484
+    },
+    {
+      "id": "table-inline-actions-1440x900",
+      "viewport": "1440x900",
+      "action": "Проверить resting/hover/focus/active/disabled inline actions",
+      "expected": "Actions находятся в последней content cell; Info/action column отсутствуют; reveal не меняет geometry",
+      "status": "pass",
+      "duration_ms": 1287
+    },
+    {
+      "id": "blocking-stale-1440x900",
+      "viewport": "1440x900",
+      "action": "Открыть settings dropdown и tooltip, затем прямой Add signal dialog",
+      "expected": "Blocking dialog owns focus above stale dropdown/tooltip; close restores Signals +",
+      "status": "pass",
+      "duration_ms": 524
+    },
+    {
+      "id": "passive-toast-dialog-1440x900",
+      "viewport": "1440x900",
+      "action": "Получить success toast через Duplicate, затем открыть Add dialog",
+      "expected": "Toast остаётся passive под modal controls; после close видим и не получает focus",
+      "status": "pass",
+      "duration_ms": 1047
+    },
+    {
+      "id": "nested-confirm-1440x900",
+      "viewport": "1440x900",
+      "action": "Открыть Add, изменить выбор и закрыть",
+      "expected": "Nested dirty confirmation traps focus above main dialog; cancel restores close control",
+      "status": "pass",
+      "duration_ms": 585
+    },
+    {
+      "id": "inspector-menu-1440x900",
+      "viewport": "1440x900",
+      "action": "Открыть Signals ellipsis, focus/tooltip и toggle column",
+      "expected": "Eye/eye-off icons используются вместо checkmarks; focus возвращается на ellipsis",
+      "status": "pass",
+      "duration_ms": 461
+    },
+    {
+      "id": "default-one-screen-1280x720",
+      "viewport": "1280x720",
+      "action": "Открыть prototype",
+      "expected": "Ровно один screen; две pane с axes/traces/legend; icon-only add; borderless swatches",
+      "status": "pass",
+      "duration_ms": 172
+    },
+    {
+      "id": "screen-overflow-1280x720",
+      "viewport": "1280x720",
+      "action": "Нажать icon-only + восемь раз",
+      "expected": "Возникает реальный overflow из девяти screen tabs; каждый screen сохраняет representative graphs",
+      "status": "pass",
+      "duration_ms": 3903
+    },
+    {
+      "id": "screen-delete-1280x720",
+      "viewport": "1280x720",
+      "action": "Открыть delete confirmation крестиком; проверить cancel, close и confirm",
+      "expected": "До confirm screen сохранён; cancel/close возвращают focus на крестик; confirm удаляет выбранный screen",
+      "status": "pass",
+      "duration_ms": 638
+    },
+    {
+      "id": "plotly-interactions-1280x720",
+      "viewport": "1280x720",
+      "action": "На package-local Plotly выполнить ЛКМ drag-zoom, double-click autoscale и Shift+ЛКМ pan",
+      "expected": "Axis ranges подтверждают zoom, reset и pan; modebar/container отсутствуют",
+      "status": "pass",
+      "duration_ms": 1755
+    },
+    {
+      "id": "area-menu-help-1280x720",
+      "viewport": "1280x720",
+      "action": "Открыть ellipsis, затем Управление графиком",
+      "expected": "Один menu содержит clear/help; новый help layer не меняет ни один graph bounding box; focus возвращается",
+      "status": "pass",
+      "duration_ms": 489
+    },
+    {
+      "id": "delete-over-pane-help-1280x720",
+      "viewport": "1280x720",
+      "action": "Оставить pane menu/help открытыми и активировать screen cross",
+      "expected": "Delete confirmation становится focus/pointer owner поверх stale menu/help; cancel сохраняет screen и возвращает focus",
+      "status": "pass",
+      "duration_ms": 343
+    },
+    {
+      "id": "clear-area-menu-1280x720",
+      "viewport": "1280x720",
+      "action": "Активировать Очистить область в общем ellipsis menu",
+      "expected": "Открывается confirmation; cancel возвращает focus на ellipsis",
+      "status": "pass",
+      "duration_ms": 208
+    },
+    {
+      "id": "settings-matrix-1280x720",
+      "viewport": "1280x720",
+      "action": "Для четырёх plot types прокликать три settings pages",
+      "expected": "Все 12 combinations детализированы; Display plot type — первая строка; pane/settings selectors синхронны",
+      "status": "pass",
+      "duration_ms": 2148
+    },
+    {
+      "id": "dropdown-checkbox-states-1280x720",
+      "viewport": "1280x720",
+      "action": "Прокликать canonical dropdown и ordinary checkbox states",
+      "expected": "28px pane cluster центрирован; 34px options не переносятся; default/hover/pressed/selected/focus/disabled и canonical marks точны",
+      "status": "pass",
+      "duration_ms": 2003
+    },
+    {
+      "id": "primary-button-states-1280x720",
+      "viewport": "1280x720",
+      "action": "Проверить hover/focus/active Применить",
+      "expected": "32px primary target сохраняет geometry во всех states",
+      "status": "pass",
+      "duration_ms": 322
+    },
+    {
+      "id": "table-swatches-1280x720",
+      "viewport": "1280x720",
+      "action": "Прокликать borderless color swatches",
+      "expected": "Нет visible text/border/outline; tooltip/accessible name сохранены; hover/focus/selected без layout shift",
+      "status": "pass",
+      "duration_ms": 467
+    },
+    {
+      "id": "table-inline-actions-1280x720",
+      "viewport": "1280x720",
+      "action": "Проверить resting/hover/focus/active/disabled inline actions",
+      "expected": "Actions находятся в последней content cell; Info/action column отсутствуют; reveal не меняет geometry",
+      "status": "pass",
+      "duration_ms": 1253
+    },
+    {
+      "id": "blocking-stale-1280x720",
+      "viewport": "1280x720",
+      "action": "Открыть settings dropdown и tooltip, затем прямой Add signal dialog",
+      "expected": "Blocking dialog owns focus above stale dropdown/tooltip; close restores Signals +",
+      "status": "pass",
+      "duration_ms": 549
+    },
+    {
+      "id": "passive-toast-dialog-1280x720",
+      "viewport": "1280x720",
+      "action": "Получить success toast через Duplicate, затем открыть Add dialog",
+      "expected": "Toast остаётся passive под modal controls; после close видим и не получает focus",
+      "status": "pass",
+      "duration_ms": 1002
+    },
+    {
+      "id": "nested-confirm-1280x720",
+      "viewport": "1280x720",
+      "action": "Открыть Add, изменить выбор и закрыть",
+      "expected": "Nested dirty confirmation traps focus above main dialog; cancel restores close control",
+      "status": "pass",
+      "duration_ms": 544
+    },
+    {
+      "id": "inspector-menu-1280x720",
+      "viewport": "1280x720",
+      "action": "Открыть Signals ellipsis, focus/tooltip и toggle column",
+      "expected": "Eye/eye-off icons используются вместо checkmarks; focus возвращается на ellipsis",
+      "status": "pass",
+      "duration_ms": 428
+    },
+    {
+      "id": "default-one-screen-1024x768",
+      "viewport": "1024x768",
+      "action": "Открыть prototype",
+      "expected": "Ровно один screen; две pane с axes/traces/legend; icon-only add; borderless swatches",
+      "status": "pass",
+      "duration_ms": 135
+    },
+    {
+      "id": "screen-overflow-1024x768",
+      "viewport": "1024x768",
+      "action": "Нажать icon-only + восемь раз",
+      "expected": "Возникает реальный overflow из девяти screen tabs; каждый screen сохраняет representative graphs",
+      "status": "pass",
+      "duration_ms": 4768
+    },
+    {
+      "id": "screen-delete-1024x768",
+      "viewport": "1024x768",
+      "action": "Открыть delete confirmation крестиком; проверить cancel, close и confirm",
+      "expected": "До confirm screen сохранён; cancel/close возвращают focus на крестик; confirm удаляет выбранный screen",
+      "status": "pass",
+      "duration_ms": 563
+    },
+    {
+      "id": "plotly-interactions-1024x768",
+      "viewport": "1024x768",
+      "action": "На package-local Plotly выполнить ЛКМ drag-zoom, double-click autoscale и Shift+ЛКМ pan",
+      "expected": "Axis ranges подтверждают zoom, reset и pan; modebar/container отсутствуют",
+      "status": "pass",
+      "duration_ms": 1680
+    },
+    {
+      "id": "area-menu-help-1024x768",
+      "viewport": "1024x768",
+      "action": "Открыть ellipsis, затем Управление графиком",
+      "expected": "Один menu содержит clear/help; новый help layer не меняет ни один graph bounding box; focus возвращается",
+      "status": "pass",
+      "duration_ms": 408
+    },
+    {
+      "id": "delete-over-pane-help-1024x768",
+      "viewport": "1024x768",
+      "action": "Оставить pane menu/help открытыми и активировать screen cross",
+      "expected": "Delete confirmation становится focus/pointer owner поверх stale menu/help; cancel сохраняет screen и возвращает focus",
+      "status": "pass",
+      "duration_ms": 297
+    },
+    {
+      "id": "clear-area-menu-1024x768",
+      "viewport": "1024x768",
+      "action": "Активировать Очистить область в общем ellipsis menu",
+      "expected": "Открывается confirmation; cancel возвращает focus на ellipsis",
+      "status": "pass",
+      "duration_ms": 235
+    },
+    {
+      "id": "settings-matrix-1024x768",
+      "viewport": "1024x768",
+      "action": "Для четырёх plot types прокликать три settings pages",
+      "expected": "Все 12 combinations детализированы; Display plot type — первая строка; pane/settings selectors синхронны",
+      "status": "pass",
+      "duration_ms": 2057
+    },
+    {
+      "id": "dropdown-checkbox-states-1024x768",
+      "viewport": "1024x768",
+      "action": "Прокликать canonical dropdown и ordinary checkbox states",
+      "expected": "28px pane cluster центрирован; 34px options не переносятся; default/hover/pressed/selected/focus/disabled и canonical marks точны",
+      "status": "pass",
+      "duration_ms": 1901
+    },
+    {
+      "id": "primary-button-states-1024x768",
+      "viewport": "1024x768",
+      "action": "Проверить hover/focus/active Применить",
+      "expected": "32px primary target сохраняет geometry во всех states",
+      "status": "pass",
+      "duration_ms": 269
+    },
+    {
+      "id": "table-swatches-1024x768",
+      "viewport": "1024x768",
+      "action": "Прокликать borderless color swatches",
+      "expected": "Нет visible text/border/outline; tooltip/accessible name сохранены; hover/focus/selected без layout shift",
+      "status": "pass",
+      "duration_ms": 435
+    },
+    {
+      "id": "table-inline-actions-1024x768",
+      "viewport": "1024x768",
+      "action": "Проверить resting/hover/focus/active/disabled inline actions",
+      "expected": "Actions находятся в последней content cell; Info/action column отсутствуют; reveal не меняет geometry",
+      "status": "pass",
+      "duration_ms": 1206
+    },
+    {
+      "id": "blocking-stale-1024x768",
+      "viewport": "1024x768",
+      "action": "Открыть settings dropdown и tooltip, затем прямой Add signal dialog",
+      "expected": "Blocking dialog owns focus above stale dropdown/tooltip; close restores Signals +",
+      "status": "pass",
+      "duration_ms": 441
+    },
+    {
+      "id": "passive-toast-dialog-1024x768",
+      "viewport": "1024x768",
+      "action": "Получить success toast через Duplicate, затем открыть Add dialog",
+      "expected": "Toast остаётся passive под modal controls; после close видим и не получает focus",
+      "status": "pass",
+      "duration_ms": 991
+    },
+    {
+      "id": "nested-confirm-1024x768",
+      "viewport": "1024x768",
+      "action": "Открыть Add, изменить выбор и закрыть",
+      "expected": "Nested dirty confirmation traps focus above main dialog; cancel restores close control",
+      "status": "pass",
+      "duration_ms": 499
+    },
+    {
+      "id": "inspector-menu-1024x768",
+      "viewport": "1024x768",
+      "action": "Открыть Signals ellipsis, focus/tooltip и toggle column",
+      "expected": "Eye/eye-off icons используются вместо checkmarks; focus возвращается на ellipsis",
+      "status": "pass",
+      "duration_ms": 495
+    },
+    {
+      "id": "validation-error-1440x900",
+      "viewport": "1440x900",
+      "action": "На странице Время задать min ≥ max и применить",
+      "expected": "Inline error и plot error доступны без пустого graph placeholder",
+      "status": "pass",
+      "duration_ms": 418
+    },
+    {
+      "id": "loading-success-1440x900",
+      "viewport": "1440x900",
+      "action": "Нажать Применить и дождаться завершения",
+      "expected": "Loading сохраняет graph; success даёт passive toast",
+      "status": "pass",
+      "duration_ms": 1380
+    },
+    {
+      "id": "empty-1440x900",
+      "viewport": "1440x900",
+      "action": "Через pane ellipsis подтвердить Очистить область",
+      "expected": "Empty overlay появляется поверх сохранённого representative graph",
+      "status": "pass",
+      "duration_ms": 368
+    },
+    {
+      "id": "layout-10x10-1440x900",
+      "viewport": "1440x900",
+      "action": "Реально выбрать 10 rows и 10 columns, затем применить",
+      "expected": "Non-blocking warning видим; Apply остаётся доступным; все 100 panes имеют axes/traces/legend",
+      "status": "pass",
+      "duration_ms": 1585
+    }
+  ],
+  "screenshots": [
+    "screenshots/workspace--default-one-screen--1440x900.png",
+    "screenshots/screen-list--left-edge--1440x900.png",
+    "screenshots/screen-arrow--hover--1440x900.png",
+    "screenshots/screen-arrow--focus-visible--1440x900.png",
+    "screenshots/screen-arrow--active--1440x900.png",
+    "screenshots/screen-list--middle--1440x900.png",
+    "screenshots/screen-list--right-edge--1440x900.png",
+    "screenshots/screen-close--hover--1440x900.png",
+    "screenshots/screen-close--focus-visible--1440x900.png",
+    "screenshots/screen-delete-confirmation--open--1440x900.png",
+    "screenshots/screen-delete-confirmation--cancelled--1440x900.png",
+    "screenshots/screen-delete-confirmation--confirmed--1440x900.png",
+    "screenshots/plotly--lmb-drag-zoom--1440x900.png",
+    "screenshots/plotly--double-click-autoscale--1440x900.png",
+    "screenshots/plotly--shift-lmb-pan--1440x900.png",
+    "screenshots/area-menu--clear-hover--1440x900.png",
+    "screenshots/area-menu--graph-help-focus--1440x900.png",
+    "screenshots/overlay-area-menu-graph-help--top--1440x900.png",
+    "screenshots/overlay-area-menu-graph-help--after-close--1440x900.png",
+    "screenshots/overlay-screen-delete-pane-help--top--1440x900.png",
+    "screenshots/overlay-screen-delete-pane-help--after-close--1440x900.png",
+    "screenshots/active-area-context-action--confirmation--1440x900.png",
+    "screenshots/settings--display--time--1440x900.png",
+    "screenshots/settings--time--time--1440x900.png",
+    "screenshots/settings--measurements--time--1440x900.png",
+    "screenshots/settings--display--spectrum--1440x900.png",
+    "screenshots/settings--time--spectrum--1440x900.png",
+    "screenshots/settings--measurements--spectrum--1440x900.png",
+    "screenshots/settings--display--spectrogram--1440x900.png",
+    "screenshots/settings--time--spectrogram--1440x900.png",
+    "screenshots/settings--measurements--spectrogram--1440x900.png",
+    "screenshots/settings--display--persistence--1440x900.png",
+    "screenshots/settings--time--persistence--1440x900.png",
+    "screenshots/settings--measurements--persistence--1440x900.png",
+    "screenshots/dropdown--default-selected--1440x900.png",
+    "screenshots/dropdown--hover--1440x900.png",
+    "screenshots/dropdown--focus-visible--1440x900.png",
+    "screenshots/dropdown--pressed--1440x900.png",
+    "screenshots/dropdown--disabled-option--1440x900.png",
+    "screenshots/dropdown-trigger--disabled--1440x900.png",
+    "screenshots/checkbox--canonical-checked--1440x900.png",
+    "screenshots/checkbox--canonical-focus-visible--1440x900.png",
+    "screenshots/button-primary--hover--1440x900.png",
+    "screenshots/control--focus-visible--1440x900.png",
+    "screenshots/button-primary--pressed--1440x900.png",
+    "screenshots/table-color-swatch--hover-borderless--1440x900.png",
+    "screenshots/table-color-swatch--focus-borderless--1440x900.png",
+    "screenshots/table-color-swatch--selected-borderless--1440x900.png",
+    "screenshots/table-row-actions--hover--1440x900.png",
+    "screenshots/table-row-actions--focus-visible--1440x900.png",
+    "screenshots/table-row-actions--active--1440x900.png",
+    "screenshots/table-row-actions--disabled--1440x900.png",
+    "screenshots/table--long-last-cell--1440x900.png",
+    "screenshots/overlay-blocking-stale-dropdown-tooltip--top--1440x900.png",
+    "screenshots/overlay-blocking-stale-dropdown-tooltip--after-close--1440x900.png",
+    "screenshots/overlay-passive-toast-active-dialog--top--1440x900.png",
+    "screenshots/overlay-passive-toast-active-dialog--after-close--1440x900.png",
+    "screenshots/overlay-nested-confirm--top--1440x900.png",
+    "screenshots/overlay-nested-confirm--after-close--1440x900.png",
+    "screenshots/overlay-inspector-menu-tooltip--top--1440x900.png",
+    "screenshots/overlay-inspector-menu-tooltip--after-close--1440x900.png",
+    "screenshots/workspace--default-one-screen--1280x720.png",
+    "screenshots/screen-list--left-edge--1280x720.png",
+    "screenshots/screen-arrow--hover--1280x720.png",
+    "screenshots/screen-arrow--focus-visible--1280x720.png",
+    "screenshots/screen-arrow--active--1280x720.png",
+    "screenshots/screen-list--middle--1280x720.png",
+    "screenshots/screen-list--right-edge--1280x720.png",
+    "screenshots/screen-close--hover--1280x720.png",
+    "screenshots/screen-close--focus-visible--1280x720.png",
+    "screenshots/screen-delete-confirmation--open--1280x720.png",
+    "screenshots/screen-delete-confirmation--cancelled--1280x720.png",
+    "screenshots/screen-delete-confirmation--confirmed--1280x720.png",
+    "screenshots/plotly--lmb-drag-zoom--1280x720.png",
+    "screenshots/plotly--double-click-autoscale--1280x720.png",
+    "screenshots/plotly--shift-lmb-pan--1280x720.png",
+    "screenshots/area-menu--clear-hover--1280x720.png",
+    "screenshots/area-menu--graph-help-focus--1280x720.png",
+    "screenshots/overlay-area-menu-graph-help--top--1280x720.png",
+    "screenshots/overlay-area-menu-graph-help--after-close--1280x720.png",
+    "screenshots/overlay-screen-delete-pane-help--top--1280x720.png",
+    "screenshots/overlay-screen-delete-pane-help--after-close--1280x720.png",
+    "screenshots/active-area-context-action--confirmation--1280x720.png",
+    "screenshots/settings--display--time--1280x720.png",
+    "screenshots/settings--time--time--1280x720.png",
+    "screenshots/settings--measurements--time--1280x720.png",
+    "screenshots/settings--display--spectrum--1280x720.png",
+    "screenshots/settings--time--spectrum--1280x720.png",
+    "screenshots/settings--measurements--spectrum--1280x720.png",
+    "screenshots/settings--display--spectrogram--1280x720.png",
+    "screenshots/settings--time--spectrogram--1280x720.png",
+    "screenshots/settings--measurements--spectrogram--1280x720.png",
+    "screenshots/settings--display--persistence--1280x720.png",
+    "screenshots/settings--time--persistence--1280x720.png",
+    "screenshots/settings--measurements--persistence--1280x720.png",
+    "screenshots/dropdown--default-selected--1280x720.png",
+    "screenshots/dropdown--hover--1280x720.png",
+    "screenshots/dropdown--focus-visible--1280x720.png",
+    "screenshots/dropdown--pressed--1280x720.png",
+    "screenshots/dropdown--disabled-option--1280x720.png",
+    "screenshots/dropdown-trigger--disabled--1280x720.png",
+    "screenshots/checkbox--canonical-checked--1280x720.png",
+    "screenshots/checkbox--canonical-focus-visible--1280x720.png",
+    "screenshots/button-primary--hover--1280x720.png",
+    "screenshots/control--focus-visible--1280x720.png",
+    "screenshots/button-primary--pressed--1280x720.png",
+    "screenshots/table-color-swatch--hover-borderless--1280x720.png",
+    "screenshots/table-color-swatch--focus-borderless--1280x720.png",
+    "screenshots/table-color-swatch--selected-borderless--1280x720.png",
+    "screenshots/table-row-actions--hover--1280x720.png",
+    "screenshots/table-row-actions--focus-visible--1280x720.png",
+    "screenshots/table-row-actions--active--1280x720.png",
+    "screenshots/table-row-actions--disabled--1280x720.png",
+    "screenshots/table--long-last-cell--1280x720.png",
+    "screenshots/overlay-blocking-stale-dropdown-tooltip--top--1280x720.png",
+    "screenshots/overlay-blocking-stale-dropdown-tooltip--after-close--1280x720.png",
+    "screenshots/overlay-passive-toast-active-dialog--top--1280x720.png",
+    "screenshots/overlay-passive-toast-active-dialog--after-close--1280x720.png",
+    "screenshots/overlay-nested-confirm--top--1280x720.png",
+    "screenshots/overlay-nested-confirm--after-close--1280x720.png",
+    "screenshots/overlay-inspector-menu-tooltip--top--1280x720.png",
+    "screenshots/overlay-inspector-menu-tooltip--after-close--1280x720.png",
+    "screenshots/workspace--default-one-screen--1024x768.png",
+    "screenshots/screen-list--left-edge--1024x768.png",
+    "screenshots/screen-arrow--hover--1024x768.png",
+    "screenshots/screen-arrow--focus-visible--1024x768.png",
+    "screenshots/screen-arrow--active--1024x768.png",
+    "screenshots/screen-list--middle--1024x768.png",
+    "screenshots/screen-list--right-edge--1024x768.png",
+    "screenshots/screen-close--hover--1024x768.png",
+    "screenshots/screen-close--focus-visible--1024x768.png",
+    "screenshots/screen-delete-confirmation--open--1024x768.png",
+    "screenshots/screen-delete-confirmation--cancelled--1024x768.png",
+    "screenshots/screen-delete-confirmation--confirmed--1024x768.png",
+    "screenshots/plotly--lmb-drag-zoom--1024x768.png",
+    "screenshots/plotly--double-click-autoscale--1024x768.png",
+    "screenshots/plotly--shift-lmb-pan--1024x768.png",
+    "screenshots/area-menu--clear-hover--1024x768.png",
+    "screenshots/area-menu--graph-help-focus--1024x768.png",
+    "screenshots/overlay-area-menu-graph-help--top--1024x768.png",
+    "screenshots/overlay-area-menu-graph-help--after-close--1024x768.png",
+    "screenshots/overlay-screen-delete-pane-help--top--1024x768.png",
+    "screenshots/overlay-screen-delete-pane-help--after-close--1024x768.png",
+    "screenshots/active-area-context-action--confirmation--1024x768.png",
+    "screenshots/settings--display--time--1024x768.png",
+    "screenshots/settings--time--time--1024x768.png",
+    "screenshots/settings--measurements--time--1024x768.png",
+    "screenshots/settings--display--spectrum--1024x768.png",
+    "screenshots/settings--time--spectrum--1024x768.png",
+    "screenshots/settings--measurements--spectrum--1024x768.png",
+    "screenshots/settings--display--spectrogram--1024x768.png",
+    "screenshots/settings--time--spectrogram--1024x768.png",
+    "screenshots/settings--measurements--spectrogram--1024x768.png",
+    "screenshots/settings--display--persistence--1024x768.png",
+    "screenshots/settings--time--persistence--1024x768.png",
+    "screenshots/settings--measurements--persistence--1024x768.png",
+    "screenshots/dropdown--default-selected--1024x768.png",
+    "screenshots/dropdown--hover--1024x768.png",
+    "screenshots/dropdown--focus-visible--1024x768.png",
+    "screenshots/dropdown--pressed--1024x768.png",
+    "screenshots/dropdown--disabled-option--1024x768.png",
+    "screenshots/dropdown-trigger--disabled--1024x768.png",
+    "screenshots/checkbox--canonical-checked--1024x768.png",
+    "screenshots/checkbox--canonical-focus-visible--1024x768.png",
+    "screenshots/button-primary--hover--1024x768.png",
+    "screenshots/control--focus-visible--1024x768.png",
+    "screenshots/button-primary--pressed--1024x768.png",
+    "screenshots/table-color-swatch--hover-borderless--1024x768.png",
+    "screenshots/table-color-swatch--focus-borderless--1024x768.png",
+    "screenshots/table-color-swatch--selected-borderless--1024x768.png",
+    "screenshots/table-row-actions--hover--1024x768.png",
+    "screenshots/table-row-actions--focus-visible--1024x768.png",
+    "screenshots/table-row-actions--active--1024x768.png",
+    "screenshots/table-row-actions--disabled--1024x768.png",
+    "screenshots/table--long-last-cell--1024x768.png",
+    "screenshots/overlay-blocking-stale-dropdown-tooltip--top--1024x768.png",
+    "screenshots/overlay-blocking-stale-dropdown-tooltip--after-close--1024x768.png",
+    "screenshots/overlay-passive-toast-active-dialog--top--1024x768.png",
+    "screenshots/overlay-passive-toast-active-dialog--after-close--1024x768.png",
+    "screenshots/overlay-nested-confirm--top--1024x768.png",
+    "screenshots/overlay-nested-confirm--after-close--1024x768.png",
+    "screenshots/overlay-inspector-menu-tooltip--top--1024x768.png",
+    "screenshots/overlay-inspector-menu-tooltip--after-close--1024x768.png",
+    "screenshots/state--error--1440x900.png",
+    "screenshots/state--loading--1440x900.png",
+    "screenshots/state--success--1440x900.png",
+    "screenshots/state--empty--1440x900.png",
+    "screenshots/layout--10x10-warning--1440x900.png",
+    "screenshots/layout--10x10-applied--1440x900.png"
+  ],
+  "computed_evidence": {
+    "graph_help_geometry": {
+      "1440x900": {
+        "before": [
+          {
+            "pane": {
+              "x": 17,
+              "y": 143,
+              "width": 510,
+              "height": 426
+            },
+            "canvas": {
+              "x": 18,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "chart": {
+              "x": 18,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "svg": {
+              "x": 18,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            }
+          },
+          {
+            "pane": {
+              "x": 535,
+              "y": 143,
+              "width": 510,
+              "height": 426
+            },
+            "canvas": {
+              "x": 536,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "chart": {
+              "x": 536,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "svg": {
+              "x": 536,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            }
+          }
+        ],
+        "open": [
+          {
+            "pane": {
+              "x": 17,
+              "y": 143,
+              "width": 510,
+              "height": 426
+            },
+            "canvas": {
+              "x": 18,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "chart": {
+              "x": 18,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "svg": {
+              "x": 18,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            }
+          },
+          {
+            "pane": {
+              "x": 535,
+              "y": 143,
+              "width": 510,
+              "height": 426
+            },
+            "canvas": {
+              "x": 536,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "chart": {
+              "x": 536,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "svg": {
+              "x": 536,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            }
+          }
+        ],
+        "closed": [
+          {
+            "pane": {
+              "x": 17,
+              "y": 143,
+              "width": 510,
+              "height": 426
+            },
+            "canvas": {
+              "x": 18,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "chart": {
+              "x": 18,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "svg": {
+              "x": 18,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            }
+          },
+          {
+            "pane": {
+              "x": 535,
+              "y": 143,
+              "width": 510,
+              "height": 426
+            },
+            "canvas": {
+              "x": 536,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "chart": {
+              "x": 536,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            },
+            "svg": {
+              "x": 536,
+              "y": 176,
+              "width": 508,
+              "height": 392
+            }
+          }
+        ]
+      },
+      "1280x720": {
+        "before": [
+          {
+            "pane": {
+              "x": 15,
+              "y": 141,
+              "width": 448,
+              "height": 304
+            },
+            "canvas": {
+              "x": 16,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "chart": {
+              "x": 16,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "svg": {
+              "x": 16,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            }
+          },
+          {
+            "pane": {
+              "x": 469,
+              "y": 141,
+              "width": 448,
+              "height": 304
+            },
+            "canvas": {
+              "x": 470,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "chart": {
+              "x": 470,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "svg": {
+              "x": 470,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            }
+          }
+        ],
+        "open": [
+          {
+            "pane": {
+              "x": 15,
+              "y": 141,
+              "width": 448,
+              "height": 304
+            },
+            "canvas": {
+              "x": 16,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "chart": {
+              "x": 16,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "svg": {
+              "x": 16,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            }
+          },
+          {
+            "pane": {
+              "x": 469,
+              "y": 141,
+              "width": 448,
+              "height": 304
+            },
+            "canvas": {
+              "x": 470,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "chart": {
+              "x": 470,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "svg": {
+              "x": 470,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            }
+          }
+        ],
+        "closed": [
+          {
+            "pane": {
+              "x": 15,
+              "y": 141,
+              "width": 448,
+              "height": 304
+            },
+            "canvas": {
+              "x": 16,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "chart": {
+              "x": 16,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "svg": {
+              "x": 16,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            }
+          },
+          {
+            "pane": {
+              "x": 469,
+              "y": 141,
+              "width": 448,
+              "height": 304
+            },
+            "canvas": {
+              "x": 470,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "chart": {
+              "x": 470,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            },
+            "svg": {
+              "x": 470,
+              "y": 174,
+              "width": 446,
+              "height": 270
+            }
+          }
+        ]
+      },
+      "1024x768": {
+        "before": [
+          {
+            "pane": {
+              "x": 13,
+              "y": 137,
+              "width": 343,
+              "height": 353.53125
+            },
+            "canvas": {
+              "x": 14,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "chart": {
+              "x": 14,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "svg": {
+              "x": 14,
+              "y": 170,
+              "width": 341,
+              "height": 319.515625
+            }
+          },
+          {
+            "pane": {
+              "x": 362,
+              "y": 137,
+              "width": 343,
+              "height": 353.53125
+            },
+            "canvas": {
+              "x": 363,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "chart": {
+              "x": 363,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "svg": {
+              "x": 363,
+              "y": 170,
+              "width": 341,
+              "height": 319.515625
+            }
+          }
+        ],
+        "open": [
+          {
+            "pane": {
+              "x": 13,
+              "y": 137,
+              "width": 343,
+              "height": 353.53125
+            },
+            "canvas": {
+              "x": 14,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "chart": {
+              "x": 14,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "svg": {
+              "x": 14,
+              "y": 170,
+              "width": 341,
+              "height": 319.515625
+            }
+          },
+          {
+            "pane": {
+              "x": 362,
+              "y": 137,
+              "width": 343,
+              "height": 353.53125
+            },
+            "canvas": {
+              "x": 363,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "chart": {
+              "x": 363,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "svg": {
+              "x": 363,
+              "y": 170,
+              "width": 341,
+              "height": 319.515625
+            }
+          }
+        ],
+        "closed": [
+          {
+            "pane": {
+              "x": 13,
+              "y": 137,
+              "width": 343,
+              "height": 353.53125
+            },
+            "canvas": {
+              "x": 14,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "chart": {
+              "x": 14,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "svg": {
+              "x": 14,
+              "y": 170,
+              "width": 341,
+              "height": 319.515625
+            }
+          },
+          {
+            "pane": {
+              "x": 362,
+              "y": 137,
+              "width": 343,
+              "height": 353.53125
+            },
+            "canvas": {
+              "x": 363,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "chart": {
+              "x": 363,
+              "y": 170,
+              "width": 341,
+              "height": 319.53125
+            },
+            "svg": {
+              "x": 363,
+              "y": 170,
+              "width": 341,
+              "height": 319.515625
+            }
+          }
+        ]
+      }
+    },
+    "plotly_interactions": {
+      "1440x900": {
+        "initial": {
+          "x": [
+            0,
+            10
+          ],
+          "y": [
+            -0.49666666666666665,
+            1.0366666666666666
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        },
+        "zoomed": {
+          "x": [
+            1.9823788546255505,
+            7.180616740088106
+          ],
+          "y": [
+            -0.1286666666666667,
+            0.73
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        },
+        "reset": {
+          "x": [
+            0,
+            10
+          ],
+          "y": [
+            -0.49666666666666665,
+            1.0366666666666666
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        },
+        "panned": {
+          "x": [
+            -1.696035242290749,
+            8.30396475770925
+          ],
+          "y": [
+            -0.49666666666666665,
+            1.0366666666666666
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        }
+      },
+      "1280x720": {
+        "initial": {
+          "x": [
+            0,
+            10
+          ],
+          "y": [
+            -0.49666666666666665,
+            1.0366666666666666
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        },
+        "zoomed": {
+          "x": [
+            1.989795918367347,
+            7.193877551020408
+          ],
+          "y": [
+            -0.12678362573099416,
+            0.7340350877192983
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        },
+        "reset": {
+          "x": [
+            0,
+            10
+          ],
+          "y": [
+            -0.49666666666666665,
+            1.0366666666666666
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        },
+        "panned": {
+          "x": [
+            -1.7091836734693877,
+            8.290816326530612
+          ],
+          "y": [
+            -0.49666666666666665,
+            1.0366666666666666
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        }
+      },
+      "1024x768": {
+        "initial": {
+          "x": [
+            0,
+            10
+          ],
+          "y": [
+            -0.49666666666666665,
+            1.0366666666666666
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        },
+        "zoomed": {
+          "x": [
+            1.986062717770035,
+            7.177700348432055
+          ],
+          "y": [
+            -0.12712230215827341,
+            0.7333093525179857
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        },
+        "reset": {
+          "x": [
+            0,
+            10
+          ],
+          "y": [
+            -0.49666666666666665,
+            1.0366666666666666
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        },
+        "panned": {
+          "x": [
+            -1.6724738675958188,
+            8.32752613240418
+          ],
+          "y": [
+            -0.49666666666666665,
+            1.0366666666666666
+          ],
+          "dragmode": "zoom",
+          "displayModeBar": false,
+          "source": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js"
+        }
+      }
+    },
+    "tabs": {
+      "1440x900": {
+        "left": {
+          "left": 0,
+          "width": 929,
+          "scrollWidth": 1440
+        },
+        "middle": {
+          "left": 219,
+          "max": 511
+        },
+        "right": {
+          "left": 511,
+          "max": 511
+        }
+      },
+      "1280x720": {
+        "left": {
+          "left": 0,
+          "width": 799,
+          "scrollWidth": 1440
+        },
+        "middle": {
+          "left": 220,
+          "max": 641
+        },
+        "right": {
+          "left": 641,
+          "max": 641
+        }
+      },
+      "1024x768": {
+        "left": {
+          "left": 0,
+          "width": 589,
+          "scrollWidth": 1440
+        },
+        "middle": {
+          "left": 206,
+          "max": 851
+        },
+        "right": {
+          "left": 851,
+          "max": 851
+        }
+      }
+    },
+    "swatches": {
+      "1440x900": [
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала radarPulse: Синий",
+          "tooltip": "Цвет: Синий"
+        },
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала echoComplex: Тёмный",
+          "tooltip": "Цвет: Тёмный"
+        },
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала referenceWave: Светло-голубой",
+          "tooltip": "Цвет: Светло-голубой"
+        },
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала noiseFloor: Охра",
+          "tooltip": "Цвет: Охра"
+        }
+      ],
+      "1280x720": [
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала radarPulse: Синий",
+          "tooltip": "Цвет: Синий"
+        },
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала echoComplex: Тёмный",
+          "tooltip": "Цвет: Тёмный"
+        },
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала referenceWave: Светло-голубой",
+          "tooltip": "Цвет: Светло-голубой"
+        },
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала noiseFloor: Охра",
+          "tooltip": "Цвет: Охра"
+        }
+      ],
+      "1024x768": [
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала radarPulse: Синий",
+          "tooltip": "Цвет: Синий"
+        },
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала echoComplex: Тёмный",
+          "tooltip": "Цвет: Тёмный"
+        },
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала referenceWave: Светло-голубой",
+          "tooltip": "Цвет: Светло-голубой"
+        },
+        {
+          "text": "",
+          "border": "0px",
+          "outline": "0px",
+          "aria": "Цвет сигнала noiseFloor: Охра",
+          "tooltip": "Цвет: Охра"
+        }
+      ]
+    },
+    "proportions": {
+      "1440x900": {
+        "add": {
+          "x": 939,
+          "y": 103,
+          "width": 32,
+          "height": 32
+        },
+        "pane_controls": [
+          {
+            "gap": 0,
+            "selectHeight": 28,
+            "moreHeight": 28
+          },
+          {
+            "gap": 0,
+            "selectHeight": 28,
+            "moreHeight": 28
+          }
+        ]
+      },
+      "1280x720": {
+        "add": {
+          "x": 809,
+          "y": 103,
+          "width": 32,
+          "height": 32
+        },
+        "pane_controls": [
+          {
+            "gap": 0,
+            "selectHeight": 28,
+            "moreHeight": 28
+          },
+          {
+            "gap": 0,
+            "selectHeight": 28,
+            "moreHeight": 28
+          }
+        ]
+      },
+      "1024x768": {
+        "add": {
+          "x": 597,
+          "y": 99,
+          "width": 32,
+          "height": 32
+        },
+        "pane_controls": [
+          {
+            "gap": 0,
+            "selectHeight": 28,
+            "moreHeight": 28
+          },
+          {
+            "gap": 0,
+            "selectHeight": 28,
+            "moreHeight": 28
+          }
+        ]
+      }
+    },
+    "lower_table_zone": {
+      "1440x900": {
+        "current_px": 306,
+        "prior_review_px": 316,
+        "delta_px": -10,
+        "row_px": 32
+      },
+      "1280x720": {
+        "current_px": 252,
+        "prior_review_px": 262,
+        "delta_px": -10,
+        "row_px": 32
+      },
+      "1024x768": {
+        "current_px": 258.46875,
+        "prior_review_px": 268.46875,
+        "delta_px": -10,
+        "row_px": 32
+      }
+    },
+    "dropdown_states": {
+      "1440x900": {
+        "clusterGeometry": {
+          "topInset": 2,
+          "bottomInset": 2,
+          "headerHeight": 32,
+          "clusterHeight": 28,
+          "chevronTop": "14px",
+          "chevronTransform": "matrix(1, 0, 0, 1, 0, -8)"
+        },
+        "optionMetrics": [
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          },
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          },
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          },
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          }
+        ],
+        "defaultStyles": {
+          "ordinaryBackground": "rgb(255, 255, 255)",
+          "selectedBackground": "rgb(230, 245, 252)",
+          "selectedMarkOpacity": "1"
+        },
+        "hoverBackground": "rgb(245, 245, 245)",
+        "pressedBackground": "rgb(242, 242, 242)",
+        "disabledOptionStyle": {
+          "opacity": "0.72",
+          "cursor": "not-allowed",
+          "height": 34
+        },
+        "checkboxMark": {
+          "size": 16,
+          "radius": "2px",
+          "background": "rgb(27, 132, 184)",
+          "pseudoClip": "polygon(14% 44%, 0px 59%, 38% 100%, 100% 18%, 84% 5%, 36% 72%)"
+        }
+      },
+      "1280x720": {
+        "clusterGeometry": {
+          "topInset": 2,
+          "bottomInset": 2,
+          "headerHeight": 32,
+          "clusterHeight": 28,
+          "chevronTop": "14px",
+          "chevronTransform": "matrix(1, 0, 0, 1, 0, -8)"
+        },
+        "optionMetrics": [
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          },
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          },
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          },
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          }
+        ],
+        "defaultStyles": {
+          "ordinaryBackground": "rgb(255, 255, 255)",
+          "selectedBackground": "rgb(230, 245, 252)",
+          "selectedMarkOpacity": "1"
+        },
+        "hoverBackground": "rgb(245, 245, 245)",
+        "pressedBackground": "rgb(242, 242, 242)",
+        "disabledOptionStyle": {
+          "opacity": "0.72",
+          "cursor": "not-allowed",
+          "height": 34
+        },
+        "checkboxMark": {
+          "size": 16,
+          "radius": "2px",
+          "background": "rgb(27, 132, 184)",
+          "pseudoClip": "polygon(14% 44%, 0px 59%, 38% 100%, 100% 18%, 84% 5%, 36% 72%)"
+        }
+      },
+      "1024x768": {
+        "clusterGeometry": {
+          "topInset": 2,
+          "bottomInset": 2,
+          "headerHeight": 32,
+          "clusterHeight": 28,
+          "chevronTop": "14px",
+          "chevronTransform": "matrix(1, 0, 0, 1, 0, -8)"
+        },
+        "optionMetrics": [
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          },
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          },
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          },
+          {
+            "height": 34,
+            "padding": "6px 12px",
+            "fontSize": "14px",
+            "fontWeight": "400",
+            "lineHeight": "20px",
+            "wrap": false,
+            "clipped": false,
+            "mark": {
+              "width": 16,
+              "height": 16
+            }
+          }
+        ],
+        "defaultStyles": {
+          "ordinaryBackground": "rgb(255, 255, 255)",
+          "selectedBackground": "rgb(230, 245, 252)",
+          "selectedMarkOpacity": "1"
+        },
+        "hoverBackground": "rgb(245, 245, 245)",
+        "pressedBackground": "rgb(242, 242, 242)",
+        "disabledOptionStyle": {
+          "opacity": "0.72",
+          "cursor": "not-allowed",
+          "height": 34
+        },
+        "checkboxMark": {
+          "size": 16,
+          "radius": "2px",
+          "background": "rgb(27, 132, 184)",
+          "pseudoClip": "polygon(14% 44%, 0px 59%, 38% 100%, 100% 18%, 84% 5%, 36% 72%)"
+        }
+      }
+    },
+    "settings_matrix": {
+      "1440x900": {
+        "time": {
+          "display": {
+            "groups": 1,
+            "fields": 2
+          },
+          "time": {
+            "groups": 4,
+            "fields": 6
+          },
+          "measurements": {
+            "groups": 2,
+            "fields": 7
+          }
+        },
+        "spectrum": {
+          "display": {
+            "groups": 3,
+            "fields": 10
+          },
+          "time": {
+            "groups": 1,
+            "fields": 1
+          },
+          "measurements": {
+            "groups": 1,
+            "fields": 6
+          }
+        },
+        "spectrogram": {
+          "display": {
+            "groups": 3,
+            "fields": 13
+          },
+          "time": {
+            "groups": 1,
+            "fields": 1
+          },
+          "measurements": {
+            "groups": 1,
+            "fields": 6
+          }
+        },
+        "persistence": {
+          "display": {
+            "groups": 3,
+            "fields": 14
+          },
+          "time": {
+            "groups": 1,
+            "fields": 1
+          },
+          "measurements": {
+            "groups": 1,
+            "fields": 6
+          }
+        }
+      },
+      "1280x720": {
+        "time": {
+          "display": {
+            "groups": 1,
+            "fields": 2
+          },
+          "time": {
+            "groups": 4,
+            "fields": 6
+          },
+          "measurements": {
+            "groups": 2,
+            "fields": 7
+          }
+        },
+        "spectrum": {
+          "display": {
+            "groups": 3,
+            "fields": 10
+          },
+          "time": {
+            "groups": 1,
+            "fields": 1
+          },
+          "measurements": {
+            "groups": 1,
+            "fields": 6
+          }
+        },
+        "spectrogram": {
+          "display": {
+            "groups": 3,
+            "fields": 13
+          },
+          "time": {
+            "groups": 1,
+            "fields": 1
+          },
+          "measurements": {
+            "groups": 1,
+            "fields": 6
+          }
+        },
+        "persistence": {
+          "display": {
+            "groups": 3,
+            "fields": 14
+          },
+          "time": {
+            "groups": 1,
+            "fields": 1
+          },
+          "measurements": {
+            "groups": 1,
+            "fields": 6
+          }
+        }
+      },
+      "1024x768": {
+        "time": {
+          "display": {
+            "groups": 1,
+            "fields": 2
+          },
+          "time": {
+            "groups": 4,
+            "fields": 6
+          },
+          "measurements": {
+            "groups": 2,
+            "fields": 7
+          }
+        },
+        "spectrum": {
+          "display": {
+            "groups": 3,
+            "fields": 10
+          },
+          "time": {
+            "groups": 1,
+            "fields": 1
+          },
+          "measurements": {
+            "groups": 1,
+            "fields": 6
+          }
+        },
+        "spectrogram": {
+          "display": {
+            "groups": 3,
+            "fields": 13
+          },
+          "time": {
+            "groups": 1,
+            "fields": 1
+          },
+          "measurements": {
+            "groups": 1,
+            "fields": 6
+          }
+        },
+        "persistence": {
+          "display": {
+            "groups": 3,
+            "fields": 14
+          },
+          "time": {
+            "groups": 1,
+            "fields": 1
+          },
+          "measurements": {
+            "groups": 1,
+            "fields": 6
+          }
+        }
+      }
+    }
+  },
+  "browser_errors": []
+}

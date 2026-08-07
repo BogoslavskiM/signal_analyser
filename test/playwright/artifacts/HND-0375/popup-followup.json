@@ -1,0 +1,65 @@
+{
+  "handoff_id": "HND-0375",
+  "phase": "popup-followup",
+  "checks": [
+    {
+      "name": "inspector-column-menu-eye-icons",
+      "pass": true,
+      "actual": {
+        "open": true,
+        "eyes": true,
+        "focus": "signal-column-toggle-color"
+      },
+      "expected": "menu opens with eye/eye-off control"
+    },
+    {
+      "name": "signals-add-popup",
+      "pass": false,
+      "actual": {
+        "workspace": false,
+        "selection": false
+      },
+      "expected": "add popup actions exist"
+    },
+    {
+      "name": "workspace-modal-focus-owner",
+      "pass": false,
+      "actual": {
+        "visible": true,
+        "focusInside": false,
+        "active": "signals-add-action"
+      },
+      "expected": "blocking dialog owns focus"
+    },
+    {
+      "name": "workspace-modal-escape-restoration",
+      "pass": false,
+      "actual": "signals-workspace-retry",
+      "expected": "Signals add focus restored"
+    },
+    {
+      "name": "layout-popover-cancel",
+      "pass": true,
+      "actual": null,
+      "expected": "cancel closes popover"
+    }
+  ],
+  "network_failures": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/workspace/variables",
+      "status": 502,
+      "type": "Fetch"
+    }
+  ],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-inspector-column-menu-1440x900.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-workspace-dialog-1440x900.png"
+  ],
+  "started_at": "2026-08-06T10:53:36.091Z",
+  "completed_at": "2026-08-06T10:53:36.588Z",
+  "summary": {
+    "planned": 5,
+    "passed": 2,
+    "failed": 3
+  }
+}

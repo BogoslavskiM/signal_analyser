@@ -1,12 +1,12 @@
-schema_version: 2
+schema_version: 1
 name: state-model
-version: 1.0.0
+version: 3.0.0
 title: "Backend State Model"
 description: >
   Backend skill для создания inspector-style state model: stable object ids,
-  main/selected/order, bulk selection, optional table columns, typed draft settings,
-  persistent calculated zone data/status, boolean dirty flags, optional calculation
-  manager thread, session identity, mutations и generators.
+  main/selected/order, bulk selection, optional table columns, typed draft
+  settings, persistent zone data/status, plot cache/need-update pages,
+  state/calculation revisions, optional worker, session identity и mutations.
 language: ru
 audience: [assistant]
 priority: 0.85
@@ -18,4 +18,3 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills: [backender-workflow]

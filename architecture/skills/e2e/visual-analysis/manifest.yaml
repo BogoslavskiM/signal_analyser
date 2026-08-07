@@ -1,23 +1,23 @@
-schema_version: 2
+schema_version: 1
 name: visual-analysis
-version: 1.0.0
+version: 5.2.0
 title: "E2E-анализ изображений и screenshots"
 description: >
-  Детерминированные screenshots, визуальный анализ layout/geometry и полное
-  Playwright-покрытие динамических элементов и transient states.
+  Чтение и реальное прокликивание локального Designer prototype, затем
+  deterministic production screenshots, exact source-derived geometry/state
+  analysis, Designer page-sizing verification, canonical Plotly modebar checks
+  и Playwright coverage
+  динамических/overlay states.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 0.9
 when-to-use:
   - "Любой UI-affecting E2E regression handoff"
   - "Проверка таблиц, settings, dialogs, popovers, tooltips или hover states"
 when-not:
   - "Чисто backend/API regression без UI"
-requires-tools:
-  - "Chromium/CDP"
-  - "Playwright screenshots"
-  - "Visual image inspection"
+requires-tools: []
 requires-products:
   - "Playwright Core"
+  - "Google Chrome"
 reference-files: []
-requires-skills: []

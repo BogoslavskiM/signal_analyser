@@ -20,6 +20,11 @@ blocker_reason: null
 # feature_slug: <stable-slug>
 # development_branch: neuro_<stable-slug>
 # integration_sha: <neuro_dev SHA after accepted merge>
+# Для UI-affecting task:
+# ui_impact: none # none | covered | new_or_changed
+# design_mode: autonomous # autonomous | review
+# design_ref: ../design/TASK-0000-short-slug/DESIGN.md
+# design_version: 1
 ---
 
 # <title>

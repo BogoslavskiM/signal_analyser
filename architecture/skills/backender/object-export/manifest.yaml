@@ -1,10 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: object-export
-version: 1.0.0
+version: 2.0.0
 title: "Backend Object Export"
 description: >
   Единый backend export workflow для prepared values/descriptions: Engee
-  workspace, reproducible Julia script, JLD2 round-trip и public-API Engee model.
+  workspace, reproducible Julia script, JLD2 round-trip и public-API Engee
+  model.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -14,10 +15,6 @@ when-to-use:
 when-not:
   - "Нужно экспортировать или импортировать полную session"
   - "Нужно вычислить математическое содержимое output"
-requires-tools:
-  - "Julia для script/JLD2 verification"
-  - "Engee runtime для workspace/model operations"
+requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills:
-  - "backender-workflow"

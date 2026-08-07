@@ -1,6 +1,6 @@
-schema_version: 2
+schema_version: 1
 name: critical-scenario-coverage
-version: 1.1.0
+version: 2.0.0
 title: "Покрытие критических MATLAB-сценариев"
 description: >
   Аудит сохранённого MATLAB Clicker catalog, матрица requirement-to-scenario,
@@ -8,15 +8,12 @@ description: >
   scenarios.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 0.95
 when-to-use:
   - "При каждом background MATLAB research cycle для генерации или аудита test scenarios"
   - "Перед заявлением all_critical_scenarios_covered"
 when-not:
   - "Для заявления об успешном E2E, Engee parity или production regression"
-requires-tools:
-  - "HTTP client"
-requires-products:
-  - "matlab_clicker saved scenario catalog"
+requires-tools: []
+requires-products: []
 reference-files: []
-requires-skills: []

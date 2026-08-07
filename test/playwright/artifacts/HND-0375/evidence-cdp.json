@@ -1,0 +1,371 @@
+{
+  "handoff_id": "HND-0375",
+  "mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "545bef2d6f5fbf76f32f6afb4bfe88f6a962e48c",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "started_at": "2026-08-06T10:52:28.173Z",
+  "checks": [
+    {
+      "name": "availability-exact-revision",
+      "pass": true,
+      "actual": {
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+        "status": 200,
+        "body": {
+          "runtime_revision": "545bef2d6f5fbf76f32f6afb4bfe88f6a962e48c",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      },
+      "expected": "ready/ok and exact SHA"
+    },
+    {
+      "name": "live-local-plotly",
+      "pass": false,
+      "actual": {
+        "fullLayout": true,
+        "fullData": true,
+        "staticPlot": false,
+        "fixedrange": false,
+        "svg": true,
+        "modebar": true
+      },
+      "expected": "interactive Plotly"
+    },
+    {
+      "name": "five-zones-1024x768",
+      "pass": true,
+      "actual": [
+        {
+          "id": "app-shell",
+          "box": [
+            6,
+            6,
+            1012,
+            756
+          ]
+        },
+        {
+          "id": "display-workspace",
+          "box": [
+            6,
+            56,
+            706,
+            435.5234375
+          ]
+        },
+        {
+          "id": "display-canvas",
+          "box": [
+            7,
+            131,
+            704,
+            359.5234375
+          ]
+        },
+        {
+          "id": "display-settings",
+          "box": [
+            718,
+            56,
+            300,
+            435.5234375
+          ]
+        },
+        {
+          "id": "bottom-panel-signals",
+          "box": [
+            7,
+            540.5234375,
+            1010,
+            214.4765625
+          ]
+        }
+      ],
+      "expected": "five nonzero zones"
+    },
+    {
+      "name": "russian-labels-1024x768",
+      "pass": true,
+      "actual": true,
+      "expected": "Russian settings labels"
+    },
+    {
+      "name": "five-zones-1280x720",
+      "pass": true,
+      "actual": [
+        {
+          "id": "app-shell",
+          "box": [
+            8,
+            8,
+            1264,
+            704
+          ]
+        },
+        {
+          "id": "display-workspace",
+          "box": [
+            8,
+            60,
+            916,
+            384
+          ]
+        },
+        {
+          "id": "display-canvas",
+          "box": [
+            9,
+            135,
+            914,
+            308
+          ]
+        },
+        {
+          "id": "display-settings",
+          "box": [
+            932,
+            60,
+            340,
+            384
+          ]
+        },
+        {
+          "id": "bottom-panel-signals",
+          "box": [
+            9,
+            495,
+            1262,
+            208
+          ]
+        }
+      ],
+      "expected": "five nonzero zones"
+    },
+    {
+      "name": "russian-labels-1280x720",
+      "pass": true,
+      "actual": true,
+      "expected": "Russian settings labels"
+    },
+    {
+      "name": "five-zones-1440x900",
+      "pass": true,
+      "actual": [
+        {
+          "id": "app-shell",
+          "box": [
+            8,
+            8,
+            1424,
+            884
+          ]
+        },
+        {
+          "id": "display-workspace",
+          "box": [
+            8,
+            60,
+            1046,
+            510
+          ]
+        },
+        {
+          "id": "display-canvas",
+          "box": [
+            9,
+            135,
+            1044,
+            434
+          ]
+        },
+        {
+          "id": "display-settings",
+          "box": [
+            1062,
+            60,
+            370,
+            510
+          ]
+        },
+        {
+          "id": "bottom-panel-signals",
+          "box": [
+            9,
+            621,
+            1422,
+            262
+          ]
+        }
+      ],
+      "expected": "five nonzero zones"
+    },
+    {
+      "name": "russian-labels-1440x900",
+      "pass": true,
+      "actual": true,
+      "expected": "Russian settings labels"
+    },
+    {
+      "name": "plotly-LMB-zoom",
+      "pass": true,
+      "actual": {
+        "initial": [
+          [
+            0,
+            0.24951171875
+          ],
+          [
+            -1.2223572036715844,
+            1.3485451159827149
+          ]
+        ],
+        "zoom": [
+          [
+            0.12321566358024691,
+            0.24951171875
+          ],
+          [
+            -1.2223572036715844,
+            0.3510350159568467
+          ]
+        ]
+      },
+      "expected": "range changes"
+    },
+    {
+      "name": "plotly-double-click-autoscale",
+      "pass": true,
+      "actual": {
+        "initial": [
+          [
+            0,
+            0.24951171875
+          ],
+          [
+            -1.2223572036715844,
+            1.3485451159827149
+          ]
+        ],
+        "reset": [
+          [
+            0,
+            0.24951171875
+          ],
+          [
+            -1.2223572036715844,
+            1.3485451159827149
+          ]
+        ]
+      },
+      "expected": "range reset"
+    },
+    {
+      "name": "plotly-Shift-LMB-pan",
+      "pass": true,
+      "actual": {
+        "reset": [
+          [
+            0,
+            0.24951171875
+          ],
+          [
+            -1.2223572036715844,
+            1.3485451159827149
+          ]
+        ],
+        "pan": [
+          [
+            0.13767335980074932,
+            0.19002322994720708
+          ],
+          [
+            -0.2020303455587844,
+            0.11129837464908343
+          ]
+        ]
+      },
+      "expected": "range translates"
+    },
+    {
+      "name": "pane-menu",
+      "pass": true,
+      "actual": null,
+      "expected": "visible"
+    },
+    {
+      "name": "graph-help-hit-focus-no-shift",
+      "pass": true,
+      "actual": {
+        "visible": true,
+        "hit": true,
+        "focus": "graph-help-close",
+        "plot": [
+          18,
+          176,
+          1026,
+          384
+        ]
+      },
+      "expected": "top hit and unchanged plot"
+    },
+    {
+      "name": "layout-popover-hit-outside-dismiss",
+      "pass": true,
+      "actual": {
+        "lay": {
+          "visible": true,
+          "hit": true
+        },
+        "closed": true
+      },
+      "expected": "hit owner then outside dismissal"
+    },
+    {
+      "name": "zero-js-errors",
+      "pass": false,
+      "actual": {
+        "pageerrors": [],
+        "console": [
+          "Failed to load resource: the server responded with a status of 502 ()",
+          "Failed to load resource: the server responded with a status of 404 ()"
+        ]
+      },
+      "expected": "no JS errors"
+    }
+  ],
+  "pageerrors": [],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 502 ()",
+    "Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-default-1024x768.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-default-1280x720.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-default-1440x900.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-plotly-gestures-1440x900.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-graph-help-1440x900.png"
+  ],
+  "status": {
+    "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+    "status": 200,
+    "body": {
+      "runtime_revision": "545bef2d6f5fbf76f32f6afb4bfe88f6a962e48c",
+      "project": "example_project",
+      "ready": true,
+      "ok": true
+    }
+  },
+  "completed_at": "2026-08-06T10:52:50.481Z",
+  "summary": {
+    "planned": 15,
+    "passed": 13,
+    "failed": 2,
+    "success_rate": 86.66666666666667
+  }
+}

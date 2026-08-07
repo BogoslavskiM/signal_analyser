@@ -1,10 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: bug-reporting
-version: 1.0.0
+version: 3.0.0
 title: "Engee Bug Reporting"
 description: >
   Evidence-backed confirmed/suspected Engee defect record, linked to persistent
-  contract regression and localization result.
+  contract regression, localization result, explicit stub authorization and
+  mechanical recovery trigger.
 language: ru
 audience: [assistant]
 priority: 0.95
@@ -16,6 +17,3 @@ requires-tools: []
 requires-products:
   - "Engee"
 reference-files: []
-requires-skills:
-  - "engee-user-workflow"
-  - "engee-contract-testing"

@@ -1,11 +1,12 @@
----
-name: object-export
----
 # Backend Object Export
 
 Единый backend skill для доставки уже подготовленного domain value или model
 description. Он не вычисляет предметную математику и не подменяет session
 import/export.
+
+Явное требование пользователя и capability текущего приложения определяют
+доступные operations. Если operation-specific runtime отсутствует, верни
+blocker; не подменяй формат другим и не добавляй скрытый fallback.
 
 ## Общий контракт
 
@@ -90,3 +91,7 @@ parameters, lines и layout.
 
 Успешная доставка не доказывает предметную математику prepared value: её
 проверяют domain tests и, для Engee contracts, Engee User.
+
+В завершении сообщи operation, нормализованный target, overwrite policy,
+verification evidence и наличие/отсутствие partial output. Не включай в report
+prepared value целиком, если он велик или содержит пользовательские данные.

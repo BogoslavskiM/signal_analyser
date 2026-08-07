@@ -1,7 +1,10 @@
----
-name: dialog-system
----
 # Dialog System
+
+## Входные данные
+
+Определи тип dialog, fields/body, visible actions, busy behavior, success/error
+sequence и допустимый stacking из task/API contract. Reference templates не
+задают предметную import/export логику.
 
 ## When to Use
 - Нужно добавить modal dialog, unexpected error dialog или success dialog.
@@ -13,19 +16,17 @@ name: dialog-system
 - Нужно показать calculation error поверх output canvas.
 - Нужно реализовать предметную логику импорта, экспорта или файлового браузера.
 
-## Bundled Template
-Используй готовый комплект:
+## Technical Reference and Design
 
-- `assets/template.js` — Vue 3 global `base-dialog` и helpers для error/success state;
-- `assets/template.css` — overlay levels, card sizes, fixed title/actions и scrollable body;
-- `assets/template.html` — примеры form, error и success dialogs.
+Используй `reference/template.js` для `base-dialog`, lifecycle and helpers
+error/success state. Layout, overlay levels, card sizes, visible states and
+markup composition бери из pinned Designer package.
 
-1. Прочитай все три файла.
-2. Скопируй base component и стили в `public/js|css/app/dialogs`.
-3. Создай для каждого предметного диалога отдельные JS/CSS/HTML-файлы по правилам `frontend/frontend-project-structure`.
-4. Зарегистрируй один `base-dialog` в root Vue app.
-5. Храни state предметных диалогов в root state через их модули.
-6. Не копируй тексты, selectors и namespace приложения-источника.
+1. Прочитай technical JS reference и pinned design package.
+2. Создай для каждого предметного диалога отдельные JS/CSS/HTML-файлы по правилам `frontend/frontend-project-structure`.
+3. Зарегистрируй один `base-dialog` в root Vue app.
+4. Храни state предметных диалогов в root state через их модули.
+5. Не копируй prototype demo JS, texts, selectors или namespace reference.
 
 ## Base Contract
 - Base dialog предоставляет overlay, card, titlebar, close button, scrollable body и actions slot.
@@ -46,6 +47,22 @@ name: dialog-system
 - Не закрывай и не очищай нижний dialog при открытии верхнего.
 - После закрытия верхнего dialog пользователь продолжает работу с сохранёнными значениями нижнего.
 - При повторном открытии отменённого dialog заново инициализируй поля из актуального backend/default state.
+
+Реализуй semantic overlay priority из pinned Designer package:
+
+- backdrop находится ниже своей surface; child popup — выше parent surface;
+- последний актуальный blocking layer находится выше старых blocking layers и
+  stale dropdown/popover/tooltip;
+- passive toast не перекрывает active modal controls;
+- только top blocking layer принимает pointer и владеет focus trap; нижние
+  layers сохраняют state, но inert/недоступны для hit testing;
+- закрытие top layer восстанавливает следующий layer и указанную Designer
+  focus target.
+
+Не решай порядок одним локальным `z-index`. Проверь stacking contexts,
+position/transform/overflow ancestors и placement/portal каждого overlay.
+Используй semantic level tokens из design package; если combination или
+priority отсутствует, отправь `design_revision`.
 
 ## Operation Flow
 - Устанавливай `busy=true` до API action.
@@ -82,6 +99,10 @@ name: dialog-system
 - Проверь error sequence: form остаётся, error открывается сверху, введённые значения сохраняются.
 - Проверь замену текста новой unexpected error без очереди.
 - Проверь stacking form → file browser → error.
+- Проверь каждый Designer overlay combination: top layer принимает hit/focus,
+  старые dropdown/tooltips не перекрывают новый blocking dialog, passive toast
+  не закрывает active controls, а после close восстанавливается правильный
+  следующий layer/focus.
 - Проверь повторное открытие с актуальными backend/default values.
 - Проверь размеры, body scroll, fixed title/actions и узкий viewport.
 - Запусти `node --check` для перенесённого JS и `node test/front/run_front_tests.js`.

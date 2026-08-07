@@ -1,21 +1,26 @@
-schema_version: 2
+schema_version: 1
 name: devops-workflow
-version: 3.0.0
+version: 7.2.0
 title: "DevOps Workflow"
 description: >
-  Единый автономный pipeline для clone-repo, new-feature-branch, deploy и
-  accepted-feature-merge intake с условными Git/Engee/restart этапами.
+  Единый автономный pipeline для clone-repo, new-feature-branch, deploy,
+  automatic-gate merge, get-logs и runtime restart: временный pod-wide task
+  lock с немедленным release после последней task command, explicit pod
+  lifecycle gate, обязательный remote-only cleanup dirty
+  checkout через git add/stash, Git/Engee update, Engee-only application start,
+  failed-deploy diagnostics и package-environment recovery с TOML sync.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 1
 when-to-use:
-  - "Получен devops_request: clone_repo, new_feature_branch, deploy или merge_feature"
+  - "Получен любой DevOps handoff: clone_repo, new_feature_branch, deploy, merge_feature, get_logs, restart_application или restart_engee"
 when-not:
-  - "Для изменения product, test или architecture files"
+  - "Для редактирования product, test, configuration или architecture files"
 requires-tools:
-  - "Git для repository actions"
-  - "Engee MCP для deployment action"
-requires-products:
-  - "Engee для deployment action"
+  - "Git"
+  - "Production Engee pod status, start and stop tools"
+  - "Production Engee Julia execution for the task lock"
+  - "Production Engee shell or equivalent command execution"
+  - "Production Engee typed file listing and download"
+requires-products: []
 reference-files: []
-requires-skills: []

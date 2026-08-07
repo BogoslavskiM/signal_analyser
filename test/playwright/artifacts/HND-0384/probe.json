@@ -1,0 +1,511 @@
+{
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "prototype": {
+    "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/index.html",
+    "title": "Анализатор сигналов — TASK-0057 design prototype",
+    "designIds": [
+      "app-shell",
+      "display-tabs-wrap",
+      "display-scroll-left",
+      "display-tablist",
+      "display-scroll-right",
+      "display-add",
+      "layout-trigger",
+      "plot-grid",
+      "pane-time",
+      "plot-type-pane-time",
+      "pane-spectrum",
+      "plot-type-pane-spectrum",
+      "settings-tab-display",
+      "settings-tab-time",
+      "settings-tab-measurements",
+      "settings-field-display.plot_type",
+      "field-display.plot_type",
+      "settings-field-display.show_legend",
+      "settings-apply",
+      "signals-add",
+      "signals-overflow",
+      "signals-search",
+      "signal-duplicate-radarPulse",
+      "signal-delete-radarPulse",
+      "signal-duplicate-echoComplex",
+      "signal-delete-echoComplex",
+      "signal-duplicate-referenceWave",
+      "signal-delete-referenceWave",
+      "signal-duplicate-noiseFloor",
+      "signal-delete-noiseFloor",
+      "select-menu",
+      "plot-menu",
+      "graph-help",
+      "inspector-menu",
+      "layout-popover",
+      "success-toast",
+      "tooltip",
+      "add-dialog-layer",
+      "add-dialog-close",
+      "nested-confirm-layer",
+      "screen-delete-layer"
+    ],
+    "buttons": [
+      {
+        "text": "",
+        "aria": "Импортировать сессию"
+      },
+      {
+        "text": "",
+        "aria": "Сохранить сессию"
+      },
+      {
+        "text": "",
+        "aria": "Справка недоступна"
+      },
+      {
+        "text": "",
+        "aria": "Прокрутить экраны влево"
+      },
+      {
+        "text": "Экран 1",
+        "aria": null
+      },
+      {
+        "text": "",
+        "aria": "Удалить экран 1"
+      },
+      {
+        "text": "",
+        "aria": "Прокрутить экраны вправо"
+      },
+      {
+        "text": "",
+        "aria": "Добавить экран"
+      },
+      {
+        "text": "1 × 2",
+        "aria": null
+      },
+      {
+        "text": "Временная область",
+        "aria": "Тип графика области 1"
+      },
+      {
+        "text": "",
+        "aria": "Действия области 1"
+      },
+      {
+        "text": "Спектр",
+        "aria": "Тип графика области 2"
+      },
+      {
+        "text": "",
+        "aria": "Действия области 2"
+      },
+      {
+        "text": "Отображение",
+        "aria": null
+      },
+      {
+        "text": "Время",
+        "aria": null
+      },
+      {
+        "text": "Измерения",
+        "aria": null
+      },
+      {
+        "text": "Временная область",
+        "aria": "Тип графика"
+      },
+      {
+        "text": "Применить",
+        "aria": null
+      },
+      {
+        "text": "Сигналы",
+        "aria": null
+      },
+      {
+        "text": "Измерения",
+        "aria": null
+      },
+      {
+        "text": "Пики",
+        "aria": null
+      },
+      {
+        "text": "",
+        "aria": "Добавить сигнал"
+      },
+      {
+        "text": "",
+        "aria": "Другие действия"
+      },
+      {
+        "text": "",
+        "aria": "Цвет сигнала radarPulse: Синий"
+      },
+      {
+        "text": "",
+        "aria": "Дублировать сигнал radarPulse"
+      },
+      {
+        "text": "",
+        "aria": "Удалить сигнал radarPulse"
+      },
+      {
+        "text": "",
+        "aria": "Цвет сигнала echoComplex: Тёмный"
+      },
+      {
+        "text": "",
+        "aria": "Дублировать сигнал echoComplex"
+      },
+      {
+        "text": "",
+        "aria": "Удалить сигнал echoComplex"
+      },
+      {
+        "text": "",
+        "aria": "Цвет сигнала referenceWave: Светло-голубой"
+      },
+      {
+        "text": "",
+        "aria": "Дублировать сигнал referenceWave"
+      },
+      {
+        "text": "",
+        "aria": "Удалить сигнал referenceWave"
+      },
+      {
+        "text": "",
+        "aria": "Цвет сигнала noiseFloor: Охра"
+      },
+      {
+        "text": "",
+        "aria": "Дублировать сигнал noiseFloor"
+      },
+      {
+        "text": "",
+        "aria": "Удалить сигнал noiseFloor"
+      },
+      {
+        "text": "Очистить область",
+        "aria": null
+      },
+      {
+        "text": "Управление графиком",
+        "aria": null
+      },
+      {
+        "text": "",
+        "aria": "Закрыть справку по управлению графиком"
+      },
+      {
+        "text": "",
+        "aria": "Закрыть настройку макета"
+      },
+      {
+        "text": "1",
+        "aria": null
+      },
+      {
+        "text": "2",
+        "aria": null
+      },
+      {
+        "text": "3",
+        "aria": null
+      },
+      {
+        "text": "4",
+        "aria": null
+      },
+      {
+        "text": "5",
+        "aria": null
+      },
+      {
+        "text": "6",
+        "aria": null
+      },
+      {
+        "text": "7",
+        "aria": null
+      },
+      {
+        "text": "8",
+        "aria": null
+      },
+      {
+        "text": "9",
+        "aria": null
+      },
+      {
+        "text": "10",
+        "aria": null
+      },
+      {
+        "text": "1",
+        "aria": null
+      },
+      {
+        "text": "2",
+        "aria": null
+      },
+      {
+        "text": "3",
+        "aria": null
+      },
+      {
+        "text": "4",
+        "aria": null
+      },
+      {
+        "text": "5",
+        "aria": null
+      },
+      {
+        "text": "6",
+        "aria": null
+      },
+      {
+        "text": "7",
+        "aria": null
+      },
+      {
+        "text": "8",
+        "aria": null
+      },
+      {
+        "text": "9",
+        "aria": null
+      },
+      {
+        "text": "10",
+        "aria": null
+      },
+      {
+        "text": "Отмена",
+        "aria": null
+      },
+      {
+        "text": "Применить",
+        "aria": null
+      },
+      {
+        "text": "×",
+        "aria": "Закрыть уведомление"
+      },
+      {
+        "text": "",
+        "aria": "Закрыть добавление сигналов"
+      },
+      {
+        "text": "Отмена",
+        "aria": null
+      },
+      {
+        "text": "Добавить",
+        "aria": null
+      },
+      {
+        "text": "Остаться",
+        "aria": null
+      },
+      {
+        "text": "Закрыть",
+        "aria": null
+      },
+      {
+        "text": "",
+        "aria": "Закрыть подтверждение удаления экрана"
+      },
+      {
+        "text": "Отмена",
+        "aria": null
+      },
+      {
+        "text": "Удалить",
+        "aria": null
+      }
+    ],
+    "plots": [
+      {
+        "testid": null,
+        "fullLayout": true,
+        "fullData": true
+      },
+      {
+        "testid": null,
+        "fullLayout": true,
+        "fullData": true
+      }
+    ]
+  },
+  "production": {
+    "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+    "title": "Анализатор сигналов",
+    "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nНе удалось загрузить макет.\nПовторить\nНастройки отображения\nОтображение\nВремя\nИзмерения\nТип графика\nСигналы\nИзмерения\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\nЗагрузка анализатора сигналов…",
+    "status": {
+      "status": 200,
+      "body": "{\"runtime_revision\":\"e0d1253433505943569c2a6b5e07555d5504be0b\",\"project\":\"example_project\",\"ready\":true,\"ok\":true}"
+    },
+    "testids": [
+      "app-shell",
+      "import-session-action",
+      "export-action",
+      "help-action",
+      "session-action-status",
+      "display-workspace",
+      "display-tabs",
+      "display-canvas",
+      "pane-grid",
+      "layout-load-error",
+      "layout-retry",
+      "active-pane-runtime",
+      "display-plot-title",
+      "plot-type-select",
+      "display-overflow-trigger",
+      "display-overflow-menu",
+      "clear-display-action",
+      "graph-help-action",
+      "active-plot-host",
+      "display-settings",
+      "pane-settings-context",
+      "display-settings-tab",
+      "time-settings-tab",
+      "statistics-settings-tab",
+      "settings-view-select",
+      "show-legend-checkbox",
+      "spectrum-settings",
+      "spectrum-scale-select",
+      "spectrum-frequency-scale-select",
+      "spectrum-leakage-input",
+      "spectrum-leakage-value",
+      "spectrum-frequency-min-input",
+      "spectrum-frequency-max-input",
+      "spectrum-frequency-limits-error",
+      "spectrum-settings-error",
+      "spectrogram-settings",
+      "spectrogram-overlap-percent-input",
+      "spectrogram-overlap-percent-error",
+      "spectrogram-leakage-input",
+      "spectrogram-leakage-value",
+      "spectrogram-leakage-error",
+      "spectrogram-frequency-limits-controls",
+      "spectrogram-frequency-min-input",
+      "spectrogram-frequency-max-input",
+      "spectrogram-frequency-limits-error",
+      "spectrogram-frequency-scale-select",
+      "spectrogram-frequency-scale-effective",
+      "spectrogram-frequency-scale-error",
+      "spectrogram-power-limits-controls",
+      "spectrogram-power-min-input",
+      "spectrogram-power-max-input",
+      "spectrogram-power-limits-effective",
+      "spectrogram-power-limits-error",
+      "settings-catalog-panel",
+      "signal-statistics-action",
+      "find-peaks-action",
+      "normalize-y-checkbox",
+      "show-markers-checkbox",
+      "time-min-input",
+      "time-max-input",
+      "time-limits-error",
+      "statistics-controls",
+      "statistics-option-minimum",
+      "statistics-option-maximum",
+      "statistics-option-mean",
+      "statistics-option-median",
+      "statistics-option-peak_to_peak",
+      "statistics-option-rms",
+      "statistics-selection-error",
+      "persistence-settings",
+      "persistence-leakage-input",
+      "persistence-leakage-value",
+      "persistence-leakage-error",
+      "signal-panel-tab-signals",
+      "signal-panel-tab-measurements",
+      "peaks-panel-tab",
+      "signals-add-action",
+      "signal-columns-menu-trigger",
+      "signal-columns-menu",
+      "bottom-panel-signals",
+      "signal-table",
+      "toggle-all-signals",
+      "measurements-panel",
+      "peaks-panel",
+      "app-loading",
+      "app-error",
+      "layout-popover",
+      "layout-current-copy",
+      "layout-draft-copy",
+      "layout-cancel-close",
+      "layout-conflict",
+      "layout-conflict-copy",
+      "layout-row-options",
+      "layout-column-options",
+      "layout-preview",
+      "layout-topology",
+      "layout-pane-count",
+      "layout-preserve",
+      "layout-preserve-copy",
+      "layout-warning",
+      "layout-warning-copy",
+      "layout-error",
+      "layout-error-copy",
+      "layout-cancel",
+      "layout-apply",
+      "layout-toast",
+      "layout-toast-icon",
+      "layout-toast-copy",
+      "layout-toast-close",
+      "signals-toolbar-error",
+      "signals-toolbar-error-text",
+      "signals-toolbar-error-close",
+      "session-import-dialog",
+      "session-import-close",
+      "session-file-input",
+      "session-file-name",
+      "session-import-error",
+      "session-import-success",
+      "session-import-cancel",
+      "session-import-submit",
+      "signals-workspace-dialog",
+      "signals-workspace-close",
+      "signals-workspace-form",
+      "signals-workspace-selection-count",
+      "signals-workspace-refresh",
+      "signals-workspace-loading",
+      "signals-workspace-empty",
+      "signals-workspace-list",
+      "signals-workspace-sample-rate-group",
+      "signals-workspace-sample-rate-input",
+      "signals-workspace-sample-rate-hint",
+      "signals-workspace-sample-rate-error",
+      "signals-workspace-batch-error",
+      "signals-workspace-retry",
+      "signals-workspace-cancel",
+      "signals-workspace-submit",
+      "signals-workspace-success",
+      "signals-workspace-success-count",
+      "signals-workspace-done",
+      "signals-delete-dialog",
+      "signals-delete-close",
+      "signals-delete-name",
+      "signals-delete-success",
+      "signals-delete-success-name",
+      "signals-delete-cancel",
+      "signals-delete-confirm",
+      "signals-delete-done",
+      "nested-confirmation-dialog",
+      "nested-confirmation-stay",
+      "nested-confirmation-leave",
+      "overlay-tooltip",
+      "spectrogram-settings-contract-error"
+    ]
+  },
+  "completed_at": "2026-08-06T11:54:07.247Z"
+}

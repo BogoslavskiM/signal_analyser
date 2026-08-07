@@ -1,0 +1,79 @@
+<aside class="settings-panel">
+  <div class="settings-scroll-content">
+    <h2 class="settings-panel-title">Настройки</h2>
+
+    <settings-group title="Основные" v-model="settingsUi.groups.main">
+      <string-setting
+        v-if="settings.fields.name.visible"
+        field-id="name"
+        :label="settings.fields.name.label"
+        :units="settings.fields.name.units"
+        :error="settings.fields.name.error"
+        :warning="settings.fields.name.warning"
+        :disabled="settings.fields.name.readonly"
+        v-model="settings.fields.name.value"
+        @typed-change="queueSettingField"
+      ></string-setting>
+
+      <number-setting
+        v-if="settings.fields.numeric_value.visible"
+        field-id="numeric_value"
+        kind="float"
+        :label="settings.fields.numeric_value.label"
+        :units="settings.fields.numeric_value.units"
+        :min="settings.fields.numeric_value.min"
+        :max="settings.fields.numeric_value.max"
+        :step="settings.fields.numeric_value.step"
+        :error="settings.fields.numeric_value.error"
+        :warning="settings.fields.numeric_value.warning"
+        :disabled="settings.fields.numeric_value.readonly"
+        v-model="settings.fields.numeric_value.value"
+        @typed-change="queueSettingField"
+        @validity-change="setLocalSettingValidity"
+      ></number-setting>
+
+      <select-setting
+        v-if="settings.fields.mode.visible"
+        field-id="mode"
+        :label="settings.fields.mode.label"
+        :options="settings.fields.mode.options"
+        :error="settings.fields.mode.error"
+        :warning="settings.fields.mode.warning"
+        :disabled="settings.fields.mode.readonly"
+        v-model="settings.fields.mode.value"
+        @typed-change="queueSettingField"
+      ></select-setting>
+
+      <boolean-setting
+        v-if="settings.fields.enabled.visible"
+        field-id="enabled"
+        :label="settings.fields.enabled.label"
+        :error="settings.fields.enabled.error"
+        :warning="settings.fields.enabled.warning"
+        :disabled="settings.fields.enabled.readonly"
+        v-model="settings.fields.enabled.value"
+        @typed-change="queueSettingField"
+      ></boolean-setting>
+
+      <readonly-setting
+        v-if="settings.fields.result_type.visible"
+        field-id="result_type"
+        :label="settings.fields.result_type.label"
+        :units="settings.fields.result_type.units"
+        :value="settings.fields.result_type.value"
+      ></readonly-setting>
+    </settings-group>
+  </div>
+
+  <div class="settings-apply-block">
+    <button
+      class="settings-apply-button"
+      type="button"
+      data-testid="settings-apply"
+      :disabled="settingsUi.applyPending || hasInvalidLocalDraft"
+      @click="applySettings"
+    >
+      Применить
+    </button>
+  </div>
+</aside>

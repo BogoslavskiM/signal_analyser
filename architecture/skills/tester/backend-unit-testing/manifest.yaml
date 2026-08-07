@@ -1,12 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: backend-unit-testing
-version: 0.1.0
+version: 1.0.0
 title: "Backend Unit Testing"
 description: >
   Tester skill для Julia unit tests domain/state logic: структура текущего
   test/back, fresh objects, normal/boundary/invalid cases, controlled thread
-  synchronization, regression tests и coverage report без обязательного
-  порога.
+  synchronization, regression tests и coverage report без обязательного порога.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -18,6 +17,9 @@ when-not:
   - "Нужно проверить API route или Engee contract"
   - "Нужен Playwright сценарий"
 requires-tools: []
-requires-products: []
-reference-files: []
-requires-skills: [tester-workflow]
+requires-products:
+  - "Julia"
+reference-files:
+  - "reference/unit-test-template.jl"
+  - "reference/coverage-summary.jl"
+  - "reference/report-template.md"

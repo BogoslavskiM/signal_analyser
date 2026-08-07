@@ -1,0 +1,23 @@
+schema_version: 1
+name: data-entry-and-inspection
+version: 2.1.0
+title: "Data Entry and Inspection Designer"
+description: >
+  Проектирует proportional settings, canonical menus, точные checkbox/checkmark
+  и field-border states, dropdown open/not-active lifecycle, validation visuals,
+  inspector tables and eye/eye-off column visibility.
+language: ru
+audience: [assistant]
+priority: 0.85
+when-to-use:
+  - "Нужны settings controls, forms, inspector, object list или table"
+  - "Нужно спроектировать validation, selection, empty или disabled state"
+when-not:
+  - "Нужно реализовать parsing, frontend draft state или backend validation"
+requires-tools: []
+requires-products: []
+reference-files:
+  - "reference/settings-controls.css"
+  - "reference/settings-controls.html"
+  - "reference/inspector-ui.css"
+  - "reference/inspector-ui.html"

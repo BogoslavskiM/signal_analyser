@@ -1,7 +1,10 @@
----
-name: state-model
----
 # Backend State Model
+
+## Входные данные
+
+Прочитай user/task contract, существующие domain types, API payloads, session
+requirements и перечень output zones. Если обязательные invariants или
+состояния не определены, запроси их до изменения persistent model.
 
 ## When to Use
 - Нужно спроектировать backend state для inspector-style приложения.
@@ -21,7 +24,11 @@ name: state-model
 - Не заменяй table payload списком имён, изменённой строкой или общим массивом domain objects.
 - Храни результат последнего успешного расчёта отдельно для каждой расчётной зоны внутри domain object.
 - Храни `data`, `isready`, `success` и `error` расчётной зоны в persistent-структуре объекта, чтобы они сохранялись и импортировались вместе.
-- Храни внутренний boolean `dirty` или `need_update` отдельно для каждой расчётной зоны. Не подменяй им API-поле `success`.
+- Храни `need_update_pages` отдельно по stable page id и `plot_cache` с готовым
+  Plotly payload/cache key. Не подменяй stale flag API-полем `success`.
+- Храни monotonic `state_revision` aggregate root отдельно от
+  `calculation_revision`; первая защищает frontend snapshots, вторая — запись
+  calculation task.
 - Не требуй metric columns или видимого header row: минимальный inspector может содержать checkbox, имя и row actions.
 
 ## Workflow
@@ -32,7 +39,10 @@ name: state-model
 5. Храни только текущие draft settings. Не создавай applied-копию и флаг `settings_dirty`.
 6. Создай view state для active/visible zones, page controls, columns и search/menu state. В сессию включай типизированные page controls, но не включай временный Plotly viewport, открытые меню, hover и runtime-механизмы.
 7. Для каждого multi-page element храни stable page metadata, backend order, opened page ids и `main_page`. Не смешивай статическую metadata с `data/isready/success/error`.
-8. Создай для каждого inspector calculation-manager state: dirty flags, план/очередь, cancellation state и revisions. Добавляй worker thread только для нагруженного приложения; в типовом приложении inspector один.
+8. Создай для каждого inspector calculation-manager state: active page/task,
+   `need_update_pages`, `plot_cache`, cancellation state, state/calculation
+   revisions. Не создавай eager queue inactive pages. Добавляй worker thread
+   только для измеренно долгих расчётов; в типовом приложении inspector один.
 9. Добавь constructors, defaults, name/id generators и mutation helpers: create, duplicate, delete, rename, select, bulk-select, set-main и update. Не добавляй reorder, пока он не требуется явно.
 10. Делай созданный и дублированный объект новым main object. После удаления main object выбирай первый оставшийся объект в текущем порядке.
 11. Всегда включай main object в расчёты независимо от selected object ids.
@@ -44,8 +54,12 @@ name: state-model
 17. При сохранении сессии немедленно снимай состояние persistent-структур объектов, не ожидая активных расчётов. Включай settings, page controls, последнее полностью записанное `data`, `isready`, `success`, `error`, `selection` и `main_object`.
 18. При импорте сохраняй статусы расчётных зон такими, какими они записаны в объекте. Не заменяй их автоматически на `isready=true`, `success=true`.
 19. Добавляй в корень сессии обязательное поле `__genie_app_name`; его значение должно быть стабильным именем приложения. Версию формата сессии не добавляй.
-20. Runtime-очередь, worker thread, cancellation token и logs не сериализуй. После импорта создай runtime-инфраструктуру заново и перестрой очередь с учётом импортированных статусов; не пересчитывай зоны, импортированные как готовые.
-21. Покрой mutation helpers и инварианты inspector unit-тестами без HTTP.
+20. Runtime active task, worker thread, cancellation token, monotonic runtime
+    revisions и logs не сериализуй. После импорта создай runtime infrastructure
+    заново, увеличь новую `state_revision` и не строй eager queue; stale page
+    стартует только по future active request.
+21. Покрой mutation helpers, cache/stale/revision и inspector invariants
+    unit-тестами без HTTP.
 
 ## Guardrails
 - Предпочитай typed Julia structs и enums для domain settings.
@@ -92,3 +106,12 @@ Backend выбирает единицу и выполняет смысловое
 значащих цифр. Для string и enum используй ту же cell shape.
 
 Не включай в table payload settings и outputs, если они не являются согласованными колонками таблицы.
+
+## Проверка и завершение
+
+Проверь constructors/defaults, stable IDs, CRUD/bulk-selection invariants,
+main/selection/order, typed empty outputs, `plot_cache`/`need_update_pages`,
+state/calculation revisions и session round-trip. Убедись, что runtime task/
+thread/token не сериализуются, import не запускает inactive calculations и не
+меняет сохранённые status самовольно. Верни схему типов, mutations, payload
+boundaries и список unit cases для Tester.

@@ -1,19 +1,19 @@
-schema_version: 2
+schema_version: 1
 name: backender-workflow
-version: 1.3.0
+version: 4.0.0
 title: "Backender Workflow"
 description: >
-  Адаптивный процесс Backender: анализ задачи, опциональные исследования и
-  проектирование, trigger-based state/API/calculation/export subskills,
-  типизированная object-oriented реализация и адресные handoff-отчёты.
+  Адаптивный процесс Backender: обязательный Engee contract gate для
+  Engee-dependent scope, анализ и проектирование, trigger-based subskills,
+  типизированная object-oriented реализация, явный confirmed-Engee stub
+  protocol, active-page performance architecture и адресные handoff-отчёты.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 1
 when-to-use:
-  - "Всегда при работе Backender"
+  - "Получен backend handoff в ownership Backender"
 when-not:
-  - "Только для задач вне backend ownership"
+  - "Задача не затрагивает backend ownership"
 requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills: []

@@ -1,13 +1,12 @@
-schema_version: 2
+schema_version: 1
 name: frontend-project-structure
-version: 1.0.0
+version: 3.0.0
 title: "Frontend Project Structure"
 description: >
   Frontend skill для типовой структуры Vue 3 global приложения без bundler:
   раздельные JS/CSS/HTML каталоги, module registration, минимальный root app,
-  локальный font, theme.css, общий tooltip, application toolbar, отдельные
-  zones, controls, dialogs, object export forms и страницы multi-page
-  элементов.
+  local Roboto/SVG, state-lite startup, backend state revision guard,
+  theme.css, toolbar, zones, controls, dialogs и multi-page pages.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -20,4 +19,3 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills: [frontend-workflow]

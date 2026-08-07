@@ -1,11 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: graph-output-zone
-version: 0.2.0
+version: 3.1.0
 title: "Graph Output Zone"
 description: >
-  Frontend skill и JS/CSS/HTML bundle для расчётной Plotly-зоны: ordered plots,
-  frontend-defined grid, local loading/error overlays, page controls, resize и
-  локальная русская Plotly.
+  Техническая реализация быстрой Plotly-зоны: Julia-prepared payload, lazy
+  local Plotly, canonical white/grey modebar, latest-only rAF rendering,
+  deferred resize и revision guards.
 language: ru
 audience: [assistant]
 priority: 0.9
@@ -18,5 +18,5 @@ when-not:
   - "Страница не содержит графики"
 requires-tools: []
 requires-products: []
-reference-files: []
-requires-skills: [frontend-workflow, output-loading-flow]
+reference-files:
+  - "reference/template.js"

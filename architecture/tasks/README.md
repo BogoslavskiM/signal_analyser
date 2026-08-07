@@ -32,6 +32,11 @@ blocker_reason: null
 feature_slug: null
 development_branch: null
 integration_sha: null
+# only for UI-affecting scope:
+ui_impact: none # none | covered | new_or_changed
+design_mode: null # autonomous | review
+design_ref: null
+design_version: null
 ```
 
 `kind` определяет назначение записи:
@@ -68,6 +73,7 @@ subtasks имеют `status: done`.
 | Обычная разработка, frontend, тесты, стандартный research | `gpt-5.6-terra` | `medium` |
 | Нетривиальная реализация, сложный bug, несколько контрактов | `gpt-5.6-terra` | `high` |
 | Архитектура, сложный backend, инженерная математика, критичный review | `gpt-5.6-sol` | `high` |
+| Автономный application design или сложная visual composition | `gpt-5.6-sol` | `high` |
 | P0, конфликтующие факты, риск потери данных, сложная декомпозиция | `gpt-5.6-sol` | `xhigh` |
 | MATLAB/Engee research | `gpt-5.6-terra` | `medium`; `high` при противоречиях или сложном поведении |
 
@@ -107,6 +113,11 @@ Orchestrator выбирает следующую задачу так:
 
 После выдачи `status` становится `in_progress`; завершение означает `done`.
 `queue_order` не является status и меняется только через backlogging.
+
+Для `ui_impact: new_or_changed` visible Frontend task зависит от ready Designer
+task/package. Для `covered` Orchestrator pin-ит существующие `design_ref` and
+`design_version`. Designer, Backend and research work не связываются
+искусственной dependency, если их deliverables независимы.
 
 ## Статусы
 

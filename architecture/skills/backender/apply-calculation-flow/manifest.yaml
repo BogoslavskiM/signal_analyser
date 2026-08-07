@@ -1,11 +1,11 @@
-schema_version: 2
+schema_version: 1
 name: apply-calculation-flow
-version: 0.6.0
+version: 2.0.0
 title: "Apply Calculation Flow"
 description: >
-  Backend skill для Apply lifecycle: backend-only typed draft, full validation,
-  fast Apply endpoint, calculation revisions, boolean dirty state, typed stored
-  results, optional worker manager, zone endpoints и non-blocking invalidation.
+  Backend skill для fast Apply invalidation, plot_cache/need_update_pages,
+  active-only background calculation, lightweight pending, state/calculation
+  revisions и non-blocking cancellation.
 language: ru
 audience: [assistant]
 priority: 0.85
@@ -18,4 +18,3 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills: [backender-workflow, calculation-planning]

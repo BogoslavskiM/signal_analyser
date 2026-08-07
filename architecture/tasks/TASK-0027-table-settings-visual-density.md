@@ -2,7 +2,7 @@
 id: TASK-0027
 kind: task
 title: Очистить UI и исправить таблицы, tabs, branding и Settings form
-status: in_progress
+status: done
 priority: P1
 queue_order: 26
 model: gpt-5.6-terra
@@ -13,9 +13,13 @@ parent: TASK-0014
 depends_on: []
 blocks: []
 source_handoffs: []
-related_handoffs: [HND-0029, HND-0035, HND-0036, HND-0037, HND-0038]
-blocked_by: [TASK-0032, TASK-0034]
-blocker_reason: "Persistent Display tab reorder needs TASK-0032; HND-0037 requires physical removal of obsolete DOM nodes in TASK-0034."
+related_handoffs: [HND-0029, HND-0035, HND-0036, HND-0037, HND-0038, HND-0114, HND-0118, HND-0119, HND-0123, HND-0124, HND-0125, HND-0126, HND-0130]
+blocked_by: []
+blocker_reason: null
+ui_impact: covered
+design_mode: autonomous
+design_ref: architecture/design/TASK-0040-detailed-current-layout/DESIGN.md
+design_version: 1
 ---
 
 # Переработать размеры таблиц/settings и покрыть dynamic UI
@@ -58,17 +62,17 @@ blocker_reason: "Persistent Display tab reorder needs TASK-0032; HND-0037 requir
 
 ## Acceptance criteria
 
-- [ ] Все перечисленные лишние controls/status элементы удалены без потери
+- [x] Все перечисленные лишние controls/status элементы удалены без потери
   согласованных session/import/help workflows.
-- [ ] Column eye/menu скрывает и возвращает каждый optional column; required
+- [x] Column eye/menu скрывает и возвращает каждый optional column; required
   identity/action columns защищены от некорректного состояния.
-- [ ] Duplicate/delete находятся у правого края и доступны mouse/keyboard.
-- [ ] Display tabs прокручиваются и меняют порядок; active tab сохраняется.
-- [ ] Engee SVG и `Engee` отображаются корректно без внешней runtime-зависимости.
-- [ ] Нижняя зона стала выше, а таблица/settings не перекрываются и не выходят
+- [x] Duplicate/delete находятся у правого края и доступны mouse/keyboard.
+- [x] Display tabs прокручиваются и меняют порядок; active tab сохраняется.
+- [x] Engee SVG и `Engee` отображаются корректно без внешней runtime-зависимости.
+- [x] Нижняя зона стала выше, а таблица/settings не перекрываются и не выходят
   за контейнер на desktop/reference viewports.
-- [ ] Все новые dynamic states имеют stable selectors и переданы Tester/E2E.
-- [ ] Полный frontend suite проходит.
+- [x] Все новые dynamic states имеют stable selectors и переданы Tester/E2E.
+- [x] Полный frontend suite проходит.
 
 ## Queue decision
 
@@ -85,3 +89,29 @@ Frontend implementation HND-0035: suite 4/4 PASS. Focused regression выпол�
 TASK-0033/HND-0036. Единственный remaining blocker — authoritative persistent
 tab order TASK-0032; после него Frontend подключит mutation и task получит
 post-task E2E.
+
+TASK-0032 и TASK-0034 завершены/deployed; blockers сняты. Ready design package
+TASK-0040 v1 pin-нут как visual contract. Final Frontend integration выдана
+как `HND-0114`.
+
+Frontend report `HND-0118`: persistent reorder API lifecycle и design-v1
+geometry реализованы в `public/js/app.js` и трёх CSS files без deviation;
+syntax/diff/full frontend suite PASS `4/4`. Exact new lifecycle regression
+выдан Tester как `HND-0119`; task остаётся in_progress до report/deploy/E2E.
+
+Tester report `HND-0123`: deterministic reorder lifecycle, rollback,
+serialization/focus и design-v1 static contracts покрыты; focused и full suite
+PASS `4/4`, V8 function coverage 73.65%. Orchestrator независимо повторил
+syntax/diff/full suite — PASS `4/4`. Exact six-path production deploy выдан
+DevOps как `HND-0124`; browser geometry/hit-testing остаются post-deploy E2E.
+
+DevOps report `HND-0125`: exact six paths deployed на совпадающий local/private/
+production SHA `a6add263120f41aa1ae66497f3effac6bb493cff`; runtime RUNNING,
+root/status HTTP 200, все четыре external JS/CSS assets побайтно соответствуют
+commit. Task закрыта; единственный post-task new-functionality E2E выдан как
+`HND-0126` для real drag/keyboard и design-v1 geometry.
+
+E2E report `HND-0130`: функциональность 9/9 PASS, trusted pointer/keyboard,
+authoritative rollback/focus и exact session restoration подтверждены. Visual
+16/21 выявил document overflow на 1280×720 и 1024×768; отдельная TASK-0045
+выдана тому же активному Frontend lane до следующего deployment.

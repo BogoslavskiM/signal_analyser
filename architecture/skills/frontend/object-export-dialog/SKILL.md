@@ -1,6 +1,3 @@
----
-name: object-export-dialog
----
 # Object Export Dialog
 
 ## When to Use
@@ -17,14 +14,13 @@ name: object-export-dialog
 - Для file targets используй `path-input` и targets из `frontend/file-browser-dialog`.
 - Не дублируй base dialog и file browser.
 
-## Bundled Template
-Используй:
+## Technical Reference and Design
 
-- `assets/template.js` — operation registry, state, defaults switch и export action;
-- `assets/template.css` — selector и operation form container;
-- `assets/template.html` — base dialog с dynamic explicit form component.
+Используй `reference/template.js` для operation registry, backend defaults,
+state, validation and export action. Selector, form container and dialog
+composition бери из pinned Designer package.
 
-1. Прочитай все три файла.
+1. Прочитай technical JS reference и pinned design package.
 2. Создай module через `window.GenieObjectExportDialog.create(...)`.
 3. Передай API actions `open`, `changeOperation`, `exportObject`.
 4. Передай map explicit form components только для операций текущего приложения.

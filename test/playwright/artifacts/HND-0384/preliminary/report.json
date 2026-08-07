@@ -1,0 +1,2162 @@
+{
+  "handoff_id": "HND-0384",
+  "mode": "preliminary_frontend_finding",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "e0d1253433505943569c2a6b5e07555d5504be0b",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "started_at": "2026-08-06T12:01:00.788Z",
+  "views": [
+    {
+      "viewport": {
+        "width": 1024,
+        "height": 768,
+        "documentScrollWidth": 1024,
+        "documentScrollHeight": 768,
+        "bodyScrollWidth": 1024,
+        "bodyScrollHeight": 768
+      },
+      "screenshot": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0384/preliminary/production-1024x768.png",
+      "shell": {
+        "tag": "main",
+        "testid": "app-shell",
+        "className": "signal-analyser",
+        "aria": "Анализатор сигналов",
+        "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+        "box": {
+          "x": 6,
+          "y": 6,
+          "width": 1012,
+          "height": 756,
+          "right": 1018,
+          "bottom": 762
+        },
+        "color": "rgb(33, 33, 33)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "overflow": "hidden",
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "zones": {
+        "app-shell": {
+          "tag": "main",
+          "testid": "app-shell",
+          "className": "signal-analyser",
+          "aria": "Анализатор сигналов",
+          "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+          "box": {
+            "x": 6,
+            "y": 6,
+            "width": 1012,
+            "height": 756,
+            "right": 1018,
+            "bottom": 762
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgba(0, 0, 0, 0)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "grid",
+          "visibility": "visible"
+        },
+        "display-workspace": {
+          "tag": "section",
+          "testid": "display-workspace",
+          "className": "display-workspace",
+          "aria": "Отображение сигналов",
+          "text": "Отображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персисте",
+          "box": {
+            "x": 6,
+            "y": 56,
+            "width": 706,
+            "height": 435.5234375,
+            "right": 712,
+            "bottom": 491.5234375
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgb(255, 255, 255)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "grid",
+          "visibility": "visible"
+        },
+        "display-canvas": {
+          "tag": "section",
+          "testid": "display-canvas",
+          "className": "layout-stage",
+          "aria": "Панели активного отображения",
+          "text": "Область 1\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\n0\n0.05\n0.1\n0.15\n0.2\n−1\n−0.5\n0\n0.5\n1\n",
+          "box": {
+            "x": 7,
+            "y": 131,
+            "width": 704,
+            "height": 359.5234375,
+            "right": 711,
+            "bottom": 490.5234375
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgb(255, 255, 255)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "block",
+          "visibility": "visible"
+        },
+        "display-settings": {
+          "tag": "aside",
+          "testid": "display-settings",
+          "className": "display-settings",
+          "aria": null,
+          "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр перси",
+          "box": {
+            "x": 718,
+            "y": 56,
+            "width": 300,
+            "height": 435.5234375,
+            "right": 1018,
+            "bottom": 491.5234375
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgb(255, 255, 255)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "grid",
+          "visibility": "visible"
+        },
+        "bottom-panel-signals": {
+          "tag": "section",
+          "testid": "bottom-panel-signals",
+          "className": "bottom-panel signals-panel",
+          "aria": null,
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный",
+          "box": {
+            "x": 7,
+            "y": 540.5234375,
+            "width": 1010,
+            "height": 214.4765625,
+            "right": 1017,
+            "bottom": 755
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgba(0, 0, 0, 0)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "block",
+          "visibility": "visible"
+        },
+        "signal-table": {
+          "tag": "table",
+          "testid": "signal-table",
+          "className": "signal-table",
+          "aria": null,
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный",
+          "box": {
+            "x": 7,
+            "y": 540.5234375,
+            "width": 1010,
+            "height": 108.640625,
+            "right": 1017,
+            "bottom": 649.1640625
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgba(0, 0, 0, 0)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "visible",
+          "display": "table",
+          "visibility": "visible"
+        }
+      },
+      "green": [
+        {
+          "record": {
+            "tag": "span",
+            "testid": null,
+            "className": "app-version",
+            "aria": null,
+            "text": "Версия 0.1.0",
+            "box": {
+              "x": 247.1875,
+              "y": 19.8984375,
+              "width": 80.9140625,
+              "height": 16.1953125,
+              "right": 328.1015625,
+              "bottom": 36.09375
+            },
+            "color": "rgb(107, 107, 107)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "header",
+            "testid": null,
+            "className": "app-toolbar",
+            "aria": null,
+            "text": "Анализатор сигналов\nВерсия 0.1.0",
+            "box": {
+              "x": 6,
+              "y": 6,
+              "width": 1012,
+              "height": 44,
+              "right": 1018,
+              "bottom": 50
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(255, 255, 255)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "span",
+            "testid": null,
+            "className": "display-tab-shell",
+            "aria": null,
+            "text": "Экран 1",
+            "box": {
+              "x": 7,
+              "y": 99,
+              "width": 160,
+              "height": 32,
+              "right": 167,
+              "bottom": 131
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "span",
+            "testid": "display-tab-scroll",
+            "className": "display-tab-scroll",
+            "aria": null,
+            "text": "Экран 1",
+            "box": {
+              "x": 7,
+              "y": 99,
+              "width": 514.59375,
+              "height": 31,
+              "right": 521.59375,
+              "bottom": 130
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": false,
+          "overflow": true
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "close-display-display-1",
+            "className": "display-tab-close",
+            "aria": "Удалить Экран 1",
+            "text": "",
+            "box": {
+              "x": 136,
+              "y": 99,
+              "width": 30,
+              "height": 32,
+              "right": 166,
+              "bottom": 131
+            },
+            "color": "rgb(107, 107, 107)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "grid",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "span",
+            "testid": null,
+            "className": "display-tab-shell",
+            "aria": null,
+            "text": "Экран 1",
+            "box": {
+              "x": 7,
+              "y": 99,
+              "width": 160,
+              "height": 32,
+              "right": 167,
+              "bottom": 131
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "time-settings-tab",
+            "className": "settings-tab",
+            "aria": null,
+            "text": "Время",
+            "box": {
+              "x": 831.7578125,
+              "y": 99,
+              "width": 66.078125,
+              "height": 32,
+              "right": 897.8359375,
+              "bottom": 131
+            },
+            "color": "rgb(92, 103, 120)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "settings-tabs",
+            "aria": "Настройки отображения",
+            "text": "Отображение\nВремя\nИзмерения",
+            "box": {
+              "x": 719,
+              "y": 99,
+              "width": 298,
+              "height": 32,
+              "right": 1017,
+              "bottom": 131
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "statistics-settings-tab",
+            "className": "settings-tab",
+            "aria": null,
+            "text": "Измерения",
+            "box": {
+              "x": 897.8359375,
+              "y": 99,
+              "width": 98.03125,
+              "height": 32,
+              "right": 995.8671875,
+              "bottom": 131
+            },
+            "color": "rgb(92, 103, 120)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "settings-tabs",
+            "aria": "Настройки отображения",
+            "text": "Отображение\nВремя\nИзмерения",
+            "box": {
+              "x": 719,
+              "y": 99,
+              "width": 298,
+              "height": 32,
+              "right": 1017,
+              "bottom": 131
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "signal-panel-tab-signals",
+            "className": "bottom-tab is-active",
+            "aria": null,
+            "text": "Сигналы",
+            "box": {
+              "x": 15,
+              "y": 498.0234375,
+              "width": 104,
+              "height": 42,
+              "right": 119,
+              "bottom": 540.0234375
+            },
+            "color": "rgb(27, 132, 184)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "bottom-tablist",
+            "aria": "Данные анализатора",
+            "text": "Сигналы\nИзмерения",
+            "box": {
+              "x": 7,
+              "y": 498.0234375,
+              "width": 942,
+              "height": 42,
+              "right": 949,
+              "bottom": 540.0234375
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "signal-panel-tab-measurements",
+            "className": "bottom-tab",
+            "aria": null,
+            "text": "Измерения",
+            "box": {
+              "x": 121,
+              "y": 498.0234375,
+              "width": 104,
+              "height": 42,
+              "right": 225,
+              "bottom": 540.0234375
+            },
+            "color": "rgb(67, 80, 100)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "bottom-tablist",
+            "aria": "Данные анализатора",
+            "text": "Сигналы\nИзмерения",
+            "box": {
+              "x": 7,
+              "y": 498.0234375,
+              "width": 942,
+              "height": 42,
+              "right": 949,
+              "bottom": 540.0234375
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "span",
+            "testid": null,
+            "className": "signal-cell-copy",
+            "aria": null,
+            "text": "Вещественный",
+            "box": {
+              "x": 932.4140625,
+              "y": 584.5703125,
+              "width": 92.6953125,
+              "height": 15,
+              "right": 1025.109375,
+              "bottom": 599.5703125
+            },
+            "color": "rgb(55, 65, 81)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "inline",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "td",
+            "testid": null,
+            "className": "signal-type-cell",
+            "aria": null,
+            "text": "Вещественный",
+            "box": {
+              "x": 923.9140625,
+              "y": 573.5703125,
+              "width": 92.5859375,
+              "height": 37.546875,
+              "right": 1016.5,
+              "bottom": 611.1171875
+            },
+            "color": "rgb(55, 65, 81)",
+            "background": "rgb(230, 245, 252)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "hidden",
+            "display": "table-cell",
+            "visibility": "visible"
+          },
+          "greenStyle": false,
+          "overflow": true
+        },
+        {
+          "record": {
+            "tag": "span",
+            "testid": null,
+            "className": "signal-cell-copy",
+            "aria": null,
+            "text": "Комплексный",
+            "box": {
+              "x": 932.4140625,
+              "y": 622.1171875,
+              "width": 85.9765625,
+              "height": 15,
+              "right": 1018.390625,
+              "bottom": 637.1171875
+            },
+            "color": "rgb(55, 65, 81)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "inline",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "td",
+            "testid": null,
+            "className": "signal-type-cell",
+            "aria": null,
+            "text": "Комплексный",
+            "box": {
+              "x": 923.9140625,
+              "y": 611.1171875,
+              "width": 92.5859375,
+              "height": 37.546875,
+              "right": 1016.5,
+              "bottom": 648.6640625
+            },
+            "color": "rgb(55, 65, 81)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "hidden",
+            "display": "table-cell",
+            "visibility": "visible"
+          },
+          "greenStyle": false,
+          "overflow": true
+        },
+        {
+          "record": {
+            "tag": "svg",
+            "testid": null,
+            "className": "[object SVGAnimatedString]",
+            "aria": null,
+            "text": "",
+            "box": {
+              "x": -10000,
+              "y": -10000,
+              "width": 9000,
+              "height": 9000,
+              "right": -1000,
+              "bottom": -1000
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "hidden",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "body",
+            "testid": null,
+            "className": "",
+            "aria": null,
+            "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+            "box": {
+              "x": 0,
+              "y": 0,
+              "width": 1024,
+              "height": 768,
+              "right": 1024,
+              "bottom": 768
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(246, 248, 250)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "hidden",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "greenStyle": false,
+          "overflow": true
+        }
+      ],
+      "layoutLoadError": null,
+      "activeElement": {
+        "tag": "body",
+        "testid": null,
+        "className": "",
+        "aria": null,
+        "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+        "box": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768,
+          "right": 1024,
+          "bottom": 768
+        },
+        "color": "rgb(33, 33, 33)",
+        "background": "rgb(246, 248, 250)",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "overflow": "hidden",
+        "display": "block",
+        "visibility": "visible"
+      }
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 720,
+        "documentScrollWidth": 1280,
+        "documentScrollHeight": 720,
+        "bodyScrollWidth": 1280,
+        "bodyScrollHeight": 720
+      },
+      "screenshot": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0384/preliminary/production-1280x720.png",
+      "shell": {
+        "tag": "main",
+        "testid": "app-shell",
+        "className": "signal-analyser",
+        "aria": "Анализатор сигналов",
+        "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+        "box": {
+          "x": 8,
+          "y": 8,
+          "width": 1264,
+          "height": 688,
+          "right": 1272,
+          "bottom": 696
+        },
+        "color": "rgb(33, 33, 33)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "overflow": "hidden",
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "zones": {
+        "app-shell": {
+          "tag": "main",
+          "testid": "app-shell",
+          "className": "signal-analyser",
+          "aria": "Анализатор сигналов",
+          "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+          "box": {
+            "x": 8,
+            "y": 8,
+            "width": 1264,
+            "height": 688,
+            "right": 1272,
+            "bottom": 696
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgba(0, 0, 0, 0)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "grid",
+          "visibility": "visible"
+        },
+        "display-workspace": {
+          "tag": "section",
+          "testid": "display-workspace",
+          "className": "display-workspace",
+          "aria": "Отображение сигналов",
+          "text": "Отображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персисте",
+          "box": {
+            "x": 8,
+            "y": 60,
+            "width": 916,
+            "height": 368,
+            "right": 924,
+            "bottom": 428
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgb(255, 255, 255)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "grid",
+          "visibility": "visible"
+        },
+        "display-canvas": {
+          "tag": "section",
+          "testid": "display-canvas",
+          "className": "layout-stage",
+          "aria": "Панели активного отображения",
+          "text": "Область 1\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\n0\n0.05\n0.1\n0.15\n0.2\n−1\n−0.5\n0\n0.5\n1\n",
+          "box": {
+            "x": 9,
+            "y": 135,
+            "width": 914,
+            "height": 292,
+            "right": 923,
+            "bottom": 427
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgb(255, 255, 255)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "block",
+          "visibility": "visible"
+        },
+        "display-settings": {
+          "tag": "aside",
+          "testid": "display-settings",
+          "className": "display-settings",
+          "aria": null,
+          "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр перси",
+          "box": {
+            "x": 932,
+            "y": 60,
+            "width": 340,
+            "height": 368,
+            "right": 1272,
+            "bottom": 428
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgb(255, 255, 255)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "grid",
+          "visibility": "visible"
+        },
+        "bottom-panel-signals": {
+          "tag": "section",
+          "testid": "bottom-panel-signals",
+          "className": "bottom-panel signals-panel",
+          "aria": null,
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный",
+          "box": {
+            "x": 9,
+            "y": 479,
+            "width": 1262,
+            "height": 208,
+            "right": 1271,
+            "bottom": 687
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgba(0, 0, 0, 0)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "block",
+          "visibility": "visible"
+        },
+        "signal-table": {
+          "tag": "table",
+          "testid": "signal-table",
+          "className": "signal-table",
+          "aria": null,
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный",
+          "box": {
+            "x": 9,
+            "y": 479,
+            "width": 1262,
+            "height": 108.640625,
+            "right": 1271,
+            "bottom": 587.640625
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgba(0, 0, 0, 0)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "visible",
+          "display": "table",
+          "visibility": "visible"
+        }
+      },
+      "green": [
+        {
+          "record": {
+            "tag": "span",
+            "testid": null,
+            "className": "app-version",
+            "aria": null,
+            "text": "Версия 0.1.0",
+            "box": {
+              "x": 297.4609375,
+              "y": 20.546875,
+              "width": 92.5625,
+              "height": 18.8984375,
+              "right": 390.0234375,
+              "bottom": 39.4453125
+            },
+            "color": "rgb(107, 107, 107)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "header",
+            "testid": null,
+            "className": "app-toolbar",
+            "aria": null,
+            "text": "Анализатор сигналов\nВерсия 0.1.0",
+            "box": {
+              "x": 8,
+              "y": 8,
+              "width": 1264,
+              "height": 44,
+              "right": 1272,
+              "bottom": 52
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(255, 255, 255)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "span",
+            "testid": null,
+            "className": "display-tab-shell",
+            "aria": null,
+            "text": "Экран 1",
+            "box": {
+              "x": 9,
+              "y": 103,
+              "width": 160,
+              "height": 32,
+              "right": 169,
+              "bottom": 135
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "span",
+            "testid": "display-tab-scroll",
+            "className": "display-tab-scroll",
+            "aria": null,
+            "text": "Экран 1",
+            "box": {
+              "x": 9,
+              "y": 103,
+              "width": 724.59375,
+              "height": 31,
+              "right": 733.59375,
+              "bottom": 134
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": false,
+          "overflow": true
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "close-display-display-1",
+            "className": "display-tab-close",
+            "aria": "Удалить Экран 1",
+            "text": "",
+            "box": {
+              "x": 138,
+              "y": 103,
+              "width": 30,
+              "height": 32,
+              "right": 168,
+              "bottom": 135
+            },
+            "color": "rgb(107, 107, 107)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "grid",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "span",
+            "testid": null,
+            "className": "display-tab-shell",
+            "aria": null,
+            "text": "Экран 1",
+            "box": {
+              "x": 9,
+              "y": 103,
+              "width": 160,
+              "height": 32,
+              "right": 169,
+              "bottom": 135
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "time-settings-tab",
+            "className": "settings-tab",
+            "aria": null,
+            "text": "Время",
+            "box": {
+              "x": 1045.7578125,
+              "y": 103,
+              "width": 66.078125,
+              "height": 32,
+              "right": 1111.8359375,
+              "bottom": 135
+            },
+            "color": "rgb(92, 103, 120)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "settings-tabs",
+            "aria": "Настройки отображения",
+            "text": "Отображение\nВремя\nИзмерения",
+            "box": {
+              "x": 933,
+              "y": 103,
+              "width": 338,
+              "height": 32,
+              "right": 1271,
+              "bottom": 135
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "statistics-settings-tab",
+            "className": "settings-tab",
+            "aria": null,
+            "text": "Измерения",
+            "box": {
+              "x": 1111.8359375,
+              "y": 103,
+              "width": 98.03125,
+              "height": 32,
+              "right": 1209.8671875,
+              "bottom": 135
+            },
+            "color": "rgb(92, 103, 120)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "settings-tabs",
+            "aria": "Настройки отображения",
+            "text": "Отображение\nВремя\nИзмерения",
+            "box": {
+              "x": 933,
+              "y": 103,
+              "width": 338,
+              "height": 32,
+              "right": 1271,
+              "bottom": 135
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "signal-panel-tab-signals",
+            "className": "bottom-tab is-active",
+            "aria": null,
+            "text": "Сигналы",
+            "box": {
+              "x": 17,
+              "y": 436.5,
+              "width": 104,
+              "height": 42,
+              "right": 121,
+              "bottom": 478.5
+            },
+            "color": "rgb(27, 132, 184)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "bottom-tablist",
+            "aria": "Данные анализатора",
+            "text": "Сигналы\nИзмерения",
+            "box": {
+              "x": 9,
+              "y": 436.5,
+              "width": 1194,
+              "height": 42,
+              "right": 1203,
+              "bottom": 478.5
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "signal-panel-tab-measurements",
+            "className": "bottom-tab",
+            "aria": null,
+            "text": "Измерения",
+            "box": {
+              "x": 123,
+              "y": 436.5,
+              "width": 104,
+              "height": 42,
+              "right": 227,
+              "bottom": 478.5
+            },
+            "color": "rgb(67, 80, 100)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "bottom-tablist",
+            "aria": "Данные анализатора",
+            "text": "Сигналы\nИзмерения",
+            "box": {
+              "x": 9,
+              "y": 436.5,
+              "width": 1194,
+              "height": 42,
+              "right": 1203,
+              "bottom": 478.5
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "svg",
+            "testid": null,
+            "className": "[object SVGAnimatedString]",
+            "aria": null,
+            "text": "",
+            "box": {
+              "x": -10000,
+              "y": -10000,
+              "width": 9000,
+              "height": 9000,
+              "right": -1000,
+              "bottom": -1000
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "hidden",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "body",
+            "testid": null,
+            "className": "",
+            "aria": null,
+            "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+            "box": {
+              "x": 0,
+              "y": 0,
+              "width": 1280,
+              "height": 720,
+              "right": 1280,
+              "bottom": 720
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(246, 248, 250)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "hidden",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "greenStyle": false,
+          "overflow": true
+        }
+      ],
+      "layoutLoadError": null,
+      "activeElement": {
+        "tag": "body",
+        "testid": null,
+        "className": "",
+        "aria": null,
+        "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+        "box": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 720,
+          "right": 1280,
+          "bottom": 720
+        },
+        "color": "rgb(33, 33, 33)",
+        "background": "rgb(246, 248, 250)",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "overflow": "hidden",
+        "display": "block",
+        "visibility": "visible"
+      }
+    },
+    {
+      "viewport": {
+        "width": 1440,
+        "height": 900,
+        "documentScrollWidth": 1440,
+        "documentScrollHeight": 900,
+        "bodyScrollWidth": 1440,
+        "bodyScrollHeight": 900
+      },
+      "screenshot": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0384/preliminary/production-1440x900.png",
+      "shell": {
+        "tag": "main",
+        "testid": "app-shell",
+        "className": "signal-analyser",
+        "aria": "Анализатор сигналов",
+        "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+        "box": {
+          "x": 8,
+          "y": 8,
+          "width": 1424,
+          "height": 868,
+          "right": 1432,
+          "bottom": 876
+        },
+        "color": "rgb(33, 33, 33)",
+        "background": "rgba(0, 0, 0, 0)",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "overflow": "hidden",
+        "display": "grid",
+        "visibility": "visible"
+      },
+      "zones": {
+        "app-shell": {
+          "tag": "main",
+          "testid": "app-shell",
+          "className": "signal-analyser",
+          "aria": "Анализатор сигналов",
+          "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+          "box": {
+            "x": 8,
+            "y": 8,
+            "width": 1424,
+            "height": 868,
+            "right": 1432,
+            "bottom": 876
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgba(0, 0, 0, 0)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "grid",
+          "visibility": "visible"
+        },
+        "display-workspace": {
+          "tag": "section",
+          "testid": "display-workspace",
+          "className": "display-workspace",
+          "aria": "Отображение сигналов",
+          "text": "Отображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персисте",
+          "box": {
+            "x": 8,
+            "y": 60,
+            "width": 1046,
+            "height": 494,
+            "right": 1054,
+            "bottom": 554
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgb(255, 255, 255)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "grid",
+          "visibility": "visible"
+        },
+        "display-canvas": {
+          "tag": "section",
+          "testid": "display-canvas",
+          "className": "layout-stage",
+          "aria": "Панели активного отображения",
+          "text": "Область 1\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\n0\n0.05\n0.1\n0.15\n0.2\n−1\n−0.5\n0\n0.5\n1\n",
+          "box": {
+            "x": 9,
+            "y": 135,
+            "width": 1044,
+            "height": 418,
+            "right": 1053,
+            "bottom": 553
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgb(255, 255, 255)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "block",
+          "visibility": "visible"
+        },
+        "display-settings": {
+          "tag": "aside",
+          "testid": "display-settings",
+          "className": "display-settings",
+          "aria": null,
+          "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр перси",
+          "box": {
+            "x": 1062,
+            "y": 60,
+            "width": 370,
+            "height": 494,
+            "right": 1432,
+            "bottom": 554
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgb(255, 255, 255)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "grid",
+          "visibility": "visible"
+        },
+        "bottom-panel-signals": {
+          "tag": "section",
+          "testid": "bottom-panel-signals",
+          "className": "bottom-panel signals-panel",
+          "aria": null,
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный",
+          "box": {
+            "x": 9,
+            "y": 605,
+            "width": 1422,
+            "height": 262,
+            "right": 1431,
+            "bottom": 867
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgba(0, 0, 0, 0)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "hidden",
+          "display": "block",
+          "visibility": "visible"
+        },
+        "signal-table": {
+          "tag": "table",
+          "testid": "signal-table",
+          "className": "signal-table",
+          "aria": null,
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный",
+          "box": {
+            "x": 9,
+            "y": 605,
+            "width": 1422,
+            "height": 108.640625,
+            "right": 1431,
+            "bottom": 713.640625
+          },
+          "color": "rgb(33, 33, 33)",
+          "background": "rgba(0, 0, 0, 0)",
+          "fill": "rgb(0, 0, 0)",
+          "stroke": "none",
+          "overflow": "visible",
+          "display": "table",
+          "visibility": "visible"
+        }
+      },
+      "green": [
+        {
+          "record": {
+            "tag": "span",
+            "testid": null,
+            "className": "app-version",
+            "aria": null,
+            "text": "Версия 0.1.0",
+            "box": {
+              "x": 297.4609375,
+              "y": 20.546875,
+              "width": 92.5625,
+              "height": 18.8984375,
+              "right": 390.0234375,
+              "bottom": 39.4453125
+            },
+            "color": "rgb(107, 107, 107)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "header",
+            "testid": null,
+            "className": "app-toolbar",
+            "aria": null,
+            "text": "Анализатор сигналов\nВерсия 0.1.0",
+            "box": {
+              "x": 8,
+              "y": 8,
+              "width": 1424,
+              "height": 44,
+              "right": 1432,
+              "bottom": 52
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(255, 255, 255)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "span",
+            "testid": null,
+            "className": "display-tab-shell",
+            "aria": null,
+            "text": "Экран 1",
+            "box": {
+              "x": 9,
+              "y": 103,
+              "width": 160,
+              "height": 32,
+              "right": 169,
+              "bottom": 135
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "span",
+            "testid": "display-tab-scroll",
+            "className": "display-tab-scroll",
+            "aria": null,
+            "text": "Экран 1",
+            "box": {
+              "x": 9,
+              "y": 103,
+              "width": 854.59375,
+              "height": 31,
+              "right": 863.59375,
+              "bottom": 134
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": false,
+          "overflow": true
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "close-display-display-1",
+            "className": "display-tab-close",
+            "aria": "Удалить Экран 1",
+            "text": "",
+            "box": {
+              "x": 138,
+              "y": 103,
+              "width": 30,
+              "height": 32,
+              "right": 168,
+              "bottom": 135
+            },
+            "color": "rgb(107, 107, 107)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "grid",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "span",
+            "testid": null,
+            "className": "display-tab-shell",
+            "aria": null,
+            "text": "Экран 1",
+            "box": {
+              "x": 9,
+              "y": 103,
+              "width": 160,
+              "height": 32,
+              "right": 169,
+              "bottom": 135
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "time-settings-tab",
+            "className": "settings-tab",
+            "aria": null,
+            "text": "Время",
+            "box": {
+              "x": 1175.7578125,
+              "y": 103,
+              "width": 66.078125,
+              "height": 32,
+              "right": 1241.8359375,
+              "bottom": 135
+            },
+            "color": "rgb(92, 103, 120)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "settings-tabs",
+            "aria": "Настройки отображения",
+            "text": "Отображение\nВремя\nИзмерения",
+            "box": {
+              "x": 1063,
+              "y": 103,
+              "width": 368,
+              "height": 32,
+              "right": 1431,
+              "bottom": 135
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "statistics-settings-tab",
+            "className": "settings-tab",
+            "aria": null,
+            "text": "Измерения",
+            "box": {
+              "x": 1241.8359375,
+              "y": 103,
+              "width": 98.03125,
+              "height": 32,
+              "right": 1339.8671875,
+              "bottom": 135
+            },
+            "color": "rgb(92, 103, 120)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "settings-tabs",
+            "aria": "Настройки отображения",
+            "text": "Отображение\nВремя\nИзмерения",
+            "box": {
+              "x": 1063,
+              "y": 103,
+              "width": 368,
+              "height": 32,
+              "right": 1431,
+              "bottom": 135
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(248, 248, 248)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "signal-panel-tab-signals",
+            "className": "bottom-tab is-active",
+            "aria": null,
+            "text": "Сигналы",
+            "box": {
+              "x": 17,
+              "y": 562.5,
+              "width": 104,
+              "height": 42,
+              "right": 121,
+              "bottom": 604.5
+            },
+            "color": "rgb(27, 132, 184)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "bottom-tablist",
+            "aria": "Данные анализатора",
+            "text": "Сигналы\nИзмерения",
+            "box": {
+              "x": 9,
+              "y": 562.5,
+              "width": 1354,
+              "height": 42,
+              "right": 1363,
+              "bottom": 604.5
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "button",
+            "testid": "signal-panel-tab-measurements",
+            "className": "bottom-tab",
+            "aria": null,
+            "text": "Измерения",
+            "box": {
+              "x": 123,
+              "y": 562.5,
+              "width": 104,
+              "height": 42,
+              "right": 227,
+              "bottom": 604.5
+            },
+            "color": "rgb(67, 80, 100)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "visible",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "div",
+            "testid": null,
+            "className": "bottom-tablist",
+            "aria": "Данные анализатора",
+            "text": "Сигналы\nИзмерения",
+            "box": {
+              "x": 9,
+              "y": 562.5,
+              "width": 1354,
+              "height": 42,
+              "right": 1363,
+              "bottom": 604.5
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "auto hidden",
+            "display": "flex",
+            "visibility": "visible"
+          },
+          "greenStyle": true,
+          "overflow": false
+        },
+        {
+          "record": {
+            "tag": "svg",
+            "testid": null,
+            "className": "[object SVGAnimatedString]",
+            "aria": null,
+            "text": "",
+            "box": {
+              "x": -10000,
+              "y": -10000,
+              "width": 9000,
+              "height": 9000,
+              "right": -1000,
+              "bottom": -1000
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgba(0, 0, 0, 0)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "hidden",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "parent": {
+            "tag": "body",
+            "testid": null,
+            "className": "",
+            "aria": null,
+            "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+            "box": {
+              "x": 0,
+              "y": 0,
+              "width": 1440,
+              "height": 900,
+              "right": 1440,
+              "bottom": 900
+            },
+            "color": "rgb(33, 33, 33)",
+            "background": "rgb(246, 248, 250)",
+            "fill": "rgb(0, 0, 0)",
+            "stroke": "none",
+            "overflow": "hidden",
+            "display": "block",
+            "visibility": "visible"
+          },
+          "greenStyle": false,
+          "overflow": true
+        }
+      ],
+      "layoutLoadError": null,
+      "activeElement": {
+        "tag": "body",
+        "testid": null,
+        "className": "",
+        "aria": null,
+        "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпе",
+        "box": {
+          "x": 0,
+          "y": 0,
+          "width": 1440,
+          "height": 900,
+          "right": 1440,
+          "bottom": 900
+        },
+        "color": "rgb(33, 33, 33)",
+        "background": "rgb(246, 248, 250)",
+        "fill": "rgb(0, 0, 0)",
+        "stroke": "none",
+        "overflow": "hidden",
+        "display": "block",
+        "visibility": "visible"
+      }
+    }
+  ],
+  "status": {
+    "status": 200,
+    "body": {
+      "runtime_revision": "e0d1253433505943569c2a6b5e07555d5504be0b",
+      "project": "example_project",
+      "ready": true,
+      "ok": true
+    }
+  },
+  "plot_type_options": [
+    {
+      "selector": "svg.[object SVGAnimatedString]",
+      "tag": "svg",
+      "className": "[object SVGAnimatedString]",
+      "color": "rgb(33, 33, 33)",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "background": "rgb(255, 255, 255)",
+      "box": {
+        "x": 18,
+        "y": 176,
+        "width": 1026,
+        "height": 368,
+        "right": 1044,
+        "bottom": 544
+      },
+      "controlSelector": "div.user-select-none svg-container",
+      "controlBox": {
+        "x": 18,
+        "y": 176,
+        "width": 1026,
+        "height": 368,
+        "right": 1044,
+        "bottom": 544
+      },
+      "overflowsControl": false
+    },
+    {
+      "selector": "path.[object SVGAnimatedString]",
+      "tag": "path",
+      "className": "[object SVGAnimatedString]",
+      "color": "rgb(33, 33, 33)",
+      "fill": "none",
+      "stroke": "rgb(37, 99, 235)",
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 74,
+        "y": 224.1199951171875,
+        "width": 734,
+        "height": 258.67999267578125,
+        "right": 808,
+        "bottom": 482.79998779296875
+      },
+      "controlSelector": "div.user-select-none svg-container",
+      "controlBox": {
+        "x": 18,
+        "y": 176,
+        "width": 1026,
+        "height": 368,
+        "right": 1044,
+        "bottom": 544
+      },
+      "overflowsControl": false
+    },
+    {
+      "selector": "path.[object SVGAnimatedString]",
+      "tag": "path",
+      "className": "[object SVGAnimatedString]",
+      "color": "rgb(33, 33, 33)",
+      "fill": "none",
+      "stroke": "rgb(220, 38, 38)",
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 74,
+        "y": 209.1999969482422,
+        "width": 734,
+        "height": 52.03001403808594,
+        "right": 808,
+        "bottom": 261.2300109863281
+      },
+      "controlSelector": "div.user-select-none svg-container",
+      "controlBox": {
+        "x": 18,
+        "y": 176,
+        "width": 1026,
+        "height": 368,
+        "right": 1044,
+        "bottom": 544
+      },
+      "overflowsControl": false
+    },
+    {
+      "selector": "svg.[object SVGAnimatedString]",
+      "tag": "svg",
+      "className": "[object SVGAnimatedString]",
+      "color": "rgb(33, 33, 33)",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 18,
+        "y": 176,
+        "width": 1026,
+        "height": 368,
+        "right": 1044,
+        "bottom": 544
+      },
+      "controlSelector": "div.user-select-none svg-container",
+      "controlBox": {
+        "x": 18,
+        "y": 176,
+        "width": 1026,
+        "height": 368,
+        "right": 1044,
+        "bottom": 544
+      },
+      "overflowsControl": false
+    },
+    {
+      "selector": "svg.[object SVGAnimatedString]",
+      "tag": "svg",
+      "className": "[object SVGAnimatedString]",
+      "color": "rgb(33, 33, 33)",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 18,
+        "y": 176,
+        "width": 1026,
+        "height": 368,
+        "right": 1044,
+        "bottom": 544
+      },
+      "controlSelector": "div.user-select-none svg-container",
+      "controlBox": {
+        "x": 18,
+        "y": 176,
+        "width": 1026,
+        "height": 368,
+        "right": 1044,
+        "bottom": 544
+      },
+      "overflowsControl": false
+    },
+    {
+      "selector": "#setting-display-show_legend",
+      "tag": "input",
+      "className": "",
+      "color": "rgb(0, 0, 0)",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 1325,
+        "y": 308,
+        "width": 16,
+        "height": 16,
+        "right": 1341,
+        "bottom": 324
+      },
+      "controlSelector": "label.checkbox-setting",
+      "controlBox": {
+        "x": 1129,
+        "y": 304,
+        "width": 276,
+        "height": 50.8984375,
+        "right": 1405,
+        "bottom": 354.8984375
+      },
+      "overflowsControl": false
+    },
+    {
+      "selector": "[data-testid=\"toggle-all-signals\"]",
+      "tag": "input",
+      "className": "",
+      "color": "rgb(0, 0, 0)",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 21,
+        "y": 614,
+        "width": 13,
+        "height": 13,
+        "right": 34,
+        "bottom": 627
+      },
+      "controlSelector": "div.signal-table-scroll",
+      "controlBox": {
+        "x": 9,
+        "y": 605,
+        "width": 1422,
+        "height": 262,
+        "right": 1431,
+        "bottom": 867
+      },
+      "overflowsControl": false
+    },
+    {
+      "selector": "[data-testid=\"signal-checkbox-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB\"]",
+      "tag": "input",
+      "className": "",
+      "color": "rgb(0, 0, 0)",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 21,
+        "y": 647.546875,
+        "width": 17,
+        "height": 17,
+        "right": 38,
+        "bottom": 664.546875
+      },
+      "controlSelector": "div.signal-table-scroll",
+      "controlBox": {
+        "x": 9,
+        "y": 605,
+        "width": 1422,
+        "height": 262,
+        "right": 1431,
+        "bottom": 867
+      },
+      "overflowsControl": false
+    },
+    {
+      "selector": "[data-testid=\"signal-checkbox-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB\"]",
+      "tag": "input",
+      "className": "",
+      "color": "rgb(0, 0, 0)",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": 21,
+        "y": 685.09375,
+        "width": 17,
+        "height": 17,
+        "right": 38,
+        "bottom": 702.09375
+      },
+      "controlSelector": "div.signal-table-scroll",
+      "controlBox": {
+        "x": 9,
+        "y": 605,
+        "width": 1422,
+        "height": 262,
+        "right": 1431,
+        "bottom": 867
+      },
+      "overflowsControl": false
+    },
+    {
+      "selector": "#js-plotly-tester",
+      "tag": "svg",
+      "className": "[object SVGAnimatedString]",
+      "color": "rgb(33, 33, 33)",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": -10000,
+        "y": -10000,
+        "width": 9000,
+        "height": 9000,
+        "right": -1000,
+        "bottom": -1000
+      },
+      "controlSelector": "body.",
+      "controlBox": {
+        "x": 0,
+        "y": 0,
+        "width": 1440,
+        "height": 900,
+        "right": 1440,
+        "bottom": 900
+      },
+      "overflowsControl": true
+    },
+    {
+      "selector": "path.[object SVGAnimatedString]",
+      "tag": "path",
+      "className": "[object SVGAnimatedString]",
+      "color": "rgb(33, 33, 33)",
+      "fill": "rgb(0, 0, 0)",
+      "stroke": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "box": {
+        "x": -10000,
+        "y": -10000,
+        "width": 1,
+        "height": 1,
+        "right": -9999,
+        "bottom": -9999
+      },
+      "controlSelector": "svg.[object SVGAnimatedString]",
+      "controlBox": {
+        "x": -10000,
+        "y": -10000,
+        "width": 9000,
+        "height": 9000,
+        "right": -1000,
+        "bottom": -1000
+      },
+      "overflowsControl": false
+    }
+  ],
+  "column_visibility_menu": {
+    "menu": {
+      "selector": "[data-testid=\"signal-columns-menu\"]",
+      "box": {
+        "x": 1192,
+        "y": 36,
+        "width": 244,
+        "height": 176.1953125,
+        "right": 1436,
+        "bottom": 212.1953125
+      },
+      "overflow": "auto"
+    },
+    "checked": []
+  },
+  "page_errors": [],
+  "completed_at": "2026-08-06T12:01:27.771Z"
+}

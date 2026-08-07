@@ -1,6 +1,6 @@
-schema_version: 2
+schema_version: 1
 name: required-functionality-analysis
-version: 1.0.0
+version: 2.0.0
 title: "Required Engee Functionality Analysis"
 description: >
   Анализ реально требуемых Engee functions через MATLAB/Engee documentation,
@@ -14,10 +14,7 @@ when-to-use:
 when-not:
   - "Контракт уже доказуемо зафиксирован и нужен только повторный test run"
 requires-tools:
-  - "Engee MCP terminal/help"
-  - "Browser documentation access"
+  - "Engee MIND"
 requires-products:
   - "Engee"
 reference-files: []
-requires-skills:
-  - "engee-user-workflow"

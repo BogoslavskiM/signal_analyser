@@ -1,10 +1,10 @@
-schema_version: 2
+schema_version: 1
 name: output-loading-flow
-version: 0.8.0
+version: 2.0.0
 title: "Output Loading Flow"
 description: >
-  Frontend skill для separate fast Apply/zone contracts, local zone preloaders,
-  backend readiness/success/error state и explicit user-action priority.
+  Frontend skill для state-lite startup, active-page lazy loading, lightweight
+  pending polling, revision guards и local readiness/error states.
 language: ru
 audience: [assistant]
 priority: 0.75
@@ -16,4 +16,3 @@ when-not:
 requires-tools: []
 requires-products: []
 reference-files: []
-requires-skills: [frontend-workflow]

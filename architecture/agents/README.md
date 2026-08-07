@@ -5,9 +5,13 @@
 сверки.
 
 Каждый межагентный запрос или результат — handoff. Его обязательные поля:
-`id`, `type` (`task`, `report`, `research` или `FYI`), `from`, `to`, `title`.
+`id`, `type` (`task`, `report`, `research`, `FYI`, `deployment_failure` или
+design type), `from`, `to`, `title`.
 `task_section`, `description`, `acceptance_criteria`, `requested_skills`,
-`applied_skills` и `skipped_requested_skills` опциональны.
+`applied_skills`, `skipped_requested_skills`, versioned design fields и
+diagnostic/log refs опциональны. Для `deployment_failure` обязательны exact
+revision, evidence-based `failure_owner`, `diagnosis_ref` и `log_refs` либо
+явный статус недоступности evidence.
 
 Generated-файлы (`AGENTS.md`, `.codex/`) не редактируются вручную:
 

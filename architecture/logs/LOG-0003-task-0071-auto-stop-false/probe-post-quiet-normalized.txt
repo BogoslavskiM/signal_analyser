@@ -1,0 +1,18 @@
+captured_at_utc: 2026-08-05T14:09:05.480Z
+quiet_observation_seconds: 946
+probe: TASK-0069 read-only lifecycle checks, normalized to current production Genie representation
+exact_revision: cac83c5f445352a50f04aeeeb269b47007766d79
+registry:
+  matching_app_count: 1
+  location: /user/apps/signal_analyser/app.jl
+  status: running
+  normalized_meaning: the app started by the prior exact `STARTED` result remains running; this is the current registry representation, not a legacy failure.
+http:
+  root: 200, title "Signal Analyzer"
+  api_status: 200, exact revision present
+application_log:
+  mtime_utc: 2026-08-05T13:55:42.993152594Z
+  bounded_tail_lines: 500
+  new_sigterm: false
+  rebootstrap_evidence: absent
+result: passed

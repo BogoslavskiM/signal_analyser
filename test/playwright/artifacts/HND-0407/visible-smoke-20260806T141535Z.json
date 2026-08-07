@@ -1,0 +1,42 @@
+{
+  "id": "HND-0407",
+  "mode": "quick_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "bba7f2528abccf14dcdd313681c8fd8bf538d40c",
+  "started_at": "2026-08-06T14:15:35.557Z",
+  "finished_at": "2026-08-06T14:15:51.514Z",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "pre_existing_page_count": 0,
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "passed",
+  "planned": 8,
+  "passed": 8,
+  "failed": 0,
+  "not_run": 0,
+  "success_rate_percent": 100,
+  "availability": true,
+  "operational": true,
+  "checks": [
+    {"name": "root-http-200", "pass": true, "actual": {"status": 200}},
+    {"name": "readiness-exact-revision", "pass": true, "actual": {"status": 200, "ready": true, "ok": true, "runtime_revision": "bba7f2528abccf14dcdd313681c8fd8bf538d40c"}},
+    {"name": "no-maintenance-screen", "pass": true, "actual": {"title": "Анализатор сигналов", "app_shell": true}},
+    {"name": "settings-js-150ms-contract", "pass": true, "actual": {"url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js", "bytes": 40065}},
+    {"name": "shell-usable-1024x768", "pass": true, "actual": {"shell": [1012, 756], "workspace": [706, 429.5234375], "settings": [300, 429.5234375], "document_scroll": [1024, 768]}},
+    {"name": "shell-usable-1440x900", "pass": true, "actual": {"shell": [1424, 884], "workspace": [1046, 510], "settings": [370, 510], "document_scroll": [1440, 900]}},
+    {"name": "debounce-probe", "pass": true, "actual": {"applicable": false, "reason": "No enabled visible numeric settings input exists without creating a signal."}},
+    {"name": "no-500-or-pageexception", "pass": true, "actual": {"http_500_responses": [], "page_errors": [], "console_errors": ["Failed to load resource: the server responded with a status of 404 ()"]}}
+  ],
+  "plotly": {"count": 0, "ready": 0, "active": false},
+  "screenshots": [
+    "production-shell-1024x768.png",
+    "production-shell-1440x900.png"
+  ],
+  "notes": [
+    "The browser run was the single bounded production smoke. A preceding local browser-launch preflight failed before any page was created or target URL opened.",
+    "The 404 console message was observed, but no HTTP 500 or page exception occurred."
+  ]
+}

@@ -1,6 +1,6 @@
-schema_version: 2
+schema_version: 1
 name: matlab-researcher-workflow
-version: 1.2.0
+version: 2.0.0
 title: "MATLAB Researcher Workflow"
 description: >
   Обязательный процесс полного описания бизнес-логики MATLAB mini-приложения:
@@ -8,13 +8,12 @@ description: >
   clicker, coverage verdict и критические scenarios для E2E/Engee User.
 language: ru
 audience: [assistant]
-priority: 1.0
+priority: 1
 when-to-use:
-  - "Всегда при работе MATLAB Researcher"
+  - "Получен MATLAB research handoff или запущен background research lane"
 when-not:
-  - "Для изменения репозитория или product code"
+  - "Для изменения repository или product code"
 requires-tools: []
-requires-products: []
+requires-products:
+  - "MATLAB"
 reference-files: []
-requires-skills:
-  - "critical-scenario-coverage"
