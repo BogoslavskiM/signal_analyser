@@ -229,6 +229,40 @@ route("/api/settings", method = POST) do
     end
 end
 
+route("/api/settings/apply", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    request_data = nothing
+    try
+        request_data = jsonpayload()
+        api_json(
+            apply_signal_settings!(
+                SIGNAL_SETTINGS_SERVICE,
+                SIGNAL_ANALYSER_STATE,
+                request_data,
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalAnalyserStaleStateError
+            display_id = request_data isa AbstractDict ?
+                signal_analyser_payload_value(request_data, "display_id") : ""
+            signal_setting_stale_response(
+                SIGNAL_SETTINGS_SERVICE,
+                SIGNAL_ANALYSER_STATE,
+                err,
+                display_id isa AbstractString ? String(display_id) : "",
+            )
+        else
+            api_error_response(
+                "Не удалось применить Settings Signal Analyser",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+        end
+    end
+end
+
 route("/api/workspace/variables", method = GET) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try

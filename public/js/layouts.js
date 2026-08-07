@@ -736,8 +736,13 @@
 
   window.SignalAnalyserLayouts = {
     refresh:refresh,
+    refreshAfterApply:function(revision) { if (integer(revision)) appRevision = revision; refresh(); },
     acceptEnvelope:acceptEnvelope,
     closePopover:function() { closePopover(true); },
+  };
+  window.SignalAnalyserModules = window.SignalAnalyserModules || {};
+  window.SignalAnalyserModules.output = {
+    refreshAfterApply:function(revision) { window.SignalAnalyserLayouts.refreshAfterApply(revision); },
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount);
@@ -817,6 +822,7 @@
         envelopeRevision = Math.max(envelopeRevision || 0, responseRevision);
         outputsByDisplay[displayId] = [{ pane_id:paneId, plot_type:response.plot_type, signal_bindings:pane.signal_bindings.slice(), analysis_signal:null, calculation_revision:response.calculation_revision, context_key:response.context_key, output:{ isready:response.isready, success:response.success, error:response.error, data:response.data } }];
         render();
+        if (response.isready) window.dispatchEvent(new window.CustomEvent("signal-analyser-output-terminal", { detail:{ revision:responseRevision, displayId:displayId, paneId:paneId, success:response.success, error:response.error } }));
         if (!response.isready) scheduleActiveOutputPoll(150);
       }).catch(function(error) {
         var current = error && error.payload && (error.payload.current || error.payload.state);
@@ -828,6 +834,7 @@
         }
         outputsByDisplay[displayId] = [{ pane_id:paneId, plot_type:pane.plot_type, signal_bindings:pane.signal_bindings.slice(), analysis_signal:null, output:{ isready:true, success:false, error:message(error, "Не удалось загрузить активный график."), data:[] } }];
         render();
+        window.dispatchEvent(new window.CustomEvent("signal-analyser-output-terminal", { detail:{ revision:latestKnownRevision() || 0, displayId:displayId, paneId:paneId, success:false, error:message(error, "Не удалось загрузить активный график.") } }));
       });
     }, delay || 0);
   }

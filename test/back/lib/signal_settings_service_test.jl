@@ -35,10 +35,8 @@ without_revision(document) = Dict(key => value for (key, value) in document if k
     @test settings_field(changed["settings"], "time.units")["value"] == "minutes"
     @test (state.plot_cache, state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches
     @test (SS.SPECTRUM_CALLS, SS.SPECTROGRAM_CALLS, SS.PERSISTENCE_CALLS, SS.PSPECTRUM_CALLS) == calls
-    @test changed["state"]["plots"] == before["plots"]
-    @test changed["state"]["plot_payload"] == before["plot_payload"]
-    @test without_revision(changed["state"]["measurements"]) == without_revision(before["measurements"])
-    @test without_revision(changed["state"]["peaks"]) == without_revision(before["peaks"])
+    @test !haskey(changed["state"], "plots") && !haskey(changed["state"], "plot_payload")
+    @test !haskey(changed["state"], "measurements") && !haskey(changed["state"], "peaks")
 
     # An equal write is a no-op; a stale write cannot overwrite the newer one.
     equal = SS.apply_signal_setting!(service, state, Dict(
@@ -49,16 +47,15 @@ without_revision(document) = Dict(key => value for (key, value) in document if k
         "state_revision" => 0, "display_id" => "display-1", "field_id" => "time.units", "value" => "seconds",
     ))
 
-    # Typed failures are atomic: Julia Bool is not interchangeable with a
-    # numeric wire value, enums reject unknown values, and non-finite numeric
-    # input is rejected before any publication.
+    # Immediate/presentation settings still reject malformed wire values before
+    # publication. Calculation settings intentionally keep even semantically
+    # invalid drafts until explicit Apply reports the field error.
     committed = SS.signal_analyser_snapshot(state)
-    for payload in (
-        Dict("state_revision" => 1, "display_id" => "display-1", "field_id" => "display.show_legend", "value" => 1),
-        Dict("state_revision" => 1, "display_id" => "display-1", "field_id" => "time.units", "value" => "not-a-unit"),
-        Dict("state_revision" => 1, "display_id" => "display-1", "field_id" => "spectrum.overlap_percent", "value" => Inf),
+    for (payload, error_type) in (
+        (Dict("state_revision" => 1, "display_id" => "display-1", "field_id" => "display.show_legend", "value" => 1), SS.SignalSettingApiTypeError),
+        (Dict("state_revision" => 1, "display_id" => "display-1", "field_id" => "time.units", "value" => "not-a-unit"), SS.SignalSettingValidationError),
     )
-        @test_throws SS.SignalSettingValidationError SS.apply_signal_setting!(service, state, payload)
+        @test_throws error_type SS.apply_signal_setting!(service, state, payload)
         @test SS.signal_analyser_snapshot(state) == committed
     end
 
@@ -73,7 +70,7 @@ without_revision(document) = Dict(key => value for (key, value) in document if k
     @test settings_field(SS.signal_settings_document(service, state, "display-1"), "time.units")["value"] == "minutes"
 end
 
-@testset "Effective settings retain the existing domain command path" begin
+@testset "Calculation settings remain typed drafts until explicit Apply" begin
     service = SS.SignalSettingsService()
     state = SS.default_signal_analyser_state()
     changed = SS.apply_signal_setting!(service, state, Dict(
@@ -83,7 +80,7 @@ end
         "value" => 0.25,
     ))
     @test changed["state"]["state_revision"] == 1
-    @test changed["state"]["spectrum_settings"]["leakage"] == 0.25
+    @test changed["state"]["spectrum_settings"]["leakage"] == 0.5
     @test settings_field(changed["settings"], "spectrum.leakage")["value"] == 0.25
 end
 
@@ -113,9 +110,8 @@ end
         "value" => "log",
     ))
     @test logged["state"]["state_revision"] == prepared["state_revision"] + 1
-    @test logged["state"]["plots"]["spectrogram"]["frequency_scale"] == Dict(
-        "requested" => "log", "effective" => "log", "available" => ["linear", "log"],
-    )
+    @test !haskey(logged["state"], "plots")
+    @test settings_field(logged["settings"], "spectrogram.frequency_scale")["value"] == "log"
     @test (SS.SPECTRUM_CALLS, SS.SPECTROGRAM_CALLS, SS.PERSISTENCE_CALLS, SS.PSPECTRUM_CALLS) == calls
     @test (state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches
 
@@ -150,9 +146,8 @@ end
         "value" => "log",
     ))
     @test complex_logged["state"]["state_revision"] == complex_prepared["state_revision"] + 1
-    @test complex_logged["state"]["plots"]["spectrogram"]["frequency_scale"] == Dict(
-        "requested" => "log", "effective" => "linear", "available" => ["linear"],
-    )
+    @test !haskey(complex_logged["state"], "plots")
+    @test settings_field(complex_logged["settings"], "spectrogram.frequency_scale")["value"] == "log"
 
     # Spectrum intentionally retains its stricter any-visible-complex rule.
     spectrum_scale = settings_field(SS.signal_settings_document(service, state, "display-1"), "spectrum.frequency_scale")
@@ -202,9 +197,8 @@ end
     @test settings_field(specified["settings"], "spectrum.nfft")["value"] == Dict("mode" => "specified", "nfft" => 16)
     @test (state.plot_cache, state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches
     @test (SS.SPECTRUM_CALLS, SS.SPECTROGRAM_CALLS, SS.PERSISTENCE_CALLS, SS.PSPECTRUM_CALLS) == calls
-    @test specified["state"]["plots"] == before["plots"] && specified["state"]["plot_payload"] == before["plot_payload"]
-    @test without_revision(specified["state"]["measurements"]) == without_revision(before["measurements"])
-    @test without_revision(specified["state"]["peaks"]) == without_revision(before["peaks"])
+    @test !haskey(specified["state"], "plots") && !haskey(specified["state"], "plot_payload")
+    @test !haskey(specified["state"], "measurements") && !haskey(specified["state"], "peaks")
     @test SS.apply_signal_setting!(service, state, Dict(
         "state_revision" => specified["state"]["state_revision"], "display_id" => "display-1", "field_id" => "spectrum.nfft",
         "value" => Dict("mode" => "specified", "nfft" => 16),
@@ -212,16 +206,23 @@ end
 
     committed = SS.signal_analyser_snapshot(state)
     revision = specified["state"]["state_revision"]
-    for malformed in (
-        Dict("mode" => "auto", "nfft" => 2), Dict("mode" => "specified", "nfft" => true), Dict("mode" => "specified", "nfft" => Inf),
-        Dict("mode" => "specified", "nfft" => 1), Dict("mode" => "specified"), Dict("mode" => "specified", "nfft" => 16, "extra" => true),
-        Dict("mode" => "specified", "nfft" => 4),
+    for (malformed, error_type) in (
+        (Dict("mode" => "auto", "nfft" => 2), SS.SignalSettingValidationError),
+        (Dict("mode" => "specified", "nfft" => true), SS.SignalSettingApiTypeError),
+        (Dict("mode" => "specified", "nfft" => Inf), SS.SignalSettingApiTypeError),
+        (Dict("mode" => "specified", "nfft" => 1), SS.SignalSettingValidationError),
+        (Dict("mode" => "specified"), SS.SignalSettingApiTypeError),
+        (Dict("mode" => "specified", "nfft" => 16, "extra" => true), SS.SignalSettingApiTypeError),
     )
-        @test_throws SS.SignalSettingValidationError SS.apply_signal_setting!(service, state, Dict(
+        @test_throws error_type SS.apply_signal_setting!(service, state, Dict(
             "state_revision" => revision, "display_id" => "display-1", "field_id" => "spectrum.nfft", "value" => malformed,
         ))
         @test SS.signal_analyser_snapshot(state) == committed
     end
+    @test_throws SS.SignalSettingValidationError SS.apply_signal_setting!(service, state, Dict(
+        "state_revision" => revision, "display_id" => "display-1", "field_id" => "spectrum.nfft",
+        "value" => Dict("mode" => "specified", "nfft" => 4),
+    ))
     @test_throws SS.SignalAnalyserStaleStateError SS.apply_signal_setting!(service, state, Dict(
         "state_revision" => revision - 1, "display_id" => "display-1", "field_id" => "spectrum.nfft", "value" => Dict("mode" => "auto", "nfft" => nothing),
     ))
@@ -279,9 +280,14 @@ end
         revision += 1
         @test changed["state"]["state_revision"] == revision
         @test settings_field(changed["settings"], id)["value"] == unit_fields[id][2]
-        @test changed["state"]["plots"] == before["plots"] && changed["state"]["plot_payload"] == before["plot_payload"]
-        @test without_revision(changed["state"]["measurements"]) == without_revision(before["measurements"])
-        @test without_revision(changed["state"]["peaks"]) == without_revision(before["peaks"])
+        # Field responses intentionally carry only settings/state metadata.
+        # The passive snapshot is the stable projection boundary for plots,
+        # payloads, measurements, and peaks.
+        @test !haskey(changed["state"], "plots") && !haskey(changed["state"], "plot_payload")
+        projected = SS.signal_analyser_snapshot(state)
+        @test projected["plots"] == before["plots"] && projected["plot_payload"] == before["plot_payload"]
+        @test without_revision(projected["measurements"]) == without_revision(before["measurements"])
+        @test without_revision(projected["peaks"]) == without_revision(before["peaks"])
     end
     @test (state.plot_cache, state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches
     @test (SS.SPECTRUM_CALLS, SS.SPECTROGRAM_CALLS, SS.PERSISTENCE_CALLS, SS.PSPECTRUM_CALLS) == calls
@@ -319,6 +325,12 @@ end
     @test [option["value"] for option in field["options"]] == ["db", "linear"]
 
     active = SS.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "active_plot" => "spectrogram"))
+    pane_id = state.display_layouts["display-1"].active_pane_id
+    SS.signal_analyser_active_output(state, "display-1", pane_id)
+    task = state.output_manager.active_task
+    task === nothing || wait(task)
+    db_output = SS.signal_analyser_active_output(state, "display-1", pane_id)
+    @test db_output["isready"] === true && db_output["success"] === true
     db = SS.signal_analyser_snapshot(state)["plots"]["spectrogram"]
     @test db["z"] == [[0.0, 10 * log10(4.0)], [10 * log10(9.0), 10 * log10(16.0)]]
     @test db["color_label"] == "Мощность, дБ"
@@ -327,18 +339,29 @@ end
     calls = (copy(SS.SPECTRUM_CALLS), copy(SS.SPECTROGRAM_CALLS), copy(SS.PERSISTENCE_CALLS), copy(SS.PSPECTRUM_CALLS))
     caches = (deepcopy(state.plot_cache), deepcopy(state.spectrum_cache), deepcopy(state.spectrogram_cache), deepcopy(state.persistence_cache))
     linear = SS.apply_signal_setting!(service, state, Dict(
-        "state_revision" => active["state_revision"], "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "linear",
+        "state_revision" => state.view.state_revision, "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "linear",
     ))
-    plot = linear["state"]["plots"]["spectrogram"]
+    @test linear["state"]["state_revision"] == 3
+    @test settings_field(linear["settings"], "spectrogram.scale")["value"] == "linear"
+    @test !haskey(linear["state"], "plots")
+    linear_apply = SS.apply_signal_settings!(service, state, Dict(
+        "state_revision" => linear["state"]["state_revision"], "display_id" => "display-1",
+    ))
+    @test linear_apply == Dict{String,Any}("success" => true, "state_revision" => 4)
+    plot = SS.signal_analyser_snapshot(state)["plots"]["spectrogram"]
     @test plot["z"] == [[1.0, 4.0], [9.0, 16.0]] && plot["x"] == db["x"] && plot["y"] == db["y"]
     @test plot["color_label"] == "Мощность"
     @test plot["power_limits"]["rendered"] == Dict("min" => 1.0, "max" => 16.0, "units" => "power")
     @test (SS.SPECTRUM_CALLS, SS.SPECTROGRAM_CALLS, SS.PERSISTENCE_CALLS, SS.PSPECTRUM_CALLS) == calls
     @test (state.plot_cache, state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches
-    @test SS.apply_signal_setting!(service, state, Dict("state_revision" => linear["state"]["state_revision"], "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "linear"))["state"]["state_revision"] == linear["state"]["state_revision"]
+    @test SS.apply_signal_setting!(service, state, Dict("state_revision" => linear_apply["state_revision"], "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "linear"))["state"]["state_revision"] == linear_apply["state_revision"]
     committed = SS.signal_analyser_snapshot(state)
-    @test_throws SS.SignalSettingValidationError SS.apply_signal_setting!(service, state, Dict("state_revision" => linear["state"]["state_revision"], "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "watts"))
-    @test SS.signal_analyser_snapshot(state) == committed
+    invalid_draft = SS.apply_signal_setting!(service, state, Dict("state_revision" => linear_apply["state_revision"], "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "watts"))
+    invalid_apply = SS.apply_signal_settings!(service, state, Dict("state_revision" => invalid_draft["state"]["state_revision"], "display_id" => "display-1"))
+    @test invalid_apply["success"] === false && occursin("spectrogram.scale", invalid_apply["error"])
+    @test state.displays[1].stored_settings.spectrogram.scale == SS.LINEAR_SPECTRUM_SCALE
+    cleared_invalid_draft = SS.apply_signal_setting!(service, state, Dict("state_revision" => state.view.state_revision, "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "linear"))
+    @test cleared_invalid_draft["state"]["state_revision"] == state.view.state_revision
     @test_throws SS.SignalAnalyserStaleStateError SS.apply_signal_setting!(service, state, Dict("state_revision" => 0, "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "db"))
 
     # A cold scale mutation stores intent but must neither query nor warm raw data.
@@ -347,9 +370,12 @@ end
     empty!(cold.spectrogram_cache); empty!(SS.SPECTROGRAM_CALLS)
     cold_linear = SS.apply_signal_setting!(service, cold, Dict("state_revision" => cold_active["state_revision"], "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "linear"))
     @test isempty(cold.spectrogram_cache) && isempty(SS.SPECTROGRAM_CALLS)
-    @test cold_linear["state"]["plots"]["spectrogram"]["z"] == Vector{Vector{Float64}}()
+    @test settings_field(cold_linear["settings"], "spectrogram.scale")["value"] == "linear"
+    @test !haskey(cold_linear["state"], "plots")
+    @test SS.apply_signal_settings!(service, cold, Dict("state_revision" => cold_linear["state"]["state_revision"], "display_id" => "display-1"))["success"] === true
+    @test SS.signal_analyser_snapshot(cold)["plots"]["spectrogram"]["z"] == Vector{Vector{Float64}}()
 
-    created = SS.apply_signal_analyser_display!(state, Dict("state_revision" => linear["state"]["state_revision"], "operation" => "create"))
+    created = SS.apply_signal_analyser_display!(state, Dict("state_revision" => state.view.state_revision, "operation" => "create"))
     @test settings_field(SS.signal_settings_document(service, state, "display-2"), "spectrogram.scale")["value"] == "db"
     SS.apply_signal_analyser_display!(state, Dict("state_revision" => created["state_revision"], "operation" => "select", "display_id" => "display-1"))
     cleared = SS.apply_signal_analyser_view!(state, Dict("state_revision" => created["state_revision"] + 1, "visible_signals" => String[]))
@@ -368,12 +394,16 @@ end
     collapse = Dict("min" => -4000.0, "max" => -3990.0)
     SS.apply_signal_setting!(service, edge, Dict("state_revision" => 0, "display_id" => "display-1", "field_id" => "spectrogram.power_limits", "value" => collapse))
     before_scale = SS.signal_analyser_snapshot(edge)
-    @test_throws SS.SignalSettingValidationError SS.apply_signal_setting!(service, edge, Dict("state_revision" => 1, "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "linear"))
-    @test SS.signal_analyser_snapshot(edge) == before_scale
+    collapse_scale_draft = SS.apply_signal_setting!(service, edge, Dict("state_revision" => 1, "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "linear"))
+    collapse_scale_apply = SS.apply_signal_settings!(service, edge, Dict("state_revision" => collapse_scale_draft["state"]["state_revision"], "display_id" => "display-1"))
+    @test collapse_scale_apply["success"] === false && occursin("spectrogram.scale", collapse_scale_apply["error"])
+    @test edge.displays[1].stored_settings.spectrogram.scale == SS.DB_SPECTRUM_SCALE
+    @test SS.signal_analyser_snapshot(edge)["spectrogram_settings"] == before_scale["spectrogram_settings"]
     linear_edge = SS.default_signal_analyser_state()
-    SS.apply_signal_setting!(service, linear_edge, Dict("state_revision" => 0, "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "linear"))
+    linear_edge_draft = SS.apply_signal_setting!(service, linear_edge, Dict("state_revision" => 0, "display_id" => "display-1", "field_id" => "spectrogram.scale", "value" => "linear"))
+    @test SS.apply_signal_settings!(service, linear_edge, Dict("state_revision" => linear_edge_draft["state"]["state_revision"], "display_id" => "display-1"))["success"] === true
     before_view = SS.signal_analyser_snapshot(linear_edge)
-    @test_throws SS.SignalAnalyserValidationError SS.apply_signal_analyser_view!(linear_edge, Dict("state_revision" => 1, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => Dict("min_db" => -4000.0, "max_db" => -3990.0, "units" => "dB"))))
+    @test_throws SS.SignalAnalyserValidationError SS.apply_signal_analyser_view!(linear_edge, Dict("state_revision" => linear_edge.view.state_revision, "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => Dict("min_db" => -4000.0, "max_db" => -3990.0, "units" => "dB"))))
     @test SS.signal_analyser_snapshot(linear_edge) == before_view
 end
 
@@ -386,23 +416,35 @@ end
     @test SS.signal_analyser_snapshot(state)["plots"]["persistence"]["density_limits"] == Dict("mode" => "auto", "requested" => nothing, "effective" => nothing, "rendered" => nothing)
 
     active = SS.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "active_plot" => "persistence"))
+    pane_id = state.display_layouts["display-1"].active_pane_id
+    SS.signal_analyser_active_output(state, "display-1", pane_id)
+    task = state.output_manager.active_task
+    task === nothing || wait(task)
+    persistence_output = SS.signal_analyser_active_output(state, "display-1", pane_id)
+    @test persistence_output["isready"] === true && persistence_output["success"] === true
     hot = SS.signal_analyser_snapshot(state)
     raw_z = deepcopy(hot["plots"]["persistence"]["z"])
     calls = copy(SS.PERSISTENCE_CALLS); cache = deepcopy(state.persistence_cache)
-    explicit = SS.apply_signal_setting!(service, state, Dict("state_revision" => active["state_revision"], "display_id" => "display-1", "field_id" => "persistence.density_limits", "value" => Dict("min" => 10.0, "max" => 80.0)))
-    meta = explicit["state"]["plots"]["persistence"]["density_limits"]
+    explicit = SS.apply_signal_setting!(service, state, Dict("state_revision" => state.view.state_revision, "display_id" => "display-1", "field_id" => "persistence.density_limits", "value" => Dict("min" => 10.0, "max" => 80.0)))
+    @test !haskey(explicit["state"], "plots")
+    explicit_apply = SS.apply_signal_settings!(service, state, Dict("state_revision" => explicit["state"]["state_revision"], "display_id" => "display-1"))
+    @test explicit_apply["success"] === true
+    persisted = SS.signal_analyser_snapshot(state)
+    meta = persisted["plots"]["persistence"]["density_limits"]
     pair = Dict("min" => 10.0, "max" => 80.0, "units" => "percent")
     @test meta == Dict("mode" => "explicit", "requested" => pair, "effective" => pair, "rendered" => pair)
-    @test explicit["state"]["plots"]["persistence"]["z"] == raw_z
+    @test persisted["plots"]["persistence"]["z"] == raw_z
     @test SS.PERSISTENCE_CALLS == calls && state.persistence_cache == cache
-    @test SS.apply_signal_setting!(service, state, Dict("state_revision" => explicit["state"]["state_revision"], "display_id" => "display-1", "field_id" => "persistence.density_limits", "value" => Dict("min" => 10.0, "max" => 80.0)))["state"]["state_revision"] == explicit["state"]["state_revision"]
+    @test SS.apply_signal_setting!(service, state, Dict("state_revision" => state.view.state_revision, "display_id" => "display-1", "field_id" => "persistence.density_limits", "value" => Dict("min" => 10.0, "max" => 80.0)))["state"]["state_revision"] == state.view.state_revision
     before = SS.signal_analyser_snapshot(state)
     for bad in (Dict("min" => true, "max" => 80.0), Dict("min" => 80.0, "max" => 80.0), Dict("min" => -1.0, "max" => 80.0), Dict("min" => 10.0, "max" => 101.0), Dict("min" => 10.0, "max" => Inf), Dict("min" => 10.0, "max" => 80.0, "extra" => true))
-        @test_throws SS.SignalSettingValidationError SS.apply_signal_setting!(service, state, Dict("state_revision" => explicit["state"]["state_revision"], "display_id" => "display-1", "field_id" => "persistence.density_limits", "value" => bad))
+        error_type = (bad["min"] isa Bool || !isfinite(bad["max"]) || haskey(bad, "extra")) ?
+            SS.SignalSettingApiTypeError : SS.SignalSettingValidationError
+        @test_throws error_type SS.apply_signal_setting!(service, state, Dict("state_revision" => state.view.state_revision, "display_id" => "display-1", "field_id" => "persistence.density_limits", "value" => bad))
         @test SS.signal_analyser_snapshot(state) == before
     end
     @test_throws SS.SignalAnalyserStaleStateError SS.apply_signal_setting!(service, state, Dict("state_revision" => 0, "display_id" => "display-1", "field_id" => "persistence.density_limits", "value" => nothing))
-    created = SS.apply_signal_analyser_display!(state, Dict("state_revision" => explicit["state"]["state_revision"], "operation" => "create"))
+    created = SS.apply_signal_analyser_display!(state, Dict("state_revision" => state.view.state_revision, "operation" => "create"))
     @test settings_field(SS.signal_settings_document(service, state, "display-2"), "persistence.density_limits")["value"] === nothing
     selected = SS.apply_signal_analyser_display!(state, Dict("state_revision" => created["state_revision"], "operation" => "select", "display_id" => "display-1"))
     cleared = SS.apply_signal_analyser_view!(state, Dict("state_revision" => selected["state_revision"], "visible_signals" => String[]))

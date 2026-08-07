@@ -2295,6 +2295,12 @@ struct SignalAnalyserPlotCacheEntry
     plots::Vector{Dict{String,Any}}
 end
 
+"""Last fully published Peaks result for one pane; stale entries remain last-good."""
+struct SignalAnalyserPeaksCacheEntry
+    context::SignalAnalyserOutputContextKey
+    peaks::SignalPeaksSnapshot
+end
+
 """API-visible readiness state kept separately from stale/dirty state."""
 struct SignalAnalyserOutputStatus
     context::SignalAnalyserOutputContextKey
@@ -2315,6 +2321,7 @@ mutable struct SignalAnalyserCalculationManager
     calculation_revision::Int
     page_calculation_revisions::Dict{String,Int}
     plot_cache::Dict{String,SignalAnalyserPlotCacheEntry}
+    peaks_cache::Dict{String,SignalAnalyserPeaksCacheEntry}
     need_update_pages::Dict{String,Bool}
     output_statuses::Dict{String,SignalAnalyserOutputStatus}
     active_page_id::Union{Nothing,String}
@@ -2331,6 +2338,7 @@ function SignalAnalyserCalculationManager(page_ids::AbstractVector{<:AbstractStr
         0,
         Dict(id => 0 for id in ids),
         Dict{String,SignalAnalyserPlotCacheEntry}(),
+        Dict{String,SignalAnalyserPeaksCacheEntry}(),
         Dict(id => true for id in ids),
         Dict{String,SignalAnalyserOutputStatus}(),
         nothing,
@@ -2348,6 +2356,7 @@ function signal_analyser_clone_calculation_manager(
         manager.calculation_revision,
         copy(manager.page_calculation_revisions),
         copy(manager.plot_cache),
+        copy(manager.peaks_cache),
         copy(manager.need_update_pages),
         copy(manager.output_statuses),
         manager.active_page_id,

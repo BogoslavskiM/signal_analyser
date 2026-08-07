@@ -5,6 +5,11 @@ const SIGNAL_SETTINGS_UPDATE_FIELDS = Set([
     "value",
 ])
 
+const SIGNAL_SETTINGS_APPLY_FIELDS = Set([
+    "state_revision",
+    "display_id",
+])
+
 const SIGNAL_TIME_UNIT_NAMES = Dict(
     PICOSECONDS_TIME_UNIT => "picoseconds",
     NANOSECONDS_TIME_UNIT => "nanoseconds",
@@ -481,10 +486,86 @@ end
 
 Base.showerror(io::IO, err::SignalSettingValidationError) = print(io, err.message)
 
-"""Application service coordinating catalog reads and atomic per-field commits."""
-struct SignalSettingsService
-    catalog::SignalSettingsCatalog
+"""Malformed field-update/Apply API input; semantic draft errors use HTTP 200."""
+struct SignalSettingApiTypeError <: Exception
+    display_id::String
+    field_id::String
+    message::String
 end
+
+Base.showerror(io::IO, err::SignalSettingApiTypeError) = print(io, err.message)
+
+"""Finite but not necessarily ordered range retained until explicit Apply."""
+struct SignalSettingDraftRange
+    minimum::Float64
+    maximum::Float64
+end
+
+"""Typed mode/value pair retained without applying semantic bounds early."""
+struct SignalSettingDraftResolution
+    mode::String
+    value_key::Symbol
+    value::Union{Nothing,Float64,Int}
+end
+
+"""A string-shaped enum draft which is not one of the catalog options."""
+struct SignalSettingUnknownEnum
+    value::String
+end
+
+const SignalSettingDraftValue = Union{
+    Nothing,
+    Bool,
+    Float64,
+    Int,
+    SignalTimeUnitPreference,
+    SignalFrequencyUnitPreference,
+    SignalSpectrumResolutionType,
+    SignalSpectrumWindow,
+    SignalSpectrumScale,
+    SignalSpectrumFrequencyScale,
+    SignalSpectrogramFrequencyScale,
+    SignalSettingDraftRange,
+    SignalSettingDraftResolution,
+    SignalSettingUnknownEnum,
+}
+
+struct SignalSettingDraftEntry
+    field_id::String
+    value::SignalSettingDraftValue
+end
+
+struct ApplySignalSettingsCommand
+    state_revision::Int
+    display_id::String
+end
+
+mutable struct SignalSettingsDisplayDraft
+    entries::Dict{String,SignalSettingDraftEntry}
+end
+
+SignalSettingsDisplayDraft() = SignalSettingsDisplayDraft(
+    Dict{String,SignalSettingDraftEntry}(),
+)
+
+mutable struct SignalSettingsDraftStore
+    displays::Dict{String,SignalSettingsDisplayDraft}
+end
+
+SignalSettingsDraftStore() = SignalSettingsDraftStore(
+    Dict{String,SignalSettingsDisplayDraft}(),
+)
+
+"""Application service coordinating typed drafts and atomic explicit Apply."""
+mutable struct SignalSettingsService
+    catalog::SignalSettingsCatalog
+    draft_stores::Dict{UInt,SignalSettingsDraftStore}
+end
+
+SignalSettingsService(catalog::SignalSettingsCatalog) = SignalSettingsService(
+    catalog,
+    Dict{UInt,SignalSettingsDraftStore}(),
+)
 
 SignalSettingsService() = SignalSettingsService(SIGNAL_SETTINGS_CATALOG)
 
@@ -743,6 +824,8 @@ function signal_settings_field_payload(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
 )::Dict{String,Any}
+    unsupported_secondary_roi = definition.id == "time.x_limits" &&
+        display.active_plot in (SPECTROGRAM_PLOT, PERSISTENCE_PLOT)
     Dict{String,Any}(
         "id" => definition.id,
         "group" => definition.group,
@@ -763,9 +846,12 @@ function signal_settings_field_payload(
         "checked_value" => definition.checked_value,
         "unchecked_value" => definition.unchecked_value,
         "visible" => signal_settings_field_visible(definition, state, display),
-        "enabled" => signal_settings_field_enabled(definition, state, display),
-        "effect_status" => definition.effect_status,
-        "effect_reason" => definition.effect_reason,
+        "enabled" => !unsupported_secondary_roi &&
+            signal_settings_field_enabled(definition, state, display),
+        "effect_status" => unsupported_secondary_roi ?
+            "blocked_contract" : definition.effect_status,
+        "effect_reason" => unsupported_secondary_roi ?
+            "milestone_3_contract" : definition.effect_reason,
         "error" => "",
         "warning" => signal_settings_warning(definition),
     )
@@ -794,6 +880,26 @@ function signal_settings_document_unlocked(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
 )::Dict{String,Any}
+    projected_display, field_errors = signal_settings_draft_projection_unlocked(
+        service,
+        state,
+        display,
+    )
+    fields = Dict{String,Any}[
+        signal_settings_field_payload(service, definition, state, projected_display)
+        for definition in service.catalog.fields
+    ]
+    draft = signal_settings_display_draft_unlocked(service, state, display.id; create = false)
+    if draft !== nothing
+        for field in fields
+            field_id = String(field["id"])
+            entry = get((draft::SignalSettingsDisplayDraft).entries, field_id, nothing)
+            entry === nothing || (field["value"] = signal_settings_draft_wire_value(
+                (entry::SignalSettingDraftEntry).value,
+            ))
+            field["error"] = get(field_errors, field_id, "")
+        end
+    end
     Dict{String,Any}(
         "state_revision" => state.view.state_revision,
         "display_id" => display.id,
@@ -818,12 +924,9 @@ function signal_settings_document_unlocked(
                 ),
             ) for section in service.catalog.sections
         ],
-        "fields" => Dict{String,Any}[
-            signal_settings_field_payload(service, definition, state, display)
-            for definition in service.catalog.fields
-        ],
+        "fields" => fields,
         "readouts" => Dict{String,Any}[
-            signal_settings_readout_payload(readout, display)
+            signal_settings_readout_payload(readout, projected_display)
             for readout in service.catalog.readouts
         ],
     )
@@ -853,6 +956,18 @@ signal_setting_validation_error(
     field_id::AbstractString,
     message::AbstractString,
 ) = SignalSettingValidationError(String(display_id), String(field_id), String(message))
+
+"""Keep domain-construction failures inside the field validation contract."""
+function signal_settings_semantic_validation_error(
+    display_id::AbstractString,
+    field_id::AbstractString,
+    err::ArgumentError,
+)::SignalSettingValidationError
+    rendered = sprint(showerror, err)
+    prefix = "ArgumentError: "
+    message = startswith(rendered, prefix) ? rendered[(length(prefix) + 1):end] : rendered
+    signal_setting_validation_error(display_id, field_id, message)
+end
 
 function signal_settings_parse_real(
     display_id::String,
@@ -1165,6 +1280,248 @@ function signal_settings_parse_field_value(
     throw(signal_setting_validation_error(display_id, field_id, "Неподдерживаемый kind поля"))
 end
 
+signal_setting_api_type_error(
+    display_id::AbstractString,
+    field_id::AbstractString,
+    message::AbstractString,
+) = SignalSettingApiTypeError(String(display_id), String(field_id), String(message))
+
+signal_settings_draft_wire_value(value::Nothing) = nothing
+signal_settings_draft_wire_value(value::Bool) = value
+signal_settings_draft_wire_value(value::Float64) = value
+signal_settings_draft_wire_value(value::Int) = value
+signal_settings_draft_wire_value(value::SignalTimeUnitPreference) = SIGNAL_TIME_UNIT_NAMES[value]
+signal_settings_draft_wire_value(value::SignalFrequencyUnitPreference) = SIGNAL_FREQUENCY_UNIT_NAMES[value]
+signal_settings_draft_wire_value(value::SignalSpectrumResolutionType) =
+    SIGNAL_SPECTRUM_RESOLUTION_TYPE_NAMES[value]
+signal_settings_draft_wire_value(value::SignalSpectrumWindow) = SIGNAL_SPECTRUM_WINDOW_NAMES[value]
+signal_settings_draft_wire_value(value::SignalSpectrumScale) = SIGNAL_SPECTRUM_SCALE_NAMES[value]
+signal_settings_draft_wire_value(value::SignalSpectrumFrequencyScale) =
+    SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[value]
+signal_settings_draft_wire_value(value::SignalSpectrogramFrequencyScale) =
+    SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES[value]
+signal_settings_draft_wire_value(value::SignalSettingUnknownEnum) = value.value
+signal_settings_draft_wire_value(value::SignalSettingDraftRange) = Dict{String,Any}(
+    "min" => value.minimum,
+    "max" => value.maximum,
+)
+signal_settings_draft_wire_value(value::SignalSettingDraftResolution) = Dict{String,Any}(
+    "mode" => value.mode,
+    String(value.value_key) => value.value,
+)
+
+function signal_settings_parse_draft_real(
+    display_id::String,
+    field_id::String,
+    value,
+)::Float64
+    value isa Real && !(value isa Bool) || throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "Требуется JSON number, но не Bool",
+    ))
+    parsed = try
+        Float64(value)
+    catch err
+        (err isa InexactError || err isa OverflowError) || rethrow()
+        throw(signal_setting_api_type_error(display_id, field_id, "Число вне диапазона Float64"))
+    end
+    isfinite(parsed) || throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "Требуется конечное JSON number",
+    ))
+    parsed == 0.0 ? 0.0 : parsed
+end
+
+function signal_settings_parse_draft_integer(
+    display_id::String,
+    field_id::String,
+    value,
+)::Int
+    value isa Integer && !(value isa Bool) || throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "Требуется JSON integer, но не Bool",
+    ))
+    try
+        Int(value)
+    catch err
+        (err isa InexactError || err isa OverflowError) || rethrow()
+        throw(signal_setting_api_type_error(display_id, field_id, "Integer вне диапазона Int"))
+    end
+end
+
+function signal_settings_parse_draft_range(
+    display_id::String,
+    field_id::String,
+    value,
+)::Union{Nothing,SignalSettingDraftRange}
+    value === nothing && return nothing
+    value isa AbstractDict || throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "Требуется null или объект {min, max}",
+    ))
+    signal_analyser_payload_keys(value) == Set(["min", "max"]) || throw(
+        signal_setting_api_type_error(
+            display_id,
+            field_id,
+            "Range должен содержать только min и max",
+        ),
+    )
+    SignalSettingDraftRange(
+        signal_settings_parse_draft_real(
+            display_id,
+            field_id,
+            signal_analyser_payload_value(value, "min"),
+        ),
+        signal_settings_parse_draft_real(
+            display_id,
+            field_id,
+            signal_analyser_payload_value(value, "max"),
+        ),
+    )
+end
+
+function signal_settings_parse_draft_resolution(
+    display_id::String,
+    field_id::String,
+    value,
+    value_key::Symbol,
+    integer_value::Bool,
+)::SignalSettingDraftResolution
+    value isa AbstractDict || throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "Требуется объект {mode, $(String(value_key))}",
+    ))
+    expected = Set(["mode", String(value_key)])
+    signal_analyser_payload_keys(value) == expected || throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "Значение должно содержать только mode и $(String(value_key))",
+    ))
+    mode_value = signal_analyser_payload_value(value, "mode")
+    mode_value isa AbstractString || throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "Mode должен быть строкой",
+    ))
+    requested = signal_analyser_payload_value(value, String(value_key))
+    typed_value = requested === nothing ? nothing : integer_value ?
+        signal_settings_parse_draft_integer(display_id, field_id, requested) :
+        signal_settings_parse_draft_real(display_id, field_id, requested)
+    SignalSettingDraftResolution(String(mode_value), value_key, typed_value)
+end
+
+function signal_settings_parse_draft_enum(
+    display_id::String,
+    field_id::String,
+    value,
+    values_by_name::AbstractDict,
+)::SignalSettingDraftValue
+    value isa AbstractString || throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "Требуется строковое enum-значение",
+    ))
+    key = String(value)
+    get(values_by_name, key, SignalSettingUnknownEnum(key))
+end
+
+function signal_settings_parse_draft_field_value(
+    definition::SignalSettingsFieldDefinition,
+    display_id::String,
+    field_id::String,
+    value,
+)::SignalSettingDraftValue
+    if definition.kind == "boolean"
+        value isa Bool || throw(signal_setting_api_type_error(
+            display_id,
+            field_id,
+            "Требуется boolean",
+        ))
+        return value
+    elseif definition.kind == "optional_range"
+        return signal_settings_parse_draft_range(display_id, field_id, value)
+    elseif definition.kind == "number"
+        return signal_settings_parse_draft_real(display_id, field_id, value)
+    elseif definition.kind == "integer"
+        return signal_settings_parse_draft_integer(display_id, field_id, value)
+    elseif definition.kind == "power_bins"
+        return signal_settings_parse_draft_resolution(
+            display_id,
+            field_id,
+            value,
+            :count,
+            true,
+        )
+    elseif definition.kind == "resolution"
+        value_key = field_id == "spectrum.rbw" ? :hz :
+            field_id == "spectrum.window_length" ? :samples :
+            field_id == "spectrum.nfft" ? :nfft : :seconds
+        return signal_settings_parse_draft_resolution(
+            display_id,
+            field_id,
+            value,
+            value_key,
+            value_key in (:samples, :nfft),
+        )
+    end
+
+    field_id in ("time.units", "spectrogram.time_units", "persistence.time_units") &&
+        return signal_settings_parse_draft_enum(
+            display_id,
+            field_id,
+            value,
+            SIGNAL_TIME_UNITS_BY_NAME,
+        )
+    field_id in (
+        "spectrum.frequency_units",
+        "spectrogram.frequency_units",
+        "persistence.frequency_units",
+    ) && return signal_settings_parse_draft_enum(
+        display_id,
+        field_id,
+        value,
+        SIGNAL_FREQUENCY_UNITS_BY_NAME,
+    )
+    field_id == "spectrum.resolution_type" && return signal_settings_parse_draft_enum(
+        display_id,
+        field_id,
+        value,
+        SIGNAL_SPECTRUM_RESOLUTION_TYPES_BY_NAME,
+    )
+    field_id == "spectrum.window" && return signal_settings_parse_draft_enum(
+        display_id,
+        field_id,
+        value,
+        SIGNAL_SPECTRUM_WINDOWS_BY_NAME,
+    )
+    field_id in ("spectrum.scale", "spectrogram.scale", "persistence.scale") &&
+        return signal_settings_parse_draft_enum(
+            display_id,
+            field_id,
+            value,
+            SIGNAL_SPECTRUM_SCALES_BY_NAME,
+        )
+    field_id in ("spectrum.frequency_scale", "persistence.frequency_scale") &&
+        return signal_settings_parse_draft_enum(
+            display_id,
+            field_id,
+            value,
+            SIGNAL_SPECTRUM_FREQUENCY_SCALES_BY_NAME,
+        )
+    field_id == "spectrogram.frequency_scale" && return signal_settings_parse_draft_enum(
+        display_id,
+        field_id,
+        value,
+        SIGNAL_SPECTROGRAM_FREQUENCY_SCALES_BY_NAME,
+    )
+    throw(signal_setting_api_type_error(display_id, field_id, "Неподдерживаемый kind поля"))
+end
+
 function signal_settings_validate_typed_value!(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
@@ -1318,13 +1675,23 @@ function parse_signal_setting_command(
         field_id,
         "state_revision не может быть отрицательной",
     ))
-    value = signal_settings_parse_field_value(
-        definition,
-        display_id,
-        field_id,
-        signal_analyser_payload_value(data, "value"),
-    )
-    signal_settings_validate_typed_value!(state, display, field_id, value)
+    value = try
+        signal_settings_parse_field_value(
+            definition,
+            display_id,
+            field_id,
+            signal_analyser_payload_value(data, "value"),
+        )
+    catch err
+        err isa ArgumentError || rethrow()
+        throw(signal_settings_semantic_validation_error(display_id, field_id, err))
+    end
+    try
+        signal_settings_validate_typed_value!(state, display, field_id, value)
+    catch err
+        err isa ArgumentError || rethrow()
+        throw(signal_settings_semantic_validation_error(display_id, field_id, err))
+    end
     UpdateSignalSettingCommand(revision, display_id, field_id, value)
 end
 
@@ -1586,6 +1953,26 @@ const SIGNAL_SETTINGS_BACKEND_PRESENTATION_FIELD_IDS = Set([
     "persistence.density_limits",
 ])
 
+"""Only these product-effective settings participate in explicit calculation Apply."""
+const SIGNAL_SETTINGS_EXPLICIT_APPLY_FIELD_IDS = Set([
+    "time.x_limits",
+    "spectrum.frequency_limits",
+    "spectrum.scale",
+    "spectrum.leakage",
+    "spectrogram.frequency_limits",
+    "spectrogram.scale",
+    "spectrogram.leakage",
+    "spectrogram.overlap_percent",
+    "persistence.leakage",
+])
+
+"""These controls publish immediately and never make calculation Apply dirty."""
+const SIGNAL_SETTINGS_IMMEDIATE_PRESENTATION_FIELD_IDS = Set([
+    "display.show_legend",
+    "time.normalize_y",
+    "time.show_markers",
+])
+
 function signal_settings_apply_command(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
@@ -1662,7 +2049,7 @@ function signal_settings_apply_command(
         prospective
     catch err
         err isa ArgumentError || rethrow()
-        throw(signal_setting_validation_error(display.id, id, sprint(showerror, err)))
+        throw(signal_settings_semantic_validation_error(display.id, id, err))
     end
 end
 
@@ -1675,6 +2062,276 @@ function signal_settings_displays_equal(
     left.spectrogram_settings == right.spectrogram_settings &&
     left.persistence_settings == right.persistence_settings &&
     left.stored_settings == right.stored_settings
+end
+
+signal_settings_state_draft_key(state::SignalAnalyserState)::UInt = objectid(state)
+
+function signal_settings_draft_store_unlocked(
+    service::SignalSettingsService,
+    state::SignalAnalyserState;
+    create::Bool,
+)::Union{Nothing,SignalSettingsDraftStore}
+    key = signal_settings_state_draft_key(state)
+    if create
+        return get!(service.draft_stores, key) do
+            SignalSettingsDraftStore()
+        end
+    end
+    get(service.draft_stores, key, nothing)
+end
+
+function signal_settings_display_draft_unlocked(
+    service::SignalSettingsService,
+    state::SignalAnalyserState,
+    display_id::AbstractString;
+    create::Bool,
+)::Union{Nothing,SignalSettingsDisplayDraft}
+    store = signal_settings_draft_store_unlocked(service, state; create = create)
+    store === nothing && return nothing
+    id = String(display_id)
+    if create
+        return get!((store::SignalSettingsDraftStore).displays, id) do
+            SignalSettingsDisplayDraft()
+        end
+    end
+    get((store::SignalSettingsDraftStore).displays, id, nothing)
+end
+
+function signal_settings_clear_display_draft_unlocked!(
+    service::SignalSettingsService,
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+)::Nothing
+    store = signal_settings_draft_store_unlocked(service, state; create = false)
+    store === nothing && return nothing
+    delete!((store::SignalSettingsDraftStore).displays, String(display_id))
+    isempty(store.displays) && delete!(
+        service.draft_stores,
+        signal_settings_state_draft_key(state),
+    )
+    nothing
+end
+
+function signal_settings_draft_domain_command(
+    service::SignalSettingsService,
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    entry::SignalSettingDraftEntry,
+)::UpdateSignalSettingCommand
+    definition = signal_settings_field(service.catalog, entry.field_id)
+    definition === nothing && throw(signal_setting_validation_error(
+        display.id,
+        entry.field_id,
+        "Неизвестный field_id",
+    ))
+    typed_value = signal_settings_parse_field_value(
+        definition,
+        display.id,
+        entry.field_id,
+        signal_settings_draft_wire_value(entry.value),
+    )
+    UpdateSignalSettingCommand(
+        state.view.state_revision,
+        display.id,
+        entry.field_id,
+        typed_value,
+    )
+end
+
+
+"""Build the complete prospective Display without publishing or calling providers."""
+function signal_settings_draft_projection_unlocked(
+    service::SignalSettingsService,
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::Tuple{SignalAnalyserDisplayState,Dict{String,String}}
+    draft = signal_settings_display_draft_unlocked(service, state, display.id; create = false)
+    prospective = signal_settings_replace(display)
+    errors = Dict{String,String}()
+    draft === nothing && return prospective, errors
+
+    for definition in service.catalog.fields
+        entry = get((draft::SignalSettingsDisplayDraft).entries, definition.id, nothing)
+        entry === nothing && continue
+        try
+            if definition.id == "time.x_limits" &&
+                prospective.active_plot in (SPECTROGRAM_PLOT, PERSISTENCE_PLOT)
+                throw(signal_setting_validation_error(
+                    display.id,
+                    definition.id,
+                    "Time ROI для Spectrogram/Persistence не поддержан проверенным Engee pspectrum contract",
+                ))
+            end
+            command = signal_settings_draft_domain_command(
+                service,
+                state,
+                prospective,
+                entry::SignalSettingDraftEntry,
+            )
+            prospective = signal_settings_apply_command(state, prospective, command)
+        catch err
+            if err isa SignalSettingValidationError
+                errors[definition.id] = sprint(showerror, err)
+            elseif err isa ArgumentError
+                errors[definition.id] = sprint(showerror,
+                    signal_settings_semantic_validation_error(display.id, definition.id, err),
+                )
+            else
+                rethrow()
+            end
+        end
+    end
+
+    for definition in service.catalog.fields
+        haskey(errors, definition.id) && continue
+        entry = get((draft::SignalSettingsDisplayDraft).entries, definition.id, nothing)
+        entry === nothing && continue
+        try
+            command = signal_settings_draft_domain_command(
+                service,
+                state,
+                prospective,
+                entry::SignalSettingDraftEntry,
+            )
+            signal_settings_validate_typed_value!(
+                state,
+                prospective,
+                definition.id,
+                command.value,
+            )
+        catch err
+            if err isa SignalSettingValidationError
+                errors[definition.id] = sprint(showerror, err)
+            elseif err isa ArgumentError
+                errors[definition.id] = sprint(showerror,
+                    signal_settings_semantic_validation_error(display.id, definition.id, err),
+                )
+            else
+                rethrow()
+            end
+        end
+    end
+    prospective, errors
+end
+
+function parse_signal_setting_draft_command(
+    service::SignalSettingsService,
+    state::SignalAnalyserState,
+    data,
+)::UpdateSignalSettingCommand
+    data isa AbstractDict || throw(signal_setting_api_type_error(
+        "",
+        "",
+        "Тело запроса должно быть JSON-объектом",
+    ))
+    display_value = signal_analyser_payload_value(data, "display_id")
+    display_value isa AbstractString || throw(signal_setting_api_type_error(
+        "",
+        "",
+        "display_id должен быть строкой",
+    ))
+    display_id = String(display_value)
+    field_value = signal_analyser_payload_value(data, "field_id")
+    field_value isa AbstractString || throw(signal_setting_api_type_error(
+        display_id,
+        "",
+        "field_id должен быть строкой",
+    ))
+    field_id = String(field_value)
+    signal_analyser_payload_keys(data) == SIGNAL_SETTINGS_UPDATE_FIELDS || throw(
+        signal_setting_api_type_error(
+            display_id,
+            field_id,
+            "Request должен содержать только state_revision, display_id, field_id и value",
+        ),
+    )
+    isempty(display_id) && throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "display_id должен быть непустой строкой",
+    ))
+    try
+        signal_analyser_display_by_id(state, display_id)
+    catch err
+        err isa ArgumentError || rethrow()
+        throw(signal_setting_api_type_error(display_id, field_id, "Неизвестный display_id"))
+    end
+    isempty(field_id) && throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "field_id должен быть непустой строкой",
+    ))
+    definition = signal_settings_field(service.catalog, field_id)
+    definition === nothing && throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "Неизвестный field_id",
+    ))
+    revision_value = signal_analyser_payload_value(data, "state_revision")
+    revision = signal_settings_parse_draft_integer(display_id, field_id, revision_value)
+    revision >= 0 || throw(signal_setting_api_type_error(
+        display_id,
+        field_id,
+        "state_revision не может быть отрицательной",
+    ))
+    UpdateSignalSettingCommand(
+        revision,
+        display_id,
+        field_id,
+        signal_settings_parse_draft_field_value(
+            definition,
+            display_id,
+            field_id,
+            signal_analyser_payload_value(data, "value"),
+        ),
+    )
+end
+
+function parse_signal_settings_apply_command(
+    state::SignalAnalyserState,
+    data,
+)::ApplySignalSettingsCommand
+    data isa AbstractDict || throw(signal_setting_api_type_error(
+        "",
+        "",
+        "Тело Apply должно быть JSON-объектом",
+    ))
+    signal_analyser_payload_keys(data) == SIGNAL_SETTINGS_APPLY_FIELDS || throw(
+        signal_setting_api_type_error(
+            "",
+            "",
+            "Apply должен содержать только state_revision и display_id",
+        ),
+    )
+    display_value = signal_analyser_payload_value(data, "display_id")
+    display_value isa AbstractString || throw(signal_setting_api_type_error(
+        "",
+        "",
+        "display_id должен быть строкой",
+    ))
+    display_id = String(display_value)
+    isempty(display_id) && throw(signal_setting_api_type_error(
+        display_id,
+        "",
+        "display_id должен быть непустой строкой",
+    ))
+    try
+        signal_analyser_display_by_id(state, display_id)
+    catch err
+        err isa ArgumentError || rethrow()
+        throw(signal_setting_api_type_error(display_id, "", "Неизвестный display_id"))
+    end
+    revision = signal_settings_parse_draft_integer(
+        display_id,
+        "",
+        signal_analyser_payload_value(data, "state_revision"),
+    )
+    revision >= 0 || throw(signal_setting_api_type_error(
+        display_id,
+        "",
+        "state_revision не может быть отрицательной",
+    ))
+    ApplySignalSettingsCommand(revision, display_id)
 end
 
 function signal_settings_reconcile_stored_for_source(
@@ -1911,6 +2568,90 @@ function signal_settings_replace_display_unlocked!(
     nothing
 end
 
+function signal_settings_publish_display_unlocked!(
+    state::SignalAnalyserState,
+    prospective::SignalAnalyserDisplayState,
+)::Nothing
+    layout = signal_analyser_layout_by_display_id(state, prospective.id)
+    active_pane = signal_display_active_pane(layout)
+    state.display_layouts[prospective.id] = signal_display_layout_replace_active_pane(
+        layout,
+        signal_display_pane_from_display(active_pane.id, prospective),
+    )
+    signal_settings_replace_display_unlocked!(state, prospective)
+    prospective.id == state.active_display_id &&
+        signal_analyser_sync_active_display!(state, prospective)
+    nothing
+end
+
+function signal_settings_update_response_unlocked(
+    service::SignalSettingsService,
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+)::Dict{String,Any}
+    target = signal_analyser_display_by_id(state, display_id)
+    Dict{String,Any}(
+        "state" => signal_analyser_state_lite_unlocked(state),
+        "settings" => signal_settings_document_unlocked(service, state, target),
+    )
+end
+
+"""Refresh an already-ready presentation cache without invalidation or provider work."""
+function signal_settings_refresh_cached_presentation_unlocked!(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    field_id::AbstractString,
+)::Nothing
+    display.id == state.active_display_id || return nothing
+    signal_analyser_sync_output_pages_unlocked!(state)
+    layout = signal_analyser_layout_by_display_id(state, display.id)
+    pane = signal_display_active_pane(layout)
+    page_id = signal_analyser_output_page_id(display.id, pane.id)
+    manager = state.output_manager
+    cache = get(manager.plot_cache, page_id, nothing)
+    cache === nothing && return nothing
+    context = signal_analyser_output_context_unlocked(state, display.id, pane.id)
+    (cache::SignalAnalyserPlotCacheEntry).context == context || return nothing
+
+    active_group = signal_analyser_plot_name(pane.plot_type)
+    (field_id == "display.show_legend" || startswith(String(field_id), "$(active_group).")) ||
+        return nothing
+    analysis_name = signal_display_pane_analysis_name(pane)
+    analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+    signal_bindings = signal_display_pane_members(pane)
+    pane_display = signal_analyser_display_for_pane(display, pane)
+    prepared = signal_analyser_prepare_display_plots(
+        state,
+        pane_display,
+        analysis_signal,
+        signal_bindings,
+        materialize_missing_spectra = false,
+        materialize_missing_spectrogram = false,
+        materialize_missing_persistence = false,
+        materialize_spectrum_signal_names = String[],
+    )
+    output = SignalAnalyserPaneOutput(
+        pane.id,
+        pane.plot_type,
+        signal_bindings,
+        analysis_name,
+        true,
+        true,
+        "",
+        signal_analyser_pane_renderer_data(prepared, pane, signal_bindings),
+    )
+    plots = signal_analyser_plotly_payload(output, pane)
+    signal_analyser_publish_display_plots!(state, prepared)
+    manager.plot_cache[page_id] = SignalAnalyserPlotCacheEntry(context, plots)
+    manager.output_statuses[page_id] = SignalAnalyserOutputStatus(
+        context,
+        true,
+        true,
+        "",
+    )
+    nothing
+end
+
 function apply_signal_setting!(
     service::SignalSettingsService,
     state::SignalAnalyserState,
@@ -1918,97 +2659,124 @@ function apply_signal_setting!(
     lightweight::Bool = false,
 )::Dict{String,Any}
     lock(state.lock) do
-        command = parse_signal_setting_command(service, state, data)
+        draft_command = parse_signal_setting_draft_command(service, state, data)
+        draft_command.state_revision == state.view.state_revision || throw(
+            SignalAnalyserStaleStateError(
+                draft_command.state_revision,
+                state.view.state_revision,
+            ),
+        )
+        definition = signal_settings_field(service.catalog, draft_command.field_id)::SignalSettingsFieldDefinition
+
+        if !(draft_command.field_id in SIGNAL_SETTINGS_EXPLICIT_APPLY_FIELD_IDS)
+            command = parse_signal_setting_command(service, state, data)
+            display = signal_analyser_display_by_id(state, command.display_id)
+            prospective = signal_settings_apply_command(state, display, command)
+            signal_settings_displays_equal(display, prospective) &&
+                return signal_settings_update_response_unlocked(
+                    service,
+                    state,
+                    command.display_id,
+                )
+            signal_settings_publish_display_unlocked!(state, prospective)
+            state.view.state_revision += 1
+            definition.effect_status == "effective_presentation" &&
+                signal_settings_refresh_cached_presentation_unlocked!(
+                    state,
+                    prospective,
+                    command.field_id,
+                )
+            return signal_settings_update_response_unlocked(
+                service,
+                state,
+                command.display_id,
+            )
+        end
+
+        display = signal_analyser_display_by_id(state, draft_command.display_id)
+        display_draft = signal_settings_display_draft_unlocked(
+            service,
+            state,
+            display.id;
+            create = true,
+        )::SignalSettingsDisplayDraft
+        current_wire_value = if haskey(display_draft.entries, draft_command.field_id)
+            signal_settings_draft_wire_value(
+                display_draft.entries[draft_command.field_id].value,
+            )
+        else
+            signal_settings_field_value(service, display, draft_command.field_id)
+        end
+        requested_wire_value = signal_settings_draft_wire_value(draft_command.value)
+        isequal(current_wire_value, requested_wire_value) &&
+            return signal_settings_update_response_unlocked(
+                service,
+                state,
+                draft_command.display_id,
+            )
+
+        applied_wire_value = signal_settings_field_value(
+            service,
+            display,
+            draft_command.field_id,
+        )
+        if isequal(applied_wire_value, requested_wire_value)
+            delete!(display_draft.entries, draft_command.field_id)
+            isempty(display_draft.entries) && signal_settings_clear_display_draft_unlocked!(
+                service,
+                state,
+                display.id,
+            )
+        else
+            display_draft.entries[draft_command.field_id] = SignalSettingDraftEntry(
+                draft_command.field_id,
+                draft_command.value,
+            )
+        end
+        state.view.state_revision += 1
+        signal_settings_update_response_unlocked(service, state, draft_command.display_id)
+    end
+end
+
+function apply_signal_settings!(
+    service::SignalSettingsService,
+    state::SignalAnalyserState,
+    data,
+)::Dict{String,Any}
+    lock(state.lock) do
+        command = parse_signal_settings_apply_command(state, data)
         command.state_revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
             command.state_revision,
             state.view.state_revision,
         ))
         display = signal_analyser_display_by_id(state, command.display_id)
-        prospective = signal_settings_apply_command(state, display, command)
-        changed = !signal_settings_displays_equal(display, prospective)
-        if !changed
-            target = signal_analyser_display_by_id(state, command.display_id)
+        signal_analyser_cancel_active_output_unlocked!(state)
+        prospective, errors = signal_settings_draft_projection_unlocked(
+            service,
+            state,
+            display,
+        )
+        if !isempty(errors)
+            state.view.state_revision += 1
+            first_field = first(
+                definition.id for definition in service.catalog.fields
+                if haskey(errors, definition.id)
+            )
             return Dict{String,Any}(
-                "state" => lightweight ?
-                    signal_analyser_state_lite_unlocked(state) :
-                    signal_settings_passive_snapshot_unlocked(state),
-                "settings" => signal_settings_document_unlocked(service, state, target),
+                "success" => false,
+                "state_revision" => state.view.state_revision,
+                "error" => "$(first_field): $(errors[first_field])",
             )
         end
 
-        candidate = signal_analyser_clone_state_for_layout(state)
-        candidate_display = signal_analyser_display_by_id(candidate, command.display_id)
-        layout = signal_analyser_layout_by_display_id(candidate, candidate_display.id)
-        active_pane = signal_display_active_pane(layout)
-        candidate.display_layouts[candidate_display.id] = signal_display_layout_replace_active_pane(
-            layout,
-            signal_display_pane_from_display(active_pane.id, prospective),
+        signal_settings_publish_display_unlocked!(state, prospective)
+        state.view.state_revision += 1
+        prospective.id == state.active_display_id &&
+            signal_analyser_invalidate_active_output_unlocked!(state)
+        signal_settings_clear_display_draft_unlocked!(service, state, prospective.id)
+        Dict{String,Any}(
+            "success" => true,
+            "state_revision" => state.view.state_revision,
         )
-        response_preparation = SignalSettingsResponsePreparationPlan(
-            candidate,
-            candidate_display,
-            command.field_id,
-        )
-        page_id = signal_analyser_output_page_id(candidate_display.id, active_pane.id)
-        snapshot = if lightweight
-            if candidate_display.id == candidate.active_display_id
-                signal_analyser_publish_display_state!(candidate_display, prospective)
-                signal_analyser_sync_active_display!(candidate, candidate_display)
-            else
-                signal_settings_replace_display_unlocked!(candidate, prospective)
-            end
-            candidate.view.state_revision += 1
-            signal_analyser_invalidate_output_pages_unlocked!(
-                candidate,
-                String[page_id],
-            )
-            signal_analyser_state_lite_unlocked(candidate)
-        elseif response_preparation.mode == ACTIVE_EFFECTIVE_SETTINGS_RESPONSE
-            signal_settings_apply_active_effective_unlocked!(
-                candidate,
-                candidate_display,
-                prospective,
-                command.field_id,
-            )
-        elseif response_preparation.mode == ACTIVE_BACKEND_PRESENTATION_SETTINGS_RESPONSE
-            signal_settings_apply_active_presentation_unlocked!(
-                candidate,
-                candidate_display,
-                prospective,
-            )
-        else
-            next_revision = candidate.view.state_revision + 1
-            prospective_active_display = candidate_display.id == candidate.active_display_id ?
-                prospective : signal_analyser_active_display(candidate)
-            prepared = signal_settings_prepare_passive_snapshot_unlocked(
-                candidate,
-                prospective_active_display,
-                next_revision,
-            )
-            if candidate_display.id == candidate.active_display_id
-                signal_analyser_publish_display_state!(candidate_display, prospective)
-                signal_analyser_sync_active_display!(candidate, candidate_display)
-            else
-                signal_settings_replace_display_unlocked!(candidate, prospective)
-            end
-            candidate.view.state_revision = next_revision
-            signal_analyser_snapshot_from_prepared_unlocked(
-                candidate,
-                prepared.measurements,
-                prepared.peaks,
-                prepared.plots,
-            )
-        end
-        lightweight || signal_analyser_invalidate_output_pages_unlocked!(
-            candidate,
-            String[page_id],
-        )
-        target = signal_analyser_display_by_id(candidate, command.display_id)
-        response = Dict{String,Any}(
-            "state" => snapshot,
-            "settings" => signal_settings_document_unlocked(service, candidate, target),
-        )
-        signal_analyser_publish_layout_candidate!(state, candidate)
-        response
     end
 end

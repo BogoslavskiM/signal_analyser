@@ -32,7 +32,13 @@ end
     @test response["ok"] === true && response["state_revision"] == 1
     @test only(entry["layout"]["panes"])["signal_bindings"] == pane_order
     @test output["signal_bindings"] == pane_order
-    @test [trace["signal"] for trace in output["output"]["data"]] == pane_order
+    # Complex Time is intentionally represented as ordered real/imaginary
+    # components, not the legacy single magnitude trace.  The pane binding
+    # order therefore expands deterministically per signal.
+    @test [(trace["signal"], trace["component"]) for trace in output["output"]["data"]] == [
+        (pane_order[1], "real"), (pane_order[1], "imaginary"),
+        (pane_order[2], ""),
+    ]
     @test display["visible_signals"] == names == snapshot["visible_signals"]
     @test display["analysis_signal"] == display["selected_signal"] in names
     @test display["analysis_signal"] in display["visible_signals"]

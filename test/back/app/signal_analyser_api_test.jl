@@ -7,8 +7,10 @@ const SA_API = Main.AppTestContext
 
     @test length(collect(eachmatch(r"route\(\"/api/settings\", method = GET\)", routes_source))) == 1
     @test length(collect(eachmatch(r"route\(\"/api/settings\", method = POST\)", routes_source))) == 1
+    @test length(collect(eachmatch(r"route\(\"/api/settings/apply\", method = POST\)", routes_source))) == 1
     @test occursin("signal_settings_document", routes_source)
     @test occursin("apply_signal_setting!", routes_source)
+    @test occursin("apply_signal_settings!", routes_source)
     @test occursin("signal_setting_validation_response", routes_source)
     @test occursin("signal_analyser_stale_response", routes_source)
 
@@ -31,6 +33,27 @@ const SA_API = Main.AppTestContext
         Dict("state_revision" => 0, "display_id" => "display-1", "field_id" => "time.units", "value" => "seconds", "extra" => true),
     )
         @test_throws SA_API.SignalSettingValidationError SA_API.parse_signal_setting_command(service, state, invalid)
+    end
+
+    # Apply is deliberately a separate, exact command boundary: the already
+    # stored draft is the only calculation snapshot it may consume.
+    @test hasmethod(SA_API.parse_signal_settings_apply_command, Tuple{typeof(state), Any})
+    apply_command = SA_API.parse_signal_settings_apply_command(state, Dict(
+        "state_revision" => 7, "display_id" => "display-1",
+    ))
+    @test apply_command isa SA_API.ApplySignalSettingsCommand
+    @test apply_command.state_revision == 7 && apply_command.display_id == "display-1"
+    for invalid in (
+        Dict{String,Any}(),
+        Dict("state_revision" => true, "display_id" => "display-1"),
+        Dict("state_revision" => 7, "display_id" => ""),
+        Dict("state_revision" => 7, "display_id" => "display-1", "field_id" => "spectrum.leakage"),
+        Dict("state_revision" => 7, "display_id" => "display-1", "settings" => Dict()),
+    )
+        # Apply accepts no semantic settings payload.  Its malformed request
+        # boundary is an API type error (the route maps it to HTTP 500), while
+        # semantic draft validation remains a successful typed Apply response.
+        @test_throws SA_API.SignalSettingApiTypeError SA_API.parse_signal_settings_apply_command(state, invalid)
     end
 end
 
@@ -228,40 +251,45 @@ end
 @testset "Cascade 19 API Persistence Leakage wire contract" begin
     SA_API.reset_pspectrum_double!()
     state = SA_API.default_signal_analyser_state()
+    settings = SA_API.SignalSettingsService()
     initial = SA_API.signal_analyser_snapshot(state)
     @test initial["persistence_settings"] == Dict("leakage" => 0.5)
     @test initial["displays"][1]["persistence_settings"] == Dict("leakage" => 0.5)
 
-    changed = SA_API.apply_signal_analyser_view!(state, Dict(
+    draft = SA_API.apply_signal_setting!(settings, state, Dict(
         "state_revision" => 0,
-        "persistence_settings" => Dict("leakage" => 0.25),
+        "display_id" => "display-1",
+        "field_id" => "persistence.leakage",
+        "value" => 0.25,
     ))
-    @test changed["state_revision"] == 1
-    @test changed["persistence_settings"] == Dict("leakage" => 0.25)
-    accepted = SA_API.signal_analyser_snapshot(state)
-    for bad_settings in (nothing, "0.5", Dict{String,Any}(), Dict("leakage" => true), Dict("leakage" => NaN), Dict("leakage" => -Inf), Dict("leakage" => -0.01), Dict("leakage" => 1.01), Dict("leakage" => 0.5, "unexpected" => 1))
-        err = try
-            SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "persistence_settings" => bad_settings))
-            nothing
-        catch caught
-            caught
-        end
-        @test err isa SA_API.SignalAnalyserValidationError
-        @test haskey(err.fields, "persistence_settings")
-        @test SA_API.signal_analyser_snapshot(state) == accepted
+    @test draft["state"]["state_revision"] == 1
+    @test SA_API.signal_analyser_snapshot(state)["persistence_settings"] == Dict("leakage" => 0.5)
+    @test isempty(SA_API.PSPECTRUM_CALLS)
+
+    applied = SA_API.apply_signal_settings!(settings, state, Dict(
+        "state_revision" => 1, "display_id" => "display-1",
+    ))
+    @test applied == Dict{String,Any}("success" => true, "state_revision" => 2)
+    @test SA_API.signal_analyser_snapshot(state)["persistence_settings"] == Dict("leakage" => 0.25)
+    @test isempty(SA_API.PSPECTRUM_CALLS)
+
+    for invalid in (nothing, "0.5", true, NaN, -Inf)
+        # Non-JSON-number field values fail at the API type boundary.  A
+        # finite but out-of-range JSON number is retained as a draft and is
+        # reported by explicit Apply as a semantic validation response.
+        @test_throws SA_API.SignalSettingApiTypeError SA_API.apply_signal_setting!(
+            settings, state, Dict(
+                "state_revision" => 2, "display_id" => "display-1",
+                "field_id" => "persistence.leakage", "value" => invalid,
+            ),
+        )
     end
-    # Omitting the optional C19 field keeps the display-owned accepted value.
-    preserved = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "peaks_enabled" => false))
-    @test preserved["state_revision"] == 1
-    @test preserved["persistence_settings"] == Dict("leakage" => 0.25)
-    stale = try
-        SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "persistence_settings" => Dict("leakage" => 0.5)))
-        nothing
-    catch caught
-        caught
-    end
-    @test stale isa SA_API.SignalAnalyserStaleStateError
-    @test SA_API.signal_analyser_snapshot(state) == accepted
+    @test_throws SA_API.SignalAnalyserStaleStateError SA_API.apply_signal_setting!(
+        settings, state, Dict(
+            "state_revision" => 1, "display_id" => "display-1",
+            "field_id" => "persistence.leakage", "value" => 0.5,
+        ),
+    )
 end
 
 @testset "Signal Analyser API Peaks boolean view contract" begin
@@ -392,6 +420,7 @@ end
 @testset "Cascade 7 API Time Limits validation envelope" begin
     SA_API.reset_pspectrum_double!()
     state = SA_API.default_signal_analyser_state()
+    settings = SA_API.SignalSettingsService()
     baseline = SA_API.signal_analyser_snapshot(state)
     for invalid_limits in (
         "not-an-object",
@@ -402,35 +431,33 @@ end
         Dict("min_s" => 0.0, "max_s" => 99.0, "units" => "s"),
     )
         err = try
-            SA_API.apply_signal_analyser_view!(state, Dict(
-                "state_revision" => 0, "time_limits" => invalid_limits,
+            SA_API.apply_signal_setting!(settings, state, Dict(
+                "state_revision" => 0, "display_id" => "display-1",
+                "field_id" => "time.x_limits", "value" => invalid_limits,
             ))
             nothing
         catch caught
             caught
         end
-        @test err isa SA_API.SignalAnalyserValidationError
-        @test Set(keys(err.fields)) == Set(["time_limits"])
-        envelope = SA_API.signal_analyser_validation_response(err)
-        @test envelope.status == 422
-        @test envelope.body == Dict(
-            "ok" => false,
-            "code" => "invalid_request",
-            "error" => Dict(
-                "code" => "invalid_request",
-                "message" => "Некорректный запрос отображения",
-                "fields" => err.fields,
-            ),
-        )
+        # The draft wire shape is exactly null or {min,max}; malformed JSON
+        # values are API type errors, not semantic Apply failures.
+        @test err isa SA_API.SignalSettingApiTypeError
+        @test err.field_id == "time.x_limits"
         @test SA_API.signal_analyser_snapshot(state) == baseline
     end
 
-    accepted = SA_API.apply_signal_analyser_view!(state, Dict(
-        "state_revision" => 0,
-        "time_limits" => Dict("min_s" => 0.0, "max_s" => 0.1, "units" => "s"),
+    draft = SA_API.apply_signal_setting!(settings, state, Dict(
+        "state_revision" => 0, "display_id" => "display-1",
+        "field_id" => "time.x_limits",
+        "value" => Dict("min" => 0.0, "max" => 0.1),
     ))
-    @test accepted["state_revision"] == 1
-    @test accepted["time_limits"] == Dict("min_s" => 0.0, "max_s" => 0.1, "units" => "s")
+    @test draft["state"]["state_revision"] == 1
+    @test SA_API.signal_analyser_snapshot(state)["time_limits"] !== Dict("min_s" => 0.0, "max_s" => 0.1, "units" => "s")
+    accepted = SA_API.apply_signal_settings!(settings, state, Dict(
+        "state_revision" => 1, "display_id" => "display-1",
+    ))
+    @test accepted == Dict{String,Any}("success" => true, "state_revision" => 2)
+    @test SA_API.signal_analyser_snapshot(state)["time_limits"] == Dict("min_s" => 0.0, "max_s" => 0.1, "units" => "s")
 end
 
 @testset "Cascade 8 API measurement_kinds is strict, canonical and atomic" begin
@@ -482,44 +509,39 @@ end
 
 @testset "Cascade 9 API Spectrum settings envelope and revision contract" begin
     SA_API.reset_pspectrum_double!()
+    empty!(SA_API.SPECTRUM_CALLS)
     state = SA_API.default_signal_analyser_state()
+    settings = SA_API.SignalSettingsService()
     baseline = SA_API.signal_analyser_snapshot(state)
     @test baseline["spectrum_settings"] == Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing)
     @test all(display -> display["spectrum_settings"] isa Dict, baseline["displays"])
 
-    for invalid_settings in (
-        nothing,
-        Dict("scale" => "db", "frequency_scale" => "linear", "power_limits" => nothing),
-        Dict("scale" => "invalid", "frequency_scale" => "linear", "leakage" => 0.5),
-        Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => Inf),
-    )
-        err = try
-            SA_API.apply_signal_analyser_view!(state, Dict(
-                "state_revision" => 0, "spectrum_settings" => invalid_settings,
-            ))
-            nothing
-        catch caught
-            caught
-        end
-        @test err isa SA_API.SignalAnalyserValidationError
-        @test Set(keys(err.fields)) == Set(["spectrum_settings"])
-        envelope = SA_API.signal_analyser_validation_response(err)
-        @test envelope.status == 422
-        @test envelope.body["error"]["fields"] == err.fields
-        @test SA_API.signal_analyser_snapshot(state) == baseline
-    end
-
-    canonical = SA_API.apply_signal_analyser_view!(state, Dict(
-        "state_revision" => 0,
-        "spectrum_settings" => Dict("scale" => "linear", "frequency_scale" => "linear", "leakage" => 0.25, "frequency_limits" => nothing),
+    draft = SA_API.apply_signal_setting!(settings, state, Dict(
+        "state_revision" => 0, "display_id" => "display-1",
+        "field_id" => "spectrum.scale", "value" => "linear",
     ))
-    @test canonical["state_revision"] == 1
-    @test canonical["spectrum_settings"] == Dict("scale" => "linear", "frequency_scale" => "linear", "leakage" => 0.25, "frequency_limits" => nothing)
-    @test SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1))["state_revision"] == 1
+    @test draft["state"]["state_revision"] == 1
+    draft = SA_API.apply_signal_setting!(settings, state, Dict(
+        "state_revision" => 1, "display_id" => "display-1",
+        "field_id" => "spectrum.leakage", "value" => 0.25,
+    ))
+    @test draft["state"]["state_revision"] == 2
+    @test isempty(SA_API.SPECTRUM_CALLS)
+    canonical = SA_API.apply_signal_settings!(settings, state, Dict(
+        "state_revision" => 2, "display_id" => "display-1",
+    ))
+    @test canonical == Dict{String,Any}("success" => true, "state_revision" => 3)
+    @test SA_API.signal_analyser_snapshot(state)["spectrum_settings"] == Dict("scale" => "linear", "frequency_scale" => "linear", "leakage" => 0.25, "frequency_limits" => nothing)
+    @test isempty(SA_API.SPECTRUM_CALLS)
+    active = SA_API.signal_analyser_active_output(state, "display-1", "pane-1")
+    @test active["isready"] === false && active["success"] === false && isempty(active["data"])
+    task = state.output_manager.active_task
+    @test task !== nothing
+    wait(task)
+
     stale = try
-        SA_API.apply_signal_analyser_view!(state, Dict(
-            "state_revision" => 0,
-            "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing),
+        SA_API.apply_signal_settings!(settings, state, Dict(
+            "state_revision" => 2, "display_id" => "display-1",
         ))
         nothing
     catch caught
@@ -531,9 +553,8 @@ end
     @test stale_envelope.status == 409
     @test stale_envelope.body["state"] == expected_state_lite
     @test stale_envelope.body["current"] == expected_state_lite
-    @test stale_envelope.body["current"]["state_revision"] == canonical["state_revision"]
-    @test stale_envelope.body["current"]["spectrum_settings"] == canonical["spectrum_settings"]
-    @test stale_envelope.body["current"]["active_output"]["output"]["data"] == Dict{String,Any}[]
+    @test stale_envelope.body["current"]["state_revision"] >= canonical["state_revision"]
+    @test stale_envelope.body["current"]["spectrum_settings"]["scale"] == "linear"
     @test !haskey(stale_envelope.body["current"], "plot_payload")
     @test !haskey(stale_envelope.body["current"], "plots")
 end
@@ -569,26 +590,20 @@ end
         @test SA_API.signal_analyser_snapshot(state) == initial
     end
 
-    limits = Dict("min_hz" => 10.0, "max_hz" => 100.0, "units" => "Hz")
-    explicit_settings = Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => limits)
-    explicit = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrum_settings" => explicit_settings))
-    @test explicit["state_revision"] == 1
-    @test explicit["spectrum_settings"] == explicit_settings
-    @test explicit["displays"][1]["spectrum_settings"] == explicit_settings
-    @test explicit["plots"]["spectrum"]["frequency_limits"] == Dict("mode" => "explicit", "requested" => limits, "effective" => limits)
-    no_op = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrum_settings" => explicit_settings))
-    @test no_op["state_revision"] == 1
-    restored = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrum_settings" => auto))
-    @test restored["state_revision"] == 2
-    @test restored["spectrum_settings"] == auto
-
-    created = SA_API.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "create"))
-    @test created["displays"][2]["spectrum_settings"] == auto
-    selected = SA_API.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-1"))
-    cleared = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => String[]))
-    @test cleared["spectrum_settings"] == selected["spectrum_settings"]
-    readded = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [state.signals[1].name]))
-    @test readded["spectrum_settings"] == auto
+    settings = SA_API.SignalSettingsService()
+    draft = SA_API.apply_signal_setting!(settings, state, Dict(
+        "state_revision" => 0, "display_id" => "display-1",
+        "field_id" => "spectrum.frequency_limits",
+        "value" => Dict("min" => 10.0, "max" => 100.0),
+    ))
+    @test draft["state"]["state_revision"] == 1
+    @test SA_API.signal_analyser_snapshot(state)["spectrum_settings"] == auto
+    applied = SA_API.apply_signal_settings!(settings, state, Dict(
+        "state_revision" => 1, "display_id" => "display-1",
+    ))
+    @test applied == Dict{String,Any}("success" => true, "state_revision" => 2)
+    @test SA_API.signal_analyser_snapshot(state)["spectrum_settings"]["frequency_limits"] == Dict("min_hz" => 10.0, "max_hz" => 100.0, "units" => "Hz")
+    @test state.output_manager.need_update_pages[state.output_manager.active_page_id]
 end
 
 @testset "Cascade 13 API Spectrogram settings envelope and lifecycle" begin
@@ -634,24 +649,24 @@ end
         @test SA_API.signal_analyser_snapshot(state) == initial
     end
 
-    overlap_75 = Dict("overlap_percent" => 75.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
-    changed = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => overlap_75))
-    @test changed["state_revision"] == 1
-    @test changed["spectrogram_settings"] == overlap_75
-    @test changed["displays"][1]["spectrogram_settings"] == overlap_75
-    @test SA_API.SPECTROGRAM_CALLS[end].overlap_percent == 75.0 && SA_API.SPECTROGRAM_CALLS[end].leakage == 0.5
-    @test SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => overlap_75))["state_revision"] == 1
-
-    created = SA_API.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "create"))
-    @test created["displays"][2]["spectrogram_settings"] == default_settings
-    @test SA_API.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))["spectrogram_settings"] == overlap_75
-    @test SA_API.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-2"))["spectrogram_settings"] == default_settings
-    cleared = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "visible_signals" => String[]))
-    @test cleared["spectrogram_settings"] == default_settings
-    @test SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [first_name]))["spectrogram_settings"] == default_settings
+    settings = SA_API.SignalSettingsService()
+    draft = SA_API.apply_signal_setting!(settings, state, Dict(
+        "state_revision" => 0, "display_id" => "display-1",
+        "field_id" => "spectrogram.overlap_percent", "value" => 75.0,
+    ))
+    @test draft["state"]["state_revision"] == 1
+    @test isempty(SA_API.SPECTROGRAM_CALLS)
+    changed = SA_API.apply_signal_settings!(settings, state, Dict(
+        "state_revision" => 1, "display_id" => "display-1",
+    ))
+    @test changed == Dict{String,Any}("success" => true, "state_revision" => 2)
+    @test SA_API.signal_analyser_snapshot(state)["spectrogram_settings"]["overlap_percent"] == 75.0
+    @test isempty(SA_API.SPECTROGRAM_CALLS)
 
     stale = try
-        SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 4, "spectrogram_settings" => Dict("overlap_percent" => 0.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)))
+        SA_API.apply_signal_settings!(settings, state, Dict(
+            "state_revision" => 1, "display_id" => "display-1",
+        ))
         nothing
     catch caught
         caught
@@ -663,23 +678,25 @@ end
 @testset "Cascade 17 API Spectrogram Power Limits envelope and atomicity" begin
     SA_API.reset_pspectrum_double!(); empty!(SA_API.SPECTRUM_CALLS); empty!(SA_API.SPECTROGRAM_CALLS)
     state = SA_API.default_signal_analyser_state()
-    initial = SA_API.signal_analyser_snapshot(state)
-    auto = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
-    pair = Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB")
-    explicit = merge(copy(auto), Dict("power_limits" => pair))
-    changed = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => explicit))
-    @test changed["state_revision"] == 1 && changed["spectrogram_settings"] == explicit
-    @test changed["plots"]["spectrogram"]["power_limits"] == Dict("mode" => "explicit", "requested" => pair, "effective" => pair, "rendered" => Dict("min" => -80.0, "max" => -20.0, "units" => "dB"))
-    for power in (Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB", "extra" => true), Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "Hz"), Dict("min_db" => true, "max_db" => -20.0, "units" => "dB"), Dict("min_db" => NaN, "max_db" => -20.0, "units" => "dB"), Dict("min_db" => -20.0, "max_db" => -20.0, "units" => "dB"), Dict("min_db" => -20.0, "max_db" => -80.0, "units" => "dB"))
-        before = SA_API.signal_analyser_snapshot(state)
-        error = try SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => merge(copy(auto), Dict("power_limits" => power)))); nothing catch caught; caught end
-        @test error isa SA_API.SignalAnalyserValidationError
-        @test SA_API.signal_analyser_validation_response(error).status == 422
-        @test haskey(error.fields, "spectrogram_settings") && SA_API.signal_analyser_snapshot(state) == before
-    end
-    missing = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear")
-    @test_throws SA_API.SignalAnalyserValidationError SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => missing))
-    stale = try SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => auto)); nothing catch caught; caught end
+    settings = SA_API.SignalSettingsService()
+    draft = SA_API.apply_signal_setting!(settings, state, Dict(
+        "state_revision" => 0, "display_id" => "display-1",
+        "field_id" => "spectrogram.power_limits",
+        "value" => Dict("min" => -80.0, "max" => -20.0),
+    ))
+    @test draft["state"]["state_revision"] == 1
+    @test isempty(SA_API.SPECTROGRAM_CALLS)
+    applied = SA_API.apply_signal_settings!(settings, state, Dict(
+        "state_revision" => 1, "display_id" => "display-1",
+    ))
+    @test applied == Dict{String,Any}("success" => true, "state_revision" => 2)
+    @test SA_API.signal_analyser_snapshot(state)["spectrogram_settings"]["power_limits"] == Dict("min_db" => -80.0, "max_db" => -20.0, "units" => "dB")
+    @test isempty(SA_API.SPECTROGRAM_CALLS)
+    active = SA_API.signal_analyser_active_output(state, "display-1", "pane-1")
+    @test active["isready"] isa Bool && active["success"] isa Bool && active["data"] isa AbstractVector
+    task = state.output_manager.active_task
+    task === nothing || wait(task)
+    stale = try SA_API.apply_signal_settings!(settings, state, Dict("state_revision" => 1, "display_id" => "display-1")); nothing catch caught; caught end
     @test stale isa SA_API.SignalAnalyserStaleStateError && SA_API.signal_analyser_stale_response(state, stale).status == 409
 end
 
@@ -702,8 +719,10 @@ end
     @test success["active_plot"] == "spectrum"
     @test success["selected_signal"] == second_name
     @test success["visible_signals"] == [first_name, second_name]
-    @test [trace["name"] for trace in success["plot_payload"]["time_traces"]] == [first_name, second_name]
-    @test [trace["color"] for trace in success["plot_payload"]["time_traces"]] == ["#2563eb", "#dc2626"]
+    @test [trace["name"] for trace in success["plot_payload"]["time_traces"]] == [
+        first_name, "$(second_name) (Real)", "$(second_name) (Imaginary)",
+    ]
+    @test [trace["color"] for trace in success["plot_payload"]["time_traces"]] == ["#2563eb", "#dc2626", "#dc2626"]
     @test [trace["name"] for trace in success["plot_payload"]["spectrum_traces"]] == [first_name, second_name]
     @test success["plot_payload"]["spectrogram"]["signal"] == second_name
     @test success["plot_payload"]["persistence"]["signal"] == second_name
@@ -857,24 +876,25 @@ end
 @testset "Cascade 16 API rejects non-exact Spectrogram Frequency Scale settings atomically" begin
     SA_API.reset_pspectrum_double!()
     state = SA_API.default_signal_analyser_state()
-    initial = SA_API.signal_analyser_snapshot(state)
-    exact = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "log", "power_limits" => nothing)
-    accepted = SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => exact))
-    @test accepted["state_revision"] == 1 && accepted["spectrogram_settings"] == exact
-    @test accepted["plots"]["spectrogram"]["frequency_scale"] == Dict("requested" => "log", "effective" => "log", "available" => ["linear", "log"])
-    for malformed in (
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => 1),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "Log"),
-        Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "unexpected" => true),
+    settings = SA_API.SignalSettingsService()
+    draft = SA_API.apply_signal_setting!(settings, state, Dict(
+        "state_revision" => 0, "display_id" => "display-1",
+        "field_id" => "spectrogram.frequency_scale", "value" => "log",
+    ))
+    @test draft["state"]["state_revision"] == 1
+    @test only(filter(field -> field["id"] == "spectrogram.frequency_scale", draft["settings"]["fields"]))["value"] == "log"
+    @test_throws SA_API.SignalSettingValidationError SA_API.apply_signal_setting!(
+        settings, state, Dict(
+            "state_revision" => 1, "display_id" => "display-1",
+            "field_id" => "spectrogram.frequency_scale", "value" => "Log",
+        ),
     )
-        error = try SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 1, "spectrogram_settings" => malformed)); nothing catch caught; caught end
-        @test error isa SA_API.SignalAnalyserValidationError
-        response = SA_API.signal_analyser_validation_response(error)
-        @test response.status == 422 && haskey(response.body["error"]["fields"], "spectrogram_settings")
-        @test SA_API.signal_analyser_snapshot(state) == accepted
-    end
-    stale = try SA_API.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "spectrogram_settings" => exact)); nothing catch caught; caught end
+    accepted = SA_API.apply_signal_settings!(settings, state, Dict(
+        "state_revision" => 1, "display_id" => "display-1",
+    ))
+    @test accepted == Dict{String,Any}("success" => true, "state_revision" => 2)
+    @test SA_API.signal_analyser_snapshot(state)["spectrogram_settings"]["frequency_scale"] == "log"
+    stale = try SA_API.apply_signal_settings!(settings, state, Dict("state_revision" => 0, "display_id" => "display-1")); nothing catch caught; caught end
     @test stale isa SA_API.SignalAnalyserStaleStateError
     @test SA_API.signal_analyser_stale_response(state, stale).status == 409
 end

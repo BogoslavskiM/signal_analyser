@@ -282,12 +282,12 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(!api.includes("./api/peaks") && !/findpeaks\s*\(/i.test(app), "frontend must not create a Peaks endpoint or calculate peaks in JavaScript");
   assert(app.includes("signal-statistics-action") && app.includes('activateBottomTab("measurements", true)'), "Signal statistics must activate and focus the local Measurements tab");
   assert(app.includes("p.items.map") && app.includes("item.time_s") && app.includes("item.value"), "peak markers must consume backend-provided peak items only");
-  ["traceScale", "normalizedValues", "display.normalizeY", "display.showMarkers", "show-markers-checkbox", "normalize-y-checkbox"].forEach((term) =>
+  ["display.normalizeY", "display.showMarkers", "show-markers-checkbox", "normalize-y-checkbox"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Cascade 6 Time presentation term ${term}`)
   );
-  assert(app.includes("plot === \"time\" && display.normalizeY") && app.includes("plot === \"time\" && display.showMarkers"), "normalization and ordinary markers must be constrained to Time traces");
-  assert(app.includes("peakMarkerTrace(display, sourceScale)") && app.includes("normalizedValues(p.items.map"), "Peaks markers must align to the analysis-source normalization scale");
-  assert(app.includes("analysis-source-affine-unclipped"), "metadata presentation must retain unclipped Peak provenance without requiring an app-owned Plotly host state");
+  assert(!app.includes("traceScale") && !app.includes("normalizedValues"), "browser must not normalize Time values or derive a trace scale; it consumes backend Time payloads verbatim");
+  assert(app.includes("peakMarkerTrace(display)") && app.includes("y:p.items.map(function(item) { return item.value; })"), "Peak markers must consume backend-provided coordinates without browser normalization");
+  assert(app.includes('normalization:"backend-payload"'), "Peak metadata must declare backend-owned normalization provenance");
   assert(app.includes("Object.keys(change).every") && app.includes("showLegend") && app.includes("normalizeY") && app.includes("showMarkers"), "presentation toggles must remain local rather than create a view mutation");
   ["time_limits", "time-min-input", "time-max-input", "time-limits-error"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve Cascade 7 Time Limits term ${term}`)

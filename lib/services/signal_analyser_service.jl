@@ -7,11 +7,7 @@ const SIGNAL_ANALYSER_VIEW_FIELDS = Set([
     "analysis_signal",
     "selected_signal",
     "visible_signals",
-    "time_limits",
     "measurement_kinds",
-    "spectrum_settings",
-    "spectrogram_settings",
-    "persistence_settings",
     "peaks_enabled",
 ])
 const SIGNAL_ANALYSER_DISPLAY_OPERATIONS = Set(["create", "select", "close", "reorder"])
@@ -931,7 +927,6 @@ function signal_analyser_prepare_display_plots(
     spectrum_traces = Dict{String,Any}[]
     for visible_signal in state.signals
         visible_signal.name in visible_names || continue
-        base_plots = prepared_plots[visible_signal.name]
         spectrum_data = signal_analyser_prepared_spectrum_data(
             state,
             display,
@@ -942,10 +937,7 @@ function signal_analyser_prepare_display_plots(
             spectrum_data,
             display.spectrum_settings,
         )
-        push!(
-            time_traces,
-            signal_analyser_plot_for_payload(base_plots["time"], visible_signal),
-        )
+        append!(time_traces, signal_analyser_time_traces_for_payload(visible_signal))
         push!(
             spectrum_traces,
             signal_analyser_plot_for_payload(spectrum_plot, visible_signal),
@@ -1184,7 +1176,29 @@ struct SignalAnalyserPaneOutput
     success::Bool
     error::String
     data::SignalAnalyserPaneRendererData
+    peaks::Union{Nothing,SignalPeaksSnapshot}
 end
+
+SignalAnalyserPaneOutput(
+    pane_id::String,
+    plot_type::SignalAnalyserPlot,
+    signal_bindings::Vector{String},
+    analysis_signal::Union{Nothing,String},
+    isready::Bool,
+    success::Bool,
+    error::String,
+    data::SignalAnalyserPaneRendererData,
+) = SignalAnalyserPaneOutput(
+    pane_id,
+    plot_type,
+    signal_bindings,
+    analysis_signal,
+    isready,
+    success,
+    error,
+    data,
+    nothing,
+)
 
 function signal_analyser_display_for_pane(
     display::SignalAnalyserDisplayState,
@@ -1210,30 +1224,62 @@ function signal_analyser_ordered_trace_data(
     traces::Vector{Dict{String,Any}},
     signal_bindings::Vector{String},
 )::Vector{Dict{String,Any}}
-    traces_by_signal = Dict{String,Dict{String,Any}}(
-        String(trace["signal"]) => trace for trace in traces
+    traces_by_signal = Dict{String,Vector{Dict{String,Any}}}()
+    for trace in traces
+        push!(
+            get!(traces_by_signal, String(trace["signal"])) do
+                Dict{String,Any}[]
+            end,
+            trace,
+        )
+    end
+    ordered = Dict{String,Any}[]
+    for name in signal_bindings
+        append!(ordered, get(traces_by_signal, name, Dict{String,Any}[]))
+    end
+    ordered
+end
+
+function signal_analyser_minmax_normalized_values(
+    values::Vector{Float64},
+)::Vector{Float64}
+    isempty(values) && return Float64[]
+    minimum_value, maximum_value = extrema(values)
+    span = maximum_value - minimum_value
+    span > 0.0 ? (values .- minimum_value) ./ span : zeros(Float64, length(values))
+end
+
+function signal_analyser_normalized_time_trace(
+    trace::Dict{String,Any},
+)::Dict{String,Any}
+    normalized = copy(trace)
+    normalized["y"] = signal_analyser_minmax_normalized_values(
+        Float64.(get(trace, "y", Float64[])),
     )
-    Dict{String,Any}[traces_by_signal[name] for name in signal_bindings]
+    normalized
 end
 
 function signal_analyser_pane_renderer_data(
     prepared::SignalAnalyserPreparedDisplayPlots,
-    plot_type::SignalAnalyserPlot,
+    pane::SignalDisplayPaneState,
     signal_bindings::Vector{String},
-    spectrum_settings::SignalSpectrumSettings,
 )::SignalAnalyserPaneRendererData
+    plot_type = pane.plot_type
     if plot_type == TIME_PLOT
-        return signal_analyser_ordered_trace_data(
+        traces = signal_analyser_ordered_trace_data(
             prepared.plot_payload["time_traces"]::Vector{Dict{String,Any}},
             signal_bindings,
         )
+        return pane.stored_settings.time.normalize_y ?
+            Dict{String,Any}[signal_analyser_normalized_time_trace(trace) for trace in traces] :
+            traces
     elseif plot_type == SPECTRUM_PLOT
         traces = signal_analyser_ordered_trace_data(
             prepared.plot_payload["spectrum_traces"]::Vector{Dict{String,Any}},
             signal_bindings,
         )
         frequency_scale = SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[
-            spectrum_settings.frequency_scale
+            pane.spectrum_settings.frequency_scale
         ]
         for trace in traces
             trace["frequency_scale"] = frequency_scale
@@ -1271,11 +1317,25 @@ function signal_analyser_prepare_pane_output!(
             materialize_spectrum_signal_names = analysis_name === nothing ?
                 String[] : String[analysis_name],
         )
+        if pane.plot_type == TIME_PLOT && pane.peaks_enabled
+            peaks = signal_peaks_snapshot(
+                state.peaks_service,
+                state.view.state_revision + 1,
+                pane_display,
+                analysis_signal,
+                materialize = true,
+            )
+            signal_analyser_publish_peaks_cache!(
+                prepared.plot_cache,
+                pane_display,
+                analysis_signal::AnalysedSignal,
+                peaks,
+            )
+        end
         data = signal_analyser_pane_renderer_data(
             prepared,
-            pane.plot_type,
+            pane,
             signal_bindings,
-            pane.spectrum_settings,
         )
         signal_analyser_publish_display_plots!(state, prepared)
         return SignalAnalyserPaneOutput(
@@ -1308,9 +1368,8 @@ function signal_analyser_prepare_pane_output!(
             signal_analyser_pane_output_error(err),
             signal_analyser_pane_renderer_data(
                 empty_prepared,
-                pane.plot_type,
+                pane,
                 String[],
-                pane.spectrum_settings,
             ),
         )
     end
@@ -1612,6 +1671,54 @@ function signal_analyser_plot_for_payload(
     payload
 end
 
+function signal_analyser_time_component_payload(
+    signal::AnalysedSignal,
+    component::AbstractString,
+    values::Vector{Float64},
+)::Dict{String,Any}
+    x, y = signal_analyser_bounded_line(signal_time_values(signal), values)
+    component_name = String(component)
+    Dict{String,Any}(
+        "type" => "line",
+        "x" => x,
+        "y" => y,
+        "x_label" => "Время, с",
+        "y_label" => "Амплитуда",
+        "signal" => signal.name,
+        "component" => component_name,
+        "name" => isempty(component_name) ? signal.name :
+            "$(signal.name) ($(component_name == "real" ? "Real" : "Imaginary"))",
+        "color" => signal.color,
+    )
+end
+
+"""MATLAB-compatible Time presentation; raw signal values remain untouched."""
+function signal_analyser_time_traces_for_payload(
+    signal::AnalysedSignal,
+)::Vector{Dict{String,Any}}
+    if signal.is_complex
+        return Dict{String,Any}[
+            signal_analyser_time_component_payload(
+                signal,
+                "real",
+                Float64.(real.(signal.values)),
+            ),
+            signal_analyser_time_component_payload(
+                signal,
+                "imaginary",
+                Float64.(imag.(signal.values)),
+            ),
+        ]
+    end
+    Dict{String,Any}[
+        signal_analyser_time_component_payload(
+            signal,
+            "",
+            Float64.(real.(signal.values)),
+        ),
+    ]
+end
+
 function signal_analyser_multi_trace_payload(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
@@ -1626,7 +1733,7 @@ function signal_analyser_multi_trace_payload(
     spectrum_traces = Dict{String,Any}[]
     for signal in state.signals
         signal.name in visible_names || continue
-        base_plots = signal_analyser_cached_plots!(state, signal)
+        signal_analyser_cached_plots!(state, signal)
         spectrum_data = signal_analyser_cached_spectrum_data!(
             state,
             display,
@@ -1634,7 +1741,7 @@ function signal_analyser_multi_trace_payload(
             materialize_missing = materialize_missing_spectra,
         )
         spectrum_plot = signal_analyser_spectrum_plot(spectrum_data, display.spectrum_settings)
-        push!(time_traces, signal_analyser_plot_for_payload(base_plots["time"], signal))
+        append!(time_traces, signal_analyser_time_traces_for_payload(signal))
         push!(spectrum_traces, signal_analyser_plot_for_payload(spectrum_plot, signal))
     end
 
@@ -2747,6 +2854,8 @@ function signal_peaks_snapshot(
     state_revision::Int,
     display::SignalAnalyserDisplayState,
     signal::Union{Nothing,AnalysedSignal},
+    ;
+    materialize::Bool = false,
 )::SignalPeaksSnapshot
     if signal === nothing
         display.peaks_enabled && throw(ArgumentError("Пустой Display не может иметь enabled Peaks"))
@@ -2778,6 +2887,17 @@ function signal_peaks_snapshot(
     ))
     limits = display.time_limits
     limits === nothing && throw(ArgumentError("Непустой Display должен иметь Time Limits"))
+    if !materialize
+        return SignalPeaksSnapshot(
+            true,
+            state_revision,
+            display.id,
+            signal.name,
+            ordinate_kind,
+            units,
+            SignalPeakItem[],
+        )
+    end
     roi = signal_ordinate_roi(service.ordinate_service, signal, limits)
     if length(roi.values) < 3
         return SignalPeaksSnapshot(
@@ -2818,6 +2938,85 @@ function signal_peaks_snapshot(
         ordinate_kind,
         units,
         items,
+    )
+end
+
+"""Last-good Peaks result keyed by the provider-affecting passive state."""
+struct SignalPeaksCacheEntry
+    display_id::String
+    signal_name::String
+    time_limits::SignalTimeLimits
+    snapshot::SignalPeaksSnapshot
+end
+
+function SignalPeaksCacheEntry(
+    display::SignalAnalyserDisplayState,
+    signal::AnalysedSignal,
+    snapshot::SignalPeaksSnapshot,
+)
+    limits = display.time_limits
+    limits === nothing && throw(ArgumentError(
+        "Непустой Display Peaks cache должен иметь Time Limits",
+    ))
+    snapshot.enabled || throw(ArgumentError("Peaks cache принимает только enabled snapshot"))
+    snapshot.display_id == display.id || throw(ArgumentError(
+        "Display Peaks cache не совпадает с snapshot",
+    ))
+    snapshot.signal_name == signal.name || throw(ArgumentError(
+        "Сигнал Peaks cache не совпадает с snapshot",
+    ))
+    SignalPeaksCacheEntry(display.id, signal.name, limits, snapshot)
+end
+
+signal_peaks_cache_field(display_id::AbstractString)::String =
+    "\0signal-analyser-peaks::$(String(display_id))"
+
+function signal_analyser_publish_peaks_cache!(
+    prepared_plots::Dict{String,Dict{String,Any}},
+    display::SignalAnalyserDisplayState,
+    signal::AnalysedSignal,
+    snapshot::SignalPeaksSnapshot,
+)::Nothing
+    plots = get!(prepared_plots, signal.name) do
+        signal_analyser_base_plots(signal)
+    end
+    plots[signal_peaks_cache_field(display.id)] = SignalPeaksCacheEntry(
+        display,
+        signal,
+        snapshot,
+    )
+    nothing
+end
+
+function signal_analyser_cached_peaks_snapshot(
+    state::SignalAnalyserState,
+    state_revision::Int,
+    display::SignalAnalyserDisplayState,
+    signal::Union{Nothing,AnalysedSignal},
+)::SignalPeaksSnapshot
+    passive = signal_peaks_snapshot(
+        state.peaks_service,
+        state_revision,
+        display,
+        signal,
+    )
+    (!display.peaks_enabled || signal === nothing) && return passive
+    plots = get(state.plot_cache, signal.name, nothing)
+    plots === nothing && return passive
+    cached = get(plots, signal_peaks_cache_field(display.id), nothing)
+    cached isa SignalPeaksCacheEntry || return passive
+    entry = cached::SignalPeaksCacheEntry
+    entry.display_id == display.id || return passive
+    entry.signal_name == signal.name || return passive
+    entry.time_limits == display.time_limits || return passive
+    SignalPeaksSnapshot(
+        true,
+        state_revision,
+        display.id,
+        signal.name,
+        entry.snapshot.ordinate,
+        entry.snapshot.units,
+        SignalPeakItem[entry.snapshot.items...],
     )
 end
 
@@ -2942,9 +3141,9 @@ function signal_analyser_snapshot_unlocked(
     measurements::SignalMeasurementsSnapshot,
     peaks::SignalPeaksSnapshot,
     ;
-    materialize_missing_spectra::Bool = true,
-    materialize_missing_spectrogram::Bool = true,
-    materialize_missing_persistence::Bool = true,
+    materialize_missing_spectra::Bool = false,
+    materialize_missing_spectrogram::Bool = false,
+    materialize_missing_persistence::Bool = false,
 )::Dict{String,Any}
     active_display = signal_analyser_active_display(state)
     analysis_name = signal_analyser_display_analysis_name(active_display)
@@ -3020,6 +3219,21 @@ function signal_analyser_has_changes(changes::SignalAnalyserViewChanges)::Bool
     ))
 end
 
+function signal_analyser_view_changes_affect_output(
+    changes::SignalAnalyserViewChanges,
+)::Bool
+    any((
+        changes.active_plot,
+        changes.membership,
+        changes.analysis_source,
+        changes.time_limits,
+        changes.spectrum_settings,
+        changes.spectrogram_settings,
+        changes.persistence_settings,
+        changes.peaks_enabled,
+    ))
+end
+
 function signal_analyser_only_spectrogram_settings_changed(
     changes::SignalAnalyserViewChanges,
 )::Bool
@@ -3069,9 +3283,9 @@ end
 
 function signal_analyser_snapshot_unlocked(
     state::SignalAnalyserState;
-    materialize_missing_spectra::Bool = true,
-    materialize_missing_spectrogram::Bool = true,
-    materialize_missing_persistence::Bool = true,
+    materialize_missing_spectra::Bool = false,
+    materialize_missing_spectrogram::Bool = false,
+    materialize_missing_persistence::Bool = false,
 )::Dict{String,Any}
     display = signal_analyser_active_display(state)
     analysis_name = signal_analyser_display_analysis_name(display)
@@ -3083,8 +3297,8 @@ function signal_analyser_snapshot_unlocked(
         display.time_limits,
         display.measurement_selection,
     )
-    peaks = signal_peaks_snapshot(
-        state.peaks_service,
+    peaks = signal_analyser_cached_peaks_snapshot(
+        state,
         state.view.state_revision,
         display,
         signal,
@@ -3889,37 +4103,22 @@ end
 
 function signal_analyser_prepare_view_snapshot_unlocked(
     state::SignalAnalyserState,
-    previous_display::SignalAnalyserDisplayState,
+    ::SignalAnalyserDisplayState,
     prospective_display::SignalAnalyserDisplayState,
-    changes::SignalAnalyserViewChanges,
+    ::SignalAnalyserViewChanges,
 )::Dict{String,Any}
     prospective_members = signal_analyser_display_members(prospective_display)
     prospective_analysis_name = signal_analyser_display_analysis_name(prospective_display)
     prospective_signal = prospective_analysis_name === nothing ? nothing :
         signal_by_name(state, prospective_analysis_name)
-    changed = signal_analyser_has_changes(changes)
-    spectrogram_settings_only = signal_analyser_only_spectrogram_settings_changed(changes)
-    persistence_settings_only = signal_analyser_only_persistence_settings_changed(changes)
-    secondary_provider_settings_only =
-        signal_analyser_only_secondary_provider_settings_changed(changes)
-    spectrogram_presentation_only = spectrogram_settings_only &&
-        signal_spectrogram_provider_settings_equal(
-            previous_display.spectrogram_settings,
-            prospective_display.spectrogram_settings,
-        )
-    prepare_spectrum = changed && !secondary_provider_settings_only
-    prepare_spectrogram = changed && !spectrogram_presentation_only &&
-        !persistence_settings_only
     prepared_display_plots = signal_analyser_prepare_display_plots(
         state,
         prospective_display,
         prospective_signal,
         prospective_members,
-        materialize_missing_spectra = prepare_spectrum,
-        materialize_missing_spectrogram = prepare_spectrogram,
-        refresh_spectrogram = prepare_spectrogram &&
-            isempty(signal_analyser_display_members(previous_display)) &&
-            !isempty(prospective_members),
+        materialize_missing_spectra = false,
+        materialize_missing_spectrogram = false,
+        materialize_missing_persistence = false,
     )
     prepared_measurements = signal_measurements_snapshot(
         state.measurements_service,
@@ -3928,8 +4127,8 @@ function signal_analyser_prepare_view_snapshot_unlocked(
         prospective_display.time_limits,
         prospective_display.measurement_selection,
     )
-    prepared_peaks = signal_peaks_snapshot(
-        state.peaks_service,
+    prepared_peaks = signal_analyser_cached_peaks_snapshot(
+        state,
         state.view.state_revision,
         prospective_display,
         prospective_signal,
@@ -3990,7 +4189,8 @@ function apply_signal_analyser_view!(
         signal_analyser_publish_row_selection!(candidate, requested.row_selection)
         signal_analyser_sync_active_display!(candidate, candidate_display)
         candidate.view.state_revision += 1
-        signal_analyser_invalidate_active_output_unlocked!(candidate)
+        signal_analyser_view_changes_affect_output(changes) &&
+            signal_analyser_invalidate_active_output_unlocked!(candidate)
         snapshot = if lightweight
             signal_analyser_state_lite_unlocked(candidate)
         else

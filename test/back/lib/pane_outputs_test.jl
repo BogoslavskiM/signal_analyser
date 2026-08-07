@@ -81,7 +81,10 @@ end
 
     time_output = only(outputs)
     @test time_output["signal_bindings"] == [second_name, first_name]
-    @test [trace["signal"] for trace in time_output["output"]["data"]] == [second_name, first_name]
+    @test [(trace["signal"], trace["component"]) for trace in time_output["output"]["data"]] == [
+        (second_name, "real"), (second_name, "imaginary"),
+        (first_name, ""),
+    ]
     @test state.view.state_revision == revision
     @test state.display_layouts["display-1"].active_pane_id == active_pane_id
 
@@ -198,19 +201,29 @@ end
         "version" => 1,
         "pane_id" => "pane-2",
     ))
-    logged = PANE_OUTPUTS.apply_signal_analyser_view!(state, Dict(
+    # Frequency scale is an immediate provider-free presentation setting.
+    # Grouped settings snapshots through /api/view are no longer accepted.
+    settings_service = PANE_OUTPUTS.SignalSettingsService()
+    provider_counts = (
+        length(PANE_OUTPUTS.SPECTRUM_CALLS), length(PANE_OUTPUTS.SPECTROGRAM_CALLS),
+        length(PANE_OUTPUTS.PERSISTENCE_CALLS), length(PANE_OUTPUTS.PSPECTRUM_CALLS),
+    )
+    need_update_before = copy(state.output_manager.need_update_pages)
+    logged = PANE_OUTPUTS.apply_signal_setting!(settings_service, state, Dict(
         "state_revision" => response["state_revision"],
-        "spectrum_settings" => Dict(
-            "scale" => "db",
-            "frequency_scale" => "log",
-            "leakage" => 0.5,
-            "frequency_limits" => nothing,
-        ),
+        "display_id" => "display-1",
+        "field_id" => "spectrum.frequency_scale",
+        "value" => "log",
     ))
+    @test (
+        length(PANE_OUTPUTS.SPECTRUM_CALLS), length(PANE_OUTPUTS.SPECTROGRAM_CALLS),
+        length(PANE_OUTPUTS.PERSISTENCE_CALLS), length(PANE_OUTPUTS.PSPECTRUM_CALLS),
+    ) == provider_counts
+    @test state.output_manager.need_update_pages == need_update_before
     service = PANE_OUTPUTS.SignalAnalyserSessionService()
     document = PANE_OUTPUTS.export_signal_analyser_session(service, state)["document"]
     inactive = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
-        "state_revision" => logged["state_revision"],
+        "state_revision" => logged["state"]["state_revision"],
         "operation" => "select_pane",
         "display_id" => "display-1",
         "version" => 1,
