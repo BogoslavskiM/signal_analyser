@@ -403,14 +403,6 @@ technical integration → production pod status/start → Engee update → resta
 повторяться циклом; при неуспехе DevOps возвращает logs и owner classification.
 Не маршрутизируй эти requests Engee User.
 
-Каждый DevOps handoff автоматически сериализуется самим DevOps через
-production-переменную `mcp_devops_genie_is_bysy`. При занятом lock DevOps ждёт
-20 секунд и проверяет снова, а после последней operational command task сразу
-освобождает lock следующей production eval до report или worker idle.
-Orchestrator не устанавливает, не сбрасывает и не обходит эту переменную, не
-создаёт дубликат task во время ожидания и не считает нормальное ожидание
-blocker.
-
 Не создавай отдельный request для package environment recovery. При
 подтверждённой diagnostics проблеме DevOps сам загружает
 `devops/engee-project-environment-sync`, один раз выполняет доступный только в

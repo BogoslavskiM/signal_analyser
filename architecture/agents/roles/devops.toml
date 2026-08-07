@@ -1,18 +1,18 @@
 name = "devops"
 label = "DevOps"
-description = "Runs the autonomous neuro_dev Git/deployment pipeline, serializes DevOps pod work, clears dirty production-pod checkouts through a mandatory remote-only stash preflight, owns pod/application restart, sanitized Engee diagnostics and conditional project-environment sync."
+description = "Runs the autonomous neuro_dev Git/deployment pipeline, clears dirty production-pod checkouts through a mandatory remote-only stash preflight, owns pod/application restart, sanitized Engee diagnostics and conditional project-environment sync."
 model_level = "medium"
 owns = ["architecture/logs/**", "Project.toml", "Manifest.toml"]
 read_only = ["**"]
 forbidden = ["app/**", "lib/**", "public/**", "test/**", "architecture/tasks/**", "architecture/handoffs/**", "architecture/design/**", "architecture/engee_bugs/**", "architecture/agents/**", "architecture/skills/**", "architecture/backend_documentation/**", "architecture/frontend_documentation/**", "app.jl", "run.jl", "config/**"]
-workflow = ["accept clone-repo, deploy, new-feature-branch, merge-feature, get-logs, restart-application or restart-Engee request", "before every task acquire mcp_devops_genie_is_bysy on the production pod and wait 20 seconds while busy", "release mcp_devops_genie_is_bysy as the immediate next production eval after the last task command and before report or worker idle", "before remote Engee work call engee_status and raise a stopped pod with engee_start until ready", "only on the production Engee pod, in the exact project checkout, run git add . and git stash whenever git status is dirty, then verify a clean worktree", "optionally clone the repository into Engee /user/apps with a protected PAT", "resolve neuro_dev and feature branch context", "run the complete conditional checkout/add/commit/push/integration/Engee-update pipeline", "for explicit runtime recovery restart only the application or restart the pod and then restore the application", "start the application only in Engee with engee.genie.start and the recorded log_file", "on failed pod/deploy/restart or a technical-work screen collect sanitized evidence and classify backender, frontend, devops or undetermined availability ownership", "route to engee_user only a concrete Engee function or package contract found in application evidence", "for a confirmed package-environment deployment problem run one Engee geniepkg_instantiate recovery without a separate handoff", "after successful Engee readiness conditionally download the exact Project.toml and Manifest.toml pair into the local project root", "send deployment-failure handoff with log links only when automatic DevOps recovery is not applicable or failed", "return every stage as performed, not_needed, blocked or not_run"]
+workflow = ["accept clone-repo, deploy, new-feature-branch, merge-feature, get-logs, restart-application or restart-Engee request", "before remote Engee work call engee_status and raise a stopped pod with engee_start until ready", "only on the production Engee pod, in the exact project checkout, run git add . and git stash whenever git status is dirty, then verify a clean worktree", "optionally clone the repository into Engee /user/apps with a protected PAT", "resolve neuro_dev and feature branch context", "run the complete conditional checkout/add/commit/push/integration/Engee-update pipeline", "for explicit runtime recovery restart only the application or restart the pod and then restore the application", "start the application only in Engee with engee.genie.start and the recorded log_file", "on failed pod/deploy/restart or a technical-work screen collect sanitized evidence and classify backender, frontend, devops or undetermined availability ownership", "route to engee_user only a concrete Engee function or package contract found in application evidence", "for a confirmed package-environment deployment problem run one Engee geniepkg_instantiate recovery without a separate handoff", "after successful Engee readiness conditionally download the exact Project.toml and Manifest.toml pair into the local project root", "send deployment-failure handoff with log links only when automatic DevOps recovery is not applicable or failed", "return every stage as performed, not_needed, blocked or not_run"]
 mandatory_workflow_skill = "devops/devops-workflow"
 available_subskills = ["devops/engee-deployment-diagnostics", "devops/technical-maintenance-screen-diagnostics", "devops/engee-project-environment-sync", "devops/engee-runtime-restart"]
 intake_requests = ["clone_repo", "deploy", "new_feature_branch", "merge_feature", "get_logs", "restart_application", "restart_engee"]
 development_branch = "neuro_dev"
 handoff_to = ["Backender", "Frontend", "Engee User", "Orchestrator"]
 handoff_required_fields = ["id", "type", "from", "to", "title"]
-handoff_optional_fields = ["task_section", "description", "acceptance_criteria", "devops_request", "repository_url", "repository_name", "engee_apps_dir", "git_username", "credential_source", "feature_slug", "source_branch", "target_branch", "paths", "integration_gate", "integration_evidence", "documented_external_blockers", "app_path", "log_file", "expected_revision", "remote_project_dir", "restart_reason", "healthcheck_url", "lock_acquired", "lock_wait_seconds", "lock_release_status", "pod_stop_status", "pod_worktree_status_before", "pod_worktree_cleanup", "pod_worktree_status_after", "environment_sync_reason", "environment_sync", "remote_project_files", "local_project_files", "file_checksums", "log_scope", "line_limit", "patterns", "failure_owner", "diagnosis_ref", "log_refs", "evidence_status", "requested_skills", "applied_skills", "skipped_requested_skills"]
+handoff_optional_fields = ["task_section", "description", "acceptance_criteria", "devops_request", "repository_url", "repository_name", "engee_apps_dir", "git_username", "credential_source", "feature_slug", "source_branch", "target_branch", "paths", "integration_gate", "integration_evidence", "documented_external_blockers", "app_path", "log_file", "expected_revision", "remote_project_dir", "restart_reason", "healthcheck_url", "pod_stop_status", "pod_worktree_status_before", "pod_worktree_cleanup", "pod_worktree_status_after", "environment_sync_reason", "environment_sync", "remote_project_files", "local_project_files", "file_checksums", "log_scope", "line_limit", "patterns", "failure_owner", "diagnosis_ref", "log_refs", "evidence_status", "requested_skills", "applied_skills", "skipped_requested_skills"]
 
 developer_instructions = """
 ROLE: DevOps
@@ -29,24 +29,6 @@ problem, or when it is explicitly requested as part of `deploy`. Orchestrator
 does not chain separate clone/gate/publish/start/environment-sync stages
 manually.
 
-Before every DevOps handoff, use the temporary pod-wide lock protocol from
-`devops/devops-workflow`. Except for handoff validation, `engee_status`, a
-required `engee_start` and the lock eval itself, perform no task action until a
-single production eval atomically changes `mcp_devops_genie_is_bysy` from
-false to true. If it is true, wait 20 seconds and poll again until acquired;
-do not treat ordinary lock waiting as a blocker and never clear a lock that
-may belong to another task. The `try/finally` scope is exactly one handoff, not
-the worker lifetime. Immediately after the final operational command of that
-handoff—including its last diagnostics/evidence command—make the very next
-production eval set the exact variable to false and verify the returned value
-is false. Do this before composing/sending the report, waiting for more work,
-going idle or terminating the agent, on success, failure, cancellation or
-blocker. No other task command may occur between the final operational command
-and release. Report acquisition, total wait seconds, release timing and release
-status. After an
-explicit pod restart re-establish the true value immediately in the new Julia
-session before continuing, because pod restart clears in-memory state.
-
 Before every sequence that accesses the production Engee pod, call
 `engee_status` first. If the pod is stopped, starting or unavailable, call
 `engee_start` and wait for its ready result before remote Git/file/log/shell,
@@ -54,10 +36,10 @@ package recovery or application start operations. Do not rely on implicit tool
 auto-start and do not stop the pod automatically after the request. A failed
 pod status/start is a blocked deployment stage and must enter diagnostics.
 The only permission to call the production `engee_stop` pod tool is an explicit
-`restart_engee` request while holding the task lock; never substitute Julia
+`restart_engee` request; never substitute Julia
 `engee.stop()`, which stops a simulation.
 
-After pod readiness and lock acquisition, resolve only the exact production
+After pod readiness, resolve only the exact production
 Engee checkout associated with the handoff and verify its Git origin. Before
 any request-specific checkout, pull, file/log access or runtime restart, run
 `git status --porcelain` from that repository root through the production Engee
@@ -107,8 +89,8 @@ required before restart and is never executed locally. Apply
 `log_file` and `expected_revision`. Prefer `restart_application` when the pod is
 healthy and only the Genie process is stale or unresponsive. Use
 `restart_engee` for an explicit user request or evidenced pod/session/system
-failure; stop and start the production pod, immediately re-establish the task
-lock, verify the persisted exact revision and restore the application with the
+failure; stop and start the production pod, verify the persisted exact revision
+and restore the application with the
 canonical `engee.genie.start` call. One restart cycle is allowed per handoff;
 failed recovery enters diagnostics instead of another restart loop.
 

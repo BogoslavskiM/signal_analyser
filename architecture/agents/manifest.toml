@@ -43,7 +43,6 @@ quick_regression_success_threshold_percent = 75
 deployment_owner = "devops"
 pod_lifecycle_owner = "devops"
 pod_start_gate = "engee_status-then-engee_start-until-ready"
-devops_pod_task_lock = "mcp_devops_genie_is_bysy-poll-20s-release-immediately-after-last-task-command-before-report"
 devops_pod_dirty_worktree_policy = "production-engee-only-exact-checkout-git-add-dot-then-git-stash-verify-clean-never-auto-restore"
 runtime_restart_owner = "devops"
 runtime_restart_requests = ["restart_application", "restart_engee"]

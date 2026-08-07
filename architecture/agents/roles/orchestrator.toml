@@ -10,7 +10,7 @@ mandatory_workflow_skill = "orchestrator/orchestrator-workflow"
 stage_skills = ["orchestrator/user-intake", "orchestrator/backlogging", "orchestrator/handoff-management", "orchestrator/product-question-resolution"]
 artifact_folders = ["tasks", "handoffs", "design", "backend_documentation", "frontend_documentation", "engee_bugs", "logs"]
 handoff_required_fields = ["id", "type", "from", "to", "title"]
-handoff_optional_fields = ["task_section", "description", "acceptance_criteria", "requested_skills", "applied_skills", "skipped_requested_skills", "development_mode", "product_question", "classification_reason", "resolution_attempted_skill", "ai_manager_status", "product_question_id", "product_question_status", "product_decision", "decision_source", "ui_impact", "design_mode", "design_ref", "design_version", "design_status", "ui_profile", "prototype_entry", "prototype_interaction_map", "proportion_contract", "page_sizing_contract", "asset_inventory", "visual_references", "required_states", "required_viewports", "required_overlay_combinations", "design_evidence", "overlay_inventory", "overlay_priority_contract", "devops_request", "repository_url", "repository_name", "engee_apps_dir", "git_username", "credential_source", "feature_slug", "source_branch", "target_branch", "paths", "integration_gate", "integration_evidence", "documented_external_blockers", "app_path", "log_file", "expected_revision", "remote_project_dir", "restart_reason", "healthcheck_url", "lock_acquired", "lock_wait_seconds", "lock_release_status", "pod_status_before", "pod_stop_status", "pod_start_status", "pod_status_after", "technical_maintenance_screen", "main_document_http_status", "environment_sync_reason", "environment_sync", "remote_project_files", "local_project_files", "file_checksums", "log_scope", "line_limit", "patterns", "failure_owner", "diagnosis_ref", "log_refs", "evidence_status", "engee_blocker_ref", "browser_channel", "headless", "browser_visibility", "worker_count", "opened_tab_count", "closed_tab_count", "tab_cleanup_status"]
+handoff_optional_fields = ["task_section", "description", "acceptance_criteria", "requested_skills", "applied_skills", "skipped_requested_skills", "development_mode", "product_question", "classification_reason", "resolution_attempted_skill", "ai_manager_status", "product_question_id", "product_question_status", "product_decision", "decision_source", "ui_impact", "design_mode", "design_ref", "design_version", "design_status", "ui_profile", "prototype_entry", "prototype_interaction_map", "proportion_contract", "page_sizing_contract", "asset_inventory", "visual_references", "required_states", "required_viewports", "required_overlay_combinations", "design_evidence", "overlay_inventory", "overlay_priority_contract", "devops_request", "repository_url", "repository_name", "engee_apps_dir", "git_username", "credential_source", "feature_slug", "source_branch", "target_branch", "paths", "integration_gate", "integration_evidence", "documented_external_blockers", "app_path", "log_file", "expected_revision", "remote_project_dir", "restart_reason", "healthcheck_url", "pod_status_before", "pod_stop_status", "pod_start_status", "pod_status_after", "technical_maintenance_screen", "main_document_http_status", "environment_sync_reason", "environment_sync", "remote_project_files", "local_project_files", "file_checksums", "log_scope", "line_limit", "patterns", "failure_owner", "diagnosis_ref", "log_refs", "evidence_status", "engee_blocker_ref", "browser_channel", "headless", "browser_visibility", "worker_count", "opened_tab_count", "closed_tab_count", "tab_cleanup_status"]
 
 developer_instructions = """
 ROLE: Orchestrator
@@ -208,16 +208,8 @@ Both requests require `restart_reason`, exact `expected_revision`, `app_path`
 and `log_file`, request `devops/engee-runtime-restart`, perform no Git stages
 and must return readiness plus diagnostics on failure. Prefer application
 restart before pod restart when evidence localizes the problem to the
-application process. Do not send either request to Engee User.
-
-DevOps serializes all of its handoffs itself with the temporary pod variable
-`mcp_devops_genie_is_bysy`: it waits in 20-second intervals while another
-DevOps task owns the lock and releases it as the immediate next production
-eval after its final operational command, before report generation or worker
-idle/termination. Do not attempt to read,
-set, clear or bypass this lock from Orchestrator. Lock waiting does not create a
-duplicate handoff or a blocker. Wait for the DevOps restart report before
-dispatching runtime-dependent E2E.
+application process. Do not send either request to Engee User. Wait for the
+DevOps restart report before dispatching runtime-dependent E2E.
 
 Do not create a separate micro-handoff for package environment recovery. When
 deployment diagnostics proves a stale or unmaterialized environment, DevOps

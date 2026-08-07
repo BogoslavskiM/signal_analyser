@@ -79,64 +79,9 @@ checkout. PAT никогда не включается в handoff: переда�
 Это ограничение не отменяет отдельный обязательный remote-only cleanup
 production Engee checkout ниже.
 
-## Временный pod-wide task lock
-
-Перед началом каждого DevOps handoff получи общий lock в production pod. До
-lock разрешены только проверка schema handoff, `engee_status`, необходимый
-`engee_start` и сама lock-операция. Не начинай Git, files, logs, runtime,
-diagnostics или browser действия без полученного lock.
-
-Используй точное, намеренно совместимое имя
-`mcp_devops_genie_is_bysy` в Julia `Main`. Проверку и установку выполняй одной
-production Engee eval-операцией, чтобы не оставлять отдельный промежуток между
-read и write:
-
-```julia
-if !isdefined(Main, :mcp_devops_genie_is_bysy)
-    global mcp_devops_genie_is_bysy = false
-end
-if mcp_devops_genie_is_bysy === false
-    global mcp_devops_genie_is_bysy = true
-    "acquired"
-else
-    "busy"
-end
-```
-
-- при `acquired` немедленно продолжай текущий handoff;
-- при `busy` ничего не выполняй, подожди 20 секунд и повтори ту же атомарную
-  eval-операцию; не используй busy-loop и не считай ожидание blocker;
-- продолжай polling до освобождения lock; записывай суммарное время ожидания;
-- не сбрасывай чужой `true` по timeout или предположению о stale owner;
-- `try/finally` охватывает ровно один DevOps handoff, а не время жизни worker
-  или агента. Последней operational command task считается финальная
-  Git/Engee/file/log/browser/diagnostics/evidence command, включая команду,
-  которая завершилась failure или blocker;
-- сразу после завершения этой команды следующей production eval-операцией в
-  `finally` выполни и проверь release:
-
-  ```julia
-  global mcp_devops_genie_is_bysy = false
-  mcp_devops_genie_is_bysy
-  ```
-
-  Успешный output обязан быть `false`. Между последней operational command и
-  этой eval запрещены другие task commands, подготовка report, ожидание новой
-  работы или завершение worker;
-- формируй и отправляй report только после release attempt. Не удерживай lock
-  на время написания отчёта, user notification, idle или завершения агента;
-- если pod исчез во время task, in-memory lock исчезает вместе с ним. После
-  явного `restart_engee` сразу после нового ready pod и до продолжения снова
-  установи переменную в `true`; при окончании всё равно установи `false`;
-- если release недоступен из-за окончательно недоступного pod, зафиксируй
-  `lock_release: blocked` в report. Не скрывай этот результат.
-
-Это временная координация DevOps-агентов, а не durable distributed lock. Она
-не заменяет branch/worktree safety checks.
-
 ## Обязательная очистка checkout на production pod
 
-После получения lock и подтверждения ready pod очисти worktree до любого
+После подтверждения ready pod очисти worktree до любого
 request-specific checkout/pull, чтения project files/logs или runtime restart.
 Выполняй этот preflight только через shell на production Engee pod и только в
 точном project checkout текущего handoff. Локально эти cleanup-команды не
@@ -180,7 +125,7 @@ target существует и переиспользуется, сначала 
 Для Git/deploy/get-logs request последовательно оцени все этапы. Каждый получает статус
 `performed`, `not_needed`, `blocked` или `not_run`.
 
-Для `restart_application` и `restart_engee` после получения lock и обязательного
+Для `restart_application` и `restart_engee` после обязательного
 remote-only worktree preflight не выполняй этапы 1–7 и 9: примени
 `devops/engee-runtime-restart`; все branch/update/commit/push/sync этапы
 получают `not_needed`.
@@ -365,7 +310,7 @@ routing; диагностический request не исправляет produc
 ### `devops_request: restart_application`
 
 Используй для отдельного перезапуска Genie application process при системной
-проблеме runtime без изменения repository. После task-lock примени
+проблеме runtime без изменения repository. Примени
 `devops/engee-runtime-restart`: проверь/подними pod, сверь exact revision,
 повторно выполни `engee.genie.start(app_path, log_file=log_file)` и проверь
 readiness. Не останавливай здоровый pod и не выполняй Git stages.
@@ -375,12 +320,12 @@ readiness. Не останавливай здоровый pod и не выпол
 ### `devops_request: restart_engee`
 
 Используй для явного полного restart production pod при pod/session/system
-problem. После task-lock примени `devops/engee-runtime-restart`: выполни
+problem. Примени `devops/engee-runtime-restart`: выполни
 `engee_status`, при running pod — production `engee_stop`, затем `engee_start`
-до ready, немедленно восстанови lock в новой Julia session, сверь persisted
+до ready, сверь persisted
 checkout и заново запусти приложение через `engee.genie.start`. Не путай pod
 stop с `engee.stop()` simulation и не выполняй Git stages.
-После нового ready pod и восстановления lock выполни обязательный remote-only
+После нового ready pod выполни обязательный remote-only
 worktree preflight до revision check; локальный cleanup запрещён.
 
 ## Report
@@ -390,10 +335,6 @@ request:
 restart reason:
 feature/source/target:
 paths policy:
-task lock: acquired | blocked
-task lock wait seconds:
-task lock release: performed | reset_by_pod_restart | blocked
-task lock release timing: immediately_after_last_operational_command
 pod status check: performed | not_needed | blocked | not_run
 pod stop: performed | not_needed | blocked | not_run
 pod start: performed | not_needed | blocked | not_run
@@ -455,10 +396,6 @@ pipeline.
   локальный stash запрещён, а remote stash нельзя автоматически pop/apply/drop/
   clear.
 - Engee target только production; devhub/fallback запрещены.
-- Каждый DevOps handoff обязан получить `mcp_devops_genie_is_bysy` lock,
-  ждать занятый lock с интервалом 20 секунд и освободить его как следующую
-  production eval сразу после последней operational command этой task, до
-  формирования report или завершения/idle worker.
 - Перед каждой remote Engee sequence обязателен `engee_status`; остановленный
   pod поднимается через `engee_start`, и pipeline ждёт ready. Не полагайся на
   неявный auto-start и не останавливай pod автоматически после request.

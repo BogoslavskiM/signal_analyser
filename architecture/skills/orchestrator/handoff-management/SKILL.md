@@ -74,10 +74,7 @@ request — отдельное runtime recovery без Git stages. Для `clone
 `restart_reason`, `expected_revision`, `app_path`, `log_file` и
 `requested_skills: [devops/engee-runtime-restart]`. Первый request не
 останавливает здоровый pod; второй явно разрешает DevOps вызвать production
-pod stop/start и затем восстановить приложение. DevOps сам получает
-`mcp_devops_genie_is_bysy` lock, ждёт по 20 секунд и освобождает его в
-`finally` конкретной task немедленно после её последней operational command и
-до формирования report; Orchestrator не управляет lock отдельным handoff.
+pod stop/start и затем восстановить приложение.
 
 Перед сохранением проверь уникальность ID, допустимый type, существование
 `task_section`, принадлежность каждого requested skill адресату и отсутствие

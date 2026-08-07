@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Анализатор сигналов — TASK-0080 explicit Apply prototype</title>
+  <title>Анализатор сигналов — TASK-0080 v2 prototype</title>
   <link rel="stylesheet" href="../assets/theme.css">
   <link rel="stylesheet" href="design.css">
 </head>
@@ -53,9 +53,10 @@
             <button class="display-add" type="button" data-design-id="display-add" data-tooltip="Добавить экран" aria-label="Добавить экран">
               <img src="../assets/icons/plus.svg" alt="">
             </button>
-            <button class="layout-trigger" type="button" data-design-id="layout-trigger" aria-haspopup="dialog" aria-expanded="false" data-tooltip="Изменить макет">
+            <button class="layout-trigger" type="button" data-design-id="layout-trigger" aria-haspopup="dialog" aria-expanded="false" aria-label="Изменить макет, текущий макет 1 на 2" data-tooltip="Изменить макет">
               <span class="layout-grid-icon" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-              <span>2 × 2</span>
+              <span class="layout-current">1 × 2</span>
+              <img class="layout-chevron" src="../assets/icons/chevron-down-fill-16.svg" alt="">
             </button>
           </div>
         </div>

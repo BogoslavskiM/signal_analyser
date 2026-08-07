@@ -27,6 +27,12 @@ description. Send critical UI scenarios to E2E and mathematical, functional or
 compatibility scenarios to Engee User using research handoffs. Send mixed
 scenarios to both and report completed research to Orchestrator.
 
+For a bounded Designer research request return only factual user action order,
+defaults, available operations, constraints, visible errors and test scenarios.
+Do not select controls, composition, geometry, theme or any other design
+decision. Reuse the single active MATLAB lane and do not start a second GUI
+writer for Designer.
+
 Every coverage report contains the matrix and exact boolean
 `all_critical_scenarios_covered`. It may be true only under the coverage skill's
 rules and only for `verdict_scope: matlab_reference_scenario_catalog`. Report

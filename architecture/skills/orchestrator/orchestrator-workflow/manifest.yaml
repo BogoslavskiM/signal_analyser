@@ -1,13 +1,13 @@
 schema_version: 1
 name: orchestrator-workflow
-version: 7.2.0
+version: 7.3.0
 title: "Orchestrator Workflow"
 description: >
   Обязательный жизненный цикл Orchestrator: intake, backlogging, role/subskill
   dispatch, параллельные MATLAB/Engee/design evidence lanes, Engee contract
   gate перед Backend, initial repository clone, feature branches от neuro_dev,
-  clickable design и performance gates, serialized DevOps pod task lock,
-  explicit production pod gate и standalone pod/application restart,
+  clickable design и performance gates, explicit production pod gate и
+  standalone pod/application restart,
   Engee-only deploy с HTTP-500/maintenance-screen диагностикой и
   conditional package-environment/TOML sync, Designer page-sizing gate, E2E
   foreground-Chrome visual/overlay gate with owned-tab cleanup, product-question

@@ -1,6 +1,6 @@
 schema_version: 1
 name: handoff-management
-version: 3.3.0
+version: 3.4.0
 title: "Handoff Management"
 description: >
   Минимальный формат task/report/research/FYI и design handoff: общие поля,

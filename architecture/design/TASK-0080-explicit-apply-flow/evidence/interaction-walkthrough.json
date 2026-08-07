@@ -1,7 +1,7 @@
 {
   "design": "TASK-0080-explicit-apply-flow",
-  "design_version": 1,
-  "generated_at": "2026-08-06T15:23:51.815Z",
+  "design_version": 2,
+  "generated_at": "2026-08-07T10:44:50.054Z",
   "entry": "prototype/index.html",
   "viewports": [
     "1024x768",
@@ -13,20 +13,68 @@
     "840x620"
   ],
   "summary": {
-    "records": 32,
-    "passed": 32,
+    "records": 50,
+    "passed": 50,
     "failed": 0,
-    "screenshots": 47,
+    "screenshots": 68,
     "browser_errors": 0
   },
   "records": [
+    {
+      "id": "ui-shell-settings-legend-1024x768",
+      "viewport": "1024x768",
+      "action": "Открыть основной экран",
+      "expected": "Toolbar spans the full application canvas; Display settings and upper-right legend are visible",
+      "status": "pass",
+      "duration_ms": 113
+    },
+    {
+      "id": "selected-display-close-1024x768",
+      "viewport": "1024x768",
+      "action": "Добавить и выбрать второй экран",
+      "expected": "Selected tab and its close target share the selection-colored background",
+      "status": "pass",
+      "duration_ms": 255
+    },
+    {
+      "id": "layout-control-1024x768",
+      "viewport": "1024x768",
+      "action": "Открыть Изменить макет, выбрать draft 2×2, закрыть Escape",
+      "expected": "Canonical grid/current/chevron trigger and anchored rows/columns preview restore focus without applying",
+      "status": "pass",
+      "duration_ms": 196
+    },
+    {
+      "id": "visible-signal-management-1024x768",
+      "viewport": "1024x768",
+      "action": "Отключить echoComplex в списке Сигналы",
+      "expected": "Active-pane visible-signal membership, trace and compact legend update immediately",
+      "status": "pass",
+      "duration_ms": 166
+    },
+    {
+      "id": "pane-graph-type-switch-1024x768",
+      "viewport": "1024x768",
+      "action": "Выбрать Спектр в selector активной области",
+      "expected": "Graph type switches, Plotly rerenders and Display settings synchronize",
+      "status": "pass",
+      "duration_ms": 151
+    },
+    {
+      "id": "settings-graph-type-switch-1024x768",
+      "viewport": "1024x768",
+      "action": "Выбрать Спектрограмму в Настройки отображения",
+      "expected": "Display settings selector switches the same active graph and synchronizes pane header",
+      "status": "pass",
+      "duration_ms": 165
+    },
     {
       "id": "pristine-1024x768",
       "viewport": "1024x768",
       "action": "Открыть prototype",
       "expected": "Apply disabled, no visible dirty caption, accepted v2 Plotly intact",
       "status": "pass",
-      "duration_ms": 354
+      "duration_ms": 316
     },
     {
       "id": "invalid-1024x768",
@@ -34,7 +82,7 @@
       "action": "Ввести непарсируемый numeric draft",
       "expected": "2px error, Apply disabled, old output retained, no calculation",
       "status": "pass",
-      "duration_ms": 596
+      "duration_ms": 106
     },
     {
       "id": "validation-help-1024x768",
@@ -42,7 +90,7 @@
       "action": "Открыть pane ellipsis → Управление графиком поверх inline validation",
       "expected": "Help owns focus; inline validation and disabled Apply remain",
       "status": "pass",
-      "duration_ms": 434
+      "duration_ms": 199
     },
     {
       "id": "dirty-1024x768",
@@ -58,7 +106,7 @@
       "action": "Создать passive toast, изменить field и немедленно нажать Apply",
       "expected": "Pending 150ms update flushes before snapshot-free Apply; applying keeps old plot",
       "status": "pass",
-      "duration_ms": 300
+      "duration_ms": 284
     },
     {
       "id": "pending-1024x768",
@@ -66,7 +114,7 @@
       "action": "Дождаться принятия Apply revision",
       "expected": "Only active plot has contextual overlay; Plotly geometry remains",
       "status": "pass",
-      "duration_ms": 815
+      "duration_ms": 798
     },
     {
       "id": "ready-1024x768",
@@ -74,7 +122,7 @@
       "action": "Дождаться active output",
       "expected": "Output revision catches applied revision; Apply disabled; passive ready toast",
       "status": "pass",
-      "duration_ms": 633
+      "duration_ms": 637
     },
     {
       "id": "semantic-error-1024x768",
@@ -82,7 +130,7 @@
       "action": "Ввести locally parseable, semantically rejected maximum=2 и нажать Apply",
       "expected": "Apply remains available before server validation; error preserves draft and old output",
       "status": "pass",
-      "duration_ms": 1143
+      "duration_ms": 1190
     },
     {
       "id": "stale-1024x768",
@@ -90,7 +138,7 @@
       "action": "Применить deterministic stale draft maximum=0.333",
       "expected": "Stale response is rejected; warning toast and focused Retry preserve draft/output",
       "status": "pass",
-      "duration_ms": 1196
+      "duration_ms": 1191
     },
     {
       "id": "stale-retry-commit-1024x768",
@@ -98,7 +146,55 @@
       "action": "Нажать Повторить на сохранённом backend draft",
       "expected": "Second snapshot-free Apply succeeds and reaches ready",
       "status": "pass",
-      "duration_ms": 1631
+      "duration_ms": 1633
+    },
+    {
+      "id": "ui-shell-settings-legend-1280x720",
+      "viewport": "1280x720",
+      "action": "Открыть основной экран",
+      "expected": "Toolbar spans the full application canvas; Display settings and upper-right legend are visible",
+      "status": "pass",
+      "duration_ms": 107
+    },
+    {
+      "id": "selected-display-close-1280x720",
+      "viewport": "1280x720",
+      "action": "Добавить и выбрать второй экран",
+      "expected": "Selected tab and its close target share the selection-colored background",
+      "status": "pass",
+      "duration_ms": 199
+    },
+    {
+      "id": "layout-control-1280x720",
+      "viewport": "1280x720",
+      "action": "Открыть Изменить макет, выбрать draft 2×2, закрыть Escape",
+      "expected": "Canonical grid/current/chevron trigger and anchored rows/columns preview restore focus without applying",
+      "status": "pass",
+      "duration_ms": 199
+    },
+    {
+      "id": "visible-signal-management-1280x720",
+      "viewport": "1280x720",
+      "action": "Отключить echoComplex в списке Сигналы",
+      "expected": "Active-pane visible-signal membership, trace and compact legend update immediately",
+      "status": "pass",
+      "duration_ms": 150
+    },
+    {
+      "id": "pane-graph-type-switch-1280x720",
+      "viewport": "1280x720",
+      "action": "Выбрать Спектр в selector активной области",
+      "expected": "Graph type switches, Plotly rerenders and Display settings synchronize",
+      "status": "pass",
+      "duration_ms": 149
+    },
+    {
+      "id": "settings-graph-type-switch-1280x720",
+      "viewport": "1280x720",
+      "action": "Выбрать Спектрограмму в Настройки отображения",
+      "expected": "Display settings selector switches the same active graph and synchronizes pane header",
+      "status": "pass",
+      "duration_ms": 186
     },
     {
       "id": "pristine-1280x720",
@@ -106,7 +202,7 @@
       "action": "Открыть prototype",
       "expected": "Apply disabled, no visible dirty caption, accepted v2 Plotly intact",
       "status": "pass",
-      "duration_ms": 295
+      "duration_ms": 371
     },
     {
       "id": "invalid-1280x720",
@@ -122,7 +218,7 @@
       "action": "Открыть pane ellipsis → Управление графиком поверх inline validation",
       "expected": "Help owns focus; inline validation and disabled Apply remain",
       "status": "pass",
-      "duration_ms": 218
+      "duration_ms": 197
     },
     {
       "id": "dirty-1280x720",
@@ -130,7 +226,7 @@
       "action": "Изменить valid calculation field и дождаться 150ms draft save",
       "expected": "Only value + Apply enablement communicate dirty; no calculation or output change",
       "status": "pass",
-      "duration_ms": 268
+      "duration_ms": 257
     },
     {
       "id": "apply-flush-1280x720",
@@ -138,7 +234,7 @@
       "action": "Создать passive toast, изменить field и немедленно нажать Apply",
       "expected": "Pending 150ms update flushes before snapshot-free Apply; applying keeps old plot",
       "status": "pass",
-      "duration_ms": 307
+      "duration_ms": 285
     },
     {
       "id": "pending-1280x720",
@@ -146,7 +242,7 @@
       "action": "Дождаться принятия Apply revision",
       "expected": "Only active plot has contextual overlay; Plotly geometry remains",
       "status": "pass",
-      "duration_ms": 781
+      "duration_ms": 796
     },
     {
       "id": "ready-1280x720",
@@ -154,7 +250,7 @@
       "action": "Дождаться active output",
       "expected": "Output revision catches applied revision; Apply disabled; passive ready toast",
       "status": "pass",
-      "duration_ms": 652
+      "duration_ms": 651
     },
     {
       "id": "semantic-error-1280x720",
@@ -162,7 +258,7 @@
       "action": "Ввести locally parseable, semantically rejected maximum=2 и нажать Apply",
       "expected": "Apply remains available before server validation; error preserves draft and old output",
       "status": "pass",
-      "duration_ms": 1263
+      "duration_ms": 1195
     },
     {
       "id": "stale-1280x720",
@@ -170,7 +266,7 @@
       "action": "Применить deterministic stale draft maximum=0.333",
       "expected": "Stale response is rejected; warning toast and focused Retry preserve draft/output",
       "status": "pass",
-      "duration_ms": 1248
+      "duration_ms": 1194
     },
     {
       "id": "stale-retry-commit-1280x720",
@@ -178,7 +274,55 @@
       "action": "Нажать Повторить на сохранённом backend draft",
       "expected": "Second snapshot-free Apply succeeds and reaches ready",
       "status": "pass",
-      "duration_ms": 1625
+      "duration_ms": 1628
+    },
+    {
+      "id": "ui-shell-settings-legend-1440x900",
+      "viewport": "1440x900",
+      "action": "Открыть основной экран",
+      "expected": "Toolbar spans the full application canvas; Display settings and upper-right legend are visible",
+      "status": "pass",
+      "duration_ms": 128
+    },
+    {
+      "id": "selected-display-close-1440x900",
+      "viewport": "1440x900",
+      "action": "Добавить и выбрать второй экран",
+      "expected": "Selected tab and its close target share the selection-colored background",
+      "status": "pass",
+      "duration_ms": 236
+    },
+    {
+      "id": "layout-control-1440x900",
+      "viewport": "1440x900",
+      "action": "Открыть Изменить макет, выбрать draft 2×2, закрыть Escape",
+      "expected": "Canonical grid/current/chevron trigger and anchored rows/columns preview restore focus without applying",
+      "status": "pass",
+      "duration_ms": 209
+    },
+    {
+      "id": "visible-signal-management-1440x900",
+      "viewport": "1440x900",
+      "action": "Отключить echoComplex в списке Сигналы",
+      "expected": "Active-pane visible-signal membership, trace and compact legend update immediately",
+      "status": "pass",
+      "duration_ms": 147
+    },
+    {
+      "id": "pane-graph-type-switch-1440x900",
+      "viewport": "1440x900",
+      "action": "Выбрать Спектр в selector активной области",
+      "expected": "Graph type switches, Plotly rerenders and Display settings synchronize",
+      "status": "pass",
+      "duration_ms": 154
+    },
+    {
+      "id": "settings-graph-type-switch-1440x900",
+      "viewport": "1440x900",
+      "action": "Выбрать Спектрограмму в Настройки отображения",
+      "expected": "Display settings selector switches the same active graph and synchronizes pane header",
+      "status": "pass",
+      "duration_ms": 182
     },
     {
       "id": "pristine-1440x900",
@@ -186,7 +330,7 @@
       "action": "Открыть prototype",
       "expected": "Apply disabled, no visible dirty caption, accepted v2 Plotly intact",
       "status": "pass",
-      "duration_ms": 328
+      "duration_ms": 301
     },
     {
       "id": "invalid-1440x900",
@@ -194,7 +338,7 @@
       "action": "Ввести непарсируемый numeric draft",
       "expected": "2px error, Apply disabled, old output retained, no calculation",
       "status": "pass",
-      "duration_ms": 129
+      "duration_ms": 119
     },
     {
       "id": "validation-help-1440x900",
@@ -202,7 +346,7 @@
       "action": "Открыть pane ellipsis → Управление графиком поверх inline validation",
       "expected": "Help owns focus; inline validation and disabled Apply remain",
       "status": "pass",
-      "duration_ms": 248
+      "duration_ms": 234
     },
     {
       "id": "dirty-1440x900",
@@ -210,7 +354,7 @@
       "action": "Изменить valid calculation field и дождаться 150ms draft save",
       "expected": "Only value + Apply enablement communicate dirty; no calculation or output change",
       "status": "pass",
-      "duration_ms": 274
+      "duration_ms": 265
     },
     {
       "id": "apply-flush-1440x900",
@@ -218,7 +362,7 @@
       "action": "Создать passive toast, изменить field и немедленно нажать Apply",
       "expected": "Pending 150ms update flushes before snapshot-free Apply; applying keeps old plot",
       "status": "pass",
-      "duration_ms": 460
+      "duration_ms": 354
     },
     {
       "id": "pending-1440x900",
@@ -226,7 +370,7 @@
       "action": "Дождаться принятия Apply revision",
       "expected": "Only active plot has contextual overlay; Plotly geometry remains",
       "status": "pass",
-      "duration_ms": 688
+      "duration_ms": 740
     },
     {
       "id": "ready-1440x900",
@@ -234,7 +378,7 @@
       "action": "Дождаться active output",
       "expected": "Output revision catches applied revision; Apply disabled; passive ready toast",
       "status": "pass",
-      "duration_ms": 643
+      "duration_ms": 655
     },
     {
       "id": "semantic-error-1440x900",
@@ -242,7 +386,7 @@
       "action": "Ввести locally parseable, semantically rejected maximum=2 и нажать Apply",
       "expected": "Apply remains available before server validation; error preserves draft and old output",
       "status": "pass",
-      "duration_ms": 1338
+      "duration_ms": 1145
     },
     {
       "id": "stale-1440x900",
@@ -250,7 +394,7 @@
       "action": "Применить deterministic stale draft maximum=0.333",
       "expected": "Stale response is rejected; warning toast and focused Retry preserve draft/output",
       "status": "pass",
-      "duration_ms": 1433
+      "duration_ms": 1268
     },
     {
       "id": "stale-retry-commit-1440x900",
@@ -258,7 +402,7 @@
       "action": "Нажать Повторить на сохранённом backend draft",
       "expected": "Second snapshot-free Apply succeeds and reaches ready",
       "status": "pass",
-      "duration_ms": 1652
+      "duration_ms": 1620
     },
     {
       "id": "sizing-minimum-936x696",
@@ -266,7 +410,7 @@
       "action": "Открыть prototype на sizing viewport",
       "expected": "Application canvas keeps minima; undersized viewport uses document scroll without reflow",
       "status": "pass",
-      "duration_ms": 145
+      "duration_ms": 115
     },
     {
       "id": "sizing-undersized-840x620",
@@ -274,10 +418,17 @@
       "action": "Открыть prototype на sizing viewport",
       "expected": "Application canvas keeps minima; undersized viewport uses document scroll without reflow",
       "status": "pass",
-      "duration_ms": 223
+      "duration_ms": 112
     }
   ],
   "screenshots": [
+    "screenshots/regression--shell-settings-legend--1024x768.png",
+    "screenshots/regression--selected-display-close--1024x768.png",
+    "screenshots/overlay--layout-control--top--1024x768.png",
+    "screenshots/overlay--layout-control--after-close--1024x768.png",
+    "screenshots/regression--visible-signals-managed--1024x768.png",
+    "screenshots/regression--graph-type-pane-switch--1024x768.png",
+    "screenshots/regression--graph-type-settings-switch--1024x768.png",
     "screenshots/state--pristine--1024x768.png",
     "screenshots/state--invalid--1024x768.png",
     "screenshots/overlay--settings-validation-help--top--1024x768.png",
@@ -293,6 +444,13 @@
     "screenshots/overlay--stale-error-retry--top--1024x768.png",
     "screenshots/state--stale--1024x768.png",
     "screenshots/overlay--stale-error-retry--after-close--1024x768.png",
+    "screenshots/regression--shell-settings-legend--1280x720.png",
+    "screenshots/regression--selected-display-close--1280x720.png",
+    "screenshots/overlay--layout-control--top--1280x720.png",
+    "screenshots/overlay--layout-control--after-close--1280x720.png",
+    "screenshots/regression--visible-signals-managed--1280x720.png",
+    "screenshots/regression--graph-type-pane-switch--1280x720.png",
+    "screenshots/regression--graph-type-settings-switch--1280x720.png",
     "screenshots/state--pristine--1280x720.png",
     "screenshots/state--invalid--1280x720.png",
     "screenshots/overlay--settings-validation-help--top--1280x720.png",
@@ -308,6 +466,13 @@
     "screenshots/overlay--stale-error-retry--top--1280x720.png",
     "screenshots/state--stale--1280x720.png",
     "screenshots/overlay--stale-error-retry--after-close--1280x720.png",
+    "screenshots/regression--shell-settings-legend--1440x900.png",
+    "screenshots/regression--selected-display-close--1440x900.png",
+    "screenshots/overlay--layout-control--top--1440x900.png",
+    "screenshots/overlay--layout-control--after-close--1440x900.png",
+    "screenshots/regression--visible-signals-managed--1440x900.png",
+    "screenshots/regression--graph-type-pane-switch--1440x900.png",
+    "screenshots/regression--graph-type-settings-switch--1440x900.png",
     "screenshots/state--pristine--1440x900.png",
     "screenshots/state--invalid--1440x900.png",
     "screenshots/overlay--settings-validation-help--top--1440x900.png",
@@ -687,6 +852,12 @@
       "calculationsCommitted": 0,
       "fieldUpdates": 0,
       "backendDraft": {},
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [],
       "dirty": false,
       "invalid": false
@@ -699,6 +870,12 @@
       "calculationsCommitted": 0,
       "fieldUpdates": 0,
       "backendDraft": {},
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [],
       "dirty": true,
       "invalid": true
@@ -716,6 +893,12 @@
           "0.3"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -744,6 +927,12 @@
           "0.31"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -793,6 +982,12 @@
           "0.31"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -842,6 +1037,12 @@
           "0.31"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -891,6 +1092,12 @@
           "2"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -930,6 +1137,12 @@
           "2"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -969,6 +1182,12 @@
           "0.333"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1003,6 +1222,12 @@
       "calculationsCommitted": 0,
       "fieldUpdates": 0,
       "backendDraft": {},
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [],
       "dirty": false,
       "invalid": false
@@ -1015,6 +1240,12 @@
       "calculationsCommitted": 0,
       "fieldUpdates": 0,
       "backendDraft": {},
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [],
       "dirty": true,
       "invalid": true
@@ -1032,6 +1263,12 @@
           "0.3"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1060,6 +1297,12 @@
           "0.31"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1109,6 +1352,12 @@
           "0.31"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1158,6 +1407,12 @@
           "0.31"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1207,6 +1462,12 @@
           "2"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1246,6 +1507,12 @@
           "2"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1285,6 +1552,12 @@
           "0.333"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1319,6 +1592,12 @@
       "calculationsCommitted": 0,
       "fieldUpdates": 0,
       "backendDraft": {},
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [],
       "dirty": false,
       "invalid": false
@@ -1331,6 +1610,12 @@
       "calculationsCommitted": 0,
       "fieldUpdates": 0,
       "backendDraft": {},
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [],
       "dirty": true,
       "invalid": true
@@ -1348,6 +1633,12 @@
           "0.3"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1376,6 +1667,12 @@
           "0.31"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1425,6 +1722,12 @@
           "0.31"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1474,6 +1777,12 @@
           "0.31"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1523,6 +1832,12 @@
           "2"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1562,6 +1877,12 @@
           "2"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1601,6 +1922,12 @@
           "0.333"
         ]
       },
+      "activePane": "pane-time",
+      "activePlotType": "time",
+      "visibleSignals": [
+        "radarPulse",
+        "echoComplex"
+      ],
       "eventLog": [
         {
           "type": "field_update",
@@ -1629,6 +1956,18 @@
     }
   },
   "overlay_evidence": {
+    "1024x768:layout_control": {
+      "bottom_to_top": [
+        "application",
+        "layout_popover"
+      ],
+      "focus_owner": "layout_close_then_selected_segment",
+      "restore": "layout_trigger",
+      "screenshots": [
+        "screenshots/overlay--layout-control--top--1024x768.png",
+        "screenshots/overlay--layout-control--after-close--1024x768.png"
+      ]
+    },
     "1024x768:settings_validation_with_help": {
       "bottom_to_top": [
         "inline_validation",
@@ -1668,6 +2007,18 @@
       "screenshots": [
         "screenshots/overlay--stale-error-retry--top--1024x768.png",
         "screenshots/overlay--stale-error-retry--after-close--1024x768.png"
+      ]
+    },
+    "1280x720:layout_control": {
+      "bottom_to_top": [
+        "application",
+        "layout_popover"
+      ],
+      "focus_owner": "layout_close_then_selected_segment",
+      "restore": "layout_trigger",
+      "screenshots": [
+        "screenshots/overlay--layout-control--top--1280x720.png",
+        "screenshots/overlay--layout-control--after-close--1280x720.png"
       ]
     },
     "1280x720:settings_validation_with_help": {
@@ -1711,6 +2062,18 @@
         "screenshots/overlay--stale-error-retry--after-close--1280x720.png"
       ]
     },
+    "1440x900:layout_control": {
+      "bottom_to_top": [
+        "application",
+        "layout_popover"
+      ],
+      "focus_owner": "layout_close_then_selected_segment",
+      "restore": "layout_trigger",
+      "screenshots": [
+        "screenshots/overlay--layout-control--top--1440x900.png",
+        "screenshots/overlay--layout-control--after-close--1440x900.png"
+      ]
+    },
     "1440x900:settings_validation_with_help": {
       "bottom_to_top": [
         "inline_validation",
@@ -1751,6 +2114,335 @@
         "screenshots/overlay--stale-error-retry--top--1440x900.png",
         "screenshots/overlay--stale-error-retry--after-close--1440x900.png"
       ]
+    }
+  },
+  "regression_evidence": {
+    "1024x768": {
+      "shell": {
+        "app": {
+          "x": 8,
+          "y": 8,
+          "width": 1008,
+          "height": 752,
+          "right": 1016,
+          "bottom": 760
+        },
+        "toolbar": {
+          "x": 8,
+          "y": 8,
+          "width": 1008,
+          "height": 44,
+          "right": 1016,
+          "bottom": 52
+        },
+        "settings": {
+          "x": 702.8125,
+          "y": 60,
+          "width": 313.1875,
+          "height": 420.921875,
+          "right": 1016,
+          "bottom": 480.921875
+        },
+        "canvas": {
+          "x": 18,
+          "y": 176,
+          "width": 328.40625,
+          "height": 294.921875,
+          "right": 346.40625,
+          "bottom": 470.921875
+        },
+        "legend": {
+          "x": 188.40625,
+          "y": 184,
+          "width": 148,
+          "height": 46,
+          "right": 336.40625,
+          "bottom": 230
+        },
+        "paneHeader": {
+          "x": 18,
+          "y": 144,
+          "width": 328.40625,
+          "height": 32,
+          "right": 346.40625,
+          "bottom": 176
+        },
+        "controls": {
+          "x": 100.40625,
+          "y": 146,
+          "width": 244,
+          "height": 28,
+          "right": 344.40625,
+          "bottom": 174
+        },
+        "settingsTitle": "Настройки отображения",
+        "settingsTabs": [
+          "Отображение",
+          "Время",
+          "Измерения"
+        ],
+        "settingsFields": [
+          "settings-field-display.plot_type",
+          "settings-field-display.show_legend"
+        ]
+      },
+      "shell_screenshot": "screenshots/regression--shell-settings-legend--1024x768.png",
+      "selected_close": {
+        "colors": {
+          "shell": "rgb(230, 245, 252)",
+          "close": "rgb(230, 245, 252)"
+        },
+        "size": {
+          "width": 28,
+          "height": 32
+        },
+        "focus_owner": "selected_display_close"
+      },
+      "selected_close_screenshot": "screenshots/regression--selected-display-close--1024x768.png",
+      "layout": {
+        "bottom_to_top": [
+          "application",
+          "layout_popover"
+        ],
+        "focus_owner": "layout_close_then_selected_segment",
+        "restore": "layout_trigger",
+        "screenshots": [
+          "screenshots/overlay--layout-control--top--1024x768.png",
+          "screenshots/overlay--layout-control--after-close--1024x768.png"
+        ]
+      },
+      "visible_signals": {
+        "before": [
+          "radarPulse",
+          "echoComplex"
+        ],
+        "after": [
+          "radarPulse"
+        ]
+      },
+      "visible_signals_screenshot": "screenshots/regression--visible-signals-managed--1024x768.png",
+      "pane_graph_type": "spectrum",
+      "pane_graph_type_screenshot": "screenshots/regression--graph-type-pane-switch--1024x768.png",
+      "settings_graph_type": "spectrogram",
+      "settings_graph_type_screenshot": "screenshots/regression--graph-type-settings-switch--1024x768.png"
+    },
+    "1280x720": {
+      "shell": {
+        "app": {
+          "x": 8,
+          "y": 8,
+          "width": 1264,
+          "height": 704,
+          "right": 1272,
+          "bottom": 712
+        },
+        "toolbar": {
+          "x": 8,
+          "y": 8,
+          "width": 1264,
+          "height": 44,
+          "right": 1272,
+          "bottom": 52
+        },
+        "settings": {
+          "x": 920.40625,
+          "y": 60,
+          "width": 351.59375,
+          "height": 385.640625,
+          "right": 1272,
+          "bottom": 445.640625
+        },
+        "canvas": {
+          "x": 18,
+          "y": 176,
+          "width": 437.203125,
+          "height": 259.640625,
+          "right": 455.203125,
+          "bottom": 435.640625
+        },
+        "legend": {
+          "x": 297.203125,
+          "y": 184,
+          "width": 148,
+          "height": 46,
+          "right": 445.203125,
+          "bottom": 230
+        },
+        "paneHeader": {
+          "x": 18,
+          "y": 144,
+          "width": 437.203125,
+          "height": 32,
+          "right": 455.203125,
+          "bottom": 176
+        },
+        "controls": {
+          "x": 209.203125,
+          "y": 146,
+          "width": 244,
+          "height": 28,
+          "right": 453.203125,
+          "bottom": 174
+        },
+        "settingsTitle": "Настройки отображения",
+        "settingsTabs": [
+          "Отображение",
+          "Время",
+          "Измерения"
+        ],
+        "settingsFields": [
+          "settings-field-display.plot_type",
+          "settings-field-display.show_legend"
+        ]
+      },
+      "shell_screenshot": "screenshots/regression--shell-settings-legend--1280x720.png",
+      "selected_close": {
+        "colors": {
+          "shell": "rgb(230, 245, 252)",
+          "close": "rgb(230, 245, 252)"
+        },
+        "size": {
+          "width": 28,
+          "height": 32
+        },
+        "focus_owner": "selected_display_close"
+      },
+      "selected_close_screenshot": "screenshots/regression--selected-display-close--1280x720.png",
+      "layout": {
+        "bottom_to_top": [
+          "application",
+          "layout_popover"
+        ],
+        "focus_owner": "layout_close_then_selected_segment",
+        "restore": "layout_trigger",
+        "screenshots": [
+          "screenshots/overlay--layout-control--top--1280x720.png",
+          "screenshots/overlay--layout-control--after-close--1280x720.png"
+        ]
+      },
+      "visible_signals": {
+        "before": [
+          "radarPulse",
+          "echoComplex"
+        ],
+        "after": [
+          "radarPulse"
+        ]
+      },
+      "visible_signals_screenshot": "screenshots/regression--visible-signals-managed--1280x720.png",
+      "pane_graph_type": "spectrum",
+      "pane_graph_type_screenshot": "screenshots/regression--graph-type-pane-switch--1280x720.png",
+      "settings_graph_type": "spectrogram",
+      "settings_graph_type_screenshot": "screenshots/regression--graph-type-settings-switch--1280x720.png"
+    },
+    "1440x900": {
+      "shell": {
+        "app": {
+          "x": 8,
+          "y": 8,
+          "width": 1424,
+          "height": 884,
+          "right": 1432,
+          "bottom": 892
+        },
+        "toolbar": {
+          "x": 8,
+          "y": 8,
+          "width": 1424,
+          "height": 44,
+          "right": 1432,
+          "bottom": 52
+        },
+        "settings": {
+          "x": 1056.40625,
+          "y": 60,
+          "width": 375.59375,
+          "height": 517.953125,
+          "right": 1432,
+          "bottom": 577.953125
+        },
+        "canvas": {
+          "x": 18,
+          "y": 176,
+          "width": 505.203125,
+          "height": 391.953125,
+          "right": 523.203125,
+          "bottom": 567.953125
+        },
+        "legend": {
+          "x": 365.203125,
+          "y": 184,
+          "width": 148,
+          "height": 46,
+          "right": 513.203125,
+          "bottom": 230
+        },
+        "paneHeader": {
+          "x": 18,
+          "y": 144,
+          "width": 505.203125,
+          "height": 32,
+          "right": 523.203125,
+          "bottom": 176
+        },
+        "controls": {
+          "x": 277.203125,
+          "y": 146,
+          "width": 244,
+          "height": 28,
+          "right": 521.203125,
+          "bottom": 174
+        },
+        "settingsTitle": "Настройки отображения",
+        "settingsTabs": [
+          "Отображение",
+          "Время",
+          "Измерения"
+        ],
+        "settingsFields": [
+          "settings-field-display.plot_type",
+          "settings-field-display.show_legend"
+        ]
+      },
+      "shell_screenshot": "screenshots/regression--shell-settings-legend--1440x900.png",
+      "selected_close": {
+        "colors": {
+          "shell": "rgb(230, 245, 252)",
+          "close": "rgb(230, 245, 252)"
+        },
+        "size": {
+          "width": 28,
+          "height": 32
+        },
+        "focus_owner": "selected_display_close"
+      },
+      "selected_close_screenshot": "screenshots/regression--selected-display-close--1440x900.png",
+      "layout": {
+        "bottom_to_top": [
+          "application",
+          "layout_popover"
+        ],
+        "focus_owner": "layout_close_then_selected_segment",
+        "restore": "layout_trigger",
+        "screenshots": [
+          "screenshots/overlay--layout-control--top--1440x900.png",
+          "screenshots/overlay--layout-control--after-close--1440x900.png"
+        ]
+      },
+      "visible_signals": {
+        "before": [
+          "radarPulse",
+          "echoComplex"
+        ],
+        "after": [
+          "radarPulse"
+        ]
+      },
+      "visible_signals_screenshot": "screenshots/regression--visible-signals-managed--1440x900.png",
+      "pane_graph_type": "spectrum",
+      "pane_graph_type_screenshot": "screenshots/regression--graph-type-pane-switch--1440x900.png",
+      "settings_graph_type": "spectrogram",
+      "settings_graph_type_screenshot": "screenshots/regression--graph-type-settings-switch--1440x900.png"
     }
   },
   "browser_errors": []

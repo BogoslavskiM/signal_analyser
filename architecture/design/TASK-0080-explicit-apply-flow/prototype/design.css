@@ -57,8 +57,10 @@ button img {
 }
 
 .application-toolbar {
+  width: 100%;
   min-width: 0;
   min-height: 44px;
+  align-self: stretch;
   display: flex;
   align-items: center;
   gap: 24px;
@@ -292,6 +294,20 @@ button img {
 .display-tab-close:active { background: var(--button-active); }
 .display-tab-close img { width: 14px; height: 14px; }
 
+.display-tab-shell.is-selected .display-tab-close {
+  background: var(--accent-soft);
+}
+
+.display-tab-shell.is-selected .display-tab-close:hover {
+  background: var(--row-selected-analytical);
+  color: var(--text);
+}
+
+.display-tab-shell.is-selected .display-tab-close:active {
+  background: var(--accent-soft);
+  color: var(--accent-active);
+}
+
 .display-tab-scroll {
   position: absolute;
   top: 0;
@@ -392,6 +408,23 @@ button img {
 
 .layout-grid-icon i {
   border: 1px solid currentColor;
+}
+
+.layout-current {
+  min-width: 30px;
+  white-space: nowrap;
+}
+
+.layout-chevron {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  object-fit: contain;
+  transition: transform var(--duration-fast) ease;
+}
+
+.layout-trigger[aria-expanded="true"] .layout-chevron {
+  transform: rotate(180deg);
 }
 
 .plot-grid {
@@ -1840,57 +1873,8 @@ button img {
   display: none !important;
 }
 
-@container (max-width: 330px) {
-  .settings-field-row {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto 32px auto;
-    row-gap: 4px;
-    padding: 6px 12px;
-  }
-
-  .settings-label {
-    min-height: 20px;
-  }
-
-  .field-message {
-    grid-column: 1;
-  }
-}
-
-@media (max-width: 1280px) {
-  .main-stage {
-    grid-template-columns: minmax(0, 1fr) 340px;
-  }
-
-  .plot-grid {
-    gap: 6px;
-    padding: 6px;
-  }
-}
-
 @media (max-width: 1080px) {
-  body { padding: 6px; }
-  .app-shell { gap: 6px; }
-  .main-stage { grid-template-columns: minmax(0, 1fr) 300px; gap: 6px; }
-  .application-toolbar-title { max-width: 230px; overflow: hidden; text-overflow: ellipsis; }
-  .application-toolbar-version { display: none; }
-  .application-toolbar-separator { display: none; }
-  .plot-pane-header { grid-template-columns: minmax(38px, 1fr) minmax(180px, 244px); gap: 4px; padding: 0 2px 0 6px; }
-  .plot-legend { max-width: 118px; padding: 4px 6px; }
-  .plot-legend b { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-  .settings-tabs button { min-width: 96px; padding: 4px 8px; }
   .layout-popover { width: 354px; }
-}
-
-@media (max-height: 740px) {
-  .workspace-titlebar,
-  .settings-heading {
-    padding: 0 12px;
-  }
-
-  .settings-scroll {
-    padding-top: 6px;
-  }
 }
 
 /* TASK-0080 additive explicit-Apply contract. The accepted v2 composition is

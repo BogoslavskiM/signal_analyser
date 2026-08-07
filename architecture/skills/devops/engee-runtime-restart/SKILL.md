@@ -23,29 +23,23 @@ report.
 
 ## Общие правила
 
-1. Сначала получи обязательный task lock из `devops/devops-workflow`.
-2. Используй только production `https://engee.com`; devhub и fallback
+1. Используй только production `https://engee.com`; devhub и fallback
    запрещены.
-3. До runtime operation вызови `engee_status`. Не полагайся на auto-start.
-4. Проверь, что Engee checkout существует и имеет ожидаемый origin. Только на
+2. До runtime operation вызови `engee_status`. Не полагайся на auto-start.
+3. Проверь, что Engee checkout существует и имеет ожидаемый origin. Только на
    production pod выполни preflight из `devops/devops-workflow`: проверь
    `git status --porcelain`, при dirty выполни `git add .`, затем `git stash`,
    и потребуй чистый status. Локально эти команды не выполняй никогда.
-5. После cleanup проверь соответствие HEAD `expected_revision`. Restart не
+4. После cleanup проверь соответствие HEAD `expected_revision`. Restart не
    выполняет fetch, pull, branch checkout, commit или push; созданный remote
    stash автоматически не восстанавливает и не удаляет.
-6. Выполни не более одного restart-цикла на handoff. Повторяющийся restart без
+5. Выполни не более одного restart-цикла на handoff. Повторяющийся restart без
    новой диагностики запрещён.
-7. После операции проверь pod readiness, application readiness, production URL
+6. После операции проверь pod readiness, application readiness, production URL
    и обслуживаемую revision.
-8. При любом неуспехе примени
+7. При любом неуспехе примени
    `devops/engee-deployment-diagnostics`, сохрани очищенные logs/evidence в
    `architecture/logs/**` и верни evidence-based owner routing.
-9. После последней runtime/readiness/diagnostics/evidence command немедленно,
-   следующей production eval в `finally`, установи
-   `mcp_devops_genie_is_bysy = false` и проверь output `false`. Только после
-   release формируй report. Не жди завершения worker/агента и не удерживай lock
-   во время отчёта; правило действует также для blocked и failed result.
 
 ## `restart_application`
 
@@ -78,16 +72,10 @@ evidence указывает на pod-level состояние.
    состояния; содержимое `/user` должно сохраниться.
 3. Если pod уже stopped, отметь stop как `not_needed`.
 4. Вызови `engee_start` и дождись ready result.
-5. Поскольку in-memory lock исчезает вместе со старым pod, сразу после ready и
-   до любой другой task action снова установи
-   `mcp_devops_genie_is_bysy = true` в production Julia `Main`.
-6. Проверь persisted checkout и exact SHA, затем восстанови приложение через
+5. Проверь persisted checkout и exact SHA, затем восстанови приложение через
    `engee.genie.start(app_path, log_file=log_file)`.
-7. Проверь application readiness, URL и revision.
-
-In-memory boolean lock является временным решением и не даёт строгой
-межпроцессной гарантии в коротком интервале замены pod. Не расширяй этот режим
-до автоматических повторных stop/start циклов.
+6. Проверь application readiness, URL и revision. Не расширяй этот режим
+   до автоматических повторных stop/start циклов.
 
 ## Отчёт
 
@@ -96,7 +84,6 @@ In-memory boolean lock является временным решением и �
 ```text
 request/restart reason:
 expected/actual revision:
-lock acquired/wait seconds:
 pod status before:
 pod stop: performed | not_needed | blocked | not_run
 pod start: performed | not_needed | blocked | not_run
@@ -111,8 +98,6 @@ application URL/readiness/revision:
 diagnostics: performed | not_needed | blocked
 failure owner:
 diagnosis ref/log refs:
-lock release: performed | reset_by_pod_restart | blocked
-lock release timing: immediately_after_last_operational_command
 ```
 
 Добавь `devops/engee-runtime-restart` в `applied_skills`. Успех разрешён только

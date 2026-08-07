@@ -32,6 +32,12 @@
       "pane-spectrogram": "spectrogram",
       "pane-persistence": "persistence"
     },
+    visibleSignalsByPane: {
+      "pane-time": ["radarPulse", "echoComplex"],
+      "pane-spectrum": ["radarPulse"],
+      "pane-spectrogram": ["radarPulse"],
+      "pane-persistence": ["radarPulse"]
+    },
     settingsPage: "display",
     inspectorPage: "signals",
     visibleColumns: ["name", "color", "sample_rate", "samples", "duration", "type"],
@@ -357,6 +363,11 @@
     return state.paneTypes[state.activePane];
   }
 
+  function visibleSignalNames(paneId) {
+    if (!state.visibleSignalsByPane[paneId]) state.visibleSignalsByPane[paneId] = ["radarPulse"];
+    return state.visibleSignalsByPane[paneId];
+  }
+
   function visiblePaneIds() {
     var count = state.appliedRows * state.appliedColumns;
     var ids = PANE_ORDER.slice(0, Math.min(PANE_ORDER.length, count));
@@ -371,16 +382,17 @@
     return "<div class='plot-chart plotly-host' data-plotly-pane='" + escapeHtml(paneId) + "' data-plotly-type='" + escapeHtml(type) + "' role='application' aria-label='Интерактивный график: " + escapeHtml(plotLabel(type)) + "'></div>";
   }
 
-  function plotlyData(type, colors) {
+  function plotlyData(type, colors, paneId) {
+    var visibleSignals = visibleSignalNames(paneId);
     var x = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     if (type === "time") {
-      return [
-        { type: "scatter", mode: "lines", x: x, y: [0.1, 0.82, -0.28, 0.58, -0.12, 0.96, -0.42, 0.44, -0.18, 0.7, 0.08], line: { color: colors.accent, width: 2 }, hovertemplate: "t=%{x}<br>radarPulse=%{y:.2f}<extra></extra>" },
-        { type: "scatter", mode: "lines", x: x, y: [-0.18, 0.12, -0.22, 0.24, -0.1, 0.18, -0.16, 0.22, -0.08, 0.14, -0.12], line: { color: colors.warning, width: 2 }, hovertemplate: "t=%{x}<br>echoComplex=%{y:.2f}<extra></extra>" }
-      ];
+      var traces = [];
+      if (visibleSignals.indexOf("radarPulse") >= 0) traces.push({ name: "radarPulse", type: "scatter", mode: "lines", x: x, y: [0.1, 0.82, -0.28, 0.58, -0.12, 0.96, -0.42, 0.44, -0.18, 0.7, 0.08], line: { color: colors.accent, width: 2 }, hovertemplate: "t=%{x}<br>radarPulse=%{y:.2f}<extra></extra>" });
+      if (visibleSignals.indexOf("echoComplex") >= 0) traces.push({ name: "echoComplex", type: "scatter", mode: "lines", x: x, y: [-0.18, 0.12, -0.22, 0.24, -0.1, 0.18, -0.16, 0.22, -0.08, 0.14, -0.12], line: { color: colors.warning, width: 2 }, hovertemplate: "t=%{x}<br>echoComplex=%{y:.2f}<extra></extra>" });
+      return traces;
     }
     if (type === "spectrum") {
-      return [{ type: "scatter", mode: "lines", x: [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500], y: [-82, -78, -70, -62, -48, -16, -52, -68, -76, -80, -84], fill: "tozeroy", fillcolor: colors.accentSoft, line: { color: colors.accent, width: 2 }, hovertemplate: "%{x} kHz<br>%{y} dB<extra></extra>" }];
+      return visibleSignals.length ? [{ name: visibleSignals[0], type: "scatter", mode: "lines", x: [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500], y: [-82, -78, -70, -62, -48, -16, -52, -68, -76, -80, -84], fill: "tozeroy", fillcolor: colors.accentSoft, line: { color: colors.accent, width: 2 }, hovertemplate: "%{x} kHz<br>%{y} dB<extra></extra>" }] : [];
     }
     var z = [
       [0.08, 0.14, 0.2, 0.36, 0.64, 0.92, 0.58, 0.3, 0.18, 0.1],
@@ -389,7 +401,7 @@
       [0.04, 0.1, 0.2, 0.4, 0.7, 0.84, 0.48, 0.22, 0.1, 0.04],
       [0.02, 0.06, 0.14, 0.3, 0.54, 0.68, 0.38, 0.18, 0.08, 0.02]
     ];
-    return [{ type: "heatmap", x: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], y: type === "spectrogram" ? [0, 125, 250, 375, 500] : [-100, -80, -60, -40, -20], z: z, showscale: false, colorscale: [[0, colors.surface], [0.35, colors.accentSoft], [0.7, colors.accent], [1, colors.accentActive]], hovertemplate: type === "spectrogram" ? "t=%{x}s<br>f=%{y}kHz<br>%{z:.2f}<extra></extra>" : "f=%{x}kHz<br>P=%{y}dB<br>%{z:.2f}<extra></extra>" }];
+    return visibleSignals.length ? [{ name: visibleSignals[0], type: "heatmap", x: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], y: type === "spectrogram" ? [0, 125, 250, 375, 500] : [-100, -80, -60, -40, -20], z: z, showscale: false, colorscale: [[0, colors.surface], [0.35, colors.accentSoft], [0.7, colors.accent], [1, colors.accentActive]], hovertemplate: type === "spectrogram" ? "t=%{x}s<br>f=%{y}kHz<br>%{z:.2f}<extra></extra>" : "f=%{x}kHz<br>P=%{y}dB<br>%{z:.2f}<extra></extra>" }] : [];
   }
 
   function renderInteractivePlots() {
@@ -420,7 +432,7 @@
         yaxis: { title: { text: type === "time" ? "Амплитуда" : type === "spectrum" ? "Мощность, dB" : type === "spectrogram" ? "Частота, kHz" : "Мощность, dB", standoff: 4 }, automargin: false, fixedrange: false, gridcolor: colors.line, linecolor: colors.muted, linewidth: 1, zeroline: false, tickfont: { size: 10 } }
       };
       var config = { displayModeBar: false, displaylogo: false, showTips: false, responsive: true, scrollZoom: false, doubleClick: "reset+autosize", doubleClickDelay: 300 };
-      return Plotly.newPlot(host, plotlyData(type, colors), layout, config).then(function () {
+      return Plotly.newPlot(host, plotlyData(type, colors, host.getAttribute("data-plotly-pane")), layout, config).then(function () {
         host.querySelectorAll(".modebar-container, .modebar").forEach(function (element) { element.remove(); });
         host.setAttribute("data-plotly-ready", "true");
       });
@@ -431,6 +443,7 @@
 
   function plotStatusMarkup(paneId) {
     var status = state.plotStatus[paneId];
+    if (!status && visibleSignalNames(paneId).length === 0) status = "empty";
     if (status === "loading") {
       return "<div class='plot-state-overlay' role='status'><span class='spinner' aria-hidden='true'></span><span>Обновление графика…</span></div>";
     }
@@ -454,12 +467,21 @@
     plotGrid.classList.toggle("is-dense-layout", denseLayout);
     plotGrid.style.gridTemplateColumns = "repeat(" + state.appliedColumns + ", minmax(" + (denseLayout ? "260px" : "0") + ", 1fr))";
     plotGrid.style.gridTemplateRows = "repeat(" + state.appliedRows + ", minmax(" + (denseLayout ? "170px" : "0") + ", 1fr))";
-    layoutTrigger.querySelector("span:last-child").textContent = state.appliedRows + " × " + state.appliedColumns;
+    layoutTrigger.querySelector(".layout-current").textContent = state.appliedRows + " × " + state.appliedColumns;
+    layoutTrigger.setAttribute("aria-label", "Изменить макет, текущий макет " + state.appliedRows + " на " + state.appliedColumns);
     plotGrid.innerHTML = paneIds.map(function (paneId, index) {
       var type = state.paneTypes[paneId];
       var active = paneId === state.activePane;
-      var legend = state.values["display.show_legend"]
-        ? "<div class='plot-legend' aria-label='Легенда: radarPulse — основной широкополосный сигнал" + (type === "time" ? ", echoComplex — опорный комплексный сигнал" : "") + "'><span><i></i><b>radarPulse — основной широкополосный сигнал</b></span>" + (type === "time" ? "<span><i></i><b>echoComplex — опорный комплексный сигнал</b></span>" : "") + "</div>"
+      var visibleSignals = visibleSignalNames(paneId);
+      var legendSignals = type === "time"
+        ? ["radarPulse", "echoComplex"].filter(function (name) { return visibleSignals.indexOf(name) >= 0; })
+        : visibleSignals.slice(0, 1);
+      var legendRows = legendSignals.map(function (name) {
+        var description = name === "radarPulse" ? "основной широкополосный сигнал" : name === "echoComplex" ? "опорный комплексный сигнал" : "видимый сигнал";
+        return "<span><i></i><b>" + escapeHtml(name + " — " + description) + "</b></span>";
+      }).join("");
+      var legend = state.values["display.show_legend"] && legendRows
+        ? "<div class='plot-legend' aria-label='Легенда: " + escapeHtml(legendSignals.join(", ")) + "'>" + legendRows + "</div>"
         : "";
       return "<section class='plot-pane" + (active ? " is-active" : "") + "' tabindex='0' data-pane-id='" + paneId + "' data-design-id='" + paneId + "' aria-label='Область " + (index + 1) + ", " + escapeHtml(plotLabel(type)) + (active ? ", активная" : "") + "'>" +
         "<header class='plot-pane-header'><span class='plot-pane-title'>Область " + (index + 1) + "</span>" +
@@ -476,6 +498,7 @@
         state.activePane = paneId;
         plotGrid.querySelectorAll(".plot-pane").forEach(function (item) { item.classList.toggle("is-active", item === pane); });
         renderSettings();
+        if (state.inspectorPage === "signals") renderSignals();
       }, true);
       pane.addEventListener("click", function (event) {
         if (event.target.closest("button, [data-plotly-pane]")) return;
@@ -497,6 +520,7 @@
           closeGraphHelp(false);
           renderPlots();
           renderSettings();
+          if (state.inspectorPage === "signals") renderSignals();
           openPlotMenu(plotGrid.querySelector("[data-plot-menu-trigger='" + paneId + "']"));
         } else {
           openPlotMenu(button);
@@ -512,6 +536,7 @@
     closeGraphHelp(false);
     renderPlots();
     renderSettings();
+    if (state.inspectorPage === "signals") renderSignals();
   }
 
   function group(title, fields) {
@@ -994,7 +1019,9 @@
     if (!head || !body) return;
     if (state.visibleColumns.indexOf("name") < 0) state.visibleColumns.unshift("name");
     var visibleDefinitions = COLUMN_DEFINITIONS.filter(function (column) { return state.visibleColumns.indexOf(column.id) >= 0; });
-    head.innerHTML = "<th><input type='checkbox' checked aria-label='Показать все сигналы'></th>" + visibleDefinitions.map(function (column) { return "<th>" + escapeHtml(column.label) + "</th>"; }).join("");
+    var activeVisibleSignals = visibleSignalNames(state.activePane);
+    var everySignalVisible = SIGNALS.length > 0 && SIGNALS.every(function (signal) { return activeVisibleSignals.indexOf(signal.name) >= 0; });
+    head.innerHTML = "<th><input type='checkbox' data-signals-toggle-all aria-label='Показать все сигналы'" + (everySignalVisible ? " checked" : "") + "></th>" + visibleDefinitions.map(function (column) { return "<th>" + escapeHtml(column.label) + "</th>"; }).join("");
     var query = state.search.trim().toLocaleLowerCase("ru");
     var filtered = SIGNALS.filter(function (signal) { return !query || signal.name.toLocaleLowerCase("ru").indexOf(query) >= 0; });
     body.innerHTML = filtered.map(function (signal, index) {
@@ -1014,9 +1041,16 @@
         }
         return "<td class='" + cellClass.trim() + "'>" + value + (last ? actions : "") + "</td>";
       }).join("");
-      return "<tr data-signal-row='" + escapeHtml(signal.name) + "' class='" + (index === 0 ? "is-selected" : "") + "'><td><input type='checkbox' data-signal-visible='" + escapeHtml(signal.name) + "' aria-label='Показать сигнал " + escapeHtml(signal.name) + "'" + (signal.visible ? " checked" : "") + "></td>" + cells + "</tr>";
+      return "<tr data-signal-row='" + escapeHtml(signal.name) + "' class='" + (index === 0 ? "is-selected" : "") + "'><td><input type='checkbox' data-signal-visible='" + escapeHtml(signal.name) + "' aria-label='Показать сигнал " + escapeHtml(signal.name) + "'" + (activeVisibleSignals.indexOf(signal.name) >= 0 ? " checked" : "") + "></td>" + cells + "</tr>";
     }).join("");
     empty.hidden = filtered.length !== 0;
+    var toggleAll = head.querySelector("[data-signals-toggle-all]");
+    toggleAll.indeterminate = !everySignalVisible && activeVisibleSignals.length > 0;
+    toggleAll.addEventListener("change", function () {
+      state.visibleSignalsByPane[state.activePane] = toggleAll.checked ? SIGNALS.map(function (signal) { return signal.name; }) : [];
+      renderPlots();
+      renderSignals();
+    });
     body.querySelectorAll("tr").forEach(function (row) {
       row.addEventListener("click", function (event) {
         if (event.target.closest("input, button")) return;
@@ -1031,8 +1065,13 @@
     });
     body.querySelectorAll("[data-signal-visible]").forEach(function (checkbox) {
       checkbox.addEventListener("change", function () {
-        var signal = SIGNALS.find(function (item) { return item.name === checkbox.getAttribute("data-signal-visible"); });
-        if (signal) signal.visible = checkbox.checked;
+        var signalName = checkbox.getAttribute("data-signal-visible");
+        var visibleSignals = visibleSignalNames(state.activePane);
+        var signalIndex = visibleSignals.indexOf(signalName);
+        if (checkbox.checked && signalIndex < 0) visibleSignals.push(signalName);
+        if (!checkbox.checked && signalIndex >= 0) visibleSignals.splice(signalIndex, 1);
+        renderPlots();
+        renderSignals();
       });
     });
     body.querySelectorAll("[data-signal-row-action]").forEach(function (button) {
@@ -1096,6 +1135,8 @@
   }
 
   function openLayoutPopover() {
+    state.layoutRows = state.appliedRows;
+    state.layoutColumns = state.appliedColumns;
     renderLayoutSegments();
     layoutPopover.hidden = false;
     layoutTrigger.setAttribute("aria-expanded", "true");
@@ -1109,6 +1150,8 @@
   function closeLayoutPopover(restore) {
     if (layoutPopover.hidden) return;
     closeSelect(false);
+    state.layoutRows = state.appliedRows;
+    state.layoutColumns = state.appliedColumns;
     layoutPopover.hidden = true;
     layoutTrigger.setAttribute("aria-expanded", "false");
     if (restore) layoutTrigger.focus();
@@ -1564,6 +1607,9 @@
         calculationsCommitted: state.calculationsCommitted,
         fieldUpdates: state.fieldUpdates,
         backendDraft: JSON.parse(JSON.stringify(state.backendDraft)),
+        activePane: state.activePane,
+        activePlotType: activePlotType(),
+        visibleSignals: visibleSignalNames(state.activePane).slice(),
         eventLog: JSON.parse(JSON.stringify(state.eventLog)),
         dirty: hasDirtyDraft(),
         invalid: hasLocalInvalidDraft()

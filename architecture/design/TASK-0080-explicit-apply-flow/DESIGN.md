@@ -3,11 +3,12 @@
 - ROLE: Designer
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `1`
+- Design version: `2`
 - Canonical UI profile: `analytical-dense`
 - Additive base: accepted `architecture/design/TASK-0057-ui-overlay-refinement/`, design v2
 - Prototype entry: `prototype/index.html`
 - Interaction evidence: `evidence/interaction-walkthrough.json`
+- Focused regression note: `UI-REGRESSION-NOTE.md`
 - Required viewports: `1024×768`, `1280×720`, `1440×900`
 - Sizing evidence: minimum `936×696`, undersized `840×620`
 
@@ -26,6 +27,31 @@ Apply над уже сохранённым backend draft без settings snapsho
 enabled-состоянию Apply и обычному keyboard focus. Presentation-only действия
 (`Показывать легенду`, `Нормировать Y`, `Показывать маркеры`) остаются
 немедленными и не включают Apply.
+
+Version 2 additionally resolves the seven production UI regressions from
+HND-0471. The toolbar spans the full application canvas; the canonical layout
+trigger/popover is pinned; selected Display close keeps the selected surface;
+graph type switches from pane or settings; Display settings and per-pane
+visible-signal management are always reachable; legend acceptance is based on
+upper-right plot zone and non-overlap rather than exact pixels. Full
+implementation requirements are in `UI-REGRESSION-NOTE.md`.
+
+## Version 2 affected screens and states
+
+Only the Signal Analyser main screen changed. Affected zones are application
+toolbar, Display navigation, plot pane headers/canvases, right Display settings
+and the lower Signals inspector. Explicit Apply v1 states and overlay contracts
+remain intact.
+
+| Regression | v2 implementation-ready correction |
+|---|---|
+| Top area not full width | Toolbar left/right edges equal `app-shell` edges and width at every viewport |
+| Wrong layout control | Canonical grid + current `R × C` + chevron trigger and anchored rows/columns preview popover |
+| Selected close loses selection | Selected tab close is explicitly `#e6f5fc`, `28×32px`, with selected hover/focus/pressed states |
+| Graph type cannot switch | Pane and settings selectors are both operable and bidirectionally synchronized |
+| Display settings absent | Right structural panel minimum `300px`, heading/tabs/body/footer always present |
+| Visible signals cannot be managed | Per-active-pane row/header checkboxes update traces and compact legend immediately |
+| Legend mismatch | Accept upper-right sector placement and collision rules; do not pixel-match its rectangle |
 
 ## Scope
 
@@ -65,16 +91,23 @@ product validation rules.
 | Validation | Canonical 2px internal danger border | Local parse failure disables Apply but does not replace plot with error |
 | Sizing | 920×680 application minimum and fixed zone order | Exact growth ratios and document scroll are now pinned without structural maxima |
 
+Version 2 adds no new product capability. It makes the already accepted shell,
+layout, graph type, settings and Signals membership behavior explicit and
+click-verifiable. `UI-REGRESSION-NOTE.md` supersedes any conflicting visible
+implementation for these seven regression points.
+
 ## Sources and priority
 
-1. `TASK-0080`, `HND-0414` and Orchestrator clarification: no dirty
+1. HND-0471 user-reported production regressions: seven v2 corrections and
+   legend zone-only acceptance.
+2. `TASK-0080`, `HND-0414` and Orchestrator clarification: no dirty
    badge/caption; flush valid pending 150ms updates; Apply sends no settings
    snapshot; backend semantic errors do not locally block Apply.
-2. Accepted `architecture/design/TASK-0057-ui-overlay-refinement/DESIGN.md`
+3. Accepted `architecture/design/TASK-0057-ui-overlay-refinement/DESIGN.md`
    and its v2 prototype/evidence.
-3. Canonical Designer references listed below.
-4. Current product frontend as factual implementation context.
-5. Autonomous choice only for deterministic mock error/stale values and copy.
+4. Canonical Designer references listed below.
+5. Current product frontend as factual implementation context.
+6. Autonomous choice only for deterministic mock error/stale values and copy.
 
 Corporate Figma was not needed: local accepted v2 and repo-native canonical
 references resolve every material visual choice.
@@ -138,6 +171,8 @@ Read-only context was taken from `public/index.html`, `public/css/theme.css`,
 | Primary states | default `#1b84b8`; hover `#166a93`; pressed `#104f6e`; disabled `#75b5d4` |
 | Settings menu | anchor width; 34px item; padding `6px 12px`; 6px radius |
 | Tabs | 32px; accepted 160px shell, max 240px; selected 3px accent inset |
+| Selected tab close | 28×32px target, 14px icon; selected default/focus `#e6f5fc`, selected hover `#e9f6fb` |
+| Layout trigger | 32px high, intrinsic min 82px; 16px grid + current `R × C` + 16px chevron, 6px gaps |
 | Plot pane | 1px line, 6px radius; 32px header; 28px select/action cluster |
 | Plot frame | 8px padding/gap; white Plotly paper/canvas; local traces remain mounted |
 | Plotly controls | Accepted v2 `displayModeBar:false`; no modebar/container |
@@ -204,6 +239,10 @@ atomic validation rejection demonstrated here keeps the previous output.
 | Apply | Click/Enter/Space | Sole commit; pending valid edits flush first | disabled-pristine, enabled-dirty, applying, pending, retry focus | Intrinsic width ≥96px; same footer |
 | Active plot | Accepted Apply | Contextual overlay without unmount/resize | ready, pending, provider-error | Grows with workspace |
 | Inactive plot | Any Apply | No overlay or calculation | ready | Grows with workspace |
+| Graph type selectors | Pane or Display-settings select | Same active-pane type and Plotly output synchronize immediately | default, hover, focus, active, selected, disabled, loading, empty, error | 28px pane / 32px settings; menus overlay |
+| Visible-signal membership | Row/header checkbox | Active-pane traces and legend update immediately | checked, unchecked, indeterminate, hover, focus, disabled, empty, error | 16px checkbox in fixed 32px row |
+| Layout trigger/popover | Click, keyboard, Escape/outside | Draft rows/columns preview; Apply or discard; trigger focus restores | default, hover, focus, pressed, expanded, disabled, warning | 32px trigger; 372/354px popover |
+| Selected Display close | Tab to close, hover, press | Continuous selected surface; confirmation on activation | selected-default, hover, focus-visible, pressed, disabled | Fixed 28×32px |
 | Graph help | Pane ellipsis → Help | Modeless help above menu | open/focus/close | Fixed overlay geometry |
 | Passive toast | Ready/stale/other action | Status only; never steals focus | success, warning, coexistence | Fixed to viewport; no page reflow |
 | Retry | Focus then activate | Reuses preserved backend draft | focus-visible, hover, pressed | Same Apply geometry |
@@ -231,6 +270,12 @@ selectors are `data-design-id` only and are not production `data-testid`.
 | `stale-*` | maximum `0.333`; Apply | Stale ignored, warning toast, preserved draft | `state--stale--*.png` and overlay pair |
 | `stale-retry-commit-*` | click `Повторить` | Second Apply has no snapshot and reaches ready | JSON record |
 | `sizing-*` | load minimum/undersized | Min canvas retained; document scroll below min | `sizing--minimum|undersized--*.png` |
+| `ui-shell-settings-legend-*` | load | Toolbar edges equal app; settings visible; legend in upper-right sector | `regression--shell-settings-legend--*.png` |
+| `selected-display-close-*` | add Display; keyboard focus close | Close target keeps selected background and geometry | `regression--selected-display-close--*.png` |
+| `layout-control-*` | open; choose Rows 2; Escape | Preview updates, applied layout unchanged, focus restores | `overlay--layout-control--top|after-close--*.png` |
+| `visible-signal-management-*` | uncheck `echoComplex` | Membership, trace and legend update | `regression--visible-signals-managed--*.png` |
+| `pane-graph-type-switch-*` | choose Spectrum in pane | Plotly and settings synchronize | `regression--graph-type-pane-switch--*.png` |
+| `settings-graph-type-switch-*` | choose Spectrogram in settings | Plotly, pane selector and type settings synchronize | `regression--graph-type-settings-switch--*.png` |
 
 Stable ids used: `app-shell`, `plot-grid`, `settings-panel`,
 `settings-tab-time`, `settings-field-time.x_limits`, `settings-apply`,
@@ -288,6 +333,12 @@ page_sizing_contract:
     - id: screen-and-settings-tab
       width: intrinsic
       height: 32px
+    - id: selected-display-close
+      width: 28px
+      height: 32px
+    - id: layout-trigger
+      width: intrinsic-min-82px
+      height: 32px
     - id: settings-control
       width: zone-track
       height: 32px
@@ -312,6 +363,11 @@ without upper limit; no structural `max-width`/`max-height`, breakpoint reorder,
 stack, hide, replacement or CSS zoom is allowed. Rounding tolerance is at most
 one CSS pixel per track.
 
+The toolbar is a single full-width grid row: its left edge, right edge and width
+must equal `app-shell` within one CSS pixel. The Display settings and Signals
+zones remain visible at every required viewport and on the retained minimum
+canvas below it.
+
 ### Measured viewport evidence
 
 | Viewport | App | Workspace / settings | Main / inspector | Scroll |
@@ -329,13 +385,14 @@ Evidence: `screenshots/sizing--minimum--936x696.png`,
 
 | Component | Canonical/accepted reference | Preserved proportions | Required change | Deviation |
 |---|---|---|---|---|
-| Toolbar | analytical toolbar + v2 | 44px, 36×32, 32px logo, 2px action gap | None | None |
-| Screen tabs | v2 multi-page | 32px row, 160px shell, close/scroll targets | None | None |
+| Toolbar | analytical toolbar + v2 | 44px, 36×32, 32px logo, 2px action gap | Span exact application width | No component deviation |
+| Screen tabs | v2 multi-page | 32px row, 160px shell, close 28×32px | Selection surface explicitly continues behind close | No geometry deviation |
+| Layout control | TASK-0044 + v2 | 32px trigger, 16px grid/current/chevron, 372/354px popover | Restore complete canonical trigger/popover | No profile deviation |
 | Main split | accepted v2 | workspace left, settings right | Unlimited `0.85:0.15` growth pinned | No composition deviation |
 | Plot panes | accepted v2 | two panes, 32px headers, 28px cluster, 8px grid | Local pending overlay only | None |
-| Settings | canonical + v2 | 42/32 headers, 40px rows, 140px label, 32px field | Explicit Apply states | None |
+| Settings | canonical + v2 | 42/32 headers, 40px rows, 140px label, 32px field | Always-visible zone plus synchronized graph type | None |
 | Apply footer | canonical settings | 54px footer, right-aligned ≥96px primary action | Button text/state changes only | None |
-| Inspector | accepted v2 | 42px header, 32px search/rows, inline actions | None | None |
+| Inspector | accepted v2 | 42px header, 32px search/rows, 16px checkboxes, inline actions | Active-pane visible-signal membership is operable | None |
 | Menus | analytical settings menu | 34px combobox, 28px compact items | None | None |
 | Plotly | accepted v2 | same mounted frame/axes/traces, white surface, no modebar | Contextual pending overlay | None |
 
@@ -353,6 +410,11 @@ State changes never change width, height, padding or border allocation.
   the underlying pane/canvas/Plotly host rectangles remain byte-for-byte equal
   in measured JSON.
 - The inactive pane has no pending layer and is not calculated by this flow.
+- The compact HTML legend follows `Показывать легенду` and the active pane's
+  visible-signal membership. Its acceptance is semantic geometry: wholly inside
+  the upper-right plot sector, left edge at/right of the canvas midpoint, top
+  within the upper 40%, below pane controls and without help/control collision.
+  Exact screenshot x/y/width/height comparison is intentionally not required.
 
 ## Overlay inventory and priority
 
@@ -380,6 +442,7 @@ No new global overlay level is introduced.
 | `settings_validation_with_help` | inline validation → pane menu → graph help | Graph help close/menu | Graph help close | Help menu item; validation and disabled Apply remain |
 | `applying_with_passive_toast` | application applying state → passive toast | Application except disabled calculation controls/Apply | Current app context; assertive live region announces, toast never focuses | Toast close changes no applying state/focus |
 | `stale_error_with_retry` | preserved plot → settings stale error + Retry → passive warning toast | Retry and ordinary app controls | Retry button | Closing toast keeps focus/availability on Retry |
+| `layout_control` | application → layout popover | Newest segment/action in popover | Close initially, then interacted segment/action | Escape/Cancel/close restores layout trigger; draft discarded |
 
 An older dropdown/tooltip becomes stale/inert below any newer blocker exactly as
 in v2. A passive toast never eclipses an active modal control. Modal Tab traps,
@@ -399,6 +462,13 @@ Escape newest-first and v2 restoration targets remain unchanged.
   an accessible close action.
 - Graph help opens on its close control and restores focus to the originating
   `Управление графиком` item; closing the menu restores pane ellipsis.
+- Layout popover opens on its close action; segment/actions are keyboard
+  reachable; Escape/Cancel/close discard draft and restore the layout trigger.
+- Each selected Display close is a separate `28×32px` keyboard target whose
+  selection background and focus-visible outline remain distinguishable.
+- Pane/settings graph-type menus support pointer and keyboard selection and
+  close to a non-active menu state. Signals membership row/header checkboxes
+  expose checked/unchecked/indeterminate state for the active pane.
 - Icon-only actions retain tooltip and accessible names; SVG aspect ratios are
   unchanged.
 
@@ -427,7 +497,7 @@ original filename/viewBox and is rendered with preserved aspect ratio.
 
 ## Screenshot and evidence inventory
 
-`screenshots/` contains 47 PNGs:
+`screenshots/` contains 68 PNGs:
 
 - every required state at all three target viewports:
   `state--pristine|dirty|invalid|applying|pending|ready|error|retry|stale--{viewport}.png`;
@@ -438,11 +508,22 @@ original filename/viewBox and is rendered with preserved aspect ratio.
   `overlay--stale-error-retry--*`;
 - `sizing--minimum--936x696.png` and
   `sizing--undersized--840x620.png`.
+- v2 regression evidence at all three required viewports:
+  `regression--shell-settings-legend--*`,
+  `regression--selected-display-close--*`,
+  `regression--visible-signals-managed--*`,
+  `regression--graph-type-pane-switch--*`,
+  `regression--graph-type-settings-switch--*`;
+- layout overlay top/after-close pairs at all three required viewports:
+  `overlay--layout-control--top--*` and
+  `overlay--layout-control--after-close--*`.
 
-`evidence/interaction-walkthrough.json` is authoritative: `32 passed / 0
-failed`, `47 screenshots`, `0 browser errors`. It includes event ordering,
+`evidence/interaction-walkthrough.json` is authoritative: `50 passed / 0
+failed`, `68 screenshots`, `0 browser errors`. It includes event ordering,
 snapshot-free Apply evidence, calculation/revision counters, Plotly checks,
-viewport rectangles, overlay ownership and screenshot paths.
+viewport rectangles, toolbar/app edge equality, selected close colors,
+synchronized graph types, visible-signal membership, legend sector geometry,
+overlay ownership and screenshot paths.
 
 ## Autonomous decisions
 
@@ -455,6 +536,11 @@ viewport rectangles, overlay ownership and screenshot paths.
   preserves the previous plot; local invalid never invokes Apply.
 - `0.333` is a one-shot mock stale trigger so the actual Retry click can succeed
   in the local walkthrough without inventing production stale semantics.
+- The ambiguous “wrong layout design” regression is resolved by the accepted
+  TASK-0044/TASK-0057 control: grid icon + authoritative `R × C` + chevron and
+  the canonical anchored rows/columns preview, not a new layout interaction.
+- Legend exact pixels are deliberately not pinned by v2; upper-right sector,
+  membership and non-overlap are the acceptance criteria requested by the user.
 
 ## Acceptance
 
@@ -470,8 +556,20 @@ viewport rectangles, overlay ownership and screenshot paths.
   not reorder/hide/stack, structural maxima are absent and undersized uses
   document scroll.
 - Prototype contains no API, polling, product code or production `data-testid`.
+- Toolbar spans the application canvas exactly; Display settings and Signals
+  inspector never disappear or reflow to another zone.
+- Selected Display close retains the selection surface through default/focus;
+  the layout trigger/popover has complete draft and restoration behavior.
+- Both graph-type pathways render and synchronize; active-pane visible-signal
+  membership changes traces and legend immediately.
+- Legend stays in the upper-right plot sector without control/help collision;
+  exact pixel equality is not required.
 
 ## Change log
 
+- `v2` — HND-0471 production UI regression correction: focused
+  `UI-REGRESSION-NOTE.md`, full-width toolbar, canonical layout control,
+  selected close surface, reachable graph/settings/signal management, legend
+  zone contract, 50/50 click walkthrough and 68 screenshots.
 - `v1` — initial additive explicit Apply package based on accepted TASK-0057
   design v2; complete state machine, prototype, screenshots and evidence.

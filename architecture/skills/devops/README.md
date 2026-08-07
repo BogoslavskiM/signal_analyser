@@ -3,9 +3,8 @@
 - `devops-workflow` — единый автономный pipeline для `clone_repo`,
   `new_feature_branch`, `deploy`, `merge_feature`, `get_logs`,
   `restart_application` и `restart_engee` поверх основной ветки `neuro_dev`;
-  каждый handoff сериализуется временным pod-wide lock
-  `mcp_devops_genie_is_bysy`; каждый существующий production checkout перед
-  task очищается только на Engee pod через `git add .` → `git stash`, а
+  каждый существующий production checkout перед task очищается
+  только на Engee pod через `git add .` → `git stash`, а
   application start разрешён только в Engee через `engee.genie.start`.
 - `engee-deployment-diagnostics` — получение и sanitization Engee logs,
   evidence under `architecture/logs/**`, owner classification и
@@ -28,7 +27,4 @@ Failed deploy всегда загружает diagnostics. Environment sync за
 явного post-start запроса; `get_logs` выполняет только evidence branch.
 Standalone restart requests используют runtime-restart subskill и не меняют
 branch/revision; обязательный remote stash preflight остаётся единственным Git
-исключением и никогда не выполняется локально. Занятый DevOps lock проверяется
-каждые 20 секунд. После последней operational command task следующая production
-eval немедленно устанавливает lock в `false`; report и worker idle/termination
-происходят только после release attempt.
+исключением и никогда не выполняется локально.

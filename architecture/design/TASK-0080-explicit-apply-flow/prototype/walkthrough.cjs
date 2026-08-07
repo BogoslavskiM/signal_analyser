@@ -22,6 +22,7 @@ const browserErrors = [];
 const viewportEvidence = {};
 const stateEvidence = {};
 const overlayEvidence = {};
+const regressionEvidence = {};
 let browser;
 let page;
 let viewport;
@@ -173,6 +174,122 @@ async function pristineScenario() {
     assert(await page.locator(".plot-legend").count() === 0, "Presentation-only legend toggle was not immediate");
     await legend.click();
   });
+}
+
+async function uiRegressionScenario() {
+  const evidence = {};
+  await record(`ui-shell-settings-legend-${viewport.key}`, "Открыть основной экран", "Toolbar spans the full application canvas; Display settings and upper-right legend are visible", async () => {
+    const geometry = await page.evaluate(() => {
+      const rect = element => {
+        const box = element.getBoundingClientRect();
+        return { x: box.x, y: box.y, width: box.width, height: box.height, right: box.right, bottom: box.bottom };
+      };
+      const app = document.querySelector("[data-design-id='app-shell']");
+      const toolbar = document.querySelector(".application-toolbar");
+      const settings = document.querySelector("[data-design-id='settings-panel']");
+      const canvas = document.querySelector(".plot-pane.is-active .plot-canvas");
+      const legend = document.querySelector(".plot-pane.is-active .plot-legend");
+      const paneHeader = document.querySelector(".plot-pane.is-active .plot-pane-header");
+      const controls = document.querySelector(".plot-pane.is-active .plot-control-cluster");
+      return {
+        app: rect(app), toolbar: rect(toolbar), settings: rect(settings), canvas: rect(canvas), legend: rect(legend), paneHeader: rect(paneHeader), controls: rect(controls),
+        settingsTitle: settings.querySelector("h2").textContent.trim(),
+        settingsTabs: Array.from(settings.querySelectorAll("[data-settings-page]")).map(button => button.textContent.trim()),
+        settingsFields: Array.from(settings.querySelectorAll("[data-design-id^='settings-field-']")).map(row => row.getAttribute("data-design-id"))
+      };
+    });
+    const tolerance = 1;
+    assert(Math.abs(geometry.toolbar.x - geometry.app.x) <= tolerance && Math.abs(geometry.toolbar.width - geometry.app.width) <= tolerance && Math.abs(geometry.toolbar.right - geometry.app.right) <= tolerance, `Toolbar does not span application: ${JSON.stringify(geometry)}`);
+    assert(geometry.settings.width >= 300 && geometry.settingsTitle === "Настройки отображения", `Display settings zone missing: ${JSON.stringify(geometry.settings)}`);
+    assert(JSON.stringify(geometry.settingsTabs) === JSON.stringify(["Отображение", "Время", "Измерения"]), `Display settings tabs missing: ${JSON.stringify(geometry.settingsTabs)}`);
+    assert(geometry.settingsFields.includes("settings-field-display.plot_type") && geometry.settingsFields.includes("settings-field-display.show_legend"), `Display settings fields missing: ${JSON.stringify(geometry.settingsFields)}`);
+    assert(geometry.legend.x >= geometry.canvas.x + geometry.canvas.width / 2 && geometry.legend.right <= geometry.canvas.right && geometry.legend.y >= geometry.canvas.y && geometry.legend.y < geometry.canvas.y + geometry.canvas.height * 0.4, `Legend is outside the upper-right plot zone: ${JSON.stringify(geometry)}`);
+    assert(geometry.legend.y >= geometry.paneHeader.bottom && geometry.legend.y >= geometry.controls.bottom, `Legend collides with pane header controls: ${JSON.stringify(geometry)}`);
+    evidence.shell = geometry;
+    evidence.shell_screenshot = await shot("regression--shell-settings-legend");
+  });
+
+  await record(`selected-display-close-${viewport.key}`, "Добавить и выбрать второй экран", "Selected tab and its close target share the selection-colored background", async () => {
+    await page.locator("[data-design-id='display-add']").click();
+    const selected = page.locator(".display-tab-shell.is-selected");
+    const close = selected.locator(".display-tab-close");
+    const colors = await selected.evaluate(shell => ({ shell: getComputedStyle(shell).backgroundColor, close: getComputedStyle(shell.querySelector(".display-tab-close")).backgroundColor }));
+    const size = await close.evaluate(element => {
+      const box = element.getBoundingClientRect();
+      return { width: box.width, height: box.height };
+    });
+    assert(colors.shell === colors.close, `Selected close background is discontinuous: ${JSON.stringify(colors)}`);
+    assert(size.width === 28 && size.height === 32, `Selected close target geometry changed: ${JSON.stringify(size)}`);
+    await selected.locator(".display-tab").focus();
+    await page.keyboard.press("Tab");
+    assert(await close.evaluate(element => element.matches(":focus-visible")), "Selected close lacks keyboard focus-visible state");
+    evidence.selected_close = { colors, size, focus_owner: "selected_display_close" };
+    evidence.selected_close_screenshot = await shot("regression--selected-display-close");
+    const toastClose = page.locator("[data-toast-close]");
+    if (await toastClose.isVisible()) await toastClose.click();
+  });
+
+  await record(`layout-control-${viewport.key}`, "Открыть Изменить макет, выбрать draft 2×2, закрыть Escape", "Canonical grid/current/chevron trigger and anchored rows/columns preview restore focus without applying", async () => {
+    const trigger = page.locator("[data-design-id='layout-trigger']");
+    await trigger.click();
+    const popover = page.locator("[data-design-id='layout-popover']");
+    assert(await popover.isVisible(), "Layout popover did not open");
+    assert(await popover.locator("[data-layout-kind='rows']").count() === 10 && await popover.locator("[data-layout-kind='columns']").count() === 10, "Layout rows/columns controls are incomplete");
+    await popover.locator("[data-layout-kind='rows'][data-layout-value='2']").click();
+    assert(await popover.locator(".layout-preview i").count() === 4, "Layout preview did not render 2×2 draft");
+    assert(await popover.locator("[data-layout-kind='rows'][data-layout-value='2']").getAttribute("aria-pressed") === "true", "Layout draft selection is not persistent");
+    const top = await shot("overlay--layout-control--top");
+    await page.keyboard.press("Escape");
+    assert(!(await popover.isVisible()), "Escape did not close layout popover");
+    assert(await trigger.evaluate(element => element === document.activeElement), "Layout close did not restore trigger focus");
+    assert((await trigger.locator(".layout-current").innerText()).trim() === "1 × 2", "Cancelled layout draft changed applied layout");
+    const after = await shot("overlay--layout-control--after-close");
+    evidence.layout = { bottom_to_top: ["application", "layout_popover"], focus_owner: "layout_close_then_selected_segment", restore: "layout_trigger", screenshots: [top, after] };
+    overlayEvidence[`${viewport.key}:layout_control`] = evidence.layout;
+  });
+
+  await record(`visible-signal-management-${viewport.key}`, "Отключить echoComplex в списке Сигналы", "Active-pane visible-signal membership, trace and compact legend update immediately", async () => {
+    const beforeState = await inspect();
+    assert(beforeState.visibleSignals.includes("echoComplex"), `echoComplex is not initially visible: ${JSON.stringify(beforeState)}`);
+    await page.locator("[data-signal-visible='echoComplex']").click();
+    await page.evaluate(() => window.__TASK0080_DESIGN__.waitForPlots());
+    await page.waitForTimeout(40);
+    const afterState = await inspect();
+    assert(!afterState.visibleSignals.includes("echoComplex"), `Visible-signal membership did not update: ${JSON.stringify(afterState)}`);
+    assert(!(await page.locator("[data-signal-visible='echoComplex']").isChecked()), "Signal checkbox did not persist unchecked");
+    assert(await page.locator(".plot-pane.is-active .scatterlayer .trace").count() === 1, "Active time plot did not remove the hidden signal trace");
+    assert(await page.locator(".plot-pane.is-active .plot-legend span").count() === 1, "Legend did not follow visible-signal membership");
+    evidence.visible_signals = { before: beforeState.visibleSignals, after: afterState.visibleSignals };
+    evidence.visible_signals_screenshot = await shot("regression--visible-signals-managed");
+  });
+
+  await record(`pane-graph-type-switch-${viewport.key}`, "Выбрать Спектр в selector активной области", "Graph type switches, Plotly rerenders and Display settings synchronize", async () => {
+    await page.locator("[data-select-key='plot:pane-time']").click();
+    await page.locator("[data-design-id='select-menu'] [data-option-value='spectrum']").click();
+    await page.evaluate(() => window.__TASK0080_DESIGN__.waitForPlots());
+    const state = await inspect();
+    assert(state.activePlotType === "spectrum", `Pane graph type did not switch: ${JSON.stringify(state)}`);
+    assert(await page.locator(".plot-pane.is-active [data-plotly-type='spectrum'][data-plotly-ready='true']").count() === 1, "Spectrum Plotly host did not render");
+    assert((await page.locator("[data-design-id='settings-field-display.plot_type'] .select-trigger span").innerText()).trim() === "Спектр", "Display settings did not synchronize from pane selector");
+    assert(!(await page.locator("[data-design-id='select-menu']").isVisible()), "Graph type menu remained active after LMB selection");
+    evidence.pane_graph_type = state.activePlotType;
+    evidence.pane_graph_type_screenshot = await shot("regression--graph-type-pane-switch");
+  });
+
+  await record(`settings-graph-type-switch-${viewport.key}`, "Выбрать Спектрограмму в Настройки отображения", "Display settings selector switches the same active graph and synchronizes pane header", async () => {
+    await page.locator("[data-design-id='settings-field-display.plot_type'] [data-select-key]").click();
+    await page.locator("[data-design-id='select-menu'] [data-option-value='spectrogram']").click();
+    await page.evaluate(() => window.__TASK0080_DESIGN__.waitForPlots());
+    const state = await inspect();
+    assert(state.activePlotType === "spectrogram", `Settings graph type did not switch: ${JSON.stringify(state)}`);
+    assert(await page.locator(".plot-pane.is-active [data-plotly-type='spectrogram'][data-plotly-ready='true']").count() === 1, "Spectrogram Plotly host did not render");
+    assert((await page.locator(".plot-pane.is-active [data-select-key^='plot:'] span").innerText()).trim() === "Спектрограмма", "Pane selector did not synchronize from Display settings");
+    assert(await page.locator("[data-design-id='settings-field-spectrogram.frequency_units']").count() === 1, "Type-specific Display settings did not become visible");
+    evidence.settings_graph_type = state.activePlotType;
+    evidence.settings_graph_type_screenshot = await shot("regression--graph-type-settings-switch");
+  });
+
+  regressionEvidence[viewport.key] = evidence;
 }
 
 async function invalidAndHelpScenario() {
@@ -347,6 +464,8 @@ async function sizingScenario(nextViewport) {
   try {
     for (const item of requiredViewports) {
       await fresh(item);
+      await uiRegressionScenario();
+      await fresh(item);
       await pristineScenario();
       await invalidAndHelpScenario();
       await dirtyApplyReadyScenario();
@@ -358,7 +477,7 @@ async function sizingScenario(nextViewport) {
     const failures = records.filter(item => item.status !== "pass");
     const payload = {
       design: "TASK-0080-explicit-apply-flow",
-      design_version: 1,
+      design_version: 2,
       generated_at: new Date().toISOString(),
       entry: "prototype/index.html",
       viewports: requiredViewports.map(item => item.key),
@@ -369,6 +488,7 @@ async function sizingScenario(nextViewport) {
       viewport_evidence: viewportEvidence,
       state_evidence: stateEvidence,
       overlay_evidence: overlayEvidence,
+      regression_evidence: regressionEvidence,
       browser_errors: browserErrors
     };
     fs.writeFileSync(evidencePath, JSON.stringify(payload, null, 2) + "\n");
