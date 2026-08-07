@@ -63,6 +63,28 @@ route("/api/state-lite", method = GET) do
     end
 end
 
+# Keep the compatibility bootstrap adjacent to the authoritative lightweight
+# startup route.  Its payload contains no Plotly arrays and never starts an
+# output calculation.
+route("/api/layouts", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            signal_analyser_layouts_bootstrap_payload(
+                signal_analyser_layouts_lite_snapshot(SIGNAL_ANALYSER_STATE),
+            );
+            headers = response_headers,
+        )
+    catch err
+        api_error_response(
+            "Не удалось получить Layout Signal Analyser",
+            err;
+            status = 500,
+            headers = response_headers,
+        )
+    end
+end
+
 route("/api/outputs/active", method = GET) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try
@@ -332,31 +354,16 @@ route("/api/displays", method = POST) do
     end
 end
 
-route("/api/layouts", method = GET) do
-    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
-    try
-        api_json(
-            signal_analyser_layouts_lite_snapshot(SIGNAL_ANALYSER_STATE);
-            headers = response_headers,
-        )
-    catch err
-        api_error_response(
-            "Не удалось получить Layout Signal Analyser",
-            err;
-            status = 500,
-            headers = response_headers,
-        )
-    end
-end
-
 route("/api/layouts", method = POST) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try
         api_json(
-            apply_signal_analyser_layout!(
-                SIGNAL_ANALYSER_STATE,
-                jsonpayload();
-                lightweight = true,
+            signal_analyser_layouts_bootstrap_payload(
+                apply_signal_analyser_layout!(
+                    SIGNAL_ANALYSER_STATE,
+                    jsonpayload();
+                    lightweight = true,
+                ),
             );
             headers = response_headers,
         )

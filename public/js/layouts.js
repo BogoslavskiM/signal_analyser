@@ -23,6 +23,7 @@
   var panePayloadCache = {};
   var paneRenderQueue = {};
   var paneResizeObservers = {};
+  var legendVisibilityByDisplay = {};
   var mounted = false;
   var ui = {
     open:false,
@@ -857,6 +858,7 @@
   }
   function compactLegendMarkup(pane, record) {
     var plot = record && record.output && record.output.data && record.output.data[0], traces;
+    if (legendVisibilityByDisplay[activeDisplayId] === false) return "";
     if (!plot || !Array.isArray(plot.data) || plot.layout && plot.layout.showlegend === false) return "";
     traces = plot.data.filter(function(trace) { return trace && trace.showlegend !== false && String(trace.name || trace.signal || "").trim(); });
     if (!traces.length) return "";
@@ -929,4 +931,12 @@
     refreshPending = true; render();
     window.Promise.resolve().then(function() { return api.getState(); }).then(function(snapshot) { acceptEnvelope(snapshot, true); }).catch(function() { if (!currentLayout()) render(); }).finally(function() { refreshPending = false; render(); });
   }
+  window.addEventListener("signal-analyser-settings-presentation", function(event) {
+    var settings = event && event.detail, field;
+    if (!settings || typeof settings.display_id !== "string" || !Array.isArray(settings.fields)) return;
+    field = settings.fields.filter(function(item) { return item && item.id === "display.show_legend" && typeof item.value === "boolean"; })[0];
+    if (!field) return;
+    legendVisibilityByDisplay[settings.display_id] = field.value;
+    if (settings.display_id === activeDisplayId) render();
+  });
 })(window, document);

@@ -204,6 +204,69 @@ end
     @test before["state_revision"] == 0
 end
 
+@testset "/api/layouts bootstrap retains lite and nested compatibility fields" begin
+    routes_source = SA_API.source("app", "routes.jl")
+    api_source = SA_API.source("app", "api.jl")
+    compatibility_fields = [
+        "state_revision", "calculation_revision", "active_display_id", "signals",
+        "displays", "layouts", "active_output", "need_update_pages", "capabilities",
+    ]
+    @test occursin("function signal_analyser_layouts_bootstrap_payload", api_source)
+    @test occursin("merge!(payload, snapshot)", api_source)
+    @test length(collect(eachmatch(r"route\(\"/api/layouts\", method = GET\)", routes_source))) == 1
+    @test length(collect(eachmatch(r"route\(\"/api/layouts\", method = POST\)", routes_source))) == 1
+    @test length(collect(eachmatch(r"signal_analyser_layouts_bootstrap_payload\(", routes_source))) == 2
+    @test length(collect(eachmatch(r"\[\"Cache-Control\" => \"no-store\"\]", routes_source))) >= 2
+
+    SA_API.reset_pspectrum_double!()
+    empty!(SA_API.SPECTROGRAM_CALLS)
+    empty!(SA_API.PERSISTENCE_CALLS)
+    state = SA_API.default_signal_analyser_state()
+    provider_calls = (
+        length(SA_API.SPECTRUM_CALLS), length(SA_API.SPECTROGRAM_CALLS),
+        length(SA_API.PERSISTENCE_CALLS), length(SA_API.PSPECTRUM_CALLS),
+    )
+    get_payload = SA_API.signal_analyser_layouts_bootstrap_payload(
+        SA_API.signal_analyser_layouts_lite_snapshot(state),
+    )
+    @test get_payload["ok"] === true
+    @test get_payload["state"] isa Dict{String,Any}
+    @test all(key -> haskey(get_payload, key) && get_payload[key] == get_payload["state"][key], compatibility_fields)
+    @test isempty(get_payload["active_output"]["output"]["data"])
+    @test state.output_manager.active_task === nothing
+    @test (
+        length(SA_API.SPECTRUM_CALLS), length(SA_API.SPECTROGRAM_CALLS),
+        length(SA_API.PERSISTENCE_CALLS), length(SA_API.PSPECTRUM_CALLS),
+    ) == provider_calls
+
+    pane_id = state.display_layouts["display-1"].active_pane_id
+    post_payload = SA_API.signal_analyser_layouts_bootstrap_payload(
+        SA_API.apply_signal_analyser_layout!(state, Dict(
+            "state_revision" => state.view.state_revision,
+            "operation" => "select_pane",
+            "display_id" => "display-1",
+            "version" => 1,
+            "pane_id" => pane_id,
+        ); lightweight = true),
+    )
+    @test post_payload["ok"] === true
+    @test post_payload["state_revision"] == get_payload["state_revision"]
+    @test all(key -> post_payload[key] == post_payload["state"][key], compatibility_fields)
+    @test state.output_manager.active_task === nothing
+    @test (
+        length(SA_API.SPECTRUM_CALLS), length(SA_API.SPECTROGRAM_CALLS),
+        length(SA_API.PERSISTENCE_CALLS), length(SA_API.PSPECTRUM_CALLS),
+    ) == provider_calls
+
+    stale = SA_API.signal_analyser_layout_stale_response(
+        state,
+        SA_API.SignalAnalyserStaleStateError(-1, state.view.state_revision),
+    )
+    @test stale.status == 409
+    @test Set(keys(stale.body)) == Set(["ok", "code", "error", "state", "current"])
+    @test stale.body["ok"] === false && stale.body["code"] == "stale_state"
+end
+
 @testset "Signals inspector API route and adapter boundary" begin
     routes_source = SA_API.source("app", "routes.jl")
     domain_source = SA_API.source("lib", "domain", "signal_inventory.jl")

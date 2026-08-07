@@ -36,6 +36,15 @@ function api_json(payload; status::Int = 200, headers = nothing)
         Genie.Renderer.Json.json(json_safe(payload); status = status, headers = headers)
 end
 
+function signal_analyser_layouts_bootstrap_payload(
+    snapshot::Dict{String,Any},
+)::Dict{String,Any}
+    state = snapshot["state"]::Dict{String,Any}
+    payload = copy(state)
+    merge!(payload, snapshot)
+    payload
+end
+
 function workspace_api_error_response(
     code::AbstractString,
     err;
