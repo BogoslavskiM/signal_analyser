@@ -6,72 +6,174 @@
   <title>Анализатор сигналов</title>
   <link rel="stylesheet" href="./css/theme.css">
   <link rel="stylesheet" href="./css/app.css">
-  <link rel="stylesheet" href="./css/settings.css">
-  <link rel="stylesheet" href="./css/layouts.css">
 </head>
 <body>
-  <main class="signal-analyser app-shell" data-testid="app-shell" aria-label="Анализатор сигналов">
-    <header class="app-toolbar application-toolbar ui-panel">
-      <div class="app-brand" aria-label="Engee"><img class="engee-mark" src="./icons/engee-logo.svg" alt="" aria-hidden="true"><span class="engee-name">Engee</span></div>
-      <span class="toolbar-divider" aria-hidden="true"></span><h1>Анализатор сигналов</h1><span class="app-version">Версия 0.1.0</span>
-      <div class="toolbar-actions" aria-label="Действия"><button class="icon-button" type="button" data-testid="import-session-action" aria-label="Импортировать сессию" title="Импортировать сессию"><img class="icon-asset" src="./icons/import.svg" alt="" aria-hidden="true"></button><button class="icon-button" type="button" data-testid="export-action" aria-label="Сохранить сессию" title="Сохранить сессию"><img class="icon-asset" src="./icons/save.svg" alt="" aria-hidden="true"></button><button class="icon-button" type="button" data-testid="help-action" aria-label="Справка недоступна" title="Справка пока недоступна" disabled><img class="icon-asset" src="./icons/help-circle.svg" alt="" aria-hidden="true"></button><p class="session-action-status" data-testid="session-action-status" role="status" aria-live="polite" hidden></p></div>
-    </header>
-    <div class="main-stage">
-      <section class="display-workspace workspace ui-panel" aria-label="Отображение сигналов" data-testid="display-workspace">
-        <header class="workspace-titlebar"><h2>Отображение сигналов</h2></header>
-        <nav class="display-tabs" data-testid="display-tabs" aria-label="Страницы отображения" role="tablist"></nav>
-        <section class="layout-stage" data-testid="display-canvas" aria-label="Панели активного отображения">
-          <div class="pane-grid" data-testid="pane-grid" data-layout-state="loading" aria-live="polite"></div>
-        </section>
-        <div class="active-pane-runtime" data-testid="active-pane-runtime" hidden>
-          <header class="plot-header"><h2 id="display-plot-title" data-testid="display-plot-title">Временная область</h2><label class="plot-type-control">Тип графика <select data-testid="plot-type-select" aria-label="Тип графика"><option value="time">Временная область</option><option value="spectrum">Спектр</option><option value="spectrogram">Спектрограмма</option><option value="persistence">Спектр персистентности</option></select></label><button type="button" class="more-button" data-testid="display-overflow-trigger" aria-label="Действия области" aria-haspopup="menu" aria-expanded="false" aria-controls="display-overflow-menu"><img class="icon-asset" src="./icons/more-vertical.svg" alt="" aria-hidden="true"></button><div class="display-overflow-menu" id="display-overflow-menu" data-testid="display-overflow-menu" role="menu" hidden><button type="button" data-testid="clear-display-action" role="menuitem">Очистить область</button><button type="button" data-testid="graph-help-action" role="menuitem">Управление графиком</button></div></header>
-          <div class="plot-host" data-testid="active-plot-host" data-plot-ready="false" role="region" aria-labelledby="display-plot-title"></div>
-        </div>
-      </section>
-
-      <aside class="display-settings settings-panel ui-panel" data-testid="display-settings" aria-live="polite">
-        <header class="panel-heading"><div><h2>Настройки отображения</h2><p class="pane-settings-context" data-testid="pane-settings-context">Загрузка области…</p></div><span class="pane-context-dot" aria-hidden="true"></span></header>
-        <div class="settings-tabs" role="tablist" aria-label="Настройки отображения"><button id="display-settings-tab" class="settings-tab is-active" type="button" data-testid="display-settings-tab" data-settings-tab="display" role="tab" aria-controls="settings-catalog-panel" aria-selected="true" tabindex="0">Отображение</button><button id="time-settings-tab" class="settings-tab" type="button" data-testid="time-settings-tab" data-settings-tab="time" role="tab" aria-controls="settings-catalog-panel" aria-selected="false" tabindex="-1">Время</button><button id="statistics-settings-tab" class="settings-tab" type="button" data-testid="statistics-settings-tab" data-settings-tab="measurements" role="tab" aria-selected="false" aria-controls="settings-catalog-panel" tabindex="-1">Измерения</button></div>
-        <div class="settings-scroll panel-content settings-catalog-panel" data-testid="settings-catalog-panel" role="tabpanel" aria-live="polite"></div><footer class="settings-apply-block" data-testid="settings-apply-footer"><div id="explicit-apply-vue-root" data-testid="explicit-apply-root"></div></footer>
-      </aside>
-    </div>
-
-    <section class="bottom-zone inspector ui-panel" aria-label="Сигналы и измерения">
-      <div class="signals-header-row"><div class="bottom-tablist" role="tablist" aria-label="Данные анализатора"><button id="signal-panel-tab-signals" type="button" class="bottom-tab is-active" data-testid="signal-panel-tab-signals" data-bottom-tab="signals" role="tab" aria-controls="bottom-panel-signals" aria-selected="true" tabindex="0">Сигналы</button><button id="signal-panel-tab-measurements" type="button" class="bottom-tab" data-testid="signal-panel-tab-measurements" data-bottom-tab="measurements" role="tab" aria-controls="measurements-panel" aria-selected="false" tabindex="-1">Измерения</button><button id="peaks-panel-tab" type="button" class="bottom-tab" data-testid="peaks-panel-tab" data-bottom-tab="peaks" role="tab" aria-controls="peaks-panel" aria-selected="false" tabindex="-1" hidden>Пики</button></div><div class="signals-toolbar" aria-label="Действия сигналов"><div class="signals-add-wrap"><button type="button" class="icon-button" data-testid="signals-add-action" aria-label="Добавить сигнал" title="Добавить сигнал"><img class="icon-asset" src="./icons/plus.svg" alt="" aria-hidden="true"></button></div><button type="button" class="icon-button" data-testid="signal-columns-menu-trigger" aria-label="Другие действия" aria-haspopup="menu" aria-expanded="false" aria-controls="signal-columns-menu"><img class="icon-asset" src="./icons/more-vertical.svg" alt="" aria-hidden="true"></button></div></div><div id="signal-columns-menu" class="signal-columns-menu" data-testid="signal-columns-menu" role="menu" hidden></div>
-      <section class="bottom-panel signals-panel" id="bottom-panel-signals" data-testid="bottom-panel-signals" role="tabpanel" aria-labelledby="signal-panel-tab-signals">
-        <label class="inspector-search-row" data-testid="signal-search-control">
-          <span class="search-icon" aria-hidden="true"></span>
-          <input type="search" data-testid="signal-search-input" aria-label="Поиск сигналов" placeholder="Введите название" autocomplete="off" aria-controls="signal-table">
-        </label>
-        <div class="signal-table-scroll"><table id="signal-table" class="signal-table" data-testid="signal-table"><thead><tr><th data-column="visibility"><input type="checkbox" data-testid="toggle-all-signals" aria-label="Показать все сигналы"></th><th data-column="name">Имя</th><th data-column="color">Цвет</th><th data-column="sample-rate">Частота дискретизации</th><th data-column="samples">Отсчёты</th><th data-column="duration">Длительность</th><th data-column="type">Тип</th></tr></thead><tbody data-signal-rows></tbody></table><p class="signal-filter-empty" data-testid="signal-search-empty" role="status" hidden>Сигналы не найдены</p></div>
-      </section>
-      <section class="bottom-panel measurements-panel" id="measurements-panel" data-testid="measurements-panel" role="tabpanel" aria-labelledby="signal-panel-tab-measurements" hidden><div class="measurements-content" data-measurements-content aria-live="polite"></div></section>
-      <section class="bottom-panel peaks-panel" id="peaks-panel" data-testid="peaks-panel" role="tabpanel" aria-labelledby="peaks-panel-tab" hidden><div class="peaks-content" data-peaks-content aria-live="polite"></div></section>
-    </section>
-    <footer class="app-status" aria-live="polite"><div class="app-loading" data-testid="app-loading" hidden role="status"><span class="spinner"></span><span data-loading-text>Загрузка…</span></div><div class="app-error" data-testid="app-error" hidden role="alert"><span data-error-text></span><button type="button" class="retry-button" data-retry>Повторить</button></div></footer>
-    <section class="layout-popover" data-testid="layout-popover" role="dialog" aria-modal="false" aria-labelledby="layout-popover-title" hidden>
-      <header><div><h2 id="layout-popover-title">Макет экрана</h2><p>Настройка областей без потери контекста</p></div><button class="layout-popover-close" type="button" data-testid="layout-cancel-close" aria-label="Закрыть настройку макета">×</button></header>
-      <div class="layout-popover-body">
-        <div class="layout-conflict" data-testid="layout-conflict" role="alert" hidden><strong>Макет изменён в другой сессии</strong><span data-testid="layout-conflict-copy"></span></div>
-        <fieldset class="layout-dimension"><legend>Строки</legend><div data-testid="layout-row-options"></div></fieldset>
-        <fieldset class="layout-dimension"><legend>Столбцы</legend><div data-testid="layout-column-options"></div></fieldset>
-        <div class="layout-summary"><div class="layout-preview" data-testid="layout-preview" aria-hidden="true"></div><div><strong data-testid="layout-topology"></strong><span data-testid="layout-pane-count"></span><small>Вариант строк × столбцов</small></div></div>
-        <div class="layout-preserve" data-testid="layout-preserve"><strong>Сохранение порядка областей</strong><span data-testid="layout-preserve-copy"></span></div>
-        <div class="layout-warning" data-testid="layout-warning" role="status" hidden><strong>Части макета будут удалены</strong><span data-testid="layout-warning-copy"></span></div>
-        <div class="layout-error" data-testid="layout-error" role="alert" hidden><strong>Не удалось применить макет</strong><span data-testid="layout-error-copy"></span></div>
+  <main class="app-shell" data-testid="app-shell" aria-label="Анализатор сигналов">
+    <header class="application-toolbar ui-panel" aria-label="Панель приложения">
+      <div class="application-toolbar-brand">
+        <img class="application-toolbar-logo" src="./icons/engee-logo.svg" alt="Engee">
+        <h1 class="application-toolbar-title">Анализатор сигналов</h1>
+        <span class="application-toolbar-separator" aria-hidden="true"></span>
+        <span class="application-toolbar-version">Версия 0.1.0</span>
       </div>
-      <footer><span class="layout-keyboard-hint"><kbd>Esc</kbd> Отмена</span><button type="button" data-testid="layout-cancel">Отмена</button><button type="button" class="is-primary" data-testid="layout-apply">Применить</button></footer>
-    </section>
-    <div class="layout-toast" data-testid="layout-toast" role="status" aria-live="polite" hidden><span data-testid="layout-toast-icon" aria-hidden="true">✓</span><span data-testid="layout-toast-copy"></span><button type="button" data-testid="layout-toast-close" aria-label="Закрыть уведомление">×</button></div>
+      <div class="application-toolbar-actions">
+        <button class="toolbar-button" type="button" data-testid="import-session-action" data-tooltip="Импортировать сессию" aria-label="Импортировать сессию">
+          <img src="./icons/import.svg" alt="">
+        </button>
+        <button class="toolbar-button" type="button" data-testid="export-action" data-tooltip="Сохранить сессию" aria-label="Сохранить сессию">
+          <img src="./icons/save.svg" alt="">
+        </button>
+        <button class="toolbar-button" type="button" data-testid="help-action" disabled data-tooltip="Справка недоступна" aria-label="Справка недоступна">
+          <img src="./icons/help-circle.svg" alt="">
+        </button>
+      </div>
+    </header>
 
+    <section class="main-stage" aria-label="Рабочая область и настройки">
+      <section class="workspace ui-panel" data-testid="display-workspace" aria-labelledby="workspace-title">
+        <header class="workspace-titlebar">
+          <h2 id="workspace-title">Отображение сигналов</h2>
+        </header>
+        <div class="display-tabs" aria-label="Экраны и действия">
+          <div class="display-tabs-wrap" data-testid="display-tabs-wrap">
+            <button class="display-tab-scroll display-tab-scroll-prev" type="button" data-testid="display-scroll-left" aria-label="Прокрутить экраны влево" data-tooltip="Прокрутить экраны влево" hidden>
+              <span class="display-tab-scroll-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="display-tablist" role="tablist" aria-label="Экраны" data-testid="display-tabs" tabindex="-1">
+              <div class="display-tab-shell is-selected" data-screen-id="1">
+                <button class="display-tab" type="button" role="tab" aria-selected="true"><span>Экран 1</span></button>
+                <button class="display-tab-close" type="button" data-close-display aria-label="Удалить экран 1" data-tooltip="Удалить экран 1"><img src="./icons/close.svg" alt=""></button>
+              </div>
+            </div>
+            <button class="display-tab-scroll display-tab-scroll-next" type="button" data-testid="display-scroll-right" aria-label="Прокрутить экраны вправо" data-tooltip="Прокрутить экраны вправо">
+              <span class="display-tab-scroll-chevron" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div class="display-action-cluster" aria-label="Действия с экранами">
+            <button class="display-add" type="button" data-testid="add-display" data-tooltip="Добавить экран" aria-label="Добавить экран">
+              <img src="./icons/plus.svg" alt="">
+            </button>
+            <button class="layout-trigger" type="button" data-testid="layout-trigger" aria-haspopup="dialog" aria-controls="layout-popover" aria-expanded="false" aria-label="Изменить макет, текущий макет 1 на 1" data-tooltip="Изменить макет">
+              <svg class="layout-grid-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>
+              <span class="layout-current">1 × 1</span>
+              <img class="layout-chevron" src="./icons/chevron-down-fill-16.svg" alt="">
+            </button>
+          </div>
+        </div>
+        <div class="plot-grid" data-testid="plot-grid" aria-label="Графики экрана"></div>
+      </section>
+
+      <aside class="settings-panel ui-panel" data-testid="settings-panel" aria-labelledby="settings-title" data-apply-state="pristine">
+        <header class="settings-heading" data-testid="settings-heading">
+          <div class="settings-heading-copy">
+            <h2 id="settings-title">Настройки отображения</h2>
+            <p data-settings-context>Область 1 · Временная область</p>
+          </div>
+          <span class="settings-context-dot" aria-hidden="true"></span>
+        </header>
+        <div class="settings-tabs" role="tablist" aria-label="Страницы настроек" data-testid="settings-tabs">
+          <button type="button" role="tab" aria-selected="true" data-settings-page="display" data-testid="display-settings-tab">Отображение</button>
+          <button type="button" role="tab" aria-selected="false" data-settings-page="time" data-testid="time-settings-tab">Время</button>
+          <button type="button" role="tab" aria-selected="false" data-settings-page="measurements" data-testid="statistics-settings-tab">Измерения</button>
+        </div>
+        <div class="settings-scroll" data-settings-content data-testid="settings-catalog-panel"></div>
+        <footer class="settings-apply-block" data-testid="explicit-apply-root">
+          <span class="settings-status" role="status" aria-live="polite" data-settings-status></span>
+          <button class="button button-primary settings-apply" type="button" data-testid="settings-apply" aria-describedby="settings-apply-status" disabled>Применить</button>
+          <span id="settings-apply-status" class="visually-hidden" data-apply-announcement aria-live="assertive"></span>
+        </footer>
+      </aside>
+    </section>
+
+    <section class="inspector ui-panel" aria-labelledby="signals-tab">
+      <header class="inspector-header">
+        <div class="inspector-tabs" role="tablist" aria-label="Данные анализатора">
+          <button id="signals-tab" type="button" role="tab" aria-selected="true" data-bottom-tab="signals" data-testid="signal-panel-tab-signals">Сигналы</button>
+          <button type="button" role="tab" aria-selected="false" data-bottom-tab="measurements" data-testid="signal-panel-tab-measurements">Измерения</button>
+          <button type="button" role="tab" aria-selected="false" data-bottom-tab="peaks" data-testid="peaks-panel-tab">Пики</button>
+        </div>
+        <div class="inspector-actions" aria-label="Действия с сигналами">
+          <button class="inspector-action" type="button" data-testid="signals-add-action" data-tooltip="Добавить сигнал" aria-label="Добавить сигнал">
+            <img src="./icons/plus.svg" alt="">
+          </button>
+          <button class="inspector-action" type="button" data-testid="signal-columns-menu-trigger" data-tooltip="Другие действия" aria-label="Другие действия" aria-haspopup="menu" aria-expanded="false">
+            <img src="./icons/more-vertical.svg" alt="">
+          </button>
+        </div>
+      </header>
+      <div class="inspector-body" data-testid="bottom-panel-signals" data-inspector-content>
+        <div class="inspector-search-row">
+          <span class="search-icon" aria-hidden="true"></span>
+          <input type="search" data-testid="signal-search-input" aria-label="Поиск сигналов" placeholder="Введите название">
+        </div>
+        <div class="signal-table-scroll">
+          <table id="signal-table" class="signal-table">
+            <thead><tr data-table-head></tr></thead>
+            <tbody data-testid="signal-rows" data-signal-rows></tbody>
+          </table>
+          <div class="table-empty" role="status" data-testid="signal-search-empty" hidden>Сигналы не найдены</div>
+        </div>
+      </div>
+    </section>
   </main>
-  <div class="signals-toolbar-error" data-testid="signals-toolbar-error" role="status" hidden><span data-testid="signals-toolbar-error-text"></span><button type="button" data-testid="signals-toolbar-error-close">Закрыть</button></div>
-  <div class="signals-dialog-layer session-dialog-layer" data-testid="session-import-dialog" role="dialog" aria-modal="true" aria-labelledby="session-import-title" hidden><section class="signals-dialog session-dialog"><header><h2 id="session-import-title" tabindex="-1">Импорт сессии</h2><button type="button" class="icon-button" data-testid="session-import-close" aria-label="Закрыть импорт сессии" title="Закрыть"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><div class="signals-dialog-body"><p>Выберите ранее сохранённый JSON-документ. Текущая сессия будет заменена только после проверки на сервере.</p><label class="session-file-field" for="session-file-input">Файл сессии<input id="session-file-input" type="file" accept="application/json,.json" data-testid="session-file-input" aria-describedby="session-file-name session-import-error"></label><p id="session-file-name" data-testid="session-file-name" role="status" aria-live="polite">Файл не выбран.</p><p data-testid="session-import-error" class="signals-action-error" role="alert" hidden></p><p data-testid="session-import-success" class="signals-delete-success" role="status" hidden>Сессия импортирована и загружена.</p></div><footer><button type="button" data-testid="session-import-cancel">Отмена</button><button type="button" data-testid="session-import-submit" disabled>Импортировать</button></footer></section></div>
-  <div class="signals-dialog-layer" data-testid="signals-workspace-dialog" role="dialog" aria-modal="true" aria-labelledby="signals-workspace-title" hidden><section class="signals-dialog signals-workspace-browser"><header><h2 id="signals-workspace-title" tabindex="-1">Импорт из рабочей области</h2><button type="button" class="icon-button" data-testid="signals-workspace-close" aria-label="Закрыть импорт сигнала" title="Закрыть импорт сигнала"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><div class="signals-dialog-body" data-testid="signals-workspace-form" aria-busy="false"><div class="signals-workspace-tools"><span data-testid="signals-workspace-selection-count" role="status" aria-live="polite">Выбрано: 0</span><button type="button" data-testid="signals-workspace-refresh">Обновить</button></div><p data-testid="signals-workspace-loading" role="status" aria-live="polite" hidden>Загрузка каталога…</p><p data-testid="signals-workspace-empty" hidden>В рабочей области нет поддерживаемых переменных.</p><div data-testid="signals-workspace-list" class="signals-workspace-list"></div><fieldset data-testid="signals-workspace-sample-rate-group" hidden><label id="signals-workspace-sample-rate-label" for="signals-workspace-sample-rate-input">Частота дискретизации (Гц)</label><input id="signals-workspace-sample-rate-input" type="text" inputmode="decimal" data-testid="signals-workspace-sample-rate-input" aria-describedby="signals-workspace-sample-rate-hint signals-workspace-sample-rate-error" autocomplete="off"><span id="signals-workspace-sample-rate-hint" data-testid="signals-workspace-sample-rate-hint">Нужна для выбранных массивов без временной шкалы.</span><p id="signals-workspace-sample-rate-error" data-testid="signals-workspace-sample-rate-error" role="alert" hidden></p></fieldset><p data-testid="signals-workspace-batch-error" role="alert" hidden></p><button type="button" data-testid="signals-workspace-retry" hidden>Повторить</button></div><footer><button type="button" data-testid="signals-workspace-cancel">Отмена</button><button type="button" data-testid="signals-workspace-submit" disabled>Добавить</button></footer></section></div>
-  <div class="signals-dialog-layer" data-testid="signals-workspace-success" role="dialog" aria-modal="true" aria-labelledby="signals-workspace-success-count" hidden><section class="signals-dialog"><header><h2>Сигналы импортированы</h2></header><div class="signals-dialog-body"><p id="signals-workspace-success-count" data-testid="signals-workspace-success-count" role="status">Добавлено: 0</p></div><footer><button type="button" data-testid="signals-workspace-done">Готово</button></footer></section></div>
-  <div class="signals-dialog-layer" data-testid="signals-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="signals-delete-title" aria-describedby="signals-delete-name" hidden><section class="signals-dialog"><header><h2 id="signals-delete-title">Удалить сигнал?</h2><button type="button" class="icon-button" data-testid="signals-delete-close" aria-label="Закрыть подтверждение удаления" title="Закрыть подтверждение удаления"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header><div class="signals-dialog-body"><p id="signals-delete-description">Сигнал <strong id="signals-delete-name" data-testid="signals-delete-name"></strong> будет удалён из текущей сессии.</p><p id="signals-delete-success" class="signals-delete-success" data-testid="signals-delete-success" role="status" hidden>Сигнал <strong data-testid="signals-delete-success-name"></strong> удалён.</p></div><footer><button type="button" data-testid="signals-delete-cancel">Отмена</button><button type="button" class="is-danger" data-testid="signals-delete-confirm">Удалить</button><button type="button" data-testid="signals-delete-done" hidden>Готово</button></footer></section></div>
-  <div class="signals-dialog-layer nested-confirmation-layer" data-testid="nested-confirmation-dialog" role="alertdialog" aria-modal="true" aria-labelledby="nested-confirmation-title" hidden><section class="signals-dialog nested-confirmation"><header><h2 id="nested-confirmation-title">Закрыть без добавления?</h2></header><div class="signals-dialog-body"><p>Выбранные переменные и введённая частота дискретизации не будут сохранены.</p></div><footer><button type="button" data-testid="nested-confirmation-stay">Остаться</button><button type="button" class="is-danger" data-testid="nested-confirmation-leave">Закрыть</button></footer></section></div>
-  <div class="overlay-tooltip" data-testid="overlay-tooltip" role="tooltip" hidden></div>
-  <p data-testid="spectrogram-settings-contract-error" role="alert" hidden></p><script src="./js/api.js"></script><script src="./js/settings.js"></script><script src="./js/layouts.js"></script><script src="./js/app.js"></script><script src="./vendor/vue/3.5.41/vue.global.prod.js"></script><script src="./js/components/explicit-apply.js"></script>
+
+  <div class="menu select-menu" role="listbox" data-testid="select-menu" hidden></div>
+  <div class="menu compact-menu plot-menu" role="menu" data-testid="display-overflow-menu" hidden>
+    <button type="button" role="menuitem" data-plot-clear>
+      <img src="./icons/trash.svg" alt="">
+      <span>Очистить область</span>
+    </button>
+    <button type="button" role="menuitem" data-plot-help aria-haspopup="dialog" aria-expanded="false">
+      <img src="./icons/help-circle.svg" alt="">
+      <span>Управление графиком</span>
+    </button>
+  </div>
+  <section class="graph-help" role="dialog" aria-modal="false" aria-label="Справка по управлению графиком" data-testid="graph-help-overlay" hidden>
+    <div class="graph-help-copy">
+      <span>Перетаскивать график: Shift + ЛКМ</span>
+      <span>Автомасштабирование: двойной клик</span>
+      <span>Зум: зажать ЛКМ и выделить область</span>
+    </div>
+    <button class="graph-help-close" type="button" data-graph-help-close aria-label="Закрыть справку по управлению графиком" data-tooltip="Закрыть справку">
+      <img src="./icons/close.svg" alt="">
+    </button>
+  </section>
+  <div class="menu inspector-menu" role="menu" data-testid="signal-columns-menu" aria-label="Другие действия с сигналами" hidden></div>
+
+  <section id="layout-popover" class="layout-popover" role="dialog" aria-modal="false" aria-labelledby="layout-title" data-testid="layout-popover" hidden>
+    <header>
+      <div><h2 id="layout-title">Макет экрана</h2><p>Настройка областей без потери контекста</p></div>
+      <button class="icon-button" type="button" data-testid="layout-cancel-close" data-layout-close data-tooltip="Закрыть настройку макета" aria-label="Закрыть настройку макета"><img src="./icons/close.svg" alt=""></button>
+    </header>
+    <div class="layout-body">
+      <fieldset><legend>Строки</legend><div class="segments" data-layout-rows></div></fieldset>
+      <fieldset><legend>Столбцы</legend><div class="segments" data-layout-columns></div></fieldset>
+      <div class="layout-preview" aria-hidden="true"></div>
+      <div class="layout-warning" role="status" data-layout-warning hidden>
+        <strong>Макет не рекомендуется</strong>
+        <span>Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.</span>
+      </div>
+    </div>
+    <footer><button class="button" type="button" data-testid="layout-cancel" data-layout-cancel>Отмена</button><button class="button button-primary" type="button" data-testid="layout-apply" data-layout-apply>Применить</button></footer>
+  </section>
+
+  <div class="toast" role="status" aria-live="polite" data-testid="layout-toast" hidden>
+    <img src="./icons/tick-figma.svg" alt="">
+    <span data-toast-copy>Настройки применены</span>
+    <button type="button" data-testid="layout-toast-close" data-toast-close aria-label="Закрыть уведомление">×</button>
+  </div>
+  <div class="tooltip" role="tooltip" data-testid="overlay-tooltip" hidden></div>
+
+  <footer class="app-status" aria-live="polite">
+    <div data-testid="app-loading" role="status" hidden><span data-loading-text>Загрузка…</span></div>
+    <div data-testid="app-error" role="alert" hidden><span data-error-text></span><button type="button" data-retry>Повторить</button></div>
+  </footer>
+  <div data-testid="runtime-dialog-root"></div>
+  <script src="./js/api.js"></script>
+  <script src="./js/settings.js"></script>
+  <script src="./js/layouts.js"></script>
+  <script src="./vendor/vue/3.5.41/vue.global.prod.js"></script>
+  <script src="./js/components/explicit-apply.js"></script>
+  <script src="./js/app.js"></script>
 </body>
 </html>
