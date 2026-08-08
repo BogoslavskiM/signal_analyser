@@ -134,10 +134,10 @@
     if (!envelope.layouts.every(function(entry) {
       if (!exactKeys(entry, ["display_id", "layout", "outputs"]) || typeof entry.display_id !== "string" || !seenDisplays[entry.display_id] || own(normalized, entry.display_id) || !validLayout(entry.layout, signalMap) ||
           !Array.isArray(entry.outputs)) return false;
-      // TASK-0070: only the active Display has exactly its active pane output;
-      // inactive Displays deliberately carry an empty array.
+      // v5 materializes an independent lightweight status for every visible
+      // pane of the active Display.  Other Displays remain cold.
       if (entry.display_id === envelope.active_display_id) {
-        if (entry.outputs.length !== 1 || !validPaneOutput(entry.outputs[0], activePane(entry.layout), signalMap)) return false;
+        if (entry.outputs.length !== entry.layout.panes.length || !entry.layout.panes.every(function(pane) { var matches = entry.outputs.filter(function(record) { return record && record.pane_id === pane.id; }); return matches.length === 1 && validPaneOutput(matches.pop(), pane, signalMap); })) return false;
       } else if (entry.outputs.length !== 0) return false;
       normalized[entry.display_id] = entry.layout;
       normalizedOutputs[entry.display_id] = entry.outputs;
@@ -281,16 +281,6 @@
         task.inFlight = false;
         if (paneRenderQueue[key] !== task) window.requestAnimationFrame(renderLatestPane);
       });
-    });
-  }
-
-  function legacyRenderPanePlots(layout, outputs) {
-    var activeRecord = outputs[0];
-    if (activeRecord && activeRecord.output && activeRecord.output.isready && activeRecord.output.success && hasOutputData(activeRecord)) panePayloadCache[activeRecord.pane_id] = activeRecord;
-    layout.panes.forEach(function(pane) {
-      var record = pane.id === layout.active_pane_id ? activeRecord : panePayloadCache[pane.id];
-      var host = pane.id === layout.active_pane_id ? activeHost : grid.querySelector("[data-pane-plot-host='" + pane.id + "']");
-      if (record && host) queuePaneRender(host, record, layout.rows * layout.columns > 16);
     });
   }
 
