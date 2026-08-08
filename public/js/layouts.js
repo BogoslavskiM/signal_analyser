@@ -313,8 +313,9 @@
       var isActive = pane.id === layout.active_pane_id;
       var panePending = pending && pending.paneId === pane.id;
       var select = isActive ? "" : "<select class='pane-type-select' data-pane-plot-type data-pane-id='" + esc(pane.id) + "' data-testid='pane-plot-type-" + esc(pane.id) + "' aria-label='Тип графика области " + index + "'" + (panePending ? " disabled aria-busy='true'" : "") + ">" + PLOTS.map(function(plot) { return "<option value='" + plot + "'" + (pane.plot_type === plot ? " selected" : "") + ">" + TITLES[plot] + "</option>"; }).join("") + "</select>";
+      var paneRecord = outputs.filter(function(record) { return record && record.pane_id === pane.id; })[0] || panePayloadCache[pane.id];
       return "<article class='plot-pane" + (isActive ? " is-active" : "") + (panePending ? " is-pending" : "") + "' data-pane-id='" + esc(pane.id) + "' data-testid='plot-pane-" + esc(pane.id) + "' tabindex='0' aria-current='" + (isActive ? "true" : "false") + "' aria-busy='" + (panePending ? "true" : "false") + "' aria-label='Область " + index + ", " + TITLES[pane.plot_type] + "'>" +
-        "<header class='pane-header'><div class='pane-title'><strong>Область " + index + "</strong><span class='pane-server-id'>" + esc(pane.id) + "</span>" + (isActive ? "<span class='pane-active-badge'>Активная</span>" : "") + "</div><span class='pane-runtime-slot' data-pane-runtime-slot='" + (isActive ? "true" : "false") + "'>" + select + "</span></header>" + paneOutputMarkup(pane, index, isActive, isActive ? outputs[0] : panePayloadCache[pane.id]) + "</article>";
+        "<header class='pane-header'><div class='pane-title'><strong>Область " + index + "</strong><span class='pane-server-id'>" + esc(pane.id) + "</span>" + (isActive ? "<span class='pane-active-badge'>Активная</span>" : "") + "</div><span class='pane-runtime-slot' data-pane-runtime-slot='" + (isActive ? "true" : "false") + "'>" + select + "</span></header>" + paneOutputMarkup(pane, index, isActive, paneRecord) + "</article>";
     }).join("");
     var activeSlot = grid.querySelector("[data-pane-runtime-slot='true']");
     var activeOutput = grid.querySelector("[data-pane-id='" + layout.active_pane_id + "'] [data-pane-output-state='ready']");
@@ -729,6 +730,7 @@
     refresh:refresh,
     refreshAfterApply:function(revision) { if (integer(revision)) appRevision = revision; refresh(); },
     acceptEnvelope:acceptEnvelope,
+    layoutLabel:function(displayId) { var layout = layoutsByDisplay[displayId || activeDisplayId]; return layout ? pretty(layout.rows, layout.columns) : "—"; },
     closePopover:function() { closePopover(true); },
   };
   window.SignalAnalyserModules = window.SignalAnalyserModules || {};
@@ -741,7 +743,7 @@
   // TASK-0060 active-output data path.  State-lite is the sole metadata
   // snapshot; Plotly arrays are requested only for its authoritative pane.
   var ACTIVE_OUTPUT_PATH = "./api/outputs/active?display_id=";
-  var activeOutputPollTimer = null, activeOutputRequestId = 0, activeOutputContext = "";
+  var activeOutputPollTimer = null, activeOutputRequestId = 0, activeOutputContext = "", visibleOutputTimers = {}, visibleOutputRequestIds = {};
   var lazyPlotlyPromise = null;
 
   function ensureLocalPlotly() {
@@ -774,11 +776,11 @@
     if (!snapshot.layouts.every(function(entry) {
       if (!entry || typeof entry.display_id !== "string" || !seen[entry.display_id] || layouts[entry.display_id] || !validLayout(entry.layout, signalMap) || !Array.isArray(entry.outputs)) return false;
       if (entry.display_id !== snapshot.active_display_id && entry.outputs.length !== 0) return false;
-      if (entry.display_id === snapshot.active_display_id && entry.outputs.length !== 1) return false;
+      if (entry.display_id === snapshot.active_display_id && entry.outputs.length !== entry.layout.panes.length) return false;
       layouts[entry.display_id] = entry.layout;
-      outputs[entry.display_id] = entry.display_id === snapshot.active_display_id ? [liteOutputRecord(entry.outputs[0], activePane(entry.layout))].filter(Boolean) : [];
+      outputs[entry.display_id] = entry.display_id === snapshot.active_display_id ? entry.outputs.map(function(status, index) { return liteOutputRecord(status, entry.layout.panes[index]); }).filter(Boolean) : [];
       if (entry.display_id === snapshot.active_display_id) activeEntry = entry;
-      return entry.display_id !== snapshot.active_display_id || outputs[entry.display_id].length === 1;
+      return entry.display_id !== snapshot.active_display_id || outputs[entry.display_id].length === entry.layout.panes.length;
     })) return null;
     if (!activeEntry) return null;
     return { revision:snapshot.state_revision, activeDisplayId:snapshot.active_display_id, layouts:layouts, outputs:outputs, colors:colors, state:snapshot };
@@ -837,23 +839,47 @@
     layoutsByDisplay = accepted.layouts; outputsByDisplay = accepted.outputs; signalColors = accepted.colors;
     render();
     if (notifyApp) dispatchState(accepted.state);
-    scheduleActiveOutputPoll(0);
+    scheduleVisiblePaneOutputLoads(0);
     return true;
+  }
+  /* HND-0486: state-lite gives a status for every visible pane.  Payloads stay
+     lazy and backend-scheduled; this queue asks each pane independently and
+     never derives traces or calculations in the browser. */
+  function scheduleVisiblePaneOutputLoads(delay) {
+    var layout = currentLayout(), revision = latestKnownRevision() || 0;
+    if (!layout || !api || typeof api.activeOutput !== "function") return;
+    layout.panes.forEach(function(pane) {
+      var key = activeDisplayId + "|" + pane.id, existing = visibleOutputTimers[key];
+      if (existing) window.clearTimeout(existing);
+      visibleOutputTimers[key] = window.setTimeout(function() {
+        var requestId = (visibleOutputRequestIds[key] || 0) + 1, record = (outputsByDisplay[activeDisplayId] || []).filter(function(item) { return item && item.pane_id === pane.id; })[0];
+        visibleOutputRequestIds[key] = requestId;
+        if (!record || activeDisplayId !== key.split("|")[0]) return;
+        api.activeOutput(activeDisplayId, pane.id).then(function(response) {
+          var currentLayout = layoutsByDisplay[activeDisplayId], currentPane = currentLayout && currentLayout.panes.filter(function(item) { return item.id === pane.id; })[0];
+          if (visibleOutputRequestIds[key] !== requestId || !currentPane || !validActiveOutput(response, activeDisplayId, pane.id, revision, record.calculation_revision, record.context_key)) return;
+          if (response.state_revision < (latestKnownRevision() || 0)) return;
+          outputsByDisplay[activeDisplayId] = (outputsByDisplay[activeDisplayId] || []).map(function(item) { return item.pane_id === pane.id ? { pane_id:pane.id, plot_type:response.plot_type, signal_bindings:currentPane.signal_bindings.slice(), analysis_signal:response.analysis_signal || null, calculation_revision:response.calculation_revision, context_key:response.context_key, output:{ isready:response.isready, success:response.success, error:response.error, data:response.data } } : item; });
+          envelopeRevision = Math.max(envelopeRevision || 0, response.state_revision); render();
+          if (!response.isready) scheduleVisiblePaneOutputLoads(150);
+        }).catch(function() { /* transport errors retain the last pane frame */ });
+      }, delay || 0);
+    });
   }
   function hasOutputData(record) { return !!(record && record.output && Array.isArray(record.output.data) && record.output.data.length); }
   function paneOutputMarkup(pane, index, isActive, record) {
     var prefix = "<div class='pane-output", suffix = "' data-testid='pane-output-" + esc(pane.id) + "'";
-    if (!isActive) return prefix + " pane-output-empty" + suffix + " data-pane-output-state='empty'><strong>Нет данных области</strong><span>Выберите область, чтобы загрузить её график.</span></div>";
-    if (!record || !record.output.isready) return prefix + " pane-output-loading" + suffix + " data-pane-output-state='loading' role='status'><span class='spinner'></span><span>Обновление графика…</span></div>";
+    if (!record) return prefix + " pane-output-empty" + suffix + " data-pane-output-state='empty' aria-label='Пустая область'></div>";
+    if (!record.output.isready) return prefix + " pane-output-loading" + suffix + " data-pane-output-state='loading' role='status' aria-label='Загрузка графика'><span class='spinner'></span></div>";
     if (!record.output.success) return prefix + " pane-output-error" + suffix + " data-pane-output-state='error' role='alert'><strong>График не обновлён</strong><span>" + esc(record.output.error) + "</span></div>";
-    if (!hasOutputData(record)) return prefix + " pane-output-empty" + suffix + " data-pane-output-state='empty'><strong>Нет видимых сигналов</strong><span>Выберите сигналы для активной области.</span></div>";
+    if (!hasOutputData(record)) return prefix + " pane-output-empty" + suffix + " data-pane-output-state='empty' aria-label='Пустая область'></div>";
     return prefix + suffix + " data-pane-output-state='ready'><div class='pane-plot-host' data-pane-plot-host='" + esc(pane.id) + "' data-testid='pane-plot-host-" + esc(pane.id) + "' role='img' aria-label='График области " + index + "'></div></div>";
   }
   function renderPanePlots(layout, outputs) {
-    var record = outputs[0], pane = activePane(layout), host = activeHost;
-    if (record && pane && host && record.pane_id === pane.id && record.output.isready && record.output.success && hasOutputData(record)) {
-      queuePaneRender(host, record);
-    }
+    layout.panes.forEach(function(pane) {
+      var record = outputs.filter(function(item) { return item && item.pane_id === pane.id; })[0], host = pane.id === layout.active_pane_id ? activeHost : grid.querySelector("[data-pane-plot-host='" + pane.id + "']");
+      if (record && host && record.output.isready && record.output.success && hasOutputData(record)) queuePaneRender(host, record);
+    });
   }
   function postLayout(payload, metadata) {
     if (!api || typeof api.layouts !== "function" || pending || !currentLayout()) return;

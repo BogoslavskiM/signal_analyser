@@ -4468,8 +4468,10 @@ end
 function signal_analyser_publish_layout_candidate!(
     state::SignalAnalyserState,
     candidate::SignalAnalyserState,
+    ;
+    preserve_output_runtime::Bool = false,
 )::Nothing
-    signal_analyser_cancel_active_output_unlocked!(state)
+    preserve_output_runtime || signal_analyser_cancel_active_output_unlocked!(state)
     state.signals = candidate.signals
     state.view = candidate.view
     state.row_selection = candidate.row_selection
@@ -4481,7 +4483,11 @@ function signal_analyser_publish_layout_candidate!(
     state.spectrum_cache = candidate.spectrum_cache
     state.spectrogram_cache = candidate.spectrogram_cache
     state.persistence_cache = candidate.persistence_cache
-    state.output_manager = candidate.output_manager
+    if preserve_output_runtime
+        signal_analyser_sync_output_pages_unlocked!(state)
+    else
+        state.output_manager = candidate.output_manager
+    end
     nothing
 end
 
@@ -4687,6 +4693,12 @@ function apply_signal_analyser_layout!(
         )
         current_layout = signal_analyser_layout_by_display_id(state, requested.display_id)
         layout_changed = requested.layout != current_layout
+        current_panes = Dict(pane.id => pane for pane in current_layout.panes)
+        affected_output_pages = String[
+            signal_analyser_output_page_id(requested.display_id, pane.id)
+            for pane in requested.layout.panes
+            if !haskey(current_panes, pane.id) || current_panes[pane.id] != pane
+        ]
         candidate = signal_analyser_clone_state_for_layout(state)
         display = signal_analyser_display_by_id(candidate, requested.display_id)
         candidate.display_layouts[requested.display_id] = requested.layout
@@ -4716,8 +4728,15 @@ function apply_signal_analyser_layout!(
             candidate.view.state_revision += 1
         end
         if changed
-            signal_analyser_publish_layout_candidate!(state, candidate)
-            signal_analyser_invalidate_display_outputs_unlocked!(state, requested.display_id)
+            signal_analyser_publish_layout_candidate!(
+                state,
+                candidate;
+                preserve_output_runtime = true,
+            )
+            isempty(affected_output_pages) || signal_analyser_invalidate_output_pages_unlocked!(
+                state,
+                affected_output_pages,
+            )
         end
         lightweight ?
             signal_analyser_layouts_lite_snapshot_unlocked(state) :

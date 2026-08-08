@@ -241,7 +241,10 @@ function stateLite(revision, options) {
     layouts:[{
       display_id:"display-1",
       layout:{version:1, variant:`1x${panes.length}`, rows:1, columns:panes.length, active_pane_id:activePaneId, next_pane_number:panes.length + 1, panes},
-      outputs:[{display_id:"display-1", pane_id:activePane.id, plot_type:activePane.plot_type, analysis_signal:activePane.signal_bindings[0] || null, calculation_revision:calculationRevision, context_key:contextKey, isready:false, success:true, error:""}],
+      // v5 state-lite is metadata-only but authoritative for *every* pane in
+      // the active Display, in layout order.  The payload itself remains lazy
+      // and is requested pane-by-pane below.
+      outputs:panes.map((item) => ({display_id:"display-1", pane_id:item.id, plot_type:item.plot_type, analysis_signal:item.signal_bindings[0] || null, calculation_revision:calculationRevision, context_key:`${contextKey}|${item.id}`, isready:false, success:true, error:""})),
     }],
   };
 }
@@ -249,7 +252,7 @@ function stateLite(revision, options) {
 function activeOutput(snapshot, label, override) {
   const entry = snapshot.layouts[0];
   const paneItem = entry.layout.panes.find((item) => item.id === entry.layout.active_pane_id);
-  const status = entry.outputs[0];
+  const status = entry.outputs.find((item) => item.pane_id === paneItem.id);
   return Object.assign({
     state_revision:snapshot.state_revision,
     calculation_revision:status.calculation_revision,

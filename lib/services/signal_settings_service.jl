@@ -2750,7 +2750,10 @@ function apply_signal_settings!(
             state.view.state_revision,
         ))
         display = signal_analyser_display_by_id(state, command.display_id)
-        signal_analyser_cancel_active_output_unlocked!(state)
+        display.id == state.active_display_id && signal_analyser_cancel_output_pages_unlocked!(
+            state,
+            String[signal_analyser_active_output_page_id(state)],
+        )
         prospective, errors = signal_settings_draft_projection_unlocked(
             service,
             state,

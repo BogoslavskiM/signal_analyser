@@ -2309,14 +2309,14 @@ struct SignalAnalyserOutputStatus
     error::String
 end
 
-"""Cooperative cancellation flag shared with exactly one active calculation task."""
+"""Cooperative cancellation flag shared with the one currently running calculation."""
 mutable struct SignalAnalyserCancellationToken
     cancelled::Threads.Atomic{Bool}
 end
 
 SignalAnalyserCancellationToken() = SignalAnalyserCancellationToken(Threads.Atomic{Bool}(false))
 
-"""Runtime-only active-page calculation state; it is never session-serialized."""
+"""Runtime-only bounded visible-pane scheduler state; it is never session-serialized."""
 mutable struct SignalAnalyserCalculationManager
     calculation_revision::Int
     page_calculation_revisions::Dict{String,Int}
@@ -2329,6 +2329,9 @@ mutable struct SignalAnalyserCalculationManager
     active_task::Union{Nothing,Task}
     active_poll_count::Int
     cancellation_token::Union{Nothing,SignalAnalyserCancellationToken}
+    queued_contexts::Vector{SignalAnalyserOutputContextKey}
+    output_poll_counts::Dict{String,Int}
+    active_task_is_worker::Bool
 end
 
 function SignalAnalyserCalculationManager(page_ids::AbstractVector{<:AbstractString})
@@ -2346,6 +2349,9 @@ function SignalAnalyserCalculationManager(page_ids::AbstractVector{<:AbstractStr
         nothing,
         0,
         nothing,
+        SignalAnalyserOutputContextKey[],
+        Dict{String,Int}(),
+        false,
     )
 end
 
@@ -2364,6 +2370,9 @@ function signal_analyser_clone_calculation_manager(
         nothing,
         0,
         nothing,
+        SignalAnalyserOutputContextKey[],
+        Dict{String,Int}(),
+        false,
     )
 end
 
@@ -2489,9 +2498,7 @@ function default_signal_catalog()::Vector{AnalysedSignal}
     sample_count = 512
     time = collect(0:(sample_count - 1)) ./ sample_rate_hz
 
-    harmonic = @. 0.82 * sin(2pi * 180.0 * time) + 0.28 * sin(2pi * 420.0 * time + 0.35)
-    chirp_phase = @. 2pi * (90.0 * time + 0.5 * 1100.0 * time^2)
-    complex_chirp = @. cis(chirp_phase) + 0.22 * cis(2pi * 510.0 * time)
+    harmonic = @. sin(2pi * 180.0 * time)
 
     AnalysedSignal[
         AnalysedSignal(
@@ -2500,14 +2507,6 @@ function default_signal_catalog()::Vector{AnalysedSignal}
             sample_rate_hz,
             ComplexF64.(harmonic),
             false,
-            true,
-        ),
-        AnalysedSignal(
-            "Комплексный ЛЧМ-сигнал",
-            "#dc2626",
-            sample_rate_hz,
-            ComplexF64.(complex_chirp),
-            true,
             true,
         ),
     ]

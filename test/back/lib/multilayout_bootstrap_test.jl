@@ -15,6 +15,8 @@ end
     pane = ML_BOOTSTRAP.signal_display_active_pane(layout)
 
     @test state.active_display_id == display.id == "display-1"
+    @test [signal.name for signal in state.signals] == ["Гармонический сигнал"]
+    @test !only(state.signals).is_complex && all(iszero, imag.(only(state.signals).values))
     @test layout.version == ML_BOOTSTRAP.SIGNAL_DISPLAY_LAYOUT_VERSION
     @test (layout.variant, layout.rows, layout.columns, layout.active_pane_id, layout.next_pane_number) == ("1x1", 1, 1, "pane-1", 2)
     @test length(layout.panes) == 1
@@ -36,7 +38,19 @@ end
 
 @testset "TASK-0037 explicit layout session parse/import/export round trip" begin
     service = ML_BOOTSTRAP.SignalAnalyserSessionService()
-    source = ML_BOOTSTRAP.default_signal_analyser_state()
+    # v5's production default is deliberately one pure real sine.  This
+    # session round-trip still needs two bindings, so it owns an explicit test
+    # inventory instead of silently restoring a second product default.
+    first_signal = only(ML_BOOTSTRAP.default_signal_catalog())
+    second_signal = ML_BOOTSTRAP.AnalysedSignal(
+        "Тестовый комплексный сигнал", "#dc2626", first_signal.sample_rate_hz,
+        ComplexF64[1 + 1im, 2 + 0im, 3 - 1im], true, true,
+    )
+    source = ML_BOOTSTRAP.SignalAnalyserState(
+        ML_BOOTSTRAP.AnalysedSignal[first_signal, second_signal],
+        ML_BOOTSTRAP.SignalAnalyserViewState(0, ML_BOOTSTRAP.TIME_PLOT, first_signal.name),
+        Dict{String,Dict{String,Any}}(), ReentrantLock(),
+    )
     names = [signal.name for signal in source.signals]
 
     ML_BOOTSTRAP.apply_signal_analyser_layout!(source, Dict(

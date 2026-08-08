@@ -1,4 +1,4 @@
-"""Raised when a graph request does not identify the authoritative active pane."""
+"""Raised when a graph request does not identify a pane visible in the active Display."""
 struct SignalAnalyserInactiveOutputError <: Exception
     display_id::String
     pane_id::String
@@ -9,12 +9,14 @@ end
 const SIGNAL_ANALYSER_ACTIVE_OUTPUT_MAX_PENDING_POLLS::Int = 64
 const SIGNAL_ANALYSER_ACTIVE_OUTPUT_POLL_LIMIT_ERROR::String =
     "Расчёт активного графика не завершился за допустимое число опросов"
+const SIGNAL_ANALYSER_VISIBLE_OUTPUT_MAX_QUEUE::Int =
+    SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION * SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION
 
 function Base.showerror(io::IO, err::SignalAnalyserInactiveOutputError)
     print(
         io,
-        "Output $(err.display_id)/$(err.pane_id) не активен; текущий output ",
-        "$(err.active_display_id)/$(err.active_pane_id)",
+        "Output $(err.display_id)/$(err.pane_id) не входит в активный Display ",
+        "$(err.active_display_id); active pane $(err.active_pane_id)",
     )
 end
 
@@ -46,6 +48,29 @@ function signal_analyser_active_output_page_id(state::SignalAnalyserState)::Stri
     signal_analyser_output_page_id(state.active_display_id, layout.active_pane_id)
 end
 
+function signal_analyser_layout_pane_by_id(
+    layout::SignalDisplayLayoutState,
+    pane_id::AbstractString,
+)::SignalDisplayPaneState
+    index = findfirst(pane -> pane.id == pane_id, layout.panes)
+    index === nothing && throw(ArgumentError("Pane не найдена: $pane_id"))
+    layout.panes[index]
+end
+
+function signal_analyser_output_context_is_current_unlocked(
+    state::SignalAnalyserState,
+    context::SignalAnalyserOutputContextKey,
+)::Bool
+    context.display_id == state.active_display_id || return false
+    layout = signal_analyser_layout_by_display_id(state, state.active_display_id)
+    index = findfirst(pane -> pane.id == context.pane_id, layout.panes)
+    index === nothing && return false
+    pane = layout.panes[index]
+    page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+    get(state.output_manager.page_calculation_revisions, page_id, -1) ==
+        context.calculation_revision && pane.plot_type == context.plot_type
+end
+
 function signal_analyser_sync_output_pages_unlocked!(state::SignalAnalyserState)::Nothing
     manager = state.output_manager
     page_ids = signal_analyser_output_page_ids(state)
@@ -57,19 +82,20 @@ function signal_analyser_sync_output_pages_unlocked!(state::SignalAnalyserState)
     filter!(pair -> first(pair) in known, manager.page_calculation_revisions)
     filter!(pair -> first(pair) in known, manager.need_update_pages)
     filter!(pair -> first(pair) in known, manager.plot_cache)
+    filter!(pair -> first(pair) in known, manager.peaks_cache)
     filter!(pair -> first(pair) in known, manager.output_statuses)
+    filter!(pair -> first(pair) in known, manager.output_poll_counts)
     manager.active_page_id = signal_analyser_active_output_page_id(state)
+    filter!(
+        context -> signal_analyser_output_context_is_current_unlocked(state, context),
+        manager.queued_contexts,
+    )
     if manager.active_context !== nothing
-        active_context = manager.active_context::SignalAnalyserOutputContextKey
-        active_task_page = signal_analyser_output_page_id(
-            active_context.display_id,
-            active_context.pane_id,
-        )
-        if active_task_page != manager.active_page_id
+        running_context = manager.active_context::SignalAnalyserOutputContextKey
+        if !signal_analyser_output_context_is_current_unlocked(state, running_context)
             token = manager.cancellation_token
             token === nothing || (token.cancelled[] = true)
             manager.active_context = nothing
-            manager.active_task = nothing
             manager.active_poll_count = 0
             manager.cancellation_token = nothing
         end
@@ -82,9 +108,39 @@ function signal_analyser_cancel_active_output_unlocked!(state::SignalAnalyserSta
     token = manager.cancellation_token
     token === nothing || (token.cancelled[] = true)
     manager.active_context = nothing
-    manager.active_task = nothing
     manager.active_poll_count = 0
     manager.cancellation_token = nothing
+    if !manager.active_task_is_worker
+        manager.active_task = nothing
+    end
+    empty!(manager.queued_contexts)
+    empty!(manager.output_poll_counts)
+    nothing
+end
+
+function signal_analyser_cancel_output_pages_unlocked!(
+    state::SignalAnalyserState,
+    page_ids::AbstractVector{<:AbstractString},
+)::Nothing
+    manager = state.output_manager
+    requested = Set(String.(page_ids))
+    filter!(context -> !(
+        signal_analyser_output_page_id(context.display_id, context.pane_id) in requested
+    ), manager.queued_contexts)
+    for page_id in requested
+        delete!(manager.output_poll_counts, page_id)
+    end
+    if manager.active_context !== nothing
+        context = manager.active_context::SignalAnalyserOutputContextKey
+        page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+        if page_id in requested
+            token = manager.cancellation_token
+            token === nothing || (token.cancelled[] = true)
+            manager.active_context = nothing
+            manager.active_poll_count = 0
+            manager.cancellation_token = nothing
+        end
+    end
     nothing
 end
 
@@ -106,12 +162,7 @@ function signal_analyser_invalidate_output_pages_unlocked!(
         manager.need_update_pages[page_id] = true
         delete!(manager.output_statuses, page_id)
     end
-    if manager.active_context !== nothing
-        context = manager.active_context::SignalAnalyserOutputContextKey
-        active_task_page = signal_analyser_output_page_id(context.display_id, context.pane_id)
-        (active_task_page in requested || active_task_page != manager.active_page_id) &&
-            signal_analyser_cancel_active_output_unlocked!(state)
-    end
+    signal_analyser_cancel_output_pages_unlocked!(state, affected)
     nothing
 end
 
@@ -151,8 +202,9 @@ function signal_analyser_output_context_unlocked(
 )::SignalAnalyserOutputContextKey
     signal_analyser_sync_output_pages_unlocked!(state)
     active_layout = signal_analyser_layout_by_display_id(state, state.active_display_id)
-    active_pane = signal_display_active_pane(active_layout)
-    if display_id != state.active_display_id || active_pane.id != pane_id
+    pane_index = findfirst(pane -> pane.id == pane_id, active_layout.panes)
+    if display_id != state.active_display_id || pane_index === nothing
+        active_pane = signal_display_active_pane(active_layout)
         throw(SignalAnalyserInactiveOutputError(
             String(display_id),
             String(pane_id),
@@ -160,10 +212,10 @@ function signal_analyser_output_context_unlocked(
             active_pane.id,
         ))
     end
-    display = signal_analyser_active_display(state)
-    page_id = signal_analyser_output_page_id(display.id, active_pane.id)
+    pane = active_layout.panes[pane_index::Int]
+    page_id = signal_analyser_output_page_id(state.active_display_id, pane.id)
     revision = state.output_manager.page_calculation_revisions[page_id]
-    SignalAnalyserOutputContextKey(display.id, active_pane.id, active_pane.plot_type, revision)
+    SignalAnalyserOutputContextKey(state.active_display_id, pane.id, pane.plot_type, revision)
 end
 
 function signal_analyser_output_status_payload_unlocked(
@@ -219,7 +271,6 @@ function signal_analyser_layout_entries_lite_payload(
     signal_analyser_sync_output_pages_unlocked!(state)
     Dict{String,Any}[
         let layout = signal_analyser_layout_by_display_id(state, display.id)
-            active_pane = signal_display_active_pane(layout)
             Dict{String,Any}(
                 "display_id" => display.id,
                 "layout" => signal_display_layout_payload(layout),
@@ -228,8 +279,8 @@ function signal_analyser_layout_entries_lite_payload(
                         signal_analyser_output_status_payload_unlocked(
                             state,
                             display.id,
-                            active_pane,
-                        ),
+                            pane,
+                        ) for pane in layout.panes
                     ] : Dict{String,Any}[],
             )
         end
@@ -282,6 +333,11 @@ function signal_analyser_state_lite_unlocked(state::SignalAnalyserState)::Dict{S
             "state_lite" => true,
             "active_output" => true,
             "background_calculation" => true,
+        ),
+        "output_scheduling" => Dict{String,Any}(
+            "scope" => "active_display",
+            "max_concurrent_calculations" => 1,
+            "max_queued_outputs" => SIGNAL_ANALYSER_VISIBLE_OUTPUT_MAX_QUEUE,
         ),
     )
 end
@@ -630,9 +686,9 @@ function signal_analyser_publish_output_task!(
         )
         manager.need_update_pages[page_id] = false
         manager.active_context = nothing
-        manager.active_task = nothing
         manager.active_poll_count = 0
         manager.cancellation_token = nothing
+        delete!(manager.output_poll_counts, page_id)
         state.view.state_revision += 1
     end
     nothing
@@ -669,9 +725,12 @@ function signal_analyser_terminalize_output_error_unlocked!(
     )
     manager.need_update_pages[page_id] = false
     manager.active_context = nothing
-    manager.active_task = nothing
     manager.active_poll_count = 0
     manager.cancellation_token = nothing
+    if !manager.active_task_is_worker
+        manager.active_task = nothing
+    end
+    delete!(manager.output_poll_counts, page_id)
     state.view.state_revision += 1
     true
 end
@@ -697,9 +756,9 @@ function signal_analyser_run_output_task!(
         token.cancelled[] && return nothing
         display = signal_analyser_display_by_id(snapshot, context.display_id)
         layout = signal_analyser_layout_by_display_id(snapshot, context.display_id)
-        pane = signal_display_active_pane(layout)
+        pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
         pane.id == context.pane_id && pane.plot_type == context.plot_type || throw(
-            ArgumentError("Snapshot активного output не соответствует context key"),
+            ArgumentError("Snapshot pane output не соответствует context key"),
         )
         output = try
             signal_analyser_prepare_pane_output!(snapshot, display, pane)
@@ -760,6 +819,68 @@ function signal_analyser_run_output_task!(
     nothing
 end
 
+function signal_analyser_run_output_worker!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+)::Nothing
+    try
+        while true
+            job = lock(state.lock) do
+                state.output_manager === manager || return nothing
+                signal_analyser_sync_output_pages_unlocked!(state)
+                while !isempty(manager.queued_contexts)
+                    context = popfirst!(manager.queued_contexts)
+                    page_id = signal_analyser_output_page_id(
+                        context.display_id,
+                        context.pane_id,
+                    )
+                    signal_analyser_output_context_is_current_unlocked(state, context) || continue
+                    get(manager.need_update_pages, page_id, true) || continue
+                    token = SignalAnalyserCancellationToken()
+                    manager.active_context = context
+                    manager.active_poll_count = get(manager.output_poll_counts, page_id, 1)
+                    manager.cancellation_token = token
+                    snapshot = signal_analyser_clone_state_for_layout(state)
+                    return (context = context, token = token, snapshot = snapshot)
+                end
+                manager.active_task = nothing
+                manager.active_task_is_worker = false
+                nothing
+            end
+            job === nothing && return nothing
+            signal_analyser_run_output_task!(
+                state,
+                job.snapshot,
+                job.context,
+                job.token,
+            )
+        end
+    finally
+        lock(state.lock) do
+            if state.output_manager === manager && manager.active_task === current_task()
+                token = manager.cancellation_token
+                token === nothing || (token.cancelled[] = true)
+                manager.active_context = nothing
+                manager.active_task = nothing
+                manager.active_task_is_worker = false
+                manager.active_poll_count = 0
+                manager.cancellation_token = nothing
+            end
+        end
+    end
+end
+
+function signal_analyser_start_output_worker_unlocked!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+)::Bool
+    manager.active_task === nothing || return false
+    isempty(manager.queued_contexts) && return false
+    manager.active_task = Threads.@spawn signal_analyser_run_output_worker!(state, manager)
+    manager.active_task_is_worker = true
+    true
+end
+
 function signal_analyser_active_output(
     state::SignalAnalyserState,
     display_id::AbstractString,
@@ -769,6 +890,23 @@ function signal_analyser_active_output(
         context = signal_analyser_output_context_unlocked(state, display_id, pane_id)
         manager = state.output_manager
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+        current_task = manager.active_task
+        if current_task !== nothing && istaskdone(current_task::Task)
+            if manager.active_context !== nothing
+                abandoned_context = manager.active_context::SignalAnalyserOutputContextKey
+                task_error = istaskfailed(current_task) ?
+                    "Фоновый расчёт активного графика завершился с ошибкой" :
+                    "Фоновый расчёт активного графика завершился без публикации результата"
+                signal_analyser_terminalize_output_error_unlocked!(
+                    state,
+                    abandoned_context,
+                    task_error,
+                )
+            end
+            manager.active_task = nothing
+            manager.active_task_is_worker = false
+        end
+
         dirty = manager.need_update_pages[page_id]
         cache = get(manager.plot_cache, page_id, nothing)
         status = get(manager.output_statuses, page_id, nothing)
@@ -794,24 +932,14 @@ function signal_analyser_active_output(
             ), false
         end
 
-        current_task = manager.active_task
-        if current_task !== nothing && manager.active_context == context
-            if istaskdone(current_task::Task)
-                task_error = istaskfailed(current_task) ?
-                    "Фоновый расчёт активного графика завершился с ошибкой" :
-                    "Фоновый расчёт активного графика завершился без публикации результата"
-                signal_analyser_terminalize_output_error_unlocked!(state, context, task_error)
-                return signal_analyser_output_response_unlocked(
-                    state,
-                    context,
-                    Dict{String,Any}[],
-                    true,
-                    false,
-                    task_error,
-                ), false
-            end
-            manager.active_poll_count += 1
-            if manager.active_poll_count >= SIGNAL_ANALYSER_ACTIVE_OUTPUT_MAX_PENDING_POLLS
+        is_running = manager.active_context == context
+        is_queued = any(queued -> queued == context, manager.queued_contexts)
+        if is_running || is_queued
+            is_queued && signal_analyser_start_output_worker_unlocked!(state, manager)
+            poll_count = get(manager.output_poll_counts, page_id, 1) + 1
+            manager.output_poll_counts[page_id] = poll_count
+            is_running && (manager.active_poll_count = poll_count)
+            if is_running && poll_count >= SIGNAL_ANALYSER_ACTIVE_OUTPUT_MAX_PENDING_POLLS
                 signal_analyser_terminalize_output_error_unlocked!(
                     state,
                     context,
@@ -835,26 +963,22 @@ function signal_analyser_active_output(
                 "",
             ), true
         end
-        current_task === nothing || signal_analyser_cancel_active_output_unlocked!(state)
 
-        token = SignalAnalyserCancellationToken()
-        snapshot = signal_analyser_clone_state_for_layout(state)
-        manager.active_page_id = page_id
-        manager.active_context = context
-        manager.active_poll_count = 1
-        manager.cancellation_token = token
+        scheduled_count = length(manager.queued_contexts) +
+            (manager.active_context === nothing ? 0 : 1)
+        scheduled_count < SIGNAL_ANALYSER_VISIBLE_OUTPUT_MAX_QUEUE || throw(ArgumentError(
+            "Очередь visible pane outputs достигла предела " *
+            "$(SIGNAL_ANALYSER_VISIBLE_OUTPUT_MAX_QUEUE)",
+        ))
+        push!(manager.queued_contexts, context)
+        manager.output_poll_counts[page_id] = 1
         manager.output_statuses[page_id] = SignalAnalyserOutputStatus(
             context,
             false,
             false,
             "",
         )
-        manager.active_task = Threads.@spawn signal_analyser_run_output_task!(
-            state,
-            snapshot,
-            context,
-            token,
-        )
+        signal_analyser_start_output_worker_unlocked!(state, manager)
         signal_analyser_output_response_unlocked(
             state,
             context,
