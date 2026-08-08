@@ -371,7 +371,7 @@ end
     )
     catalog_service = WC.WorkspaceCatalogService(provider)
     service = WC.WorkspaceBatchImportService(catalog_service, WC.SignalInventoryService(WC.EngeeWorkspaceSignalSource(provider)))
-    state = WC.default_signal_analyser_state()
+    state = WC.test_state_with_complex_signal()
     # Configure Display 2 explicitly, then make it inactive before import.
     first_name, second_name = [signal.name for signal in state.signals]
     WC.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))

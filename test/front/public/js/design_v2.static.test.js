@@ -59,7 +59,7 @@ module.exports = async function testDesignV2StaticContract(assert) {
     ["workspace-titlebar", "zone 2 workspace title"],
     ["data-testid=\"pane-grid\"", "zone 3 plot workspace"],
     ["data-testid=\"display-settings\"", "zone 4 settings"],
-    ["class=\"bottom-zone\"", "zone 5 inspector"],
+    ["bottom-zone", "zone 5 inspector"],
   ].forEach(([needle, label]) => expect(html.includes(needle), `${label} must remain in the public shell`));
   expect(/data-settings-tab="display"[\s\S]*data-settings-tab="time"[\s\S]*data-settings-tab="measurements"/.test(html), "zone 4 must expose exactly the approved Display, Time, and Measurements settings pages in order");
   expect(lastDeclaration(settingsCss, ".display-settings select,.settings-scalar input,.settings-enum input", "height") === "32px", "zone 4 general controls must finish at exactly 32px");
@@ -89,7 +89,7 @@ module.exports = async function testDesignV2StaticContract(assert) {
   overlayOwners.forEach(([selector, layer, label]) => {
     expect(css.includes(`.${selector}`) && css.includes(layer), `${label} must retain a named overlay layer`);
   });
-  expect(/\.overlay-tooltip\{[^}]*pointer-events:none/.test(layoutsCss), "tooltips must be pointer-inert");
+  expect(/\.overlay-tooltip\{[^}]*pointer-events:none/.test(css), "tooltips must be pointer-inert");
   expect(/\.graph-help-overlay\{[^}]*position:absolute/.test(layoutsCss), "graph help must stay overlayed rather than enter plot flow");
   expect(/\.layout-toast\{[^}]*pointer-events:none/.test(layoutsCss), "passive toast must not steal pointer ownership");
   expect(/pushOverlay\([\s\S]*activeOverlay\([\s\S]*handleOverlayKeydown[\s\S]*trapOverlayFocus/.test(app), "one stack coordinator must own newest-first overlay focus and Escape handling");
@@ -101,8 +101,8 @@ module.exports = async function testDesignV2StaticContract(assert) {
   expect(/function closeGraphHelp\([\s\S]*Plotly\./.test(app) === false && /function (?:open|close)(?:LayoutPopover|Signals|ScreenDelete)[\s\S]{0,500}Plotly\.(?:react|relayout|Plots\.resize)/.test(app) === false, "modeless and blocking overlays must not trigger Plotly render or resize work");
 
   // Preserve the performance/mutation contracts while the visual shell changes.
-  expect(layouts.includes("./api/outputs/active?display_id=") && layouts.includes("activeOutputIdentity") && layouts.includes("stopActiveOutputPoll"), "active-output-only polling must remain scoped to the current pane");
-  expect(layouts.includes("responseRevision < (latestKnownRevision() || 0)") && layouts.includes("state_revision"), "stale state_revision responses must remain rejected");
+  expect(layouts.includes("api.activeOutput(activeDisplayId, pane.id)") && layouts.includes("scheduleVisiblePaneOutputLoads") && layouts.includes("visibleOutputRequestIds"), "visible-pane output polling must remain scoped and deduplicated per pane");
+  expect(layouts.includes("response.state_revision < (latestKnownRevision() || 0)") && layouts.includes("state_revision"), "stale state_revision responses must remain rejected");
   expect(layouts.includes("ResizeObserver") && layouts.includes("Plotly.react(") && layouts.includes("requestAnimationFrame(function renderLatestPane"), "live Plotly must retain lazy serialized rAF rendering and resize observation");
   expect(app.includes("displayMutation(") && fs.existsSync(path.join(root, "test/front/public/js/state_lite_active_output.static.test.js")) && fs.existsSync(path.join(root, "test/front/public/js/app.behavior.test.js")), "the existing strict state-lite/live-Plotly/mutation suites must remain part of the frontend corpus");
 

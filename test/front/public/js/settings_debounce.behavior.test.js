@@ -45,10 +45,13 @@ function settingsDocument(displayId, revision) {
 
 function fakeHost() {
   const listeners = {};
+  const attributes = {};
   return {
     hidden: false,
     innerHTML: "",
     parentNode: null,
+    setAttribute(name, value) { attributes[name] = String(value); },
+    getAttribute(name) { return Object.prototype.hasOwnProperty.call(attributes, name) ? attributes[name] : null; },
     addEventListener(type, listener) { (listeners[type] || (listeners[type] = [])).push(listener); },
     querySelector() { return null; },
     querySelectorAll() { return []; },

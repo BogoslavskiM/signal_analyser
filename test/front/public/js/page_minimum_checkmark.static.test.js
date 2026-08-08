@@ -26,19 +26,17 @@ module.exports = async function testPageMinimumAndCheckmarkStaticContract(assert
   const failures = [];
   const expect = (condition, message) => { if (!condition) failures.push(message); };
 
-  const htmlRule = rules(layouts, "html").filter((rule) => declaration(rule.body, "overflow") === "auto").at(-1);
-  const bodyRule = rules(layouts, "body").filter((rule) => declaration(rule.body, "overflow") === "visible").at(-1);
+  const documentRule = rules(layouts, "html,body").filter((rule) => declaration(rule.body, "overflow") === "auto").at(-1);
   const shellRule = rules(layouts, ".signal-analyser").at(-1);
   const stageRule = rules(layouts, ".main-stage").at(-1);
-  expect(htmlRule && declaration(htmlRule.body, "min-width") === "0" && declaration(htmlRule.body, "min-height") === "0", "the document must remain viewport-first until its readable minimum is needed");
-  expect(bodyRule && declaration(bodyRule.body, "min-width") === "920px" && declaration(bodyRule.body, "min-height") === "680px", "body must expose the scrollable 920×680 readable minimum instead of clipping zones");
+  expect(documentRule && declaration(documentRule.body, "width") === "100%" && declaration(documentRule.body, "height") === "100%" && declaration(documentRule.body, "min-width") === "0" && declaration(documentRule.body, "min-height") === "0", "the document must remain viewport-first until its readable minimum is needed");
   expect(shellRule && declaration(shellRule.body, "width") === "100%" && declaration(shellRule.body, "height") === "100%", "the application shell must fill its available viewport");
   expect(shellRule && declaration(shellRule.body, "min-width") === "920px" && declaration(shellRule.body, "min-height") === "680px", "the application shell must retain explicit 920×680 readable minimums");
-  expect(shellRule && declaration(shellRule.body, "grid-template-rows") === "44px minmax(368px,3fr) minmax(252px,2fr)", "the shell must grow dynamically through toolbar, work, and bottom-zone tracks");
+  expect(shellRule && declaration(shellRule.body, "grid-template-rows") === "44px minmax(440px,4fr) minmax(180px,1fr)", "the shell must grow dynamically through the v5 toolbar, work, and reduced bottom-zone tracks");
   expect(stageRule && declaration(stageRule.body, "grid-template-columns") === "minmax(612px,3fr) minmax(300px,1fr)", "the main stage must remain a two-track workspace/settings layout with no third rail");
   expect(!/\.signal-analyser\s*\{[^}]*\b(?:height|min-height)\s*:\s*calc\([^}]*100vh/i.test(layouts), "the viewport-first shell must not use a fixed viewport-height formula");
-  expect(htmlRule && declaration(htmlRule.body, "overflow") === "auto" && bodyRule && declaration(bodyRule.body, "min-width") === "920px" && declaration(bodyRule.body, "min-height") === "680px", "the document must scroll only when the viewport cannot contain the 920×680 readable minimum");
-  ["app-toolbar", "workspace-titlebar", "data-testid=\"pane-grid\"", "data-testid=\"display-settings\"", "class=\"bottom-zone\""].forEach((zone) =>
+  expect(documentRule && declaration(documentRule.body, "overflow") === "auto" && shellRule && declaration(shellRule.body, "min-width") === "920px" && declaration(shellRule.body, "min-height") === "680px", "the document must scroll only when the shell's 920×680 readable minimum cannot fit");
+  ["app-toolbar", "workspace-titlebar", "data-testid=\"pane-grid\"", "data-testid=\"display-settings\"", "class=\"bottom-zone"].forEach((zone) =>
     expect(html.includes(zone), `scrollable document must retain reachable ${zone} zone markup`)
   );
 

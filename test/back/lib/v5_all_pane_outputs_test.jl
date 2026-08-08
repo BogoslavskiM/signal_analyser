@@ -117,5 +117,6 @@ end
     end
     @test outside isa V5_OUTPUTS.SignalAnalyserInactiveOutputError
     put!(blocker, nothing)
-    wait(parked)
+    yield()
+    @test istaskdone(parked)
 end

@@ -19,9 +19,9 @@ module.exports = async function testCatalogSettingsResolutionStaticContract(asse
   const visibleControl = (testId) => new RegExp(`<[^>]+data-testid=["']${testId}["'][^>]*>`, "g");
   const count = (pattern) => (html.match(pattern) || []).length;
   assert(count(visibleControl("plot-type-select")) === 1, "the current design-v2 DOM must expose exactly one pane-inline plot-type control");
-  assert(count(visibleControl("settings-view-select")) === 1, "Display settings must expose exactly one first-row plot-type control alongside the pane-inline control");
-  assert(count(visibleControl("show-legend-checkbox")) === 1, "Display settings must expose exactly one legend control");
-  assert((html.match(/for="settings-view">Тип графика/g) || []).length === 1, "Display settings must retain one Russian plot-type label for its one owned select");
+  assert(count(visibleControl("settings-view-select")) === 0 && (settings.match(/data-testid='settings-view-select'/g) || []).length === 1, "Display settings must dynamically render exactly one first-row plot-type control in the canonical settings tree");
+  assert((settings.match(/display:\["display\.show_legend"\]/g) || []).length === 1 && settings.includes("field.kind === \"boolean\"") && settings.includes("inputAttrs(field)"), "the canonical settings tree must own exactly one catalog-backed Boolean legend control");
+  assert((settings.match(/for='settings-view-select'[^>]*><span class='settings-control-label'>Тип графика/g) || []).length === 1, "Display settings must retain one Russian plot-type label for its dynamically owned select");
   assert(!/\b(?:plot type|show legend|legend settings)\b/i.test(html), "visible settings markup must not retain English legacy plot/legend labels");
 
   ["RUSSIAN_GROUP_LABELS", "RUSSIAN_SECTION_LABELS", "RUSSIAN_FIELD_LABELS", "RUSSIAN_VALUE_LABELS", "presentationLabel", "optionPresentationLabel"].forEach((term) =>

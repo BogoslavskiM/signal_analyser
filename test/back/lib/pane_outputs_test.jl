@@ -28,7 +28,7 @@ end
 
 @testset "TASK-0068 active pane is the only calculated and returned output" begin
     reset_pane_output_doubles!()
-    state = PANE_OUTPUTS.default_signal_analyser_state()
+    state = PANE_OUTPUTS.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in state.signals]
 
     response = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
@@ -124,7 +124,7 @@ end
 
 @testset "TASK-0068 inactive Displays publish no outputs and call no providers" begin
     reset_pane_output_doubles!()
-    state = PANE_OUTPUTS.default_signal_analyser_state()
+    state = PANE_OUTPUTS.test_state_with_complex_signal()
     signal_name = first(state.signals).name
     resized = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
         "state_revision" => 0, "operation" => "resize", "display_id" => "display-1",
@@ -334,7 +334,7 @@ end
 
 @testset "TASK-0046 pane calculation error isolation and GET POST 409 parity" begin
     reset_pane_output_doubles!()
-    state = PANE_OUTPUTS.default_signal_analyser_state()
+    state = PANE_OUTPUTS.test_state_with_complex_signal()
     _, second_name = [signal.name for signal in state.signals]
     resized = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
         "state_revision" => 0,
@@ -399,7 +399,15 @@ end
     @test Set(keys(only(stale.body["current"]["layouts"]))) == Set([
         "display_id", "layout", "outputs",
     ])
-    @test pane_output_ids(stale.body["current"]) == pane_output_ids(recovered)
+    # Stale envelopes carry the state-lite contract: one status per pane of
+    # the active Display, while the intentionally eager legacy snapshot above
+    # contains only the selected pane's full output data.
+    stale_outputs = only(stale.body["current"]["layouts"])["outputs"]
+    @test [output["pane_id"] for output in stale_outputs] == ["pane-1", "pane-2"]
+    @test all(output -> output["output"]["isready"] === false &&
+        output["output"]["success"] === false &&
+        output["output"]["error"] == "" &&
+        output["output"]["data"] == Dict{String,Any}[], stale_outputs)
     @test state.view.state_revision == revision
     @test state.display_layouts["display-1"].active_pane_id == active_pane_id
     reset_pane_output_doubles!()

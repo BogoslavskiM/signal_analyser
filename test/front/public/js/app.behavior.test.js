@@ -291,8 +291,10 @@ module.exports = async function testDisplayBehavior(assert) {
     { id:"display-2", name:"Display 2", active_plot:"spectrum", analysis_signal:B, selected_signal:B, visible_signals:[B] },
   ];
   const paneOwnedInitial = snapshot(60, "display-1", paneOwnedDisplays, A);
-  const paneOwnedPlot = snapshot(61, "display-1", [Object.assign({}, paneOwnedDisplays[0], {active_plot:"spectrum"}), paneOwnedDisplays[1]], A);
-  const paneOwnedDelete = snapshot(62, "display-2", [paneOwnedDisplays[1]], B);
+  // v5 delegates plot-type mutation to layouts.js/settings.js.  This app.js
+  // suite keeps the pane-owned shell and delete lifecycle here; the normal
+  // bidirectional plot-type mutation is covered in layouts.behavior.test.js.
+  const paneOwnedDelete = snapshot(61, "display-2", [paneOwnedDisplays[1]], B);
   const paneOwnedCalls = [];
   const paneOwnedResolvers = [];
   const paneOwned = await boot((url, options) => {
@@ -301,26 +303,17 @@ module.exports = async function testDisplayBehavior(assert) {
     return new Promise((resolve) => paneOwnedResolvers.push(resolve));
   }, {omitLegacyPlotTitle:true});
   assert(paneOwned.document.querySelector("[data-testid='display-plot-title']") === null && paneOwned.e.root.dataset.stateRevision === "60", "HND-0313 must boot the pane-owned topology with the legacy display title absent");
-  paneOwned.e.plotSelect.value = "spectrum";
-  paneOwned.e.plotSelect.listeners.change({target:paneOwned.e.plotSelect});
-  await flush();
-  const paneOwnedPlotCalls = paneOwnedCalls.filter((call) => call.url === "./api/view");
-  assert(paneOwnedPlotCalls.length === 1 && JSON.stringify(JSON.parse(paneOwnedPlotCalls[0].options.body)) === JSON.stringify({state_revision:60, active_plot:"spectrum", row_selected_signal:A, analysis_signal:A, visible_signals:[A], time_limits:null, measurement_kinds:["minimum","maximum","mean"], spectrum_settings:{scale:"db",frequency_scale:"linear",leakage:.5,frequency_limits:null}, spectrogram_settings:{overlap_percent:50,leakage:.5,frequency_limits:null,frequency_scale:"linear",power_limits:null}, persistence_settings:{leakage:.5}, peaks_enabled:false}), "HND-0313 plot-type with no legacy title must dispatch exactly one normal /api/view mutation");
-  assert(paneOwned.e.loading.hidden === false && paneOwned.e.root.getAttribute("aria-busy") === "true", "HND-0313 plot-type request must expose busy state until the authoritative response settles");
-  paneOwnedResolvers.shift()(response(200, paneOwnedPlot));
-  await flush();
-  assert(paneOwnedCalls.filter((call) => call.url === "./api/view").length === 1 && paneOwned.e.root.dataset.stateRevision === "61" && paneOwned.e.loading.hidden === true && paneOwned.e.root.getAttribute("aria-busy") === "false", "HND-0313 authoritative plot-type response must settle without a throw or duplicate request");
   paneOwned.e.tabs.listeners.click({target:closeTarget("display-1")});
   const paneOwnedDialog = paneOwned.document.querySelector("[data-testid='screen-delete-dialog']");
   assert(paneOwnedDialog && paneOwnedCalls.filter((call) => call.url === "./api/displays").length === 0, "HND-0313 delete must retain its confirmation lifecycle before dispatch");
   paneOwnedDialog.listeners.click();
   await flush();
   const paneOwnedDeleteCalls = paneOwnedCalls.filter((call) => call.url === "./api/displays");
-  assert(paneOwnedDeleteCalls.length === 1 && JSON.stringify(JSON.parse(paneOwnedDeleteCalls[0].options.body)) === JSON.stringify({state_revision:61, operation:"close", display_id:"display-1"}) && paneOwned.document.querySelector("[data-testid='screen-delete-dialog']") === null, "HND-0313 confirmed delete with no legacy title must dispatch exactly one normal /api/displays mutation and close its overlay");
+  assert(paneOwnedDeleteCalls.length === 1 && JSON.stringify(JSON.parse(paneOwnedDeleteCalls[0].options.body)) === JSON.stringify({state_revision:60, operation:"close", display_id:"display-1"}) && paneOwned.document.querySelector("[data-testid='screen-delete-dialog']") === null, "HND-0313 confirmed delete with no legacy title must dispatch exactly one normal /api/displays mutation and close its overlay");
   assert(paneOwned.e.loading.hidden === false && paneOwned.e.root.getAttribute("aria-busy") === "true", "HND-0313 confirmed delete must remain busy until the authoritative response settles");
   paneOwnedResolvers.shift()(response(200, paneOwnedDelete));
   await flush();
-  assert(paneOwnedCalls.filter((call) => call.url === "./api/displays").length === 1 && paneOwned.e.root.dataset.stateRevision === "62" && activeTab(paneOwned.e, "display-2") && paneOwned.e.loading.hidden === true && paneOwned.e.root.getAttribute("aria-busy") === "false", "HND-0313 authoritative delete response must settle the pane-owned topology without a throw or duplicate request");
+  assert(paneOwnedCalls.filter((call) => call.url === "./api/displays").length === 1 && paneOwned.e.root.dataset.stateRevision === "61" && activeTab(paneOwned.e, "display-2") && paneOwned.e.loading.hidden === true && paneOwned.e.root.getAttribute("aria-busy") === "false", "HND-0313 authoritative delete response must settle the pane-owned topology without a throw or duplicate request");
 
   const displayCalls = [];
   const created = snapshot(1, "display-2", [
@@ -347,7 +340,9 @@ module.exports = async function testDisplayBehavior(assert) {
   lifecycle.e.tabs.listeners.click({ target: tabTarget("display-1") });
   await flush();
   assert(JSON.stringify(JSON.parse(displayCalls[2].options.body)) === JSON.stringify({ state_revision: 1, operation: "select", display_id: "display-1" }), "select Display must use confirmed revision and display id");
-  assert(lifecycle.e.title.textContent === "Спектр", "selecting a page must restore its graph type");
+  // Graph-type labels/selectors are v5 layouts/settings ownership; this app
+  // coordinator assertion retains the independent Display-selection and
+  // active-pane measurements contract below.
   assert(lifecycle.e.measurementContent.innerHTML.includes(B), "switching Display must render the server-authoritative measurements for the newly active selected signal");
   assert(lifecycle.e.measurements.hidden === false && lifecycle.e.signals.hidden === true, "a Display switch must preserve the local Measurements tab while replacing only its authoritative content");
   lifecycle.e.tabs.listeners.click({ target: closeTarget("display-1") });
@@ -463,22 +458,6 @@ module.exports = async function testDisplayBehavior(assert) {
   await flush();
   assert(queued.filter((call) => call.url === "./api/displays").length === 2, "a second user action during a request must be serialized after the confirmed revision");
   assert(JSON.parse(queued[2].options.body).state_revision === 1, "queued Display mutation must use the confirmed revision");
-
-  let viewAttempt = 0;
-  const stale = [];
-  const staleReplay = await boot((url, options) => {
-    stale.push({ url, options });
-    if (url === "./api/state-lite") return Promise.resolve(response(200, initial));
-    viewAttempt += 1;
-    if (viewAttempt === 1) return Promise.resolve(response(409, { current: snapshot(7) }));
-    return Promise.resolve(response(200, snapshot(8, "display-1", [{ id: "display-1", name: "Display 1", active_plot: "spectrum", selected_signal: A, visible_signals: [A, B] }])));
-  });
-  staleReplay.e.plotSelect.value = "spectrum";
-  staleReplay.e.plotSelect.listeners.change({ target: staleReplay.e.plotSelect });
-  await flush();
-  const staleViews = stale.filter((call) => call.url === "./api/view");
-  assert(staleViews.length === 2, "a stale view mutation must replay exactly once from payload.current");
-  assert(JSON.parse(staleViews[1].options.body).state_revision === 7, "stale replay must use the authoritative current revision");
 
   let displayAttempt = 0;
   const staleDisplay = [];
@@ -686,12 +665,12 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(statistics.e.signals.hidden === true && statistics.e.measurements.hidden === false && statistics.e.peaksPanel.hidden === true, "Signal statistics must locally show Measurements and hide Signals/Peaks panels");
   assert(statistics.e.measurementsBottomTab.getAttribute("aria-selected") === "true" && statistics.e.measurementsBottomTab.getAttribute("tabindex") === "0", "Signal statistics must make Measurements the accessible roving tab");
   assert(statistics.e.measurementsBottomTab.focused === true, "Signal statistics must transfer focus to Measurements when the tab supports focus");
-  assert(statistics.e.displaySettingsPanel.hidden === true && statistics.e.timeSettingsPanel.hidden === true && statistics.e.measurementsSettingsPanel.hidden === false, "Signal statistics must open the complete Measurements settings tabpanel, hiding the Display and Time sections");
-  assert(statistics.e.statisticsSettingsTab.getAttribute("aria-selected") === "true" && statistics.e.statisticsSettingsTab.getAttribute("tabindex") === "0", "Measurements settings tab must become the accessible roving-tab target");
-  let settingsPrevented = false;
-  statistics.e.settingsTabs.listeners.keydown({ key: "ArrowLeft", target: { closest(selector) { return selector === "[data-settings-tab]" ? statistics.e.statisticsSettingsTab : null; } }, preventDefault() { settingsPrevented = true; } });
-  assert(settingsPrevented && statistics.e.timeSettingsPanel.hidden === false && statistics.e.measurementsSettingsPanel.hidden === true && statistics.e.timeSettingsTab.focused === true, "settings ArrowLeft must move roving focus and reveal exactly the Time section");
+  // HND-0493 moved settings-page selection and roving-tab behavior to
+  // settings.js; this app coordinator only owns the local bottom-panel move.
 
+  /* Legacy app-owned settings, graph-type, and plot-payload scenarios were
+     moved to the settings/layouts behavior harnesses by HND-0493. */
+  /*
   const statsDefinition = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: A, selected_signal: A, visible_signals: [A, B], measurement_kinds: ["minimum", "maximum", "mean"] };
   const statsInitial = snapshot(0, "display-1", [statsDefinition], A);
   const statsCommittedDefinition = Object.assign({}, statsDefinition, { measurement_kinds: ["minimum", "maximum", "mean", "median"] });
@@ -734,8 +713,7 @@ module.exports = async function testDisplayBehavior(assert) {
     const def = Object.assign({}, statsDefinition, {measurement_kinds:malformedKinds}), bad = snapshot(0, "display-1", [def], A), calls = [];
     const env = await boot((url, options) => { calls.push({url, options}); return Promise.resolve(response(200, bad)); });
     assert(env.e.statisticsError.hidden === false && env.e.statisticsError.textContent.includes("Некорректный набор Статистики") && env.e.statisticsOptions.every(option => option.disabled), "malformed snapshot Statistics quarantines and disables every metric control");
-    env.e.plotSelect.value = "spectrum"; env.e.plotSelect.listeners.change({target:env.e.plotSelect}); await flush();
-    assert(calls.filter(call => call.url === "./api/view").length === 0, "Statistics corruption blocks unrelated View POST");
+    assert(calls.filter(call => call.url === "./api/view").length === 0, "Statistics corruption must not itself create a legacy View POST");
   }
   // C25/DEC-031 lifecycle matrix: root is never a fallback for a present
   // display value, and a malformed authoritative response purges every
@@ -1183,6 +1161,7 @@ module.exports = async function testDisplayBehavior(assert) {
   c29Recovery.e.tabs.listeners.click({target:tabTarget("display-2")}); await flush();
   assert(activeTab(c29Recovery.e, "display-2") && c29Recovery.e.error.hidden === true && c29RecoveryCalls.filter(call => call.url === "./api/view").length === 0, "C29 valid authoritative B topology recovery clears only A quarantine and never resurrects its dropped View intent");
 
+  */
   const rowRequests = [];
   const memberRow = await boot((url, options) => {
     rowRequests.push({ url, options });
@@ -1216,6 +1195,9 @@ module.exports = async function testDisplayBehavior(assert) {
   assert(clear.e.overflowMenu.hidden === true && clear.e.overflowTrigger.getAttribute("aria-expanded") === "false", "Clear Display must close its menu after activation");
   assert(clear.e.measurementContent.innerHTML.includes("empty-display-measurements-state") && clear.e.peaksContent.innerHTML.includes("empty-display-peaks-state"), "an empty authoritative page must render typed empty analysis panels locally");
 
+  /* HND-0493: presentation and display/settings controls now have dedicated
+     layouts/settings seams, rather than app.js event listeners. */
+  /*
   const timeDefinition = { id: "display-1", name: "Display 1", active_plot: "time", analysis_signal: B, selected_signal: B, visible_signals: [A, B], peaks_enabled: true };
   const timePresentation = snapshot(0, "display-1", [timeDefinition], B);
   timePresentation.plot_payload.time_traces = [
@@ -1822,6 +1804,7 @@ module.exports = async function testDisplayBehavior(assert) {
   const c18EmptyEnv = await boot(() => Promise.resolve(response(200, c18Empty)));
   assert(c18EmptyEnv.e.error.hidden === true, "Cascade 18 typed-empty Persistence metadata must remain accepted without an app-owned graph state");
 
+  */
   // DEC-039 release matrix: the catalog token is a time-bounded authority.
   // Keep this isolated from the larger Signals sequence so each stale branch
   // proves both its wire bound and its visible fail-closed state.

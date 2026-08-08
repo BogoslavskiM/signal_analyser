@@ -244,7 +244,7 @@ function stateLite(revision, options) {
       // v5 state-lite is metadata-only but authoritative for *every* pane in
       // the active Display, in layout order.  The payload itself remains lazy
       // and is requested pane-by-pane below.
-      outputs:panes.map((item) => ({display_id:"display-1", pane_id:item.id, plot_type:item.plot_type, analysis_signal:item.signal_bindings[0] || null, calculation_revision:calculationRevision, context_key:`${contextKey}|${item.id}`, isready:false, success:true, error:""})),
+      outputs:panes.map((item) => ({display_id:"display-1", pane_id:item.id, plot_type:item.plot_type, analysis_signal:item.signal_bindings[0] || null, calculation_revision:calculationRevision, context_key:`${contextKey}|${item.id}`, isready:false, success:false, error:""})),
     }],
   };
 }
@@ -252,7 +252,13 @@ function stateLite(revision, options) {
 function activeOutput(snapshot, label, override) {
   const entry = snapshot.layouts[0];
   const paneItem = entry.layout.panes.find((item) => item.id === entry.layout.active_pane_id);
-  const status = entry.outputs.find((item) => item.pane_id === paneItem.id);
+  return outputForPane(snapshot, paneItem.id, label, override);
+}
+
+function outputForPane(snapshot, paneId, label, override) {
+  const entry = snapshot.layouts[0];
+  const paneItem = entry.layout.panes.find((item) => item.id === paneId);
+  const status = entry.outputs.find((item) => item.pane_id === paneId);
   return Object.assign({
     state_revision:snapshot.state_revision,
     calculation_revision:status.calculation_revision,
@@ -366,7 +372,7 @@ module.exports = async function testStateLiteLayoutBehavior(assert) {
   assert(cold.document.plotControl.parentNode === cold.document.nodes["active-pane-runtime"] && cold.document.nodes["display-overflow-trigger"].parentNode === cold.document.nodes["active-pane-runtime"], "metadata-owned cold start must retain detached runtime controls until app publishes state-lite");
 
   const startup = stateLite(1);
-  cold.activeResponders.push(activeOutput(startup, "startup-ready", {isready:false, data:[]}));
+  cold.activeResponders.push(activeOutput(startup, "startup-ready", {isready:false, success:false, data:[]}));
   cold.publish(startup);
   await flush();
   assert(cold.document.nodes["pane-grid"].dataset.layoutState === "ready" && cold.document.nodes["pane-grid"].dataset.layoutVariant === "1x1", "app-published state-lite must materialize the canonical layout without a second metadata GET");
@@ -382,6 +388,34 @@ module.exports = async function testStateLiteLayoutBehavior(assert) {
   assert(cold.plotCalls.length === 2 && cold.plotCalls[1].layout.showlegend === false && cold.plotCalls[1].layout.legend.x === .99 && cold.plotCalls[1].layout.legend.y === .99, "disabling Show Legend must re-render the active plot with native Plotly showlegend=false while retaining its native legend profile");
   assert(cold.document.nodes["active-plot-host"].dataset.plotReady === "true", "the sole current Plotly.react completion must mark the layouts-owned host ready");
   assert(cold.document.nodes["active-plot-host"].generatedModebar.every((node) => node.parentNode === null), "active Plotly render completion must remove generated modebar and modebar-container DOM while preserving readiness");
+
+  const malformedStatus = boot();
+  const contradictoryStatus = stateLite(3);
+  contradictoryStatus.layouts[0].outputs[0].success = true;
+  malformedStatus.publish(contradictoryStatus);
+  await flush();
+  assert(malformedStatus.apiCalls.length === 0 && !malformedStatus.timers.some((timer) => !timer.cancelled), "state-lite must reject a pending pane status that contradictorily reports success");
+
+  const unorderedStatus = boot();
+  const unorderedSnapshot = stateLite(4, {panes:[pane("pane-1", "time", [A]), pane("pane-2", "spectrum", [B])]});
+  unorderedSnapshot.layouts[0].outputs.reverse();
+  unorderedStatus.publish(unorderedSnapshot);
+  await flush();
+  assert(unorderedStatus.apiCalls.length === 0 && !unorderedStatus.timers.some((timer) => !timer.cancelled), "state-lite must reject pane statuses that do not preserve authoritative layout order and identity");
+
+  const malformedResponse = boot();
+  const malformedResponseSnapshot = stateLite(5);
+  malformedResponse.activeResponders.push(activeOutput(malformedResponseSnapshot, "invalid-ready", {context_key:"wrong-context"}));
+  malformedResponse.publish(malformedResponseSnapshot);
+  await malformedResponse.runTimer();
+  assert(malformedResponse.plotCalls.length === 0 && !malformedResponse.timers.some((timer) => !timer.cancelled && !timer.ran), "a pane response with the wrong context key must be rejected without rendering or replacement polling");
+
+  const contradictoryResponse = boot();
+  const contradictoryResponseSnapshot = stateLite(6);
+  contradictoryResponse.activeResponders.push(activeOutput(contradictoryResponseSnapshot, "invalid-pending", {isready:false, success:true, data:[]}));
+  contradictoryResponse.publish(contradictoryResponseSnapshot);
+  await contradictoryResponse.runTimer();
+  assert(contradictoryResponse.plotCalls.length === 0 && !contradictoryResponse.timers.some((timer) => !timer.cancelled && !timer.ran), "a pending pane response that contradictorily reports success must be rejected without rendering or replacement polling");
 
   const terminal = boot();
   const terminalSnapshot = stateLite(2, {calculationRevision:102, contextKey:"terminal-error"});
@@ -403,13 +437,18 @@ module.exports = async function testStateLiteLayoutBehavior(assert) {
   race.activeResponders.push(oldResponse.promise);
   race.publish(paneOne);
   await race.runTimer();
-  race.activeResponders.push(activeOutput(paneTwo, "current-ready"));
+  race.activeResponders.push(
+    outputForPane(paneTwo, "pane-1", "sibling-ready"),
+    outputForPane(paneTwo, "pane-2", "current-ready"),
+  );
   race.publish(paneTwo);
   await race.runTimer();
-  assert(race.plotCalls.length === 1 && race.plotCalls[0].data[0].name === "current-ready", "a pane/context switch must render only the current ready active output");
+  await race.runTimer();
+  const rendersBeforeStale = race.plotCalls.length;
+  assert(rendersBeforeStale >= 2 && race.plotCalls.some((call) => call.data[0].name === "sibling-ready") && race.plotCalls.some((call) => call.data[0].name === "current-ready"), `a visible multi-pane layout must independently schedule and render every current pane output; got ${race.plotCalls.map((call) => call.data[0].name).join(",")}`);
   oldResponse.resolve(activeOutput(paneOne, "stale-ready"));
   await flush();
-  assert(race.plotCalls.length === 1 && race.document.nodes["active-plot-host"].dataset.plotReady === "true", "a stale pre-switch completion must not render or overwrite the current host");
+  assert(race.plotCalls.length === rendersBeforeStale && race.document.nodes["active-plot-host"].dataset.plotReady === "true", "a stale pre-switch completion must not render or overwrite any current pane host");
 
   const latest = boot({deferredPlotly:true});
   const first = stateLite(20, {calculationRevision:301, contextKey:"render-first"});
@@ -438,4 +477,26 @@ module.exports = async function testStateLiteLayoutBehavior(assert) {
   lazyFailure.scripts[0].onerror();
   await flush();
   assert(lazyFailure.plotCalls.length === 0 && lazyFailure.document.nodes["active-plot-host"].parentNode.dataset.paneOutputState === "error", "local Plotly load failure must become an explicit layouts-owned pane error without a fake render");
+
+  // v5 owns graph-type mutation here, not in app.js.  The one canonical
+  // settings selector must emit the normal update_pane API command, preserve
+  // an in-flight write boundary, and recover authoritative state on 409.
+  const graphType = boot();
+  const graphInitial = stateLite(70, {calculationRevision:701, contextKey:"graph-type-time"});
+  const graphSpectrum = stateLite(71, {panes:[pane("pane-1", "spectrum", [A])], calculationRevision:702, contextKey:"graph-type-spectrum"});
+  graphType.publish(graphInitial);
+  graphType.layoutResponders.push(graphSpectrum);
+  graphType.document.nodes["settings-view-select"].value = "spectrum";
+  graphType.document.fire("change", graphType.document.nodes["settings-view-select"]);
+  await flush();
+  const graphCalls = graphType.apiCalls.filter((call) => call.kind === "layouts");
+  assert(graphCalls.length === 1 && graphCalls[0].payload.operation === "update_pane" && graphCalls[0].payload.pane_id === "pane-1" && graphCalls[0].payload.plot_type === "spectrum" && graphCalls[0].payload.state_revision === 70, "canonical settings graph type must use one layouts update_pane mutation with the authoritative revision");
+
+  const graphStale = boot();
+  graphStale.publish(graphInitial);
+  graphStale.layoutResponders.push(() => Promise.reject({status:409, payload:{current:graphSpectrum}}));
+  graphStale.document.nodes["settings-view-select"].value = "spectrum";
+  graphStale.document.fire("change", graphStale.document.nodes["settings-view-select"]);
+  await flush();
+  assert(graphStale.apiCalls.filter((call) => call.kind === "layouts").length === 1 && graphStale.document.nodes["pane-grid"].dataset.layoutVariant === "1x1", "a stale graph-type mutation must consume the authoritative 409 current snapshot without an app-owned retry/write");
 };

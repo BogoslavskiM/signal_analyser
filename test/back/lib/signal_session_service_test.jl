@@ -17,7 +17,7 @@ session_cache_families(state) = (
 )
 
 @testset "TASK-0020 session export is an exact typed document" begin
-    state = SS.default_signal_analyser_state()
+    state = SS.test_state_with_complex_signal()
     state.signals[2] = SS.AnalysedSignal(
         state.signals[2].name,
         state.signals[2].color,
@@ -45,7 +45,7 @@ end
 
 @testset "TASK-0020 session round trip, stale gate, and atomic rollback" begin
     service = SS.SignalAnalyserSessionService()
-    source = SS.default_signal_analyser_state()
+    source = SS.test_state_with_complex_signal()
     document = SS.export_signal_analyser_session(service, source)["document"]
     target = SS.default_signal_analyser_state()
     imported = SS.import_signal_analyser_session!(service, target, Dict("state_revision" => 0, "document" => document))

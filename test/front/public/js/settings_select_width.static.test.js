@@ -22,8 +22,8 @@ module.exports = async function test1024SettingsSelectWidthStaticContract(assert
 
   assert(!responsive || !responsive.includes(selector), "accepted design v1 forbids selector-specific settings select reflow at the 1080px breakpoint");
   assert(css.includes("grid-template-columns:140px minmax(0,1fr)"), "accepted design v1 requires the 140px label / flexible control settings-row grid");
-  assert(/\.signal-analyser\{[^}]*min-width:920px[^}]*overflow:hidden/.test(css), "the application shell must retain the 920px invariant rather than compress the Settings track");
-  assert(/html\{[^}]*min-width:936px[^}]*overflow:auto/.test(css), "an undersized viewport must use document scrolling rather than a responsive settings-row reflow");
+  assert(/\.signal-analyser\{[^}]*min-width:920px[^}]*min-height:680px/.test(css), "the application shell must retain the 920×680 readable invariant rather than compress the Settings track");
+  assert(/html,body\{[^}]*min-width:0[^}]*min-height:0[^}]*overflow:auto/.test(css), "an undersized viewport must use document scrolling around the shell minimum rather than a responsive settings-row reflow");
 
   assert(!/(?:html|body|\.signal-analyser)\s*\{[^}]*\bmax-(?:width|height)\s*:/i.test(css), "the design must not introduce a broad page or application maximum");
 };

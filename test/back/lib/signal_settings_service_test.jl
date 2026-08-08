@@ -86,7 +86,7 @@ end
 
 @testset "DEC-022 Spectrogram Log eligibility follows only the analysis source" begin
     service = SS.SignalSettingsService()
-    state = SS.default_signal_analyser_state()
+    state = SS.test_state_with_complex_signal()
     real_source, unrelated_complex_member = [signal.name for signal in state.signals]
 
     # A complex trace may be a visible member, but it is not the analysis
@@ -129,7 +129,7 @@ end
     # A complex analysis source is a presentation constraint, not a validation
     # failure: Log remains an accepted requested intent and becomes effective
     # Linear until a real analysis source is selected again.
-    complex_state = SS.default_signal_analyser_state()
+    complex_state = SS.test_state_with_complex_signal()
     real_source, complex_analysis = [signal.name for signal in complex_state.signals]
     complex_prepared = SS.apply_signal_analyser_view!(complex_state, Dict(
         "state_revision" => 0,
@@ -164,7 +164,7 @@ end
 
 @testset "DEC-040 Spectrum DFT Points stores an exact deferred NFFT preference" begin
     service = SS.SignalSettingsService()
-    state = SS.default_signal_analyser_state()
+    state = SS.test_state_with_complex_signal()
     initial = SS.signal_settings_document(service, state, "display-1")
     nfft = settings_field(initial, "spectrum.nfft")
     @test (length(initial["fields"]), length(initial["sections"]), length(initial["readouts"])) == (41, 29, 3)
@@ -248,7 +248,7 @@ end
 
 @testset "DEC-041 canonical unit preferences are passive per-Display projections" begin
     service = SS.SignalSettingsService()
-    state = SS.default_signal_analyser_state()
+    state = SS.test_state_with_complex_signal()
     unit_fields = Dict(
         "time.units" => ("seconds", "minutes"),
         "spectrum.frequency_units" => ("hertz", "kilohertz"),

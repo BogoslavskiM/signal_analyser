@@ -79,7 +79,7 @@ end
 @testset "Signals inspector mutation rollback protects active Log Spectrum" begin
     workspace = FakeWorkspaceSignalSource(Dict{String,Any}("complex-import" => ComplexF64[1 + 2im, 3 + 4im, 5 + 6im]), nothing)
     service = SA.SignalInventoryService(workspace)
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     settings_service = SA.SignalSettingsService()
     real_name, complex_name = [signal.name for signal in state.signals]
     # Calculation settings are no longer accepted through the view snapshot.
@@ -121,7 +121,7 @@ end
 @testset "Signals inventory lower-Fs source changes reset explicit limits without cache reuse" begin
     workspace = FakeWorkspaceSignalSource(Dict{String,Any}("low-import" => [1.0, 2.0, 3.0]), nothing)
     service = SA.SignalInventoryService(workspace)
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     high_name = state.signals[1].name
     low = SA.AnalysedSignal("low-source", "#111111", 10.0, ComplexF64[1, 2, 3], false, true)
     push!(state.signals, low)
@@ -205,7 +205,7 @@ end
     ]
     @test colors == expected_colors
     @test only(filter(signal -> signal["name"] == source * "_Copy", snapshot["signals"]))["color"] != only(filter(signal -> signal["name"] == source, snapshot["signals"]))["color"]
-    @test length(snapshot["signals"]) == 18 && snapshot["state_revision"] == 16
+    @test length(snapshot["signals"]) == 17 && snapshot["state_revision"] == 16
 
     singleton = SA.SignalInventoryService(workspace, SA.SignalColorPalette(["#101010"]))
     state = SA.default_signal_analyser_state()
@@ -223,7 +223,7 @@ end
         "nonfinite" => [1.0, Inf],
     ), nothing)
     service = SA.SignalInventoryService(workspace)
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     initial = SA.signal_analyser_snapshot(state)
     first_name, second_name = [signal.name for signal in state.signals]
 
@@ -329,7 +329,7 @@ end
     # Ordinary Time GET is an inactive Persistence view: it must expose the
     # established typed-empty heatmap while leaving the provider/cache cold.
     SA.reset_persistence_double!()
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in state.signals]
     initial = SA.signal_analyser_snapshot(state)
     @test initial["active_plot"] == "time"
@@ -828,7 +828,7 @@ end
 
 @testset "Signal Analyser snapshot and cache" begin
     SA.reset_pspectrum_double!()
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     snapshot = SA.signal_analyser_snapshot(state)
 
     @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "spectrum_settings", "spectrogram_settings", "persistence_settings", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
@@ -969,7 +969,7 @@ end
 
 @testset "Signal Analyser Display pages keep independent view state" begin
     SA.reset_pspectrum_double!()
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in state.signals]
 
     created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))
@@ -1163,7 +1163,7 @@ end
     @test stale isa SA.SignalAnalyserStaleStateError
     @test SA.signal_analyser_snapshot(state) == before
 
-    failing_state = SA.default_signal_analyser_state()
+    failing_state = SA.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in failing_state.signals]
     SA.apply_signal_analyser_view!(failing_state, Dict("state_revision" => 0, "visible_signals" => [first_name]))
     failure_before = SA.signal_analyser_snapshot(failing_state)
@@ -1187,7 +1187,7 @@ end
 
 @testset "Signal Analyser visible signal mutation contract" begin
     SA.reset_pspectrum_double!()
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
     first_name, second_name = names
 
@@ -1232,7 +1232,7 @@ end
 
 @testset "Signal Analyser visibility failures do not partially mutate state" begin
     SA.reset_pspectrum_double!()
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
     first_name, second_name = names
 
@@ -1577,7 +1577,7 @@ end
 
 @testset "Cascade 5 Clear Display preserves inactive pages and seeded creation" begin
     SA.reset_pspectrum_double!()
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
     created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))
     @test created["active_display_id"] == "display-2"
@@ -1963,7 +1963,7 @@ end
 
     # A complex visible member prohibits logarithmic frequency scale, and the
     # rejected mixed mutation is atomic.
-    complex_state = SA.default_signal_analyser_state()
+    complex_state = SA.test_state_with_complex_signal()
     complex_before = SA.signal_analyser_snapshot(complex_state)
     complex_settings = SA.SignalSettingsService()
     complex_log = try
@@ -2417,7 +2417,7 @@ end
     SA.reset_pspectrum_double!()
     empty!(SA.SPECTROGRAM_CALLS)
     SA.SPECTROGRAM_FAILURE[] = false
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in state.signals]
     initial = SA.signal_analyser_snapshot(state)
     @test all(display -> display["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing), initial["displays"])
@@ -2510,7 +2510,7 @@ end
     empty!(SA.SPECTRUM_CALLS)
     SA.SPECTROGRAM_FAILURE[] = false
     SA.SPECTRUM_FAILURE[] = false
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in state.signals]
     initial = SA.signal_analyser_snapshot(state)
     @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
@@ -2583,7 +2583,7 @@ end
     @test SA.signal_spectrogram_provider_settings_equal(default, SA.SignalSpectrogramSettings(50, 0.5, SA.AutomaticSignalSpectrumFrequencyLimits(), log))
 
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     settings_service = SA.SignalSettingsService()
     baseline = SA.signal_analyser_snapshot(state)
     exact_linear = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
@@ -2705,7 +2705,7 @@ end
     @test SA.SignalSpectrogramPowerProjection(mixed).finite_extent == SA.SignalSpectrogramPowerExtent(-20, -20)
 
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     settings_service = SA.SignalSettingsService()
     initial = SA.signal_analyser_snapshot(state)
     auto_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)

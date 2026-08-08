@@ -147,7 +147,7 @@ end
     @test occursin("signal_analyser_layouts_lite_snapshot(SIGNAL_ANALYSER_STATE)", routes_source)
     @test occursin("lightweight = true", routes_source)
 
-    state = SA_API.default_signal_analyser_state()
+    state = SA_API.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
     before = SA_API.signal_analyser_snapshot(state)
     original_pane = SA_API.signal_display_active_pane(state.display_layouts["display-1"])
@@ -382,7 +382,7 @@ end
 
 @testset "Signal Analyser API Display payload contract" begin
     SA_API.reset_pspectrum_double!()
-    state = SA_API.default_signal_analyser_state()
+    state = SA_API.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in state.signals]
 
     created = SA_API.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))
@@ -765,7 +765,7 @@ end
 
 @testset "Signal Analyser API view payload contract" begin
     SA_API.reset_pspectrum_double!()
-    state = SA_API.default_signal_analyser_state()
+    state = SA_API.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
     first_name, second_name = names
 
@@ -862,7 +862,7 @@ end
 
 @testset "Cascade 5 API accepts empty Display membership and separates aliases" begin
     SA_API.reset_pspectrum_double!()
-    state = SA_API.default_signal_analyser_state()
+    state = SA_API.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in state.signals]
 
     row_selected = SA_API.apply_signal_analyser_view!(state, Dict(

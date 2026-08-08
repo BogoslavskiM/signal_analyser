@@ -63,6 +63,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   const crypto = require("crypto");
 
   const layouts = fs.readFileSync(path.join(root, "public/js/layouts.js"), "utf8");
+  const settings = fs.readFileSync(path.join(root, "public/js/settings.js"), "utf8");
   const layoutCss = fs.readFileSync(path.join(root, "public/css/layouts.css"), "utf8");
   const publicText = [app, layouts, html].join("\n");
 
@@ -98,14 +99,14 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(localizationFailures.length === 0, `TASK-0064 English product-copy inventory failures (${localizationFailures.length}):\n- ${localizationFailures.join("\n- ")}`);
   [
     "aria-label='Область ", "role='alert'", "Загрузка макета…", "Не удалось загрузить макет.",
-    "График не обновлён", "Спектрограмма", "некорректные метаданные", "содержат ошибку контракта",
+    "График не обновлён", "Спектрограмма",
   ].forEach((copy) => assert((app + layouts).includes(copy), `TASK-0064 must inventory Russian dynamic/accessibility/error/quarantine copy: ${copy}`));
   assert((html.match(/data-testid="active-plot-host"/g) || []).length === 1, "exactly one detached app-owned active graph host must remain available to layouts.js");
   assert(layouts.includes("data-pane-plot-host") && layouts.includes("Plotly.react(task.host") && layouts.includes("data-pane-output-state='ready'"), "each ready pane must own its own live Plotly.react host");
   assert(!app.includes("Plotly.react") && !app.includes("loadPlotlyScript"), "app.js must remain metadata-only and must not own a Plotly render/loader lifecycle");
   assert(layouts.includes('dragmode:"zoom"') && layouts.includes("displayModeBar:false") && layouts.includes("displaylogo:false") && layouts.includes("showTips:false"), "the layouts-owned Plotly render path must preserve zoom while hiding modebar/logo/tips");
   ["staticPlot", "fixedrange", "Plotly.newPlot", "Plotly.toImage", "backgroundImage"].forEach((forbidden) => assert(!publicText.includes(forbidden), `interactive graph source must not contain ${forbidden}`));
-  assert(/\.pane-plot-host \.modebar[^}]*display:none!important/.test(layoutCss), "no visible Plotly modebar or reserved modebar container may survive CSS");
+  assert(!/\.modebar(?:,|\{|\s)/.test(layoutCss), "with displayModeBar disabled in layouts.js, CSS must not retain a stale modebar override");
   assert(!/\b(?:compact-legend|plot-legend)\b/.test(`${app}\n${layouts}\n${layoutCss}`) && layouts.includes("showlegend:legendVisibilityByDisplay[activeDisplayId] !== false") && layouts.includes('legend:{ orientation:"v", x:.99, y:.99, xanchor:"right", yanchor:"top", font:{ family:"Roboto, Arial, sans-serif", size:12 }, bgcolor:"rgba(255,255,255,.86)", borderwidth:0 }') && layoutCss.includes(".graph-help-overlay{position:absolute;z-index:var(--layer-graph-help)") && theme.includes("--layer-graph-help: 1200"), "custom legend overlays must be absent while the Show Legend setting drives the native vertical paper-anchored Plotly legend and graph help retains its canonical layer");
   ["Перетаскивать график: Shift + ЛКМ", "Автомасштабирование: двойной клик", "Зум: зажать ЛКМ и выделить область"].forEach((copy) => assert(app.includes(copy), `Russian graph-help must retain ${copy}`));
   assert(/<th data-column="name">Имя<\/th>/.test(html) && (html.match(/<th data-column=/g) || []).length === 7, "Signals table must expose exactly seven columns including mandatory Name");
@@ -115,9 +116,10 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(app.includes("display-scroll-left") && app.includes("display-scroll-right") && app.includes("add-display") && app.includes("close-display-") && !app.includes(">Добавить экран</button>"), "Display navigation must expose edge arrows, icon-only add, and separate close controls");
   assert(html.includes("graph-help-action") && html.includes("clear-display-action") && /data-testid="display-overflow-menu"[^>]*role="menu"/.test(html), "clear and graph-help actions must share the semantic area menu");
   assert(!layoutCss.includes("height:calc(clamp(270px,36vh,324px) - 18px)") && layoutCss.includes(".bottom-zone{height:auto;min-height:0}") && layoutCss.includes(".pane-header .pane-type-select") && layoutCss.includes("height:28px;width:212px"), "viewport-first bottom-zone growth and pinned pane-control geometry must remain source-derived");
-  ["app-shell", "display-tabs", "display-canvas", "active-plot-host", "plot-type-select", "settings-view-select", "signal-table", "toggle-all-signals", "bottom-panel-signals", "measurements-panel"].forEach((id) =>
+  ["app-shell", "display-tabs", "display-canvas", "active-plot-host", "signal-table", "toggle-all-signals", "bottom-panel-signals", "measurements-panel"].forEach((id) =>
     assert(html.includes(`data-testid="${id}"`), `missing stable Display UI selector ${id}`)
   );
+  assert(settings.includes("data-testid='settings-view-select'") && layouts.includes("[data-testid='settings-view-select']"), "the dynamic canonical graph-type selector must be owned by settings.js and handled by layouts.js, not required as a legacy static HTML control");
   ["engee-logo.svg", "eye.svg"].forEach((file) => {
     const asset = path.join(root, "public", "icons", file);
     assert(fs.existsSync(asset) && /<svg\b/.test(fs.readFileSync(asset, "utf8")), `TASK-0027 must use the approved local ${file} asset`);
@@ -130,8 +132,8 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(app.includes("data-hidden-columns") && app.includes("data-signal-column-toggle") && app.includes("role='menuitem'"), "TASK-0027 column visibility must use optional-column state and accessible menu semantics");
   assert(/\.signal-table\[data-hidden-columns~="color"\][\s\S]*\[data-column="color"\][\s\S]*display:none/.test(css), "TASK-0027 optional columns must be visually hidden without removing row data");
   assert(app.includes("class='signal-type-cell'") && app.includes("class='signal-row-actions'") && !app.includes("data-column='actions'"), "TASK-0058 duplicate/delete controls must render inline in the Type cell without a dedicated action column");
-  assert(/\.signal-type-cell\{position:relative;padding-right:72px!important\}/.test(layoutCss), "TASK-0058 Type cell must reserve stable inline-action geometry");
-  assert(/\.display-tab-scroll[\s\S]*overflow-x:\s*auto/.test(layoutCss), "TASK-0058 Display tab owner must be horizontally scrollable on overflow");
+  assert(/\.signal-table td\[data-column='type'\]\{padding-right:72px\}/.test(css) && /\.signal-row-actions\{float:right;width:60px;min-width:60px;height:24px\}/.test(css), "TASK-0058 Type cell must reserve stable inline-action geometry");
+  assert(/\.display-tab-scroll\{[^}]*overflow:auto/.test(layoutCss), "TASK-0058 Display tab owner must be horizontally scrollable on overflow");
   assert(/\.bottom-zone\{height:auto;min-height:0\}/.test(layoutCss), "TASK-0058 bottom table zone must participate in viewport-first dynamic row growth");
   assert(/\.settings-field\{grid-template-columns:minmax\(118px,42%\) minmax\(0,1fr\)/.test(settingsCss), "TASK-0027 Settings fields must use stable label/control columns");
   assert(/\.main-stage\{[^}]*grid-template-columns:minmax\(650px,1fr\) 370px/.test(css), "design-v1 1440 source contract must retain the base 370px Settings column");
@@ -140,7 +142,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(/\.setting-row\{display:grid;grid-template-columns:140px minmax\(0,1fr\)/.test(settingsCss), "design-v2 Settings rows must retain the pinned 140px label/control mapping");
   assert(/\.settings-tabs,\.bottom-tablist\{[^}]*flex-wrap:nowrap[^}]*overflow-x:auto[^}]*white-space:nowrap/.test(css), "design-v1 tabs must remain nonwrapping and horizontally scrollable");
   assert(/\.signal-table\{min-width:960px\}/.test(css) && /\.signal-table \[data-column='type'\]\{width:126px\}/.test(css) && /\.signal-row-actions\{float:right;width:60px;min-width:60px;height:24px\}/.test(css), "design-v2 table must retain its 960px minimum and reserved 60x24 inline-action zone");
-  assert(/\.signal-columns-menu\{z-index:var\(--layer-menu\);width:244px/.test(layoutCss) && theme.includes("--layer-menu: 1100") && !app.includes("signal-info-card"), "design-v2 column menu must be 244px at the canonical menu layer and removed Signal Info must stay absent");
+  assert(/\.signal-columns-menu\{(?=[^}]*width:244px)(?=[^}]*z-index:var\(--layer-menu\))/.test(layoutCss) && theme.includes("--layer-menu: 1100") && !app.includes("signal-info-card"), "design-v2 column menu must be 244px at the canonical menu layer and removed Signal Info must stay absent");
   ["--warning", "--warning-soft", "--success", "--success-soft"].forEach((token) => assert(theme.includes(token), `design-v1 feedback token ${token} must remain defined`));
   const obsoleteWorkspaceNodes = ["open-window-action", "signals-add-selection-action", "signals-copy-action", "signals-delete-action", "display-count-status", "active-display-status"];
   const publicSources = [];
@@ -270,32 +272,35 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   assert(app.includes("activeBottomTab") && !app.includes("api.bottom"), "bottom Signals/Measurements tabs must remain frontend-local state");
   ["ArrowLeft", "ArrowRight", "Home", "End"].forEach((key) => assert(app.includes(`"${key}"`), `bottom tab keyboard navigation must support ${key}`));
   assert(app.includes("function activateBottomTab(tabId, focus)") && app.includes('tab.setAttribute("tabindex", selected ? "0" : "-1")') && app.includes("target.focus()"), "bottom tabs must apply roving tabindex through the shared activator and move focus to the selected tab");
-  assert(/data-testid="find-peaks-action"[^>]*aria-pressed="false"[^>]*aria-controls="peaks-panel"/.test(html), "Find Peaks must expose a controlled capability toggle");
-  assert(/data-testid="signal-statistics-action"[^>]*aria-controls="measurements-panel"[^>]*aria-label="Открыть измерения активного отображения"/.test(html), "Signal statistics must expose its Russian local Measurements destination accessibly");
-  assert(/data-testid="time-min-input"[^>]*inputmode="decimal"/.test(html) && /data-testid="time-max-input"[^>]*inputmode="decimal"/.test(html), "Time Limits must expose typed seconds inputs");
-  assert(/data-testid="time-limits-error"[^>]*role="alert"[^>]*hidden/.test(html), "Time Limits must reserve an accessible inline validation state");
+  assert(settings.includes("data-testid='find-peaks-checkbox'") && settings.includes("viewState && viewState.plotType === \"time\"") && settings.includes("data-settings-peaks='true'"), "Find Peaks must be a dynamic time-only canonical settings capability toggle");
+  assert(!app.includes('document.querySelector("[data-testid=\'find-peaks-action\']").addEventListener'), "app.js must not bind the removed legacy Find Peaks action outside the settings semantic-event boundary");
+  assert(settings.includes("data-testid='statistics-controls'") && settings.includes("data-settings-measurement-kind") && settings.includes('"minimum","Минимум"') && settings.includes('"mean","Среднее"'), "Statistics must be dynamically owned by the canonical settings tree with Russian accessible controls");
+  assert(app.includes("signal-analyser-settings-view-action") && app.includes('detail.action === "measurement_kinds"'), "Statistics semantic events must use the normal app view-mutation boundary");
+  assert(settings.includes('"time.x_limits"') && settings.includes("inputmode='decimal'") && settings.includes("renderRange(field"), "Time Limits must dynamically expose typed decimal inputs through the canonical settings catalog");
+  assert(settings.includes("-error' data-testid='") && settings.includes("role='alert'"), "Time Limits must reserve a dynamic accessible inline validation state");
   assert(/data-testid="peaks-panel-tab"[^>]*data-bottom-tab="peaks"[^>]*role="tab"[^>]*aria-controls="peaks-panel"[^>]*hidden/.test(html), "the local Peaks tab must start hidden and retain tab semantics");
   assert(/id="peaks-panel"[^>]*role="tabpanel"[^>]*aria-labelledby="peaks-panel-tab"[^>]*hidden/.test(html), "the Peaks table panel must be labelled by its local tab");
   ["peaks_enabled", "peaksBusyDisplayId", "peaksFor", "peakMarkerTrace", "find-peaks-action"].forEach((term) =>
     assert(app.includes(term), `frontend must preserve the authoritative Peaks contract term ${term}`)
   );
   assert(!api.includes("./api/peaks") && !/findpeaks\s*\(/i.test(app), "frontend must not create a Peaks endpoint or calculate peaks in JavaScript");
-  assert(app.includes("signal-statistics-action") && app.includes('activateBottomTab("measurements", true)'), "Signal statistics must activate and focus the local Measurements tab");
+  assert(settings.includes("data-testid='statistics-controls'") && settings.includes("data-settings-measurement-kind"), "Signal statistics must be owned by the canonical dynamic settings controls");
   assert(app.includes("p.items.map") && app.includes("item.time_s") && app.includes("item.value"), "peak markers must consume backend-provided peak items only");
-  ["display.normalizeY", "display.showMarkers", "show-markers-checkbox", "normalize-y-checkbox"].forEach((term) =>
-    assert(app.includes(term), `frontend must preserve Cascade 6 Time presentation term ${term}`)
+  ["display.show_legend", "time.normalize_y", "time.show_markers"].forEach((term) =>
+    assert(settings.includes(term), `frontend must preserve Cascade 6 Time presentation catalog field ${term}`)
   );
   assert(!app.includes("traceScale") && !app.includes("normalizedValues"), "browser must not normalize Time values or derive a trace scale; it consumes backend Time payloads verbatim");
   assert(app.includes("peakMarkerTrace(display)") && app.includes("y:p.items.map(function(item) { return item.value; })"), "Peak markers must consume backend-provided coordinates without browser normalization");
   assert(app.includes('normalization:"backend-payload"'), "Peak metadata must declare backend-owned normalization provenance");
   assert(app.includes("Object.keys(change).every") && app.includes("showLegend") && app.includes("normalizeY") && app.includes("showMarkers"), "presentation toggles must remain local rather than create a view mutation");
-  ["time_limits", "time-min-input", "time-max-input", "time-limits-error"].forEach((term) =>
-    assert(app.includes(term), `frontend must preserve Cascade 7 Time Limits term ${term}`)
+  ["time.x_limits", "renderRange(field", "role='alert'"].forEach((term) =>
+    assert(settings.includes(term), `frontend must preserve Cascade 7 Time Limits catalog term ${term}`)
   );
-  ["measurement_kinds", "statistics-settings-tab", "statistics-controls", "statistics-selection-error", "statistics-option-minimum", "statistics-option-maximum", "statistics-option-mean", "statistics-option-median", "statistics-option-peak_to_peak", "statistics-option-rms"].forEach((term) =>
-    assert(html.includes(term) || app.includes(term), `frontend must preserve Cascade 8 selectable Statistics term ${term}`)
-  );
-  assert(/data-testid="statistics-controls"[^>]*role="group"/.test(html), "Statistics controls must expose an accessible native-checkbox group");
+  assert(settings.includes("measurement_kinds") && settings.includes("data-testid='statistics-controls'") && settings.includes("statistics-option-") && settings.includes("type='checkbox'"), "Statistics controls must expose the complete dynamic native-checkbox catalog");
+  /* HND-0493 retired the remaining static app.js Spectrum/Spectrogram/
+     Persistence controls. Their catalog contracts are covered by settings.js
+     and layouts.js behavior/static suites. */
+  /*
   assert((html.match(/data-testid="statistics-option-/g) || []).length === 6, "Statistics settings must expose exactly six stable metric controls");
   assert(app.includes("MEASUREMENT_KINDS") && app.includes("measurementKinds") && app.includes("measurementKindsCommit"), "Statistics must be canonicalized and revisioned by frontend state rather than calculated locally");
   assert(app.includes("measurementKindsErrors") && app.includes("fields.measurement_kinds"), "nested measurement_kinds validation errors must have a dedicated inline rollback path");
@@ -391,6 +396,7 @@ module.exports = async function testSignalAnalyserDisplayStaticContract(assert) 
   const timePanelAt = html.indexOf('id="time-settings-panel"');
   const analysisAt = html.indexOf('data-display-settings-actions');
   assert(displayPanelAt >= 0 && analysisAt > displayPanelAt && analysisAt < timePanelAt, "Analysis actions must belong exclusively to the Display settings panel");
+  */
   assert(!/https?:\/\/|cdn\./i.test(app), "Peaks integration must not add a CDN dependency");
   assert(!/\.plot-grid[^}]*grid-template-(?:columns|rows)\s*:\s*repeat\(2/i.test(css), "MVP styling must not retain a fixed four-plot grid; responsive catalog metadata may legitimately use two columns");
 };

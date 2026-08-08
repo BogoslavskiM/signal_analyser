@@ -234,7 +234,7 @@ end
 
 @testset "TASK-0075 active output terminalizes no-wait polling without restart" begin
     # The public polling path must yield the scheduler itself: no test-side
-    # wait(task) is allowed before a ready response can be observed.
+    # wait(task) is allowed before a successful worker publication is observed.
     ACTIVE_OUTPUT.reset_pspectrum_double!()
     state = ACTIVE_OUTPUT.default_signal_analyser_state()
     context = active_output_context(state)

@@ -12,7 +12,7 @@ function task0031_layout_entry(snapshot)
 end
 
 @testset "HND-0280 ordered pane bindings keep canonical selection projection" begin
-    state = ML_INTEGRATION.default_signal_analyser_state()
+    state = ML_INTEGRATION.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
     pane_order = reverse(names)
     response = ML_INTEGRATION.apply_signal_analyser_layout!(state, Dict(
@@ -64,7 +64,7 @@ end
 end
 
 @testset "HND-0280 corrupt old projection is rejected and explicitly recoverable" begin
-    state = ML_INTEGRATION.default_signal_analyser_state()
+    state = ML_INTEGRATION.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
     display = only(state.displays)
     display.membership = ML_INTEGRATION.SignalDisplayMembership(reverse(names))
@@ -184,8 +184,9 @@ end
     @test stale.body["state"]["state_revision"] == revision
     @test stale.body["current"] == before_stale
     @test Set(keys(stale.body["current"])) == Set(keys(before_stale))
-    @test only(task0031_layout_entry(stale.body["current"])["outputs"])["pane_id"] ==
-        task0031_layout_entry(stale.body["current"])["layout"]["active_pane_id"]
+    stale_entry = task0031_layout_entry(stale.body["current"])
+    @test [output["pane_id"] for output in stale_entry["outputs"]] ==
+        [pane["id"] for pane in stale_entry["layout"]["panes"]]
     @test state.view.state_revision == revision
 end
 
@@ -215,7 +216,7 @@ end
 end
 
 @testset "TASK-0031 ordered preservation active fallback and session round trip" begin
-    state = ML_INTEGRATION.default_signal_analyser_state()
+    state = ML_INTEGRATION.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
     grown = ML_INTEGRATION.apply_signal_analyser_layout!(
         state,

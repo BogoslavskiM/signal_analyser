@@ -118,4 +118,42 @@ snapshot_keyset(snapshot) = Set(keys(snapshot))
 all_finite(values) = all(isfinite, values)
 all_finite_matrix(rows) = all(row -> all(isfinite, row), rows)
 
+"""Build the explicit real-plus-complex fixture required by tests of complex behavior.
+
+Production bootstrap deliberately contains one real sine only.  Tests which
+exercise ordering, complex rendering, or complex-only validation must opt in
+to this inventory instead of restoring a second default signal.
+"""
+function test_state_with_complex_signal(;
+    peaks_provider::AbstractPeaksProvider = EngeeDSPPeaksProvider(),
+    spectrum_provider::AbstractSignalSpectrumProvider = EngeeDSPSpectrumProvider(),
+    spectrogram_provider::AbstractSignalSpectrogramProvider = EngeeDSPSpectrogramProvider(),
+    persistence_provider::AbstractSignalPersistenceProvider = EngeeDSPPersistenceProvider(),
+)
+    signals = default_signal_catalog()
+    real_signal = only(signals)
+    sample_count = length(real_signal.values)
+    time = collect(0:(sample_count - 1)) ./ real_signal.sample_rate_hz
+    chirp_phase = @. 2pi * (90.0 * time + 0.5 * 1100.0 * time^2)
+    complex_chirp = @. cis(chirp_phase) + 0.22 * cis(2pi * 510.0 * time)
+    push!(signals, AnalysedSignal(
+        "Комплексный ЛЧМ-сигнал",
+        "#dc2626",
+        real_signal.sample_rate_hz,
+        ComplexF64.(complex_chirp),
+        true,
+        true,
+    ))
+    SignalAnalyserState(
+        signals,
+        SignalAnalyserViewState(0, TIME_PLOT, real_signal.name),
+        Dict{String,Dict{String,Any}}(),
+        ReentrantLock();
+        peaks_provider = peaks_provider,
+        spectrum_provider = spectrum_provider,
+        spectrogram_provider = spectrogram_provider,
+        persistence_provider = persistence_provider,
+    )
+end
+
 end
