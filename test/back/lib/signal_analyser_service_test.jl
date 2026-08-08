@@ -1849,7 +1849,7 @@ end
 @testset "Cascade 9 Spectrum settings provider and mutation contract" begin
     SA.reset_pspectrum_double!()
     empty!(SA.SPECTRUM_CALLS)
-    state = SA.default_signal_analyser_state()
+    state = SA.test_state_with_complex_signal()
     initial = SA.signal_analyser_snapshot(state)
     @test initial["spectrum_settings"] == Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing)
     @test initial["displays"][1]["spectrum_settings"] == initial["spectrum_settings"]
@@ -2025,7 +2025,7 @@ end
     # Complex raw samples retain the centered topology, but only after that
     # signal is explicitly made the active Spectrum analysis target.
     empty!(SA.SPECTRUM_CALLS)
-    complex_raw = SA.default_signal_analyser_state()
+    complex_raw = SA.test_state_with_complex_signal()
     complex_name = complex_raw.signals[2].name
     complex_spectrum = SA.apply_signal_analyser_view!(complex_raw, Dict(
         "state_revision" => 0, "active_plot" => "spectrum", "analysis_signal" => complex_name,
