@@ -1,0 +1,222 @@
+{
+  "id": "HND-TASK-0086-DISPLAY-ARROWS",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "revision": "99d4576c5d5eefbc608997a853804a67bbd10e06",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "fitting tabs hide both arrows",
+      "status": "passed",
+      "detail": {
+        "scroll": 0,
+        "max": 0,
+        "clientWidth": 487,
+        "leftHidden": true,
+        "rightHidden": true,
+        "count": 2
+      }
+    },
+    {
+      "name": "overflow start shows only right arrow",
+      "status": "passed",
+      "detail": {
+        "scroll": 0,
+        "max": 793,
+        "clientWidth": 487,
+        "leftHidden": true,
+        "rightHidden": false,
+        "count": 8
+      }
+    },
+    {
+      "name": "right arrow advances and middle exposes both directions",
+      "status": "passed",
+      "detail": {
+        "scroll": 365,
+        "max": 793,
+        "clientWidth": 487,
+        "leftHidden": false,
+        "rightHidden": false,
+        "count": 8
+      }
+    },
+    {
+      "name": "overflow end shows only left arrow",
+      "status": "passed",
+      "detail": {
+        "scroll": 793,
+        "max": 793,
+        "clientWidth": 487,
+        "leftHidden": false,
+        "rightHidden": true,
+        "count": 8
+      }
+    },
+    {
+      "name": "left arrow moves backward",
+      "status": "passed",
+      "detail": {
+        "scroll": 791,
+        "max": 793,
+        "clientWidth": 487,
+        "leftHidden": false,
+        "rightHidden": false,
+        "count": 8
+      }
+    },
+    {
+      "name": "cleanup restores original displays and fitting arrows",
+      "status": "passed",
+      "detail": {
+        "state": {
+          "revision": 104,
+          "active": "display-9",
+          "ids": [
+            "display-1",
+            "display-9"
+          ]
+        },
+        "arrows": {
+          "scroll": 0,
+          "max": 0,
+          "clientWidth": 485,
+          "leftHidden": true,
+          "rightHidden": true,
+          "count": 0
+        }
+      }
+    }
+  ],
+  "console": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 ()",
+      "url": "https://engee.com/favicon.ico"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 ()",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 ()",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 ()",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 ()",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 ()",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 ()",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    }
+  ],
+  "network": [
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/"
+    },
+    {
+      "status": 409,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "status": 409,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "status": 409,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "status": 409,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "status": 409,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "status": 409,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/"
+    }
+  ],
+  "screenshots": [
+    "display-arrows-start.png",
+    "display-arrows-middle.png",
+    "display-arrows-end.png"
+  ],
+  "opened": 1,
+  "closed": 1,
+  "preexisting_pages": [],
+  "initial": {
+    "revision": 85,
+    "active": "display-9",
+    "ids": [
+      "display-1",
+      "display-9"
+    ]
+  },
+  "created_display_ids": [
+    "display-20",
+    "display-21",
+    "display-22",
+    "display-23",
+    "display-24",
+    "display-25"
+  ],
+  "cleanup_extra_before": [
+    "display-20",
+    "display-21",
+    "display-22",
+    "display-23",
+    "display-24",
+    "display-25"
+  ],
+  "restored": {
+    "state": {
+      "revision": 104,
+      "active": "display-9",
+      "ids": [
+        "display-1",
+        "display-9"
+      ]
+    },
+    "arrows": {
+      "scroll": 0,
+      "max": 0,
+      "clientWidth": 485,
+      "leftHidden": true,
+      "rightHidden": true,
+      "count": 0
+    }
+  },
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 6,
+    "passed": 6,
+    "failed": 0,
+    "not_run": 0
+  }
+}

@@ -537,10 +537,20 @@ button img {
   min-width: 0;
   flex: 1 1 auto;
   padding: 4px 24px 4px 8px;
+  border: 1px solid var(--line);
   border-radius: var(--control-radius) 0 0 var(--control-radius);
+  outline: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--surface) url("../icons/chevron-down-fill-16.svg") right 4px center / 16px 16px no-repeat;
   font-size: 14px;
   line-height: 18px;
 }
+
+.plot-control-cluster .pane-select:hover:not(:disabled) { border-color: var(--line-strong); }
+.plot-control-cluster .pane-select:active:not(:disabled) { background-color: var(--button-active); }
+.plot-control-cluster .pane-select:focus-visible { position: relative; z-index: 1; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.plot-control-cluster .pane-select:disabled { background-color: var(--surface-muted); color: var(--muted); cursor: not-allowed; opacity: 0.72; }
 
 .plot-control-cluster {
   min-width: 0;

@@ -1,0 +1,671 @@
+{
+  "id": "HND-TASK-0086-SETTINGS-INVENTORY",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "revision": "136dbac17982fd1c59f902d4a46dd0f88561bc96",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "Display/time repeats Graph subsection and fields",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "graph",
+          "title": "График",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Тип графика",
+            "Показывать легенду"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Graph subsection collapses, hides body and retains focus",
+      "status": "passed",
+      "detail": {
+        "key": "graph",
+        "title": "График",
+        "expanded": "false",
+        "focused": true,
+        "hidden": true,
+        "bodyHeight": 0,
+        "fields": [
+          "Тип графика",
+          "Показывать легенду"
+        ]
+      }
+    },
+    {
+      "name": "Time page repeats all designed subsections",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "parameters",
+          "title": "Параметры",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Нормировать Y",
+            "Показывать маркеры"
+          ]
+        },
+        {
+          "key": "time-limits",
+          "title": "Пределы времени",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Единицы времени",
+            "Пределы X"
+          ]
+        },
+        {
+          "key": "y-limits",
+          "title": "Пределы оси Y",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 44,
+          "fields": [
+            "Пределы Y"
+          ]
+        },
+        {
+          "key": "screen-link",
+          "title": "Связь экранов",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 44,
+          "fields": [
+            "Связать время"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Time page repeats all designed fields",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "parameters",
+          "title": "Параметры",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Нормировать Y",
+            "Показывать маркеры"
+          ]
+        },
+        {
+          "key": "time-limits",
+          "title": "Пределы времени",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Единицы времени",
+            "Пределы X"
+          ]
+        },
+        {
+          "key": "y-limits",
+          "title": "Пределы оси Y",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 44,
+          "fields": [
+            "Пределы Y"
+          ]
+        },
+        {
+          "key": "screen-link",
+          "title": "Связь экранов",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 44,
+          "fields": [
+            "Связать время"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Measurements repeats Statistics and Peaks subsections",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "statistics",
+          "title": "Статистики",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 264,
+          "fields": [
+            "Минимум",
+            "Максимум",
+            "Среднее",
+            "Медиана",
+            "Размах",
+            "Среднеквадратичное"
+          ]
+        },
+        {
+          "key": "peaks",
+          "title": "Пики",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 44,
+          "fields": [
+            "Искать пики"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Measurements repeats complete designed field inventory",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "statistics",
+          "title": "Статистики",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 264,
+          "fields": [
+            "Минимум",
+            "Максимум",
+            "Среднее",
+            "Медиана",
+            "Размах",
+            "Среднеквадратичное"
+          ]
+        },
+        {
+          "key": "peaks",
+          "title": "Пики",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 44,
+          "fields": [
+            "Искать пики"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "settings tabs support roving keyboard selection and focus",
+      "status": "passed",
+      "detail": {
+        "selected": "Время",
+        "focused": "Время"
+      }
+    },
+    {
+      "name": "collapsed subsection state is independent and remembered",
+      "status": "passed",
+      "detail": {
+        "key": "time-limits",
+        "title": "Пределы времени",
+        "expanded": "false",
+        "focused": false,
+        "hidden": true,
+        "bodyHeight": 0,
+        "fields": [
+          "Единицы времени",
+          "Пределы X"
+        ]
+      }
+    },
+    {
+      "name": "Spectrum rebuilds exact designed subsections",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "graph",
+          "title": "График",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Тип графика",
+            "Показывать легенду"
+          ]
+        },
+        {
+          "key": "frequency-axis",
+          "title": "Частотная ось",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 176,
+          "fields": [
+            "Единицы частоты",
+            "Пределы частоты",
+            "Шкала частоты",
+            "Пределы Y"
+          ]
+        },
+        {
+          "key": "spectrum-analysis",
+          "title": "Спектральный анализ",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 176,
+          "fields": [
+            "Спектр в dB",
+            "Тип разрешения",
+            "Утечка",
+            "Частотное разрешение"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Spectrum exposes full authoritative designed inventory",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "graph",
+          "title": "График",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Тип графика",
+            "Показывать легенду"
+          ]
+        },
+        {
+          "key": "frequency-axis",
+          "title": "Частотная ось",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 176,
+          "fields": [
+            "Единицы частоты",
+            "Пределы частоты",
+            "Шкала частоты",
+            "Пределы Y"
+          ]
+        },
+        {
+          "key": "spectrum-analysis",
+          "title": "Спектральный анализ",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 176,
+          "fields": [
+            "Спектр в dB",
+            "Тип разрешения",
+            "Утечка",
+            "Частотное разрешение"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "settings enum options use design localization",
+      "status": "passed",
+      "detail": [
+        "Временная область",
+        "Спектр",
+        "Спектрограмма",
+        "Спектр персистентности",
+        "cycles/year",
+        "cycles/day",
+        "cycles/hour",
+        "cycles/minute",
+        "mHz",
+        "Hz",
+        "kHz",
+        "MHz",
+        "GHz",
+        "THz",
+        "Линейная",
+        "Логарифмическая",
+        "По утечке",
+        "По RBW",
+        "По длине окна"
+      ]
+    },
+    {
+      "name": "single settings subtree keeps canonical controls",
+      "status": "passed",
+      "detail": {
+        "settings": 1,
+        "content": 1,
+        "footer": 1,
+        "apply": 1,
+        "objectObject": false,
+        "controls": [
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32,
+          32
+        ]
+      }
+    },
+    {
+      "name": "Spectrogram rebuilds exact designed subsections",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "graph",
+          "title": "График",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Тип графика",
+            "Показывать легенду"
+          ]
+        },
+        {
+          "key": "frequency-axis",
+          "title": "Частотная ось",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 176,
+          "fields": [
+            "Единицы времени",
+            "Единицы частоты",
+            "Пределы частоты",
+            "Шкала частоты"
+          ]
+        },
+        {
+          "key": "power",
+          "title": "Мощность",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 308,
+          "fields": [
+            "Пределы мощности",
+            "Спектр в dB",
+            "Утечка",
+            "Разрешение по времени",
+            "Перекрытие",
+            "Переназначение",
+            "Фактическая RBW"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Spectrogram exposes full authoritative designed inventory",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "graph",
+          "title": "График",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Тип графика",
+            "Показывать легенду"
+          ]
+        },
+        {
+          "key": "frequency-axis",
+          "title": "Частотная ось",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 176,
+          "fields": [
+            "Единицы времени",
+            "Единицы частоты",
+            "Пределы частоты",
+            "Шкала частоты"
+          ]
+        },
+        {
+          "key": "power",
+          "title": "Мощность",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 308,
+          "fields": [
+            "Пределы мощности",
+            "Спектр в dB",
+            "Утечка",
+            "Разрешение по времени",
+            "Перекрытие",
+            "Переназначение",
+            "Фактическая RBW"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Spectrogram Time page exposes only designed time limits",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "time-limits",
+          "title": "Пределы времени",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 44,
+          "fields": [
+            "Пределы X"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Persistence rebuilds exact designed subsections",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "graph",
+          "title": "График",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Тип графика",
+            "Показывать легенду"
+          ]
+        },
+        {
+          "key": "frequency-axis",
+          "title": "Частотная ось",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 176,
+          "fields": [
+            "Единицы времени",
+            "Единицы частоты",
+            "Пределы частоты",
+            "Шкала частоты"
+          ]
+        },
+        {
+          "key": "density-power",
+          "title": "Плотность и мощность",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 352,
+          "fields": [
+            "Пределы мощности",
+            "Пределы плотности",
+            "Спектр в dB",
+            "Утечка",
+            "Разрешение по времени",
+            "Перекрытие",
+            "Интервалы мощности",
+            "RBW"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Persistence exposes full authoritative designed inventory",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "graph",
+          "title": "График",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 88,
+          "fields": [
+            "Тип графика",
+            "Показывать легенду"
+          ]
+        },
+        {
+          "key": "frequency-axis",
+          "title": "Частотная ось",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 176,
+          "fields": [
+            "Единицы времени",
+            "Единицы частоты",
+            "Пределы частоты",
+            "Шкала частоты"
+          ]
+        },
+        {
+          "key": "density-power",
+          "title": "Плотность и мощность",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 352,
+          "fields": [
+            "Пределы мощности",
+            "Пределы плотности",
+            "Спектр в dB",
+            "Утечка",
+            "Разрешение по времени",
+            "Перекрытие",
+            "Интервалы мощности",
+            "RBW"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Persistence Time page renders designed not-applicable subsection",
+      "status": "passed",
+      "detail": [
+        {
+          "key": "not-applicable",
+          "title": "Временные настройки",
+          "expanded": "true",
+          "focused": false,
+          "hidden": false,
+          "bodyHeight": 86,
+          "fields": [
+            "Применимость"
+          ]
+        }
+      ]
+    }
+  ],
+  "console": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 ()",
+      "url": "https://engee.com/favicon.ico"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 ()",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts"
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 ()",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts"
+    }
+  ],
+  "network": [
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/"
+    },
+    {
+      "status": 409,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts"
+    },
+    {
+      "status": 409,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts"
+    }
+  ],
+  "screenshots": [
+    "settings-display-time.png",
+    "settings-measurements.png",
+    "settings-spectrum.png",
+    "settings-spectrogram.png",
+    "settings-persistence.png"
+  ],
+  "opened": 1,
+  "closed": 1,
+  "preexisting_pages": [],
+  "original": {
+    "revision": 122,
+    "display": "display-9",
+    "pane": "pane-1",
+    "plotType": "time"
+  },
+  "restored": {
+    "revision": 128,
+    "display": "display-9",
+    "pane": "pane-1",
+    "plotType": "time"
+  },
+  "restore_ok": true,
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 18,
+    "passed": 18,
+    "failed": 0,
+    "not_run": 0
+  }
+}
