@@ -1,7 +1,0 @@
-attempted_at_utc: 2026-08-05T14:05:11Z
-quiet_observation_seconds: 946
-probe: TASK-0069 read-only lifecycle checks
-result: blocked
-reason: the mandatory production `engee_status` gate failed before the second remote probe could run.
-sanitized_transport_error: HTTP request to the Engee MCP transport failed.
-remote_actions_not_taken: registry query, HTTP probe, application-log read, controller/pod event collection

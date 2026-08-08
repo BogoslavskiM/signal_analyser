@@ -1,5 +1,0 @@
-time_utc: 2026-08-07T10:12:10Z
-request_url: https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/
-status: 404
-effective_url: https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/
-redirect_url: none
