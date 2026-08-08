@@ -6,7 +6,7 @@
   var titles = { time: "Временная область", spectrum: "Спектр", spectrogram: "Спектрограмма", persistence: "Спектр персистентности" };
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
-    settingsPage: "display", outputs: {}, outputTokens: {}, pollByPane: {},
+    settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null
   };
@@ -91,7 +91,7 @@
     if (!pane.signal_bindings || !pane.signal_bindings.length) return "<div class='plot-empty' data-testid='pane-empty-" + esc(pane.id) + "'><span class='visually-hidden' role='status'>В области нет видимых сигналов</span></div>";
     if (!output || !output.isready) return "<div class='plot-initial-loading' data-testid='pane-loader-" + esc(pane.id) + "' role='status' aria-label='Загрузка графика'><span class='spinner'></span><span>Загрузка графика</span></div>";
     if (!output.success) return "<div class='plot-error' data-testid='pane-error-" + esc(pane.id) + "' role='alert'>" + esc(output.error || "Не удалось загрузить график.") + "</div>";
-    return "<div class='plot-chart' data-pane-host='" + esc(pane.id) + "' data-testid='pane-output-" + esc(pane.id) + "'></div>";
+    return "<div class='plot-chart' data-pane-host='" + esc(pane.id) + "' data-testid='plot-host-" + esc(pane.id) + "' data-plot-ready='false'></div>";
   }
 
   function renderGrid() {
@@ -114,7 +114,8 @@
     });
   }
 
-  function hasPlotData(data) { return Array.isArray(data) ? data.length > 0 : !!(data && Array.isArray(data.z) && data.z.length); }
+  function plotEnvelope(data) { return Array.isArray(data) && data.length === 1 && data[0] && Array.isArray(data[0].data) ? data[0] : data; }
+  function hasPlotData(data) { var payload = plotEnvelope(data); return Array.isArray(payload) ? payload.length > 0 : !!(payload && (Array.isArray(payload.data) ? payload.data.length : Array.isArray(payload.z) && payload.z.length)); }
   function loadPlotly() {
     if (window.Plotly) return Promise.resolve(window.Plotly);
     if (model.plotlyPromise) return model.plotlyPromise;
@@ -139,9 +140,9 @@
       loadPlotly().then(function (Plotly) {
         var host = q("[data-pane-host='" + CSS.escape(pane.id) + "']");
         if (!host || !queued || !hasPlotData(queued.output.data)) return;
-        var payload = queued.output.data;
-        var traces = Array.isArray(payload) ? payload : [{ type: "heatmap", x: payload.x, y: payload.y, z: payload.z, colorscale: payload.colorscale }];
-        return Plotly.react(host, traces, Object.assign({ paper_bgcolor: "#ffffff", plot_bgcolor: "#ffffff", showlegend: true, margin: { l: 44, r: 12, t: 12, b: 34 } }, payload.layout || {}), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {}));
+        var payload = plotEnvelope(queued.output.data);
+        var traces = Array.isArray(payload) ? payload : (Array.isArray(payload.data) ? payload.data : [{ type: "heatmap", x: payload.x, y: payload.y, z: payload.z, colorscale: payload.colorscale }]);
+        return Plotly.react(host, traces, Object.assign({ paper_bgcolor: "#ffffff", plot_bgcolor: "#ffffff", showlegend: true, margin: { l: 44, r: 12, t: 12, b: 34 } }, payload.layout || {}), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
         model.plotInFlight[pane.id] = false;
         if (model.plotQueue[pane.id]) enqueuePlot(pane, model.plotQueue[pane.id]);
@@ -155,12 +156,13 @@
     if (context) context.textContent = "Область " + (panes().indexOf(pane) + 1) + " · " + titles[(pane && pane.plot_type) || "time"];
     qa("[data-settings-page]").forEach(function (button) { button.setAttribute("aria-selected", String(button.dataset.settingsPage === model.settingsPage)); });
     settings.setContext(display.id, model.revision);
+    settings.setView(model.settingsPage, (pane && pane.plot_type) || "time");
     settings.render();
     renderApply();
   }
 
   function renderApply() {
-    var footer = q("[data-testid='explicit-apply-root']");
+    var footer = q("[data-testid='settings-footer']");
     var button = q("[data-testid='settings-apply']");
     var status = q("[data-settings-status]");
     if (!footer || !button || !status) return;
@@ -177,22 +179,31 @@
   }
 
   function renderInspector() {
-    var rows = q("[data-testid='signal-rows']");
-    if (!rows) return;
-    var search = (q("[data-testid='signal-search-input']") || {}).value || "";
+    var body = q("[data-inspector-content]");
+    if (!body) return;
+    qa("[data-bottom-tab]").forEach(function (tab) { var active = tab.dataset.bottomTab === model.inspectorPage; tab.setAttribute("aria-selected", String(active)); tab.tabIndex = active ? 0 : -1; });
+    body.dataset.testid = "inspector-pane-" + model.inspectorPage;
+    if (model.inspectorPage !== "signals") { body.innerHTML = "<div class='inspector-empty' data-testid='inspector-pane-" + model.inspectorPage + "' role='status'>" + (model.inspectorPage === "measurements" ? "Измерения для активной области пока не рассчитаны" : "Пики для активной области пока не рассчитаны") + "</div>"; return; }
+    body.innerHTML = "<div class='inspector-search-row'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='signal-search-input' aria-label='Поиск сигналов' placeholder='Введите название' value='" + esc(model.inspectorSearch) + "'></div><div class='signal-table-scroll'><table id='signal-table' class='signal-table'><thead><tr data-table-head></tr></thead><tbody data-testid='signal-rows' data-signal-rows></tbody></table><div class='table-empty' role='status' data-testid='signal-search-empty' hidden>Сигналы не найдены</div></div>";
+    var rows = q("[data-testid='signal-rows']"), head = q("[data-table-head]");
+    if (!rows || !head) return;
+    var search = model.inspectorSearch;
     var signals = (model.state.signals || []).filter(function (signal) { return !search || String(signal.name).toLowerCase().indexOf(search.toLowerCase()) >= 0; });
+    var columns = [{ id:"color", label:"Цвет" }, { id:"sample_rate", label:"Частота дискретизации" }, { id:"sample_count", label:"Отсчёты" }, { id:"duration", label:"Длительность" }, { id:"data_type", label:"Тип" }].filter(function (column) { return model.visibleColumns[column.id]; });
+    head.innerHTML = "<th aria-label='Видимость'></th><th>Имя</th>" + columns.map(function (column) { return "<th>" + column.label + "</th>"; }).join("") + "<th aria-label='Действия'></th>";
     rows.innerHTML = signals.map(function (signal) {
-      return "<tr><td><input class='ui-checkbox' type='checkbox' data-visible-signal='" + esc(signal.name) + "' aria-label='Показывать " + esc(signal.name) + "'" + (signal.visible !== false ? " checked" : "") + "></td><td>" + esc(signal.name) + "</td><td>" + esc(signal.color_name || signal.color || "") + "</td><td>" + esc(signal.sample_rate || "") + "</td><td><button type='button' class='signal-row-action' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "'>Удалить</button></td></tr>";
+      var values = { color:"<span class='color-swatch' data-testid='signal-color-" + esc(signal.name) + "' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signal.name) + "'></span>", sample_rate:esc(signal.sample_rate_hz == null ? "—" : signal.sample_rate_hz), sample_count:esc(signal.sample_count == null ? "—" : signal.sample_count), duration:esc(signal.duration_s == null ? "—" : signal.duration_s), data_type:esc(signal.data_type || "—") };
+      return "<tr data-testid='signal-row-" + esc(signal.name) + "' class='" + (signal.visible !== false ? "is-selected" : "") + "'><td><input class='ui-checkbox' type='checkbox' data-visible-signal='" + esc(signal.name) + "' aria-label='Показывать " + esc(signal.name) + "'" + (signal.visible !== false ? " checked" : "") + "></td><td><span class='signal-cell-value'>" + esc(signal.name) + "</span></td>" + columns.map(function (column) { return "<td class='" + (column.id === "color" ? "color-cell" : "") + "'><span class='signal-cell-value'>" + values[column.id] + "</span></td>"; }).join("") + "<td class='is-actions-host'><span class='signal-row-actions'><button type='button' class='signal-row-action' data-signal-duplicate='" + esc(signal.name) + "' data-testid='signal-duplicate-" + esc(signal.name) + "' aria-label='Копировать " + esc(signal.name) + "'><img src='./icons/copy.svg' alt=''></button><button type='button' class='signal-row-action is-danger' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "' aria-label='Удалить " + esc(signal.name) + "'><img src='./icons/trash.svg' alt=''></button></span></td></tr>";
     }).join("");
+    q("[data-testid='signal-search-empty']").hidden = signals.length > 0;
   }
 
   function renderColumnMenu() {
     var menu = q("[data-testid='signal-columns-menu']");
-    if (!menu || menu.dataset.initialized) return;
-    menu.dataset.initialized = "true";
+    if (!menu) return;
     menu.innerHTML = "<div class='inspector-menu-title'>Видимость столбцов</div>" +
-      ["Цвет", "Частота дискретизации"].map(function (label, index) {
-        return "<button type='button' role='menuitemcheckbox' aria-checked='true' data-column-visible='" + index + "'><span>" + label + "</span><img src='./icons/eye.svg' alt='Показывать'></button>";
+      [{id:"color",label:"Цвет"},{id:"sample_rate",label:"Частота дискретизации"},{id:"sample_count",label:"Отсчёты"},{id:"duration",label:"Длительность"},{id:"data_type",label:"Тип"}].map(function (column) {
+        var visible = model.visibleColumns[column.id]; return "<button type='button' role='menuitemcheckbox' aria-pressed='" + visible + "' aria-checked='" + visible + "' data-column-visible='" + column.id + "'><span>" + column.label + "</span><img src='" + (visible ? "./icons/eye.svg" : "./icons/eye-off.svg") + "' alt=''></button>";
       }).join("");
   }
 
@@ -249,7 +260,7 @@
   }
 
   function applySettings() {
-    var footer = q("[data-testid='explicit-apply-root']");
+    var footer = q("[data-testid='settings-footer']");
     var state = settings.state();
     if (!footer || state.invalid || !state.dirty) return;
     footer.dataset.phase = "applying";
@@ -302,7 +313,7 @@
   }
 
   function completePendingApply() {
-    var footer = q("[data-testid='explicit-apply-root']");
+    var footer = q("[data-testid='settings-footer']");
     if (!footer || footer.dataset.phase !== "pending") return;
     footer.dataset.phase = "pristine";
     footer.dataset.message = "";
@@ -323,21 +334,23 @@
     if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }); }
     if (button.dataset.testid === "settings-apply") return void applySettings();
     if (button.dataset.signalDelete) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "delete", signal_name: button.dataset.signalDelete }); });
+    if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });
     if (button.dataset.settingsPage) { model.settingsPage = button.dataset.settingsPage; return void renderSettings(activeDisplay()); }
     if (button.dataset.paneMenu) { var menu = q("[data-testid='display-overflow-menu']"); menu.hidden = !menu.hidden; menu.dataset.paneId = button.dataset.paneMenu; button.setAttribute("aria-expanded", String(!menu.hidden)); return; }
     if (button.dataset.testid === "signal-columns-menu-trigger") { var columns = q("[data-testid='signal-columns-menu']"); columns.hidden = !columns.hidden; button.setAttribute("aria-expanded", String(!columns.hidden)); return; }
-    if (button.dataset.columnVisible !== undefined) { var visible = button.getAttribute("aria-checked") !== "true"; button.setAttribute("aria-checked", String(visible)); button.querySelector("img").src = visible ? "./icons/eye.svg" : "./icons/eye-off.svg"; button.querySelector("img").alt = visible ? "Показывать" : "Скрыть"; return; }
+    if (button.dataset.columnVisible !== undefined) { var key = button.dataset.columnVisible; model.visibleColumns[key] = !model.visibleColumns[key]; renderInspector(); renderColumnMenu(); return; }
+    if (button.dataset.bottomTab) { model.inspectorPage = button.dataset.bottomTab; return void renderInspector(); }
     if (button.dataset.toastClose !== undefined) q("[data-testid='layout-toast']").hidden = true;
   });
   document.addEventListener("click", function (event) { var popover = q("[data-testid='layout-popover']"); if (model.layoutDraft && !popover.contains(event.target) && !q("[data-testid='layout-trigger']").contains(event.target)) closeLayout(); });
-  document.addEventListener("keydown", function (event) { if (event.key === "Escape" && model.layoutDraft) closeLayout(); });
+  document.addEventListener("keydown", function (event) { if (event.key === "Escape" && model.layoutDraft) closeLayout(); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(event.key === "ArrowRight" ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
   document.addEventListener("change", function (event) {
     var node = event.target;
     if (node.dataset.paneType) { var pane = paneById(node.dataset.paneType); return void postLayout({ operation: "update_pane", pane_id: pane.id, plot_type: node.value, signal_bindings: pane.signal_bindings || [] }); }
     if (node.dataset.visibleSignal) { var display = activeDisplay(), visible = (display.visible_signals || []).slice(), index = visible.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) visible.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) visible.splice(index, 1); return void mutate(function () { return api.view({ state_revision: model.revision, active_plot: display.active_plot, row_selected_signal: node.checked ? node.dataset.visibleSignal : null, analysis_signal: node.checked ? node.dataset.visibleSignal : null, visible_signals: visible, time_limits: display.time_limits, measurement_kinds: display.measurement_kinds, spectrum_settings: display.spectrum_settings, spectrogram_settings: display.spectrogram_settings, persistence_settings: display.persistence_settings, peaks_enabled: display.peaks_enabled || false }); }); }
   });
   document.addEventListener("click", function (event) { var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }); });
-  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") renderInspector(); });
+  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } });
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-saved", function (event) { var revision = event.detail && event.detail.state && event.detail.state.state_revision; if (typeof revision === "number") model.revision = Math.max(model.revision, revision); });
 
@@ -356,7 +369,7 @@
     target.hidden = false;
   }
   function showSettingsLoadError(error) {
-    var footer = q("[data-testid='explicit-apply-root']");
+    var footer = q("[data-testid='settings-footer']");
     if (!footer) return;
     footer.dataset.phase = "error";
     footer.dataset.message = safeErrorText(error, "Не удалось загрузить настройки.");

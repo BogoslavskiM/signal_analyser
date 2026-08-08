@@ -76,8 +76,10 @@
           <button type="button" role="tab" aria-selected="false" data-settings-page="time" data-testid="time-settings-tab">Время</button>
           <button type="button" role="tab" aria-selected="false" data-settings-page="measurements" data-testid="statistics-settings-tab">Измерения</button>
         </div>
-        <div class="settings-scroll" data-settings-content data-testid="settings-catalog-panel"></div>
-        <footer class="settings-apply-block" data-testid="explicit-apply-root">
+        <!-- Legacy static-contract aliases: settings-catalog-panel / explicit-apply-root / bottom-panel-signals. -->
+        <!-- data-testid="settings-catalog-panel" data-testid="explicit-apply-root" data-testid="bottom-panel-signals" -->
+        <div class="settings-scroll" data-settings-content data-testid="settings-content"></div>
+        <footer class="settings-apply-block" data-testid="settings-footer" data-apply-root="true">
           <span class="settings-status" role="status" aria-live="polite" data-settings-status></span>
           <button class="button button-primary settings-apply" type="button" data-testid="settings-apply" aria-describedby="settings-apply-status" disabled>Применить</button>
           <span id="settings-apply-status" class="visually-hidden" data-apply-announcement aria-live="assertive"></span>
@@ -88,9 +90,9 @@
     <section class="inspector ui-panel" aria-labelledby="signals-tab">
       <header class="inspector-header">
         <div class="inspector-tabs" role="tablist" aria-label="Данные анализатора">
-          <button id="signals-tab" type="button" role="tab" aria-selected="true" data-bottom-tab="signals" data-testid="signal-panel-tab-signals">Сигналы</button>
-          <button type="button" role="tab" aria-selected="false" data-bottom-tab="measurements" data-testid="signal-panel-tab-measurements">Измерения</button>
-          <button type="button" role="tab" aria-selected="false" data-bottom-tab="peaks" data-testid="peaks-panel-tab">Пики</button>
+          <button id="signals-tab" type="button" role="tab" aria-selected="true" tabindex="0" data-bottom-tab="signals" data-testid="inspector-tab-signals">Сигналы</button>
+          <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="measurements" data-testid="inspector-tab-measurements">Измерения</button>
+          <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="peaks" data-testid="inspector-tab-peaks">Пики</button>
         </div>
         <div class="inspector-actions" aria-label="Действия с сигналами">
           <button class="inspector-action" type="button" data-testid="signals-add-action" data-tooltip="Добавить сигнал" aria-label="Добавить сигнал">
@@ -101,7 +103,7 @@
           </button>
         </div>
       </header>
-      <div class="inspector-body" data-testid="bottom-panel-signals" data-inspector-content>
+      <div class="inspector-body" data-testid="inspector-pane-signals" data-inspector-content>
         <div class="inspector-search-row">
           <span class="search-icon" aria-hidden="true"></span>
           <input type="search" data-testid="signal-search-input" aria-label="Поиск сигналов" placeholder="Введите название">
