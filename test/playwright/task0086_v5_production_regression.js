@@ -8,7 +8,7 @@ const { execFileSync } = require("child_process");
 const { chromium } = require("playwright-core");
 
 const target = "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/";
-const revision = "1255cc00a9bd2388f8682cb19e86867e605936b7";
+const revision = "0f8373d6d19357cd35b391094f6b77653f6acac0";
 const prototype = `file://${path.resolve("architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html")}`;
 const output = path.resolve("test/playwright/artifacts/TASK-0086");
 fs.mkdirSync(output, { recursive: true });
@@ -39,7 +39,8 @@ async function geometry(page) { return page.evaluate(() => {
     displays: [...document.querySelectorAll('[data-testid^="display-tab-"], .display-tab-shell, [role="tab"]')].map(n => n.textContent.trim()),
     signals: [...document.querySelectorAll('[data-testid^="signal-row-"], .signal-table tbody tr')].map(n => n.textContent.trim()),
     plots: [...document.querySelectorAll('[data-testid^="plot-pane-"], .plot-pane, .plot-card')].map(n => ({ text:n.textContent.trim().slice(0,120), box:(() => {const b=n.getBoundingClientRect();return {w:b.width,h:b.height};})() })),
-    plotly: document.querySelectorAll('.js-plotly-plot').length, modebar: document.querySelectorAll('.modebar, .modebar-container').length,
+    plotly: document.querySelectorAll('.js-plotly-plot').length,
+    modebar: [...document.querySelectorAll('.modebar, .modebar-container')].filter(n => { const s=getComputedStyle(n),b=n.getBoundingClientRect(); return s.display!=="none"&&s.visibility!=="hidden"&&b.width>0&&b.height>0&&n.childElementCount>0; }).length,
   };
 }); }
 async function clickIf(page, selector) { const l = page.locator(selector).first(); if (await l.count() && await l.isVisible()) { await l.click(); return true; } return false; }
@@ -77,14 +78,15 @@ async function settingsAndInspectorAudit(page) { return page.evaluate(() => {
   const byText = label => [...document.querySelectorAll('button,[role="tab"],label,div,span')].filter(visible).filter(n => n.children.length===0 && n.textContent.trim()===label);
   const settings = document.querySelector('[data-testid="settings-panel"], aside.settings-panel');
   const inspector = document.querySelector('[data-testid="signal-table"], .inspector, .signal-panel');
-  const settingTabs = ["Отображение","Время","Измерения"].map(label => ({label,count:byText(label).length, nodes:byText(label).map(dim)}));
+  const settingTabs = ["Отображение","Время","Измерения"].map(label => { const nodes = settings ? byText(label).filter(n => settings.contains(n)) : []; return {label,count:nodes.length,nodes:nodes.map(dim)}; });
   const settingsParts = ["settings-heading","settings-tabs","settings-content","settings-footer"].map(id => ({id,count:document.querySelectorAll(`[data-testid="${id}"]`).length,box:dim(document.querySelector(`[data-testid="${id}"]`))}));
   const raw = document.body.innerText;
   const rows = [...document.querySelectorAll('[data-testid^="signal-row-"], .signal-table tbody tr, .signal-list-item')].filter(visible).map(n => ({text:n.innerText.trim(),box:dim(n),html:n.outerHTML.slice(0,1200)}));
   const headers = [...document.querySelectorAll('[data-testid^="signal-table"] th, .signal-table th, .signal-table thead td')].filter(visible).map(n => n.textContent.trim());
   const swatches = [...document.querySelectorAll('[data-testid*="color"], .color-swatch, input[type="color"]')].filter(visible).map(dim);
   const controls = settings ? [...settings.querySelectorAll('input,select,button')].filter(visible).map(n => ({tag:n.tagName,type:n.type||null,text:n.textContent.trim(),value:n.value||null,box:dim(n)})) : [];
-  return {settings:dim(settings),inspector:dim(inspector),settingsParts,settingTabs,controls,rows,headers,swatches,hasObjectObject:/\[object Object\]/.test(raw) || controls.some(c=>c.value==="[object Object]"),rawSettingsText:settings ? settings.innerText.slice(0,5000) : "",rawInspectorText:inspector ? inspector.innerText.slice(0,5000) : ""};
+  const rowActions = inspector ? [...inspector.querySelectorAll('[data-testid^="signal-duplicate-"], [data-testid^="signal-delete-"]')].filter(visible).length : 0;
+  return {settings:dim(settings),inspector:dim(inspector),settingsParts,settingTabs,controls,rows,headers,swatches,rowActions,hasObjectObject:/\[object Object\]/.test(raw) || controls.some(c=>c.value==="[object Object]"),rawSettingsText:settings ? settings.innerText.slice(0,5000) : "",rawInspectorText:inspector ? inspector.innerText.slice(0,5000) : ""};
 }); }
 async function appErrorDetails(page) { return page.evaluate(() => {
   const node = document.querySelector('[data-testid="app-error"]');
@@ -143,6 +145,7 @@ async function waitForProductionTerminal(page) {
       const normal=vp[0]>=920&&vp[1]>=680; check(`production sizing ${vp[0]}x${vp[1]}`, normal ? !!g.shell&&g.body.sw===g.body.cw&&g.body.sh===g.body.ch : g.body.sw>g.body.cw&&g.body.sh>g.body.ch, g);
     }
     await prod.setViewportSize({width:1440,height:900}); await front(prod);
+    await prod.waitForSelector('[data-plot-ready="true"]', { state:"attached", timeout:60000 });
     const base = await geometry(prod);
     check("v5 shell has settings and single default harmonic signal", !!base.settings && base.signals.filter(x=>/Гармонический сигнал/i.test(x)).length === 1, base);
     check("layout trigger is live 1×1", !!base.layout && /1\s*[×x]\s*1/.test((await prod.locator('[data-testid="layout-trigger"], [aria-label*="макет"]').first().textContent().catch(()=>"")) || ""), base.layout);
@@ -157,8 +160,9 @@ async function waitForProductionTerminal(page) {
       audit.settingsParts.find(x=>x.id==="settings-footer").box && Math.abs(audit.settingsParts.find(x=>x.id==="settings-footer").box.h-54)<=1 &&
       audit.settingTabs.every(x=>x.count === 1) && !audit.hasObjectObject;
     check("v5 settings is one complete localized menu without object serialization", settingsContract, audit);
-    check("v5 settings controls use canonical 32px fields and 40px row rhythm", audit.controls.filter(x=>/INPUT|SELECT/.test(x.tag)).every(x=>Math.abs(x.box.h-32)<=1) && audit.controls.filter(x=>/INPUT|SELECT/.test(x.tag)).length>0 && audit.rows.every(r=>Math.abs(r.box.h-32)<=1), {controls:audit.controls,rows:audit.rows});
-    check("v5 inspector table exposes canonical signal columns and row affordances", audit.rows.length===1 && audit.swatches.length>=1 && audit.headers.length>=4 && /(?:частот|sample)/i.test(audit.rawInspectorText) && /(?:длитель|duration)/i.test(audit.rawInspectorText) && /(?:тип|type)/i.test(audit.rawInspectorText) && /(?:удал|delete)/i.test(audit.rawInspectorText), audit);
+    const fieldControls = audit.controls.filter(x=>(x.tag==="SELECT") || (x.tag==="INPUT" && x.type!=="checkbox"));
+    check("v5 settings controls use canonical 32px fields and 40px row rhythm", fieldControls.every(x=>Math.abs(x.box.h-32)<=1) && fieldControls.length>0 && audit.controls.filter(x=>x.tag==="INPUT"&&x.type==="checkbox").every(x=>Math.abs(x.box.h-16)<=1) && audit.rows.every(r=>Math.abs(r.box.h-32)<=1), {controls:audit.controls,rows:audit.rows});
+    check("v5 inspector table exposes canonical signal columns and row affordances", audit.rows.length===1 && audit.swatches.length>=1 && audit.headers.length>=8 && /(?:частот|sample)/i.test(audit.rawInspectorText) && /(?:длитель|duration)/i.test(audit.rawInspectorText) && /(?:тип|type)/i.test(audit.rawInspectorText) && audit.rowActions>=2, audit);
     for (const label of ["Измерения", "Пики"]) {
       await front(prod); const result = await tabAudit(prod, label); report[`inspector_tab_${label}`] = result;
       check(`inspector ${label} tab click selects it and changes active pane`, result.found && (result.after === "true" || result.active) && (result.panels.length === 1 ? result.panels[0].text.length > 0 : result.contentChanged), result);
