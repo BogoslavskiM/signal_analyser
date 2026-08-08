@@ -231,8 +231,8 @@
       xaxis:{ title:{ text:compact ? "" : metadata.x_label || "" }, gridcolor:"#e7edf3", type:record.plot_type === "spectrum" && metadata.frequency_scale === "log" ? "log" : undefined },
       yaxis:{ title:{ text:compact ? "" : metadata.y_label || "" }, gridcolor:"#e7edf3", type:frequencyScale === "log" ? "log" : undefined },
       dragmode:"zoom",
-      showlegend:!heat && !compact,
-      legend:{ orientation:"h", x:.99, y:.99, xanchor:"right", yanchor:"top", font:{ size:10 }, bgcolor:"rgba(255,255,255,.78)", borderwidth:0 },
+      showlegend:legendVisibilityByDisplay[activeDisplayId] !== false,
+      legend:{ orientation:"v", x:.99, y:.99, xanchor:"right", yanchor:"top", font:{ family:"Roboto, Arial, sans-serif", size:12 }, bgcolor:"rgba(255,255,255,.86)", borderwidth:0 },
     };
   }
 
@@ -851,26 +851,13 @@
     return true;
   }
   function hasOutputData(record) { return !!(record && record.output && Array.isArray(record.output.data) && record.output.data.length); }
-  function compactLegendColor(trace, index) {
-    var color = trace && trace.line && trace.line.color || trace && trace.marker && trace.marker.color || trace && trace.color;
-    color = typeof color === "string" ? color.trim() : "";
-    return /^(?:#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%a-z]+\)|[a-z]+)$/i.test(color) ? color : (index ? "#d98b19" : "#1b84b8");
-  }
-  function compactLegendMarkup(pane, record) {
-    var plot = record && record.output && record.output.data && record.output.data[0], traces;
-    if (legendVisibilityByDisplay[activeDisplayId] === false) return "";
-    if (!plot || !Array.isArray(plot.data) || plot.layout && plot.layout.showlegend === false) return "";
-    traces = plot.data.filter(function(trace) { return trace && trace.showlegend !== false && String(trace.name || trace.signal || "").trim(); });
-    if (!traces.length) return "";
-    return "<div class='compact-legend' data-testid='compact-legend-" + esc(pane.id) + "' aria-label='Легенда графика'>" + traces.map(function(trace, index) { return "<span class='compact-legend-item'><i aria-hidden='true' style='--legend-color:" + esc(compactLegendColor(trace, index)) + "'></i><span>" + esc(trace.name || trace.signal) + "</span></span>"; }).join("") + "</div>";
-  }
   function paneOutputMarkup(pane, index, isActive, record) {
     var prefix = "<div class='pane-output", suffix = "' data-testid='pane-output-" + esc(pane.id) + "'";
     if (!isActive) return prefix + " pane-output-empty" + suffix + " data-pane-output-state='empty'><strong>Нет данных области</strong><span>Выберите область, чтобы загрузить её график.</span></div>";
     if (!record || !record.output.isready) return prefix + " pane-output-loading" + suffix + " data-pane-output-state='loading' role='status'><span class='spinner'></span><span>Обновление графика…</span></div>";
     if (!record.output.success) return prefix + " pane-output-error" + suffix + " data-pane-output-state='error' role='alert'><strong>График не обновлён</strong><span>" + esc(record.output.error) + "</span></div>";
     if (!hasOutputData(record)) return prefix + " pane-output-empty" + suffix + " data-pane-output-state='empty'><strong>Нет видимых сигналов</strong><span>Выберите сигналы для активной области.</span></div>";
-    return prefix + suffix + " data-pane-output-state='ready'>" + compactLegendMarkup(pane, record) + "<div class='pane-plot-host' data-pane-plot-host='" + esc(pane.id) + "' data-testid='pane-plot-host-" + esc(pane.id) + "' role='img' aria-label='График области " + index + "'></div></div>";
+    return prefix + suffix + " data-pane-output-state='ready'><div class='pane-plot-host' data-pane-plot-host='" + esc(pane.id) + "' data-testid='pane-plot-host-" + esc(pane.id) + "' role='img' aria-label='График области " + index + "'></div></div>";
   }
   function renderPanePlots(layout, outputs) {
     var record = outputs[0], pane = activePane(layout), host = activeHost;
@@ -887,6 +874,7 @@
     var detail = event && event.detail || {};
     appRevision = Number(detail.revision);
     if (typeof detail.activeDisplayId === "string" && detail.activeDisplayId) activeDisplayId = detail.activeDisplayId;
+    if (typeof detail.showLegend === "boolean" && activeDisplayId) legendVisibilityByDisplay[activeDisplayId] = detail.showLegend;
     if (detail.snapshot) acceptEnvelope(detail.snapshot, false);
     else if (integer(appRevision) && appRevision > (envelopeRevision || -1)) refresh();
   }
@@ -912,7 +900,10 @@
       if (!current || current.inFlight || !current.host || !current.host.isConnected || !current.host.getBoundingClientRect().width || !current.host.getBoundingClientRect().height) return;
       current.scheduled = false; plot = current.record.output.data[0];
       if (!plot) return;
-      plotLayout = Object.assign({}, plot.layout || {}, { showlegend:false });
+      plotLayout = Object.assign({}, plot.layout || {}, {
+        showlegend:legendVisibilityByDisplay[activeDisplayId] !== false,
+        legend:{ orientation:"v", x:.99, y:.99, xanchor:"right", yanchor:"top", font:{ family:"Roboto, Arial, sans-serif", size:12 }, bgcolor:"rgba(255,255,255,.86)", borderwidth:0 }
+      });
       current.inFlight = true;
       ensureLocalPlotly().then(function(Plotly) {
         if (!current.host.isConnected || paneRenderQueue[key] !== current) return null;

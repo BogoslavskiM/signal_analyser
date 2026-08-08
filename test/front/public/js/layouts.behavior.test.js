@@ -373,6 +373,10 @@ module.exports = async function testStateLiteLayoutBehavior(assert) {
   cold.activeResponders.push(activeOutput(startup, "startup-ready"));
   await cold.runTimer();
   assert(cold.plotCalls.length === 1 && cold.plotCalls[0].host === cold.document.nodes["active-plot-host"] && cold.plotCalls[0].config.displayModeBar === false, "one current ready output must render exactly once through the layouts-owned live Plotly host");
+  assert(cold.plotCalls[0].layout.showlegend === true && cold.plotCalls[0].layout.legend.orientation === "v" && cold.plotCalls[0].layout.legend.x === .99 && cold.plotCalls[0].layout.legend.y === .99 && cold.plotCalls[0].layout.legend.xanchor === "right" && cold.plotCalls[0].layout.legend.yanchor === "top" && cold.plotCalls[0].layout.legend.font.family === "Roboto, Arial, sans-serif" && cold.plotCalls[0].layout.legend.font.size === 12 && cold.plotCalls[0].layout.legend.bgcolor === "rgba(255,255,255,.86)", "the effective Show Legend setting must render Plotly's native vertical translucent Roboto legend inside the active plot");
+  cold.window.dispatchEvent(new cold.window.CustomEvent("signal-analyser-settings-presentation", {detail:{display_id:"display-1", fields:[{id:"display.show_legend", value:false}]}}));
+  await flush();
+  assert(cold.plotCalls.length === 2 && cold.plotCalls[1].layout.showlegend === false && cold.plotCalls[1].layout.legend.x === .99 && cold.plotCalls[1].layout.legend.y === .99, "disabling Show Legend must re-render the active plot with native Plotly showlegend=false while retaining its native legend profile");
   assert(cold.document.nodes["active-plot-host"].dataset.plotReady === "true", "the sole current Plotly.react completion must mark the layouts-owned host ready");
   assert(cold.document.nodes["active-plot-host"].generatedModebar.every((node) => node.parentNode === null), "active Plotly render completion must remove generated modebar and modebar-container DOM while preserving readiness");
 

@@ -11,6 +11,7 @@ module.exports = async function testOverlayStackingStaticContract(assert) {
   const theme = fs.readFileSync(path.join(root, "public/css/theme.css"), "utf8");
   const appCss = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8");
   const layoutsCss = fs.readFileSync(path.join(root, "public/css/layouts.css"), "utf8");
+  const layouts = fs.readFileSync(path.join(root, "public/js/layouts.js"), "utf8");
   const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   const html = fs.readFileSync(path.join(root, "public/index.html"), "utf8");
   const failures = [];
@@ -32,7 +33,8 @@ module.exports = async function testOverlayStackingStaticContract(assert) {
   expect(/\.display-overflow-menu\{[^}]*z-index:var\(--layer-menu\)/.test(appCss), "pane menu must use the named menu layer");
   expect(/\.signal-columns-menu\{[^}]*z-index:var\(--layer-menu\)/.test(layoutsCss), "inspector menu must use the named menu layer");
   expect(/\.graph-help-overlay\{[^}]*position:absolute[^}]*z-index:var\(--layer-graph-help\)/.test(layoutsCss), "graph help must be its own graph-help overlay layer");
-  expect(/\.compact-legend\{[^}]*pointer-events:none/.test(layoutsCss), "compact legend must stay pointer-inert beneath graph help");
+  expect(!/\b(?:compact-legend|plot-legend)\b/.test(`${layoutsCss}\n${layouts}`), "custom compact/plot legend overlays must stay absent from the graph stack");
+  expect(layouts.includes("showlegend:legendVisibilityByDisplay[activeDisplayId] !== false") && layouts.includes('legend:{ orientation:"v", x:.99, y:.99, xanchor:"right", yanchor:"top", font:{ family:"Roboto, Arial, sans-serif", size:12 }, bgcolor:"rgba(255,255,255,.86)", borderwidth:0 }'), "Show Legend must configure Plotly's native vertical paper-anchored Roboto legend inside the plot zone");
   expect(/\.signals-toolbar-error\{[^}]*z-index:var\(--layer-passive-toast\)/.test(appCss), "passive toast must use the passive-toast layer");
   expect(/\.signals-dialog-layer\{[^}]*z-index:var\(--layer-main-modal-backdrop\)/.test(appCss) && /\.signals-dialog\{[^}]*z-index:var\(--layer-main-modal\)/.test(appCss), "main dialog/backdrop must use the pinned main-modal layers");
   expect(/\.screen-delete-layer\{[^}]*z-index:var\(--layer-screen-delete-backdrop\)/.test(layoutsCss) && /\.screen-delete-card\{[^}]*z-index:var\(--layer-screen-delete\)/.test(layoutsCss), "screen-delete confirmation must use the pinned delete layers");
