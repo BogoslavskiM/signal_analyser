@@ -148,6 +148,7 @@ button img {
 .display-tab:focus-visible,
 .display-tab-close:focus-visible,
 .settings-tabs button:focus-visible,
+.settings-group-title:focus-visible,
 .inspector-tabs button:focus-visible,
 .select-trigger:focus-visible,
 .segment:focus-visible,
@@ -722,8 +723,14 @@ button img {
   background: var(--surface);
   font-size: 14px;
   font-weight: 500;
+  font-family: inherit;
+  color: var(--text);
   text-align: left;
+  cursor: pointer;
 }
+
+.settings-group-title:hover { background: var(--button-hover); }
+.settings-group-title:active { background: var(--button-active); }
 
 .settings-group-title::before {
   width: 0;
@@ -732,7 +739,10 @@ button img {
   border-right: 4px solid transparent;
   border-left: 4px solid transparent;
   content: "";
+  transition: transform 120ms ease;
 }
+
+.settings-group-title[aria-expanded="false"]::before { transform: rotate(-90deg); }
 
 .settings-group-title::after {
   min-width: 24px;
@@ -741,6 +751,8 @@ button img {
   background: var(--line);
   content: "";
 }
+
+.settings-group-fields[hidden] { display: none; }
 
 .settings-field-row {
   width: 100%;

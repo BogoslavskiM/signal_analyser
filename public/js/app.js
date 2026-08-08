@@ -203,7 +203,10 @@
     if (context) context.textContent = "Область " + (panes().indexOf(pane) + 1) + " · " + titles[(pane && pane.plot_type) || "time"];
     qa("[data-settings-page]").forEach(function (button) { button.setAttribute("aria-selected", String(button.dataset.settingsPage === model.settingsPage)); });
     settings.setContext(display.id, model.revision);
-    settings.setView(model.settingsPage, (pane && pane.plot_type) || "time");
+    settings.setView(model.settingsPage, (pane && pane.plot_type) || "time", {
+      measurementKinds: display.measurement_kinds || [],
+      peaksEnabled: display.peaks_enabled || false
+    });
     settings.render();
     renderApply();
   }
@@ -393,6 +396,7 @@
   });
   document.addEventListener("click", function (event) { var popover = q("[data-testid='layout-popover']"); if (model.layoutDraft && !popover.contains(event.target) && !q("[data-testid='layout-trigger']").contains(event.target)) closeLayout(); });
   document.addEventListener("keydown", function (event) { if (event.key === "Escape" && model.layoutDraft) closeLayout(); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(event.key === "ArrowRight" ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
+  document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]"),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(event.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
     if (node.dataset.paneType) { var pane = paneById(node.dataset.paneType); return void postLayout({ operation: "update_pane", pane_id: pane.id, plot_type: node.value, signal_bindings: pane.signal_bindings || [] }); }
@@ -402,6 +406,17 @@
   document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } });
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-saved", function (event) { var revision = event.detail && event.detail.state && event.detail.state.state_revision; if (typeof revision === "number") model.revision = Math.max(model.revision, revision); });
+  window.addEventListener("signal-settings-plot-type", function (event) {
+    var pane = paneById(model.activePane), plotType = event.detail && event.detail.plotType;
+    if (pane && titles[plotType] && pane.plot_type !== plotType) postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:plotType, signal_bindings:pane.signal_bindings || [] });
+  });
+  window.addEventListener("signal-settings-measurement", function (event) {
+    var display = activeDisplay(), detail = event.detail || {};
+    if (!display) return;
+    var measurementKinds = Array.isArray(detail.measurementKinds) ? detail.measurementKinds : (display.measurement_kinds || []).slice();
+    var peaksEnabled = typeof detail.peaksEnabled === "boolean" ? detail.peaksEnabled : !!display.peaks_enabled;
+    mutate(function () { return api.view({ state_revision:model.revision, active_plot:display.active_plot, row_selected_signal:display.row_selected_signal || null, analysis_signal:display.analysis_signal || null, visible_signals:(display.visible_signals || []).slice(), time_limits:display.time_limits, measurement_kinds:measurementKinds, spectrum_settings:display.spectrum_settings, spectrogram_settings:display.spectrogram_settings, persistence_settings:display.persistence_settings, peaks_enabled:peaksEnabled }); });
+  });
   q("[data-testid='display-tabs']").addEventListener("scroll", function () { scheduleDisplayTabScrollUpdate(false); }, { passive: true });
   window.addEventListener("resize", function () { scheduleDisplayTabScrollUpdate(false); });
   if (window.ResizeObserver) {

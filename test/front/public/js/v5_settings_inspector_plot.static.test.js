@@ -14,9 +14,10 @@ module.exports = async function testV5SettingsInspectorAndPlotContracts(assert) 
   ["settings-content", "settings-footer", "settings-apply", "display-settings-tab", "time-settings-tab", "statistics-settings-tab"].forEach((id) => {
     assert(html.includes(`data-testid="${id}"`), `v5 settings must expose stable selector ${id}`);
   });
-  assert(/var ru\s*=/.test(settings) && /var groupRu\s*=/.test(settings), "v5 settings labels and groups must be localized in Russian");
-  assert(/function visible\(item\)[\s\S]*context\.page === "time"[\s\S]*context\.page === "measurements"[\s\S]*context\.plotType/.test(settings), "settings must filter fields by selected page and active plot type");
-  assert(/settings\.setView\(model\.settingsPage, \(pane && pane\.plot_type\) \|\| "time"\)/.test(app), "active settings page/type must be passed to the settings renderer");
+  assert(/var ru\s*=/.test(settings) && /function inventory\(\)/.test(settings), "v5 settings labels and inventory must be localized in Russian");
+  const inventory = (settings.match(/function inventory\(\)[\s\S]*?\n  \}/) || [""])[0];
+  assert(/context\.page === "time"/.test(inventory) && /context\.page === "measurements"/.test(inventory) && /context\.plotType/.test(inventory), "settings inventory must filter fields by selected page and active plot type");
+  assert(/settings\.setView\(model\.settingsPage, \(pane && pane\.plot_type\) \|\| "time", \{[\s\S]*measurementKinds:[\s\S]*peaksEnabled:/.test(app), "active settings page/type and presentation state must be passed to the settings renderer");
   assert(/item\.kind === "range" \|\| item\.kind === "optional_range"[\s\S]*typeof current === "object" \? current : \{\}/.test(settings), "optional_range must normalize a non-object value before rendering");
   assert(/data-range-part='min'[\s\S]*data-range-part='max'/.test(settings), "optional_range must render distinct minimum and maximum inputs");
   assert(!/value='"\+esc\(current\)/.test(settings), "settings controls must not stringify object values into [object Object]");

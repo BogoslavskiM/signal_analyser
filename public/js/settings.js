@@ -1,44 +1,289 @@
-(function (window, document) {
+(function registerSignalAnalyserSettings(window, document) {
   "use strict";
-  var api = window.SignalAnalyserApi, timer;
-  var context = { displayId:"", revision:0, document:null, drafts:{}, pending:{}, loadToken:0, page:"display", plotType:"time" };
-  var ru = {
-    "display.show_legend":"Показывать легенду", "time.normalize_y":"Нормировать Y", "time.show_markers":"Показывать маркеры", "time.units":"Единицы времени", "time.x_limits":"Пределы X", "time.y_limits":"Пределы Y", "time.link_time":"Связать время",
-    "spectrum.frequency_units":"Единицы частоты", "spectrum.frequency_limits":"Пределы частоты", "spectrum.y_limits":"Пределы Y", "spectrum.frequency_scale":"Шкала частоты", "spectrum.scale":"Шкала спектра", "spectrum.resolution_type":"Тип разрешения", "spectrum.leakage":"Утечка", "spectrum.rbw":"RBW", "spectrum.window_length":"Длина окна", "spectrum.window":"Окно", "spectrum.sidelobe_attenuation_db":"Подавление боковых лепестков", "spectrum.overlap_percent":"Перекрытие", "spectrum.nfft":"Точек ДПФ",
-    "spectrogram.time_units":"Единицы времени", "spectrogram.frequency_units":"Единицы частоты", "spectrogram.frequency_limits":"Пределы частоты", "spectrogram.power_limits":"Пределы мощности", "spectrogram.frequency_scale":"Шкала частоты", "spectrogram.scale":"Шкала спектрограммы", "spectrogram.leakage":"Утечка", "spectrogram.time_resolution":"Временное разрешение", "spectrogram.overlap_percent":"Перекрытие", "spectrogram.reassign":"Переназначение",
-    "persistence.time_units":"Единицы времени", "persistence.frequency_units":"Единицы частоты", "persistence.frequency_limits":"Пределы частоты", "persistence.power_limits":"Пределы мощности", "persistence.density_limits":"Пределы плотности", "persistence.frequency_scale":"Шкала частоты", "persistence.scale":"Шкала спектра", "persistence.leakage":"Утечка", "persistence.time_resolution":"Временное разрешение", "persistence.overlap_percent":"Перекрытие", "persistence.power_bins":"Бинов мощности",
-    "measurement.minimum":"Минимум", "measurement.maximum":"Максимум", "measurement.mean":"Среднее", "measurement.median":"Медиана", "measurement.peak_to_peak":"Размах", "measurement.rms":"СКЗ", "peaks_enabled":"Показывать пики"
+
+  var api = window.SignalAnalyserApi;
+  var timer;
+  var context = {
+    displayId: "", revision: 0, document: null, drafts: {}, pending: {}, loadToken: 0,
+    page: "display", plotType: "time", collapsed: {}, renderedFields: {},
+    presentation: { measurementKinds: [], peaksEnabled: false }
   };
-  var groupRu = { display:"Отображение", time:"Время", spectrum:"Спектр", spectrogram:"Спектрограмма", persistence:"Спектр персистентности", measurement:"Измерения", measurements:"Измерения", peaks:"Пики" };
-  function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]; }); }
+  var plotOptions = [
+    { value: "time", label: "Временная область" },
+    { value: "spectrum", label: "Спектр" },
+    { value: "spectrogram", label: "Спектрограмма" },
+    { value: "persistence", label: "Спектр персистентности" }
+  ];
+  var ru = {
+    "display.plot_type": "Тип графика", "display.show_legend": "Показывать легенду",
+    "time.normalize_y": "Нормировать Y", "time.show_markers": "Показывать маркеры", "time.units": "Единицы времени", "time.x_limits": "Пределы X", "time.y_limits": "Пределы Y", "time.link_time": "Связать время", "time.not_applicable": "Применимость",
+    "spectrum.frequency_units": "Единицы частоты", "spectrum.frequency_limits": "Пределы частоты", "spectrum.y_limits": "Пределы Y", "spectrum.frequency_scale": "Шкала частоты", "spectrum.scale": "Спектр в dB", "spectrum.resolution_type": "Тип разрешения", "spectrum.leakage": "Утечка", "spectrum.rbw": "Полоса разрешения", "spectrum.window_length": "Длина окна", "spectrum.window": "Окно", "spectrum.sidelobe_attenuation_db": "Подавление боковых лепестков", "spectrum.overlap_percent": "Перекрытие", "spectrum.nfft": "Точки DFT", "spectrum.frequency_resolution": "Частотное разрешение",
+    "spectrogram.time_units": "Единицы времени", "spectrogram.frequency_units": "Единицы частоты", "spectrogram.frequency_limits": "Пределы частоты", "spectrogram.power_limits": "Пределы мощности", "spectrogram.frequency_scale": "Шкала частоты", "spectrogram.scale": "Спектр в dB", "spectrogram.leakage": "Утечка", "spectrogram.time_resolution": "Разрешение по времени", "spectrogram.overlap_percent": "Перекрытие", "spectrogram.reassign": "Переназначение", "spectrogram.actual_rbw": "Фактическая RBW",
+    "persistence.time_units": "Единицы времени", "persistence.frequency_units": "Единицы частоты", "persistence.frequency_limits": "Пределы частоты", "persistence.power_limits": "Пределы мощности", "persistence.density_limits": "Пределы плотности", "persistence.frequency_scale": "Шкала частоты", "persistence.scale": "Спектр в dB", "persistence.leakage": "Утечка", "persistence.time_resolution": "Разрешение по времени", "persistence.overlap_percent": "Перекрытие", "persistence.power_bins": "Интервалы мощности", "persistence.rbw": "RBW",
+    "measurement.minimum": "Минимум", "measurement.maximum": "Максимум", "measurement.mean": "Среднее", "measurement.median": "Медиана", "measurement.peak_to_peak": "Размах", "measurement.rms": "Среднеквадратичное", "peaks_enabled": "Искать пики"
+  };
+
+  function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[character]; }); }
   function fields() { return context.document && Array.isArray(context.document.fields) ? context.document.fields : []; }
-  function field(id) { return fields().filter(function (item) { return item.id === id; })[0]; }
+  function readouts() { return context.document && Array.isArray(context.document.readouts) ? context.document.readouts : []; }
+  function sourceItem(id) {
+    var found = fields().filter(function (item) { return item.id === id; })[0];
+    if (found) return found;
+    var readout = readouts().filter(function (item) { return item.id === id; })[0];
+    return readout ? Object.assign({}, readout, { kind:"readout", readonly:true, enabled:false }) : null;
+  }
   function value(item) { return context.drafts[item.id] && context.drafts[item.id].value !== undefined ? context.drafts[item.id].value : item.value; }
-  function isApply(item) { return item && item.effect_status === "requires_apply"; }
-  function visible(item) { if (item.visible === false) return false; if (context.page === "time") return item.group === "time"; if (context.page === "measurements") return item.group === "measurement" || item.group === "measurements" || item.group === "peaks" || item.id === "peaks_enabled"; return item.group === "display" || item.group === context.plotType; }
   function label(item) { return ru[item.id] || item.label || item.id; }
+  function isApply(item) { return item && !item.pseudo && item.effect_status === "requires_apply"; }
+  function optionLabel(option) {
+    var raw = typeof option === "object" ? (option.label || option.value) : option;
+    return { seconds:"s", milliseconds:"ms", microseconds:"μs", nanoseconds:"ns", picoseconds:"ps", minutes:"мин", hours:"ч", days:"дн", years:"г", hertz:"Hz", kilohertz:"kHz", megahertz:"MHz", gigahertz:"GHz", terahertz:"THz", linear:"Линейная", log:"Логарифмическая", db:"dB", leakage:"По утечке", rbw:"По RBW", window_length:"По длине окна" }[raw] || raw;
+  }
+  function pseudo(id, kind, current, extra) { return Object.assign({ id:id, kind:kind, value:current, enabled:true, visible:true, pseudo:true }, extra || {}); }
+  function actual(id, forceVisible) {
+    var item = sourceItem(id);
+    if (!item || (!forceVisible && item.visible === false)) return null;
+    return item;
+  }
+  function group(key, title, items) { return { key:key, title:title, items:items.filter(Boolean) }; }
+  function measurementItem(id, kind) {
+    return pseudo("measurement." + id, "boolean", context.presentation.measurementKinds.indexOf(kind) >= 0, { action:"measurement", measurementKind:kind });
+  }
+
+  function inventory() {
+    var type = context.plotType;
+    if (context.page === "measurements") {
+      var measurementGroups = [group("statistics", "Статистики", [
+        measurementItem("minimum", "minimum"), measurementItem("maximum", "maximum"),
+        measurementItem("mean", "mean"), measurementItem("median", "median"),
+        measurementItem("peak_to_peak", "peak_to_peak"), measurementItem("rms", "rms")
+      ])];
+      if (type === "time") measurementGroups.push(group("peaks", "Пики", [pseudo("peaks_enabled", "boolean", context.presentation.peaksEnabled, { action:"peaks" })]));
+      return measurementGroups;
+    }
+
+    if (context.page === "time") {
+      if (type === "time") {
+        var linkTime = actual("time.link_time", true);
+        if (linkTime && linkTime.visible === false) linkTime = Object.assign({}, linkTime, { enabled:false, warning:"Доступно при нескольких экранах." });
+        return [
+          group("parameters", "Параметры", [actual("time.normalize_y", true), actual("time.show_markers", true)]),
+          group("time-limits", "Пределы времени", [actual("time.units", true), actual("time.x_limits", true)]),
+          group("y-limits", "Пределы оси Y", [actual("time.y_limits", true)]),
+          group("screen-link", "Связь экранов", [linkTime])
+        ];
+      }
+      if (type === "spectrogram") return [group("time-limits", "Пределы времени", [actual("time.x_limits", true)])];
+      return [group("not-applicable", "Временные настройки", [pseudo("time.not_applicable", "readout", "Не применяется", { readonly:true, enabled:false, message:"У этого типа графика нет собственных полей страницы «Время»." })])];
+    }
+
+    var graph = group("graph", "График", [
+      pseudo("display.plot_type", "enum", type, { action:"plot-type", options:plotOptions }),
+      actual("display.show_legend", true)
+    ]);
+    if (type === "time") return [graph];
+    if (type === "spectrum") {
+      return [
+        graph,
+        group("frequency-axis", "Частотная ось", [actual("spectrum.frequency_units", true), actual("spectrum.frequency_limits", true), actual("spectrum.frequency_scale", true), actual("spectrum.y_limits", true)]),
+        group("spectrum-analysis", "Спектральный анализ", [actual("spectrum.scale", true), actual("spectrum.resolution_type", true), actual("spectrum.leakage"), actual("spectrum.rbw"), actual("spectrum.window_length"), actual("spectrum.window"), actual("spectrum.sidelobe_attenuation_db"), actual("spectrum.overlap_percent"), actual("spectrum.nfft"), actual("spectrum.frequency_resolution")])
+      ];
+    }
+    if (type === "spectrogram") {
+      return [
+        graph,
+        group("frequency-axis", "Частотная ось", [actual("spectrogram.time_units", true), actual("spectrogram.frequency_units", true), actual("spectrogram.frequency_limits", true), actual("spectrogram.frequency_scale", true)]),
+        group("power", "Мощность", [actual("spectrogram.power_limits", true), actual("spectrogram.scale", true), actual("spectrogram.leakage", true), actual("spectrogram.time_resolution", true), actual("spectrogram.overlap_percent", true), actual("spectrogram.reassign", true), actual("spectrogram.actual_rbw")])
+      ];
+    }
+    return [
+      graph,
+      group("frequency-axis", "Частотная ось", [actual("persistence.time_units", true), actual("persistence.frequency_units", true), actual("persistence.frequency_limits", true), actual("persistence.frequency_scale", true)]),
+      group("density-power", "Плотность и мощность", [actual("persistence.power_limits", true), actual("persistence.density_limits", true), actual("persistence.scale", true), actual("persistence.leakage", true), actual("persistence.time_resolution", true), actual("persistence.overlap_percent", true), actual("persistence.power_bins", true), actual("persistence.rbw")])
+    ];
+  }
+
   function parse(item, raw) {
     if (item.kind === "boolean") return !!raw;
     if (item.kind === "enum") return raw;
-    if (item.kind === "range" || item.kind === "optional_range") { var min = raw && raw.min, max = raw && raw.max; if (min === "" && max === "" && item.kind === "optional_range") return null; min=Number(min); max=Number(max); return isFinite(min) && isFinite(max) && min < max ? { min:min, max:max } : null; }
-    if (item.kind === "number" || item.kind === "integer") { var n=Number(raw); return isFinite(n) && (item.kind !== "integer" || Math.floor(n) === n) ? n : null; }
-    if (item.kind === "resolution") { if (!raw || raw.mode === "auto") return { mode:"auto" }; var v=Number(raw.value); return isFinite(v) ? { mode:"specified", value:v } : null; }
+    if (item.kind === "range" || item.kind === "optional_range") {
+      var minimum = raw && raw.min, maximum = raw && raw.max;
+      if (minimum === "" && maximum === "" && item.kind === "optional_range") return null;
+      minimum = Number(minimum); maximum = Number(maximum);
+      return isFinite(minimum) && isFinite(maximum) && minimum < maximum ? { min:minimum, max:maximum } : null;
+    }
+    if (item.kind === "number" || item.kind === "integer") {
+      var number = Number(raw);
+      return isFinite(number) && (item.kind !== "integer" || Math.floor(number) === number) ? number : null;
+    }
+    if (item.kind === "resolution" || item.kind === "power_bins") {
+      if (!raw || raw.mode === "auto") { var automatic = { mode:"auto" }; automatic[raw.key] = null; return automatic; }
+      var specified = Number(raw.value);
+      if (!isFinite(specified)) return null;
+      var resolution = { mode:"specified" }; resolution[raw.key] = specified; return resolution;
+    }
     return String(raw);
   }
-  function optionLabel(o) { var v=typeof o === "object" ? (o.label || o.value) : o; return {seconds:"с", milliseconds:"мс", microseconds:"мкс", nanoseconds:"нс", picoseconds:"пс", minutes:"мин", hours:"ч", days:"дни", years:"годы", hertz:"Гц", kilohertz:"кГц", megahertz:"МГц", gigahertz:"ГГц", linear:"Линейная", logarithmic:"Логарифмическая", db:"дБ", leakage:"Утечка", window_length:"Длина окна"}[v] || v; }
+
+  function resolutionKey(item, current) {
+    var existing = current && Object.keys(current).filter(function (key) { return key !== "mode"; })[0];
+    if (existing) return existing;
+    return item.id === "spectrum.rbw" ? "hz" : item.id === "spectrum.window_length" ? "samples" : item.id === "spectrum.nfft" ? "nfft" : item.id === "persistence.power_bins" ? "count" : "seconds";
+  }
+
   function control(item, current, id) {
     var disabled = item.enabled === false ? " disabled" : "";
-    if (item.kind === "boolean") return "<span class='checkbox-control'><input id='"+id+"' data-setting-id='"+esc(item.id)+"' type='checkbox'"+(current ? " checked" : "")+disabled+"></span>";
-    if (item.kind === "enum") return "<select class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"'"+disabled+">"+(item.options||[]).map(function(o){var v=typeof o === "object" ? o.value:o; return "<option value='"+esc(v)+"'"+(v===current?" selected":"")+">"+esc(optionLabel(o))+"</option>";}).join("")+"</select>";
-    if (item.kind === "range" || item.kind === "optional_range") { var r=current && typeof current === "object" ? current : {}; return "<span class='range-control'><input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-range-part='min' aria-label='"+esc(label(item))+": минимум' value='"+esc(r.min == null ? "" : r.min)+"'"+disabled+"><input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-range-part='max' aria-label='"+esc(label(item))+": максимум' value='"+esc(r.max == null ? "" : r.max)+"'"+disabled+"></span>"; }
-    if (item.kind === "resolution") { var mode=current && current.mode || "auto", val=current && current.value; return "<span class='resolution-control'><select class='control resolution-mode' data-setting-id='"+esc(item.id)+"' data-resolution-mode"+disabled+"><option value='auto'"+(mode==="auto"?" selected":"")+">Авто</option><option value='specified'"+(mode!=="auto"?" selected":"")+">Задать</option></select><input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-resolution-value value='"+esc(val == null ? "" : val)+"'"+(mode==="auto"?" disabled":"")+"></span>"; }
-    if (item.kind === "readout" || item.readonly) return "<span class='readonly-control'>"+esc(current)+"</span>";
-    return "<input class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"' type='text' value='"+esc(current == null ? "" : current)+"' autocomplete='off'"+disabled+">";
+    var checkbox = item.kind === "boolean" || item.control_kind === "checkbox";
+    if (checkbox) {
+      var checked = item.kind === "enum" ? current === item.checked_value : !!current;
+      return "<span class='checkbox-control'><input id='"+id+"' data-setting-id='"+esc(item.id)+"' type='checkbox'"+(checked ? " checked" : "")+disabled+"></span>";
+    }
+    if (item.kind === "enum") {
+      return "<select class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"'"+disabled+">"+(item.options || []).map(function (option) { var optionValue=typeof option === "object" ? option.value : option; var optionDisabled=typeof option === "object" && option.disabled; return "<option value='"+esc(optionValue)+"'"+(optionValue === current ? " selected" : "")+(optionDisabled ? " disabled" : "")+">"+esc(optionLabel(option))+"</option>"; }).join("")+"</select>";
+    }
+    if (item.kind === "range" || item.kind === "optional_range") {
+      var range = current && typeof current === "object" ? current : {};
+      return "<span class='range-control'><input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-range-part='min' placeholder='Мин.' aria-label='"+esc(label(item))+": минимум' value='"+esc(range.min == null ? "" : range.min)+"'"+disabled+"><input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-range-part='max' placeholder='Макс.' aria-label='"+esc(label(item))+": максимум' value='"+esc(range.max == null ? "" : range.max)+"'"+disabled+"></span>";
+    }
+    if (item.kind === "resolution" || item.kind === "power_bins") {
+      var resolution = current && typeof current === "object" ? current : { mode:"auto" };
+      var mode = resolution.mode || "auto", key = resolutionKey(item, resolution), amount = resolution[key];
+      return "<span class='resolution-control'><select class='control resolution-mode' data-setting-id='"+esc(item.id)+"' data-resolution-mode data-resolution-key='"+esc(key)+"'"+disabled+"><option value='auto'"+(mode === "auto" ? " selected" : "")+">Авто</option><option value='specified'"+(mode !== "auto" ? " selected" : "")+">Задать</option></select><input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-resolution-value data-resolution-key='"+esc(key)+"' value='"+esc(amount == null ? "" : amount)+"'"+(disabled || mode === "auto" ? " disabled" : "")+"></span>";
+    }
+    if (item.kind === "readout" || item.readonly) return "<span class='readonly-control'>"+esc(current == null || current === "" ? "—" : current)+(item.units ? " "+esc(item.units) : "")+"</span>";
+    return "<input class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"' type='number' value='"+esc(current == null ? "" : current)+"'"+(item.min != null ? " min='"+esc(item.min)+"'" : "")+(item.max != null ? " max='"+esc(item.max)+"'" : "")+(item.step != null ? " step='"+esc(item.step)+"'" : "")+disabled+">";
   }
-  function render() { var host=document.querySelector("[data-testid='settings-content']") || document.querySelector("[data-settings-content]"); if(!host) return; if(!context.document){host.innerHTML="";return;} var selected=fields().filter(visible), byGroup={}; selected.forEach(function(item){(byGroup[item.group]||(byGroup[item.group]=[])).push(item);}); host.innerHTML=Object.keys(byGroup).map(function(group){return "<section class='settings-group' data-settings-group='"+esc(group)+"'><h3 class='settings-group-title'>"+esc(groupRu[group]||group)+"</h3>"+byGroup[group].map(function(item){var draft=context.drafts[item.id], invalid=draft&&draft.error, warning=item.warning||"", id="setting-"+item.id.replace(/[^a-zA-Z0-9_-]/g,"-"); return "<label class='settings-field-row"+(invalid?" has-error":"")+(warning?" has-warning":"")+"' data-testid='settings-field-"+esc(item.id)+"'><span class='settings-label'><span>"+esc(label(item))+"</span>"+(item.units?"<span class='unit'>"+esc(item.units)+"</span>":"")+"</span><span class='settings-control-wrap'>"+control(item,value(item),id)+"</span>"+(invalid?"<small class='field-message is-error' role='alert'>"+esc(draft.error)+"</small>":warning?"<small class='field-message is-warning'>"+esc(warning)+"</small>":"")+"</label>";}).join("")+"</section>";}).join(""); }
-  function rawFor(item,node){ if(item.kind === "range" || item.kind === "optional_range"){var row=node.closest(".settings-field-row"), min=row.querySelector("[data-range-part='min']").value, max=row.querySelector("[data-range-part='max']").value;return {min:min,max:max};} if(item.kind === "resolution"){var r=node.closest(".resolution-control");return {mode:r.querySelector("[data-resolution-mode]").value,value:r.querySelector("[data-resolution-value]").value};}return node.type === "checkbox" ? node.checked : node.value;}
-  function update(item, raw) { var v=parse(item,raw), draft=context.drafts[item.id]||{}; if(v===null){draft.value=raw;draft.error="Введите корректное значение.";context.drafts[item.id]=draft;render();window.dispatchEvent(new CustomEvent("signal-apply-state"));return;} draft.value=v;draft.error="";context.drafts[item.id]=draft;render();window.dispatchEvent(new CustomEvent("signal-apply-state")); if(isApply(item)){clearTimeout(timer);timer=setTimeout(function () { send(item); }, 150);}else send(item).catch(function(){}); }
-  function send(item){if(!context.displayId||!context.drafts[item.id]||context.drafts[item.id].error)return Promise.resolve();clearTimeout(timer);var v=context.drafts[item.id].value, epoch=context.revision;context.pending[item.id]=true;return api.updateSetting({state_revision:epoch,display_id:context.displayId,field_id:item.id,value:v}).then(function(response){if(response&&response.settings)context.document=response.settings;if(response&&response.state&&typeof response.state.state_revision === "number")context.revision=response.state.state_revision;delete context.pending[item.id];window.dispatchEvent(new CustomEvent("signal-settings-saved",{detail:response}));}).catch(function(error){delete context.pending[item.id];if(error.payload&&error.payload.settings)context.document=error.payload.settings;context.drafts[item.id].error=(error.payload&&(error.payload.message||error.payload.error&&error.payload.error.message))||error.message||"Не удалось сохранить черновик.";render();throw error;});}
-  document.addEventListener("change",function(event){var node=event.target,item=node&&node.dataset&&field(node.dataset.settingId);if(item)update(item,rawFor(item,node));});
-  window.SignalAnalyserSettings={setContext:function(id,revision){if(context.displayId&&context.displayId!==id){clearTimeout(timer);context.drafts={};context.pending={};context.document=null;}context.displayId=id;context.revision=Math.max(context.revision,revision||0);},setView:function(page,plotType){context.page=page||"display";context.plotType=plotType||"time";},load:function(){var id=context.displayId,token=++context.loadToken;return api.settings(id).then(function(doc){if(token!==context.loadToken||id!==context.displayId||(typeof doc.state_revision==="number"&&doc.state_revision<context.revision))return context.document;context.document=doc;context.revision=doc.state_revision||context.revision;render();return doc;});},render:render,flush:function(){clearTimeout(timer);return Promise.all(fields().filter(isApply).map(send));},markApplied:function(){context.drafts={};render();},state:function(){var all=Object.keys(context.drafts).map(function(k){return context.drafts[k];});return{dirty:all.some(function(d){return !d.error;}),invalid:all.some(function(d){return d.error;}),displayId:context.displayId,revision:context.revision};},setRevision:function(r){if(typeof r==="number"&&r>=context.revision)context.revision=r;}};
-})(window,document);
+
+  function renderField(item) {
+    var draft = context.drafts[item.id], invalid = draft && draft.error;
+    var warning = item.warning || item.message || "";
+    var id = "setting-" + item.id.replace(/[^a-zA-Z0-9_-]/g, "-");
+    var current = value(item);
+    context.renderedFields[item.id] = item;
+    return "<label class='settings-field-row"+(invalid ? " has-error" : "")+(warning ? " has-warning" : "")+"' data-testid='settings-field-"+esc(item.id)+"'><span class='settings-label'><span>"+esc(label(item))+"</span>"+(item.units ? "<span class='unit'>"+esc(item.units)+"</span>" : "")+"</span><span class='settings-control-wrap'>"+control(item, current, id)+"</span>"+(invalid ? "<small class='field-message is-error' role='alert'>"+esc(draft.error)+"</small>" : warning ? "<small class='field-message is-warning'>"+esc(warning)+"</small>" : "")+"</label>";
+  }
+
+  function render() {
+    var host = document.querySelector("[data-testid='settings-content']") || document.querySelector("[data-settings-content]");
+    if (!host) return;
+    if (!context.document) { host.innerHTML = ""; return; }
+    context.renderedFields = {};
+    host.innerHTML = inventory().filter(function (item) { return item.items.length; }).map(function (item) {
+      var collapseKey = context.page + "|" + context.plotType + "|" + item.key;
+      var collapsed = !!context.collapsed[collapseKey];
+      var bodyId = "settings-group-" + collapseKey.replace(/[^a-zA-Z0-9_-]/g, "-");
+      return "<section class='settings-group"+(collapsed ? " is-collapsed" : "")+"' data-settings-group='"+esc(item.key)+"'><button class='settings-group-title' type='button' data-settings-group-toggle='"+esc(collapseKey)+"' aria-expanded='"+String(!collapsed)+"' aria-controls='"+esc(bodyId)+"'><span>"+esc(item.title)+"</span></button><div class='settings-group-fields' id='"+esc(bodyId)+"'"+(collapsed ? " hidden" : "")+">"+item.items.map(renderField).join("")+"</div></section>";
+    }).join("");
+  }
+
+  function rawFor(item, node) {
+    if (item.kind === "range" || item.kind === "optional_range") {
+      var row = node.closest(".settings-field-row");
+      return { min:row.querySelector("[data-range-part='min']").value, max:row.querySelector("[data-range-part='max']").value };
+    }
+    if (item.kind === "resolution" || item.kind === "power_bins") {
+      var resolution = node.closest(".resolution-control");
+      var modeNode = resolution.querySelector("[data-resolution-mode]");
+      var valueNode = resolution.querySelector("[data-resolution-value]");
+      return { mode:modeNode.value, value:valueNode.value, key:modeNode.dataset.resolutionKey || valueNode.dataset.resolutionKey };
+    }
+    if (node.type === "checkbox") return item.kind === "enum" ? (node.checked ? item.checked_value : item.unchecked_value) : node.checked;
+    return node.value;
+  }
+
+  function updatePseudo(item, raw) {
+    if (item.action === "plot-type") {
+      context.plotType = raw;
+      render();
+      window.dispatchEvent(new CustomEvent("signal-settings-plot-type", { detail:{ plotType:raw } }));
+      return;
+    }
+    if (item.action === "measurement") {
+      var kinds = context.presentation.measurementKinds.slice();
+      var index = kinds.indexOf(item.measurementKind);
+      if (raw && index < 0) kinds.push(item.measurementKind);
+      if (!raw && index >= 0) kinds.splice(index, 1);
+      context.presentation.measurementKinds = kinds;
+      render();
+      window.dispatchEvent(new CustomEvent("signal-settings-measurement", { detail:{ measurementKinds:kinds } }));
+      return;
+    }
+    if (item.action === "peaks") {
+      context.presentation.peaksEnabled = !!raw;
+      render();
+      window.dispatchEvent(new CustomEvent("signal-settings-measurement", { detail:{ peaksEnabled:!!raw } }));
+    }
+  }
+
+  function update(item, raw) {
+    if (item.pseudo) return updatePseudo(item, raw);
+    var parsed = parse(item, raw), draft = context.drafts[item.id] || {};
+    if (parsed === null && !(item.kind === "optional_range" && raw.min === "" && raw.max === "")) {
+      draft.value = raw; draft.error = "Введите корректное значение."; context.drafts[item.id] = draft;
+      render(); window.dispatchEvent(new CustomEvent("signal-apply-state")); return;
+    }
+    draft.value = parsed; draft.error = ""; context.drafts[item.id] = draft;
+    if (item.kind === "resolution" || item.kind === "power_bins") render();
+    window.dispatchEvent(new CustomEvent("signal-apply-state"));
+    if (isApply(item)) {
+      clearTimeout(timer);
+      timer = window.setTimeout(function () { send(item); }, 150);
+    } else send(item).catch(function () {});
+  }
+
+  function send(item) {
+    if (!item || item.pseudo || !context.displayId || !context.drafts[item.id] || context.drafts[item.id].error) return Promise.resolve();
+    clearTimeout(timer);
+    var draftValue = context.drafts[item.id].value, epoch = context.revision;
+    context.pending[item.id] = true;
+    return api.updateSetting({ state_revision:epoch, display_id:context.displayId, field_id:item.id, value:draftValue }).then(function (response) {
+      if (response && response.settings) context.document = response.settings;
+      if (response && response.state && typeof response.state.state_revision === "number") context.revision = response.state.state_revision;
+      delete context.pending[item.id];
+      render();
+      window.dispatchEvent(new CustomEvent("signal-settings-saved", { detail:response }));
+    }).catch(function (error) {
+      delete context.pending[item.id];
+      if (error.payload && error.payload.settings) context.document = error.payload.settings;
+      context.drafts[item.id].error = (error.payload && (error.payload.message || error.payload.error && error.payload.error.message)) || error.message || "Не удалось сохранить черновик.";
+      render();
+      throw error;
+    });
+  }
+
+  document.addEventListener("click", function (event) {
+    var toggle = event.target.closest && event.target.closest("[data-settings-group-toggle]");
+    if (!toggle) return;
+    var key = toggle.dataset.settingsGroupToggle;
+    context.collapsed[key] = toggle.getAttribute("aria-expanded") === "true";
+    render();
+  });
+  document.addEventListener("change", function (event) {
+    var node = event.target;
+    var item = node && node.dataset && context.renderedFields[node.dataset.settingId];
+    if (item) update(item, rawFor(item, node));
+  });
+
+  window.SignalAnalyserSettings = {
+    setContext:function (id, revision) {
+      if (context.displayId && context.displayId !== id) { clearTimeout(timer); context.drafts={}; context.pending={}; context.document=null; }
+      context.displayId=id; context.revision=Math.max(context.revision, revision || 0);
+    },
+    setView:function (page, plotType, presentation) {
+      context.page=page || "display"; context.plotType=plotType || "time";
+      context.presentation={ measurementKinds:(presentation && presentation.measurementKinds || []).slice(), peaksEnabled:!!(presentation && presentation.peaksEnabled) };
+    },
+    load:function () {
+      var id=context.displayId, token=++context.loadToken;
+      return api.settings(id).then(function (documentValue) {
+        if (token !== context.loadToken || id !== context.displayId || (typeof documentValue.state_revision === "number" && documentValue.state_revision < context.revision)) return context.document;
+        context.document=documentValue; context.revision=documentValue.state_revision || context.revision; render(); return documentValue;
+      });
+    },
+    render:render,
+    flush:function () { clearTimeout(timer); return Promise.all(fields().filter(isApply).map(send)); },
+    markApplied:function () { context.drafts={}; render(); },
+    state:function () { var all=Object.keys(context.drafts).map(function (key) { return context.drafts[key]; }); return { dirty:all.some(function (draft) { return !draft.error; }), invalid:all.some(function (draft) { return draft.error; }), displayId:context.displayId, revision:context.revision }; },
+    setRevision:function (revision) { if (typeof revision === "number" && revision >= context.revision) context.revision=revision; }
+  };
+})(window, document);
