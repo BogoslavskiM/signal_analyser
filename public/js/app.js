@@ -26,6 +26,8 @@
     model.revision = r;
     settings.setRevision(r);
     updateLayout(snapshot);
+    var display = activeDisplay();
+    if (display) settings.setContext(display.id, r);
     return true;
   }
 
@@ -339,5 +341,31 @@
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-saved", function (event) { var revision = event.detail && event.detail.state && event.detail.state.state_revision; if (typeof revision === "number") model.revision = Math.max(model.revision, revision); });
 
-  refreshSnapshot().then(function () { return settings.load(); }).then(function () { render(); output(true); }).catch(function (error) { var target = q("[data-testid='app-error']"); if (target) { target.hidden = false; target.textContent = error.message || "Не удалось загрузить анализатор."; } });
+  function safeErrorText(error, fallback) {
+    if (error && typeof error.message === "string" && error.message) return error.message;
+    if (error && error.payload && typeof error.payload.message === "string") return error.payload.message;
+    if (error && error.payload && error.payload.error && typeof error.payload.error.message === "string") return error.payload.error.message;
+    if (typeof error === "string" && error) return error;
+    return fallback;
+  }
+  function showBootstrapError(error) {
+    var target = q("[data-testid='app-error']");
+    var copy = q("[data-error-text]");
+    if (!target || !copy) return;
+    copy.textContent = safeErrorText(error, "Не удалось загрузить анализатор.");
+    target.hidden = false;
+  }
+  function showSettingsLoadError(error) {
+    var footer = q("[data-testid='explicit-apply-root']");
+    if (!footer) return;
+    footer.dataset.phase = "error";
+    footer.dataset.message = safeErrorText(error, "Не удалось загрузить настройки.");
+    renderApply();
+  }
+
+  refreshSnapshot().then(function () {
+    render();
+    output(true);
+    return settings.load().then(function () { render(); }).catch(showSettingsLoadError);
+  }).catch(showBootstrapError);
 })(window, document);

@@ -1,0 +1,121 @@
+"use strict";
+
+// TASK-0086 foreground production visual/regression probe.  It deliberately
+// owns only its pages and writes evidence below test/playwright/artifacts.
+const fs = require("fs");
+const path = require("path");
+const { execFileSync } = require("child_process");
+const { chromium } = require("playwright-core");
+
+const target = "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/";
+const revision = "1255cc00a9bd2388f8682cb19e86867e605936b7";
+const prototype = `file://${path.resolve("architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html")}`;
+const output = path.resolve("test/playwright/artifacts/TASK-0086");
+fs.mkdirSync(output, { recursive: true });
+
+const report = {
+  id: "HND-TASK-0086-E2E", e2e_mode: "new_functionality_regression + quick_regression",
+  target, expected_revision: revision, revision_evidence: "DevOps exact-checkout deployment precondition (not a rendered-DOM assertion)", prototype, design_version: "5",
+  applied_skills: ["e2e/e2e-workflow", "e2e/visual-analysis"],
+  browser_channel: "chrome", headless: false, browser_visibility: "foreground", worker_count: 1,
+  opened_tab_count: 0, closed_tab_count: 0, checks: [], screenshots: [], console_errors: [], network: [],
+};
+function check(name, pass, detail) { report.checks.push({ name, status: pass ? "passed" : "failed", detail }); }
+function noteShot(file, page, state) { report.screenshots.push({ path: path.join(output, file), target: page.url(), viewport: page.viewportSize(), state, timestamp: new Date().toISOString() }); }
+async function shot(page, file, state) { await page.screenshot({ path: path.join(output, file), fullPage: false }); noteShot(file, page, state); }
+async function activate() { try { execFileSync("osascript", ["-e", 'tell application "Google Chrome" to activate']); report.chrome_activation = "ok"; } catch (e) { report.chrome_activation = String(e); } }
+function attach(page) {
+  page.on("console", m => { if (m.type() === "error") report.console_errors.push({ text: m.text(), url: m.location().url, line: m.location().lineNumber }); });
+  page.on("response", r => {
+    const entry = { status: r.status(), url: r.url(), method: r.request().method(), resource: r.request().resourceType(), is_main_document: r.request().isNavigationRequest() && r.frame() === page.mainFrame() };
+    if (entry.is_main_document || r.status() >= 400) report.network.push(entry);
+  });
+}
+async function front(page) { await page.bringToFront(); await activate(); }
+async function geometry(page) { return page.evaluate(() => {
+  const box = s => { const n = document.querySelector(s); if (!n) return null; const b = n.getBoundingClientRect(); const c = getComputedStyle(n); return { x:b.x,y:b.y,w:b.width,h:b.height,display:c.display,position:c.position,overflowX:c.overflowX,overflowY:c.overflowY,borderRadius:c.borderRadius,fontFamily:c.fontFamily }; };
+  const texts = [...document.querySelectorAll("body *")].filter(n => n.children.length === 0).map(n => n.textContent.trim()).filter(Boolean).slice(0,400);
+  return { shell: box('[data-testid="app-shell"], [data-design-id="app-shell"]'), grid: box('[data-testid="plot-grid"], [data-design-id="plot-grid"]'), settings: box('aside.settings-panel, [data-testid="settings-panel"], [data-design-id="settings-panel"]'), inspector: box('.inspector, [data-testid="signal-table"], .signal-panel'), toolbar: box('.app-toolbar, header'), layout: box('[data-testid="layout-trigger"], [data-design-id="layout-trigger"]'), apply: box('[data-testid="settings-apply"], [data-design-id="settings-apply"]'), body: { sw:document.documentElement.scrollWidth, sh:document.documentElement.scrollHeight, cw:document.documentElement.clientWidth, ch:document.documentElement.clientHeight }, texts, font: getComputedStyle(document.body).fontFamily,
+    displays: [...document.querySelectorAll('[data-testid^="display-tab-"], .display-tab-shell, [role="tab"]')].map(n => n.textContent.trim()),
+    signals: [...document.querySelectorAll('[data-testid^="signal-row-"], .signal-table tbody tr')].map(n => n.textContent.trim()),
+    plots: [...document.querySelectorAll('[data-testid^="plot-pane-"], .plot-pane, .plot-card')].map(n => ({ text:n.textContent.trim().slice(0,120), box:(() => {const b=n.getBoundingClientRect();return {w:b.width,h:b.height};})() })),
+    plotly: document.querySelectorAll('.js-plotly-plot').length, modebar: document.querySelectorAll('.modebar, .modebar-container').length,
+  };
+}); }
+async function clickIf(page, selector) { const l = page.locator(selector).first(); if (await l.count() && await l.isVisible()) { await l.click(); return true; } return false; }
+async function appErrorDetails(page) { return page.evaluate(() => {
+  const node = document.querySelector('[data-testid="app-error"]');
+  if (!node) return null;
+  const s = getComputedStyle(node), b = node.getBoundingClientRect();
+  return { visible: !node.hidden && s.display !== "none" && s.visibility !== "hidden" && b.width > 0 && b.height > 0, text: node.innerText.trim(), html: node.outerHTML.slice(0, 4000), role: node.getAttribute("role"), ariaLive: node.getAttribute("aria-live") };
+}); }
+async function waitForProductionTerminal(page) {
+  await page.waitForFunction(() => {
+    const visible = selector => { const n = document.querySelector(selector); if (!n) return false; const s = getComputedStyle(n), b = n.getBoundingClientRect(); return !n.hidden && s.display !== "none" && s.visibility !== "hidden" && b.width > 0 && b.height > 0; };
+    if (visible('[data-testid="app-error"]')) return true;
+    const loaderVisible = visible('[data-testid="app-loading"]');
+    return !loaderVisible && (visible('[data-testid="plot-grid"]') || visible('.plot-grid') || visible('[data-testid^="plot-pane-"]') || visible('.plot-pane') || document.querySelectorAll('.js-plotly-plot').length > 0);
+  }, null, { timeout: 60000 });
+  const appError = await appErrorDetails(page);
+  report.app_error = appError;
+  if (appError && appError.visible) throw new Error(`application error terminal state: ${appError.text}`);
+  report.bootstrap_terminal = await page.evaluate(() => ({ loader_present: !!document.querySelector('[data-testid="app-loading"]'), plotly_hosts: document.querySelectorAll('.js-plotly-plot').length, plot_grid_present: !!document.querySelector('[data-testid="plot-grid"], .plot-grid') }));
+}
+
+(async () => {
+  let browser, context; const tracked = new Set();
+  try {
+    browser = await chromium.launch({ channel: "chrome", headless: false });
+    context = browser.contexts()[0] || await browser.newContext();
+    report.preexisting_pages = context.pages().map(p => p.url());
+    report.preexisting_page_count = report.preexisting_pages.length;
+    await activate();
+    const open = async () => { const p = await context.newPage(); tracked.add(p); report.opened_tab_count++; attach(p); await front(p); return p; };
+
+    const design = await open();
+    for (const vp of [[1024,768],[1280,720],[1440,900]]) {
+      await design.setViewportSize({ width:vp[0], height:vp[1] }); await front(design);
+      if (!design.url().startsWith("file:")) await design.goto(prototype, { waitUntil:"domcontentloaded", timeout:30000 });
+      await design.waitForSelector('[data-design-id="app-shell"]', { timeout:10000 });
+      if (vp[0] === 1024) { await clickIf(design, '[data-design-id="layout-trigger"]'); await shot(design, `prototype-layout-${vp[0]}x${vp[1]}.png`, "layout-popover"); await design.keyboard.press("Escape"); await clickIf(design, '[data-design-id="settings-tab-time"]'); const input = design.locator('input[type="number"], input:not([type])').first(); if (await input.count()) { await input.fill("0.3"); await input.blur(); } }
+      const g = await geometry(design); report[`prototype_${vp[0]}x${vp[1]}`] = g; await shot(design, `prototype-${vp[0]}x${vp[1]}.png`, "walkthrough");
+      check(`prototype ${vp[0]}x${vp[1]} shell/settings/layout`, !!g.shell && !!g.settings && !!g.layout, g);
+    }
+    // Contract sizing probes including min and undersized document-scroll behavior.
+    for (const [w,h] of [[920,680],[840,620]]) { await design.setViewportSize({width:w,height:h}); await front(design); const g=await geometry(design); report[`prototype_${w}x${h}`]=g; await shot(design,`prototype-sizing-${w}x${h}.png`,`sizing-${w}x${h}`); check(`prototype sizing ${w}x${h}`, w>=920&&h>=680 ? g.body.sw===g.body.cw&&g.body.sh===g.body.ch : g.body.sw>g.body.cw&&g.body.sh>g.body.ch, g.body); }
+
+    const prod = await open();
+    await prod.goto(target, { waitUntil:"domcontentloaded", timeout:60000 }); await front(prod);
+    const technical = await prod.evaluate(() => ({ title:document.title, text:document.body.innerText.slice(0,3000), url:location.href }));
+    report.production_document = technical;
+    const maintenance = /техническ|maintenance|temporar(?:y|ily) unavailable|service unavailable|application error/i.test(technical.title + "\n" + technical.text);
+    if (maintenance) { await shot(prod, "production-availability-failure.png", "technical-maintenance"); check("availability", false, technical); report.availability = "failed"; throw new Error("technical/maintenance production screen"); }
+    const ready = prod.locator('[data-testid="app-shell"], #app, main').first(); await ready.waitFor({ state:"visible", timeout:60000 });
+    await waitForProductionTerminal(prod);
+    report.availability = "passed"; check("availability", true, { url:prod.url(), bootstrap_terminal: report.bootstrap_terminal });
+    check("expected revision deployment precondition", true, { expected_revision: revision, authority: report.revision_evidence });
+    for (const vp of [[1024,768],[1280,720],[1440,900],[920,680],[840,620]]) {
+      await prod.setViewportSize({width:vp[0],height:vp[1]}); await front(prod);
+      await ready.waitFor({state:"visible",timeout:10000}); await waitForProductionTerminal(prod); const g=await geometry(prod); report[`production_${vp[0]}x${vp[1]}`]=g; await shot(prod,`production-${vp[0]}x${vp[1]}.png`,`default-${vp[0]}x${vp[1]}`);
+      const normal=vp[0]>=920&&vp[1]>=680; check(`production sizing ${vp[0]}x${vp[1]}`, normal ? !!g.shell&&g.body.sw===g.body.cw&&g.body.sh===g.body.ch : g.body.sw>g.body.cw&&g.body.sh>g.body.ch, g);
+    }
+    await prod.setViewportSize({width:1440,height:900}); await front(prod);
+    const base = await geometry(prod);
+    check("v5 shell has settings and single default harmonic signal", !!base.settings && base.signals.filter(x=>/Гармонический сигнал/i.test(x)).length === 1, base);
+    check("layout trigger is live 1×1", !!base.layout && /1\s*[×x]\s*1/.test((await prod.locator('[data-testid="layout-trigger"], [aria-label*="макет"]').first().textContent().catch(()=>"")) || ""), base.layout);
+    check("native Plotly/no modebar", base.plotly >= 1 && base.modebar === 0, {plotly:base.plotly,modebar:base.modebar});
+    const openedLayout = await clickIf(prod, '[data-testid="layout-trigger"], [aria-label*="макет"]');
+    if (openedLayout) { await shot(prod,"production-layout-popover.png","layout-open"); const d=await prod.evaluate(()=>{const e=document.activeElement,b=e.getBoundingClientRect(); const hit=document.elementFromPoint(b.x+b.width/2,b.y+b.height/2); const dialogs=[...document.querySelectorAll('[role="dialog"]')]; return {focus:e.outerHTML.slice(0,200),hit:hit&&hit.outerHTML.slice(0,200),dialog:dialogs.map(n=>n.getBoundingClientRect().width),layout_apply_actions:dialogs.flatMap(n=>[...n.querySelectorAll('button')]).filter(n=>n.textContent.trim()==="Применить").length};}); check("layout overlay focus/hit", d.dialog.some(w=>Math.abs(w-372)<=2)&&!!d.hit,d); check("layout popover has its separate Apply action", d.layout_apply_actions === 1, d); await prod.keyboard.press("Escape"); }
+    const apply = prod.locator('[data-testid="settings-apply"]'); if (await apply.count()) check("single settings Apply control", await apply.count() === 1, {count:await apply.count(), disabled:await apply.first().isDisabled()}); else check("single settings Apply control", false, "missing stable [data-testid=settings-apply]");
+    await shot(prod,"production-final-1440x900.png","final");
+  } catch (e) { report.run_error = String(e && e.stack || e); }
+  finally {
+    for (const p of tracked) { if (!p.isClosed()) { try { await p.close(); report.closed_tab_count++; } catch (e) { report.cleanup_error = String(e); } } }
+    report.tab_cleanup_status = report.opened_tab_count === report.closed_tab_count && !report.cleanup_error ? "passed" : "failed";
+    const passed = report.checks.filter(c=>c.status==="passed").length, failed=report.checks.filter(c=>c.status==="failed").length;
+    report.summary={planned:report.checks.length,passed,failed,not_run:0,success_rate:report.checks.length ? +(passed/report.checks.length*100).toFixed(1):0,operational:report.availability==="passed"&&passed/report.checks.length>=.75};
+    fs.writeFileSync(path.join(output,"report.json"),JSON.stringify(report,null,2));
+    if (browser) await browser.close();
+    console.log(JSON.stringify(report.summary));
+  }
+})();

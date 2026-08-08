@@ -2046,3 +2046,16 @@ body {
 @keyframes apply-spin {
   to { transform: rotate(360deg); }
 }
+
+/* Bootstrap/status notices are overlays, never an application grid row. */
+.app-status {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: var(--layer-critical);
+  pointer-events: none;
+}
+
+.app-status > * {
+  pointer-events: auto;
+}
