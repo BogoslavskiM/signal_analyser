@@ -363,6 +363,8 @@ button img {
 .display-tab-scroll-prev { left: 0; }
 .display-tab-scroll-next { right: 0; }
 
+.display-tab-scroll[hidden] { display: none; }
+
 .display-tab-scroll:not(:disabled):hover { background: var(--button-hover); }
 .display-tab-scroll:not(:disabled):active { background: var(--button-active); color: var(--text); }
 .display-tab-scroll:disabled { background: var(--surface-muted); color: var(--muted); cursor: not-allowed; opacity: 0.45; }

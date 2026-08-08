@@ -8,7 +8,8 @@
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, toastTimer: null,
-    layoutDraft: null, renderFrame: null, plotlyPromise: null
+    layoutDraft: null, renderFrame: null, plotlyPromise: null,
+    displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null
   };
 
   function q(selector) { return document.querySelector(selector); }
@@ -62,6 +63,8 @@
   function renderTabs() {
     var tablist = q("[data-testid='display-tabs']");
     if (!tablist) return;
+    var activeId = model.state.active_display_id;
+    var revealActive = model.renderedDisplayId !== activeId;
     tablist.innerHTML = (model.state.displays || []).map(function (display, index) {
       var selected = display.id === model.state.active_display_id;
       return "<div class='display-tab-shell" + (selected ? " is-selected" : "") + "' data-screen-id='" + esc(display.id) + "'>" +
@@ -69,6 +72,50 @@
         "<button class='display-tab-close' type='button' data-display-close='" + esc(display.id) + "' data-testid='display-close-" + esc(display.id) + "' aria-label='Удалить экран " + (index + 1) + "' data-tooltip='Удалить экран " + (index + 1) + "'" + (model.state.displays.length === 1 ? " disabled" : "") + "><img src='./icons/close.svg' alt=''></button>" +
         "</div>";
     }).join("");
+    model.renderedDisplayId = activeId;
+    scheduleDisplayTabScrollUpdate(revealActive);
+  }
+
+  function revealActiveDisplayTab() {
+    var tablist = q("[data-testid='display-tabs']");
+    var selected = tablist && tablist.querySelector(".display-tab-shell.is-selected");
+    if (!selected) return;
+    var viewportStart = tablist.scrollLeft;
+    var viewportEnd = viewportStart + tablist.clientWidth;
+    var tabStart = selected.offsetLeft;
+    var tabEnd = tabStart + selected.offsetWidth;
+    if (tabStart < viewportStart) tablist.scrollLeft = tabStart;
+    else if (tabEnd > viewportEnd) tablist.scrollLeft = tabEnd - tablist.clientWidth;
+  }
+
+  function updateDisplayTabScroll() {
+    var tablist = q("[data-testid='display-tabs']");
+    var previous = q("[data-testid='display-scroll-left']");
+    var next = q("[data-testid='display-scroll-right']");
+    if (!tablist || !previous || !next) return;
+    var maxScroll = Math.max(0, tablist.scrollWidth - tablist.clientWidth);
+    var hasOverflow = maxScroll > 1;
+    previous.hidden = !hasOverflow || tablist.scrollLeft <= 1;
+    next.hidden = !hasOverflow || tablist.scrollLeft >= maxScroll - 1;
+  }
+
+  function scheduleDisplayTabScrollUpdate(revealActive) {
+    model.revealDisplayTab = model.revealDisplayTab || !!revealActive;
+    if (model.displayTabsFrame) return;
+    model.displayTabsFrame = window.requestAnimationFrame(function () {
+      var shouldReveal = model.revealDisplayTab;
+      model.displayTabsFrame = null;
+      model.revealDisplayTab = false;
+      if (shouldReveal) revealActiveDisplayTab();
+      updateDisplayTabScroll();
+    });
+  }
+
+  function scrollDisplayTabs(direction) {
+    var tablist = q("[data-testid='display-tabs']");
+    if (!tablist) return;
+    var distance = Math.max(160, Math.floor(tablist.clientWidth * 0.75));
+    tablist.scrollBy({ left: direction * distance, behavior: "smooth" });
   }
 
   function renderLayoutTrigger() {
@@ -325,6 +372,8 @@
   document.addEventListener("click", function (event) {
     var button = event.target.closest("button");
     if (!button) return;
+    if (button.dataset.testid === "display-scroll-left") return void scrollDisplayTabs(-1);
+    if (button.dataset.testid === "display-scroll-right") return void scrollDisplayTabs(1);
     if (button.dataset.displaySelect) return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "select", display_id: button.dataset.displaySelect }); });
     if (button.dataset.displayClose) return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "close", display_id: button.dataset.displayClose }); });
     if (button.dataset.testid === "add-display") return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "create" }); });
@@ -353,6 +402,12 @@
   document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } });
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-saved", function (event) { var revision = event.detail && event.detail.state && event.detail.state.state_revision; if (typeof revision === "number") model.revision = Math.max(model.revision, revision); });
+  q("[data-testid='display-tabs']").addEventListener("scroll", function () { scheduleDisplayTabScrollUpdate(false); }, { passive: true });
+  window.addEventListener("resize", function () { scheduleDisplayTabScrollUpdate(false); });
+  if (window.ResizeObserver) {
+    model.displayTabsObserver = new window.ResizeObserver(function () { scheduleDisplayTabScrollUpdate(false); });
+    model.displayTabsObserver.observe(q("[data-testid='display-tabs-wrap']"));
+  }
 
   function safeErrorText(error, fallback) {
     if (error && typeof error.message === "string" && error.message) return error.message;
