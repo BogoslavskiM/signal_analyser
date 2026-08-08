@@ -257,6 +257,10 @@
     var key = toggle.dataset.settingsGroupToggle;
     context.collapsed[key] = toggle.getAttribute("aria-expanded") === "true";
     render();
+    window.requestAnimationFrame(function () {
+      var restored = Array.prototype.slice.call(document.querySelectorAll("[data-settings-group-toggle]")).filter(function (candidate) { return candidate.dataset.settingsGroupToggle === key; })[0];
+      if (restored) restored.focus();
+    });
   });
   document.addEventListener("change", function (event) {
     var node = event.target;

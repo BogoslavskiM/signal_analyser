@@ -47,6 +47,7 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
   assert(/<button class='settings-group-title' type='button' data-settings-group-toggle=[\s\S]*?aria-expanded=[\s\S]*?aria-controls=/.test(settings), "each group title must be an accessible collapse button");
   assert(/class='settings-group-fields'[\s\S]*?\(collapsed \? " hidden" : ""\)/.test(settings), "collapsed groups must hide their field wrapper");
   assert(/data-settings-group-toggle[\s\S]*?context\.collapsed\[key\] = toggle\.getAttribute\("aria-expanded"\) === "true"[\s\S]*?render\(\)/.test(settings), "group toggle must persist collapse state and rerender");
+  assert(/requestAnimationFrame\(function \(\)[\s\S]*?data-settings-group-toggle[\s\S]*?restored\.focus\(\)/.test(settings), "collapse rerender must restore keyboard focus to the same group toggle");
   assert(/\.settings-group-fields\[hidden\]\s*\{\s*display:\s*none;\s*\}/.test(css), "collapsed settings wrapper must not occupy layout space");
   assert(/\.settings-group-title\[aria-expanded="false"\]::before\s*\{\s*transform:\s*rotate\(-90deg\)/.test(css), "collapsed group chevron must rotate");
 };
