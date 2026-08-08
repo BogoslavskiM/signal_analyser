@@ -39,6 +39,7 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
   assert(/function sourceItem\(id\)[\s\S]*?fields\(\)[\s\S]*?readouts\(\)/.test(settings), "inventory must include backend fields and readouts");
   assert(/item\.kind === "range" \|\| item\.kind === "optional_range"/.test(settings) && /item\.kind === "resolution" \|\| item\.kind === "power_bins"/.test(settings), "backend range and resolution controls must remain supported");
   assert(/function isApply\(item\)[\s\S]*?effect_status === "requires_apply"/.test(settings) && /window\.setTimeout\(function \(\) \{ send\(item\); \}, 150\)/.test(settings), "backend Apply fields must retain the exact 150ms save behavior");
+  assert(/var raw = typeof option === "object" \? option\.value : option/.test(settings) && /linear:"Линейная"/.test(settings) && /leakage:"По утечке"/.test(settings), "enum labels must localize by authoritative option value before backend label fallback");
 
   assert(/item\.action === "plot-type"[\s\S]*?signal-settings-plot-type/.test(settings) && /signal-settings-plot-type[\s\S]*?postLayout\(\{ operation:"update_pane"/.test(app), "display.plot_type pseudo field must update the existing layout API path");
   assert(/item\.action === "measurement"[\s\S]*?signal-settings-measurement/.test(settings) && /signal-settings-measurement[\s\S]*?api\.view\(/.test(app), "measurement pseudo fields must update the authoritative view API path");

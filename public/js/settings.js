@@ -36,8 +36,8 @@
   function label(item) { return ru[item.id] || item.label || item.id; }
   function isApply(item) { return item && !item.pseudo && item.effect_status === "requires_apply"; }
   function optionLabel(option) {
-    var raw = typeof option === "object" ? (option.label || option.value) : option;
-    return { seconds:"s", milliseconds:"ms", microseconds:"μs", nanoseconds:"ns", picoseconds:"ps", minutes:"мин", hours:"ч", days:"дн", years:"г", hertz:"Hz", kilohertz:"kHz", megahertz:"MHz", gigahertz:"GHz", terahertz:"THz", linear:"Линейная", log:"Логарифмическая", db:"dB", leakage:"По утечке", rbw:"По RBW", window_length:"По длине окна" }[raw] || raw;
+    var raw = typeof option === "object" ? option.value : option;
+    return { seconds:"s", milliseconds:"ms", microseconds:"μs", nanoseconds:"ns", picoseconds:"ps", minutes:"мин", hours:"ч", days:"дн", years:"г", hertz:"Hz", kilohertz:"kHz", megahertz:"MHz", gigahertz:"GHz", terahertz:"THz", linear:"Линейная", log:"Логарифмическая", db:"dB", leakage:"По утечке", rbw:"По RBW", window_length:"По длине окна" }[raw] || (typeof option === "object" && option.label) || raw;
   }
   function pseudo(id, kind, current, extra) { return Object.assign({ id:id, kind:kind, value:current, enabled:true, visible:true, pseudo:true }, extra || {}); }
   function actual(id, forceVisible) {
