@@ -23,8 +23,10 @@ module.exports = async function testLayoutPreviewAndMeasurementsInspector(assert
   });
   assert(/measurement-search-input[\s\S]*placeholder='Введите название'/.test(measurements), "Measurements must have the same search row pattern as Signals");
   assert(!/ui-checkbox|visible-all-signals|visible-signal/.test(measurements), "Measurements rows must not render signal checkboxes");
-  assert(/items\.minimum[\s\S]*items\.maximum[\s\S]*items\.mean[\s\S]*items\.median[\s\S]*items\.peak_to_peak[\s\S]*items\.rms/.test(measurements), "Measurements columns must map authoritative backend statistics");
+  assert(/measurementColumns\s*=\s*\{[\s\S]*items\.minimum[\s\S]*items\.maximum[\s\S]*items\.mean[\s\S]*items\.median[\s\S]*items\.peak_to_peak[\s\S]*items\.rms/.test(measurements), "Measurements columns must map authoritative backend statistics");
+  assert(/selectedKinds = Array\.isArray\(display\.measurement_kinds\)[\s\S]*selectedKinds\.indexOf\(kind\) >= 0[\s\S]*columns = columns\.concat\(measurementColumns\[kind\]\)/.test(measurements), "Measurements table columns must follow the authoritative checked measurement kinds");
+  assert(/\["minimum", "maximum", "mean", "median", "peak_to_peak", "rms"\]/.test(measurements), "Measurements columns must retain the settings checkbox order");
   assert(/display\.time_limits/.test(measurements), "Measurements ROI columns must use the active Display limits");
-  assert(/\.measurement-table\s*\{[^}]*min-width:\s*1640px/.test(css), "Measurements table must retain its dense horizontal table geometry");
+  assert(/\.measurement-table\s*\{[^}]*min-width:\s*max\(100%, var\(--measurement-table-width, 536px\)\)/.test(css), "Measurements table width must adapt to the checked columns without shrinking below its zone");
   assert(/\.signal-table\.measurement-table th:first-child,[\s\S]*width:\s*220px/.test(css), "Measurements Name column must keep its design width");
 };

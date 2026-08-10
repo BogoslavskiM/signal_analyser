@@ -1380,7 +1380,7 @@ button img {
 .signal-table tbody tr.is-selected { background: var(--row-selected-analytical); }
 
 .measurement-table {
-  min-width: 1640px;
+  min-width: max(100%, var(--measurement-table-width, 536px));
 }
 
 .signal-table.measurement-table th:first-child,
@@ -1391,11 +1391,6 @@ button img {
 .signal-table.measurement-table td:nth-child(3),
 .signal-table.measurement-table th:nth-child(4),
 .signal-table.measurement-table td:nth-child(4) { width: 110px; }
-.signal-table.measurement-table th:nth-child(6),
-.signal-table.measurement-table td:nth-child(6),
-.signal-table.measurement-table th:nth-child(8),
-.signal-table.measurement-table td:nth-child(8) { width: 120px; }
-
 .measurement-table tbody tr { cursor: default; }
 
 .measurement-line-cell { text-align: center !important; }

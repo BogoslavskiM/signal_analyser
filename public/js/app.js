@@ -317,9 +317,29 @@
     (measurements.items || []).forEach(function (item) { items[item.id] = item; });
     var signal = (model.state.signals || []).filter(function (candidate) { return candidate.name === signalName; })[0] || {};
     var limits = display && display.time_limits || {};
-    var headers = ["Имя", "Линия", "Начало области", "Конец области", "Минимум", "Время минимума", "Максимум", "Время максимума", "Среднее", "Медиана", "Размах", "СКЗ"];
-    var row = visible ? "<tr><td><span class='signal-cell-value'>" + esc(signalName) + "</span></td><td class='measurement-line-cell'><span class='measurement-line-swatch' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Линия " + esc(signalName) + "'></span></td><td>" + esc(measurementValue({ value:limits.min_s }, "value")) + "</td><td>" + esc(measurementValue({ value:limits.max_s }, "value")) + "</td><td>" + esc(measurementValue(items.minimum, "value")) + "</td><td>" + esc(measurementValue(items.minimum, "time_s")) + "</td><td>" + esc(measurementValue(items.maximum, "value")) + "</td><td>" + esc(measurementValue(items.maximum, "time_s")) + "</td><td>" + esc(measurementValue(items.mean, "value")) + "</td><td>" + esc(measurementValue(items.median, "value")) + "</td><td>" + esc(measurementValue(items.peak_to_peak, "value")) + "</td><td>" + esc(measurementValue(items.rms, "value")) + "</td></tr>" : "";
-    host.innerHTML = "<table class='signal-table measurement-table' data-testid='measurement-table'><thead><tr>" + headers.map(function (header) { return "<th>" + header + "</th>"; }).join("") + "</tr></thead><tbody>" + row + "</tbody></table><div class='table-empty' data-testid='measurement-search-empty' role='status'" + (visible ? " hidden" : "") + ">" + (signalName ? "Измерения не найдены" : "Для активной области нет рассчитанных измерений") + "</div>";
+    var columns = [
+      { label:"Имя", width:220, html:"<span class='signal-cell-value'>" + esc(signalName) + "</span>" },
+      { label:"Линия", width:96, className:"measurement-line-cell", html:"<span class='measurement-line-swatch' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Линия " + esc(signalName) + "'></span>" },
+      { label:"Начало области", width:110, value:measurementValue({ value:limits.min_s }, "value") },
+      { label:"Конец области", width:110, value:measurementValue({ value:limits.max_s }, "value") }
+    ];
+    var measurementColumns = {
+      minimum:[{ label:"Минимум", width:160, value:measurementValue(items.minimum, "value") }, { label:"Время минимума", width:150, value:measurementValue(items.minimum, "time_s") }],
+      maximum:[{ label:"Максимум", width:160, value:measurementValue(items.maximum, "value") }, { label:"Время максимума", width:150, value:measurementValue(items.maximum, "time_s") }],
+      mean:[{ label:"Среднее", width:150, value:measurementValue(items.mean, "value") }],
+      median:[{ label:"Медиана", width:150, value:measurementValue(items.median, "value") }],
+      peak_to_peak:[{ label:"Размах", width:150, value:measurementValue(items.peak_to_peak, "value") }],
+      rms:[{ label:"СКЗ", width:120, value:measurementValue(items.rms, "value") }]
+    };
+    var selectedKinds = Array.isArray(display.measurement_kinds) ? display.measurement_kinds : (measurements.items || []).map(function (item) { return item.id; });
+    ["minimum", "maximum", "mean", "median", "peak_to_peak", "rms"].forEach(function (kind) {
+      if (selectedKinds.indexOf(kind) >= 0) columns = columns.concat(measurementColumns[kind]);
+    });
+    var tableWidth = columns.reduce(function (total, column) { return total + column.width; }, 0);
+    var colgroup = "<colgroup>" + columns.map(function (column) { return "<col style='width:" + column.width + "px'>"; }).join("") + "</colgroup>";
+    var headers = columns.map(function (column) { return "<th>" + column.label + "</th>"; }).join("");
+    var row = visible ? "<tr>" + columns.map(function (column) { return "<td" + (column.className ? " class='" + column.className + "'" : "") + ">" + (column.html || esc(column.value)) + "</td>"; }).join("") + "</tr>" : "";
+    host.innerHTML = "<table class='signal-table measurement-table' data-testid='measurement-table' style='--measurement-table-width:" + tableWidth + "px'>" + colgroup + "<thead><tr>" + headers + "</tr></thead><tbody>" + row + "</tbody></table><div class='table-empty' data-testid='measurement-search-empty' role='status'" + (visible ? " hidden" : "") + ">" + (signalName ? "Измерения не найдены" : "Для активной области нет рассчитанных измерений") + "</div>";
   }
 
   function loadMeasurements() {
