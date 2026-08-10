@@ -9,7 +9,8 @@
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
-    displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null
+    displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
+    measurementSearch: "", measurementsRecord: null, measurementsToken: 0
   };
 
   function q(selector) { return document.querySelector(selector); }
@@ -266,7 +267,8 @@
     if (!body) return;
     qa("[data-bottom-tab]").forEach(function (tab) { var active = tab.dataset.bottomTab === model.inspectorPage; tab.setAttribute("aria-selected", String(active)); tab.tabIndex = active ? 0 : -1; });
     body.dataset.testid = "inspector-pane-" + model.inspectorPage;
-    if (model.inspectorPage !== "signals") { body.innerHTML = "<div class='inspector-empty' data-testid='inspector-pane-" + model.inspectorPage + "' role='status'>" + (model.inspectorPage === "measurements" ? "Измерения для активной области пока не рассчитаны" : "Пики для активной области пока не рассчитаны") + "</div>"; return; }
+    if (model.inspectorPage === "measurements") return void renderMeasurementsInspector(body);
+    if (model.inspectorPage !== "signals") { body.innerHTML = "<div class='inspector-empty' data-testid='inspector-pane-" + model.inspectorPage + "' role='status'>Пики для активной области пока не рассчитаны</div>"; return; }
     body.innerHTML = "<div class='inspector-search-row'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='signal-search-input' aria-label='Поиск сигналов' placeholder='Введите название' value='" + esc(model.inspectorSearch) + "'></div><div class='signal-table-scroll'><table id='signal-table' class='signal-table'><thead><tr data-table-head></tr></thead><tbody data-testid='signal-rows' data-signal-rows></tbody></table><div class='table-empty' role='status' data-testid='signal-search-empty' hidden>Сигналы не найдены</div></div>";
     var rows = q("[data-testid='signal-rows']"), head = q("[data-table-head]");
     if (!rows || !head) return;
@@ -293,6 +295,49 @@
     var toggleAll = q("[data-visible-all-signals]");
     if (toggleAll) toggleAll.indeterminate = !everySignalVisible && bindings.length > 0;
     q("[data-testid='signal-search-empty']").hidden = signals.length > 0;
+  }
+
+  function measurementValue(item, key) {
+    if (!item || item[key] === null || item[key] === undefined) return "—";
+    var value = item[key];
+    return typeof value === "number" ? String(Number(value.toPrecision(8))) : String(value);
+  }
+
+  function renderMeasurementsInspector(body) {
+    var display = activeDisplay(), pane = paneById(model.activePane), record = model.measurementsRecord;
+    var current = record && display && pane && record.displayId === display.id && record.paneId === pane.id;
+    body.innerHTML = "<div class='inspector-search-row'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='measurement-search-input' aria-label='Поиск измерений' placeholder='Введите название' value='" + esc(model.measurementSearch) + "'></div><div class='signal-table-scroll measurement-table-scroll' data-testid='measurement-table-scroll'></div>";
+    var host = q("[data-testid='measurement-table-scroll']");
+    if (!current) { host.innerHTML = "<div class='inspector-empty' role='status'>Загрузка измерений…</div>"; return; }
+    if (record.error) { host.innerHTML = "<div class='inspector-empty' role='alert'>" + esc(record.error) + "</div>"; return; }
+    var measurements = record.measurements || {}, signalName = measurements.signal_name || "";
+    var query = model.measurementSearch.trim().toLowerCase();
+    var visible = !!signalName && (!query || String(signalName).toLowerCase().indexOf(query) >= 0);
+    var items = {};
+    (measurements.items || []).forEach(function (item) { items[item.id] = item; });
+    var signal = (model.state.signals || []).filter(function (candidate) { return candidate.name === signalName; })[0] || {};
+    var limits = display && display.time_limits || {};
+    var headers = ["Name", "Line", "ROI - Min", "ROI - Max", "Min - Value", "Min - Time", "Max - Value", "Max - Time", "Mean", "Median", "Peak to Peak", "RMS"];
+    var row = visible ? "<tr><td><span class='signal-cell-value'>" + esc(signalName) + "</span></td><td class='measurement-line-cell'><span class='measurement-line-swatch' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Линия " + esc(signalName) + "'></span></td><td>" + esc(measurementValue({ value:limits.min_s }, "value")) + "</td><td>" + esc(measurementValue({ value:limits.max_s }, "value")) + "</td><td>" + esc(measurementValue(items.minimum, "value")) + "</td><td>" + esc(measurementValue(items.minimum, "time_s")) + "</td><td>" + esc(measurementValue(items.maximum, "value")) + "</td><td>" + esc(measurementValue(items.maximum, "time_s")) + "</td><td>" + esc(measurementValue(items.mean, "value")) + "</td><td>" + esc(measurementValue(items.median, "value")) + "</td><td>" + esc(measurementValue(items.peak_to_peak, "value")) + "</td><td>" + esc(measurementValue(items.rms, "value")) + "</td></tr>" : "";
+    host.innerHTML = "<table class='signal-table measurement-table' data-testid='measurement-table'><thead><tr>" + headers.map(function (header) { return "<th>" + header + "</th>"; }).join("") + "</tr></thead><tbody>" + row + "</tbody></table><div class='table-empty' data-testid='measurement-search-empty' role='status'" + (visible ? " hidden" : "") + ">" + (signalName ? "Измерения не найдены" : "Для активной области нет рассчитанных измерений") + "</div>";
+  }
+
+  function loadMeasurements() {
+    if (model.inspectorPage !== "measurements") return Promise.resolve();
+    var display = activeDisplay(), pane = paneById(model.activePane);
+    if (!display || !pane) return Promise.resolve();
+    var displayId = display.id, paneId = pane.id, token = ++model.measurementsToken;
+    model.measurementsRecord = null;
+    renderInspector();
+    return api.getFullState().then(function (snapshot) {
+      if (token !== model.measurementsToken || model.inspectorPage !== "measurements" || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
+      model.measurementsRecord = { displayId:displayId, paneId:paneId, revision:stateRevision(snapshot), measurements:snapshot.measurements || null, error:null };
+      renderInspector();
+    }).catch(function (error) {
+      if (token !== model.measurementsToken || model.inspectorPage !== "measurements") return;
+      model.measurementsRecord = { displayId:displayId, paneId:paneId, error:safeErrorText(error, "Не удалось загрузить измерения.") };
+      renderInspector();
+    });
   }
 
   function renderColumnMenu() {
@@ -377,7 +422,7 @@
         return (accept(current) ? Promise.resolve(current) : refreshSnapshot(renderAccepted)).then(function () { renderAccepted(); return attempt(); });
       });
     }
-    return attempt().then(function (snapshot) { settings.load().catch(function () {}); if (!options || !options.skipOutput) output(true); return snapshot; });
+    return attempt().then(function (snapshot) { settings.load().catch(function () {}); if (!options || !options.skipOutput) output(true); if (model.inspectorPage === "measurements") loadMeasurements(); return snapshot; });
   }
   function postLayout(payload, options) {
     var targetDisplayId = activeDisplay() && activeDisplay().id;
@@ -434,8 +479,9 @@
       }).join("");
     });
     var preview = q(".layout-preview");
-    preview.style.setProperty("--rows", draft.rows);
-    preview.style.setProperty("--columns", draft.columns);
+    preview.style.gridTemplateColumns = "repeat(" + draft.columns + ", minmax(0, 1fr))";
+    preview.style.gridTemplateRows = "repeat(" + draft.rows + ", minmax(0, 1fr))";
+    preview.innerHTML = Array.from({ length:draft.rows * draft.columns }, function () { return "<i></i>"; }).join("");
     q("[data-layout-warning]").hidden = draft.rows <= 4 && draft.columns <= 4;
   }
   function repositionLayout() {
@@ -496,7 +542,7 @@
     if (button.dataset.paneMenu) { var menu = q("[data-testid='display-overflow-menu']"); menu.hidden = !menu.hidden; menu.dataset.paneId = button.dataset.paneMenu; button.setAttribute("aria-expanded", String(!menu.hidden)); return; }
     if (button.dataset.testid === "signal-columns-menu-trigger") { var columns = q("[data-testid='signal-columns-menu']"); if (!columns.hidden) return void closeColumnMenu(true); renderColumnMenu(); columns.hidden = false; button.setAttribute("aria-expanded", "true"); positionMenu(columns, button, 244); var firstColumn = columns.querySelector("button"); if (firstColumn) firstColumn.focus(); return; }
     if (button.dataset.columnVisible !== undefined) { var key = button.dataset.columnVisible; model.visibleColumns[key] = !model.visibleColumns[key]; renderInspector(); renderColumnMenu(); positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); return; }
-    if (button.dataset.bottomTab) { model.inspectorPage = button.dataset.bottomTab; return void renderInspector(); }
+    if (button.dataset.bottomTab) { model.inspectorPage = button.dataset.bottomTab; renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); return; }
     if (button.dataset.toastClose !== undefined) q("[data-testid='layout-toast']").hidden = true;
   });
   document.addEventListener("click", function (event) {
@@ -517,7 +563,7 @@
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }
   });
   document.addEventListener("click", function (event) { var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }, { preservePlots:true, skipOutput:true }); });
-  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } });
+  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } });
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-saved", function (event) { var revision = event.detail && event.detail.state && event.detail.state.state_revision; if (typeof revision === "number") model.revision = Math.max(model.revision, revision); });
   window.addEventListener("signal-settings-plot-type", function (event) {

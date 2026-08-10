@@ -28,6 +28,7 @@
 
   window.SignalAnalyserApi = {
     getState: function () { return request("./api/state-lite", { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" }); },
+    getFullState: function () { return request("./api/state", { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" }); },
     activeOutput: function (displayId, paneId) {
       return request("./api/outputs/active?display_id=" + encodeURIComponent(displayId) + "&pane_id=" + encodeURIComponent(paneId), { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" });
     },

@@ -37,7 +37,8 @@ module.exports = async function testV5CleanFrontendContracts(assert) {
   assert((html.match(/data-testid="explicit-apply-root"/g) || []).length === 1, "v5 shell must expose exactly one explicit Apply root");
   assert((html.match(/data-settings-content/g) || []).length === 1, "v5 shell must expose exactly one canonical settings-content subtree");
 
-  assert(api.includes('"./api/state-lite"') && !api.includes('"./api/state"'), "bootstrap must use state-lite rather than eager graph state");
+  assert(api.includes('"./api/state-lite"') && /function refreshSnapshot\(renderAccepted\) \{ return api\.getState\(\)/.test(app), "bootstrap and normal snapshots must use state-lite rather than eager graph state");
+  assert(/getFullState: function \(\) \{ return request\("\.\/api\/state"/.test(api) && /function loadMeasurements\(\)[\s\S]*api\.getFullState\(\)/.test(app), "the full state may be loaded only on demand for the Measurements inspector");
   ["./api/outputs/active?display_id=", "./api/settings/apply", "./api/layouts", "./api/view", "./api/displays", "./api/signals", "./api/session"].forEach((route) => assert(api.includes(route), `normal API adapter must retain ${route}`));
   assert(/setTimeout\(function \(\) \{ send\(item\); \},\s*150\)/.test(settings), "valid Apply-bound settings fields must use the exact 150ms debounce");
   assert(/function output\(poll\)[\s\S]*panes\(\)\.forEach/.test(app), "every visible pane must request an output independently");

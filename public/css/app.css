@@ -1379,6 +1379,36 @@ button img {
 .signal-table tbody tr:hover { background: var(--row-hover); }
 .signal-table tbody tr.is-selected { background: var(--row-selected-analytical); }
 
+.measurement-table {
+  min-width: 1640px;
+}
+
+.signal-table.measurement-table th:first-child,
+.signal-table.measurement-table td:first-child { width: 220px; text-align: left; }
+.signal-table.measurement-table th:nth-child(2),
+.signal-table.measurement-table td:nth-child(2) { width: 96px; }
+.signal-table.measurement-table th:nth-child(3),
+.signal-table.measurement-table td:nth-child(3),
+.signal-table.measurement-table th:nth-child(4),
+.signal-table.measurement-table td:nth-child(4) { width: 110px; }
+.signal-table.measurement-table th:nth-child(6),
+.signal-table.measurement-table td:nth-child(6),
+.signal-table.measurement-table th:nth-child(8),
+.signal-table.measurement-table td:nth-child(8) { width: 120px; }
+
+.measurement-table tbody tr { cursor: default; }
+
+.measurement-line-cell { text-align: center !important; }
+
+.measurement-line-swatch {
+  width: 64px;
+  height: 16px;
+  display: inline-block;
+  border: 1px solid var(--line-strong);
+  background: var(--swatch);
+  vertical-align: middle;
+}
+
 .table-empty {
   min-height: 64px;
   padding: 20px 12px;
