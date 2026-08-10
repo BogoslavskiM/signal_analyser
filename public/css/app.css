@@ -1340,7 +1340,7 @@ button img {
 .signal-row-action:disabled { color: var(--muted); opacity: 0.45; cursor: not-allowed; }
 
 .color-cell {
-  text-align: center !important;
+  text-align: left !important;
 }
 
 .color-swatch {

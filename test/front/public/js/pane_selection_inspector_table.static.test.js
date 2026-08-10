@@ -31,4 +31,5 @@ module.exports = async function testPaneSelectionAndInspectorTable(assert) {
   assert(/overflow-x:\s*hidden/.test(tabs), "the three inspector tabs must not become a scrolling multi-page history");
   assert(/\.signal-table th:first-child,[\s\S]*width:\s*42px/.test(css), "visibility column width must match the design");
   assert(/\.signal-table th:nth-child\(2\)\s*\{\s*width:\s*28%/.test(css), "name column width must match the design");
+  assert(/\.color-cell\s*\{[^}]*text-align:\s*left\s*!important/.test(css), "signal Color cells must align their swatches to the left edge");
 };
