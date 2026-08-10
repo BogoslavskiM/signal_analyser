@@ -307,14 +307,16 @@
   function positionMenu(menu, trigger, width) {
     if (!menu || !trigger || menu.hidden) return;
     var rect = trigger.getBoundingClientRect();
-    var left = Math.min(window.innerWidth - width - 8, Math.max(8, rect.right - width));
+    var viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth || window.innerWidth);
+    var viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight, window.visualViewport ? window.visualViewport.height : window.innerHeight);
+    var left = Math.min(viewportWidth - width - 8, Math.max(8, rect.right - width));
     menu.style.width = width + "px";
     menu.style.left = left + "px";
     menu.style.top = rect.bottom + 4 + "px";
     window.requestAnimationFrame(function () {
       if (menu.hidden) return;
       var menuRect = menu.getBoundingClientRect();
-      if (menuRect.bottom > window.innerHeight - 8) menu.style.top = Math.max(8, rect.top - menuRect.height - 4) + "px";
+      if (menuRect.bottom > viewportHeight - 8) menu.style.top = Math.max(8, rect.top - menuRect.height - 4) + "px";
     });
   }
 
