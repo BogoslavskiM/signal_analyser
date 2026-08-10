@@ -3042,6 +3042,72 @@ function signal_measurements_payload(measurements::SignalMeasurementsSnapshot)::
     )
 end
 
+function signal_measurement_row_error_payload(
+    state_revision::Int,
+    signal::AnalysedSignal,
+    limits::SignalTimeLimits,
+    message::AbstractString,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "state_revision" => state_revision,
+        "signal_name" => signal.name,
+        "ordinate" => signal_measurement_ordinate_name(signal_measurement_ordinate(signal)),
+        "units" => Dict{String,Any}("value" => "1", "time" => "s"),
+        "items" => Dict{String,Any}[],
+        "time_limits" => signal_time_limits_payload(limits),
+        "error" => String(message),
+    )
+end
+
+function signal_analyser_measurement_rows_payload(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::Vector{Dict{String,Any}}
+    layout = signal_analyser_layout_by_display_id(state, display.id)
+    pane = signal_display_active_pane(layout)
+    names = signal_analyser_inventory_ordered_names(state, signal_display_pane_members(pane))
+    isempty(names) && return Dict{String,Any}[]
+    requested_limits = pane.time_limits::SignalTimeLimits
+    rows = Dict{String,Any}[]
+    for name in names
+        signal = signal_by_name(state, name)
+        duration_s = signal_duration_s(signal)
+        effective_min = max(0.0, requested_limits.min_s)
+        effective_max = min(duration_s, requested_limits.max_s)
+        if effective_min >= effective_max
+            push!(rows, signal_measurement_row_error_payload(
+                state.view.state_revision,
+                signal,
+                requested_limits,
+                "В выбранной области нет отсчётов сигнала",
+            ))
+            continue
+        end
+        effective_limits = SignalTimeLimits(effective_min, effective_max)
+        row = try
+            signal_measurements_payload(signal_measurements_snapshot(
+                state.measurements_service,
+                state.view.state_revision,
+                signal,
+                effective_limits,
+                pane.measurement_selection,
+            ))
+        catch err
+            err isa ArgumentError || rethrow()
+            signal_measurement_row_error_payload(
+                state.view.state_revision,
+                signal,
+                effective_limits,
+                sprint(showerror, err),
+            )
+        end
+        row["time_limits"] = signal_time_limits_payload(effective_limits)
+        haskey(row, "error") || (row["error"] = nothing)
+        push!(rows, row)
+    end
+    rows
+end
+
 function signal_peak_item_payload(item::SignalPeakItem)::Dict{String,Any}
     Dict{String,Any}(
         "id" => item.id,
@@ -3127,6 +3193,7 @@ function signal_analyser_snapshot_from_prepared_unlocked(
         "plots" => plots,
         "plot_payload" => prepared_display_plots.plot_payload,
         "measurements" => signal_measurements_payload(measurements),
+        "measurement_rows" => signal_analyser_measurement_rows_payload(state, active_display),
         "peaks" => signal_peaks_payload(peaks),
         "panel" => signal === nothing ?
             signal_analyser_empty_panel_payload(state.view.active_plot) :

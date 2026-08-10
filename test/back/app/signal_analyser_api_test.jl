@@ -94,6 +94,7 @@ end
 
 function assert_api_snapshot_measurements(snapshot, signal)
     @test haskey(snapshot, "measurements")
+    @test haskey(snapshot, "measurement_rows")
     haskey(snapshot, "measurements") || return
     payload = get(snapshot, "measurements", Dict{String,Any}())
     @test Set(keys(payload)) == Set(["state_revision", "signal_name", "ordinate", "units", "items"])
@@ -104,6 +105,14 @@ function assert_api_snapshot_measurements(snapshot, signal)
     @test payload["items"] == api_raw_measurement_items(signal)
     @test payload["items"][3]["time_s"] === nothing
     @test payload["items"][3]["sample_index"] === nothing
+    rows = get(snapshot, "measurement_rows", Dict{String,Any}[])
+    matching_rows = filter(row -> get(row, "signal_name", nothing) == signal.name, rows)
+    @test length(matching_rows) == 1
+    isempty(matching_rows) || begin
+        @test matching_rows[1]["items"] == payload["items"]
+        @test matching_rows[1]["error"] === nothing
+        @test Set(keys(matching_rows[1])) == Set(["state_revision", "signal_name", "ordinate", "units", "items", "time_limits", "error"])
+    end
 end
 
 @testset "Signal Analyser API route registration" begin

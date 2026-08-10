@@ -831,7 +831,7 @@ end
     state = SA.test_state_with_complex_signal()
     snapshot = SA.signal_analyser_snapshot(state)
 
-    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "spectrum_settings", "spectrogram_settings", "persistence_settings", "signals", "plots", "plot_payload", "measurements", "peaks", "panel"])
+    @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "spectrum_settings", "spectrogram_settings", "persistence_settings", "signals", "plots", "plot_payload", "measurements", "measurement_rows", "peaks", "panel"])
     @test snapshot["active_display_id"] == "display-1"
     @test snapshot["displays"] == [Dict(
         "id" => "display-1",
