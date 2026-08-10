@@ -19,6 +19,8 @@ module.exports = async function testPaneSelectionAndInspectorTable(assert) {
   assert(/index === renderedColumns\.length - 1[\s\S]*last \? "is-actions-host"[\s\S]*last \? actions/.test(app), "row actions must overlay whichever data column is last visible");
   assert(!/\+ "<th aria-label='Действия'><\/th>"/.test(app), "the inspector must not render a separate blank actions column");
   assert(/data-visible-all-signals/.test(app), "the design header checkbox must be present in the visibility column");
+  assert(/function positionMenu\(menu, trigger, width\)[\s\S]*window\.innerWidth - width - 8[\s\S]*menuRect\.bottom > window\.innerHeight - 8[\s\S]*rect\.top - menuRect\.height - 4/.test(app), "the column menu must clamp horizontally and flip above its trigger when it would leave the viewport");
+  assert(/signal-columns-menu-trigger[\s\S]*positionMenu\(columns, button, 244\)/.test(app), "opening the column menu must position it from its toolbar trigger");
 
   const inspector = (css.match(/\.inspector\s*\{[^}]*\}/g) || []).find((rule) => /grid-template-rows/.test(rule)) || "";
   const header = (css.match(/\.inspector-header\s*\{[^}]*\}/g) || []).find((rule) => /border-top/.test(rule)) || "";

@@ -304,6 +304,30 @@
       }).join("");
   }
 
+  function positionMenu(menu, trigger, width) {
+    if (!menu || !trigger || menu.hidden) return;
+    var rect = trigger.getBoundingClientRect();
+    var left = Math.min(window.innerWidth - width - 8, Math.max(8, rect.right - width));
+    menu.style.width = width + "px";
+    menu.style.left = left + "px";
+    menu.style.top = rect.bottom + 4 + "px";
+    window.requestAnimationFrame(function () {
+      if (menu.hidden) return;
+      var menuRect = menu.getBoundingClientRect();
+      if (menuRect.bottom > window.innerHeight - 8) menu.style.top = Math.max(8, rect.top - menuRect.height - 4) + "px";
+    });
+  }
+
+  function closeColumnMenu(restoreFocus) {
+    var menu = q("[data-testid='signal-columns-menu']"), trigger = q("[data-testid='signal-columns-menu-trigger']");
+    if (!menu || menu.hidden) return;
+    menu.hidden = true;
+    if (trigger) {
+      trigger.setAttribute("aria-expanded", "false");
+      if (restoreFocus) trigger.focus();
+    }
+  }
+
   function output(poll) { var display = activeDisplay(); if (display) panes().forEach(function (pane) { fetchPaneOutput(display.id, pane.id, poll); }); }
   function fetchPaneOutput(displayId, paneId, poll) {
     var display = activeDisplay();
@@ -468,8 +492,8 @@
     if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });
     if (button.dataset.settingsPage) { model.settingsPage = button.dataset.settingsPage; return void renderSettings(activeDisplay()); }
     if (button.dataset.paneMenu) { var menu = q("[data-testid='display-overflow-menu']"); menu.hidden = !menu.hidden; menu.dataset.paneId = button.dataset.paneMenu; button.setAttribute("aria-expanded", String(!menu.hidden)); return; }
-    if (button.dataset.testid === "signal-columns-menu-trigger") { var columns = q("[data-testid='signal-columns-menu']"); columns.hidden = !columns.hidden; button.setAttribute("aria-expanded", String(!columns.hidden)); return; }
-    if (button.dataset.columnVisible !== undefined) { var key = button.dataset.columnVisible; model.visibleColumns[key] = !model.visibleColumns[key]; renderInspector(); renderColumnMenu(); return; }
+    if (button.dataset.testid === "signal-columns-menu-trigger") { var columns = q("[data-testid='signal-columns-menu']"); if (!columns.hidden) return void closeColumnMenu(true); renderColumnMenu(); columns.hidden = false; button.setAttribute("aria-expanded", "true"); positionMenu(columns, button, 244); var firstColumn = columns.querySelector("button"); if (firstColumn) firstColumn.focus(); return; }
+    if (button.dataset.columnVisible !== undefined) { var key = button.dataset.columnVisible; model.visibleColumns[key] = !model.visibleColumns[key]; renderInspector(); renderColumnMenu(); positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); return; }
     if (button.dataset.bottomTab) { model.inspectorPage = button.dataset.bottomTab; return void renderInspector(); }
     if (button.dataset.toastClose !== undefined) q("[data-testid='layout-toast']").hidden = true;
   });
@@ -481,7 +505,8 @@
     var inside = path ? path.indexOf(popover) >= 0 || path.indexOf(trigger) >= 0 : !fallbackOutside;
     if (!inside) closeLayout();
   });
-  document.addEventListener("keydown", function (event) { if (event.key === "Escape" && model.layoutDraft) closeLayout(); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(event.key === "ArrowRight" ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
+  document.addEventListener("click", function (event) { var menu=q("[data-testid='signal-columns-menu']"),trigger=q("[data-testid='signal-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeColumnMenu(false); });
+  document.addEventListener("keydown", function (event) { if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(event.key === "ArrowRight" ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]"),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(event.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
@@ -507,6 +532,7 @@
   q("[data-testid='display-tabs']").addEventListener("scroll", function () { scheduleDisplayTabScrollUpdate(false); }, { passive: true });
   window.addEventListener("resize", function () { scheduleDisplayTabScrollUpdate(false); });
   window.addEventListener("resize", repositionLayout);
+  window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); });
   if (window.ResizeObserver) {
     model.displayTabsObserver = new window.ResizeObserver(function () { scheduleDisplayTabScrollUpdate(false); });
     model.displayTabsObserver.observe(q("[data-testid='display-tabs-wrap']"));
