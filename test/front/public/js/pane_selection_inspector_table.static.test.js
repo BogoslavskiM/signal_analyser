@@ -7,6 +7,7 @@ module.exports = async function testPaneSelectionAndInspectorTable(assert) {
   const root = path.resolve(__dirname, "../../../..");
   const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8");
+  const html = fs.readFileSync(path.join(root, "public/index.html"), "utf8");
 
   const paneContext = (app.match(/function renderActivePaneContext\(\)[\s\S]*?\n  \}/) || [""])[0];
   assert(/classList\.toggle\("is-active", selected\)/.test(paneContext), "pane selection must update the active pane surface in place");
@@ -23,11 +24,16 @@ module.exports = async function testPaneSelectionAndInspectorTable(assert) {
   assert(/signal-columns-menu-trigger[\s\S]*positionMenu\(columns, button, 244\)/.test(app), "opening the column menu must position it from its toolbar trigger");
 
   const inspector = (css.match(/\.inspector\s*\{[^}]*\}/g) || []).find((rule) => /grid-template-rows/.test(rule)) || "";
-  const header = (css.match(/\.inspector-header\s*\{[^}]*\}/g) || []).find((rule) => /border-top/.test(rule)) || "";
+  const header = (css.match(/\.inspector-header\s*\{[^}]*\}/g) || []).find((rule) => /border:/.test(rule)) || "";
+  const body = (css.match(/\.inspector-body\s*\{[^}]*\}/g) || []).find((rule) => /grid-template-rows/.test(rule)) || "";
   const tabs = (css.match(/\.inspector-tabs\s*\{[^}]*\}/g) || []).find((rule) => /overflow-x:\s*hidden/.test(rule)) || "";
+  const inspectorHeaderHtml = (html.match(/<header class="inspector-header">[\s\S]*?<\/header>/) || [""])[0];
+  const inspectorSearchHtml = (html.match(/<div class="inspector-search-row">[\s\S]*?<\/div>\s*<\/div>/) || [""])[0];
   assert(/grid-template-rows:\s*32px/.test(inspector), "inspector tab strip must remain one 32px row");
-  assert(/margin:\s*0 8px/.test(header), "inspector tabs/actions must align with the inset search and table zone");
-  assert(/border-top:\s*1px solid var\(--line\)/.test(header) && /border-bottom:\s*1px solid var\(--line\)/.test(header), "inspector tab strip must have matching thin top and bottom separators");
+  assert(/padding:\s*8px/.test(inspector) && /background:\s*var\(--app-bg\)/.test(inspector), "the inspector must use the same full-zone underlay as the plot grid and leave a top inset around tabs");
+  assert(/margin:\s*0/.test(header) && /border:\s*1px solid var\(--line\)/.test(header), "the tab strip must align with the fully inset inspector surface");
+  assert(/padding:\s*0/.test(body), "the inspector body must join the inset tab, search and table surfaces without a second offset");
+  assert(/signals-add-action[\s\S]*signal-columns-menu-trigger/.test(inspectorSearchHtml) && !/inspector-actions/.test(inspectorHeaderHtml), "signal actions must live at the right edge of the search row, not the tab strip");
   assert(/overflow-x:\s*hidden/.test(tabs), "the three inspector tabs must not become a scrolling multi-page history");
   assert(/\.signal-table th:first-child,[\s\S]*width:\s*42px/.test(css), "visibility column width must match the design");
   assert(/\.signal-table th:nth-child\(2\)\s*\{\s*width:\s*28%/.test(css), "name column width must match the design");

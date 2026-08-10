@@ -94,19 +94,19 @@
           <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="measurements" data-testid="inspector-tab-measurements">Измерения</button>
           <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="peaks" data-testid="inspector-tab-peaks">Пики</button>
         </div>
-        <div class="inspector-actions" aria-label="Действия с сигналами">
-          <button class="inspector-action" type="button" data-testid="signals-add-action" data-tooltip="Добавить сигнал" aria-label="Добавить сигнал">
-            <img src="./icons/plus.svg" alt="">
-          </button>
-          <button class="inspector-action" type="button" data-testid="signal-columns-menu-trigger" data-tooltip="Другие действия" aria-label="Другие действия" aria-haspopup="menu" aria-expanded="false">
-            <img src="./icons/more-vertical.svg" alt="">
-          </button>
-        </div>
       </header>
       <div class="inspector-body" data-testid="inspector-pane-signals" data-inspector-content>
         <div class="inspector-search-row">
           <span class="search-icon" aria-hidden="true"></span>
           <input type="search" data-testid="signal-search-input" aria-label="Поиск сигналов" placeholder="Введите название">
+          <div class="inspector-actions" aria-label="Действия с сигналами">
+            <button class="inspector-action" type="button" data-testid="signals-add-action" data-tooltip="Добавить сигнал" aria-label="Добавить сигнал" aria-haspopup="dialog" aria-controls="signal-add-dialog" aria-expanded="false">
+              <img src="./icons/plus.svg" alt="">
+            </button>
+            <button class="inspector-action" type="button" data-testid="signal-columns-menu-trigger" data-tooltip="Другие действия" aria-label="Другие действия" aria-haspopup="menu" aria-expanded="false">
+              <img src="./icons/more-vertical.svg" alt="">
+            </button>
+          </div>
         </div>
         <div class="signal-table-scroll">
           <table id="signal-table" class="signal-table">
@@ -141,6 +141,30 @@
     </button>
   </section>
   <div class="menu inspector-menu" role="menu" data-testid="signal-columns-menu" aria-label="Другие действия с сигналами" hidden></div>
+
+  <div class="modal-layer primary-modal-layer" data-testid="signal-add-layer" hidden>
+    <section id="signal-add-dialog" class="dialog-card add-dialog" role="dialog" aria-modal="true" aria-labelledby="signal-add-title" aria-describedby="signal-add-intro">
+      <header class="dialog-titlebar">
+        <h2 id="signal-add-title" tabindex="-1">Добавление сигналов</h2>
+        <button class="icon-button dialog-close" type="button" data-signal-add-close data-tooltip="Закрыть диалог" aria-label="Закрыть добавление сигналов"><img src="./icons/close.svg" alt=""></button>
+      </header>
+      <div class="dialog-body">
+        <p id="signal-add-intro" class="dialog-intro">Выберите поддерживаемые переменные из рабочей области.</p>
+        <div class="workspace-list" role="group" aria-label="Переменные рабочей области" data-testid="signal-add-variables"></div>
+        <div class="dialog-field-row">
+          <label for="signal-add-sample-rate">Частота дискретизации <span>Hz</span></label>
+          <input id="signal-add-sample-rate" class="control" type="text" inputmode="decimal" value="1000000" data-signal-add-sample-rate aria-describedby="signal-add-sample-rate-hint">
+          <small id="signal-add-sample-rate-hint">Требуется только для raw-массивов без временной шкалы.</small>
+        </div>
+        <p class="dialog-state" data-testid="signal-add-state" role="status">Загрузка переменных…</p>
+        <p class="dialog-state is-error" data-testid="signal-add-error" role="alert" hidden></p>
+      </div>
+      <footer class="dialog-footer">
+        <button class="button" type="button" data-signal-add-cancel>Отмена</button>
+        <button class="button button-primary" type="button" data-signal-add-submit disabled>Добавить</button>
+      </footer>
+    </section>
+  </div>
 
   <section id="layout-popover" class="layout-popover" role="dialog" aria-modal="false" aria-labelledby="layout-title" data-testid="layout-popover" hidden>
     <header>

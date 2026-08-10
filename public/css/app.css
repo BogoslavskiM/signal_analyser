@@ -233,7 +233,7 @@ button img {
   align-items: stretch;
   overflow: hidden;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-muted);
+  background: var(--app-bg);
 }
 
 .display-tabs-wrap {
@@ -1116,15 +1116,18 @@ button img {
 .inspector {
   display: grid;
   grid-template-rows: 32px minmax(0, 1fr);
+  padding: 8px;
+  background: var(--app-bg);
 }
 
 .inspector-header {
   min-width: 0;
   display: flex;
-  margin: 0 8px;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-muted);
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius) var(--control-radius) 0 0;
+  background: var(--surface);
 }
 
 .inspector-tabs {
@@ -1137,6 +1140,8 @@ button img {
 .inspector-actions {
   flex: 0 0 auto;
   display: flex;
+  align-self: stretch;
+  margin-left: auto;
   border-left: 1px solid var(--line);
 }
 
@@ -1176,7 +1181,7 @@ button img {
   min-height: 0;
   display: grid;
   grid-template-rows: 32px minmax(0, 1fr);
-  padding: 0 8px 8px;
+  padding: 0;
 }
 
 .inspector-search-row {
@@ -1187,6 +1192,7 @@ button img {
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   border-left: 1px solid var(--line);
+  background: var(--surface);
 }
 
 .inspector-search-row:focus-within {
@@ -1242,6 +1248,24 @@ button img {
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   border-left: 1px solid var(--line);
+  border-radius: 0 0 var(--control-radius) var(--control-radius);
+  background: var(--surface);
+}
+
+.dialog-state {
+  margin-top: 12px !important;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.dialog-state.is-error {
+  color: var(--danger);
+}
+
+.dialog-state .button-compact {
+  min-height: 24px;
+  margin-left: 8px;
+  padding: 2px 8px;
 }
 
 .signal-table {
@@ -1875,6 +1899,8 @@ button img {
 
 .workspace-list {
   display: grid;
+  max-height: 320px;
+  overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: var(--control-radius);
   overflow: hidden;
