@@ -28,7 +28,8 @@ module.exports = async function testMeasurementVisibilityAndPeaksOnOpen(assert) 
 
   assert(/model\.inspectorPage === "peaks"\) loadPeaks\(\)/.test(app), "opening the bottom Peaks page must start its on-demand calculation");
   const loadPeaks = (app.match(/function loadPeaks\(\)[\s\S]*?\n  \}/) || [""])[0];
-  assert(/display\.peaks_enabled \? api\.getFullState\(\) : mutate/.test(loadPeaks), "Peaks must reuse a ready result or enable calculation on demand");
+  assert(/display\.peaks_enabled \? Promise\.resolve\(\) : mutate/.test(loadPeaks), "Peaks must reuse its ready pane result or enable calculation on demand without fetching legacy state");
   assert(/peaks_enabled:true/.test(loadPeaks) && /preservePlots:true, skipOutput:true/.test(loadPeaks), "Peaks on-open calculation must avoid graph output reloads");
-  assert(/function renderPeaksInspector\(body\)[\s\S]*peaks\.items[\s\S]*data-testid='peaks-table'/.test(app), "the Peaks page must render the calculated authoritative items");
+  assert(/fetchActivePeaks\(displayId, paneId, true\)/.test(loadPeaks), "Peaks on-open must request the pane-scoped active Peaks result");
+  assert(/function renderPeaksInspector\(body\)[\s\S]*peaks-split/.test(app), "the Peaks page must render the calculated split table and settings panel");
 };

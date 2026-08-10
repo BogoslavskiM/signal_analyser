@@ -1317,21 +1317,6 @@ function signal_analyser_prepare_pane_output!(
             materialize_spectrum_signal_names = analysis_name === nothing ?
                 String[] : String[analysis_name],
         )
-        if pane.plot_type == TIME_PLOT && pane.peaks_enabled
-            peaks = signal_peaks_snapshot(
-                state.peaks_service,
-                state.view.state_revision + 1,
-                pane_display,
-                analysis_signal,
-                materialize = true,
-            )
-            signal_analyser_publish_peaks_cache!(
-                prepared.plot_cache,
-                pane_display,
-                analysis_signal::AnalysedSignal,
-                peaks,
-            )
-        end
         data = signal_analyser_pane_renderer_data(
             prepared,
             pane,
@@ -1411,6 +1396,7 @@ function signal_display_pane_payload(pane::SignalDisplayPaneState)::Dict{String,
         "id" => pane.id,
         "plot_type" => signal_analyser_plot_name(pane.plot_type),
         "signal_bindings" => signal_display_pane_members(pane),
+        "peaks_settings" => signal_peaks_settings_payload(pane.peaks_settings),
     )
 end
 
@@ -1610,6 +1596,7 @@ function signal_analyser_new_pane_template(
         SignalPersistenceSettings(),
         signal_display_pane_with_time_link(active_pane, false).stored_settings,
         false,
+        active_pane.peaks_settings,
     )
 end
 
@@ -2143,6 +2130,7 @@ function signal_display_pane_reconfigured(
         pane.persistence_settings,
         signal_settings_reconcile_stored_for_source(pane.stored_settings, analysis_signal),
         analysis_signal !== nothing && plot_type == TIME_PLOT && pane.peaks_enabled,
+        pane.peaks_settings,
     )
 end
 
@@ -2827,7 +2815,16 @@ function signal_peaks_detect(
             "Поиск пиков недоступен: EngeeDSP.Functions.findpeaks не найден",
         ))
     end
-    raw_result = Base.invokelatest(findpeaks, collect(query.values); out = :data)
+    settings = query.settings
+    raw_result = Base.invokelatest(
+        findpeaks,
+        collect(query.values);
+        NPeaks = settings.number_of_peaks,
+        MinPeakHeight = settings.minimum_height === nothing ? -Inf : settings.minimum_height,
+        MinPeakDistance = settings.minimum_distance_samples,
+        Threshold = settings.threshold,
+        out = :data,
+    )
     raw_result isa NamedTuple || throw(SignalPeaksCapabilityError(
         "EngeeDSP.Functions.findpeaks вернул неожидаемый тип результата",
     ))
@@ -2854,6 +2851,7 @@ function signal_peaks_snapshot(
     signal::Union{Nothing,AnalysedSignal},
     ;
     materialize::Bool = false,
+    settings::SignalPeaksSettings = SignalPeaksSettings(),
 )::SignalPeaksSnapshot
     if signal === nothing
         display.peaks_enabled && throw(ArgumentError("Пустой Display не может иметь enabled Peaks"))
@@ -2916,6 +2914,7 @@ function signal_peaks_snapshot(
         collect(roi.values),
         roi.sample_rate_hz,
         roi.sample_offset,
+        settings,
     )
     result = signal_peaks_detect(service.provider, query)
     items = SignalPeakItem[
@@ -2999,6 +2998,44 @@ function signal_analyser_cached_peaks_snapshot(
         signal,
     )
     (!display.peaks_enabled || signal === nothing) && return passive
+    layout = get(state.display_layouts, display.id, nothing)
+    if layout !== nothing
+        pane = signal_display_active_pane(layout::SignalDisplayLayoutState)
+        page_id = signal_analyser_output_page_id(display.id, pane.id)
+        revision = get(
+            state.output_manager.peaks_page_calculation_revisions,
+            page_id,
+            -1,
+        )
+        if revision >= 0
+            context = SignalAnalyserPeaksContextKey(
+                display.id,
+                pane.id,
+                signal_display_pane_members(pane),
+                pane.time_limits,
+                pane.peaks_settings,
+                revision,
+            )
+            if signal.name in context.signal_names
+                cache_key = signal_analyser_peaks_cache_key(display.id, pane.id, signal.name)
+                cached_entry = get(state.output_manager.peaks_cache, cache_key, nothing)
+                signal_context = SignalAnalyserPeaksSignalContextKey(context, signal.name)
+                if cached_entry !== nothing &&
+                    (cached_entry::SignalAnalyserPeaksCacheEntry).context == signal_context
+                    snapshot = cached_entry.peaks
+                    return SignalPeaksSnapshot(
+                        true,
+                        state_revision,
+                        display.id,
+                        signal.name,
+                        snapshot.ordinate,
+                        snapshot.units,
+                        SignalPeakItem[snapshot.items...],
+                    )
+                end
+            end
+        end
+    end
     plots = get(state.plot_cache, signal.name, nothing)
     plots === nothing && return passive
     cached = get(plots, signal_peaks_cache_field(display.id), nothing)
@@ -3015,6 +3052,74 @@ function signal_analyser_cached_peaks_snapshot(
         entry.snapshot.ordinate,
         entry.snapshot.units,
         SignalPeakItem[entry.snapshot.items...],
+    )
+end
+
+function signal_peaks_table_snapshot(
+    state_revision::Int,
+    display::SignalAnalyserDisplayState,
+    pane::SignalDisplayPaneState,
+    signals::AbstractVector{SignalPeaksSnapshot},
+    signal_colors::AbstractVector{<:AbstractString},
+)::SignalPeaksTableSnapshot
+    pane_display = signal_analyser_display_for_pane(display, pane)
+    if !pane_display.peaks_enabled
+        return SignalPeaksTableSnapshot(
+            false,
+            state_revision,
+            display.id,
+            pane.id,
+            pane.peaks_settings,
+            String[],
+            SignalPeaksSnapshot[],
+            SignalPeaksTableRow[],
+        )
+    end
+    pane.plot_type == TIME_PLOT || throw(ArgumentError(
+        "Peaks table доступна только для TIME pane",
+    ))
+    snapshots = collect(signals)
+    signal_names = String[snapshot.signal_name::String for snapshot in snapshots]
+    signal_names == signal_display_pane_members(pane) || throw(ArgumentError(
+        "Порядок сигналов Peaks table не совпадает с bindings pane",
+    ))
+    colors = String.(signal_colors)
+    length(colors) == length(snapshots) || throw(DimensionMismatch(
+        "Число цветов Peaks table должно совпадать с bindings pane",
+    ))
+    raw_rows = [
+        (
+            time_s = item.time_s,
+            binding_index = binding_index,
+            sample_index = item.sample_index,
+            signal_name = signal_names[binding_index],
+            signal_color = colors[binding_index],
+            graph_number = graph_number,
+            peak = item,
+        )
+        for (binding_index, snapshot) in enumerate(snapshots)
+        for (graph_number, item) in enumerate(snapshot.items)
+    ]
+    sort!(raw_rows; by = row -> (row.time_s, row.binding_index, row.sample_index))
+    rows = SignalPeaksTableRow[
+        SignalPeaksTableRow(
+            row_number,
+            row.signal_name,
+            row.signal_color,
+            row.graph_number,
+            row.peak,
+        )
+        for (row_number, row) in enumerate(raw_rows)
+    ]
+    SignalPeaksTableSnapshot(
+        true,
+        state_revision,
+        display.id,
+        pane.id,
+        pane.peaks_settings,
+        colors,
+        snapshots,
+        rows,
     )
 end
 
@@ -3133,6 +3238,308 @@ function signal_peaks_payload(peaks::SignalPeaksSnapshot)::Dict{String,Any}
             "prominence" => peaks.units.prominence,
         ),
         "items" => Dict{String,Any}[signal_peak_item_payload(item) for item in peaks.items],
+    )
+end
+
+function signal_peaks_settings_payload(
+    settings::SignalPeaksSettings,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "number_of_peaks" => settings.number_of_peaks,
+        "minimum_height" => settings.minimum_height,
+        "minimum_distance_samples" => settings.minimum_distance_samples,
+        "threshold" => settings.threshold,
+    )
+end
+
+function signal_peaks_settings_fields_payload(
+    settings::SignalPeaksSettings,
+)::Vector{Dict{String,Any}}
+    Dict{String,Any}[
+        Dict{String,Any}(
+            "id" => "number_of_peaks",
+            "label" => "Количество пиков",
+            "type" => "integer",
+            "value" => settings.number_of_peaks,
+            "default_value" => 99,
+            "required" => true,
+            "nullable" => false,
+            "minimum" => 1,
+            "maximum" => SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS,
+            "step" => 1,
+            "units" => nothing,
+        ),
+        Dict{String,Any}(
+            "id" => "minimum_height",
+            "label" => "Минимальная высота",
+            "type" => "number",
+            "value" => settings.minimum_height,
+            "default_value" => nothing,
+            "required" => true,
+            "nullable" => true,
+            "minimum" => nothing,
+            "maximum" => nothing,
+            "step" => nothing,
+            "units" => nothing,
+        ),
+        Dict{String,Any}(
+            "id" => "minimum_distance_samples",
+            "label" => "Минимальное расстояние, отсчёты",
+            "type" => "integer",
+            "value" => settings.minimum_distance_samples,
+            "default_value" => 1,
+            "required" => true,
+            "nullable" => false,
+            "minimum" => 1,
+            "maximum" => nothing,
+            "step" => 1,
+            "units" => "samples",
+        ),
+        Dict{String,Any}(
+            "id" => "threshold",
+            "label" => "Порог",
+            "type" => "number",
+            "value" => settings.threshold,
+            "default_value" => 0.0,
+            "required" => true,
+            "nullable" => false,
+            "minimum" => 0.0,
+            "maximum" => nothing,
+            "step" => nothing,
+            "units" => nothing,
+        ),
+    ]
+end
+
+struct SignalPeaksSettingsRequest
+    state_revision::Int
+    display_id::String
+    pane_id::String
+    settings::SignalPeaksSettings
+end
+
+const SIGNAL_PEAKS_SETTINGS_REQUEST_FIELDS = Set([
+    "state_revision",
+    "display_id",
+    "pane_id",
+    "settings",
+])
+const SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS = Set([
+    "number_of_peaks",
+    "minimum_height",
+    "minimum_distance_samples",
+    "threshold",
+])
+
+function validate_signal_peaks_settings_request(data)::SignalPeaksSettingsRequest
+    field_errors = Dict{String,String}()
+    if !(data isa AbstractDict)
+        throw(SignalAnalyserValidationError(
+            "Некорректные настройки Peaks",
+            Dict("request" => "Требуется JSON-объект"),
+        ))
+    end
+    request_keys = signal_analyser_payload_keys(data)
+    request_keys == SIGNAL_PEAKS_SETTINGS_REQUEST_FIELDS || begin
+        missing = sort!(collect(setdiff(SIGNAL_PEAKS_SETTINGS_REQUEST_FIELDS, request_keys)))
+        unknown = sort!(collect(setdiff(request_keys, SIGNAL_PEAKS_SETTINGS_REQUEST_FIELDS)))
+        isempty(missing) || (field_errors["request"] = "Отсутствуют поля: $(join(missing, ", "))")
+        isempty(unknown) || (field_errors["request"] = get(field_errors, "request", "") *
+            (haskey(field_errors, "request") ? "; " : "") * "Неизвестные поля: $(join(unknown, ", "))")
+    end
+
+    revision_value = signal_analyser_payload_value(data, "state_revision")
+    revision = if revision_value isa Integer && !(revision_value isa Bool)
+        try
+            Int(revision_value)
+        catch err
+            (err isa InexactError || err isa OverflowError) || rethrow()
+            field_errors["state_revision"] = "Целое число вне диапазона Int"
+            -1
+        end
+    else
+        field_errors["state_revision"] = "Требуется неотрицательное целое число"
+        -1
+    end
+    revision >= 0 || haskey(field_errors, "state_revision") ||
+        (field_errors["state_revision"] = "Требуется неотрицательное целое число")
+
+    display_value = signal_analyser_payload_value(data, "display_id")
+    display_id = display_value isa AbstractString && !isempty(String(display_value)) ?
+        String(display_value) : ""
+    isempty(display_id) && (field_errors["display_id"] = "Требуется непустой идентификатор Display")
+    pane_value = signal_analyser_payload_value(data, "pane_id")
+    pane_id = pane_value isa AbstractString && !isempty(String(pane_value)) ? String(pane_value) : ""
+    isempty(pane_id) && (field_errors["pane_id"] = "Требуется непустой идентификатор pane")
+
+    settings_value = signal_analyser_payload_value(data, "settings")
+    settings = SignalPeaksSettings()
+    if !(settings_value isa AbstractDict)
+        field_errors["settings"] = "Требуется JSON-объект"
+    else
+        settings_keys = signal_analyser_payload_keys(settings_value)
+        if settings_keys != SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS
+            missing = sort!(collect(setdiff(SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS, settings_keys)))
+            unknown = sort!(collect(setdiff(settings_keys, SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS)))
+            isempty(missing) || (field_errors["settings"] = "Отсутствуют поля: $(join(missing, ", "))")
+            isempty(unknown) || (field_errors["settings"] = get(field_errors, "settings", "") *
+                (haskey(field_errors, "settings") ? "; " : "") * "Неизвестные поля: $(join(unknown, ", "))")
+        end
+
+        number_value = signal_analyser_payload_value(settings_value, "number_of_peaks")
+        number_of_peaks = if number_value isa Integer && !(number_value isa Bool)
+            try
+                Int(number_value)
+            catch err
+                (err isa InexactError || err isa OverflowError) || rethrow()
+                0
+            end
+        else
+            0
+        end
+        1 <= number_of_peaks <= SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS ||
+            (field_errors["settings.number_of_peaks"] =
+                "Требуется целое число от 1 до $(SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS)")
+
+        height_value = signal_analyser_payload_value(settings_value, "minimum_height")
+        minimum_height = if height_value === nothing
+            nothing
+        elseif height_value isa Real && !(height_value isa Bool)
+            try
+                Float64(height_value)
+            catch err
+                (err isa InexactError || err isa OverflowError) || rethrow()
+                NaN
+            end
+        else
+            NaN
+        end
+        (minimum_height === nothing || isfinite(minimum_height)) ||
+            (field_errors["settings.minimum_height"] = "Требуется конечное число или null")
+
+        distance_value = signal_analyser_payload_value(settings_value, "minimum_distance_samples")
+        minimum_distance_samples = if distance_value isa Integer && !(distance_value isa Bool)
+            try
+                Int(distance_value)
+            catch err
+                (err isa InexactError || err isa OverflowError) || rethrow()
+                0
+            end
+        else
+            0
+        end
+        minimum_distance_samples >= 1 ||
+            (field_errors["settings.minimum_distance_samples"] =
+                "Требуется положительное целое число отсчётов")
+
+        threshold_value = signal_analyser_payload_value(settings_value, "threshold")
+        threshold = if threshold_value isa Real && !(threshold_value isa Bool)
+            try
+                Float64(threshold_value)
+            catch err
+                (err isa InexactError || err isa OverflowError) || rethrow()
+                NaN
+            end
+        else
+            NaN
+        end
+        isfinite(threshold) && threshold >= 0 ||
+            (field_errors["settings.threshold"] = "Требуется неотрицательное конечное число")
+
+        if !any(key -> startswith(key, "settings."), keys(field_errors)) &&
+            !haskey(field_errors, "settings")
+            settings = SignalPeaksSettings(
+                number_of_peaks,
+                minimum_height,
+                minimum_distance_samples,
+                threshold,
+            )
+        end
+    end
+
+    isempty(field_errors) || throw(SignalAnalyserValidationError(
+        "Некорректные настройки Peaks",
+        field_errors,
+    ))
+    SignalPeaksSettingsRequest(revision, display_id, pane_id, settings)
+end
+
+function apply_signal_peaks_settings!(
+    state::SignalAnalyserState,
+    data,
+)::Dict{String,Any}
+    lock(state.lock) do
+        requested = validate_signal_peaks_settings_request(data)
+        requested.state_revision == state.view.state_revision || throw(
+            SignalAnalyserStaleStateError(requested.state_revision, state.view.state_revision),
+        )
+        signal_analyser_peaks_context_unlocked(state, requested.display_id, requested.pane_id)
+        current_layout = signal_analyser_layout_by_display_id(state, requested.display_id)
+        current_pane = signal_display_active_pane(current_layout)
+        prospective_pane = signal_display_pane_with_peaks_settings(
+            current_pane,
+            requested.settings,
+        )
+        prospective_layout = signal_display_layout_replace_active_pane(
+            current_layout,
+            prospective_pane,
+        )
+        candidate = signal_analyser_clone_state_for_layout(state)
+        candidate.display_layouts[requested.display_id] = prospective_layout
+        candidate.view.state_revision += 1
+        signal_analyser_publish_layout_candidate!(state, candidate; preserve_output_runtime = true)
+        page_id = signal_analyser_output_page_id(requested.display_id, requested.pane_id)
+        signal_analyser_invalidate_peaks_pages_unlocked!(state, String[page_id])
+        settings_payload = signal_peaks_settings_payload(requested.settings)
+        Dict{String,Any}(
+            "ok" => true,
+            "state_revision" => state.view.state_revision,
+            "display_id" => requested.display_id,
+            "pane_id" => requested.pane_id,
+            "settings" => settings_payload,
+            "settings_fields" => signal_peaks_settings_fields_payload(requested.settings),
+            "state" => signal_analyser_state_lite_unlocked(state),
+        )
+    end
+end
+
+function signal_peaks_table_payload(
+    table::SignalPeaksTableSnapshot,
+)::Dict{String,Any}
+    Dict{String,Any}(
+        "enabled" => table.enabled,
+        "state_revision" => table.state_revision,
+        "display_id" => table.display_id,
+        "pane_id" => table.pane_id,
+        "settings" => signal_peaks_settings_payload(table.settings),
+        "settings_fields" => signal_peaks_settings_fields_payload(table.settings),
+        "signals" => Dict{String,Any}[
+            Dict{String,Any}(
+                "signal_name" => snapshot.signal_name,
+                "signal_color" => table.signal_colors[index],
+                "peak_count" => length(snapshot.items),
+                "ordinate" => signal_measurement_ordinate_name(snapshot.ordinate),
+                "units" => Dict{String,Any}(
+                    "value" => snapshot.units.value,
+                    "time" => snapshot.units.time,
+                    "width" => snapshot.units.width,
+                    "prominence" => snapshot.units.prominence,
+                ),
+            )
+            for (index, snapshot) in enumerate(table.signals)
+        ],
+        "rows" => Dict{String,Any}[
+            merge(
+                signal_peak_item_payload(row.peak),
+                Dict{String,Any}(
+                    "row_number" => row.row_number,
+                    "signal_name" => row.signal_name,
+                    "signal_color" => row.signal_color,
+                    "graph_number" => row.graph_number,
+                ),
+            )
+            for row in table.rows
+        ],
     )
 end
 
@@ -3295,6 +3702,17 @@ function signal_analyser_view_changes_affect_output(
         changes.spectrum_settings,
         changes.spectrogram_settings,
         changes.persistence_settings,
+    ))
+end
+
+function signal_analyser_view_changes_affect_peaks(
+    changes::SignalAnalyserViewChanges,
+)::Bool
+    any((
+        changes.active_plot,
+        changes.membership,
+        changes.analysis_source,
+        changes.time_limits,
         changes.peaks_enabled,
     ))
 end
@@ -4225,15 +4643,36 @@ function apply_signal_analyser_view!(
         active_pane = signal_display_active_pane(
             signal_analyser_layout_by_display_id(state, display.id),
         )
-        prospective_layout = signal_display_layout_replace_active_pane(
-            signal_analyser_layout_by_display_id(state, display.id),
-            signal_display_pane_from_display(active_pane.id, prospective_display),
-        )
         changes = SignalAnalyserViewChanges(
             state.row_selection,
             display,
             requested.row_selection,
             prospective_display,
+        )
+        prospective_pane = signal_display_pane_from_display(active_pane.id, prospective_display)
+        if !changes.membership || !changes.analysis_source
+            prospective_pane = SignalDisplayPaneState(
+                prospective_pane.id,
+                prospective_pane.plot_type,
+                changes.membership ? prospective_pane.membership : active_pane.membership,
+                changes.analysis_source ? prospective_pane.analysis_source : active_pane.analysis_source,
+                prospective_pane.time_limits,
+                prospective_pane.measurement_selection,
+                prospective_pane.spectrum_settings,
+                prospective_pane.spectrogram_settings,
+                prospective_pane.persistence_settings,
+                prospective_pane.stored_settings,
+                prospective_pane.peaks_enabled,
+                active_pane.peaks_settings,
+            )
+        end
+        prospective_pane = signal_display_pane_with_peaks_settings(
+            prospective_pane,
+            active_pane.peaks_settings,
+        )
+        prospective_layout = signal_display_layout_replace_active_pane(
+            signal_analyser_layout_by_display_id(state, display.id),
+            prospective_pane,
         )
         changed = signal_analyser_has_changes(changes)
         if !changed
@@ -4254,8 +4693,10 @@ function apply_signal_analyser_view!(
         signal_analyser_publish_row_selection!(candidate, requested.row_selection)
         signal_analyser_sync_active_display!(candidate, candidate_display)
         candidate.view.state_revision += 1
-        signal_analyser_view_changes_affect_output(changes) &&
-            signal_analyser_invalidate_active_output_unlocked!(candidate)
+        output_changed = signal_analyser_view_changes_affect_output(changes)
+        output_changed && signal_analyser_invalidate_active_output_unlocked!(candidate)
+        !output_changed && signal_analyser_view_changes_affect_peaks(changes) &&
+            signal_analyser_invalidate_active_peaks_unlocked!(candidate)
         snapshot = if lightweight
             signal_analyser_state_lite_unlocked(candidate)
         else

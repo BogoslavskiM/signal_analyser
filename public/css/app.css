@@ -1188,6 +1188,68 @@ button img {
   grid-template-rows: minmax(0, 1fr);
 }
 
+.peaks-split {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  gap: 0;
+  padding-top: 8px;
+  background: var(--app-bg);
+}
+
+.peaks-table-zone {
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  padding-left: 8px;
+}
+
+.peaks-settings-panel {
+  width: 300px;
+  min-width: 300px;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: 42px minmax(0, 1fr) 54px;
+  margin-left: 8px;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.peaks-settings-panel h3 {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.peaks-settings-fields {
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 8px 8px 0;
+  overflow: auto;
+}
+
+.peaks-settings-fields .settings-field-row { padding-left: 16px; }
+
+.peaks-settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.peaks-color-swatch {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  border-radius: 2px;
+  background: var(--swatch);
+  vertical-align: middle;
+}
+
 .inspector-search-row {
   min-width: 0;
   display: flex;

@@ -948,13 +948,25 @@ end
     task === nothing || wait(task)
     output = SA.signal_analyser_active_output(state, "display-1", pane_id)
     @test output["success"] === true && output["isready"] === true
-    @test length(fake.calls) == 1
-    @test length(fake.calls[1].values) == 1100
-    @test fake.calls[1].ordinate == SA.REAL_ORDINATE
+    @test isempty(fake.calls)
+    SA.signal_analyser_active_peaks(state, "display-1", pane_id)
+    peaks_task = state.output_manager.active_task
+    peaks_task === nothing || wait(peaks_task)
+    peaks = SA.signal_analyser_active_peaks(state, "display-1", pane_id)
+    @test peaks["success"] === true && peaks["isready"] === true
+    pane_bindings = SA.signal_display_pane_members(state.display_layouts["display-1"].panes[1])
+    @test [query.signal_name for query in fake.calls] == pane_bindings
+    @test length(fake.calls) == length(pane_bindings) == 2
+    for query in fake.calls
+        signal = only(filter(candidate -> candidate.name == query.signal_name, state.signals))
+        @test length(query.values) == length(signal.values) == 1100
+        @test query.ordinate == SA.signal_measurement_ordinate(signal)
+    end
     @test length(enabled["plots"]["time"]["y"]) <= 1024
     cached = SA.signal_analyser_snapshot(state)
     @test cached["peaks"]["enabled"] === true
-    @test cached["peaks"]["state_revision"] == cached["state_revision"] == 2
+    @test cached["peaks"]["state_revision"] == cached["state_revision"]
+    @test cached["peaks"]["signal_name"] == first(pane_bindings)
     @test cached["peaks"]["items"] == [
         Dict("id" => "peak-1", "value" => 7.0, "sample_index" => 1, "time_s" => 0.001, "width_samples" => 1.5, "prominence" => 4.0),
         Dict("id" => "peak-1050", "value" => 11.0, "sample_index" => 1050, "time_s" => 1.05, "width_samples" => 2.0, "prominence" => 6.0),
@@ -964,7 +976,7 @@ end
     disabled_again = SA.apply_signal_analyser_view!(state, Dict("state_revision" => cached["state_revision"], "active_plot" => "spectrum"))
     @test disabled_again["peaks"]["enabled"] === false
     @test disabled_again["displays"][1]["peaks_enabled"] === false
-    @test length(fake.calls) == 1
+    @test length(fake.calls) == length(pane_bindings)
 end
 
 @testset "Signal Analyser Display pages keep independent view state" begin
@@ -1388,12 +1400,12 @@ end
     fake = FakePeaksProvider(SA.SignalPeaksQuery[], result, nothing)
     base = p0_measurement_state()
     state = SA.SignalAnalyserState(base.signals, base.view, Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = fake)
-    active_output!(target) = begin
+    active_peaks!(target) = begin
         pane_id = target.display_layouts[target.active_display_id].active_pane_id
-        SA.signal_analyser_active_output(target, target.active_display_id, pane_id)
+        SA.signal_analyser_active_peaks(target, target.active_display_id, pane_id)
         task = target.output_manager.active_task
         task === nothing || wait(task)
-        SA.signal_analyser_active_output(target, target.active_display_id, pane_id)
+        SA.signal_analyser_active_peaks(target, target.active_display_id, pane_id)
     end
     before = SA.signal_analyser_snapshot(state)
     # Cache entries do not define structural equality, so compare their
@@ -1402,17 +1414,22 @@ end
         page_id => (entry.context, deepcopy(entry.plots))
         for (page_id, entry) in cache
     )
-    last_good_cache = cache_signature(state.output_manager.plot_cache)
     fake.failure = ArgumentError("provider failure")
     enabled = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "peaks_enabled" => true))
     @test enabled["state_revision"] == 1
     @test enabled["peaks"]["enabled"] === true
     @test isempty(fake.calls)
-    failed = active_output!(state)
+    graph = SA.signal_analyser_active_output(state, "display-1", "pane-1")
+    graph_task = state.output_manager.active_task
+    graph_task === nothing || wait(graph_task)
+    graph = SA.signal_analyser_active_output(state, "display-1", "pane-1")
+    @test isempty(fake.calls) && graph["isready"] === true && graph["success"] === true
+    graph_cache_baseline = cache_signature(state.output_manager.plot_cache)
+    failed = active_peaks!(state)
     @test failed["isready"] === true && failed["success"] === false
     @test occursin("provider failure", failed["error"])
-    @test isempty(fake.calls) || length(fake.calls) == 1
-    @test cache_signature(state.output_manager.plot_cache) == last_good_cache
+    @test length(fake.calls) == 1
+    @test cache_signature(state.output_manager.plot_cache) == graph_cache_baseline
     @test state.displays[1].peaks_enabled === true
     @test state.view.state_revision >= enabled["state_revision"]
 
@@ -1422,11 +1439,13 @@ end
         "selected_signal" => "raw-complex",
     ))
     @test isempty(fake.calls) || length(fake.calls) == 1
-    complex_output = active_output!(state)
+    complex_output = active_peaks!(state)
     @test complex_output["isready"] === true && complex_output["success"] === true
     @test fake.calls[end].ordinate == SA.MAGNITUDE_ORDINATE
     @test collect(fake.calls[end].values) == Float64.(abs.(state.signals[2].values))
     @test complex_enabled["peaks"]["signal_name"] == "raw-complex"
+    @test complex_output["peaks"]["signal_name"] == "raw-real"
+    @test [row["signal_name"] for row in complex_output["data"]["rows"]] == ["raw-real", "raw-complex"]
     complex_snapshot = SA.signal_analyser_snapshot(state)
     @test complex_snapshot["peaks"]["items"][1]["sample_index"] == 1
 
@@ -1436,7 +1455,7 @@ end
     ))
     @test selected_change["selected_signal"] == "raw-real"
     calls_before_failure = length(fake.calls)
-    selected_failure = active_output!(state)
+    selected_failure = active_peaks!(state)
     @test selected_failure["isready"] === true && selected_failure["success"] === false
     @test occursin("selected signal", selected_failure["error"])
     @test length(fake.calls) == calls_before_failure + 1
@@ -1459,9 +1478,9 @@ end
     empty = SA.apply_signal_analyser_view!(empty_state, Dict("state_revision" => 0, "peaks_enabled" => true))
     @test empty["peaks"]["enabled"] === true
     @test isempty(empty_fake.calls)
-    empty_output = active_output!(empty_state)
+    empty_output = active_peaks!(empty_state)
     @test empty_output["isready"] === true && empty_output["success"] === true
-    @test length(empty_fake.calls) == 1
+    @test length(empty_fake.calls) == 2
     @test SA.signal_analyser_snapshot(empty_state)["peaks"]["items"] == Any[]
 end
 
@@ -1534,25 +1553,32 @@ end
     active_task === nothing || wait(active_task)
     active_output = SA.signal_analyser_active_output(state, "display-1", pane_id)
     @test active_output["isready"] === true && active_output["success"] === true
-    @test length(provider.calls) == 1
+    @test isempty(provider.calls)
+    SA.signal_analyser_active_peaks(state, "display-1", pane_id)
+    peaks_task = state.output_manager.active_task
+    peaks_task === nothing || wait(peaks_task)
+    active_peaks = SA.signal_analyser_active_peaks(state, "display-1", pane_id)
+    @test active_peaks["isready"] === true && active_peaks["success"] === true
+    @test [query.signal_name for query in provider.calls] == names
+    @test length(provider.calls) == 2
 
     clear = SA.apply_signal_analyser_view!(state, Dict("state_revision" => state.view.state_revision, "visible_signals" => String[]))
     @test clear["state_revision"] == state.view.state_revision
     @test clear["row_selected_signal"] == names[2]
     @test clear["displays"][1]["peaks_enabled"] === false
-    @test length(provider.calls) == 1
+    @test length(provider.calls) == 2
     assert_empty_display_snapshot(clear)
 
     no_op_clear = SA.apply_signal_analyser_view!(state, Dict("state_revision" => state.view.state_revision, "visible_signals" => String[], "analysis_signal" => nothing, "selected_signal" => nothing))
     @test no_op_clear["state_revision"] == state.view.state_revision
-    @test length(provider.calls) == 1
+    @test length(provider.calls) == 2
 
     recovered = SA.apply_signal_analyser_view!(state, Dict("state_revision" => state.view.state_revision, "visible_signals" => [names[2]]))
     @test recovered["state_revision"] == state.view.state_revision
     @test recovered["row_selected_signal"] == names[2]
     assert_visibility(recovered, [names[2]], names[2])
     @test recovered["displays"][1]["peaks_enabled"] === false
-    @test length(provider.calls) == 1
+    @test length(provider.calls) == 2
 
     before_conflict = SA.signal_analyser_snapshot(state)
     conflict = try
@@ -1652,16 +1678,15 @@ end
     @test isempty(provider.calls)
     @test state.output_manager.need_update_pages[state.output_manager.active_page_id]
 
-    # Peaks are intent only.  Neither changing it nor an accepted Apply may
-    # invoke its provider; normal active-output materialization owns that work.
+    # Peaks are intent only. Neither changing it nor graph-output
+    # materialization may invoke its provider; the pane-scoped Peaks endpoint
+    # owns that work.
     enabled = SA.apply_signal_analyser_view!(state, Dict(
         "state_revision" => four_apply["state_revision"], "peaks_enabled" => true,
     ))
     @test enabled["state_revision"] == four_apply["state_revision"] + 1
     @test isempty(provider.calls)
 
-    pending_or_last_good = SA.signal_analyser_active_output(state, "display-1", active_pane_id())
-    @test pending_or_last_good["isready"] === false || only(pending_or_last_good["data"])["data"][1]["x"] == collect(0.0:0.1:1.9)
     output = materialize()
     # A last-good response can be returned while the current context is being
     # scheduled; poll the normal active endpoint until its awaited task has
@@ -1672,11 +1697,18 @@ end
         output = materialize()
     end
     @test output["isready"] === true && output["success"] === true
+    @test isempty(provider.calls)
+    peaks_pending = SA.signal_analyser_active_peaks(state, "display-1", active_pane_id())
+    @test peaks_pending["isready"] === false && peaks_pending["success"] === false
+    task = state.output_manager.active_task
+    task === nothing || wait(task)
+    peaks_ready = SA.signal_analyser_active_peaks(state, "display-1", active_pane_id())
+    @test peaks_ready["isready"] === true && peaks_ready["success"] === true
     @test length(provider.calls) == 1
     query = only(provider.calls)
     @test query.sample_offset == 7
     @test collect(query.values) == [7.0, 8.0, 9.0, 10.0]
-    @test query.state_revision == output["state_revision"]
+    @test query.state_revision <= peaks_ready["state_revision"]
     time_plot = only(output["data"])
     @test time_plot["data"][1]["x"] == collect(0.0:0.1:1.9)
     @test time_plot["data"][1]["y"] == collect(0.0:19.0)
@@ -1691,6 +1723,7 @@ end
         "id" => "peak-8", "value" => 8.0, "time_s" => 0.8,
         "sample_index" => 8, "width_samples" => 1.5, "prominence" => 3.0,
     )]
+    @test peaks_ready["peaks"]["items"] == ready["peaks"]["items"]
 
     @test_throws SA.SignalSettingApiTypeError SA.apply_signal_setting!(settings_service, state, Dict(
         "state_revision" => state.view.state_revision, "display_id" => "display-1",
@@ -1701,8 +1734,6 @@ end
     @test occursin("time.x_limits", invalid["error"])
     @test only(filter(field -> field["id"] == "time.x_limits", SA.signal_settings_document(settings_service, state, "display-1")["fields"]))["value"] == Dict("min" => 1.1, "max" => 1.0)
 
-    last_good_page_id = state.output_manager.active_page_id
-    last_good_entry = state.output_manager.plot_cache[last_good_page_id]
     provider.failure = ArgumentError("ROI provider failure")
     failure_draft = SA.apply_signal_setting!(settings_service, state, Dict(
         "state_revision" => state.view.state_revision, "display_id" => "display-1",
@@ -1712,19 +1743,25 @@ end
         "state_revision" => failure_draft["state"]["state_revision"], "display_id" => "display-1",
     ))
     @test failure_apply["success"] === true
-    # Provider failure belongs to lazy active-output materialization, not Apply
-    # rollback. The accepted settings/revision survive and the endpoint exposes
-    # a typed pane error without replacing the last-good cache.
+    # Graph materialization is Peaks-passive. Establish the new ROI graph cache
+    # baseline before exercising the independent active-Peaks failure channel.
     pane_id = state.display_layouts["display-1"].active_pane_id
     SA.signal_analyser_active_output(state, "display-1", pane_id)
     task = state.output_manager.active_task
     task === nothing || wait(task)
-    failed_output = SA.signal_analyser_active_output(state, "display-1", pane_id)
-    @test failed_output["isready"] === true && failed_output["success"] === false
-    @test occursin("ROI provider failure", failed_output["error"])
-    @test state.view.state_revision == failure_apply["state_revision"] + 1
+    graph_after_apply = SA.signal_analyser_active_output(state, "display-1", pane_id)
+    @test graph_after_apply["isready"] === true && graph_after_apply["success"] === true
+    graph_page_id = state.output_manager.active_page_id
+    graph_cache_baseline = state.output_manager.plot_cache[graph_page_id]
+    SA.signal_analyser_active_peaks(state, "display-1", pane_id)
+    peaks_task = state.output_manager.active_task
+    peaks_task === nothing || wait(peaks_task)
+    failed_peaks = SA.signal_analyser_active_peaks(state, "display-1", pane_id)
+    @test failed_peaks["isready"] === true && failed_peaks["success"] === false
+    @test occursin("ROI provider failure", failed_peaks["error"])
+    @test state.view.state_revision >= failure_apply["state_revision"]
     @test state.displays[1].time_limits == SA.SignalTimeLimits(0.8, 1.11)
-    @test state.output_manager.plot_cache[last_good_page_id] === last_good_entry
+    @test state.output_manager.plot_cache[graph_page_id] === graph_cache_baseline
     provider.failure = nothing
 
     # A carried range follows a source change only when it is valid for the

@@ -23,6 +23,12 @@ end
 signal_analyser_output_page_id(display_id::AbstractString, pane_id::AbstractString)::String =
     "$(String(display_id))::$(String(pane_id))"
 
+signal_analyser_peaks_cache_key(
+    display_id::AbstractString,
+    pane_id::AbstractString,
+    signal_name::AbstractString,
+)::String = "$(String(display_id))::$(String(pane_id))::$(String(signal_name))"
+
 function signal_analyser_output_context_id(context::SignalAnalyserOutputContextKey)::String
     string(
         context.display_id,
@@ -31,6 +37,16 @@ function signal_analyser_output_context_id(context::SignalAnalyserOutputContextK
         "::",
         signal_analyser_plot_name(context.plot_type),
         "::r",
+        context.calculation_revision,
+    )
+end
+
+function signal_analyser_peaks_context_id(context::SignalAnalyserPeaksContextKey)::String
+    string(
+        context.display_id,
+        "::",
+        context.pane_id,
+        "::peaks::r",
         context.calculation_revision,
     )
 end
@@ -71,24 +87,60 @@ function signal_analyser_output_context_is_current_unlocked(
         context.calculation_revision && pane.plot_type == context.plot_type
 end
 
+function signal_analyser_peaks_context_is_current_unlocked(
+    state::SignalAnalyserState,
+    context::SignalAnalyserPeaksContextKey,
+)::Bool
+    context.display_id == state.active_display_id || return false
+    layout = signal_analyser_layout_by_display_id(state, context.display_id)
+    layout.active_pane_id == context.pane_id || return false
+    pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
+    pane.plot_type == TIME_PLOT || return false
+    page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+    get(state.output_manager.peaks_page_calculation_revisions, page_id, -1) ==
+        context.calculation_revision || return false
+    Tuple(signal_display_pane_members(pane)) == context.signal_names || return false
+    isequal(pane.time_limits, context.time_limits) && pane.peaks_settings == context.settings
+end
+
 function signal_analyser_sync_output_pages_unlocked!(state::SignalAnalyserState)::Nothing
     manager = state.output_manager
     page_ids = signal_analyser_output_page_ids(state)
     known = Set(page_ids)
     for page_id in page_ids
         get!(manager.page_calculation_revisions, page_id, manager.calculation_revision)
+        get!(
+            manager.peaks_page_calculation_revisions,
+            page_id,
+            manager.peaks_calculation_revision,
+        )
         get!(manager.need_update_pages, page_id, true)
+        get!(manager.peaks_need_update_pages, page_id, true)
     end
     filter!(pair -> first(pair) in known, manager.page_calculation_revisions)
+    filter!(pair -> first(pair) in known, manager.peaks_page_calculation_revisions)
     filter!(pair -> first(pair) in known, manager.need_update_pages)
+    filter!(pair -> first(pair) in known, manager.peaks_need_update_pages)
     filter!(pair -> first(pair) in known, manager.plot_cache)
-    filter!(pair -> first(pair) in known, manager.peaks_cache)
+    filter!(
+        pair -> signal_analyser_output_page_id(
+            last(pair).context.display_id,
+            last(pair).context.pane_id,
+        ) in known,
+        manager.peaks_cache,
+    )
     filter!(pair -> first(pair) in known, manager.output_statuses)
+    filter!(pair -> first(pair) in known, manager.peaks_statuses)
     filter!(pair -> first(pair) in known, manager.output_poll_counts)
+    filter!(pair -> first(pair) in known, manager.peaks_poll_counts)
     manager.active_page_id = signal_analyser_active_output_page_id(state)
     filter!(
         context -> signal_analyser_output_context_is_current_unlocked(state, context),
         manager.queued_contexts,
+    )
+    filter!(
+        context -> signal_analyser_peaks_context_is_current_unlocked(state, context),
+        manager.queued_peaks_contexts,
     )
     if manager.active_context !== nothing
         running_context = manager.active_context::SignalAnalyserOutputContextKey
@@ -96,6 +148,16 @@ function signal_analyser_sync_output_pages_unlocked!(state::SignalAnalyserState)
             token = manager.cancellation_token
             token === nothing || (token.cancelled[] = true)
             manager.active_context = nothing
+            manager.active_poll_count = 0
+            manager.cancellation_token = nothing
+        end
+    end
+    if manager.active_peaks_context !== nothing
+        running_context = manager.active_peaks_context::SignalAnalyserPeaksContextKey
+        if !signal_analyser_peaks_context_is_current_unlocked(state, running_context)
+            token = manager.cancellation_token
+            token === nothing || (token.cancelled[] = true)
+            manager.active_peaks_context = nothing
             manager.active_poll_count = 0
             manager.cancellation_token = nothing
         end
@@ -108,13 +170,65 @@ function signal_analyser_cancel_active_output_unlocked!(state::SignalAnalyserSta
     token = manager.cancellation_token
     token === nothing || (token.cancelled[] = true)
     manager.active_context = nothing
+    manager.active_peaks_context = nothing
     manager.active_poll_count = 0
     manager.cancellation_token = nothing
     if !manager.active_task_is_worker
         manager.active_task = nothing
     end
     empty!(manager.queued_contexts)
+    empty!(manager.queued_peaks_contexts)
     empty!(manager.output_poll_counts)
+    empty!(manager.peaks_poll_counts)
+    nothing
+end
+
+function signal_analyser_cancel_peaks_pages_unlocked!(
+    state::SignalAnalyserState,
+    page_ids::AbstractVector{<:AbstractString},
+)::Nothing
+    manager = state.output_manager
+    requested = Set(String.(page_ids))
+    filter!(context -> !(
+        signal_analyser_output_page_id(context.display_id, context.pane_id) in requested
+    ), manager.queued_peaks_contexts)
+    for page_id in requested
+        delete!(manager.peaks_poll_counts, page_id)
+    end
+    if manager.active_peaks_context !== nothing
+        context = manager.active_peaks_context::SignalAnalyserPeaksContextKey
+        page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+        if page_id in requested
+            token = manager.cancellation_token
+            token === nothing || (token.cancelled[] = true)
+            manager.active_peaks_context = nothing
+            manager.active_poll_count = 0
+            manager.cancellation_token = nothing
+        end
+    end
+    nothing
+end
+
+function signal_analyser_invalidate_peaks_pages_unlocked!(
+    state::SignalAnalyserState,
+    page_ids::AbstractVector{<:AbstractString},
+)::Nothing
+    signal_analyser_sync_output_pages_unlocked!(state)
+    manager = state.output_manager
+    requested = Set(String.(page_ids))
+    affected = String[
+        page_id for page_id in keys(manager.peaks_need_update_pages)
+        if page_id in requested
+    ]
+    isempty(affected) && return nothing
+    manager.peaks_calculation_revision += 1
+    revision = manager.peaks_calculation_revision
+    for page_id in affected
+        manager.peaks_page_calculation_revisions[page_id] = revision
+        manager.peaks_need_update_pages[page_id] = true
+        delete!(manager.peaks_statuses, page_id)
+    end
+    signal_analyser_cancel_peaks_pages_unlocked!(state, affected)
     nothing
 end
 
@@ -163,6 +277,7 @@ function signal_analyser_invalidate_output_pages_unlocked!(
         delete!(manager.output_statuses, page_id)
     end
     signal_analyser_cancel_output_pages_unlocked!(state, affected)
+    signal_analyser_invalidate_peaks_pages_unlocked!(state, affected)
     nothing
 end
 
@@ -195,6 +310,13 @@ function signal_analyser_invalidate_active_output_unlocked!(state::SignalAnalyse
     )
 end
 
+function signal_analyser_invalidate_active_peaks_unlocked!(state::SignalAnalyserState)::Nothing
+    signal_analyser_invalidate_peaks_pages_unlocked!(
+        state,
+        String[signal_analyser_active_output_page_id(state)],
+    )
+end
+
 function signal_analyser_output_context_unlocked(
     state::SignalAnalyserState,
     display_id::AbstractString,
@@ -216,6 +338,39 @@ function signal_analyser_output_context_unlocked(
     page_id = signal_analyser_output_page_id(state.active_display_id, pane.id)
     revision = state.output_manager.page_calculation_revisions[page_id]
     SignalAnalyserOutputContextKey(state.active_display_id, pane.id, pane.plot_type, revision)
+end
+
+function signal_analyser_peaks_context_unlocked(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString,
+)::SignalAnalyserPeaksContextKey
+    signal_analyser_sync_output_pages_unlocked!(state)
+    active_layout = signal_analyser_layout_by_display_id(state, state.active_display_id)
+    if display_id != state.active_display_id || pane_id != active_layout.active_pane_id
+        active_pane = signal_display_active_pane(active_layout)
+        throw(SignalAnalyserInactiveOutputError(
+            String(display_id),
+            String(pane_id),
+            state.active_display_id,
+            active_pane.id,
+        ))
+    end
+    pane = signal_display_active_pane(active_layout)
+    pane.plot_type == TIME_PLOT || throw(SignalAnalyserValidationError(
+        "Некорректный запрос Peaks",
+        Dict("pane_id" => "Peaks доступны только для активной TIME pane"),
+    ))
+    page_id = signal_analyser_output_page_id(state.active_display_id, pane.id)
+    revision = state.output_manager.peaks_page_calculation_revisions[page_id]
+    SignalAnalyserPeaksContextKey(
+        state.active_display_id,
+        pane.id,
+        signal_display_pane_members(pane),
+        pane.time_limits,
+        pane.peaks_settings,
+        revision,
+    )
 end
 
 function signal_analyser_output_status_payload_unlocked(
@@ -983,6 +1138,453 @@ function signal_analyser_active_output(
             state,
             context,
             Dict{String,Any}[],
+            false,
+            false,
+            "",
+        ), true
+    end
+    yield_scheduler && yield()
+    response
+end
+
+const SIGNAL_ANALYSER_ACTIVE_PEAKS_MAX_PENDING_POLLS::Int = 64
+const SIGNAL_ANALYSER_ACTIVE_PEAKS_POLL_LIMIT_ERROR::String =
+    "Расчёт Peaks активной области не завершился за допустимое число опросов"
+
+function signal_analyser_peaks_signal_context(
+    context::SignalAnalyserPeaksContextKey,
+    signal_name::AbstractString,
+)::SignalAnalyserPeaksSignalContextKey
+    SignalAnalyserPeaksSignalContextKey(context, signal_name)
+end
+
+function signal_analyser_passive_peaks_snapshot_unlocked(
+    state::SignalAnalyserState,
+    context::SignalAnalyserPeaksContextKey,
+)::SignalPeaksSnapshot
+    display = signal_analyser_display_by_id(state, context.display_id)
+    layout = signal_analyser_layout_by_display_id(state, context.display_id)
+    pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
+    pane_display = signal_analyser_display_for_pane(display, pane)
+    analysis_name = signal_display_pane_analysis_name(pane)
+    analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+    signal_peaks_snapshot(
+        state.peaks_service,
+        state.view.state_revision,
+        pane_display,
+        analysis_signal,
+        settings = pane.peaks_settings,
+    )
+end
+
+function signal_analyser_empty_peaks_table_unlocked(
+    state::SignalAnalyserState,
+    context::SignalAnalyserPeaksContextKey,
+    enabled::Bool,
+)::SignalPeaksTableSnapshot
+    snapshots = if enabled
+        display = signal_analyser_display_by_id(state, context.display_id)
+        layout = signal_analyser_layout_by_display_id(state, context.display_id)
+        pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
+        pane_display = signal_analyser_display_for_pane(display, pane)
+        SignalPeaksSnapshot[
+            signal_peaks_snapshot(
+                state.peaks_service,
+                state.view.state_revision,
+                pane_display,
+                signal_by_name(state, signal_name),
+                settings = context.settings,
+            )
+            for signal_name in context.signal_names
+        ]
+    else
+        SignalPeaksSnapshot[]
+    end
+    colors = enabled ? String[
+        signal_by_name(state, signal_name).color for signal_name in context.signal_names
+    ] : String[]
+    SignalPeaksTableSnapshot(
+        enabled,
+        state.view.state_revision,
+        context.display_id,
+        context.pane_id,
+        context.settings,
+        colors,
+        snapshots,
+        SignalPeaksTableRow[],
+    )
+end
+
+function signal_analyser_cached_peaks_table_unlocked(
+    state::SignalAnalyserState,
+    context::SignalAnalyserPeaksContextKey,
+)::Union{Nothing,SignalPeaksTableSnapshot}
+    display = signal_analyser_display_by_id(state, context.display_id)
+    layout = signal_analyser_layout_by_display_id(state, context.display_id)
+    pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
+    snapshots = SignalPeaksSnapshot[]
+    for signal_name in context.signal_names
+        cache_key = signal_analyser_peaks_cache_key(
+            context.display_id,
+            context.pane_id,
+            signal_name,
+        )
+        entry = get(state.output_manager.peaks_cache, cache_key, nothing)
+        signal_context = signal_analyser_peaks_signal_context(context, signal_name)
+        entry !== nothing &&
+            (entry::SignalAnalyserPeaksCacheEntry).context == signal_context || return nothing
+        cached = entry.peaks
+        push!(
+            snapshots,
+            SignalPeaksSnapshot(
+                true,
+                state.view.state_revision,
+                context.display_id,
+                signal_name,
+                cached.ordinate,
+                cached.units,
+                SignalPeakItem[cached.items...],
+            ),
+        )
+    end
+    signal_colors = String[signal_by_name(state, name).color for name in context.signal_names]
+    signal_peaks_table_snapshot(
+        state.view.state_revision,
+        display,
+        pane,
+        snapshots,
+        signal_colors,
+    )
+end
+
+function signal_analyser_active_peaks_response_unlocked(
+    state::SignalAnalyserState,
+    context::SignalAnalyserPeaksContextKey,
+    table::SignalPeaksTableSnapshot,
+    legacy::SignalPeaksSnapshot,
+    isready::Bool,
+    success::Bool,
+    error::AbstractString,
+)::Dict{String,Any}
+    table_payload = signal_peaks_table_payload(table)
+    settings_payload = signal_peaks_settings_payload(context.settings)
+    Dict{String,Any}(
+        "display_id" => context.display_id,
+        "pane_id" => context.pane_id,
+        "calculation_revision" => context.calculation_revision,
+        "context_key" => signal_analyser_peaks_context_id(context),
+        "data" => table_payload,
+        "peaks_table" => table_payload,
+        "settings" => settings_payload,
+        "settings_fields" => signal_peaks_settings_fields_payload(context.settings),
+        "peaks" => signal_peaks_payload(legacy),
+        "isready" => isready,
+        "success" => success,
+        "error" => String(error),
+        "state_revision" => state.view.state_revision,
+    )
+end
+
+function signal_analyser_publish_peaks_task!(
+    state::SignalAnalyserState,
+    context::SignalAnalyserPeaksContextKey,
+    token::SignalAnalyserCancellationToken,
+    snapshots::Vector{SignalPeaksSnapshot},
+)::Nothing
+    token.cancelled[] && return nothing
+    lock(state.lock) do
+        manager = state.output_manager
+        page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+        token.cancelled[] && return nothing
+        manager.active_peaks_context == context || return nothing
+        signal_analyser_peaks_context_is_current_unlocked(state, context) || return nothing
+        get(manager.peaks_need_update_pages, page_id, true) || return nothing
+        String[snapshot.signal_name::String for snapshot in snapshots] ==
+            collect(context.signal_names) || return nothing
+
+        for snapshot in snapshots
+            signal_name = snapshot.signal_name::String
+            cache_key = signal_analyser_peaks_cache_key(
+                context.display_id,
+                context.pane_id,
+                signal_name,
+            )
+            manager.peaks_cache[cache_key] = SignalAnalyserPeaksCacheEntry(
+                signal_analyser_peaks_signal_context(context, signal_name),
+                snapshot,
+            )
+        end
+        manager.peaks_statuses[page_id] = SignalAnalyserPeaksStatus(
+            context,
+            true,
+            true,
+            "",
+        )
+        manager.peaks_need_update_pages[page_id] = false
+        manager.active_peaks_context = nothing
+        manager.active_poll_count = 0
+        manager.cancellation_token = nothing
+        delete!(manager.peaks_poll_counts, page_id)
+        state.view.state_revision += 1
+    end
+    nothing
+end
+
+function signal_analyser_terminalize_peaks_error_unlocked!(
+    state::SignalAnalyserState,
+    context::SignalAnalyserPeaksContextKey,
+    error::AbstractString,
+)::Bool
+    manager = state.output_manager
+    manager.active_peaks_context == context || return false
+    page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+    signal_analyser_peaks_context_is_current_unlocked(state, context) || return false
+    get(manager.peaks_need_update_pages, page_id, true) || return false
+
+    token = manager.cancellation_token
+    token === nothing || (token.cancelled[] = true)
+    manager.peaks_statuses[page_id] = SignalAnalyserPeaksStatus(
+        context,
+        true,
+        false,
+        String(error),
+    )
+    manager.peaks_need_update_pages[page_id] = false
+    manager.active_peaks_context = nothing
+    manager.active_poll_count = 0
+    manager.cancellation_token = nothing
+    delete!(manager.peaks_poll_counts, page_id)
+    state.view.state_revision += 1
+    true
+end
+
+function signal_analyser_publish_peaks_task_error!(
+    state::SignalAnalyserState,
+    context::SignalAnalyserPeaksContextKey,
+    error::AbstractString,
+)::Nothing
+    lock(state.lock) do
+        signal_analyser_terminalize_peaks_error_unlocked!(state, context, error)
+    end
+    nothing
+end
+
+function signal_analyser_run_peaks_task!(
+    state::SignalAnalyserState,
+    snapshot::SignalAnalyserState,
+    context::SignalAnalyserPeaksContextKey,
+    token::SignalAnalyserCancellationToken,
+)::Nothing
+    try
+        display = signal_analyser_display_by_id(snapshot, context.display_id)
+        layout = signal_analyser_layout_by_display_id(snapshot, context.display_id)
+        pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
+        pane_display = signal_analyser_display_for_pane(display, pane)
+        pane.plot_type == TIME_PLOT && pane.peaks_enabled || throw(ArgumentError(
+            "Snapshot Peaks context не соответствует enabled TIME pane",
+        ))
+        snapshots = SignalPeaksSnapshot[]
+        for signal_name in context.signal_names
+            token.cancelled[] && return nothing
+            signal = signal_by_name(snapshot, signal_name)
+            push!(
+                snapshots,
+                signal_peaks_snapshot(
+                    snapshot.peaks_service,
+                    snapshot.view.state_revision,
+                    pane_display,
+                    signal,
+                    materialize = true,
+                    settings = context.settings,
+                ),
+            )
+        end
+        token.cancelled[] && return nothing
+        signal_analyser_publish_peaks_task!(state, context, token, snapshots)
+    catch err
+        signal_analyser_publish_peaks_task_error!(
+            state,
+            context,
+            signal_analyser_pane_output_error(err),
+        )
+    end
+    nothing
+end
+
+function signal_analyser_run_peaks_worker!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+    context::SignalAnalyserPeaksContextKey,
+    token::SignalAnalyserCancellationToken,
+    snapshot::SignalAnalyserState,
+)::Nothing
+    try
+        signal_analyser_run_peaks_task!(state, snapshot, context, token)
+    finally
+        lock(state.lock) do
+            if state.output_manager === manager && manager.active_task === current_task()
+                token.cancelled[] = true
+                manager.active_peaks_context = nothing
+                manager.active_task = nothing
+                manager.active_task_is_worker = false
+                manager.active_poll_count = 0
+                manager.cancellation_token = nothing
+                signal_analyser_start_output_worker_unlocked!(state, manager)
+            end
+        end
+    end
+    nothing
+end
+
+function signal_analyser_start_peaks_worker_unlocked!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+)::Bool
+    manager.active_task === nothing || return false
+    isempty(manager.queued_contexts) || begin
+        signal_analyser_start_output_worker_unlocked!(state, manager)
+        return false
+    end
+    while !isempty(manager.queued_peaks_contexts)
+        context = popfirst!(manager.queued_peaks_contexts)
+        page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+        signal_analyser_peaks_context_is_current_unlocked(state, context) || continue
+        get(manager.peaks_need_update_pages, page_id, true) || continue
+        token = SignalAnalyserCancellationToken()
+        manager.active_peaks_context = context
+        manager.active_poll_count = get(manager.peaks_poll_counts, page_id, 1)
+        manager.cancellation_token = token
+        snapshot = signal_analyser_clone_state_for_layout(state)
+        manager.active_task = Threads.@spawn signal_analyser_run_peaks_worker!(
+            state,
+            manager,
+            context,
+            token,
+            snapshot,
+        )
+        manager.active_task_is_worker = true
+        return true
+    end
+    false
+end
+
+function signal_analyser_active_peaks(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString,
+)::Dict{String,Any}
+    response, yield_scheduler = lock(state.lock) do
+        context = signal_analyser_peaks_context_unlocked(state, display_id, pane_id)
+        manager = state.output_manager
+        page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+        passive = signal_analyser_passive_peaks_snapshot_unlocked(state, context)
+        if !passive.enabled
+            table = signal_analyser_empty_peaks_table_unlocked(state, context, false)
+            return signal_analyser_active_peaks_response_unlocked(
+                state,
+                context,
+                table,
+                passive,
+                true,
+                true,
+                "",
+            ), false
+        end
+
+        current_task = manager.active_task
+        if current_task !== nothing && istaskdone(current_task::Task)
+            if manager.active_context !== nothing
+                signal_analyser_terminalize_output_error_unlocked!(
+                    state,
+                    manager.active_context::SignalAnalyserOutputContextKey,
+                    "Фоновый расчёт активного графика завершился без публикации результата",
+                )
+            elseif manager.active_peaks_context !== nothing
+                signal_analyser_terminalize_peaks_error_unlocked!(
+                    state,
+                    manager.active_peaks_context::SignalAnalyserPeaksContextKey,
+                    "Фоновый расчёт Peaks завершился без публикации результата",
+                )
+            end
+            manager.active_task = nothing
+            manager.active_task_is_worker = false
+        end
+
+        dirty = manager.peaks_need_update_pages[page_id]
+        status = get(manager.peaks_statuses, page_id, nothing)
+        cached = signal_analyser_cached_peaks_table_unlocked(state, context)
+        if !dirty && status !== nothing &&
+            (status::SignalAnalyserPeaksStatus).context == context && status.isready
+            table = status.success && cached !== nothing ?
+                cached::SignalPeaksTableSnapshot :
+                signal_analyser_empty_peaks_table_unlocked(state, context, true)
+            legacy = if status.success && cached !== nothing
+                isempty(table.signals) ? passive : first(table.signals)
+            else
+                passive
+            end
+            return signal_analyser_active_peaks_response_unlocked(
+                state,
+                context,
+                table,
+                legacy,
+                true,
+                status.success,
+                status.error,
+            ), false
+        end
+
+        is_running = manager.active_peaks_context == context
+        is_queued = any(queued -> queued == context, manager.queued_peaks_contexts)
+        if is_running || is_queued
+            is_queued && signal_analyser_start_peaks_worker_unlocked!(state, manager)
+            poll_count = get(manager.peaks_poll_counts, page_id, 1) + 1
+            manager.peaks_poll_counts[page_id] = poll_count
+            is_running && (manager.active_poll_count = poll_count)
+            if is_running && poll_count >= SIGNAL_ANALYSER_ACTIVE_PEAKS_MAX_PENDING_POLLS
+                signal_analyser_terminalize_peaks_error_unlocked!(
+                    state,
+                    context,
+                    SIGNAL_ANALYSER_ACTIVE_PEAKS_POLL_LIMIT_ERROR,
+                )
+                table = signal_analyser_empty_peaks_table_unlocked(state, context, true)
+                return signal_analyser_active_peaks_response_unlocked(
+                    state,
+                    context,
+                    table,
+                    passive,
+                    true,
+                    false,
+                    SIGNAL_ANALYSER_ACTIVE_PEAKS_POLL_LIMIT_ERROR,
+                ), false
+            end
+            table = signal_analyser_empty_peaks_table_unlocked(state, context, true)
+            return signal_analyser_active_peaks_response_unlocked(
+                state,
+                context,
+                table,
+                passive,
+                false,
+                false,
+                "",
+            ), true
+        end
+
+        push!(manager.queued_peaks_contexts, context)
+        manager.peaks_poll_counts[page_id] = 1
+        manager.peaks_statuses[page_id] = SignalAnalyserPeaksStatus(
+            context,
+            false,
+            false,
+            "",
+        )
+        signal_analyser_start_peaks_worker_unlocked!(state, manager)
+        table = signal_analyser_empty_peaks_table_unlocked(state, context, true)
+        signal_analyser_active_peaks_response_unlocked(
+            state,
+            context,
+            table,
+            passive,
             false,
             false,
             "",

@@ -15,7 +15,7 @@
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
-    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0,
+    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksDraft: null,
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false
   };
 
@@ -36,6 +36,9 @@
       }
     });
     Object.keys(model.plotQueue).forEach(function (key) { if (key.indexOf(String(activeDisplayId) + "::") !== 0) delete model.plotQueue[key]; });
+    Object.keys(model.peaksPollByPane).forEach(function (key) {
+      if (key.indexOf(String(activeDisplayId) + "::") !== 0) { window.clearTimeout(model.peaksPollByPane[key]); delete model.peaksPollByPane[key]; }
+    });
   }
 
   function accept(snapshot) {
@@ -46,7 +49,11 @@
     settings.setRevision(r);
     updateLayout(snapshot);
     var display = activeDisplay();
-    if (display) { cancelInactiveDisplayWork(display.id); settings.setContext(display.id, r); }
+    if (display) {
+      cancelInactiveDisplayWork(display.id);
+      stopPeaksPolling(model.inspectorPage === "peaks" && model.activePane ? paneRuntimeKey(display.id, model.activePane) : "");
+      settings.setContext(display.id, r);
+    }
     return true;
   }
 
@@ -230,7 +237,7 @@
         if (!host || !queued || !hasPlotData(queued.output.data)) return;
         var payload = plotEnvelope(queued.output.data);
         var traces = Array.isArray(payload) ? payload : (Array.isArray(payload.data) ? payload.data : [{ type: "heatmap", x: payload.x, y: payload.y, z: payload.z, colorscale: payload.colorscale }]);
-        return Plotly.react(host, traces, Object.assign({ paper_bgcolor: "#ffffff", plot_bgcolor: "#ffffff", showlegend: true, margin: { l: 44, r: 12, t: 12, b: 34 } }, payload.layout || {}), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; });
+        return Plotly.react(host, traces, Object.assign({ paper_bgcolor: "#ffffff", plot_bgcolor: "#ffffff", showlegend: true, margin: { l: 44, r: 12, t: 12, b: 34 } }, payload.layout || {}), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
         model.plotInFlight[runtimeKey] = false;
         if (model.plotQueue[runtimeKey]) enqueuePlot(displayId, pane, model.plotQueue[runtimeKey]);
@@ -316,7 +323,7 @@
     body.innerHTML = "<div class='inspector-search-row'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='measurement-search-input' aria-label='Поиск измерений' placeholder='Введите название' value='" + esc(model.measurementSearch) + "'></div><div class='inspector-actions' aria-label='Действия с измерениями'><button class='inspector-action' type='button' data-testid='measurement-columns-menu-trigger' data-tooltip='Выбрать измерения' aria-label='Выбрать отображаемые измерения' aria-haspopup='menu' aria-expanded='" + String(menuOpen) + "'><img src='./icons/more-vertical.svg' alt=''></button></div></div><div class='signal-table-scroll measurement-table-scroll' data-testid='measurement-table-scroll'></div>";
     var host = q("[data-testid='measurement-table-scroll']");
     if (!current) { host.innerHTML = "<div class='inspector-empty' role='status'>Загрузка измерений…</div>"; return; }
-    if (record.error) { host.innerHTML = "<div class='inspector-empty' role='alert'>" + esc(record.error) + "</div>"; return; }
+    if (record.error) { host.innerHTML = "<div class='inspector-empty' data-testid='peaks-error' role='alert'>" + esc(record.error) + "</div>"; return; }
     var query = model.measurementSearch.trim().toLowerCase();
     var measurementRows = Array.isArray(record.measurementRows) ? record.measurementRows : (record.measurements ? [record.measurements] : []);
     var visibleRows = measurementRows.filter(function (measurements) {
@@ -383,40 +390,147 @@
   }
 
   function renderPeaksInspector(body) {
-    var display = activeDisplay(), pane = paneById(model.activePane), record = model.peaksRecord;
+    var display = activeDisplay(), pane = paneById(model.activePane), record = display && pane && model.peaksRecords[paneRuntimeKey(display.id, pane.id)];
     var current = record && display && pane && record.displayId === display.id && record.paneId === pane.id;
-    body.innerHTML = "<div class='signal-table-scroll peaks-table-scroll' data-testid='peaks-table-scroll'></div>";
+    body.innerHTML = "<div class='peaks-split' data-testid='peaks-split'><section class='peaks-table-zone'><div class='signal-table-scroll peaks-table-scroll' data-testid='peaks-table-scroll'></div></section><aside class='peaks-settings-panel' aria-labelledby='peaks-settings-title'><h3 id='peaks-settings-title'>Настройки расчёта пиков</h3><div class='peaks-settings-fields' data-testid='peaks-settings-fields'></div><footer class='peaks-settings-footer'><button class='button button-primary' type='button' data-testid='peaks-settings-apply' disabled>Применить</button></footer></aside></div>";
     var host = q("[data-testid='peaks-table-scroll']");
+    renderPeaksSettings(display, pane, record);
     if (!pane || pane.plot_type !== "time") { host.innerHTML = "<div class='inspector-empty' role='status'>Пики доступны для временной области</div>"; return; }
-    if (!current) { host.innerHTML = "<div class='inspector-empty' role='status'>Расчёт пиков…</div>"; return; }
-    if (record.error) { host.innerHTML = "<div class='inspector-empty' role='alert'>" + esc(record.error) + "</div>"; return; }
-    var peaks = record.peaks || {}, signalName = peaks.signal_name || "";
-    var rows = (peaks.items || []).map(function (peak, index) {
-      return "<tr><td>" + (index + 1) + "</td><td>" + esc(signalName) + "</td><td>" + esc(measurementValue(peak, "value")) + "</td><td>" + esc(measurementValue(peak, "time_s")) + "</td><td>" + esc(measurementValue(peak, "width_samples")) + "</td><td>" + esc(measurementValue(peak, "prominence")) + "</td></tr>";
-    }).join("");
-    host.innerHTML = "<table class='signal-table peaks-table' data-testid='peaks-table'><thead><tr><th>№</th><th>Сигнал</th><th>Значение</th><th>Время, с</th><th>Ширина, отсчёты</th><th>Выраженность</th></tr></thead><tbody>" + rows + "</tbody></table><div class='table-empty' role='status'" + (rows ? " hidden" : "") + ">Пики не найдены</div>";
+    if (!current || record.pending) { host.innerHTML = "<div class='inspector-empty' data-testid='peaks-loader' role='status'>Расчёт пиков…</div>"; return; }
+    if (record.error) { host.innerHTML = "<div class='inspector-empty' data-testid='peaks-error' role='alert'>" + esc(record.error) + "</div>"; return; }
+    var data = record.data || {}, rows = Array.isArray(data.rows) ? data.rows : [];
+    if (!data.signals || !data.signals.length) { host.innerHTML = "<div class='inspector-empty' data-testid='peaks-no-signals' role='status'>В активной области нет сигналов</div>"; return; }
+    if (!rows.length) { host.innerHTML = "<div class='inspector-empty' data-testid='peaks-empty' role='status'>Пики не найдены</div>"; return; }
+    host.innerHTML = "<table class='signal-table peaks-table' data-testid='peaks-table'><thead><tr><th>№</th><th>Сигнал</th><th>Цвет</th><th>Значение</th><th>Время, с</th><th>Метка на графике</th></tr></thead><tbody>" + rows.map(function (row, index) {
+      return "<tr><td>" + esc(row.row_number == null ? index + 1 : row.row_number) + "</td><td>" + esc(row.signal_name || "") + "</td><td class='color-cell'><span class='peaks-color-swatch' style='--swatch:" + esc(row.signal_color || "#1686c3") + "' aria-label='Цвет " + esc(row.signal_name || "") + "'></span></td><td>" + esc(measurementValue(row, "value")) + "</td><td>" + esc(measurementValue(row, "time_s")) + "</td><td>" + esc(row.graph_number == null ? "" : row.graph_number) + "</td></tr>";
+    }).join("") + "</tbody></table>";
+  }
+
+  function peaksSettingsKey(display, pane) { return display && pane ? paneRuntimeKey(display.id, pane.id) : ""; }
+  function defaultPeaksSettings(settings) { return Object.assign({ number_of_peaks:99, minimum_height:null, minimum_distance_samples:1, threshold:0 }, settings || {}); }
+  function createPeaksDraft(display, pane, settings) {
+    var source = defaultPeaksSettings(settings);
+    return { key:peaksSettingsKey(display, pane), source:source, values:{ number_of_peaks:String(source.number_of_peaks), minimum_height:source.minimum_height == null ? "−∞" : String(source.minimum_height), minimum_distance_samples:String(source.minimum_distance_samples), threshold:String(source.threshold) }, invalid:{} };
+  }
+  function parsePeaksSettings(draft) {
+    var raw = draft.values, settings = {}, invalid = {};
+    var count = Number(raw.number_of_peaks), distance = Number(raw.minimum_distance_samples), threshold = Number(raw.threshold), height = raw.minimum_height.trim();
+    if (!isFinite(count) || Math.floor(count) !== count || count < 1 || count > 1000) invalid.number_of_peaks = "Введите целое число от 1 до 1000."; else settings.number_of_peaks = count;
+    if (height === "" || height === "−∞" || height === "-∞") settings.minimum_height = null;
+    else if (!isFinite(Number(height))) invalid.minimum_height = "Введите число или −∞."; else settings.minimum_height = Number(height);
+    if (!isFinite(distance) || Math.floor(distance) !== distance || distance < 1) invalid.minimum_distance_samples = "Введите целое число не меньше 1."; else settings.minimum_distance_samples = distance;
+    if (!isFinite(threshold)) invalid.threshold = "Введите число.";
+    else if (threshold < 0) invalid.threshold = "Введите число не меньше 0.";
+    else settings.threshold = threshold;
+    draft.invalid = invalid;
+    return Object.keys(invalid).length ? null : settings;
+  }
+  function peaksSettingsDirty(draft, settings) { return !!draft && JSON.stringify(settings) !== JSON.stringify(draft.source); }
+  function renderPeaksSettings(display, pane, record) {
+    var host = q("[data-testid='peaks-settings-fields']"), button = q("[data-testid='peaks-settings-apply']");
+    if (!host || !button) return;
+    var settings = record && record.data && record.data.settings;
+    if (!display || !pane || pane.plot_type !== "time" || !settings) { host.innerHTML = "<div class='inspector-empty' role='status'>Настройки доступны для временной области</div>"; button.disabled = true; return; }
+    var key = peaksSettingsKey(display, pane);
+    if (!model.peaksDraft || model.peaksDraft.key !== key) model.peaksDraft = createPeaksDraft(display, pane, settings);
+    var draft = model.peaksDraft, parsed = parsePeaksSettings(draft), labels = [
+      ["number_of_peaks", "Количество пиков"], ["minimum_height", "Минимальная высота"], ["minimum_distance_samples", "Минимальное расстояние, отсчёты"], ["threshold", "Порог"]
+    ];
+    host.innerHTML = labels.map(function (field) { var id=field[0], error=draft.invalid[id]; return "<label class='settings-field-row" + (error ? " has-error" : "") + "'><span class='settings-label'><span>" + field[1] + "</span></span><span class='settings-control-wrap'><input class='control' type='text' inputmode='decimal' data-peaks-setting='" + id + "' value='" + esc(draft.values[id]) + "' aria-label='" + field[1] + "'></span>" + (error ? "<small class='field-message is-error' role='alert'>" + esc(error) + "</small>" : "") + "</label>"; }).join("");
+    button.disabled = !parsed || !peaksSettingsDirty(draft, parsed) || button.dataset.pending === "true";
+  }
+
+  function applyPeaksSettings() {
+    var display = activeDisplay(), pane = paneById(model.activePane), draft = model.peaksDraft, button = q("[data-testid='peaks-settings-apply']");
+    if (!display || !pane || !draft || draft.key !== peaksSettingsKey(display, pane) || !button) return;
+    var settingsPayload = parsePeaksSettings(draft);
+    if (!settingsPayload || !peaksSettingsDirty(draft, settingsPayload) || button.dataset.pending === "true") return;
+    var displayId = display.id, paneId = pane.id;
+    clearPeaksMarkers();
+    button.dataset.pending = "true";
+    renderPeaksSettings(display, pane, model.peaksRecords[paneRuntimeKey(displayId, paneId)]);
+    mutate(function () {
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return Promise.reject(new Error("Контекст области изменился; повторите действие."));
+      return api.updatePeaksSettings({ state_revision:model.revision, display_id:displayId, pane_id:paneId, settings:settingsPayload });
+    }, { preservePlots:true, skipOutput:true }).then(function () {
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
+      model.peaksDraft = null;
+      return fetchActivePeaks(displayId, paneId, true);
+    }).catch(function (error) {
+      button.dataset.pending = "false";
+      showToast(safeErrorText(error, "Не удалось применить настройки пиков."), true);
+      renderPeaksSettings(display, pane, model.peaksRecords[paneRuntimeKey(displayId, paneId)]);
+    });
+  }
+
+  function ownedPeakTraceIndexes(host) {
+    return host && host.data ? host.data.reduce(function (indexes, trace, index) { if (trace && trace.meta && trace.meta.signal_analyser_peaks_overlay) indexes.push(index); return indexes; }, []) : [];
+  }
+  function clearPeaksMarkers() {
+    if (!window.Plotly) return;
+    qa(".plot-chart.js-plotly-plot").forEach(function (host) {
+      var indexes = ownedPeakTraceIndexes(host);
+      if (indexes.length) window.Plotly.deleteTraces(host, indexes);
+    });
+  }
+  function updatePeaksMarkers(displayId, paneId, record) {
+    var pane = paneById(paneId), display = activeDisplay();
+    if (!window.Plotly || !display || display.id !== displayId || !pane || pane.plot_type !== "time" || !record || !record.data || !Array.isArray(record.data.rows)) return;
+    var host = q("[data-pane-host='" + CSS.escape(paneRuntimeKey(displayId, paneId)) + "']");
+    if (!host || !host.data) return;
+    var grouped = {};
+    record.data.rows.forEach(function (row) { var key=row.signal_name || ""; if (!key) return; (grouped[key] || (grouped[key]=[])).push(row); });
+    var traces = Object.keys(grouped).map(function (name) { var rows=grouped[name], color=rows[0].signal_color || "#1686c3"; return { type:"scatter", mode:"markers+text", x:rows.map(function(row){return row.time_s;}), y:rows.map(function(row){return row.value;}), text:rows.map(function(row){return row.graph_number == null ? "" : String(row.graph_number);}), textposition:"top center", marker:{color:color,size:8}, hoverinfo:"skip", showlegend:false, meta:{signal_analyser_peaks_overlay:true} }; });
+    var existing = ownedPeakTraceIndexes(host), remove = existing.length ? window.Plotly.deleteTraces(host, existing) : Promise.resolve();
+    Promise.resolve(remove).then(function () { if (traces.length && activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId) return window.Plotly.addTraces(host, traces); }).catch(function () {});
+  }
+
+  function stopPeaksPolling(exceptKey) {
+    Object.keys(model.peaksPollByPane).forEach(function (key) {
+      if (key !== exceptKey) { window.clearTimeout(model.peaksPollByPane[key]); delete model.peaksPollByPane[key]; }
+    });
+  }
+
+  function fetchActivePeaks(displayId, paneId, poll) {
+    var runtimeKey = paneRuntimeKey(displayId, paneId);
+    var token = (model.peaksTokens[runtimeKey] || 0) + 1;
+    model.peaksTokens[runtimeKey] = token;
+    window.clearTimeout(model.peaksPollByPane[runtimeKey]);
+    return api.activePeaks(displayId, paneId).then(function (response) {
+      var prior = model.peaksRecords[runtimeKey];
+      if (token !== model.peaksTokens[runtimeKey] || model.inspectorPage !== "peaks" || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId || (stateRevision(response) !== null && stateRevision(response) < model.revision) || response.display_id !== displayId || response.pane_id !== paneId || (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision <= prior.calculation_revision) || (prior && typeof prior.calculation_revision === "number" && typeof response.calculation_revision === "number" && response.calculation_revision < prior.calculation_revision)) return null;
+      model.revision = Math.max(model.revision, stateRevision(response) || model.revision);
+      var record = { displayId:displayId, paneId:paneId, context_key:response.context_key, calculation_revision:response.calculation_revision, revision:stateRevision(response), pending:!response.isready, error:response.success === false ? response.error || "Не удалось рассчитать пики." : null, data:response.data || null, peaks:response.peaks || null };
+      model.peaksRecords[runtimeKey] = record;
+      model.peaksRecord = record;
+      renderInspector();
+      if (response.isready && response.success !== false) updatePeaksMarkers(displayId, paneId, record);
+      if (!response.isready && poll) model.peaksPollByPane[runtimeKey] = window.setTimeout(function () { fetchActivePeaks(displayId, paneId, true); }, 350);
+      return record;
+    }).catch(function (error) {
+      if (token !== model.peaksTokens[runtimeKey] || model.inspectorPage !== "peaks" || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return null;
+      var record = { displayId:displayId, paneId:paneId, error:safeErrorText(error, "Не удалось загрузить пики."), pending:false };
+      model.peaksRecords[runtimeKey] = record;
+      model.peaksRecord = record;
+      renderInspector();
+      return record;
+    });
   }
 
   function loadPeaks() {
     if (model.inspectorPage !== "peaks") return Promise.resolve();
     var display = activeDisplay(), pane = paneById(model.activePane);
-    if (!display || !pane || pane.plot_type !== "time") { model.peaksRecord = null; renderInspector(); return Promise.resolve(); }
-    var displayId = display.id, paneId = pane.id, token = ++model.peaksToken;
-    model.peaksRecord = null;
+    if (!display || !pane || pane.plot_type !== "time") { stopPeaksPolling(""); model.peaksRecord = null; renderInspector(); return Promise.resolve(); }
+    var displayId = display.id, paneId = pane.id, runtimeKey = paneRuntimeKey(displayId, paneId);
+    stopPeaksPolling(runtimeKey);
+    clearPeaksMarkers();
+    model.peaksRecord = { displayId:displayId, paneId:paneId, pending:true };
     renderInspector();
-    var request = display.peaks_enabled ? api.getFullState() : mutate(function () {
+    var request = display.peaks_enabled ? Promise.resolve() : mutate(function () {
       if (!activeDisplay() || activeDisplay().id !== displayId) return Promise.reject(new Error("Контекст экрана изменился; повторите действие."));
       return api.view({ state_revision:model.revision, peaks_enabled:true });
     }, { preservePlots:true, skipOutput:true });
-    return request.then(function (snapshot) {
-      if (token !== model.peaksToken || model.inspectorPage !== "peaks" || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
-      model.peaksRecord = { displayId:displayId, paneId:paneId, revision:stateRevision(snapshot), peaks:snapshot.peaks || null, error:null };
-      renderInspector();
-    }).catch(function (error) {
-      if (token !== model.peaksToken || model.inspectorPage !== "peaks") return;
-      model.peaksRecord = { displayId:displayId, paneId:paneId, error:safeErrorText(error, "Не удалось рассчитать пики.") };
-      renderInspector();
-    });
+    return request.then(function () { return fetchActivePeaks(displayId, paneId, true); });
   }
 
   function signalAddLayer() { return q("[data-testid='signal-add-layer']"); }
@@ -804,7 +918,8 @@
         if (restored) restored.focus();
       }).catch(function (error) { measurementMenu.classList.remove("is-stale"); showToast(safeErrorText(error, "Не удалось изменить измерения."), true); });
     }
-    if (button.dataset.bottomTab) { closeColumnMenu(false); closeMeasurementMenu(false); model.inspectorPage = button.dataset.bottomTab; renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); if (model.inspectorPage === "peaks") loadPeaks(); return; }
+    if (button.dataset.bottomTab) { closeColumnMenu(false); closeMeasurementMenu(false); if (button.dataset.bottomTab !== "peaks") { stopPeaksPolling(""); clearPeaksMarkers(); } model.inspectorPage = button.dataset.bottomTab; renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); if (model.inspectorPage === "peaks") loadPeaks(); return; }
+    if (button.dataset.testid === "peaks-settings-apply") return void applyPeaksSettings();
     if (button.dataset.toastClose !== undefined) q("[data-testid='layout-toast']").hidden = true;
   });
   document.addEventListener("click", function (event) {
@@ -826,7 +941,7 @@
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }
   });
   document.addEventListener("click", function (event) { var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }, { preservePlots:true, skipOutput:true }); });
-  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } });
+  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.peaksSetting && model.peaksDraft) { model.peaksDraft.values[event.target.dataset.peaksSetting]=event.target.value; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))]); } });
   document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) updateSignalAddControls(); });
   document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); });
   window.addEventListener("signal-apply-state", renderApply);

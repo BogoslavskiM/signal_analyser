@@ -30,7 +30,8 @@ module.exports = async function testMeasurementAndPeaksMinimalViewContracts(asse
   assert(/model\.inspectorPage === "measurements"\) loadMeasurements\(\)/.test(mutate), "measurement eye update must reload the authoritative measurement table after its minimal view response");
 
   assertMinimalView(assert, peaks, "state_revision:model.revision,peaks_enabled:true", "Peaks tab open");
-  assert(/model\.peaksRecord\s*=\s*\{[\s\S]*?peaks:snapshot\.peaks[\s\S]*?renderInspector\(\)/.test(peaks), "Peaks tab open must render the returned authoritative peaks table");
+  assert(/api\.activePeaks\(/.test(app) && /fetchActivePeaks\(displayId, paneId, true\)/.test(peaks), "Peaks tab open must use the pane-scoped active Peaks endpoint after minimal enabling");
+  assert(/peaksRecords\[runtimeKey\][\s\S]*?data:response\.data/.test(app), "the pane-scoped Peaks response must retain the authoritative split table data");
 
   const tabClick = (app.match(/if \(button\.dataset\.bottomTab\) \{[\s\S]*?return; \}/) || [""])[0];
   assert(/model\.inspectorPage\s*=\s*button\.dataset\.bottomTab[\s\S]*?renderInspector\(\)[\s\S]*?loadMeasurements\(\)[\s\S]*?loadPeaks\(\)/.test(tabClick), "bottom tab open must refresh the selected table through the dedicated minimal request path");

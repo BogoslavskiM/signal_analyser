@@ -49,6 +49,18 @@ const SIGNAL_ANALYSER_SESSION_PANE_FIELDS = Set([
     "id",
     "plot_type",
     "signal_bindings",
+    "peaks_settings",
+])
+const SIGNAL_ANALYSER_SESSION_LEGACY_PANE_FIELDS = Set([
+    "id",
+    "plot_type",
+    "signal_bindings",
+])
+const SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS = Set([
+    "number_of_peaks",
+    "minimum_height",
+    "minimum_distance_samples",
+    "threshold",
 ])
 const SIGNAL_ANALYSER_SESSION_REQUEST_FIELDS = Set(["state_revision", "document"])
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
@@ -495,11 +507,10 @@ function signal_analyser_session_parse_layout_pane(
     pane_index::Int,
 )::SignalDisplayPaneState
     path = "document.state.displays[$display_index].layout.panes[$pane_index]"
-    data = signal_analyser_session_exact_object(
-        value,
-        SIGNAL_ANALYSER_SESSION_PANE_FIELDS,
-        path,
-    )
+    value isa AbstractDict || throw(signal_analyser_session_error(path, "Требуется JSON-объект"))
+    pane_fields = signal_analyser_payload_keys(value)
+    data = pane_fields == SIGNAL_ANALYSER_SESSION_LEGACY_PANE_FIELDS ? value :
+        signal_analyser_session_exact_object(value, SIGNAL_ANALYSER_SESSION_PANE_FIELDS, path)
     pane_id = signal_analyser_session_string(
         signal_analyser_payload_value(data, "id"),
         "$path.id",
@@ -530,6 +541,50 @@ function signal_analyser_session_parse_layout_pane(
         "Имена сигналов не должны повторяться",
     ))
     plot_type = SIGNAL_ANALYSER_PLOTS_BY_NAME[String(plot_value)]
+    peaks_settings = if pane_fields == SIGNAL_ANALYSER_SESSION_LEGACY_PANE_FIELDS
+        SignalPeaksSettings()
+    else
+        peaks_settings_data = signal_analyser_session_exact_object(
+            signal_analyser_payload_value(data, "peaks_settings"),
+            SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS,
+            "$path.peaks_settings",
+        )
+        number_of_peaks = signal_analyser_session_integer(
+            signal_analyser_payload_value(peaks_settings_data, "number_of_peaks"),
+            "$path.peaks_settings.number_of_peaks",
+            minimum = 1,
+        )
+        number_of_peaks <= SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS || throw(
+            signal_analyser_session_error(
+                "$path.peaks_settings.number_of_peaks",
+                "Максимальное значение: $(SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS)",
+            ),
+        )
+        minimum_height_value = signal_analyser_payload_value(peaks_settings_data, "minimum_height")
+        minimum_height = minimum_height_value === nothing ? nothing : signal_analyser_session_float(
+            minimum_height_value,
+            "$path.peaks_settings.minimum_height",
+        )
+        minimum_distance_samples = signal_analyser_session_integer(
+            signal_analyser_payload_value(peaks_settings_data, "minimum_distance_samples"),
+            "$path.peaks_settings.minimum_distance_samples",
+            minimum = 1,
+        )
+        threshold = signal_analyser_session_float(
+            signal_analyser_payload_value(peaks_settings_data, "threshold"),
+            "$path.peaks_settings.threshold",
+        )
+        threshold >= 0 || throw(signal_analyser_session_error(
+            "$path.peaks_settings.threshold",
+            "Требуется неотрицательное число",
+        ))
+        SignalPeaksSettings(
+            number_of_peaks,
+            minimum_height,
+            minimum_distance_samples,
+            threshold,
+        )
+    end
     display_members = signal_analyser_display_members(display)
     if pane_id == active_pane_id && plot_type == display.active_plot &&
         Set(bindings) == Set(display_members)
@@ -546,6 +601,7 @@ function signal_analyser_session_parse_layout_pane(
                 display.persistence_settings,
                 display.stored_settings,
                 display.peaks_enabled,
+                peaks_settings,
             )
         catch err
             err isa ArgumentError || rethrow()
@@ -577,6 +633,7 @@ function signal_analyser_session_parse_layout_pane(
             SignalPersistenceSettings(),
             SignalDisplayStoredSettings(),
             false,
+            peaks_settings,
         )
     catch err
         err isa ArgumentError || rethrow()

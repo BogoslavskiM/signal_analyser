@@ -1277,6 +1277,46 @@ end
 
 Base.showerror(io::IO, err::SignalPeaksCapabilityError) = print(io, err.message)
 
+const SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS::Int = 1_000
+
+"""Provider-affecting Peaks settings owned by one Display pane."""
+struct SignalPeaksSettings
+    number_of_peaks::Int
+    minimum_height::Union{Nothing,Float64}
+    minimum_distance_samples::Int
+    threshold::Float64
+
+    function SignalPeaksSettings(
+        number_of_peaks::Int,
+        minimum_height::Union{Nothing,Real},
+        minimum_distance_samples::Int,
+        threshold::Real,
+    )
+        1 <= number_of_peaks <= SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS || throw(ArgumentError(
+            "Количество пиков должно быть целым числом от 1 до $(SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS)",
+        ))
+        height = minimum_height === nothing ? nothing : Float64(minimum_height)
+        height === nothing || isfinite(height) || throw(ArgumentError(
+            "Минимальная высота должна быть конечным числом или null",
+        ))
+        minimum_distance_samples >= 1 || throw(ArgumentError(
+            "Минимальное расстояние должно быть положительным целым числом отсчётов",
+        ))
+        threshold_value = Float64(threshold)
+        isfinite(threshold_value) && threshold_value >= 0 || throw(ArgumentError(
+            "Порог должен быть неотрицательным конечным числом",
+        ))
+        new(
+            number_of_peaks,
+            height,
+            minimum_distance_samples,
+            threshold_value == 0.0 ? 0.0 : threshold_value,
+        )
+    end
+end
+
+SignalPeaksSettings() = SignalPeaksSettings(99, nothing, 1, 0.0)
+
 struct SignalPeaksQuery
     state_revision::Int
     display_id::String
@@ -1285,6 +1325,7 @@ struct SignalPeaksQuery
     values::Tuple{Vararg{Float64}}
     sample_rate_hz::Float64
     sample_offset::Int
+    settings::SignalPeaksSettings
 
     function SignalPeaksQuery(
         state_revision::Int,
@@ -1294,6 +1335,7 @@ struct SignalPeaksQuery
         values::AbstractVector{<:Real},
         sample_rate_hz::Real,
         sample_offset::Int,
+        settings::SignalPeaksSettings,
     )
         state_revision >= 0 || throw(ArgumentError("Ревизия peaks query не может быть отрицательной"))
         isempty(display_id) && throw(ArgumentError("Идентификатор Display peaks query не может быть пустым"))
@@ -1315,9 +1357,29 @@ struct SignalPeaksQuery
             Tuple(peak_values),
             Float64(sample_rate_hz),
             sample_offset,
+            settings,
         )
     end
 end
+
+SignalPeaksQuery(
+    state_revision::Int,
+    display_id::AbstractString,
+    signal_name::AbstractString,
+    ordinate::SignalMeasurementOrdinate,
+    values::AbstractVector{<:Real},
+    sample_rate_hz::Real,
+    sample_offset::Int,
+) = SignalPeaksQuery(
+    state_revision,
+    display_id,
+    signal_name,
+    ordinate,
+    values,
+    sample_rate_hz,
+    sample_offset,
+    SignalPeaksSettings(),
+)
 
 SignalPeaksQuery(
     state_revision::Int,
@@ -1334,6 +1396,7 @@ SignalPeaksQuery(
     values,
     sample_rate_hz,
     0,
+    SignalPeaksSettings(),
 )
 
 struct SignalPeaksProviderResult
@@ -1471,6 +1534,114 @@ struct SignalPeaksSnapshot
     end
 end
 
+"""One flattened Peaks table row for one signal bound to the active TIME pane."""
+struct SignalPeaksTableRow
+    row_number::Int
+    signal_name::String
+    signal_color::String
+    graph_number::Int
+    peak::SignalPeakItem
+
+    function SignalPeaksTableRow(
+        row_number::Int,
+        signal_name::AbstractString,
+        signal_color::AbstractString,
+        graph_number::Int,
+        peak::SignalPeakItem,
+    )
+        row_number >= 1 || throw(ArgumentError("Номер строки Peaks должен быть положительным"))
+        isempty(signal_name) && throw(ArgumentError("Имя сигнала Peaks row не может быть пустым"))
+        isempty(signal_color) && throw(ArgumentError("Цвет сигнала Peaks row не может быть пустым"))
+        graph_number >= 1 || throw(ArgumentError("Номер метки Peaks должен быть положительным"))
+        new(row_number, String(signal_name), String(signal_color), graph_number, peak)
+    end
+end
+
+"""Backend-authored flattened Peaks table for one authoritative TIME pane."""
+struct SignalPeaksTableSnapshot
+    enabled::Bool
+    state_revision::Int
+    display_id::String
+    pane_id::String
+    settings::SignalPeaksSettings
+    signal_colors::Tuple{Vararg{String}}
+    signals::Tuple{Vararg{SignalPeaksSnapshot}}
+    rows::Tuple{Vararg{SignalPeaksTableRow}}
+
+    function SignalPeaksTableSnapshot(
+        enabled::Bool,
+        state_revision::Int,
+        display_id::AbstractString,
+        pane_id::AbstractString,
+        settings::SignalPeaksSettings,
+        signal_colors::AbstractVector{<:AbstractString},
+        signals::AbstractVector{SignalPeaksSnapshot},
+        rows::AbstractVector{SignalPeaksTableRow},
+    )
+        state_revision >= 0 || throw(ArgumentError(
+            "Ревизия Peaks table snapshot не может быть отрицательной",
+        ))
+        isempty(display_id) && throw(ArgumentError(
+            "Идентификатор Display Peaks table не может быть пустым",
+        ))
+        isempty(pane_id) && throw(ArgumentError(
+            "Идентификатор pane Peaks table не может быть пустым",
+        ))
+        signal_snapshots = collect(signals)
+        signal_names = String[
+            snapshot.signal_name::String for snapshot in signal_snapshots
+        ]
+        allunique(signal_names) || throw(ArgumentError(
+            "Сигналы Peaks table не должны повторяться",
+        ))
+        all(snapshot -> snapshot.display_id == display_id, signal_snapshots) || throw(
+            ArgumentError("Display сигналов Peaks table не совпадает со snapshot"),
+        )
+        all(snapshot -> snapshot.enabled == enabled, signal_snapshots) || throw(
+            ArgumentError("Статус сигналов Peaks table не совпадает со snapshot"),
+        )
+        colors = String.(signal_colors)
+        length(colors) == length(signal_snapshots) || throw(DimensionMismatch(
+            "Число цветов Peaks table должно совпадать с числом сигналов",
+        ))
+        all(color -> !isempty(color), colors) || throw(ArgumentError(
+            "Цвета сигналов Peaks table не могут быть пустыми",
+        ))
+        !enabled && (!isempty(signal_snapshots) || !isempty(rows)) && throw(ArgumentError(
+            "Выключенный Peaks table snapshot должен быть пустым",
+        ))
+        table_rows = collect(rows)
+        Int[row.row_number for row in table_rows] == collect(eachindex(table_rows)) || throw(
+            ArgumentError("Номера строк Peaks table должны быть последовательными"),
+        )
+        all(row -> row.signal_name in signal_names, table_rows) || throw(ArgumentError(
+            "Строка Peaks table ссылается на сигнал вне pane bindings",
+        ))
+        color_by_name = Dict(signal_names[index] => colors[index] for index in eachindex(signal_names))
+        all(row -> row.signal_color == color_by_name[row.signal_name], table_rows) || throw(
+            ArgumentError("Цвет строки Peaks table не совпадает с сигналом"),
+        )
+        binding_order = Dict(name => index for (index, name) in enumerate(signal_names))
+        issorted(table_rows; by = row -> (
+            row.peak.time_s,
+            binding_order[row.signal_name],
+            row.peak.sample_index,
+        )) || throw(ArgumentError(
+            "Строки Peaks table должны быть отсортированы по времени, binding и sample index",
+        ))
+        new(
+            enabled,
+            state_revision,
+            String(display_id),
+            String(pane_id),
+            settings,
+            Tuple(colors),
+            Tuple(signal_snapshots),
+            Tuple(table_rows),
+        )
+    end
+end
+
 struct SignalPeaksService{P<:AbstractPeaksProvider}
     provider::P
     ordinate_service::SignalMeasurementsService
@@ -1555,6 +1726,7 @@ struct SignalDisplayPaneState
     persistence_settings::SignalPersistenceSettings
     stored_settings::SignalDisplayStoredSettings
     peaks_enabled::Bool
+    peaks_settings::SignalPeaksSettings
 
     function SignalDisplayPaneState(
         id::AbstractString,
@@ -1568,6 +1740,7 @@ struct SignalDisplayPaneState
         persistence_settings::SignalPersistenceSettings,
         stored_settings::SignalDisplayStoredSettings,
         peaks_enabled::Bool,
+        peaks_settings::SignalPeaksSettings,
     )
         pane_id = String(id)
         occursin(SIGNAL_DISPLAY_PANE_ID_REGEX, pane_id) || throw(ArgumentError(
@@ -1601,6 +1774,7 @@ struct SignalDisplayPaneState
             persistence_settings,
             stored_settings,
             peaks_enabled,
+            peaks_settings,
         )
     end
 end
@@ -1616,7 +1790,8 @@ Base.:(==)(left::SignalDisplayPaneState, right::SignalDisplayPaneState) =
     left.spectrogram_settings == right.spectrogram_settings &&
     left.persistence_settings == right.persistence_settings &&
     left.stored_settings == right.stored_settings &&
-    left.peaks_enabled == right.peaks_enabled
+    left.peaks_enabled == right.peaks_enabled &&
+    left.peaks_settings == right.peaks_settings
 Base.isequal(left::SignalDisplayPaneState, right::SignalDisplayPaneState) = left == right
 Base.copy(pane::SignalDisplayPaneState) = SignalDisplayPaneState(
     pane.id,
@@ -1630,6 +1805,7 @@ Base.copy(pane::SignalDisplayPaneState) = SignalDisplayPaneState(
     pane.persistence_settings,
     pane.stored_settings,
     pane.peaks_enabled,
+    pane.peaks_settings,
 )
 
 function signal_display_pane_with_id(
@@ -1648,6 +1824,7 @@ function signal_display_pane_with_id(
         pane.persistence_settings,
         pane.stored_settings,
         pane.peaks_enabled,
+        pane.peaks_settings,
     )
 end
 
@@ -1681,6 +1858,7 @@ function signal_display_pane_with_time_link(
         pane.persistence_settings,
         stored,
         pane.peaks_enabled,
+        pane.peaks_settings,
     )
 end
 
@@ -1700,6 +1878,27 @@ function signal_display_pane_with_time_limits(
         pane.persistence_settings,
         pane.stored_settings,
         pane.peaks_enabled,
+        pane.peaks_settings,
+    )
+end
+
+function signal_display_pane_with_peaks_settings(
+    pane::SignalDisplayPaneState,
+    peaks_settings::SignalPeaksSettings,
+)::SignalDisplayPaneState
+    SignalDisplayPaneState(
+        pane.id,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+        peaks_settings,
     )
 end
 
@@ -1721,6 +1920,7 @@ function signal_display_empty_pane(id::AbstractString)::SignalDisplayPaneState
         SignalPersistenceSettings(),
         SignalDisplayStoredSettings(),
         false,
+        SignalPeaksSettings(),
     )
 end
 
@@ -2000,6 +2200,7 @@ function signal_display_pane_without_signal(
         pane.persistence_settings,
         pane.stored_settings,
         analysis_name !== nothing && pane.plot_type == TIME_PLOT && pane.peaks_enabled,
+        pane.peaks_settings,
     )
 end
 
@@ -2335,6 +2536,7 @@ function signal_display_pane_from_display(
         display.persistence_settings,
         display.stored_settings,
         display.peaks_enabled,
+        SignalPeaksSettings(),
     )
 end
 
@@ -2385,6 +2587,101 @@ struct SignalAnalyserOutputContextKey
     end
 end
 
+"""Provider-affecting Peaks request context for one active TIME pane."""
+struct SignalAnalyserPeaksContextKey
+    display_id::String
+    pane_id::String
+    signal_names::Tuple{Vararg{String}}
+    time_limits::Union{Nothing,SignalTimeLimits}
+    settings::SignalPeaksSettings
+    calculation_revision::Int
+
+    function SignalAnalyserPeaksContextKey(
+        display_id::AbstractString,
+        pane_id::AbstractString,
+        signal_names::AbstractVector{<:AbstractString},
+        time_limits::Union{Nothing,SignalTimeLimits},
+        settings::SignalPeaksSettings,
+        calculation_revision::Int,
+    )
+        isempty(display_id) && throw(ArgumentError("Display id Peaks context не может быть пустым"))
+        isempty(pane_id) && throw(ArgumentError("Pane id Peaks context не может быть пустым"))
+        names = String.(signal_names)
+        allunique(names) || throw(ArgumentError("Signal names Peaks context не должны повторяться"))
+        calculation_revision >= 0 || throw(ArgumentError(
+            "Calculation revision Peaks context не может быть отрицательной",
+        ))
+        new(
+            String(display_id),
+            String(pane_id),
+            Tuple(names),
+            time_limits,
+            settings,
+            calculation_revision,
+        )
+    end
+end
+
+Base.:(==)(left::SignalAnalyserPeaksContextKey, right::SignalAnalyserPeaksContextKey) =
+    left.display_id == right.display_id &&
+    left.pane_id == right.pane_id &&
+    left.signal_names == right.signal_names &&
+    isequal(left.time_limits, right.time_limits) &&
+    left.settings == right.settings &&
+    left.calculation_revision == right.calculation_revision
+Base.isequal(left::SignalAnalyserPeaksContextKey, right::SignalAnalyserPeaksContextKey) =
+    left == right
+Base.hash(key::SignalAnalyserPeaksContextKey, seed::UInt) = hash(
+    (
+        key.display_id,
+        key.pane_id,
+        key.signal_names,
+        key.time_limits,
+        key.settings,
+        key.calculation_revision,
+    ),
+    seed,
+)
+
+"""Cache identity for one signal inside one pane Peaks calculation."""
+struct SignalAnalyserPeaksSignalContextKey
+    display_id::String
+    pane_id::String
+    signal_name::String
+    time_limits::Union{Nothing,SignalTimeLimits}
+    settings::SignalPeaksSettings
+    calculation_revision::Int
+
+    function SignalAnalyserPeaksSignalContextKey(
+        context::SignalAnalyserPeaksContextKey,
+        signal_name::AbstractString,
+    )
+        name = String(signal_name)
+        name in context.signal_names || throw(ArgumentError(
+            "Сигнал Peaks cache отсутствует в pane context",
+        ))
+        new(
+            context.display_id,
+            context.pane_id,
+            name,
+            context.time_limits,
+            context.settings,
+            context.calculation_revision,
+        )
+    end
+end
+
+Base.:(==)(
+    left::SignalAnalyserPeaksSignalContextKey,
+    right::SignalAnalyserPeaksSignalContextKey,
+) =
+    left.display_id == right.display_id &&
+    left.pane_id == right.pane_id &&
+    left.signal_name == right.signal_name &&
+    isequal(left.time_limits, right.time_limits) &&
+    left.settings == right.settings &&
+    left.calculation_revision == right.calculation_revision
+
 Base.:(==)(left::SignalAnalyserOutputContextKey, right::SignalAnalyserOutputContextKey) =
     left.display_id == right.display_id &&
     left.pane_id == right.pane_id &&
@@ -2403,10 +2700,18 @@ struct SignalAnalyserPlotCacheEntry
     plots::Vector{Dict{String,Any}}
 end
 
-"""Last fully published Peaks result for one pane; stale entries remain last-good."""
+"""Last fully published Peaks result for one pane/signal; stale entries remain last-good."""
 struct SignalAnalyserPeaksCacheEntry
-    context::SignalAnalyserOutputContextKey
+    context::SignalAnalyserPeaksSignalContextKey
     peaks::SignalPeaksSnapshot
+end
+
+"""API-visible Peaks table readiness kept independently from graph output."""
+struct SignalAnalyserPeaksStatus
+    context::SignalAnalyserPeaksContextKey
+    isready::Bool
+    success::Bool
+    error::String
 end
 
 """API-visible readiness state kept separately from stale/dirty state."""
@@ -2428,17 +2733,24 @@ SignalAnalyserCancellationToken() = SignalAnalyserCancellationToken(Threads.Atom
 mutable struct SignalAnalyserCalculationManager
     calculation_revision::Int
     page_calculation_revisions::Dict{String,Int}
+    peaks_calculation_revision::Int
+    peaks_page_calculation_revisions::Dict{String,Int}
     plot_cache::Dict{String,SignalAnalyserPlotCacheEntry}
     peaks_cache::Dict{String,SignalAnalyserPeaksCacheEntry}
     need_update_pages::Dict{String,Bool}
+    peaks_need_update_pages::Dict{String,Bool}
     output_statuses::Dict{String,SignalAnalyserOutputStatus}
+    peaks_statuses::Dict{String,SignalAnalyserPeaksStatus}
     active_page_id::Union{Nothing,String}
     active_context::Union{Nothing,SignalAnalyserOutputContextKey}
+    active_peaks_context::Union{Nothing,SignalAnalyserPeaksContextKey}
     active_task::Union{Nothing,Task}
     active_poll_count::Int
     cancellation_token::Union{Nothing,SignalAnalyserCancellationToken}
     queued_contexts::Vector{SignalAnalyserOutputContextKey}
+    queued_peaks_contexts::Vector{SignalAnalyserPeaksContextKey}
     output_poll_counts::Dict{String,Int}
+    peaks_poll_counts::Dict{String,Int}
     active_task_is_worker::Bool
 end
 
@@ -2448,16 +2760,23 @@ function SignalAnalyserCalculationManager(page_ids::AbstractVector{<:AbstractStr
     SignalAnalyserCalculationManager(
         0,
         Dict(id => 0 for id in ids),
+        0,
+        Dict(id => 0 for id in ids),
         Dict{String,SignalAnalyserPlotCacheEntry}(),
         Dict{String,SignalAnalyserPeaksCacheEntry}(),
         Dict(id => true for id in ids),
+        Dict(id => true for id in ids),
         Dict{String,SignalAnalyserOutputStatus}(),
+        Dict{String,SignalAnalyserPeaksStatus}(),
+        nothing,
         nothing,
         nothing,
         nothing,
         0,
         nothing,
         SignalAnalyserOutputContextKey[],
+        SignalAnalyserPeaksContextKey[],
+        Dict{String,Int}(),
         Dict{String,Int}(),
         false,
     )
@@ -2469,16 +2788,23 @@ function signal_analyser_clone_calculation_manager(
     SignalAnalyserCalculationManager(
         manager.calculation_revision,
         copy(manager.page_calculation_revisions),
+        manager.peaks_calculation_revision,
+        copy(manager.peaks_page_calculation_revisions),
         copy(manager.plot_cache),
         copy(manager.peaks_cache),
         copy(manager.need_update_pages),
+        copy(manager.peaks_need_update_pages),
         copy(manager.output_statuses),
+        copy(manager.peaks_statuses),
         manager.active_page_id,
+        nothing,
         nothing,
         nothing,
         0,
         nothing,
         SignalAnalyserOutputContextKey[],
+        SignalAnalyserPeaksContextKey[],
+        Dict{String,Int}(),
         Dict{String,Int}(),
         false,
     )

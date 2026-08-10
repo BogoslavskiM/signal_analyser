@@ -32,6 +32,16 @@
     activeOutput: function (displayId, paneId) {
       return request("./api/outputs/active?display_id=" + encodeURIComponent(displayId) + "&pane_id=" + encodeURIComponent(paneId), { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" });
     },
+    activePeaks: function (displayId, paneId) {
+      return request("./api/peaks/active?display_id=" + encodeURIComponent(displayId) + "&pane_id=" + encodeURIComponent(paneId), { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" });
+    },
+    updatePeaksSettings: function (payload) {
+      return request("./api/peaks/settings", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    },
     workspaceVariables: function () { return request("./api/workspace/variables", { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" }); },
     view: function (payload) {
       return request("./api/view", {

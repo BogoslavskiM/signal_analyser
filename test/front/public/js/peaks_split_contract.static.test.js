@@ -1,0 +1,14 @@
+"use strict";
+const fs=require("fs"),path=require("path");
+module.exports=async function(assert){const root=path.resolve(__dirname,"../../../..");const app=fs.readFileSync(path.join(root,"public/js/app.js"),"utf8"),api=fs.readFileSync(path.join(root,"public/js/api.js"),"utf8"),css=fs.readFileSync(path.join(root,"public/css/app.css"),"utf8");
+assert(/peaks-split[\s\S]*peaks-table-zone[\s\S]*peaks-settings-panel/.test(app),"Peaks must be split into table and settings");
+assert(/<th>№<\/th><th>Сигнал<\/th><th>Цвет<\/th><th>Значение<\/th><th>Время, с<\/th><th>Метка на графике<\/th>/.test(app),"Peaks headers must be exact and ordered");
+assert(/peaks-color-swatch[\s\S]*signal_color/.test(app)&&/graph_number/.test(app),"rows must use backend color and graph marker");
+["Количество пиков","Минимальная высота","Минимальное расстояние, отсчёты","Порог"].forEach(x=>assert(app.includes(x),"missing Russian Peaks control "+x));
+assert(/minimum_height == null \? "−∞"/.test(app)&&/minimum_distance_samples/.test(app),"null infinity and canonical distance key required");
+assert(/threshold\s*<\s*0[\s\S]*?Введите число не меньше 0\./.test(app),"client must reject a negative Threshold with accepted Russian nonnegative validation");
+assert(/updatePeaksSettings/.test(api)&&/\.\/api\/peaks\/settings/.test(api),"settings must POST dedicated API");
+assert(/preservePlots:true, skipOutput:true/.test(app),"Peaks settings must not refetch graph output");
+assert(!/renderPeaksMatrix|peaks-matrix/.test(app+css),"canceled matrix renderer/classes must be absent");
+assert(/peaks-table-zone\s*\{[^}]*flex:/.test(css)&&/peaks-settings-panel\s*\{[^}]*300px/.test(css),"split geometry needs flexible left table and 300px settings");
+};

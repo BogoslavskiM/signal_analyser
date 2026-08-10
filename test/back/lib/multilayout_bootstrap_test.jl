@@ -88,6 +88,12 @@ end
         "id" => "pane-2",
         "plot_type" => "spectrogram",
         "signal_bindings" => [names[2]],
+        "peaks_settings" => Dict(
+            "number_of_peaks" => 99,
+            "minimum_height" => nothing,
+            "minimum_distance_samples" => 1,
+            "threshold" => 0.0,
+        ),
     )
 
     target = ML_BOOTSTRAP.default_signal_analyser_state()
@@ -104,6 +110,7 @@ end
     @test (restored_layout.variant, restored_layout.active_pane_id, restored_layout.next_pane_number) == ("1x2", "pane-2", 3)
     @test restored_active.plot_type == ML_BOOTSTRAP.SPECTROGRAM_PLOT
     @test ML_BOOTSTRAP.signal_display_pane_members(restored_active) == [names[2]]
+    @test restored_active.peaks_settings == ML_BOOTSTRAP.SignalPeaksSettings(99, nothing, 1, 0.0)
     @test restored_inactive.plot_type == ML_BOOTSTRAP.TIME_PLOT
     @test ML_BOOTSTRAP.signal_display_pane_members(restored_inactive) == names
 end
