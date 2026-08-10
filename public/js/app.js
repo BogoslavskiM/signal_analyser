@@ -405,7 +405,8 @@
     model.peaksRecord = null;
     renderInspector();
     var request = display.peaks_enabled ? api.getFullState() : mutate(function () {
-      return api.view({ state_revision:model.revision, active_plot:display.active_plot, row_selected_signal:display.row_selected_signal || null, analysis_signal:display.analysis_signal || null, visible_signals:(display.visible_signals || []).slice(), time_limits:display.time_limits, measurement_kinds:(display.measurement_kinds || []).slice(), spectrum_settings:display.spectrum_settings, spectrogram_settings:display.spectrogram_settings, persistence_settings:display.persistence_settings, peaks_enabled:true });
+      if (!activeDisplay() || activeDisplay().id !== displayId) return Promise.reject(new Error("Контекст экрана изменился; повторите действие."));
+      return api.view({ state_revision:model.revision, peaks_enabled:true });
     }, { preservePlots:true, skipOutput:true });
     return request.then(function (snapshot) {
       if (token !== model.peaksToken || model.inspectorPage !== "peaks" || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
@@ -574,7 +575,7 @@
     if (!display) return Promise.reject(new Error("Активный экран не найден."));
     return mutate(function () {
       if (!activeDisplay() || activeDisplay().id !== targetDisplayId) return Promise.reject(new Error("Контекст экрана изменился; повторите действие."));
-      return api.view({ state_revision:model.revision, active_plot:display.active_plot, row_selected_signal:display.row_selected_signal || null, analysis_signal:display.analysis_signal || null, visible_signals:(display.visible_signals || []).slice(), time_limits:display.time_limits, measurement_kinds:measurementKinds, spectrum_settings:display.spectrum_settings, spectrogram_settings:display.spectrogram_settings, persistence_settings:display.persistence_settings, peaks_enabled:!!display.peaks_enabled });
+      return api.view({ state_revision:model.revision, measurement_kinds:measurementKinds });
     }, { preservePlots:true, skipOutput:true });
   }
 
