@@ -16,7 +16,7 @@ module.exports = async function testV5CleanFrontendContracts(assert) {
     "app-shell", "display-workspace", "display-tabs", "layout-trigger",
     "layout-popover", "plot-grid", "settings-panel", "settings-catalog-panel",
     "explicit-apply-root", "bottom-panel-signals", "signal-search-input",
-    "signal-rows", "signal-columns-menu", "overlay-tooltip", "runtime-dialog-root",
+    "signal-rows", "signal-columns-menu", "measurement-columns-menu", "overlay-tooltip", "runtime-dialog-root",
   ].forEach((id) => assert(html.includes(`data-testid=\"${id}\"`), `v5 shell must expose ${id}`));
   assert(!/\.\.?\/assets\/|design\.css|demo\.js/.test(html), "production shell must not retain prototype-relative assets or demo runtime");
   assert(/\.\/css\/theme\.css/.test(html) && /\.\/css\/app\.css/.test(html), "production shell must load its local v5 CSS");
@@ -38,7 +38,7 @@ module.exports = async function testV5CleanFrontendContracts(assert) {
   assert((html.match(/data-settings-content/g) || []).length === 1, "v5 shell must expose exactly one canonical settings-content subtree");
 
   assert(api.includes('"./api/state-lite"') && /function refreshSnapshot\(renderAccepted\) \{ return api\.getState\(\)/.test(app), "bootstrap and normal snapshots must use state-lite rather than eager graph state");
-  assert(/getFullState: function \(\) \{ return request\("\.\/api\/state"/.test(api) && /function loadMeasurements\(\)[\s\S]*api\.getFullState\(\)/.test(app), "the full state may be loaded only on demand for the Measurements inspector");
+  assert(/getFullState: function \(\) \{ return request\("\.\/api\/state"/.test(api) && /function loadMeasurements\(\)[\s\S]*api\.getFullState\(\)/.test(app), "the full state must remain an on-demand inspector request");
   ["./api/outputs/active?display_id=", "./api/settings/apply", "./api/layouts", "./api/view", "./api/displays", "./api/signals", "./api/session"].forEach((route) => assert(api.includes(route), `normal API adapter must retain ${route}`));
   assert(/setTimeout\(function \(\) \{ send\(item\); \},\s*150\)/.test(settings), "valid Apply-bound settings fields must use the exact 150ms debounce");
   assert(/function output\(poll\)[\s\S]*panes\(\)\.forEach/.test(app), "every visible pane must request an output independently");

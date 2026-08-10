@@ -22,6 +22,7 @@ module.exports = async function testLayoutPreviewAndMeasurementsInspector(assert
     assert(measurements.includes(`"${header}"`), `Measurements table must include ${header}`);
   });
   assert(/measurement-search-input[\s\S]*placeholder='Введите название'/.test(measurements), "Measurements must have the same search row pattern as Signals");
+  assert(/measurement-columns-menu-trigger[\s\S]*aria-haspopup='menu'/.test(measurements), "Measurements search row must expose its right-side visibility menu trigger");
   assert(!/ui-checkbox|visible-all-signals|visible-signal/.test(measurements), "Measurements rows must not render signal checkboxes");
   assert(/measurementColumns\s*=\s*\{[\s\S]*kind:"minimum"[\s\S]*kind:"maximum"[\s\S]*kind:"mean"[\s\S]*kind:"median"[\s\S]*kind:"peak_to_peak"[\s\S]*kind:"rms"/.test(measurements), "Measurements columns must map authoritative backend statistics");
   assert(/selectedKinds = Array\.isArray\(display\.measurement_kinds\)[\s\S]*selectedKinds\.indexOf\(kind\) >= 0[\s\S]*columns = columns\.concat\(measurementColumns\[kind\]\)/.test(measurements), "Measurements table columns must follow the authoritative checked measurement kinds");

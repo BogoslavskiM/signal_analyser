@@ -1184,6 +1184,10 @@ button img {
   padding: 0;
 }
 
+.inspector-body.is-table-only {
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .inspector-search-row {
   min-width: 0;
   display: flex;
@@ -1424,6 +1428,12 @@ button img {
 .signal-table.measurement-table th:nth-child(4),
 .signal-table.measurement-table td:nth-child(4) { width: 110px; }
 .measurement-table tbody tr { cursor: default; }
+
+.peaks-table {
+  min-width: 880px;
+}
+
+.peaks-table tbody tr { cursor: default; }
 
 .measurement-line-cell { text-align: center !important; }
 
@@ -2048,6 +2058,7 @@ body {
 
 .settings-tabs button {
   min-width: 112px;
+  flex: 1 1 50%;
   padding: 4px 12px;
 }
 

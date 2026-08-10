@@ -5,8 +5,7 @@
   var timer;
   var context = {
     displayId: "", revision: 0, document: null, drafts: {}, pending: {}, loadToken: 0,
-    page: "display", plotType: "time", collapsed: {}, renderedFields: {},
-    presentation: { measurementKinds: [], peaksEnabled: false }
+    page: "display", plotType: "time", collapsed: {}, renderedFields: {}
   };
   var plotOptions = [
     { value: "time", label: "Временная область" },
@@ -19,8 +18,7 @@
     "time.normalize_y": "Нормировать Y", "time.show_markers": "Показывать маркеры", "time.units": "Единицы времени", "time.x_limits": "Пределы X", "time.y_limits": "Пределы Y", "time.link_time": "Связать время", "time.not_applicable": "Применимость",
     "spectrum.frequency_units": "Единицы частоты", "spectrum.frequency_limits": "Пределы частоты", "spectrum.y_limits": "Пределы Y", "spectrum.frequency_scale": "Шкала частоты", "spectrum.scale": "Спектр в dB", "spectrum.resolution_type": "Тип разрешения", "spectrum.leakage": "Утечка", "spectrum.rbw": "Полоса разрешения", "spectrum.window_length": "Длина окна", "spectrum.window": "Окно", "spectrum.sidelobe_attenuation_db": "Подавление боковых лепестков", "spectrum.overlap_percent": "Перекрытие", "spectrum.nfft": "Точки DFT", "spectrum.frequency_resolution": "Частотное разрешение",
     "spectrogram.time_units": "Единицы времени", "spectrogram.frequency_units": "Единицы частоты", "spectrogram.frequency_limits": "Пределы частоты", "spectrogram.power_limits": "Пределы мощности", "spectrogram.frequency_scale": "Шкала частоты", "spectrogram.scale": "Спектр в dB", "spectrogram.leakage": "Утечка", "spectrogram.time_resolution": "Разрешение по времени", "spectrogram.overlap_percent": "Перекрытие", "spectrogram.reassign": "Переназначение", "spectrogram.actual_rbw": "Фактическая RBW",
-    "persistence.time_units": "Единицы времени", "persistence.frequency_units": "Единицы частоты", "persistence.frequency_limits": "Пределы частоты", "persistence.power_limits": "Пределы мощности", "persistence.density_limits": "Пределы плотности", "persistence.frequency_scale": "Шкала частоты", "persistence.scale": "Спектр в dB", "persistence.leakage": "Утечка", "persistence.time_resolution": "Разрешение по времени", "persistence.overlap_percent": "Перекрытие", "persistence.power_bins": "Интервалы мощности", "persistence.rbw": "RBW",
-    "measurement.minimum": "Минимум", "measurement.maximum": "Максимум", "measurement.mean": "Среднее", "measurement.median": "Медиана", "measurement.peak_to_peak": "Размах", "measurement.rms": "Среднеквадратичное", "peaks_enabled": "Искать пики"
+    "persistence.time_units": "Единицы времени", "persistence.frequency_units": "Единицы частоты", "persistence.frequency_limits": "Пределы частоты", "persistence.power_limits": "Пределы мощности", "persistence.density_limits": "Пределы плотности", "persistence.frequency_scale": "Шкала частоты", "persistence.scale": "Спектр в dB", "persistence.leakage": "Утечка", "persistence.time_resolution": "Разрешение по времени", "persistence.overlap_percent": "Перекрытие", "persistence.power_bins": "Интервалы мощности", "persistence.rbw": "RBW"
   };
 
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[character]; }); }
@@ -46,22 +44,8 @@
     return item;
   }
   function group(key, title, items) { return { key:key, title:title, items:items.filter(Boolean) }; }
-  function measurementItem(id, kind) {
-    return pseudo("measurement." + id, "boolean", context.presentation.measurementKinds.indexOf(kind) >= 0, { action:"measurement", measurementKind:kind });
-  }
-
   function inventory() {
     var type = context.plotType;
-    if (context.page === "measurements") {
-      var measurementGroups = [group("statistics", "Статистики", [
-        measurementItem("minimum", "minimum"), measurementItem("maximum", "maximum"),
-        measurementItem("mean", "mean"), measurementItem("median", "median"),
-        measurementItem("peak_to_peak", "peak_to_peak"), measurementItem("rms", "rms")
-      ])];
-      if (type === "time") measurementGroups.push(group("peaks", "Пики", [pseudo("peaks_enabled", "boolean", context.presentation.peaksEnabled, { action:"peaks" })]));
-      return measurementGroups;
-    }
-
     if (context.page === "time") {
       if (type === "time") {
         var linkTime = actual("time.link_time", true);
@@ -198,21 +182,6 @@
       window.dispatchEvent(new CustomEvent("signal-settings-plot-type", { detail:{ plotType:raw } }));
       return;
     }
-    if (item.action === "measurement") {
-      var kinds = context.presentation.measurementKinds.slice();
-      var index = kinds.indexOf(item.measurementKind);
-      if (raw && index < 0) kinds.push(item.measurementKind);
-      if (!raw && index >= 0) kinds.splice(index, 1);
-      context.presentation.measurementKinds = kinds;
-      render();
-      window.dispatchEvent(new CustomEvent("signal-settings-measurement", { detail:{ measurementKinds:kinds } }));
-      return;
-    }
-    if (item.action === "peaks") {
-      context.presentation.peaksEnabled = !!raw;
-      render();
-      window.dispatchEvent(new CustomEvent("signal-settings-measurement", { detail:{ peaksEnabled:!!raw } }));
-    }
   }
 
   function update(item, raw) {
@@ -273,9 +242,8 @@
       if (context.displayId && context.displayId !== id) { clearTimeout(timer); context.drafts={}; context.pending={}; context.document=null; }
       context.displayId=id; context.revision=Math.max(context.revision, revision || 0);
     },
-    setView:function (page, plotType, presentation) {
+    setView:function (page, plotType) {
       context.page=page || "display"; context.plotType=plotType || "time";
-      context.presentation={ measurementKinds:(presentation && presentation.measurementKinds || []).slice(), peaksEnabled:!!(presentation && presentation.peaksEnabled) };
     },
     load:function () {
       var id=context.displayId, token=++context.loadToken;

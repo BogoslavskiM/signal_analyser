@@ -4,13 +4,18 @@
   var api = window.SignalAnalyserApi;
   var settings = window.SignalAnalyserSettings;
   var titles = { time: "Временная область", spectrum: "Спектр", spectrogram: "Спектрограмма", persistence: "Спектр персистентности" };
+  var measurementOptions = [
+    { id:"minimum", label:"Минимум" }, { id:"maximum", label:"Максимум" },
+    { id:"mean", label:"Среднее" }, { id:"median", label:"Медиана" },
+    { id:"peak_to_peak", label:"Размах" }, { id:"rms", label:"Среднеквадратичное" }
+  ];
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
-    measurementSearch: "", measurementsRecord: null, measurementsToken: 0,
+    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0,
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false
   };
 
@@ -71,6 +76,7 @@
     renderSettings(display);
     renderInspector();
     renderColumnMenu();
+    renderMeasurementMenu();
   }
 
   function renderTabs() {
@@ -238,10 +244,7 @@
     if (context) context.textContent = "Область " + (panes().indexOf(pane) + 1) + " · " + titles[(pane && pane.plot_type) || "time"];
     qa("[data-settings-page]").forEach(function (button) { button.setAttribute("aria-selected", String(button.dataset.settingsPage === model.settingsPage)); });
     settings.setContext(display.id, model.revision);
-    settings.setView(model.settingsPage, (pane && pane.plot_type) || "time", {
-      measurementKinds: display.measurement_kinds || [],
-      peaksEnabled: display.peaks_enabled || false
-    });
+    settings.setView(model.settingsPage, (pane && pane.plot_type) || "time");
     settings.render();
     renderApply();
   }
@@ -268,8 +271,9 @@
     if (!body) return;
     qa("[data-bottom-tab]").forEach(function (tab) { var active = tab.dataset.bottomTab === model.inspectorPage; tab.setAttribute("aria-selected", String(active)); tab.tabIndex = active ? 0 : -1; });
     body.dataset.testid = "inspector-pane-" + model.inspectorPage;
+    body.classList.toggle("is-table-only", model.inspectorPage === "peaks");
     if (model.inspectorPage === "measurements") return void renderMeasurementsInspector(body);
-    if (model.inspectorPage !== "signals") { body.innerHTML = "<div class='inspector-empty' data-testid='inspector-pane-" + model.inspectorPage + "' role='status'>Пики для активной области пока не рассчитаны</div>"; return; }
+    if (model.inspectorPage === "peaks") return void renderPeaksInspector(body);
     var addLayer = q("[data-testid='signal-add-layer']");
     body.innerHTML = "<div class='inspector-search-row'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='signal-search-input' aria-label='Поиск сигналов' placeholder='Введите название' value='" + esc(model.inspectorSearch) + "'></div><div class='inspector-actions' aria-label='Действия с сигналами'><button class='inspector-action' type='button' data-testid='signals-add-action' data-tooltip='Добавить сигнал' aria-label='Добавить сигнал' aria-haspopup='dialog' aria-controls='signal-add-dialog' aria-expanded='" + String(!!addLayer && !addLayer.hidden) + "'><img src='./icons/plus.svg' alt=''></button><button class='inspector-action' type='button' data-testid='signal-columns-menu-trigger' data-tooltip='Другие действия' aria-label='Другие действия' aria-haspopup='menu' aria-expanded='false'><img src='./icons/more-vertical.svg' alt=''></button></div></div><div class='signal-table-scroll'><table id='signal-table' class='signal-table'><thead><tr data-table-head></tr></thead><tbody data-testid='signal-rows' data-signal-rows></tbody></table><div class='table-empty' role='status' data-testid='signal-search-empty' hidden>Сигналы не найдены</div></div>";
     var rows = q("[data-testid='signal-rows']"), head = q("[data-table-head]");
@@ -308,7 +312,8 @@
   function renderMeasurementsInspector(body) {
     var display = activeDisplay(), pane = paneById(model.activePane), record = model.measurementsRecord;
     var current = record && display && pane && record.displayId === display.id && record.paneId === pane.id;
-    body.innerHTML = "<div class='inspector-search-row'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='measurement-search-input' aria-label='Поиск измерений' placeholder='Введите название' value='" + esc(model.measurementSearch) + "'></div></div><div class='signal-table-scroll measurement-table-scroll' data-testid='measurement-table-scroll'></div>";
+    var menu = q("[data-testid='measurement-columns-menu']"), menuOpen = !!menu && !menu.hidden;
+    body.innerHTML = "<div class='inspector-search-row'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='measurement-search-input' aria-label='Поиск измерений' placeholder='Введите название' value='" + esc(model.measurementSearch) + "'></div><div class='inspector-actions' aria-label='Действия с измерениями'><button class='inspector-action' type='button' data-testid='measurement-columns-menu-trigger' data-tooltip='Выбрать измерения' aria-label='Выбрать отображаемые измерения' aria-haspopup='menu' aria-expanded='" + String(menuOpen) + "'><img src='./icons/more-vertical.svg' alt=''></button></div></div><div class='signal-table-scroll measurement-table-scroll' data-testid='measurement-table-scroll'></div>";
     var host = q("[data-testid='measurement-table-scroll']");
     if (!current) { host.innerHTML = "<div class='inspector-empty' role='status'>Загрузка измерений…</div>"; return; }
     if (record.error) { host.innerHTML = "<div class='inspector-empty' role='alert'>" + esc(record.error) + "</div>"; return; }
@@ -373,6 +378,42 @@
     }).catch(function (error) {
       if (token !== model.measurementsToken || model.inspectorPage !== "measurements") return;
       model.measurementsRecord = { displayId:displayId, paneId:paneId, error:safeErrorText(error, "Не удалось загрузить измерения.") };
+      renderInspector();
+    });
+  }
+
+  function renderPeaksInspector(body) {
+    var display = activeDisplay(), pane = paneById(model.activePane), record = model.peaksRecord;
+    var current = record && display && pane && record.displayId === display.id && record.paneId === pane.id;
+    body.innerHTML = "<div class='signal-table-scroll peaks-table-scroll' data-testid='peaks-table-scroll'></div>";
+    var host = q("[data-testid='peaks-table-scroll']");
+    if (!pane || pane.plot_type !== "time") { host.innerHTML = "<div class='inspector-empty' role='status'>Пики доступны для временной области</div>"; return; }
+    if (!current) { host.innerHTML = "<div class='inspector-empty' role='status'>Расчёт пиков…</div>"; return; }
+    if (record.error) { host.innerHTML = "<div class='inspector-empty' role='alert'>" + esc(record.error) + "</div>"; return; }
+    var peaks = record.peaks || {}, signalName = peaks.signal_name || "";
+    var rows = (peaks.items || []).map(function (peak, index) {
+      return "<tr><td>" + (index + 1) + "</td><td>" + esc(signalName) + "</td><td>" + esc(measurementValue(peak, "value")) + "</td><td>" + esc(measurementValue(peak, "time_s")) + "</td><td>" + esc(measurementValue(peak, "width_samples")) + "</td><td>" + esc(measurementValue(peak, "prominence")) + "</td></tr>";
+    }).join("");
+    host.innerHTML = "<table class='signal-table peaks-table' data-testid='peaks-table'><thead><tr><th>№</th><th>Сигнал</th><th>Значение</th><th>Время, с</th><th>Ширина, отсчёты</th><th>Выраженность</th></tr></thead><tbody>" + rows + "</tbody></table><div class='table-empty' role='status'" + (rows ? " hidden" : "") + ">Пики не найдены</div>";
+  }
+
+  function loadPeaks() {
+    if (model.inspectorPage !== "peaks") return Promise.resolve();
+    var display = activeDisplay(), pane = paneById(model.activePane);
+    if (!display || !pane || pane.plot_type !== "time") { model.peaksRecord = null; renderInspector(); return Promise.resolve(); }
+    var displayId = display.id, paneId = pane.id, token = ++model.peaksToken;
+    model.peaksRecord = null;
+    renderInspector();
+    var request = display.peaks_enabled ? api.getFullState() : mutate(function () {
+      return api.view({ state_revision:model.revision, active_plot:display.active_plot, row_selected_signal:display.row_selected_signal || null, analysis_signal:display.analysis_signal || null, visible_signals:(display.visible_signals || []).slice(), time_limits:display.time_limits, measurement_kinds:(display.measurement_kinds || []).slice(), spectrum_settings:display.spectrum_settings, spectrogram_settings:display.spectrogram_settings, persistence_settings:display.persistence_settings, peaks_enabled:true });
+    }, { preservePlots:true, skipOutput:true });
+    return request.then(function (snapshot) {
+      if (token !== model.peaksToken || model.inspectorPage !== "peaks" || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
+      model.peaksRecord = { displayId:displayId, paneId:paneId, revision:stateRevision(snapshot), peaks:snapshot.peaks || null, error:null };
+      renderInspector();
+    }).catch(function (error) {
+      if (token !== model.peaksToken || model.inspectorPage !== "peaks") return;
+      model.peaksRecord = { displayId:displayId, paneId:paneId, error:safeErrorText(error, "Не удалось рассчитать пики.") };
       renderInspector();
     });
   }
@@ -518,6 +559,25 @@
       }).join("");
   }
 
+  function renderMeasurementMenu() {
+    var menu = q("[data-testid='measurement-columns-menu']"), display = activeDisplay();
+    if (!menu) return;
+    var selected = display && Array.isArray(display.measurement_kinds) ? display.measurement_kinds : [];
+    menu.innerHTML = "<div class='inspector-menu-title'>Видимость измерений</div>" + measurementOptions.map(function (measurement) {
+      var visible = selected.indexOf(measurement.id) >= 0;
+      return "<button type='button' role='menuitemcheckbox' aria-pressed='" + visible + "' aria-checked='" + visible + "' data-measurement-visible='" + measurement.id + "'><span>" + measurement.label + "</span><img src='" + (visible ? "./icons/eye.svg" : "./icons/eye-off.svg") + "' alt=''></button>";
+    }).join("");
+  }
+
+  function updateMeasurementKinds(measurementKinds) {
+    var display = activeDisplay(), targetDisplayId = display && display.id;
+    if (!display) return Promise.reject(new Error("Активный экран не найден."));
+    return mutate(function () {
+      if (!activeDisplay() || activeDisplay().id !== targetDisplayId) return Promise.reject(new Error("Контекст экрана изменился; повторите действие."));
+      return api.view({ state_revision:model.revision, active_plot:display.active_plot, row_selected_signal:display.row_selected_signal || null, analysis_signal:display.analysis_signal || null, visible_signals:(display.visible_signals || []).slice(), time_limits:display.time_limits, measurement_kinds:measurementKinds, spectrum_settings:display.spectrum_settings, spectrogram_settings:display.spectrogram_settings, persistence_settings:display.persistence_settings, peaks_enabled:!!display.peaks_enabled });
+    }, { preservePlots:true, skipOutput:true });
+  }
+
   function positionMenu(menu, trigger, width) {
     if (!menu || !trigger || menu.hidden) return;
     var rect = trigger.getBoundingClientRect();
@@ -538,6 +598,17 @@
     var menu = q("[data-testid='signal-columns-menu']"), trigger = q("[data-testid='signal-columns-menu-trigger']");
     if (!menu || menu.hidden) return;
     menu.hidden = true;
+    if (trigger) {
+      trigger.setAttribute("aria-expanded", "false");
+      if (restoreFocus) trigger.focus();
+    }
+  }
+
+  function closeMeasurementMenu(restoreFocus) {
+    var menu = q("[data-testid='measurement-columns-menu']"), trigger = q("[data-testid='measurement-columns-menu-trigger']");
+    if (!menu || menu.hidden) return;
+    menu.hidden = true;
+    menu.classList.remove("is-stale");
     if (trigger) {
       trigger.setAttribute("aria-expanded", "false");
       if (restoreFocus) trigger.focus();
@@ -715,7 +786,24 @@
     if (button.dataset.paneMenu) { var menu = q("[data-testid='display-overflow-menu']"); menu.hidden = !menu.hidden; menu.dataset.paneId = button.dataset.paneMenu; button.setAttribute("aria-expanded", String(!menu.hidden)); return; }
     if (button.dataset.testid === "signal-columns-menu-trigger") { var columns = q("[data-testid='signal-columns-menu']"); if (!columns.hidden) return void closeColumnMenu(true); renderColumnMenu(); columns.hidden = false; button.setAttribute("aria-expanded", "true"); positionMenu(columns, button, 244); var firstColumn = columns.querySelector("button"); if (firstColumn) firstColumn.focus(); return; }
     if (button.dataset.columnVisible !== undefined) { var key = button.dataset.columnVisible; model.visibleColumns[key] = !model.visibleColumns[key]; renderInspector(); renderColumnMenu(); var menuTrigger = q("[data-testid='signal-columns-menu-trigger']"); if (menuTrigger) menuTrigger.setAttribute("aria-expanded", "true"); positionMenu(q("[data-testid='signal-columns-menu']"), menuTrigger, 244); return; }
-    if (button.dataset.bottomTab) { closeColumnMenu(false); model.inspectorPage = button.dataset.bottomTab; renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); return; }
+    if (button.dataset.testid === "measurement-columns-menu-trigger") { var measurementsMenu = q("[data-testid='measurement-columns-menu']"); if (!measurementsMenu.hidden) return void closeMeasurementMenu(true); renderMeasurementMenu(); measurementsMenu.hidden = false; button.setAttribute("aria-expanded", "true"); positionMenu(measurementsMenu, button, 244); var firstMeasurement = measurementsMenu.querySelector("button"); if (firstMeasurement) firstMeasurement.focus(); return; }
+    if (button.dataset.measurementVisible !== undefined) {
+      var display = activeDisplay(), selected = display && Array.isArray(display.measurement_kinds) ? display.measurement_kinds.slice() : [], measurementKey = button.dataset.measurementVisible, measurementIndex = selected.indexOf(measurementKey);
+      if (measurementIndex >= 0) selected.splice(measurementIndex, 1); else selected.push(measurementKey);
+      var canonical = measurementOptions.map(function (measurement) { return measurement.id; }).filter(function (kind) { return selected.indexOf(kind) >= 0; });
+      var measurementMenu = q("[data-testid='measurement-columns-menu']");
+      measurementMenu.classList.add("is-stale");
+      return void updateMeasurementKinds(canonical).then(function () {
+        measurementMenu.classList.remove("is-stale");
+        renderMeasurementMenu();
+        var trigger = q("[data-testid='measurement-columns-menu-trigger']");
+        if (trigger) trigger.setAttribute("aria-expanded", "true");
+        positionMenu(measurementMenu, trigger, 244);
+        var restored = measurementMenu.querySelector("[data-measurement-visible='" + measurementKey + "']");
+        if (restored) restored.focus();
+      }).catch(function (error) { measurementMenu.classList.remove("is-stale"); showToast(safeErrorText(error, "Не удалось изменить измерения."), true); });
+    }
+    if (button.dataset.bottomTab) { closeColumnMenu(false); closeMeasurementMenu(false); model.inspectorPage = button.dataset.bottomTab; renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); if (model.inspectorPage === "peaks") loadPeaks(); return; }
     if (button.dataset.toastClose !== undefined) q("[data-testid='layout-toast']").hidden = true;
   });
   document.addEventListener("click", function (event) {
@@ -727,7 +815,8 @@
     if (!inside) closeLayout();
   });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='signal-columns-menu']"),trigger=q("[data-testid='signal-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeColumnMenu(false); });
-  document.addEventListener("keydown", function (event) { var addLayer=signalAddLayer(); if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(event.key === "ArrowRight" ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
+  document.addEventListener("click", function (event) { var menu=q("[data-testid='measurement-columns-menu']"),trigger=q("[data-testid='measurement-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeMeasurementMenu(false); });
+  document.addEventListener("keydown", function (event) { var addLayer=signalAddLayer(); if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape" && q("[data-testid='measurement-columns-menu']") && !q("[data-testid='measurement-columns-menu']").hidden) closeMeasurementMenu(true); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(event.key === "ArrowRight" ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]"),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(event.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
@@ -745,17 +834,10 @@
     var pane = paneById(model.activePane), plotType = event.detail && event.detail.plotType;
     if (pane && titles[plotType] && pane.plot_type !== plotType) postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:plotType, signal_bindings:pane.signal_bindings || [] });
   });
-  window.addEventListener("signal-settings-measurement", function (event) {
-    var display = activeDisplay(), detail = event.detail || {};
-    if (!display) return;
-    var measurementKinds = Array.isArray(detail.measurementKinds) ? detail.measurementKinds : (display.measurement_kinds || []).slice();
-    var peaksEnabled = typeof detail.peaksEnabled === "boolean" ? detail.peaksEnabled : !!display.peaks_enabled;
-    mutate(function () { return api.view({ state_revision:model.revision, active_plot:display.active_plot, row_selected_signal:display.row_selected_signal || null, analysis_signal:display.analysis_signal || null, visible_signals:(display.visible_signals || []).slice(), time_limits:display.time_limits, measurement_kinds:measurementKinds, spectrum_settings:display.spectrum_settings, spectrogram_settings:display.spectrogram_settings, persistence_settings:display.persistence_settings, peaks_enabled:peaksEnabled }); });
-  });
   q("[data-testid='display-tabs']").addEventListener("scroll", function () { scheduleDisplayTabScrollUpdate(false); }, { passive: true });
   window.addEventListener("resize", function () { scheduleDisplayTabScrollUpdate(false); });
   window.addEventListener("resize", repositionLayout);
-  window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); });
+  window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='measurement-columns-menu']"), q("[data-testid='measurement-columns-menu-trigger']"), 244); });
   if (window.ResizeObserver) {
     model.displayTabsObserver = new window.ResizeObserver(function () { scheduleDisplayTabScrollUpdate(false); });
     model.displayTabsObserver.observe(q("[data-testid='display-tabs-wrap']"));

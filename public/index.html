@@ -74,7 +74,6 @@
         <div class="settings-tabs" role="tablist" aria-label="Страницы настроек" data-testid="settings-tabs">
           <button type="button" role="tab" aria-selected="true" data-settings-page="display" data-testid="display-settings-tab">Отображение</button>
           <button type="button" role="tab" aria-selected="false" data-settings-page="time" data-testid="time-settings-tab">Время</button>
-          <button type="button" role="tab" aria-selected="false" data-settings-page="measurements" data-testid="statistics-settings-tab">Измерения</button>
         </div>
         <!-- Legacy static-contract aliases: settings-catalog-panel / explicit-apply-root / bottom-panel-signals. -->
         <!-- data-testid="settings-catalog-panel" data-testid="explicit-apply-root" data-testid="bottom-panel-signals" -->
@@ -143,6 +142,7 @@
     </button>
   </section>
   <div class="menu inspector-menu" role="menu" data-testid="signal-columns-menu" aria-label="Другие действия с сигналами" hidden></div>
+  <div class="menu inspector-menu" role="menu" data-testid="measurement-columns-menu" aria-label="Видимость измерений" hidden></div>
 
   <div class="modal-layer primary-modal-layer" data-testid="signal-add-layer" hidden>
     <section id="signal-add-dialog" class="dialog-card add-dialog" role="dialog" aria-modal="true" aria-labelledby="signal-add-title" aria-describedby="signal-add-intro">

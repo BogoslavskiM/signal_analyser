@@ -11,7 +11,8 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
   const settings = read("public/js/settings.js");
   const app = read("public/js/app.js");
 
-  ["display", "time", "measurements"].forEach((page) => assert(html.includes(`data-settings-page="${page}"`), `settings page ${page} must remain authored`));
+  ["display", "time"].forEach((page) => assert(html.includes(`data-settings-page="${page}"`), `settings page ${page} must remain authored`));
+  assert(!html.includes('data-settings-page="measurements"') && !html.includes('data-testid="statistics-settings-tab"'), "Measurements must not remain a right-side settings page");
   assert(/\["ArrowLeft","ArrowRight","Home","End"\][\s\S]*qa\("\[data-settings-page\]"\)[\s\S]*tabs\[index\]\.click\(\)[\s\S]*tabs\[index\]\.focus\(\)/.test(app), "settings pages must support roving keyboard activation");
 
   const inventoryStart = settings.indexOf("function inventory()");
@@ -31,9 +32,7 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
     titles.forEach((title) => assert(title === "График" ? /group\("graph", "График"/.test(inventorySource) && /return \[\s*graph/.test(branch) : branch.includes(`"${title}"`), `${type} inventory must include group ${title}`));
     ids.forEach((id) => assert(id.indexOf("display.") === 0 ? inventorySource.includes(`"${id}"`) && /return \[\s*graph/.test(branch) : branch.includes(`"${id}"`), `${type} inventory must include ${id}`));
   });
-  const measurements = (settings.match(/if \(context\.page === "measurements"\)[\s\S]*?if \(context\.page === "time"\)/) || [""])[0];
-  ["Статистики", "Пики", "peaks_enabled"].forEach((value) => assert(measurements.includes(`"${value}"`), `Measurements inventory must include ${value}`));
-  ["minimum", "maximum", "mean", "median", "peak_to_peak", "rms"].forEach((kind) => assert(measurements.includes(`measurementItem("${kind}", "${kind}")`), `Measurements inventory must include measurement.${kind}`));
+  assert(!/context\.page === "measurements"|measurementItem\(|action:"peaks"|action:"measurement"/.test(settings), "measurement and Peaks controls must be absent from the right settings inventory");
   assert(/context\.page === "time"[\s\S]*?type === "spectrogram"[\s\S]*?"Пределы времени"[\s\S]*?"Временные настройки"/.test(settings), "Time page must provide graph-type-specific and not-applicable inventories");
 
   assert(/function sourceItem\(id\)[\s\S]*?fields\(\)[\s\S]*?readouts\(\)/.test(settings), "inventory must include backend fields and readouts");
@@ -42,7 +41,7 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
   assert(/var raw = typeof option === "object" \? option\.value : option/.test(settings) && /linear:"Линейная"/.test(settings) && /leakage:"По утечке"/.test(settings), "enum labels must localize by authoritative option value before backend label fallback");
 
   assert(/item\.action === "plot-type"[\s\S]*?signal-settings-plot-type/.test(settings) && /signal-settings-plot-type[\s\S]*?postLayout\(\{ operation:"update_pane"/.test(app), "display.plot_type pseudo field must update the existing layout API path");
-  assert(/item\.action === "measurement"[\s\S]*?signal-settings-measurement/.test(settings) && /signal-settings-measurement[\s\S]*?api\.view\(/.test(app), "measurement pseudo fields must update the authoritative view API path");
+  assert(!/signal-settings-measurement/.test(app), "the removed settings page must not retain a hidden measurement event path");
 
   assert(/var collapseKey = context\.page \+ "\\|" \+ context\.plotType \+ "\\|" \+ item\.key/.test(settings), "collapse state must be independent per page, plot type, and group");
   assert(/<button class='settings-group-title' type='button' data-settings-group-toggle=[\s\S]*?aria-expanded=[\s\S]*?aria-controls=/.test(settings), "each group title must be an accessible collapse button");
