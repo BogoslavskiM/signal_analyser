@@ -307,17 +307,35 @@
 
   function refreshSnapshot() { return api.getState().then(function (snapshot) { if (!accept(snapshot)) throw new Error("Получен устаревший снимок состояния."); scheduleRender(); return snapshot; }); }
   function mutate(call) {
-    return call().then(function (response) {
+    var retried = false;
+    function acceptMutation(response) {
       var snapshot = response && response.state ? response.state : response;
       if (!accept(snapshot)) return refreshSnapshot();
       scheduleRender();
       return snapshot;
-    }).catch(function (error) {
-      if (error.status === 409 && error.payload && error.payload.current) { accept(error.payload.current.state || error.payload.current); scheduleRender(); return error.payload.current; }
-      throw error;
-    }).then(function (snapshot) { settings.load().catch(function () {}); output(true); return snapshot; });
+    }
+    function attempt() {
+      return call().then(acceptMutation).catch(function (error) {
+        if (retried || error.status !== 409 || !error.payload || !error.payload.current) throw error;
+        retried = true;
+        var current = error.payload.current.state || error.payload.current;
+        return (accept(current) ? Promise.resolve(current) : refreshSnapshot()).then(function () { scheduleRender(); return attempt(); });
+      });
+    }
+    return attempt().then(function (snapshot) { settings.load().catch(function () {}); output(true); return snapshot; });
   }
-  function postLayout(payload) { return mutate(function () { return api.layouts(Object.assign({ state_revision: model.revision, display_id: activeDisplay().id, version: 1 }, payload)); }); }
+  function postLayout(payload) {
+    var targetDisplayId = activeDisplay() && activeDisplay().id;
+    var request = Object.assign({ display_id:targetDisplayId, version:1 }, payload);
+    return mutate(function () {
+      if (!targetDisplayId || !activeDisplay() || activeDisplay().id !== targetDisplayId) {
+        var error = new Error("Контекст экрана изменился; повторите действие.");
+        error.code = "display_context_changed";
+        return Promise.reject(error);
+      }
+      return api.layouts(Object.assign({}, request, { state_revision:model.revision }));
+    });
+  }
 
   function showToast(copy, warning) {
     var toast = q("[data-testid='layout-toast']");
