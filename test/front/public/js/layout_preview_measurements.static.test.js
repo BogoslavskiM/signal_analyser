@@ -18,7 +18,7 @@ module.exports = async function testLayoutPreviewAndMeasurementsInspector(assert
   assert(/getFullState:[\s\S]*request\("\.\/api\/state"/.test(api), "Measurements must reuse the authoritative full-state endpoint");
   assert(/button\.dataset\.bottomTab[\s\S]*model\.inspectorPage === "measurements"\) loadMeasurements\(\)/.test(app), "Measurements data must load only when its inspector tab is opened");
   const measurements = (app.match(/function renderMeasurementsInspector\(body\)[\s\S]*?\n  \}/) || [""])[0];
-  ["Name", "Line", "ROI - Min", "ROI - Max", "Min - Value", "Min - Time", "Max - Value", "Max - Time", "Mean", "Median", "Peak to Peak", "RMS"].forEach((header) => {
+  ["Имя", "Линия", "Начало области", "Конец области", "Минимум", "Время минимума", "Максимум", "Время максимума", "Среднее", "Медиана", "Размах", "СКЗ"].forEach((header) => {
     assert(measurements.includes(`"${header}"`), `Measurements table must include ${header}`);
   });
   assert(/measurement-search-input[\s\S]*placeholder='Введите название'/.test(measurements), "Measurements must have the same search row pattern as Signals");
