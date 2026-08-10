@@ -34,6 +34,9 @@ module.exports = async function testPaneSelectionAndInspectorTable(assert) {
   assert(/margin:\s*0/.test(header) && /border:\s*1px solid var\(--line\)/.test(header), "the tab strip must align with the fully inset inspector surface");
   assert(/padding:\s*0/.test(body), "the inspector body must join the inset tab, search and table surfaces without a second offset");
   assert(/signals-add-action[\s\S]*signal-columns-menu-trigger/.test(inspectorSearchHtml) && !/inspector-actions/.test(inspectorHeaderHtml), "signal actions must live at the right edge of the search row, not the tab strip");
+  assert(/inspector-search-field[\s\S]*signal-search-input[\s\S]*inspector-actions/.test(inspectorSearchHtml), "the Signals search field and its action buttons must be separate siblings");
+  assert(/\.inspector-search-field:focus-within\s*\{[^}]*box-shadow:\s*inset 0 0 0 1px var\(--accent\)/.test(css), "the active search border must belong only to the search field");
+  assert(!/\.inspector-search-row:focus-within/.test(css), "the active search border must not surround the Signals action buttons");
   assert(/overflow-x:\s*hidden/.test(tabs), "the three inspector tabs must not become a scrolling multi-page history");
   assert(/\.signal-table th:first-child,[\s\S]*width:\s*42px/.test(css), "visibility column width must match the design");
   assert(/\.signal-table th:nth-child\(2\)\s*\{\s*width:\s*28%/.test(css), "name column width must match the design");

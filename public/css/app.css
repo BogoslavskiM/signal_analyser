@@ -1188,14 +1188,22 @@ button img {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   border-left: 1px solid var(--line);
   background: var(--surface);
 }
 
-.inspector-search-row:focus-within {
+.inspector-search-field {
+  min-width: 0;
+  min-height: 31px;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.inspector-search-field:focus-within {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 

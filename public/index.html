@@ -97,8 +97,10 @@
       </header>
       <div class="inspector-body" data-testid="inspector-pane-signals" data-inspector-content>
         <div class="inspector-search-row">
-          <span class="search-icon" aria-hidden="true"></span>
-          <input type="search" data-testid="signal-search-input" aria-label="Поиск сигналов" placeholder="Введите название">
+          <div class="inspector-search-field">
+            <span class="search-icon" aria-hidden="true"></span>
+            <input type="search" data-testid="signal-search-input" aria-label="Поиск сигналов" placeholder="Введите название">
+          </div>
           <div class="inspector-actions" aria-label="Действия с сигналами">
             <button class="inspector-action" type="button" data-testid="signals-add-action" data-tooltip="Добавить сигнал" aria-label="Добавить сигнал" aria-haspopup="dialog" aria-controls="signal-add-dialog" aria-expanded="false">
               <img src="./icons/plus.svg" alt="">
