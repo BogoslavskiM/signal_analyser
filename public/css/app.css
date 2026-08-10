@@ -1115,13 +1115,14 @@ button img {
 
 .inspector {
   display: grid;
-  grid-template-rows: 42px minmax(0, 1fr);
+  grid-template-rows: 32px minmax(0, 1fr);
 }
 
 .inspector-header {
   min-width: 0;
   display: flex;
-  align-items: end;
+  margin: 0 8px;
+  border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background: var(--surface-muted);
 }
@@ -1129,6 +1130,7 @@ button img {
 .inspector-tabs {
   min-width: 0;
   flex: 1 1 auto;
+  overflow-x: hidden;
   border-bottom: 0;
 }
 
@@ -1140,7 +1142,7 @@ button img {
 
 .inspector-action {
   width: 32px;
-  height: 32px;
+  height: 31px;
   display: inline-flex;
   align-items: center;
   justify-content: center;

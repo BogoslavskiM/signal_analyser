@@ -175,6 +175,23 @@
     });
   }
 
+  function renderActivePaneContext() {
+    var display = activeDisplay();
+    if (!display || !model.layout) return;
+    var shell = q("[data-testid='app-shell']");
+    if (shell) {
+      shell.dataset.stateRevision = String(model.revision);
+      shell.dataset.activePane = model.activePane || "";
+    }
+    qa("[data-pane-id]").forEach(function (node, index) {
+      var selected = node.dataset.paneId === model.activePane;
+      node.classList.toggle("is-active", selected);
+      node.setAttribute("aria-label", "Область " + (index + 1) + (selected ? ", активная" : ""));
+    });
+    renderSettings(display);
+    renderInspector();
+  }
+
   function plotEnvelope(data) { return Array.isArray(data) && data.length === 1 && data[0] && Array.isArray(data[0].data) ? data[0] : data; }
   function hasPlotData(data) { var payload = plotEnvelope(data); return Array.isArray(payload) ? payload.length > 0 : !!(payload && (Array.isArray(payload.data) ? payload.data.length : Array.isArray(payload.z) && payload.z.length)); }
   function loadPlotly() {
@@ -258,12 +275,23 @@
     var bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings : [];
     var signals = (model.state.signals || []).filter(function (signal) { return !search || String(signal.name).toLowerCase().indexOf(search.toLowerCase()) >= 0; });
     var columns = [{ id:"color", label:"Цвет" }, { id:"sample_rate", label:"Частота дискретизации" }, { id:"sample_count", label:"Отсчёты" }, { id:"duration", label:"Длительность" }, { id:"data_type", label:"Тип" }].filter(function (column) { return model.visibleColumns[column.id]; });
-    head.innerHTML = "<th aria-label='Видимость'></th><th>Имя</th>" + columns.map(function (column) { return "<th>" + column.label + "</th>"; }).join("") + "<th aria-label='Действия'></th>";
+    var renderedColumns = [{ id:"name", label:"Имя" }].concat(columns);
+    var signalNames = (model.state.signals || []).map(function (signal) { return signal.name; });
+    var everySignalVisible = signalNames.length > 0 && signalNames.every(function (name) { return bindings.indexOf(name) >= 0; });
+    head.innerHTML = "<th><input class='ui-checkbox' type='checkbox' data-visible-all-signals aria-label='Показывать все сигналы в активной области'" + (everySignalVisible ? " checked" : "") + "></th>" + renderedColumns.map(function (column) { return "<th>" + column.label + "</th>"; }).join("");
     rows.innerHTML = signals.map(function (signal) {
-      var values = { color:"<span class='color-swatch' data-testid='signal-color-" + esc(signal.name) + "' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signal.name) + "'></span>", sample_rate:esc(signal.sample_rate_hz == null ? "—" : signal.sample_rate_hz), sample_count:esc(signal.sample_count == null ? "—" : signal.sample_count), duration:esc(signal.duration_s == null ? "—" : signal.duration_s), data_type:esc(signal.data_type || "—") };
+      var values = { name:esc(signal.name), color:"<span class='color-swatch' data-testid='signal-color-" + esc(signal.name) + "' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signal.name) + "'></span>", sample_rate:esc(signal.sample_rate_hz == null ? "—" : signal.sample_rate_hz), sample_count:esc(signal.sample_count == null ? "—" : signal.sample_count), duration:esc(signal.duration_s == null ? "—" : signal.duration_s), data_type:esc(signal.data_type || "—") };
       var selected = bindings.indexOf(signal.name) >= 0;
-      return "<tr data-testid='signal-row-" + esc(signal.name) + "' class='" + (selected ? "is-selected" : "") + "'><td><input class='ui-checkbox' type='checkbox' data-visible-signal='" + esc(signal.name) + "' aria-label='Показывать " + esc(signal.name) + " в активной области'" + (selected ? " checked" : "") + "></td><td><span class='signal-cell-value'>" + esc(signal.name) + "</span></td>" + columns.map(function (column) { return "<td class='" + (column.id === "color" ? "color-cell" : "") + "'><span class='signal-cell-value'>" + values[column.id] + "</span></td>"; }).join("") + "<td class='is-actions-host'><span class='signal-row-actions'><button type='button' class='signal-row-action' data-signal-duplicate='" + esc(signal.name) + "' data-testid='signal-duplicate-" + esc(signal.name) + "' aria-label='Копировать " + esc(signal.name) + "'><img src='./icons/copy.svg' alt=''></button><button type='button' class='signal-row-action is-danger' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "' aria-label='Удалить " + esc(signal.name) + "'><img src='./icons/trash.svg' alt=''></button></span></td></tr>";
+      var actions = "<span class='signal-row-actions'><button type='button' class='signal-row-action' data-signal-duplicate='" + esc(signal.name) + "' data-testid='signal-duplicate-" + esc(signal.name) + "' aria-label='Копировать " + esc(signal.name) + "'><img src='./icons/copy.svg' alt=''></button><button type='button' class='signal-row-action is-danger' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "' aria-label='Удалить " + esc(signal.name) + "'><img src='./icons/trash.svg' alt=''></button></span>";
+      var cells = renderedColumns.map(function (column, index) {
+        var last = index === renderedColumns.length - 1;
+        var classes = (column.id === "color" ? "color-cell " : "") + (last ? "is-actions-host" : "");
+        return "<td class='" + classes.trim() + "'><span class='signal-cell-value'>" + values[column.id] + "</span>" + (last ? actions : "") + "</td>";
+      }).join("");
+      return "<tr data-testid='signal-row-" + esc(signal.name) + "' class='" + (selected ? "is-selected" : "") + "'><td><input class='ui-checkbox' type='checkbox' data-visible-signal='" + esc(signal.name) + "' aria-label='Показывать " + esc(signal.name) + " в активной области'" + (selected ? " checked" : "") + "></td>" + cells + "</tr>";
     }).join("");
+    var toggleAll = q("[data-visible-all-signals]");
+    if (toggleAll) toggleAll.indeterminate = !everySignalVisible && bindings.length > 0;
     q("[data-testid='signal-search-empty']").hidden = signals.length > 0;
   }
 
@@ -305,13 +333,14 @@
     });
   }
 
-  function refreshSnapshot() { return api.getState().then(function (snapshot) { if (!accept(snapshot)) throw new Error("Получен устаревший снимок состояния."); scheduleRender(); return snapshot; }); }
-  function mutate(call) {
+  function refreshSnapshot(renderAccepted) { return api.getState().then(function (snapshot) { if (!accept(snapshot)) throw new Error("Получен устаревший снимок состояния."); (renderAccepted || scheduleRender)(); return snapshot; }); }
+  function mutate(call, options) {
     var retried = false;
+    var renderAccepted = options && options.preservePlots ? renderActivePaneContext : scheduleRender;
     function acceptMutation(response) {
       var snapshot = response && response.state ? response.state : response;
-      if (!accept(snapshot)) return refreshSnapshot();
-      scheduleRender();
+      if (!accept(snapshot)) return refreshSnapshot(renderAccepted);
+      renderAccepted();
       return snapshot;
     }
     function attempt() {
@@ -319,12 +348,12 @@
         if (retried || error.status !== 409 || !error.payload || !error.payload.current) throw error;
         retried = true;
         var current = error.payload.current.state || error.payload.current;
-        return (accept(current) ? Promise.resolve(current) : refreshSnapshot()).then(function () { scheduleRender(); return attempt(); });
+        return (accept(current) ? Promise.resolve(current) : refreshSnapshot(renderAccepted)).then(function () { renderAccepted(); return attempt(); });
       });
     }
-    return attempt().then(function (snapshot) { settings.load().catch(function () {}); output(true); return snapshot; });
+    return attempt().then(function (snapshot) { settings.load().catch(function () {}); if (!options || !options.skipOutput) output(true); return snapshot; });
   }
-  function postLayout(payload) {
+  function postLayout(payload, options) {
     var targetDisplayId = activeDisplay() && activeDisplay().id;
     var request = Object.assign({ display_id:targetDisplayId, version:1 }, payload);
     return mutate(function () {
@@ -334,7 +363,7 @@
         return Promise.reject(error);
       }
       return api.layouts(Object.assign({}, request, { state_revision:model.revision }));
-    });
+    }, options);
   }
 
   function showToast(copy, warning) {
@@ -457,9 +486,10 @@
   document.addEventListener("change", function (event) {
     var node = event.target;
     if (node.dataset.paneType) { var pane = paneById(node.dataset.paneType); return void postLayout({ operation: "update_pane", pane_id: pane.id, plot_type: node.value, signal_bindings: pane.signal_bindings || [] }); }
+    if (node.dataset.visibleAllSignals !== undefined) { var allPane = paneById(model.activePane); if (allPane) return void postLayout({ operation:"update_pane", pane_id:allPane.id, plot_type:allPane.plot_type, signal_bindings:node.checked ? (model.state.signals || []).map(function (signal) { return signal.name; }) : [] }); }
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }
   });
-  document.addEventListener("click", function (event) { var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }); });
+  document.addEventListener("click", function (event) { var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }, { preservePlots:true, skipOutput:true }); });
   document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } });
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-saved", function (event) { var revision = event.detail && event.detail.state && event.detail.state.state_revision; if (typeof revision === "number") model.revision = Math.max(model.revision, revision); });
