@@ -1,0 +1,37 @@
+{
+  "id": "HND-TASK-0093-MEASUREMENTS-ONLY-E2E",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "checks": [
+    {
+      "name": "exact ready revision",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "61c519a6d6c13359a5e687c65565858606af38f6",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "unhandled",
+      "status": "failed",
+      "detail": {
+        "error": "page.waitForFunction: Timeout 30000ms exceeded.\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0093_measurements_only.js:3:841"
+      }
+    }
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "error": "page.waitForFunction: Timeout 30000ms exceeded.\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0093_measurements_only.js:3:841",
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 2,
+    "passed": 1,
+    "failed": 1
+  }
+}

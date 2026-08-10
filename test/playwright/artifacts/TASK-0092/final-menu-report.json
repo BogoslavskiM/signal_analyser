@@ -1,0 +1,70 @@
+{
+  "id": "HND-TASK-0092-E2E-FINAL-MENU",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "49022528feda4eeba441403fc95ccd82daeb099b",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "exact ready revision",
+      "status": "passed",
+      "detail": {
+        "main": 200,
+        "status": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "49022528feda4eeba441403fc95ccd82daeb099b",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      }
+    },
+    {
+      "name": "menu is viewport-clamped and flipped above trigger",
+      "status": "failed",
+      "detail": {
+        "menu": {
+          "x": 1187,
+          "y": 713,
+          "width": 244,
+          "height": 182,
+          "top": 713,
+          "right": 1431,
+          "bottom": 895,
+          "left": 1187
+        },
+        "trigger": {
+          "x": 1399,
+          "y": 678,
+          "width": 32,
+          "height": 31,
+          "top": 678,
+          "right": 1431,
+          "bottom": 709,
+          "left": 1399
+        }
+      }
+    },
+    {
+      "name": "Escape restores trigger focus",
+      "status": "passed",
+      "detail": {}
+    }
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "preexisting_page_count": 0,
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 3,
+    "passed": 2,
+    "failed": 1
+  }
+}

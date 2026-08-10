@@ -1,0 +1,115 @@
+{
+  "id": "HND-TASK-0094-E2E",
+  "checks": [
+    {
+      "name": "exact revision",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "4aaa737707a72947f29a7f658b1e7b669826b055",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "full-zone plot background and 8px tab inset",
+      "status": "passed",
+      "detail": {
+        "inspectorBg": "rgb(246, 248, 250)",
+        "plotBg": "rgb(246, 248, 250)",
+        "topInset": 9,
+        "leftInset": 9,
+        "headerBottom": 717,
+        "searchTop": 717,
+        "actionsInSearch": true,
+        "actionsInHeader": false,
+        "addRect": {
+          "x": 1366,
+          "y": 717,
+          "width": 32,
+          "height": 31,
+          "top": 717,
+          "right": 1398,
+          "bottom": 748,
+          "left": 1366
+        },
+        "menuRect": {
+          "x": 1398,
+          "y": 717,
+          "width": 32,
+          "height": 31,
+          "top": 717,
+          "right": 1430,
+          "bottom": 748,
+          "left": 1398
+        }
+      }
+    },
+    {
+      "name": "actions moved into search row",
+      "status": "passed",
+      "detail": {
+        "inspectorBg": "rgb(246, 248, 250)",
+        "plotBg": "rgb(246, 248, 250)",
+        "topInset": 9,
+        "leftInset": 9,
+        "headerBottom": 717,
+        "searchTop": 717,
+        "actionsInSearch": true,
+        "actionsInHeader": false,
+        "addRect": {
+          "x": 1366,
+          "y": 717,
+          "width": 32,
+          "height": 31,
+          "top": 717,
+          "right": 1398,
+          "bottom": 748,
+          "left": 1366
+        },
+        "menuRect": {
+          "x": 1398,
+          "y": 717,
+          "width": 32,
+          "height": 31,
+          "top": 717,
+          "right": 1430,
+          "bottom": 748,
+          "left": 1398
+        }
+      }
+    },
+    {
+      "name": "plus opens authoritative workspace dialog",
+      "status": "passed",
+      "detail": {
+        "inert": true,
+        "variables": 8,
+        "selectable": 1,
+        "error": "",
+        "active": "signal-add-title"
+      }
+    },
+    {
+      "name": "selection enables Add",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Cancel restores focus without mutation",
+      "status": "passed",
+      "detail": {}
+    }
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 6,
+    "passed": 6,
+    "failed": 0
+  }
+}

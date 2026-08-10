@@ -1,0 +1,19 @@
+{
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "started_at": "2026-08-10T09:24:24.564Z",
+  "before": [
+    "display-1"
+  ],
+  "after": [
+    "display-1"
+  ],
+  "restored": true,
+  "tab_cleanup_status": "passed",
+  "finished_at": "2026-08-10T09:24:28.273Z"
+}

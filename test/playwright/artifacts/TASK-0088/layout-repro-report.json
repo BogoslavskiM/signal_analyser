@@ -1,0 +1,30 @@
+{
+  "id": "HND-TASK-0088-E2E-LAYOUT-REPRO",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "passed",
+  "network": [
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite"
+    }
+  ],
+  "started_at": "2026-08-10T08:57:35.907Z",
+  "preexisting_page_count": 0,
+  "chrome_activation": "ok",
+  "main_document": {
+    "status": 200,
+    "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/"
+  },
+  "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('layout-popover') to be visible\u001b[22m\n\u001b[2m    64 × locator resolved to hidden <section hidden=\"\" role=\"dialog\" aria-modal=\"false\" id=\"layout-popover\" class=\"layout-popover\" data-testid=\"layout-popover\" aria-labelledby=\"layout-title\">…</section>\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0088_layout_repro_cleanup.js:14:865",
+  "finished_at": "2026-08-10T08:58:08.786Z"
+}

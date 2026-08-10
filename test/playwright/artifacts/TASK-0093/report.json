@@ -1,0 +1,34 @@
+{
+  "id": "HND-TASK-0093-E2E",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "bd427671d3b791339250a7d351ce854ea4e5d1e0",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "unhandled",
+      "status": "failed",
+      "detail": {
+        "error": "page.goto: net::ERR_TIMED_OUT at https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\nCall log:\n\u001b[2m  - navigating to \"https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0093_foreground.js:3:590"
+      }
+    }
+  ],
+  "console_errors": [],
+  "page_errors": [],
+  "api": [],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "preexisting_page_count": 0,
+  "error": "page.goto: net::ERR_TIMED_OUT at https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\nCall log:\n\u001b[2m  - navigating to \"https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0093_foreground.js:3:590",
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 1,
+    "passed": 0,
+    "failed": 1
+  }
+}

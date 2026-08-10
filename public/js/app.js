@@ -325,7 +325,7 @@
     });
     var columns = [
       { id:"name", label:"Имя", width:220 },
-      { id:"line", label:"Линия", width:96, className:"measurement-line-cell" },
+      { id:"line", label:"Цвет", width:96, className:"measurement-line-cell" },
       { id:"roi_min", label:"Начало области", width:110 },
       { id:"roi_max", label:"Конец области", width:110 }
     ];
@@ -353,7 +353,7 @@
       var cells = columns.map(function (column) {
         var value = "—";
         if (column.id === "name") value = "<span class='signal-cell-value'>" + esc(signalName) + "</span>";
-        else if (column.id === "line") value = "<span class='measurement-line-swatch' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Линия " + esc(signalName) + "'></span>";
+        else if (column.id === "line") value = "<span class='measurement-line-swatch' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signalName) + "'></span>";
         else if (column.id === "roi_min") value = esc(measurementValue({ value:limits.min_s }, "value"));
         else if (column.id === "roi_max") value = esc(measurementValue({ value:limits.max_s }, "value"));
         else value = esc(measurementValue(items[column.kind], column.itemKey));

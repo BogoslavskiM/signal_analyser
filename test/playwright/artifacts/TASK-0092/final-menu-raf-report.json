@@ -1,0 +1,76 @@
+{
+  "id": "HND-TASK-0092-E2E-FINAL-RAF",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "49022528feda4eeba441403fc95ccd82daeb099b",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "exact ready revision",
+      "status": "passed",
+      "detail": {
+        "main": 200,
+        "status": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "49022528feda4eeba441403fc95ccd82daeb099b",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      }
+    },
+    {
+      "name": "after two RAFs menu obeys effective viewport + flip contract",
+      "status": "passed",
+      "detail": {
+        "innerHeight": 900,
+        "clientHeight": 900,
+        "visualViewportHeight": 900,
+        "menu": {
+          "x": 1187,
+          "y": 492,
+          "width": 244,
+          "height": 182,
+          "top": 492,
+          "right": 1431,
+          "bottom": 674,
+          "left": 1187
+        },
+        "trigger": {
+          "x": 1399,
+          "y": 678,
+          "width": 32,
+          "height": 31,
+          "top": 678,
+          "right": 1431,
+          "bottom": 709,
+          "left": 1399
+        },
+        "top": "492px",
+        "effectiveHeight": 900,
+        "initialBelowWouldOverflow": true
+      }
+    },
+    {
+      "name": "Escape restores trigger focus",
+      "status": "passed",
+      "detail": {}
+    }
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "preexisting_page_count": 0,
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 3,
+    "passed": 3,
+    "failed": 0
+  }
+}

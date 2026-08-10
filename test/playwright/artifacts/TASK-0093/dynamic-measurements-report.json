@@ -1,0 +1,38 @@
+{
+  "id": "HND-TASK-0093-DYNAMIC-MEASUREMENTS-E2E",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "checks": [
+    {
+      "name": "exact readiness",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "61c519a6d6c13359a5e687c65565858606af38f6",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "unhandled",
+      "status": "failed",
+      "detail": {
+        "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('layout-popover') to be visible\u001b[22m\n\u001b[2m    63 × locator resolved to hidden <section hidden=\"\" role=\"dialog\" aria-modal=\"false\" id=\"layout-popover\" class=\"layout-popover\" data-testid=\"layout-popover\" aria-labelledby=\"layout-title\">…</section>\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0093_dynamic_measurements.js:3:773"
+      }
+    }
+  ],
+  "expected_revision": "61c519a6d6c13359a5e687c65565858606af38f6",
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('layout-popover') to be visible\u001b[22m\n\u001b[2m    63 × locator resolved to hidden <section hidden=\"\" role=\"dialog\" aria-modal=\"false\" id=\"layout-popover\" class=\"layout-popover\" data-testid=\"layout-popover\" aria-labelledby=\"layout-title\">…</section>\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0093_dynamic_measurements.js:3:773",
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 2,
+    "passed": 1,
+    "failed": 1
+  }
+}
