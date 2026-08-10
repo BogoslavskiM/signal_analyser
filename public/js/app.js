@@ -426,7 +426,14 @@
     if (button.dataset.bottomTab) { model.inspectorPage = button.dataset.bottomTab; return void renderInspector(); }
     if (button.dataset.toastClose !== undefined) q("[data-testid='layout-toast']").hidden = true;
   });
-  document.addEventListener("click", function (event) { var popover = q("[data-testid='layout-popover']"); if (model.layoutDraft && !popover.contains(event.target) && !q("[data-testid='layout-trigger']").contains(event.target)) closeLayout(); });
+  document.addEventListener("click", function (event) {
+    var popover = q("[data-testid='layout-popover']"), trigger = q("[data-testid='layout-trigger']");
+    if (!model.layoutDraft || !popover || !trigger) return;
+    var path = typeof event.composedPath === "function" ? event.composedPath() : null;
+    var fallbackOutside = !popover.contains(event.target) && !trigger.contains(event.target);
+    var inside = path ? path.indexOf(popover) >= 0 || path.indexOf(trigger) >= 0 : !fallbackOutside;
+    if (!inside) closeLayout();
+  });
   document.addEventListener("keydown", function (event) { if (event.key === "Escape" && model.layoutDraft) closeLayout(); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(event.key === "ArrowRight" ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]"),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(event.key==="ArrowRight"?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
