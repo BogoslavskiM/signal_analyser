@@ -327,7 +327,13 @@ end
     max_entry = only(max_response["layouts"])
     @test length(max_entry["layout"]["panes"]) == 100
     @test pane_output_ids(max_response) == ["pane-1"]
-    @test count(pane -> isempty(pane["signal_bindings"]), max_entry["layout"]["panes"]) == 99
+    @test all(
+        pane -> pane["signal_bindings"] == [only(bounded.signals).name],
+        max_entry["layout"]["panes"],
+    )
+    @test Set(keys(bounded.output_manager.need_update_pages)) == Set(
+        "display-1::pane-$index" for index in 1:100
+    )
     @test only(max_entry["outputs"])["output"]["success"] === true
     @test isempty(PANE_OUTPUTS.SPECTRUM_CALLS) && isempty(PANE_OUTPUTS.SPECTROGRAM_CALLS) && isempty(PANE_OUTPUTS.PERSISTENCE_CALLS)
 end

@@ -1569,49 +1569,47 @@ function signal_analyser_display_for_layout(
     pane = signal_display_active_pane(layout)
     pane_members = signal_display_pane_members(pane)
     members = signal_analyser_inventory_ordered_names(state, pane_members)
-    current_analysis = signal_analyser_display_analysis_name(display)
-    analysis_name = if isempty(pane_members)
-        nothing
-    elseif current_analysis !== nothing && current_analysis in pane_members
-        current_analysis
-    else
-        first(pane_members)
-    end
-    analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
-    prospective_members = AnalysedSignal[signal_by_name(state, name) for name in members]
-    reconciled_settings = analysis_signal === nothing ? ReconciledSignalAnalysisSettings(
-        display.spectrum_settings,
-        display.spectrogram_settings,
-    ) : signal_analyser_reconcile_analysis_source(
-        SignalAnalysisSourceReconciler(),
-        display,
-        prospective_members,
-        analysis_signal,
-    )
-    time_limits = if analysis_signal === nothing
-        nothing
-    elseif display.time_limits !== nothing && signal_time_limits_are_valid(
-        state.measurements_service,
-        analysis_signal,
-        display.time_limits,
-    )
-        display.time_limits
-    else
-        signal_full_time_limits(state.measurements_service, analysis_signal)
-    end
     SignalAnalyserDisplayState(
         display.id,
         display.name,
         pane.plot_type,
         SignalDisplayMembership(members),
-        signal_analysis_source(analysis_name),
-        time_limits,
-        display.measurement_selection,
-        reconciled_settings.spectrum,
-        reconciled_settings.spectrogram,
-        display.persistence_settings,
-        signal_settings_reconcile_stored_for_source(display.stored_settings, analysis_signal),
-        analysis_signal !== nothing && pane.plot_type == TIME_PLOT && display.peaks_enabled,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+    )
+end
+
+function signal_analyser_new_pane_template(
+    state::SignalAnalyserState,
+    layout::SignalDisplayLayoutState,
+)::SignalDisplayPaneState
+    active_pane = signal_display_active_pane(layout)
+    signal_display_pane_analysis_name(active_pane) !== nothing && return active_pane
+    existing_index = findfirst(
+        pane -> signal_display_pane_analysis_name(pane) !== nothing,
+        layout.panes,
+    )
+    existing_index === nothing || return layout.panes[existing_index::Int]
+
+    signal = signal_by_name(state, state.row_selection.signal_name)
+    SignalDisplayPaneState(
+        active_pane.id,
+        TIME_PLOT,
+        SignalDisplayMembership(String[signal.name]),
+        SignalAnalysisSource(signal.name),
+        signal_full_time_limits(state.measurements_service, signal),
+        SignalMeasurementSelection(),
+        SignalSpectrumSettings(),
+        SignalSpectrogramSettings(),
+        SignalPersistenceSettings(),
+        signal_display_pane_with_time_link(active_pane, false).stored_settings,
+        false,
     )
 end
 
@@ -4594,7 +4592,12 @@ function validate_signal_analyser_layout_payload(
             (field_errors["variant"] = "Требуется canonical variant $expected_variant")
         if layout !== nothing && !haskey(field_errors, "rows") &&
             !haskey(field_errors, "columns") && !haskey(field_errors, "variant")
-            prospective_layout = signal_display_layout_resize(layout, rows, columns)
+            prospective_layout = signal_display_layout_resize(
+                layout,
+                rows,
+                columns,
+                signal_analyser_new_pane_template(state, layout),
+            )
         end
     elseif operation == "select_pane" || operation == "update_pane"
         pane_value = signal_analyser_payload_value(data, "pane_id")

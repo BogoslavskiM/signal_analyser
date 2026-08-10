@@ -41,9 +41,9 @@ module.exports = async function testV5CleanFrontendContracts(assert) {
   ["./api/outputs/active?display_id=", "./api/settings/apply", "./api/layouts", "./api/view", "./api/displays", "./api/signals", "./api/session"].forEach((route) => assert(api.includes(route), `normal API adapter must retain ${route}`));
   assert(/setTimeout\(function \(\) \{ send\(item\); \},\s*150\)/.test(settings), "valid Apply-bound settings fields must use the exact 150ms debounce");
   assert(/function output\(poll\)[\s\S]*panes\(\)\.forEach/.test(app), "every visible pane must request an output independently");
-  assert(/outputTokens\[pane\.id\]/.test(app), "each pane output must have a supersession token");
+  assert(/function paneRuntimeKey\(displayId, paneId\)[\s\S]*?String\(displayId\) \+ "::" \+ String\(paneId\)/.test(app) && /outputTokens\[runtimeKey\]/.test(app), "each Display/pane output must have an isolated supersession token");
   assert(/calculation_revision/.test(app) && /context_key/.test(app), "pane output acceptance must guard calculation revision and context key");
-  assert(/(?:polls|pollTimers|pollByPane)\[pane\.id\]/.test(app), "pending output polling must use independent per-pane timers");
+  assert(/pollByPane\[runtimeKey\]/.test(app), "pending output polling must use independent Display/pane timers");
   assert(/Plotly\.react\(/.test(app) && /requestAnimationFrame/.test(app), "Plotly rendering must remain lazy and serialized through rAF and react");
   assert(/function accept\(snapshot\)[\s\S]*r<model\.revision/.test(app), "state snapshots older than state_revision must be rejected");
   assert(/<span class='layout-current'>/.test(app), "runtime layout trigger must retain the live v5 layout-current label class");

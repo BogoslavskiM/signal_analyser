@@ -306,8 +306,9 @@ const SIGNAL_SETTINGS_FIELDS = (
     ),
     signal_settings_field_definition(
         "time.link_time", "time", "Link time", "boolean", false;
-        effect_status = "blocked_contract", effect_reason = "milestone_3_contract",
-        visibility_policy = :multiple_displays,
+        effect_status = "effective", effect_reason = "",
+        visibility_policy = :multiple_time_panes,
+        enabled_policy = :compatible_time_panes,
     ),
     signal_settings_field_definition(
         "spectrum.frequency_units", "spectrum", "Frequency units", "enum", "hertz";
@@ -634,6 +635,24 @@ function signal_settings_has_complex_analysis_source(
     signal_by_name(state, analysis_name).is_complex
 end
 
+function signal_settings_time_panes(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::Vector{SignalDisplayPaneState}
+    layout = signal_analyser_layout_by_display_id(state, display.id)
+    SignalDisplayPaneState[pane for pane in layout.panes if pane.plot_type == TIME_PLOT]
+end
+
+function signal_analyser_compatible_time_panes(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::Vector{SignalDisplayPaneState}
+    SignalDisplayPaneState[
+        pane for pane in signal_settings_time_panes(state, display)
+        if signal_display_pane_analysis_name(pane) !== nothing
+    ]
+end
+
 function signal_settings_field_visible(
     definition::SignalSettingsFieldDefinition,
     state::SignalAnalyserState,
@@ -646,7 +665,8 @@ function signal_settings_field_visible(
     policy == :spectrum && return display.active_plot == SPECTRUM_PLOT
     policy == :spectrogram && return display.active_plot == SPECTROGRAM_PLOT
     policy == :persistence && return display.active_plot == PERSISTENCE_PLOT
-    policy == :multiple_displays && return display.active_plot == TIME_PLOT && length(state.displays) >= 2
+    policy == :multiple_time_panes && return display.active_plot == TIME_PLOT &&
+        length(signal_settings_time_panes(state, display)) >= 2
     resolution_type = display.stored_settings.spectrum.resolution_type
     policy == :spectrum_rbw && return display.active_plot == SPECTRUM_PLOT &&
         resolution_type == RBW_SPECTRUM_RESOLUTION
@@ -665,6 +685,9 @@ function signal_settings_field_enabled(
     policy = definition.enabled_policy
     policy == :always && return true
     policy == :source && return signal_analyser_display_analysis_name(display) !== nothing
+    policy == :compatible_time_panes && return display.active_plot == TIME_PLOT &&
+        signal_analyser_display_analysis_name(display) !== nothing &&
+        length(signal_analyser_compatible_time_panes(state, display)) >= 2
     policy == :spectrum_frequency_scale && return true
     policy == :spectrogram_frequency_scale && return true
     policy == :sidelobe_attenuation && return display.stored_settings.spectrum.window in (
@@ -1545,6 +1568,16 @@ function signal_settings_validate_typed_value!(
                 ),
             )
         end
+    elseif field_id == "time.link_time" && value && !(
+        display.active_plot == TIME_PLOT &&
+        signal_analyser_display_analysis_name(display) !== nothing &&
+        length(signal_analyser_compatible_time_panes(state, display)) >= 2
+    )
+        throw(signal_setting_validation_error(
+            display.id,
+            field_id,
+            "Связь времени требует как минимум две TIME pane с analysis source в одном Display",
+        ))
     elseif field_id in ("spectrum.frequency_limits", "spectrogram.frequency_limits")
         if value !== nothing
             signal === nothing && throw(signal_setting_validation_error(
@@ -2584,6 +2617,62 @@ function signal_settings_publish_display_unlocked!(
     nothing
 end
 
+function signal_settings_time_limits_compatible(
+    state::SignalAnalyserState,
+    pane::SignalDisplayPaneState,
+    limits::SignalTimeLimits,
+)::Bool
+    pane.plot_type == TIME_PLOT || return false
+    analysis_name = signal_display_pane_analysis_name(pane)
+    analysis_name === nothing && return false
+    signal_time_limits_are_valid(
+        state.measurements_service,
+        signal_by_name(state, analysis_name),
+        limits,
+    )
+end
+
+function signal_analyser_linked_time_pane_ids(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    limits::SignalTimeLimits,
+)::Vector{String}
+    layout = signal_analyser_layout_by_display_id(state, display_id)
+    source = signal_display_active_pane(layout)
+    source.plot_type == TIME_PLOT || return String[]
+    source.stored_settings.time.link_time || return String[]
+    String[
+        pane.id for pane in layout.panes
+        if pane.id != source.id && signal_settings_time_limits_compatible(state, pane, limits)
+    ]
+end
+
+function signal_settings_link_time_limits_unlocked!(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+)::Vector{String}
+    layout = signal_analyser_layout_by_display_id(state, display_id)
+    source = signal_display_active_pane(layout)
+    source.plot_type == TIME_PLOT || return String[]
+    source.stored_settings.time.link_time || return String[]
+    source.time_limits === nothing && return String[]
+    limits = source.time_limits::SignalTimeLimits
+    changed_panes = String[]
+    linked_layout = layout
+    linked_ids = Set(signal_analyser_linked_time_pane_ids(state, display_id, limits))
+    for pane in layout.panes
+        pane.id in linked_ids || continue
+        pane.time_limits == limits && continue
+        linked_layout = signal_display_layout_replace_pane(
+            linked_layout,
+            signal_display_pane_with_time_limits(pane, limits),
+        )
+        push!(changed_panes, pane.id)
+    end
+    state.display_layouts[String(display_id)] = linked_layout
+    changed_panes
+end
+
 function signal_settings_update_response_unlocked(
     service::SignalSettingsService,
     state::SignalAnalyserState,
@@ -2750,10 +2839,30 @@ function apply_signal_settings!(
             state.view.state_revision,
         ))
         display = signal_analyser_display_by_id(state, command.display_id)
-        display.id == state.active_display_id && signal_analyser_cancel_output_pages_unlocked!(
+        layout = signal_analyser_layout_by_display_id(state, display.id)
+        active_pane = signal_display_active_pane(layout)
+        draft = signal_settings_display_draft_unlocked(
+            service,
             state,
-            String[signal_analyser_active_output_page_id(state)],
+            display.id;
+            create = false,
         )
+        applies_time_limits = draft !== nothing && haskey(
+            (draft::SignalSettingsDisplayDraft).entries,
+            "time.x_limits",
+        )
+        cancellation_pages = String[
+            signal_analyser_output_page_id(display.id, active_pane.id),
+        ]
+        if applies_time_limits && active_pane.stored_settings.time.link_time
+            append!(
+                cancellation_pages,
+                signal_analyser_output_page_id(display.id, pane.id)
+                for pane in signal_analyser_compatible_time_panes(state, display)
+                if pane.id != active_pane.id
+            )
+        end
+        signal_analyser_cancel_output_pages_unlocked!(state, unique(cancellation_pages))
         prospective, errors = signal_settings_draft_projection_unlocked(
             service,
             state,
@@ -2773,9 +2882,17 @@ function apply_signal_settings!(
         end
 
         signal_settings_publish_display_unlocked!(state, prospective)
+        linked_pane_ids = applies_time_limits ?
+            signal_settings_link_time_limits_unlocked!(state, prospective.id) : String[]
         state.view.state_revision += 1
-        prospective.id == state.active_display_id &&
-            signal_analyser_invalidate_active_output_unlocked!(state)
+        affected_pages = String[
+            signal_analyser_output_page_id(prospective.id, active_pane.id),
+            (
+                signal_analyser_output_page_id(prospective.id, pane_id)
+                for pane_id in linked_pane_ids
+            )...,
+        ]
+        signal_analyser_invalidate_output_pages_unlocked!(state, affected_pages)
         signal_settings_clear_display_draft_unlocked!(service, state, prospective.id)
         Dict{String,Any}(
             "success" => true,

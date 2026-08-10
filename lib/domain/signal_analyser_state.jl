@@ -1632,6 +1632,77 @@ Base.copy(pane::SignalDisplayPaneState) = SignalDisplayPaneState(
     pane.peaks_enabled,
 )
 
+function signal_display_pane_with_id(
+    pane::SignalDisplayPaneState,
+    id::AbstractString,
+)::SignalDisplayPaneState
+    SignalDisplayPaneState(
+        id,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+    )
+end
+
+function signal_display_pane_with_time_link(
+    pane::SignalDisplayPaneState,
+    link_time::Bool,
+)::SignalDisplayPaneState
+    time = pane.stored_settings.time
+    stored = SignalDisplayStoredSettings(
+        pane.stored_settings.display,
+        SignalTimePreferences(
+            time.normalize_y,
+            time.show_markers,
+            time.units,
+            time.y_limits,
+            link_time,
+        ),
+        pane.stored_settings.spectrum,
+        pane.stored_settings.spectrogram,
+        pane.stored_settings.persistence,
+    )
+    SignalDisplayPaneState(
+        pane.id,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        stored,
+        pane.peaks_enabled,
+    )
+end
+
+function signal_display_pane_with_time_limits(
+    pane::SignalDisplayPaneState,
+    time_limits::Union{Nothing,SignalTimeLimits},
+)::SignalDisplayPaneState
+    SignalDisplayPaneState(
+        pane.id,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+    )
+end
+
 signal_display_pane_members(pane::SignalDisplayPaneState)::Vector{String} =
     collect(pane.membership.signal_names)
 signal_display_pane_analysis_name(pane::SignalDisplayPaneState) =
@@ -1708,6 +1779,20 @@ struct SignalDisplayLayoutState
         active_id in pane_ids || throw(ArgumentError(
             "Active pane должна входить в panes layout",
         ))
+        active_index = findfirst(==(active_id), pane_ids)::Int
+        time_link_source = pane_values[active_index].plot_type == TIME_PLOT ?
+            pane_values[active_index] : begin
+                first_time_index = findfirst(pane -> pane.plot_type == TIME_PLOT, pane_values)
+                first_time_index === nothing ? nothing : pane_values[first_time_index]
+            end
+        if time_link_source !== nothing
+            link_time = (time_link_source::SignalDisplayPaneState).stored_settings.time.link_time
+            pane_values = SignalDisplayPaneState[
+                pane.plot_type == TIME_PLOT && pane.stored_settings.time.link_time != link_time ?
+                    signal_display_pane_with_time_link(pane, link_time) : pane
+                for pane in pane_values
+            ]
+        end
         pane_numbers = Int[parse(Int, split(id, '-')[2]) for id in pane_ids]
         next_pane_number > maximum(pane_numbers) || throw(ArgumentError(
             "Следующий номер pane должен быть больше всех сохранённых номеров",
@@ -1771,6 +1856,15 @@ function signal_display_layout_replace_pane(
 )::SignalDisplayLayoutState
     index = findfirst(pane -> pane.id == replacement.id, layout.panes)
     index === nothing && throw(ArgumentError("Pane не найдена: $(replacement.id)"))
+    if layout.panes[index].plot_type != TIME_PLOT && replacement.plot_type == TIME_PLOT
+        time_source_index = findfirst(
+            pane -> pane.id != replacement.id && pane.plot_type == TIME_PLOT,
+            layout.panes,
+        )
+        inherited_link = time_source_index === nothing ? false :
+            layout.panes[time_source_index::Int].stored_settings.time.link_time
+        replacement = signal_display_pane_with_time_link(replacement, inherited_link)
+    end
     panes = copy(layout.panes)
     panes[index] = replacement
     SignalDisplayLayoutState(
@@ -1817,11 +1911,12 @@ function signal_display_layout_select_pane(
     )
 end
 
-"""Resize preserves the ordered prefix, drops only its suffix, and never reuses IDs."""
+"""Resize preserves the ordered prefix and seeds each new pane from a working template."""
 function signal_display_layout_resize(
     layout::SignalDisplayLayoutState,
     rows::Int,
     columns::Int,
+    pane_template::SignalDisplayPaneState,
 )::SignalDisplayLayoutState
     signal_display_layout_validate_dimensions(rows, columns)
     requested_count = rows * columns
@@ -1829,7 +1924,7 @@ function signal_display_layout_resize(
     panes = SignalDisplayPaneState[copy(layout.panes[index]) for index in 1:surviving_count]
     next_pane_number = layout.next_pane_number
     while length(panes) < requested_count
-        push!(panes, signal_display_empty_pane("pane-$next_pane_number"))
+        push!(panes, signal_display_pane_with_id(pane_template, "pane-$next_pane_number"))
         next_pane_number += 1
     end
     active_pane_id = any(pane -> pane.id == layout.active_pane_id, panes) ?
@@ -1842,6 +1937,19 @@ function signal_display_layout_resize(
         panes,
         active_pane_id,
         next_pane_number,
+    )
+end
+
+function signal_display_layout_resize(
+    layout::SignalDisplayLayoutState,
+    rows::Int,
+    columns::Int,
+)::SignalDisplayLayoutState
+    signal_display_layout_resize(
+        layout,
+        rows,
+        columns,
+        signal_display_active_pane(layout),
     )
 end
 

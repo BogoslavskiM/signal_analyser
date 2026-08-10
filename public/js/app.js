@@ -19,6 +19,17 @@
   function activeDisplay() { return model.state && (model.state.displays || []).filter(function (display) { return display.id === model.state.active_display_id; })[0]; }
   function panes() { return model.layout && Array.isArray(model.layout.panes) ? model.layout.panes : []; }
   function paneById(id) { return panes().filter(function (pane) { return pane.id === id; })[0]; }
+  function paneRuntimeKey(displayId, paneId) { return String(displayId) + "::" + String(paneId); }
+
+  function cancelInactiveDisplayWork(activeDisplayId) {
+    Object.keys(model.pollByPane).forEach(function (key) {
+      if (key.indexOf(String(activeDisplayId) + "::") !== 0) {
+        window.clearTimeout(model.pollByPane[key]);
+        delete model.pollByPane[key];
+      }
+    });
+    Object.keys(model.plotQueue).forEach(function (key) { if (key.indexOf(String(activeDisplayId) + "::") !== 0) delete model.plotQueue[key]; });
+  }
 
   function accept(snapshot) {
     var r = stateRevision(snapshot);
@@ -28,7 +39,7 @@
     settings.setRevision(r);
     updateLayout(snapshot);
     var display = activeDisplay();
-    if (display) settings.setContext(display.id, r);
+    if (display) { cancelInactiveDisplayWork(display.id); settings.setContext(display.id, r); }
     return true;
   }
 
@@ -134,11 +145,11 @@
     trigger.setAttribute("aria-label", "Изменить макет, текущий макет " + label.replace(" × ", " на "));
   }
 
-  function outputMarkup(pane, output) {
+  function outputMarkup(displayId, pane, output) {
     if (!pane.signal_bindings || !pane.signal_bindings.length) return "<div class='plot-empty' data-testid='pane-empty-" + esc(pane.id) + "'><span class='visually-hidden' role='status'>В области нет видимых сигналов</span></div>";
     if (!output || !output.isready) return "<div class='plot-initial-loading' data-testid='pane-loader-" + esc(pane.id) + "' role='status' aria-label='Загрузка графика'><span class='spinner'></span><span>Загрузка графика</span></div>";
     if (!output.success) return "<div class='plot-error' data-testid='pane-error-" + esc(pane.id) + "' role='alert'>" + esc(output.error || "Не удалось загрузить график.") + "</div>";
-    return "<div class='plot-chart' data-pane-host='" + esc(pane.id) + "' data-testid='plot-host-" + esc(pane.id) + "' data-plot-ready='false'></div>";
+    return "<div class='plot-chart' data-pane-host='" + esc(paneRuntimeKey(displayId, pane.id)) + "' data-testid='plot-host-" + esc(pane.id) + "' data-plot-ready='false'></div>";
   }
 
   function renderGrid() {
@@ -146,18 +157,21 @@
     if (!grid) return;
     grid.style.gridTemplateColumns = "repeat(" + model.layout.columns + ", minmax(0, 1fr))";
     grid.style.gridTemplateRows = "repeat(" + model.layout.rows + ", minmax(0, 1fr))";
+    var display = activeDisplay();
+    if (!display) return;
     grid.innerHTML = panes().map(function (pane, index) {
-      var output = model.outputs[pane.id] && model.outputs[pane.id].output;
+      var runtimeKey = paneRuntimeKey(display.id, pane.id);
+      var output = model.outputs[runtimeKey] && model.outputs[runtimeKey].output;
       var selected = pane.id === model.activePane;
       return "<section class='plot-pane" + (selected ? " is-active" : "") + "' tabindex='0' data-pane-id='" + esc(pane.id) + "' data-testid='plot-pane-" + esc(pane.id) + "' aria-label='Область " + (index + 1) + (selected ? ", активная" : "") + "'>" +
         "<header class='plot-pane-header'><span class='plot-pane-title'>Область " + (index + 1) + "</span><div class='plot-control-cluster'><select class='pane-select' data-pane-type='" + esc(pane.id) + "' data-testid='pane-type-" + esc(pane.id) + "' aria-label='Тип графика области " + (index + 1) + "'>" +
         Object.keys(titles).map(function (kind) { return "<option value='" + kind + "'" + (pane.plot_type === kind ? " selected" : "") + ">" + titles[kind] + "</option>"; }).join("") +
         "</select><button class='plot-more' type='button' data-pane-menu='" + esc(pane.id) + "' data-testid='pane-menu-" + esc(pane.id) + "' aria-label='Действия области " + (index + 1) + "' aria-haspopup='menu' aria-expanded='false'><img src='./icons/more-vertical.svg' alt=''></button></div></header>" +
-        "<div class='plot-canvas' aria-label='График области " + (index + 1) + "'>" + outputMarkup(pane, output) + "</div></section>";
+        "<div class='plot-canvas' aria-label='График области " + (index + 1) + "'>" + outputMarkup(display.id, pane, output) + "</div></section>";
     }).join("");
     panes().forEach(function (pane) {
-      var record = model.outputs[pane.id];
-      if (record && record.output && record.output.isready && record.output.success && hasPlotData(record.output.data)) enqueuePlot(pane, record);
+      var record = model.outputs[paneRuntimeKey(display.id, pane.id)];
+      if (record && record.output && record.output.isready && record.output.success && hasPlotData(record.output.data)) enqueuePlot(display.id, pane, record);
     });
   }
 
@@ -177,22 +191,24 @@
     return model.plotlyPromise;
   }
 
-  function enqueuePlot(pane, record) {
-    model.plotQueue[pane.id] = record;
-    if (model.plotInFlight[pane.id]) return;
-    model.plotInFlight[pane.id] = true;
+  function enqueuePlot(displayId, pane, record) {
+    var runtimeKey = paneRuntimeKey(displayId, pane.id);
+    model.plotQueue[runtimeKey] = record;
+    if (model.plotInFlight[runtimeKey]) return;
+    model.plotInFlight[runtimeKey] = true;
     window.requestAnimationFrame(function () {
-      var queued = model.plotQueue[pane.id];
-      model.plotQueue[pane.id] = null;
+      var queued = model.plotQueue[runtimeKey];
+      model.plotQueue[runtimeKey] = null;
       loadPlotly().then(function (Plotly) {
-        var host = q("[data-pane-host='" + CSS.escape(pane.id) + "']");
+        if (!activeDisplay() || activeDisplay().id !== displayId) return;
+        var host = q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
         if (!host || !queued || !hasPlotData(queued.output.data)) return;
         var payload = plotEnvelope(queued.output.data);
         var traces = Array.isArray(payload) ? payload : (Array.isArray(payload.data) ? payload.data : [{ type: "heatmap", x: payload.x, y: payload.y, z: payload.z, colorscale: payload.colorscale }]);
         return Plotly.react(host, traces, Object.assign({ paper_bgcolor: "#ffffff", plot_bgcolor: "#ffffff", showlegend: true, margin: { l: 44, r: 12, t: 12, b: 34 } }, payload.layout || {}), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
-        model.plotInFlight[pane.id] = false;
-        if (model.plotQueue[pane.id]) enqueuePlot(pane, model.plotQueue[pane.id]);
+        model.plotInFlight[runtimeKey] = false;
+        if (model.plotQueue[runtimeKey]) enqueuePlot(displayId, pane, model.plotQueue[runtimeKey]);
       });
     });
   }
@@ -238,12 +254,15 @@
     var rows = q("[data-testid='signal-rows']"), head = q("[data-table-head]");
     if (!rows || !head) return;
     var search = model.inspectorSearch;
+    var activePane = paneById(model.activePane);
+    var bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings : [];
     var signals = (model.state.signals || []).filter(function (signal) { return !search || String(signal.name).toLowerCase().indexOf(search.toLowerCase()) >= 0; });
     var columns = [{ id:"color", label:"Цвет" }, { id:"sample_rate", label:"Частота дискретизации" }, { id:"sample_count", label:"Отсчёты" }, { id:"duration", label:"Длительность" }, { id:"data_type", label:"Тип" }].filter(function (column) { return model.visibleColumns[column.id]; });
     head.innerHTML = "<th aria-label='Видимость'></th><th>Имя</th>" + columns.map(function (column) { return "<th>" + column.label + "</th>"; }).join("") + "<th aria-label='Действия'></th>";
     rows.innerHTML = signals.map(function (signal) {
       var values = { color:"<span class='color-swatch' data-testid='signal-color-" + esc(signal.name) + "' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signal.name) + "'></span>", sample_rate:esc(signal.sample_rate_hz == null ? "—" : signal.sample_rate_hz), sample_count:esc(signal.sample_count == null ? "—" : signal.sample_count), duration:esc(signal.duration_s == null ? "—" : signal.duration_s), data_type:esc(signal.data_type || "—") };
-      return "<tr data-testid='signal-row-" + esc(signal.name) + "' class='" + (signal.visible !== false ? "is-selected" : "") + "'><td><input class='ui-checkbox' type='checkbox' data-visible-signal='" + esc(signal.name) + "' aria-label='Показывать " + esc(signal.name) + "'" + (signal.visible !== false ? " checked" : "") + "></td><td><span class='signal-cell-value'>" + esc(signal.name) + "</span></td>" + columns.map(function (column) { return "<td class='" + (column.id === "color" ? "color-cell" : "") + "'><span class='signal-cell-value'>" + values[column.id] + "</span></td>"; }).join("") + "<td class='is-actions-host'><span class='signal-row-actions'><button type='button' class='signal-row-action' data-signal-duplicate='" + esc(signal.name) + "' data-testid='signal-duplicate-" + esc(signal.name) + "' aria-label='Копировать " + esc(signal.name) + "'><img src='./icons/copy.svg' alt=''></button><button type='button' class='signal-row-action is-danger' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "' aria-label='Удалить " + esc(signal.name) + "'><img src='./icons/trash.svg' alt=''></button></span></td></tr>";
+      var selected = bindings.indexOf(signal.name) >= 0;
+      return "<tr data-testid='signal-row-" + esc(signal.name) + "' class='" + (selected ? "is-selected" : "") + "'><td><input class='ui-checkbox' type='checkbox' data-visible-signal='" + esc(signal.name) + "' aria-label='Показывать " + esc(signal.name) + " в активной области'" + (selected ? " checked" : "") + "></td><td><span class='signal-cell-value'>" + esc(signal.name) + "</span></td>" + columns.map(function (column) { return "<td class='" + (column.id === "color" ? "color-cell" : "") + "'><span class='signal-cell-value'>" + values[column.id] + "</span></td>"; }).join("") + "<td class='is-actions-host'><span class='signal-row-actions'><button type='button' class='signal-row-action' data-signal-duplicate='" + esc(signal.name) + "' data-testid='signal-duplicate-" + esc(signal.name) + "' aria-label='Копировать " + esc(signal.name) + "'><img src='./icons/copy.svg' alt=''></button><button type='button' class='signal-row-action is-danger' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "' aria-label='Удалить " + esc(signal.name) + "'><img src='./icons/trash.svg' alt=''></button></span></td></tr>";
     }).join("");
     q("[data-testid='signal-search-empty']").hidden = signals.length > 0;
   }
@@ -257,29 +276,30 @@
       }).join("");
   }
 
-  function output(poll) { panes().forEach(function (pane) { fetchPaneOutput(activeDisplay().id, pane.id, poll); }); }
+  function output(poll) { var display = activeDisplay(); if (display) panes().forEach(function (pane) { fetchPaneOutput(display.id, pane.id, poll); }); }
   function fetchPaneOutput(displayId, paneId, poll) {
     var display = activeDisplay();
     var pane = paneById(paneId);
     if (!display || display.id !== displayId || !pane) return;
-    var token = (model.outputTokens[pane.id] || 0) + 1;
-    model.outputTokens[pane.id] = token;
-    window.clearTimeout(model.pollByPane[pane.id]);
+    var runtimeKey = paneRuntimeKey(displayId, paneId);
+    var token = (model.outputTokens[runtimeKey] || 0) + 1;
+    model.outputTokens[runtimeKey] = token;
+    window.clearTimeout(model.pollByPane[runtimeKey]);
     api.activeOutput(display.id, pane.id).then(function (response) {
-      var prior = model.outputs[pane.id];
-      if (token !== model.outputTokens[pane.id] || (stateRevision(response) !== null && stateRevision(response) < model.revision) || response.display_id !== display.id || response.pane_id !== pane.id || response.plot_type !== pane.plot_type || (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision < prior.calculation_revision)) return;
+      var prior = model.outputs[runtimeKey];
+      if (!activeDisplay() || activeDisplay().id !== displayId || token !== model.outputTokens[runtimeKey] || (stateRevision(response) !== null && stateRevision(response) < model.revision) || response.display_id !== display.id || response.pane_id !== pane.id || response.plot_type !== pane.plot_type || (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision < prior.calculation_revision)) return;
       model.revision = Math.max(model.revision, stateRevision(response) || model.revision);
       if (!response.isready && prior && prior.output && prior.output.isready && prior.output.success) {
-        if (poll) model.pollByPane[pane.id] = window.setTimeout(function () { fetchPaneOutput(displayId, paneId, true); }, 350);
+        if (poll) model.pollByPane[runtimeKey] = window.setTimeout(function () { fetchPaneOutput(displayId, paneId, true); }, 350);
         return;
       }
-      model.outputs[pane.id] = { context_key: response.context_key, calculation_revision: response.calculation_revision, output: { isready: response.isready, success: response.success, error: response.error, data: response.data } };
+      model.outputs[runtimeKey] = { context_key: response.context_key, calculation_revision: response.calculation_revision, output: { isready: response.isready, success: response.success, error: response.error, data: response.data } };
       scheduleRender();
-      if (!response.isready && poll) model.pollByPane[pane.id] = window.setTimeout(function () { fetchPaneOutput(displayId, paneId, true); }, 350);
+      if (!response.isready && poll) model.pollByPane[runtimeKey] = window.setTimeout(function () { fetchPaneOutput(displayId, paneId, true); }, 350);
       if (response.isready && response.success) completePendingApply();
     }).catch(function (error) {
-      if (token === model.outputTokens[pane.id]) {
-        model.outputs[pane.id] = { output: { isready: true, success: false, error: error.message || "Не удалось загрузить график." } };
+      if (activeDisplay() && activeDisplay().id === displayId && token === model.outputTokens[runtimeKey]) {
+        model.outputs[runtimeKey] = { output: { isready: true, success: false, error: error.message || "Не удалось загрузить график." } };
         scheduleRender();
       }
     });
@@ -345,19 +365,31 @@
     preview.style.setProperty("--columns", draft.columns);
     q("[data-layout-warning]").hidden = draft.rows <= 4 && draft.columns <= 4;
   }
+  function repositionLayout() {
+    var popover = q("[data-testid='layout-popover']"), trigger = q("[data-testid='layout-trigger']");
+    if (!popover || !trigger || popover.hidden) return;
+    var rect = trigger.getBoundingClientRect(), width = popover.offsetWidth, height = popover.offsetHeight;
+    popover.style.left = Math.min(window.innerWidth - width - 8, Math.max(8, rect.right - width)) + "px";
+    popover.style.top = Math.min(window.innerHeight - height - 8, Math.max(8, rect.bottom + 6)) + "px";
+  }
   function openLayout(trigger) {
     if (!model.layout) return;
+    if (model.layoutDraft) return closeLayout();
     model.layoutDraft = { rows: model.layout.rows, columns: model.layout.columns, trigger: trigger };
     renderLayoutDraft();
     q("[data-testid='layout-popover']").hidden = false;
     trigger.setAttribute("aria-expanded", "true");
+    repositionLayout();
+    var close = q("[data-layout-close]");
+    if (close) close.focus();
   }
   function closeLayout() {
     var popover = q("[data-testid='layout-popover']");
+    var trigger = model.layoutDraft && model.layoutDraft.trigger;
     popover.hidden = true;
-    if (model.layoutDraft && model.layoutDraft.trigger) {
-      model.layoutDraft.trigger.setAttribute("aria-expanded", "false");
-      model.layoutDraft.trigger.focus();
+    if (trigger) {
+      trigger.setAttribute("aria-expanded", "false");
+      trigger.focus();
     }
     model.layoutDraft = null;
   }
@@ -383,7 +415,7 @@
     if (button.dataset.testid === "layout-trigger") return void openLayout(button);
     if (button.dataset.layoutClose !== undefined || button.dataset.layoutCancel !== undefined) return void closeLayout();
     if (button.dataset.layoutRows || button.dataset.layoutColumns) { model.layoutDraft[button.dataset.layoutRows ? "rows" : "columns"] = Number(button.dataset.layoutRows || button.dataset.layoutColumns); return void renderLayoutDraft(); }
-    if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }); }
+    if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
     if (button.dataset.testid === "settings-apply") return void applySettings();
     if (button.dataset.signalDelete) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "delete", signal_name: button.dataset.signalDelete }); });
     if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });
@@ -400,7 +432,7 @@
   document.addEventListener("change", function (event) {
     var node = event.target;
     if (node.dataset.paneType) { var pane = paneById(node.dataset.paneType); return void postLayout({ operation: "update_pane", pane_id: pane.id, plot_type: node.value, signal_bindings: pane.signal_bindings || [] }); }
-    if (node.dataset.visibleSignal) { var display = activeDisplay(), visible = (display.visible_signals || []).slice(), index = visible.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) visible.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) visible.splice(index, 1); return void mutate(function () { return api.view({ state_revision: model.revision, active_plot: display.active_plot, row_selected_signal: node.checked ? node.dataset.visibleSignal : null, analysis_signal: node.checked ? node.dataset.visibleSignal : null, visible_signals: visible, time_limits: display.time_limits, measurement_kinds: display.measurement_kinds, spectrum_settings: display.spectrum_settings, spectrogram_settings: display.spectrogram_settings, persistence_settings: display.persistence_settings, peaks_enabled: display.peaks_enabled || false }); }); }
+    if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }
   });
   document.addEventListener("click", function (event) { var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }); });
   document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } });
@@ -419,6 +451,7 @@
   });
   q("[data-testid='display-tabs']").addEventListener("scroll", function () { scheduleDisplayTabScrollUpdate(false); }, { passive: true });
   window.addEventListener("resize", function () { scheduleDisplayTabScrollUpdate(false); });
+  window.addEventListener("resize", repositionLayout);
   if (window.ResizeObserver) {
     model.displayTabsObserver = new window.ResizeObserver(function () { scheduleDisplayTabScrollUpdate(false); });
     model.displayTabsObserver.observe(q("[data-testid='display-tabs-wrap']"));

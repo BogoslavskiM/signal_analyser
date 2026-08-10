@@ -65,12 +65,12 @@
     if (context.page === "time") {
       if (type === "time") {
         var linkTime = actual("time.link_time", true);
-        if (linkTime && linkTime.visible === false) linkTime = Object.assign({}, linkTime, { enabled:false, warning:"Доступно при нескольких экранах." });
+        if (linkTime && linkTime.visible === false) linkTime = Object.assign({}, linkTime, { enabled:false });
         return [
           group("parameters", "Параметры", [actual("time.normalize_y", true), actual("time.show_markers", true)]),
           group("time-limits", "Пределы времени", [actual("time.units", true), actual("time.x_limits", true)]),
           group("y-limits", "Пределы оси Y", [actual("time.y_limits", true)]),
-          group("screen-link", "Связь экранов", [linkTime])
+          group("area-link", "Связь областей", [linkTime])
         ];
       }
       if (type === "spectrogram") return [group("time-limits", "Пределы времени", [actual("time.x_limits", true)])];
