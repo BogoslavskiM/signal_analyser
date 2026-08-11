@@ -1313,23 +1313,29 @@ signal_peak_kind_order(kind::SignalPeakKind)::Int = kind == MAXIMUM_PEAK ? 0 : 1
 struct SignalPeaksSettings
     mode::SignalExtremaMode
     number_of_peaks::Int
-    minimum_height::Union{Nothing,Float64}
+    maximum_cutoff::Union{Nothing,Float64}
+    minimum_cutoff::Union{Nothing,Float64}
     minimum_distance_samples::Int
     threshold::Float64
 
     function SignalPeaksSettings(
         mode::SignalExtremaMode,
         number_of_peaks::Int,
-        minimum_height::Union{Nothing,Real},
+        maximum_cutoff::Union{Nothing,Real},
+        minimum_cutoff::Union{Nothing,Real},
         minimum_distance_samples::Int,
         threshold::Real,
     )
         1 <= number_of_peaks <= SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS || throw(ArgumentError(
             "Количество экстремумов должно быть целым числом от 1 до $(SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS)",
         ))
-        height = minimum_height === nothing ? nothing : Float64(minimum_height)
-        height === nothing || isfinite(height) || throw(ArgumentError(
-            "Минимальная высота должна быть конечным числом или null",
+        maximum = maximum_cutoff === nothing ? nothing : Float64(maximum_cutoff)
+        maximum === nothing || isfinite(maximum) || throw(ArgumentError(
+            "Отсечка максимума должна быть конечным числом или null",
+        ))
+        minimum = minimum_cutoff === nothing ? nothing : Float64(minimum_cutoff)
+        minimum === nothing || isfinite(minimum) || throw(ArgumentError(
+            "Отсечка минимума должна быть конечным числом или null",
         ))
         minimum_distance_samples >= 1 || throw(ArgumentError(
             "Минимальное расстояние должно быть положительным целым числом отсчётов",
@@ -1341,12 +1347,28 @@ struct SignalPeaksSettings
         new(
             mode,
             number_of_peaks,
-            height,
+            maximum,
+            minimum,
             minimum_distance_samples,
             threshold_value == 0.0 ? 0.0 : threshold_value,
         )
     end
 end
+
+SignalPeaksSettings(
+    mode::SignalExtremaMode,
+    number_of_peaks::Int,
+    minimum_height::Union{Nothing,Real},
+    minimum_distance_samples::Int,
+    threshold::Real,
+) = SignalPeaksSettings(
+    mode,
+    number_of_peaks,
+    mode == MINIMA_EXTREMA_MODE ? nothing : minimum_height,
+    mode == MAXIMA_EXTREMA_MODE || minimum_height === nothing ? nothing : -minimum_height,
+    minimum_distance_samples,
+    threshold,
+)
 
 SignalPeaksSettings(
     number_of_peaks::Int,
@@ -1361,7 +1383,7 @@ SignalPeaksSettings(
     threshold,
 )
 
-SignalPeaksSettings() = SignalPeaksSettings(MAXIMA_EXTREMA_MODE, 99, nothing, 1, 0.0)
+SignalPeaksSettings() = SignalPeaksSettings(MAXIMA_EXTREMA_MODE, 99, nothing, nothing, 1, 0.0)
 
 struct SignalPeaksQuery
     state_revision::Int

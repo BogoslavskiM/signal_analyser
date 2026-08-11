@@ -2837,11 +2837,14 @@ function signal_peaks_detect_direction(
 )::SignalPeaksProviderResult
     settings = query.settings
     direction_values = kind == MAXIMUM_PEAK ? collect(query.values) : -collect(query.values)
+    direction_cutoff = kind == MAXIMUM_PEAK ?
+        settings.maximum_cutoff : settings.minimum_cutoff
     raw_result = Base.invokelatest(
         findpeaks,
         direction_values;
         NPeaks = settings.number_of_peaks,
-        MinPeakHeight = settings.minimum_height === nothing ? -Inf : settings.minimum_height,
+        MinPeakHeight = direction_cutoff === nothing ? -Inf :
+            (kind == MAXIMUM_PEAK ? direction_cutoff : -direction_cutoff),
         MinPeakDistance = settings.minimum_distance_samples,
         Threshold = settings.threshold,
         out = :data,
@@ -3361,7 +3364,8 @@ function signal_peaks_settings_payload(
     Dict{String,Any}(
         "mode" => signal_extrema_mode_name(settings.mode),
         "number_of_peaks" => settings.number_of_peaks,
-        "minimum_height" => settings.minimum_height,
+        "maximum_cutoff" => settings.maximum_cutoff,
+        "minimum_cutoff" => settings.minimum_cutoff,
         "minimum_distance_samples" => settings.minimum_distance_samples,
         "threshold" => settings.threshold,
     )
@@ -3376,13 +3380,6 @@ function signal_peaks_settings_fields_payload(
         "Количество минимумов"
     else
         "Количество экстремумов"
-    end
-    height_label = if settings.mode == MAXIMA_EXTREMA_MODE
-        "Минимальная высота максимума"
-    elseif settings.mode == MINIMA_EXTREMA_MODE
-        "Минимальная высота минимума (−y)"
-    else
-        "Минимальная высота по направлению"
     end
     Dict{String,Any}[
         Dict{String,Any}(
@@ -3417,10 +3414,23 @@ function signal_peaks_settings_fields_payload(
             "units" => nothing,
         ),
         Dict{String,Any}(
-            "id" => "minimum_height",
-            "label" => height_label,
+            "id" => "maximum_cutoff",
+            "label" => "Отсечка максимума",
             "type" => "number",
-            "value" => settings.minimum_height,
+            "value" => settings.maximum_cutoff,
+            "default_value" => nothing,
+            "required" => true,
+            "nullable" => true,
+            "minimum" => nothing,
+            "maximum" => nothing,
+            "step" => nothing,
+            "units" => nothing,
+        ),
+        Dict{String,Any}(
+            "id" => "minimum_cutoff",
+            "label" => "Отсечка минимума",
+            "type" => "number",
+            "value" => settings.minimum_cutoff,
             "default_value" => nothing,
             "required" => true,
             "nullable" => true,
@@ -3472,6 +3482,14 @@ const SIGNAL_PEAKS_SETTINGS_REQUEST_FIELDS = Set([
     "settings",
 ])
 const SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS = Set([
+    "mode",
+    "number_of_peaks",
+    "maximum_cutoff",
+    "minimum_cutoff",
+    "minimum_distance_samples",
+    "threshold",
+])
+const SIGNAL_PEAKS_SETTINGS_LEGACY_MODE_VALUE_FIELDS = Set([
     "mode",
     "number_of_peaks",
     "minimum_height",
@@ -3532,8 +3550,10 @@ function validate_signal_peaks_settings_request(data)::SignalPeaksSettingsReques
         field_errors["settings"] = "Требуется JSON-объект"
     else
         settings_keys = signal_analyser_payload_keys(settings_value)
-        if settings_keys != SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS &&
-            settings_keys != SIGNAL_PEAKS_SETTINGS_LEGACY_VALUE_FIELDS
+        is_current_settings = settings_keys == SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS
+        is_legacy_mode_settings = settings_keys == SIGNAL_PEAKS_SETTINGS_LEGACY_MODE_VALUE_FIELDS
+        is_legacy_settings = settings_keys == SIGNAL_PEAKS_SETTINGS_LEGACY_VALUE_FIELDS
+        if !is_current_settings && !is_legacy_mode_settings && !is_legacy_settings
             missing = sort!(collect(setdiff(SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS, settings_keys)))
             unknown = sort!(collect(setdiff(settings_keys, SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS)))
             isempty(missing) || (field_errors["settings"] = "Отсутствуют поля: $(join(missing, ", "))")
@@ -3566,21 +3586,35 @@ function validate_signal_peaks_settings_request(data)::SignalPeaksSettingsReques
             (field_errors["settings.number_of_peaks"] =
                 "Требуется целое число от 1 до $(SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS)")
 
-        height_value = signal_analyser_payload_value(settings_value, "minimum_height")
-        minimum_height = if height_value === nothing
-            nothing
-        elseif height_value isa Real && !(height_value isa Bool)
-            try
-                Float64(height_value)
-            catch err
-                (err isa InexactError || err isa OverflowError) || rethrow()
+        parse_cutoff = function (field_id::String)
+            value = signal_analyser_payload_value(settings_value, field_id)
+            cutoff = if value === nothing
+                nothing
+            elseif value isa Real && !(value isa Bool)
+                try
+                    Float64(value)
+                catch err
+                    (err isa InexactError || err isa OverflowError) || rethrow()
+                    NaN
+                end
+            else
                 NaN
             end
-        else
-            NaN
+            (cutoff === nothing || isfinite(cutoff)) ||
+                (field_errors["settings.$field_id"] = "Требуется конечное число или null")
+            cutoff
         end
-        (minimum_height === nothing || isfinite(minimum_height)) ||
-            (field_errors["settings.minimum_height"] = "Требуется конечное число или null")
+        maximum_cutoff, minimum_cutoff = if is_current_settings
+            parse_cutoff("maximum_cutoff"), parse_cutoff("minimum_cutoff")
+        else
+            legacy_height = parse_cutoff("minimum_height")
+            legacy_mode = mode == MINIMA_EXTREMA_MODE ?
+                (nothing, legacy_height === nothing ? nothing : -legacy_height) :
+                mode == ALL_EXTREMA_MODE ?
+                    (legacy_height, legacy_height === nothing ? nothing : -legacy_height) :
+                    (legacy_height, nothing)
+            legacy_mode
+        end
 
         distance_value = signal_analyser_payload_value(settings_value, "minimum_distance_samples")
         minimum_distance_samples = if distance_value isa Integer && !(distance_value isa Bool)
@@ -3616,7 +3650,8 @@ function validate_signal_peaks_settings_request(data)::SignalPeaksSettingsReques
             settings = SignalPeaksSettings(
                 mode,
                 number_of_peaks,
-                minimum_height,
+                maximum_cutoff,
+                minimum_cutoff,
                 minimum_distance_samples,
                 threshold,
             )

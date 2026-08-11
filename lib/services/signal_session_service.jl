@@ -62,8 +62,16 @@ const SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS_V1 = Set([
     "minimum_distance_samples",
     "threshold",
 ])
-const SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS =
+const SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS_V2 =
     union(SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS_V1, Set(["mode"]))
+const SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS = Set([
+    "mode",
+    "number_of_peaks",
+    "maximum_cutoff",
+    "minimum_cutoff",
+    "minimum_distance_samples",
+    "threshold",
+])
 const SIGNAL_ANALYSER_SESSION_REQUEST_FIELDS = Set(["state_revision", "document"])
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
     "display.show_legend",
@@ -513,7 +521,7 @@ function signal_analyser_session_parse_layout_pane(
     pane_fields = signal_analyser_payload_keys(value)
     is_legacy_pane = pane_fields == SIGNAL_ANALYSER_SESSION_LEGACY_PANE_FIELDS
     is_legacy_pane && session_version != SIGNAL_ANALYSER_LEGACY_SESSION_VERSION && throw(
-        signal_analyser_session_error(path, "Session v2 требует peaks_settings для каждой pane"),
+        signal_analyser_session_error(path, "Session v2+ требует peaks_settings для каждой pane"),
     )
     data = is_legacy_pane ? value :
         signal_analyser_session_exact_object(value, SIGNAL_ANALYSER_SESSION_PANE_FIELDS, path)
@@ -552,7 +560,9 @@ function signal_analyser_session_parse_layout_pane(
     else
         expected_settings_fields = session_version == SIGNAL_ANALYSER_LEGACY_SESSION_VERSION ?
             SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS_V1 :
-            SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS
+            session_version == SIGNAL_ANALYSER_EXTREMA_SESSION_VERSION ?
+                SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS_V2 :
+                SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS
         peaks_settings_data = signal_analyser_session_exact_object(
             signal_analyser_payload_value(data, "peaks_settings"),
             expected_settings_fields,
@@ -584,11 +594,23 @@ function signal_analyser_session_parse_layout_pane(
                 "Максимальное значение: $(SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS)",
             ),
         )
-        minimum_height_value = signal_analyser_payload_value(peaks_settings_data, "minimum_height")
-        minimum_height = minimum_height_value === nothing ? nothing : signal_analyser_session_float(
-            minimum_height_value,
-            "$path.peaks_settings.minimum_height",
-        )
+        parse_cutoff = function (field_id::String)
+            value = signal_analyser_payload_value(peaks_settings_data, field_id)
+            value === nothing ? nothing : signal_analyser_session_float(
+                value,
+                "$path.peaks_settings.$field_id",
+            )
+        end
+        maximum_cutoff, minimum_cutoff = if session_version == SIGNAL_ANALYSER_SESSION_VERSION
+            parse_cutoff("maximum_cutoff"), parse_cutoff("minimum_cutoff")
+        else
+            legacy_height = parse_cutoff("minimum_height")
+            mode == MINIMA_EXTREMA_MODE ?
+                (nothing, legacy_height === nothing ? nothing : -legacy_height) :
+                mode == ALL_EXTREMA_MODE ?
+                    (legacy_height, legacy_height === nothing ? nothing : -legacy_height) :
+                    (legacy_height, nothing)
+        end
         minimum_distance_samples = signal_analyser_session_integer(
             signal_analyser_payload_value(peaks_settings_data, "minimum_distance_samples"),
             "$path.peaks_settings.minimum_distance_samples",
@@ -605,7 +627,8 @@ function signal_analyser_session_parse_layout_pane(
         SignalPeaksSettings(
             mode,
             number_of_peaks,
-            minimum_height,
+            maximum_cutoff,
+            minimum_cutoff,
             minimum_distance_samples,
             threshold,
         )
@@ -951,7 +974,11 @@ function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDoc
         "document.version",
         minimum = 1,
     )
-    version in (SIGNAL_ANALYSER_LEGACY_SESSION_VERSION, SIGNAL_ANALYSER_SESSION_VERSION) || throw(signal_analyser_session_error(
+    version in (
+        SIGNAL_ANALYSER_LEGACY_SESSION_VERSION,
+        SIGNAL_ANALYSER_EXTREMA_SESSION_VERSION,
+        SIGNAL_ANALYSER_SESSION_VERSION,
+    ) || throw(signal_analyser_session_error(
         "document.version",
         "Неподдерживаемая версия: $version";
         code = "unsupported_session_version",

@@ -418,9 +418,8 @@
   }
 
   function peaksSettingsKey(display, pane) { return display && pane ? paneRuntimeKey(display.id, pane.id) : ""; }
-  function defaultPeaksSettings(settings) { return Object.assign({ mode:"maxima", number_of_peaks:99, minimum_height:null, minimum_distance_samples:1, threshold:0 }, settings || {}); }
+  function defaultPeaksSettings(settings) { return Object.assign({ mode:"maxima", number_of_peaks:99, maximum_cutoff:null, minimum_cutoff:null, minimum_distance_samples:1, threshold:0 }, settings || {}); }
   function extremaModeLabel(mode) { return mode === "minima" ? "Минимумы" : mode === "all" ? "Все экстремумы" : "Максимумы"; }
-  function extremaHeightCopy(mode) { return mode === "minima" ? { label:"Минимальная глубина минимума", helper:"Условие направления: y < −H." } : mode === "all" ? { label:"Минимальная высота / глубина", helper:"Условия направлений: y > H или y < −H." } : { label:"Минимальная высота максимума", helper:"Условие направления: y > H." }; }
   function activeExtremaHasComplexSignal(pane, record) {
     var bindings = pane && Array.isArray(pane.signal_bindings) ? pane.signal_bindings : [];
     var extremaSignals = record && record.data && Array.isArray(record.data.signals) ? record.data.signals : [];
@@ -429,15 +428,17 @@
   }
   function createPeaksDraft(display, pane, settings) {
     var source = defaultPeaksSettings(settings);
-    return { key:peaksSettingsKey(display, pane), source:source, values:{ mode:source.mode, number_of_peaks:String(source.number_of_peaks), minimum_height:source.minimum_height == null ? "-Inf" : String(source.minimum_height), minimum_distance_samples:String(source.minimum_distance_samples), threshold:String(source.threshold) }, invalid:{} };
+    return { key:peaksSettingsKey(display, pane), source:source, values:{ mode:source.mode, number_of_peaks:String(source.number_of_peaks), maximum_cutoff:source.maximum_cutoff == null ? "-Inf" : String(source.maximum_cutoff), minimum_cutoff:source.minimum_cutoff == null ? "Inf" : String(source.minimum_cutoff), minimum_distance_samples:String(source.minimum_distance_samples), threshold:String(source.threshold) }, invalid:{} };
   }
   function parsePeaksSettings(draft) {
     var raw = draft.values, settings = {}, invalid = {};
-    var count = Number(raw.number_of_peaks), distance = Number(raw.minimum_distance_samples), threshold = Number(raw.threshold), height = raw.minimum_height.trim();
+    var count = Number(raw.number_of_peaks), distance = Number(raw.minimum_distance_samples), threshold = Number(raw.threshold), maximumCutoff = raw.maximum_cutoff.trim(), minimumCutoff = raw.minimum_cutoff.trim();
     if (["maxima", "minima", "all"].indexOf(raw.mode) < 0) invalid.mode = "Выберите режим расчёта."; else settings.mode = raw.mode;
     if (!isFinite(count) || Math.floor(count) !== count || count < 1 || count > 1000) invalid.number_of_peaks = "Введите целое число от 1 до 1000."; else settings.number_of_peaks = count;
-    if (height === "" || height === "-Inf") settings.minimum_height = null;
-    else if (!isFinite(Number(height))) invalid.minimum_height = "Введите число или -Inf."; else settings.minimum_height = Number(height);
+    if (maximumCutoff === "" || maximumCutoff === "-Inf") settings.maximum_cutoff = null;
+    else if (!isFinite(Number(maximumCutoff))) invalid.maximum_cutoff = "Введите число или -Inf."; else settings.maximum_cutoff = Number(maximumCutoff);
+    if (minimumCutoff === "" || minimumCutoff === "Inf") settings.minimum_cutoff = null;
+    else if (!isFinite(Number(minimumCutoff))) invalid.minimum_cutoff = "Введите число или Inf."; else settings.minimum_cutoff = Number(minimumCutoff);
     if (!isFinite(distance) || Math.floor(distance) !== distance || distance < 1) invalid.minimum_distance_samples = "Введите целое число не меньше 1."; else settings.minimum_distance_samples = distance;
     if (!isFinite(threshold)) invalid.threshold = "Введите число.";
     else if (threshold < 0) invalid.threshold = "Введите число не меньше 0.";
@@ -454,8 +455,8 @@
     if (!settings) { host.innerHTML = "<div class='inspector-empty' role='status'>Загрузка настроек экстремумов…</div>"; return; }
     var key = peaksSettingsKey(display, pane);
     if (!model.peaksDraft || model.peaksDraft.key !== key) model.peaksDraft = createPeaksDraft(display, pane, settings);
-    var draft = model.peaksDraft, parsed = parsePeaksSettings(draft), heightCopy = extremaHeightCopy(draft.values.mode), disabled = model.peaksApplying ? " disabled" : "", labels = [
-      ["number_of_peaks", "Количество экстремумов, всего"], ["minimum_height", heightCopy.label, heightCopy.helper], ["minimum_distance_samples", "Минимальное расстояние, отсчёты", ""], ["threshold", "Порог", ""]
+    var draft = model.peaksDraft, parsed = parsePeaksSettings(draft), disabled = model.peaksApplying ? " disabled" : "", labels = [
+      ["number_of_peaks", "Количество экстремумов, всего"], ["maximum_cutoff", "Отсечка максимума", "Максимум учитывается, если его значение выше отсечки."], ["minimum_cutoff", "Отсечка минимума", "Минимум учитывается, если его значение ниже отсечки."], ["minimum_distance_samples", "Минимальное расстояние, отсчёты", ""], ["threshold", "Порог", ""]
     ];
     var modeError = draft.invalid.mode;
     var complexSignal = activeExtremaHasComplexSignal(pane, record);

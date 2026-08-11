@@ -50,7 +50,7 @@ end
     target = SS.default_signal_analyser_state()
     imported = SS.import_signal_analyser_session!(service, target, Dict("state_revision" => 0, "document" => document))
 
-    @test imported == Dict("ok" => true, "schema" => SS.SIGNAL_ANALYSER_SESSION_SCHEMA, "version" => 2, "imported_source_revision" => 0, "state_revision" => 1)
+    @test imported == Dict("ok" => true, "schema" => SS.SIGNAL_ANALYSER_SESSION_SCHEMA, "version" => 3, "imported_source_revision" => 0, "state_revision" => 1)
     @test SS.export_signal_analyser_session(service, target)["document"]["state"] == document["state"]
     @test target.view.state_revision == 1
     @test isempty(target.plot_cache) && isempty(target.spectrum_cache) && isempty(target.spectrogram_cache) && isempty(target.persistence_cache)
@@ -106,7 +106,7 @@ end
 
     for (mutate, code) in (
         (value -> (value["schema"] = "unknown"), "unsupported_session_schema"),
-        (value -> (value["version"] = 3), "unsupported_session_version"),
+        (value -> (value["version"] = 4), "unsupported_session_version"),
         (value -> (value["unexpected"] = true), "invalid_session"),
         (value -> delete!(value["state"], "next_display_number"), "invalid_session"),
     )

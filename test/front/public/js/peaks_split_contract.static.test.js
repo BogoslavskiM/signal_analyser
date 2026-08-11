@@ -9,9 +9,9 @@ assert(/\.inspector-body\.is-table-only\s*\{[^}]*padding:\s*0 0 8px/.test(css),"
 assert(/\.peaks-table\s*\{[^}]*min-width:\s*880px/.test(css)&&/signal-table-scroll peaks-table-scroll/.test(app),"Extrema table must preserve its local scroll owner and 880px minimum width");
 assert(/<th>№<\/th><th>Сигнал<\/th><th>Цвет<\/th><th>Тип<\/th><th>Значение<\/th><th>Время, с<\/th><th>Метка на графике<\/th>/.test(app),"Extrema headers must be exact and ordered");
 assert(/peaks-color-swatch[\s\S]*signal_color/.test(app)&&/graph_number/.test(app)&&/row\.type === "minimum"/.test(app),"rows must preserve backend color, chronological marker number, and direction type");
-["Режим расчёта","Максимумы","Минимумы","Все экстремумы","Количество экстремумов","Минимальная высота / глубина","Минимальное расстояние, отсчёты","Порог"].forEach(x=>assert(app.includes(x),"missing exact Extrema copy "+x));
+["Режим расчёта","Максимумы","Минимумы","Все экстремумы","Количество экстремумов","Отсечка максимума","Отсечка минимума","Минимальное расстояние, отсчёты","Порог"].forEach(x=>assert(app.includes(x),"missing exact Extrema copy "+x));
 assert(/data-testid='settings-field-" \+ id/.test(app),"Extrema fields must expose stable selector construction");
-assert(/minimum_height == null \? "-Inf"/.test(app)&&/height === "" \|\| height === "-Inf"\) settings\.minimum_height = null/.test(app)&&!/−∞|-inf/.test(app),"nullable height must display and parse exact ASCII -Inf only");
+assert(/maximum_cutoff == null \? "-Inf"/.test(app)&&/minimum_cutoff == null \? "Inf"/.test(app)&&/maximumCutoff === "" \|\| maximumCutoff === "-Inf"\) settings\.maximum_cutoff = null/.test(app)&&/minimumCutoff === "" \|\| minimumCutoff === "Inf"\) settings\.minimum_cutoff = null/.test(app)&&!/−∞|-inf/.test(app),"independent extrema cutoffs must display and parse exact ASCII -Inf and Inf");
 assert(/threshold\s*<\s*0[\s\S]*?Введите число не меньше 0\./.test(app),"client must reject a negative Threshold with accepted Russian nonnegative validation");
 assert(/updatePeaksSettings/.test(api)&&/\.\/api\/peaks\/settings/.test(api),"settings must POST dedicated API");
 assert(/preservePlots:true, skipOutput:true/.test(app),"Extrema settings must not refetch graph output");

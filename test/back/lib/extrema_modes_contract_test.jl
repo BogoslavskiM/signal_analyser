@@ -13,7 +13,7 @@ end
     @test EXTREMA.signal_extrema_mode_name(EXTREMA.ALL_EXTREMA_MODE) == "all"
 
     query = EXTREMA.SignalPeaksQuery(3, "display-1", "s", EXTREMA.MAGNITUDE_ORDINATE, [1.0, -4.0, 2.0], 10.0, 0,
-        EXTREMA.SignalPeaksSettings(EXTREMA.MINIMA_EXTREMA_MODE, 7, nothing, 2, 0.25))
+        EXTREMA.SignalPeaksSettings(EXTREMA.MINIMA_EXTREMA_MODE, 7, 9.0, -2.0, 2, 0.25))
     calls = Any[]
     fake_findpeaks = function(values; kwargs...)
         push!(calls, (copy(values), kwargs))
@@ -21,8 +21,12 @@ end
     end
     minima = EXTREMA.signal_peaks_detect_direction(fake_findpeaks, query, EXTREMA.MINIMUM_PEAK)
     @test calls[1][1] == [-1.0, 4.0, -2.0]
-    @test calls[1][2][:MinPeakHeight] == -Inf && calls[1][2][:NPeaks] == 7
+    @test calls[1][2][:MinPeakHeight] == 2.0 && calls[1][2][:NPeaks] == 7
     @test minima.peak_values == (-4.0,) && minima.kinds == (EXTREMA.MINIMUM_PEAK,)
+    maximum_query = EXTREMA.SignalPeaksQuery(3, "display-1", "s", EXTREMA.MAGNITUDE_ORDINATE, [1.0, -4.0, 2.0], 10.0, 0,
+        EXTREMA.SignalPeaksSettings(EXTREMA.MAXIMA_EXTREMA_MODE, 7, 3.5, -9.0, 2, 0.25))
+    EXTREMA.signal_peaks_detect_direction(fake_findpeaks, maximum_query, EXTREMA.MAXIMUM_PEAK)
+    @test calls[2][1] == [1.0, -4.0, 2.0] && calls[2][2][:MinPeakHeight] == 3.5
 
     maxima = EXTREMA.SignalPeaksProviderResult([8.0, 6.0], [4, 8], [1.0, 1.0], [5.0, 2.0], [EXTREMA.MAXIMUM_PEAK, EXTREMA.MAXIMUM_PEAK], 10)
     minima = EXTREMA.SignalPeaksProviderResult([-7.0, -9.0], [3, 4], [1.0, 1.0], [5.0, 4.0], [EXTREMA.MINIMUM_PEAK, EXTREMA.MINIMUM_PEAK], 10)
@@ -30,7 +34,7 @@ end
     @test all.peak_values == (-7.0, 8.0, -9.0)
     @test all.locations_1based == (3, 4, 4) && all.kinds == (EXTREMA.MINIMUM_PEAK, EXTREMA.MAXIMUM_PEAK, EXTREMA.MINIMUM_PEAK)
 
-    settings = EXTREMA.SignalPeaksSettings(EXTREMA.ALL_EXTREMA_MODE, 3, nothing, 1, 0)
+    settings = EXTREMA.SignalPeaksSettings(EXTREMA.ALL_EXTREMA_MODE, 3, 1.0, -1.0, 1, 0)
     items = [EXTREMA.SignalPeakItem(EXTREMA.MINIMUM_PEAK, -7.0, 2, 0.2, 1.0, 5.0), EXTREMA.SignalPeakItem(EXTREMA.MAXIMUM_PEAK, 8.0, 3, 0.3, 1.0, 5.0)]
     snapshot = EXTREMA.SignalPeaksSnapshot(true, EXTREMA.ALL_EXTREMA_MODE, 4, "display-1", "s", EXTREMA.MAGNITUDE_ORDINATE, EXTREMA.SignalPeaksUnits(), items)
     rows = [EXTREMA.SignalPeaksTableRow(1, "s", "#123456", 1, items[1]), EXTREMA.SignalPeaksTableRow(2, "s", "#123456", 2, items[2])]
@@ -39,18 +43,26 @@ end
     @test [(row["type"], row["value"], row["graph_number"]) for row in payload["rows"]] == [("minimum", -7.0, 1), ("maximum", 8.0, 2)]
 end
 
-@testset "TASK-0097 session v1 migration exports v2 maxima mode" begin
+@testset "TASK-0097 session migration exports v3 independent cutoffs" begin
     service = EXTREMA.SignalAnalyserSessionService()
-    v2 = EXTREMA.export_signal_analyser_session(service, EXTREMA.default_signal_analyser_state())["document"]
-    v1 = deepcopy(v2)
+    v3 = EXTREMA.export_signal_analyser_session(service, EXTREMA.default_signal_analyser_state())["document"]
+    v1 = deepcopy(v3)
     v1["version"] = 1
     for pane in v1["state"]["displays"][1]["layout"]["panes"]
         delete!(pane["peaks_settings"], "mode")
+        delete!(pane["peaks_settings"], "maximum_cutoff")
+        delete!(pane["peaks_settings"], "minimum_cutoff")
+        pane["peaks_settings"]["minimum_height"] = nothing
     end
     target = EXTREMA.default_signal_analyser_state()
     imported = EXTREMA.import_signal_analyser_session!(service, target, Dict("state_revision" => 0, "document" => v1))
     exported = EXTREMA.export_signal_analyser_session(service, target)["document"]
     @test imported["version"] == 1
-    @test exported["version"] == 2
-    @test all(pane["peaks_settings"]["mode"] == "maxima" for pane in exported["state"]["displays"][1]["layout"]["panes"])
+    @test exported["version"] == 3
+    @test all(
+        pane["peaks_settings"]["mode"] == "maxima" &&
+        pane["peaks_settings"]["maximum_cutoff"] === nothing &&
+        pane["peaks_settings"]["minimum_cutoff"] === nothing
+        for pane in exported["state"]["displays"][1]["layout"]["panes"]
+    )
 end

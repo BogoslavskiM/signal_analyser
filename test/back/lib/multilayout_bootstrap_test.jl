@@ -91,7 +91,8 @@ end
         "peaks_settings" => Dict(
             "mode" => "maxima",
             "number_of_peaks" => 99,
-            "minimum_height" => nothing,
+            "maximum_cutoff" => nothing,
+            "minimum_cutoff" => nothing,
             "minimum_distance_samples" => 1,
             "threshold" => 0.0,
         ),
