@@ -463,8 +463,8 @@
     var key = peaksSettingsKey(display, pane);
     if (!model.peaksDraft || model.peaksDraft.key !== key) model.peaksDraft = createPeaksDraft(display, pane, settings);
     var draft = model.peaksDraft, parsed = parsePeaksSettings(draft), disabled = "", labels = [["number_of_peaks", "Количество экстремумов, всего"]];
-    if (draft.values.mode !== "minima") labels.push(["maximum_cutoff", "Отсечка максимума", "Максимум учитывается, если его значение выше отсечки."]);
-    if (draft.values.mode !== "maxima") labels.push(["minimum_cutoff", "Отсечка минимума", "Минимум учитывается, если его значение ниже отсечки."]);
+    if (draft.values.mode !== "minima") labels.push(["maximum_cutoff", "Отсечка максимума"]);
+    if (draft.values.mode !== "maxima") labels.push(["minimum_cutoff", "Отсечка минимума"]);
     labels.push(["minimum_distance_samples", "Минимальное расстояние, отсчёты", ""], ["threshold", "Порог", ""]);
     var modeError = draft.invalid.mode;
     var complexSignal = activeExtremaHasComplexSignal(pane, record);
