@@ -44,23 +44,7 @@
     return item;
   }
   function group(key, title, items) { return { key:key, title:title, items:items.filter(Boolean) }; }
-  function inventory() {
-    var type = context.plotType;
-    if (context.page === "time") {
-      if (type === "time") {
-        var linkTime = actual("time.link_time", true);
-        if (linkTime && linkTime.visible === false) linkTime = Object.assign({}, linkTime, { enabled:false });
-        return [
-          group("parameters", "Параметры", [actual("time.normalize_y", true), actual("time.show_markers", true)]),
-          group("time-limits", "Пределы времени", [actual("time.units", true), actual("time.x_limits", true)]),
-          group("y-limits", "Пределы оси Y", [actual("time.y_limits", true)]),
-          group("area-link", "Связь областей", [linkTime])
-        ];
-      }
-      if (type === "spectrogram") return [group("time-limits", "Пределы времени", [actual("time.x_limits", true)])];
-      return [group("not-applicable", "Временные настройки", [pseudo("time.not_applicable", "readout", "Не применяется", { readonly:true, enabled:false, message:"У этого типа графика нет собственных полей страницы «Время»." })])];
-    }
-
+  function displayInventory(type) {
     var graph = group("graph", "График", [
       pseudo("display.plot_type", "enum", type, { action:"plot-type", options:plotOptions }),
       actual("display.show_legend", true)
@@ -85,6 +69,26 @@
       group("frequency-axis", "Частотная ось", [actual("persistence.time_units", true), actual("persistence.frequency_units", true), actual("persistence.frequency_limits", true), actual("persistence.frequency_scale", true)]),
       group("density-power", "Плотность и мощность", [actual("persistence.power_limits", true), actual("persistence.density_limits", true), actual("persistence.scale", true), actual("persistence.leakage", true), actual("persistence.time_resolution", true), actual("persistence.overlap_percent", true), actual("persistence.power_bins", true), actual("persistence.rbw")])
     ];
+  }
+
+  function timeInventory(type) {
+    if (type === "time") {
+      var linkTime = actual("time.link_time", true);
+      if (linkTime && linkTime.visible === false) linkTime = Object.assign({}, linkTime, { enabled:false });
+      return [
+        group("parameters", "Параметры", [actual("time.normalize_y", true), actual("time.show_markers", true)]),
+        group("time-limits", "Пределы времени", [actual("time.units", true), actual("time.x_limits", true)]),
+        group("y-limits", "Пределы оси Y", [actual("time.y_limits", true)]),
+        group("area-link", "Связь областей", [linkTime])
+      ];
+    }
+    if (type === "spectrogram") return [group("time-limits", "Пределы времени", [actual("time.x_limits", true)])];
+    return [group("not-applicable", "Временные настройки", [pseudo("time.not_applicable", "readout", "Не применяется", { readonly:true, enabled:false, message:"У этого типа графика нет собственных временных настроек." })])];
+  }
+
+  function inventory() {
+    var type = context.plotType;
+    return displayInventory(type).concat(timeInventory(type));
   }
 
   function parse(item, raw) {

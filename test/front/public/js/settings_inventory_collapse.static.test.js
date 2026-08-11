@@ -11,13 +11,16 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
   const settings = read("public/js/settings.js");
   const app = read("public/js/app.js");
 
-  ["display", "time", "peaks"].forEach((page) => assert(html.includes(`data-settings-page="${page}"`), `settings page ${page} must remain authored`));
+  ["display", "peaks"].forEach((page) => assert(html.includes(`data-settings-page="${page}"`), `settings page ${page} must remain authored`));
+  assert(!html.includes('data-settings-page="time"'), "v8 must not retain a separate right-side Time trigger");
   assert(!html.includes('data-settings-page="measurements"') && !html.includes('data-testid="statistics-settings-tab"'), "Measurements must not remain a right-side settings page");
   assert(/data-settings-page[\s\S]*?ArrowLeft[\s\S]*?ArrowRight[\s\S]*?Home[\s\S]*?End[\s\S]*?tabs\[index\]\.click\(\)[\s\S]*?tabs\[index\]\.focus\(\)/.test(app), "settings pages must support roving keyboard activation");
 
-  const inventoryStart = settings.indexOf("function inventory()");
+  const inventoryStart = settings.indexOf("function displayInventory(type)");
   const inventoryEnd = settings.indexOf("function parse(", inventoryStart);
   const inventorySource = settings.slice(inventoryStart, inventoryEnd);
+  assert(/function inventory\(\)[\s\S]*?return displayInventory\(type\)\.concat\(timeInventory\(type\)\)/.test(settings), "Display inventory must be the ordered display plus former Time union");
+  assert(/function timeInventory\(type\)[\s\S]*?"Связь областей"/.test(settings) && !/Связь экранов/.test(settings), "merged Time inventory must retain exact intra-area link copy");
   const exactInventories = [
     ["time", ["Параметры", "Пределы времени", "Пределы оси Y", "Связь областей"], ["time.normalize_y", "time.show_markers", "time.units", "time.x_limits", "time.y_limits", "time.link_time"]],
     ["spectrum", ["График", "Частотная ось", "Спектральный анализ"], ["display.plot_type", "display.show_legend", "spectrum.frequency_units", "spectrum.frequency_limits", "spectrum.frequency_scale", "spectrum.y_limits", "spectrum.scale", "spectrum.resolution_type", "spectrum.leakage", "spectrum.rbw", "spectrum.window_length", "spectrum.window", "spectrum.sidelobe_attenuation_db", "spectrum.overlap_percent", "spectrum.nfft", "spectrum.frequency_resolution"]],
@@ -25,15 +28,11 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
     ["persistence", ["График", "Частотная ось", "Плотность и мощность"], ["display.plot_type", "display.show_legend", "persistence.time_units", "persistence.frequency_units", "persistence.frequency_limits", "persistence.frequency_scale", "persistence.power_limits", "persistence.density_limits", "persistence.scale", "persistence.leakage", "persistence.time_resolution", "persistence.overlap_percent", "persistence.power_bins", "persistence.rbw"]]
   ];
   exactInventories.forEach(([type, titles, ids]) => {
-    const marker = `if (type === "${type}")`;
-    const start = type === "persistence" ? inventorySource.lastIndexOf("return [") : inventorySource.indexOf(marker, type === "time" ? inventorySource.indexOf('context.page === "time"') : inventorySource.indexOf("var graph"));
-    const next = type === "persistence" ? -1 : inventorySource.indexOf('if (type ===', start + marker.length);
-    const branch = inventorySource.slice(start, next < 0 ? inventorySource.length : next);
-    titles.forEach((title) => assert(title === "График" ? /group\("graph", "График"/.test(inventorySource) && /return \[\s*graph/.test(branch) : branch.includes(`"${title}"`), `${type} inventory must include group ${title}`));
-    ids.forEach((id) => assert(id.indexOf("display.") === 0 ? inventorySource.includes(`"${id}"`) && /return \[\s*graph/.test(branch) : branch.includes(`"${id}"`), `${type} inventory must include ${id}`));
+    titles.forEach((title) => assert(inventorySource.includes(`"${title}"`), `${type} inventory must include group ${title}`));
+    ids.forEach((id) => assert(inventorySource.includes(`"${id}"`), `${type} inventory must include ${id}`));
   });
   assert(!/context\.page === "measurements"|measurementItem\(|action:"peaks"|action:"measurement"/.test(settings), "measurement and Peaks controls must be absent from the right settings inventory");
-  assert(/context\.page === "time"[\s\S]*?type === "spectrogram"[\s\S]*?"Пределы времени"[\s\S]*?"Временные настройки"/.test(settings), "Time page must provide graph-type-specific and not-applicable inventories");
+  assert(/function timeInventory\(type\)[\s\S]*?type === "spectrogram"[\s\S]*?"Пределы времени"[\s\S]*?"Временные настройки"/.test(settings), "merged Time inventory must retain graph-type-specific and not-applicable branches");
 
   assert(/function sourceItem\(id\)[\s\S]*?fields\(\)[\s\S]*?readouts\(\)/.test(settings), "inventory must include backend fields and readouts");
   assert(/item\.kind === "range" \|\| item\.kind === "optional_range"/.test(settings) && /item\.kind === "resolution" \|\| item\.kind === "power_bins"/.test(settings), "backend range and resolution controls must remain supported");

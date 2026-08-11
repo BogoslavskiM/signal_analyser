@@ -3,7 +3,7 @@ const fs=require("fs"),path=require("path");
 module.exports=async function(assert){const root=path.resolve(__dirname,"../../../..");const app=fs.readFileSync(path.join(root,"public/js/app.js"),"utf8"),api=fs.readFileSync(path.join(root,"public/js/api.js"),"utf8"),css=fs.readFileSync(path.join(root,"public/css/app.css"),"utf8");
 const html=fs.readFileSync(path.join(root,"public/index.html"),"utf8");
 assert((html.match(/data-bottom-tab=/g)||[]).length===3&&/data-bottom-tab="signals"[\s\S]*data-bottom-tab="measurements"[\s\S]*data-bottom-tab="peaks"/.test(html),"lower inspector must expose exactly Signals, Measurements and Peaks");
-assert((html.match(/data-settings-page=/g)||[]).length===3&&/data-settings-page="display"[\s\S]*data-settings-page="time"[\s\S]*data-settings-page="peaks"/.test(html),"right sidebar must expose exactly Display, Time and Peaks tabs");
+assert((html.match(/data-settings-page=/g)||[]).length===2&&/data-settings-page="display"[\s\S]*data-settings-page="peaks"/.test(html)&&!html.includes('data-settings-page="time"'),"v8 right sidebar must expose exactly Display and Peaks tabs");
 assert(/function renderPeaksInspector\(body\)[\s\S]*?peaks-table-scroll/.test(app)&&!/peaks-split|peaks-settings-panel|peaks-table-zone/.test(app+css),"lower Peaks must be full-width table-only without a sibling settings panel");
 assert(/\.inspector-body\.is-table-only\s*\{[^}]*padding:\s*0 0 8px/.test(css),"v7 table-only Peaks track must align full-width with zero horizontal inset and retain 8px bottom inset");
 assert(/\.peaks-table\s*\{[^}]*min-width:\s*880px/.test(css)&&/signal-table-scroll peaks-table-scroll/.test(app),"Peaks table must preserve its local scroll owner and 880px minimum width");
