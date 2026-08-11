@@ -2,9 +2,8 @@
   "use strict";
 
   var api = window.SignalAnalyserApi;
-  var timer;
   var context = {
-    displayId: "", revision: 0, document: null, drafts: {}, pending: {}, loadToken: 0,
+    displayId: "", revision: 0, document: null, drafts: {}, pending: {}, timers: {}, requestQueue: Promise.resolve(), intent: 0, contextToken: 0, loadToken: 0,
     page: "display", plotType: "time", collapsed: {}, renderedFields: {}
   };
   var plotOptions = [
@@ -198,33 +197,73 @@
       draft.value = raw; draft.error = "Введите корректное значение."; context.drafts[item.id] = draft;
       render(); window.dispatchEvent(new CustomEvent("signal-apply-state")); return;
     }
-    draft.value = parsed; draft.error = ""; context.drafts[item.id] = draft;
+    draft.value = parsed; draft.error = ""; draft.intent = ++context.intent; context.drafts[item.id] = draft;
     if (item.kind === "resolution" || item.kind === "power_bins") render();
     window.dispatchEvent(new CustomEvent("signal-apply-state"));
     if (isApply(item)) {
-      clearTimeout(timer);
-      timer = window.setTimeout(function () { send(item); }, 150);
+      clearTimeout(context.timers[item.id]);
+      context.timers[item.id] = window.setTimeout(function () { send(item); }, 150);
     } else send(item).catch(function () {});
+  }
+
+  function sameContext(token, displayId) { return token === context.contextToken && displayId === context.displayId; }
+  function responseRevision(response) {
+    var state = response && response.state;
+    return state && typeof state.state_revision === "number" ? state.state_revision : null;
+  }
+  function adoptAuthoritative(response, token, displayId) {
+    if (!sameContext(token, displayId)) return false;
+    var revision = responseRevision(response);
+    if (revision !== null && revision < context.revision) return false;
+    if (response && response.settings) context.document = response.settings;
+    if (revision !== null) context.revision = revision;
+    return true;
+  }
+  function rebaseConflict(error, token, displayId) {
+    var payload = error && error.payload || {}, current = payload.current || payload.state;
+    if (!sameContext(token, displayId)) return false;
+    if (payload.settings) context.document = payload.settings;
+    var revision = current && typeof current.state_revision === "number" ? current.state_revision : null;
+    if (revision !== null) context.revision = Math.max(context.revision, revision);
+    return revision !== null;
+  }
+  function enqueue(task) {
+    var queued = context.requestQueue.catch(function () {}).then(task);
+    context.requestQueue = queued.catch(function () {});
+    return queued;
   }
 
   function send(item) {
     if (!item || item.pseudo || !context.displayId || !context.drafts[item.id] || context.drafts[item.id].error) return Promise.resolve();
-    clearTimeout(timer);
-    var draftValue = context.drafts[item.id].value, epoch = context.revision;
-    context.pending[item.id] = true;
-    return api.updateSetting({ state_revision:epoch, display_id:context.displayId, field_id:item.id, value:draftValue }).then(function (response) {
-      if (response && response.settings) context.document = response.settings;
-      if (response && response.state && typeof response.state.state_revision === "number") context.revision = response.state.state_revision;
-      delete context.pending[item.id];
-      render();
-      window.dispatchEvent(new CustomEvent("signal-settings-saved", { detail:response }));
-    }).catch(function (error) {
-      delete context.pending[item.id];
-      if (error.payload && error.payload.settings) context.document = error.payload.settings;
-      context.drafts[item.id].error = (error.payload && (error.payload.message || error.payload.error && error.payload.error.message)) || error.message || "Не удалось сохранить черновик.";
-      render();
-      throw error;
-    });
+    clearTimeout(context.timers[item.id]);
+    delete context.timers[item.id];
+    if (context.pending[item.id]) return context.pending[item.id];
+    var displayId = context.displayId, token = context.contextToken;
+    function persistLatest(retries) {
+      var draft = context.drafts[item.id];
+      if (!sameContext(token, displayId) || !draft || draft.error) return Promise.resolve();
+      var intent = draft.intent || 0, value = draft.value, revision = context.revision;
+      return api.updateSetting({ state_revision:revision, display_id:displayId, field_id:item.id, value:value }).then(function (response) {
+        if (!sameContext(token, displayId)) return response;
+        adoptAuthoritative(response, token, displayId);
+        var latest = context.drafts[item.id];
+        if (latest && !latest.error && (latest.intent || 0) > intent) return persistLatest(0);
+        render();
+        window.dispatchEvent(new CustomEvent("signal-settings-saved", { detail:response }));
+        return response;
+      }).catch(function (error) {
+        if (!sameContext(token, displayId)) return;
+        var latest = context.drafts[item.id];
+        if (error && error.status === 409 && retries < 1 && rebaseConflict(error, token, displayId)) return persistLatest(retries + 1);
+        if (latest && !latest.error && (latest.intent || 0) > intent) return persistLatest(0);
+        if (latest) latest.error = (error.payload && (error.payload.message || error.payload.error && error.payload.error.message)) || error.message || "Не удалось сохранить черновик.";
+        render();
+        throw error;
+      });
+    }
+    var pending = enqueue(function () { return persistLatest(0); });
+    context.pending[item.id] = pending;
+    return pending.finally(function () { if (context.pending[item.id] === pending) delete context.pending[item.id]; });
   }
 
   document.addEventListener("click", function (event) {
@@ -246,7 +285,10 @@
 
   window.SignalAnalyserSettings = {
     setContext:function (id, revision) {
-      if (context.displayId && context.displayId !== id) { clearTimeout(timer); context.drafts={}; context.pending={}; context.document=null; }
+      if (context.displayId && context.displayId !== id) {
+        Object.keys(context.timers).forEach(function (key) { clearTimeout(context.timers[key]); });
+        context.contextToken++; context.drafts={}; context.pending={}; context.timers={}; context.document=null;
+      }
       context.displayId=id; context.revision=Math.max(context.revision, revision || 0);
     },
     setView:function (page, plotType) {
@@ -260,7 +302,10 @@
       });
     },
     render:render,
-    flush:function () { clearTimeout(timer); return Promise.all(fields().filter(isApply).map(send)); },
+    flush:function () {
+      Object.keys(context.timers).forEach(function (key) { clearTimeout(context.timers[key]); delete context.timers[key]; });
+      return Promise.all(fields().filter(isApply).map(send));
+    },
     markApplied:function () { context.drafts={}; render(); },
     state:function () { var all=Object.keys(context.drafts).map(function (key) { return context.drafts[key]; }); return { dirty:all.some(function (draft) { return !draft.error; }), invalid:all.some(function (draft) { return draft.error; }), displayId:context.displayId, revision:context.revision }; },
     setRevision:function (revision) { if (typeof revision === "number" && revision >= context.revision) context.revision=revision; }

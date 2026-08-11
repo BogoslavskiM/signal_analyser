@@ -15,7 +15,7 @@
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
-    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksDraft: null, peaksApplying: false, peaksMessage: "",
+    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksMessage: "",
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false
   };
 
@@ -428,17 +428,24 @@
   }
   function createPeaksDraft(display, pane, settings) {
     var source = defaultPeaksSettings(settings);
-    return { key:peaksSettingsKey(display, pane), source:source, values:{ mode:source.mode, number_of_peaks:String(source.number_of_peaks), maximum_cutoff:source.maximum_cutoff == null ? "-Inf" : String(source.maximum_cutoff), minimum_cutoff:source.minimum_cutoff == null ? "Inf" : String(source.minimum_cutoff), minimum_distance_samples:String(source.minimum_distance_samples), threshold:String(source.threshold) }, invalid:{} };
+    return { key:peaksSettingsKey(display, pane), source:source, values:{ mode:source.mode, number_of_peaks:String(source.number_of_peaks), maximum_cutoff:source.maximum_cutoff == null ? "-Inf" : String(source.maximum_cutoff), minimum_cutoff:source.minimum_cutoff == null ? "Inf" : String(source.minimum_cutoff), minimum_distance_samples:String(source.minimum_distance_samples), threshold:String(source.threshold) }, invalid:{}, intent:0 };
   }
   function parsePeaksSettings(draft) {
     var raw = draft.values, settings = {}, invalid = {};
     var count = Number(raw.number_of_peaks), distance = Number(raw.minimum_distance_samples), threshold = Number(raw.threshold), maximumCutoff = raw.maximum_cutoff.trim(), minimumCutoff = raw.minimum_cutoff.trim();
     if (["maxima", "minima", "all"].indexOf(raw.mode) < 0) invalid.mode = "Выберите режим расчёта."; else settings.mode = raw.mode;
     if (!isFinite(count) || Math.floor(count) !== count || count < 1 || count > 1000) invalid.number_of_peaks = "Введите целое число от 1 до 1000."; else settings.number_of_peaks = count;
+    var maximumActive = raw.mode === "maxima" || raw.mode === "all", minimumActive = raw.mode === "minima" || raw.mode === "all";
     if (maximumCutoff === "" || maximumCutoff === "-Inf") settings.maximum_cutoff = null;
-    else if (!isFinite(Number(maximumCutoff))) invalid.maximum_cutoff = "Введите число или -Inf."; else settings.maximum_cutoff = Number(maximumCutoff);
+    else if (!isFinite(Number(maximumCutoff))) {
+      if (maximumActive) invalid.maximum_cutoff = "Введите число или -Inf.";
+      settings.maximum_cutoff = draft.source.maximum_cutoff;
+    } else settings.maximum_cutoff = Number(maximumCutoff);
     if (minimumCutoff === "" || minimumCutoff === "Inf") settings.minimum_cutoff = null;
-    else if (!isFinite(Number(minimumCutoff))) invalid.minimum_cutoff = "Введите число или Inf."; else settings.minimum_cutoff = Number(minimumCutoff);
+    else if (!isFinite(Number(minimumCutoff))) {
+      if (minimumActive) invalid.minimum_cutoff = "Введите число или Inf.";
+      settings.minimum_cutoff = draft.source.minimum_cutoff;
+    } else settings.minimum_cutoff = Number(minimumCutoff);
     if (!isFinite(distance) || Math.floor(distance) !== distance || distance < 1) invalid.minimum_distance_samples = "Введите целое число не меньше 1."; else settings.minimum_distance_samples = distance;
     if (!isFinite(threshold)) invalid.threshold = "Введите число.";
     else if (threshold < 0) invalid.threshold = "Введите число не меньше 0.";
@@ -455,9 +462,10 @@
     if (!settings) { host.innerHTML = "<div class='inspector-empty' role='status'>Загрузка настроек экстремумов…</div>"; return; }
     var key = peaksSettingsKey(display, pane);
     if (!model.peaksDraft || model.peaksDraft.key !== key) model.peaksDraft = createPeaksDraft(display, pane, settings);
-    var draft = model.peaksDraft, parsed = parsePeaksSettings(draft), disabled = model.peaksApplying ? " disabled" : "", labels = [
-      ["number_of_peaks", "Количество экстремумов, всего"], ["maximum_cutoff", "Отсечка максимума", "Максимум учитывается, если его значение выше отсечки."], ["minimum_cutoff", "Отсечка минимума", "Минимум учитывается, если его значение ниже отсечки."], ["minimum_distance_samples", "Минимальное расстояние, отсчёты", ""], ["threshold", "Порог", ""]
-    ];
+    var draft = model.peaksDraft, parsed = parsePeaksSettings(draft), disabled = "", labels = [["number_of_peaks", "Количество экстремумов, всего"]];
+    if (draft.values.mode !== "minima") labels.push(["maximum_cutoff", "Отсечка максимума", "Максимум учитывается, если его значение выше отсечки."]);
+    if (draft.values.mode !== "maxima") labels.push(["minimum_cutoff", "Отсечка минимума", "Минимум учитывается, если его значение ниже отсечки."]);
+    labels.push(["minimum_distance_samples", "Минимальное расстояние, отсчёты", ""], ["threshold", "Порог", ""]);
     var modeError = draft.invalid.mode;
     var complexSignal = activeExtremaHasComplexSignal(pane, record);
     var modeControl = "<label class='settings-field-row" + (modeError ? " has-error" : "") + "' data-testid='settings-field-mode'><span class='settings-label'><span>Режим расчёта</span></span><span class='settings-control-wrap'><button class='select-trigger' type='button' data-extrema-mode-trigger data-testid='extrema-mode-trigger' aria-haspopup='listbox' aria-controls='extrema-mode-menu' aria-expanded='false' aria-label='Режим расчёта: " + extremaModeLabel(draft.values.mode) + "'" + disabled + "><span>" + extremaModeLabel(draft.values.mode) + "</span></button></span>" + (modeError ? "<small class='field-message is-error' role='alert'>" + esc(modeError) + "</small>" : "") + "</label><p class='extrema-magnitude-note" + (complexSignal ? " is-current" : "") + "' data-testid='extrema-magnitude-copy'><span>Для комплексных сигналов экстремумы рассчитываются по модулю |y|.</span>" + (complexSignal ? "<em>Активный сигнал комплексный · используется |y|.</em>" : "") + "</p>";
@@ -483,18 +491,51 @@
   function applyPeaksSettings() {
     var display = activeDisplay(), pane = paneById(model.activePane), draft = model.peaksDraft, button = q("[data-testid='settings-apply']");
     if (!display || !pane || !draft || draft.key !== peaksSettingsKey(display, pane) || !button || model.settingsPage !== "peaks") return;
+    if (model.peaksApplying) { model.peaksApplyQueued = true; return; }
     var settingsPayload = parsePeaksSettings(draft);
-    if (!settingsPayload || !peaksSettingsDirty(draft, settingsPayload) || model.peaksApplying) return;
+    if (!settingsPayload || !peaksSettingsDirty(draft, settingsPayload)) return;
     var displayId = display.id, paneId = pane.id;
     model.peaksApplying = true;
+    model.peaksApplyQueued = false;
     model.peaksMessage = "Пересчитываются только экстремумы активной области";
     closeExtremaModeMenu(false);
     renderSettings(display);
-    mutate(function () {
-      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return Promise.reject(new Error("Контекст области изменился; повторите действие."));
-      return api.updatePeaksSettings({ state_revision:model.revision, display_id:displayId, pane_id:paneId, settings:settingsPayload });
-    }, { preservePlots:true, skipOutput:true }).then(function () {
-      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
+    function samePeaksContext() { return activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId && model.settingsPage === "peaks"; }
+    function acceptPeaksResponse(response) {
+      var snapshot = response && response.state ? response.state : response;
+      if (!accept(snapshot)) return refreshSnapshot(renderActivePaneContext);
+      renderActivePaneContext();
+      return Promise.resolve(snapshot);
+    }
+    function rebasePeaksConflict(error) {
+      var current = error && error.payload && (error.payload.current || error.payload.state);
+      if (!current) return Promise.reject(error);
+      if (accept(current)) { renderActivePaneContext(); return Promise.resolve(current); }
+      return refreshSnapshot(renderActivePaneContext);
+    }
+    function persistLatest(retries) {
+      if (!samePeaksContext() || !model.peaksDraft || model.peaksDraft.key !== peaksSettingsKey(activeDisplay(), paneById(paneId))) return Promise.reject(new Error("Контекст области изменился; повторите действие."));
+      var currentDraft = model.peaksDraft, currentPayload = parsePeaksSettings(currentDraft);
+      if (!currentPayload) return Promise.reject(new Error("Исправьте выделенные поля."));
+      var intent = currentDraft.intent || 0;
+      return api.updatePeaksSettings({ state_revision:model.revision, display_id:displayId, pane_id:paneId, settings:currentPayload }).then(function (response) {
+        return acceptPeaksResponse(response).then(function () {
+          var latest = model.peaksDraft;
+          if (samePeaksContext() && latest && latest.key === currentDraft.key && ((latest.intent || 0) > intent || model.peaksApplyQueued)) {
+            model.peaksApplyQueued = false;
+            return persistLatest(0);
+          }
+          return response;
+        });
+      }).catch(function (error) {
+        var latest = model.peaksDraft;
+        if (samePeaksContext() && error && error.status === 409 && retries < 1) return rebasePeaksConflict(error).then(function () { return persistLatest(retries + 1); });
+        if (samePeaksContext() && latest && latest.key === currentDraft.key && (latest.intent || 0) > intent) return persistLatest(0);
+        throw error;
+      });
+    }
+    persistLatest(0).then(function () {
+      if (!samePeaksContext()) return;
       model.peaksDraft = null;
       return fetchActivePeaks(displayId, paneId, true);
     }).catch(function (error) {
@@ -782,6 +823,8 @@
   function chooseExtremaMode(mode) {
     if (!model.peaksDraft || ["maxima", "minima", "all"].indexOf(mode) < 0) return;
     model.peaksDraft.values.mode = mode;
+    model.peaksDraft.intent = (model.peaksDraft.intent || 0) + 1;
+    if (model.peaksApplying) model.peaksApplyQueued = true;
     closeExtremaModeMenu(false);
     renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))]);
     renderApply();
@@ -885,10 +928,27 @@
     var footer = q("[data-testid='settings-footer']");
     var state = settings.state();
     if (!footer || state.invalid || !state.dirty) return;
+    var displayId = activeDisplay() && activeDisplay().id;
+    if (!displayId) return;
     footer.dataset.phase = "applying";
     footer.dataset.message = "Применяем сохранённый черновик";
     renderApply();
-    settings.flush().then(function () { return api.applySettings({ state_revision: settings.state().revision, display_id: activeDisplay().id }); }).then(function (result) {
+    function applyLatest(retries) {
+      if (!activeDisplay() || activeDisplay().id !== displayId) return Promise.reject(new Error("Контекст экрана изменился; повторите действие."));
+      return api.applySettings({ state_revision: settings.state().revision, display_id: displayId }).catch(function (error) {
+        var current = error && error.payload && (error.payload.current || error.payload.state);
+        if (error && error.status === 409 && retries < 1 && current) {
+          if (accept(current)) renderActivePaneContext();
+          else if (typeof current.state_revision === "number") {
+            model.revision = Math.max(model.revision, current.state_revision);
+            settings.setRevision(current.state_revision);
+          }
+          return applyLatest(retries + 1);
+        }
+        throw error;
+      });
+    }
+    settings.flush().then(function () { return applyLatest(0); }).then(function (result) {
       if (result.success === false) throw new Error(result.error || "Сервер отклонил настройки.");
       model.revision = Math.max(model.revision, result.state_revision || model.revision);
       footer.dataset.phase = "pending";
@@ -1023,8 +1083,8 @@
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }
   });
   document.addEventListener("click", function (event) { var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }, { preservePlots:true, skipOutput:true }); });
-  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
-  document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) updateSignalAddControls(); if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName === "SELECT") { var select=event.target; model.peaksDraft.values[select.dataset.peaksSetting]=select.value; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:select.dataset.peaksSetting }); renderApply(); } });
+  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
+  document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) updateSignalAddControls(); if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName === "SELECT") { var select=event.target; model.peaksDraft.values[select.dataset.peaksSetting]=select.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:select.dataset.peaksSetting }); renderApply(); } });
   document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); });
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-saved", function (event) { var revision = event.detail && event.detail.state && event.detail.state.state_revision; if (typeof revision === "number") model.revision = Math.max(model.revision, revision); });
