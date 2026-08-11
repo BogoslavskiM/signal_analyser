@@ -234,17 +234,19 @@
     grid.style.gridTemplateRows = "repeat(" + model.layout.rows + ", minmax(0, 1fr))";
     var display = activeDisplay();
     if (!display) return;
-    grid.innerHTML = panes().map(function (pane, index) {
+    var displayPanes = panes();
+    grid.dataset.paneCount = String(displayPanes.length);
+    grid.innerHTML = displayPanes.map(function (pane, index) {
       var runtimeKey = paneRuntimeKey(display.id, pane.id);
       var output = model.outputs[runtimeKey] && model.outputs[runtimeKey].output;
       var selected = pane.id === model.activePane;
-      return "<section class='plot-pane" + (selected ? " is-active" : "") + "' tabindex='0' data-pane-id='" + esc(pane.id) + "' data-testid='plot-pane-" + esc(pane.id) + "' aria-label='Область " + (index + 1) + (selected ? ", активная" : "") + "'>" +
+      return "<section class='plot-pane" + (selected ? " is-active" : "") + "' tabindex='0' data-pane-id='" + esc(pane.id) + "' data-pane-selected='" + String(selected) + "' data-testid='plot-pane-" + esc(pane.id) + "' aria-label='Область " + (index + 1) + (selected ? ", активная" : "") + "'>" +
         "<header class='plot-pane-header'><span class='plot-pane-title'>Область " + (index + 1) + "</span><div class='plot-control-cluster'><select class='pane-select' data-pane-type='" + esc(pane.id) + "' data-testid='pane-type-" + esc(pane.id) + "' aria-label='Тип графика области " + (index + 1) + "'>" +
         Object.keys(titles).map(function (kind) { return "<option value='" + kind + "'" + (pane.plot_type === kind ? " selected" : "") + ">" + titles[kind] + "</option>"; }).join("") +
         "</select><button class='plot-more' type='button' data-pane-menu='" + esc(pane.id) + "' data-testid='pane-menu-" + esc(pane.id) + "' aria-label='Действия области " + (index + 1) + "' aria-haspopup='menu' aria-expanded='false'><img src='./icons/more-vertical.svg' alt=''></button></div></header>" +
         "<div class='plot-canvas' aria-label='График области " + (index + 1) + "'>" + outputMarkup(display.id, pane, output) + "</div></section>";
     }).join("");
-    panes().forEach(function (pane) {
+    displayPanes.forEach(function (pane) {
       var record = model.outputs[paneRuntimeKey(display.id, pane.id)];
       if (record && record.output && record.output.isready && record.output.success && hasPlotData(record.output.data)) enqueuePlot(display.id, pane, record);
     });
@@ -258,9 +260,12 @@
       shell.dataset.stateRevision = String(model.revision);
       shell.dataset.activePane = model.activePane || "";
     }
+    var grid = q("[data-testid='plot-grid']");
+    if (grid) grid.dataset.paneCount = String(panes().length);
     qa("[data-pane-id]").forEach(function (node, index) {
       var selected = node.dataset.paneId === model.activePane;
       node.classList.toggle("is-active", selected);
+      node.dataset.paneSelected = String(selected);
       node.setAttribute("aria-label", "Область " + (index + 1) + (selected ? ", активная" : ""));
     });
     renderSettings(display);
