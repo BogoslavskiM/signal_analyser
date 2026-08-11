@@ -150,6 +150,9 @@
   function render() {
     var host = document.querySelector("[data-testid='settings-content']") || document.querySelector("[data-settings-content]");
     if (!host) return;
+    /* Pane-scoped Peaks is owned by app.js: it uses its independent GET/POST
+       lifecycle and must not be replaced by this display-settings inventory. */
+    if (context.page === "peaks") return;
     if (!context.document) { host.innerHTML = ""; return; }
     context.renderedFields = {};
     host.innerHTML = inventory().filter(function (item) { return item.items.length; }).map(function (item) {

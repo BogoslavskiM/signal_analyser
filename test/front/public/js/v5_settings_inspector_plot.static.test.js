@@ -11,7 +11,7 @@ module.exports = async function testV5SettingsInspectorAndPlotContracts(assert) 
   const app = read("public/js/app.js");
   const settings = read("public/js/settings.js");
 
-  ["settings-content", "settings-footer", "settings-apply", "display-settings-tab", "time-settings-tab"].forEach((id) => {
+  ["settings-content", "settings-footer", "settings-apply", "settings-tab-display", "settings-tab-time", "settings-tab-peaks"].forEach((id) => {
     assert(html.includes(`data-testid="${id}"`), `v5 settings must expose stable selector ${id}`);
   });
   assert(!html.includes('data-testid="statistics-settings-tab"'), "Measurements must not remain in the settings tablist");
@@ -35,7 +35,7 @@ module.exports = async function testV5SettingsInspectorAndPlotContracts(assert) 
   assert(/button\.dataset\.columnVisible[\s\S]*model\.visibleColumns\[key\] = !model\.visibleColumns\[key\][\s\S]*renderInspector\(\)[\s\S]*renderColumnMenu\(\)/.test(app), "column visibility action must update the authoritative inspector state and rendering");
   assert(/button\.dataset\.bottomTab[\s\S]*model\.inspectorPage = button\.dataset\.bottomTab[\s\S]*renderInspector\(\)/.test(app), "bottom tab click must render the selected inspector pane");
   assert(/aria-selected[\s\S]*tabIndex = active \? 0 : -1/.test(app), "inspector tabs must maintain roving tabindex and selected state");
-  assert(/\["ArrowLeft","ArrowRight","Home","End"\][\s\S]*tabs\[index\]\.click\(\)[\s\S]*tabs\[index\]\.focus\(\)/.test(app), "inspector keyboard navigation must activate and focus the roving tab");
+  assert(/ArrowLeft[\s\S]*ArrowRight[\s\S]*Home[\s\S]*End[\s\S]*tabs\[index\]\.click\(\)[\s\S]*tabs\[index\]\.focus\(\)/.test(app), "inspector keyboard navigation must activate and focus the roving tab");
   assert(/model\.inspectorPage === "measurements"\) return void renderMeasurementsInspector\(body\)[\s\S]*model\.inspectorPage === "peaks"\) return void renderPeaksInspector\(body\)/.test(app), "each non-signal bottom tab must render its concrete inspector page");
 
   assert(/function plotEnvelope\(data\) \{ return Array\.isArray\(data\) && data\.length === 1 && data\[0\] && Array\.isArray\(data\[0\]\.data\) \? data\[0\] : data; \}/.test(app), "one-item Plotly envelopes must normalize to their data/layout/config object");

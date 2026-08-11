@@ -72,12 +72,13 @@
           <span class="settings-context-dot" aria-hidden="true"></span>
         </header>
         <div class="settings-tabs" role="tablist" aria-label="Страницы настроек" data-testid="settings-tabs">
-          <button type="button" role="tab" aria-selected="true" data-settings-page="display" data-testid="display-settings-tab">Отображение</button>
-          <button type="button" role="tab" aria-selected="false" data-settings-page="time" data-testid="time-settings-tab">Время</button>
+          <button id="settings-tab-display" type="button" role="tab" aria-selected="true" tabindex="0" aria-controls="settings-content" data-settings-page="display" data-testid="settings-tab-display">Отображение</button>
+          <button id="settings-tab-time" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="settings-content" data-settings-page="time" data-testid="settings-tab-time">Время</button>
+          <button id="settings-tab-peaks" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="settings-content" data-settings-page="peaks" data-testid="settings-tab-peaks">Пики</button>
         </div>
         <!-- Legacy static-contract aliases: settings-catalog-panel / explicit-apply-root / bottom-panel-signals. -->
         <!-- data-testid="settings-catalog-panel" data-testid="explicit-apply-root" data-testid="bottom-panel-signals" -->
-        <div class="settings-scroll" data-settings-content data-testid="settings-content"></div>
+        <div id="settings-content" class="settings-scroll" role="tabpanel" aria-labelledby="settings-tab-display" data-settings-content data-testid="settings-content"></div>
         <footer class="settings-apply-block" data-testid="settings-footer" data-apply-root="true">
           <span class="settings-status" role="status" aria-live="polite" data-settings-status></span>
           <button class="button button-primary settings-apply" type="button" data-testid="settings-apply" aria-describedby="settings-apply-status" disabled>Применить</button>
@@ -94,7 +95,7 @@
           <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="peaks" data-testid="inspector-tab-peaks">Пики</button>
         </div>
       </header>
-      <div class="inspector-body" data-testid="inspector-pane-signals" data-inspector-content>
+      <div id="inspector-content" class="inspector-body" role="tabpanel" aria-labelledby="signals-tab" data-testid="inspector-pane-signals" data-inspector-content>
         <div class="inspector-search-row">
           <div class="inspector-search-field">
             <span class="search-icon" aria-hidden="true"></span>

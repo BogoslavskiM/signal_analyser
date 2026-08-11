@@ -31,5 +31,5 @@ module.exports = async function testMeasurementVisibilityAndPeaksOnOpen(assert) 
   assert(/display\.peaks_enabled \? Promise\.resolve\(\) : mutate/.test(loadPeaks), "Peaks must reuse its ready pane result or enable calculation on demand without fetching legacy state");
   assert(/peaks_enabled:true/.test(loadPeaks) && /preservePlots:true, skipOutput:true/.test(loadPeaks), "Peaks on-open calculation must avoid graph output reloads");
   assert(/fetchActivePeaks\(displayId, paneId, true\)/.test(loadPeaks), "Peaks on-open must request the pane-scoped active Peaks result");
-  assert(/function renderPeaksInspector\(body\)[\s\S]*peaks-split/.test(app), "the Peaks page must render the calculated split table and settings panel");
+  assert(/function renderPeaksInspector\(body\)[\s\S]*peaks-table-scroll[\s\S]*peaks-table/.test(app), "the Peaks page must render the calculated full-width table only");
 };

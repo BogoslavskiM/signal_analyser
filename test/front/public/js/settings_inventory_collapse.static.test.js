@@ -11,9 +11,9 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
   const settings = read("public/js/settings.js");
   const app = read("public/js/app.js");
 
-  ["display", "time"].forEach((page) => assert(html.includes(`data-settings-page="${page}"`), `settings page ${page} must remain authored`));
+  ["display", "time", "peaks"].forEach((page) => assert(html.includes(`data-settings-page="${page}"`), `settings page ${page} must remain authored`));
   assert(!html.includes('data-settings-page="measurements"') && !html.includes('data-testid="statistics-settings-tab"'), "Measurements must not remain a right-side settings page");
-  assert(/\["ArrowLeft","ArrowRight","Home","End"\][\s\S]*qa\("\[data-settings-page\]"\)[\s\S]*tabs\[index\]\.click\(\)[\s\S]*tabs\[index\]\.focus\(\)/.test(app), "settings pages must support roving keyboard activation");
+  assert(/data-settings-page[\s\S]*?ArrowLeft[\s\S]*?ArrowRight[\s\S]*?Home[\s\S]*?End[\s\S]*?tabs\[index\]\.click\(\)[\s\S]*?tabs\[index\]\.focus\(\)/.test(app), "settings pages must support roving keyboard activation");
 
   const inventoryStart = settings.indexOf("function inventory()");
   const inventoryEnd = settings.indexOf("function parse(", inventoryStart);
