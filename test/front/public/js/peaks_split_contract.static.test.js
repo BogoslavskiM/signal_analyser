@@ -5,7 +5,7 @@ const html=fs.readFileSync(path.join(root,"public/index.html"),"utf8");
 assert((html.match(/data-bottom-tab=/g)||[]).length===3&&/data-bottom-tab="signals"[\s\S]*data-bottom-tab="measurements"[\s\S]*data-bottom-tab="peaks"/.test(html),"lower inspector must expose exactly Signals, Measurements and Peaks");
 assert((html.match(/data-settings-page=/g)||[]).length===3&&/data-settings-page="display"[\s\S]*data-settings-page="time"[\s\S]*data-settings-page="peaks"/.test(html),"right sidebar must expose exactly Display, Time and Peaks tabs");
 assert(/function renderPeaksInspector\(body\)[\s\S]*?peaks-table-scroll/.test(app)&&!/peaks-split|peaks-settings-panel|peaks-table-zone/.test(app+css),"lower Peaks must be full-width table-only without a sibling settings panel");
-assert(/\.inspector-body\.is-table-only\s*\{[^}]*padding:\s*0 8px 8px/.test(css),"v6 table-only Peaks track must retain its exact 8px side and bottom inset");
+assert(/\.inspector-body\.is-table-only\s*\{[^}]*padding:\s*0 0 8px/.test(css),"v7 table-only Peaks track must align full-width with zero horizontal inset and retain 8px bottom inset");
 assert(/\.peaks-table\s*\{[^}]*min-width:\s*880px/.test(css)&&/signal-table-scroll peaks-table-scroll/.test(app),"Peaks table must preserve its local scroll owner and 880px minimum width");
 assert(/<th>№<\/th><th>Сигнал<\/th><th>Цвет<\/th><th>Значение<\/th><th>Время, с<\/th><th>Метка на графике<\/th>/.test(app),"Peaks headers must be exact and ordered");
 assert(/peaks-color-swatch[\s\S]*signal_color/.test(app)&&/graph_number/.test(app),"rows must use backend color and graph marker");
