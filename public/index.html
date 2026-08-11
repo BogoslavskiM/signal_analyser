@@ -73,7 +73,7 @@
         </header>
         <div class="settings-tabs" role="tablist" aria-label="Страницы настроек" data-testid="settings-tabs">
           <button id="settings-tab-display" type="button" role="tab" aria-selected="true" tabindex="0" aria-controls="settings-content" data-settings-page="display" data-testid="settings-tab-display">Отображение</button>
-          <button id="settings-tab-peaks" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="settings-content" data-settings-page="peaks" data-testid="settings-tab-peaks">Пики</button>
+          <button id="settings-tab-peaks" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="settings-content" data-settings-page="peaks" data-testid="settings-tab-peaks">Экстремумы</button>
         </div>
         <!-- Legacy static-contract aliases: settings-catalog-panel / explicit-apply-root / bottom-panel-signals. -->
         <!-- data-testid="settings-catalog-panel" data-testid="explicit-apply-root" data-testid="bottom-panel-signals" -->
@@ -91,7 +91,7 @@
         <div class="inspector-tabs" role="tablist" aria-label="Данные анализатора">
           <button id="signals-tab" type="button" role="tab" aria-selected="true" tabindex="0" data-bottom-tab="signals" data-testid="inspector-tab-signals">Сигналы</button>
           <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="measurements" data-testid="inspector-tab-measurements">Измерения</button>
-          <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="peaks" data-testid="inspector-tab-peaks">Пики</button>
+          <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="peaks" data-testid="inspector-tab-peaks">Экстремумы</button>
         </div>
       </header>
       <div id="inspector-content" class="inspector-body" role="tabpanel" aria-labelledby="signals-tab" data-testid="inspector-pane-signals" data-inspector-content>
@@ -121,6 +121,7 @@
   </main>
 
   <div class="menu select-menu" role="listbox" data-testid="select-menu" hidden></div>
+  <div id="extrema-mode-menu" class="menu select-menu extrema-mode-menu" role="listbox" aria-label="Режим расчёта экстремумов" data-testid="extrema-mode-menu" hidden></div>
   <div class="menu compact-menu plot-menu" role="menu" data-testid="display-overflow-menu" hidden>
     <button type="button" role="menuitem" data-plot-clear>
       <img src="./icons/trash.svg" alt="">

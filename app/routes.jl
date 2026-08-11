@@ -157,13 +157,13 @@ route("/api/peaks/active", method = GET) do
         end
         display_id isa AbstractString && !isempty(String(display_id)) || throw(
             SignalAnalyserValidationError(
-                "Некорректный запрос Peaks",
+                "Некорректный запрос экстремумов",
                 Dict("display_id" => "Требуется непустой идентификатор Display"),
             ),
         )
         pane_id isa AbstractString && !isempty(String(pane_id)) || throw(
             SignalAnalyserValidationError(
-                "Некорректный запрос Peaks",
+                "Некорректный запрос экстремумов",
                 Dict("pane_id" => "Требуется непустой идентификатор pane"),
             ),
         )
@@ -186,7 +186,7 @@ route("/api/peaks/active", method = GET) do
             )
         else
             api_error_response(
-                "Не удалось получить Peaks активной области Signal Analyser",
+                "Не удалось получить экстремумы активной области Signal Analyser",
                 err;
                 status = 500,
                 headers = response_headers,
@@ -215,7 +215,7 @@ route("/api/peaks/settings", method = POST) do
             )
         else
             api_error_response(
-                "Не удалось применить настройки Peaks",
+                "Не удалось применить настройки экстремумов",
                 err;
                 status = 500,
                 headers = response_headers,

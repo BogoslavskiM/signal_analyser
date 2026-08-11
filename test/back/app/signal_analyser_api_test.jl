@@ -906,6 +906,7 @@ end
     )
     @test cleared["peaks"] == Dict(
         "enabled" => false,
+        "mode" => "maxima",
         "state_revision" => 2,
         "display_id" => "display-1",
         "signal_name" => nothing,

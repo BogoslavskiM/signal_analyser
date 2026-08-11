@@ -2413,6 +2413,14 @@ struct SignalSettingsPreparedPassiveSnapshot
     plots::SignalAnalyserPreparedDisplayPlots
 end
 
+function signal_settings_peaks_settings_unlocked(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+)::SignalPeaksSettings
+    layout = signal_analyser_layout_by_display_id(state, display_id)
+    signal_display_active_pane(layout).peaks_settings
+end
+
 function signal_settings_prepare_passive_snapshot_unlocked(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
@@ -2432,6 +2440,7 @@ function signal_settings_prepare_passive_snapshot_unlocked(
         state_revision,
         display,
         signal,
+        settings = signal_settings_peaks_settings_unlocked(state, display.id),
     )
     prepared = signal_analyser_prepare_display_plots(
         state,
@@ -2561,6 +2570,7 @@ function signal_settings_apply_active_effective_unlocked!(
         next_revision,
         prospective,
         signal,
+        settings = signal_settings_peaks_settings_unlocked(state, prospective.id),
     )
     signal_analyser_publish_display_plots!(state, prepared_plots)
     signal_analyser_publish_display_state!(display, prospective)

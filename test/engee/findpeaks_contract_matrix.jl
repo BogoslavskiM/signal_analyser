@@ -1,20 +1,18 @@
 using Test
 
 """
-Cascade 4 evidence matrix for a future `findpeaks` capability.
+Cascade 4 evidence matrix for the production `findpeaks` capability.
 
-Signal Analyser has no `findpeaks` call site today.  This is deliberately an
-evidence record, not an assertion that the application implements peaks or a
-license to add a mathematical fallback.  The values below were reproduced in
-the production Engee MIND pod on 2026-07-31 and are paired with the official
-function reference.  A product call site must opt into this matrix explicitly
-before an application-level contract test is added.
+The values below were reproduced in the production Engee MIND pod on
+2026-07-31 and are paired with the official function reference.  TASK-0096
+reverified the public entrypoint and the application call site on 2026-08-11.
+This remains contract evidence, not a license to add a mathematical fallback.
 """
 const FINDPEAKS_CONTRACT_MATRIX = (
     function_name = "EngeeDSP.Functions.findpeaks",
-    call_sites = String[],
+    call_sites = ["lib/services/signal_analyser_service.jl::signal_peaks_detect"],
     target_environment = "prod Engee MIND",
-    status = "verified-prod-mcp-no-product-call-site",
+    status = "verified-prod-mcp-product-call-site",
     package_uuid = "f9bbbd0e-0dd6-4072-898a-88f8f1250a99",
     official_source = "https://engee.com/helpcenter/stable/en/func-dsp-measurements-and-feature-extraction/func-findpeaks.html",
     import_statement = "import EngeeDSP.Functions: findpeaks",
@@ -74,8 +72,8 @@ const FINDPEAKS_CONTRACT_MATRIX = (
 @testset "Cascade 4 findpeaks evidence-backed contract matrix" begin
     matrix = FINDPEAKS_CONTRACT_MATRIX
     @test matrix.function_name == "EngeeDSP.Functions.findpeaks"
-    @test isempty(matrix.call_sites)
-    @test matrix.status == "verified-prod-mcp-no-product-call-site"
+    @test matrix.call_sites == ["lib/services/signal_analyser_service.jl::signal_peaks_detect"]
+    @test matrix.status == "verified-prod-mcp-product-call-site"
     @test matrix.import_statement == "import EngeeDSP.Functions: findpeaks"
     @test length(matrix.methods) == 3
     @test matrix.required_data_output == "out=:data"

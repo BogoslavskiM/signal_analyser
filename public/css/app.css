@@ -1447,6 +1447,50 @@ button img {
 
 .peaks-table tbody tr { cursor: default; }
 
+.extrema-magnitude-note {
+  min-height: 40px;
+  display: grid;
+  align-content: center;
+  gap: 2px;
+  margin: 4px 8px 8px 48px;
+  padding: 8px 10px;
+  border-radius: var(--control-radius);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.extrema-magnitude-note em {
+  color: var(--accent-active);
+  font-style: normal;
+  font-weight: 500;
+}
+
+.extrema-field-helper { color: var(--muted); }
+
+.extrema-mode-menu { z-index: 1100; }
+
+.extrema-table-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--marker-color, var(--accent-active));
+  white-space: nowrap;
+}
+
+.extrema-table-marker i {
+  width: 0;
+  height: 0;
+  flex: 0 0 auto;
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+}
+
+.extrema-table-marker.is-maximum i { border-bottom: 10px solid var(--marker-color, var(--accent)); }
+.extrema-table-marker.is-minimum i { border-top: 10px solid var(--marker-color, var(--accent)); }
+.extrema-table-marker b { font-size: 12px; font-weight: 500; line-height: 14px; }
+
 .measurement-line-cell { text-align: center !important; }
 
 .measurement-line-swatch {

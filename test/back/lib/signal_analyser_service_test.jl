@@ -936,7 +936,7 @@ end
     state = SA.SignalAnalyserState(base.signals, base.view, Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = fake)
     disabled = SA.signal_analyser_snapshot(state)
     @test isempty(fake.calls)
-    @test disabled["peaks"] == Dict("enabled" => false, "state_revision" => 0, "display_id" => "display-1", "signal_name" => "raw-real", "ordinate" => "real", "units" => Dict("value" => "1", "time" => "s", "width" => "samples", "prominence" => "1"), "items" => Any[])
+    @test disabled["peaks"] == Dict("enabled" => false, "mode" => "maxima", "state_revision" => 0, "display_id" => "display-1", "signal_name" => "raw-real", "ordinate" => "real", "units" => Dict("value" => "1", "time" => "s", "width" => "samples", "prominence" => "1"), "items" => Any[])
 
     enabled = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 0, "peaks_enabled" => true))
     @test isempty(fake.calls)
@@ -968,8 +968,8 @@ end
     @test cached["peaks"]["state_revision"] == cached["state_revision"]
     @test cached["peaks"]["signal_name"] == first(pane_bindings)
     @test cached["peaks"]["items"] == [
-        Dict("id" => "peak-1", "value" => 7.0, "sample_index" => 1, "time_s" => 0.001, "width_samples" => 1.5, "prominence" => 4.0),
-        Dict("id" => "peak-1050", "value" => 11.0, "sample_index" => 1050, "time_s" => 1.05, "width_samples" => 2.0, "prominence" => 6.0),
+        Dict("id" => "peak-1", "type" => "maximum", "value" => 7.0, "sample_index" => 1, "time_s" => 0.001, "width_samples" => 1.5, "prominence" => 4.0),
+        Dict("id" => "peak-1050", "type" => "maximum", "value" => 11.0, "sample_index" => 1050, "time_s" => 1.05, "width_samples" => 2.0, "prominence" => 6.0),
     ]
     @test enabled["displays"][1]["peaks_enabled"] === true
 
@@ -1514,6 +1514,7 @@ function assert_empty_display_snapshot(snapshot)
     )
     @test snapshot["peaks"] == Dict(
         "enabled" => false,
+        "mode" => "maxima",
         "state_revision" => snapshot["state_revision"],
         "display_id" => snapshot["active_display_id"],
         "signal_name" => nothing,
@@ -1720,7 +1721,7 @@ end
         Dict("id" => "mean", "label" => "Среднее", "value" => 8.5, "time_s" => nothing, "sample_index" => nothing),
     ]
     @test ready["peaks"]["items"] == [Dict(
-        "id" => "peak-8", "value" => 8.0, "time_s" => 0.8,
+        "id" => "peak-8", "type" => "maximum", "value" => 8.0, "time_s" => 0.8,
         "sample_index" => 8, "width_samples" => 1.5, "prominence" => 3.0,
     )]
     @test peaks_ready["peaks"]["items"] == ready["peaks"]["items"]

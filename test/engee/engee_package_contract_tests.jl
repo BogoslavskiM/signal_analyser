@@ -1,6 +1,7 @@
 using Test
 
 include("findpeaks_contract_matrix.jl")
+include("findpeaks_extrema_contract_tests.jl")
 
 @testset "DEC-039 Engee workspace catalog target lock" begin
     manifest = read(joinpath(@__DIR__, "..", "..", "architecture", "agents", "manifest.toml"), String)
@@ -22,6 +23,12 @@ function load_engee_dsp()
         @error "EngeeDSP is required for the Signal Analyser contract suite" exception = (err, catch_backtrace())
         return nothing
     end
+end
+
+@testset "EngeeDSP findpeaks extrema Signal Analyser contract" begin
+    dsp = load_engee_dsp()
+    dsp === nothing && return
+    run_findpeaks_extrema_contract_tests(dsp.Functions.findpeaks)
 end
 
 finite_values(values) = all(value -> isfinite(real(value)) && isfinite(imag(value)), vec(collect(values)))

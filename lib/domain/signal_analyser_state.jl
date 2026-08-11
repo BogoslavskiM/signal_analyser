@@ -1279,21 +1279,53 @@ Base.showerror(io::IO, err::SignalPeaksCapabilityError) = print(io, err.message)
 
 const SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS::Int = 1_000
 
-"""Provider-affecting Peaks settings owned by one Display pane."""
+@enum SignalExtremaMode begin
+    MAXIMA_EXTREMA_MODE
+    MINIMA_EXTREMA_MODE
+    ALL_EXTREMA_MODE
+end
+
+const SIGNAL_EXTREMA_MODE_NAMES = Dict{SignalExtremaMode,String}(
+    MAXIMA_EXTREMA_MODE => "maxima",
+    MINIMA_EXTREMA_MODE => "minima",
+    ALL_EXTREMA_MODE => "all",
+)
+const SIGNAL_EXTREMA_MODES_BY_NAME = Dict{String,SignalExtremaMode}(
+    name => mode for (mode, name) in SIGNAL_EXTREMA_MODE_NAMES
+)
+
+@enum SignalPeakKind begin
+    MAXIMUM_PEAK
+    MINIMUM_PEAK
+end
+
+
+const SIGNAL_PEAK_KIND_NAMES = Dict{SignalPeakKind,String}(
+    MAXIMUM_PEAK => "maximum",
+    MINIMUM_PEAK => "minimum",
+)
+
+signal_extrema_mode_name(mode::SignalExtremaMode)::String = SIGNAL_EXTREMA_MODE_NAMES[mode]
+signal_peak_kind_name(kind::SignalPeakKind)::String = SIGNAL_PEAK_KIND_NAMES[kind]
+signal_peak_kind_order(kind::SignalPeakKind)::Int = kind == MAXIMUM_PEAK ? 0 : 1
+
+"""Provider-affecting Extrema settings on the compatibility Peaks boundary."""
 struct SignalPeaksSettings
+    mode::SignalExtremaMode
     number_of_peaks::Int
     minimum_height::Union{Nothing,Float64}
     minimum_distance_samples::Int
     threshold::Float64
 
     function SignalPeaksSettings(
+        mode::SignalExtremaMode,
         number_of_peaks::Int,
         minimum_height::Union{Nothing,Real},
         minimum_distance_samples::Int,
         threshold::Real,
     )
         1 <= number_of_peaks <= SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS || throw(ArgumentError(
-            "Количество пиков должно быть целым числом от 1 до $(SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS)",
+            "Количество экстремумов должно быть целым числом от 1 до $(SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS)",
         ))
         height = minimum_height === nothing ? nothing : Float64(minimum_height)
         height === nothing || isfinite(height) || throw(ArgumentError(
@@ -1307,6 +1339,7 @@ struct SignalPeaksSettings
             "Порог должен быть неотрицательным конечным числом",
         ))
         new(
+            mode,
             number_of_peaks,
             height,
             minimum_distance_samples,
@@ -1315,7 +1348,20 @@ struct SignalPeaksSettings
     end
 end
 
-SignalPeaksSettings() = SignalPeaksSettings(99, nothing, 1, 0.0)
+SignalPeaksSettings(
+    number_of_peaks::Int,
+    minimum_height::Union{Nothing,Real},
+    minimum_distance_samples::Int,
+    threshold::Real,
+) = SignalPeaksSettings(
+    MAXIMA_EXTREMA_MODE,
+    number_of_peaks,
+    minimum_height,
+    minimum_distance_samples,
+    threshold,
+)
+
+SignalPeaksSettings() = SignalPeaksSettings(MAXIMA_EXTREMA_MODE, 99, nothing, 1, 0.0)
 
 struct SignalPeaksQuery
     state_revision::Int
@@ -1340,7 +1386,7 @@ struct SignalPeaksQuery
         state_revision >= 0 || throw(ArgumentError("Ревизия peaks query не может быть отрицательной"))
         isempty(display_id) && throw(ArgumentError("Идентификатор Display peaks query не может быть пустым"))
         isempty(signal_name) && throw(ArgumentError("Имя сигнала peaks query не может быть пустым"))
-        length(values) >= 3 || throw(ArgumentError("Для поиска пиков нужно не менее трёх отсчётов"))
+        length(values) >= 3 || throw(ArgumentError("Для расчёта экстремумов нужно не менее трёх отсчётов"))
         peak_values = Float64.(values)
         all(isfinite, peak_values) || throw(ArgumentError("Отсчёты peaks query должны быть конечными"))
         isfinite(sample_rate_hz) && sample_rate_hz > 0 || throw(ArgumentError(
@@ -1404,18 +1450,20 @@ struct SignalPeaksProviderResult
     locations_1based::Tuple{Vararg{Int}}
     widths_samples::Tuple{Vararg{Float64}}
     prominences::Tuple{Vararg{Float64}}
+    kinds::Tuple{Vararg{SignalPeakKind}}
 
     function SignalPeaksProviderResult(
         peak_values::AbstractVector{<:Real},
         locations_1based::AbstractVector{<:Integer},
         widths_samples::AbstractVector{<:Real},
         prominences::AbstractVector{<:Real},
+        kinds::AbstractVector{SignalPeakKind},
         sample_count::Int,
     )
         sample_count >= 3 || throw(ArgumentError("Результат peaks требует не менее трёх исходных отсчётов"))
         count = length(peak_values)
-        count == length(locations_1based) == length(widths_samples) == length(prominences) || throw(
-            DimensionMismatch("Массивы Ypk, Xpk, Wpk и Ppk должны иметь одинаковую длину"),
+        count == length(locations_1based) == length(widths_samples) == length(prominences) == length(kinds) || throw(
+            DimensionMismatch("Массивы Ypk, Xpk, Wpk, Ppk и kinds должны иметь одинаковую длину"),
         )
         values = Float64.(peak_values)
         locations = Int.(locations_1based)
@@ -1425,8 +1473,11 @@ struct SignalPeaksProviderResult
         all(location -> 1 <= location <= sample_count, locations) || throw(ArgumentError(
             "Индексы Xpk должны находиться внутри исходного сигнала",
         ))
-        issorted(locations) && allunique(locations) || throw(ArgumentError(
-            "Индексы Xpk должны быть уникальными и следовать в порядке появления",
+        extrema_keys = [
+            (locations[index], signal_peak_kind_order(kinds[index])) for index in eachindex(locations)
+        ]
+        issorted(extrema_keys) && allunique(extrema_keys) || throw(ArgumentError(
+            "Экстремумы должны быть уникальными и следовать в хронологическом порядке",
         ))
         all(value -> isfinite(value) && value >= 0, widths) || throw(ArgumentError(
             "Значения Wpk должны быть неотрицательными и конечными",
@@ -1434,12 +1485,67 @@ struct SignalPeaksProviderResult
         all(value -> isfinite(value) && value >= 0, peak_prominences) || throw(ArgumentError(
             "Значения Ppk должны быть неотрицательными и конечными",
         ))
-        new(Tuple(values), Tuple(locations), Tuple(widths), Tuple(peak_prominences))
+        new(
+            Tuple(values),
+            Tuple(locations),
+            Tuple(widths),
+            Tuple(peak_prominences),
+            Tuple(kinds),
+        )
+    end
+end
+
+SignalPeaksProviderResult(
+    peak_values::AbstractVector{<:Real},
+    locations_1based::AbstractVector{<:Integer},
+    widths_samples::AbstractVector{<:Real},
+    prominences::AbstractVector{<:Real},
+    sample_count::Int,
+) = SignalPeaksProviderResult(
+    peak_values,
+    locations_1based,
+    widths_samples,
+    prominences,
+    fill(MAXIMUM_PEAK, length(peak_values)),
+    sample_count,
+)
+
+"""One typed directional candidate used to rank combined extrema."""
+struct SignalPeakProviderCandidate
+    kind::SignalPeakKind
+    value::Float64
+    location_1based::Int
+    width_samples::Float64
+    prominence::Float64
+
+    function SignalPeakProviderCandidate(
+        kind::SignalPeakKind,
+        value::Real,
+        location_1based::Int,
+        width_samples::Real,
+        prominence::Real,
+    )
+        isfinite(value) || throw(ArgumentError("Значение extrema candidate должно быть конечным"))
+        location_1based >= 1 || throw(ArgumentError("Индекс extrema candidate должен быть положительным"))
+        isfinite(width_samples) && width_samples >= 0 || throw(ArgumentError(
+            "Ширина extrema candidate должна быть неотрицательной и конечной",
+        ))
+        isfinite(prominence) && prominence >= 0 || throw(ArgumentError(
+            "Prominence extrema candidate должен быть неотрицательным и конечным",
+        ))
+        new(
+            kind,
+            Float64(value),
+            location_1based,
+            Float64(width_samples),
+            Float64(prominence),
+        )
     end
 end
 
 struct SignalPeakItem
     id::String
+    kind::SignalPeakKind
     value::Float64
     sample_index::Int
     time_s::Float64
@@ -1447,19 +1553,21 @@ struct SignalPeakItem
     prominence::Float64
 
     function SignalPeakItem(
+        kind::SignalPeakKind,
         value::Real,
         sample_index::Int,
         time_s::Real,
         width_samples::Real,
         prominence::Real,
     )
-        isfinite(value) || throw(ArgumentError("Значение пика должно быть конечным"))
-        sample_index >= 0 || throw(ArgumentError("Индекс пика не может быть отрицательным"))
-        isfinite(time_s) && time_s >= 0 || throw(ArgumentError("Время пика должно быть неотрицательным и конечным"))
-        isfinite(width_samples) && width_samples >= 0 || throw(ArgumentError("Ширина пика должна быть неотрицательной и конечной"))
-        isfinite(prominence) && prominence >= 0 || throw(ArgumentError("Высота выступа пика должна быть неотрицательной и конечной"))
+        isfinite(value) || throw(ArgumentError("Значение экстремума должно быть конечным"))
+        sample_index >= 0 || throw(ArgumentError("Индекс экстремума не может быть отрицательным"))
+        isfinite(time_s) && time_s >= 0 || throw(ArgumentError("Время экстремума должно быть неотрицательным и конечным"))
+        isfinite(width_samples) && width_samples >= 0 || throw(ArgumentError("Ширина экстремума должна быть неотрицательной и конечной"))
+        isfinite(prominence) && prominence >= 0 || throw(ArgumentError("Prominence экстремума должен быть неотрицательным и конечным"))
         new(
-            "peak-$sample_index",
+            kind == MAXIMUM_PEAK ? "peak-$sample_index" : "peak-minimum-$sample_index",
+            kind,
             Float64(value),
             sample_index,
             Float64(time_s),
@@ -1468,6 +1576,22 @@ struct SignalPeakItem
         )
     end
 end
+
+
+SignalPeakItem(
+    value::Real,
+    sample_index::Int,
+    time_s::Real,
+    width_samples::Real,
+    prominence::Real,
+) = SignalPeakItem(
+    MAXIMUM_PEAK,
+    value,
+    sample_index,
+    time_s,
+    width_samples,
+    prominence,
+)
 
 struct SignalPeaksUnits
     value::String
@@ -1492,6 +1616,7 @@ SignalPeaksUnits() = SignalPeaksUnits("1", "s", "samples", "1")
 
 struct SignalPeaksSnapshot
     enabled::Bool
+    mode::SignalExtremaMode
     state_revision::Int
     display_id::String
     signal_name::Union{Nothing,String}
@@ -1501,6 +1626,7 @@ struct SignalPeaksSnapshot
 
     function SignalPeaksSnapshot(
         enabled::Bool,
+        mode::SignalExtremaMode,
         state_revision::Int,
         display_id::AbstractString,
         signal_name::Union{Nothing,AbstractString},
@@ -1518,12 +1644,19 @@ struct SignalPeaksSnapshot
         !enabled && !isempty(peak_items) && throw(ArgumentError("Выключенный peaks snapshot не может содержать items"))
         signal_name === nothing && enabled && throw(ArgumentError("Пустой peaks snapshot не может быть enabled"))
         signal_name === nothing && !isempty(peak_items) && throw(ArgumentError("Пустой peaks snapshot не может содержать items"))
-        indices = [item.sample_index for item in peak_items]
-        issorted(indices) && allunique(indices) || throw(ArgumentError(
-            "Peaks items должны быть уникальными и следовать в порядке появления",
+        item_keys = [
+            (item.sample_index, signal_peak_kind_order(item.kind)) for item in peak_items
+        ]
+        issorted(item_keys) && allunique(item_keys) || throw(ArgumentError(
+            "Extrema items должны быть уникальными и следовать в порядке появления",
         ))
+        mode == MAXIMA_EXTREMA_MODE && any(item -> item.kind != MAXIMUM_PEAK, peak_items) &&
+            throw(ArgumentError("Режим maxima не может содержать minima items"))
+        mode == MINIMA_EXTREMA_MODE && any(item -> item.kind != MINIMUM_PEAK, peak_items) &&
+            throw(ArgumentError("Режим minima не может содержать maxima items"))
         new(
             enabled,
+            mode,
             state_revision,
             String(display_id),
             signal_name === nothing ? nothing : String(signal_name),
@@ -1533,6 +1666,26 @@ struct SignalPeaksSnapshot
         )
     end
 end
+
+
+SignalPeaksSnapshot(
+    enabled::Bool,
+    state_revision::Int,
+    display_id::AbstractString,
+    signal_name::Union{Nothing,AbstractString},
+    ordinate::Union{Nothing,SignalMeasurementOrdinate},
+    units::SignalPeaksUnits,
+    items::AbstractVector{SignalPeakItem},
+) = SignalPeaksSnapshot(
+    enabled,
+    MAXIMA_EXTREMA_MODE,
+    state_revision,
+    display_id,
+    signal_name,
+    ordinate,
+    units,
+    items,
+)
 
 """One flattened Peaks table row for one signal bound to the active TIME pane."""
 struct SignalPeaksTableRow
@@ -1600,6 +1753,9 @@ struct SignalPeaksTableSnapshot
         all(snapshot -> snapshot.enabled == enabled, signal_snapshots) || throw(
             ArgumentError("Статус сигналов Peaks table не совпадает со snapshot"),
         )
+        all(snapshot -> snapshot.mode == settings.mode, signal_snapshots) || throw(
+            ArgumentError("Режим сигналов Extrema table не совпадает с settings"),
+        )
         colors = String.(signal_colors)
         length(colors) == length(signal_snapshots) || throw(DimensionMismatch(
             "Число цветов Peaks table должно совпадать с числом сигналов",
@@ -1626,6 +1782,7 @@ struct SignalPeaksTableSnapshot
             row.peak.time_s,
             binding_order[row.signal_name],
             row.peak.sample_index,
+            signal_peak_kind_order(row.peak.kind),
         )) || throw(ArgumentError(
             "Строки Peaks table должны быть отсортированы по времени, binding и sample index",
         ))
@@ -1757,10 +1914,10 @@ struct SignalDisplayPaneState
             "Time Limits должны отсутствовать только у пустой pane",
         ))
         peaks_enabled && plot_type != TIME_PLOT && throw(ArgumentError(
-            "Поиск пиков доступен только для Time pane",
+            "Экстремумы доступны только для Time pane",
         ))
         peaks_enabled && analysis_name === nothing && throw(ArgumentError(
-            "Поиск пиков требует analysis source pane",
+            "Экстремумы требуют analysis source pane",
         ))
         new(
             pane_id,
@@ -2243,10 +2400,10 @@ mutable struct SignalAnalyserDisplayState
             "Time Limits должны отсутствовать только у пустого Display",
         ))
         peaks_enabled && active_plot != TIME_PLOT && throw(ArgumentError(
-            "Поиск пиков доступен только для Time plot",
+            "Экстремумы доступны только для Time plot",
         ))
         peaks_enabled && analysis_name === nothing && throw(ArgumentError(
-            "Поиск пиков требует analysis source",
+            "Экстремумы требуют analysis source",
         ))
         new(
             String(id),

@@ -2791,7 +2791,7 @@ function signal_peaks_engee_dsp_module(::EngeeDSPPeaksProvider)
         Base.require(@__MODULE__, :EngeeDSP)
     catch
         throw(SignalPeaksCapabilityError(
-            "Поиск пиков недоступен: в runtime отсутствует пакет EngeeDSP",
+            "Расчёт экстремумов недоступен: в runtime отсутствует пакет EngeeDSP",
         ))
     end
 end
@@ -2805,20 +2805,41 @@ function signal_peaks_detect(
         getproperty(engee_dsp, :Functions)
     catch
         throw(SignalPeaksCapabilityError(
-            "Поиск пиков недоступен: EngeeDSP.Functions не найден",
+            "Расчёт экстремумов недоступен: EngeeDSP.Functions не найден",
         ))
     end
     findpeaks = try
         getproperty(functions_module, :findpeaks)
     catch
         throw(SignalPeaksCapabilityError(
-            "Поиск пиков недоступен: EngeeDSP.Functions.findpeaks не найден",
+            "Расчёт экстремумов недоступен: EngeeDSP.Functions.findpeaks не найден",
         ))
     end
+    findpeaks isa Function || throw(SignalPeaksCapabilityError(
+        "Расчёт экстремумов недоступен: EngeeDSP.Functions.findpeaks не является функцией",
+    ))
+    mode = query.settings.mode
+    if mode == MAXIMA_EXTREMA_MODE
+        return signal_peaks_detect_direction(findpeaks, query, MAXIMUM_PEAK)
+    elseif mode == MINIMA_EXTREMA_MODE
+        return signal_peaks_detect_direction(findpeaks, query, MINIMUM_PEAK)
+    end
+
+    maxima = signal_peaks_detect_direction(findpeaks, query, MAXIMUM_PEAK)
+    minima = signal_peaks_detect_direction(findpeaks, query, MINIMUM_PEAK)
+    signal_peaks_merge_directions(maxima, minima, query.settings.number_of_peaks, length(query.values))
+end
+
+function signal_peaks_detect_direction(
+    findpeaks::Function,
+    query::SignalPeaksQuery,
+    kind::SignalPeakKind,
+)::SignalPeaksProviderResult
     settings = query.settings
+    direction_values = kind == MAXIMUM_PEAK ? collect(query.values) : -collect(query.values)
     raw_result = Base.invokelatest(
         findpeaks,
-        collect(query.values);
+        direction_values;
         NPeaks = settings.number_of_peaks,
         MinPeakHeight = settings.minimum_height === nothing ? -Inf : settings.minimum_height,
         MinPeakDistance = settings.minimum_distance_samples,
@@ -2835,12 +2856,76 @@ function signal_peaks_detect(
     all(location -> location isa Integer && !(location isa Bool), locations) || throw(
         SignalPeaksCapabilityError("EngeeDSP.Functions.findpeaks вернул нецелые default locations Xpk"),
     )
-    SignalPeaksProviderResult(
-        vec(collect(raw_result.Ypk)),
-        Int.(locations),
-        vec(collect(raw_result.Wpk)),
-        vec(collect(raw_result.Ppk)),
+    typed_locations = Int.(locations)
+    raw_values = vec(collect(raw_result.Ypk))
+    widths = vec(collect(raw_result.Wpk))
+    prominences = vec(collect(raw_result.Ppk))
+    directional = SignalPeaksProviderResult(
+        raw_values,
+        typed_locations,
+        widths,
+        prominences,
+        fill(kind, length(typed_locations)),
         length(query.values),
+    )
+    SignalPeaksProviderResult(
+        Float64[query.values[location] for location in directional.locations_1based],
+        Int[directional.locations_1based...],
+        Float64[directional.widths_samples...],
+        Float64[directional.prominences...],
+        SignalPeakKind[directional.kinds...],
+        length(query.values),
+    )
+end
+
+function signal_peaks_provider_candidates(
+    result::SignalPeaksProviderResult,
+)::Vector{SignalPeakProviderCandidate}
+    SignalPeakProviderCandidate[
+        SignalPeakProviderCandidate(
+            result.kinds[index],
+            result.peak_values[index],
+            result.locations_1based[index],
+            result.widths_samples[index],
+            result.prominences[index],
+        )
+        for index in eachindex(result.peak_values)
+    ]
+end
+
+function signal_peaks_merge_directions(
+    maxima::SignalPeaksProviderResult,
+    minima::SignalPeaksProviderResult,
+    total_limit::Int,
+    sample_count::Int,
+)::SignalPeaksProviderResult
+    all(kind -> kind == MAXIMUM_PEAK, maxima.kinds) || throw(ArgumentError(
+        "Maxima provider result содержит неверный extrema kind",
+    ))
+    all(kind -> kind == MINIMUM_PEAK, minima.kinds) || throw(ArgumentError(
+        "Minima provider result содержит неверный extrema kind",
+    ))
+    candidates = vcat(
+        signal_peaks_provider_candidates(maxima),
+        signal_peaks_provider_candidates(minima),
+    )
+    sort!(candidates; by = candidate -> (
+        -candidate.prominence,
+        candidate.location_1based,
+        signal_peak_kind_order(candidate.kind),
+    ))
+    length(candidates) > total_limit && resize!(candidates, total_limit)
+    sort!(candidates; by = candidate -> (
+        candidate.location_1based,
+        signal_peak_kind_order(candidate.kind),
+    ))
+    SignalPeaksProviderResult(
+        Float64[candidate.value for candidate in candidates],
+        Int[candidate.location_1based for candidate in candidates],
+        Float64[candidate.width_samples for candidate in candidates],
+        Float64[candidate.prominence for candidate in candidates],
+        SignalPeakKind[candidate.kind for candidate in candidates],
+        sample_count,
     )
 end
 
@@ -2857,6 +2942,7 @@ function signal_peaks_snapshot(
         display.peaks_enabled && throw(ArgumentError("Пустой Display не может иметь enabled Peaks"))
         return SignalPeaksSnapshot(
             false,
+            settings.mode,
             state_revision,
             display.id,
             nothing,
@@ -2870,6 +2956,7 @@ function signal_peaks_snapshot(
     if !display.peaks_enabled
         return SignalPeaksSnapshot(
             false,
+            settings.mode,
             state_revision,
             display.id,
             signal.name,
@@ -2879,13 +2966,14 @@ function signal_peaks_snapshot(
         )
     end
     display.active_plot == TIME_PLOT || throw(ArgumentError(
-        "Поиск пиков доступен только для Time plot",
+        "Экстремумы доступны только для Time plot",
     ))
     limits = display.time_limits
     limits === nothing && throw(ArgumentError("Непустой Display должен иметь Time Limits"))
     if !materialize
         return SignalPeaksSnapshot(
             true,
+            settings.mode,
             state_revision,
             display.id,
             signal.name,
@@ -2898,6 +2986,7 @@ function signal_peaks_snapshot(
     if length(roi.values) < 3
         return SignalPeaksSnapshot(
             true,
+            settings.mode,
             state_revision,
             display.id,
             signal.name,
@@ -2917,8 +3006,12 @@ function signal_peaks_snapshot(
         settings,
     )
     result = signal_peaks_detect(service.provider, query)
+    length(result.peak_values) <= settings.number_of_peaks || throw(SignalPeaksCapabilityError(
+        "Провайдер extrema превысил общий лимит number_of_peaks",
+    ))
     items = SignalPeakItem[
         SignalPeakItem(
+            result.kinds[index],
             result.peak_values[index],
             query.sample_offset + result.locations_1based[index] - 1,
             (query.sample_offset + result.locations_1based[index] - 1) / query.sample_rate_hz,
@@ -2929,6 +3022,7 @@ function signal_peaks_snapshot(
     ]
     SignalPeaksSnapshot(
         true,
+        settings.mode,
         state_revision,
         display.id,
         signal.name,
@@ -2991,17 +3085,22 @@ function signal_analyser_cached_peaks_snapshot(
     display::SignalAnalyserDisplayState,
     signal::Union{Nothing,AnalysedSignal},
 )::SignalPeaksSnapshot
+    layout = get(state.display_layouts, display.id, nothing)
+    pane = layout === nothing ? nothing :
+        signal_display_active_pane(layout::SignalDisplayLayoutState)
+    settings = pane === nothing ? SignalPeaksSettings() :
+        (pane::SignalDisplayPaneState).peaks_settings
     passive = signal_peaks_snapshot(
         state.peaks_service,
         state_revision,
         display,
         signal,
+        settings = settings,
     )
     (!display.peaks_enabled || signal === nothing) && return passive
-    layout = get(state.display_layouts, display.id, nothing)
     if layout !== nothing
-        pane = signal_display_active_pane(layout::SignalDisplayLayoutState)
-        page_id = signal_analyser_output_page_id(display.id, pane.id)
+        typed_pane = pane::SignalDisplayPaneState
+        page_id = signal_analyser_output_page_id(display.id, typed_pane.id)
         revision = get(
             state.output_manager.peaks_page_calculation_revisions,
             page_id,
@@ -3010,14 +3109,18 @@ function signal_analyser_cached_peaks_snapshot(
         if revision >= 0
             context = SignalAnalyserPeaksContextKey(
                 display.id,
-                pane.id,
-                signal_display_pane_members(pane),
-                pane.time_limits,
-                pane.peaks_settings,
+                typed_pane.id,
+                signal_display_pane_members(typed_pane),
+                typed_pane.time_limits,
+                typed_pane.peaks_settings,
                 revision,
             )
             if signal.name in context.signal_names
-                cache_key = signal_analyser_peaks_cache_key(display.id, pane.id, signal.name)
+                cache_key = signal_analyser_peaks_cache_key(
+                    display.id,
+                    typed_pane.id,
+                    signal.name,
+                )
                 cached_entry = get(state.output_manager.peaks_cache, cache_key, nothing)
                 signal_context = SignalAnalyserPeaksSignalContextKey(context, signal.name)
                 if cached_entry !== nothing &&
@@ -3025,6 +3128,7 @@ function signal_analyser_cached_peaks_snapshot(
                     snapshot = cached_entry.peaks
                     return SignalPeaksSnapshot(
                         true,
+                        snapshot.mode,
                         state_revision,
                         display.id,
                         signal.name,
@@ -3044,8 +3148,10 @@ function signal_analyser_cached_peaks_snapshot(
     entry.display_id == display.id || return passive
     entry.signal_name == signal.name || return passive
     entry.time_limits == display.time_limits || return passive
+    entry.snapshot.mode == passive.mode || return passive
     SignalPeaksSnapshot(
         true,
+        entry.snapshot.mode,
         state_revision,
         display.id,
         signal.name,
@@ -3076,7 +3182,7 @@ function signal_peaks_table_snapshot(
         )
     end
     pane.plot_type == TIME_PLOT || throw(ArgumentError(
-        "Peaks table доступна только для TIME pane",
+        "Таблица экстремумов доступна только для TIME pane",
     ))
     snapshots = collect(signals)
     signal_names = String[snapshot.signal_name::String for snapshot in snapshots]
@@ -3095,12 +3201,18 @@ function signal_peaks_table_snapshot(
             signal_name = signal_names[binding_index],
             signal_color = colors[binding_index],
             graph_number = graph_number,
+            kind_order = signal_peak_kind_order(item.kind),
             peak = item,
         )
         for (binding_index, snapshot) in enumerate(snapshots)
         for (graph_number, item) in enumerate(snapshot.items)
     ]
-    sort!(raw_rows; by = row -> (row.time_s, row.binding_index, row.sample_index))
+    sort!(raw_rows; by = row -> (
+        row.time_s,
+        row.binding_index,
+        row.sample_index,
+        row.kind_order,
+    ))
     rows = SignalPeaksTableRow[
         SignalPeaksTableRow(
             row_number,
@@ -3216,6 +3328,7 @@ end
 function signal_peak_item_payload(item::SignalPeakItem)::Dict{String,Any}
     Dict{String,Any}(
         "id" => item.id,
+        "type" => signal_peak_kind_name(item.kind),
         "value" => item.value,
         "sample_index" => item.sample_index,
         "time_s" => item.time_s,
@@ -3227,6 +3340,7 @@ end
 function signal_peaks_payload(peaks::SignalPeaksSnapshot)::Dict{String,Any}
     Dict{String,Any}(
         "enabled" => peaks.enabled,
+        "mode" => signal_extrema_mode_name(peaks.mode),
         "state_revision" => peaks.state_revision,
         "display_id" => peaks.display_id,
         "signal_name" => peaks.signal_name,
@@ -3245,6 +3359,7 @@ function signal_peaks_settings_payload(
     settings::SignalPeaksSettings,
 )::Dict{String,Any}
     Dict{String,Any}(
+        "mode" => signal_extrema_mode_name(settings.mode),
         "number_of_peaks" => settings.number_of_peaks,
         "minimum_height" => settings.minimum_height,
         "minimum_distance_samples" => settings.minimum_distance_samples,
@@ -3255,10 +3370,42 @@ end
 function signal_peaks_settings_fields_payload(
     settings::SignalPeaksSettings,
 )::Vector{Dict{String,Any}}
+    count_label = if settings.mode == MAXIMA_EXTREMA_MODE
+        "Количество максимумов"
+    elseif settings.mode == MINIMA_EXTREMA_MODE
+        "Количество минимумов"
+    else
+        "Количество экстремумов"
+    end
+    height_label = if settings.mode == MAXIMA_EXTREMA_MODE
+        "Минимальная высота максимума"
+    elseif settings.mode == MINIMA_EXTREMA_MODE
+        "Минимальная высота минимума (−y)"
+    else
+        "Минимальная высота по направлению"
+    end
     Dict{String,Any}[
         Dict{String,Any}(
+            "id" => "mode",
+            "label" => "Режим расчёта",
+            "type" => "enum",
+            "value" => signal_extrema_mode_name(settings.mode),
+            "default_value" => "maxima",
+            "required" => true,
+            "nullable" => false,
+            "minimum" => nothing,
+            "maximum" => nothing,
+            "step" => nothing,
+            "units" => nothing,
+            "options" => Dict{String,Any}[
+                Dict{String,Any}("value" => "maxima", "label" => "Максимумы"),
+                Dict{String,Any}("value" => "minima", "label" => "Минимумы"),
+                Dict{String,Any}("value" => "all", "label" => "Все экстремумы"),
+            ],
+        ),
+        Dict{String,Any}(
             "id" => "number_of_peaks",
-            "label" => "Количество пиков",
+            "label" => count_label,
             "type" => "integer",
             "value" => settings.number_of_peaks,
             "default_value" => 99,
@@ -3271,7 +3418,7 @@ function signal_peaks_settings_fields_payload(
         ),
         Dict{String,Any}(
             "id" => "minimum_height",
-            "label" => "Минимальная высота",
+            "label" => height_label,
             "type" => "number",
             "value" => settings.minimum_height,
             "default_value" => nothing,
@@ -3325,6 +3472,13 @@ const SIGNAL_PEAKS_SETTINGS_REQUEST_FIELDS = Set([
     "settings",
 ])
 const SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS = Set([
+    "mode",
+    "number_of_peaks",
+    "minimum_height",
+    "minimum_distance_samples",
+    "threshold",
+])
+const SIGNAL_PEAKS_SETTINGS_LEGACY_VALUE_FIELDS = Set([
     "number_of_peaks",
     "minimum_height",
     "minimum_distance_samples",
@@ -3335,7 +3489,7 @@ function validate_signal_peaks_settings_request(data)::SignalPeaksSettingsReques
     field_errors = Dict{String,String}()
     if !(data isa AbstractDict)
         throw(SignalAnalyserValidationError(
-            "Некорректные настройки Peaks",
+            "Некорректные настройки экстремумов",
             Dict("request" => "Требуется JSON-объект"),
         ))
     end
@@ -3378,12 +3532,23 @@ function validate_signal_peaks_settings_request(data)::SignalPeaksSettingsReques
         field_errors["settings"] = "Требуется JSON-объект"
     else
         settings_keys = signal_analyser_payload_keys(settings_value)
-        if settings_keys != SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS
+        if settings_keys != SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS &&
+            settings_keys != SIGNAL_PEAKS_SETTINGS_LEGACY_VALUE_FIELDS
             missing = sort!(collect(setdiff(SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS, settings_keys)))
             unknown = sort!(collect(setdiff(settings_keys, SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS)))
             isempty(missing) || (field_errors["settings"] = "Отсутствуют поля: $(join(missing, ", "))")
             isempty(unknown) || (field_errors["settings"] = get(field_errors, "settings", "") *
                 (haskey(field_errors, "settings") ? "; " : "") * "Неизвестные поля: $(join(unknown, ", "))")
+        end
+
+        mode_value = signal_analyser_payload_contains(settings_value, "mode") ?
+            signal_analyser_payload_value(settings_value, "mode") : "maxima"
+        mode = if mode_value isa AbstractString &&
+            haskey(SIGNAL_EXTREMA_MODES_BY_NAME, String(mode_value))
+            SIGNAL_EXTREMA_MODES_BY_NAME[String(mode_value)]
+        else
+            field_errors["settings.mode"] = "Допустимо: maxima, minima, all"
+            MAXIMA_EXTREMA_MODE
         end
 
         number_value = signal_analyser_payload_value(settings_value, "number_of_peaks")
@@ -3449,6 +3614,7 @@ function validate_signal_peaks_settings_request(data)::SignalPeaksSettingsReques
         if !any(key -> startswith(key, "settings."), keys(field_errors)) &&
             !haskey(field_errors, "settings")
             settings = SignalPeaksSettings(
+                mode,
                 number_of_peaks,
                 minimum_height,
                 minimum_distance_samples,
@@ -3458,7 +3624,7 @@ function validate_signal_peaks_settings_request(data)::SignalPeaksSettingsReques
     end
 
     isempty(field_errors) || throw(SignalAnalyserValidationError(
-        "Некорректные настройки Peaks",
+        "Некорректные настройки экстремумов",
         field_errors,
     ))
     SignalPeaksSettingsRequest(revision, display_id, pane_id, settings)
@@ -3511,12 +3677,14 @@ function signal_peaks_table_payload(
         "state_revision" => table.state_revision,
         "display_id" => table.display_id,
         "pane_id" => table.pane_id,
+        "mode" => signal_extrema_mode_name(table.settings.mode),
         "settings" => signal_peaks_settings_payload(table.settings),
         "settings_fields" => signal_peaks_settings_fields_payload(table.settings),
         "signals" => Dict{String,Any}[
             Dict{String,Any}(
                 "signal_name" => snapshot.signal_name,
                 "signal_color" => table.signal_colors[index],
+                "mode" => signal_extrema_mode_name(snapshot.mode),
                 "peak_count" => length(snapshot.items),
                 "ordinate" => signal_measurement_ordinate_name(snapshot.ordinate),
                 "units" => Dict{String,Any}(
@@ -4550,7 +4718,7 @@ function validate_signal_analyser_view_payload(
         requested_peaks_enabled = false
     elseif requested_plot != TIME_PLOT
         if has_peaks_enabled && requested_peaks_enabled
-            field_errors["peaks_enabled"] = "Поиск пиков доступен только для Time plot"
+            field_errors["peaks_enabled"] = "Экстремумы доступны только для Time plot"
         else
             requested_peaks_enabled = false
         end

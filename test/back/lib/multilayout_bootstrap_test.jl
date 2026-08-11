@@ -89,6 +89,7 @@ end
         "plot_type" => "spectrogram",
         "signal_bindings" => [names[2]],
         "peaks_settings" => Dict(
+            "mode" => "maxima",
             "number_of_peaks" => 99,
             "minimum_height" => nothing,
             "minimum_distance_samples" => 1,

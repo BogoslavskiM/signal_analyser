@@ -358,8 +358,8 @@ function signal_analyser_peaks_context_unlocked(
     end
     pane = signal_display_active_pane(active_layout)
     pane.plot_type == TIME_PLOT || throw(SignalAnalyserValidationError(
-        "Некорректный запрос Peaks",
-        Dict("pane_id" => "Peaks доступны только для активной TIME pane"),
+        "Некорректный запрос экстремумов",
+        Dict("pane_id" => "Экстремумы доступны только для активной TIME pane"),
     ))
     page_id = signal_analyser_output_page_id(state.active_display_id, pane.id)
     revision = state.output_manager.peaks_page_calculation_revisions[page_id]
@@ -1149,7 +1149,7 @@ end
 
 const SIGNAL_ANALYSER_ACTIVE_PEAKS_MAX_PENDING_POLLS::Int = 64
 const SIGNAL_ANALYSER_ACTIVE_PEAKS_POLL_LIMIT_ERROR::String =
-    "Расчёт Peaks активной области не завершился за допустимое число опросов"
+    "Расчёт экстремумов активной области не завершился за допустимое число опросов"
 
 function signal_analyser_peaks_signal_context(
     context::SignalAnalyserPeaksContextKey,
@@ -1238,6 +1238,7 @@ function signal_analyser_cached_peaks_table_unlocked(
             snapshots,
             SignalPeaksSnapshot(
                 true,
+                cached.mode,
                 state.view.state_revision,
                 context.display_id,
                 signal_name,
@@ -1271,6 +1272,7 @@ function signal_analyser_active_peaks_response_unlocked(
     Dict{String,Any}(
         "display_id" => context.display_id,
         "pane_id" => context.pane_id,
+        "mode" => signal_extrema_mode_name(context.settings.mode),
         "calculation_revision" => context.calculation_revision,
         "context_key" => signal_analyser_peaks_context_id(context),
         "data" => table_payload,
@@ -1381,7 +1383,7 @@ function signal_analyser_run_peaks_task!(
         pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
         pane_display = signal_analyser_display_for_pane(display, pane)
         pane.plot_type == TIME_PLOT && pane.peaks_enabled || throw(ArgumentError(
-            "Snapshot Peaks context не соответствует enabled TIME pane",
+            "Snapshot extrema context не соответствует enabled TIME pane",
         ))
         snapshots = SignalPeaksSnapshot[]
         for signal_name in context.signal_names
@@ -1503,7 +1505,7 @@ function signal_analyser_active_peaks(
                 signal_analyser_terminalize_peaks_error_unlocked!(
                     state,
                     manager.active_peaks_context::SignalAnalyserPeaksContextKey,
-                    "Фоновый расчёт Peaks завершился без публикации результата",
+                    "Фоновый расчёт экстремумов завершился без публикации результата",
                 )
             end
             manager.active_task = nothing
