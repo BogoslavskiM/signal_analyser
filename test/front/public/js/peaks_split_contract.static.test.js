@@ -11,7 +11,7 @@ assert(/<th>№<\/th><th>Сигнал<\/th><th>Цвет<\/th><th>Значени�
 assert(/peaks-color-swatch[\s\S]*signal_color/.test(app)&&/graph_number/.test(app),"rows must use backend color and graph marker");
 ["Количество пиков","Минимальная высота","Минимальное расстояние, отсчёты","Порог"].forEach(x=>assert(app.includes(x),"missing Russian Peaks control "+x));
 assert(/data-testid='settings-field-" \+ id/.test(app),"four Peaks fields must expose stable selector construction");
-assert(/minimum_height == null \? "−∞"/.test(app)&&/minimum_distance_samples/.test(app),"null infinity and canonical distance key required");
+assert(/minimum_height == null \? "-Inf"/.test(app)&&/height === "" \|\| height === "-Inf"\) settings\.minimum_height = null/.test(app)&&!/−∞|-inf/.test(app),"nullable height must display and parse exact ASCII -Inf only");
 assert(/threshold\s*<\s*0[\s\S]*?Введите число не меньше 0\./.test(app),"client must reject a negative Threshold with accepted Russian nonnegative validation");
 assert(/updatePeaksSettings/.test(api)&&/\.\/api\/peaks\/settings/.test(api),"settings must POST dedicated API");
 assert(/preservePlots:true, skipOutput:true/.test(app),"Peaks settings must not refetch graph output");

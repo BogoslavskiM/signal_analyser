@@ -418,14 +418,14 @@
   function defaultPeaksSettings(settings) { return Object.assign({ number_of_peaks:99, minimum_height:null, minimum_distance_samples:1, threshold:0 }, settings || {}); }
   function createPeaksDraft(display, pane, settings) {
     var source = defaultPeaksSettings(settings);
-    return { key:peaksSettingsKey(display, pane), source:source, values:{ number_of_peaks:String(source.number_of_peaks), minimum_height:source.minimum_height == null ? "−∞" : String(source.minimum_height), minimum_distance_samples:String(source.minimum_distance_samples), threshold:String(source.threshold) }, invalid:{} };
+    return { key:peaksSettingsKey(display, pane), source:source, values:{ number_of_peaks:String(source.number_of_peaks), minimum_height:source.minimum_height == null ? "-Inf" : String(source.minimum_height), minimum_distance_samples:String(source.minimum_distance_samples), threshold:String(source.threshold) }, invalid:{} };
   }
   function parsePeaksSettings(draft) {
     var raw = draft.values, settings = {}, invalid = {};
     var count = Number(raw.number_of_peaks), distance = Number(raw.minimum_distance_samples), threshold = Number(raw.threshold), height = raw.minimum_height.trim();
     if (!isFinite(count) || Math.floor(count) !== count || count < 1 || count > 1000) invalid.number_of_peaks = "Введите целое число от 1 до 1000."; else settings.number_of_peaks = count;
-    if (height === "" || height === "−∞" || height === "-∞") settings.minimum_height = null;
-    else if (!isFinite(Number(height))) invalid.minimum_height = "Введите число или −∞."; else settings.minimum_height = Number(height);
+    if (height === "" || height === "-Inf") settings.minimum_height = null;
+    else if (!isFinite(Number(height))) invalid.minimum_height = "Введите число или -Inf."; else settings.minimum_height = Number(height);
     if (!isFinite(distance) || Math.floor(distance) !== distance || distance < 1) invalid.minimum_distance_samples = "Введите целое число не меньше 1."; else settings.minimum_distance_samples = distance;
     if (!isFinite(threshold)) invalid.threshold = "Введите число.";
     else if (threshold < 0) invalid.threshold = "Введите число не меньше 0.";
