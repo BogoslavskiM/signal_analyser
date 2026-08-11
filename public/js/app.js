@@ -455,7 +455,7 @@
     var key = peaksSettingsKey(display, pane);
     if (!model.peaksDraft || model.peaksDraft.key !== key) model.peaksDraft = createPeaksDraft(display, pane, settings);
     var draft = model.peaksDraft, parsed = parsePeaksSettings(draft), heightCopy = extremaHeightCopy(draft.values.mode), disabled = model.peaksApplying ? " disabled" : "", labels = [
-      ["number_of_peaks", "Количество экстремумов, всего", "Один общий лимит N на сигнал; в режиме «Все экстремумы» — для обоих типов вместе."], ["minimum_height", heightCopy.label, heightCopy.helper], ["minimum_distance_samples", "Минимальное расстояние, отсчёты", ""], ["threshold", "Порог", ""]
+      ["number_of_peaks", "Количество экстремумов, всего"], ["minimum_height", heightCopy.label, heightCopy.helper], ["minimum_distance_samples", "Минимальное расстояние, отсчёты", ""], ["threshold", "Порог", ""]
     ];
     var modeError = draft.invalid.mode;
     var complexSignal = activeExtremaHasComplexSignal(pane, record);
