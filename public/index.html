@@ -29,6 +29,7 @@
       </div>
     </header>
 
+    <div class="workspace-inspector-stack" data-testid="workspace-inspector-stack">
     <section class="main-stage" aria-label="Рабочая область и настройки">
       <section class="workspace ui-panel" data-testid="display-workspace" aria-labelledby="workspace-title">
         <header class="workspace-titlebar">
@@ -86,6 +87,8 @@
       </aside>
     </section>
 
+    <div class="workspace-inspector-splitter" data-testid="workspace-inspector-splitter" aria-hidden="true"></div>
+
     <section class="inspector ui-panel" aria-labelledby="signals-tab">
       <header class="inspector-header">
         <div class="inspector-tabs" role="tablist" aria-label="Данные анализатора">
@@ -118,6 +121,7 @@
         </div>
       </div>
     </section>
+    </div>
   </main>
 
   <div class="menu select-menu" role="listbox" data-testid="select-menu" hidden></div>

@@ -44,8 +44,8 @@ button img {
   width: 100%;
   height: 100%;
   display: grid;
-  grid-template-rows: 44px minmax(440px, 4fr) minmax(180px, 1fr);
-  /* v5 equivalent: grid-template-rows: 44px minmax(440px, calc(80% - 104px)) minmax(180px, calc(20% + 44px)); */
+  grid-template-rows: 44px minmax(628px, 1fr);
+  /* v11: the lower stack owns the 8px in-flow splitter and its two resizable tracks. */
   gap: 8px;
 }
 
@@ -169,6 +169,45 @@ button img {
   display: grid;
   grid-template-columns: minmax(612px, 3fr) minmax(300px, 1fr);
   gap: 8px;
+}
+
+.workspace-inspector-stack {
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(440px, var(--workspace-main-track, 4fr)) 8px minmax(180px, 1fr);
+}
+
+.workspace-inspector-splitter {
+  position: relative;
+  min-width: 0;
+  min-height: 8px;
+  cursor: row-resize;
+  touch-action: none;
+  user-select: none;
+}
+
+.workspace-inspector-splitter::before {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  transform: translateY(-50%);
+  background: var(--line);
+  content: "";
+}
+
+.workspace-inspector-splitter:hover::before,
+.workspace-inspector-splitter.is-dragging::before {
+  height: 2px;
+  background: var(--accent);
+}
+
+body.is-resizing-workspace,
+body.is-resizing-workspace * {
+  cursor: row-resize !important;
+  user-select: none !important;
 }
 
 .workspace,
@@ -2061,7 +2100,7 @@ body {
   height: 100%;
   min-width: 920px;
   min-height: 680px;
-  grid-template-rows: 44px minmax(440px, 4fr) minmax(180px, 1fr);
+  grid-template-rows: 44px minmax(628px, 1fr);
   gap: 8px;
 }
 
@@ -2073,6 +2112,7 @@ body {
 /* Every stretchable structural grid/flex node is shrink-safe. Canonical fixed
    rows and controls retain their own exact heights. */
 .main-stage,
+.workspace-inspector-stack,
 .workspace,
 .settings-panel,
 .inspector,

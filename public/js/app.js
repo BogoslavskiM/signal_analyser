@@ -15,6 +15,7 @@
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
+    workspaceSplitRatio: null, workspaceSplitDrag: null,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksMessage: "",
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false
   };
@@ -142,6 +143,65 @@
     if (!tablist) return;
     var distance = Math.max(160, Math.floor(tablist.clientWidth * 0.75));
     tablist.scrollBy({ left: direction * distance, behavior: "smooth" });
+  }
+
+  function workspaceSplitNodes() {
+    return {
+      stack: q("[data-testid='workspace-inspector-stack']"),
+      main: q(".main-stage"),
+      splitter: q("[data-testid='workspace-inspector-splitter']")
+    };
+  }
+
+  function workspaceSplitMaximum(stack) {
+    return Math.max(440, Math.floor(stack.getBoundingClientRect().height - 8 - 180));
+  }
+
+  function setWorkspaceSplitHeight(requestedHeight, preserveRatio) {
+    var nodes = workspaceSplitNodes();
+    if (!nodes.stack || !nodes.main) return;
+    var maximum = workspaceSplitMaximum(nodes.stack);
+    var height = Math.max(440, Math.min(maximum, requestedHeight));
+    var excess = maximum - 440;
+    if (excess <= 0 && !preserveRatio) return;
+    if (excess > 0) model.workspaceSplitRatio = (height - 440) / excess;
+    nodes.stack.style.setProperty("--workspace-main-track", height + "px");
+  }
+
+  function retainWorkspaceSplitOnResize() {
+    if (model.workspaceSplitRatio === null) return;
+    var nodes = workspaceSplitNodes();
+    if (!nodes.stack) return;
+    var maximum = workspaceSplitMaximum(nodes.stack);
+    setWorkspaceSplitHeight(440 + model.workspaceSplitRatio * (maximum - 440), true);
+  }
+
+  function stopWorkspaceSplitDrag(event) {
+    var drag = model.workspaceSplitDrag;
+    if (!drag || (event && event.pointerId !== drag.pointerId)) return;
+    var splitter = workspaceSplitNodes().splitter;
+    if (splitter && splitter.hasPointerCapture && splitter.hasPointerCapture(drag.pointerId)) splitter.releasePointerCapture(drag.pointerId);
+    if (splitter) splitter.classList.remove("is-dragging");
+    document.body.classList.remove("is-resizing-workspace");
+    model.workspaceSplitDrag = null;
+  }
+
+  function startWorkspaceSplitDrag(event) {
+    if (event.button !== 0 || !event.isPrimary) return;
+    var nodes = workspaceSplitNodes();
+    if (!nodes.main || !nodes.splitter) return;
+    event.preventDefault();
+    model.workspaceSplitDrag = { pointerId:event.pointerId, startY:event.clientY, startMainHeight:nodes.main.getBoundingClientRect().height };
+    nodes.splitter.setPointerCapture(event.pointerId);
+    nodes.splitter.classList.add("is-dragging");
+    document.body.classList.add("is-resizing-workspace");
+  }
+
+  function moveWorkspaceSplitDrag(event) {
+    var drag = model.workspaceSplitDrag;
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    event.preventDefault();
+    setWorkspaceSplitHeight(drag.startMainHeight + event.clientY - drag.startY);
   }
 
   function renderLayoutTrigger() {
@@ -1093,7 +1153,16 @@
     if (pane && titles[plotType] && pane.plot_type !== plotType) postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:plotType, signal_bindings:pane.signal_bindings || [] });
   });
   q("[data-testid='display-tabs']").addEventListener("scroll", function () { scheduleDisplayTabScrollUpdate(false); }, { passive: true });
+  var workspaceSplitter = q("[data-testid='workspace-inspector-splitter']");
+  if (workspaceSplitter) {
+    workspaceSplitter.addEventListener("pointerdown", startWorkspaceSplitDrag);
+    workspaceSplitter.addEventListener("pointermove", moveWorkspaceSplitDrag);
+    workspaceSplitter.addEventListener("pointerup", stopWorkspaceSplitDrag);
+    workspaceSplitter.addEventListener("pointercancel", stopWorkspaceSplitDrag);
+    workspaceSplitter.addEventListener("lostpointercapture", stopWorkspaceSplitDrag);
+  }
   window.addEventListener("resize", function () { scheduleDisplayTabScrollUpdate(false); });
+  window.addEventListener("resize", retainWorkspaceSplitOnResize);
   window.addEventListener("resize", repositionLayout);
   window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='measurement-columns-menu']"), q("[data-testid='measurement-columns-menu-trigger']"), 244); positionMenu(extremaModeMenu(), q("[data-extrema-mode-trigger]"), q("[data-extrema-mode-trigger]") ? q("[data-extrema-mode-trigger]").getBoundingClientRect().width : 0); });
   if (window.ResizeObserver) {

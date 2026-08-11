@@ -26,7 +26,7 @@ module.exports = async function testV5CleanFrontendContracts(assert) {
   ["eye.svg", "eye-off.svg", "engee-logo.svg", "chevron-down-fill-16.svg"].forEach((asset) => assert(fs.existsSync(path.join(root, "public/icons", asset)), `canonical local SVG ${asset} must exist`));
   assert(!/https?:\/\//.test(html + css + app), "clean frontend must not add runtime CDN assets");
   assert(/min-width:\s*920px/.test(css) && /min-height:\s*680px/.test(css), "v5 shell must retain the 920×680 minimum");
-  assert(/grid-template-rows:\s*44px\s+minmax\(440px,\s*calc\(80%\s*-\s*104px\)\)\s+minmax\(180px,\s*calc\(20%\s*\+\s*44px\)\)/.test(css), "v5 shell must retain 44/440/180 4:1 vertical sizing");
+  assert(/grid-template-rows:\s*44px\s+minmax\(628px,\s*1fr\)/.test(css) && /\.app-shell\s*\{[^}]*gap:\s*8px/.test(css), "v11 shell must retain the 44px toolbar, outer 8px gap and 628px minimum stack");
   assert(/grid-template-columns:\s*minmax\(612px,\s*3fr\)\s+minmax\(300px,\s*1fr\)/.test(css), "v5 main stage must retain 612/300 3:1 columns");
   const selectedUnderline = (css.match(/\.display-tab-shell\.is-selected::after[^{]*\{[^}]*\}/s) || [""])[0];
   assert(/left:\s*0/.test(selectedUnderline) && /right:\s*0/.test(selectedUnderline) && /bottom:\s*0/.test(selectedUnderline) && /height:\s*3px/.test(selectedUnderline), "selected Display shell must own its continuous 3px underline");
