@@ -1186,6 +1186,9 @@ button img {
 
 .inspector-body.is-table-only {
   grid-template-rows: minmax(0, 1fr);
+  /* v6 lower Peaks content track: the table and every table state sit inside
+     the inspector's analytical-dense 8px side/bottom inset. */
+  padding: 0 8px 8px;
 }
 
 .peaks-color-swatch {
