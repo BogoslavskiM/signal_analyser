@@ -15,7 +15,7 @@
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
-    workspaceSplitRatio: null, workspaceSplitDrag: null,
+    workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksMessage: "",
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false
   };
@@ -159,13 +159,14 @@
 
   function setWorkspaceSplitHeight(requestedHeight, preserveRatio) {
     var nodes = workspaceSplitNodes();
-    if (!nodes.stack || !nodes.main) return;
+    if (!nodes.stack || !nodes.main) return null;
     var maximum = workspaceSplitMaximum(nodes.stack);
     var height = Math.max(440, Math.min(maximum, requestedHeight));
     var excess = maximum - 440;
-    if (excess <= 0 && !preserveRatio) return;
+    if (excess <= 0 && !preserveRatio) return null;
     if (excess > 0) model.workspaceSplitRatio = (height - 440) / excess;
     nodes.stack.style.setProperty("--workspace-main-track", height + "px");
+    return height;
   }
 
   function retainWorkspaceSplitOnResize() {
@@ -176,6 +177,54 @@
     setWorkspaceSplitHeight(440 + model.workspaceSplitRatio * (maximum - 440), true);
   }
 
+  function cancelWorkspaceSplitAutoscale() {
+    model.workspaceSplitAutoscaleToken += 1;
+    if (model.workspaceSplitAutoscaleFrame !== null) window.cancelAnimationFrame(model.workspaceSplitAutoscaleFrame);
+    model.workspaceSplitAutoscaleFrame = null;
+  }
+
+  function currentReadyPlotHost(host, displayId) {
+    if (!host || !host.isConnected || host.dataset.plotReady !== "true") return false;
+    if (!host.dataset.paneHost || host.dataset.paneHost.indexOf(String(displayId) + "::") !== 0) return false;
+    if (host.hidden || host.offsetParent === null) return false;
+    var style = window.getComputedStyle(host), rect = host.getBoundingClientRect();
+    return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+  }
+
+  function plotAutorangeUpdate(host) {
+    var fullLayout = host && host._fullLayout;
+    if (!fullLayout) return null;
+    var update = { autosize:true }, axisCount = 0;
+    Object.keys(fullLayout).forEach(function (key) {
+      if (!/^[xy]axis(?:[1-9][0-9]*)?$/.test(key)) return;
+      if (!fullLayout[key] || fullLayout[key].visible === false) return;
+      update[key + ".autorange"] = true;
+      axisCount += 1;
+    });
+    return axisCount ? update : null;
+  }
+
+  function queueWorkspaceSplitAutoscale() {
+    cancelWorkspaceSplitAutoscale();
+    var token = model.workspaceSplitAutoscaleToken;
+    model.workspaceSplitAutoscaleFrame = window.requestAnimationFrame(function () {
+      model.workspaceSplitAutoscaleFrame = null;
+      var display = activeDisplay();
+      if (!display || token !== model.workspaceSplitAutoscaleToken) return;
+      loadPlotly().then(function (Plotly) {
+        if (token !== model.workspaceSplitAutoscaleToken || !activeDisplay() || activeDisplay().id !== display.id) return;
+        qa(".plot-chart[data-pane-host][data-plot-ready='true']").forEach(function (host) {
+          if (token !== model.workspaceSplitAutoscaleToken || !currentReadyPlotHost(host, display.id)) return;
+          var update = plotAutorangeUpdate(host);
+          if (!update) return;
+          try {
+            Promise.resolve(Plotly.relayout(host, update)).catch(function () { /* A single host must not block the remaining panes. */ });
+          } catch (_) { /* A detached or failed host is intentionally ignored. */ }
+        });
+      }).catch(function () { /* Plotly is already loaded for a ready host; keep this failure isolated. */ });
+    });
+  }
+
   function stopWorkspaceSplitDrag(event) {
     var drag = model.workspaceSplitDrag;
     if (!drag || (event && event.pointerId !== drag.pointerId)) return;
@@ -184,14 +233,16 @@
     if (splitter) splitter.classList.remove("is-dragging");
     document.body.classList.remove("is-resizing-workspace");
     model.workspaceSplitDrag = null;
+    if (event && event.type === "pointerup" && Math.abs((drag.currentMainHeight == null ? drag.startMainHeight : drag.currentMainHeight) - drag.startMainHeight) > 0.5) queueWorkspaceSplitAutoscale();
   }
 
   function startWorkspaceSplitDrag(event) {
     if (event.button !== 0 || !event.isPrimary) return;
     var nodes = workspaceSplitNodes();
     if (!nodes.main || !nodes.splitter) return;
+    cancelWorkspaceSplitAutoscale();
     event.preventDefault();
-    model.workspaceSplitDrag = { pointerId:event.pointerId, startY:event.clientY, startMainHeight:nodes.main.getBoundingClientRect().height };
+    model.workspaceSplitDrag = { pointerId:event.pointerId, startY:event.clientY, startMainHeight:nodes.main.getBoundingClientRect().height, currentMainHeight:null };
     nodes.splitter.setPointerCapture(event.pointerId);
     nodes.splitter.classList.add("is-dragging");
     document.body.classList.add("is-resizing-workspace");
@@ -201,7 +252,7 @@
     var drag = model.workspaceSplitDrag;
     if (!drag || event.pointerId !== drag.pointerId) return;
     event.preventDefault();
-    setWorkspaceSplitHeight(drag.startMainHeight + event.clientY - drag.startY);
+    drag.currentMainHeight = setWorkspaceSplitHeight(drag.startMainHeight + event.clientY - drag.startY);
   }
 
   function renderLayoutTrigger() {
