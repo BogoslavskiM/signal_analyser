@@ -552,6 +552,10 @@
 
   function peaksSettingsKey(display, pane) { return display && pane ? paneRuntimeKey(display.id, pane.id) : ""; }
   function defaultPeaksSettings(settings) { return Object.assign({ mode:"maxima", number_of_peaks:5, maximum_cutoff:null, minimum_cutoff:null, minimum_distance_samples:1, threshold:0 }, settings || {}); }
+  function activePeaksSettings(pane, record) {
+    var responseSettings = record && record.data && record.data.settings;
+    return defaultPeaksSettings(responseSettings || (pane && pane.peaks_settings));
+  }
   function extremaModeLabel(mode) { return mode === "minima" ? "Минимумы" : mode === "all" ? "Все экстремумы" : "Максимумы"; }
   function activeExtremaHasComplexSignal(pane, record) {
     var bindings = pane && Array.isArray(pane.signal_bindings) ? pane.signal_bindings : [];
@@ -590,9 +594,8 @@
   function renderPeaksSettings(display, pane, record, restoreFocus) {
     var host = q("[data-testid='settings-content']");
     if (!host) return;
-    var settings = record && record.data && record.data.settings;
     if (!display || !pane || pane.plot_type !== "time") { host.innerHTML = "<div class='inspector-empty' role='status'>Настройки доступны для временной области</div>"; return; }
-    if (!settings) { host.innerHTML = "<div class='inspector-empty' role='status'>Загрузка настроек экстремумов…</div>"; return; }
+    var settings = activePeaksSettings(pane, record);
     var key = peaksSettingsKey(display, pane);
     if (!model.peaksDraft || model.peaksDraft.key !== key) model.peaksDraft = createPeaksDraft(display, pane, settings);
     var draft = model.peaksDraft, parsed = parsePeaksSettings(draft), disabled = "", labels = [["number_of_peaks", "Количество экстремумов, всего"]];
@@ -612,7 +615,7 @@
     var parsed = draft && draft.key === peaksSettingsKey(display, pane) ? parsePeaksSettings(draft) : null;
     var dirty = !!parsed && peaksSettingsDirty(draft, parsed);
     var invalid = !!draft && !parsed;
-    var unavailable = !pane || pane.plot_type !== "time" || !model.peaksRecords[peaksSettingsKey(display, pane)];
+    var unavailable = !pane || pane.plot_type !== "time" || !draft;
     var phase = model.peaksApplying ? "pending" : invalid ? "invalid" : dirty ? "dirty" : "pristine";
     footer.dataset.applyState = phase;
     footer.setAttribute("aria-busy", String(model.peaksApplying));
@@ -845,6 +848,7 @@
     if (!display || !pane || pane.plot_type !== "time" || !paneHasSignals(pane)) { stopPeaksPolling(""); model.peaksRecord = null; renderInspector(); return Promise.resolve(); }
     var displayId = display.id, paneId = pane.id, runtimeKey = paneRuntimeKey(displayId, paneId);
     stopPeaksPolling(runtimeKey);
+    if (display.peaks_enabled) return fetchActivePeaks(displayId, paneId, false, false);
     return ensurePeaksEnabled(displayId, paneId).then(function () { return fetchActivePeaks(displayId, paneId, false, false); });
   }
 

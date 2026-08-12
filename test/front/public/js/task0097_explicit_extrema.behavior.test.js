@@ -189,14 +189,28 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   assert(flow.activeCalls.length === 2, "polling after Calculate must use the passive GET endpoint");
   assert(flow.peaksHost.innerHTML.includes("data-testid='peaks-table'") && flow.peaksHost.innerHTML.includes("Сигнал 1"), "ready passive polling must render the authoritative Extrema table");
 
-  const configure = createHarness({ activeResponses: [peaksResponse()] });
+  const pendingConfigureGet = deferred();
+  const configure = createHarness({ activeResponses: [pendingConfigureGet] });
   configure.test.model.inspectorPage = "peaks";
   configure.test.configureActivePeaks();
-  await settle();
   assert(configure.test.model.settingsPage === "peaks", "Configure must open the right Extrema settings page");
   assert(configure.test.model.extremaTargetKey === "display-1::pane-1", "Configure must target the active pane for the blue outline");
   assert(configure.values.hidden === false && configure.status.classList.contains("visually-hidden"), "Extrema settings footer must show Values and keep status assistive-only");
-  assert(configure.settingsContent.innerHTML.includes("value='5'"), "fresh Extrema settings must visibly use the default count of five");
+  assert(configure.settingsContent.innerHTML.includes("data-testid='extrema-mode-trigger'"), "Configure must render the Extrema mode trigger before any Peaks result or passive GET response exists");
+  ["number_of_peaks", "maximum_cutoff", "minimum_distance_samples", "threshold"].forEach((field) => {
+    assert(configure.settingsContent.innerHTML.includes(`data-testid='settings-field-${field}'`), `Configure must immediately render the applicable default ${field} field`);
+  });
+  assert(!configure.settingsContent.innerHTML.includes("settings-field-minimum_cutoff"), "the inactive minimum cutoff must remain hidden for the default maxima mode");
+  assert(configure.settingsContent.innerHTML.includes("data-peaks-setting='number_of_peaks' value='5'"), "fresh Extrema settings must visibly use the default count of five before hydration");
+  assert(configure.calculateCalls.length === 0, "Configure must not POST an Extrema calculation");
+
+  await settle();
+  assert(configure.activeCalls.length === 1 && configure.calculateCalls.length === 0, "Configure may hydrate settings with one passive GET but must not POST an Extrema calculation");
+
+  pendingConfigureGet.resolve(peaksResponse());
+  await settle();
+  assert(configure.test.model.settingsPage === "peaks" && configure.test.model.extremaTargetKey === "display-1::pane-1", "passive settings hydration must retain the Extrema page and target outline");
+  assert(configure.calculateCalls.length === 0, "passive settings hydration must not trigger an Extrema calculation POST");
 
   const values = createHarness({ activeResponses: [peaksResponse()] });
   values.test.model.settingsPage = "peaks";
