@@ -1,0 +1,617 @@
+{
+  "id": "HND-0521",
+  "mode": "audit",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "revision": "a69c632728a72afc338bd41379fdb3de59c8505c",
+  "channel": "chrome",
+  "headless": false,
+  "visibility": "foreground",
+  "workers": 1,
+  "checks": [
+    {
+      "name": "availability and exact production revision",
+      "status": "passed",
+      "detail": {
+        "code": 200,
+        "body": {
+          "runtime_revision": "a69c632728a72afc338bd41379fdb3de59c8505c",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "tablists exactly three / roving click-keyboard",
+      "status": "passed",
+      "detail": {
+        "before": {
+          "id": "id-1786435900271",
+          "base": 1,
+          "right": [
+            {
+              "t": "Отображение",
+              "s": "true",
+              "i": 0,
+              "box": {
+                "x": 725,
+                "y": 95,
+                "w": 99.328125,
+                "h": 32
+              }
+            },
+            {
+              "t": "Время",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 824.328125,
+                "y": 95,
+                "w": 99.34375,
+                "h": 32
+              }
+            },
+            {
+              "t": "Пики",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 923.671875,
+                "y": 95,
+                "w": 99.328125,
+                "h": 32
+              }
+            }
+          ],
+          "bottom": [
+            {
+              "t": "Сигналы",
+              "s": "true",
+              "i": 0,
+              "box": {
+                "x": 10,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            },
+            {
+              "t": "Измерения",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 122,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            },
+            {
+              "t": "Пики",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 234,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            }
+          ]
+        },
+        "endRight": {
+          "id": "id-1786435900271",
+          "base": 1,
+          "right": [
+            {
+              "t": "Отображение",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 725,
+                "y": 95,
+                "w": 99.328125,
+                "h": 32
+              }
+            },
+            {
+              "t": "Время",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 824.328125,
+                "y": 95,
+                "w": 99.34375,
+                "h": 32
+              }
+            },
+            {
+              "t": "Пики",
+              "s": "true",
+              "i": 0,
+              "box": {
+                "x": 923.671875,
+                "y": 95,
+                "w": 99.328125,
+                "h": 32
+              }
+            }
+          ],
+          "bottom": [
+            {
+              "t": "Сигналы",
+              "s": "true",
+              "i": 0,
+              "box": {
+                "x": 10,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            },
+            {
+              "t": "Измерения",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 122,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            },
+            {
+              "t": "Пики",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 234,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            }
+          ]
+        },
+        "endBottom": {
+          "id": "id-1786435900271",
+          "base": 1,
+          "right": [
+            {
+              "t": "Отображение",
+              "s": "true",
+              "i": 0,
+              "box": {
+                "x": 725,
+                "y": 95,
+                "w": 99.328125,
+                "h": 32
+              }
+            },
+            {
+              "t": "Время",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 824.328125,
+                "y": 95,
+                "w": 99.34375,
+                "h": 32
+              }
+            },
+            {
+              "t": "Пики",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 923.671875,
+                "y": 95,
+                "w": 99.328125,
+                "h": 32
+              }
+            }
+          ],
+          "bottom": [
+            {
+              "t": "Сигналы",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 10,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            },
+            {
+              "t": "Измерения",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 122,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            },
+            {
+              "t": "Пики",
+              "s": "true",
+              "i": 0,
+              "box": {
+                "x": 234,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "lower Peaks table only, full-width and no rejected split",
+      "status": "failed",
+      "detail": {
+        "root": {
+          "x": 9,
+          "y": 629,
+          "w": 1006,
+          "h": 130
+        },
+        "scroll": {
+          "x": 9,
+          "y": 629,
+          "w": 1006,
+          "h": 130
+        },
+        "headers": [
+          "№",
+          "Сигнал",
+          "Цвет",
+          "Значение",
+          "Время, с",
+          "Метка на графике"
+        ],
+        "rows": 45,
+        "rejected": 0
+      }
+    },
+    {
+      "name": "tab switches retain main Plotly and do not refetch output",
+      "status": "passed",
+      "detail": {
+        "before": {
+          "id": "id-1786435900271",
+          "base": 1,
+          "right": [
+            {
+              "t": "Отображение",
+              "s": "true",
+              "i": 0,
+              "box": {
+                "x": 725,
+                "y": 95,
+                "w": 99.328125,
+                "h": 32
+              }
+            },
+            {
+              "t": "Время",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 824.328125,
+                "y": 95,
+                "w": 99.34375,
+                "h": 32
+              }
+            },
+            {
+              "t": "Пики",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 923.671875,
+                "y": 95,
+                "w": 99.328125,
+                "h": 32
+              }
+            }
+          ],
+          "bottom": [
+            {
+              "t": "Сигналы",
+              "s": "true",
+              "i": 0,
+              "box": {
+                "x": 10,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            },
+            {
+              "t": "Измерения",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 122,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            },
+            {
+              "t": "Пики",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 234,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            }
+          ]
+        },
+        "after": {
+          "id": "id-1786435900271",
+          "base": 1,
+          "right": [
+            {
+              "t": "Отображение",
+              "s": "true",
+              "i": 0,
+              "box": {
+                "x": 725,
+                "y": 95,
+                "w": 99.328125,
+                "h": 32
+              }
+            },
+            {
+              "t": "Время",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 824.328125,
+                "y": 95,
+                "w": 99.34375,
+                "h": 32
+              }
+            },
+            {
+              "t": "Пики",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 923.671875,
+                "y": 95,
+                "w": 99.328125,
+                "h": 32
+              }
+            }
+          ],
+          "bottom": [
+            {
+              "t": "Сигналы",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 10,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            },
+            {
+              "t": "Измерения",
+              "s": "false",
+              "i": -1,
+              "box": {
+                "x": 122,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            },
+            {
+              "t": "Пики",
+              "s": "true",
+              "i": 0,
+              "box": {
+                "x": 234,
+                "y": 598,
+                "w": 112,
+                "h": 32
+              }
+            }
+          ]
+        },
+        "calls": 0
+      }
+    }
+  ],
+  "network": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/css/theme.css",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/engee-logo.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/save.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/import.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/css/app.css",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/help-circle.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/api.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/app.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/layouts.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/components/explicit-apply.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/close.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/chevron-down-fill-16.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/trash.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/tick-figma.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/more-vertical.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/plus.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/vendor/vue/3.5.41/vue.global.prod.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-latin-medium.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-latin-regular.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-cyrillic-medium.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-cyrillic-regular.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/api/v1/touch",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/eye.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/copy.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/eye-off.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/vendor/plotly-cartesian-3.1.0.min.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "opened": 1,
+  "closed": 1,
+  "errors": [],
+  "cleanup": "passed"
+}

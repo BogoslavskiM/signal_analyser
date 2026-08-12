@@ -1,0 +1,202 @@
+{
+  "id": "HND-0521-RERUN",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "revision": "a8f968330dc2f85ce036b08d204c2d30a6a86692",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "availability/exact revision",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "a8f968330dc2f85ce036b08d204c2d30a6a86692",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "v6 tablists/roving/table-only/full 8px inset",
+      "status": "passed",
+      "detail": {
+        "tabInfo": {
+          "right": [
+            "Отображение",
+            "Время",
+            "Пики"
+          ],
+          "bottom": [
+            "Сигналы",
+            "Измерения",
+            "Пики"
+          ]
+        },
+        "roving": {
+          "right": [
+            {
+              "s": "false",
+              "i": -1
+            },
+            {
+              "s": "false",
+              "i": -1
+            },
+            {
+              "s": "true",
+              "i": 0
+            }
+          ],
+          "bottom": [
+            {
+              "s": "false",
+              "i": -1
+            },
+            {
+              "s": "false",
+              "i": -1
+            },
+            {
+              "s": "true",
+              "i": 0
+            }
+          ]
+        },
+        "table": {
+          "root": {
+            "x": 9,
+            "y": 629,
+            "w": 1006,
+            "h": 130,
+            "b": 759
+          },
+          "scroll": {
+            "x": 17,
+            "y": 629,
+            "w": 990,
+            "h": 122,
+            "b": 751
+          },
+          "headers": [
+            "№",
+            "Сигнал",
+            "Цвет",
+            "Значение",
+            "Время, с",
+            "Метка на графике"
+          ],
+          "rows": 45,
+          "rejected": 0
+        }
+      }
+    },
+    {
+      "name": "tab switching preserves Plotly/no active-output request",
+      "status": "passed",
+      "detail": {
+        "beforeTabs": {
+          "id": "plot-1786436500462",
+          "base": 1,
+          "all": 1
+        },
+        "afterTabs": {
+          "id": "plot-1786436500462",
+          "base": 1,
+          "all": 2
+        },
+        "output0": 1,
+        "output1": 1
+      }
+    },
+    {
+      "name": "1440 lower Peaks 8px inset",
+      "status": "passed",
+      "detail": {
+        "root": {
+          "x": 9,
+          "y": 761,
+          "w": 1422,
+          "h": 130,
+          "b": 891
+        },
+        "scroll": {
+          "x": 17,
+          "y": 761,
+          "w": 1406,
+          "h": 122,
+          "b": 883
+        }
+      }
+    },
+    {
+      "name": "right Peaks four controls/shared Apply pristine",
+      "status": "passed",
+      "detail": {
+        "baseline": "99"
+      }
+    },
+    {
+      "name": "negative value is local Russian validation/no POST",
+      "status": "passed",
+      "detail": "Расчёт пиков\nКоличество пиков\nВведите целое число от 1 до 1000.\nМинимальная высота\nМинимальное расстояние, отсчёты\nПорог"
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/settings",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "errors": [
+    "page.waitForFunction: Timeout 30000ms exceeded.\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0094_final_mutation.js:55:14"
+  ],
+  "opened": 1,
+  "closed": 1,
+  "preexisting_pages": [],
+  "cleanup": "passed"
+}

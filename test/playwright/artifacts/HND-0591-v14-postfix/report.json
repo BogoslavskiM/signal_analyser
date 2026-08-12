@@ -1,0 +1,672 @@
+{
+  "id": "HND-0591",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "7eb9a6f14d9ea842eb3319ee5870eb54a0653bd1",
+  "design_ref": "architecture/design/TASK-0080-explicit-apply-flow/DESIGN.md",
+  "design_version": 14,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "prototype start 1024x768",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "start": "Рассчет экстремумы для области 1\nРассчитать\nНастроить рассчет",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        }
+      }
+    },
+    {
+      "name": "prototype configure/footer 1024x768",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "settingsSelected": "true",
+        "targetCount": 1,
+        "footerButtons": [
+          "Значения",
+          "Применить"
+        ],
+        "statusPosition": "absolute"
+      }
+    },
+    {
+      "name": "prototype Values 1024x768",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "lowerSelected": "true",
+        "targetCount": 1
+      }
+    },
+    {
+      "name": "prototype start 1440x900",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "start": "Рассчет экстремумы для области 1\nРассчитать\nНастроить рассчет",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        }
+      }
+    },
+    {
+      "name": "prototype configure/footer 1440x900",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "settingsSelected": "true",
+        "targetCount": 1,
+        "footerButtons": [
+          "Значения",
+          "Применить"
+        ],
+        "statusPosition": "absolute"
+      }
+    },
+    {
+      "name": "prototype Values 1440x900",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "lowerSelected": "true",
+        "targetCount": 1
+      }
+    },
+    {
+      "name": "production availability and exact revision",
+      "scope": "quick",
+      "status": "passed",
+      "detail": {
+        "rootStatus": 200,
+        "status": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "7eb9a6f14d9ea842eb3319ee5870eb54a0653bd1",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      }
+    },
+    {
+      "name": "fresh 1x1 pane is exact empty state",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "baselineBindings": [],
+        "layout": {
+          "variant": "1x1",
+          "rows": 1,
+          "next_pane_number": 2,
+          "panes": [
+            {
+              "signal_bindings": [],
+              "id": "pane-1",
+              "plot_type": "time",
+              "peaks_settings": {
+                "minimum_distance_samples": 1,
+                "threshold": 0,
+                "mode": "maxima",
+                "maximum_cutoff": null,
+                "minimum_cutoff": null,
+                "number_of_peaks": 5
+              }
+            }
+          ],
+          "version": 1,
+          "columns": 1,
+          "active_pane_id": "pane-1"
+        },
+        "emptyUi": {
+          "exact": "Выберете сигнал для отображения",
+          "plotHosts": 0,
+          "loaders": 0,
+          "panes": 1
+        }
+      }
+    },
+    {
+      "name": "opening application does not request outputs or Extrema",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": []
+    },
+    {
+      "name": "signal bound through UI",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "signal": "Гармонический сигнал",
+        "status": 200
+      }
+    },
+    {
+      "name": "Extrema first-open is explicit start without calculation",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "firstOpen": {
+          "text": "Рассчет экстремумы для области 1\nРассчитать\nНастроить рассчет",
+          "table": 0,
+          "loader": 0
+        },
+        "openRequests": []
+      }
+    },
+    {
+      "name": "Configure opens settings, highlights 1x1 target and has exact footer/default",
+      "scope": "new_functionality",
+      "status": "failed",
+      "detail": {
+        "configured": {
+          "settingsSelected": "true",
+          "settingsFocused": "settings-tab-peaks",
+          "targetCount": 1,
+          "targetOutline": {
+            "boxShadow": "rgb(27, 132, 184) 0px 0px 0px 1px inset",
+            "outlineWidth": "3px"
+          },
+          "footerButtons": [
+            "Значения",
+            "Применить"
+          ],
+          "status": {
+            "position": "absolute",
+            "width": "1px",
+            "text": ""
+          },
+          "mode": "Максимумы",
+          "fields": [
+            {
+              "id": "number_of_peaks",
+              "value": "5"
+            },
+            {
+              "id": "maximum_cutoff",
+              "value": "-Inf"
+            },
+            {
+              "id": "minimum_distance_samples",
+              "value": "1"
+            },
+            {
+              "id": "threshold",
+              "value": "0"
+            }
+          ]
+        },
+        "configureRequests": []
+      }
+    },
+    {
+      "name": "Configure performs no calculation POST or output refetch",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": []
+    },
+    {
+      "name": "Values returns to Extrema without calculation and retains target",
+      "scope": "new_functionality",
+      "status": "failed",
+      "detail": {
+        "selected": "true",
+        "focused": "extrema-values",
+        "targetCount": 1,
+        "start": "Рассчет экстремумы для области 1\nРассчитать\nНастроить рассчет"
+      }
+    },
+    {
+      "name": "Calculate uses one explicit POST then GET polling",
+      "scope": "new_functionality",
+      "status": "failed",
+      "detail": {
+        "immediate": {
+          "loader": true
+        },
+        "postStatus": 200,
+        "calculationRequests": [
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:37.462Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:37.463Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active",
+            "method": "POST",
+            "status": 200,
+            "at": "2026-08-12T12:14:37.464Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:37.466Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:37.854Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:38.253Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:38.649Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:39.042Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:39.433Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:39.829Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:40.228Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:40.622Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:41.012Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:41.408Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:41.799Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:42.195Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:42.584Z"
+          },
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-12T12:14:43.321Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "calculation reaches values/empty result and preserves Plotly host without output reload",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "terminal": {
+          "table": true,
+          "empty": false,
+          "error": null,
+          "rows": 5
+        },
+        "plotBefore": {
+          "id": "host-1786536874173",
+          "baseTraces": 1
+        },
+        "plotAfter": {
+          "id": "host-1786536874173",
+          "baseTraces": 1
+        },
+        "outputCount": 0
+      }
+    },
+    {
+      "name": "signal membership baseline restored through UI",
+      "scope": "cleanup",
+      "status": "passed",
+      "detail": {
+        "status": "verified",
+        "baselineBindings": [],
+        "finalBindings": [],
+        "responseStatus": 200
+      }
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:16.603Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:16.703Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:22.204Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "method": "POST",
+      "status": 200,
+      "at": "2026-08-12T12:14:31.156Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:32.342Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:32.738Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:33.134Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:33.725Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/view",
+      "method": "POST",
+      "status": 200,
+      "at": "2026-08-12T12:14:35.366Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:37.462Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:37.463Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active",
+      "method": "POST",
+      "status": 200,
+      "at": "2026-08-12T12:14:37.464Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:37.466Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:37.854Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:38.253Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:38.649Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:39.042Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:39.433Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:39.829Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:40.228Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:40.622Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:41.012Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:41.408Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:41.799Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:42.195Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:42.584Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:43.321Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "method": "POST",
+      "status": 200,
+      "at": "2026-08-12T12:14:43.620Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:14:43.664Z"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0591-v14-postfix/prototype-start-1024x768.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-12T12:14:11.214Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0591-v14-postfix/prototype-configure-1024x768.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-12T12:14:11.307Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0591-v14-postfix/prototype-start-1440x900.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "at": "2026-08-12T12:14:11.991Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0591-v14-postfix/prototype-configure-1440x900.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "at": "2026-08-12T12:14:12.104Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0591-v14-postfix/production-empty-1024x768.png",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-12T12:14:22.294Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0591-v14-postfix/production-extrema-start-1024x768.png",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-12T12:14:34.286Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0591-v14-postfix/production-configure-1024x768.png",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-12T12:14:34.403Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0591-v14-postfix/production-values-1440x900.png",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "at": "2026-08-12T12:14:34.802Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0591-v14-postfix/production-extrema-result-1440x900.png",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "at": "2026-08-12T12:14:43.454Z"
+    }
+  ],
+  "errors": [
+    "console: Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "preexisting_page_urls": [],
+  "baseline": {
+    "state_revision": 0,
+    "displayId": "display-1",
+    "paneId": "pane-1",
+    "bindings": [],
+    "rows": 1,
+    "columns": 1
+  },
+  "restoration": {
+    "status": "verified",
+    "baselineBindings": [],
+    "finalBindings": [],
+    "responseStatus": 200
+  },
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 17,
+    "passed": 14,
+    "failed": 3,
+    "success_rate": 82.4
+  }
+}

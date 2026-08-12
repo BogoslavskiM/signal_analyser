@@ -1,0 +1,81 @@
+{
+  "id": "HND-0528-FIX-RERUN",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "revision": "11f97c35652b549828b4d61b38c8354cb1652ea9",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "status exact revision",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "11f97c35652b549828b4d61b38c8354cb1652ea9",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "right Peaks minimum height uses exact Julia -Inf",
+      "status": "passed",
+      "detail": {
+        "value": "-Inf",
+        "applyDisabled": true
+      }
+    },
+    {
+      "name": "right settings Peaks click causes no active-output request",
+      "status": "passed",
+      "detail": {
+        "outputBefore": 1,
+        "outputAfterSettings": 1
+      }
+    },
+    {
+      "name": "lower Peaks remains table-only with 8px inset",
+      "status": "passed",
+      "detail": {
+        "root": {
+          "x": 9,
+          "y": 581,
+          "w": 1262,
+          "b": 711
+        },
+        "scroll": {
+          "x": 17,
+          "y": 581,
+          "w": 1246,
+          "b": 703
+        },
+        "split": 0
+      }
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "errors": [],
+  "opened": 1,
+  "closed": 1,
+  "preexisting_pages": [],
+  "cleanup": "passed"
+}

@@ -1,0 +1,60 @@
+{
+  "id": "HND-0521",
+  "stage": "audit",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "a69c632728a72afc338bd41379fdb3de59c8505c",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "production availability/exact revision",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "a69c632728a72afc338bd41379fdb3de59c8505c",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    }
+  ],
+  "screenshots": [],
+  "network": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "errors": [
+    "TypeError: x.url is not a function\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0094_peaks_sidebar_v6.js:14:1054\n    at Array.filter (<anonymous>)\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0094_peaks_sidebar_v6.js:14:1012"
+  ],
+  "opened": 1,
+  "closed": 1,
+  "preexisting": [],
+  "cleanup": "passed"
+}
