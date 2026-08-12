@@ -1383,7 +1383,7 @@ SignalPeaksSettings(
     threshold,
 )
 
-SignalPeaksSettings() = SignalPeaksSettings(MAXIMA_EXTREMA_MODE, 99, nothing, nothing, 1, 0.0)
+SignalPeaksSettings() = SignalPeaksSettings(MAXIMA_EXTREMA_MODE, 5, nothing, nothing, 1, 0.0)
 
 struct SignalPeaksQuery
     state_revision::Int
@@ -2290,12 +2290,12 @@ function signal_display_layout_select_pane(
     )
 end
 
-"""Resize preserves the ordered prefix and seeds each new pane from a working template."""
+"""Resize preserves configured panes; every newly created pane starts empty."""
 function signal_display_layout_resize(
     layout::SignalDisplayLayoutState,
     rows::Int,
     columns::Int,
-    pane_template::SignalDisplayPaneState,
+    ::SignalDisplayPaneState,
 )::SignalDisplayLayoutState
     signal_display_layout_validate_dimensions(rows, columns)
     requested_count = rows * columns
@@ -2303,7 +2303,7 @@ function signal_display_layout_resize(
     panes = SignalDisplayPaneState[copy(layout.panes[index]) for index in 1:surviving_count]
     next_pane_number = layout.next_pane_number
     while length(panes) < requested_count
-        push!(panes, signal_display_pane_with_id(pane_template, "pane-$next_pane_number"))
+        push!(panes, signal_display_empty_pane("pane-$next_pane_number"))
         next_pane_number += 1
     end
     active_pane_id = any(pane -> pane.id == layout.active_pane_id, panes) ?
@@ -2328,7 +2328,7 @@ function signal_display_layout_resize(
         layout,
         rows,
         columns,
-        signal_display_active_pane(layout),
+        signal_display_empty_pane(layout.active_pane_id),
     )
 end
 
@@ -3027,30 +3027,31 @@ function SignalAnalyserState(
     persistence_provider::AbstractSignalPersistenceProvider = EngeeDSPPersistenceProvider(),
 )
     isempty(signals) && throw(ArgumentError("Signal Analyser требует хотя бы один сигнал в global inventory"))
+    # A fresh analyser starts with no signal bound to its only pane.  Visibility
+    # mirrors the active Display membership, so it must start clear as well.
+    signals = AnalysedSignal[
+        AnalysedSignal(
+            signal.name,
+            signal.color,
+            signal.sample_rate_hz,
+            copy(signal.values),
+            signal.is_complex,
+            false,
+        ) for signal in signals
+    ]
     known_names = [signal.name for signal in signals]
-    visible_signals = [signal.name for signal in signals if signal.visible]
     row_selected_signal = view.selected_signal === nothing ? first(known_names) : view.selected_signal
     row_selected_signal in known_names || throw(ArgumentError("Глобально выбранный сигнал отсутствует в inventory"))
-    analysis_name = if view.selected_signal !== nothing && view.selected_signal in visible_signals
-        view.selected_signal
-    elseif isempty(visible_signals)
-        nothing
-    else
-        first(visible_signals)
-    end
     display = SignalAnalyserDisplayState(
         "display-1",
         "Display 1",
         view.active_plot,
-        analysis_name,
-        visible_signals,
-        analysis_name === nothing ? nothing : SignalTimeLimits(
-            0.0,
-            signal_duration_s(signals[findfirst(signal -> signal.name == analysis_name, signals)::Int]),
-        ),
+        SignalDisplayMembership(String[]),
+        NoSignalAnalysisSource(),
+        nothing,
         false,
     )
-    view.selected_signal = analysis_name
+    view.selected_signal = nothing
     SignalAnalyserState(
         signals,
         view,

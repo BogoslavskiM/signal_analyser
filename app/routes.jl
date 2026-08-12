@@ -195,6 +195,40 @@ route("/api/peaks/active", method = GET) do
     end
 end
 
+# GET is deliberately passive for opening/polling the Extrema table.  Only this
+# explicit POST starts the active-pane worker calculation.
+route("/api/peaks/active", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            calculate_signal_analyser_active_peaks!(
+                SIGNAL_ANALYSER_STATE,
+                jsonpayload(),
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)
+        elseif err isa SignalAnalyserInactiveOutputError
+            signal_analyser_inactive_output_response(
+                SIGNAL_ANALYSER_STATE,
+                err;
+                headers = response_headers,
+            )
+        else
+            api_error_response(
+                "Не удалось рассчитать экстремумы активной области Signal Analyser",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+        end
+    end
+end
+
 route("/api/peaks/settings", method = POST) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try

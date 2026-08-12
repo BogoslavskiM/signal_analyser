@@ -26,10 +26,12 @@ module.exports = async function testMeasurementVisibilityAndPeaksOnOpen(assert) 
   assert(/preservePlots:true, skipOutput:true/.test(updater), "measurement visibility must not reload Plotly outputs");
   assert(/model\.inspectorPage === "measurements"\) loadMeasurements\(\)/.test(app), "measurement values must refresh after visibility changes");
 
-  assert(/model\.inspectorPage === "peaks"\) loadPeaks\(\)/.test(app), "opening the bottom Peaks page must start its on-demand calculation");
+  assert(/model\.inspectorPage === "peaks"\) loadPeaks\(\)/.test(app), "opening the bottom Extrema page must hydrate only its passive pane state");
   const loadPeaks = (app.match(/function loadPeaks\(\)[\s\S]*?\n  \}/) || [""])[0];
-  assert(/display\.peaks_enabled \? Promise\.resolve\(\) : mutate/.test(loadPeaks), "Peaks must reuse its ready pane result or enable calculation on demand without fetching legacy state");
-  assert(/peaks_enabled:true/.test(loadPeaks) && /preservePlots:true, skipOutput:true/.test(loadPeaks), "Peaks on-open calculation must avoid graph output reloads");
-  assert(/fetchActivePeaks\(displayId, paneId, true\)/.test(loadPeaks), "Peaks on-open must request the pane-scoped active Peaks result");
-  assert(/function renderPeaksInspector\(body\)[\s\S]*peaks-table-scroll[\s\S]*peaks-table/.test(app), "the Peaks page must render the calculated full-width table only");
+  const enablePeaks = (app.match(/function ensurePeaksEnabled\(displayId, paneId\)[\s\S]*?\n  \}/) || [""])[0];
+  assert(/display\.peaks_enabled\) return Promise\.resolve\(\)/.test(enablePeaks), "Extrema must reuse an already enabled active pane");
+  assert(/peaks_enabled:true/.test(enablePeaks) && /preservePlots:true, skipOutput:true/.test(enablePeaks), "passive Extrema enablement must not reload graph output");
+  assert(/fetchActivePeaks\(displayId, paneId, false, false\)/.test(loadPeaks), "Extrema on-open must perform passive GET without polling");
+  assert(!/calculateActivePeaks|fetchActivePeaks\(displayId, paneId, true/.test(loadPeaks), "Extrema on-open must not calculate");
+  assert(/function renderPeaksInspector\(body\)[\s\S]*data-testid='extrema-start'[\s\S]*Рассчет экстремумы для области [\s\S]*data-testid='extrema-calculate'[\s\S]*data-testid='extrema-configure'[\s\S]*peaks-table/.test(app), "Extrema must render its exact start actions before the full-width result table");
 };

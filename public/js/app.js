@@ -16,7 +16,7 @@
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
-    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksMessage: "",
+    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksMessage: "", extremaTargetKey: null,
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false
   };
 
@@ -62,6 +62,9 @@
     var source = (snapshot.layouts || []).filter(function (item) { return item.display_id === snapshot.active_display_id; })[0];
     model.layout = source ? source.layout : snapshot.layout;
     model.activePane = model.layout && model.layout.active_pane_id;
+    var display = activeDisplay();
+    var activeKey = display && model.activePane ? paneRuntimeKey(display.id, model.activePane) : null;
+    if (model.extremaTargetKey && model.extremaTargetKey !== activeKey) model.extremaTargetKey = null;
   }
 
   function scheduleRender() {
@@ -211,9 +214,11 @@
       model.workspaceSplitAutoscaleFrame = null;
       var display = activeDisplay();
       if (!display || token !== model.workspaceSplitAutoscaleToken) return;
+      var hosts = qa(".plot-chart[data-pane-host][data-plot-ready='true']").filter(function (host) { return currentReadyPlotHost(host, display.id); });
+      if (!hosts.length) return;
       loadPlotly().then(function (Plotly) {
         if (token !== model.workspaceSplitAutoscaleToken || !activeDisplay() || activeDisplay().id !== display.id) return;
-        qa(".plot-chart[data-pane-host][data-plot-ready='true']").forEach(function (host) {
+        hosts.forEach(function (host) {
           if (token !== model.workspaceSplitAutoscaleToken || !currentReadyPlotHost(host, display.id)) return;
           var update = plotAutorangeUpdate(host);
           if (!update) return;
@@ -272,7 +277,7 @@
   }
 
   function outputMarkup(displayId, pane, output) {
-    if (!pane.signal_bindings || !pane.signal_bindings.length) return "<div class='plot-empty' data-testid='pane-empty-" + esc(pane.id) + "'><span class='visually-hidden' role='status'>В области нет видимых сигналов</span></div>";
+    if (!pane.signal_bindings || !pane.signal_bindings.length) return "<div class='plot-empty' data-testid='pane-empty-" + esc(pane.id) + "' role='status'>Выберете сигнал для отображения</div>";
     if (!output || !output.isready) return "<div class='plot-initial-loading' data-testid='pane-loader-" + esc(pane.id) + "' role='status' aria-label='Загрузка графика'><span class='spinner'></span><span>Загрузка графика</span></div>";
     if (!output.success) return "<div class='plot-error' data-testid='pane-error-" + esc(pane.id) + "' role='alert'>" + esc(output.error || "Не удалось загрузить график.") + "</div>";
     return "<div class='plot-chart' data-pane-host='" + esc(paneRuntimeKey(displayId, pane.id)) + "' data-testid='plot-host-" + esc(pane.id) + "' data-plot-ready='false'></div>";
@@ -291,7 +296,8 @@
       var runtimeKey = paneRuntimeKey(display.id, pane.id);
       var output = model.outputs[runtimeKey] && model.outputs[runtimeKey].output;
       var selected = pane.id === model.activePane;
-      return "<section class='plot-pane" + (selected ? " is-active" : "") + "' tabindex='0' data-pane-id='" + esc(pane.id) + "' data-pane-selected='" + String(selected) + "' data-testid='plot-pane-" + esc(pane.id) + "' aria-label='Область " + (index + 1) + (selected ? ", активная" : "") + "'>" +
+      var extremaTarget = runtimeKey === model.extremaTargetKey;
+      return "<section class='plot-pane" + (selected ? " is-active" : "") + (extremaTarget ? " is-extrema-settings-target" : "") + "' tabindex='0' data-pane-id='" + esc(pane.id) + "' data-pane-selected='" + String(selected) + "' data-testid='plot-pane-" + esc(pane.id) + "' aria-label='Область " + (index + 1) + (selected ? ", активная" : "") + (extremaTarget ? ", настраивается расчёт экстремумов" : "") + "'>" +
         "<header class='plot-pane-header'><span class='plot-pane-title'>Область " + (index + 1) + "</span><div class='plot-control-cluster'><select class='pane-select' data-pane-type='" + esc(pane.id) + "' data-testid='pane-type-" + esc(pane.id) + "' aria-label='Тип графика области " + (index + 1) + "'>" +
         Object.keys(titles).map(function (kind) { return "<option value='" + kind + "'" + (pane.plot_type === kind ? " selected" : "") + ">" + titles[kind] + "</option>"; }).join("") +
         "</select><button class='plot-more' type='button' data-pane-menu='" + esc(pane.id) + "' data-testid='pane-menu-" + esc(pane.id) + "' aria-label='Действия области " + (index + 1) + "' aria-haspopup='menu' aria-expanded='false'><img src='./icons/more-vertical.svg' alt=''></button></div></header>" +
@@ -315,9 +321,11 @@
     if (grid) grid.dataset.paneCount = String(panes().length);
     qa("[data-pane-id]").forEach(function (node, index) {
       var selected = node.dataset.paneId === model.activePane;
+      var extremaTarget = display && paneRuntimeKey(display.id, node.dataset.paneId) === model.extremaTargetKey;
       node.classList.toggle("is-active", selected);
+      node.classList.toggle("is-extrema-settings-target", extremaTarget);
       node.dataset.paneSelected = String(selected);
-      node.setAttribute("aria-label", "Область " + (index + 1) + (selected ? ", активная" : ""));
+      node.setAttribute("aria-label", "Область " + (index + 1) + (selected ? ", активная" : "") + (extremaTarget ? ", настраивается расчёт экстремумов" : ""));
     });
     renderSettings(display);
     renderInspector();
@@ -383,8 +391,11 @@
     var footer = q("[data-testid='settings-footer']");
     var button = q("[data-testid='settings-apply']");
     var status = q("[data-settings-status]");
-    if (!footer || !button || !status) return;
+    var values = q("[data-testid='extrema-values']");
+    if (!footer || !button || !status || !values) return;
     if (model.settingsPage === "peaks") return renderPeaksApply(footer, button, status);
+    values.hidden = true;
+    status.classList.remove("visually-hidden");
     var state = settings.state();
     var phase = footer.dataset.phase || "pristine";
     var disabled = !state.dirty || state.invalid || phase === "applying" || phase === "pending";
@@ -519,12 +530,18 @@
     var current = record && display && pane && record.displayId === display.id && record.paneId === pane.id;
     body.innerHTML = "<div class='signal-table-scroll peaks-table-scroll' data-testid='peaks-table-scroll'></div>";
     var host = q("[data-testid='peaks-table-scroll']");
+    if (pane && !paneHasSignals(pane)) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберете сигнал для отображения</strong></div>"; return; }
     if (!pane || pane.plot_type !== "time") { host.innerHTML = "<div class='inspector-empty' role='status'>Экстремумы доступны для временной области</div>"; return; }
-    if (!current || record.pending) { host.innerHTML = "<div class='inspector-empty' data-testid='peaks-loader' data-extrema-state='loading' role='status'>Расчёт экстремумов…</div>"; return; }
-    if (record.error) { host.innerHTML = "<div class='inspector-empty' data-testid='peaks-error' data-extrema-state='error' role='alert'>" + esc(record.error) + "</div>"; return; }
+    if (!current || (!record.pending && !record.error && !record.calculated)) {
+      var areaNumber = Math.max(1, panes().indexOf(pane) + 1);
+      host.innerHTML = "<div class='peaks-state peaks-start' data-testid='extrema-start' data-extrema-state='start' role='status'><strong>Рассчет экстремумы для области " + areaNumber + "</strong><div class='peaks-start-actions'><button class='button button-primary' type='button' data-testid='extrema-calculate'>Рассчитать</button><button class='button' type='button' data-testid='extrema-configure'>Настроить рассчет</button></div></div>";
+      return;
+    }
+    if (record.pending) { host.innerHTML = "<div class='peaks-state peaks-loading' data-testid='peaks-loader' data-extrema-state='loading' role='status' aria-live='polite'><span class='spinner' aria-hidden='true'></span><strong>Расчёт экстремумов…</strong></div>"; return; }
+    if (record.error) { host.innerHTML = "<div class='peaks-state peaks-error' data-testid='peaks-error' data-extrema-state='error' role='alert'><strong>Не удалось рассчитать экстремумы</strong><p>" + esc(record.error) + "</p></div>"; return; }
     var data = record.data || {}, rows = Array.isArray(data.rows) ? data.rows : [];
-    if (!data.signals || !data.signals.length) { host.innerHTML = "<div class='inspector-empty' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'>В активной области нет сигналов</div>"; return; }
-    if (!rows.length) { host.innerHTML = "<div class='inspector-empty' data-testid='peaks-empty' data-extrema-state='empty' role='status'>Экстремумы не найдены</div>"; return; }
+    if (!data.signals || !data.signals.length) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберете сигнал для отображения</strong></div>"; return; }
+    if (!rows.length) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-empty' data-extrema-state='empty' role='status'><strong>Экстремумы не найдены</strong><p>Для активной области нет значений, соответствующих настройкам.</p></div>"; return; }
     var colgroup = "<colgroup><col style='width:4.8%'><col style='width:28.4%'><col style='width:9.1%'><col style='width:12.3%'><col style='width:12.5%'><col style='width:12.5%'><col style='width:20.4%'></colgroup>";
     host.innerHTML = "<table class='signal-table peaks-table' data-testid='peaks-table' data-extrema-table='true'>" + colgroup + "<thead><tr><th>№</th><th>Сигнал</th><th>Цвет</th><th>Тип</th><th>Значение</th><th>Время, с</th><th>Метка на графике</th></tr></thead><tbody>" + rows.map(function (row, index) {
       var type = row.type === "minimum" ? "minimum" : "maximum", typeLabel = type === "minimum" ? "Минимум" : "Максимум";
@@ -534,7 +551,7 @@
   }
 
   function peaksSettingsKey(display, pane) { return display && pane ? paneRuntimeKey(display.id, pane.id) : ""; }
-  function defaultPeaksSettings(settings) { return Object.assign({ mode:"maxima", number_of_peaks:99, maximum_cutoff:null, minimum_cutoff:null, minimum_distance_samples:1, threshold:0 }, settings || {}); }
+  function defaultPeaksSettings(settings) { return Object.assign({ mode:"maxima", number_of_peaks:5, maximum_cutoff:null, minimum_cutoff:null, minimum_distance_samples:1, threshold:0 }, settings || {}); }
   function extremaModeLabel(mode) { return mode === "minima" ? "Минимумы" : mode === "all" ? "Все экстремумы" : "Максимумы"; }
   function activeExtremaHasComplexSignal(pane, record) {
     var bindings = pane && Array.isArray(pane.signal_bindings) ? pane.signal_bindings : [];
@@ -591,6 +608,7 @@
 
   function renderPeaksApply(footer, button, status) {
     var display = activeDisplay(), pane = paneById(model.activePane), draft = model.peaksDraft;
+    var values = q("[data-testid='extrema-values']");
     var parsed = draft && draft.key === peaksSettingsKey(display, pane) ? parsePeaksSettings(draft) : null;
     var dirty = !!parsed && peaksSettingsDirty(draft, parsed);
     var invalid = !!draft && !parsed;
@@ -598,6 +616,8 @@
     var phase = model.peaksApplying ? "pending" : invalid ? "invalid" : dirty ? "dirty" : "pristine";
     footer.dataset.applyState = phase;
     footer.setAttribute("aria-busy", String(model.peaksApplying));
+    if (values) { values.hidden = false; values.disabled = !display || !pane; }
+    status.classList.add("visually-hidden");
     button.disabled = unavailable || model.peaksApplying || invalid || !dirty;
     button.textContent = model.peaksApplying ? "Применение…" : "Применить";
     button.classList.toggle("is-pending", model.peaksApplying);
@@ -613,7 +633,7 @@
     var displayId = display.id, paneId = pane.id;
     model.peaksApplying = true;
     model.peaksApplyQueued = false;
-    model.peaksMessage = "Пересчитываются только экстремумы активной области";
+    model.peaksMessage = "Применяются настройки экстремумов";
     closeExtremaModeMenu(false);
     renderSettings(display);
     function samePeaksContext() { return activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId && model.settingsPage === "peaks"; }
@@ -652,8 +672,14 @@
     }
     persistLatest(0).then(function () {
       if (!samePeaksContext()) return;
+      var runtimeKey = paneRuntimeKey(displayId, paneId);
       model.peaksDraft = null;
-      return fetchActivePeaks(displayId, paneId, true);
+      model.peaksMessage = "Настройки экстремумов применены";
+      delete model.peaksRecords[runtimeKey];
+      model.peaksRecord = null;
+      clearPeaksMarkersForPane(displayId, paneId);
+      renderInspector();
+      return fetchActivePeaks(displayId, paneId, false, false);
     }).catch(function (error) {
       model.peaksMessage = safeErrorText(error, "Не удалось применить настройки экстремумов.");
       showToast(safeErrorText(error, "Не удалось применить настройки экстремумов."), true);
@@ -673,6 +699,12 @@
       if (indexes.length) window.Plotly.deleteTraces(host, indexes);
     });
   }
+  function clearPeaksMarkersForPane(displayId, paneId) {
+    if (!window.Plotly) return;
+    var host = q("[data-pane-host='" + CSS.escape(paneRuntimeKey(displayId, paneId)) + "']");
+    var indexes = ownedPeakTraceIndexes(host);
+    if (indexes.length) Promise.resolve(window.Plotly.deleteTraces(host, indexes)).catch(function () {});
+  }
   function updatePeaksMarkers(displayId, paneId, record) {
     var pane = paneById(paneId), display = activeDisplay();
     if (!window.Plotly || !display || display.id !== displayId || !pane || pane.plot_type !== "time" || !record || !record.data || !Array.isArray(record.data.rows)) return;
@@ -691,26 +723,55 @@
     });
   }
 
-  function fetchActivePeaks(displayId, paneId, poll) {
+  function peaksResponseIsCurrent(response, displayId, paneId, token) {
+    var runtimeKey = paneRuntimeKey(displayId, paneId);
+    if (token !== model.peaksTokens[runtimeKey] || !peaksSurfaceActive() || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return false;
+    if ((stateRevision(response) !== null && stateRevision(response) < model.revision) || response.display_id !== displayId || response.pane_id !== paneId) return false;
+    var prior = model.peaksRecords[runtimeKey];
+    if (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision <= prior.calculation_revision) return false;
+    return !(prior && typeof prior.calculation_revision === "number" && typeof response.calculation_revision === "number" && response.calculation_revision < prior.calculation_revision);
+  }
+
+  function acceptPeaksPayload(response, displayId, paneId, token, calculationRequested, poll) {
+    var runtimeKey = paneRuntimeKey(displayId, paneId);
+    if (!peaksResponseIsCurrent(response, displayId, paneId, token)) return null;
+    var prior = model.peaksRecords[runtimeKey];
+    var requested = !!calculationRequested || !!(prior && prior.calculationRequested);
+    var pending = !response.isready && requested;
+    model.revision = Math.max(model.revision, stateRevision(response) || model.revision);
+    var record = {
+      displayId:displayId,
+      paneId:paneId,
+      context_key:response.context_key,
+      calculation_revision:response.calculation_revision,
+      revision:stateRevision(response),
+      calculationRequested:requested,
+      calculated:!!response.isready,
+      pending:pending,
+      error:response.isready && response.success === false ? response.error || "Не удалось рассчитать экстремумы." : null,
+      data:response.data || null,
+      peaks:response.peaks || null
+    };
+    model.peaksRecords[runtimeKey] = record;
+    model.peaksRecord = record;
+    if (model.inspectorPage === "peaks") renderInspector();
+    if (model.settingsPage === "peaks") renderSettings(activeDisplay());
+    if (response.isready && response.success !== false) updatePeaksMarkers(displayId, paneId, record);
+    if (!response.isready && !requested) clearPeaksMarkersForPane(displayId, paneId);
+    if (!response.isready && requested && poll) model.peaksPollByPane[runtimeKey] = window.setTimeout(function () { fetchActivePeaks(displayId, paneId, true, true); }, 350);
+    return record;
+  }
+
+  function fetchActivePeaks(displayId, paneId, poll, calculationRequested) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
     var token = (model.peaksTokens[runtimeKey] || 0) + 1;
     model.peaksTokens[runtimeKey] = token;
     window.clearTimeout(model.peaksPollByPane[runtimeKey]);
     return api.activePeaks(displayId, paneId).then(function (response) {
-      var prior = model.peaksRecords[runtimeKey];
-      if (token !== model.peaksTokens[runtimeKey] || !peaksSurfaceActive() || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId || (stateRevision(response) !== null && stateRevision(response) < model.revision) || response.display_id !== displayId || response.pane_id !== paneId || (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision <= prior.calculation_revision) || (prior && typeof prior.calculation_revision === "number" && typeof response.calculation_revision === "number" && response.calculation_revision < prior.calculation_revision)) return null;
-      model.revision = Math.max(model.revision, stateRevision(response) || model.revision);
-      var record = { displayId:displayId, paneId:paneId, context_key:response.context_key, calculation_revision:response.calculation_revision, revision:stateRevision(response), pending:!response.isready, error:response.success === false ? response.error || "Не удалось рассчитать экстремумы." : null, data:response.data || null, peaks:response.peaks || null };
-      model.peaksRecords[runtimeKey] = record;
-      model.peaksRecord = record;
-      if (model.inspectorPage === "peaks") renderInspector();
-      if (model.settingsPage === "peaks") renderSettings(activeDisplay());
-      if (response.isready && response.success !== false) updatePeaksMarkers(displayId, paneId, record);
-      if (!response.isready && poll) model.peaksPollByPane[runtimeKey] = window.setTimeout(function () { fetchActivePeaks(displayId, paneId, true); }, 350);
-      return record;
+      return acceptPeaksPayload(response, displayId, paneId, token, calculationRequested, poll);
     }).catch(function (error) {
       if (token !== model.peaksTokens[runtimeKey] || !peaksSurfaceActive() || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return null;
-      var record = { displayId:displayId, paneId:paneId, error:safeErrorText(error, "Не удалось загрузить экстремумы."), pending:false };
+      var record = { displayId:displayId, paneId:paneId, calculationRequested:!!calculationRequested, calculated:false, error:safeErrorText(error, "Не удалось загрузить экстремумы."), pending:false };
       model.peaksRecords[runtimeKey] = record;
       model.peaksRecord = record;
       if (model.inspectorPage === "peaks") renderInspector();
@@ -719,20 +780,96 @@
     });
   }
 
+  function ensurePeaksEnabled(displayId, paneId) {
+    var runtimeKey = paneRuntimeKey(displayId, paneId);
+    var display = activeDisplay(), pane = paneById(paneId);
+    if (!display || display.id !== displayId || !pane || pane.id !== model.activePane || !paneHasSignals(pane) || pane.plot_type !== "time") return Promise.reject(new Error("Контекст области изменился; повторите действие."));
+    if (display.peaks_enabled) return Promise.resolve();
+    if (model.peaksEnableByPane[runtimeKey]) return model.peaksEnableByPane[runtimeKey];
+    model.peaksEnableByPane[runtimeKey] = mutate(function () {
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return Promise.reject(new Error("Контекст области изменился; повторите действие."));
+      return api.view({ state_revision:model.revision, peaks_enabled:true });
+    }, { preservePlots:true, skipOutput:true }).finally(function () { delete model.peaksEnableByPane[runtimeKey]; });
+    return model.peaksEnableByPane[runtimeKey];
+  }
+
+  function calculatePeaks() {
+    var display = activeDisplay(), pane = paneById(model.activePane);
+    if (!display || !pane || pane.plot_type !== "time" || !paneHasSignals(pane)) return;
+    var displayId = display.id, paneId = pane.id, runtimeKey = paneRuntimeKey(displayId, paneId);
+    stopPeaksPolling(runtimeKey);
+    var token = (model.peaksTokens[runtimeKey] || 0) + 1;
+    model.peaksTokens[runtimeKey] = token;
+    var prior = model.peaksRecords[runtimeKey];
+    model.peaksRecords[runtimeKey] = {
+      displayId:displayId,
+      paneId:paneId,
+      context_key:prior && prior.context_key,
+      calculation_revision:prior && prior.calculation_revision,
+      calculationRequested:true,
+      calculated:false,
+      pending:true,
+      error:null,
+      data:prior && prior.data || null
+    };
+    renderInspector();
+    ensurePeaksEnabled(displayId, paneId).then(function () {
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId || model.inspectorPage !== "peaks") return null;
+      token = (model.peaksTokens[runtimeKey] || 0) + 1;
+      model.peaksTokens[runtimeKey] = token;
+      function requestCalculation(retries) {
+        return api.calculateActivePeaks({ state_revision:model.revision, display_id:displayId, pane_id:paneId }).catch(function (error) {
+          var current = error && error.payload && (error.payload.current || error.payload.state);
+          if (!current || error.status !== 409 || retries >= 1 || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) throw error;
+          var snapshot = current.state || current;
+          return (accept(snapshot) ? Promise.resolve(snapshot) : refreshSnapshot(renderActivePaneContext)).then(function () {
+            if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) throw new Error("Контекст области изменился; повторите действие.");
+            renderActivePaneContext();
+            return requestCalculation(retries + 1);
+          });
+        });
+      }
+      return requestCalculation(0).then(function (response) {
+        return acceptPeaksPayload(response, displayId, paneId, token, true, true);
+      });
+    }).catch(function (error) {
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId || model.inspectorPage !== "peaks") return;
+      model.peaksRecords[runtimeKey] = { displayId:displayId, paneId:paneId, calculationRequested:true, calculated:false, pending:false, error:safeErrorText(error, "Не удалось рассчитать экстремумы."), data:prior && prior.data || null };
+      renderInspector();
+    });
+  }
+
   function loadPeaks() {
     if (!peaksSurfaceActive()) return Promise.resolve();
     var display = activeDisplay(), pane = paneById(model.activePane);
-    if (!display || !pane || pane.plot_type !== "time") { stopPeaksPolling(""); model.peaksRecord = null; renderInspector(); return Promise.resolve(); }
+    if (!display || !pane || pane.plot_type !== "time" || !paneHasSignals(pane)) { stopPeaksPolling(""); model.peaksRecord = null; renderInspector(); return Promise.resolve(); }
     var displayId = display.id, paneId = pane.id, runtimeKey = paneRuntimeKey(displayId, paneId);
     stopPeaksPolling(runtimeKey);
-    model.peaksRecord = { displayId:displayId, paneId:paneId, pending:true };
-    if (model.inspectorPage === "peaks") renderInspector();
-    if (model.settingsPage === "peaks") renderSettings(display);
-    var request = display.peaks_enabled ? Promise.resolve() : mutate(function () {
-      if (!activeDisplay() || activeDisplay().id !== displayId) return Promise.reject(new Error("Контекст экрана изменился; повторите действие."));
-      return api.view({ state_revision:model.revision, peaks_enabled:true });
-    }, { preservePlots:true, skipOutput:true });
-    return request.then(function () { return fetchActivePeaks(displayId, paneId, true); });
+    return ensurePeaksEnabled(displayId, paneId).then(function () { return fetchActivePeaks(displayId, paneId, false, false); });
+  }
+
+  function targetActivePaneForExtrema() {
+    var display = activeDisplay(), pane = paneById(model.activePane);
+    if (!display || !pane) return false;
+    model.extremaTargetKey = paneRuntimeKey(display.id, pane.id);
+    renderActivePaneContext();
+    return true;
+  }
+
+  function configureActivePeaks() {
+    if (!targetActivePaneForExtrema()) return;
+    model.settingsPage = "peaks";
+    renderActivePaneContext();
+    loadPeaks();
+    window.requestAnimationFrame(function () { var tab = q("[data-testid='settings-tab-peaks']"); if (tab) tab.focus(); });
+  }
+
+  function showActivePeaksValues() {
+    if (!targetActivePaneForExtrema()) return;
+    model.inspectorPage = "peaks";
+    renderActivePaneContext();
+    loadPeaks();
+    window.requestAnimationFrame(function () { var tab = q("[data-testid='inspector-tab-peaks']"); if (tab) tab.focus(); });
   }
 
   function peaksSurfaceActive() { return model.inspectorPage === "peaks" || model.settingsPage === "peaks"; }
@@ -968,18 +1105,36 @@
     }
   }
 
-  function output(poll) { var display = activeDisplay(); if (display) panes().forEach(function (pane) { fetchPaneOutput(display.id, pane.id, poll); }); }
+  function paneHasSignals(pane) { return !!(pane && Array.isArray(pane.signal_bindings) && pane.signal_bindings.length); }
+  function stopPaneOutput(displayId, paneId) {
+    var runtimeKey = paneRuntimeKey(displayId, paneId);
+    model.outputTokens[runtimeKey] = (model.outputTokens[runtimeKey] || 0) + 1;
+    window.clearTimeout(model.pollByPane[runtimeKey]);
+    delete model.pollByPane[runtimeKey];
+    delete model.plotQueue[runtimeKey];
+    delete model.outputs[runtimeKey];
+  }
+  function output(poll) {
+    var display = activeDisplay();
+    if (!display) return;
+    panes().forEach(function (pane) {
+      if (paneHasSignals(pane)) fetchPaneOutput(display.id, pane.id, poll);
+      else stopPaneOutput(display.id, pane.id);
+    });
+  }
   function fetchPaneOutput(displayId, paneId, poll) {
     var display = activeDisplay();
     var pane = paneById(paneId);
     if (!display || display.id !== displayId || !pane) return;
+    if (!paneHasSignals(pane)) { stopPaneOutput(displayId, paneId); return; }
     var runtimeKey = paneRuntimeKey(displayId, paneId);
     var token = (model.outputTokens[runtimeKey] || 0) + 1;
     model.outputTokens[runtimeKey] = token;
     window.clearTimeout(model.pollByPane[runtimeKey]);
     api.activeOutput(display.id, pane.id).then(function (response) {
       var prior = model.outputs[runtimeKey];
-      if (!activeDisplay() || activeDisplay().id !== displayId || token !== model.outputTokens[runtimeKey] || (stateRevision(response) !== null && stateRevision(response) < model.revision) || response.display_id !== display.id || response.pane_id !== pane.id || response.plot_type !== pane.plot_type || (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision < prior.calculation_revision)) return;
+      var currentPane = paneById(paneId);
+      if (!activeDisplay() || activeDisplay().id !== displayId || token !== model.outputTokens[runtimeKey] || !paneHasSignals(currentPane) || (stateRevision(response) !== null && stateRevision(response) < model.revision) || response.display_id !== display.id || response.pane_id !== pane.id || response.plot_type !== currentPane.plot_type || (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision < prior.calculation_revision)) return;
       model.revision = Math.max(model.revision, stateRevision(response) || model.revision);
       if (!response.isready && prior && prior.output && prior.output.isready && prior.output.success) {
         if (poll) model.pollByPane[runtimeKey] = window.setTimeout(function () { fetchPaneOutput(displayId, paneId, true); }, 350);
@@ -990,7 +1145,7 @@
       if (!response.isready && poll) model.pollByPane[runtimeKey] = window.setTimeout(function () { fetchPaneOutput(displayId, paneId, true); }, 350);
       if (response.isready && response.success) completePendingApply();
     }).catch(function (error) {
-      if (activeDisplay() && activeDisplay().id === displayId && token === model.outputTokens[runtimeKey]) {
+      if (activeDisplay() && activeDisplay().id === displayId && token === model.outputTokens[runtimeKey] && paneHasSignals(paneById(paneId))) {
         model.outputs[runtimeKey] = { output: { isready: true, success: false, error: error.message || "Не удалось загрузить график." } };
         scheduleRender();
       }
@@ -1027,7 +1182,10 @@
         return Promise.reject(error);
       }
       return api.layouts(Object.assign({}, request, { state_revision:model.revision }));
-    }, options);
+    }, options).then(function (snapshot) {
+      if (peaksSurfaceActive()) loadPeaks();
+      return snapshot;
+    });
   }
 
   function showToast(copy, warning) {
@@ -1147,6 +1305,9 @@
     if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
     if (button.dataset.extremaModeTrigger !== undefined) return void openExtremaModeMenu(button);
     if (button.dataset.extremaModeOption !== undefined) return void chooseExtremaMode(button.dataset.extremaModeOption);
+    if (button.dataset.testid === "extrema-calculate") return void calculatePeaks();
+    if (button.dataset.testid === "extrema-configure") return void configureActivePeaks();
+    if (button.dataset.testid === "extrema-values") return void showActivePeaksValues();
     if (button.dataset.testid === "settings-apply") return void (model.settingsPage === "peaks" ? applyPeaksSettings() : applySettings());
     if (button.dataset.testid === "signals-add-action") return void openSignalAddDialog(button);
     if (button.dataset.signalAddClose !== undefined || button.dataset.signalAddCancel !== undefined) return void closeSignalAddDialog(true);

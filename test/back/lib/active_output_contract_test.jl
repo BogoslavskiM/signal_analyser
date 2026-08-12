@@ -101,6 +101,23 @@ function active_output_install_task!(state, context, task; poll_count::Int = 1)
     nothing
 end
 
+"""Bind the fresh active pane explicitly; new analysers intentionally start empty."""
+function active_output_bind_default_pane!(state)
+    pane = ACTIVE_OUTPUT.signal_display_active_pane(
+        ACTIVE_OUTPUT.signal_analyser_layout_by_display_id(state, state.active_display_id),
+    )
+    ACTIVE_OUTPUT.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => state.view.state_revision,
+        "operation" => "update_pane",
+        "display_id" => state.active_display_id,
+        "version" => 1,
+        "pane_id" => pane.id,
+        "plot_type" => "time",
+        "signal_bindings" => [first(state.signals).name],
+    ); lightweight = true)
+    nothing
+end
+
 @testset "TASK-0065 lite metadata and legacy state contracts" begin
     state = ACTIVE_OUTPUT.default_signal_analyser_state()
     lite = ACTIVE_OUTPUT.signal_analyser_state_lite(state)
@@ -142,6 +159,7 @@ end
     ACTIVE_OUTPUT.reset_pspectrum_double!()
     empty!(ACTIVE_OUTPUT.SPECTRUM_CALLS)
     state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    active_output_bind_default_pane!(state)
     active = active_output_context(state)
 
     miss = ACTIVE_OUTPUT.signal_analyser_active_output(state, active.display_id, active.pane_id)
@@ -152,6 +170,7 @@ end
     # A fresh dirty state isolates duplicate-polling reuse from the completed
     # first-miss task above.
     state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    active_output_bind_default_pane!(state)
     active = active_output_context(state)
     blocker = Channel{Nothing}(1)
     parked = @async take!(blocker)
@@ -190,6 +209,7 @@ end
 
 @testset "TASK-0065 stale publication error preservation and session runtime exclusion" begin
     state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    active_output_bind_default_pane!(state)
     old_context = active_output_context(state)
     old_plots = Dict{String,Any}[Dict("data" => Dict{String,Any}[Dict("name" => "last-good")])]
     active_output_publish!(state, old_context; plots = old_plots)
@@ -237,6 +257,7 @@ end
     # wait(task) is allowed before a successful worker publication is observed.
     ACTIVE_OUTPUT.reset_pspectrum_double!()
     state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    active_output_bind_default_pane!(state)
     context = active_output_context(state)
     response = ACTIVE_OUTPUT.signal_analyser_active_output(state, context.display_id, context.pane_id)
     @test response["isready"] === false && response["success"] === false && isempty(response["data"])
@@ -250,6 +271,7 @@ end
     # A completed task which failed is not another pending poll and cannot
     # silently launch a replacement task.
     failed_state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    active_output_bind_default_pane!(failed_state)
     failed_context = active_output_context(failed_state)
     failed_task = Task(() -> error("deterministic task failure"))
     schedule(failed_task)
@@ -273,6 +295,7 @@ end
 
     # A normally completed task that did not publish is likewise terminal.
     unpublished_state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    active_output_bind_default_pane!(unpublished_state)
     unpublished_context = active_output_context(unpublished_state)
     unpublished_task = Task(() -> nothing)
     schedule(unpublished_task)
@@ -291,6 +314,7 @@ end
     # The first task counts as poll one. Exactly 63 further pending responses
     # are permitted; the 64th becomes one terminal lightweight error.
     bounded_state = ACTIVE_OUTPUT.default_signal_analyser_state()
+    active_output_bind_default_pane!(bounded_state)
     bounded_context = active_output_context(bounded_state)
     blocker = Channel{Nothing}(1)
     stuck_task = @async take!(blocker)

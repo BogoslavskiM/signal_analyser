@@ -82,6 +82,7 @@ function signal_analyser_output_context_is_current_unlocked(
     index = findfirst(pane -> pane.id == context.pane_id, layout.panes)
     index === nothing && return false
     pane = layout.panes[index]
+    isempty(signal_display_pane_members(pane)) && return false
     page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
     get(state.output_manager.page_calculation_revisions, page_id, -1) ==
         context.calculation_revision && pane.plot_type == context.plot_type
@@ -116,6 +117,26 @@ function signal_analyser_sync_output_pages_unlocked!(state::SignalAnalyserState)
         )
         get!(manager.need_update_pages, page_id, true)
         get!(manager.peaks_need_update_pages, page_id, true)
+    end
+    # An unbound pane is a deliberate UI state, not a pending calculation.
+    # Keep it ready without retaining output/peaks caches or scheduling work.
+    for display in state.displays
+        layout = signal_analyser_layout_by_display_id(state, display.id)
+        for pane in layout.panes
+            isempty(signal_display_pane_members(pane)) || continue
+            page_id = signal_analyser_output_page_id(display.id, pane.id)
+            manager.need_update_pages[page_id] = false
+            manager.peaks_need_update_pages[page_id] = false
+            delete!(manager.plot_cache, page_id)
+            delete!(manager.output_statuses, page_id)
+            delete!(manager.peaks_statuses, page_id)
+            delete!(manager.output_poll_counts, page_id)
+            delete!(manager.peaks_poll_counts, page_id)
+            filter!(pair -> !(
+                last(pair).context.display_id == display.id &&
+                last(pair).context.pane_id == pane.id
+            ), manager.peaks_cache)
+        end
     end
     filter!(pair -> first(pair) in known, manager.page_calculation_revisions)
     filter!(pair -> first(pair) in known, manager.peaks_page_calculation_revisions)
@@ -265,8 +286,15 @@ function signal_analyser_invalidate_output_pages_unlocked!(
     signal_analyser_sync_output_pages_unlocked!(state)
     manager = state.output_manager
     requested = Set(String.(page_ids))
+    empty_pages = Set(String[
+        signal_analyser_output_page_id(display.id, pane.id)
+        for display in state.displays
+        for pane in signal_analyser_layout_by_display_id(state, display.id).panes
+        if isempty(signal_display_pane_members(pane))
+    ])
     affected = String[
-        page_id for page_id in keys(manager.need_update_pages) if page_id in requested
+        page_id for page_id in keys(manager.need_update_pages)
+        if page_id in requested && !(page_id in empty_pages)
     ]
     isempty(affected) && return nothing
     manager.calculation_revision += 1
@@ -382,18 +410,19 @@ function signal_analyser_output_status_payload_unlocked(
     page_id = signal_analyser_output_page_id(display_id, pane.id)
     revision = manager.page_calculation_revisions[page_id]
     context = SignalAnalyserOutputContextKey(display_id, pane.id, pane.plot_type, revision)
-    dirty = manager.need_update_pages[page_id]
+    empty_pane = isempty(signal_display_pane_members(pane))
+    dirty = empty_pane ? false : manager.need_update_pages[page_id]
     status = get(manager.output_statuses, page_id, nothing)
     cache = get(manager.plot_cache, page_id, nothing)
-    isready = !dirty && (
+    isready = empty_pane || (!dirty && (
         (status !== nothing && (status::SignalAnalyserOutputStatus).context == context && status.isready) ||
         (cache !== nothing && (cache::SignalAnalyserPlotCacheEntry).context == context)
-    )
-    success = isready && (
+    ))
+    success = empty_pane || (isready && (
         status === nothing ||
         (status::SignalAnalyserOutputStatus).context != context ||
         status.success
-    )
+    ))
     error = status !== nothing && (status::SignalAnalyserOutputStatus).context == context ?
         status.error : ""
     signal_bindings = signal_display_pane_members(pane)
@@ -1045,6 +1074,22 @@ function signal_analyser_active_output(
         context = signal_analyser_output_context_unlocked(state, display_id, pane_id)
         manager = state.output_manager
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+        layout = signal_analyser_layout_by_display_id(state, context.display_id)
+        pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
+        if isempty(signal_display_pane_members(pane))
+            manager.need_update_pages[page_id] = false
+            delete!(manager.plot_cache, page_id)
+            delete!(manager.output_statuses, page_id)
+            delete!(manager.output_poll_counts, page_id)
+            return signal_analyser_output_response_unlocked(
+                state,
+                context,
+                Dict{String,Any}[],
+                true,
+                true,
+                "",
+            ), false
+        end
         current_task = manager.active_task
         if current_task !== nothing && istaskdone(current_task::Task)
             if manager.active_context !== nothing
@@ -1470,12 +1515,22 @@ function signal_analyser_start_peaks_worker_unlocked!(
     false
 end
 
-function signal_analyser_active_peaks(
+"""Schedule calculation only after an explicit user calculation action."""
+function signal_analyser_calculate_active_peaks!(
     state::SignalAnalyserState,
     display_id::AbstractString,
     pane_id::AbstractString,
+    ;
+    expected_state_revision::Union{Nothing,Int} = nothing,
 )::Dict{String,Any}
     response, yield_scheduler = lock(state.lock) do
+        expected_state_revision === nothing ||
+            expected_state_revision == state.view.state_revision || throw(
+                SignalAnalyserStaleStateError(
+                    expected_state_revision,
+                    state.view.state_revision,
+                ),
+            )
         context = signal_analyser_peaks_context_unlocked(state, display_id, pane_id)
         manager = state.output_manager
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
@@ -1594,4 +1649,62 @@ function signal_analyser_active_peaks(
     end
     yield_scheduler && yield()
     response
+end
+
+"""Read the active-pane Extrema state without scheduling provider work."""
+function signal_analyser_active_peaks(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString,
+)::Dict{String,Any}
+    lock(state.lock) do
+        context = signal_analyser_peaks_context_unlocked(state, display_id, pane_id)
+        manager = state.output_manager
+        page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+        passive = signal_analyser_passive_peaks_snapshot_unlocked(state, context)
+        if !passive.enabled
+            table = signal_analyser_empty_peaks_table_unlocked(state, context, false)
+            return signal_analyser_active_peaks_response_unlocked(
+                state,
+                context,
+                table,
+                passive,
+                true,
+                true,
+                "",
+            )
+        end
+
+        dirty = manager.peaks_need_update_pages[page_id]
+        status = get(manager.peaks_statuses, page_id, nothing)
+        cached = signal_analyser_cached_peaks_table_unlocked(state, context)
+        if !dirty && status !== nothing &&
+            (status::SignalAnalyserPeaksStatus).context == context && status.isready
+            table = status.success && cached !== nothing ?
+                cached::SignalPeaksTableSnapshot :
+                signal_analyser_empty_peaks_table_unlocked(state, context, true)
+            legacy = status.success && cached !== nothing && !isempty(table.signals) ?
+                first(table.signals) : passive
+            return signal_analyser_active_peaks_response_unlocked(
+                state,
+                context,
+                table,
+                legacy,
+                true,
+                status.success,
+                status.error,
+            )
+        end
+
+        table = signal_analyser_empty_peaks_table_unlocked(state, context, true)
+        signal_analyser_active_peaks_response_unlocked(
+            state,
+            context,
+            table,
+            passive,
+            false,
+            false,
+            "",
+        )
+    end
 end

@@ -66,6 +66,18 @@ end
 @testset "HND-0280 corrupt old projection is rejected and explicitly recoverable" begin
     state = ML_INTEGRATION.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
+    # Start from a valid explicit binding.  Fresh Displays are empty, so only
+    # this setup supplies the time limits and analysis source needed by the
+    # historical ordering-corruption regression below.
+    ML_INTEGRATION.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => 0,
+        "operation" => "update_pane",
+        "display_id" => "display-1",
+        "version" => 1,
+        "pane_id" => "pane-1",
+        "plot_type" => "time",
+        "signal_bindings" => names,
+    ))
     display = only(state.displays)
     display.membership = ML_INTEGRATION.SignalDisplayMembership(reverse(names))
 

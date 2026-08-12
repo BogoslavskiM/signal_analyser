@@ -49,7 +49,9 @@ end
     @test applied == Dict{String,Any}("success" => true, "state_revision" => 2)
     @test explicit_apply_provider_counts() == calls
     @test state.view.state_revision == 2
-    @test state.output_manager.need_update_pages[state.output_manager.active_page_id]
+    # A fresh Display has no bound signal; applying its settings must not turn
+    # the intentional empty pane into scheduled provider work.
+    @test !state.output_manager.need_update_pages[state.output_manager.active_page_id]
     @test_throws EXPLICIT_APPLY.SignalAnalyserStaleStateError EXPLICIT_APPLY.apply_signal_settings!(
         service, state, Dict("state_revision" => 1, "display_id" => "display-1"),
     )

@@ -90,7 +90,7 @@ end
         "signal_bindings" => [names[2]],
         "peaks_settings" => Dict(
             "mode" => "maxima",
-            "number_of_peaks" => 99,
+            "number_of_peaks" => 5,
             "maximum_cutoff" => nothing,
             "minimum_cutoff" => nothing,
             "minimum_distance_samples" => 1,
@@ -112,7 +112,10 @@ end
     @test (restored_layout.variant, restored_layout.active_pane_id, restored_layout.next_pane_number) == ("1x2", "pane-2", 3)
     @test restored_active.plot_type == ML_BOOTSTRAP.SPECTROGRAM_PLOT
     @test ML_BOOTSTRAP.signal_display_pane_members(restored_active) == [names[2]]
-    @test restored_active.peaks_settings == ML_BOOTSTRAP.SignalPeaksSettings(99, nothing, 1, 0.0)
+    @test restored_active.peaks_settings == ML_BOOTSTRAP.SignalPeaksSettings(5, nothing, 1, 0.0)
     @test restored_inactive.plot_type == ML_BOOTSTRAP.TIME_PLOT
-    @test ML_BOOTSTRAP.signal_display_pane_members(restored_inactive) == names
+    # Pane 1 was never explicitly bound.  Import must preserve that deliberate
+    # empty state rather than recovering the Display-wide signal inventory.
+    @test ML_BOOTSTRAP.signal_display_pane_members(restored_inactive) == String[]
+    @test ML_BOOTSTRAP.signal_display_pane_analysis_name(restored_inactive) === nothing
 end

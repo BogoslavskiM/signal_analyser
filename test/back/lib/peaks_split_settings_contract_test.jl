@@ -3,8 +3,18 @@ const PEAKS_SPLIT = Main.AppTestContext
 
 @testset "Extrema settings are typed, atomic and output-passive" begin
     state = PEAKS_SPLIT.default_signal_analyser_state()
+    signal_name = only(state.signals).name
+    PEAKS_SPLIT.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => state.view.state_revision,
+        "operation" => "update_pane",
+        "display_id" => "display-1",
+        "version" => 1,
+        "pane_id" => "pane-1",
+        "plot_type" => "time",
+        "signal_bindings" => [signal_name],
+    ); lightweight = true)
     pane = state.display_layouts["display-1"].panes[1]
-    @test pane.peaks_settings == PEAKS_SPLIT.SignalPeaksSettings(PEAKS_SPLIT.MAXIMA_EXTREMA_MODE, 99, nothing, nothing, 1, 0.0)
+    @test pane.peaks_settings == PEAKS_SPLIT.SignalPeaksSettings(PEAKS_SPLIT.MAXIMA_EXTREMA_MODE, 5, nothing, nothing, 1, 0.0)
     before_revision = state.view.state_revision
     before_output = copy(state.output_manager.need_update_pages)
     invalids = [

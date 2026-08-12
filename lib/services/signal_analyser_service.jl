@@ -1576,28 +1576,7 @@ function signal_analyser_new_pane_template(
     layout::SignalDisplayLayoutState,
 )::SignalDisplayPaneState
     active_pane = signal_display_active_pane(layout)
-    signal_display_pane_analysis_name(active_pane) !== nothing && return active_pane
-    existing_index = findfirst(
-        pane -> signal_display_pane_analysis_name(pane) !== nothing,
-        layout.panes,
-    )
-    existing_index === nothing || return layout.panes[existing_index::Int]
-
-    signal = signal_by_name(state, state.row_selection.signal_name)
-    SignalDisplayPaneState(
-        active_pane.id,
-        TIME_PLOT,
-        SignalDisplayMembership(String[signal.name]),
-        SignalAnalysisSource(signal.name),
-        signal_full_time_limits(state.measurements_service, signal),
-        SignalMeasurementSelection(),
-        SignalSpectrumSettings(),
-        SignalSpectrogramSettings(),
-        SignalPersistenceSettings(),
-        signal_display_pane_with_time_link(active_pane, false).stored_settings,
-        false,
-        active_pane.peaks_settings,
-    )
+    signal_display_empty_pane(active_pane.id)
 end
 
 function signal_analyser_display_payload(display::SignalAnalyserDisplayState)::Dict{String,Any}
@@ -3405,7 +3384,7 @@ function signal_peaks_settings_fields_payload(
             "label" => count_label,
             "type" => "integer",
             "value" => settings.number_of_peaks,
-            "default_value" => 99,
+            "default_value" => 5,
             "required" => true,
             "nullable" => false,
             "minimum" => 1,
@@ -3475,11 +3454,23 @@ struct SignalPeaksSettingsRequest
     settings::SignalPeaksSettings
 end
 
+"""Explicit user intent to schedule extrema calculation for the active pane."""
+struct SignalPeaksCalculationRequest
+    state_revision::Int
+    display_id::String
+    pane_id::String
+end
+
 const SIGNAL_PEAKS_SETTINGS_REQUEST_FIELDS = Set([
     "state_revision",
     "display_id",
     "pane_id",
     "settings",
+])
+const SIGNAL_PEAKS_CALCULATION_REQUEST_FIELDS = Set([
+    "state_revision",
+    "display_id",
+    "pane_id",
 ])
 const SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS = Set([
     "mode",
@@ -3502,6 +3493,49 @@ const SIGNAL_PEAKS_SETTINGS_LEGACY_VALUE_FIELDS = Set([
     "minimum_distance_samples",
     "threshold",
 ])
+
+function validate_signal_peaks_calculation_request(data)::SignalPeaksCalculationRequest
+    data isa AbstractDict || throw(SignalAnalyserValidationError(
+        "Некорректный запрос расчёта экстремумов",
+        Dict("request" => "Требуется JSON-объект"),
+    ))
+    field_errors = Dict{String,String}()
+    request_keys = signal_analyser_payload_keys(data)
+    request_keys == SIGNAL_PEAKS_CALCULATION_REQUEST_FIELDS || begin
+        missing = sort!(collect(setdiff(SIGNAL_PEAKS_CALCULATION_REQUEST_FIELDS, request_keys)))
+        unknown = sort!(collect(setdiff(request_keys, SIGNAL_PEAKS_CALCULATION_REQUEST_FIELDS)))
+        isempty(missing) || (field_errors["request"] = "Отсутствуют поля: $(join(missing, ", "))")
+        isempty(unknown) || (field_errors["request"] = get(field_errors, "request", "") *
+            (haskey(field_errors, "request") ? "; " : "") * "Неизвестные поля: $(join(unknown, ", "))")
+    end
+    revision_value = signal_analyser_payload_value(data, "state_revision")
+    revision = if revision_value isa Integer && !(revision_value isa Bool)
+        try
+            Int(revision_value)
+        catch err
+            (err isa InexactError || err isa OverflowError) || rethrow()
+            field_errors["state_revision"] = "Целое число вне диапазона Int"
+            -1
+        end
+    else
+        field_errors["state_revision"] = "Требуется неотрицательное целое число"
+        -1
+    end
+    revision >= 0 || haskey(field_errors, "state_revision") ||
+        (field_errors["state_revision"] = "Требуется неотрицательное целое число")
+    display_value = signal_analyser_payload_value(data, "display_id")
+    display_id = display_value isa AbstractString && !isempty(String(display_value)) ?
+        String(display_value) : ""
+    isempty(display_id) && (field_errors["display_id"] = "Требуется непустой идентификатор Display")
+    pane_value = signal_analyser_payload_value(data, "pane_id")
+    pane_id = pane_value isa AbstractString && !isempty(String(pane_value)) ? String(pane_value) : ""
+    isempty(pane_id) && (field_errors["pane_id"] = "Требуется непустой идентификатор pane")
+    isempty(field_errors) || throw(SignalAnalyserValidationError(
+        "Некорректный запрос расчёта экстремумов",
+        field_errors,
+    ))
+    SignalPeaksCalculationRequest(revision, display_id, pane_id)
+end
 
 function validate_signal_peaks_settings_request(data)::SignalPeaksSettingsRequest
     field_errors = Dict{String,String}()
@@ -3702,6 +3736,20 @@ function apply_signal_peaks_settings!(
             "state" => signal_analyser_state_lite_unlocked(state),
         )
     end
+end
+
+"""Validate explicit user intent, then schedule only the current active pane extrema."""
+function calculate_signal_analyser_active_peaks!(
+    state::SignalAnalyserState,
+    data,
+)::Dict{String,Any}
+    requested = validate_signal_peaks_calculation_request(data)
+    signal_analyser_calculate_active_peaks!(
+        state,
+        requested.display_id,
+        requested.pane_id;
+        expected_state_revision = requested.state_revision,
+    )
 end
 
 function signal_peaks_table_payload(
@@ -5065,14 +5113,13 @@ function apply_signal_analyser_display!(
             candidate.view.state_revision += 1
         elseif requested.operation == "create"
             display_number = candidate.next_display_number
-            analysis_signal = first(candidate.signals)
             display = SignalAnalyserDisplayState(
                 "display-$display_number",
                 "Display $display_number",
                 TIME_PLOT,
-                analysis_signal.name,
-                [signal.name for signal in candidate.signals],
-                signal_full_time_limits(candidate.measurements_service, analysis_signal),
+                SignalDisplayMembership(String[]),
+                NoSignalAnalysisSource(),
+                nothing,
                 false,
             )
             push!(candidate.displays, display)

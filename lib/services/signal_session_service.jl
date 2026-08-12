@@ -1123,8 +1123,9 @@ function signal_analyser_session_candidate(
     )
     candidate.active_display_id = document.active_display_id
     candidate.next_display_number = document.next_display_number
-    candidate.view.active_plot = active_display.active_plot
-    candidate.view.selected_signal = signal_analyser_display_analysis_name(active_display)
+    # Session import restores its authoritative bindings verbatim.  Fresh-state
+    # bootstrap is empty by design, but it must not erase a saved layout here.
+    signal_analyser_sync_active_display!(candidate, active_display)
     signal_analyser_session_validate_candidate!(candidate)
     candidate
 end

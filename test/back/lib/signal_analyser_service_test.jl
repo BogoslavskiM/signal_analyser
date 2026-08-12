@@ -76,6 +76,40 @@ function immediate_setting_snapshot!(state, service, field_id, value)
     update["state"]
 end
 
+"""Bind an explicit test inventory to the active pane through the public layout boundary."""
+function bind_active_test_pane!(state; signal_names = [signal.name for signal in state.signals])
+    pane_id = state.display_layouts[state.active_display_id].active_pane_id
+    SA.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => state.view.state_revision,
+        "operation" => "update_pane",
+        "display_id" => state.active_display_id,
+        "version" => 1,
+        "pane_id" => pane_id,
+        "plot_type" => "time",
+        "signal_bindings" => signal_names,
+    ); lightweight = true)
+end
+
+"""Adapt pre-empty-pane regression fixtures without changing their revision-zero baselines."""
+function legacy_bind_active_test_pane!(state; signal_names = [signal.name for signal in state.signals])
+    bind_active_test_pane!(state; signal_names = signal_names)
+    state.view.state_revision = 0
+    manager = state.output_manager
+    manager.calculation_revision = 0
+    manager.peaks_calculation_revision = 0
+    for page_id in keys(manager.page_calculation_revisions)
+        manager.page_calculation_revisions[page_id] = 0
+    end
+    for page_id in keys(manager.peaks_page_calculation_revisions)
+        manager.peaks_page_calculation_revisions[page_id] = 0
+    end
+    state
+end
+
+function legacy_bound_default_state(; kwargs...)
+    legacy_bind_active_test_pane!(SA.default_signal_analyser_state(; kwargs...))
+end
+
 @testset "Signals inspector mutation rollback protects active Log Spectrum" begin
     workspace = FakeWorkspaceSignalSource(Dict{String,Any}("complex-import" => ComplexF64[1 + 2im, 3 + 4im, 5 + 6im]), nothing)
     service = SA.SignalInventoryService(workspace)
@@ -156,7 +190,7 @@ end
     @test copied["plots"]["spectrogram"]["frequency_limits"]["requested"] === nothing
     @test (state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == before_cache
 
-    state = SA.default_signal_analyser_state()
+    state = legacy_bound_default_state()
     high_name = state.signals[1].name
     settings_service = SA.SignalSettingsService()
     selected = SA.apply_signal_analyser_view!(state, Dict(
@@ -284,9 +318,18 @@ end
     @test deleted["active_display_id"] == selected_one["active_display_id"]
 
     complex_state = SA.SignalAnalyserState([SA.AnalysedSignal("complex-roi", "#111111", 10.0, ComplexF64[1 + 2im, 3 + 4im, 5 + 6im], true, true)], SA.SignalAnalyserViewState(0, SA.TIME_PLOT, "complex-roi"), Dict{String,Dict{String,Any}}(), ReentrantLock())
+    SA.apply_signal_analyser_layout!(complex_state, Dict(
+        "state_revision" => 0,
+        "operation" => "update_pane",
+        "display_id" => "display-1",
+        "version" => 1,
+        "pane_id" => "pane-1",
+        "plot_type" => "time",
+        "signal_bindings" => ["complex-roi"],
+    ); lightweight = true)
     settings_service = SA.SignalSettingsService()
     time_draft = SA.apply_signal_setting!(settings_service, complex_state, Dict(
-        "state_revision" => 0, "display_id" => "display-1",
+        "state_revision" => complex_state.view.state_revision, "display_id" => "display-1",
         "field_id" => "time.x_limits", "value" => Dict("min" => 0.1, "max" => 0.2),
     ))
     time_applied = SA.apply_signal_settings!(settings_service, complex_state, Dict(
@@ -296,7 +339,7 @@ end
     extracted = SA.apply_signal_inventory!(service, complex_state, SA.ExtractTimeLimitsSignalCommand(time_applied["state_revision"], "display-1"))
     extract_name = extracted["row_selected_signal"]
     extract = only(filter(signal -> signal.name == extract_name, complex_state.signals))
-    @test extracted["state_revision"] == 3 && extract.is_complex && extract.sample_rate_hz == 10.0 && extract.values == ComplexF64[3 + 4im, 5 + 6im]
+    @test extracted["state_revision"] == 4 && extract.is_complex && extract.sample_rate_hz == 10.0 && extract.values == ComplexF64[3 + 4im, 5 + 6im]
 
     singleton = SA.SignalAnalyserState([SA.AnalysedSignal("only", "#111111", 10.0, ComplexF64[1, 2], false, true)], SA.SignalAnalyserViewState(0, SA.TIME_PLOT, "only"), Dict{String,Dict{String,Any}}(), ReentrantLock())
     before_last = SA.signal_analyser_snapshot(singleton)
@@ -331,6 +374,7 @@ end
     SA.reset_persistence_double!()
     state = SA.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in state.signals]
+    bind_active_test_pane!(state)
     initial = SA.signal_analyser_snapshot(state)
     @test initial["active_plot"] == "time"
     @test empty_persistence_wire(initial)["signal"] == first_name
@@ -342,20 +386,24 @@ end
 
     # Inactive source/leakage mutations preserve their Display-owned intent
     # and revision but never pay the Persistence provider cost.
+    initial_revision = state.view.state_revision
     source_changed = SA.apply_signal_analyser_view!(state, Dict(
-        "state_revision" => 0, "analysis_signal" => second_name,
+        "state_revision" => initial_revision, "analysis_signal" => second_name,
     ))
-    @test source_changed["state_revision"] == 1
+    @test source_changed["state_revision"] == initial_revision + 1
     @test empty_persistence_wire(source_changed)["signal"] == second_name
     settings_service = SA.SignalSettingsService()
     leakage_draft = SA.apply_signal_setting!(settings_service, state, Dict(
-        "state_revision" => 1, "display_id" => "display-1",
+        "state_revision" => source_changed["state_revision"], "display_id" => "display-1",
         "field_id" => "persistence.leakage", "value" => 0.25,
     ))
     leakage_changed = SA.apply_signal_settings!(settings_service, state, Dict(
         "state_revision" => leakage_draft["state"]["state_revision"], "display_id" => "display-1",
     ))
-    @test leakage_changed == Dict{String,Any}("success" => true, "state_revision" => 3)
+    @test leakage_changed == Dict{String,Any}(
+        "success" => true,
+        "state_revision" => source_changed["state_revision"] + 2,
+    )
     leakage_snapshot = SA.signal_analyser_snapshot(state)
     @test leakage_snapshot["persistence_settings"] == Dict("leakage" => 0.25)
     @test leakage_snapshot["displays"][1]["persistence_settings"] == Dict("leakage" => 0.25)
@@ -364,9 +412,9 @@ end
 
     # View navigation only marks the active output pending; it never computes.
     cold = SA.apply_signal_analyser_view!(state, Dict(
-        "state_revision" => 3, "active_plot" => "persistence",
+        "state_revision" => leakage_changed["state_revision"], "active_plot" => "persistence",
     ))
-    @test cold["state_revision"] == 4 && cold["active_plot"] == "persistence"
+    @test cold["state_revision"] == leakage_changed["state_revision"] + 1 && cold["active_plot"] == "persistence"
     @test isempty(SA.PERSISTENCE_CALLS)
     @test isempty(cold["plots"]["persistence"]["x"])
     @test isempty(state.persistence_cache)
@@ -423,23 +471,24 @@ end
     # inactive Time A publish its raw Persistence presentation.
     SA.reset_persistence_double!()
     displays = SA.default_signal_analyser_state()
+    bind_active_test_pane!(displays)
     SA.signal_analyser_snapshot(displays)
     created = SA.apply_signal_analyser_display!(displays, Dict(
-        "state_revision" => 0, "operation" => "create",
+        "state_revision" => displays.view.state_revision, "operation" => "create",
     ))
     @test created["active_display_id"] == "display-2" && isempty(SA.PERSISTENCE_CALLS)
     active_b = SA.apply_signal_analyser_view!(displays, Dict(
-        "state_revision" => 1, "active_plot" => "persistence",
+        "state_revision" => created["state_revision"], "active_plot" => "persistence",
     ))
     @test active_b["active_display_id"] == "display-2" && isempty(SA.PERSISTENCE_CALLS)
     selected_a = SA.apply_signal_analyser_display!(displays, Dict(
-        "state_revision" => 2, "operation" => "select", "display_id" => "display-1",
+        "state_revision" => active_b["state_revision"], "operation" => "select", "display_id" => "display-1",
     ))
     @test selected_a["active_plot"] == "time"
     @test empty_persistence_wire(selected_a)["signal"] == first_name
     @test isempty(SA.PERSISTENCE_CALLS)
     returned_b = SA.apply_signal_analyser_display!(displays, Dict(
-        "state_revision" => 3, "operation" => "select", "display_id" => "display-2",
+        "state_revision" => selected_a["state_revision"], "operation" => "select", "display_id" => "display-2",
     ))
     @test returned_b["active_plot"] == "persistence" && isempty(returned_b["plots"]["persistence"]["x"])
     @test isempty(SA.PERSISTENCE_CALLS)
@@ -455,7 +504,7 @@ end
     @test_throws ArgumentError SA.ExplicitSignalSpectrumFrequencyLimits(NaN, 1.0)
 
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
-    state = SA.default_signal_analyser_state()
+    state = legacy_bound_default_state()
     settings_service = SA.SignalSettingsService()
     initial = SA.signal_analyser_snapshot(state)
     auto_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
@@ -516,6 +565,7 @@ end
     complex = SA.AnalysedSignal("c15-complex", "#222222", 100.0, ComplexF64[1 + im, 2 + im, 3 + im], true, true)
     narrow = SA.AnalysedSignal("c15-narrow", "#333333", 10.0, ComplexF64[1, 2, 3], false, true)
     transitions = SA.SignalAnalyserState([real, complex, narrow], SA.SignalAnalyserViewState(0, SA.TIME_PLOT, real.name), Dict{String,Dict{String,Any}}(), ReentrantLock())
+    legacy_bind_active_test_pane!(transitions)
     complex_limits = Dict("min_hz" => 10.0, "max_hz" => 20.0, "units" => "Hz")
     c15_explicit = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => complex_limits, "frequency_scale" => "linear", "power_limits" => nothing)
     transitions_service = SA.SignalSettingsService()
@@ -588,7 +638,7 @@ end
 
     # Clear/re-add and display lifecycle stay provider-free before output GET.
     SA.reset_persistence_double!()
-    lifecycle = SA.default_signal_analyser_state()
+    lifecycle = legacy_bound_default_state()
     first_name = lifecycle.signals[1].name
     active = SA.apply_signal_analyser_view!(lifecycle, Dict(
         "state_revision" => 0, "active_plot" => "persistence",
@@ -829,6 +879,7 @@ end
 @testset "Signal Analyser snapshot and cache" begin
     SA.reset_pspectrum_double!()
     state = SA.test_state_with_complex_signal()
+    legacy_bind_active_test_pane!(state)
     snapshot = SA.signal_analyser_snapshot(state)
 
     @test SA.snapshot_keyset(snapshot) == Set(["state_revision", "active_display_id", "displays", "active_plot", "row_selected_signal", "analysis_signal", "selected_signal", "visible_signals", "time_limits", "measurement_kinds", "spectrum_settings", "spectrogram_settings", "persistence_settings", "signals", "plots", "plot_payload", "measurements", "measurement_rows", "peaks", "panel"])
@@ -934,6 +985,7 @@ end
     )
     base = p0_measurement_state()
     state = SA.SignalAnalyserState(base.signals, base.view, Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = fake)
+    legacy_bind_active_test_pane!(state)
     disabled = SA.signal_analyser_snapshot(state)
     @test isempty(fake.calls)
     @test disabled["peaks"] == Dict("enabled" => false, "mode" => "maxima", "state_revision" => 0, "display_id" => "display-1", "signal_name" => "raw-real", "ordinate" => "real", "units" => Dict("value" => "1", "time" => "s", "width" => "samples", "prominence" => "1"), "items" => Any[])
@@ -949,7 +1001,8 @@ end
     output = SA.signal_analyser_active_output(state, "display-1", pane_id)
     @test output["success"] === true && output["isready"] === true
     @test isempty(fake.calls)
-    SA.signal_analyser_active_peaks(state, "display-1", pane_id)
+    SA.signal_analyser_calculate_active_peaks!(state, "display-1", pane_id;
+        expected_state_revision = state.view.state_revision)
     peaks_task = state.output_manager.active_task
     peaks_task === nothing || wait(peaks_task)
     peaks = SA.signal_analyser_active_peaks(state, "display-1", pane_id)
@@ -983,6 +1036,7 @@ end
     SA.reset_pspectrum_double!()
     state = SA.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in state.signals]
+    legacy_bind_active_test_pane!(state)
 
     created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))
     @test created["state_revision"] == 1
@@ -992,10 +1046,10 @@ end
         "id" => "display-2",
         "name" => "Display 2",
         "active_plot" => "time",
-        "analysis_signal" => first_name,
-        "selected_signal" => first_name,
-        "visible_signals" => [first_name, second_name],
-        "time_limits" => Dict("min_s" => 0.0, "max_s" => 511 / 2048, "units" => "s"),
+        "analysis_signal" => nothing,
+        "selected_signal" => nothing,
+        "visible_signals" => String[],
+        "time_limits" => nothing,
         "measurement_kinds" => ["minimum", "maximum", "mean"],
         "spectrum_settings" => Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing),
         "spectrogram_settings" => Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing),
@@ -1287,6 +1341,7 @@ end
 @testset "Signal Analyser raw-sample snapshot measurements contract" begin
     SA.reset_pspectrum_double!()
     state = p0_measurement_state()
+    legacy_bind_active_test_pane!(state)
     real_snapshot = SA.signal_analyser_snapshot(state)
     @test length(real_snapshot["plot_payload"]["time_traces"][1]["y"]) <= 1024
     assert_p0_snapshot_measurements(real_snapshot, state.signals[1])
@@ -1400,9 +1455,11 @@ end
     fake = FakePeaksProvider(SA.SignalPeaksQuery[], result, nothing)
     base = p0_measurement_state()
     state = SA.SignalAnalyserState(base.signals, base.view, Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = fake)
+    legacy_bind_active_test_pane!(state)
     active_peaks!(target) = begin
         pane_id = target.display_layouts[target.active_display_id].active_pane_id
-        SA.signal_analyser_active_peaks(target, target.active_display_id, pane_id)
+        SA.signal_analyser_calculate_active_peaks!(target, target.active_display_id, pane_id;
+            expected_state_revision = target.view.state_revision)
         task = target.output_manager.active_task
         task === nothing || wait(task)
         SA.signal_analyser_active_peaks(target, target.active_display_id, pane_id)
@@ -1475,6 +1532,7 @@ end
     empty_fake = FakePeaksProvider(SA.SignalPeaksQuery[], SA.SignalPeaksProviderResult(Float64[], Int[], Float64[], Float64[], 1100), nothing)
     empty_base = p0_measurement_state()
     empty_state = SA.SignalAnalyserState(empty_base.signals, empty_base.view, Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = empty_fake)
+    legacy_bind_active_test_pane!(empty_state)
     empty = SA.apply_signal_analyser_view!(empty_state, Dict("state_revision" => 0, "peaks_enabled" => true))
     @test empty["peaks"]["enabled"] === true
     @test isempty(empty_fake.calls)
@@ -1530,6 +1588,7 @@ end
     provider = FakePeaksProvider(SA.SignalPeaksQuery[], SA.SignalPeaksProviderResult([9.0], [2], [1.0], [3.0], 1100), nothing)
     base = p0_measurement_state()
     state = SA.SignalAnalyserState(base.signals, base.view, Dict{String,Dict{String,Any}}(), ReentrantLock(); peaks_provider = provider)
+    legacy_bind_active_test_pane!(state)
 
     initial = SA.signal_analyser_snapshot(state)
     @test initial["row_selected_signal"] == names[1]
@@ -1555,7 +1614,8 @@ end
     active_output = SA.signal_analyser_active_output(state, "display-1", pane_id)
     @test active_output["isready"] === true && active_output["success"] === true
     @test isempty(provider.calls)
-    SA.signal_analyser_active_peaks(state, "display-1", pane_id)
+    SA.signal_analyser_calculate_active_peaks!(state, "display-1", pane_id;
+        expected_state_revision = state.view.state_revision)
     peaks_task = state.output_manager.active_task
     peaks_task === nothing || wait(peaks_task)
     active_peaks = SA.signal_analyser_active_peaks(state, "display-1", pane_id)
@@ -1602,29 +1662,39 @@ end
     @test SA.signal_analyser_snapshot(state) == before_conflict
 end
 
-@testset "Cascade 5 Clear Display preserves inactive pages and seeded creation" begin
+@testset "Cascade 5 Clear Display preserves independent empty and configured pages" begin
     SA.reset_pspectrum_double!()
     state = SA.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
+    legacy_bind_active_test_pane!(state)
     created = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))
     @test created["active_display_id"] == "display-2"
-    @test created["displays"][2]["visible_signals"] == names
-    @test created["displays"][2]["analysis_signal"] == names[1]
+    @test created["displays"][1]["visible_signals"] == names
+    @test created["displays"][1]["analysis_signal"] == names[1]
+    @test created["displays"][2]["visible_signals"] == String[]
+    @test created["displays"][2]["analysis_signal"] === nothing
 
     first = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "select", "display_id" => "display-1"))
     cleared = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 2, "visible_signals" => String[]))
     assert_empty_display_snapshot(cleared)
     second = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 3, "operation" => "select", "display_id" => "display-2"))
-    @test second["visible_signals"] == names
-    @test second["analysis_signal"] == names[1]
+    @test second["visible_signals"] == String[]
+    @test second["analysis_signal"] === nothing
     @test second["displays"][1]["visible_signals"] == String[]
     @test second["displays"][1]["analysis_signal"] === nothing
 
-    restored_first = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 4, "operation" => "select", "display_id" => "display-1"))
-    restored = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 5, "visible_signals" => [names[1]]))
+    configured_second = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 4,
+        "visible_signals" => [names[2]],
+    ))
+    @test configured_second["visible_signals"] == [names[2]]
+    @test configured_second["analysis_signal"] == names[2]
+    restored_first = SA.apply_signal_analyser_display!(state, Dict("state_revision" => 5, "operation" => "select", "display_id" => "display-1"))
+    @test restored_first["visible_signals"] == String[]
+    restored = SA.apply_signal_analyser_view!(state, Dict("state_revision" => 6, "visible_signals" => [names[1]]))
     @test restored["analysis_signal"] == names[1]
-    @test restored["displays"][2]["visible_signals"] == names
-    @test restored["displays"][2]["analysis_signal"] == names[1]
+    @test restored["displays"][2]["visible_signals"] == [names[2]]
+    @test restored["displays"][2]["analysis_signal"] == names[2]
 end
 
 @testset "Cascade 7 Time Limits ROI" begin
@@ -1654,6 +1724,7 @@ end
         Dict{String,Dict{String,Any}}(),
         ReentrantLock(); peaks_provider = provider,
     )
+    legacy_bind_active_test_pane!(state)
     active_pane_id() = state.display_layouts["display-1"].active_pane_id
     materialize() = begin
         # The first output request may legally be lightweight pending while
@@ -1699,7 +1770,10 @@ end
     end
     @test output["isready"] === true && output["success"] === true
     @test isempty(provider.calls)
-    peaks_pending = SA.signal_analyser_active_peaks(state, "display-1", active_pane_id())
+    peaks_pending = SA.signal_analyser_calculate_active_peaks!(
+        state, "display-1", active_pane_id();
+        expected_state_revision = state.view.state_revision,
+    )
     @test peaks_pending["isready"] === false && peaks_pending["success"] === false
     task = state.output_manager.active_task
     task === nothing || wait(task)
@@ -1754,7 +1828,8 @@ end
     @test graph_after_apply["isready"] === true && graph_after_apply["success"] === true
     graph_page_id = state.output_manager.active_page_id
     graph_cache_baseline = state.output_manager.plot_cache[graph_page_id]
-    SA.signal_analyser_active_peaks(state, "display-1", pane_id)
+    SA.signal_analyser_calculate_active_peaks!(state, "display-1", pane_id;
+        expected_state_revision = state.view.state_revision)
     peaks_task = state.output_manager.active_task
     peaks_task === nothing || wait(peaks_task)
     failed_peaks = SA.signal_analyser_active_peaks(state, "display-1", pane_id)
@@ -1775,6 +1850,7 @@ end
             SA.SignalPeaksQuery[], SA.SignalPeaksProviderResult(Float64[], Int[], Float64[], Float64[], 3), nothing,
         ),
     )
+    legacy_bind_active_test_pane!(lifecycle)
     lifecycle_settings = SA.SignalSettingsService()
     narrowed = explicit_calculation_snapshot!(lifecycle, lifecycle_settings, "time.x_limits", Dict("min" => 0.5, "max" => 0.7))
     reset_on_short = SA.apply_signal_analyser_view!(lifecycle, Dict(
@@ -1791,7 +1867,7 @@ end
     readded = SA.apply_signal_analyser_view!(lifecycle, Dict("state_revision" => lifecycle.view.state_revision, "visible_signals" => [short.name]))
     @test readded["time_limits"] == Dict("min_s" => 0.0, "max_s" => 0.4, "units" => "s")
     created = SA.apply_signal_analyser_display!(lifecycle, Dict("state_revision" => lifecycle.view.state_revision, "operation" => "create"))
-    @test created["time_limits"] == Dict("min_s" => 0.0, "max_s" => 1.0, "units" => "s")
+    @test created["time_limits"] === nothing
     returned = SA.apply_signal_analyser_display!(lifecycle, Dict("state_revision" => lifecycle.view.state_revision, "operation" => "select", "display_id" => "display-1"))
     @test returned["time_limits"] == readded["time_limits"]
 end
@@ -1805,6 +1881,7 @@ end
         SA.AnalysedSignal[signal], SA.SignalAnalyserViewState(0, SA.TIME_PLOT, signal.name),
         Dict{String,Dict{String,Any}}(), ReentrantLock(),
     )
+    legacy_bind_active_test_pane!(state)
     initial = SA.signal_analyser_snapshot(state)
     @test initial["measurement_kinds"] == ["minimum", "maximum", "mean"]
     @test initial["displays"][1]["measurement_kinds"] == ["minimum", "maximum", "mean"]
@@ -1888,6 +1965,7 @@ end
     SA.reset_pspectrum_double!()
     empty!(SA.SPECTRUM_CALLS)
     state = SA.test_state_with_complex_signal()
+    legacy_bind_active_test_pane!(state)
     initial = SA.signal_analyser_snapshot(state)
     @test initial["spectrum_settings"] == Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing)
     @test initial["displays"][1]["spectrum_settings"] == initial["spectrum_settings"]
@@ -2002,6 +2080,7 @@ end
     # A complex visible member prohibits logarithmic frequency scale, and the
     # rejected mixed mutation is atomic.
     complex_state = SA.test_state_with_complex_signal()
+    legacy_bind_active_test_pane!(complex_state)
     complex_before = SA.signal_analyser_snapshot(complex_state)
     complex_settings = SA.SignalSettingsService()
     complex_log = try
@@ -2065,6 +2144,7 @@ end
     empty!(SA.SPECTRUM_CALLS)
     complex_raw = SA.test_state_with_complex_signal()
     complex_name = complex_raw.signals[2].name
+    legacy_bind_active_test_pane!(complex_raw; signal_names = [complex_name])
     complex_spectrum = SA.apply_signal_analyser_view!(complex_raw, Dict(
         "state_revision" => 0, "active_plot" => "spectrum", "analysis_signal" => complex_name,
     ))
@@ -2087,6 +2167,7 @@ end
     short = SA.AnalysedSignal("short", "#222222", 10.0, ComplexF64[1], false, true)
     roi_state = SA.SignalAnalyserState(SA.AnalysedSignal[long, short],
         SA.SignalAnalyserViewState(0, SA.TIME_PLOT, "long"), Dict{String,Dict{String,Any}}(), ReentrantLock())
+    legacy_bind_active_test_pane!(roi_state)
     SA.signal_analyser_snapshot(roi_state)
     @test isempty(SA.SPECTRUM_CALLS)
     empty!(SA.SPECTRUM_CALLS)
@@ -2120,6 +2201,7 @@ end
     SA.reset_pspectrum_double!()
     empty!(SA.SPECTRUM_CALLS)
     state = SA.default_signal_analyser_state()
+    legacy_bind_active_test_pane!(state)
     initial = SA.signal_analyser_snapshot(state)
     @test initial["spectrum_settings"] == Dict("scale" => "db", "frequency_scale" => "linear", "leakage" => 0.5, "frequency_limits" => nothing)
     @test initial["plots"]["spectrum"]["frequency_limits"]["mode"] == "auto"
@@ -2167,6 +2249,7 @@ end
     secondary = SA.AnalysedSignal("secondary", "#222222", 10.0, ComplexF64[1, 2, 3], false, true)
     mixed = SA.SignalAnalyserState(SA.AnalysedSignal[primary, secondary],
         SA.SignalAnalyserViewState(0, SA.TIME_PLOT, "primary"), Dict{String,Dict{String,Any}}(), ReentrantLock())
+    legacy_bind_active_test_pane!(mixed)
     SA.signal_analyser_snapshot(mixed)
     empty!(SA.SPECTRUM_CALLS)
     mixed_settings = SA.SignalSettingsService()
@@ -2196,6 +2279,7 @@ end
     narrow = SA.AnalysedSignal("narrow", "#444444", 20.0, ComplexF64[1, 2, 3], false, true)
     transitions = SA.SignalAnalyserState(SA.AnalysedSignal[primary, broad, narrow],
         SA.SignalAnalyserViewState(0, SA.TIME_PLOT, "primary"), Dict{String,Dict{String,Any}}(), ReentrantLock())
+    legacy_bind_active_test_pane!(transitions)
     transition_settings = SA.SignalSettingsService()
     carried_draft = SA.apply_signal_setting!(transition_settings, transitions, Dict(
         "state_revision" => 0, "display_id" => "display-1",
@@ -2368,6 +2452,7 @@ end
     empty!(SA.SPECTROGRAM_CALLS)
     empty!(SA.SPECTRUM_CALLS)
     state = SA.default_signal_analyser_state()
+    legacy_bind_active_test_pane!(state)
     empty!(state.spectrum_cache)
     empty!(state.spectrogram_cache)
     empty!(SA.SPECTRUM_CALLS)
@@ -2394,6 +2479,7 @@ end
     empty!(SA.SPECTRUM_CALLS)
     empty!(SA.SPECTROGRAM_CALLS)
     state = SA.default_signal_analyser_state()
+    legacy_bind_active_test_pane!(state)
     empty!(state.spectrum_cache)
     empty!(state.spectrogram_cache)
     empty!(SA.SPECTRUM_CALLS)
@@ -2549,6 +2635,7 @@ end
     SA.SPECTROGRAM_FAILURE[] = false
     SA.SPECTRUM_FAILURE[] = false
     state = SA.test_state_with_complex_signal()
+    legacy_bind_active_test_pane!(state)
     first_name, second_name = [signal.name for signal in state.signals]
     initial = SA.signal_analyser_snapshot(state)
     @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
@@ -2622,6 +2709,7 @@ end
 
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
     state = SA.test_state_with_complex_signal()
+    legacy_bind_active_test_pane!(state)
     settings_service = SA.SignalSettingsService()
     baseline = SA.signal_analyser_snapshot(state)
     exact_linear = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
@@ -2744,6 +2832,7 @@ end
 
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
     state = SA.test_state_with_complex_signal()
+    legacy_bind_active_test_pane!(state)
     settings_service = SA.SignalSettingsService()
     initial = SA.signal_analyser_snapshot(state)
     auto_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
@@ -2752,6 +2841,7 @@ end
     # A presentation-only C17 change stays cold; the next GET owns materialization.
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
     cold = SA.default_signal_analyser_state()
+    legacy_bind_active_test_pane!(cold)
     empty!(cold.spectrum_cache); empty!(cold.spectrogram_cache); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
     cold_settings = SA.SignalSettingsService()
     cold_changed = immediate_setting_snapshot!(cold, cold_settings, "spectrogram.power_limits", Dict("min" => -80.0, "max" => -20.0))
@@ -2773,6 +2863,7 @@ end
 
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
     combined_cold = SA.default_signal_analyser_state()
+    legacy_bind_active_test_pane!(combined_cold)
     empty!(combined_cold.spectrum_cache); empty!(combined_cold.spectrogram_cache); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS)
     combined_settings = Dict("overlap_percent" => 25.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => explicit_payload)
     combined_service = SA.SignalSettingsService()

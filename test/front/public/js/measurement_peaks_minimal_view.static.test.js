@@ -23,14 +23,19 @@ module.exports = async function testMeasurementAndPeaksMinimalViewContracts(asse
   const root = path.resolve(__dirname, "../../../..");
   const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   const measurement = functionBlock(app, "updateMeasurementKinds", "positionMenu");
-  const peaks = functionBlock(app, "loadPeaks", "signalAddLayer");
+  const peaksEnable = functionBlock(app, "ensurePeaksEnabled", "calculatePeaks");
+  const peaksCalculate = functionBlock(app, "calculatePeaks", "loadPeaks");
+  const peaksOpen = functionBlock(app, "loadPeaks", "targetActivePaneForExtrema");
   const mutate = functionBlock(app, "mutate", "postLayout");
 
   assertMinimalView(assert, measurement, "state_revision:model.revision,measurement_kinds:measurementKinds", "measurement eye update");
   assert(/model\.inspectorPage === "measurements"\) loadMeasurements\(\)/.test(mutate), "measurement eye update must reload the authoritative measurement table after its minimal view response");
 
-  assertMinimalView(assert, peaks, "state_revision:model.revision,peaks_enabled:true", "Peaks tab open");
-  assert(/api\.activePeaks\(/.test(app) && /fetchActivePeaks\(displayId, paneId, true\)/.test(peaks), "Peaks tab open must use the pane-scoped active Peaks endpoint after minimal enabling");
+  assertMinimalView(assert, peaksEnable, "state_revision:model.revision,peaks_enabled:true", "Extrema enablement");
+  assert(/fetchActivePeaks\(displayId, paneId, false, false\)/.test(peaksOpen), "Extrema tab open must use a single passive GET without requesting calculation or polling");
+  assert(!/calculateActivePeaks|fetchActivePeaks\(displayId, paneId, true/.test(peaksOpen), "Extrema tab open must never start its provider calculation");
+  assert(/api\.calculateActivePeaks\(\{\s*state_revision:model\.revision,\s*display_id:displayId,\s*pane_id:paneId\s*\}\)/.test(peaksCalculate), "only the explicit Calculate action may POST the exact active-pane calculation payload");
+  assert(/acceptPeaksPayload\(response, displayId, paneId, token, true, true\)/.test(peaksCalculate), "Calculate must accept POST pending state and then enable passive polling");
   assert(/peaksRecords\[runtimeKey\][\s\S]*?data:response\.data/.test(app), "the pane-scoped Peaks response must retain the authoritative split table data");
 
   const tabClick = (app.match(/if \(button\.dataset\.bottomTab\) \{[\s\S]*?return; \}/) || [""])[0];

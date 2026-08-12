@@ -328,7 +328,7 @@ end
     @test length(max_entry["layout"]["panes"]) == 100
     @test pane_output_ids(max_response) == ["pane-1"]
     @test all(
-        pane -> pane["signal_bindings"] == [only(bounded.signals).name],
+        pane -> pane["signal_bindings"] == String[],
         max_entry["layout"]["panes"],
     )
     @test Set(keys(bounded.output_manager.need_update_pages)) == Set(
@@ -410,10 +410,20 @@ end
     # contains only the selected pane's full output data.
     stale_outputs = only(stale.body["current"]["layouts"])["outputs"]
     @test [output["pane_id"] for output in stale_outputs] == ["pane-1", "pane-2"]
-    @test all(output -> output["output"]["isready"] === false &&
-        output["output"]["success"] === false &&
-        output["output"]["error"] == "" &&
-        output["output"]["data"] == Dict{String,Any}[], stale_outputs)
+    @test stale_outputs[1]["output"] == Dict{String,Any}(
+        "isready" => true,
+        "success" => true,
+        "error" => "",
+        "data" => Any[],
+    )
+    @test stale_outputs[1]["need_update"] === false
+    @test stale_outputs[2]["output"] == Dict{String,Any}(
+        "isready" => false,
+        "success" => false,
+        "error" => "",
+        "data" => Any[],
+    )
+    @test stale_outputs[2]["need_update"] === true
     @test state.view.state_revision == revision
     @test state.display_layouts["display-1"].active_pane_id == active_pane_id
     reset_pane_output_doubles!()
