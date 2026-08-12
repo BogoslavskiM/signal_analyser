@@ -104,7 +104,7 @@ async function prototypeWalkthrough(page) {
       footerButtons: ["extrema-values", "settings-apply"].map((id) => document.querySelector(`[data-design-id='${id}']`)).filter((node) => node && !node.hidden && getComputedStyle(node).display !== "none").map((node) => node.textContent.trim()),
       statusPosition: getComputedStyle(document.querySelector("[data-settings-status]")).position,
     }));
-    check(`prototype configure/footer ${viewport.width}x${viewport.height}`, configured.settingsSelected === "true" && configured.targetCount === 1 && JSON.stringify(configured.footerButtons) === JSON.stringify(["Значения", "Применить"]) && configured.statusPosition === "absolute", configured, "design");
+    check(`prototype configure/footer ${viewport.width}x${viewport.height}`, configured.settingsSelected === "true" && configured.targetCount === 1 && JSON.stringify(configured.footerButtons) === JSON.stringify(["Показать значения", "Применить"]) && configured.statusPosition === "absolute", configured, "design");
     await screenshot(page, `prototype-configure-${viewport.width}x${viewport.height}`);
     await page.locator("[data-design-id='extrema-values']").click();
     const values = await page.evaluate(() => ({
@@ -236,7 +236,7 @@ async function waitExtremaTerminal(page) {
       { id: "minimum_distance_samples", value: "1" },
       { id: "threshold", value: "0" },
     ];
-    check("Configure opens settings, highlights 1x1 target and has exact footer/default", configured.settingsSelected === "true" && configured.settingsFocused === "settings-tab-peaks" && configured.targetCount === 1 && /rgb\(22, 134, 195\)|#1686c3/i.test(configured.targetOutline.boxShadow) && JSON.stringify(configured.footerButtons) === JSON.stringify(["Значения", "Применить"]) && configured.status.position === "absolute" && configured.mode === "Максимумы" && JSON.stringify(configured.fields) === JSON.stringify(expectedFields), { configured, configureRequests });
+    check("Configure opens settings, highlights 1x1 target and has exact footer/default", configured.settingsSelected === "true" && configured.settingsFocused === "settings-tab-peaks" && configured.targetCount === 1 && /rgb\(22, 134, 195\)|#1686c3/i.test(configured.targetOutline.boxShadow) && JSON.stringify(configured.footerButtons) === JSON.stringify(["Показать значения", "Применить"]) && configured.status.position === "absolute" && configured.mode === "Максимумы" && JSON.stringify(configured.fields) === JSON.stringify(expectedFields), { configured, configureRequests });
     check("Configure performs no calculation POST or output refetch", configureRequests.filter((item) => item.method === "POST" && /\/api\/peaks\/active/.test(item.url)).length === 0 && configureRequests.filter((item) => /\/api\/outputs\/active/.test(item.url)).length === 0, configureRequests);
     await screenshot(productionPage, "production-configure-1024x768");
 

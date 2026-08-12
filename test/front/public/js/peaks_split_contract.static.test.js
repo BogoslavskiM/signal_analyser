@@ -21,7 +21,7 @@ assert(/preservePlots:true, skipOutput:true/.test(app),"Extrema settings must no
 assert(/function persistLatest\(retries\)[\s\S]*?api\.updatePeaksSettings\([\s\S]*?\(latest\.intent \|\| 0\) > intent[\s\S]*?error\.status === 409 && retries < 1/.test(app),"Extrema Apply must serialize latest intent and retry one authoritative conflict without graph output mutation");
 assert(!/renderPeaksMatrix|peaks-matrix/.test(app+css),"canceled matrix renderer/classes must be absent");
 assert(/model\.settingsPage === "peaks"[\s\S]*renderPeaksSettings[\s\S]*renderApply/.test(app),"right Extrema tab must own settings and the single right Apply footer");
-assert(/data-testid="extrema-values"[^>]*>Значения<[^>]*[\s\S]*data-testid="settings-apply"/.test(html),"Extrema footer must place Values immediately before Apply");
+assert(/data-testid="extrema-values"[^>]*>Показать значения<[^>]*[\s\S]*data-testid="settings-apply"/.test(html),"Extrema footer must place Values immediately before Apply");
 assert(/status\.classList\.add\("visually-hidden"\)/.test(app)&&/values\.hidden = false/.test(app),"Extrema footer status must be assistive-only while Values remains visible");
 assert(/defaultPeaksSettings\(settings\)[\s\S]*number_of_peaks:5/.test(app),"fresh frontend Extrema settings must default to five values");
 assert(/data-settings-page[\s\S]*?ArrowLeft[\s\S]*?ArrowRight[\s\S]*?Home[\s\S]*?End/.test(app)&&/data-bottom-tab[\s\S]*?ArrowLeft[\s\S]*?ArrowRight[\s\S]*?Home[\s\S]*?End/.test(app),"both tablists must retain roving keyboard navigation");
