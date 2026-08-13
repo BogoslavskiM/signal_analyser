@@ -1307,6 +1307,10 @@ body.is-resizing-workspace * {
   background: var(--surface-muted);
 }
 
+.inspector-header > .inspector-state-controls {
+  background: inherit;
+}
+
 .inspector-state-toggle {
   width: 32px;
   height: 31px;
@@ -1320,6 +1324,10 @@ body.is-resizing-workspace * {
   color: var(--muted);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.inspector-state-controls > .inspector-state-toggle {
+  background: inherit;
 }
 
 .inspector-state-toggle[hidden] { display: none; }
