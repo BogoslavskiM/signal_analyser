@@ -1308,7 +1308,7 @@ body.is-resizing-workspace * {
 }
 
 .inspector-header > .inspector-state-controls {
-  background: inherit;
+  background: var(--surface-muted);
 }
 
 .inspector-state-toggle {
