@@ -621,20 +621,31 @@ h6,
 }
 
 .ui-loader-spinner {
+  box-sizing: border-box;
   width: 64px;
   height: 64px;
+  display: block;
+  opacity: 1;
   border: 5px solid rgba(27, 132, 184, 0.22);
   border-top-color: var(--accent);
   border-radius: 50%;
-  animation: ui-spinner-rotate 800ms linear infinite;
+  transform-origin: 50% 50%;
+  animation: loader-rotate 800ms linear infinite;
 }
 
-@keyframes ui-spinner-rotate {
+@keyframes loader-rotate {
   from {
     transform: rotate(0deg);
   }
 
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-loader-spinner {
+    animation: none;
+    transform: rotate(45deg);
   }
 }

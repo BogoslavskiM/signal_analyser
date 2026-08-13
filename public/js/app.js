@@ -3,6 +3,7 @@
 
   var api = window.SignalAnalyserApi;
   var settings = window.SignalAnalyserSettings;
+  var valueSelect = window.SignalAnalyserValueSelect;
   var titles = { time: "Временная область", spectrum: "Спектр", spectrogram: "Спектрограмма", persistence: "Спектр персистентности" };
   var measurementOptions = [
     { id:"minimum", label:"Минимум" }, { id:"maximum", label:"Максимум" },
@@ -16,7 +17,7 @@
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
-    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksMessage: "", extremaTargetKey: null,
+    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false,
     paneMenuTrigger: null, graphHelpRestoreTarget: null, paneClearContext: null
   };
@@ -289,11 +290,102 @@
     trigger.setAttribute("aria-label", "Изменить макет, текущий макет " + label.replace(" × ", " на "));
   }
 
-  function outputMarkup(displayId, pane, output) {
-    if (!pane.signal_bindings || !pane.signal_bindings.length) return "<div class='plot-empty' data-testid='pane-empty-" + esc(pane.id) + "' role='status'>Выберете сигнал для отображения</div>";
-    if (!output || !output.isready) return "<div class='plot-initial-loading' data-testid='pane-loader-" + esc(pane.id) + "' role='status' aria-label='Загрузка графика'><span class='spinner'></span><span>Загрузка графика</span></div>";
-    if (!output.success) return "<div class='plot-error' data-testid='pane-error-" + esc(pane.id) + "' role='alert'>" + esc(output.error || "Не удалось загрузить график.") + "</div>";
-    return "<div class='plot-chart' data-pane-host='" + esc(paneRuntimeKey(displayId, pane.id)) + "' data-testid='plot-host-" + esc(pane.id) + "' data-plot-ready='false'></div>";
+  function graphLoaderEpisode(displayId, pane, record) {
+    var context = record && record.context_key;
+    var calculation = record && record.calculation_revision;
+    var provisional = context === null || context === undefined || calculation === null || calculation === undefined;
+    var paneContext = String(pane.plot_type || "") + "::" + JSON.stringify(Array.isArray(pane.signal_bindings) ? pane.signal_bindings : []);
+    return {
+      key:"graph::" + paneRuntimeKey(displayId, pane.id) + "::" + paneContext + "::" + (provisional ? "awaiting" : String(context) + "::" + String(calculation)),
+      provisional:provisional
+    };
+  }
+
+  function outputMarkup(displayId, pane, record) {
+    var output = record && record.output;
+    if (!pane.signal_bindings || !pane.signal_bindings.length) return "<div class='plot-empty' data-pane-output-state='empty' data-testid='pane-empty-" + esc(pane.id) + "' role='status'>Выберете сигнал для отображения</div>";
+    if (!output || !output.isready) {
+      var episode = graphLoaderEpisode(displayId, pane, record);
+      return "<div class='plot-initial-loading' data-pane-output-state='loading' data-loader-episode-key='" + esc(episode.key) + "' data-loader-episode-provisional='" + String(episode.provisional) + "' data-testid='pane-loader-" + esc(pane.id) + "' role='status' aria-label='Загрузка графика'><span class='spinner' data-loader-spinner data-loader-episode-key='" + esc(episode.key) + "' aria-hidden='true'></span><span>Загрузка графика</span></div>";
+    }
+    if (!output.success) return "<div class='plot-error' data-pane-output-state='error' data-testid='pane-error-" + esc(pane.id) + "' role='alert'>" + esc(output.error || "Не удалось загрузить график.") + "</div>";
+    return "<div class='plot-chart' data-pane-output-state='ready' data-pane-host='" + esc(paneRuntimeKey(displayId, pane.id)) + "' data-testid='plot-host-" + esc(pane.id) + "' data-plot-ready='false'></div>";
+  }
+
+  function createPaneNode(displayId, pane) {
+    var node = document.createElement("section");
+    node.className = "plot-pane";
+    node.tabIndex = 0;
+    node.dataset.paneId = pane.id;
+    node.dataset.displayId = displayId;
+    node.dataset.testid = "plot-pane-" + pane.id;
+    node.innerHTML = "<header class='plot-pane-header'><span class='plot-pane-title'></span><div class='plot-control-cluster'><button class='pane-select value-select-trigger select-trigger' type='button'></button><button class='plot-more' type='button' data-pane-menu='" + esc(pane.id) + "'><img src='./icons/more-vertical.svg' alt=''></button></div></header><div class='plot-canvas'></div>";
+    return node;
+  }
+
+  function reconcilePaneOutput(canvas, displayId, pane, record) {
+    var output = record && record.output;
+    var current = canvas.firstElementChild;
+    if (paneHasSignals(pane) && (!output || !output.isready) && current && current.dataset.paneOutputState === "loading") {
+      var episode = graphLoaderEpisode(displayId, pane, record);
+      var sameEpisode = current.dataset.loaderEpisodeKey === episode.key;
+      if (!sameEpisode && current.dataset.loaderEpisodeProvisional === "true" && !episode.provisional) {
+        current.dataset.loaderEpisodeKey = episode.key;
+        current.dataset.loaderEpisodeProvisional = String(episode.provisional);
+        var promotedSpinner = current.querySelector("[data-loader-spinner]");
+        if (promotedSpinner) promotedSpinner.dataset.loaderEpisodeKey = episode.key;
+        sameEpisode = true;
+      }
+      if (sameEpisode) return;
+    }
+    var runtimeKey = paneRuntimeKey(displayId, pane.id);
+    if (output && output.isready && output.success && current && current.dataset.paneOutputState === "ready" && current.dataset.paneHost === runtimeKey) return;
+    canvas.innerHTML = outputMarkup(displayId, pane, record);
+  }
+
+  function reconcilePaneNode(node, displayId, pane, index, record) {
+    var selected = pane.id === model.activePane;
+    var runtimeKey = paneRuntimeKey(displayId, pane.id);
+    var extremaTarget = runtimeKey === model.extremaTargetKey;
+    node.classList.toggle("is-active", selected);
+    node.classList.toggle("is-extrema-settings-target", extremaTarget);
+    node.dataset.paneId = pane.id;
+    node.dataset.displayId = displayId;
+    node.dataset.paneSelected = String(selected);
+    node.dataset.testid = "plot-pane-" + pane.id;
+    node.setAttribute("aria-label", "Область " + (index + 1) + (selected ? ", активная" : "") + (extremaTarget ? ", настраивается расчёт экстремумов" : ""));
+    var title = node.querySelector(".plot-pane-title");
+    if (title) title.textContent = "Область " + (index + 1);
+    var select = node.querySelector(".pane-select");
+    if (select) {
+      var paneSelectKey="pane::" + displayId + "::" + pane.id + "::plot_type";
+      valueSelect.configure(select, {
+        key:paneSelectKey,
+        value:pane.plot_type,
+        label:titles[pane.plot_type] || pane.plot_type,
+        options:Object.keys(titles).map(function (kind) { return { value:kind, label:titles[kind] }; }),
+        className:"pane-select",
+        testId:"pane-type-" + pane.id,
+        ariaLabel:"Тип графика области " + (index + 1),
+        onSelect:function (plotType) {
+          var current=paneById(pane.id);
+          if (current && current.plot_type !== plotType) postLayout({ operation:"update_pane", pane_id:current.id, plot_type:plotType, signal_bindings:current.signal_bindings || [] });
+        }
+      });
+    }
+    var menu = node.querySelector(".plot-more");
+    if (menu) {
+      menu.dataset.paneMenu = pane.id;
+      menu.dataset.testid = "pane-menu-" + pane.id;
+      menu.setAttribute("aria-label", "Действия области " + (index + 1));
+      menu.setAttribute("aria-haspopup", "menu");
+      if (!menu.hasAttribute("aria-expanded")) menu.setAttribute("aria-expanded", "false");
+    }
+    var canvas = node.querySelector(".plot-canvas");
+    if (canvas) {
+      canvas.setAttribute("aria-label", "График области " + (index + 1));
+      reconcilePaneOutput(canvas, displayId, pane, record);
+    }
   }
 
   function renderGrid() {
@@ -305,21 +397,23 @@
     if (!display) return;
     var displayPanes = panes();
     grid.dataset.paneCount = String(displayPanes.length);
-    grid.innerHTML = displayPanes.map(function (pane, index) {
+    var retained = {};
+    displayPanes.forEach(function (pane, index) {
+      var selector = "[data-pane-id='" + CSS.escape(pane.id) + "'][data-display-id='" + CSS.escape(display.id) + "']";
+      var node = grid.querySelector(selector) || createPaneNode(display.id, pane);
       var runtimeKey = paneRuntimeKey(display.id, pane.id);
-      var output = model.outputs[runtimeKey] && model.outputs[runtimeKey].output;
-      var selected = pane.id === model.activePane;
-      var extremaTarget = runtimeKey === model.extremaTargetKey;
-      return "<section class='plot-pane" + (selected ? " is-active" : "") + (extremaTarget ? " is-extrema-settings-target" : "") + "' tabindex='0' data-pane-id='" + esc(pane.id) + "' data-pane-selected='" + String(selected) + "' data-testid='plot-pane-" + esc(pane.id) + "' aria-label='Область " + (index + 1) + (selected ? ", активная" : "") + (extremaTarget ? ", настраивается расчёт экстремумов" : "") + "'>" +
-        "<header class='plot-pane-header'><span class='plot-pane-title'>Область " + (index + 1) + "</span><div class='plot-control-cluster'><select class='pane-select' data-pane-type='" + esc(pane.id) + "' data-testid='pane-type-" + esc(pane.id) + "' aria-label='Тип графика области " + (index + 1) + "'>" +
-        Object.keys(titles).map(function (kind) { return "<option value='" + kind + "'" + (pane.plot_type === kind ? " selected" : "") + ">" + titles[kind] + "</option>"; }).join("") +
-        "</select><button class='plot-more' type='button' data-pane-menu='" + esc(pane.id) + "' data-testid='pane-menu-" + esc(pane.id) + "' aria-label='Действия области " + (index + 1) + "' aria-haspopup='menu' aria-expanded='false'><img src='./icons/more-vertical.svg' alt=''></button></div></header>" +
-        "<div class='plot-canvas' aria-label='График области " + (index + 1) + "'>" + outputMarkup(display.id, pane, output) + "</div></section>";
-    }).join("");
+      retained[runtimeKey] = true;
+      reconcilePaneNode(node, display.id, pane, index, model.outputs[runtimeKey]);
+      if (grid.children[index] !== node) grid.insertBefore(node, grid.children[index] || null);
+    });
+    Array.prototype.slice.call(grid.children).forEach(function (node) {
+      if (!retained[paneRuntimeKey(node.dataset.displayId, node.dataset.paneId)]) node.remove();
+    });
     displayPanes.forEach(function (pane) {
       var record = model.outputs[paneRuntimeKey(display.id, pane.id)];
       if (record && record.output && record.output.isready && record.output.success && hasPlotData(record.output.data)) enqueuePlot(display.id, pane, record);
     });
+    valueSelect.reconcile();
   }
 
   function renderActivePaneContext() {
@@ -602,9 +696,26 @@
     footer.dataset.applyState = phase;
     button.disabled = disabled;
     button.textContent = label;
-    button.classList.toggle("is-applying", phase === "applying");
-    button.classList.toggle("is-pending", phase === "pending");
+    syncApplyLoader(button, footer, phase, footer.dataset.loaderEpisodeKey);
     status.textContent = footer.dataset.message || (state.invalid ? "Исправьте выделенные поля" : "");
+  }
+
+  function syncApplyLoader(button, footer, phase, episodeKey) {
+    var applying = phase === "applying", pending = phase === "pending";
+    if (applying) button.classList.add("is-applying");
+    if (pending) button.classList.add("is-pending");
+    if (!applying) button.classList.remove("is-applying");
+    if (!pending) button.classList.remove("is-pending");
+    if (applying || pending) {
+      var key = episodeKey || "settings::pending";
+      footer.dataset.loaderEpisodeKey = key;
+      button.dataset.loaderEpisodeKey = key;
+      button.setAttribute("aria-busy", "true");
+    } else {
+      delete footer.dataset.loaderEpisodeKey;
+      delete button.dataset.loaderEpisodeKey;
+      button.removeAttribute("aria-busy");
+    }
   }
 
   function renderInspector() {
@@ -727,8 +838,11 @@
   function renderPeaksInspector(body) {
     var display = activeDisplay(), pane = paneById(model.activePane), record = display && pane && model.peaksRecords[paneRuntimeKey(display.id, pane.id)];
     var current = record && display && pane && record.displayId === display.id && record.paneId === pane.id;
-    body.innerHTML = "<div class='signal-table-scroll peaks-table-scroll' data-testid='peaks-table-scroll'></div>";
-    var host = q("[data-testid='peaks-table-scroll']");
+    var host = body.querySelector("[data-testid='peaks-table-scroll']");
+    if (!host || host.parentElement !== body) {
+      body.innerHTML = "<div class='signal-table-scroll peaks-table-scroll' data-testid='peaks-table-scroll'></div>";
+      host = body.querySelector("[data-testid='peaks-table-scroll']");
+    }
     if (pane && !paneHasSignals(pane)) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберете сигнал для отображения</strong></div>"; return; }
     if (!pane || pane.plot_type !== "time") { host.innerHTML = "<div class='inspector-empty' role='status'>Экстремумы доступны для временной области</div>"; return; }
     if (!current || (!record.pending && !record.error && !record.calculated)) {
@@ -736,7 +850,13 @@
       host.innerHTML = "<div class='peaks-state peaks-start' data-testid='extrema-start' data-extrema-state='start' role='status'><strong>Рассчет экстремумы для области " + areaNumber + "</strong><div class='peaks-start-actions'><button class='button button-primary' type='button' data-testid='extrema-calculate'>Рассчитать</button><button class='button' type='button' data-testid='extrema-configure'>Настроить рассчет</button></div></div>";
       return;
     }
-    if (record.pending) { host.innerHTML = "<div class='peaks-state peaks-loading' data-testid='peaks-loader' data-extrema-state='loading' role='status' aria-live='polite'><span class='spinner' aria-hidden='true'></span><strong>Расчёт экстремумов…</strong></div>"; return; }
+    if (record.pending) {
+      var episodeKey = record.loading_episode || ("extrema::" + paneRuntimeKey(display.id, pane.id) + "::" + String(record.context_key == null ? "awaiting" : record.context_key) + "::" + String(record.calculation_revision == null ? "awaiting" : record.calculation_revision));
+      var loading = host.firstElementChild;
+      if (loading && loading.dataset.extremaState === "loading" && loading.dataset.loaderEpisodeKey === episodeKey) return;
+      host.innerHTML = "<div class='peaks-state peaks-loading' data-testid='peaks-loader' data-extrema-state='loading' data-loader-episode-key='" + esc(episodeKey) + "' role='status' aria-live='polite'><span class='spinner' data-loader-spinner data-loader-episode-key='" + esc(episodeKey) + "' aria-hidden='true'></span><strong>Расчёт экстремумов…</strong></div>";
+      return;
+    }
     if (record.error) { host.innerHTML = "<div class='peaks-state peaks-error' data-testid='peaks-error' data-extrema-state='error' role='alert'><strong>Не удалось рассчитать экстремумы</strong><p>" + esc(record.error) + "</p></div>"; return; }
     var data = record.data || {}, rows = Array.isArray(data.rows) ? data.rows : [];
     if (!data.signals || !data.signals.length) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберете сигнал для отображения</strong></div>"; return; }
@@ -793,7 +913,7 @@
   function renderPeaksSettings(display, pane, record, restoreFocus) {
     var host = q("[data-testid='settings-content']");
     if (!host) return;
-    if (!display || !pane || pane.plot_type !== "time") { host.innerHTML = "<div class='inspector-empty' role='status'>Настройки доступны для временной области</div>"; return; }
+    if (!display || !pane || pane.plot_type !== "time") { host.innerHTML = "<div class='inspector-empty' role='status'>Настройки доступны для временной области</div>"; valueSelect.reconcile(); return; }
     var settings = activePeaksSettings(pane, record);
     var key = peaksSettingsKey(display, pane);
     if (!model.peaksDraft || model.peaksDraft.key !== key) model.peaksDraft = createPeaksDraft(display, pane, settings);
@@ -803,8 +923,21 @@
     labels.push(["minimum_distance_samples", "Минимальное расстояние, отсчёты", ""], ["threshold", "Порог", ""]);
     var modeError = draft.invalid.mode;
     var complexSignal = activeExtremaHasComplexSignal(pane, record);
-    var modeControl = "<label class='settings-field-row" + (modeError ? " has-error" : "") + "' data-testid='settings-field-mode'><span class='settings-label'><span>Режим расчёта</span></span><span class='settings-control-wrap'><button class='select-trigger' type='button' data-extrema-mode-trigger data-testid='extrema-mode-trigger' aria-haspopup='listbox' aria-controls='extrema-mode-menu' aria-expanded='false' aria-label='Режим расчёта: " + extremaModeLabel(draft.values.mode) + "'" + disabled + "><span>" + extremaModeLabel(draft.values.mode) + "</span></button></span>" + (modeError ? "<small class='field-message is-error' role='alert'>" + esc(modeError) + "</small>" : "") + "</label><p class='extrema-magnitude-note" + (complexSignal ? " is-current" : "") + "' data-testid='extrema-magnitude-copy'><span>Для комплексных сигналов экстремумы рассчитываются по модулю |y|.</span>" + (complexSignal ? "<em>Активный сигнал комплексный · используется |y|.</em>" : "") + "</p>";
+    var modeSelectKey="extrema::" + display.id + "::" + pane.id + "::mode";
+    var modeSelector=valueSelect.markup({
+      key:modeSelectKey,
+      value:draft.values.mode,
+      label:extremaModeLabel(draft.values.mode),
+      options:[{ value:"maxima", label:"Максимумы" }, { value:"minima", label:"Минимумы" }, { value:"all", label:"Все экстремумы" }],
+      disabled:!!model.peaksApplying,
+      className:"extrema-mode-trigger",
+      testId:"extrema-mode-trigger",
+      ariaLabel:"Режим расчёта",
+      onSelect:chooseExtremaMode
+    });
+    var modeControl = "<label class='settings-field-row" + (modeError ? " has-error" : "") + "' data-testid='settings-field-mode'><span class='settings-label'><span>Режим расчёта</span></span><span class='settings-control-wrap'>" + modeSelector + "</span>" + (modeError ? "<small class='field-message is-error' role='alert'>" + esc(modeError) + "</small>" : "") + "</label><p class='extrema-magnitude-note" + (complexSignal ? " is-current" : "") + "' data-testid='extrema-magnitude-copy'><span>Для комплексных сигналов экстремумы рассчитываются по модулю |y|.</span>" + (complexSignal ? "<em>Активный сигнал комплексный · используется |y|.</em>" : "") + "</p>";
     host.innerHTML = "<section class='settings-group' data-testid='extrema-settings-group'><button class='settings-group-title' type='button' aria-expanded='true' disabled><span>Расчёт экстремумов</span></button><div class='settings-group-fields'>" + modeControl + labels.map(function (field) { var id=field[0], error=draft.invalid[id], helper=field[2] ? "<small class='field-message extrema-field-helper'>" + esc(field[2]) + "</small>" : ""; return "<label class='settings-field-row" + (error ? " has-error" : "") + "' data-testid='settings-field-" + id + "'><span class='settings-label' title='" + esc(field[1]) + "'><span>" + field[1] + "</span></span><span class='settings-control-wrap'><input class='control' type='text' inputmode='decimal' data-peaks-setting='" + id + "' value='" + esc(draft.values[id]) + "' aria-label='" + field[1] + "'" + disabled + "></span>" + (error ? "<small class='field-message is-error' role='alert'>" + esc(error) + "</small>" : "") + helper + "</label>"; }).join("") + "</div></section>";
+    valueSelect.reconcile();
     if (restoreFocus) { var input = host.querySelector("[data-peaks-setting='" + restoreFocus.id + "']"); if (input) { input.focus(); if (typeof input.setSelectionRange === "function") input.setSelectionRange(restoreFocus.start, restoreFocus.end); } }
   }
 
@@ -822,7 +955,7 @@
     status.classList.add("visually-hidden");
     button.disabled = unavailable || model.peaksApplying || invalid || !dirty;
     button.textContent = model.peaksApplying ? "Применение…" : "Применить";
-    button.classList.toggle("is-pending", model.peaksApplying);
+    syncApplyLoader(button, footer, model.peaksApplying ? "pending" : phase, model.peaksApplyEpisodeKey);
     status.textContent = invalid ? "Исправьте выделенные поля" : model.peaksMessage;
   }
 
@@ -835,6 +968,7 @@
     var displayId = display.id, paneId = pane.id;
     model.peaksApplying = true;
     model.peaksApplyQueued = false;
+    model.peaksApplyEpisodeKey = "settings-extrema::" + paneRuntimeKey(displayId, paneId) + "::" + String(draft.intent || 0) + "::" + String(model.revision);
     model.peaksMessage = "Применяются настройки экстремумов";
     closeExtremaModeMenu(false);
     renderSettings(display);
@@ -887,6 +1021,7 @@
       showToast(safeErrorText(error, "Не удалось применить настройки экстремумов."), true);
     }).finally(function () {
       model.peaksApplying = false;
+      model.peaksApplyEpisodeKey = null;
       if (activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId && model.settingsPage === "peaks") renderSettings(activeDisplay());
     });
   }
@@ -950,6 +1085,7 @@
       calculationRequested:requested,
       calculated:!!response.isready,
       pending:pending,
+      loading_episode:pending ? (prior && prior.pending && prior.loading_episode || ("extrema::" + runtimeKey + "::" + String(response.context_key == null ? "awaiting" : response.context_key) + "::" + String(response.calculation_revision == null ? "awaiting" : response.calculation_revision))) : null,
       error:response.isready && response.success === false ? response.error || "Не удалось рассчитать экстремумы." : null,
       data:response.data || null,
       peaks:response.peaks || null
@@ -1011,6 +1147,7 @@
       calculationRequested:true,
       calculated:false,
       pending:true,
+      loading_episode:"extrema::" + runtimeKey + "::request::" + String(token),
       error:null,
       data:prior && prior.data || null
     };
@@ -1253,38 +1390,17 @@
     });
   }
 
-  function extremaModeMenu() { return q("[data-testid='extrema-mode-menu']"); }
   function closeExtremaModeMenu(restoreFocus) {
-    var menu = extremaModeMenu(), trigger = q("[data-extrema-mode-trigger]");
-    if (!menu || menu.hidden) return;
-    menu.hidden = true;
-    if (trigger) {
-      trigger.setAttribute("aria-expanded", "false");
-      if (restoreFocus) trigger.focus();
-    }
-  }
-  function openExtremaModeMenu(trigger) {
-    var menu = extremaModeMenu(), draft = model.peaksDraft;
-    if (!menu || !draft || model.peaksApplying) return;
-    if (!menu.hidden) return void closeExtremaModeMenu(true);
-    closeColumnMenu(false); closeMeasurementMenu(false);
-    var selected = draft.values.mode;
-    menu.innerHTML = [["maxima", "Максимумы"], ["minima", "Минимумы"], ["all", "Все экстремумы"]].map(function (option) {
-      return "<button type='button' role='option' data-extrema-mode-option='" + option[0] + "' aria-selected='" + String(selected === option[0]) + "' class='" + (selected === option[0] ? "is-selected" : "") + "'><span class='select-option-check' aria-hidden='true'></span><span class='select-option-label'>" + option[1] + "</span></button>";
-    }).join("");
-    menu.hidden = false;
-    trigger.setAttribute("aria-expanded", "true");
-    positionMenu(menu, trigger, trigger.getBoundingClientRect().width);
+    valueSelect.close(restoreFocus);
   }
   function chooseExtremaMode(mode) {
     if (!model.peaksDraft || ["maxima", "minima", "all"].indexOf(mode) < 0) return;
+    if (model.peaksDraft.values.mode === mode) return;
     model.peaksDraft.values.mode = mode;
     model.peaksDraft.intent = (model.peaksDraft.intent || 0) + 1;
     if (model.peaksApplying) model.peaksApplyQueued = true;
-    closeExtremaModeMenu(false);
     renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))]);
     renderApply();
-    window.requestAnimationFrame(function () { var trigger = q("[data-extrema-mode-trigger]"); if (trigger) trigger.focus(); });
   }
 
   function closeColumnMenu(restoreFocus) {
@@ -1441,6 +1557,7 @@
     var displayId = activeDisplay() && activeDisplay().id;
     if (!displayId) return;
     footer.dataset.phase = "applying";
+    footer.dataset.loaderEpisodeKey = "settings-display::" + displayId + "::" + String(model.activePane || "") + "::" + String(model.revision);
     footer.dataset.message = "Применяем сохранённый черновик";
     renderApply();
     function applyLatest(retries) {
@@ -1539,8 +1656,6 @@
     if (button.dataset.layoutClose !== undefined || button.dataset.layoutCancel !== undefined) return void closeLayout();
     if (button.dataset.layoutRows || button.dataset.layoutColumns) { model.layoutDraft[button.dataset.layoutRows ? "rows" : "columns"] = Number(button.dataset.layoutRows || button.dataset.layoutColumns); return void renderLayoutDraft(); }
     if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
-    if (button.dataset.extremaModeTrigger !== undefined) return void openExtremaModeMenu(button);
-    if (button.dataset.extremaModeOption !== undefined) return void chooseExtremaMode(button.dataset.extremaModeOption);
     if (button.dataset.testid === "extrema-calculate") return void calculatePeaks();
     if (button.dataset.testid === "extrema-configure") return void configureActivePeaks();
     if (button.dataset.testid === "extrema-values") return void showActivePeaksValues();
@@ -1596,18 +1711,15 @@
   });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='signal-columns-menu']"),trigger=q("[data-testid='signal-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeColumnMenu(false); });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='measurement-columns-menu']"),trigger=q("[data-testid='measurement-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeMeasurementMenu(false); });
-  document.addEventListener("click", function (event) { var menu=extremaModeMenu(),trigger=q("[data-extrema-mode-trigger]");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeExtremaModeMenu(false); });
   document.addEventListener("keydown", function (event) { var clearLayer=q("[data-testid='pane-clear-confirm-layer']"), help=q("[data-testid='graph-help-overlay']"), paneMenu=q("[data-testid='display-overflow-menu']"), addLayer=signalAddLayer(); if (event.key === "Escape" && clearLayer && !clearLayer.hidden) { event.preventDefault(); closePaneClearConfirm(true); return; } if (event.key === "Escape" && help && !help.hidden) { event.preventDefault(); closeGraphHelp(true); return; } if (event.key === "Escape" && paneMenu && !paneMenu.hidden) { event.preventDefault(); closePaneMenu(true); return; } if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape" && q("[data-testid='measurement-columns-menu']") && !q("[data-testid='measurement-columns-menu']").hidden) closeMeasurementMenu(true); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0 ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
   document.addEventListener("keydown", function (event) { var menu=event.target.closest && event.target.closest("[data-testid='display-overflow-menu']"); if (!menu || ["ArrowDown","ArrowUp","Home","End"].indexOf(event.key)<0) return; var items=qa("[data-testid='display-overflow-menu'] button:not(:disabled)"), current=items.indexOf(document.activeElement), next=current; if(event.key==="ArrowDown") next=(current+1+items.length)%items.length; else if(event.key==="ArrowUp") next=(current-1+items.length)%items.length; else if(event.key==="Home") next=0; else next=items.length-1; event.preventDefault(); if(items[next]) items[next].focus(); });
-  document.addEventListener("keydown", function (event) { var trigger=event.target.closest && event.target.closest("[data-extrema-mode-trigger]"), menu=extremaModeMenu(); if (trigger && ["Enter", " ", "ArrowDown"].indexOf(event.key) >= 0) { event.preventDefault(); openExtremaModeMenu(trigger); var first=menu && menu.querySelector("button"); if(first) first.focus(); return; } if (menu && !menu.hidden && event.key === "Escape") { event.preventDefault(); closeExtremaModeMenu(true); } });
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]"),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
-    if (node.dataset.paneType) { var pane = paneById(node.dataset.paneType); return void postLayout({ operation: "update_pane", pane_id: pane.id, plot_type: node.value, signal_bindings: pane.signal_bindings || [] }); }
     if (node.dataset.visibleAllSignals !== undefined) { var allPane = paneById(model.activePane); if (allPane) return void postLayout({ operation:"update_pane", pane_id:allPane.id, plot_type:allPane.plot_type, signal_bindings:node.checked ? (model.state.signals || []).map(function (signal) { return signal.name; }) : [] }); }
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }
   });
-  document.addEventListener("click", function (event) { var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }, { preservePlots:true, skipOutput:true }); });
+  document.addEventListener("click", function (event) { if (event.target.closest("[data-value-select-key]")) return; var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }, { preservePlots:true, skipOutput:true }); });
   document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
   document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) updateSignalAddControls(); if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName === "SELECT") { var select=event.target; model.peaksDraft.values[select.dataset.peaksSetting]=select.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:select.dataset.peaksSetting }); renderApply(); } });
   document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); });
@@ -1629,7 +1741,7 @@
   window.addEventListener("resize", function () { scheduleDisplayTabScrollUpdate(false); });
   window.addEventListener("resize", retainWorkspaceSplitOnResize);
   window.addEventListener("resize", repositionLayout);
-  window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='measurement-columns-menu']"), q("[data-testid='measurement-columns-menu-trigger']"), 244); positionMenu(extremaModeMenu(), q("[data-extrema-mode-trigger]"), q("[data-extrema-mode-trigger]") ? q("[data-extrema-mode-trigger]").getBoundingClientRect().width : 0); positionPaneMenu(); if (q("[data-testid='graph-help-overlay']") && !q("[data-testid='graph-help-overlay']").hidden && model.graphHelpRestoreTarget) openGraphHelp(model.graphHelpRestoreTarget); });
+  window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='measurement-columns-menu']"), q("[data-testid='measurement-columns-menu-trigger']"), 244); positionPaneMenu(); if (q("[data-testid='graph-help-overlay']") && !q("[data-testid='graph-help-overlay']").hidden && model.graphHelpRestoreTarget) openGraphHelp(model.graphHelpRestoreTarget); });
   if (window.ResizeObserver) {
     model.displayTabsObserver = new window.ResizeObserver(function () { scheduleDisplayTabScrollUpdate(false); });
     model.displayTabsObserver.observe(q("[data-testid='display-tabs-wrap']"));

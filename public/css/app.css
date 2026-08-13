@@ -593,8 +593,24 @@ body.is-resizing-workspace * {
   appearance: none;
   -webkit-appearance: none;
   background: var(--surface) url("../icons/chevron-down-fill-16.svg") right 4px center / 16px 16px no-repeat;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
   font-size: 14px;
   line-height: 18px;
+}
+
+.plot-control-cluster .pane-select.value-select-trigger {
+  display: flex;
+  align-items: center;
+  background-image: none;
+}
+
+.plot-control-cluster .pane-select.value-select-trigger > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .plot-control-cluster .pane-select:hover:not(:disabled) { border-color: var(--line-strong); }
@@ -703,12 +719,16 @@ body.is-resizing-workspace * {
 }
 
 .plot-initial-loading .spinner {
+  box-sizing: border-box;
   width: 28px;
   height: 28px;
+  display: block;
+  opacity: 1;
   border: 3px solid var(--accent-soft);
   border-top-color: var(--accent);
   border-radius: 50%;
-  animation: spin 800ms linear infinite;
+  transform-origin: 50% 50%;
+  animation: loader-rotate 800ms linear infinite;
 }
 
 .plot-initial-loading span:last-child,
@@ -718,7 +738,10 @@ body.is-resizing-workspace * {
   line-height: 14px;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes loader-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 .settings-panel {
   container-type: inline-size;
@@ -945,6 +968,11 @@ body.is-resizing-workspace * {
   background: url("../icons/chevron-down-fill-16.svg") center / contain no-repeat;
   content: "";
   transform: translateY(-50%);
+  transition: transform var(--duration-fast) ease;
+}
+
+.value-select-trigger[aria-expanded="true"]::after {
+  transform: translateY(-50%) rotate(180deg);
 }
 
 .select-trigger > span {
@@ -1540,13 +1568,17 @@ body.is-resizing-workspace * {
 }
 
 .peaks-loading .spinner {
+  box-sizing: border-box;
   width: 28px;
   height: 28px;
+  display: block;
   margin-bottom: 4px;
+  opacity: 1;
   border: 3px solid var(--accent-soft);
   border-top-color: var(--accent);
   border-radius: 50%;
-  animation: spin 800ms linear infinite;
+  transform-origin: 50% 50%;
+  animation: loader-rotate 800ms linear infinite;
 }
 
 .peaks-error,
@@ -1576,7 +1608,133 @@ body.is-resizing-workspace * {
 
 .extrema-field-helper { color: var(--muted); }
 
-.extrema-mode-menu { z-index: 1100; }
+.value-select-popup {
+  position: fixed;
+  z-index: var(--layer-dropdown);
+  box-sizing: border-box;
+  max-height: min(280px, calc(100vh - 16px));
+  display: grid;
+  grid-template-rows: 40px minmax(0, 1fr);
+  overflow: hidden;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-dialog);
+  color: var(--text);
+}
+
+.value-select-popup[hidden] { display: none; }
+
+.value-select-search-row {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: 40px;
+  min-height: 40px;
+  padding: 4px 4px 4px 32px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.value-select-search-icon {
+  position: absolute;
+  top: 13px;
+  left: 11px;
+  z-index: 1;
+  width: 11px;
+  height: 11px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.value-select-search-icon::after {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  width: 6px;
+  height: 1.5px;
+  border-radius: 1px;
+  background: var(--muted);
+  content: "";
+  transform: rotate(45deg);
+  transform-origin: left center;
+}
+
+.value-select-search {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  outline: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.value-select-search:hover { border-color: var(--line-strong); }
+.value-select-search:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+
+.value-select-options {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-top: 4px;
+  background: var(--surface);
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.value-select-options button {
+  width: 100%;
+  height: 34px;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  padding: 6px 12px;
+  border: 0;
+  outline: 0;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.value-select-options button.is-selected { background: var(--surface); }
+.value-select-options button:not(:disabled):hover,
+.value-select-options button.is-active { background: #f5f5f5; }
+.value-select-options button:not(:disabled):active { background: var(--button-active); }
+.value-select-options button:disabled { color: var(--muted); cursor: not-allowed; opacity: 0.72; }
+
+.value-select-options .select-option-check { opacity: 0; }
+.value-select-options button.is-selected .select-option-check { opacity: 1; }
+.value-select-options button.is-selected .select-option-check::after { border-color: var(--success); }
+
+.value-select-empty {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+}
 
 .extrema-table-marker {
   display: inline-flex;
@@ -2317,14 +2475,18 @@ body {
 
 .settings-apply.is-applying::before,
 .settings-apply.is-pending::before {
+  box-sizing: border-box;
   width: 12px;
   height: 12px;
   flex: 0 0 12px;
+  display: block;
+  opacity: 1;
   border: 2px solid var(--accent-soft);
   border-top-color: var(--surface);
   border-radius: 50%;
   content: "";
-  animation: apply-spin 800ms linear infinite;
+  transform-origin: 50% 50%;
+  animation: loader-rotate 800ms linear infinite;
 }
 
 .settings-apply.is-pending::before {
@@ -2361,8 +2523,15 @@ body {
   line-height: 1;
 }
 
-@keyframes apply-spin {
-  to { transform: rotate(360deg); }
+@media (prefers-reduced-motion: reduce) {
+  .plot-initial-loading .spinner,
+  .peaks-loading .spinner,
+  .settings-apply.is-applying::before,
+  .settings-apply.is-pending::before,
+  .ui-loader-spinner {
+    animation: none;
+    transform: rotate(45deg);
+  }
 }
 
 /* Bootstrap/status notices are overlays, never an application grid row. */

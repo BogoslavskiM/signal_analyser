@@ -2,6 +2,7 @@
   "use strict";
 
   var api = window.SignalAnalyserApi;
+  var valueSelect = window.SignalAnalyserValueSelect;
   var context = {
     displayId: "", revision: 0, document: null, drafts: {}, pending: {}, timers: {}, requestQueue: Promise.resolve(), intent: 0, contextToken: 0, loadToken: 0,
     page: "display", plotType: "time", collapsed: {}, renderedFields: {}
@@ -126,7 +127,21 @@
       return "<span class='checkbox-control'><input id='"+id+"' data-setting-id='"+esc(item.id)+"' type='checkbox'"+(checked ? " checked" : "")+disabled+"></span>";
     }
     if (item.kind === "enum") {
-      return "<select class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"'"+disabled+">"+(item.options || []).map(function (option) { var optionValue=typeof option === "object" ? option.value : option; var optionDisabled=typeof option === "object" && option.disabled; return "<option value='"+esc(optionValue)+"'"+(optionValue === current ? " selected" : "")+(optionDisabled ? " disabled" : "")+">"+esc(optionLabel(option))+"</option>"; }).join("")+"</select>";
+      var enumOptions=(item.options || []).map(function (option) { return { value:typeof option === "object" ? option.value : option, label:optionLabel(option), disabled:typeof option === "object" && option.disabled }; });
+      var enumCurrent=String(current == null ? "" : current);
+      var enumSelected=enumOptions.filter(function (option) { return String(option.value) === enumCurrent; })[0];
+      var enumKey="setting::" + context.displayId + "::" + item.id;
+      return valueSelect.markup({
+        key:enumKey,
+        value:enumCurrent,
+        label:enumSelected ? enumSelected.label : optionLabel(current),
+        options:enumOptions,
+        disabled:item.enabled === false,
+        className:"settings-value-select",
+        testId:"setting-select-" + item.id.replace(/[^a-zA-Z0-9_-]/g, "-"),
+        ariaLabel:label(item),
+        onSelect:function (selected) { if (selected !== enumCurrent) update(item, selected); }
+      });
     }
     if (item.kind === "range" || item.kind === "optional_range") {
       var range = current && typeof current === "object" ? current : {};
@@ -135,7 +150,26 @@
     if (item.kind === "resolution" || item.kind === "power_bins") {
       var resolution = current && typeof current === "object" ? current : { mode:"auto" };
       var mode = resolution.mode || "auto", key = resolutionKey(item, resolution), amount = resolution[key];
-      return "<span class='resolution-control'><select class='control resolution-mode' data-setting-id='"+esc(item.id)+"' data-resolution-mode data-resolution-key='"+esc(key)+"'"+disabled+"><option value='auto'"+(mode === "auto" ? " selected" : "")+">Авто</option><option value='specified'"+(mode !== "auto" ? " selected" : "")+">Задать</option></select><input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-resolution-value data-resolution-key='"+esc(key)+"' value='"+esc(amount == null ? "" : amount)+"'"+(disabled || mode === "auto" ? " disabled" : "")+"></span>";
+      var normalizedMode=mode === "auto" ? "auto" : "specified";
+      var resolutionSelectKey="setting::" + context.displayId + "::" + item.id + "::mode";
+      var resolutionMarkup=valueSelect.markup({
+        key:resolutionSelectKey,
+        value:normalizedMode,
+        label:normalizedMode === "auto" ? "Авто" : "Задать",
+        options:[{ value:"auto", label:"Авто" }, { value:"specified", label:"Задать" }],
+        disabled:item.enabled === false,
+        className:"resolution-mode settings-value-select",
+        testId:"setting-resolution-mode-" + item.id.replace(/[^a-zA-Z0-9_-]/g, "-"),
+        ariaLabel:label(item) + ": режим",
+        onSelect:function (selected) {
+          if (selected === normalizedMode) return;
+          var trigger=Array.prototype.slice.call(document.querySelectorAll("[data-value-select-key]")).filter(function (node) { return node.dataset.valueSelectKey === resolutionSelectKey; })[0];
+          var resolutionNode=trigger && trigger.closest(".resolution-control");
+          var valueNode=resolutionNode && resolutionNode.querySelector("[data-resolution-value]");
+          update(item, { mode:selected, value:valueNode ? valueNode.value : (amount == null ? "" : amount), key:key });
+        }
+      });
+      return "<span class='resolution-control' data-resolution-current-mode='"+esc(normalizedMode)+"'>"+resolutionMarkup+"<input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-resolution-value data-resolution-key='"+esc(key)+"' value='"+esc(amount == null ? "" : amount)+"'"+(disabled || normalizedMode === "auto" ? " disabled" : "")+"></span>";
     }
     if (item.kind === "readout" || item.readonly) return "<span class='readonly-control'>"+esc(current == null || current === "" ? "—" : current)+(item.units ? " "+esc(item.units) : "")+"</span>";
     return "<input class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"' type='number' value='"+esc(current == null ? "" : current)+"'"+(item.min != null ? " min='"+esc(item.min)+"'" : "")+(item.max != null ? " max='"+esc(item.max)+"'" : "")+(item.step != null ? " step='"+esc(item.step)+"'" : "")+disabled+">";
@@ -156,7 +190,7 @@
     /* Pane-scoped Peaks is owned by app.js: it uses its independent GET/POST
        lifecycle and must not be replaced by this display-settings inventory. */
     if (context.page === "peaks") return;
-    if (!context.document) { host.innerHTML = ""; return; }
+    if (!context.document) { host.innerHTML = ""; valueSelect.reconcile(); return; }
     context.renderedFields = {};
     host.innerHTML = inventory().filter(function (item) { return item.items.length; }).map(function (item) {
       var collapseKey = context.page + "|" + context.plotType + "|" + item.key;
@@ -164,6 +198,7 @@
       var bodyId = "settings-group-" + collapseKey.replace(/[^a-zA-Z0-9_-]/g, "-");
       return "<section class='settings-group"+(collapsed ? " is-collapsed" : "")+"' data-settings-group='"+esc(item.key)+"'><button class='settings-group-title' type='button' data-settings-group-toggle='"+esc(collapseKey)+"' aria-expanded='"+String(!collapsed)+"' aria-controls='"+esc(bodyId)+"'><span>"+esc(item.title)+"</span></button><div class='settings-group-fields' id='"+esc(bodyId)+"'"+(collapsed ? " hidden" : "")+">"+item.items.map(renderField).join("")+"</div></section>";
     }).join("");
+    valueSelect.reconcile();
   }
 
   function rawFor(item, node) {
@@ -173,9 +208,8 @@
     }
     if (item.kind === "resolution" || item.kind === "power_bins") {
       var resolution = node.closest(".resolution-control");
-      var modeNode = resolution.querySelector("[data-resolution-mode]");
       var valueNode = resolution.querySelector("[data-resolution-value]");
-      return { mode:modeNode.value, value:valueNode.value, key:modeNode.dataset.resolutionKey || valueNode.dataset.resolutionKey };
+      return { mode:resolution.dataset.resolutionCurrentMode, value:valueNode.value, key:valueNode.dataset.resolutionKey };
     }
     if (node.type === "checkbox") return item.kind === "enum" ? (node.checked ? item.checked_value : item.unchecked_value) : node.checked;
     return node.value;

@@ -36,6 +36,8 @@ function element(extra) {
     dataset: {},
     classList: classes(),
     setAttribute() {},
+    removeAttribute() {},
+    hasAttribute() { return false; },
     addEventListener() {},
     querySelector() { return null; },
     focus() {}
@@ -86,6 +88,8 @@ function createHarness(options) {
 
   const body = element();
   const peaksHost = element();
+  peaksHost.parentElement = body;
+  body.querySelector = function (selector) { return selector === "[data-testid='peaks-table-scroll']" ? peaksHost : null; };
   const settingsContent = element();
   const footer = element();
   const apply = element();
@@ -126,6 +130,14 @@ function createHarness(options) {
   };
   const window = {
     SignalAnalyserApi: api,
+    SignalAnalyserValueSelect: {
+      markup(config) {
+        return "<button class='value-select-trigger select-trigger' type='button' data-value-select-key='" + config.key + "' data-testid='" + config.testId + "'><span>" + config.label + "</span></button>";
+      },
+      configure(node) { return node; },
+      reconcile() {},
+      close() {}
+    },
     SignalAnalyserSettings: {
       setRevision() {}, setContext() {}, setView() {}, render() {}, load() { return Promise.resolve(); },
       state() { return { dirty: false, invalid: false, revision: 3 }; }

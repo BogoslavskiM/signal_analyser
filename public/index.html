@@ -125,8 +125,7 @@
     </div>
   </main>
 
-  <div class="menu select-menu" role="listbox" data-testid="select-menu" hidden></div>
-  <div id="extrema-mode-menu" class="menu select-menu extrema-mode-menu" role="listbox" aria-label="Режим расчёта экстремумов" data-testid="extrema-mode-menu" hidden></div>
+  <div id="value-select-popup" class="value-select-popup" data-value-select-popup data-testid="select-menu" hidden></div>
   <div class="menu compact-menu plot-menu" role="menu" data-testid="display-overflow-menu" hidden>
     <button type="button" role="menuitem" data-plot-clear data-testid="pane-menu-clear">
       <img src="./icons/trash.svg" alt="">
@@ -224,6 +223,7 @@
   </footer>
   <div data-testid="runtime-dialog-root"></div>
   <script src="./js/api.js"></script>
+  <script src="./js/value-select.js"></script>
   <script src="./js/settings.js"></script>
   <script src="./js/layouts.js"></script>
   <script src="./vendor/vue/3.5.41/vue.global.prod.js"></script>

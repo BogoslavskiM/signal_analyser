@@ -47,6 +47,10 @@ function createSettingsHarness(responses) {
         return responses.shift().promise;
       }
     },
+    SignalAnalyserValueSelect: {
+      markup(config) { return "<button data-value-select-key='" + config.key + "' data-testid='" + config.testId + "'><span>" + config.label + "</span></button>"; },
+      reconcile() {}
+    },
     dispatchEvent() {},
     setTimeout() { return 1; }, clearTimeout() {}, requestAnimationFrame(callback) { callback(); return 1; }
   };
@@ -64,7 +68,7 @@ function createPeaksHarness(responses) {
   let source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
   source = source.replace("})(window, document);", "window.__task0097Peaks = { model:model, accept:accept, createPeaksDraft:createPeaksDraft, parsePeaksSettings:parsePeaksSettings, renderPeaksSettings:renderPeaksSettings, applyPeaksSettings:applyPeaksSettings }; })(window, document);");
-  const calls = [], outputCalls = [];
+  const calls = [], outputCalls = [], selectConfigs = {};
   const content = { innerHTML:"", setAttribute() {}, querySelector() { return null; } };
   const button = { disabled:false, textContent:"", classList:classList() };
   const footer = { dataset:{}, setAttribute() {} };
@@ -86,6 +90,10 @@ function createPeaksHarness(responses) {
       getState() { return Promise.resolve(snapshot(99)); }
     },
     SignalAnalyserSettings: { setRevision() {}, setContext() {}, setView() {}, render() {}, state() { return { dirty:false, invalid:false, revision:1 }; }, load() { return Promise.resolve(); } },
+    SignalAnalyserValueSelect: {
+      markup(config) { selectConfigs[config.key] = config; return "<button data-value-select-key='" + config.key + "' data-testid='" + config.testId + "'><span>" + config.label + "</span></button>"; },
+      configure(node) { return node; }, reconcile() {}, close() {}
+    },
     addEventListener() {}, clearTimeout() {}, setTimeout() { return 1; }, requestAnimationFrame() { return 1; }
   };
   const document = { querySelector(selector) { return nodes[selector] || null; }, querySelectorAll() { return []; }, addEventListener() {}, createElement() { return {}; }, head:{ appendChild() {} } };
@@ -95,7 +103,7 @@ function createPeaksHarness(responses) {
   test.model.settingsPage = "peaks";
   test.model.peaksRecords["display-1::pane-1"] = { data:{ settings:{ mode:"maxima", number_of_peaks:99, maximum_cutoff:null, minimum_cutoff:3, minimum_distance_samples:1, threshold:0 } } };
   test.model.peaksDraft = test.createPeaksDraft({ id:"display-1" }, { id:"pane-1" }, test.model.peaksRecords["display-1::pane-1"].data.settings);
-  return { test, calls, outputCalls, content };
+  return { test, calls, outputCalls, content, selectConfigs };
 }
 
 module.exports = async function testTask0097LatestWinsAndCutoffVisibility(assert) {
@@ -133,8 +141,10 @@ module.exports = async function testTask0097LatestWinsAndCutoffVisibility(assert
   assert(visibility.content.innerHTML.includes("Отсечка максимума") && !visibility.content.innerHTML.includes("Отсечка минимума") && !visibility.content.innerHTML.includes("Минимум учитывается"), "Maxima DOM must contain only maximum cutoff without inactive minimum row/helper/error");
   const maximaPayload = visibility.test.parsePeaksSettings(draft);
   assert(maximaPayload && maximaPayload.maximum_cutoff === 7 && maximaPayload.minimum_cutoff === 3, "invalid hidden minimum must retain the prior valid minimum source in the payload and not block Apply");
-  draft.values.mode = "minima";
-  visibility.test.renderPeaksSettings({ id:"display-1" }, { id:"pane-1", plot_type:"time", signal_bindings:[] }, visibility.test.model.peaksRecords["display-1::pane-1"]);
+  const modeConfig = visibility.selectConfigs["extrema::display-1::pane-1::mode"];
+  assert(modeConfig && modeConfig.options.map((option) => option.value).join(",") === "maxima,minima,all", "Extrema must configure the shared selector with all three calculation modes");
+  modeConfig.onSelect("minima");
+  assert(draft.values.mode === "minima" && visibility.calls.length === 0 && visibility.outputCalls.length === 0, "one Extrema selector choice must update only its existing draft exactly once without settings, calculation, or graph output API calls");
   assert(!visibility.content.innerHTML.includes("Отсечка максимума") && visibility.content.innerHTML.includes("Отсечка минимума") && visibility.content.innerHTML.includes("Введите число или Inf."), "Minima DOM must restore the raw invalid minimum and only its own error surface");
   draft.values.mode = "all";
   draft.values.minimum_cutoff = "4";

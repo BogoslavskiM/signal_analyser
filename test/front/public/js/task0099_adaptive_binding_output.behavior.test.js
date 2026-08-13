@@ -43,10 +43,15 @@ function outputResponse(revision, paneId, ready, calculationRevision, contextKey
 }
 
 function element(extra) {
+  const classValues = new Set();
   return Object.assign({
-    dataset: {}, style: {}, classList: { toggle() {}, add() {}, remove() {} },
+    dataset: {}, style: {}, classList: {
+      toggle(value, force) { if (force === undefined ? !classValues.has(value) : force) classValues.add(value); else classValues.delete(value); },
+      add(value) { classValues.add(value); }, remove(value) { classValues.delete(value); },
+      contains(value) { return classValues.has(value); }
+    },
     hidden: false, disabled: false, isConnected: true, offsetParent: {},
-    setAttribute() {}, getAttribute() { return null; }, addEventListener() {},
+    setAttribute() {}, removeAttribute() {}, hasAttribute() { return false; }, getAttribute() { return null; }, addEventListener() {},
     querySelector() { return null; }, contains() { return false; }, focus() {},
     getBoundingClientRect() { return { width: 480, height: 260 }; }
   }, extra || {});
@@ -70,19 +75,83 @@ function createHarness(initialPanes) {
   const cancelledTimers = new Set();
   const frames = [];
   const hosts = {};
-  let gridHTML = "";
+  function outputChild(markup) {
+    const state = (markup.match(/data-pane-output-state='([^']+)'/) || [])[1] || "";
+    const episode = (markup.match(/data-loader-episode-key='([^']+)'/) || [])[1];
+    const provisional = (markup.match(/data-loader-episode-provisional='([^']+)'/) || [])[1];
+    const paneHost = (markup.match(/data-pane-host='([^']+)'/) || [])[1];
+    const spinner = episode ? element({ dataset: { loaderEpisodeKey: episode } }) : null;
+    const child = element({
+      dataset: { paneOutputState: state },
+      querySelector(selector) { return selector === "[data-loader-spinner]" ? spinner : null; }
+    });
+    if (episode) child.dataset.loaderEpisodeKey = episode;
+    if (provisional) child.dataset.loaderEpisodeProvisional = provisional;
+    if (paneHost) {
+      child.dataset.paneHost = paneHost;
+      child.dataset.plotReady = "false";
+      hosts[paneHost] = child;
+    }
+    child.__spinner = spinner;
+    return child;
+  }
+  function canvasElement() {
+    let markup = "";
+    let child = null;
+    const canvas = element();
+    Object.defineProperties(canvas, {
+      innerHTML: { configurable: true, get() { return markup; }, set(value) {
+        if (child) { child.isConnected = false; if (child.__spinner) child.__spinner.isConnected = false; }
+        markup = value;
+        child = value ? outputChild(value) : null;
+      } },
+      firstElementChild: { configurable: true, get() { return child; } }
+    });
+    return canvas;
+  }
+  function paneElement() {
+    const title = element();
+    const select = element({ options: [], value: "" });
+    const menu = element();
+    const canvas = canvasElement();
+    let markup = "";
+    const node = element({
+      querySelector(selector) {
+        if (selector === ".plot-pane-title") return title;
+        if (selector === ".pane-select") return select;
+        if (selector === ".plot-more") return menu;
+        if (selector === ".plot-canvas") return canvas;
+        return null;
+      },
+      remove() {
+        if (node.parentElement) {
+          const index = node.parentElement.children.indexOf(node);
+          if (index >= 0) node.parentElement.children.splice(index, 1);
+        }
+        node.isConnected = false;
+      }
+    });
+    Object.defineProperty(node, "innerHTML", { configurable: true, get() { return markup; }, set(value) { markup = value; } });
+    node.__canvas = canvas;
+    return node;
+  }
   const grid = element({
     dataset: {},
     style: {},
-    set innerHTML(value) {
-      gridHTML = value;
-      Object.keys(hosts).forEach((key) => { delete hosts[key]; });
-      const pattern = /data-pane-host='([^']+)'/g;
-      let match;
-      while ((match = pattern.exec(value))) hosts[match[1]] = element({ dataset: { paneHost: match[1], plotReady: "false" } });
+    children: [],
+    querySelector(selector) {
+      const match = selector.match(/^\[data-pane-id='([^']+)'\]\[data-display-id='([^']+)'\]$/);
+      return match ? this.children.find((node) => node.dataset.paneId === match[1] && node.dataset.displayId === match[2]) || null : null;
     },
-    get innerHTML() { return gridHTML; }
+    insertBefore(node, reference) {
+      const current = this.children.indexOf(node);
+      if (current >= 0) this.children.splice(current, 1);
+      const target = reference ? this.children.indexOf(reference) : -1;
+      if (target >= 0) this.children.splice(target, 0, node); else this.children.push(node);
+      node.parentElement = this;
+    }
   });
+  Object.defineProperty(grid, "innerHTML", { configurable: true, get() { return this.children.map((node) => node.__canvas.innerHTML).join(""); } });
   const shell = element();
   const inspector = element();
   const tabs = element();
@@ -102,7 +171,7 @@ function createHarness(initialPanes) {
     },
     querySelectorAll() { return []; },
     addEventListener() {},
-    createElement() { return element(); },
+    createElement(tagName) { return tagName === "section" ? paneElement() : element(); },
     head: { appendChild() {} }
   };
   const window = {
@@ -123,6 +192,11 @@ function createHarness(initialPanes) {
       setRevision() {}, setContext() {}, setView() {}, render() {}, markApplied() {},
       state() { return { dirty: false, invalid: false, revision: 1 }; },
       load() { settingsLoads.push(true); return Promise.resolve(); }
+    },
+    SignalAnalyserValueSelect: {
+      configure(node, config) { node.__valueSelectConfig = config; return node; },
+      markup(config) { return "<button data-value-select-key='" + config.key + "'><span>" + config.label + "</span></button>"; },
+      reconcile() {}, close() {}
     },
     Plotly: { react() { return Promise.resolve(); } },
     addEventListener() {},
@@ -148,6 +222,17 @@ function createHarness(initialPanes) {
 
 module.exports = async function testTask0099AdaptiveBindingOutput(assert) {
   const p1 = pane("pane-1", "time", ["A"]), p2 = pane("pane-2", "time", ["B"]);
+
+  const paneSelector = createHarness([p1, p2]);
+  paneSelector.test.renderGrid();
+  const paneConfig = paneSelector.grid.children[0].querySelector(".pane-select").__valueSelectConfig;
+  assert(paneConfig && paneConfig.value === "time" && paneConfig.options.length === 4, "pane graph type must be wired through the shared value-selector configuration");
+  paneSelector.layoutQueue.push(snapshot(2, [pane("pane-1", "spectrum", ["A"]), p2]));
+  paneSelector.outputQueue.push(Promise.resolve(Object.assign(outputResponse(2, "pane-1", true), { plot_type: "spectrum" })));
+  paneConfig.onSelect("spectrum");
+  await paneSelector.settle();
+  assert(paneSelector.layoutCalls.length === 1 && paneSelector.layoutCalls[0].operation === "update_pane" && paneSelector.layoutCalls[0].plot_type === "spectrum", "one pane selector choice must invoke the existing layout mutation exactly once");
+  assert(paneSelector.settingsLoads.length === 1 && paneSelector.outputCalls.length === 1 && paneSelector.outputCalls[0].paneId === "pane-1", "one pane selector choice must preserve exactly one settings refresh and one target-pane output request");
 
   const binding = createHarness([p1, p2]);
   binding.test.model.outputs["display-1::pane-1"] = { context_key: "old", calculation_revision: 1, output: outputResponse(1, "pane-1", true, 1, "old") };
