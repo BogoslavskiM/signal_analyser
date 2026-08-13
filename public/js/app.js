@@ -19,7 +19,8 @@
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false,
-    paneMenuTrigger: null, graphHelpRestoreTarget: null, paneClearContext: null
+    paneMenuTrigger: null, graphHelpRestoreTarget: null, paneClearContext: null,
+    sessionImport: { open:false, busy:false, file:null, document:null, error:"", trigger:null }
   };
 
   function q(selector) { return document.querySelector(selector); }
@@ -508,6 +509,149 @@
     });
     renderSettings(display);
     renderInspector();
+  }
+
+  function sessionImportNode() { return q("[data-testid='session-import-dialog']"); }
+  function sessionImportMessage(error, fallback) {
+    var payload = error && error.payload;
+    if (payload && payload.error && payload.error.message) return payload.error.message;
+    if (payload && payload.message) return payload.message;
+    return safeErrorText(error, fallback || "Не удалось импортировать сессию.");
+  }
+  function sessionImportFocusables(dialog) {
+    return dialog ? Array.prototype.slice.call(dialog.querySelectorAll("button:not([disabled])")).filter(function (node) { return !node.hidden; }) : [];
+  }
+  function setSessionImportModalBackground(active) {
+    var shell = q("[data-testid='app-shell']");
+    if (!shell) return;
+    shell.inert = !!active;
+    if (active) shell.setAttribute("aria-hidden", "true");
+    else shell.removeAttribute("aria-hidden");
+  }
+  function renderSessionImportDialog() {
+    var current = model.sessionImport, dialog = sessionImportNode();
+    if (!current.open) { if (dialog) dialog.remove(); setSessionImportModalBackground(false); return; }
+    if (!dialog) {
+      dialog = document.createElement("div");
+      dialog.className = "modal-layer primary-modal-layer";
+      dialog.dataset.testid = "session-import-dialog";
+      dialog.setAttribute("role", "dialog");
+      dialog.setAttribute("aria-modal", "true");
+      dialog.setAttribute("aria-labelledby", "session-import-title");
+      document.body.appendChild(dialog);
+    }
+    setSessionImportModalBackground(true);
+    dialog.setAttribute("aria-busy", current.busy ? "true" : "false");
+    dialog.innerHTML = "<section class='dialog-card message-dialog'><header class='dialog-titlebar'><h2 id='session-import-title'>Импорт сессии</h2><button class='dialog-close' type='button' data-testid='session-import-close' aria-label='Закрыть импорт сессии'" + (current.busy ? " disabled" : "") + ">×</button></header><div class='dialog-body'><p class='dialog-intro'>Выбранный JSON-документ заменит текущую сессию только после подтверждения.</p><p class='session-import-file' data-testid='session-import-file' role='status' aria-live='polite'>" + esc(current.file && current.file.name || "Файл не выбран") + "</p><p class='session-import-error' data-testid='session-import-error' role='alert'" + (current.error ? "" : " hidden") + ">" + esc(current.error) + "</p></div><footer class='dialog-footer'><button type='button' data-testid='session-import-cancel'" + (current.busy ? " disabled" : "") + ">Отмена</button><button class='button button-primary' type='button' data-testid='session-import-confirm' data-session-import-submit=" + (current.document ? "true" : "false") + (current.busy || !current.document ? " disabled" : "") + " aria-busy='" + current.busy + "'>" + (current.busy ? "Импорт…" : "Импортировать") + "</button></footer></section>";
+    dialog.querySelector("[data-testid='session-import-close']").addEventListener("click", function () { closeSessionImport(true); });
+    dialog.querySelector("[data-testid='session-import-cancel']").addEventListener("click", function () { closeSessionImport(true); });
+    dialog.querySelector("[data-testid='session-import-confirm']").addEventListener("click", importSessionDocument);
+    if (!dialog.dataset.sessionBound) {
+      dialog.dataset.sessionBound = "true";
+      dialog.addEventListener("keydown", function (event) {
+        var focusables, index;
+        if (event.key === "Escape" && !model.sessionImport.busy) { event.preventDefault(); closeSessionImport(true); return; }
+        if (event.key !== "Tab") return;
+        focusables = sessionImportFocusables(dialog);
+        index = focusables.indexOf(document.activeElement);
+        if (!focusables.length) return;
+        if (event.shiftKey && index <= 0) { event.preventDefault(); focusables[focusables.length - 1].focus(); }
+        else if (!event.shiftKey && index === focusables.length - 1) { event.preventDefault(); focusables[0].focus(); }
+      });
+    }
+  }
+  function closeSessionImport(restoreFocus) {
+    var current = model.sessionImport, trigger = current.trigger;
+    if (current.busy) return;
+    current.open = false;
+    current.file = null;
+    current.document = null;
+    current.error = "";
+    current.trigger = null;
+    renderSessionImportDialog();
+    if (restoreFocus && trigger && typeof trigger.focus === "function") window.requestAnimationFrame(function () { trigger.focus(); });
+  }
+  function openSessionFilePicker(trigger) {
+    var input = q("[data-testid='session-file-input']");
+    if (!input || model.sessionImport.busy) return;
+    model.sessionImport.trigger = trigger;
+    model.sessionImport.open = false;
+    model.sessionImport.file = null;
+    model.sessionImport.document = null;
+    model.sessionImport.error = "";
+    input.value = "";
+    input.click();
+  }
+  function readSessionDocument(file) {
+    var current = model.sessionImport;
+    if (!file || current.busy) return;
+    current.open = true;
+    current.busy = true;
+    current.file = file;
+    current.document = null;
+    current.error = "";
+    renderSessionImportDialog();
+    Promise.resolve(typeof file.text === "function" ? file.text() : new Promise(function (resolve, reject) { var reader = new FileReader(); reader.onload = function () { resolve(reader.result); }; reader.onerror = reject; reader.readAsText(file); }))
+      .then(function (text) {
+        var parsed = JSON.parse(text);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.document && typeof parsed.document === "object" && !Array.isArray(parsed.document)) parsed = parsed.document;
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Файл должен содержать JSON-документ сессии.");
+        current.document = parsed;
+      })
+      .catch(function (error) { current.document = null; current.error = error instanceof SyntaxError ? "Не удалось прочитать JSON-документ сессии." : sessionImportMessage(error, "Не удалось прочитать файл сессии."); })
+      .finally(function () { current.busy = false; renderSessionImportDialog(); window.requestAnimationFrame(function () { var target = q("[data-testid='session-import-confirm']") || q("[data-testid='session-import-cancel']"); if (target) target.focus(); }); });
+  }
+  function clearSessionTransientState() {
+    Object.keys(model.pollByPane).forEach(function (key) { window.clearTimeout(model.pollByPane[key]); });
+    Object.keys(model.peaksPollByPane).forEach(function (key) { window.clearTimeout(model.peaksPollByPane[key]); });
+    model.outputs = {}; model.outputTokens = {}; model.pollByPane = {}; model.plotQueue = {};
+    model.peaksRecord = null; model.peaksRecords = {}; model.peaksTokens = {}; model.peaksPollByPane = {}; model.peaksEnableByPane = {};
+    model.peaksDraft = null; model.peaksApplying = false; model.peaksApplyQueued = false; model.peaksMessage = ""; model.extremaTargetKey = null;
+    model.measurementsRecord = null; model.measurementsToken += 1;
+    model.layoutDraft = null;
+  }
+  function refreshImportedSession() {
+    clearSessionTransientState();
+    return refreshSnapshot(render).then(function () {
+      return settings.load().then(function () { render(); }).catch(showSettingsLoadError);
+    }).then(function () { output(true); if (peaksSurfaceActive()) return loadPeaks(); });
+  }
+  function importSessionDocument() {
+    var current = model.sessionImport;
+    if (current.busy || !current.document) return;
+    current.busy = true;
+    current.error = "";
+    renderSessionImportDialog();
+    api.importSession({ state_revision:model.revision, document:current.document }).then(function (response) {
+      if (!response || response.ok !== true) throw new Error("Сервер не подтвердил импорт сессии.");
+      return refreshImportedSession();
+    }).then(function () {
+      current.busy = false;
+      closeSessionImport(true);
+    }).catch(function (error) {
+      current.error = sessionImportMessage(error, "Не удалось импортировать сессию.");
+      if (error && error.status === 409) return refreshSnapshot(render).then(function () { return settings.load().catch(showSettingsLoadError); });
+    }).finally(function () {
+      current.busy = false;
+      if (current.open) renderSessionImportDialog();
+    });
+  }
+  function downloadSessionDocument(trigger) {
+    if (model.sessionImport.busy) return;
+    var button = trigger || q("[data-testid='export-action']");
+    model.sessionImport.busy = true;
+    if (button) { button.disabled = true; button.setAttribute("aria-busy", "true"); }
+    api.session().then(function (response) {
+      if (!response || !Object.prototype.hasOwnProperty.call(response, "document")) throw new Error("Сервер не вернул документ сессии.");
+      var blob = new Blob([JSON.stringify(response.document, null, 2)], { type:"application/json" });
+      var url = window.URL.createObjectURL(blob), link = document.createElement("a");
+      link.href = url; link.download = "signal-analyser-session.json"; link.style.display = "none";
+      document.body.appendChild(link); link.click(); link.remove(); window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 0);
+      showToast("Сессия сохранена.", false);
+    }).catch(function (error) { showToast(sessionImportMessage(error, "Не удалось сохранить сессию."), true); }).finally(function () {
+      model.sessionImport.busy = false;
+      if (button) { button.disabled = false; button.removeAttribute("aria-busy"); }
+    });
   }
 
   function plotEnvelope(data) { return Array.isArray(data) && data.length === 1 && data[0] && Array.isArray(data[0].data) ? data[0] : data; }
@@ -1736,6 +1880,8 @@
   document.addEventListener("click", function (event) {
     var button = event.target.closest("button");
     if (!button) return;
+    if (button.dataset.testid === "import-session-action") return void openSessionFilePicker(button);
+    if (button.dataset.testid === "export-action") return void downloadSessionDocument(button);
     if (button.dataset.inspectorStateAction) return void changeWorkspaceInspectorState(button);
     if (button.dataset.testid === "display-scroll-left") return void scrollDisplayTabs(-1);
     if (button.dataset.testid === "display-scroll-right") return void scrollDisplayTabs(1);
@@ -1801,11 +1947,12 @@
   });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='signal-columns-menu']"),trigger=q("[data-testid='signal-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeColumnMenu(false); });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='measurement-columns-menu']"),trigger=q("[data-testid='measurement-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeMeasurementMenu(false); });
-  document.addEventListener("keydown", function (event) { var clearLayer=q("[data-testid='pane-clear-confirm-layer']"), help=q("[data-testid='graph-help-overlay']"), paneMenu=q("[data-testid='display-overflow-menu']"), addLayer=signalAddLayer(); if (event.key === "Escape" && clearLayer && !clearLayer.hidden) { event.preventDefault(); closePaneClearConfirm(true); return; } if (event.key === "Escape" && help && !help.hidden) { event.preventDefault(); closeGraphHelp(true); return; } if (event.key === "Escape" && paneMenu && !paneMenu.hidden) { event.preventDefault(); closePaneMenu(true); return; } if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape" && q("[data-testid='measurement-columns-menu']") && !q("[data-testid='measurement-columns-menu']").hidden) closeMeasurementMenu(true); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0 ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
+  document.addEventListener("keydown", function (event) { var clearLayer=q("[data-testid='pane-clear-confirm-layer']"), help=q("[data-testid='graph-help-overlay']"), paneMenu=q("[data-testid='display-overflow-menu']"), addLayer=signalAddLayer(); if (event.key === "Escape" && model.sessionImport.open && !model.sessionImport.busy) { event.preventDefault(); closeSessionImport(true); return; } if (event.key === "Escape" && clearLayer && !clearLayer.hidden) { event.preventDefault(); closePaneClearConfirm(true); return; } if (event.key === "Escape" && help && !help.hidden) { event.preventDefault(); closeGraphHelp(true); return; } if (event.key === "Escape" && paneMenu && !paneMenu.hidden) { event.preventDefault(); closePaneMenu(true); return; } if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape" && q("[data-testid='measurement-columns-menu']") && !q("[data-testid='measurement-columns-menu']").hidden) closeMeasurementMenu(true); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0 ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
   document.addEventListener("keydown", function (event) { var menu=event.target.closest && event.target.closest("[data-testid='display-overflow-menu']"); if (!menu || ["ArrowDown","ArrowUp","Home","End"].indexOf(event.key)<0) return; var items=qa("[data-testid='display-overflow-menu'] button:not(:disabled)"), current=items.indexOf(document.activeElement), next=current; if(event.key==="ArrowDown") next=(current+1+items.length)%items.length; else if(event.key==="ArrowUp") next=(current-1+items.length)%items.length; else if(event.key==="Home") next=0; else next=items.length-1; event.preventDefault(); if(items[next]) items[next].focus(); });
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]"),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
+    if (node.dataset.testid === "session-file-input") { readSessionDocument(node.files && node.files[0]); return; }
     if (node.dataset.visibleAllSignals !== undefined) { var allPane = paneById(model.activePane); if (allPane) return void postLayout({ operation:"update_pane", pane_id:allPane.id, plot_type:allPane.plot_type, signal_bindings:node.checked ? (model.state.signals || []).map(function (signal) { return signal.name; }) : [] }); }
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }
   });

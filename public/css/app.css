@@ -163,6 +163,14 @@ button img {
   opacity: 0.55;
 }
 
+.session-file-input {
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .main-stage {
   min-width: 0;
   min-height: 0;
@@ -2385,6 +2393,20 @@ body.is-resizing-workspace * {
   justify-content: flex-end;
   gap: 8px;
   padding: 8px 16px 16px;
+}
+
+.session-import-file {
+  margin: 0 0 12px !important;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.session-import-error {
+  padding: 10px 12px;
+  border: 1px solid var(--danger);
+  border-radius: var(--control-radius);
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .workspace-list {
