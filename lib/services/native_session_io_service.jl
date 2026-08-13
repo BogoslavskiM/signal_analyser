@@ -1,0 +1,1038 @@
+const NATIVE_SESSION_APP_NAME = "Signal Analyser"
+const NATIVE_SIGNAL_JLD2_SCHEMA = "signal-analyser-signals"
+const NATIVE_SIGNAL_JLD2_VERSION = 1
+const NATIVE_SAVE_OPERATIONS = ("workspace", "script", "jld2", "session")
+const NATIVE_SAVE_SCOPES = ("signal", "library", "session")
+const NATIVE_FILE_BROWSER_MODES = ("directory", "file")
+const NATIVE_SORT_DIRECTIONS = ("asc", "desc")
+const NATIVE_WORKSPACE_NAME_REGEX = r"^[A-Za-z_][A-Za-z0-9_]{0,127}$"
+const NATIVE_IO_SCRATCH_NAME = "_signal_analyser_native_io_scratch_v1"
+const NATIVE_REPRODUCER_MAX_BYTES = 64 * 1024 * 1024
+const NATIVE_REPRODUCER_BASE_BYTES = 4096
+const NATIVE_REPRODUCER_SIGNAL_METADATA_BYTES = 4096
+const NATIVE_REPRODUCER_REAL_SAMPLE_BYTES = 32
+const NATIVE_REPRODUCER_COMPLEX_SAMPLE_BYTES = 80
+const NATIVE_FILE_BROWSER_REQUEST_FIELDS = Set([
+    "path",
+    "selection_mode",
+    "extension",
+    "sort_direction",
+])
+const NATIVE_SAVE_REQUEST_FIELDS = Set([
+    "state_revision",
+    "operation",
+    "scope",
+    "signal_names",
+    "target",
+    "overwrite",
+])
+const NATIVE_IMPORT_REQUEST_FIELDS = Set(["state_revision", "path", "replace"])
+
+struct NativeEngeeIOError <: Exception
+    code::String
+    message::String
+    fields::Dict{String,String}
+end
+
+Base.showerror(io::IO, err::NativeEngeeIOError) = print(io, err.message)
+
+native_io_error(
+    code::AbstractString,
+    message::AbstractString;
+    field::AbstractString = "body",
+) = NativeEngeeIOError(
+    String(code),
+    String(message),
+    Dict(String(field) => String(message)),
+)
+
+struct NativeFileBrowserRequest
+    path::String
+    selection_mode::String
+    extension::Union{Nothing,String}
+    sort_ascending::Bool
+end
+
+struct NativeSaveCommand
+    state_revision::Int
+    operation::String
+    scope::String
+    signal_names::Vector{String}
+    target::String
+    overwrite::Bool
+end
+
+struct NativeSessionImportCommand
+    state_revision::Int
+    path::String
+end
+
+struct NativePreparedSessionImport
+    path::String
+    document::SignalAnalyserSessionDocument
+end
+
+struct NativeSessionIOService
+    scratch_name::String
+    transfer_lock::ReentrantLock
+
+    function NativeSessionIOService(
+        scratch_name::AbstractString = NATIVE_IO_SCRATCH_NAME,
+        transfer_lock::ReentrantLock = ReentrantLock(),
+    )
+        name = String(scratch_name)
+        name == NATIVE_IO_SCRATCH_NAME || throw(ArgumentError(
+            "Native session IO scratch name является зарезервированным контрактом",
+        ))
+        new(name, transfer_lock)
+    end
+end
+
+function native_exact_request(data, fields::Set{String})::AbstractDict
+    data isa AbstractDict || throw(native_io_error(
+        "invalid_request",
+        "Body должен быть JSON-объектом",
+    ))
+    actual = signal_analyser_payload_keys(data)
+    actual == fields || throw(native_io_error(
+        "invalid_request",
+        "Body должен содержать только: $(join(sort!(collect(fields)), ", "))",
+    ))
+    data
+end
+
+function native_request_string(data::AbstractDict, key::String; allow_empty::Bool = false)::String
+    raw = signal_analyser_payload_value(data, key)
+    raw isa AbstractString || throw(native_io_error(
+        "invalid_request",
+        "$key должен быть строкой";
+        field = key,
+    ))
+    value = String(raw)
+    (!allow_empty && isempty(strip(value))) && throw(native_io_error(
+        "invalid_request",
+        "$key не может быть пустым";
+        field = key,
+    ))
+    ncodeunits(value) <= 4096 || throw(native_io_error(
+        "invalid_request",
+        "$key слишком длинный";
+        field = key,
+    ))
+    value
+end
+
+function native_request_revision(data::AbstractDict)::Int
+    raw = signal_analyser_payload_value(data, "state_revision")
+    raw isa Integer && !(raw isa Bool) && raw >= 0 || throw(native_io_error(
+        "invalid_request",
+        "state_revision должен быть неотрицательным целым числом";
+        field = "state_revision",
+    ))
+    try
+        Int(raw)
+    catch err
+        (err isa InexactError || err isa OverflowError) || rethrow()
+        throw(native_io_error(
+            "invalid_request",
+            "state_revision выходит за диапазон Int";
+            field = "state_revision",
+        ))
+    end
+end
+
+function native_normalize_user_path(raw_path::AbstractString; allow_root::Bool = true)::String
+    value = strip(String(raw_path))
+    isempty(value) && (value = NATIVE_ENGEE_USER_ROOT)
+    occursin('\0', value) && throw(native_io_error(
+        "unsafe_path",
+        "Путь содержит недопустимый символ";
+        field = "path",
+    ))
+    isabspath(value) || throw(native_io_error(
+        "unsafe_path",
+        "Требуется абсолютный путь внутри /user";
+        field = "path",
+    ))
+    raw_parts = split(value, '/'; keepempty = false)
+    any(part -> part in (".", "..") || startswith(part, "."), raw_parts) && throw(
+        native_io_error(
+            "unsafe_path",
+            "Traversal и скрытые пути запрещены";
+            field = "path",
+        ),
+    )
+    normalized = normpath(value)
+    inside = normalized == NATIVE_ENGEE_USER_ROOT ||
+        startswith(normalized, NATIVE_ENGEE_USER_ROOT * "/")
+    inside || throw(native_io_error(
+        "unsafe_path",
+        "Путь должен находиться внутри /user";
+        field = "path",
+    ))
+    allow_root || normalized != NATIVE_ENGEE_USER_ROOT || throw(native_io_error(
+        "unsafe_path",
+        "Требуется путь к файлу внутри /user";
+        field = "path",
+    ))
+    normalized
+end
+
+function native_file_extension(raw)::Union{Nothing,String}
+    raw === nothing && return nothing
+    raw isa AbstractString || throw(native_io_error(
+        "invalid_request",
+        "extension должен быть null или строкой";
+        field = "extension",
+    ))
+    value = lowercase(strip(String(raw)))
+    isempty(value) && return nothing
+    startswith(value, ".") || (value = "." * value)
+    occursin(r"^\.[a-z0-9]{1,16}$", value) || throw(native_io_error(
+        "invalid_request",
+        "extension имеет неверный формат";
+        field = "extension",
+    ))
+    value
+end
+
+function parse_native_file_browser_request(data)::NativeFileBrowserRequest
+    request = native_exact_request(data, NATIVE_FILE_BROWSER_REQUEST_FIELDS)
+    path = native_normalize_user_path(native_request_string(request, "path"))
+    selection_mode = native_request_string(request, "selection_mode")
+    selection_mode in NATIVE_FILE_BROWSER_MODES || throw(native_io_error(
+        "invalid_request",
+        "selection_mode должен быть directory или file";
+        field = "selection_mode",
+    ))
+    extension = native_file_extension(signal_analyser_payload_value(request, "extension"))
+    selection_mode == "directory" && extension !== nothing && throw(native_io_error(
+        "invalid_request",
+        "extension допустим только при выборе файла";
+        field = "extension",
+    ))
+    sort_direction = native_request_string(request, "sort_direction")
+    sort_direction in NATIVE_SORT_DIRECTIONS || throw(native_io_error(
+        "invalid_request",
+        "sort_direction должен быть asc или desc";
+        field = "sort_direction",
+    ))
+    NativeFileBrowserRequest(path, selection_mode, extension, sort_direction == "asc")
+end
+
+function native_payload_value(value, key::Symbol)
+    if value isa NamedTuple
+        return key in keys(value) ? getproperty(value, key) : nothing
+    elseif value isa AbstractDict
+        haskey(value, key) && return value[key]
+        text = String(key)
+        haskey(value, text) && return value[text]
+    end
+    nothing
+end
+
+function native_file_browser_payload(
+    ::NativeSessionIOService,
+    request::NativeFileBrowserRequest,
+)::Dict{String,Any}
+    extension_literal = repr(request.extension === nothing ? "" : request.extension)
+    code = """
+    let
+        requested = $(repr(request.path))
+        root_real = realpath($(repr(NATIVE_ENGEE_USER_ROOT)))
+        current_real = realpath(requested)
+        inside(path) = path == root_real || startswith(path, root_real * "/")
+        inside(current_real) || error("path outside /user")
+        isdir(current_real) || error("path is not a directory")
+        extension = $extension_literal
+        entries = NamedTuple{
+            (:name, :path, :kind, :selectable, :size_bytes),
+            Tuple{String,String,String,Bool,Int},
+        }[]
+        for name in readdir(current_real)
+            startswith(name, ".") && continue
+            child = joinpath(current_real, name)
+            child_real = try
+                realpath(child)
+            catch
+                continue
+            end
+            inside(child_real) || continue
+            kind = isdir(child_real) ? "directory" : (isfile(child_real) ? "file" : "other")
+            kind == "other" && continue
+            if kind == "file" && !isempty(extension) && lowercase(splitext(name)[2]) != extension
+                continue
+            end
+            selectable = $(repr(request.selection_mode)) == "directory" ?
+                kind == "directory" : kind == "file"
+            push!(entries, (
+                name = String(name),
+                path = String(child_real),
+                kind = kind,
+                selectable = selectable,
+                size_bytes = kind == "file" ? Int(filesize(child_real)) : 0,
+            ))
+        end
+        sort!(entries; by = item -> (item.kind == "directory" ? 0 : 1, lowercase(item.name)))
+        if !$(repr(request.sort_ascending))
+            directories = reverse(filter(item -> item.kind == "directory", entries))
+            files = reverse(filter(item -> item.kind == "file", entries))
+            entries = vcat(directories, files)
+        end
+        parent_real = current_real == root_real ? root_real : dirname(current_real)
+        (
+            root = root_real,
+            current = current_real,
+            parent = parent_real,
+            entries = entries,
+        )
+    end
+    """
+    raw = native_engee_eval(code)
+    entries_raw = native_payload_value(raw, :entries)
+    entries_raw isa AbstractVector || throw(native_io_error(
+        "filesystem_provider_error",
+        "Engee вернул некорректный список файлов",
+    ))
+    entries = Dict{String,Any}[]
+    for item in entries_raw
+        name = native_payload_value(item, :name)
+        path = native_payload_value(item, :path)
+        kind = native_payload_value(item, :kind)
+        selectable = native_payload_value(item, :selectable)
+        size_bytes = native_payload_value(item, :size_bytes)
+        name isa AbstractString && path isa AbstractString &&
+            kind isa AbstractString && selectable isa Bool &&
+            size_bytes isa Integer || throw(native_io_error(
+                "filesystem_provider_error",
+                "Engee вернул некорректную строку списка файлов",
+            ))
+        push!(entries, Dict{String,Any}(
+            "name" => String(name),
+            "path" => String(path),
+            "kind" => String(kind),
+            "selectable" => selectable,
+            "size_bytes" => Int(size_bytes),
+        ))
+    end
+    root = native_payload_value(raw, :root)
+    current = native_payload_value(raw, :current)
+    parent = native_payload_value(raw, :parent)
+    all(value -> value isa AbstractString, (root, current, parent)) || throw(
+        native_io_error("filesystem_provider_error", "Engee вернул некорректный путь"),
+    )
+    Dict{String,Any}(
+        "ok" => true,
+        "root" => String(root),
+        "current" => String(current),
+        "parent" => String(parent),
+        "selection_mode" => request.selection_mode,
+        "extension" => request.extension,
+        "sort_direction" => request.sort_ascending ? "asc" : "desc",
+        "entries" => entries,
+    )
+end
+
+function native_signal_names(value)::Vector{String}
+    value isa AbstractVector || throw(native_io_error(
+        "invalid_request",
+        "signal_names должен быть массивом строк";
+        field = "signal_names",
+    ))
+    names = String[]
+    for item in value
+        item isa AbstractString && !isempty(strip(String(item))) || throw(native_io_error(
+            "invalid_request",
+            "signal_names должен содержать непустые строки";
+            field = "signal_names",
+        ))
+        push!(names, String(item))
+    end
+    allunique(names) || throw(native_io_error(
+        "invalid_request",
+        "signal_names не должен содержать повторы";
+        field = "signal_names",
+    ))
+    names
+end
+
+function parse_native_save_command(data)::NativeSaveCommand
+    request = native_exact_request(data, NATIVE_SAVE_REQUEST_FIELDS)
+    revision = native_request_revision(request)
+    operation = native_request_string(request, "operation")
+    operation in NATIVE_SAVE_OPERATIONS || throw(native_io_error(
+        "invalid_request",
+        "operation должен быть workspace, script, jld2 или session";
+        field = "operation",
+    ))
+    scope = native_request_string(request, "scope")
+    scope in NATIVE_SAVE_SCOPES || throw(native_io_error(
+        "invalid_request",
+        "scope должен быть signal, library или session";
+        field = "scope",
+    ))
+    names = native_signal_names(signal_analyser_payload_value(request, "signal_names"))
+    target = native_request_string(request, "target")
+    overwrite = signal_analyser_payload_value(request, "overwrite")
+    overwrite isa Bool || throw(native_io_error(
+        "invalid_request",
+        "overwrite должен быть boolean";
+        field = "overwrite",
+    ))
+    if operation == "session"
+        scope == "session" && isempty(names) || throw(native_io_error(
+            "invalid_request",
+            "Session save требует scope=session и пустой signal_names";
+            field = "scope",
+        ))
+    else
+        scope in ("signal", "library") || throw(native_io_error(
+            "invalid_request",
+            "Эта operation требует scope signal или library";
+            field = "scope",
+        ))
+        scope == "signal" && length(names) != 1 && throw(native_io_error(
+            "invalid_request",
+            "Scope signal требует ровно одно имя";
+            field = "signal_names",
+        ))
+    end
+    NativeSaveCommand(revision, operation, scope, names, target, overwrite)
+end
+
+function parse_native_import_command(data)::NativeSessionImportCommand
+    request = native_exact_request(data, NATIVE_IMPORT_REQUEST_FIELDS)
+    replace = signal_analyser_payload_value(request, "replace")
+    replace === true || throw(native_io_error(
+        "unsupported_import_mode",
+        "Поддерживается только полная замена с replace=true";
+        field = "replace",
+    ))
+    NativeSessionImportCommand(
+        native_request_revision(request),
+        native_require_file_target(native_request_string(request, "path"), ".jld2"),
+    )
+end
+
+function native_require_workspace_name(value::AbstractString, field::AbstractString)::String
+    name = strip(String(value))
+    occursin(NATIVE_WORKSPACE_NAME_REGEX, name) &&
+        !(name in SIGNAL_PACKAGE_RESERVED_WORKSPACE_NAMES) || throw(native_io_error(
+            "invalid_workspace_name",
+            "$field должен быть допустимым незарезервированным Julia identifier";
+            field = field,
+        ))
+    name
+end
+
+function native_require_file_target(raw::AbstractString, extension::AbstractString)::String
+    path = native_normalize_user_path(raw; allow_root = false)
+    name = basename(path)
+    startswith(name, ".") && throw(native_io_error(
+        "unsafe_path",
+        "Скрытые файлы запрещены";
+        field = "target",
+    ))
+    lowercase(splitext(name)[2]) == lowercase(String(extension)) || throw(native_io_error(
+        "invalid_extension",
+        "Файл должен иметь расширение $extension";
+        field = "target",
+    ))
+    path
+end
+
+function native_selected_signals_unlocked(
+    state::SignalAnalyserState,
+    command::NativeSaveCommand,
+)::Vector{AnalysedSignal}
+    names = command.scope == "library" && isempty(command.signal_names) ?
+        String[signal.name for signal in state.signals] : command.signal_names
+    isempty(names) && throw(native_io_error(
+        "invalid_request",
+        "Выберите хотя бы один сигнал";
+        field = "signal_names",
+    ))
+    by_name = Dict(signal.name => signal for signal in state.signals)
+    missing = String[name for name in names if !haskey(by_name, name)]
+    isempty(missing) || throw(native_io_error(
+        "signal_not_found",
+        "Сигналы не найдены: $(join(missing, ", "))";
+        field = "signal_names",
+    ))
+    AnalysedSignal[
+        let signal = by_name[name]
+            AnalysedSignal(
+                signal.name,
+                signal.color,
+                signal.sample_rate_hz,
+                copy(signal.values),
+                signal.is_complex,
+                signal.visible,
+            )
+        end for name in names
+    ]
+end
+
+function native_snapshot_signals(
+    state::SignalAnalyserState,
+    command::NativeSaveCommand,
+)::Vector{AnalysedSignal}
+    lock(state.lock) do
+        command.state_revision == state.view.state_revision || throw(
+            SignalAnalyserStaleStateError(command.state_revision, state.view.state_revision),
+        )
+        native_selected_signals_unlocked(state, command)
+    end
+end
+
+native_signal_value(signal::AnalysedSignal)::Union{Vector{Float64},Vector{ComplexF64}} =
+    signal.is_complex ? copy(signal.values) : Float64[real(value) for value in signal.values]
+
+function native_workspace_names(
+    signals::Vector{AnalysedSignal},
+    command::NativeSaveCommand,
+)::Vector{String}
+    command.scope == "signal" && return [
+        native_require_workspace_name(command.target, "target"),
+    ]
+    prefix = native_require_workspace_name(command.target, "target")
+    ncodeunits(prefix) <= 64 || throw(native_io_error(
+        "invalid_workspace_prefix",
+        "Library workspace prefix должен содержать не более 64 ASCII-символов";
+        field = "target",
+    ))
+    signal_package_workspace_names(signals, prefix)
+end
+
+function native_workspace_preflight(names::Vector{String})::Vector{Bool}
+    expressions = ["@isdefined($(name))" for name in names]
+    raw = native_engee_eval("(" * join(expressions, ", ") * ",)")
+    raw isa Tuple || raw isa AbstractVector || throw(native_io_error(
+        "workspace_provider_error",
+        "Engee вернул некорректный результат preflight",
+    ))
+    values = collect(raw)
+    length(values) == length(names) && all(value -> value isa Bool, values) || throw(
+        native_io_error(
+            "workspace_provider_error",
+            "Engee вернул некорректный результат preflight",
+        ),
+    )
+    Bool[values...]
+end
+
+function native_save_workspace(
+    signals::Vector{AnalysedSignal},
+    command::NativeSaveCommand,
+)::Dict{String,Any}
+    names = native_workspace_names(signals, command)
+    collisions = native_workspace_preflight(names)
+    if !command.overwrite && any(collisions)
+        conflict_names = names[collisions]
+        throw(native_io_error(
+            "target_exists",
+            "Workspace variables уже существуют: $(join(conflict_names, ", "))";
+            field = "overwrite",
+        ))
+    end
+    items = Dict{String,Any}[]
+    for (signal, variable_name, existed) in zip(signals, names, collisions)
+        native_engee_send(variable_name, native_signal_value(signal))
+        push!(items, Dict{String,Any}(
+            "signal_name" => signal.name,
+            "variable_name" => variable_name,
+            "action" => existed ? "replaced" : "created",
+        ))
+    end
+    Dict{String,Any}(
+        "ok" => true,
+        "state_revision" => command.state_revision,
+        "operation" => "workspace",
+        "scope" => command.scope,
+        "target" => command.target,
+        "items" => items,
+        "message" => "Сигналы сохранены в рабочую область Engee",
+    )
+end
+
+function native_float_vector_literal(values::Vector{Float64})::String
+    "Float64[" * join(repr.(values), ", ") * "]"
+end
+
+function native_complex_vector_literal(values::Vector{ComplexF64})::String
+    "ComplexF64[" * join(
+        ["ComplexF64($(repr(real(value))), $(repr(imag(value))))" for value in values],
+        ", ",
+    ) * "]"
+end
+
+function native_signal_value_literal(signal::AnalysedSignal)::String
+    signal.is_complex ?
+        native_complex_vector_literal(signal.values) :
+        native_float_vector_literal(Float64[real(value) for value in signal.values])
+end
+
+function native_signals_literal(signals::Vector{AnalysedSignal})::String
+    items = String[]
+    for signal in signals
+        push!(items, "(" * join([
+            "name=$(repr(signal.name))",
+            "color=$(repr(signal.color))",
+            "sample_rate_hz=$(repr(signal.sample_rate_hz))",
+            "is_complex=$(repr(signal.is_complex))",
+            "visible=$(repr(signal.visible))",
+            "values=$(native_signal_value_literal(signal))",
+        ], ", ") * ",)")
+    end
+    "[" * join(items, ",\n") * "]"
+end
+
+function native_signal_storage_payload(signals::Vector{AnalysedSignal})
+    (
+        names = String[signal.name for signal in signals],
+        colors = String[signal.color for signal in signals],
+        sample_rates_hz = Float64[signal.sample_rate_hz for signal in signals],
+        is_complex = Bool[signal.is_complex for signal in signals],
+        visible = Bool[signal.visible for signal in signals],
+        real_values = Vector{Float64}[
+            Float64[real(value) for value in signal.values] for signal in signals
+        ],
+        imag_values = Vector{Float64}[
+            Float64[imag(value) for value in signal.values] for signal in signals
+        ],
+    )
+end
+
+function native_publish_scratch(service::NativeSessionIOService, value)::String
+    previous = native_engee_recv(service.scratch_name)
+    (previous === Nothing || previous === nothing) || throw(native_io_error(
+        "internal_name_conflict",
+        "Зарезервированная переменная передачи Engee занята";
+        field = "target",
+    ))
+    native_engee_send(service.scratch_name, value)
+    service.scratch_name
+end
+
+function native_clear_scratch(service::NativeSessionIOService)::Nothing
+    native_engee_send(service.scratch_name, nothing)
+    nothing
+end
+
+function native_reproducer_script_estimated_bytes(signals::Vector{AnalysedSignal})::Int
+    estimate = NATIVE_REPRODUCER_BASE_BYTES
+    for signal in signals
+        per_sample = signal.is_complex ?
+            NATIVE_REPRODUCER_COMPLEX_SAMPLE_BYTES : NATIVE_REPRODUCER_REAL_SAMPLE_BYTES
+        signal_bytes = Base.checked_add(
+            NATIVE_REPRODUCER_SIGNAL_METADATA_BYTES,
+            Base.checked_mul(length(signal.values), per_sample),
+        )
+        estimate = Base.checked_add(estimate, signal_bytes)
+    end
+    estimate
+end
+
+function native_require_reproducer_script_size(
+    signals::Vector{AnalysedSignal},
+    maximum_bytes::Int = NATIVE_REPRODUCER_MAX_BYTES,
+)::Nothing
+    maximum_bytes > 0 || throw(ArgumentError("Script byte limit должен быть положительным"))
+    estimate = try
+        native_reproducer_script_estimated_bytes(signals)
+    catch err
+        err isa OverflowError || rethrow()
+        typemax(Int)
+    end
+    estimate <= maximum_bytes || throw(native_io_error(
+        "script_too_large",
+        "Julia Script превышает лимит $(maximum_bytes) байт; сохраните сигналы в JLD2";
+        field = "target",
+    ))
+    nothing
+end
+
+function native_reproducer_script(signals::Vector{AnalysedSignal})::String
+    native_require_reproducer_script_size(signals)
+    names = signal_package_workspace_names(signals, "signal_")
+    script = """# Generated by Signal Analyser. Import never executes this file.
+const SIGNAL_ANALYSER_SIGNALS = $(native_signals_literal(signals))
+const SIGNAL_ANALYSER_WORKSPACE_NAMES = $(repr(names))
+
+function publish_signal_analyser_signals()
+    for (name, signal) in zip(SIGNAL_ANALYSER_WORKSPACE_NAMES, SIGNAL_ANALYSER_SIGNALS)
+        engee.genie.send(name, copy(signal.values))
+    end
+    copy(SIGNAL_ANALYSER_WORKSPACE_NAMES)
+end
+"""
+    ncodeunits(script) <= NATIVE_REPRODUCER_MAX_BYTES || throw(native_io_error(
+        "script_too_large",
+        "Julia Script превышает лимит $(NATIVE_REPRODUCER_MAX_BYTES) байт; сохраните сигналы в JLD2";
+        field = "target",
+    ))
+    script
+end
+
+function native_remote_file_write_script(
+    path::String,
+    overwrite::Bool,
+    body::String,
+)::String
+    """
+    let
+        target = $(repr(path))
+        temp = ""
+        try
+            root_real = realpath($(repr(NATIVE_ENGEE_USER_ROOT)))
+            parent_real = realpath(dirname(target))
+            inside(path) = path == root_real || startswith(path, root_real * "/")
+            inside(parent_real) || error("path outside /user")
+            isdir(parent_real) || error("parent is not a directory")
+            if ispath(target) && !$(repr(overwrite))
+                (success = false, code = "target_exists", message = "Файл уже существует", path = String(target))
+            else
+                temp = joinpath(parent_real, ".signal-analyser-" * string(rand(UInt)) * ".tmp")
+                $body
+                mv(temp, target; force = $(repr(overwrite)))
+                (success = true, code = "", message = "", path = String(target))
+            end
+        catch err
+            (success = false, code = "file_write_failed", message = sprint(showerror, err), path = String(target))
+        finally
+            !isempty(temp) && ispath(temp) && rm(temp; force = true)
+        end
+    end
+    """
+end
+
+function native_remote_saved_path(raw)::String
+    success = native_payload_value(raw, :success)
+    code = native_payload_value(raw, :code)
+    message = native_payload_value(raw, :message)
+    path = native_payload_value(raw, :path)
+    success isa Bool && code isa AbstractString && message isa AbstractString &&
+        path isa AbstractString || throw(native_io_error(
+            "filesystem_provider_error",
+            "Engee вернул некорректный результат записи",
+        ))
+    if !success
+        @warn "Native Engee file write failed" code = String(code) path = String(path) detail =
+            String(message)
+        public_message = String(code) == "target_exists" ?
+            "Файл уже существует" : "Не удалось записать файл в Engee"
+        throw(native_io_error(
+            String(code),
+            public_message;
+            field = String(code) == "target_exists" ? "overwrite" : "target",
+        ))
+    end
+    String(path)
+end
+
+function native_save_text_file(
+    service::NativeSessionIOService,
+    path::String,
+    content::String,
+    overwrite::Bool,
+)::String
+    lock(service.transfer_lock) do
+        scratch = native_publish_scratch(service, content)
+        try
+            body = """
+            content = getfield(Main, :$scratch)
+            content isa String || error("scratch content is not a String")
+            open(temp, "w") do io
+                write(io, content)
+            end
+            """
+            native_remote_saved_path(native_engee_eval(
+                native_remote_file_write_script(path, overwrite, body),
+            ))
+        finally
+            native_clear_scratch(service)
+        end
+    end
+end
+
+function native_save_signal_jld2(
+    service::NativeSessionIOService,
+    path::String,
+    signals::Vector{AnalysedSignal},
+    overwrite::Bool,
+)::String
+    lock(service.transfer_lock) do
+        scratch = native_publish_scratch(service, native_signal_storage_payload(signals))
+        try
+            body = """
+            payload = getfield(Main, :$scratch)
+            jld2 = Base.require(Main, :JLD2)
+            getproperty(jld2, :jldsave)(temp;
+                schema = $(repr(NATIVE_SIGNAL_JLD2_SCHEMA)),
+                version = $(repr(NATIVE_SIGNAL_JLD2_VERSION)),
+                names = payload.names,
+                colors = payload.colors,
+                sample_rates_hz = payload.sample_rates_hz,
+                is_complex = payload.is_complex,
+                visible = payload.visible,
+                real_values = payload.real_values,
+                imag_values = payload.imag_values,
+            )
+            """
+            native_remote_saved_path(native_engee_eval(
+                native_remote_file_write_script(path, overwrite, body),
+            ))
+        finally
+            native_clear_scratch(service)
+        end
+    end
+end
+
+function native_session_json(
+    state::SignalAnalyserState,
+    expected_revision::Int,
+)::String
+    payload = lock(state.lock) do
+        expected_revision == state.view.state_revision || throw(
+            SignalAnalyserStaleStateError(expected_revision, state.view.state_revision),
+        )
+        signal_analyser_session_payload(signal_analyser_session_document_unlocked(state))
+    end
+    String(signal_package_json_bytes(payload))
+end
+
+function native_save_session_jld2(
+    service::NativeSessionIOService,
+    state::SignalAnalyserState,
+    command::NativeSaveCommand,
+)::String
+    path = native_require_file_target(command.target, ".jld2")
+    session_json = native_session_json(state, command.state_revision)
+    lock(service.transfer_lock) do
+        scratch = native_publish_scratch(service, session_json)
+        try
+            body = """
+            session_json = getfield(Main, :$scratch)
+            session_json isa String || error("scratch session is not a String")
+            jld2 = Base.require(Main, :JLD2)
+            getproperty(jld2, :jldsave)(temp;
+                __genie_app_name = $(repr(NATIVE_SESSION_APP_NAME)),
+                schema = $(repr(SIGNAL_ANALYSER_SESSION_SCHEMA)),
+                version = $(repr(SIGNAL_ANALYSER_SESSION_VERSION)),
+                session_json = session_json,
+            )
+            """
+            native_remote_saved_path(native_engee_eval(
+                native_remote_file_write_script(path, command.overwrite, body),
+            ))
+        finally
+            native_clear_scratch(service)
+        end
+    end
+end
+
+function native_save_options(
+    ::NativeSessionIOService,
+    state::SignalAnalyserState,
+)::Dict{String,Any}
+    lock(state.lock) do
+        selected_name = state.row_selection.signal_name
+        fragment = signal_package_identifier_fragment(selected_name)
+        Dict{String,Any}(
+            "ok" => true,
+            "state_revision" => state.view.state_revision,
+            "root" => NATIVE_ENGEE_USER_ROOT,
+            "operations" => Dict{String,Any}[
+                Dict("id" => "workspace", "label" => "Workspace", "file_extension" => nothing),
+                Dict("id" => "script", "label" => "Julia Script", "file_extension" => ".jl"),
+                Dict("id" => "jld2", "label" => "JLD2", "file_extension" => ".jld2"),
+                Dict("id" => "session", "label" => "Session JLD2", "file_extension" => ".jld2"),
+            ],
+            "default_operation" => "workspace",
+            "scopes" => String["signal", "library", "session"],
+            "selected_signal" => selected_name,
+            "signal_names" => String[signal.name for signal in state.signals],
+            "defaults" => Dict{String,Any}(
+                "workspace_signal_target" => signal_package_workspace_names(
+                    AnalysedSignal[signal_by_name(state, selected_name)],
+                    "signal_",
+                )[1],
+                "workspace_library_prefix" => "signal_",
+                "script_signal_target" => "/user/$(fragment).jl",
+                "script_library_target" => "/user/signal_library.jl",
+                "jld2_signal_target" => "/user/$(fragment).jld2",
+                "jld2_library_target" => "/user/signal_library.jld2",
+                "session_target" => "/user/signal-analyser-session.jld2",
+                "overwrite" => false,
+                "replace" => true,
+            ),
+        )
+    end
+end
+
+function save_native_signal_analyser!(
+    service::NativeSessionIOService,
+    state::SignalAnalyserState,
+    data,
+)::Dict{String,Any}
+    command = parse_native_save_command(data)
+    if command.operation == "session"
+        path = native_save_session_jld2(service, state, command)
+        return Dict{String,Any}(
+            "ok" => true,
+            "state_revision" => command.state_revision,
+            "operation" => command.operation,
+            "scope" => command.scope,
+            "target" => path,
+            "items" => Dict{String,Any}[],
+            "message" => "Сессия Signal Analyser сохранена",
+        )
+    end
+    signals = native_snapshot_signals(state, command)
+    command.operation == "workspace" && return native_save_workspace(signals, command)
+    if command.operation == "script"
+        path = native_require_file_target(command.target, ".jl")
+        saved = native_save_text_file(
+            service,
+            path,
+            native_reproducer_script(signals),
+            command.overwrite,
+        )
+    else
+        path = native_require_file_target(command.target, ".jld2")
+        saved = native_save_signal_jld2(service, path, signals, command.overwrite)
+    end
+    Dict{String,Any}(
+        "ok" => true,
+        "state_revision" => command.state_revision,
+        "operation" => command.operation,
+        "scope" => command.scope,
+        "target" => saved,
+        "items" => Dict{String,Any}[
+            Dict("signal_name" => signal.name) for signal in signals
+        ],
+        "message" => "Сигналы сохранены в $(command.operation)",
+    )
+end
+
+function prepare_native_session_import(
+    ::NativeSessionIOService,
+    command::NativeSessionImportCommand,
+)::NativePreparedSessionImport
+    code = """
+    let
+        target = $(repr(command.path))
+        try
+            root_real = realpath($(repr(NATIVE_ENGEE_USER_ROOT)))
+            target_real = realpath(target)
+            inside(path) = path == root_real || startswith(path, root_real * "/")
+            inside(target_real) || error("path outside /user")
+            isfile(target_real) || error("session path is not a file")
+            jld2 = Base.require(Main, :JLD2)
+            load_value(key) = getproperty(jld2, :load)(target_real, key)
+            (
+                success = true,
+                error = "",
+                path = String(target_real),
+                app_name = load_value("__genie_app_name"),
+                schema = load_value("schema"),
+                version = load_value("version"),
+                session_json = load_value("session_json"),
+            )
+        catch err
+            (
+                success = false,
+                error = sprint(showerror, err),
+                path = String(target),
+                app_name = "",
+                schema = "",
+                version = 0,
+                session_json = "",
+            )
+        end
+    end
+    """
+    raw = native_engee_eval(code)
+    success = native_payload_value(raw, :success)
+    error = native_payload_value(raw, :error)
+    success isa Bool && error isa AbstractString || throw(native_io_error(
+        "filesystem_provider_error",
+        "Engee вернул некорректный результат чтения сессии",
+    ))
+    if !success
+        @warn "Native Engee session read failed" path = command.path detail = String(error)
+        throw(native_io_error(
+            "invalid_session_file",
+            "Не удалось прочитать JLD2-сессию";
+            field = "path",
+        ))
+    end
+    path = native_payload_value(raw, :path)
+    app_name = native_payload_value(raw, :app_name)
+    schema = native_payload_value(raw, :schema)
+    version = native_payload_value(raw, :version)
+    session_json = native_payload_value(raw, :session_json)
+    path isa AbstractString && app_name isa AbstractString &&
+        schema isa AbstractString && version isa Integer &&
+        session_json isa AbstractString || throw(native_io_error(
+            "invalid_session_file",
+            "JLD2 не содержит обязательные поля сессии";
+            field = "path",
+        ))
+    String(app_name) == NATIVE_SESSION_APP_NAME || throw(native_io_error(
+        "wrong_application",
+        "JLD2 создан другим приложением";
+        field = "path",
+    ))
+    String(schema) == SIGNAL_ANALYSER_SESSION_SCHEMA || throw(native_io_error(
+        "unsupported_session_schema",
+        "JLD2 содержит неподдерживаемую schema";
+        field = "path",
+    ))
+    Int(version) == SIGNAL_ANALYSER_SESSION_VERSION || throw(native_io_error(
+        "unsupported_session_version",
+        "JLD2 содержит неподдерживаемую version";
+        field = "path",
+    ))
+    document_value = try
+        Genie.JSONParser.parse(String(session_json); allownan = false)
+    catch err
+        throw(native_io_error(
+            "invalid_session_json",
+            "session_json содержит некорректный JSON: $(sprint(showerror, err))";
+            field = "path",
+        ))
+    end
+    document = parse_signal_analyser_session_document(document_value)
+    document.version == SIGNAL_ANALYSER_SESSION_VERSION || throw(native_io_error(
+        "unsupported_session_version",
+        "Для native import требуется session v3";
+        field = "path",
+    ))
+    NativePreparedSessionImport(String(path), document)
+end
+
+function import_native_signal_analyser_session!(
+    service::NativeSessionIOService,
+    state::SignalAnalyserState,
+    data,
+)::Dict{String,Any}
+    command = parse_native_import_command(data)
+    prepared = prepare_native_session_import(service, command)
+    lock(state.lock) do
+        command.state_revision == state.view.state_revision || throw(
+            SignalAnalyserStaleStateError(command.state_revision, state.view.state_revision),
+        )
+        next_revision = state.view.state_revision + 1
+        candidate = signal_analyser_session_candidate(state, prepared.document, next_revision)
+        signal_analyser_publish_session!(state, candidate)
+        response = signal_analyser_state_lite_unlocked(state)
+        response["ok"] = true
+        response["schema"] = prepared.document.schema
+        response["version"] = prepared.document.version
+        response["imported_source_revision"] = prepared.document.source_revision
+        response["path"] = prepared.path
+        response["message"] = "Сессия Signal Analyser импортирована"
+        response
+    end
+end

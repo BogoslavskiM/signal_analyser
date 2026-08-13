@@ -29,7 +29,7 @@ module.exports = async function testV5CleanFrontendContracts(assert) {
   assert(/grid-template-rows:\s*44px\s+minmax\(628px,\s*1fr\)/.test(css) && /\.app-shell\s*\{[^}]*gap:\s*8px/.test(css), "v11 shell must retain the 44px toolbar, outer 8px gap and 628px minimum stack");
   assert(/grid-template-columns:\s*minmax\(612px,\s*3fr\)\s+minmax\(300px,\s*1fr\)/.test(css), "v5 main stage must retain 612/300 3:1 columns");
   const selectedUnderline = (css.match(/\.display-tab-shell\.is-selected::after[^{]*\{[^}]*\}/s) || [""])[0];
-  assert(/left:\s*0/.test(selectedUnderline) && /right:\s*0/.test(selectedUnderline) && /bottom:\s*0/.test(selectedUnderline) && /height:\s*3px/.test(selectedUnderline), "selected Display shell must own its continuous 3px underline");
+  assert(/left:\s*0/.test(selectedUnderline) && /right:\s*0/.test(selectedUnderline) && /bottom:\s*0/.test(selectedUnderline) && /height:\s*var\(--selected-tab-indicator-thickness\)/.test(selectedUnderline) && /--selected-tab-indicator-thickness:\s*3px/.test(css), "selected Display shell must own its continuous shared 3px underline");
   assert(/\.layout-popover[^{]*\{[^}]*width:\s*372px/.test(css), "layout dialog must be the fixed 372px v5 surface");
   assert(!/(?:filter|backdrop-filter)\s*:\s*[^;}]*blur/i.test(css), "empty/loading/ready/error panes must not blur graphs");
   assert(/\.layout-grid-icon[^{]*\{[^}]*width:\s*16px[^}]*height:\s*16px/s.test(css), "the copied TASK-0044 grid vector must render at 16×16px");

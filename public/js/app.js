@@ -2003,6 +2003,14 @@
     renderApply();
   }
 
+  document.addEventListener("native-session-imported", function (event) {
+    var snapshot=event && event.detail;
+    if (!accept(snapshot)) return;
+    render();
+    output(true);
+    settings.load().then(render).catch(showSettingsLoadError);
+  });
+
   refreshSnapshot().then(function () {
     render();
     output(true);

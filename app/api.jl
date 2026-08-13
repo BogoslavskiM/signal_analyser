@@ -98,6 +98,31 @@ function signal_analyser_session_validation_response(err)
     ); status = 422)
 end
 
+function native_engee_io_error_response(err; headers = nothing)
+    api_json(Dict{String,Any}(
+        "ok" => false,
+        "code" => err.code,
+        "error" => Dict{String,Any}(
+            "code" => err.code,
+            "message" => err.message,
+            "fields" => err.fields,
+        ),
+    ); status = err.code in ("target_exists", "internal_name_conflict") ? 409 : 422, headers = headers)
+end
+
+function native_engee_provider_error_response(err; headers = nothing)
+    code = err isa WorkspaceUnavailableError ? "engee_unavailable" : "engee_provider_error"
+    api_json(Dict{String,Any}(
+        "ok" => false,
+        "code" => code,
+        "error" => Dict{String,Any}(
+            "code" => code,
+            "message" => sprint(showerror, err),
+            "fields" => Dict{String,String}(),
+        ),
+    ); status = err isa WorkspaceUnavailableError ? 503 : 502, headers = headers)
+end
+
 function signal_package_validation_response(err)
     api_json(Dict{String,Any}(
         "ok" => false,
@@ -349,8 +374,8 @@ function signal_analyser_state_lite_api_payload(
             "visible" => true,
             "disabled" => false,
             "icon" => "download",
-            "default_operation" => "session",
-            "operations" => String["session"],
+            "default_operation" => "workspace",
+            "operations" => String["workspace", "script", "jld2", "session"],
         ),
         "other" => Dict{String,Any}(
             "visible" => false,

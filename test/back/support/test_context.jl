@@ -9,6 +9,7 @@ end
 module AppTestContext
 
 using Test
+using UUIDs
 
 const PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", "..", ".."))
 
@@ -42,9 +43,18 @@ function signal_analyser_pspectrum(
     throw(ArgumentError("unsupported deterministic pspectrum representation: $representation"))
 end
 
+include(joinpath(PROJECT_ROOT, "lib", "helpers.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "domain", "example_model.jl"))
 include(joinpath(PROJECT_ROOT, "lib", "domain", "signal_analyser_state.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "domain", "signal_session.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "persistence", "storage.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "persistence", "signal_package_archive.jl"))
 include(joinpath(PROJECT_ROOT, "lib", "services", "signal_analyser_math.jl"))
 include(joinpath(PROJECT_ROOT, "lib", "services", "signal_analyser_service.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "services", "signal_session_service.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "services", "signal_package_service.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "adapters", "engee_native_io.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "services", "native_session_io_service.jl"))
 
 """Deterministic Spectrum provider used by unit/API tests; real EngeeDSP stays in test/engee."""
 const SPECTRUM_CALLS = Any[]

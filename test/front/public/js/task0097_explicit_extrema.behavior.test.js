@@ -83,6 +83,7 @@ function peaksResponse(overrides) {
 function createHarness(options) {
   const root = path.resolve(__dirname, "../../../..");
   let source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
+  const numericSource = fs.readFileSync(path.join(root, "public/js/numeric.js"), "utf8");
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
   source = source.replace("})(window, document);", "window.__explicitExtrema = { model:model, accept:accept, loadPeaks:loadPeaks, calculatePeaks:calculatePeaks, configureActivePeaks:configureActivePeaks, showActivePeaksValues:showActivePeaksValues, renderPeaksInspector:renderPeaksInspector, renderPeaksApply:renderPeaksApply }; })(window, document);");
 
@@ -154,11 +155,13 @@ function createHarness(options) {
     createElement() { return element(); },
     head: { appendChild() {} }
   };
-  vm.runInNewContext(source, {
+  const runtime = {
     window, document, Promise, Error, Array, Object, String, Number, Boolean, Math,
     CSS: { escape(value) { return value; } },
     isFinite, setImmediate
-  }, { filename: "public/js/app.js" });
+  };
+  vm.runInNewContext(numericSource, runtime, { filename: "public/js/numeric.js" });
+  vm.runInNewContext(source, runtime, { filename: "public/js/app.js" });
   const test = window.__explicitExtrema;
   test.accept(snapshot(options.bindings === undefined ? ["Сигнал 1"] : options.bindings));
   return { test, body, peaksHost, settingsContent, footer, apply, status, values, timers, activeCalls, calculateCalls };

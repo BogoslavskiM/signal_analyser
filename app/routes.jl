@@ -302,6 +302,94 @@ route("/api/session", method = POST) do
     end
 end
 
+# Stateless native Engee save/import browser.  All filesystem and JLD2 work is
+# executed in the production Engee process; there is deliberately no local
+# filesystem fallback.
+route("/api/save/options", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            native_save_options(NATIVE_SESSION_IO_SERVICE, SIGNAL_ANALYSER_STATE);
+            headers = response_headers,
+        )
+    catch err
+        if err isa NativeEngeeIOError
+            native_engee_io_error_response(err; headers = response_headers)
+        else
+            api_error_response("Не удалось получить варианты сохранения", err; status = 500, headers = response_headers)
+        end
+    end
+end
+
+route("/api/file-browser/list", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        request = parse_native_file_browser_request(jsonpayload())
+        api_json(
+            native_file_browser_payload(NATIVE_SESSION_IO_SERVICE, request);
+            headers = response_headers,
+        )
+    catch err
+        if err isa NativeEngeeIOError
+            native_engee_io_error_response(err; headers = response_headers)
+        elseif err isa WorkspaceUnavailableError || err isa WorkspaceProviderError
+            native_engee_provider_error_response(err; headers = response_headers)
+        else
+            api_error_response("Не удалось прочитать каталог Engee", err; status = 500, headers = response_headers)
+        end
+    end
+end
+
+route("/api/save", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            save_native_signal_analyser!(
+                NATIVE_SESSION_IO_SERVICE,
+                SIGNAL_ANALYSER_STATE,
+                jsonpayload(),
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa NativeEngeeIOError
+            native_engee_io_error_response(err; headers = response_headers)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_session_stale_response(SIGNAL_ANALYSER_STATE, err)
+        elseif err isa WorkspaceUnavailableError || err isa WorkspaceProviderError
+            native_engee_provider_error_response(err; headers = response_headers)
+        else
+            api_error_response("Не удалось сохранить данные в Engee", err; status = 500, headers = response_headers)
+        end
+    end
+end
+
+route("/api/import/session", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            import_native_signal_analyser_session!(
+                NATIVE_SESSION_IO_SERVICE,
+                SIGNAL_ANALYSER_STATE,
+                jsonpayload(),
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa NativeEngeeIOError
+            native_engee_io_error_response(err; headers = response_headers)
+        elseif err isa SignalAnalyserSessionValidationError
+            signal_analyser_session_validation_response(err)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_session_stale_response(SIGNAL_ANALYSER_STATE, err)
+        elseif err isa WorkspaceUnavailableError || err isa WorkspaceProviderError
+            native_engee_provider_error_response(err; headers = response_headers)
+        else
+            api_error_response("Не удалось импортировать JLD2-сессию", err; status = 500, headers = response_headers)
+        end
+    end
+end
+
 
 # Portable .sazip v1 is intentionally separate from the legacy JSON session
 # routes above.  Validation and import never extract files or execute scripts.

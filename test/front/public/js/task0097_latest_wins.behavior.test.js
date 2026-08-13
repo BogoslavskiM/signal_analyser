@@ -37,6 +37,7 @@ function classList() { return { toggle() {}, add() {}, remove() {} }; }
 function createSettingsHarness(responses) {
   const root = path.resolve(__dirname, "../../../..");
   let source = fs.readFileSync(path.join(root, "public/js/settings.js"), "utf8");
+  const numericSource = fs.readFileSync(path.join(root, "public/js/numeric.js"), "utf8");
   source = source.replace("})(window, document);", "window.__task0097Settings = { context:context, update:update, send:send }; })(window, document);");
   const calls = [];
   const host = { innerHTML: "" };
@@ -55,7 +56,9 @@ function createSettingsHarness(responses) {
     setTimeout() { return 1; }, clearTimeout() {}, requestAnimationFrame(callback) { callback(); return 1; }
   };
   const document = { querySelector(selector) { return selector === "[data-testid='settings-content']" ? host : null; }, addEventListener() {} };
-  vm.runInNewContext(source, { window, document, Promise, Error, Array, Object, String, Number, Boolean, Math, clearTimeout() {}, CustomEvent:function CustomEvent() {} }, { filename:"public/js/settings.js" });
+  const runtime = { window, document, Promise, Error, Array, Object, String, Number, Boolean, Math, clearTimeout() {}, CustomEvent:function CustomEvent() {} };
+  vm.runInNewContext(numericSource, runtime, { filename:"public/js/numeric.js" });
+  vm.runInNewContext(source, runtime, { filename:"public/js/settings.js" });
   const test = window.__task0097Settings;
   test.context.displayId = "display-1";
   test.context.revision = 1;
@@ -66,6 +69,7 @@ function createSettingsHarness(responses) {
 function createPeaksHarness(responses) {
   const root = path.resolve(__dirname, "../../../..");
   let source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
+  const numericSource = fs.readFileSync(path.join(root, "public/js/numeric.js"), "utf8");
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
   source = source.replace("})(window, document);", "window.__task0097Peaks = { model:model, accept:accept, createPeaksDraft:createPeaksDraft, parsePeaksSettings:parsePeaksSettings, renderPeaksSettings:renderPeaksSettings, applyPeaksSettings:applyPeaksSettings }; })(window, document);");
   const calls = [], outputCalls = [], selectConfigs = {};
@@ -97,7 +101,9 @@ function createPeaksHarness(responses) {
     addEventListener() {}, clearTimeout() {}, setTimeout() { return 1; }, requestAnimationFrame() { return 1; }
   };
   const document = { querySelector(selector) { return nodes[selector] || null; }, querySelectorAll() { return []; }, addEventListener() {}, createElement() { return {}; }, head:{ appendChild() {} } };
-  vm.runInNewContext(source, { window, document, Promise, Error, Array, Object, String, Number, Boolean, Math, CSS:{ escape(value) { return value; } } }, { filename:"public/js/app.js" });
+  const runtime = { window, document, Promise, Error, Array, Object, String, Number, Boolean, Math, CSS:{ escape(value) { return value; } } };
+  vm.runInNewContext(numericSource, runtime, { filename:"public/js/numeric.js" });
+  vm.runInNewContext(source, runtime, { filename:"public/js/app.js" });
   const test = window.__task0097Peaks;
   test.accept(snapshot(1));
   test.model.settingsPage = "peaks";
@@ -145,7 +151,7 @@ module.exports = async function testTask0097LatestWinsAndCutoffVisibility(assert
   assert(modeConfig && modeConfig.options.map((option) => option.value).join(",") === "maxima,minima,all", "Extrema must configure the shared selector with all three calculation modes");
   modeConfig.onSelect("minima");
   assert(draft.values.mode === "minima" && visibility.calls.length === 0 && visibility.outputCalls.length === 0, "one Extrema selector choice must update only its existing draft exactly once without settings, calculation, or graph output API calls");
-  assert(!visibility.content.innerHTML.includes("Отсечка максимума") && visibility.content.innerHTML.includes("Отсечка минимума") && visibility.content.innerHTML.includes("Введите число или Inf."), "Minima DOM must restore the raw invalid minimum and only its own error surface");
+  assert(!visibility.content.innerHTML.includes("Отсечка максимума") && visibility.content.innerHTML.includes("Отсечка минимума") && visibility.content.innerHTML.includes("Экспоненциальная запись не поддерживается."), "Minima DOM must restore the raw invalid minimum and only its own shared-parser error surface");
   draft.values.mode = "all";
   draft.values.minimum_cutoff = "4";
   visibility.test.renderPeaksSettings({ id:"display-1" }, { id:"pane-1", plot_type:"time", signal_bindings:[] }, visibility.test.model.peaksRecords["display-1::pane-1"]);

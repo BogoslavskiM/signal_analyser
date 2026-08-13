@@ -311,7 +311,10 @@ module.exports = async function testTask0101UnifiedValueSelect(assert) {
     setTimeout(callback) { callback(); return 1; }, clearTimeout() {}, requestAnimationFrame(callback) { callback(); return 1; }
   };
   const settingsDocument = { querySelector(selector) { return selector === "[data-testid='settings-content']" ? settingsHost : null; }, querySelectorAll() { return []; }, addEventListener() {} };
-  vm.runInNewContext(settings, { window: settingsWindow, document: settingsDocument, Promise, Error, Array, Object, String, Number, Boolean, Math, CustomEvent: function CustomEvent(type, init) { this.type = type; this.detail = init && init.detail; }, isFinite, clearTimeout() {} }, { filename: path.join(root, "public/js/settings.js") });
+  const numeric = read("public/js/numeric.js");
+  const settingsRuntime = { window: settingsWindow, document: settingsDocument, Promise, Error, Array, Object, String, Number, Boolean, Math, CustomEvent: function CustomEvent(type, init) { this.type = type; this.detail = init && init.detail; }, isFinite, clearTimeout() {} };
+  vm.runInNewContext(numeric, settingsRuntime, { filename: path.join(root, "public/js/numeric.js") });
+  vm.runInNewContext(settings, settingsRuntime, { filename: path.join(root, "public/js/settings.js") });
   settingsWindow.SignalAnalyserSettings.setContext("display-1", 1);
   settingsWindow.SignalAnalyserSettings.setView("display", "time");
   await settingsWindow.SignalAnalyserSettings.load();
