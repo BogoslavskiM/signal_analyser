@@ -1296,6 +1296,17 @@ body.is-resizing-workspace * {
   object-fit: contain;
 }
 
+.inspector-state-controls {
+  height: 31px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  background: var(--surface-muted);
+}
+
 .inspector-state-toggle {
   width: 32px;
   height: 31px;
@@ -1305,15 +1316,16 @@ body.is-resizing-workspace * {
   justify-content: center;
   padding: 0;
   border: 0;
-  border-left: 1px solid var(--line);
-  background: var(--surface);
+  background: transparent;
   color: var(--muted);
   cursor: pointer;
   transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
 }
 
+.inspector-state-toggle[hidden] { display: none; }
+
 .inspector-state-toggle:hover {
-  background: var(--surface-muted);
+  background: var(--button-active);
   color: var(--accent);
 }
 
@@ -1341,11 +1353,6 @@ body.is-resizing-workspace * {
 .inspector-state-triangle.is-down {
   border-width: 7px 5px 0;
   border-color: currentColor transparent transparent;
-}
-
-.inspector-state-triangle.is-left {
-  border-width: 5px 7px 5px 0;
-  border-color: transparent currentColor transparent transparent;
 }
 
 .workspace-inspector-stack[data-inspector-state="collapsed"] .inspector {
@@ -1721,8 +1728,8 @@ body.is-resizing-workspace * {
   max-height: min(240px, calc(100vh - 16px));
   display: block;
   overflow: hidden;
-  padding: 4px;
-  border: 1px solid var(--line);
+  padding: 0;
+  border: 0;
   border-radius: var(--control-radius);
   background: var(--surface);
   box-shadow: var(--shadow-dialog);
@@ -1732,7 +1739,7 @@ body.is-resizing-workspace * {
 .value-select-popup[hidden] { display: none; }
 
 .select-options {
-  max-height: min(232px, calc(100vh - 24px));
+  max-height: min(240px, calc(100vh - 16px));
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;

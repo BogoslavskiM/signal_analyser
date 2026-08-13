@@ -97,9 +97,14 @@
           <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="measurements" data-testid="inspector-tab-measurements">Измерения</button>
           <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="peaks" data-testid="inspector-tab-peaks">Экстремумы</button>
         </div>
-        <button class="inspector-state-toggle" type="button" data-testid="inspector-state-toggle" data-current-state="split" data-tooltip="Развернуть нижнюю зону" title="Развернуть нижнюю зону" aria-label="Нижняя зона: средний размер. Развернуть полностью" aria-controls="inspector-content">
-          <span class="inspector-state-triangle is-up" aria-hidden="true"></span>
-        </button>
+        <div class="inspector-state-controls" role="group" data-testid="inspector-state-controls" aria-label="Размер нижней зоны">
+          <button class="inspector-state-toggle" type="button" data-inspector-state-action="up" data-testid="inspector-state-up" data-tooltip="Развернуть нижнюю зону" title="Развернуть нижнюю зону" aria-label="Нижняя зона: средний размер. Развернуть полностью" aria-controls="inspector-content">
+            <span class="inspector-state-triangle is-up" aria-hidden="true"></span>
+          </button>
+          <button class="inspector-state-toggle" type="button" data-inspector-state-action="down" data-testid="inspector-state-down" data-tooltip="Свернуть нижнюю зону" title="Свернуть нижнюю зону" aria-label="Нижняя зона: средний размер. Свернуть полностью" aria-controls="inspector-content">
+            <span class="inspector-state-triangle is-down" aria-hidden="true"></span>
+          </button>
+        </div>
       </header>
       <div id="inspector-content" class="inspector-body" role="tabpanel" aria-labelledby="signals-tab" data-testid="inspector-pane-signals" data-inspector-content>
         <div class="inspector-search-row">

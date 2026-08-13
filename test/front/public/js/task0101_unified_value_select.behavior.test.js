@@ -190,7 +190,7 @@ module.exports = async function testTask0101UnifiedValueSelect(assert) {
   const optionRule = (css.match(/\.select-options button\s*\{[^}]*\}/) || [""])[0];
   assert(/height:\s*32px/.test(triggerRule) && /border:\s*1px solid var\(--line\)/.test(triggerRule) && /border-radius:\s*var\(--control-radius\)/.test(triggerRule), "settings triggers must retain exact 32px framed geometry");
   assert(/height:\s*28px/.test(paneRule), "pane triggers must retain exact 28px joined geometry");
-  assert(/position:\s*fixed/.test(popupRule) && /z-index:\s*var\(--layer-dropdown\)/.test(popupRule) && /max-height:\s*min\(240px/.test(popupRule) && /padding:\s*4px/.test(popupRule) && /background:\s*var\(--surface\)/.test(popupRule), "options-only popup must be fixed, white, layered, 4px padded and 240px bounded");
+  assert(/position:\s*fixed/.test(popupRule) && /z-index:\s*var\(--layer-dropdown\)/.test(popupRule) && /max-height:\s*min\(240px/.test(popupRule) && /padding:\s*0/.test(popupRule) && /border:\s*0/.test(popupRule) && /background:\s*var\(--surface\)/.test(popupRule), "options-only popup must be fixed, white, layered, borderless, unpadded and 240px bounded");
   assert(/height:\s*100%/.test(inputRule) && /text-overflow:\s*ellipsis/.test(inputRule) && /width:\s*24px/.test(arrowRule), "the original frame must contain the full-height inline query and exact 24px arrow target");
   assert(/open \? state\.query : config\.selectedLabel/.test(component) && /open \? " placeholder='Поиск'" : " readonly"/.test(component), "the same original input must switch from readonly selected label to editable empty inline query");
   assert(/menu\.innerHTML="<div class='select-options'/.test(component) && !/value-select-search|select-search/.test(component), "popup markup must begin with options and must not create a second search row or input");
@@ -221,7 +221,7 @@ module.exports = async function testTask0101UnifiedValueSelect(assert) {
   assert(!harness.popup.hidden && first.getAttribute("aria-expanded") === "true" && harness.document.activeElement === originalInput, "click must open one popup and focus the same original inline input");
   assert(first.input === originalInput && !first.input.readOnly && first.input.value === "" && first.input.getAttribute("placeholder") === "Поиск" && first.input.selectionStart === 0, "opening must make the original field editable, empty only its visible query and place the caret at zero");
   assert(harness.popup.children.length === 1 && harness.popup.children[0] === harness.optionsHost, "the open popup must contain the options listbox only");
-  assert(harness.popup.style.width === "244px" && Number.parseFloat(harness.popup.style.left) === 66 && Number.parseFloat(harness.popup.style.top) === 16, `narrow bottom-edge trigger must use 244px minimum width, right alignment/clamp and above flip (got ${harness.popup.style.width}/${harness.popup.style.left}/${harness.popup.style.top})`);
+  assert(harness.popup.style.width === "100px" && Number.parseFloat(harness.popup.style.left) === 210 && Number.parseFloat(harness.popup.style.top) === 16, `popup width must exactly match its 100px trigger with no legacy 244px minimum while preserving the above flip (got ${harness.popup.style.width}/${harness.popup.style.left}/${harness.popup.style.top})`);
   assert(harness.optionsHost.children.length === 4 && harness.optionsHost.children[1].classList.contains("is-selected") && harness.optionsHost.children[1].getAttribute("aria-selected") === "true", "opening must render all options and retain the selected row");
   assert(harness.window.SignalAnalyserValueSelect.state().activeIndex === 1 && selected.length === 0, "opening must activate the selected enabled row without selecting or writing");
 
@@ -266,6 +266,11 @@ module.exports = async function testTask0101UnifiedValueSelect(assert) {
   assert(!harness.popup.hidden && harness.document.activeElement === second.input && second.input.value === "", "the dedicated arrow target must open and focus the original inline input");
   harness.dispatch("click", second.arrow);
   assert(harness.popup.hidden && harness.document.activeElement === second.input && second.input.value === "Один" && second.input.readOnly, "the open arrow must close without commit and restore the selected display/focus");
+
+  const viewportWide = harness.trigger({ key: "viewport-wide", value: "1", label: "Один", options: [{ value: "1", label: "Один" }] }, { left: -40, right: 360, top: 20, bottom: 52, width: 400, height: 32 });
+  harness.dispatch("click", viewportWide.input);
+  assert(harness.popup.style.width === "304px" && Number.parseFloat(harness.popup.style.left) === 8, `only a trigger wider than the viewport may use the viewport-minus-16 exception (got ${harness.popup.style.width}/${harness.popup.style.left})`);
+  harness.dispatch("click", viewportWide.arrow);
 
   harness.dispatch("keydown", second.input, { key: "Enter" });
   harness.dispatch("keydown", second.input, { key: "Tab" });

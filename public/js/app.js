@@ -162,23 +162,28 @@
     tablist.scrollBy({ left: direction * distance, behavior: "smooth" });
   }
 
-  function workspaceInspectorContract(state) {
-    if (state === "expanded") return { icon:"is-down", tooltip:"Свернуть нижнюю зону", label:"Нижняя зона: развернута. Свернуть полностью" };
-    if (state === "collapsed") return { icon:"is-left", tooltip:"Вернуть средний размер", label:"Нижняя зона: свернута. Вернуть средний размер" };
-    return { icon:"is-up", tooltip:"Развернуть нижнюю зону", label:"Нижняя зона: средний размер. Развернуть полностью" };
+  function workspaceInspectorContract(state, action) {
+    if (state === "expanded") return action === "down" ? { hidden:false, tooltip:"Вернуть средний размер", label:"Нижняя зона: развернута. Вернуть средний размер" } : { hidden:true };
+    if (state === "collapsed") return action === "up" ? { hidden:false, tooltip:"Вернуть средний размер", label:"Нижняя зона: свернута. Вернуть средний размер" } : { hidden:true };
+    return action === "up"
+      ? { hidden:false, tooltip:"Развернуть нижнюю зону", label:"Нижняя зона: средний размер. Развернуть полностью" }
+      : { hidden:false, tooltip:"Свернуть нижнюю зону", label:"Нижняя зона: средний размер. Свернуть полностью" };
   }
 
   function renderWorkspaceInspectorState() {
     var nodes = workspaceSplitNodes();
-    if (!nodes.stack || !nodes.toggle) return;
-    var contract = workspaceInspectorContract(model.workspaceInspectorState);
-    var triangle = nodes.toggle.querySelector(".inspector-state-triangle");
+    if (!nodes.stack || !nodes.controls) return;
     nodes.stack.dataset.inspectorState = model.workspaceInspectorState;
-    nodes.toggle.dataset.currentState = model.workspaceInspectorState;
-    nodes.toggle.dataset.tooltip = contract.tooltip;
-    nodes.toggle.title = contract.tooltip;
-    nodes.toggle.setAttribute("aria-label", contract.label);
-    if (triangle) triangle.className = "inspector-state-triangle " + contract.icon;
+    nodes.controls.dataset.currentState = model.workspaceInspectorState;
+    [nodes.up, nodes.down].forEach(function (button) {
+      if (!button) return;
+      var contract = workspaceInspectorContract(model.workspaceInspectorState, button.dataset.inspectorStateAction);
+      button.hidden = contract.hidden;
+      if (contract.hidden) return;
+      button.dataset.tooltip = contract.tooltip;
+      button.title = contract.tooltip;
+      button.setAttribute("aria-label", contract.label);
+    });
   }
 
   function closeWorkspaceInspectorMenus() {
@@ -197,13 +202,19 @@
     if (autoscale) queueWorkspaceSplitAutoscale();
   }
 
-  function cycleWorkspaceInspectorState(toggle) {
+  function changeWorkspaceInspectorState(button) {
     closeWorkspaceInspectorMenus();
-    var next = model.workspaceInspectorState === "split" ? "expanded" : model.workspaceInspectorState === "expanded" ? "collapsed" : "split";
+    var action = button && button.dataset.inspectorStateAction;
+    var current = model.workspaceInspectorState;
+    var next = current === "split" ? (action === "up" ? "expanded" : action === "down" ? "collapsed" : null) :
+      current === "expanded" && action === "down" ? "split" : current === "collapsed" && action === "up" ? "split" : null;
+    if (!next) return;
     setWorkspaceInspectorState(next, true);
-    if (toggle && toggle.isConnected) {
-      try { toggle.focus({ preventScroll:true }); }
-      catch (_) { toggle.focus(); }
+    var nodes = workspaceSplitNodes();
+    var focusTarget = button && !button.hidden ? button : next === "expanded" ? nodes.down : next === "collapsed" ? nodes.up : null;
+    if (focusTarget && focusTarget.isConnected) {
+      try { focusTarget.focus({ preventScroll:true }); }
+      catch (_) { focusTarget.focus(); }
     }
   }
 
@@ -212,7 +223,9 @@
       stack: q("[data-testid='workspace-inspector-stack']"),
       main: q(".main-stage"),
       splitter: q("[data-testid='workspace-inspector-splitter']"),
-      toggle: q("[data-testid='inspector-state-toggle']")
+      controls: q("[data-testid='inspector-state-controls']"),
+      up: q("[data-testid='inspector-state-up']"),
+      down: q("[data-testid='inspector-state-down']")
     };
   }
 
@@ -1706,7 +1719,7 @@
   document.addEventListener("click", function (event) {
     var button = event.target.closest("button");
     if (!button) return;
-    if (button.dataset.testid === "inspector-state-toggle") return void cycleWorkspaceInspectorState(button);
+    if (button.dataset.inspectorStateAction) return void changeWorkspaceInspectorState(button);
     if (button.dataset.testid === "display-scroll-left") return void scrollDisplayTabs(-1);
     if (button.dataset.testid === "display-scroll-right") return void scrollDisplayTabs(1);
     if (button.dataset.displaySelect) return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "select", display_id: button.dataset.displaySelect }); });

@@ -17,7 +17,7 @@ function createHarness() {
   const root = path.resolve(__dirname, "../../../..");
   let source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
-  source = source.replace("})(window, document);", "window.__task0102 = { model:model, setState:setWorkspaceInspectorState, cycle:cycleWorkspaceInspectorState, start:startWorkspaceSplitDrag, move:moveWorkspaceSplitDrag, stop:stopWorkspaceSplitDrag, retain:retainWorkspaceSplitOnResize }; })(window, document);");
+  source = source.replace("})(window, document);", "window.__task0102 = { model:model, setState:setWorkspaceInspectorState, change:changeWorkspaceInspectorState, start:startWorkspaceSplitDrag, move:moveWorkspaceSplitDrag, stop:stopWorkspaceSplitDrag, retain:retainWorkspaceSplitOnResize }; })(window, document);");
 
   const frames = new Map();
   let nextFrame = 0;
@@ -41,17 +41,17 @@ function createHarness() {
     getBoundingClientRect() { return { top:this.top, height:this.height }; }
   };
   const main = { height:500, getBoundingClientRect() { return { height:this.height }; } };
-  const triangle = { className:"inspector-state-triangle is-up" };
-  const toggle = {
-    dataset:{ testid:"inspector-state-toggle", currentState:"split" },
-    title:"",
-    isConnected:true,
-    attributes:{},
-    querySelector(selector) { return selector === ".inspector-state-triangle" ? triangle : null; },
-    setAttribute(name, value) { this.attributes[name] = String(value); },
-    getAttribute(name) { return this.attributes[name] || null; },
-    focus() { document.activeElement = this; this.focusCount = (this.focusCount || 0) + 1; }
-  };
+  const controls = { dataset:{ currentState:"split" } };
+  function stateButton(action) {
+    return {
+      dataset:{ inspectorStateAction:action }, hidden:false, title:"", isConnected:true, attributes:{},
+      setAttribute(name, value) { this.attributes[name] = String(value); },
+      getAttribute(name) { return this.attributes[name] || null; },
+      focus() { document.activeElement = this; this.focusCount = (this.focusCount || 0) + 1; }
+    };
+  }
+  const up = stateButton("up");
+  const down = stateButton("down");
   const splitter = {
     classList:classList(),
     captured:new Set(),
@@ -65,7 +65,9 @@ function createHarness() {
     "[data-testid='workspace-inspector-stack']":stack,
     ".main-stage":main,
     "[data-testid='workspace-inspector-splitter']":splitter,
-    "[data-testid='inspector-state-toggle']":toggle,
+    "[data-testid='inspector-state-controls']":controls,
+    "[data-testid='inspector-state-up']":up,
+    "[data-testid='inspector-state-down']":down,
     "[data-testid='display-tabs']":displayTabs,
     "[data-testid='display-tabs-wrap']":{}
   };
@@ -116,7 +118,7 @@ function createHarness() {
   }
 
   return {
-    test:window.__task0102, stack, main, splitter, splitterListeners, toggle, triangle, document,
+    test:window.__task0102, stack, main, splitter, splitterListeners, controls, up, down, document,
     apiCalls, relayoutCalls, reactCalls, newPlotCalls, valueSelectCloseCalls, resizeListeners, plotHosts, addPlot,
     pendingFrames() { return frames.size; },
     flushFrames() {
@@ -163,7 +165,7 @@ module.exports = async function testTask0102LowerInspectorStatesBehavior(assert)
   assert(geometry.relayoutCalls.length === 1 && geometry.relayoutCalls[0].host === geometryPlot, "the effective default-split drag must autoscale the existing current ready plot exactly once");
 
   const harness = createHarness();
-  const { test, toggle, triangle, splitterListeners } = harness;
+  const { test, up, down, controls, splitterListeners } = harness;
   assert(test.model.workspaceInspectorState === "split" && test.model.workspaceSplitRatio === null && harness.stack.dataset.inspectorState === "split", "a fresh page must initialize split without a persisted ratio");
   assert(["pointerdown", "pointermove", "pointerup", "pointercancel", "lostpointercapture"].every((type) => typeof splitterListeners[type] === "function"), "all inherited pointer lifecycle paths must remain wired in every state");
 
@@ -178,22 +180,25 @@ module.exports = async function testTask0102LowerInspectorStatesBehavior(assert)
   test.retain();
   assert(trackHeight(harness) === 533, "the saved split ratio must resolve against 440/8/180 minima with one-pixel rounding");
 
-  test.cycle(toggle);
-  assert(test.model.workspaceInspectorState === "expanded" && harness.stack.dataset.inspectorState === "expanded" && toggle.dataset.currentState === "expanded", "split/up must transition exactly to expanded");
-  assert(triangle.className === "inspector-state-triangle is-down" && toggle.dataset.tooltip === "Свернуть нижнюю зону" && toggle.getAttribute("aria-label") === "Нижняя зона: развернута. Свернуть полностью", "expanded must expose the exact down triangle, tooltip and accessible name");
+  test.change(up);
+  assert(test.model.workspaceInspectorState === "expanded" && harness.stack.dataset.inspectorState === "expanded" && controls.dataset.currentState === "expanded", "split/up must transition exactly to expanded");
+  assert(up.hidden && !down.hidden && down.dataset.tooltip === "Вернуть средний размер" && down.getAttribute("aria-label") === "Нижняя зона: развернута. Вернуть средний размер", "expanded must hide up and expose only down as a return-to-split action");
   assert(test.model.workspaceSplitRatio === 0.25 && trackHeight(harness) === 533, "expanded must not overwrite or approximate the saved split");
 
-  test.cycle(toggle);
-  assert(test.model.workspaceInspectorState === "collapsed" && harness.stack.dataset.inspectorState === "collapsed" && triangle.className === "inspector-state-triangle is-left", "expanded/down must transition exactly to collapsed/left");
-  assert(toggle.dataset.tooltip === "Вернуть средний размер" && toggle.getAttribute("aria-label") === "Нижняя зона: свернута. Вернуть средний размер", "collapsed must explain the return-to-saved-split transition without spatial ambiguity");
+  test.change(down);
+  assert(test.model.workspaceInspectorState === "split" && harness.stack.dataset.inspectorState === "split" && !up.hidden && !down.hidden, "expanded/down must return exactly to split and reveal both choices");
+  assert(up.dataset.tooltip === "Развернуть нижнюю зону" && down.dataset.tooltip === "Свернуть нижнюю зону" && trackHeight(harness) === 533, "returning split must restore the saved track and exact two-button copy");
+
+  test.change(down);
+  assert(test.model.workspaceInspectorState === "collapsed" && harness.stack.dataset.inspectorState === "collapsed" && !up.hidden && down.hidden, "split/down must transition exactly to collapsed and expose only up");
+  assert(up.dataset.tooltip === "Вернуть средний размер" && up.getAttribute("aria-label") === "Нижняя зона: свернута. Вернуть средний размер", "collapsed must explain that up returns to the saved split");
   assert(test.model.workspaceSplitRatio === 0.25, "collapsed must not overwrite the saved split");
 
-  test.cycle(toggle);
-  assert(test.model.workspaceInspectorState === "split" && harness.stack.dataset.inspectorState === "split" && triangle.className === "inspector-state-triangle is-up", "collapsed/left must return exactly to split/up");
-  assert(toggle.dataset.tooltip === "Развернуть нижнюю зону" && toggle.getAttribute("aria-label") === "Нижняя зона: средний размер. Развернуть полностью" && trackHeight(harness) === 533, "returning split must restore the saved track and exact control copy");
-  assert(harness.document.activeElement === toggle && toggle.focusCount === 3, "focus must remain on the same connected far-right button through the full cycle");
-  assert(harness.valueSelectCloseCalls.length === 3 && harness.valueSelectCloseCalls.every((value) => value === false), "every state transition must close the shared selector without a focus bounce");
-  assert(harness.pendingFrames() === 1, "rapid full-cycle changes must cancel stale autoscale frames and leave exactly one settle pass");
+  test.change(up);
+  assert(test.model.workspaceInspectorState === "split" && !up.hidden && !down.hidden && trackHeight(harness) === 533, "collapsed/up must return exactly to split and restore both choices");
+  assert(harness.document.activeElement === up && up.focusCount === 2 && down.focusCount === 2, "focus must move only to the visible corresponding arrow through both fixed-state returns");
+  assert(harness.valueSelectCloseCalls.length === 4 && harness.valueSelectCloseCalls.every((value) => value === false), "every state transition must close the shared selector without a focus bounce");
+  assert(harness.pendingFrames() === 1, "rapid split/extreme/split changes must cancel stale autoscale frames and leave exactly one settle pass");
   harness.flushFrames();
   await settle();
   assert(harness.relayoutCalls.length === 1 && harness.relayoutCalls[0].host === visibleReady, "after settle exactly one existing current visible-ready host must use the inherited autoscale lifecycle");

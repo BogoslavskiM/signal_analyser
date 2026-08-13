@@ -210,7 +210,8 @@
     var viewportLeft=visual ? visual.offsetLeft : 0, viewportTop=visual ? visual.offsetTop : 0;
     var viewportWidth=visual ? visual.width : Math.min(window.innerWidth, document.documentElement.clientWidth || window.innerWidth);
     var viewportHeight=visual ? visual.height : Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight);
-    var inset=8, width=Math.min(Math.max(rect.width, 244), Math.max(0, viewportWidth - inset * 2));
+    var inset=8, availableWidth=Math.max(0, viewportWidth - inset * 2);
+    var width=rect.width > availableWidth ? availableWidth : rect.width;
     var minLeft=viewportLeft + inset, maxLeft=viewportLeft + viewportWidth - inset - width;
     var left=Math.min(maxLeft, Math.max(minLeft, rect.right - width));
     menu.style.width=width + "px";
