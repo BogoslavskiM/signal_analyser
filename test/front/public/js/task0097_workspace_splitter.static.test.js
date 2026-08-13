@@ -16,6 +16,7 @@ module.exports = async function testTask0097WorkspaceInspectorSplitterStaticCont
   const app = read("public/js/app.js");
 
   assert(/\.app-shell\s*\{[^}]*grid-template-rows:\s*44px\s+minmax\(628px,\s*1fr\)[^}]*gap:\s*8px/s.test(css), "v11 shell must retain the 44px toolbar, outer 8px gap and 628px minimum stack");
+  assert(/\.workspace-inspector-stack\s*\{[^}]*--workspace-main-track:\s*calc\(80%\s*-\s*62\.4px\)/s.test(css), "the unset split must distribute only excess height at 4:1 instead of letting the 180px lower minimum consume its fraction");
   assert(/\.workspace-inspector-stack\s*\{[^}]*grid-template-rows:\s*minmax\(440px,\s*var\(--workspace-main-track,\s*4fr\)\)\s+8px\s+minmax\(180px,\s*1fr\)/s.test(css), "workspace stack must start at a 4:1 excess-height ratio with 440px/180px minima");
 
   const stack = (html.match(/<div class="workspace-inspector-stack"[\s\S]*?<\/div>\s*<\/main>/) || [""])[0];

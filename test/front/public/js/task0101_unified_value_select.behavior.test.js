@@ -185,6 +185,8 @@ module.exports = async function testTask0101UnifiedValueSelect(assert) {
   const popupRule = (css.match(/\.value-select-popup\s*\{[^}]*\}/) || [""])[0];
   const inputRule = (css.match(/(?:^|\n)\.select-trigger-input\s*\{[^}]*\}/) || [""])[0];
   const arrowRule = (css.match(/(?:^|\n)\.select-trigger-arrow\s*\{[^}]*\}/) || [""])[0];
+  const arrowGlyphRule = (css.match(/(?:^|\n)\.select-trigger-arrow::after\s*\{[^}]*\}/) || [""])[0];
+  const openArrowRule = (css.match(/(?:^|\n)\.select-trigger\.is-open \.select-trigger-arrow::after\s*\{[^}]*\}/) || [""])[0];
   const optionRule = (css.match(/\.select-options button\s*\{[^}]*\}/) || [""])[0];
   assert(/height:\s*32px/.test(triggerRule) && /border:\s*1px solid var\(--line\)/.test(triggerRule) && /border-radius:\s*var\(--control-radius\)/.test(triggerRule), "settings triggers must retain exact 32px framed geometry");
   assert(/height:\s*28px/.test(paneRule), "pane triggers must retain exact 28px joined geometry");
@@ -196,7 +198,9 @@ module.exports = async function testTask0101UnifiedValueSelect(assert) {
   assert(/height:\s*34px/.test(optionRule) && /min-height:\s*34px/.test(optionRule) && /gap:\s*12px/.test(optionRule), "options must retain standard 34px geometry");
   assert(/button\.is-selected \{ background: var\(--surface\)/.test(css) && /button\.is-selected \.select-option-check::after \{ border-color: var\(--success\)/.test(css), "selected option must stay white and expose the green success check");
   assert(/button:not\(:disabled\):hover,[\s\S]*?button\.is-active \{ background: #f5f5f5/.test(css), "pointer hover and keyboard-active option must use the same gray background");
-  assert(/\.select-trigger\.is-open \.select-trigger-arrow::after[\s\S]*?rotate\(180deg\)/.test(css) && /chevron-down-fill-16\.svg/.test(css), "the framed trigger must use the local down arrow and rotate it upward only while open");
+  assert(/width:\s*24px/.test(arrowRule) && /chevron-down-fill-16\.svg/.test(arrowGlyphRule) && /transform:\s*translateY\(-50%\)/.test(arrowGlyphRule) && !/rotate\(/.test(arrowGlyphRule), "the closed framed trigger must keep the exact 24px target and point the local chevron straight down");
+  assert(/transform:\s*translateY\(-50%\)\s*rotate\(180deg\)/.test(openArrowRule), "the open framed trigger must point the same chevron straight up at exactly 180 degrees");
+  assert(!/transition\s*:/.test(arrowGlyphRule + openArrowRule), "the v18 arrow direction must switch immediately without a transform transition through a transient left-pointing frame");
   assert(/text-overflow:\s*ellipsis/.test(optionRule + inputRule) && /title='" \+ esc\(option\.label\)/.test(component), "long trigger/option labels must ellipsize visually while retaining their full title");
 
   const harness = createComponentHarness(component, path.join(root, "public/js/value-select.js"));

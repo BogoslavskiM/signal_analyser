@@ -141,6 +141,27 @@ async function settle() {
 }
 
 module.exports = async function testTask0102LowerInspectorStatesBehavior(assert) {
+  const geometry = createHarness();
+  geometry.stack.height = 716;
+  const defaultMain = geometry.stack.height * 0.8 - 62.4;
+  const defaultLower = geometry.stack.height - 8 - defaultMain;
+  assert(Math.abs(defaultMain - 510.4) < 0.001 && Math.abs(defaultLower - 197.6) < 0.001, "the v18 unset CSS split must resolve H=716 to approximately 510.4px main and 197.6px lower tracks");
+  geometry.main.height = defaultMain;
+  geometry.test.model.state = { active_display_id:"display-a", displays:[{ id:"display-a" }] };
+  const geometryPlot = geometry.addPlot("display-a::pane-1");
+  geometry.splitterListeners.pointerdown(pointer(18, 100, { type:"pointerdown" }));
+  geometry.splitterListeners.pointermove(pointer(18, 130));
+  assert(trackHeight(geometry) === 528 && geometry.test.model.workspaceSplitRatio === 1, "the first +30px drag from the H=716 default must be effective and clamp immediately to the 528/180px maximum split");
+  geometry.splitterListeners.pointermove(pointer(18, -1000));
+  assert(trackHeight(geometry) === 440 && geometry.test.model.workspaceSplitRatio === 0, "the same drag must retain the inherited 440px main-track minimum clamp");
+  geometry.splitterListeners.pointermove(pointer(18, 2000));
+  assert(trackHeight(geometry) === 528 && geometry.test.model.workspaceSplitRatio === 1, "the same drag must retain the inherited H-8-180 maximum clamp");
+  geometry.splitterListeners.pointerup(pointer(18, 2000, { type:"pointerup" }));
+  assert(geometry.pendingFrames() === 1, "an effective default-split drag must retain the one-frame autoscale settle behavior");
+  geometry.flushFrames();
+  await settle();
+  assert(geometry.relayoutCalls.length === 1 && geometry.relayoutCalls[0].host === geometryPlot, "the effective default-split drag must autoscale the existing current ready plot exactly once");
+
   const harness = createHarness();
   const { test, toggle, triangle, splitterListeners } = harness;
   assert(test.model.workspaceInspectorState === "split" && test.model.workspaceSplitRatio === null && harness.stack.dataset.inspectorState === "split", "a fresh page must initialize split without a persisted ratio");

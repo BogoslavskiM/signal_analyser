@@ -175,6 +175,10 @@ button img {
   min-width: 0;
   min-height: 0;
   display: grid;
+  /* Distribute only the height above the 440/8/180 minima at 4:1.
+     A bare 4fr/1fr pair lets the 180px minimum consume the lower fraction and
+     leaves the main track at its maximum, so a first downward drag is inert. */
+  --workspace-main-track: calc(80% - 62.4px);
   grid-template-rows: minmax(440px, var(--workspace-main-track, 4fr)) 8px minmax(180px, 1fr);
 }
 
@@ -1002,7 +1006,6 @@ body.is-resizing-workspace * {
   background: url("../icons/chevron-down-fill-16.svg") center / contain no-repeat;
   content: "";
   transform: translateY(-50%);
-  transition: transform var(--duration-fast) ease;
 }
 
 .select-trigger.is-open .select-trigger-arrow::after {
