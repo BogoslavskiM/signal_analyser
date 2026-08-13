@@ -3,6 +3,7 @@
 
   var api = window.SignalAnalyserApi;
   var valueSelect = window.SignalAnalyserValueSelect;
+  var numeric = window.SignalAnalyserNumeric;
   var context = {
     displayId: "", revision: 0, document: null, drafts: {}, pending: {}, timers: {}, requestQueue: Promise.resolve(), intent: 0, contextToken: 0, loadToken: 0,
     page: "display", plotType: "time", collapsed: {}, renderedFields: {}
@@ -91,24 +92,37 @@
     return displayInventory(type).concat(timeInventory(type));
   }
 
+  function numericKind(item, key) {
+    return item.kind === "integer" || item.kind === "power_bins" || ["count", "nfft", "samples"].indexOf(key) >= 0 ? "integer" : "decimal";
+  }
+  function numericResult(item, raw, key) { return numeric.parse(raw, numericKind(item, key)); }
+  function numericError(item, raw) {
+    var values = item.kind === "range" || item.kind === "optional_range" ? [raw && raw.min, raw && raw.max] :
+      item.kind === "resolution" || item.kind === "power_bins" ? [raw && raw.value] : [raw];
+    for (var index=0; index<values.length; index++) {
+      var result = numericResult(item, values[index], raw && raw.key);
+      if (!result.valid) return result.error;
+    }
+    return "Введите корректное значение.";
+  }
   function parse(item, raw) {
     if (item.kind === "boolean") return !!raw;
     if (item.kind === "enum") return raw;
     if (item.kind === "range" || item.kind === "optional_range") {
       var minimum = raw && raw.min, maximum = raw && raw.max;
       if (minimum === "" && maximum === "" && item.kind === "optional_range") return null;
-      minimum = Number(minimum); maximum = Number(maximum);
-      return isFinite(minimum) && isFinite(maximum) && minimum < maximum ? { min:minimum, max:maximum } : null;
+      var minimumResult = numericResult(item, minimum), maximumResult = numericResult(item, maximum);
+      return minimumResult.valid && maximumResult.valid && minimumResult.value < maximumResult.value ? { min:minimumResult.value, max:maximumResult.value } : null;
     }
     if (item.kind === "number" || item.kind === "integer") {
-      var number = Number(raw);
-      return isFinite(number) && (item.kind !== "integer" || Math.floor(number) === number) ? number : null;
+      var number = numericResult(item, raw);
+      return number.valid ? number.value : null;
     }
     if (item.kind === "resolution" || item.kind === "power_bins") {
       if (!raw || raw.mode === "auto") { var automatic = { mode:"auto" }; automatic[raw.key] = null; return automatic; }
-      var specified = Number(raw.value);
-      if (!isFinite(specified)) return null;
-      var resolution = { mode:"specified" }; resolution[raw.key] = specified; return resolution;
+      var specified = numericResult(item, raw.value, raw.key);
+      if (!specified.valid) return null;
+      var resolution = { mode:"specified" }; resolution[raw.key] = specified.value; return resolution;
     }
     return String(raw);
   }
@@ -145,7 +159,7 @@
     }
     if (item.kind === "range" || item.kind === "optional_range") {
       var range = current && typeof current === "object" ? current : {};
-      return "<span class='range-control'><input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-range-part='min' placeholder='Мин.' aria-label='"+esc(label(item))+": минимум' value='"+esc(range.min == null ? "" : range.min)+"'"+disabled+"><input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-range-part='max' placeholder='Макс.' aria-label='"+esc(label(item))+": максимум' value='"+esc(range.max == null ? "" : range.max)+"'"+disabled+"></span>";
+      return "<span class='range-control'><input class='control' type='text' inputmode='decimal' step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='min' placeholder='Мин.' aria-label='"+esc(label(item))+": минимум' value='"+esc(range.min == null ? "" : range.min)+"'"+disabled+"><input class='control' type='text' inputmode='decimal' step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='max' placeholder='Макс.' aria-label='"+esc(label(item))+": максимум' value='"+esc(range.max == null ? "" : range.max)+"'"+disabled+"></span>";
     }
     if (item.kind === "resolution" || item.kind === "power_bins") {
       var resolution = current && typeof current === "object" ? current : { mode:"auto" };
@@ -169,10 +183,12 @@
           update(item, { mode:selected, value:valueNode ? valueNode.value : (amount == null ? "" : amount), key:key });
         }
       });
-      return "<span class='resolution-control' data-resolution-current-mode='"+esc(normalizedMode)+"'>"+resolutionMarkup+"<input class='control' inputmode='decimal' data-setting-id='"+esc(item.id)+"' data-resolution-value data-resolution-key='"+esc(key)+"' value='"+esc(amount == null ? "" : amount)+"'"+(disabled || normalizedMode === "auto" ? " disabled" : "")+"></span>";
+      var resolutionNumericKind=numericKind(item, key);
+      return "<span class='resolution-control' data-resolution-current-mode='"+esc(normalizedMode)+"'>"+resolutionMarkup+"<input class='control' type='text' inputmode='"+(resolutionNumericKind === "integer" ? "numeric" : "decimal")+"' step='"+(resolutionNumericKind === "integer" ? "1" : esc(item.step == null ? "any" : item.step))+"' data-setting-id='"+esc(item.id)+"' data-resolution-value data-resolution-key='"+esc(key)+"' value='"+esc(amount == null ? "" : amount)+"'"+(disabled || normalizedMode === "auto" ? " disabled" : "")+"></span>";
     }
     if (item.kind === "readout" || item.readonly) return "<span class='readonly-control'>"+esc(current == null || current === "" ? "—" : current)+(item.units ? " "+esc(item.units) : "")+"</span>";
-    return "<input class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"' type='number' value='"+esc(current == null ? "" : current)+"'"+(item.min != null ? " min='"+esc(item.min)+"'" : "")+(item.max != null ? " max='"+esc(item.max)+"'" : "")+(item.step != null ? " step='"+esc(item.step)+"'" : "")+disabled+">";
+    var scalarKind=numericKind(item);
+    return "<input class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"' type='text' inputmode='"+(scalarKind === "integer" ? "numeric" : "decimal")+"' step='"+(scalarKind === "integer" ? "1" : esc(item.step == null ? "any" : item.step))+"' value='"+esc(current == null ? "" : current)+"'"+disabled+">";
   }
 
   function renderField(item) {
@@ -228,7 +244,7 @@
     if (item.pseudo) return updatePseudo(item, raw);
     var parsed = parse(item, raw), draft = context.drafts[item.id] || {};
     if (parsed === null && !(item.kind === "optional_range" && raw.min === "" && raw.max === "")) {
-      draft.value = raw; draft.error = "Введите корректное значение."; context.drafts[item.id] = draft;
+      draft.value = raw; draft.error = numericError(item, raw); context.drafts[item.id] = draft;
       render(); window.dispatchEvent(new CustomEvent("signal-apply-state")); return;
     }
     draft.value = parsed; draft.error = ""; draft.intent = ++context.intent; context.drafts[item.id] = draft;

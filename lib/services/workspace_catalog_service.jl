@@ -142,11 +142,13 @@ function workspace_catalog_enumeration(
             "Provider каталога завершился с ошибкой: $(sprint(showerror, err))",
         ))
     end
-    workspace_catalog_expect_exact_keys!(
-        raw,
+    raw_keys = workspace_catalog_payload_keys(raw)
+    raw_keys in (
         Set(["entries", "truncated", "total"]),
-        "Результат provider каталога",
-    )
+        Set(["entries", "truncated", "filtered", "total"]),
+    ) || throw(WorkspaceProviderError(
+        "Результат provider каталога имеет некорректный набор metadata полей",
+    ))
     entries_value = workspace_catalog_payload_value(raw, "entries")
     entries_value isa AbstractVector || throw(WorkspaceProviderError(
         "Provider каталога должен вернуть массив entries",
@@ -164,7 +166,16 @@ function workspace_catalog_enumeration(
         throw(WorkspaceProviderError("Provider каталога вернул некорректный total"))
     end
     total = Int(total_value)
-    expected_truncated = total > length(entries_value)
+    filtered_value = workspace_catalog_payload_value(raw, "filtered")
+    filtered = if filtered_value === nothing && !("filtered" in raw_keys)
+        0
+    elseif filtered_value isa Integer && !(filtered_value isa Bool) &&
+        0 <= filtered_value <= total
+        Int(filtered_value)
+    else
+        throw(WorkspaceProviderError("Provider каталога вернул некорректный filtered"))
+    end
+    expected_truncated = total > length(entries_value) + filtered
     truncated_value == expected_truncated || throw(WorkspaceProviderError(
         "Provider каталога вернул несогласованный truncated",
     ))
@@ -173,8 +184,8 @@ function workspace_catalog_enumeration(
             "Truncated catalog должен содержать ровно 1000 entries",
         ))
     else
-        total == length(entries_value) || throw(WorkspaceProviderError(
-            "Total каталога не совпадает с числом entries",
+        total == length(entries_value) + filtered || throw(WorkspaceProviderError(
+            "Total каталога не совпадает с числом entries и filtered",
         ))
     end
 
@@ -185,7 +196,7 @@ function workspace_catalog_enumeration(
         "Provider каталога вернул duplicate имена",
     ))
     try
-        WorkspaceCatalogEnumeration(metadata, truncated_value, total)
+        WorkspaceCatalogEnumeration(metadata, truncated_value, filtered, total)
     catch err
         err isa ArgumentError || rethrow()
         throw(WorkspaceProviderError(sprint(showerror, err)))
@@ -251,12 +262,13 @@ function workspace_catalog_snapshot(
     revision = String(catalog_revision)
     entries = WorkspaceCatalogEntry[]
     ids = Set{String}()
+    filtered = enumeration.filtered
     for metadata in enumeration.variables
         id = workspace_variable_id(revision, metadata.name)
         id in ids && throw(WorkspaceProviderError("Provider каталога создал collision variable_id"))
         push!(ids, id)
         status = workspace_catalog_entry_status(metadata)
-        push!(entries, WorkspaceCatalogEntry(
+        entry = WorkspaceCatalogEntry(
             id,
             metadata.name,
             metadata.type_label,
@@ -267,7 +279,12 @@ function workspace_catalog_snapshot(
             status.reason,
             status.sample_rate_requirement,
             status.selectable,
-        ))
+        )
+        if entry.selectable
+            push!(entries, entry)
+        else
+            filtered += 1
+        end
     end
     try
         WorkspaceCatalogSnapshot(
@@ -275,6 +292,7 @@ function workspace_catalog_snapshot(
             now,
             now + WORKSPACE_CATALOG_TTL,
             enumeration.truncated,
+            filtered,
             enumeration.total,
             entries,
         )
@@ -284,21 +302,47 @@ function workspace_catalog_snapshot(
     end
 end
 
+function latest_workspace_catalog!(
+    service::WorkspaceCatalogService;
+    now::Dates.DateTime = Dates.now(Dates.UTC),
+    refresh::Bool = false,
+    catalog_revision::AbstractString = workspace_catalog_revision(),
+)::WorkspaceCatalogSnapshot
+    lock(service.lock) do
+        service.registry = workspace_catalog_registry_prune(service.registry, now)
+        if !refresh && !isempty(service.registry.snapshots)
+            return last(service.registry.snapshots)
+        end
+        enumeration = workspace_catalog_enumeration(service)
+        snapshot = workspace_catalog_snapshot(
+            enumeration;
+            now = now,
+            catalog_revision = catalog_revision,
+        )
+        service.registry = workspace_catalog_registry_store(service.registry, snapshot, now)
+        snapshot
+    end
+end
+
 function load_workspace_catalog!(
     service::WorkspaceCatalogService;
     now::Dates.DateTime = Dates.now(Dates.UTC),
     catalog_revision::AbstractString = workspace_catalog_revision(),
 )::WorkspaceCatalogSnapshot
-    enumeration = workspace_catalog_enumeration(service)
-    snapshot = workspace_catalog_snapshot(
-        enumeration;
+    latest_workspace_catalog!(
+        service;
         now = now,
+        refresh = true,
         catalog_revision = catalog_revision,
     )
+end
+
+function fresh_workspace_catalog_enumeration(
+    service::WorkspaceCatalogService,
+)::WorkspaceCatalogEnumeration
     lock(service.lock) do
-        service.registry = workspace_catalog_registry_store(service.registry, snapshot, now)
+        workspace_catalog_enumeration(service)
     end
-    snapshot
 end
 
 function lookup_workspace_catalog!(
@@ -340,6 +384,7 @@ function workspace_catalog_payload(snapshot::WorkspaceCatalogSnapshot)::Dict{Str
         "catalog_revision" => snapshot.catalog_revision,
         "expires_at" => workspace_catalog_timestamp(snapshot.expires_at),
         "truncated" => snapshot.truncated,
+        "filtered" => snapshot.filtered,
         "total" => snapshot.total,
         "variables" => [workspace_catalog_variable_payload(entry) for entry in snapshot.variables],
     )

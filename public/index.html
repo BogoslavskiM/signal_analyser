@@ -179,20 +179,24 @@
   <div class="menu inspector-menu" role="menu" data-testid="measurement-columns-menu" aria-label="Видимость измерений" hidden></div>
 
   <div class="modal-layer primary-modal-layer" data-testid="signal-add-layer" hidden>
-    <section id="signal-add-dialog" class="dialog-card add-dialog" role="dialog" aria-modal="true" aria-labelledby="signal-add-title" aria-describedby="signal-add-intro">
+    <section id="signal-add-dialog" class="dialog-card add-dialog" role="dialog" aria-modal="true" aria-labelledby="signal-add-title" aria-describedby="signal-add-state">
       <header class="dialog-titlebar">
         <h2 id="signal-add-title" tabindex="-1">Добавление сигналов</h2>
         <button class="icon-button dialog-close" type="button" data-signal-add-close data-tooltip="Закрыть диалог" aria-label="Закрыть добавление сигналов"><img src="./icons/close.svg" alt=""></button>
       </header>
-      <div class="dialog-body">
-        <p id="signal-add-intro" class="dialog-intro">Выберите поддерживаемые переменные из рабочей области.</p>
-        <div class="workspace-list" role="group" aria-label="Переменные рабочей области" data-testid="signal-add-variables"></div>
-        <div class="dialog-field-row">
-          <label for="signal-add-sample-rate">Частота дискретизации <span>Hz</span></label>
-          <input id="signal-add-sample-rate" class="control" type="text" inputmode="decimal" value="1000000" data-signal-add-sample-rate aria-describedby="signal-add-sample-rate-hint">
-          <small id="signal-add-sample-rate-hint">Требуется только для raw-массивов без временной шкалы.</small>
-        </div>
-        <p class="dialog-state" data-testid="signal-add-state" role="status">Загрузка переменных…</p>
+      <div class="signal-add-browser-head">
+        <label class="signal-add-search"><img src="./icons/search.svg" alt=""><input type="search" placeholder="Поиск по имени" aria-label="Поиск по имени" data-signal-add-search data-testid="workspace-variable-search"></label>
+        <span data-signal-add-count>0 переменных</span>
+      </div>
+      <div class="workspace-list" role="group" tabindex="0" aria-label="Поддерживаемые переменные" data-testid="signal-add-variables"></div>
+      <div class="dialog-field-row">
+        <label for="signal-add-sample-rate">Частота дискретизации <span>Hz</span></label>
+        <input id="signal-add-sample-rate" class="control" type="text" inputmode="decimal" step="any" value="1000000" data-signal-add-sample-rate aria-describedby="signal-add-sample-rate-hint signal-add-rate-error">
+        <small id="signal-add-sample-rate-hint">Требуется для выбранных raw-массивов.</small>
+        <small id="signal-add-rate-error" class="signal-add-rate-error" role="alert" hidden></small>
+      </div>
+      <div class="signal-add-status-track">
+        <p id="signal-add-state" class="dialog-state" data-testid="signal-add-state" role="status">Загрузка переменных…</p>
         <p class="dialog-state is-error" data-testid="signal-add-error" role="alert" hidden></p>
       </div>
       <footer class="dialog-footer">
@@ -233,6 +237,7 @@
   <div data-testid="runtime-dialog-root"></div>
   <script src="./js/api.js"></script>
   <script src="./js/value-select.js"></script>
+  <script src="./js/numeric.js"></script>
   <script src="./js/settings.js"></script>
   <script src="./js/layouts.js"></script>
   <script src="./vendor/vue/3.5.41/vue.global.prod.js"></script>

@@ -179,6 +179,29 @@ end
     @test_throws WC.WorkspaceUnavailableError WC.load_workspace_catalog!(service; now = now, catalog_revision = "wc_123e4567-e89b-42d3-a456-426614174000")
 end
 
+@testset "TASK-0105 workspace catalog filters unsupported entries and reuses live cache" begin
+    provider = ScriptedWorkspaceCatalogProvider(
+        Any[(entries = [
+            (name = "raw", type = "Vector{Float64}", shape = [3], source_kind = "raw_vector"),
+            (name = "unsupported", type = "Any", shape = [3], source_kind = "unsupported"),
+        ], truncated = false, total = 2)],
+        Dict{String,Any}(), 0, String[], nothing,
+    )
+    service = WC.WorkspaceCatalogService(provider)
+    now = WC.Dates.DateTime(2026, 8, 13, 0, 0, 0)
+    first = WC.latest_workspace_catalog!(service; now = now, catalog_revision = "wc_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    @test provider.catalog_calls == 1
+    @test [entry.name for entry in first.variables] == ["raw"]
+    @test first.filtered == 1 && first.total == 2
+    @test WC.workspace_catalog_payload(first)["filtered"] == 1
+
+    reopened = WC.latest_workspace_catalog!(service; now = now + WC.Dates.Minute(1), catalog_revision = "wc_bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+    @test reopened === first && provider.catalog_calls == 1
+
+    refreshed = WC.latest_workspace_catalog!(service; now = now + WC.Dates.Minute(1), refresh = true, catalog_revision = "wc_bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+    @test refreshed !== first && provider.catalog_calls == 2
+end
+
 @testset "DEC-039 catalog metadata parser rejects structural limits" begin
     valid = (name = "x", type = "Vector{Float64}", shape = [2], source_kind = "raw_vector")
     cases = Any[

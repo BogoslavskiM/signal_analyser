@@ -522,7 +522,12 @@ function parse_signal_inventory_command(data)::AbstractSignalInventoryCommand
         sample_rate = if sample_rate_value === nothing
             nothing
         elseif sample_rate_value isa Real && !(sample_rate_value isa Bool)
-            value = Float64(sample_rate_value)
+            value = try
+                Float64(sample_rate_value)
+            catch err
+                (err isa InexactError || err isa OverflowError) || rethrow()
+                NaN
+            end
             if isfinite(value) && value > 0
                 value
             else

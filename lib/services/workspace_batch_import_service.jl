@@ -34,7 +34,7 @@ function workspace_batch_fresh_metadata(
     resolved::Vector{Tuple{WorkspaceCatalogEntry,WorkspaceImportSelection}},
     catalog_revision::String,
 )::Vector{Tuple{WorkspaceVariableMetadata,WorkspaceImportSelection}}
-    fresh = workspace_catalog_enumeration(service.catalog_service)
+    fresh = fresh_workspace_catalog_enumeration(service.catalog_service)
     fresh_by_name = Dict(metadata.name => metadata for metadata in fresh.variables)
     validated = Tuple{WorkspaceVariableMetadata,WorkspaceImportSelection}[]
     for (stored_entry, selection) in resolved

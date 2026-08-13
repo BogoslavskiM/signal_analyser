@@ -3,6 +3,7 @@
 
   var api = window.SignalAnalyserApi;
   var settings = window.SignalAnalyserSettings;
+  var numeric = window.SignalAnalyserNumeric;
   var valueSelect = window.SignalAnalyserValueSelect;
   var titles = { time: "Временная область", spectrum: "Спектр", spectrogram: "Спектрограмма", persistence: "Спектр персистентности" };
   var measurementOptions = [
@@ -18,7 +19,7 @@
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
-    signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false,
+    signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false, signalAddSearch:"", signalAddSelection:{}, signalAddCatalogError:"", signalAddCachedOpen:false,
     paneMenuTrigger: null, graphHelpRestoreTarget: null, paneClearContext: null,
     sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null }
@@ -1088,24 +1089,24 @@
   }
   function parsePeaksSettings(draft) {
     var raw = draft.values, settings = {}, invalid = {};
-    var count = Number(raw.number_of_peaks), distance = Number(raw.minimum_distance_samples), threshold = Number(raw.threshold), maximumCutoff = raw.maximum_cutoff.trim(), minimumCutoff = raw.minimum_cutoff.trim();
+    var count = numeric.parse(raw.number_of_peaks, "integer"), distance = numeric.parse(raw.minimum_distance_samples, "integer"), threshold = numeric.parse(raw.threshold, "decimal");
+    var maximumCutoff = numeric.parse(raw.maximum_cutoff, "decimal", { tokens:{ "":null, "-Inf":null } });
+    var minimumCutoff = numeric.parse(raw.minimum_cutoff, "decimal", { tokens:{ "":null, "Inf":null } });
     if (["maxima", "minima", "all"].indexOf(raw.mode) < 0) invalid.mode = "Выберите режим расчёта."; else settings.mode = raw.mode;
-    if (!isFinite(count) || Math.floor(count) !== count || count < 1 || count > 1000) invalid.number_of_peaks = "Введите целое число от 1 до 1000."; else settings.number_of_peaks = count;
+    if (!count.valid || count.value < 1 || count.value > 1000) invalid.number_of_peaks = count.valid ? "Введите целое число от 1 до 1000." : count.error; else settings.number_of_peaks = count.value;
     var maximumActive = raw.mode === "maxima" || raw.mode === "all", minimumActive = raw.mode === "minima" || raw.mode === "all";
-    if (maximumCutoff === "" || maximumCutoff === "-Inf") settings.maximum_cutoff = null;
-    else if (!isFinite(Number(maximumCutoff))) {
-      if (maximumActive) invalid.maximum_cutoff = "Введите число или -Inf.";
+    if (!maximumCutoff.valid) {
+      if (maximumActive) invalid.maximum_cutoff = maximumCutoff.error;
       settings.maximum_cutoff = draft.source.maximum_cutoff;
-    } else settings.maximum_cutoff = Number(maximumCutoff);
-    if (minimumCutoff === "" || minimumCutoff === "Inf") settings.minimum_cutoff = null;
-    else if (!isFinite(Number(minimumCutoff))) {
-      if (minimumActive) invalid.minimum_cutoff = "Введите число или Inf.";
+    } else settings.maximum_cutoff = maximumCutoff.value;
+    if (!minimumCutoff.valid) {
+      if (minimumActive) invalid.minimum_cutoff = minimumCutoff.error;
       settings.minimum_cutoff = draft.source.minimum_cutoff;
-    } else settings.minimum_cutoff = Number(minimumCutoff);
-    if (!isFinite(distance) || Math.floor(distance) !== distance || distance < 1) invalid.minimum_distance_samples = "Введите целое число не меньше 1."; else settings.minimum_distance_samples = distance;
-    if (!isFinite(threshold)) invalid.threshold = "Введите число.";
-    else if (threshold < 0) invalid.threshold = "Введите число не меньше 0.";
-    else settings.threshold = threshold;
+    } else settings.minimum_cutoff = minimumCutoff.value;
+    if (!distance.valid || distance.value < 1) invalid.minimum_distance_samples = distance.valid ? "Введите целое число не меньше 1." : distance.error; else settings.minimum_distance_samples = distance.value;
+    if (!threshold.valid) invalid.threshold = threshold.error;
+    else if (threshold.value < 0) invalid.threshold = "Введите число не меньше 0.";
+    else settings.threshold = threshold.value;
     draft.invalid = invalid;
     return Object.keys(invalid).length ? null : settings;
   }
@@ -1136,7 +1137,7 @@
       onSelect:chooseExtremaMode
     });
     var modeControl = "<label class='settings-field-row" + (modeError ? " has-error" : "") + "' data-testid='settings-field-mode'><span class='settings-label'><span>Режим расчёта</span></span><span class='settings-control-wrap'>" + modeSelector + "</span>" + (modeError ? "<small class='field-message is-error' role='alert'>" + esc(modeError) + "</small>" : "") + "</label><p class='extrema-magnitude-note" + (complexSignal ? " is-current" : "") + "' data-testid='extrema-magnitude-copy'><span>Для комплексных сигналов экстремумы рассчитываются по модулю |y|.</span>" + (complexSignal ? "<em>Активный сигнал комплексный · используется |y|.</em>" : "") + "</p>";
-    host.innerHTML = "<section class='settings-group' data-testid='extrema-settings-group'><button class='settings-group-title' type='button' aria-expanded='true' disabled><span>Расчёт экстремумов</span></button><div class='settings-group-fields'>" + modeControl + labels.map(function (field) { var id=field[0], error=draft.invalid[id], helper=field[2] ? "<small class='field-message extrema-field-helper'>" + esc(field[2]) + "</small>" : ""; return "<label class='settings-field-row" + (error ? " has-error" : "") + "' data-testid='settings-field-" + id + "'><span class='settings-label' title='" + esc(field[1]) + "'><span>" + field[1] + "</span></span><span class='settings-control-wrap'><input class='control' type='text' inputmode='decimal' data-peaks-setting='" + id + "' value='" + esc(draft.values[id]) + "' aria-label='" + field[1] + "'" + disabled + "></span>" + (error ? "<small class='field-message is-error' role='alert'>" + esc(error) + "</small>" : "") + helper + "</label>"; }).join("") + "</div></section>";
+    host.innerHTML = "<section class='settings-group' data-testid='extrema-settings-group'><button class='settings-group-title' type='button' aria-expanded='true' disabled><span>Расчёт экстремумов</span></button><div class='settings-group-fields'>" + modeControl + labels.map(function (field) { var id=field[0], error=draft.invalid[id], integer=id === "number_of_peaks" || id === "minimum_distance_samples", helper=field[2] ? "<small class='field-message extrema-field-helper'>" + esc(field[2]) + "</small>" : ""; return "<label class='settings-field-row" + (error ? " has-error" : "") + "' data-testid='settings-field-" + id + "'><span class='settings-label' title='" + esc(field[1]) + "'><span>" + field[1] + "</span></span><span class='settings-control-wrap'><input class='control' type='text' inputmode='" + (integer ? "numeric" : "decimal") + "' step='" + (integer ? "1" : "any") + "' data-peaks-setting='" + id + "' value='" + esc(draft.values[id]) + "' aria-invalid='" + String(!!error) + "' aria-label='" + field[1] + "'" + disabled + "></span>" + (error ? "<small class='field-message is-error' role='alert'>" + esc(error) + "</small>" : "") + helper + "</label>"; }).join("") + "</div></section>";
     valueSelect.reconcile();
     if (restoreFocus) { var input = host.querySelector("[data-peaks-setting='" + restoreFocus.id + "']"); if (input) { input.focus(); if (typeof input.setSelectionRange === "function") input.setSelectionRange(restoreFocus.start, restoreFocus.end); } }
   }
@@ -1417,30 +1418,41 @@
   function signalAddLayer() { return q("[data-testid='signal-add-layer']"); }
 
   function signalAddSelected() {
-    var layer = signalAddLayer();
-    return layer ? qa("[data-signal-add-variable]:checked") : [];
+    return signalAddVariables().filter(function (variable) { return !!model.signalAddSelection[variable.variable_id]; });
+  }
+
+  function signalAddVariables() {
+    var supported = ["raw_vector", "raw_matrix", "timed_vector", "timed_matrix"];
+    return model.signalAddCatalog && Array.isArray(model.signalAddCatalog.variables) ? model.signalAddCatalog.variables.filter(function (variable) {
+      return variable && variable.selectable === true && supported.indexOf(variable.source_kind) >= 0 && ["required", "not_needed"].indexOf(variable.sample_rate_requirement) >= 0;
+    }) : [];
+  }
+
+  function signalAddRateResult() {
+    var layer = signalAddLayer(), input = layer && layer.querySelector("[data-signal-add-sample-rate]");
+    return numeric.parse(input ? input.value : "", "decimal");
   }
 
   function updateSignalAddControls() {
     var layer = signalAddLayer();
     if (!layer || layer.hidden) return;
     var selected = signalAddSelected();
-    var requiresRate = selected.some(function (input) { return input.dataset.sampleRateRequirement === "required"; });
+    var requiresRate = selected.some(function (variable) { return variable.sample_rate_requirement === "required"; });
     var rate = layer.querySelector("[data-signal-add-sample-rate]");
     var submit = layer.querySelector("[data-signal-add-submit]");
-    var value = Number(rate && rate.value);
+    var rateResult = signalAddRateResult(), invalidRate = requiresRate && (!rateResult.valid || rateResult.value <= 0);
+    var rateError = layer.querySelector(".signal-add-rate-error");
     if (rate) {
-      rate.disabled = !requiresRate;
-      rate.setAttribute("aria-invalid", String(requiresRate && (!isFinite(value) || value <= 0)));
+      rate.disabled = !requiresRate || model.signalAddSubmitting;
+      rate.setAttribute("aria-invalid", String(invalidRate));
     }
-    if (submit) submit.disabled = model.signalAddLoading || model.signalAddSubmitting || !selected.length || (requiresRate && (!isFinite(value) || value <= 0));
+    if (rateError) { rateError.hidden = !invalidRate; rateError.textContent = invalidRate ? (rateResult.valid ? "Введите число больше 0." : rateResult.error) : ""; }
+    if (submit) submit.disabled = model.signalAddLoading || model.signalAddSubmitting || !selected.length || invalidRate;
+    qa("[data-signal-add-variable], [data-signal-add-search], [data-signal-add-close], [data-signal-add-cancel]").forEach(function (control) { control.disabled = model.signalAddSubmitting || (control.dataset.signalAddSearch !== undefined && model.signalAddLoading); });
   }
 
-  function workspaceVariableDescription(variable) {
-    var parts = [variable.type || "Переменная"];
-    if (typeof variable.sample_count === "number") parts.push(variable.sample_count + " отсчётов");
-    if (!variable.selectable && variable.reason) parts.push(variable.reason);
-    return parts.join(" · ");
+  function workspaceVariableShape(variable) {
+    return (Array.isArray(variable.shape) && variable.shape.length ? variable.shape.join(" × ") : String(variable.sample_count || "—")) + " · " + (variable.source_kind.indexOf("timed_") === 0 ? "Timed" : "Raw");
   }
 
   function renderSignalAddCatalog() {
@@ -1449,44 +1461,58 @@
     var list = layer.querySelector("[data-testid='signal-add-variables']");
     var state = layer.querySelector("[data-testid='signal-add-state']");
     var error = layer.querySelector("[data-testid='signal-add-error']");
-    var catalog = model.signalAddCatalog;
+    var catalog = model.signalAddCatalog, search = model.signalAddSearch.toLocaleLowerCase("ru-RU");
+    var searchInput = layer.querySelector("[data-signal-add-search]"), count = layer.querySelector("[data-signal-add-count]");
     error.hidden = true;
+    if (searchInput) { searchInput.value = model.signalAddSearch; searchInput.disabled = model.signalAddLoading || model.signalAddSubmitting; }
     if (model.signalAddLoading) {
-      list.innerHTML = "";
+      list.innerHTML = "<div class='signal-add-list-state'><span class='spinner'></span><span>Загрузка переменных…</span></div>";
+      if (count) count.textContent = "0 переменных";
       state.hidden = false;
       state.textContent = "Загрузка переменных…";
       return updateSignalAddControls();
     }
-    var variables = catalog && Array.isArray(catalog.variables) ? catalog.variables : [];
+    if (model.signalAddCatalogError) {
+      list.innerHTML = "<div class='signal-add-list-state'>Не удалось получить переменные рабочей области.<button class='button button-compact' type='button' data-signal-add-retry>Повторить</button></div>";
+      state.hidden = true; error.hidden = false; error.textContent = model.signalAddCatalogError;
+      if (count) count.textContent = "0 переменных";
+      return updateSignalAddControls();
+    }
+    var allVariables = signalAddVariables();
+    var variables = allVariables.filter(function (variable) { return !search || String(variable.name || "").toLocaleLowerCase("ru-RU").indexOf(search) >= 0; });
     list.innerHTML = variables.map(function (variable) {
-      var disabled = !variable.selectable;
-      return "<label" + (disabled ? " class='is-disabled'" : "") + "><span><strong>" + esc(variable.name) + "</strong><small>" + esc(workspaceVariableDescription(variable)) + "</small></span><input class='ui-checkbox' type='checkbox' data-signal-add-variable value='" + esc(variable.variable_id) + "' data-sample-rate-requirement='" + esc(variable.sample_rate_requirement || "not_needed") + "' aria-label='Добавить " + esc(variable.name) + "'" + (disabled ? " disabled" : "") + "></label>";
+      var checked = !!model.signalAddSelection[variable.variable_id];
+      return "<label title='" + esc(variable.name + " · " + variable.type + " · " + workspaceVariableShape(variable)) + "'><input class='ui-checkbox' type='checkbox' data-signal-add-variable value='" + esc(variable.variable_id) + "' aria-label='Добавить " + esc(variable.name) + "'" + (checked ? " checked" : "") + (model.signalAddSubmitting ? " disabled" : "") + "><span class='workspace-variable-name'><strong>" + esc(variable.name) + "</strong><small>" + esc(variable.type || "Переменная") + "</small></span><small class='workspace-variable-meta'>" + esc(workspaceVariableShape(variable)) + "</small></label>";
     }).join("");
+    if (!variables.length) list.innerHTML = "<div class='signal-add-list-state'>" + (search && allVariables.length ? "Ничего не найдено." : "Поддерживаемые переменные не найдены.") + (!search ? "<button class='button button-compact' type='button' data-signal-add-retry>Повторить</button>" : "") + "</div>";
+    if (count) count.textContent = variables.length + " переменных";
     state.hidden = false;
-    state.textContent = variables.length ? "Доступно переменных: " + variables.filter(function (variable) { return variable.selectable; }).length : "Поддерживаемые переменные не найдены.";
+    state.textContent = model.signalAddCachedOpen ? "Каталог открыт из кеша" : "Только совместимые переменные";
     updateSignalAddControls();
   }
 
-  function loadSignalAddCatalog() {
+  function loadSignalAddCatalog(refresh) {
     var token = ++model.signalAddToken;
-    model.signalAddCatalog = null;
+    model.signalAddCatalogError = "";
     model.signalAddLoading = true;
     renderSignalAddCatalog();
-    return api.workspaceVariables().then(function (catalog) {
-      if (token !== model.signalAddToken || !signalAddLayer() || signalAddLayer().hidden) return;
+    return api.workspaceVariables(!!refresh).then(function (catalog) {
+      if (token !== model.signalAddToken) return;
       model.signalAddLoading = false;
       model.signalAddCatalog = catalog;
-      renderSignalAddCatalog();
+      model.signalAddCachedOpen = false;
+      if (signalAddLayer() && !signalAddLayer().hidden) renderSignalAddCatalog();
     }).catch(function (caught) {
-      if (token !== model.signalAddToken || !signalAddLayer() || signalAddLayer().hidden) return;
+      if (token !== model.signalAddToken) return;
       model.signalAddLoading = false;
-      var layer = signalAddLayer(), list = layer.querySelector("[data-testid='signal-add-variables']"), state = layer.querySelector("[data-testid='signal-add-state']"), error = layer.querySelector("[data-testid='signal-add-error']");
-      list.innerHTML = "";
-      state.hidden = true;
-      error.hidden = false;
-      error.innerHTML = esc(safeErrorText(caught, "Не удалось получить переменные рабочей области.")) + " <button class='button button-compact' type='button' data-signal-add-retry>Повторить</button>";
-      updateSignalAddControls();
+      model.signalAddCatalogError = safeErrorText(caught, "Не удалось получить переменные рабочей области.");
+      if (signalAddLayer() && !signalAddLayer().hidden) renderSignalAddCatalog();
     });
+  }
+
+  function signalAddCatalogFresh() {
+    var expires = model.signalAddCatalog && Date.parse(model.signalAddCatalog.expires_at || "");
+    return !!(expires && expires > Date.now());
   }
 
   function openSignalAddDialog(trigger) {
@@ -1495,20 +1521,23 @@
     closeColumnMenu(false);
     model.signalAddTrigger = trigger;
     model.signalAddSubmitting = false;
+    model.signalAddSearch = "";
+    model.signalAddSelection = {};
+    model.signalAddCatalogError = "";
     layer.hidden = false;
     q("[data-testid='app-shell']").inert = true;
     trigger.setAttribute("aria-expanded", "true");
     var rate = layer.querySelector("[data-signal-add-sample-rate]");
     if (rate) rate.value = "1000000";
     layer.querySelector("[data-signal-add-submit]").textContent = "Добавить";
-    loadSignalAddCatalog();
+    if (signalAddCatalogFresh()) { model.signalAddCachedOpen = true; renderSignalAddCatalog(); }
+    else { model.signalAddCachedOpen = false; loadSignalAddCatalog(false); }
     layer.querySelector("#signal-add-title").focus();
   }
 
   function closeSignalAddDialog(restoreFocus) {
     var layer = signalAddLayer();
     if (!layer || layer.hidden) return;
-    ++model.signalAddToken;
     layer.hidden = true;
     q("[data-testid='app-shell']").inert = false;
     var trigger = q("[data-testid='signals-add-action']") || model.signalAddTrigger;
@@ -1516,7 +1545,6 @@
       trigger.setAttribute("aria-expanded", "false");
       if (restoreFocus) trigger.focus();
     }
-    model.signalAddCatalog = null;
     model.signalAddTrigger = null;
     model.signalAddLoading = false;
     model.signalAddSubmitting = false;
@@ -1525,9 +1553,9 @@
   function submitSignalAddDialog() {
     var layer = signalAddLayer(), catalog = model.signalAddCatalog;
     if (!layer || layer.hidden || !catalog || model.signalAddSubmitting) return;
-    var selected = signalAddSelected(), rate = Number(layer.querySelector("[data-signal-add-sample-rate]").value);
-    if (!selected.length) return;
-    var selections = selected.map(function (input) { return { variable_id:input.value, sample_rate_hz:input.dataset.sampleRateRequirement === "required" ? rate : null }; });
+    var selected = signalAddSelected(), rate = signalAddRateResult();
+    if (!selected.length || selected.some(function (variable) { return variable.sample_rate_requirement === "required"; }) && (!rate.valid || rate.value <= 0)) return updateSignalAddControls();
+    var selections = selected.map(function (variable) { return { variable_id:variable.variable_id, sample_rate_hz:variable.sample_rate_requirement === "required" ? rate.value : null }; });
     model.signalAddSubmitting = true;
     var submit = layer.querySelector("[data-signal-add-submit]");
     var error = layer.querySelector("[data-testid='signal-add-error']");
@@ -1535,6 +1563,7 @@
     error.hidden = true;
     updateSignalAddControls();
     mutate(function () { return api.signals({ state_revision:model.revision, operation:"import_workspace_batch", catalog_revision:catalog.catalog_revision, selections:selections }); }).then(function () {
+      model.signalAddSubmitting = false;
       closeSignalAddDialog(true);
       showToast("Добавлено сигналов: " + selections.length, false);
     }).catch(function (caught) {
@@ -1865,7 +1894,7 @@
     if (button.dataset.testid === "settings-apply") return void (model.settingsPage === "peaks" ? applyPeaksSettings() : applySettings());
     if (button.dataset.testid === "signals-add-action") return void openSignalAddDialog(button);
     if (button.dataset.signalAddClose !== undefined || button.dataset.signalAddCancel !== undefined) return void closeSignalAddDialog(true);
-    if (button.dataset.signalAddRetry !== undefined) return void loadSignalAddCatalog();
+    if (button.dataset.signalAddRetry !== undefined) return void loadSignalAddCatalog(true);
     if (button.dataset.signalAddSubmit !== undefined) return void submitSignalAddDialog();
     if (button.dataset.signalDelete) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "delete", signal_name: button.dataset.signalDelete }); });
     if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });
@@ -1914,7 +1943,7 @@
   });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='signal-columns-menu']"),trigger=q("[data-testid='signal-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeColumnMenu(false); });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='measurement-columns-menu']"),trigger=q("[data-testid='measurement-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeMeasurementMenu(false); });
-  document.addEventListener("keydown", function (event) { var clearLayer=q("[data-testid='pane-clear-confirm-layer']"), help=q("[data-testid='graph-help-overlay']"), paneMenu=q("[data-testid='display-overflow-menu']"), addLayer=signalAddLayer(); if (event.key === "Escape" && model.sessionImport.open && !model.sessionImport.busy) { event.preventDefault(); closeSessionImport(true); return; } if (event.key === "Escape" && clearLayer && !clearLayer.hidden) { event.preventDefault(); closePaneClearConfirm(true); return; } if (event.key === "Escape" && help && !help.hidden) { event.preventDefault(); closeGraphHelp(true); return; } if (event.key === "Escape" && paneMenu && !paneMenu.hidden) { event.preventDefault(); closePaneMenu(true); return; } if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape" && q("[data-testid='measurement-columns-menu']") && !q("[data-testid='measurement-columns-menu']").hidden) closeMeasurementMenu(true); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0 ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
+  document.addEventListener("keydown", function (event) { var clearLayer=q("[data-testid='pane-clear-confirm-layer']"), help=q("[data-testid='graph-help-overlay']"), paneMenu=q("[data-testid='display-overflow-menu']"), addLayer=signalAddLayer(); if (event.key === "Escape" && model.sessionImport.open && !model.sessionImport.busy) { event.preventDefault(); closeSessionImport(true); return; } if (event.key === "Escape" && clearLayer && !clearLayer.hidden) { event.preventDefault(); closePaneClearConfirm(true); return; } if (event.key === "Escape" && help && !help.hidden) { event.preventDefault(); closeGraphHelp(true); return; } if (event.key === "Escape" && paneMenu && !paneMenu.hidden) { event.preventDefault(); closePaneMenu(true); return; } if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); if (model.signalAddSearch) { model.signalAddSearch=""; renderSignalAddCatalog(); var search=q("[data-signal-add-search]"); if(search)search.focus(); } else closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape" && q("[data-testid='measurement-columns-menu']") && !q("[data-testid='measurement-columns-menu']").hidden) closeMeasurementMenu(true); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0 ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
   document.addEventListener("keydown", function (event) { var menu=event.target.closest && event.target.closest("[data-testid='display-overflow-menu']"); if (!menu || ["ArrowDown","ArrowUp","Home","End"].indexOf(event.key)<0) return; var items=qa("[data-testid='display-overflow-menu'] button:not(:disabled)"), current=items.indexOf(document.activeElement), next=current; if(event.key==="ArrowDown") next=(current+1+items.length)%items.length; else if(event.key==="ArrowUp") next=(current-1+items.length)%items.length; else if(event.key==="Home") next=0; else next=items.length-1; event.preventDefault(); if(items[next]) items[next].focus(); });
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]"),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
@@ -1925,8 +1954,8 @@
   });
   document.addEventListener("click", function (event) { if (event.target.closest("[data-value-select-key]")) return; var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }, { preservePlots:true, skipOutput:true }); });
   document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
-  document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) updateSignalAddControls(); if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName === "SELECT") { var select=event.target; model.peaksDraft.values[select.dataset.peaksSetting]=select.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:select.dataset.peaksSetting }); renderApply(); } });
-  document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); });
+  document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) { model.signalAddSelection[event.target.value]=event.target.checked; updateSignalAddControls(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName === "SELECT") { var select=event.target; model.peaksDraft.values[select.dataset.peaksSetting]=select.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:select.dataset.peaksSetting }); renderApply(); } });
+  document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); if (event.target.dataset.signalAddSearch !== undefined) { model.signalAddSearch=event.target.value; renderSignalAddCatalog(); var search=q("[data-signal-add-search]"); if(search){search.focus();search.setSelectionRange(model.signalAddSearch.length,model.signalAddSearch.length);} } });
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-saved", function (event) { var revision = event.detail && event.detail.state && event.detail.state.state_revision; if (typeof revision === "number") model.revision = Math.max(model.revision, revision); });
   window.addEventListener("signal-settings-plot-type", function (event) {

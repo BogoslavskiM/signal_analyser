@@ -510,12 +510,33 @@ end
 route("/api/workspace/variables", method = GET) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try
+        refresh_value = try
+            params(:refresh)
+        catch err
+            err isa KeyError || rethrow()
+            nothing
+        end
+        refresh = if refresh_value === nothing || refresh_value == "false"
+            false
+        elseif refresh_value == "true"
+            true
+        else
+            throw(SignalAnalyserValidationError(
+                "Некорректный запрос каталога рабочей области",
+                Dict("refresh" => "Допустимо только true или false"),
+            ))
+        end
         api_json(
-            workspace_catalog_payload(load_workspace_catalog!(WORKSPACE_CATALOG_SERVICE));
+            workspace_catalog_payload(latest_workspace_catalog!(
+                WORKSPACE_CATALOG_SERVICE;
+                refresh = refresh,
+            ));
             headers = response_headers,
         )
     catch err
-        if err isa WorkspaceUnavailableError
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        elseif err isa WorkspaceUnavailableError
             workspace_api_error_response(
                 "workspace_unavailable",
                 err;
