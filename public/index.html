@@ -128,11 +128,16 @@
   <div class="menu select-menu" role="listbox" data-testid="select-menu" hidden></div>
   <div id="extrema-mode-menu" class="menu select-menu extrema-mode-menu" role="listbox" aria-label="Режим расчёта экстремумов" data-testid="extrema-mode-menu" hidden></div>
   <div class="menu compact-menu plot-menu" role="menu" data-testid="display-overflow-menu" hidden>
-    <button type="button" role="menuitem" data-plot-clear>
+    <button type="button" role="menuitem" data-plot-clear data-testid="pane-menu-clear">
       <img src="./icons/trash.svg" alt="">
       <span>Очистить область</span>
     </button>
-    <button type="button" role="menuitem" data-plot-help aria-haspopup="dialog" aria-expanded="false">
+    <button type="button" role="menuitemcheckbox" data-plot-range-slider data-testid="pane-menu-range-slider" aria-checked="false">
+      <span class="range-slider-menu-icon" aria-hidden="true"><i></i></span>
+      <span>Слайдер диапазона</span>
+      <img class="plot-menu-check" src="./icons/tick-figma.svg" alt="">
+    </button>
+    <button type="button" role="menuitem" data-plot-help data-testid="pane-menu-help" aria-haspopup="dialog" aria-expanded="false">
       <img src="./icons/help-circle.svg" alt="">
       <span>Управление графиком</span>
     </button>
@@ -147,6 +152,21 @@
       <img src="./icons/close.svg" alt="">
     </button>
   </section>
+
+  <div class="modal-layer nested-modal-layer" data-testid="pane-clear-confirm-layer" hidden>
+    <section class="dialog-card message-dialog" role="dialog" aria-modal="true" aria-labelledby="pane-clear-confirm-title" aria-describedby="pane-clear-confirm-copy">
+      <header class="dialog-titlebar">
+        <h2 id="pane-clear-confirm-title" tabindex="-1">Очистить активную область?</h2>
+      </header>
+      <div class="dialog-body">
+        <p id="pane-clear-confirm-copy">График останется без видимых сигналов, пока вы не включите их снова.</p>
+      </div>
+      <footer class="dialog-footer">
+        <button class="button" type="button" data-pane-clear-cancel data-testid="pane-clear-cancel">Отмена</button>
+        <button class="button button-primary" type="button" data-pane-clear-confirm data-testid="pane-clear-confirm">Очистить</button>
+      </footer>
+    </section>
+  </div>
   <div class="menu inspector-menu" role="menu" data-testid="signal-columns-menu" aria-label="Другие действия с сигналами" hidden></div>
   <div class="menu inspector-menu" role="menu" data-testid="measurement-columns-menu" aria-label="Видимость измерений" hidden></div>
 

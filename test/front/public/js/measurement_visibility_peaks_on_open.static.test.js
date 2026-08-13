@@ -33,5 +33,10 @@ module.exports = async function testMeasurementVisibilityAndPeaksOnOpen(assert) 
   assert(/peaks_enabled:true/.test(enablePeaks) && /preservePlots:true, skipOutput:true/.test(enablePeaks), "passive Extrema enablement must not reload graph output");
   assert(/fetchActivePeaks\(displayId, paneId, false, false\)/.test(loadPeaks), "Extrema on-open must perform passive GET without polling");
   assert(!/calculateActivePeaks|fetchActivePeaks\(displayId, paneId, true/.test(loadPeaks), "Extrema on-open must not calculate");
-  assert(/function renderPeaksInspector\(body\)[\s\S]*data-testid='extrema-start'[\s\S]*Рассчет экстремумы для области [\s\S]*data-testid='extrema-calculate'[\s\S]*data-testid='extrema-configure'[\s\S]*peaks-table/.test(app), "Extrema must render its exact start actions before the full-width result table");
+  const peaksInspector = (app.match(/function renderPeaksInspector\(body\)[\s\S]*?\n  \}/) || [""])[0];
+  assert(/data-testid='extrema-start'[\s\S]*Рассчет экстремумы для области /.test(peaksInspector), "Extrema must render its exact area start state");
+  const calculateIndex = peaksInspector.indexOf("data-testid='extrema-calculate'");
+  const configureIndex = peaksInspector.indexOf("data-testid='extrema-configure'");
+  const tableIndex = peaksInspector.indexOf("data-testid='peaks-table'");
+  assert(calculateIndex >= 0 && configureIndex > calculateIndex && tableIndex > configureIndex, "Extrema rendered markup must order Calculate then Configure before the full-width result table");
 };

@@ -12,12 +12,13 @@
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
-    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, toastTimer: null,
+    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksMessage: "", extremaTargetKey: null,
-    signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false
+    signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false,
+    paneMenuTrigger: null, graphHelpRestoreTarget: null, paneClearContext: null
   };
 
   function q(selector) { return document.querySelector(selector); }
@@ -65,6 +66,18 @@
     var display = activeDisplay();
     var activeKey = display && model.activePane ? paneRuntimeKey(display.id, model.activePane) : null;
     if (model.extremaTargetKey && model.extremaTargetKey !== activeKey) model.extremaTargetKey = null;
+    var currentKeys = {};
+    (snapshot.layouts || []).forEach(function (item) {
+      var owningDisplay = (snapshot.displays || []).filter(function (candidate) { return candidate.id === item.display_id; })[0];
+      var itemPanes = item.layout && Array.isArray(item.layout.panes) ? item.layout.panes : [];
+      itemPanes.forEach(function (pane) {
+        var key = paneRuntimeKey(item.display_id, pane.id);
+        currentKeys[key] = true;
+        if (pane.plot_type !== "time" || !paneHasSignals(pane)) delete model.rangeSliderByPane[key];
+      });
+      if (!owningDisplay) itemPanes.forEach(function (pane) { delete model.rangeSliderByPane[paneRuntimeKey(item.display_id, pane.id)]; });
+    });
+    Object.keys(model.rangeSliderByPane).forEach(function (key) { if (!currentKeys[key]) delete model.rangeSliderByPane[key]; });
   }
 
   function scheduleRender() {
@@ -347,6 +360,183 @@
     return model.plotlyPromise;
   }
 
+  function rangeSliderEnabled(displayId, paneId) {
+    return !!model.rangeSliderByPane[paneRuntimeKey(displayId, paneId)];
+  }
+
+  function plotLayoutWithRangeSlider(layout, runtimeKey, host) {
+    var source = layout || {};
+    var enabled = !!model.rangeSliderByPane[runtimeKey];
+    var result = Object.assign({ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", showlegend:true }, source);
+    result.margin = Object.assign({ l:44, r:12, t:12, b:enabled ? 34 : 30 }, source.margin || {}, { b:enabled ? 34 : 30 });
+    if (!enabled) return result;
+    result.xaxis = Object.assign({}, source.xaxis || {});
+    result.xaxis.rangeslider = Object.assign({}, (source.xaxis && source.xaxis.rangeslider) || {}, { visible:true, thickness:0.15, bgcolor:"#ffffff", bordercolor:"#e1e1e1", borderwidth:1 });
+    if (host && host._fullLayout && host._fullLayout.xaxis && Array.isArray(host._fullLayout.xaxis.range)) {
+      result.xaxis.range = host._fullLayout.xaxis.range.slice();
+      result.xaxis.autorange = false;
+    }
+    Object.keys(result).forEach(function (key) {
+      if (/^yaxis(?:[1-9][0-9]*)?$/.test(key)) result[key] = Object.assign({}, result[key] || {}, { fixedrange:true });
+    });
+    if (!result.yaxis) result.yaxis = { fixedrange:true };
+    return result;
+  }
+
+  function rangeSliderEligible(displayId, paneId) {
+    var display = activeDisplay(), pane = paneById(paneId), runtimeKey = paneRuntimeKey(displayId, paneId);
+    var record = model.outputs[runtimeKey], host = q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
+    return !!(display && display.id === displayId && pane && pane.plot_type === "time" && paneHasSignals(pane) && record && record.output && record.output.isready && record.output.success && host && host.dataset.plotReady === "true" && currentReadyPlotHost(host, displayId));
+  }
+
+  function syncPaneMenuState() {
+    var menu = q("[data-testid='display-overflow-menu']");
+    if (!menu || menu.hidden) return;
+    var display = activeDisplay(), paneId = menu.dataset.paneId, displayId = menu.dataset.displayId;
+    var rangeAction = menu.querySelector("[data-plot-range-slider]");
+    var eligible = !!display && display.id === displayId && rangeSliderEligible(displayId, paneId);
+    var checked = rangeSliderEnabled(displayId, paneId);
+    rangeAction.disabled = !eligible;
+    rangeAction.setAttribute("aria-checked", String(checked));
+    rangeAction.setAttribute("aria-label", eligible ? "Слайдер диапазона" : "Слайдер диапазона, доступен только для загруженной временной области");
+    rangeAction.title = eligible ? "" : "Доступно только для загруженной временной области";
+  }
+
+  function positionPaneMenu() {
+    var menu = q("[data-testid='display-overflow-menu']"), trigger = model.paneMenuTrigger;
+    if (!menu || menu.hidden || !trigger || !trigger.isConnected) return;
+    var rect = trigger.getBoundingClientRect(), width = 224, height = menu.offsetHeight;
+    menu.style.width = width + "px";
+    menu.style.left = Math.min(window.innerWidth - width - 8, Math.max(8, rect.right - width)) + "px";
+    var below = rect.bottom + 4;
+    menu.style.top = (below + height <= window.innerHeight - 8 ? below : Math.max(8, rect.top - height - 4)) + "px";
+  }
+
+  function closeGraphHelp(restoreFocus) {
+    var help = q("[data-testid='graph-help-overlay']");
+    if (!help || help.hidden) return;
+    var target = model.graphHelpRestoreTarget;
+    help.hidden = true;
+    if (target && target.isConnected) target.setAttribute("aria-expanded", "false");
+    model.graphHelpRestoreTarget = null;
+    if (restoreFocus && target && target.isConnected) target.focus();
+  }
+
+  function closePaneMenu(restoreFocus) {
+    var menu = q("[data-testid='display-overflow-menu']");
+    if (!menu || menu.hidden) return;
+    closeGraphHelp(false);
+    var trigger = model.paneMenuTrigger;
+    menu.hidden = true;
+    delete menu.dataset.paneId;
+    delete menu.dataset.displayId;
+    if (trigger && trigger.isConnected) {
+      trigger.setAttribute("aria-expanded", "false");
+      if (restoreFocus) trigger.focus();
+    }
+    model.paneMenuTrigger = null;
+  }
+
+  function openPaneMenu(trigger) {
+    var menu = q("[data-testid='display-overflow-menu']"), display = activeDisplay();
+    if (!menu || !display) return;
+    if (!menu.hidden && model.paneMenuTrigger === trigger) return closePaneMenu(true);
+    closePaneMenu(false);
+    closeColumnMenu(false);
+    closeMeasurementMenu(false);
+    model.paneMenuTrigger = trigger;
+    menu.dataset.paneId = trigger.dataset.paneMenu;
+    menu.dataset.displayId = display.id;
+    menu.hidden = false;
+    trigger.setAttribute("aria-expanded", "true");
+    syncPaneMenuState();
+    positionPaneMenu();
+    var first = menu.querySelector("button:not(:disabled)");
+    if (first) first.focus();
+  }
+
+  function openGraphHelp(trigger) {
+    var menu = q("[data-testid='display-overflow-menu']"), help = q("[data-testid='graph-help-overlay']");
+    var pane = menu && q("[data-pane-id='" + CSS.escape(menu.dataset.paneId || "") + "']");
+    var canvas = pane && pane.querySelector(".plot-canvas");
+    if (!menu || menu.hidden || !help || !canvas) return;
+    model.graphHelpRestoreTarget = trigger;
+    trigger.setAttribute("aria-expanded", "true");
+    help.hidden = false;
+    var canvasRect = canvas.getBoundingClientRect(), width = help.offsetWidth, height = help.offsetHeight;
+    var legend = canvas.querySelector(".legend"), legendBottom = legend ? legend.getBoundingClientRect().bottom : canvasRect.top;
+    help.style.left = Math.min(window.innerWidth - width - 8, Math.max(8, canvasRect.left + 8)) + "px";
+    help.style.top = Math.min(window.innerHeight - height - 8, Math.max(8, legendBottom + 8)) + "px";
+    var close = help.querySelector("[data-graph-help-close]");
+    if (close) close.focus();
+  }
+
+  function rangeSliderRelayout(host, enabled) {
+    var fullLayout = host && host._fullLayout || {}, update = {
+      "xaxis.rangeslider.visible":enabled,
+      "xaxis.rangeslider.thickness":0.15,
+      "xaxis.rangeslider.bgcolor":"#ffffff",
+      "xaxis.rangeslider.bordercolor":"#e1e1e1",
+      "xaxis.rangeslider.borderwidth":1,
+      "margin.b":enabled ? 34 : 30
+    };
+    Object.keys(fullLayout).forEach(function (key) {
+      if (/^yaxis(?:[1-9][0-9]*)?$/.test(key)) update[key + ".fixedrange"] = enabled;
+    });
+    if (!Object.keys(update).some(function (key) { return /^yaxis/.test(key); })) update["yaxis.fixedrange"] = enabled;
+    return update;
+  }
+
+  function togglePaneRangeSlider() {
+    var menu = q("[data-testid='display-overflow-menu']"), display = activeDisplay();
+    if (!menu || menu.hidden || !display) return;
+    var displayId = menu.dataset.displayId, paneId = menu.dataset.paneId, runtimeKey = paneRuntimeKey(displayId, paneId);
+    var host = q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
+    if (display.id !== displayId || !rangeSliderEligible(displayId, paneId) || !host) return;
+    var prior = rangeSliderEnabled(displayId, paneId), enabled = !prior;
+    model.rangeSliderByPane[runtimeKey] = enabled;
+    closePaneMenu(true);
+    loadPlotly().then(function (Plotly) {
+      if (!host.isConnected || !paneById(paneId)) return;
+      return Plotly.relayout(host, rangeSliderRelayout(host, enabled)).then(function () { host.dataset.rangeSliderVisible = String(enabled); });
+    }).catch(function () {
+      if (prior) model.rangeSliderByPane[runtimeKey] = true; else delete model.rangeSliderByPane[runtimeKey];
+      showToast("Не удалось изменить слайдер диапазона.", true);
+    });
+  }
+
+  function openPaneClearConfirm() {
+    var menu = q("[data-testid='display-overflow-menu']"), layer = q("[data-testid='pane-clear-confirm-layer']"), display = activeDisplay();
+    if (!menu || menu.hidden || !layer || !display) return;
+    model.paneClearContext = { displayId:menu.dataset.displayId, paneId:menu.dataset.paneId, restoreTarget:model.paneMenuTrigger };
+    closePaneMenu(false);
+    layer.hidden = false;
+    q("[data-testid='app-shell']").inert = true;
+    var title = q("#pane-clear-confirm-title");
+    if (title) title.focus();
+  }
+
+  function closePaneClearConfirm(restoreFocus) {
+    var layer = q("[data-testid='pane-clear-confirm-layer']"), context = model.paneClearContext;
+    if (!layer || layer.hidden) return;
+    layer.hidden = true;
+    q("[data-testid='app-shell']").inert = false;
+    model.paneClearContext = null;
+    if (restoreFocus && context && context.restoreTarget && context.restoreTarget.isConnected) context.restoreTarget.focus();
+  }
+
+  function confirmPaneClear() {
+    var context = model.paneClearContext, display = activeDisplay(), pane = context && paneById(context.paneId);
+    if (!context || !display || display.id !== context.displayId || !pane) return closePaneClearConfirm(true);
+    closePaneClearConfirm(false);
+    postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:pane.plot_type, signal_bindings:[] }).then(function () {
+      delete model.rangeSliderByPane[paneRuntimeKey(context.displayId, context.paneId)];
+      showToast("Область очищена", false);
+      var target = q("[data-pane-id='" + CSS.escape(context.paneId) + "']");
+      if (target) target.focus();
+    }).catch(function (error) { showToast(safeErrorText(error, "Не удалось очистить область."), true); });
+  }
+
   function enqueuePlot(displayId, pane, record) {
     var runtimeKey = paneRuntimeKey(displayId, pane.id);
     model.plotQueue[runtimeKey] = record;
@@ -361,7 +551,7 @@
         if (!host || !queued || !hasPlotData(queued.output.data)) return;
         var payload = plotEnvelope(queued.output.data);
         var traces = Array.isArray(payload) ? payload : (Array.isArray(payload.data) ? payload.data : [{ type: "heatmap", x: payload.x, y: payload.y, z: payload.z, colorscale: payload.colorscale }]);
-        return Plotly.react(host, traces, Object.assign({ paper_bgcolor: "#ffffff", plot_bgcolor: "#ffffff", showlegend: true, margin: { l: 44, r: 12, t: 12, b: 34 } }, payload.layout || {}), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
+        return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
         model.plotInFlight[runtimeKey] = false;
         if (model.plotQueue[runtimeKey]) enqueuePlot(displayId, pane, model.plotQueue[runtimeKey]);
@@ -534,7 +724,7 @@
     if (!pane || pane.plot_type !== "time") { host.innerHTML = "<div class='inspector-empty' role='status'>Экстремумы доступны для временной области</div>"; return; }
     if (!current || (!record.pending && !record.error && !record.calculated)) {
       var areaNumber = Math.max(1, panes().indexOf(pane) + 1);
-      host.innerHTML = "<div class='peaks-state peaks-start' data-testid='extrema-start' data-extrema-state='start' role='status'><strong>Рассчет экстремумы для области " + areaNumber + "</strong><div class='peaks-start-actions'><button class='button' type='button' data-testid='extrema-configure'>Настроить рассчет</button><button class='button button-primary' type='button' data-testid='extrema-calculate'>Рассчитать</button></div></div>";
+      host.innerHTML = "<div class='peaks-state peaks-start' data-testid='extrema-start' data-extrema-state='start' role='status'><strong>Рассчет экстремумы для области " + areaNumber + "</strong><div class='peaks-start-actions'><button class='button button-primary' type='button' data-testid='extrema-calculate'>Рассчитать</button><button class='button' type='button' data-testid='extrema-configure'>Настроить рассчет</button></div></div>";
       return;
     }
     if (record.pending) { host.innerHTML = "<div class='peaks-state peaks-loading' data-testid='peaks-loader' data-extrema-state='loading' role='status' aria-live='polite'><span class='spinner' aria-hidden='true'></span><strong>Расчёт экстремумов…</strong></div>"; return; }
@@ -1320,7 +1510,13 @@
     if (button.dataset.signalDelete) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "delete", signal_name: button.dataset.signalDelete }); });
     if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });
     if (button.dataset.settingsPage) { model.settingsPage = button.dataset.settingsPage; if (!peaksSurfaceActive()) stopPeaksPolling(""); renderSettings(activeDisplay()); if (model.settingsPage === "peaks") loadPeaks(); return; }
-    if (button.dataset.paneMenu) { var menu = q("[data-testid='display-overflow-menu']"); menu.hidden = !menu.hidden; menu.dataset.paneId = button.dataset.paneMenu; button.setAttribute("aria-expanded", String(!menu.hidden)); return; }
+    if (button.dataset.paneMenu) return void openPaneMenu(button);
+    if (button.matches("[data-plot-clear]")) return void openPaneClearConfirm();
+    if (button.dataset.plotRangeSlider !== undefined) return void togglePaneRangeSlider();
+    if (button.matches("[data-plot-help]")) return void (q("[data-testid='graph-help-overlay']").hidden ? openGraphHelp(button) : closeGraphHelp(true));
+    if (button.dataset.graphHelpClose !== undefined) return void closeGraphHelp(true);
+    if (button.dataset.paneClearCancel !== undefined) return void closePaneClearConfirm(true);
+    if (button.dataset.paneClearConfirm !== undefined) return void confirmPaneClear();
     if (button.dataset.testid === "signal-columns-menu-trigger") { var columns = q("[data-testid='signal-columns-menu']"); if (!columns.hidden) return void closeColumnMenu(true); renderColumnMenu(); columns.hidden = false; button.setAttribute("aria-expanded", "true"); positionMenu(columns, button, 244); var firstColumn = columns.querySelector("button"); if (firstColumn) firstColumn.focus(); return; }
     if (button.dataset.columnVisible !== undefined) { var key = button.dataset.columnVisible; model.visibleColumns[key] = !model.visibleColumns[key]; renderInspector(); renderColumnMenu(); var menuTrigger = q("[data-testid='signal-columns-menu-trigger']"); if (menuTrigger) menuTrigger.setAttribute("aria-expanded", "true"); positionMenu(q("[data-testid='signal-columns-menu']"), menuTrigger, 244); return; }
     if (button.dataset.testid === "measurement-columns-menu-trigger") { var measurementsMenu = q("[data-testid='measurement-columns-menu']"); if (!measurementsMenu.hidden) return void closeMeasurementMenu(true); renderMeasurementMenu(); measurementsMenu.hidden = false; button.setAttribute("aria-expanded", "true"); positionMenu(measurementsMenu, button, 244); var firstMeasurement = measurementsMenu.querySelector("button"); if (firstMeasurement) firstMeasurement.focus(); return; }
@@ -1351,10 +1547,16 @@
     var inside = path ? path.indexOf(popover) >= 0 || path.indexOf(trigger) >= 0 : !fallbackOutside;
     if (!inside) closeLayout();
   });
+  document.addEventListener("pointerdown", function (event) {
+    var menu = q("[data-testid='display-overflow-menu']"), help = q("[data-testid='graph-help-overlay']");
+    if (menu && !menu.hidden && !menu.contains(event.target) && (!help || help.hidden || !help.contains(event.target)) && !event.target.closest("[data-pane-menu]")) closePaneMenu(true);
+    if (help && !help.hidden && !help.contains(event.target) && (!menu || menu.hidden || !menu.contains(event.target))) closeGraphHelp(true);
+  });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='signal-columns-menu']"),trigger=q("[data-testid='signal-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeColumnMenu(false); });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='measurement-columns-menu']"),trigger=q("[data-testid='measurement-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeMeasurementMenu(false); });
   document.addEventListener("click", function (event) { var menu=extremaModeMenu(),trigger=q("[data-extrema-mode-trigger]");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeExtremaModeMenu(false); });
-  document.addEventListener("keydown", function (event) { var addLayer=signalAddLayer(); if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape" && q("[data-testid='measurement-columns-menu']") && !q("[data-testid='measurement-columns-menu']").hidden) closeMeasurementMenu(true); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0 ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
+  document.addEventListener("keydown", function (event) { var clearLayer=q("[data-testid='pane-clear-confirm-layer']"), help=q("[data-testid='graph-help-overlay']"), paneMenu=q("[data-testid='display-overflow-menu']"), addLayer=signalAddLayer(); if (event.key === "Escape" && clearLayer && !clearLayer.hidden) { event.preventDefault(); closePaneClearConfirm(true); return; } if (event.key === "Escape" && help && !help.hidden) { event.preventDefault(); closeGraphHelp(true); return; } if (event.key === "Escape" && paneMenu && !paneMenu.hidden) { event.preventDefault(); closePaneMenu(true); return; } if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape" && q("[data-testid='measurement-columns-menu']") && !q("[data-testid='measurement-columns-menu']").hidden) closeMeasurementMenu(true); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]"), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0 ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
+  document.addEventListener("keydown", function (event) { var menu=event.target.closest && event.target.closest("[data-testid='display-overflow-menu']"); if (!menu || ["ArrowDown","ArrowUp","Home","End"].indexOf(event.key)<0) return; var items=qa("[data-testid='display-overflow-menu'] button:not(:disabled)"), current=items.indexOf(document.activeElement), next=current; if(event.key==="ArrowDown") next=(current+1+items.length)%items.length; else if(event.key==="ArrowUp") next=(current-1+items.length)%items.length; else if(event.key==="Home") next=0; else next=items.length-1; event.preventDefault(); if(items[next]) items[next].focus(); });
   document.addEventListener("keydown", function (event) { var trigger=event.target.closest && event.target.closest("[data-extrema-mode-trigger]"), menu=extremaModeMenu(); if (trigger && ["Enter", " ", "ArrowDown"].indexOf(event.key) >= 0) { event.preventDefault(); openExtremaModeMenu(trigger); var first=menu && menu.querySelector("button"); if(first) first.focus(); return; } if (menu && !menu.hidden && event.key === "Escape") { event.preventDefault(); closeExtremaModeMenu(true); } });
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]"),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
@@ -1385,7 +1587,7 @@
   window.addEventListener("resize", function () { scheduleDisplayTabScrollUpdate(false); });
   window.addEventListener("resize", retainWorkspaceSplitOnResize);
   window.addEventListener("resize", repositionLayout);
-  window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='measurement-columns-menu']"), q("[data-testid='measurement-columns-menu-trigger']"), 244); positionMenu(extremaModeMenu(), q("[data-extrema-mode-trigger]"), q("[data-extrema-mode-trigger]") ? q("[data-extrema-mode-trigger]").getBoundingClientRect().width : 0); });
+  window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='measurement-columns-menu']"), q("[data-testid='measurement-columns-menu-trigger']"), 244); positionMenu(extremaModeMenu(), q("[data-extrema-mode-trigger]"), q("[data-extrema-mode-trigger]") ? q("[data-extrema-mode-trigger]").getBoundingClientRect().width : 0); positionPaneMenu(); if (q("[data-testid='graph-help-overlay']") && !q("[data-testid='graph-help-overlay']").hidden && model.graphHelpRestoreTarget) openGraphHelp(model.graphHelpRestoreTarget); });
   if (window.ResizeObserver) {
     model.displayTabsObserver = new window.ResizeObserver(function () { scheduleDisplayTabScrollUpdate(false); });
     model.displayTabsObserver.observe(q("[data-testid='display-tabs-wrap']"));
