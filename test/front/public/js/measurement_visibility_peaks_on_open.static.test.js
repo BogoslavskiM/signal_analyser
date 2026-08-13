@@ -38,5 +38,5 @@ module.exports = async function testMeasurementVisibilityAndPeaksOnOpen(assert) 
   const calculateIndex = peaksInspector.indexOf("data-testid='extrema-calculate'");
   const configureIndex = peaksInspector.indexOf("data-testid='extrema-configure'");
   const tableIndex = peaksInspector.indexOf("data-testid='peaks-table'");
-  assert(calculateIndex >= 0 && configureIndex > calculateIndex && tableIndex > configureIndex, "Extrema rendered markup must order Calculate then Configure before the full-width result table");
+  assert(configureIndex >= 0 && calculateIndex > configureIndex && tableIndex > calculateIndex, "Extrema rendered markup must order Configure then Calculate before the full-width result table");
 };
