@@ -29,7 +29,7 @@
       </div>
     </header>
 
-    <div class="workspace-inspector-stack" data-testid="workspace-inspector-stack">
+    <div class="workspace-inspector-stack" data-testid="workspace-inspector-stack" data-inspector-state="split">
     <section class="main-stage" aria-label="Рабочая область и настройки">
       <section class="workspace ui-panel" data-testid="display-workspace" aria-labelledby="workspace-title">
         <header class="workspace-titlebar">
@@ -97,6 +97,9 @@
           <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="measurements" data-testid="inspector-tab-measurements">Измерения</button>
           <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="peaks" data-testid="inspector-tab-peaks">Экстремумы</button>
         </div>
+        <button class="inspector-state-toggle" type="button" data-testid="inspector-state-toggle" data-current-state="split" data-tooltip="Развернуть нижнюю зону" title="Развернуть нижнюю зону" aria-label="Нижняя зона: средний размер. Развернуть полностью" aria-controls="inspector-content">
+          <span class="inspector-state-triangle is-up" aria-hidden="true"></span>
+        </button>
       </header>
       <div id="inspector-content" class="inspector-body" role="tabpanel" aria-labelledby="signals-tab" data-testid="inspector-pane-signals" data-inspector-content>
         <div class="inspector-search-row">

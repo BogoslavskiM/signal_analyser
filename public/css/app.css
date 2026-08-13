@@ -178,6 +178,14 @@ button img {
   grid-template-rows: minmax(440px, var(--workspace-main-track, 4fr)) 8px minmax(180px, 1fr);
 }
 
+.workspace-inspector-stack[data-inspector-state="collapsed"] {
+  grid-template-rows: minmax(0, 1fr) 8px 42px;
+}
+
+.workspace-inspector-stack[data-inspector-state="expanded"] {
+  grid-template-rows: 74px 8px minmax(0, 1fr);
+}
+
 .workspace-inspector-splitter {
   position: relative;
   min-width: 0;
@@ -586,13 +594,11 @@ body.is-resizing-workspace * {
   min-height: 28px;
   min-width: 0;
   flex: 1 1 auto;
-  padding: 4px 24px 4px 8px;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: var(--control-radius) 0 0 var(--control-radius);
   outline: 0;
-  appearance: none;
-  -webkit-appearance: none;
-  background: var(--surface) url("../icons/chevron-down-fill-16.svg") right 4px center / 16px 16px no-repeat;
+  background: var(--surface);
   color: var(--text);
   cursor: pointer;
   text-align: left;
@@ -600,23 +606,12 @@ body.is-resizing-workspace * {
   line-height: 18px;
 }
 
-.plot-control-cluster .pane-select.value-select-trigger {
-  display: flex;
-  align-items: center;
-  background-image: none;
-}
+.plot-control-cluster .pane-select .select-trigger-input { padding: 4px 28px 4px 8px; }
 
-.plot-control-cluster .pane-select.value-select-trigger > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.plot-control-cluster .pane-select:hover:not(:disabled) { border-color: var(--line-strong); }
-.plot-control-cluster .pane-select:active:not(:disabled) { background-color: var(--button-active); }
-.plot-control-cluster .pane-select:focus-visible { position: relative; z-index: 1; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-.plot-control-cluster .pane-select:disabled { background-color: var(--surface-muted); color: var(--muted); cursor: not-allowed; opacity: 0.72; }
+.plot-control-cluster .pane-select:hover:not([data-value-select-disabled="true"]) { border-color: var(--line-strong); }
+.plot-control-cluster .pane-select:active:not([data-value-select-disabled="true"]) { background-color: var(--button-active); }
+.plot-control-cluster .pane-select:focus-within { position: relative; z-index: 1; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.plot-control-cluster .pane-select[data-value-select-disabled="true"] { background-color: var(--surface-muted); color: var(--muted); cursor: not-allowed; opacity: 0.72; }
 
 .plot-control-cluster {
   min-width: 0;
@@ -914,7 +909,6 @@ body.is-resizing-workspace * {
   width: 100%;
   min-width: 0;
   height: 32px;
-  padding: 6px 8px;
   border: 1px solid var(--line);
   border-radius: var(--control-radius);
   outline: none;
@@ -923,24 +917,26 @@ body.is-resizing-workspace * {
   line-height: 1.4;
 }
 
+.control { padding: 6px 8px; }
+
 .control:hover:not(:disabled),
-.select-trigger:hover:not(:disabled) {
+.select-trigger:hover:not([data-value-select-disabled="true"]) {
   border-color: var(--line-strong);
 }
 
-.select-trigger:active:not(:disabled) {
+.select-trigger:active:not([data-value-select-disabled="true"]) {
   border-color: var(--line-strong);
   background: var(--button-active);
 }
 
 .control:focus-visible,
-.select-trigger:focus-visible {
+.select-trigger:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .control:disabled,
-.select-trigger:disabled,
+.select-trigger[data-value-select-disabled="true"],
 .checkbox-control:has(input:disabled) {
   background: var(--surface-muted);
   color: var(--muted);
@@ -952,14 +948,52 @@ body.is-resizing-workspace * {
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 6px 24px 6px 8px;
+  padding: 0;
   cursor: pointer;
   text-align: left;
 }
 
-.select-trigger::after {
+.select-trigger-input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 6px 28px 6px 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: inherit;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.select-trigger-input::placeholder { color: var(--muted); opacity: 1; }
+
+.select-trigger.is-open .select-trigger-input {
+  cursor: text;
+  text-overflow: clip;
+}
+
+.select-trigger-arrow {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0 var(--control-radius) var(--control-radius) 0;
+  outline: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.select-trigger-arrow::after {
   position: absolute;
   top: calc(50% + 1px);
   right: 4px;
@@ -971,15 +1005,14 @@ body.is-resizing-workspace * {
   transition: transform var(--duration-fast) ease;
 }
 
-.value-select-trigger[aria-expanded="true"]::after {
+.select-trigger.is-open .select-trigger-arrow::after {
   transform: translateY(-50%) rotate(180deg);
 }
 
-.select-trigger > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.select-trigger[data-value-select-disabled="true"] .select-trigger-input,
+.select-trigger[data-value-select-disabled="true"] .select-trigger-arrow {
+  color: var(--muted);
+  cursor: not-allowed;
 }
 
 .checkbox-control {
@@ -1258,6 +1291,76 @@ body.is-resizing-workspace * {
   width: 16px;
   height: 16px;
   object-fit: contain;
+}
+
+.inspector-state-toggle {
+  width: 32px;
+  height: 31px;
+  flex: 0 0 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.inspector-state-toggle:hover {
+  background: var(--surface-muted);
+  color: var(--accent);
+}
+
+.inspector-state-toggle:active {
+  background: var(--button-active);
+}
+
+.inspector-state-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+.inspector-state-triangle {
+  width: 0;
+  height: 0;
+  display: block;
+  border-style: solid;
+}
+
+.inspector-state-triangle.is-up {
+  border-width: 0 5px 7px;
+  border-color: transparent transparent currentColor;
+}
+
+.inspector-state-triangle.is-down {
+  border-width: 7px 5px 0;
+  border-color: currentColor transparent transparent;
+}
+
+.inspector-state-triangle.is-left {
+  border-width: 5px 7px 5px 0;
+  border-color: transparent currentColor transparent transparent;
+}
+
+.workspace-inspector-stack[data-inspector-state="collapsed"] .inspector {
+  grid-template-rows: 32px;
+  padding: 8px 8px 0;
+}
+
+.workspace-inspector-stack[data-inspector-state="collapsed"] .inspector-body,
+.workspace-inspector-stack[data-inspector-state="collapsed"] .inspector-actions,
+.workspace-inspector-stack[data-inspector-state="expanded"] .plot-grid,
+.workspace-inspector-stack[data-inspector-state="expanded"] .settings-scroll,
+.workspace-inspector-stack[data-inspector-state="expanded"] .settings-apply-block {
+  display: none;
+}
+
+.workspace-inspector-stack[data-inspector-state="expanded"] .workspace,
+.workspace-inspector-stack[data-inspector-state="expanded"] .settings-panel {
+  grid-template-rows: 42px 32px;
 }
 
 .inspector-body {
@@ -1612,9 +1715,8 @@ body.is-resizing-workspace * {
   position: fixed;
   z-index: var(--layer-dropdown);
   box-sizing: border-box;
-  max-height: min(280px, calc(100vh - 16px));
-  display: grid;
-  grid-template-rows: 40px minmax(0, 1fr);
+  max-height: min(240px, calc(100vh - 16px));
+  display: block;
   overflow: hidden;
   padding: 4px;
   border: 1px solid var(--line);
@@ -1626,73 +1728,18 @@ body.is-resizing-workspace * {
 
 .value-select-popup[hidden] { display: none; }
 
-.value-select-search-row {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  height: 40px;
-  min-height: 40px;
-  padding: 4px 4px 4px 32px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.value-select-search-icon {
-  position: absolute;
-  top: 13px;
-  left: 11px;
-  z-index: 1;
-  width: 11px;
-  height: 11px;
-  box-sizing: border-box;
-  border: 1.5px solid var(--muted);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.value-select-search-icon::after {
-  position: absolute;
-  right: -4px;
-  bottom: -3px;
-  width: 6px;
-  height: 1.5px;
-  border-radius: 1px;
-  background: var(--muted);
-  content: "";
-  transform: rotate(45deg);
-  transform-origin: left center;
-}
-
-.value-select-search {
-  width: 100%;
-  min-width: 0;
-  height: 32px;
-  box-sizing: border-box;
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: var(--control-radius);
-  outline: 0;
-  background: var(--surface);
-  color: var(--text);
-  font-family: var(--font);
-  font-size: 14px;
-  line-height: 18px;
-}
-
-.value-select-search:hover { border-color: var(--line-strong); }
-.value-select-search:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-
-.value-select-options {
+.select-options {
+  max-height: min(232px, calc(100vh - 24px));
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-top: 4px;
+  padding: 0;
   background: var(--surface);
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 
-.value-select-options button {
+.select-options button {
   width: 100%;
   height: 34px;
   min-height: 34px;
@@ -1714,16 +1761,17 @@ body.is-resizing-workspace * {
   white-space: nowrap;
 }
 
-.value-select-options button.is-selected { background: var(--surface); }
-.value-select-options button:not(:disabled):hover,
-.value-select-options button.is-active { background: #f5f5f5; }
-.value-select-options button:not(:disabled):active { background: var(--button-active); }
-.value-select-options button:disabled { color: var(--muted); cursor: not-allowed; opacity: 0.72; }
+.select-options button.is-selected { background: var(--surface); }
+.select-options button:not(:disabled):hover,
+.select-options button.is-active { background: #f5f5f5; }
+.select-options button:not(:disabled):active { background: var(--button-active); }
+.select-options button:disabled { color: var(--muted); cursor: not-allowed; opacity: 0.72; }
 
-.value-select-options .select-option-check { opacity: 0; }
-.value-select-options button.is-selected .select-option-check { opacity: 1; }
-.value-select-options button.is-selected .select-option-check::after { border-color: var(--success); }
+.select-options .select-option-check { opacity: 0; }
+.select-options button.is-selected .select-option-check { opacity: 1; }
+.select-options button.is-selected .select-option-check::after { border-color: var(--success); }
 
+.select-empty,
 .value-select-empty {
   min-height: 64px;
   display: flex;

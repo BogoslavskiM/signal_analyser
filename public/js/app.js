@@ -16,7 +16,7 @@
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
-    workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
+    workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false,
     paneMenuTrigger: null, graphHelpRestoreTarget: null, paneClearContext: null
@@ -162,11 +162,57 @@
     tablist.scrollBy({ left: direction * distance, behavior: "smooth" });
   }
 
+  function workspaceInspectorContract(state) {
+    if (state === "expanded") return { icon:"is-down", tooltip:"Свернуть нижнюю зону", label:"Нижняя зона: развернута. Свернуть полностью" };
+    if (state === "collapsed") return { icon:"is-left", tooltip:"Вернуть средний размер", label:"Нижняя зона: свернута. Вернуть средний размер" };
+    return { icon:"is-up", tooltip:"Развернуть нижнюю зону", label:"Нижняя зона: средний размер. Развернуть полностью" };
+  }
+
+  function renderWorkspaceInspectorState() {
+    var nodes = workspaceSplitNodes();
+    if (!nodes.stack || !nodes.toggle) return;
+    var contract = workspaceInspectorContract(model.workspaceInspectorState);
+    var triangle = nodes.toggle.querySelector(".inspector-state-triangle");
+    nodes.stack.dataset.inspectorState = model.workspaceInspectorState;
+    nodes.toggle.dataset.currentState = model.workspaceInspectorState;
+    nodes.toggle.dataset.tooltip = contract.tooltip;
+    nodes.toggle.title = contract.tooltip;
+    nodes.toggle.setAttribute("aria-label", contract.label);
+    if (triangle) triangle.className = "inspector-state-triangle " + contract.icon;
+  }
+
+  function closeWorkspaceInspectorMenus() {
+    if (valueSelect) valueSelect.close(false);
+    closePaneMenu(false);
+    closeColumnMenu(false);
+    closeMeasurementMenu(false);
+    if (model.layoutDraft) closeLayout();
+  }
+
+  function setWorkspaceInspectorState(state, autoscale) {
+    if (["split", "expanded", "collapsed"].indexOf(state) < 0 || state === model.workspaceInspectorState) return;
+    model.workspaceInspectorState = state;
+    renderWorkspaceInspectorState();
+    if (state === "split") retainWorkspaceSplitOnResize();
+    if (autoscale) queueWorkspaceSplitAutoscale();
+  }
+
+  function cycleWorkspaceInspectorState(toggle) {
+    closeWorkspaceInspectorMenus();
+    var next = model.workspaceInspectorState === "split" ? "expanded" : model.workspaceInspectorState === "expanded" ? "collapsed" : "split";
+    setWorkspaceInspectorState(next, true);
+    if (toggle && toggle.isConnected) {
+      try { toggle.focus({ preventScroll:true }); }
+      catch (_) { toggle.focus(); }
+    }
+  }
+
   function workspaceSplitNodes() {
     return {
       stack: q("[data-testid='workspace-inspector-stack']"),
       main: q(".main-stage"),
-      splitter: q("[data-testid='workspace-inspector-splitter']")
+      splitter: q("[data-testid='workspace-inspector-splitter']"),
+      toggle: q("[data-testid='inspector-state-toggle']")
     };
   }
 
@@ -178,10 +224,9 @@
     var nodes = workspaceSplitNodes();
     if (!nodes.stack || !nodes.main) return null;
     var maximum = workspaceSplitMaximum(nodes.stack);
-    var height = Math.max(440, Math.min(maximum, requestedHeight));
+    var height = Math.round(Math.max(440, Math.min(maximum, requestedHeight)));
     var excess = maximum - 440;
-    if (excess <= 0 && !preserveRatio) return null;
-    if (excess > 0) model.workspaceSplitRatio = (height - 440) / excess;
+    if (excess > 0 && !preserveRatio) model.workspaceSplitRatio = (height - 440) / excess;
     nodes.stack.style.setProperty("--workspace-main-track", height + "px");
     return height;
   }
@@ -253,6 +298,7 @@
     document.body.classList.remove("is-resizing-workspace");
     model.workspaceSplitDrag = null;
     if (event && event.type === "pointerup" && Math.abs((drag.currentMainHeight == null ? drag.startMainHeight : drag.currentMainHeight) - drag.startMainHeight) > 0.5) queueWorkspaceSplitAutoscale();
+    else if (event && event.type === "pointerup" && drag.changed) queueWorkspaceSplitAutoscale();
   }
 
   function startWorkspaceSplitDrag(event) {
@@ -261,7 +307,7 @@
     if (!nodes.main || !nodes.splitter) return;
     cancelWorkspaceSplitAutoscale();
     event.preventDefault();
-    model.workspaceSplitDrag = { pointerId:event.pointerId, startY:event.clientY, startMainHeight:nodes.main.getBoundingClientRect().height, currentMainHeight:null };
+    model.workspaceSplitDrag = { pointerId:event.pointerId, startY:event.clientY, startMainHeight:nodes.main.getBoundingClientRect().height, currentMainHeight:null, changed:false };
     nodes.splitter.setPointerCapture(event.pointerId);
     nodes.splitter.classList.add("is-dragging");
     document.body.classList.add("is-resizing-workspace");
@@ -271,7 +317,20 @@
     var drag = model.workspaceSplitDrag;
     if (!drag || event.pointerId !== drag.pointerId) return;
     event.preventDefault();
+    if (model.workspaceInspectorState !== "split") {
+      if (Math.abs(event.clientY - drag.startY) < 4) return;
+      var nodes = workspaceSplitNodes();
+      if (!nodes.stack) return;
+      setWorkspaceInspectorState("split", false);
+      drag.currentMainHeight = setWorkspaceSplitHeight(event.clientY - nodes.stack.getBoundingClientRect().top);
+      drag.startMainHeight = drag.currentMainHeight;
+      drag.startY = event.clientY;
+      drag.changed = true;
+      return;
+    }
+    var previousHeight = drag.currentMainHeight == null ? drag.startMainHeight : drag.currentMainHeight;
     drag.currentMainHeight = setWorkspaceSplitHeight(drag.startMainHeight + event.clientY - drag.startY);
+    if (drag.currentMainHeight !== null && Math.abs(drag.currentMainHeight - previousHeight) > 0.5) drag.changed = true;
   }
 
   function renderLayoutTrigger() {
@@ -319,7 +378,7 @@
     node.dataset.paneId = pane.id;
     node.dataset.displayId = displayId;
     node.dataset.testid = "plot-pane-" + pane.id;
-    node.innerHTML = "<header class='plot-pane-header'><span class='plot-pane-title'></span><div class='plot-control-cluster'><button class='pane-select value-select-trigger select-trigger' type='button'></button><button class='plot-more' type='button' data-pane-menu='" + esc(pane.id) + "'><img src='./icons/more-vertical.svg' alt=''></button></div></header><div class='plot-canvas'></div>";
+    node.innerHTML = "<header class='plot-pane-header'><span class='plot-pane-title'></span><div class='plot-control-cluster'><div class='pane-select value-select-trigger select-trigger'></div><button class='plot-more' type='button' data-pane-menu='" + esc(pane.id) + "'><img src='./icons/more-vertical.svg' alt=''></button></div></header><div class='plot-canvas'></div>";
     return node;
   }
 
@@ -1647,6 +1706,7 @@
   document.addEventListener("click", function (event) {
     var button = event.target.closest("button");
     if (!button) return;
+    if (button.dataset.testid === "inspector-state-toggle") return void cycleWorkspaceInspectorState(button);
     if (button.dataset.testid === "display-scroll-left") return void scrollDisplayTabs(-1);
     if (button.dataset.testid === "display-scroll-right") return void scrollDisplayTabs(1);
     if (button.dataset.displaySelect) return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "select", display_id: button.dataset.displaySelect }); });
@@ -1738,6 +1798,7 @@
     workspaceSplitter.addEventListener("pointercancel", stopWorkspaceSplitDrag);
     workspaceSplitter.addEventListener("lostpointercapture", stopWorkspaceSplitDrag);
   }
+  renderWorkspaceInspectorState();
   window.addEventListener("resize", function () { scheduleDisplayTabScrollUpdate(false); });
   window.addEventListener("resize", retainWorkspaceSplitOnResize);
   window.addEventListener("resize", repositionLayout);
