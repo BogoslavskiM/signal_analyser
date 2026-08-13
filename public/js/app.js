@@ -354,10 +354,19 @@
       script.src = "./js/vendor/plotly-cartesian-3.1.0.min.js";
       script.async = true;
       script.onload = function () { resolve(window.Plotly); };
-      script.onerror = function () { reject(new Error("Не удалось загрузить библиотеку графиков.")); };
+      script.onerror = function () {
+        model.plotlyPromise = null;
+        reject(new Error("Не удалось загрузить библиотеку графиков."));
+      };
       document.head.appendChild(script);
     });
     return model.plotlyPromise;
+  }
+
+  function schedulePlotlyIdlePreload() {
+    function preload() { loadPlotly().catch(function () { /* A real graph render retries the local asset on demand. */ }); }
+    if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(preload, { timeout:1500 });
+    else window.setTimeout(preload, 1000);
   }
 
   function rangeSliderEnabled(displayId, paneId) {
@@ -1651,6 +1660,6 @@
   refreshSnapshot().then(function () {
     render();
     output(true);
-    return settings.load().then(function () { render(); }).catch(showSettingsLoadError);
+    return settings.load().then(function () { render(); }).catch(showSettingsLoadError).then(schedulePlotlyIdlePreload);
   }).catch(showBootstrapError);
 })(window, document);

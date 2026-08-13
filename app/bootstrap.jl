@@ -12,8 +12,11 @@ include(joinpath(@__DIR__, "..", "lib", "persistence", "storage.jl"))
 include(joinpath(@__DIR__, "..", "lib", "services", "example_service.jl"))
 include(joinpath(@__DIR__, "..", "lib", "services", "signal_analyser_math.jl"))
 include(joinpath(@__DIR__, "..", "lib", "services", "signal_analyser_service.jl"))
+include(joinpath(@__DIR__, "..", "lib", "services", "signal_analyser_startup_warmup.jl"))
 include(joinpath(@__DIR__, "..", "lib", "services", "signal_session_service.jl"))
 include(joinpath(@__DIR__, "..", "lib", "app_blocks", "page_math.jl"))
+
+const SIGNAL_ANALYSER_STARTUP_WARMUP_SUCCEEDED = signal_analyser_startup_warmup()
 
 const EXAMPLE_APP_STATE = Dict{String,Any}(
     "project_name" => EXAMPLE_PROJECT_NAME,
