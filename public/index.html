@@ -17,10 +17,10 @@
         <span class="application-toolbar-version">Версия 0.1.0</span>
       </div>
       <div class="application-toolbar-actions">
-        <button class="toolbar-button" type="button" data-testid="import-session-action" data-tooltip="Импортировать сессию" aria-label="Импортировать сессию">
+        <button class="toolbar-button" type="button" data-testid="toolbar-import" data-tooltip="Импортировать пакет" aria-label="Импортировать пакет">
           <img src="./icons/import.svg" alt="">
         </button>
-        <button class="toolbar-button" type="button" data-testid="export-action" data-tooltip="Сохранить сессию" aria-label="Сохранить сессию">
+        <button class="toolbar-button" type="button" data-testid="toolbar-save" data-tooltip="Сохранить пакет" aria-label="Сохранить пакет">
           <img src="./icons/save.svg" alt="">
         </button>
         <button class="toolbar-button" type="button" data-testid="help-action" disabled data-tooltip="Справка недоступна" aria-label="Справка недоступна">
@@ -134,7 +134,7 @@
   </main>
 
   <div id="value-select-popup" class="value-select-popup" data-value-select-popup data-testid="select-menu" hidden></div>
-  <input id="session-file-input" type="file" accept="application/json,.json" data-testid="session-file-input" class="session-file-input" tabindex="-1" aria-hidden="true">
+  <input id="session-file-input" type="file" accept=".sazip,application/vnd.engee.signal-analyser-package+zip" data-testid="session-package-file-input" class="session-file-input" tabindex="-1" aria-hidden="true">
   <div class="menu compact-menu plot-menu" role="menu" data-testid="display-overflow-menu" hidden>
     <button type="button" role="menuitem" data-plot-clear data-testid="pane-menu-clear">
       <img src="./icons/trash.svg" alt="">

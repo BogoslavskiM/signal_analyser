@@ -20,7 +20,8 @@
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false,
     paneMenuTrigger: null, graphHelpRestoreTarget: null, paneClearContext: null,
-    sessionImport: { open:false, busy:false, file:null, document:null, error:"", trigger:null }
+    sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
+    sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null }
   };
 
   function q(selector) { return document.querySelector(selector); }
@@ -511,16 +512,14 @@
     renderInspector();
   }
 
-  function sessionImportNode() { return q("[data-testid='session-import-dialog']"); }
+  function sessionImportNode() { return q("[data-testid='session-package-import-dialog']"); }
   function sessionImportMessage(error, fallback) {
     var payload = error && error.payload;
     if (payload && payload.error && payload.error.message) return payload.error.message;
     if (payload && payload.message) return payload.message;
     return safeErrorText(error, fallback || "Не удалось импортировать сессию.");
   }
-  function sessionImportFocusables(dialog) {
-    return dialog ? Array.prototype.slice.call(dialog.querySelectorAll("button:not([disabled])")).filter(function (node) { return !node.hidden; }) : [];
-  }
+  function sessionImportFocusables(dialog) { return dialog ? Array.prototype.slice.call(dialog.querySelectorAll("button:not([disabled]), input:not([disabled]), summary:not([disabled])")).filter(function (node) { return !node.hidden; }) : []; }
   function setSessionImportModalBackground(active) {
     var shell = q("[data-testid='app-shell']");
     if (!shell) return;
@@ -528,78 +527,55 @@
     if (active) shell.setAttribute("aria-hidden", "true");
     else shell.removeAttribute("aria-hidden");
   }
+  function packageError(error, fallback) { var payload=error&&error.payload, detail=payload&&payload.error; return (detail&&(detail.message||detail.code)) || sessionImportMessage(error, fallback); }
+  function packageRows() { return [["Сессия и настройки","Экраны, области, привязки и текущие настройки анализа."],["Исходные данные сигналов","Имена, цвета, частоты дискретизации и исходные real/imag отсчёты."],["Снимки готовых графиков","Текущие готовые снимки графиков; состояния загрузки и ошибки не включаются."],["reproduce.jl","Скрипт включается как файл и никогда не запускается автоматически."],["Метаданные зависимостей","Project.toml, Manifest.toml и сведения о среде Engee."]]; }
+  function packageProgress(title, copy, cancelId, locked) { return "<div class='progress-block' role='status' aria-live='polite'><span class='spinner'></span><div class='progress-copy'><strong>"+esc(title)+"</strong><span>"+esc(copy)+"</span></div><div class='progress-track'><i class='progress-value'></i></div></div>"; }
+  function modalLayer(id, title, body, footer, busy) { return "<section class='dialog-card' role='dialog' aria-modal='true' aria-labelledby='"+id+"-title'><header class='dialog-titlebar'><h2 id='"+id+"-title' tabindex='-1'>"+esc(title)+"</h2><button class='icon-button dialog-close' type='button' data-package-close aria-label='Закрыть'"+(busy?" disabled":"")+"><img src='./icons/close.svg' alt=''></button></header><div class='dialog-body'>"+body+"</div><footer class='dialog-footer'>"+footer+"</footer></section>"; }
   function renderSessionImportDialog() {
-    var current = model.sessionImport, dialog = sessionImportNode();
-    if (!current.open) { if (dialog) dialog.remove(); setSessionImportModalBackground(false); return; }
-    if (!dialog) {
-      dialog = document.createElement("div");
-      dialog.className = "modal-layer primary-modal-layer";
-      dialog.dataset.testid = "session-import-dialog";
-      dialog.setAttribute("role", "dialog");
-      dialog.setAttribute("aria-modal", "true");
-      dialog.setAttribute("aria-labelledby", "session-import-title");
-      document.body.appendChild(dialog);
-    }
-    setSessionImportModalBackground(true);
-    dialog.setAttribute("aria-busy", current.busy ? "true" : "false");
-    dialog.innerHTML = "<section class='dialog-card message-dialog'><header class='dialog-titlebar'><h2 id='session-import-title'>Импорт сессии</h2><button class='dialog-close' type='button' data-testid='session-import-close' aria-label='Закрыть импорт сессии'" + (current.busy ? " disabled" : "") + ">×</button></header><div class='dialog-body'><p class='dialog-intro'>Выбранный JSON-документ заменит текущую сессию только после подтверждения.</p><p class='session-import-file' data-testid='session-import-file' role='status' aria-live='polite'>" + esc(current.file && current.file.name || "Файл не выбран") + "</p><p class='session-import-error' data-testid='session-import-error' role='alert'" + (current.error ? "" : " hidden") + ">" + esc(current.error) + "</p></div><footer class='dialog-footer'><button type='button' data-testid='session-import-cancel'" + (current.busy ? " disabled" : "") + ">Отмена</button><button class='button button-primary' type='button' data-testid='session-import-confirm' data-session-import-submit=" + (current.document ? "true" : "false") + (current.busy || !current.document ? " disabled" : "") + " aria-busy='" + current.busy + "'>" + (current.busy ? "Импорт…" : "Импортировать") + "</button></footer></section>";
-    dialog.querySelector("[data-testid='session-import-close']").addEventListener("click", function () { closeSessionImport(true); });
-    dialog.querySelector("[data-testid='session-import-cancel']").addEventListener("click", function () { closeSessionImport(true); });
-    dialog.querySelector("[data-testid='session-import-confirm']").addEventListener("click", importSessionDocument);
-    if (!dialog.dataset.sessionBound) {
-      dialog.dataset.sessionBound = "true";
-      dialog.addEventListener("keydown", function (event) {
-        var focusables, index;
-        if (event.key === "Escape" && !model.sessionImport.busy) { event.preventDefault(); closeSessionImport(true); return; }
-        if (event.key !== "Tab") return;
-        focusables = sessionImportFocusables(dialog);
-        index = focusables.indexOf(document.activeElement);
-        if (!focusables.length) return;
-        if (event.shiftKey && index <= 0) { event.preventDefault(); focusables[focusables.length - 1].focus(); }
-        else if (!event.shiftKey && index === focusables.length - 1) { event.preventDefault(); focusables[0].focus(); }
-      });
-    }
+    var current=model.sessionImport, dialog=sessionImportNode(), body, footer, v=current.validation||{}, collisions=(current.preflight&&current.preflight.collisions)||[];
+    if (!current.open) { if(dialog) dialog.remove(); if(!model.sessionSave.open) setSessionImportModalBackground(false); return; }
+    if (!dialog) { dialog=document.createElement("div"); dialog.className="modal-layer primary-modal-layer package-modal"; dialog.dataset.testid="session-package-import-dialog"; document.body.appendChild(dialog); }
+    setSessionImportModalBackground(true); dialog.setAttribute("aria-busy", String(current.busy));
+    if (current.phase==="validate") { body=packageProgress("Проверяем пакет","Структура, версия, ограничения и контрольные суммы…"); footer="<button class='button' data-package-cancel>Отменить проверку</button>"; }
+    else if (current.phase==="error") { body="<div class='alert alert-error' data-testid='import-error' role='alert'><strong>Этот файл нельзя импортировать</strong><p>Текущая сессия не изменена и ни один загруженный скрипт не был запущен.</p><p>"+esc(current.error)+"</p></div>"; footer="<button class='button' data-package-close>Закрыть</button><button class='button' data-package-reselect>Выбрать другой файл</button><button class='button button-primary' data-testid='import-error-details'>Подробности проверки</button>"; }
+    else if (current.phase==="commit") { body=packageProgress("Восстанавливаем сессию","Применяем проверенный пакет и обновляем состояние приложения."); footer="<button class='button' disabled>Восстановление…</button>"; }
+    else if (current.phase==="success") { var w=current.result&&current.result.workspace; body="<div class='result-heading' data-testid='import-success'><img class='result-icon' src='./icons/tick-figma.svg' alt=''><div><h3>Сессия восстановлена</h3><p>"+esc(w&&w.requested ? (w.success ? "Публикация в рабочую область завершена." : "Сессия восстановлена; проверьте отчёт публикации.") : "Рабочая область Engee не изменена.")+"</p></div></div>"+(w&&w.requested?"<details data-testid='session-package-details'><summary>Отчёт публикации</summary><p>"+esc(w.error||((w.items||[]).map(function(i){return i.variable_name+": "+i.action;}).join(", ")||"Нет опубликованных имён."))+"</p></details>":""); footer="<button class='button button-primary' data-testid='import-success' data-package-close>Готово</button>"; }
+    else { body="<p class='dialog-intro'>Перед восстановлением приложение проверит структуру, версию, ограничения и контрольные суммы.</p><div class='selected-file'><img src='./icons/file.svg' alt=''><div><strong>"+esc(current.file&&current.file.name)+"</strong><small>.sazip</small></div></div><div class='alert alert-warning'><strong>Безопасный импорт</strong><p>Скрипт reproduce.jl будет сохранён как файл пакета и никогда не выполняется при импорте.</p></div>"; footer="<button class='button' data-package-close>Отмена</button><button class='button button-primary' data-testid='import-validate'>Проверить пакет</button>"; }
+    if(current.phase==="summary") { body="<div class='result-heading'><img class='result-icon' src='./icons/tick-figma.svg' alt=''><div><h3>Пакет проверен</h3><p>.sazip v"+esc(v.version)+" · контрольных сумм: "+esc(v.contents&&v.contents.checksum_count)+"</p></div></div><dl class='summary-grid'><dt>Сигналы</dt><dd>"+esc(v.contents&&v.contents.signals)+"</dd><dt>Экраны</dt><dd>"+esc(v.contents&&v.contents.displays)+"</dd><dt>Готовые графики</dt><dd>"+esc(v.contents&&v.contents.graph_snapshots)+"</dd><dt>Отсчёты</dt><dd>"+esc(v.limits&&v.limits.total_samples)+" / "+esc(v.limits&&v.limits.max_total_samples)+"</dd></dl><details data-testid='package-contents'><summary>Состав пакета</summary><ul><li>Сессия и настройки</li><li>Исходные данные сигналов</li><li>Готовые снимки графиков</li><li>reproduce.jl · не будет выполнен</li><li>Метаданные зависимостей</li></ul></details><label class='package-checkbox'><input type='checkbox' data-testid='workspace-publish'"+(current.publish?" checked":"")+"> Опубликовать сигналы в рабочую область Engee<small>Выключено по умолчию. Без публикации сигналы остаются только внутри приложения.</small></label>"+(current.publish?"<label class='field-label'>Префикс имён<input class='text-input' data-testid='workspace-prefix' value='"+esc(current.prefix)+"'><small>Префикс добавляется к именам публикуемых переменных.</small></label>"+(current.preflightLoading?"<p class='muted-copy' role='status'>Проверяем имена рабочей области…</p>":"")+(current.preflightError?"<p class='session-import-error' role='alert'>"+esc(current.preflightError)+"</p>":"")+(collisions.length?"<div class='alert alert-warning' data-testid='workspace-collision-warning'><strong>Обнаружены совпадения имён</strong><p>"+esc(collisions.join(", "))+"</p><p>Проверьте префикс перед импортом.</p></div>":"")+"<div class='alert alert-warning'><strong>Публикация не входит в атомарную замену</strong><p>При сбое часть переменных может быть создана. После импорта проверьте итоговый отчёт.</p></div>":"")+"<label class='package-checkbox'><input type='checkbox' data-testid='replace-confirm'"+(current.replace?" checked":"")+"> Я подтверждаю замену текущей сессии</label>"; footer="<button class='button' data-package-close>Отмена</button><button class='button button-primary' data-testid='import-commit'"+(current.replace?"":" disabled")+">Восстановить сессию</button>"; }
+    dialog.innerHTML=modalLayer("session-package-import", "Импортировать переносимый пакет", body, footer, current.busy);
+    bindPackageDialog(dialog);
   }
   function closeSessionImport(restoreFocus) {
     var current = model.sessionImport, trigger = current.trigger;
     if (current.busy) return;
     current.open = false;
-    current.file = null;
-    current.document = null;
-    current.error = "";
+    current.file = null; current.archiveBase64 = ""; current.validation = null; current.error = ""; current.details = ""; current.publish = false; current.prefix = "imported_"; current.replace = false; current.result = null;
     current.trigger = null;
     renderSessionImportDialog();
     if (restoreFocus && trigger && typeof trigger.focus === "function") window.requestAnimationFrame(function () { trigger.focus(); });
   }
   function openSessionFilePicker(trigger) {
-    var input = q("[data-testid='session-file-input']");
+    var input = q("[data-testid='session-package-file-input']");
     if (!input || model.sessionImport.busy) return;
     model.sessionImport.trigger = trigger;
     model.sessionImport.open = false;
     model.sessionImport.file = null;
-    model.sessionImport.document = null;
+    model.sessionImport.archiveBase64 = "";
     model.sessionImport.error = "";
     input.value = "";
     input.click();
   }
+  function bytesToBase64(buffer) {
+    var bytes = new Uint8Array(buffer), step = 0x8000, parts = [];
+    for (var i=0; i<bytes.length; i+=step) parts.push(String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i+step, bytes.length))));
+    return window.btoa(parts.join(""));
+  }
   function readSessionDocument(file) {
     var current = model.sessionImport;
     if (!file || current.busy) return;
-    current.open = true;
-    current.busy = true;
-    current.file = file;
-    current.document = null;
-    current.error = "";
+    current.open=true; current.busy=true; current.phase="file"; current.file=file; current.archiveBase64=""; current.error="";
     renderSessionImportDialog();
-    Promise.resolve(typeof file.text === "function" ? file.text() : new Promise(function (resolve, reject) { var reader = new FileReader(); reader.onload = function () { resolve(reader.result); }; reader.onerror = reject; reader.readAsText(file); }))
-      .then(function (text) {
-        var parsed = JSON.parse(text);
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed) && parsed.document && typeof parsed.document === "object" && !Array.isArray(parsed.document)) parsed = parsed.document;
-        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Файл должен содержать JSON-документ сессии.");
-        current.document = parsed;
-      })
-      .catch(function (error) { current.document = null; current.error = error instanceof SyntaxError ? "Не удалось прочитать JSON-документ сессии." : sessionImportMessage(error, "Не удалось прочитать файл сессии."); })
-      .finally(function () { current.busy = false; renderSessionImportDialog(); window.requestAnimationFrame(function () { var target = q("[data-testid='session-import-confirm']") || q("[data-testid='session-import-cancel']"); if (target) target.focus(); }); });
+    Promise.resolve(file.arrayBuffer ? file.arrayBuffer() : new Promise(function(resolve,reject){var reader=new FileReader();reader.onload=function(){resolve(reader.result);};reader.onerror=reject;reader.readAsArrayBuffer(file);})).then(bytesToBase64).then(function(encoded){ current.archiveBase64=encoded; }).catch(function(error){ current.phase="error"; current.error=packageError(error,"Не удалось прочитать пакет."); }).finally(function(){current.busy=false;renderSessionImportDialog();});
   }
   function clearSessionTransientState() {
     Object.keys(model.pollByPane).forEach(function (key) { window.clearTimeout(model.pollByPane[key]); });
@@ -618,41 +594,32 @@
   }
   function importSessionDocument() {
     var current = model.sessionImport;
-    if (current.busy || !current.document) return;
-    current.busy = true;
-    current.error = "";
+    if (current.busy || !current.archiveBase64 || !current.replace) return;
+    current.busy = true; current.phase="commit"; current.error = "";
     renderSessionImportDialog();
-    api.importSession({ state_revision:model.revision, document:current.document }).then(function (response) {
+    var payload={ state_revision:model.revision, archive_base64:current.archiveBase64 };
+    if(current.publish) { payload.publish_workspace=true; payload.workspace_prefix=current.prefix; }
+    api.importPackage(payload).then(function (response) {
       if (!response || response.ok !== true) throw new Error("Сервер не подтвердил импорт сессии.");
-      return refreshImportedSession();
-    }).then(function () {
-      current.busy = false;
-      closeSessionImport(true);
+      current.result=response; return refreshImportedSession();
+    }).then(function () { current.phase="success";
     }).catch(function (error) {
-      current.error = sessionImportMessage(error, "Не удалось импортировать сессию.");
-      if (error && error.status === 409) return refreshSnapshot(render).then(function () { return settings.load().catch(showSettingsLoadError); });
+      current.error = packageError(error,"Не удалось восстановить пакет.");
+      current.phase="error";
+      if (error && error.status === 409) return refreshSnapshot(render).then(function(){ return settings.load().catch(showSettingsLoadError); });
     }).finally(function () {
       current.busy = false;
       if (current.open) renderSessionImportDialog();
     });
   }
-  function downloadSessionDocument(trigger) {
-    if (model.sessionImport.busy) return;
-    var button = trigger || q("[data-testid='export-action']");
-    model.sessionImport.busy = true;
-    if (button) { button.disabled = true; button.setAttribute("aria-busy", "true"); }
-    api.session().then(function (response) {
-      if (!response || !Object.prototype.hasOwnProperty.call(response, "document")) throw new Error("Сервер не вернул документ сессии.");
-      var blob = new Blob([JSON.stringify(response.document, null, 2)], { type:"application/json" });
-      var url = window.URL.createObjectURL(blob), link = document.createElement("a");
-      link.href = url; link.download = "signal-analyser-session.json"; link.style.display = "none";
-      document.body.appendChild(link); link.click(); link.remove(); window.setTimeout(function () { window.URL.revokeObjectURL(url); }, 0);
-      showToast("Сессия сохранена.", false);
-    }).catch(function (error) { showToast(sessionImportMessage(error, "Не удалось сохранить сессию."), true); }).finally(function () {
-      model.sessionImport.busy = false;
-      if (button) { button.disabled = false; button.removeAttribute("aria-busy"); }
-    });
-  }
+  function renderSessionSaveDialog() { var s=model.sessionSave, dialog=q("[data-testid='session-package-save-dialog']"), rows=packageRows().map(function(row){return "<div class='content-row'><span class='included-mark'>✓</span><div><strong>"+row[0]+"</strong><small>"+row[1]+"</small></div></div>";}).join(""), body,footer; if(!s.open){if(dialog)dialog.remove();if(!model.sessionImport.open)setSessionImportModalBackground(false);return;} if(!dialog){dialog=document.createElement("div");dialog.className="modal-layer primary-modal-layer package-modal";dialog.dataset.testid="session-package-save-dialog";document.body.appendChild(dialog);}setSessionImportModalBackground(true);if(s.phase==="progress"){body=packageProgress("Подготавливаем сессию","Экспортируем сигналы и графики");footer="<button class='button' disabled>Проверяем архив и контрольные суммы</button>";}else if(s.phase==="error"){body="<div class='alert alert-error' role='alert'><strong>Не удалось создать пакет</strong><p>"+esc(s.error||"Не удалось сохранить снимки графиков. Данные сессии не были скачаны.")+"</p></div>";footer="<button class='button' data-package-save-close>Закрыть</button><button class='button button-primary' data-package-save-create>Повторить</button>";}else if(s.phase==="ready"){body="<div class='result-heading' data-testid='save-ready'><img class='result-icon' src='./icons/tick-figma.svg' alt=''><div><h3>Пакет успешно создан</h3><p>Файл готов к скачиванию.</p></div></div>";footer="<button class='button' data-package-save-close>Закрыть</button><button class='button button-primary' data-testid='session-package-save-download' data-package-save-download>Скачать .sazip</button>";}else{body="<p class='dialog-intro'>Проверьте состав переносимого пакета Engee. Все перечисленные материалы включаются всегда.</p><h3 class='section-title'>Состав пакета</h3><div class='content-list' data-testid='save-content-list'>"+rows+"</div>";footer="<button class='button' data-package-save-close>Отмена</button><button class='button button-primary' data-testid='session-package-save-create' data-package-save-create>Сохранить пакет</button>";}dialog.innerHTML=modalLayer("session-package-save","Сохранить переносимый пакет",body,footer,s.busy);bindSaveDialog(dialog); }
+  function openSessionSave(trigger) { var s=model.sessionSave; if(s.busy)return; s.open=true;s.phase="summary";s.error="";s.package=null;s.trigger=trigger;renderSessionSaveDialog();window.requestAnimationFrame(function(){var n=q("[data-testid='session-package-save-create']");if(n)n.focus();}); }
+  function downloadSessionDocument(trigger) { var s=model.sessionSave; if(s.busy)return; s.open=true;s.phase="progress";s.busy=true;s.error="";s.trigger=trigger||s.trigger;renderSessionSaveDialog();api.exportPackage().then(function(result){s.package=result;s.phase="ready";}).catch(function(error){s.error=packageError(error,"Не удалось сохранить снимки графиков. Данные сессии не были скачаны.");s.phase="error";}).finally(function(){s.busy=false;renderSessionSaveDialog();}); }
+  function closePackageDetails() { var layer=q("[data-testid='session-package-details-dialog']"); if(layer)layer.remove(); var target=q("[data-testid='import-error-details']"); if(target)target.focus(); }
+  function openPackageDetails() { var c=model.sessionImport, layer=document.createElement("div"); layer.className="modal-layer nested-modal-layer package-modal";layer.dataset.testid="session-package-details-dialog";layer.innerHTML=modalLayer("session-package-details","Подробности проверки","<div class='alert alert-error'><strong>Файл отклонён</strong><p>"+esc(c.error)+"</p></div><p class='muted-copy'>Текущая сессия не изменена. Содержимое пакета и скрипты не запускались.</p>","<button class='button button-primary' data-package-details-close>Понятно</button>",false);document.body.appendChild(layer);layer.querySelectorAll("[data-package-details-close],[data-package-close]").forEach(function(n){n.addEventListener("click",closePackageDetails);});layer.addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefault();e.stopPropagation();closePackageDetails();}});window.requestAnimationFrame(function(){var n=layer.querySelector("h2");if(n)n.focus();}); }
+  function scheduleWorkspacePreflight() { var c=model.sessionImport, token=++c.preflightToken; if(c.preflightTimer)window.clearTimeout(c.preflightTimer); if(!c.publish)return; c.preflightLoading=true;c.preflightError="";c.preflight=null;renderSessionImportDialog();c.preflightTimer=window.setTimeout(function(){api.packageWorkspacePreflight({archive_base64:c.archiveBase64,workspace_prefix:c.prefix}).then(function(result){if(token===c.preflightToken)c.preflight=result;}).catch(function(error){if(token===c.preflightToken)c.preflightError=packageError(error,"Не удалось проверить имена рабочей области.");}).finally(function(){if(token===c.preflightToken){c.preflightLoading=false;renderSessionImportDialog();}});},150); }
+  function bindPackageDialog(dialog) { var c=model.sessionImport; dialog.querySelectorAll("[data-package-close]").forEach(function(n){n.addEventListener("click",function(){closeSessionImport(true);});}); var validate=dialog.querySelector("[data-testid='import-validate']");if(validate)validate.addEventListener("click",function(){if(c.busy)return;c.busy=true;c.phase="validate";c.controller=window.AbortController?new AbortController():null;renderSessionImportDialog();api.validatePackage({archive_base64:c.archiveBase64},c.controller&&c.controller.signal).then(function(r){c.validation=r;c.phase="summary";}).catch(function(e){if(e&&e.name==="AbortError"){c.busy=false;closeSessionImport(true);}else{c.error=packageError(e,"Этот файл нельзя импортировать.");c.phase="error";}}).finally(function(){c.busy=false;c.controller=null;renderSessionImportDialog();});}); var cancel=dialog.querySelector("[data-package-cancel]");if(cancel)cancel.addEventListener("click",function(){if(c.controller)c.controller.abort();else if(!c.busy)closeSessionImport(true);}); var reselect=dialog.querySelector("[data-package-reselect]");if(reselect)reselect.addEventListener("click",function(){closeSessionImport(false);openSessionFilePicker(c.trigger);}); var details=dialog.querySelector("[data-testid='import-error-details']");if(details)details.addEventListener("click",openPackageDetails); var publish=dialog.querySelector("[data-testid='workspace-publish']");if(publish)publish.addEventListener("change",function(){c.publish=publish.checked;if(c.publish)scheduleWorkspacePreflight();else{c.preflight=null;c.preflightError="";renderSessionImportDialog();}window.requestAnimationFrame(function(){var n=q("[data-testid='workspace-publish']");if(n)n.focus();});});var prefix=dialog.querySelector("[data-testid='workspace-prefix']");if(prefix)prefix.addEventListener("input",function(){c.prefix=prefix.value;scheduleWorkspacePreflight();});var replace=dialog.querySelector("[data-testid='replace-confirm']");if(replace)replace.addEventListener("change",function(){c.replace=replace.checked;renderSessionImportDialog();});var commit=dialog.querySelector("[data-testid='import-commit']");if(commit)commit.addEventListener("click",importSessionDocument);dialog.addEventListener("keydown",function(e){if(e.key==="Escape"&&!c.busy){e.preventDefault();closeSessionImport(true);return;}if(e.key!=="Tab")return;var f=sessionImportFocusables(dialog),i=f.indexOf(document.activeElement);if(f.length&&((e.shiftKey&&i<=0)||(!e.shiftKey&&i===f.length-1))){e.preventDefault();f[e.shiftKey?f.length-1:0].focus();}}); }
+  function bindSaveDialog(dialog) { var s=model.sessionSave; function close(){if(s.busy)return;s.open=false;renderSessionSaveDialog();if(s.trigger)window.requestAnimationFrame(function(){s.trigger.focus();});} dialog.querySelectorAll("[data-package-save-close],[data-package-close]").forEach(function(n){n.addEventListener("click",close);}); var create=dialog.querySelector("[data-package-save-create]");if(create)create.addEventListener("click",function(){downloadSessionDocument(s.trigger);});var download=dialog.querySelector("[data-package-save-download]");if(download)download.addEventListener("click",function(){var p=s.package;if(!p)return;var url=window.URL.createObjectURL(p.blob),a=document.createElement("a"),match=/filename=\"?([^\";]+)\"?/i.exec(p.filename);a.href=url;a.download=(match&&match[1])||"signal-analyser-session.sazip";document.body.appendChild(a);a.click();a.remove();window.setTimeout(function(){window.URL.revokeObjectURL(url);},0);showToast("Скачивание началось",false);});dialog.addEventListener("keydown",function(e){if(e.key==="Escape"&&!s.busy){e.preventDefault();close();return;}if(e.key!=="Tab")return;var f=sessionImportFocusables(dialog),i=f.indexOf(document.activeElement);if(f.length&&((e.shiftKey&&i<=0)||(!e.shiftKey&&i===f.length-1))){e.preventDefault();f[e.shiftKey?f.length-1:0].focus();}}); }
 
   function plotEnvelope(data) { return Array.isArray(data) && data.length === 1 && data[0] && Array.isArray(data[0].data) ? data[0] : data; }
   function hasPlotData(data) { var payload = plotEnvelope(data); return Array.isArray(payload) ? payload.length > 0 : !!(payload && (Array.isArray(payload.data) ? payload.data.length : Array.isArray(payload.z) && payload.z.length)); }
@@ -1880,8 +1847,8 @@
   document.addEventListener("click", function (event) {
     var button = event.target.closest("button");
     if (!button) return;
-    if (button.dataset.testid === "import-session-action") return void openSessionFilePicker(button);
-    if (button.dataset.testid === "export-action") return void downloadSessionDocument(button);
+    if (button.dataset.testid === "toolbar-import") return void openSessionFilePicker(button);
+    if (button.dataset.testid === "toolbar-save") return void openSessionSave(button);
     if (button.dataset.inspectorStateAction) return void changeWorkspaceInspectorState(button);
     if (button.dataset.testid === "display-scroll-left") return void scrollDisplayTabs(-1);
     if (button.dataset.testid === "display-scroll-right") return void scrollDisplayTabs(1);
@@ -1952,7 +1919,7 @@
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]"),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
-    if (node.dataset.testid === "session-file-input") { readSessionDocument(node.files && node.files[0]); return; }
+    if (node.dataset.testid === "session-package-file-input") { readSessionDocument(node.files && node.files[0]); return; }
     if (node.dataset.visibleAllSignals !== undefined) { var allPane = paneById(model.activePane); if (allPane) return void postLayout({ operation:"update_pane", pane_id:allPane.id, plot_type:allPane.plot_type, signal_bindings:node.checked ? (model.state.signals || []).map(function (signal) { return signal.name; }) : [] }); }
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }
   });

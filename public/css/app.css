@@ -2409,6 +2409,22 @@ body.is-resizing-workspace * {
   color: var(--danger);
 }
 
+/* TASK-0104 portable package dialogs retain the v20 shell and its fixed modal geometry. */
+.package-modal .dialog-card { width: 560px; height: min(696px, calc(100vh - 32px)); border-radius: 12px; }
+.package-modal .dialog-titlebar,
+.package-modal .dialog-footer { border-color: var(--line); }
+.package-modal .dialog-titlebar { border-bottom: 1px solid var(--line); }
+.package-modal .dialog-footer { border-top: 1px solid var(--line); }
+.package-modal .alert { margin: 16px 0; }
+.package-modal .alert:first-child { margin-top: 0; }
+.package-modal details { margin-top: 16px; }
+.package-modal details summary { cursor: pointer; font-weight: 500; }
+.package-checkbox { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; margin-top: 16px; }
+.package-checkbox input { width: 16px; height: 16px; margin: 2px 0 0; }
+.package-checkbox small { grid-column: 2; color: var(--muted); }
+.package-modal .field-label { margin-top: 16px; }
+.package-modal .progress-value { width: 62%; }
+
 .workspace-list {
   display: grid;
   max-height: 320px;

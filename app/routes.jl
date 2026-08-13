@@ -302,6 +302,110 @@ route("/api/session", method = POST) do
     end
 end
 
+
+# Portable .sazip v1 is intentionally separate from the legacy JSON session
+# routes above.  Validation and import never extract files or execute scripts.
+route("/api/session/package", method = GET) do
+    try
+        signal_package_binary_response(
+            export_signal_package(SIGNAL_PACKAGE_SERVICE, SIGNAL_ANALYSER_STATE),
+        )
+    catch err
+        if err isa SignalPackageValidationError || err isa SignalPackageArchiveError
+            signal_package_validation_response(err)
+        else
+            api_error_response(
+                "Не удалось создать пакет Signal Analyser",
+                err;
+                status = 500,
+            )
+        end
+    end
+end
+
+route("/api/session/package/validate", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        archive = parse_signal_package_validate_request(jsonpayload())
+        package = validate_signal_package(SIGNAL_PACKAGE_SERVICE, archive)
+        api_json(signal_package_validation_payload(package); headers = response_headers)
+    catch err
+        if err isa SignalPackageValidationError || err isa SignalPackageArchiveError
+            signal_package_validation_response(err)
+        else
+            api_error_response(
+                "Не удалось проверить пакет Signal Analyser",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+        end
+    end
+end
+
+route("/api/session/package/workspace-preflight", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        archive, workspace_prefix =
+            parse_signal_package_workspace_preflight_request(jsonpayload())
+        api_json(
+            preflight_signal_package_workspace(
+                SIGNAL_PACKAGE_SERVICE,
+                archive,
+                workspace_prefix,
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalPackageValidationError || err isa SignalPackageArchiveError
+            signal_package_validation_response(err)
+        else
+            api_error_response(
+                "Не удалось проверить публикацию пакета в рабочую область Engee",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+        end
+    end
+end
+
+
+route("/api/session/package/import", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        expected_revision, archive, publish_workspace, workspace_prefix =
+            parse_signal_package_import_request(jsonpayload())
+        # Full archive validation happens off-state.  Only the final publish is
+        # revision-checked and performed under the aggregate lock.
+        package = validate_signal_package(SIGNAL_PACKAGE_SERVICE, archive)
+        api_json(
+            import_signal_package!(
+                SIGNAL_PACKAGE_SERVICE,
+                SIGNAL_ANALYSER_STATE,
+                package,
+                expected_revision,
+                publish_workspace = publish_workspace,
+                workspace_prefix = workspace_prefix,
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalPackageValidationError || err isa SignalPackageArchiveError
+            signal_package_validation_response(err)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_session_stale_response(SIGNAL_ANALYSER_STATE, err)
+        else
+            api_error_response(
+                "Не удалось импортировать пакет Signal Analyser",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+        end
+    end
+end
+
 route("/api/settings", method = GET) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try

@@ -98,6 +98,125 @@ function signal_analyser_session_validation_response(err)
     ); status = 422)
 end
 
+function signal_package_validation_response(err)
+    api_json(Dict{String,Any}(
+        "ok" => false,
+        "code" => err.code,
+        "error" => Dict{String,Any}(
+            "code" => err.code,
+            "message" => err.message,
+            "fields" => err.fields,
+        ),
+    ); status = if err.code in ("archive_size_limit", "archive_entry_limit", "archive_total_limit", "archive_file_limit")
+        413
+    elseif err.code == "workspace_unavailable"
+        503
+    elseif err.code == "workspace_provider_error"
+        502
+    else
+        422
+    end)
+end
+
+function signal_package_base64(value)::Vector{UInt8}
+    value isa AbstractString || throw(signal_package_validation_error(
+        "invalid_request",
+        "archive_base64 должен быть строкой";
+        field = "archive_base64",
+    ))
+    encoded = String(value)
+    max_encoded = cld(SIGNAL_PACKAGE_MAX_ARCHIVE_BYTES, 3) * 4 + 4
+    ncodeunits(encoded) <= max_encoded || throw(signal_package_validation_error(
+        "archive_size_limit",
+        "Base64 payload превышает лимит пакета";
+        field = "archive_base64",
+    ))
+    bytes = try
+        base64decode(encoded)
+    catch
+        throw(signal_package_validation_error(
+            "invalid_base64",
+            "archive_base64 содержит некорректный Base64";
+            field = "archive_base64",
+        ))
+    end
+    length(bytes) <= SIGNAL_PACKAGE_MAX_ARCHIVE_BYTES || throw(signal_package_validation_error(
+        "archive_size_limit",
+        "Архив превышает лимит размера";
+        field = "archive_base64",
+    ))
+    bytes
+end
+
+function parse_signal_package_validate_request(data)::Vector{UInt8}
+    request = signal_package_exact_object(data, Set(["archive_base64"]), "body")
+    signal_package_base64(signal_package_value(request, "archive_base64"))
+end
+
+function parse_signal_package_workspace_preflight_request(data)::Tuple{Vector{UInt8},String}
+    request = signal_package_exact_object(
+        data,
+        Set(["archive_base64", "workspace_prefix"]),
+        "body",
+    )
+    archive = signal_package_base64(signal_package_value(request, "archive_base64"))
+    prefix = signal_package_string(
+        signal_package_value(request, "workspace_prefix"),
+        "workspace_prefix",
+    )
+    signal_package_workspace_names(AnalysedSignal[], prefix)
+    archive, prefix
+end
+
+function parse_signal_package_import_request(data)::Tuple{Int,Vector{UInt8},Bool,String}
+    data isa AbstractDict || throw(signal_package_validation_error(
+        "invalid_request",
+        "body должен быть JSON-объектом";
+        field = "body",
+    ))
+    actual = Set(String(key) for key in keys(data))
+    minimal = Set(["state_revision", "archive_base64"])
+    workspace = Set(["state_revision", "archive_base64", "publish_workspace", "workspace_prefix"])
+    actual in (minimal, workspace) || throw(signal_package_validation_error(
+        "invalid_request",
+        "body имеет неверный набор полей";
+        field = "body",
+    ))
+    request = data
+    revision = signal_package_integer(
+        signal_package_value(request, "state_revision"),
+        "state_revision",
+    )
+    archive = signal_package_base64(signal_package_value(request, "archive_base64"))
+    publish_workspace = if actual == workspace
+        value = signal_package_value(request, "publish_workspace")
+        value isa Bool || throw(signal_package_validation_error(
+            "invalid_request",
+            "publish_workspace должен быть boolean";
+            field = "publish_workspace",
+        ))
+        value
+    else
+        false
+    end
+    workspace_prefix = actual == workspace ? signal_package_string(
+        signal_package_value(request, "workspace_prefix"),
+        "workspace_prefix",
+    ) : SIGNAL_PACKAGE_DEFAULT_WORKSPACE_PREFIX
+    publish_workspace && signal_package_workspace_names(AnalysedSignal[], workspace_prefix)
+    revision, archive, publish_workspace, workspace_prefix
+end
+
+function signal_package_binary_response(bytes::Vector{UInt8})
+    headers = [
+        "Content-Type" => "application/vnd.engee.signal-analyser-package+zip",
+        "Content-Disposition" => "attachment; filename=\"$(SIGNAL_PACKAGE_DEFAULT_FILENAME)\"",
+        "Cache-Control" => "no-store",
+        "X-Content-Type-Options" => "nosniff",
+    ]
+    Genie.Renderer.HTTP.Response(200, headers; body = bytes)
+end
+
 function signal_analyser_session_stale_response(
     state::SignalAnalyserState,
     err::SignalAnalyserStaleStateError,

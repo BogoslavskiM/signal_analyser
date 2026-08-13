@@ -26,6 +26,20 @@
       });
   }
 
+  function binaryRequest(path, options) {
+    return window.fetch(path, Object.assign({ headers: { Accept: "application/vnd.engee.signal-analyser-package+zip" } }, options || {}))
+      .then(function (response) {
+        if (!response.ok) {
+          return response.json().catch(function () { return null; }).then(function (payload) {
+            throw new ApiError((payload && payload.error && payload.error.message) || (payload && payload.message) || "Ошибка запроса: " + response.status, response.status, payload);
+          });
+        }
+        return response.blob().then(function (blob) {
+          return { blob: blob, contentType: response.headers.get("Content-Type") || "application/vnd.engee.signal-analyser-package+zip", filename: response.headers.get("Content-Disposition") || "" };
+        });
+      });
+  }
+
   window.SignalAnalyserApi = {
     getState: function () { return request("./api/state-lite", { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" }); },
     getFullState: function () { return request("./api/state", { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" }); },
@@ -102,6 +116,16 @@
         headers: { Accept: "application/json", "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+    },
+    exportPackage: function () { return binaryRequest("./api/session/package", { cache: "no-store" }); },
+    validatePackage: function (payload, signal) {
+      return request("./api/session/package/validate", { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: signal });
+    },
+    importPackage: function (payload) {
+      return request("./api/session/package/import", { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    },
+    packageWorkspacePreflight: function (payload, signal) {
+      return request("./api/session/package/workspace-preflight", { method: "POST", headers: { Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify(payload), signal: signal });
     },
   };
 })(window);
