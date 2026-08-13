@@ -26,7 +26,8 @@ module.exports = async function testPaneSelectionAndInspectorTable(assert) {
   const inspector = (css.match(/\.inspector\s*\{[^}]*\}/g) || []).find((rule) => /grid-template-rows/.test(rule)) || "";
   const header = (css.match(/\.inspector-header\s*\{[^}]*\}/g) || []).find((rule) => /border:/.test(rule)) || "";
   const body = (css.match(/\.inspector-body\s*\{[^}]*\}/g) || []).find((rule) => /grid-template-rows/.test(rule)) || "";
-  const tabs = (css.match(/\.inspector-tabs\s*\{[^}]*\}/g) || []).find((rule) => /overflow-x:\s*auto/.test(rule)) || "";
+  const tabs = (css.match(/\.inspector-header\s*>\s*\.inspector-tabs\s*\{[^}]*\}/g) || [""])[0];
+  const tabButtons = (css.match(/\.inspector-header\s*>\s*\.inspector-tabs button\s*\{[^}]*\}/g) || [""])[0];
   const inspectorHeaderHtml = (html.match(/<header class="inspector-header">[\s\S]*?<\/header>/) || [""])[0];
   const inspectorSearchHtml = (html.match(/<div class="inspector-search-row">[\s\S]*?<\/div>\s*<\/div>/) || [""])[0];
   assert(/grid-template-rows:\s*32px/.test(inspector), "inspector tab strip must remain one 32px row");
@@ -37,7 +38,11 @@ module.exports = async function testPaneSelectionAndInspectorTable(assert) {
   assert(/inspector-search-field[\s\S]*signal-search-input[\s\S]*inspector-actions/.test(inspectorSearchHtml), "the Signals search field and its action buttons must be separate siblings");
   assert(/\.inspector-search-field:focus-within\s*\{[^}]*box-shadow:\s*inset 0 0 0 1px var\(--accent\)/.test(css), "the active search border must belong only to the search field");
   assert(!/\.inspector-search-row:focus-within/.test(css), "the active search border must not surround the Signals action buttons");
-  assert(/overflow-x:\s*auto/.test(tabs), "the inspector tabs must retain horizontal overflow without inheriting settings-tab clipping");
+  assert(/box-sizing:\s*border-box/.test(tabs) && /height:\s*32px/.test(tabs) && /min-height:\s*32px/.test(tabs) && /max-height:\s*32px/.test(tabs), "the lower inspector tabs must own the exact 32px border-box row");
+  assert(/overflow-x:\s*hidden/.test(tabs) && /overflow-y:\s*hidden/.test(tabs), "the lower inspector tabs must explicitly forbid horizontal and vertical scrolling");
+  assert(/box-sizing:\s*border-box/.test(tabButtons) && /height:\s*32px/.test(tabButtons) && /min-height:\s*32px/.test(tabButtons) && /max-height:\s*32px/.test(tabButtons) && /line-height:\s*20px/.test(tabButtons), "lower tab buttons must fit the tab row without vertical overflow");
+  assert(/\.inspector-header\s*>\s*\.inspector-tabs button:focus-visible\s*\{[^}]*outline-offset:\s*-3px/.test(css), "the lower tab focus ring must remain inset");
+  assert(/\.signal-table-scroll\s*\{[^}]*overflow:\s*auto/.test(css), "table scrolling must remain on the table body below the fixed lower tabs");
   assert(/\.signal-table th:first-child,[\s\S]*width:\s*42px/.test(css), "visibility column width must match the design");
   assert(/\.signal-table th:nth-child\(2\)\s*\{\s*width:\s*28%/.test(css), "name column width must match the design");
   assert(/\.color-cell\s*\{[^}]*text-align:\s*left\s*!important/.test(css), "signal Color cells must align their swatches to the left edge");

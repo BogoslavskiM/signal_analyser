@@ -800,7 +800,15 @@
     if (model.inspectorPage === "measurements") return void renderMeasurementsInspector(body);
     if (model.inspectorPage === "peaks") return void renderPeaksInspector(body);
     var addLayer = q("[data-testid='signal-add-layer']");
-    body.innerHTML = "<div class='inspector-search-row'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='signal-search-input' aria-label='Поиск сигналов' placeholder='Введите название' value='" + esc(model.inspectorSearch) + "'></div><div class='inspector-actions' aria-label='Действия с сигналами'><button class='inspector-action' type='button' data-testid='signals-add-action' data-tooltip='Добавить сигнал' aria-label='Добавить сигнал' aria-haspopup='dialog' aria-controls='signal-add-dialog' aria-expanded='" + String(!!addLayer && !addLayer.hidden) + "'><img src='./icons/plus.svg' alt=''></button><button class='inspector-action' type='button' data-testid='signal-columns-menu-trigger' data-tooltip='Другие действия' aria-label='Другие действия' aria-haspopup='menu' aria-expanded='false'><img src='./icons/more-vertical.svg' alt=''></button></div></div><div class='signal-table-scroll'><table id='signal-table' class='signal-table'><thead><tr data-table-head></tr></thead><tbody data-testid='signal-rows' data-signal-rows></tbody></table><div class='table-empty' role='status' data-testid='signal-search-empty' hidden>Сигналы не найдены</div></div>";
+    var signalSearchInput = body.querySelector("[data-testid='signal-search-input']");
+    if (!signalSearchInput || !body.querySelector("[data-signal-rows]") || !body.querySelector("[data-table-head]")) {
+      body.innerHTML = "<div class='inspector-search-row'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='signal-search-input' aria-label='Поиск сигналов' placeholder='Введите название' value='" + esc(model.inspectorSearch) + "'></div><div class='inspector-actions' aria-label='Действия с сигналами'><button class='inspector-action' type='button' data-testid='signals-add-action' data-tooltip='Добавить сигнал' aria-label='Добавить сигнал' aria-haspopup='dialog' aria-controls='signal-add-dialog' aria-expanded='" + String(!!addLayer && !addLayer.hidden) + "'><img src='./icons/plus.svg' alt=''></button><button class='inspector-action' type='button' data-testid='signal-columns-menu-trigger' data-tooltip='Другие действия' aria-label='Другие действия' aria-haspopup='menu' aria-expanded='false'><img src='./icons/more-vertical.svg' alt=''></button></div></div><div class='signal-table-scroll'><table id='signal-table' class='signal-table'><thead><tr data-table-head></tr></thead><tbody data-testid='signal-rows' data-signal-rows></tbody></table><div class='table-empty' role='status' data-testid='signal-search-empty' hidden>Сигналы не найдены</div></div>";
+      signalSearchInput = body.querySelector("[data-testid='signal-search-input']");
+    } else if (document.activeElement !== signalSearchInput && signalSearchInput.value !== model.inspectorSearch) {
+      signalSearchInput.value = model.inspectorSearch;
+    }
+    var addTrigger = body.querySelector("[data-testid='signals-add-action']");
+    if (addTrigger) addTrigger.setAttribute("aria-expanded", String(!!addLayer && !addLayer.hidden));
     var rows = q("[data-testid='signal-rows']"), head = q("[data-table-head]");
     if (!rows || !head) return;
     var search = model.inspectorSearch;
@@ -838,8 +846,17 @@
     var display = activeDisplay(), pane = paneById(model.activePane), record = model.measurementsRecord;
     var current = record && display && pane && record.displayId === display.id && record.paneId === pane.id;
     var menu = q("[data-testid='measurement-columns-menu']"), menuOpen = !!menu && !menu.hidden;
-    body.innerHTML = "<div class='inspector-search-row'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='measurement-search-input' aria-label='Поиск измерений' placeholder='Введите название' value='" + esc(model.measurementSearch) + "'></div><div class='inspector-actions' aria-label='Действия с измерениями'><button class='inspector-action' type='button' data-testid='measurement-columns-menu-trigger' data-tooltip='Выбрать измерения' aria-label='Выбрать отображаемые измерения' aria-haspopup='menu' aria-expanded='" + String(menuOpen) + "'><img src='./icons/more-vertical.svg' alt=''></button></div></div><div class='signal-table-scroll measurement-table-scroll' data-testid='measurement-table-scroll'></div>";
-    var host = q("[data-testid='measurement-table-scroll']");
+    var measurementSearchInput = body.querySelector("[data-testid='measurement-search-input']");
+    var host = body.querySelector("[data-testid='measurement-table-scroll']");
+    if (!measurementSearchInput || !host) {
+      body.innerHTML = "<div class='inspector-search-row'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='search' data-testid='measurement-search-input' aria-label='Поиск измерений' placeholder='Введите название' value='" + esc(model.measurementSearch) + "'></div><div class='inspector-actions' aria-label='Действия с измерениями'><button class='inspector-action' type='button' data-testid='measurement-columns-menu-trigger' data-tooltip='Выбрать измерения' aria-label='Выбрать отображаемые измерения' aria-haspopup='menu' aria-expanded='" + String(menuOpen) + "'><img src='./icons/more-vertical.svg' alt=''></button></div></div><div class='signal-table-scroll measurement-table-scroll' data-testid='measurement-table-scroll'></div>";
+      measurementSearchInput = body.querySelector("[data-testid='measurement-search-input']");
+      host = body.querySelector("[data-testid='measurement-table-scroll']");
+    } else if (document.activeElement !== measurementSearchInput && measurementSearchInput.value !== model.measurementSearch) {
+      measurementSearchInput.value = model.measurementSearch;
+    }
+    var menuTrigger = body.querySelector("[data-testid='measurement-columns-menu-trigger']");
+    if (menuTrigger) menuTrigger.setAttribute("aria-expanded", String(menuOpen));
     if (!current) { host.innerHTML = "<div class='inspector-empty' role='status'>Загрузка измерений…</div>"; return; }
     if (record.error) { host.innerHTML = "<div class='inspector-empty' data-testid='peaks-error' role='alert'>" + esc(record.error) + "</div>"; return; }
     var query = model.measurementSearch.trim().toLowerCase();
