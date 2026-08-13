@@ -26,7 +26,7 @@ module.exports = async function testPaneSelectionAndInspectorTable(assert) {
   const inspector = (css.match(/\.inspector\s*\{[^}]*\}/g) || []).find((rule) => /grid-template-rows/.test(rule)) || "";
   const header = (css.match(/\.inspector-header\s*\{[^}]*\}/g) || []).find((rule) => /border:/.test(rule)) || "";
   const body = (css.match(/\.inspector-body\s*\{[^}]*\}/g) || []).find((rule) => /grid-template-rows/.test(rule)) || "";
-  const tabs = (css.match(/\.inspector-tabs\s*\{[^}]*\}/g) || []).find((rule) => /overflow-x:\s*hidden/.test(rule)) || "";
+  const tabs = (css.match(/\.inspector-tabs\s*\{[^}]*\}/g) || []).find((rule) => /overflow-x:\s*auto/.test(rule)) || "";
   const inspectorHeaderHtml = (html.match(/<header class="inspector-header">[\s\S]*?<\/header>/) || [""])[0];
   const inspectorSearchHtml = (html.match(/<div class="inspector-search-row">[\s\S]*?<\/div>\s*<\/div>/) || [""])[0];
   assert(/grid-template-rows:\s*32px/.test(inspector), "inspector tab strip must remain one 32px row");
@@ -37,7 +37,7 @@ module.exports = async function testPaneSelectionAndInspectorTable(assert) {
   assert(/inspector-search-field[\s\S]*signal-search-input[\s\S]*inspector-actions/.test(inspectorSearchHtml), "the Signals search field and its action buttons must be separate siblings");
   assert(/\.inspector-search-field:focus-within\s*\{[^}]*box-shadow:\s*inset 0 0 0 1px var\(--accent\)/.test(css), "the active search border must belong only to the search field");
   assert(!/\.inspector-search-row:focus-within/.test(css), "the active search border must not surround the Signals action buttons");
-  assert(/overflow-x:\s*hidden/.test(tabs), "the three inspector tabs must not become a scrolling multi-page history");
+  assert(/overflow-x:\s*auto/.test(tabs), "the inspector tabs must retain horizontal overflow without inheriting settings-tab clipping");
   assert(/\.signal-table th:first-child,[\s\S]*width:\s*42px/.test(css), "visibility column width must match the design");
   assert(/\.signal-table th:nth-child\(2\)\s*\{\s*width:\s*28%/.test(css), "name column width must match the design");
   assert(/\.color-cell\s*\{[^}]*text-align:\s*left\s*!important/.test(css), "signal Color cells must align their swatches to the left edge");

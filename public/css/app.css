@@ -752,9 +752,19 @@ body.is-resizing-workspace * {
 .inspector-tabs {
   min-width: 0;
   display: flex;
-  overflow-x: auto;
   border-bottom: 1px solid var(--line);
   background: var(--surface-muted);
+}
+
+.settings-tabs {
+  height: 32px;
+  min-height: 32px;
+  max-height: 32px;
+  overflow: hidden;
+}
+
+.inspector-tabs {
+  overflow-x: auto;
 }
 
 .settings-tabs button,
@@ -1252,7 +1262,6 @@ body.is-resizing-workspace * {
 .inspector-tabs {
   min-width: 0;
   flex: 1 1 auto;
-  overflow-x: hidden;
   border-bottom: 0;
 }
 
@@ -2498,9 +2507,18 @@ body {
 }
 
 .settings-tabs button {
+  box-sizing: border-box;
+  height: 32px;
   min-width: 0;
+  min-height: 32px;
+  max-height: 32px;
   flex: 1 1 0;
   padding: 4px 12px;
+  line-height: 20px;
+}
+
+.settings-tabs button:focus-visible {
+  outline-offset: -3px;
 }
 
 .application-toolbar-title {
