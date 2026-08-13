@@ -1316,7 +1316,19 @@
       else stopPaneOutput(display.id, pane.id);
     });
   }
-  function fetchPaneOutput(displayId, paneId, poll) {
+  function nextOutputPollDelay(delay) {
+    if (delay < 100) return 100;
+    if (delay < 200) return 200;
+    return 350;
+  }
+  function schedulePaneOutputPoll(displayId, paneId, delay) {
+    var runtimeKey = paneRuntimeKey(displayId, paneId);
+    var currentDelay = typeof delay === "number" ? delay : 50;
+    model.pollByPane[runtimeKey] = window.setTimeout(function () {
+      fetchPaneOutput(displayId, paneId, true, nextOutputPollDelay(currentDelay));
+    }, currentDelay);
+  }
+  function fetchPaneOutput(displayId, paneId, poll, pollDelay) {
     var display = activeDisplay();
     var pane = paneById(paneId);
     if (!display || display.id !== displayId || !pane) return;
@@ -1331,12 +1343,12 @@
       if (!activeDisplay() || activeDisplay().id !== displayId || token !== model.outputTokens[runtimeKey] || !paneHasSignals(currentPane) || (stateRevision(response) !== null && stateRevision(response) < model.revision) || response.display_id !== display.id || response.pane_id !== pane.id || response.plot_type !== currentPane.plot_type || (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision < prior.calculation_revision)) return;
       model.revision = Math.max(model.revision, stateRevision(response) || model.revision);
       if (!response.isready && prior && prior.output && prior.output.isready && prior.output.success) {
-        if (poll) model.pollByPane[runtimeKey] = window.setTimeout(function () { fetchPaneOutput(displayId, paneId, true); }, 350);
+        if (poll) schedulePaneOutputPoll(displayId, paneId, pollDelay);
         return;
       }
       model.outputs[runtimeKey] = { context_key: response.context_key, calculation_revision: response.calculation_revision, output: { isready: response.isready, success: response.success, error: response.error, data: response.data } };
       scheduleRender();
-      if (!response.isready && poll) model.pollByPane[runtimeKey] = window.setTimeout(function () { fetchPaneOutput(displayId, paneId, true); }, 350);
+      if (!response.isready && poll) schedulePaneOutputPoll(displayId, paneId, pollDelay);
       if (response.isready && response.success) completePendingApply();
     }).catch(function (error) {
       if (activeDisplay() && activeDisplay().id === displayId && token === model.outputTokens[runtimeKey] && paneHasSignals(paneById(paneId))) {
@@ -1364,10 +1376,31 @@
         return (accept(current) ? Promise.resolve(current) : refreshSnapshot(renderAccepted)).then(function () { renderAccepted(); return attempt(); });
       });
     }
-    return attempt().then(function (snapshot) { settings.load().catch(function () {}); if (!options || !options.skipOutput) output(true); if (model.inspectorPage === "measurements") loadMeasurements(); return snapshot; });
+    return attempt().then(function (snapshot) {
+      if (!options || !options.skipSettings) settings.load().catch(function () {});
+      if (!options || !options.skipOutput) {
+        if (options && options.outputPaneId) {
+          var outputDisplay = activeDisplay(), outputPane = paneById(options.outputPaneId);
+          if (outputDisplay && outputPane && paneHasSignals(outputPane)) fetchPaneOutput(outputDisplay.id, outputPane.id, true, 50);
+          else if (outputDisplay) stopPaneOutput(outputDisplay.id, options.outputPaneId);
+        } else output(true);
+      }
+      if (model.inspectorPage === "measurements") loadMeasurements();
+      return snapshot;
+    });
   }
   function postLayout(payload, options) {
     var targetDisplayId = activeDisplay() && activeDisplay().id;
+    var mutationOptions = Object.assign({}, options || {});
+    if (payload.operation === "update_pane") {
+      var previousPane = paneById(payload.pane_id);
+      var plotTypeChanged = !previousPane || previousPane.plot_type !== payload.plot_type;
+      var hadSignals = paneHasSignals(previousPane);
+      var willHaveSignals = Array.isArray(payload.signal_bindings) && payload.signal_bindings.length > 0;
+      mutationOptions.outputPaneId = payload.pane_id;
+      mutationOptions.skipSettings = !plotTypeChanged;
+      mutationOptions.preservePlots = hadSignals && willHaveSignals;
+    }
     var request = Object.assign({ display_id:targetDisplayId, version:1 }, payload);
     return mutate(function () {
       if (!targetDisplayId || !activeDisplay() || activeDisplay().id !== targetDisplayId) {
@@ -1376,7 +1409,7 @@
         return Promise.reject(error);
       }
       return api.layouts(Object.assign({}, request, { state_revision:model.revision }));
-    }, options).then(function (snapshot) {
+    }, mutationOptions).then(function (snapshot) {
       if (peaksSurfaceActive()) loadPeaks();
       return snapshot;
     });

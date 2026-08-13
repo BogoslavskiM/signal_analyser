@@ -14,7 +14,7 @@ module.exports = async function testPaneSelectionAndInspectorTable(assert) {
   assert(/renderSettings\(display\)[\s\S]*renderInspector\(\)/.test(paneContext), "pane selection must refresh settings and signal checkboxes");
   assert(!/renderGrid\(|output\(/.test(paneContext), "pane selection must not rebuild or reload Plotly panes");
   assert(/operation: "select_pane"[\s\S]*\{ preservePlots:true, skipOutput:true \}/.test(app), "select_pane must preserve plot DOM and skip output polling");
-  assert(/if \(!options \|\| !options\.skipOutput\) output\(true\)/.test(app), "mutation completion must honor the no-output selection path");
+  assert(/if \(!options \|\| !options\.skipOutput\) \{[\s\S]*?\} else output\(true\)/.test(app), "mutation completion must honor the no-output selection path while allowing an exact-pane refresh");
 
   assert(/var renderedColumns = \[\{ id:"name", label:"Имя" \}\]\.concat\(columns\)/.test(app), "the inspector must build one ordered list of visible data columns");
   assert(/index === renderedColumns\.length - 1[\s\S]*last \? "is-actions-host"[\s\S]*last \? actions/.test(app), "row actions must overlay whichever data column is last visible");
