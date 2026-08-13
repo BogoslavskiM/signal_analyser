@@ -756,11 +756,12 @@ body.is-resizing-workspace * {
   background: var(--surface-muted);
 }
 
-.settings-tabs {
+.settings-panel > .settings-tabs {
   height: 32px;
   min-height: 32px;
   max-height: 32px;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 .inspector-tabs {
