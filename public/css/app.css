@@ -17,7 +17,7 @@
   --layer-critical: 98000;
 }
 
-/* TASK-0106: native Engee Save / Import dialog geometry (design v23). */
+/* TASK-0106: native Engee Save / Import dialog geometry (design v24). */
 .native-modal-layer { z-index: 95000; padding: 16px; background: rgba(33, 33, 33, .2); }
 .native-modal-layer.native-import { pointer-events: auto; }
 .native-dialog { width: 560px; grid-template-rows: 48px minmax(0, 1fr) 56px; border-radius: 12px; }
@@ -38,7 +38,11 @@
 .native-check { min-height: 30px; display: flex; align-items: center; gap: 8px; margin-left: 148px; }
 .native-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 .native-hint { margin: 0 0 0 148px; color: var(--muted); font-size: 12px; line-height: 1.35; }
-.native-signal-menu { width: 100%; height: 32px; text-align: left; }
+.native-signals-row { position: relative; }
+.native-signal-select { width: 100%; min-width: 0; height: 32px; }
+.native-signal-select .value-select-input[aria-invalid="true"] { border: 2px solid var(--danger); }
+.native-signal-popup { z-index: 96000; }
+.native-signal-error { display: block; margin: -6px 0 0 148px; min-height: 18px; }
 .native-import-path { margin-top: 16px; }
 .native-local-source { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
 .native-local-source p { margin: 0 0 8px; color: var(--muted); }

@@ -365,8 +365,10 @@ function parse_native_save_command(data)::NativeSaveCommand
         "operation должен быть workspace, script, jld2 или session";
         field = "operation",
     ))
-    scope = native_request_string(request, "scope")
-    scope in NATIVE_SAVE_SCOPES || throw(native_io_error(
+    # Keep scope in the exact wire contract, but derive the authoritative
+    # non-session scope from the selected signal count.
+    requested_scope = native_request_string(request, "scope")
+    requested_scope in NATIVE_SAVE_SCOPES || throw(native_io_error(
         "invalid_request",
         "scope должен быть signal, library или session";
         field = "scope",
@@ -380,22 +382,19 @@ function parse_native_save_command(data)::NativeSaveCommand
         field = "overwrite",
     ))
     if operation == "session"
-        scope == "session" && isempty(names) || throw(native_io_error(
+        requested_scope == "session" && isempty(names) || throw(native_io_error(
             "invalid_request",
             "Session save требует scope=session и пустой signal_names";
             field = "scope",
         ))
+        scope = "session"
     else
-        scope in ("signal", "library") || throw(native_io_error(
+        isempty(names) && throw(native_io_error(
             "invalid_request",
-            "Эта operation требует scope signal или library";
-            field = "scope",
-        ))
-        scope == "signal" && length(names) != 1 && throw(native_io_error(
-            "invalid_request",
-            "Scope signal требует ровно одно имя";
+            "Выберите хотя бы один сигнал";
             field = "signal_names",
         ))
+        scope = length(names) == 1 ? "signal" : "library"
     end
     NativeSaveCommand(revision, operation, scope, names, target, overwrite)
 end
@@ -445,8 +444,7 @@ function native_selected_signals_unlocked(
     state::SignalAnalyserState,
     command::NativeSaveCommand,
 )::Vector{AnalysedSignal}
-    names = command.scope == "library" && isempty(command.signal_names) ?
-        String[signal.name for signal in state.signals] : command.signal_names
+    names = command.signal_names
     isempty(names) && throw(native_io_error(
         "invalid_request",
         "Выберите хотя бы один сигнал";
@@ -488,70 +486,56 @@ end
 native_signal_value(signal::AnalysedSignal)::Union{Vector{Float64},Vector{ComplexF64}} =
     signal.is_complex ? copy(signal.values) : Float64[real(value) for value in signal.values]
 
-function native_workspace_names(
+function native_workspace_value(
     signals::Vector{AnalysedSignal},
-    command::NativeSaveCommand,
-)::Vector{String}
-    command.scope == "signal" && return [
-        native_require_workspace_name(command.target, "target"),
-    ]
-    prefix = native_require_workspace_name(command.target, "target")
-    ncodeunits(prefix) <= 64 || throw(native_io_error(
-        "invalid_workspace_prefix",
-        "Library workspace prefix должен содержать не более 64 ASCII-символов";
-        field = "target",
-    ))
-    signal_package_workspace_names(signals, prefix)
+)::Union{Vector{Float64},Vector{ComplexF64},Dict{String,Any}}
+    length(signals) == 1 && return native_signal_value(only(signals))
+    values = Dict{String,Any}()
+    for signal in signals
+        values[signal.name] = native_signal_value(signal)
+    end
+    values
 end
 
-function native_workspace_preflight(names::Vector{String})::Vector{Bool}
-    expressions = ["@isdefined($(name))" for name in names]
-    raw = native_engee_eval("(" * join(expressions, ", ") * ",)")
-    raw isa Tuple || raw isa AbstractVector || throw(native_io_error(
+function native_workspace_preflight(name::String)::Bool
+    raw = native_engee_eval("isdefined(Main, Symbol($(repr(name))))")
+    raw isa Bool || throw(native_io_error(
         "workspace_provider_error",
         "Engee вернул некорректный результат preflight",
     ))
-    values = collect(raw)
-    length(values) == length(names) && all(value -> value isa Bool, values) || throw(
-        native_io_error(
-            "workspace_provider_error",
-            "Engee вернул некорректный результат preflight",
-        ),
-    )
-    Bool[values...]
+    raw
 end
 
 function native_save_workspace(
     signals::Vector{AnalysedSignal},
     command::NativeSaveCommand,
 )::Dict{String,Any}
-    names = native_workspace_names(signals, command)
-    collisions = native_workspace_preflight(names)
-    if !command.overwrite && any(collisions)
-        conflict_names = names[collisions]
+    target = native_require_workspace_name(command.target, "target")
+    existed = native_workspace_preflight(target)
+    if !command.overwrite && existed
         throw(native_io_error(
             "target_exists",
-            "Workspace variables уже существуют: $(join(conflict_names, ", "))";
+            "Workspace variable уже существует: $target";
             field = "overwrite",
         ))
     end
-    items = Dict{String,Any}[]
-    for (signal, variable_name, existed) in zip(signals, names, collisions)
-        native_engee_send(variable_name, native_signal_value(signal))
-        push!(items, Dict{String,Any}(
-            "signal_name" => signal.name,
-            "variable_name" => variable_name,
-            "action" => existed ? "replaced" : "created",
-        ))
-    end
+    native_engee_send(target, native_workspace_value(signals))
     Dict{String,Any}(
         "ok" => true,
         "state_revision" => command.state_revision,
         "operation" => "workspace",
         "scope" => command.scope,
-        "target" => command.target,
-        "items" => items,
-        "message" => "Сигналы сохранены в рабочую область Engee",
+        "target" => target,
+        "items" => Dict{String,Any}[
+            Dict{String,Any}(
+                "signal_names" => String[signal.name for signal in signals],
+                "variable_name" => target,
+                "action" => existed ? "replaced" : "created",
+            ),
+        ],
+        "message" => length(signals) == 1 ?
+            "Сигнал сохранён в рабочую область Engee" :
+            "Сигналы сохранены одним словарём в рабочую область Engee",
     )
 end
 

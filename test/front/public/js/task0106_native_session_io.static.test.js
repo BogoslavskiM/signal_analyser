@@ -16,16 +16,24 @@ module.exports = async function task0106NativeSessionIoStatic(assert) {
   assert(/session-package-file-input/.test(html) && /accept="\.sazip,application\/vnd\.engee\.signal-analyser-package\+zip"/.test(html), ".sazip must remain a secondary local format");
   assert(/SignalAnalyserValueSelect/.test(native) && !/<select\b/i.test(native), "save type must use the shared custom value-select, never a native select");
   assert(/if \(!options\.length\) options=Object\.keys\(labels\)\.map/.test(native) && /var labels = \{ workspace:/.test(native), "save-type selector retains a non-empty four-operation fallback when API options have not loaded");
-  assert(/\(\(state\.options&&state\.options\.signal_names\)\|\|\[\]\)\.map\(function\(n\)/.test(native) && /bs\.entries\.map\(function\(entry\)/.test(native), "save signals and browser entries retain their option-to-control rendering paths");
+  assert(/\(state\.options&&state\.options\.signal_names\|\|\[\]\)\.map\(function\(name,index\)/.test(native) && /bs\.entries\.map\(function\(entry\)/.test(native), "save signals and browser entries retain their option-to-control rendering paths");
+  assert(!/Object\s*save|>\s*Object\s*</i.test(native) && !/data-native-scope|save-scope|scope-button/.test(native), "v24 removes the Object type and all user-editable scope controls");
+  assert(!/native-save-signal-menu|data-native-signal-menu/.test(native), "v24 replaces the legacy signal menu with the searchable multi-select");
 
   assert(/nativeSaveOptions: function \(\) \{ return request\("\.\/api\/save\/options"/.test(api), "save options use the exact API route");
   assert(/nativeFileBrowser: function \(payload\) \{ return request\("\.\/api\/file-browser\/list"/.test(api), "file browser uses the exact API route");
   assert(/nativeSave: function \(payload\) \{ return request\("\.\/api\/save"/.test(api) && /nativeImportSession: function \(payload\) \{ return request\("\.\/api\/import\/session"/.test(api), "save and import use exact API routes");
   assert(/nativeSave\(\{state_revision:state\.revision,operation:state\.saveType,scope:state\.saveDraft\.scope,signal_names:state\.saveDraft\.signalNames,target:state\.saveDraft\.target,overwrite:state\.saveDraft\.overwrite\}\)/.test(native), "save sends the exact typed payload");
+  assert(/count=\(state\.saveDraft\.signalNames\|\|\[\]\)\.length, scope=count === 1 \? "signal" : "library"; state\.saveDraft\.scope=state\.saveType === "session" \? "session" : scope/.test(native), "scope is derived solely from cardinality: one signal, library for two or more, session only for Session");
   assert(/nativeImportSession\(\{state_revision:state\.revision,path:state\.importDraft\.path,replace:true\}\)/.test(native), "import sends the exact typed replacement payload");
   assert(/selection_mode:state\.browserState\.mode,extension:state\.browserState\.mode==="file"\?"\.jld2":null,sort_direction:state\.browserState\.sort/.test(native), "browser preserves selection mode, JLD2 filter and sort payload");
 
   assert(/state\.browser=state\.import/.test(native) && /if\(state\.save\)loadOptions\(\); else loadBrowser\(\);/.test(native), "Import opens the Engee browser immediately while Save loads typed options");
+  assert(/data-testid='save-signals-input'/.test(native) && /data-testid='save-signals-arrow'/.test(native) && /data-testid='save-signals-menu'/.test(native) && /data-testid='save-signals-option-/.test(native), "signal multi-select exposes stable input, arrow, menu, and option selectors");
+  assert(/function signalPickerEntries\(\) \{[\s\S]*?toLocaleLowerCase\("ru-RU"\)[\s\S]*?filter\(function\(item\)\{return !query \|\|/.test(native), "multi-select filters its signal list with the typed search query");
+  assert(/function toggleSignal\(index\) \{[\s\S]*?at=names\.indexOf\(name\);if\(at>=0\)names\.splice\(at,1\);else names\.push\(name\);[\s\S]*?applySaveDefaults\(\);render\(\);/.test(native), "multi-select persists selections and reapplies cardinality-derived defaults after every toggle");
+  assert(/event\.key==="Escape"[\s\S]*?closeSignalPicker\(true\)[\s\S]*?ArrowDown[\s\S]*?ArrowUp[\s\S]*?Home[\s\S]*?End[\s\S]*?event\.key==="Enter"/.test(native), "multi-select supports Escape, arrows, Home/End, and Enter keyboard control");
+  assert(/state\.signalPicker\.open && !event\.target\.closest\("\[data-testid='native-save-signals'\], \[data-native-signals-popup\]"\)/.test(native), "outside pointer interaction closes only the multi-select popup");
   assert(/state\.browserState\.path=state\.browserState\.parent/.test(native) && /state\.browserState\.sort=state\.browserState\.sort==="asc"\?"desc":"asc"/.test(native), "browser supports parent navigation and deterministic sort toggling");
   assert(/file-browser-loading/.test(native) && /file-browser-error/.test(native) && /data-native-browser-retry/.test(native), "browser has loading, error and retry states");
   assert(/file-browser-parent/.test(native) && /file-browser-cancel/.test(native) && /file-browser-select/.test(native) && /file-browser-empty/.test(native), "browser exposes parent, cancel, select and empty controls");
@@ -50,6 +58,8 @@ module.exports = async function task0106NativeSessionIoStatic(assert) {
   assert(/native-session-imported/.test(native) && /native-session-imported/.test(app), "successful native import refreshes the application snapshot integration point");
   assert(/event\.key !== "Escape"[\s\S]*?state\.message[\s\S]*?else if\(state\.browser\)/.test(native), "Escape closes only the topmost native overlay");
   assert(/saveReady=typeof state\.revision === "number"[\s\S]*?native-save-submit/.test(native) && /state\.busy\?"Сохранение…":"Сохранить"/.test(native), "Save validates revision, target and scope and renders a distinct busy state");
+  assert(/state\.saveType === "session" \? "<p class='native-hint'>[\s\S]*?: "<div class='native-dialog-row native-signals-row'/.test(native), "Session hides the signal picker while every non-session type keeps it visible");
+  assert(/\(names\.length\?"":"<small class='native-field-error native-signal-error' data-testid='save-signals-error'>[\s\S]*?!saveReady\|\|state\.busy\?" disabled":""/.test(native), "zero selections expose an error and keep Save disabled");
   assert(/\.finally\(function\(\)\{if\(active\(generation\)\)\{state\.busy=false;render\(\);\}\}\)/.test(native), "save/import only render a final non-busy state when their generation is still current");
 
   assert(/\.native-save-dialog\s*\{[^}]*width:\s*560px[^}]*height:\s*568px/.test(css), "v23 Save geometry is exactly 560×568");
