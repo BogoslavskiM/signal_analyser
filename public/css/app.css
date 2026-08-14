@@ -357,6 +357,7 @@ body.is-resizing-workspace * {
 }
 
 .display-tablist {
+  position: relative;
   width: 100%;
   height: 32px;
   min-width: 0;
@@ -368,12 +369,27 @@ body.is-resizing-workspace * {
   scrollbar-width: none;
 }
 
+.display-tablist::before,
+.settings-tabs::before,
+.inspector-tabs::before {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  height: 1px;
+  background: var(--line);
+  content: "";
+  pointer-events: none;
+}
+
 .display-tablist::-webkit-scrollbar {
   display: none;
 }
 
 .display-tab-shell {
   position: relative;
+  z-index: 1;
   min-width: 160px;
   max-width: 240px;
   height: 32px;
@@ -812,15 +828,16 @@ body.is-resizing-workspace * {
 
 .settings-tabs,
 .inspector-tabs {
+  position: relative;
   min-width: 0;
   display: flex;
-  border-bottom: 1px solid var(--line);
   background: var(--surface-muted);
 }
 
 .settings-tabs button,
 .inspector-tabs button {
   position: relative;
+  z-index: 1;
   min-width: 112px;
   min-height: 32px;
   padding: 4px 12px;
@@ -852,6 +869,7 @@ body.is-resizing-workspace * {
   right: 0;
   bottom: 0;
   left: 0;
+  z-index: 2;
   height: var(--selected-tab-indicator-thickness);
   background: var(--accent);
   content: "";
@@ -1318,6 +1336,7 @@ body.is-resizing-workspace * {
   margin: 0;
   overflow: hidden;
   border: 1px solid var(--line);
+  border-bottom: 0;
   border-radius: var(--control-radius) var(--control-radius) 0 0;
   background: var(--surface);
 }
@@ -1738,17 +1757,12 @@ body.is-resizing-workspace * {
 .signal-table tbody tr.is-selected { background: var(--row-selected-analytical); }
 
 .measurement-table {
-  min-width: max(100%, var(--measurement-table-width, 536px));
+  width: 100%;
+  min-width: var(--measurement-table-width, 944px);
 }
 
-.signal-table.measurement-table th:first-child,
-.signal-table.measurement-table td:first-child { width: 220px; text-align: left; }
-.signal-table.measurement-table th:nth-child(2),
-.signal-table.measurement-table td:nth-child(2) { width: 96px; }
-.signal-table.measurement-table th:nth-child(3),
-.signal-table.measurement-table td:nth-child(3),
-.signal-table.measurement-table th:nth-child(4),
-.signal-table.measurement-table td:nth-child(4) { width: 110px; }
+.signal-table.measurement-table th,
+.signal-table.measurement-table td { width: auto; }
 .measurement-table tbody tr { cursor: default; }
 
 .peaks-table {
@@ -1931,13 +1945,9 @@ body.is-resizing-workspace * {
 
 .measurement-line-cell { text-align: center !important; }
 
-.measurement-line-swatch {
-  width: 64px;
-  height: 16px;
-  display: inline-block;
-  border: 1px solid var(--line-strong);
-  background: var(--swatch);
-  vertical-align: middle;
+.measurement-color-swatch {
+  cursor: default;
+  pointer-events: none;
 }
 
 .table-empty {

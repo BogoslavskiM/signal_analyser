@@ -978,15 +978,15 @@
       return !!signalName && (!query || String(signalName).toLowerCase().indexOf(query) >= 0);
     });
     var columns = [
-      { id:"name", label:"Имя", width:220 },
-      { id:"line", label:"Цвет", width:96, className:"measurement-line-cell" },
-      { id:"roi_min", label:"Начало области", width:110 },
-      { id:"roi_max", label:"Конец области", width:110 }
+      { id:"name", label:"Имя", width:152 },
+      { id:"line", label:"Цвет", width:56, className:"measurement-line-cell" },
+      { id:"roi_min", label:"Начало области", width:112 },
+      { id:"roi_max", label:"Конец области", width:104 }
     ];
     var measurementColumns = {
-      minimum:[{ id:"minimum_value", kind:"minimum", itemKey:"value", label:"Минимум", width:160 }, { id:"minimum_time", kind:"minimum", itemKey:"time_s", label:"Время минимума", width:150 }],
-      maximum:[{ id:"maximum_value", kind:"maximum", itemKey:"value", label:"Максимум", width:160 }, { id:"maximum_time", kind:"maximum", itemKey:"time_s", label:"Время максимума", width:150 }],
-      mean:[{ id:"mean", kind:"mean", itemKey:"value", label:"Среднее", width:150 }],
+      minimum:[{ id:"minimum_value", kind:"minimum", itemKey:"value", label:"Минимум", width:88 }, { id:"minimum_time", kind:"minimum", itemKey:"time_s", label:"Время минимума", width:120 }],
+      maximum:[{ id:"maximum_value", kind:"maximum", itemKey:"value", label:"Максимум", width:96 }, { id:"maximum_time", kind:"maximum", itemKey:"time_s", label:"Время максимума", width:128 }],
+      mean:[{ id:"mean", kind:"mean", itemKey:"value", label:"Среднее", width:88 }],
       median:[{ id:"median", kind:"median", itemKey:"value", label:"Медиана", width:150 }],
       peak_to_peak:[{ id:"peak_to_peak", kind:"peak_to_peak", itemKey:"value", label:"Размах", width:150 }],
       rms:[{ id:"rms", kind:"rms", itemKey:"value", label:"СКЗ", width:120 }]
@@ -1007,7 +1007,7 @@
       var cells = columns.map(function (column) {
         var value = "—";
         if (column.id === "name") value = "<span class='signal-cell-value'>" + esc(signalName) + "</span>";
-        else if (column.id === "line") value = "<span class='measurement-line-swatch' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signalName) + "'></span>";
+        else if (column.id === "line") value = "<span class='color-swatch measurement-color-swatch' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signalName) + "'></span>";
         else if (column.id === "roi_min") value = esc(measurementValue({ value:limits.min_s }, "value"));
         else if (column.id === "roi_max") value = esc(measurementValue({ value:limits.max_s }, "value"));
         else value = esc(measurementValue(items[column.kind], column.itemKey));
@@ -1336,6 +1336,8 @@
     var display = activeDisplay(), pane = paneById(model.activePane);
     if (!display || !pane || pane.plot_type !== "time" || !paneHasSignals(pane)) return;
     var displayId = display.id, paneId = pane.id, runtimeKey = paneRuntimeKey(displayId, paneId);
+    var existing = model.peaksRecords[runtimeKey];
+    if (existing && existing.displayId === displayId && existing.paneId === paneId && existing.pending) return;
     stopPeaksPolling(runtimeKey);
     var token = (model.peaksTokens[runtimeKey] || 0) + 1;
     model.peaksTokens[runtimeKey] = token;
@@ -1409,7 +1411,14 @@
     if (!targetActivePaneForExtrema()) return;
     model.inspectorPage = "peaks";
     renderActivePaneContext();
-    loadPeaks();
+    var display = activeDisplay(), pane = paneById(model.activePane);
+    var record = display && pane && model.peaksRecords[paneRuntimeKey(display.id, pane.id)];
+    var readyForCurrentContext = !!(record && record.displayId === display.id && record.paneId === pane.id &&
+      record.calculated && !record.pending && !record.error &&
+      typeof record.context_key === "string" && record.context_key &&
+      typeof record.calculation_revision === "number" && record.revision === model.revision);
+    var pendingForCurrentContext = !!(record && record.displayId === display.id && record.paneId === pane.id && record.pending);
+    if (!readyForCurrentContext && !pendingForCurrentContext) calculatePeaks();
     window.requestAnimationFrame(function () { var tab = q("[data-testid='inspector-tab-peaks']"); if (tab) tab.focus(); });
   }
 

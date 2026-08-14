@@ -233,6 +233,47 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   await settle();
   assert(values.test.model.inspectorPage === "peaks" && values.test.model.extremaTargetKey === "display-1::pane-1", "Values must open the lower Extrema page for the same highlighted pane");
 
+  function currentPeaksRecord(overrides) {
+    return Object.assign({
+      displayId: "display-1", paneId: "pane-1", context_key: "display-1::pane-1::peaks::r0",
+      calculation_revision: 0, revision: 3, calculated: true, pending: false, error: null,
+      data: { settings: {}, signals: [], rows: [] }
+    }, overrides || {});
+  }
+  function putCurrentRecord(flow, record) {
+    flow.test.model.peaksRecords["display-1::pane-1"] = record;
+  }
+
+  const missingValues = createHarness({ calculateResponses: [peaksResponse()] });
+  missingValues.test.showActivePeaksValues();
+  await settle();
+  assert(missingValues.test.model.inspectorPage === "peaks" && missingValues.calculateCalls.length === 1, "Values must switch to Extrema and make exactly one calculation POST when no current result exists");
+
+  const staleValues = createHarness({ calculateResponses: [peaksResponse()] });
+  putCurrentRecord(staleValues, currentPeaksRecord({ revision: 2 }));
+  staleValues.test.showActivePeaksValues();
+  await settle();
+  assert(staleValues.test.model.inspectorPage === "peaks" && staleValues.calculateCalls.length === 1, "Values must make exactly one calculation POST for a stale result");
+
+  const failedValues = createHarness({ calculateResponses: [peaksResponse()] });
+  putCurrentRecord(failedValues, currentPeaksRecord({ error: "Расчёт не выполнен" }));
+  failedValues.test.showActivePeaksValues();
+  await settle();
+  assert(failedValues.test.model.inspectorPage === "peaks" && failedValues.calculateCalls.length === 1, "Values must make exactly one calculation POST for a failed result");
+
+  const readyEmptyValues = createHarness({});
+  putCurrentRecord(readyEmptyValues, currentPeaksRecord());
+  readyEmptyValues.test.showActivePeaksValues();
+  await settle();
+  assert(readyEmptyValues.calculateCalls.length === 0, "Values must not recalculate a current successful empty result");
+
+  const pendingValues = createHarness({});
+  putCurrentRecord(pendingValues, currentPeaksRecord({ calculated: false, pending: true, data: null }));
+  pendingValues.test.showActivePeaksValues();
+  pendingValues.test.showActivePeaksValues();
+  await settle();
+  assert(pendingValues.calculateCalls.length === 0, "Values must not duplicate a calculation POST while the current pane is pending");
+
   const empty = createHarness({ bindings: [] });
   empty.test.model.inspectorPage = "peaks";
   await empty.test.loadPeaks();
