@@ -556,7 +556,7 @@
     if (restoreFocus && trigger && typeof trigger.focus === "function") window.requestAnimationFrame(function () { trigger.focus(); });
   }
   function openSessionFilePicker(trigger) {
-    var input = q("[data-testid='session-package-file-input']");
+    var input = q("[data-testid='native-local-file-input'],[data-testid='session-package-file-input']");
     if (!input || model.sessionImport.busy) return;
     model.sessionImport.trigger = trigger;
     model.sessionImport.open = false;
@@ -566,6 +566,7 @@
     input.value = "";
     input.click();
   }
+  window.SignalAnalyserOpenSessionFilePicker = openSessionFilePicker;
   function bytesToBase64(buffer) {
     var bytes = new Uint8Array(buffer), step = 0x8000, parts = [];
     for (var i=0; i<bytes.length; i+=step) parts.push(String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i+step, bytes.length))));
@@ -1957,7 +1958,7 @@
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]"),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
-    if (node.dataset.testid === "session-package-file-input") { readSessionDocument(node.files && node.files[0]); return; }
+    if (node.dataset.testid === "native-local-file-input" || node.dataset.testid === "session-package-file-input") { readSessionDocument(node.files && node.files[0]); return; }
     if (node.dataset.visibleAllSignals !== undefined) { var allPane = paneById(model.activePane); if (allPane) return void postLayout({ operation:"update_pane", pane_id:allPane.id, plot_type:allPane.plot_type, signal_bindings:node.checked ? (model.state.signals || []).map(function (signal) { return signal.name; }) : [] }); }
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }
   });

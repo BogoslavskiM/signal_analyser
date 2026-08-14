@@ -340,6 +340,25 @@ route("/api/file-browser/list", method = POST) do
     end
 end
 
+route("/api/file-browser/action", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        request = parse_native_file_browser_action_request(jsonpayload())
+        api_json(
+            native_file_browser_action_payload(NATIVE_SESSION_IO_SERVICE, request);
+            headers = response_headers,
+        )
+    catch err
+        if err isa NativeEngeeIOError
+            native_engee_io_error_response(err; headers = response_headers)
+        elseif err isa WorkspaceUnavailableError || err isa WorkspaceProviderError
+            native_engee_provider_error_response(err; headers = response_headers)
+        else
+            api_error_response("Не удалось выполнить действие file browser Engee", err; status = 500, headers = response_headers)
+        end
+    end
+end
+
 route("/api/save", method = POST) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try

@@ -23,6 +23,64 @@ const NIO = Main.AppTestContext
         "path" => "/user", "selection_mode" => "file", "extension" => nothing, "sort_direction" => "asc", "extra" => true,
     ))
 
+    browser_action_base = Dict{String,Any}(
+        "file_browser_target" => "native-import-file",
+        "mode" => "file",
+        "allowed_extensions" => [".JLD2", "jld2"],
+        "root_path" => "/user",
+        "current_path" => "/user",
+        "selected_path" => "",
+        "sort_ascending" => true,
+        "expanded_paths" => String[],
+    )
+    action_payload(action; extra = Dict{String,Any}()) = merge(
+        browser_action_base,
+        Dict{String,Any}("action" => action),
+        extra,
+    )
+    parsed_actions = Dict(
+        "open" => NIO.parse_native_file_browser_action_request(action_payload(
+            "open"; extra = Dict{String,Any}("initial_path" => "/user/session.jld2"),
+        )),
+        "path" => NIO.parse_native_file_browser_action_request(action_payload(
+            "path"; extra = Dict{String,Any}("current_path" => "/user/sessions"),
+        )),
+        "toggle" => NIO.parse_native_file_browser_action_request(action_payload(
+            "toggle"; extra = Dict{String,Any}("toggle_path" => "/user/sessions"),
+        )),
+        "sort" => NIO.parse_native_file_browser_action_request(action_payload(
+            "sort"; extra = Dict{String,Any}("sort_ascending" => false),
+        )),
+        "select" => NIO.parse_native_file_browser_action_request(action_payload(
+            "select"; extra = Dict{String,Any}("selected_path" => "/user/session.jld2"),
+        )),
+        "cancel" => NIO.parse_native_file_browser_action_request(action_payload("cancel")),
+    )
+    @test Set(keys(parsed_actions)) == Set(["open", "path", "toggle", "sort", "select", "cancel"])
+    @test parsed_actions["open"].initial_path == "/user/session.jld2"
+    @test parsed_actions["path"].current_path == "/user/sessions"
+    @test parsed_actions["toggle"].toggle_path == "/user/sessions"
+    @test !parsed_actions["sort"].sort_ascending
+    @test parsed_actions["select"].selected_path == "/user/session.jld2"
+    @test parsed_actions["cancel"].allowed_extensions == [".jld2"]
+    for invalid in (
+        action_payload("open"),
+        action_payload("path"; extra = Dict{String,Any}("initial_path" => "/user")),
+        action_payload("toggle"),
+        action_payload("unsupported"),
+        action_payload("sort"; extra = Dict{String,Any}("sort_ascending" => "asc")),
+        action_payload("path"; extra = Dict{String,Any}("root_path" => "/user/subdir")),
+        action_payload("path"; extra = Dict{String,Any}("expanded_paths" => ["/user/../secret"])),
+        action_payload("path"; extra = Dict{String,Any}("allowed_extensions" => ["../jld2"])),
+        merge(action_payload("path"), Dict{String,Any}("extra" => true)),
+    )
+        @test_throws NIO.NativeEngeeIOError NIO.parse_native_file_browser_action_request(invalid)
+    end
+    @test_throws NIO.NativeEngeeIOError NIO.parse_native_file_browser_action_request(merge(
+        action_payload("path"),
+        Dict{String,Any}("mode" => "directory", "allowed_extensions" => [".jld2"]),
+    ))
+
     session = NIO.parse_native_save_command(Dict(
         "state_revision" => 3, "operation" => "session", "scope" => "session",
         "signal_names" => String[], "target" => "/user/session.jld2", "overwrite" => false,
@@ -95,11 +153,86 @@ const NIO = Main.AppTestContext
         first(findfirst("if command.operation == \"session\"", source)) <
         first(findfirst("signals = native_snapshot_signals", source))
 
+    # The new action endpoint owns the complete browser state.  A deterministic
+    # String-specialized adapter double verifies the typed response mapping
+    # without starting Genie or touching a local/remote filesystem.
+    if !isdefined(NIO, :NATIVE_BROWSER_ACTION_TEST_RESULT)
+        @eval NIO begin
+            const NATIVE_BROWSER_ACTION_TEST_RESULT = Ref{Any}(nothing)
+            const NATIVE_BROWSER_ACTION_TEST_CODE = Ref("")
+            function native_engee_eval(code::String)
+                NATIVE_BROWSER_ACTION_TEST_CODE[] = code
+                NATIVE_BROWSER_ACTION_TEST_RESULT[]
+            end
+        end
+    end
+    NIO.NATIVE_BROWSER_ACTION_TEST_RESULT[] = (
+        open = true,
+        root_path = "/user",
+        current_path = "/user",
+        parent_path = "/user",
+        selected_path = "",
+        sort_ascending = true,
+        entries = [
+            (name = "sessions", path = "/user/sessions", kind = "directory", depth = 0, expanded = true, selectable = true),
+            (name = "notes.txt", path = "/user/notes.txt", kind = "file", depth = 1, expanded = false, selectable = false),
+        ],
+    )
+    action_response = NIO.native_file_browser_action_payload(
+        NIO.NativeSessionIOService(),
+        parsed_actions["toggle"],
+    )
+    @test Set(keys(action_response)) == Set([
+        "ok", "open", "root_path", "current_path", "parent_path",
+        "selected_path", "sort_ascending", "entries",
+    ])
+    @test action_response["ok"] === true && action_response["open"] === true
+    @test action_response["root_path"] == "/user" && action_response["current_path"] == "/user"
+    @test action_response["selected_path"] == "" && action_response["sort_ascending"] === true
+    @test length(action_response["entries"]) == 2
+    @test Set(keys(action_response["entries"][1])) == Set([
+        "name", "path", "kind", "depth", "expanded", "selectable",
+    ])
+    @test action_response["entries"][1]["depth"] == 0
+    @test action_response["entries"][1]["expanded"] === true
+    @test action_response["entries"][2]["selectable"] === false
+    @test occursin("action = \"toggle\"", NIO.NATIVE_BROWSER_ACTION_TEST_CODE[])
+
+    @test occursin("action in (\"open\", \"path\") ? String[]", source)
+    @test occursin("startswith(name, \".\") && continue", source)
+    @test occursin("public_path = safe ? String(child_real) : String(lexical_path)", source)
+    @test occursin("selectable = item.safe &&", source)
+    @test occursin("lowercase(splitext(item.name)[2]) in allowed_extensions", source)
+    @test occursin("filter!(path -> !(path == toggle_real || startswith(path, toggle_real * \"/\")), expanded)", source)
+    @test occursin("depth = depth", source) && occursin("expanded = is_expanded", source)
+
+    options = NIO.native_save_options(NIO.NativeSessionIOService(), NIO.default_signal_analyser_state())
+    @test options["defaults"]["import_session_target"] == "/user/signal-analyser-session.jld2"
+    @test options["defaults"]["replace"] === true
+
     routes = NIO.source("app", "routes.jl")
-    for route in ("/api/save/options", "/api/file-browser/list", "/api/save", "/api/import/session")
+    for route in ("/api/save/options", "/api/file-browser/list", "/api/file-browser/action", "/api/save", "/api/import/session")
         @test length(collect(eachmatch(Regex("route\\(\\\"" * route * "\\\""), routes))) == 1
     end
+    @test occursin("parse_native_file_browser_action_request(jsonpayload())", routes)
+    @test occursin("native_file_browser_action_payload(NATIVE_SESSION_IO_SERVICE, request)", routes)
     @test occursin("native_engee_provider_error_response", routes)
     api = NIO.source("app", "api.jl")
     @test occursin("\"engee_unavailable\"", api) && occursin("status = err isa WorkspaceUnavailableError ? 503 : 502", api)
+    exists_response = NIO.native_engee_io_error_response(NIO.native_io_error(
+        "target_exists",
+        "Workspace variable уже существует: signal_1";
+        field = "overwrite",
+    ))
+    @test exists_response.status == 409
+    @test exists_response.body["code"] == "target_exists"
+    @test exists_response.body["error"]["code"] == "target_exists"
+    @test exists_response.body["error"]["fields"] == Dict("overwrite" => "Workspace variable уже существует: signal_1")
+    stale_response = NIO.signal_analyser_session_stale_response(
+        NIO.default_signal_analyser_state(),
+        NIO.SignalAnalyserStaleStateError(99, 0),
+    )
+    @test stale_response.status == 409
+    @test stale_response.body["code"] == "stale_state"
+    @test stale_response.body["error"]["code"] == "stale_state"
 end

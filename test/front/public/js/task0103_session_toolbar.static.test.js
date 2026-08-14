@@ -8,7 +8,7 @@ module.exports = async function task0104PackageToolbarStatic(assert) {
   const api = fs.readFileSync(path.join(root, "public/js/api.js"), "utf8");
   const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8");
   assert(/data-testid="toolbar-import"[\s\S]*Импортировать пакет/.test(html) && /data-testid="toolbar-save"[\s\S]*Сохранить пакет/.test(html), "v21 keeps visible Import and Save actions");
-  assert(/id="session-file-input"[^>]*accept="\.sazip,application\/vnd\.engee\.signal-analyser-package\+zip"[^>]*data-testid="session-package-file-input"/.test(html), "Import exposes only the .sazip picker");
+  assert(/id="session-file-input"[^>]*accept="\.sazip,application\/vnd\.engee\.signal-analyser-package\+zip"[^>]*data-testid="native-local-file-input"[^>]*data-legacy-testid="session-package-file-input"/.test(html), "local Import exposes only the .sazip picker and retains the legacy test alias");
   assert(/function packageRows\(\)[\s\S]*Сессия и настройки[\s\S]*Исходные данные сигналов[\s\S]*Снимки готовых графиков[\s\S]*reproduce\.jl[\s\S]*Метаданные зависимостей/.test(app), "Save has exactly five fixed contents");
   assert(/exportPackage: function \(\) \{ return binaryRequest\("\.\/api\/session\/package"/.test(api) && /application\/vnd\.engee\.signal-analyser-package\+zip/.test(api), "Save uses package binary endpoint and MIME");
   assert(/bytesToBase64[\s\S]*step = 0x8000[\s\S]*window\.btoa/.test(app), "file encoding is chunked base64");

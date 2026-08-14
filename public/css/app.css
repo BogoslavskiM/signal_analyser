@@ -43,7 +43,7 @@
 .native-signal-select .value-select-input[aria-invalid="true"] { border: 2px solid var(--danger); }
 .native-signal-popup { z-index: 96000; }
 .native-signal-error { display: block; margin: -6px 0 0 148px; min-height: 18px; }
-.native-import-path { margin-top: 16px; }
+.native-import-path { margin-top: 0; }
 .native-local-source { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
 .native-local-source p { margin: 0 0 8px; color: var(--muted); }
 .native-replace-warning { margin: 8px 0 0 148px; }
@@ -54,13 +54,17 @@
 .native-file-browser-layer .file-browser-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 16px; border: 0; border-bottom: 1px solid var(--line); background: var(--surface-muted); color: var(--text); cursor: pointer; font-weight: 500; text-align: left; }
 .native-file-browser-layer .file-browser-list-wrap { position: relative; min-height: 0; }
 .native-file-browser-layer .file-browser-list { height: 100%; overflow-x: hidden; overflow-y: auto; padding: 4px 0 8px; overscroll-behavior: contain; }
-.native-file-browser-layer .browser-row { width: 100%; min-height: 22px; display: grid; grid-template-columns: 16px 16px minmax(0, 1fr); align-items: center; gap: 4px; padding: 0 16px; border: 0; background: transparent; color: var(--text); cursor: pointer; text-align: left; }
-.native-file-browser-layer .browser-row:hover:not(:disabled), .native-file-browser-layer .browser-row.is-selected { background: var(--accent-soft); }
-.native-file-browser-layer .browser-row:disabled { color: var(--muted); cursor: default; }
-.native-file-browser-layer .browser-row img, .native-file-browser-layer .browser-row .caret { width: 16px; height: 16px; object-fit: contain; }
-.native-file-browser-layer .browser-row .caret { background: url("../icons/folder-caret.svg") center / contain no-repeat; }
-.native-file-browser-layer .browser-row.is-file .caret { visibility: hidden; }
-.native-file-browser-layer .browser-row span:last-child, .native-file-browser-layer .file-browser-current-path span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.native-file-browser-layer .browser-row { width: 100%; min-height: 22px; display: grid; grid-template-columns: 16px 16px minmax(0, 1fr); align-items: center; gap: 4px; padding-right: 16px; background: transparent; color: var(--text); }
+.native-file-browser-layer .browser-row:not(.is-disabled):hover, .native-file-browser-layer .browser-row.is-selected { background: var(--accent-soft); }
+.native-file-browser-layer .browser-row.is-disabled { color: var(--muted); }
+.native-file-browser-layer .browser-row > img, .native-file-browser-layer .browser-caret, .native-file-browser-layer .browser-caret-placeholder { width: 16px; height: 16px; object-fit: contain; }
+.native-file-browser-layer .browser-caret { padding: 0; border: 0; border-radius: 2px; background: url("../icons/folder-caret.svg") center / contain no-repeat; cursor: pointer; }
+.native-file-browser-layer .browser-caret.is-expanded { transform: rotate(90deg); }
+.native-file-browser-layer .browser-caret:disabled { cursor: default; opacity: .46; }
+.native-file-browser-layer .browser-entry-button { min-width: 0; height: 22px; overflow: hidden; padding: 0; border: 0; background: transparent; color: inherit; cursor: pointer; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.native-file-browser-layer .browser-entry-button:disabled { cursor: default; }
+.native-file-browser-layer .browser-caret:focus-visible, .native-file-browser-layer .browser-entry-button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.native-file-browser-layer .file-browser-current-path span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .native-file-browser-layer .file-browser-current-path { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .native-file-browser-layer .file-browser-current-path img { width: 16px; height: 16px; object-fit: contain; }
 .native-file-browser-layer .file-browser-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 16px; }
@@ -161,6 +165,30 @@ button img {
   display: flex;
   align-items: center;
   gap: 2px;
+}
+
+.toolbar-import-control {
+  position: relative;
+  display: flex;
+}
+
+.menu.toolbar-import-menu {
+  z-index: 91000;
+  width: 196px;
+  max-height: none;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  box-shadow: var(--shadow-menu);
+}
+
+.menu.toolbar-import-menu[hidden] { display: none; }
+
+.menu.toolbar-import-menu button {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 12px;
 }
 
 .toolbar-button {
@@ -340,12 +368,13 @@ body.is-resizing-workspace * {
 }
 
 .display-tabs {
+  position: relative;
   min-width: 0;
   min-height: 32px;
   display: flex;
   align-items: stretch;
   overflow: hidden;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 0;
   background: var(--app-bg);
 }
 
@@ -1331,14 +1360,30 @@ body.is-resizing-workspace * {
 }
 
 .inspector-header {
+  position: relative;
   min-width: 0;
   display: flex;
   margin: 0;
   overflow: hidden;
   border: 1px solid var(--line);
+  border-top: 0;
   border-bottom: 0;
   border-radius: var(--control-radius) var(--control-radius) 0 0;
   background: var(--surface);
+}
+
+/* Keep the 32px inspector strip available to its tabs. A physical top border
+   consumes one row in the fixed grid track and clips the last indicator row. */
+.inspector-header::before {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  height: 1px;
+  background: var(--line);
+  content: "";
+  pointer-events: none;
 }
 
 .inspector-header > .inspector-tabs {

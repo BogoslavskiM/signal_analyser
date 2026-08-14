@@ -17,9 +17,15 @@
         <span class="application-toolbar-version">Версия 0.1.0</span>
       </div>
       <div class="application-toolbar-actions">
-        <button class="toolbar-button" type="button" data-testid="toolbar-import" data-tooltip="Импортировать пакет" aria-label="Импортировать пакет">
-          <img src="./icons/import.svg" alt="">
-        </button>
+        <div class="toolbar-import-control" data-native-import-control>
+          <button class="toolbar-button" type="button" data-testid="toolbar-import" data-tooltip="Импортировать пакет" aria-label="Импортировать пакет" aria-haspopup="menu" aria-controls="toolbar-import-menu" aria-expanded="false">
+            <img src="./icons/import.svg" alt="">
+          </button>
+          <div id="toolbar-import-menu" class="menu toolbar-import-menu" role="menu" data-testid="toolbar-import-menu" aria-label="Источник импорта" hidden>
+            <button type="button" role="menuitem" tabindex="-1" data-native-import-source="engee" data-testid="toolbar-import-engee">Из Engee</button>
+            <button type="button" role="menuitem" tabindex="-1" data-native-import-source="local" data-testid="toolbar-import-local">Из локального файла</button>
+          </div>
+        </div>
         <button class="toolbar-button" type="button" data-testid="toolbar-save" data-tooltip="Сохранить пакет" aria-label="Сохранить пакет">
           <img src="./icons/save.svg" alt="">
         </button>
@@ -134,7 +140,7 @@
   </main>
 
   <div id="value-select-popup" class="value-select-popup" data-value-select-popup data-testid="select-menu" hidden></div>
-  <input id="session-file-input" type="file" accept=".sazip,application/vnd.engee.signal-analyser-package+zip" data-testid="session-package-file-input" class="session-file-input" tabindex="-1" aria-hidden="true">
+  <input id="session-file-input" type="file" accept=".sazip,application/vnd.engee.signal-analyser-package+zip" data-testid="native-local-file-input" data-legacy-testid="session-package-file-input" class="session-file-input" tabindex="-1" aria-hidden="true">
   <div class="menu compact-menu plot-menu" role="menu" data-testid="display-overflow-menu" hidden>
     <button type="button" role="menuitem" data-plot-clear data-testid="pane-menu-clear">
       <img src="./icons/trash.svg" alt="">

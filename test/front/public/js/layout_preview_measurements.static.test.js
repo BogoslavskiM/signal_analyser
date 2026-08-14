@@ -56,4 +56,8 @@ module.exports = async function testLayoutPreviewAndMeasurementsInspector(assert
   });
   assert(/--selected-tab-indicator-thickness:\s*3px/.test(css), "All selected tab indicators must be exactly 3px");
   assert(/\.display-tablist::before,\s*\.settings-tabs::before,\s*\.inspector-tabs::before\s*\{[^}]*z-index:\s*0[^}]*height:\s*1px/.test(css), "All three tab families must share a neutral 1px baseline at z0");
+  assert(/\.display-tabs\s*\{[^}]*border-bottom:\s*0/.test(css), "the screen-tabs wrapper must not physically clip the 3px indicator from below");
+  assert(/\.inspector-header\s*\{[^}]*border-top:\s*0[^}]*border-bottom:\s*0/.test(css), "the fixed lower tab track must not lose pixels to physical top/bottom borders");
+  assert(/\.inspector-header::before\s*\{[^}]*top:\s*0[^}]*z-index:\s*3[^}]*height:\s*1px[^}]*pointer-events:\s*none/.test(css), "the lower panel top edge must be an overlay rule that cannot consume or cover the indicator row");
+  assert(/\.inspector-header > \.inspector-tabs\s*\{[^}]*height:\s*32px[^}]*border-bottom:\s*0/.test(css), "the lower tab list must expose all 32 paint rows to its indicator");
 };

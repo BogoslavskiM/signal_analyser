@@ -120,6 +120,7 @@
     exportPackage: function () { return binaryRequest("./api/session/package", { cache: "no-store" }); },
     nativeSaveOptions: function () { return request("./api/save/options", { cache: "no-store" }); },
     nativeFileBrowser: function (payload) { return request("./api/file-browser/list", { method:"POST", headers:{ Accept:"application/json", "Content-Type":"application/json" }, body:JSON.stringify(payload) }); },
+    nativeFileBrowserAction: function (payload) { return request("./api/file-browser/action", { method:"POST", headers:{ Accept:"application/json", "Content-Type":"application/json" }, body:JSON.stringify(payload) }); },
     nativeSave: function (payload) { return request("./api/save", { method:"POST", headers:{ Accept:"application/json", "Content-Type":"application/json" }, body:JSON.stringify(payload) }); },
     nativeImportSession: function (payload) { return request("./api/import/session", { method:"POST", headers:{ Accept:"application/json", "Content-Type":"application/json" }, body:JSON.stringify(payload) }); },
     validatePackage: function (payload, signal) {

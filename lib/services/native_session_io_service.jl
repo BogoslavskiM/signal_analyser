@@ -18,6 +18,20 @@ const NATIVE_FILE_BROWSER_REQUEST_FIELDS = Set([
     "extension",
     "sort_direction",
 ])
+const NATIVE_FILE_BROWSER_ACTIONS = ("open", "path", "toggle", "sort", "select", "cancel")
+const NATIVE_FILE_BROWSER_ACTION_REQUEST_FIELDS = Set([
+    "action",
+    "file_browser_target",
+    "mode",
+    "allowed_extensions",
+    "root_path",
+    "current_path",
+    "selected_path",
+    "sort_ascending",
+    "expanded_paths",
+    "initial_path",
+    "toggle_path",
+])
 const NATIVE_SAVE_REQUEST_FIELDS = Set([
     "state_revision",
     "operation",
@@ -51,6 +65,20 @@ struct NativeFileBrowserRequest
     selection_mode::String
     extension::Union{Nothing,String}
     sort_ascending::Bool
+end
+
+struct NativeFileBrowserActionRequest
+    action::String
+    file_browser_target::String
+    mode::String
+    allowed_extensions::Vector{String}
+    root_path::String
+    current_path::String
+    selected_path::String
+    sort_ascending::Bool
+    expanded_paths::Vector{String}
+    initial_path::String
+    toggle_path::String
 end
 
 struct NativeSaveCommand
@@ -196,6 +224,185 @@ function native_file_extension(raw)::Union{Nothing,String}
     value
 end
 
+function native_file_extensions(raw)::Vector{String}
+    raw isa AbstractVector || throw(native_io_error(
+        "invalid_request",
+        "allowed_extensions должен быть массивом строк";
+        field = "allowed_extensions",
+    ))
+    extensions = String[]
+    for item in raw
+        extension = native_file_extension(item)
+        extension === nothing && throw(native_io_error(
+            "invalid_request",
+            "allowed_extensions не должен содержать пустые расширения";
+            field = "allowed_extensions",
+        ))
+        extension in extensions || push!(extensions, extension)
+    end
+    extensions
+end
+
+function native_optional_request_string(
+    data::AbstractDict,
+    key::String;
+    default::String = "",
+)::String
+    raw = signal_analyser_payload_value(data, key)
+    raw === nothing && return default
+    raw isa AbstractString || throw(native_io_error(
+        "invalid_request",
+        "$key должен быть строкой";
+        field = key,
+    ))
+    value = String(raw)
+    ncodeunits(value) <= 4096 || throw(native_io_error(
+        "invalid_request",
+        "$key слишком длинный";
+        field = key,
+    ))
+    value
+end
+
+function native_request_paths(data::AbstractDict, key::String)::Vector{String}
+    raw = signal_analyser_payload_value(data, key)
+    raw isa AbstractVector || throw(native_io_error(
+        "invalid_request",
+        "$key должен быть массивом строк";
+        field = key,
+    ))
+    paths = String[]
+    for item in raw
+        item isa AbstractString || throw(native_io_error(
+            "invalid_request",
+            "$key должен содержать только строки";
+            field = key,
+        ))
+        path = native_normalize_user_path(String(item))
+        path in paths || push!(paths, path)
+    end
+    length(paths) <= 1024 || throw(native_io_error(
+        "invalid_request",
+        "$key содержит слишком много путей";
+        field = key,
+    ))
+    paths
+end
+
+function parse_native_file_browser_action_request(data)::NativeFileBrowserActionRequest
+    data isa AbstractDict || throw(native_io_error(
+        "invalid_request",
+        "Body должен быть JSON-объектом",
+    ))
+    actual = signal_analyser_payload_keys(data)
+    issubset(actual, NATIVE_FILE_BROWSER_ACTION_REQUEST_FIELDS) || throw(native_io_error(
+        "invalid_request",
+        "Body содержит неподдерживаемые поля file browser",
+    ))
+    required = Set([
+        "action",
+        "file_browser_target",
+        "mode",
+        "allowed_extensions",
+        "root_path",
+        "current_path",
+        "selected_path",
+        "sort_ascending",
+        "expanded_paths",
+    ])
+    issubset(required, actual) || throw(native_io_error(
+        "invalid_request",
+        "Body не содержит обязательные поля file browser",
+    ))
+
+    action = native_request_string(data, "action")
+    action in NATIVE_FILE_BROWSER_ACTIONS || throw(native_io_error(
+        "invalid_request",
+        "action должен быть open, path, toggle, sort, select или cancel";
+        field = "action",
+    ))
+    expected = copy(required)
+    action == "open" && push!(expected, "initial_path")
+    action == "toggle" && push!(expected, "toggle_path")
+    actual == expected || throw(native_io_error(
+        "invalid_request",
+        "Body содержит неверный набор полей для action=$action",
+    ))
+    target = native_request_string(data, "file_browser_target")
+    ncodeunits(target) <= 128 || throw(native_io_error(
+        "invalid_request",
+        "file_browser_target слишком длинный";
+        field = "file_browser_target",
+    ))
+    mode = native_request_string(data, "mode")
+    mode in NATIVE_FILE_BROWSER_MODES || throw(native_io_error(
+        "invalid_request",
+        "mode должен быть directory или file";
+        field = "mode",
+    ))
+    allowed_extensions = native_file_extensions(
+        signal_analyser_payload_value(data, "allowed_extensions"),
+    )
+    mode == "directory" && !isempty(allowed_extensions) && throw(native_io_error(
+        "invalid_request",
+        "allowed_extensions допустим только в file mode";
+        field = "allowed_extensions",
+    ))
+
+    raw_root = native_optional_request_string(data, "root_path")
+    root_path = isempty(strip(raw_root)) ? NATIVE_ENGEE_USER_ROOT :
+        native_normalize_user_path(raw_root)
+    root_path == NATIVE_ENGEE_USER_ROOT || throw(native_io_error(
+        "unsafe_path",
+        "root_path должен совпадать с /user";
+        field = "root_path",
+    ))
+    raw_current = native_optional_request_string(data, "current_path")
+    current_path = isempty(strip(raw_current)) ? NATIVE_ENGEE_USER_ROOT :
+        native_normalize_user_path(raw_current)
+    raw_selected = native_optional_request_string(data, "selected_path")
+    selected_path = isempty(strip(raw_selected)) ? "" : native_normalize_user_path(raw_selected)
+    sort_ascending = signal_analyser_payload_value(data, "sort_ascending")
+    sort_ascending isa Bool || throw(native_io_error(
+        "invalid_request",
+        "sort_ascending должен быть boolean";
+        field = "sort_ascending",
+    ))
+    expanded_paths = native_request_paths(data, "expanded_paths")
+
+    initial_path = native_optional_request_string(data, "initial_path")
+    toggle_path = native_optional_request_string(data, "toggle_path")
+    if action == "open"
+        "initial_path" in actual || throw(native_io_error(
+            "invalid_request",
+            "open требует initial_path";
+            field = "initial_path",
+        ))
+        initial_path = isempty(strip(initial_path)) ? NATIVE_ENGEE_USER_ROOT :
+            native_normalize_user_path(initial_path)
+    elseif action == "toggle"
+        "toggle_path" in actual || throw(native_io_error(
+            "invalid_request",
+            "toggle требует toggle_path";
+            field = "toggle_path",
+        ))
+        toggle_path = native_normalize_user_path(toggle_path)
+    end
+    NativeFileBrowserActionRequest(
+        action,
+        target,
+        mode,
+        allowed_extensions,
+        root_path,
+        current_path,
+        selected_path,
+        sort_ascending,
+        expanded_paths,
+        initial_path,
+        toggle_path,
+    )
+end
+
 function parse_native_file_browser_request(data)::NativeFileBrowserRequest
     request = native_exact_request(data, NATIVE_FILE_BROWSER_REQUEST_FIELDS)
     path = native_normalize_user_path(native_request_string(request, "path"))
@@ -257,20 +464,20 @@ function native_file_browser_payload(
             catch
                 continue
             end
-            inside(child_real) || continue
+            inside_child = inside(child_real)
             kind = isdir(child_real) ? "directory" : (isfile(child_real) ? "file" : "other")
             kind == "other" && continue
-            if kind == "file" && !isempty(extension) && lowercase(splitext(name)[2]) != extension
-                continue
-            end
-            selectable = $(repr(request.selection_mode)) == "directory" ?
-                kind == "directory" : kind == "file"
+            extension_allowed = isempty(extension) || lowercase(splitext(name)[2]) == extension
+            selectable = inside_child && (
+                kind == "directory" ||
+                ($(repr(request.selection_mode)) == "file" && kind == "file" && extension_allowed)
+            )
             push!(entries, (
                 name = String(name),
-                path = String(child_real),
+                path = inside_child ? String(child_real) : String(normpath(child)),
                 kind = kind,
                 selectable = selectable,
-                size_bytes = kind == "file" ? Int(filesize(child_real)) : 0,
+                size_bytes = inside_child && kind == "file" ? Int(filesize(child_real)) : 0,
             ))
         end
         sort!(entries; by = item -> (item.kind == "directory" ? 0 : 1, lowercase(item.name)))
@@ -329,6 +536,217 @@ function native_file_browser_payload(
         "selection_mode" => request.selection_mode,
         "extension" => request.extension,
         "sort_direction" => request.sort_ascending ? "asc" : "desc",
+        "entries" => entries,
+    )
+end
+
+function native_file_browser_action_payload(
+    ::NativeSessionIOService,
+    request::NativeFileBrowserActionRequest,
+)::Dict{String,Any}
+    action = request.action
+    current_path = action == "open" ? request.initial_path : request.current_path
+    selected_path = action in ("open", "path") ? "" : request.selected_path
+    expanded_paths = action in ("open", "path") ? String[] : request.expanded_paths
+    allowed_extensions_literal = repr(request.allowed_extensions)
+    expanded_paths_literal = repr(expanded_paths)
+    code = """
+    let
+        action = $(repr(action))
+        mode = $(repr(request.mode))
+        allowed_extensions = Set($allowed_extensions_literal)
+        root_real = realpath($(repr(NATIVE_ENGEE_USER_ROOT)))
+        inside(path) = path == root_real || startswith(path, root_real * "/")
+
+        requested_current = $(repr(current_path))
+        current_candidate = if action == "open" && !isdir(requested_current)
+            dirname(requested_current)
+        else
+            requested_current
+        end
+        isdir(current_candidate) || error("path is not a directory")
+        current_real = realpath(current_candidate)
+        inside(current_real) || error("path outside /user")
+
+        expanded = Set{String}()
+        for path in $expanded_paths_literal
+            candidate_real = try
+                realpath(path)
+            catch
+                continue
+            end
+            inside(candidate_real) && isdir(candidate_real) && candidate_real != current_real || continue
+            push!(expanded, String(candidate_real))
+        end
+
+        if action == "toggle"
+            toggle_real = realpath($(repr(request.toggle_path)))
+            inside(toggle_real) || error("toggle path outside /user")
+            isdir(toggle_real) || error("toggle path is not a directory")
+            toggle_real == current_real && error("current directory cannot be toggled")
+            if toggle_real in expanded
+                filter!(path -> !(path == toggle_real || startswith(path, toggle_real * "/")), expanded)
+            else
+                push!(expanded, String(toggle_real))
+            end
+        end
+
+        selected_real = ""
+        requested_selected = $(repr(selected_path))
+        if !isempty(requested_selected)
+            candidate_real = try
+                realpath(requested_selected)
+            catch
+                ""
+            end
+            if !isempty(candidate_real) && inside(candidate_real) && isfile(candidate_real)
+                extension_allowed = isempty(allowed_extensions) ||
+                    lowercase(splitext(candidate_real)[2]) in allowed_extensions
+                extension_allowed && (selected_real = String(candidate_real))
+            end
+        end
+        if action == "select"
+            if mode == "file"
+                isempty(selected_real) && error("select requires an allowed file")
+            else
+                selected_real = String(current_real)
+            end
+        end
+
+        entries = NamedTuple{
+            (:name, :path, :kind, :depth, :expanded, :selectable),
+            Tuple{String,String,String,Int,Bool,Bool},
+        }[]
+        parent_real = current_real == root_real ? root_real : dirname(current_real)
+        if current_real != root_real
+            push!(entries, (
+                name = "..",
+                path = String(parent_real),
+                kind = "directory",
+                depth = 0,
+                expanded = false,
+                selectable = true,
+            ))
+        end
+
+        function append_directory_entries!(directory_real::String, depth::Int, ancestors::Set{String})
+            children = NamedTuple{
+                (:name, :path, :real_path, :kind, :safe),
+                Tuple{String,String,String,String,Bool},
+            }[]
+            for name in readdir(directory_real)
+                startswith(name, ".") && continue
+                lexical_path = normpath(joinpath(directory_real, name))
+                child_real = try
+                    realpath(lexical_path)
+                catch
+                    continue
+                end
+                kind = isdir(lexical_path) ? "directory" :
+                    (isfile(lexical_path) ? "file" : "other")
+                kind == "other" && continue
+                safe = inside(child_real)
+                public_path = safe ? String(child_real) : String(lexical_path)
+                push!(children, (
+                    name = String(name),
+                    path = public_path,
+                    real_path = String(child_real),
+                    kind = kind,
+                    safe = safe,
+                ))
+            end
+            sort!(children; by = item -> lowercase(item.name))
+            directories = filter(item -> item.kind == "directory", children)
+            files = filter(item -> item.kind == "file", children)
+            if !$(repr(request.sort_ascending))
+                reverse!(directories)
+                reverse!(files)
+            end
+            for item in vcat(directories, files)
+                is_expanded = item.safe && item.kind == "directory" &&
+                    item.real_path in expanded && !(item.real_path in ancestors)
+                extension_allowed = isempty(allowed_extensions) ||
+                    lowercase(splitext(item.name)[2]) in allowed_extensions
+                selectable = item.safe && (
+                    item.kind == "directory" ||
+                    (item.kind == "file" && mode == "file" && extension_allowed)
+                )
+                push!(entries, (
+                    name = item.name,
+                    path = item.path,
+                    kind = item.kind,
+                    depth = depth,
+                    expanded = is_expanded,
+                    selectable = selectable,
+                ))
+                if is_expanded
+                    next_ancestors = copy(ancestors)
+                    push!(next_ancestors, item.real_path)
+                    append_directory_entries!(item.real_path, depth + 1, next_ancestors)
+                end
+            end
+            nothing
+        end
+        append_directory_entries!(String(current_real), 0, Set([String(current_real)]))
+
+        (
+            open = !(action in ("select", "cancel")),
+            root_path = String(root_real),
+            current_path = String(current_real),
+            parent_path = String(parent_real),
+            selected_path = selected_real,
+            sort_ascending = $(repr(request.sort_ascending)),
+            entries = entries,
+        )
+    end
+    """
+    raw = native_engee_eval(code)
+    open = native_payload_value(raw, :open)
+    root_path = native_payload_value(raw, :root_path)
+    current = native_payload_value(raw, :current_path)
+    parent = native_payload_value(raw, :parent_path)
+    selected = native_payload_value(raw, :selected_path)
+    sort_ascending = native_payload_value(raw, :sort_ascending)
+    entries_raw = native_payload_value(raw, :entries)
+    open isa Bool && sort_ascending isa Bool &&
+        all(value -> value isa AbstractString, (root_path, current, parent, selected)) &&
+        entries_raw isa AbstractVector || throw(native_io_error(
+            "filesystem_provider_error",
+            "Engee вернул некорректное состояние file browser",
+        ))
+
+    entries = Dict{String,Any}[]
+    for item in entries_raw
+        name = native_payload_value(item, :name)
+        path = native_payload_value(item, :path)
+        kind = native_payload_value(item, :kind)
+        depth = native_payload_value(item, :depth)
+        expanded = native_payload_value(item, :expanded)
+        selectable = native_payload_value(item, :selectable)
+        name isa AbstractString && path isa AbstractString && kind isa AbstractString &&
+            depth isa Integer && expanded isa Bool && selectable isa Bool || throw(
+                native_io_error(
+                    "filesystem_provider_error",
+                    "Engee вернул некорректную строку file browser",
+                ),
+            )
+        push!(entries, Dict{String,Any}(
+            "name" => String(name),
+            "path" => String(path),
+            "kind" => String(kind),
+            "depth" => Int(depth),
+            "expanded" => expanded,
+            "selectable" => selectable,
+        ))
+    end
+    Dict{String,Any}(
+        "ok" => true,
+        "open" => open,
+        "root_path" => String(root_path),
+        "current_path" => String(current),
+        "parent_path" => String(parent),
+        "selected_path" => String(selected),
+        "sort_ascending" => sort_ascending,
         "entries" => entries,
     )
 end
@@ -847,6 +1265,7 @@ function native_save_options(
                 "jld2_signal_target" => "/user/$(fragment).jld2",
                 "jld2_library_target" => "/user/signal_library.jld2",
                 "session_target" => "/user/signal-analyser-session.jld2",
+                "import_session_target" => "/user/signal-analyser-session.jld2",
                 "overwrite" => false,
                 "replace" => true,
             ),
