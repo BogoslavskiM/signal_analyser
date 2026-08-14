@@ -245,6 +245,7 @@
       menu.style.left="";
       menu.style.top="";
       menu.style.width="";
+      menu.classList.remove("is-modal-owned");
     }
     var config=registry[key], trigger=triggerFor(key);
     if (trigger && config) applyTrigger(trigger, config);
@@ -268,6 +269,7 @@
     var menu=popup();
     if (!menu) return;
     menu.innerHTML="<div class='select-options' id='value-select-listbox' role='listbox' aria-label='" + esc(config.ariaLabel) + "' data-value-select-options data-testid='value-select-options'></div>";
+    menu.classList.toggle("is-modal-owned", !!trigger.closest(".native-modal-layer"));
     menu.hidden=false;
     renderOptions();
     position();

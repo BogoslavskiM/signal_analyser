@@ -43,9 +43,28 @@
 .native-local-source { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
 .native-local-source p { margin: 0 0 8px; color: var(--muted); }
 .native-replace-warning { margin: 8px 0 0 148px; }
-.native-file-browser-layer { z-index: 97000; padding: 24px; background: rgba(33, 33, 33, .68); }
-.file-browser-card { min-width: 480px; min-height: 380px; }
-.file-browser-list { overscroll-behavior: contain; }
+.native-modal-layer.is-inert-parent { pointer-events: none; }
+.native-file-browser-layer { position: fixed; inset: 0; z-index: 97000; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(33, 33, 33, .68); }
+.native-file-browser-layer .file-browser-card { width: 480px; height: 380px; min-width: 480px; min-height: 380px; display: grid; grid-template-rows: 16px 32px minmax(0, 1fr) 32px 64px; overflow: hidden; border-radius: 12px; background: var(--surface); color: var(--text); box-shadow: var(--shadow-dialog); }
+.native-file-browser-layer .file-browser-top-gap { border-bottom: 1px solid var(--line); }
+.native-file-browser-layer .file-browser-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 16px; border: 0; border-bottom: 1px solid var(--line); background: var(--surface-muted); color: var(--text); cursor: pointer; font-weight: 500; text-align: left; }
+.native-file-browser-layer .file-browser-list-wrap { position: relative; min-height: 0; }
+.native-file-browser-layer .file-browser-list { height: 100%; overflow-x: hidden; overflow-y: auto; padding: 4px 0 8px; overscroll-behavior: contain; }
+.native-file-browser-layer .browser-row { width: 100%; min-height: 22px; display: grid; grid-template-columns: 16px 16px minmax(0, 1fr); align-items: center; gap: 4px; padding: 0 16px; border: 0; background: transparent; color: var(--text); cursor: pointer; text-align: left; }
+.native-file-browser-layer .browser-row:hover:not(:disabled), .native-file-browser-layer .browser-row.is-selected { background: var(--accent-soft); }
+.native-file-browser-layer .browser-row:disabled { color: var(--muted); cursor: default; }
+.native-file-browser-layer .browser-row img, .native-file-browser-layer .browser-row .caret { width: 16px; height: 16px; object-fit: contain; }
+.native-file-browser-layer .browser-row .caret { background: url("../icons/folder-caret.svg") center / contain no-repeat; }
+.native-file-browser-layer .browser-row.is-file .caret { visibility: hidden; }
+.native-file-browser-layer .browser-row span:last-child, .native-file-browser-layer .file-browser-current-path span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.native-file-browser-layer .file-browser-current-path { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.native-file-browser-layer .file-browser-current-path img { width: 16px; height: 16px; object-fit: contain; }
+.native-file-browser-layer .file-browser-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 16px; }
+.native-file-browser-layer .file-browser-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255, 255, 255, .76); }
+.native-file-browser-layer .file-browser-loading img { width: 28px; height: 28px; }
+.native-file-browser-layer .browser-empty, .native-file-browser-layer .browser-error { padding: 20px 44px; color: var(--muted); }
+.native-file-browser-layer .browser-error { color: var(--danger); }
+.native-file-browser-layer .browser-error .button { margin-top: 12px; }
 
 html,
 body {
@@ -1828,6 +1847,7 @@ body.is-resizing-workspace * {
 }
 
 .value-select-popup[hidden] { display: none; }
+.value-select-popup.is-modal-owned { z-index: 96000; }
 
 .select-options {
   max-height: min(240px, calc(100vh - 16px));
