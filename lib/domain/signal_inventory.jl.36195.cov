@@ -1,0 +1,224 @@
+        - abstract type AbstractWorkspaceSignalSource end
+        - 
+        - struct SignalWorkspaceSourceError <: Exception
+        -     message::String
+        - end
+        - 
+        0 Base.showerror(io::IO, err::SignalWorkspaceSourceError) = print(io, err.message)
+        - 
+        - function workspace_signal_value(
+        -     source::AbstractWorkspaceSignalSource,
+        -     variable_name::String,
+        - )
+        -     throw(MethodError(workspace_signal_value, (source, variable_name)))
+        - end
+        - 
+        - abstract type AbstractSignalInventoryCommand end
+        - 
+        - struct ImportWorkspaceSignalCommand <: AbstractSignalInventoryCommand
+        -     revision::Int
+        -     variable_name::String
+        -     signal_name::Union{Nothing,String}
+        -     sample_rate_hz::Union{Nothing,Float64}
+        - 
+       10     function ImportWorkspaceSignalCommand(
+        -         revision::Int,
+        -         variable_name::AbstractString,
+        -         signal_name::Union{Nothing,AbstractString},
+        -         sample_rate_hz::Union{Nothing,Real},
+        -     )
+       10         revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
+       10         workspace_name = String(variable_name)
+       10         isempty(strip(workspace_name)) && throw(ArgumentError(
+        -             "Имя переменной рабочей области не может быть пустым",
+        -         ))
+       10         requested_name = if signal_name === nothing
+        8             nothing
+        -         else
+        2             name = String(signal_name)
+        2             isempty(strip(name)) && throw(ArgumentError("Имя сигнала не может быть пустым"))
+        1             name
+        -         end
+        9         rate = if sample_rate_hz === nothing
+        2             nothing
+        -         else
+        7             sample_rate_hz isa Bool && throw(ArgumentError(
+        -                 "Частота дискретизации должна быть числом, но не Bool",
+        -             ))
+        7             value = Float64(sample_rate_hz)
+        7             isfinite(value) && value > 0 || throw(ArgumentError(
+        -                 "Частота дискретизации должна быть положительной и конечной",
+        -             ))
+        7             value
+        -         end
+        9         new(revision, workspace_name, requested_name, rate)
+        -     end
+        - end
+        - 
+        - struct ImportWorkspaceBatchCommand <: AbstractSignalInventoryCommand
+        -     revision::Int
+        -     catalog_revision::String
+        -     selections::Tuple{Vararg{WorkspaceImportSelection}}
+        - 
+        -     function ImportWorkspaceBatchCommand(
+        -         revision::Int,
+        -         catalog_revision::AbstractString,
+        -         selections::AbstractVector{WorkspaceImportSelection},
+        -     )
+        -         revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
+        -         catalog = String(catalog_revision)
+        -         occursin(WORKSPACE_CATALOG_REVISION_REGEX, catalog) || throw(ArgumentError(
+        -             "Некорректная revision каталога рабочей области",
+        -         ))
+        -         1 <= length(selections) <= WORKSPACE_CATALOG_MAX_SELECTIONS || throw(ArgumentError(
+        -             "Batch import должен содержать от 1 до 1000 selections",
+        -         ))
+        -         ids = [selection.variable_id for selection in selections]
+        -         allunique(ids) || throw(ArgumentError("Variable ID selections не должны повторяться"))
+        -         new(revision, catalog, Tuple(selections))
+        -     end
+        - end
+        - 
+        - struct DuplicateSignalCommand <: AbstractSignalInventoryCommand
+        -     revision::Int
+        -     signal_name::String
+        - 
+       22     function DuplicateSignalCommand(revision::Int, signal_name::AbstractString)
+       22         revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
+       22         name = String(signal_name)
+       22         isempty(strip(name)) && throw(ArgumentError("Имя сигнала не может быть пустым"))
+       22         new(revision, name)
+        -     end
+        - end
+        - 
+        - struct ExtractTimeLimitsSignalCommand <: AbstractSignalInventoryCommand
+        -     revision::Int
+        -     display_id::String
+        - 
+        1     function ExtractTimeLimitsSignalCommand(revision::Int, display_id::AbstractString)
+        1         revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
+        1         id = String(display_id)
+        1         isempty(strip(id)) && throw(ArgumentError("Идентификатор Display не может быть пустым"))
+        1         new(revision, id)
+        -     end
+        - end
+        - 
+        - struct DeleteSignalCommand <: AbstractSignalInventoryCommand
+        -     revision::Int
+        -     signal_name::String
+        - 
+        2     function DeleteSignalCommand(revision::Int, signal_name::AbstractString)
+        2         revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
+        2         name = String(signal_name)
+        2         isempty(strip(name)) && throw(ArgumentError("Имя сигнала не может быть пустым"))
+        2         new(revision, name)
+        -     end
+        - end
+        - 
+       34 signal_inventory_command_revision(command::AbstractSignalInventoryCommand)::Int =
+        -     command.revision
+        - 
+        - struct SignalColorPalette
+        -     colors::Tuple{Vararg{String}}
+        - 
+        6     function SignalColorPalette(colors::AbstractVector{<:AbstractString})
+       12         values = String.(colors)
+        6         isempty(values) && throw(ArgumentError("Палитра сигналов не может быть пустой"))
+       47         all(color -> !isempty(color), values) || throw(ArgumentError(
+        -             "Цвет палитры сигналов не может быть пустым",
+        -         ))
+        6         allunique(values) || throw(ArgumentError("Цвета палитры сигналов не должны повторяться"))
+        6         new(Tuple(values))
+        -     end
+        - end
+        - 
+       33 SignalColorPalette() = SignalColorPalette([
+        -     "#2563eb",
+        -     "#dc2626",
+        -     "#16a34a",
+        -     "#9333ea",
+        -     "#ea580c",
+        -     "#0891b2",
+        -     "#ca8a04",
+        -     "#db2777",
+        - ])
+        - 
+       29 function signal_palette_next_color(
+        -     palette::SignalColorPalette,
+        -     occupied_colors::AbstractSet{String},
+        -     next_position::Integer,
+        -     source_color::Union{Nothing,AbstractString} = nothing,
+        - )::String
+       29     next_position >= 1 || throw(ArgumentError("Позиция цвета должна быть положительной"))
+       29     color_count = length(palette.colors)
+       29     avoided_color = source_color === nothing ? nothing : String(source_color)
+       29     for color in palette.colors
+      198         if !(color in occupied_colors) && (color_count == 1 || color != avoided_color)
+       20             return color
+        -         end
+      145     end
+        - 
+        9     color_count == 1 && return first(palette.colors)
+       18     first_index = mod(next_position - 1, color_count) + 1
+        9     for offset in 0:(color_count - 1)
+       22         color = palette.colors[mod(first_index - 1 + offset, color_count) + 1]
+       20         color == avoided_color || return color
+        4     end
+        0     throw(ArgumentError("Palette не содержит допустимого цвета"))
+        - end
+        - 
+        - struct WorkspaceSignalSeries
+        -     values::Vector{ComplexF64}
+        -     sample_rate_hz::Float64
+        -     is_complex::Bool
+        - 
+       31     function WorkspaceSignalSeries(
+        -         values::AbstractVector,
+        -         sample_rate_hz::Real,
+        -         is_complex::Bool,
+        -     )
+       32         length(values) >= 2 || throw(ArgumentError(
+        -             "Сигнал должен содержать не менее двух отсчётов",
+        -         ))
+     9789         all(value -> value isa Number && !(value isa Bool), values) || throw(ArgumentError(
+        -             "Отсчёты сигнала должны быть числами, но не Bool",
+        -         ))
+       55         samples = ComplexF64.(values)
+     9790         all(value -> isfinite(real(value)) && isfinite(imag(value)), samples) ||
+        -             throw(ArgumentError("Отсчёты сигнала должны быть конечными"))
+       29         sample_rate_hz isa Bool && throw(ArgumentError(
+        -             "Частота дискретизации должна быть числом, но не Bool",
+        -         ))
+       29         rate = Float64(sample_rate_hz)
+       29         isfinite(rate) && rate > 0 || throw(ArgumentError(
+        -             "Частота дискретизации должна быть положительной и конечной",
+        -         ))
+    18503         !is_complex && any(value -> !iszero(imag(value)), samples) && throw(ArgumentError(
+        -             "Вещественный сигнал не может содержать комплексные отсчёты",
+        -         ))
+       29         new(samples, rate, is_complex)
+        -     end
+        - end
+        - 
+        8 WorkspaceSignalSeries(values::AbstractVector, sample_rate_hz::Real) =
+        -     WorkspaceSignalSeries(
+        -         values,
+        -         sample_rate_hz,
+       17         any(value -> value isa Complex, values),
+        -     )
+        - 
+        - struct WorkspaceSignalCandidate
+        -     base_name::String
+        -     series::WorkspaceSignalSeries
+        -     source_color::Union{Nothing,String}
+        - 
+        -     function WorkspaceSignalCandidate(
+        -         base_name::AbstractString,
+        -         series::WorkspaceSignalSeries,
+        -         source_color::Union{Nothing,AbstractString} = nothing,
+        -     )
+       29         name = String(base_name)
+       29         isempty(name) && throw(ArgumentError("Base name сигнала не может быть пустым"))
+       29         new(name, series, source_color === nothing ? nothing : String(source_color))
+        -     end
+        - end

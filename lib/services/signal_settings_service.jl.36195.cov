@@ -1,0 +1,2912 @@
+        - const SIGNAL_SETTINGS_UPDATE_FIELDS = Set([
+        -     "state_revision",
+        -     "display_id",
+        -     "field_id",
+        -     "value",
+        - ])
+        - 
+        - const SIGNAL_SETTINGS_APPLY_FIELDS = Set([
+        -     "state_revision",
+        -     "display_id",
+        - ])
+        - 
+        - const SIGNAL_TIME_UNIT_NAMES = Dict(
+        -     PICOSECONDS_TIME_UNIT => "picoseconds",
+        -     NANOSECONDS_TIME_UNIT => "nanoseconds",
+        -     MICROSECONDS_TIME_UNIT => "microseconds",
+        -     MILLISECONDS_TIME_UNIT => "milliseconds",
+        -     SECONDS_TIME_UNIT => "seconds",
+        -     MINUTES_TIME_UNIT => "minutes",
+        -     HOURS_TIME_UNIT => "hours",
+        -     DAYS_TIME_UNIT => "days",
+        -     YEARS_TIME_UNIT => "years",
+        - )
+        - const SIGNAL_TIME_UNITS_BY_NAME = Dict(value => key for (key, value) in SIGNAL_TIME_UNIT_NAMES)
+        - const SIGNAL_TIME_UNIT_OPTIONS = (
+        -     SignalSettingsOptionDefinition("picoseconds", "ps"),
+        -     SignalSettingsOptionDefinition("nanoseconds", "ns"),
+        -     SignalSettingsOptionDefinition("microseconds", "μs"),
+        -     SignalSettingsOptionDefinition("milliseconds", "ms"),
+        -     SignalSettingsOptionDefinition("seconds", "s"),
+        -     SignalSettingsOptionDefinition("minutes", "minutes"),
+        -     SignalSettingsOptionDefinition("hours", "hours"),
+        -     SignalSettingsOptionDefinition("days", "days"),
+        -     SignalSettingsOptionDefinition("years", "years"),
+        - )
+        - 
+        - const SIGNAL_FREQUENCY_UNIT_NAMES = Dict(
+        -     CYCLES_PER_YEAR_FREQUENCY_UNIT => "cycles_per_year",
+        -     CYCLES_PER_DAY_FREQUENCY_UNIT => "cycles_per_day",
+        -     CYCLES_PER_HOUR_FREQUENCY_UNIT => "cycles_per_hour",
+        -     CYCLES_PER_MINUTE_FREQUENCY_UNIT => "cycles_per_minute",
+        -     MILLIHERTZ_FREQUENCY_UNIT => "millihertz",
+        -     HERTZ_FREQUENCY_UNIT => "hertz",
+        -     KILOHERTZ_FREQUENCY_UNIT => "kilohertz",
+        -     MEGAHERTZ_FREQUENCY_UNIT => "megahertz",
+        -     GIGAHERTZ_FREQUENCY_UNIT => "gigahertz",
+        -     TERAHERTZ_FREQUENCY_UNIT => "terahertz",
+        - )
+        - const SIGNAL_FREQUENCY_UNITS_BY_NAME = Dict(
+        -     value => key for (key, value) in SIGNAL_FREQUENCY_UNIT_NAMES
+        - )
+        - const SIGNAL_FREQUENCY_UNIT_OPTIONS = (
+        -     SignalSettingsOptionDefinition("cycles_per_year", "cycles/year"),
+        -     SignalSettingsOptionDefinition("cycles_per_day", "cycles/day"),
+        -     SignalSettingsOptionDefinition("cycles_per_hour", "cycles/hour"),
+        -     SignalSettingsOptionDefinition("cycles_per_minute", "cycles/minute"),
+        -     SignalSettingsOptionDefinition("millihertz", "mHz"),
+        -     SignalSettingsOptionDefinition("hertz", "Hz"),
+        -     SignalSettingsOptionDefinition("kilohertz", "kHz"),
+        -     SignalSettingsOptionDefinition("megahertz", "MHz"),
+        -     SignalSettingsOptionDefinition("gigahertz", "GHz"),
+        -     SignalSettingsOptionDefinition("terahertz", "THz"),
+        - )
+        - 
+        - const SIGNAL_SPECTRUM_RESOLUTION_TYPE_NAMES = Dict(
+        -     LEAKAGE_SPECTRUM_RESOLUTION => "leakage",
+        -     RBW_SPECTRUM_RESOLUTION => "rbw",
+        -     WINDOW_LENGTH_SPECTRUM_RESOLUTION => "window_length",
+        - )
+        - const SIGNAL_SPECTRUM_RESOLUTION_TYPES_BY_NAME = Dict(
+        -     value => key for (key, value) in SIGNAL_SPECTRUM_RESOLUTION_TYPE_NAMES
+        - )
+        - const SIGNAL_SPECTRUM_RESOLUTION_TYPE_OPTIONS = (
+        -     SignalSettingsOptionDefinition("leakage", "Leakage"),
+        -     SignalSettingsOptionDefinition("rbw", "RBW"),
+        -     SignalSettingsOptionDefinition("window_length", "Window Length"),
+        - )
+        - 
+        - const SIGNAL_SPECTRUM_WINDOW_NAMES = Dict(
+        -     BLACKMAN_HARRIS_SPECTRUM_WINDOW => "blackman_harris",
+        -     CHEBYSHEV_SPECTRUM_WINDOW => "chebyshev",
+        -     FLAT_TOP_SPECTRUM_WINDOW => "flat_top",
+        -     HAMMING_SPECTRUM_WINDOW => "hamming",
+        -     HANN_SPECTRUM_WINDOW => "hann",
+        -     KAISER_SPECTRUM_WINDOW => "kaiser",
+        -     RECTANGULAR_SPECTRUM_WINDOW => "rectangular",
+        - )
+        - const SIGNAL_SPECTRUM_WINDOWS_BY_NAME = Dict(value => key for (key, value) in SIGNAL_SPECTRUM_WINDOW_NAMES)
+        - const SIGNAL_SPECTRUM_WINDOW_OPTIONS = (
+        -     SignalSettingsOptionDefinition("blackman_harris", "Blackman-Harris"),
+        -     SignalSettingsOptionDefinition("chebyshev", "Chebyshev"),
+        -     SignalSettingsOptionDefinition("flat_top", "Flat-top"),
+        -     SignalSettingsOptionDefinition("hamming", "Hamming"),
+        -     SignalSettingsOptionDefinition("hann", "Hann"),
+        -     SignalSettingsOptionDefinition("kaiser", "Kaiser"),
+        -     SignalSettingsOptionDefinition("rectangular", "Rectangular"),
+        - )
+        - 
+        - const SIGNAL_SCALE_OPTIONS = (
+        -     SignalSettingsOptionDefinition("db", "dB"),
+        -     SignalSettingsOptionDefinition("linear", "Linear"),
+        - )
+        - const SIGNAL_FREQUENCY_SCALE_OPTIONS = (
+        -     SignalSettingsOptionDefinition("linear", "Linear"),
+        -     SignalSettingsOptionDefinition("log", "Log"),
+        - )
+        - 
+        - const SIGNAL_SETTINGS_GROUPS = (
+        -     SignalSettingsGroupDefinition("display", "Display"),
+        -     SignalSettingsGroupDefinition("time", "Time"),
+        -     SignalSettingsGroupDefinition("spectrum", "Spectrum"),
+        -     SignalSettingsGroupDefinition("spectrogram", "Spectrogram"),
+        -     SignalSettingsGroupDefinition("persistence", "Persistence"),
+        - )
+        - 
+        - const SIGNAL_SETTINGS_SECTIONS = (
+        -     SignalSettingsSectionDefinition("display.view", "display", "View", 10),
+        -     SignalSettingsSectionDefinition("time.options", "time", "Options", 10),
+        -     SignalSettingsSectionDefinition("time.time_limits", "time", "Time Limits", 20),
+        -     SignalSettingsSectionDefinition("time.y_axis_limits", "time", "Y-axis Limits", 30),
+        -     SignalSettingsSectionDefinition("time.linking", "time", "Link Time", 40),
+        -     SignalSettingsSectionDefinition("spectrum.frequency_limits", "spectrum", "Frequency Limits", 10),
+        -     SignalSettingsSectionDefinition("spectrum.y_axis_limits", "spectrum", "Y-axis Limits", 20),
+        -     SignalSettingsSectionDefinition("spectrum.scale", "spectrum", "Scale", 30),
+        -     SignalSettingsSectionDefinition("spectrum.resolution_type", "spectrum", "Resolution Type", 40),
+        -     SignalSettingsSectionDefinition("spectrum.leakage", "spectrum", "Leakage", 50),
+        -     SignalSettingsSectionDefinition("spectrum.rbw", "spectrum", "RBW", 60),
+        -     SignalSettingsSectionDefinition("spectrum.window_options", "spectrum", "Window Options", 70),
+        -     SignalSettingsSectionDefinition("spectrum.frequency_resolution", "spectrum", "Frequency Resolution", 80),
+        -     SignalSettingsSectionDefinition("spectrogram.time_limits", "spectrogram", "Time Limits", 10),
+        -     SignalSettingsSectionDefinition("spectrogram.frequency_limits", "spectrogram", "Frequency Limits", 20),
+        -     SignalSettingsSectionDefinition("spectrogram.power_limits", "spectrogram", "Power Limits", 30),
+        -     SignalSettingsSectionDefinition("spectrogram.scale", "spectrogram", "Scale", 40),
+        -     SignalSettingsSectionDefinition("spectrogram.leakage", "spectrogram", "Leakage", 50),
+        -     SignalSettingsSectionDefinition("spectrogram.time_resolution", "spectrogram", "Time Resolution", 60),
+        -     SignalSettingsSectionDefinition("spectrogram.frequency_resolution", "spectrogram", "Frequency Resolution", 70),
+        -     SignalSettingsSectionDefinition("spectrogram.options", "spectrogram", "Options", 80),
+        -     SignalSettingsSectionDefinition("persistence.frequency_limits", "persistence", "Frequency Limits", 10),
+        -     SignalSettingsSectionDefinition("persistence.power_limits", "persistence", "Power Limits", 20),
+        -     SignalSettingsSectionDefinition("persistence.density_limits", "persistence", "Density Limits", 30),
+        -     SignalSettingsSectionDefinition("persistence.scale", "persistence", "Scale", 40),
+        -     SignalSettingsSectionDefinition("persistence.leakage", "persistence", "Leakage", 50),
+        -     SignalSettingsSectionDefinition("persistence.time_resolution", "persistence", "Time Resolution", 60),
+        -     SignalSettingsSectionDefinition("persistence.power_bins", "persistence", "Power Bins", 70),
+        -     SignalSettingsSectionDefinition("persistence.frequency_resolution", "persistence", "Frequency Resolution", 80),
+        - )
+        - 
+        - const SIGNAL_SETTINGS_FIELD_SECTIONS = Dict(
+        -     "display.show_legend" => "display.view",
+        -     "time.normalize_y" => "time.options",
+        -     "time.show_markers" => "time.options",
+        -     "time.units" => "time.time_limits",
+        -     "time.x_limits" => "time.time_limits",
+        -     "time.y_limits" => "time.y_axis_limits",
+        -     "time.link_time" => "time.linking",
+        -     "spectrum.frequency_units" => "spectrum.frequency_limits",
+        -     "spectrum.frequency_limits" => "spectrum.frequency_limits",
+        -     "spectrum.y_limits" => "spectrum.y_axis_limits",
+        -     "spectrum.frequency_scale" => "spectrum.scale",
+        -     "spectrum.scale" => "spectrum.scale",
+        -     "spectrum.resolution_type" => "spectrum.resolution_type",
+        -     "spectrum.leakage" => "spectrum.leakage",
+        -     "spectrum.rbw" => "spectrum.rbw",
+        -     "spectrum.window_length" => "spectrum.window_options",
+        -     "spectrum.window" => "spectrum.window_options",
+        -     "spectrum.sidelobe_attenuation_db" => "spectrum.window_options",
+        -     "spectrum.overlap_percent" => "spectrum.window_options",
+        -     "spectrum.nfft" => "spectrum.window_options",
+        -     "spectrogram.time_units" => "spectrogram.time_limits",
+        -     "spectrogram.frequency_units" => "spectrogram.frequency_limits",
+        -     "spectrogram.frequency_limits" => "spectrogram.frequency_limits",
+        -     "spectrogram.power_limits" => "spectrogram.power_limits",
+        -     "spectrogram.frequency_scale" => "spectrogram.scale",
+        -     "spectrogram.scale" => "spectrogram.scale",
+        -     "spectrogram.leakage" => "spectrogram.leakage",
+        -     "spectrogram.time_resolution" => "spectrogram.time_resolution",
+        -     "spectrogram.overlap_percent" => "spectrogram.time_resolution",
+        -     "spectrogram.reassign" => "spectrogram.options",
+        -     "persistence.time_units" => "persistence.time_resolution",
+        -     "persistence.frequency_units" => "persistence.frequency_limits",
+        -     "persistence.frequency_limits" => "persistence.frequency_limits",
+        -     "persistence.power_limits" => "persistence.power_limits",
+        -     "persistence.density_limits" => "persistence.density_limits",
+        -     "persistence.frequency_scale" => "persistence.scale",
+        -     "persistence.scale" => "persistence.scale",
+        -     "persistence.leakage" => "persistence.leakage",
+        -     "persistence.time_resolution" => "persistence.time_resolution",
+        -     "persistence.overlap_percent" => "persistence.time_resolution",
+        -     "persistence.power_bins" => "persistence.power_bins",
+        - )
+        - 
+        - const SIGNAL_SETTINGS_ENUM_CHECKBOX_IDS = Set([
+        -     "spectrum.scale",
+        -     "spectrogram.scale",
+        -     "persistence.scale",
+        - ])
+        - 
+        - const SIGNAL_SETTINGS_READOUTS = (
+        -     SignalSettingsReadoutDefinition(
+        -         "spectrum.frequency_resolution",
+        -         "spectrum",
+        -         "spectrum.frequency_resolution",
+        -         "Frequency Resolution",
+        -         "Hz",
+        -         "unavailable",
+        -         "milestone_3",
+        -     ),
+        -     SignalSettingsReadoutDefinition(
+        -         "spectrogram.actual_rbw",
+        -         "spectrogram",
+        -         "spectrogram.frequency_resolution",
+        -         "Actual RBW",
+        -         "Hz",
+        -         "unavailable",
+        -         "milestone_3",
+        -     ),
+        -     SignalSettingsReadoutDefinition(
+        -         "persistence.rbw",
+        -         "persistence",
+        -         "persistence.frequency_resolution",
+        -         "RBW",
+        -         "Hz",
+        -         "unavailable",
+        -         "milestone_3",
+        -     ),
+        - )
+        - 
+       12 signal_settings_auto_default(key::Symbol) = NamedTuple{(:mode, key)}(("auto", nothing))
+        - 
+       82 function signal_settings_control_kind(id::AbstractString, kind::AbstractString)::String
+      164     id in SIGNAL_SETTINGS_ENUM_CHECKBOX_IDS && return "checkbox"
+       76     kind == "boolean" && return "checkbox"
+       66     kind == "enum" && return "combobox"
+       44     kind == "number" && return "number"
+       30     kind == "integer" && return "integer"
+       30     kind == "optional_range" && return "range"
+       12     kind == "resolution" && return "resolution"
+        2     kind == "power_bins" && return "power_bins"
+        0     throw(ArgumentError("Нет control_kind для kind=$kind"))
+        - end
+        - 
+      164 function signal_settings_field_definition(
+        -     id::AbstractString,
+        -     group::AbstractString,
+        -     label::AbstractString,
+        -     kind::AbstractString,
+        -     default_value;
+        -     units::AbstractString = "",
+        -     minimum::Union{Nothing,Real} = nothing,
+        -     maximum::Union{Nothing,Real} = nothing,
+        -     step::Union{Nothing,Real} = nothing,
+        -     options::Tuple{Vararg{SignalSettingsOptionDefinition}} = (),
+        -     effect_status::AbstractString = "stored_only",
+        -     effect_reason::AbstractString = "milestone_3",
+        -     visibility_policy::Symbol = Symbol(group),
+        -     enabled_policy::Symbol = :always,
+        - )
+       82     SignalSettingsFieldDefinition(
+        -         id,
+        -         group,
+        -         SIGNAL_SETTINGS_FIELD_SECTIONS[String(id)],
+        -         label,
+        -         kind,
+        -         signal_settings_control_kind(id, kind),
+        -         default_value,
+        -         units,
+        -         minimum,
+        -         maximum,
+        -         step,
+        -         options,
+        -         id in SIGNAL_SETTINGS_ENUM_CHECKBOX_IDS ? "db" : nothing,
+        -         id in SIGNAL_SETTINGS_ENUM_CHECKBOX_IDS ? "linear" : nothing,
+        -         effect_status,
+        -         effect_reason,
+        -         visibility_policy,
+        -         enabled_policy,
+        -     )
+        - end
+        - 
+        - const SIGNAL_SETTINGS_FIELDS = (
+        -     signal_settings_field_definition(
+        -         "display.show_legend", "display", "Show legend", "boolean", true;
+        -         effect_status = "effective_presentation", effect_reason = "", visibility_policy = :always,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "time.normalize_y", "time", "Normalize Y", "boolean", false;
+        -         effect_status = "effective_presentation", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "time.show_markers", "time", "Show markers", "boolean", false;
+        -         effect_status = "effective_presentation", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "time.units", "time", "Time units", "enum", "seconds";
+        -         options = SIGNAL_TIME_UNIT_OPTIONS,
+        -         effect_status = "effective_presentation", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "time.x_limits", "time", "X limits", "optional_range", nothing;
+        -         units = "s", effect_status = "effective", effect_reason = "",
+        -         visibility_policy = :time_or_spectrogram, enabled_policy = :source,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "time.y_limits", "time", "Y limits", "optional_range", nothing;
+        -         effect_status = "blocked_contract", effect_reason = "milestone_3_contract",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "time.link_time", "time", "Link time", "boolean", false;
+        -         effect_status = "effective", effect_reason = "",
+        -         visibility_policy = :multiple_time_panes,
+        -         enabled_policy = :compatible_time_panes,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.frequency_units", "spectrum", "Frequency units", "enum", "hertz";
+        -         options = SIGNAL_FREQUENCY_UNIT_OPTIONS,
+        -         effect_status = "effective_presentation", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.frequency_limits", "spectrum", "Frequency limits", "optional_range", nothing;
+        -         units = "Hz", effect_status = "effective", effect_reason = "", enabled_policy = :source,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.y_limits", "spectrum", "Y limits", "optional_range", nothing,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.frequency_scale", "spectrum", "Frequency scale", "enum", "linear";
+        -         options = SIGNAL_FREQUENCY_SCALE_OPTIONS, effect_status = "effective_presentation",
+        -         effect_reason = "", enabled_policy = :spectrum_frequency_scale,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.scale", "spectrum", "Spectrum in dB", "enum", "db";
+        -         options = SIGNAL_SCALE_OPTIONS, effect_status = "effective", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.resolution_type", "spectrum", "Resolution type", "enum", "leakage";
+        -         options = SIGNAL_SPECTRUM_RESOLUTION_TYPE_OPTIONS,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.leakage", "spectrum", "Leakage", "number", 0.5;
+        -         minimum = 0.0, maximum = 1.0, step = 0.01, effect_status = "effective",
+        -         effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.rbw", "spectrum", "RBW", "resolution", signal_settings_auto_default(:hz);
+        -         units = "Hz", minimum = 0.0, visibility_policy = :spectrum_rbw,
+        -         effect_status = "blocked_contract", effect_reason = "milestone_3_contract",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.window_length", "spectrum", "Window length", "resolution",
+        -         signal_settings_auto_default(:samples); units = "samples", minimum = 2,
+        -         step = 1, visibility_policy = :spectrum_window_length,
+        -         effect_status = "blocked_contract", effect_reason = "milestone_3_contract",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.window", "spectrum", "Window", "enum", "hamming";
+        -         options = SIGNAL_SPECTRUM_WINDOW_OPTIONS, visibility_policy = :spectrum_windowed,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.sidelobe_attenuation_db", "spectrum", "Sidelobe attenuation", "number", 60.0;
+        -         units = "dB", step = 1, visibility_policy = :spectrum_windowed,
+        -         enabled_policy = :sidelobe_attenuation,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.overlap_percent", "spectrum", "Overlap", "number", 50.0;
+        -         units = "%", minimum = 0.0, maximum = 100.0, step = 1,
+        -         visibility_policy = :spectrum_windowed,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrum.nfft", "spectrum", "DFT Points", "resolution",
+        -         signal_settings_auto_default(:nfft); minimum = 2, step = 1,
+        -         visibility_policy = :spectrum_window_length,
+        -         effect_status = "blocked_contract", effect_reason = "milestone_3_contract",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrogram.time_units", "spectrogram", "Time units", "enum", "seconds";
+        -         options = SIGNAL_TIME_UNIT_OPTIONS,
+        -         effect_status = "effective_presentation", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrogram.frequency_units", "spectrogram", "Frequency units", "enum", "hertz";
+        -         options = SIGNAL_FREQUENCY_UNIT_OPTIONS,
+        -         effect_status = "effective_presentation", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrogram.frequency_limits", "spectrogram", "Frequency limits", "optional_range", nothing;
+        -         units = "Hz", effect_status = "effective", effect_reason = "", enabled_policy = :source,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrogram.power_limits", "spectrogram", "Power limits", "optional_range", nothing;
+        -         units = "dB", effect_status = "effective_presentation", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrogram.frequency_scale", "spectrogram", "Frequency scale", "enum", "linear";
+        -         options = SIGNAL_FREQUENCY_SCALE_OPTIONS, effect_status = "effective_presentation",
+        -         effect_reason = "", enabled_policy = :spectrogram_frequency_scale,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrogram.scale", "spectrogram", "Spectrum in dB", "enum", "db";
+        -         options = SIGNAL_SCALE_OPTIONS, effect_status = "effective", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrogram.leakage", "spectrogram", "Leakage", "number", 0.5;
+        -         minimum = 0.0, maximum = 1.0, step = 0.01,
+        -         effect_status = "effective", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrogram.time_resolution", "spectrogram", "Time resolution", "resolution",
+        -         signal_settings_auto_default(:seconds); units = "s", minimum = 0.0,
+        -         effect_status = "blocked_provider", effect_reason = "ENGEE-20260801-003",
+        -         enabled_policy = :source,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrogram.overlap_percent", "spectrogram", "Overlap", "number", 50.0;
+        -         units = "%", minimum = 0.0, maximum = 75.0, step = 1,
+        -         effect_status = "effective", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "spectrogram.reassign", "spectrogram", "Reassign", "boolean", false;
+        -         effect_status = "blocked_provider", effect_reason = "ENGEE-20260801-004",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.frequency_units", "persistence", "Frequency units", "enum", "hertz";
+        -         options = SIGNAL_FREQUENCY_UNIT_OPTIONS,
+        -         effect_status = "effective_presentation", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.frequency_limits", "persistence", "Frequency limits", "optional_range", nothing;
+        -         units = "Hz", effect_status = "blocked_prerequisite", effect_reason = "DEC-20260801-027",
+        -         enabled_policy = :source,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.power_limits", "persistence", "Power limits", "optional_range", nothing;
+        -         units = "dB",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.density_limits", "persistence", "Density limits", "optional_range", nothing;
+        -         units = "%", minimum = 0.0, maximum = 100.0,
+        -         effect_status = "effective_presentation", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.frequency_scale", "persistence", "Frequency scale", "enum", "linear";
+        -         options = SIGNAL_FREQUENCY_SCALE_OPTIONS,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.scale", "persistence", "Spectrum in dB", "enum", "db";
+        -         options = SIGNAL_SCALE_OPTIONS,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.leakage", "persistence", "Leakage", "number", 0.5;
+        -         minimum = 0.0, maximum = 1.0, step = 0.01,
+        -         effect_status = "effective", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.time_units", "persistence", "Time units", "enum", "seconds";
+        -         options = SIGNAL_TIME_UNIT_OPTIONS,
+        -         effect_status = "effective_presentation", effect_reason = "",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.time_resolution", "persistence", "Time resolution", "resolution",
+        -         signal_settings_auto_default(:seconds); units = "s", minimum = 0.0,
+        -         effect_status = "blocked_contract", effect_reason = "milestone_3_contract",
+        -         enabled_policy = :source,
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.overlap_percent", "persistence", "Overlap", "number", 50.0;
+        -         units = "%", minimum = 0.0, maximum = 100.0, step = 1,
+        -         effect_status = "blocked_resource", effect_reason = "DEC-20260801-026",
+        -     ),
+        -     signal_settings_field_definition(
+        -         "persistence.power_bins", "persistence", "Power bins", "power_bins",
+        -         signal_settings_auto_default(:count); minimum = 20, maximum = 1024, step = 1,
+        -     ),
+        - )
+        - 
+        - const SIGNAL_SETTINGS_CATALOG = SignalSettingsCatalog(
+        -     SIGNAL_SETTINGS_GROUPS,
+        -     SIGNAL_SETTINGS_SECTIONS,
+        -     SIGNAL_SETTINGS_FIELDS,
+        -     SIGNAL_SETTINGS_READOUTS,
+        - )
+        - 
+        - struct SignalSettingValidationError <: Exception
+        3     display_id::String
+        -     field_id::String
+        -     message::String
+        - end
+        - 
+        3 Base.showerror(io::IO, err::SignalSettingValidationError) = print(io, err.message)
+        - 
+        - """Malformed field-update/Apply API input; semantic draft errors use HTTP 200."""
+        - struct SignalSettingApiTypeError <: Exception
+        1     display_id::String
+        -     field_id::String
+        -     message::String
+        - end
+        - 
+        - Base.showerror(io::IO, err::SignalSettingApiTypeError) = print(io, err.message)
+        - 
+        - """Finite but not necessarily ordered range retained until explicit Apply."""
+        - struct SignalSettingDraftRange
+        8     minimum::Float64
+        -     maximum::Float64
+        - end
+        - 
+        - """Typed mode/value pair retained without applying semantic bounds early."""
+        - struct SignalSettingDraftResolution
+        0     mode::String
+        -     value_key::Symbol
+        -     value::Union{Nothing,Float64,Int}
+        - end
+        - 
+        - """A string-shaped enum draft which is not one of the catalog options."""
+        - struct SignalSettingUnknownEnum
+        2     value::String
+        - end
+        - 
+        - const SignalSettingDraftValue = Union{
+        -     Nothing,
+        -     Bool,
+        -     Float64,
+        -     Int,
+        -     SignalTimeUnitPreference,
+        -     SignalFrequencyUnitPreference,
+        -     SignalSpectrumResolutionType,
+        -     SignalSpectrumWindow,
+        -     SignalSpectrumScale,
+        -     SignalSpectrumFrequencyScale,
+        -     SignalSpectrogramFrequencyScale,
+        -     SignalSettingDraftRange,
+        -     SignalSettingDraftResolution,
+        -     SignalSettingUnknownEnum,
+        - }
+        - 
+        - struct SignalSettingDraftEntry
+       13     field_id::String
+        -     value::SignalSettingDraftValue
+        - end
+        - 
+        - struct ApplySignalSettingsCommand
+       12     state_revision::Int
+        -     display_id::String
+        - end
+        - 
+        - mutable struct SignalSettingsDisplayDraft
+       12     entries::Dict{String,SignalSettingDraftEntry}
+        - end
+        - 
+       12 SignalSettingsDisplayDraft() = SignalSettingsDisplayDraft(
+        -     Dict{String,SignalSettingDraftEntry}(),
+        - )
+        - 
+        - mutable struct SignalSettingsDraftStore
+       12     displays::Dict{String,SignalSettingsDisplayDraft}
+        - end
+        - 
+       12 SignalSettingsDraftStore() = SignalSettingsDraftStore(
+        -     Dict{String,SignalSettingsDisplayDraft}(),
+        - )
+        - 
+        - """Application service coordinating typed drafts and atomic explicit Apply."""
+        - mutable struct SignalSettingsService
+       24     catalog::SignalSettingsCatalog
+        -     draft_stores::Dict{UInt,SignalSettingsDraftStore}
+        - end
+        - 
+       24 SignalSettingsService(catalog::SignalSettingsCatalog) = SignalSettingsService(
+        -     catalog,
+        -     Dict{UInt,SignalSettingsDraftStore}(),
+        - )
+        - 
+       24 SignalSettingsService() = SignalSettingsService(SIGNAL_SETTINGS_CATALOG)
+        - 
+      102 signal_settings_wire_value(value::NamedTuple) = Dict(
+        -     string(key) => signal_settings_wire_value(getproperty(value, key)) for key in keys(value)
+        - )
+      799 signal_settings_wire_value(value) = value
+        - 
+      150 signal_settings_range_payload(::Nothing) = nothing
+        0 signal_settings_range_payload(range::SignalSettingRange) = Dict{String,Any}(
+        -     "min" => range.minimum,
+        -     "max" => range.maximum,
+        - )
+       14 signal_settings_range_payload(range::SignalTimeLimits) = Dict{String,Any}(
+        -     "min" => range.min_s,
+        -     "max" => range.max_s,
+        - )
+       11 signal_settings_range_payload(range::ExplicitSignalSpectrumFrequencyLimits) = Dict{String,Any}(
+        -     "min" => range.min_hz,
+        -     "max" => range.max_hz,
+        - )
+       37 signal_settings_range_payload(::AutomaticSignalSpectrumFrequencyLimits) = nothing
+        0 signal_settings_range_payload(range::ExplicitSignalSpectrogramPowerLimits) = Dict{String,Any}(
+        -     "min" => range.min_db,
+        -     "max" => range.max_db,
+        - )
+       17 signal_settings_range_payload(::AutomaticSignalSpectrogramPowerLimits) = nothing
+        - 
+      174 signal_settings_mode_name(mode::SignalSettingMode)::String =
+        -     mode == AUTOMATIC_SIGNAL_SETTING ? "auto" : "specified"
+        - 
+        - function signal_settings_resolution_payload(value::SignalSecondsResolution)::Dict{String,Any}
+      116     Dict{String,Any}("mode" => signal_settings_mode_name(value.mode), "seconds" => value.seconds)
+        - end
+        - 
+        - function signal_settings_resolution_payload(value::SignalHertzResolution)::Dict{String,Any}
+       58     Dict{String,Any}("mode" => signal_settings_mode_name(value.mode), "hz" => value.hz)
+        - end
+        - 
+        - function signal_settings_resolution_payload(value::SignalSamplesResolution)::Dict{String,Any}
+       58     Dict{String,Any}("mode" => signal_settings_mode_name(value.mode), "samples" => value.samples)
+        - end
+        - 
+        - function signal_settings_resolution_payload(value::SignalNfftResolution)::Dict{String,Any}
+       58     Dict{String,Any}("mode" => signal_settings_mode_name(value.mode), "nfft" => value.nfft)
+        - end
+        - 
+        - function signal_settings_resolution_payload(value::SignalPowerBinsPreference)::Dict{String,Any}
+       58     Dict{String,Any}("mode" => signal_settings_mode_name(value.mode), "count" => value.count)
+        - end
+        - 
+       19 function signal_settings_has_complex_membership(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Bool
+       19     member_names = Set(display.membership.signal_names)
+       55     any(signal -> signal.is_complex && signal.name in member_names, state.signals)
+        - end
+        - 
+        - function signal_settings_has_complex_analysis_source(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Bool
+       29     analysis_name = signal_analyser_display_analysis_name(display)
+       17     analysis_name === nothing && return false
+       12     signal_by_name(state, analysis_name).is_complex
+        - end
+        - 
+        - function signal_settings_time_panes(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Vector{SignalDisplayPaneState}
+       25     layout = signal_analyser_layout_by_display_id(state, display.id)
+       25     SignalDisplayPaneState[pane for pane in layout.panes if pane.plot_type == TIME_PLOT]
+        - end
+        - 
+        - function signal_analyser_compatible_time_panes(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Vector{SignalDisplayPaneState}
+        5     SignalDisplayPaneState[
+        -         pane for pane in signal_settings_time_panes(state, display)
+        -         if signal_display_pane_analysis_name(pane) !== nothing
+        -     ]
+        - end
+        - 
+        - function signal_settings_field_visible(
+        -     definition::SignalSettingsFieldDefinition,
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Bool
+      819     policy = definition.visibility_policy
+      819     policy == :always && return true
+      785     policy == :time && return display.active_plot == TIME_PLOT
+      687     policy == :time_or_spectrogram && return display.active_plot in (TIME_PLOT, SPECTROGRAM_PLOT)
+      670     policy == :spectrum && return display.active_plot == SPECTRUM_PLOT
+      531     policy == :spectrogram && return display.active_plot == SPECTROGRAM_PLOT
+      347     policy == :persistence && return display.active_plot == PERSISTENCE_PLOT
+      153     policy == :multiple_time_panes && return display.active_plot == TIME_PLOT &&
+        -         length(signal_settings_time_panes(state, display)) >= 2
+      126     resolution_type = display.stored_settings.spectrum.resolution_type
+      126     policy == :spectrum_rbw && return display.active_plot == SPECTRUM_PLOT &&
+        -         resolution_type == RBW_SPECTRUM_RESOLUTION
+      105     policy == :spectrum_window_length && return display.active_plot == SPECTRUM_PLOT &&
+        -         resolution_type == WINDOW_LENGTH_SPECTRUM_RESOLUTION
+       63     policy == :spectrum_windowed && return display.active_plot == SPECTRUM_PLOT &&
+        -         resolution_type in (RBW_SPECTRUM_RESOLUTION, WINDOW_LENGTH_SPECTRUM_RESOLUTION)
+        0     false
+        - end
+        - 
+        - function signal_settings_field_enabled(
+        -     definition::SignalSettingsFieldDefinition,
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Bool
+      694     policy = definition.enabled_policy
+      694     policy == :always && return true
+      167     policy == :source && return signal_analyser_display_analysis_name(display) !== nothing
+       68     policy == :compatible_time_panes && return display.active_plot == TIME_PLOT &&
+        -         signal_analyser_display_analysis_name(display) !== nothing &&
+        -         length(signal_analyser_compatible_time_panes(state, display)) >= 2
+       51     policy == :spectrum_frequency_scale && return true
+       34     policy == :spectrogram_frequency_scale && return true
+       17     policy == :sidelobe_attenuation && return display.stored_settings.spectrum.window in (
+        -         CHEBYSHEV_SPECTRUM_WINDOW,
+        -         KAISER_SPECTRUM_WINDOW,
+        -     )
+        0     false
+        - end
+        - 
+        - function signal_settings_group_visible(
+        -     group::SignalSettingsGroupDefinition,
+        -     display::SignalAnalyserDisplayState,
+        - )::Bool
+      636     group.id == "display" && return true
+      602     group.id == "time" && return display.active_plot == TIME_PLOT
+      517     group.id == "spectrum" && return display.active_plot == SPECTRUM_PLOT
+      343     group.id == "spectrogram" && return display.active_plot == SPECTROGRAM_PLOT
+      171     group.id == "persistence" && return display.active_plot == PERSISTENCE_PLOT
+        0     false
+        - end
+        - 
+       58 function signal_settings_readout_visible(
+        -     readout::SignalSettingsReadoutDefinition,
+        -     display::SignalAnalyserDisplayState,
+        - )::Bool
+       58     group = SIGNAL_SETTINGS_GROUPS[
+      229         findfirst(item -> item.id == readout.group, SIGNAL_SETTINGS_GROUPS)
+        -     ]
+       58     signal_settings_group_visible(group, display)
+        - end
+        - 
+      493 function signal_settings_section_visible(
+        -     service::SignalSettingsService,
+        -     section::SignalSettingsSectionDefinition,
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Bool
+      493     group = service.catalog.groups[
+     1785         findfirst(item -> item.id == section.group, service.catalog.groups)
+        -     ]
+      873     signal_settings_group_visible(group, display) || return false
+      113     any(
+     2094         definition -> definition.section == section.id &&
+        -             signal_settings_field_visible(definition, state, display),
+        -         service.catalog.fields,
+        -     ) || any(
+       65         readout -> readout.section == section.id &&
+        -             signal_settings_readout_visible(readout, display),
+        -         service.catalog.readouts,
+        -     )
+        - end
+        - 
+        - function signal_settings_option_disabled(
+        -     definition::SignalSettingsFieldDefinition,
+        -     option::SignalSettingsOptionDefinition,
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Bool
+     2635     option.value == "log" || return false
+       51     definition.id == "spectrum.frequency_scale" &&
+        -         return signal_settings_has_complex_membership(state, display)
+       34     definition.id == "spectrogram.frequency_scale" &&
+        -         return signal_settings_has_complex_analysis_source(state, display)
+       17     false
+        - end
+        - 
+     1343 function signal_settings_option_payload(
+        -     definition::SignalSettingsFieldDefinition,
+        -     option::SignalSettingsOptionDefinition,
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Dict{String,Any}
+     1343     Dict{String,Any}(
+        -         "value" => option.value,
+        -         "label" => option.label,
+        -         "disabled" => signal_settings_option_disabled(definition, option, state, display),
+        -     )
+        - end
+        - 
+        - function signal_settings_warning(definition::SignalSettingsFieldDefinition)::String
+      697     ""
+        - end
+        - 
+     1084 function signal_settings_field_value(
+        -     ::SignalSettingsService,
+        -     display::SignalAnalyserDisplayState,
+        -     field_id::AbstractString,
+        - )
+     1084     stored = display.stored_settings
+     1084     field_id == "display.show_legend" && return stored.display.show_legend
+     1055     field_id == "time.normalize_y" && return stored.time.normalize_y
+     1026     field_id == "time.show_markers" && return stored.time.show_markers
+      997     field_id == "time.units" && return SIGNAL_TIME_UNIT_NAMES[stored.time.units]
+      968     field_id == "time.x_limits" && return signal_settings_range_payload(display.time_limits)
+      949     field_id == "time.y_limits" && return signal_settings_range_payload(stored.time.y_limits)
+      920     field_id == "time.link_time" && return stored.time.link_time
+      891     field_id == "spectrum.frequency_units" &&
+        -         return SIGNAL_FREQUENCY_UNIT_NAMES[stored.spectrum.frequency_units]
+      862     field_id == "spectrum.frequency_limits" &&
+        -         return signal_settings_range_payload(display.spectrum_settings.frequency_limits)
+      841     field_id == "spectrum.y_limits" && return signal_settings_range_payload(stored.spectrum.y_limits)
+      812     field_id == "spectrum.frequency_scale" &&
+        -         return SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[display.spectrum_settings.frequency_scale]
+      795     field_id == "spectrum.scale" && return SIGNAL_SPECTRUM_SCALE_NAMES[display.spectrum_settings.scale]
+      778     field_id == "spectrum.resolution_type" &&
+        -         return SIGNAL_SPECTRUM_RESOLUTION_TYPE_NAMES[stored.spectrum.resolution_type]
+      749     field_id == "spectrum.leakage" && return display.spectrum_settings.leakage
+      728     field_id == "spectrum.rbw" && return signal_settings_resolution_payload(stored.spectrum.rbw)
+      699     field_id == "spectrum.window_length" &&
+        -         return signal_settings_resolution_payload(stored.spectrum.window_length)
+      670     field_id == "spectrum.window" && return SIGNAL_SPECTRUM_WINDOW_NAMES[stored.spectrum.window]
+      641     field_id == "spectrum.sidelobe_attenuation_db" &&
+        -         return stored.spectrum.sidelobe_attenuation_db
+      612     field_id == "spectrum.overlap_percent" && return stored.spectrum.overlap_percent
+      583     field_id == "spectrum.nfft" && return signal_settings_resolution_payload(stored.spectrum.nfft)
+      554     field_id == "spectrogram.time_units" &&
+        -         return SIGNAL_TIME_UNIT_NAMES[stored.spectrogram.time_units]
+      525     field_id == "spectrogram.frequency_units" &&
+        -         return SIGNAL_FREQUENCY_UNIT_NAMES[stored.spectrogram.frequency_units]
+      496     field_id == "spectrogram.frequency_limits" &&
+        -         return signal_settings_range_payload(display.spectrogram_settings.frequency_limits)
+      469     field_id == "spectrogram.power_limits" &&
+        -         return signal_settings_range_payload(display.spectrogram_settings.power_limits)
+      452     field_id == "spectrogram.frequency_scale" &&
+        -         return SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES[display.spectrogram_settings.frequency_scale]
+      435     field_id == "spectrogram.scale" && return SIGNAL_SPECTRUM_SCALE_NAMES[stored.spectrogram.scale]
+      406     field_id == "spectrogram.leakage" && return display.spectrogram_settings.leakage
+      389     field_id == "spectrogram.time_resolution" &&
+        -         return signal_settings_resolution_payload(stored.spectrogram.time_resolution)
+      360     field_id == "spectrogram.overlap_percent" && return display.spectrogram_settings.overlap_percent
+      343     field_id == "spectrogram.reassign" && return stored.spectrogram.reassign
+      314     field_id == "persistence.time_units" &&
+        -         return SIGNAL_TIME_UNIT_NAMES[stored.persistence.time_units]
+      285     field_id == "persistence.frequency_units" &&
+        -         return SIGNAL_FREQUENCY_UNIT_NAMES[stored.persistence.frequency_units]
+      256     field_id == "persistence.frequency_limits" &&
+        -         return signal_settings_range_payload(stored.persistence.frequency_limits)
+      227     field_id == "persistence.power_limits" &&
+        -         return signal_settings_range_payload(stored.persistence.power_limits)
+      198     field_id == "persistence.density_limits" &&
+        -         return signal_settings_range_payload(stored.persistence.density_limits)
+      169     field_id == "persistence.frequency_scale" &&
+        -         return SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[stored.persistence.frequency_scale]
+      140     field_id == "persistence.scale" && return SIGNAL_SPECTRUM_SCALE_NAMES[stored.persistence.scale]
+      111     field_id == "persistence.leakage" && return display.persistence_settings.leakage
+       87     field_id == "persistence.time_resolution" &&
+        -         return signal_settings_resolution_payload(stored.persistence.time_resolution)
+       58     field_id == "persistence.overlap_percent" && return stored.persistence.overlap_percent
+       29     field_id == "persistence.power_bins" &&
+        -         return signal_settings_resolution_payload(stored.persistence.power_bins)
+        0     throw(ArgumentError("Неизвестный settings field: $field_id"))
+        - end
+        - 
+      697 function signal_settings_field_payload(
+        -     service::SignalSettingsService,
+        -     definition::SignalSettingsFieldDefinition,
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Dict{String,Any}
+      712     unsupported_secondary_roi = definition.id == "time.x_limits" &&
+        -         display.active_plot in (SPECTROGRAM_PLOT, PERSISTENCE_PLOT)
+      697     Dict{String,Any}(
+        -         "id" => definition.id,
+        -         "group" => definition.group,
+        -         "section" => definition.section,
+        -         "label" => definition.label,
+        -         "kind" => definition.kind,
+        -         "control_kind" => definition.control_kind,
+        -         "value" => signal_settings_field_value(service, display, definition.id),
+        -         "default" => signal_settings_wire_value(definition.default_value),
+        -         "units" => definition.units,
+        -         "min" => definition.minimum,
+        -         "max" => definition.maximum,
+        -         "step" => definition.step,
+        -         "options" => Dict{String,Any}[
+        -             signal_settings_option_payload(definition, option, state, display)
+        -             for option in definition.options
+        -         ],
+        -         "checked_value" => definition.checked_value,
+        -         "unchecked_value" => definition.unchecked_value,
+        -         "visible" => signal_settings_field_visible(definition, state, display),
+        -         "enabled" => !unsupported_secondary_roi &&
+        -             signal_settings_field_enabled(definition, state, display),
+        -         "effect_status" => unsupported_secondary_roi ?
+        -             "blocked_contract" : definition.effect_status,
+        -         "effect_reason" => unsupported_secondary_roi ?
+        -             "milestone_3_contract" : definition.effect_reason,
+        -         "error" => "",
+        -         "warning" => signal_settings_warning(definition),
+        -     )
+        - end
+        - 
+        - 
+        - function signal_settings_readout_payload(
+        -     readout::SignalSettingsReadoutDefinition,
+        -     display::SignalAnalyserDisplayState,
+        - )::Dict{String,Any}
+       51     Dict{String,Any}(
+        -         "id" => readout.id,
+        -         "group" => readout.group,
+        -         "section" => readout.section,
+        -         "label" => readout.label,
+        -         "value" => nothing,
+        -         "units" => readout.units,
+        -         "status" => readout.status,
+        -         "reason" => readout.reason,
+        -         "visible" => signal_settings_readout_visible(readout, display),
+        -     )
+        - end
+        - 
+       17 function signal_settings_document_unlocked(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Dict{String,Any}
+       17     projected_display, field_errors = signal_settings_draft_projection_unlocked(
+        -         service,
+        -         state,
+        -         display,
+        -     )
+       34     fields = Dict{String,Any}[
+        -         signal_settings_field_payload(service, definition, state, projected_display)
+        -         for definition in service.catalog.fields
+        -     ]
+       32     draft = signal_settings_display_draft_unlocked(service, state, display.id; create = false)
+       17     if draft !== nothing
+       15         for field in fields
+      615             field_id = String(field["id"])
+      615             entry = get((draft::SignalSettingsDisplayDraft).entries, field_id, nothing)
+      631             entry === nothing || (field["value"] = signal_settings_draft_wire_value(
+        -                 (entry::SignalSettingDraftEntry).value,
+        -             ))
+      615             field["error"] = get(field_errors, field_id, "")
+      615         end
+        -     end
+       17     Dict{String,Any}(
+        -         "state_revision" => state.view.state_revision,
+        -         "display_id" => display.id,
+        -         "groups" => Dict{String,Any}[
+        -             Dict{String,Any}(
+        -                 "id" => group.id,
+        -                 "label" => group.label,
+        -                 "visible" => signal_settings_group_visible(group, display),
+        -             ) for group in service.catalog.groups
+        -         ],
+        -         "sections" => Dict{String,Any}[
+        -             Dict{String,Any}(
+        -                 "id" => section.id,
+        -                 "group" => section.group,
+        -                 "label" => section.label,
+        -                 "order" => section.order,
+        -                 "visible" => signal_settings_section_visible(
+        -                     service,
+        -                     section,
+        -                     state,
+        -                     display,
+        -                 ),
+        -             ) for section in service.catalog.sections
+        -         ],
+        -         "fields" => fields,
+        -         "readouts" => Dict{String,Any}[
+        -             signal_settings_readout_payload(readout, projected_display)
+        -             for readout in service.catalog.readouts
+        -         ],
+        -     )
+        - end
+        - 
+        1 function signal_settings_document(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     display_id::AbstractString,
+        - )::Dict{String,Any}
+        1     lock(state.lock) do
+        1         display = try
+        1             signal_analyser_display_by_id(state, display_id)
+        -         catch err
+        0             err isa ArgumentError || rethrow()
+        0             throw(SignalAnalyserValidationError(
+        -                 "Некорректный запрос Settings",
+        -                 Dict("display_id" => "Неизвестный идентификатор Display"),
+        -             ))
+        -         end
+        1         signal_settings_document_unlocked(service, state, display)
+        -     end
+        - end
+        - 
+        3 signal_setting_validation_error(
+        -     display_id::AbstractString,
+        -     field_id::AbstractString,
+        -     message::AbstractString,
+        - ) = SignalSettingValidationError(String(display_id), String(field_id), String(message))
+        - 
+        - """Keep domain-construction failures inside the field validation contract."""
+        0 function signal_settings_semantic_validation_error(
+        -     display_id::AbstractString,
+        -     field_id::AbstractString,
+        -     err::ArgumentError,
+        - )::SignalSettingValidationError
+        0     rendered = sprint(showerror, err)
+        0     prefix = "ArgumentError: "
+        0     message = startswith(rendered, prefix) ? rendered[(length(prefix) + 1):end] : rendered
+        0     signal_setting_validation_error(display_id, field_id, message)
+        - end
+        - 
+       72 function signal_settings_parse_real(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::Float64
+      109     value isa Real && !(value isa Bool) || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется число, но не Bool",
+        -     ))
+      109     parsed = try
+      109         Float64(value)
+        -     catch err
+        0         (err isa InexactError || err isa OverflowError) || rethrow()
+        0         throw(signal_setting_validation_error(display_id, field_id, "Число вне диапазона Float64"))
+        -     end
+      109     isfinite(parsed) || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется конечное число",
+        -     ))
+      146     parsed == 0.0 ? 0.0 : parsed
+        - end
+        - 
+        2 function signal_settings_parse_integer(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::Int
+        2     value isa Integer && !(value isa Bool) || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется integer, но не Bool",
+        -     ))
+        2     try
+        2         Int(value)
+        -     catch err
+        0         (err isa InexactError || err isa OverflowError) || rethrow()
+        0         throw(signal_setting_validation_error(display_id, field_id, "Integer вне диапазона Int"))
+        -     end
+        - end
+        - 
+       68 function signal_settings_parse_enum(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        -     values_by_name::AbstractDict,
+        - )
+       68     value isa AbstractString || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется строковое enum-значение",
+        -     ))
+       68     key = String(value)
+       68     haskey(values_by_name, key) || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Допустимо: $(join(sort!(collect(keys(values_by_name))), ", "))",
+        -     ))
+       68     values_by_name[key]
+        - end
+        - 
+       36 function signal_settings_parse_optional_range(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::Union{Nothing,SignalSettingRange}
+       66     value === nothing && return nothing
+       36     value isa AbstractDict || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется null или объект {min, max}",
+        -     ))
+       36     signal_analyser_payload_keys(value) == Set(["min", "max"]) || throw(
+        -         signal_setting_validation_error(
+        -             display_id,
+        -             field_id,
+        -             "Range должен содержать только min и max",
+        -         ),
+        -     )
+       36     minimum = signal_settings_parse_real(
+        -         display_id,
+        -         field_id,
+        -         signal_analyser_payload_value(value, "min"),
+        -     )
+       36     maximum = signal_settings_parse_real(
+        -         display_id,
+        -         field_id,
+        -         signal_analyser_payload_value(value, "max"),
+        -     )
+       36     minimum < maximum || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Минимум должен быть меньше максимума",
+        -     ))
+       36     SignalSettingRange(minimum, maximum)
+        - end
+        - 
+       36 function signal_settings_parse_mode_object(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        -     value_key::String,
+        - )::Tuple{SignalSettingMode,Any}
+       36     value isa AbstractDict || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется объект {mode, $value_key}",
+        -     ))
+       36     signal_analyser_payload_keys(value) == Set(["mode", value_key]) || throw(
+        -         signal_setting_validation_error(
+        -             display_id,
+        -             field_id,
+        -             "Значение должно содержать только mode и $value_key",
+        -         ),
+        -     )
+       36     mode_value = signal_analyser_payload_value(value, "mode")
+       36     mode_value isa AbstractString && String(mode_value) in ("auto", "specified") || throw(
+        -         signal_setting_validation_error(
+        -             display_id,
+        -             field_id,
+        -             "Mode должен быть auto или specified",
+        -         ),
+        -     )
+       36     mode = String(mode_value) == "auto" ? AUTOMATIC_SIGNAL_SETTING : SPECIFIED_SIGNAL_SETTING
+       36     requested = signal_analyser_payload_value(value, value_key)
+       36     if mode == AUTOMATIC_SIGNAL_SETTING
+       36         requested === nothing || throw(signal_setting_validation_error(
+        -             display_id,
+        -             field_id,
+        -             "Auto mode требует $value_key=null",
+        -         ))
+        0     elseif requested === nothing
+        0         throw(signal_setting_validation_error(
+        -             display_id,
+        -             field_id,
+        -             "Specified mode требует $value_key",
+        -         ))
+        -     end
+       36     mode, requested
+        - end
+        - 
+       12 function signal_settings_parse_seconds_resolution(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::SignalSecondsResolution
+       12     mode, requested = signal_settings_parse_mode_object(display_id, field_id, value, "seconds")
+       12     mode == AUTOMATIC_SIGNAL_SETTING && return SignalSecondsResolution()
+        0     seconds = signal_settings_parse_real(display_id, field_id, requested)
+        0     seconds > 0 || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Specified seconds должны быть больше 0",
+        -     ))
+        0     SignalSecondsResolution(mode, seconds)
+        - end
+        - 
+        6 function signal_settings_parse_hertz_resolution(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::SignalHertzResolution
+        6     mode, requested = signal_settings_parse_mode_object(display_id, field_id, value, "hz")
+        6     mode == AUTOMATIC_SIGNAL_SETTING && return SignalHertzResolution()
+        0     hz = signal_settings_parse_real(display_id, field_id, requested)
+        0     hz > 0 || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Specified hz должны быть больше 0",
+        -     ))
+        0     SignalHertzResolution(mode, hz)
+        - end
+        - 
+        6 function signal_settings_parse_samples_resolution(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::SignalSamplesResolution
+        6     mode, requested = signal_settings_parse_mode_object(display_id, field_id, value, "samples")
+        6     mode == AUTOMATIC_SIGNAL_SETTING && return SignalSamplesResolution()
+        0     samples = signal_settings_parse_integer(display_id, field_id, requested)
+        0     samples >= 2 || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Specified samples должны быть не меньше 2",
+        -     ))
+        0     SignalSamplesResolution(mode, samples)
+        - end
+        - 
+        6 function signal_settings_parse_nfft_resolution(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::SignalNfftResolution
+        6     mode, requested = signal_settings_parse_mode_object(display_id, field_id, value, "nfft")
+        6     mode == AUTOMATIC_SIGNAL_SETTING && return SignalNfftResolution()
+        0     nfft = signal_settings_parse_integer(display_id, field_id, requested)
+        0     nfft >= 2 || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Specified nfft должен быть не меньше 2",
+        -     ))
+        0     SignalNfftResolution(mode, nfft)
+        - end
+        - 
+        6 function signal_settings_parse_power_bins(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::SignalPowerBinsPreference
+        6     mode, requested = signal_settings_parse_mode_object(display_id, field_id, value, "count")
+        6     mode == AUTOMATIC_SIGNAL_SETTING && return SignalPowerBinsPreference()
+        0     count = signal_settings_parse_integer(display_id, field_id, requested)
+        0     20 <= count <= 1024 || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Specified count должен быть целым числом от 20 до 1024",
+        -     ))
+        0     SignalPowerBinsPreference(mode, count)
+        - end
+        - 
+      237 function signal_settings_parse_field_value(
+        -     definition::SignalSettingsFieldDefinition,
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )
+      237     if definition.kind == "boolean"
+       30         value isa Bool || throw(signal_setting_validation_error(
+        -             display_id,
+        -             field_id,
+        -             "Требуется boolean",
+        -         ))
+       30         return value
+      207     elseif definition.kind == "optional_range"
+       66         return signal_settings_parse_optional_range(display_id, field_id, value)
+      141     elseif definition.kind == "number"
+       74         number = signal_settings_parse_real(display_id, field_id, value)
+       68         definition.minimum === nothing || number >= definition.minimum || throw(
+        -             signal_setting_validation_error(display_id, field_id, "Значение меньше допустимого минимума"),
+        -         )
+       37         if definition.maximum !== nothing
+       56             upper_exclusive = field_id in (
+        -                 "spectrum.overlap_percent",
+        -                 "persistence.overlap_percent",
+        -             )
+       43             valid = upper_exclusive ? number < definition.maximum : number <= definition.maximum
+       34             valid || throw(signal_setting_validation_error(
+        -                 display_id,
+        -                 field_id,
+        -                 upper_exclusive ?
+        -                     "Значение должно быть меньше допустимого максимума" :
+        -                     "Значение больше допустимого максимума",
+        -             ))
+        -         end
+       34         return number
+      104     elseif definition.kind == "power_bins"
+        6         return signal_settings_parse_power_bins(display_id, field_id, value)
+       98     elseif definition.kind == "resolution"
+       30         field_id == "spectrum.rbw" &&
+        -             return signal_settings_parse_hertz_resolution(display_id, field_id, value)
+       24         field_id == "spectrum.window_length" &&
+        -             return signal_settings_parse_samples_resolution(display_id, field_id, value)
+       18         field_id == "spectrum.nfft" &&
+        -             return signal_settings_parse_nfft_resolution(display_id, field_id, value)
+       12         return signal_settings_parse_seconds_resolution(display_id, field_id, value)
+        -     end
+        - 
+      130     field_id in ("time.units", "spectrogram.time_units", "persistence.time_units") &&
+        -         return signal_settings_parse_enum(display_id, field_id, value, SIGNAL_TIME_UNITS_BY_NAME)
+       94     field_id in (
+        -         "spectrum.frequency_units",
+        -         "spectrogram.frequency_units",
+        -         "persistence.frequency_units",
+        -     ) && return signal_settings_parse_enum(
+        -         display_id,
+        -         field_id,
+        -         value,
+        -         SIGNAL_FREQUENCY_UNITS_BY_NAME,
+        -     )
+       32     field_id == "spectrum.resolution_type" && return signal_settings_parse_enum(
+        -         display_id,
+        -         field_id,
+        -         value,
+        -         SIGNAL_SPECTRUM_RESOLUTION_TYPES_BY_NAME,
+        -     )
+       26     field_id == "spectrum.window" && return signal_settings_parse_enum(
+        -         display_id,
+        -         field_id,
+        -         value,
+        -         SIGNAL_SPECTRUM_WINDOWS_BY_NAME,
+        -     )
+       40     field_id in ("spectrum.scale", "spectrogram.scale", "persistence.scale") &&
+        -         return signal_settings_parse_enum(display_id, field_id, value, SIGNAL_SPECTRUM_SCALES_BY_NAME)
+       14     field_id in ("spectrum.frequency_scale", "persistence.frequency_scale") &&
+        -         return signal_settings_parse_enum(
+        -             display_id,
+        -             field_id,
+        -             value,
+        -             SIGNAL_SPECTRUM_FREQUENCY_SCALES_BY_NAME,
+        -         )
+        0     field_id == "spectrogram.frequency_scale" && return signal_settings_parse_enum(
+        -         display_id,
+        -         field_id,
+        -         value,
+        -         SIGNAL_SPECTROGRAM_FREQUENCY_SCALES_BY_NAME,
+        -     )
+        0     throw(signal_setting_validation_error(display_id, field_id, "Неподдерживаемый kind поля"))
+        - end
+        - 
+        1 signal_setting_api_type_error(
+        -     display_id::AbstractString,
+        -     field_id::AbstractString,
+        -     message::AbstractString,
+        - ) = SignalSettingApiTypeError(String(display_id), String(field_id), String(message))
+        - 
+        0 signal_settings_draft_wire_value(value::Nothing) = nothing
+        0 signal_settings_draft_wire_value(value::Bool) = value
+       31 signal_settings_draft_wire_value(value::Float64) = value
+        0 signal_settings_draft_wire_value(value::Int) = value
+        0 signal_settings_draft_wire_value(value::SignalTimeUnitPreference) = SIGNAL_TIME_UNIT_NAMES[value]
+        0 signal_settings_draft_wire_value(value::SignalFrequencyUnitPreference) = SIGNAL_FREQUENCY_UNIT_NAMES[value]
+        0 signal_settings_draft_wire_value(value::SignalSpectrumResolutionType) =
+        -     SIGNAL_SPECTRUM_RESOLUTION_TYPE_NAMES[value]
+        0 signal_settings_draft_wire_value(value::SignalSpectrumWindow) = SIGNAL_SPECTRUM_WINDOW_NAMES[value]
+        0 signal_settings_draft_wire_value(value::SignalSpectrumScale) = SIGNAL_SPECTRUM_SCALE_NAMES[value]
+        0 signal_settings_draft_wire_value(value::SignalSpectrumFrequencyScale) =
+        -     SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[value]
+        0 signal_settings_draft_wire_value(value::SignalSpectrogramFrequencyScale) =
+        -     SIGNAL_SPECTROGRAM_FREQUENCY_SCALE_NAMES[value]
+        0 signal_settings_draft_wire_value(value::SignalSettingUnknownEnum) = value.value
+       54 signal_settings_draft_wire_value(value::SignalSettingDraftRange) = Dict{String,Any}(
+        -     "min" => value.minimum,
+        -     "max" => value.maximum,
+        - )
+        0 signal_settings_draft_wire_value(value::SignalSettingDraftResolution) = Dict{String,Any}(
+        -     "mode" => value.mode,
+        -     String(value.value_key) => value.value,
+        - )
+        - 
+        8 function signal_settings_parse_draft_real(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::Float64
+       22     value isa Real && !(value isa Bool) || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется JSON number, но не Bool",
+        -     ))
+       22     parsed = try
+       22         Float64(value)
+        -     catch err
+        0         (err isa InexactError || err isa OverflowError) || rethrow()
+        0         throw(signal_setting_api_type_error(display_id, field_id, "Число вне диапазона Float64"))
+        -     end
+       22     isfinite(parsed) || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется конечное JSON number",
+        -     ))
+       35     parsed == 0.0 ? 0.0 : parsed
+        - end
+        - 
+       29 function signal_settings_parse_draft_integer(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::Int
+       29     value isa Integer && !(value isa Bool) || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется JSON integer, но не Bool",
+        -     ))
+       29     try
+       29         Int(value)
+        -     catch err
+        0         (err isa InexactError || err isa OverflowError) || rethrow()
+        0         throw(signal_setting_api_type_error(display_id, field_id, "Integer вне диапазона Int"))
+        -     end
+        - end
+        - 
+        9 function signal_settings_parse_draft_range(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::Union{Nothing,SignalSettingDraftRange}
+        9     value === nothing && return nothing
+        9     value isa AbstractDict || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется null или объект {min, max}",
+        -     ))
+        8     signal_analyser_payload_keys(value) == Set(["min", "max"]) || throw(
+        -         signal_setting_api_type_error(
+        -             display_id,
+        -             field_id,
+        -             "Range должен содержать только min и max",
+        -         ),
+        -     )
+        8     SignalSettingDraftRange(
+        -         signal_settings_parse_draft_real(
+        -             display_id,
+        -             field_id,
+        -             signal_analyser_payload_value(value, "min"),
+        -         ),
+        -         signal_settings_parse_draft_real(
+        -             display_id,
+        -             field_id,
+        -             signal_analyser_payload_value(value, "max"),
+        -         ),
+        -     )
+        - end
+        - 
+        0 function signal_settings_parse_draft_resolution(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        -     value_key::Symbol,
+        -     integer_value::Bool,
+        - )::SignalSettingDraftResolution
+        0     value isa AbstractDict || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется объект {mode, $(String(value_key))}",
+        -     ))
+        0     expected = Set(["mode", String(value_key)])
+        0     signal_analyser_payload_keys(value) == expected || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "Значение должно содержать только mode и $(String(value_key))",
+        -     ))
+        0     mode_value = signal_analyser_payload_value(value, "mode")
+        0     mode_value isa AbstractString || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "Mode должен быть строкой",
+        -     ))
+        0     requested = signal_analyser_payload_value(value, String(value_key))
+        0     typed_value = requested === nothing ? nothing : integer_value ?
+        -         signal_settings_parse_draft_integer(display_id, field_id, requested) :
+        -         signal_settings_parse_draft_real(display_id, field_id, requested)
+        0     SignalSettingDraftResolution(String(mode_value), value_key, typed_value)
+        - end
+        - 
+        0 function signal_settings_parse_draft_enum(
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        -     values_by_name::AbstractDict,
+        - )::SignalSettingDraftValue
+        2     value isa AbstractString || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "Требуется строковое enum-значение",
+        -     ))
+        2     key = String(value)
+        2     get(values_by_name, key, SignalSettingUnknownEnum(key))
+        - end
+        - 
+       17 function signal_settings_parse_draft_field_value(
+        -     definition::SignalSettingsFieldDefinition,
+        -     display_id::String,
+        -     field_id::String,
+        -     value,
+        - )::SignalSettingDraftValue
+       17     if definition.kind == "boolean"
+        0         value isa Bool || throw(signal_setting_api_type_error(
+        -             display_id,
+        -             field_id,
+        -             "Требуется boolean",
+        -         ))
+        0         return value
+       17     elseif definition.kind == "optional_range"
+        9         return signal_settings_parse_draft_range(display_id, field_id, value)
+        8     elseif definition.kind == "number"
+        6         return signal_settings_parse_draft_real(display_id, field_id, value)
+        2     elseif definition.kind == "integer"
+        0         return signal_settings_parse_draft_integer(display_id, field_id, value)
+        2     elseif definition.kind == "power_bins"
+        0         return signal_settings_parse_draft_resolution(
+        -             display_id,
+        -             field_id,
+        -             value,
+        -             :count,
+        -             true,
+        -         )
+        2     elseif definition.kind == "resolution"
+        0         value_key = field_id == "spectrum.rbw" ? :hz :
+        -             field_id == "spectrum.window_length" ? :samples :
+        -             field_id == "spectrum.nfft" ? :nfft : :seconds
+        0         return signal_settings_parse_draft_resolution(
+        -             display_id,
+        -             field_id,
+        -             value,
+        -             value_key,
+        -             value_key in (:samples, :nfft),
+        -         )
+        -     end
+        - 
+        4     field_id in ("time.units", "spectrogram.time_units", "persistence.time_units") &&
+        -         return signal_settings_parse_draft_enum(
+        -             display_id,
+        -             field_id,
+        -             value,
+        -             SIGNAL_TIME_UNITS_BY_NAME,
+        -         )
+        4     field_id in (
+        -         "spectrum.frequency_units",
+        -         "spectrogram.frequency_units",
+        -         "persistence.frequency_units",
+        -     ) && return signal_settings_parse_draft_enum(
+        -         display_id,
+        -         field_id,
+        -         value,
+        -         SIGNAL_FREQUENCY_UNITS_BY_NAME,
+        -     )
+        2     field_id == "spectrum.resolution_type" && return signal_settings_parse_draft_enum(
+        -         display_id,
+        -         field_id,
+        -         value,
+        -         SIGNAL_SPECTRUM_RESOLUTION_TYPES_BY_NAME,
+        -     )
+        2     field_id == "spectrum.window" && return signal_settings_parse_draft_enum(
+        -         display_id,
+        -         field_id,
+        -         value,
+        -         SIGNAL_SPECTRUM_WINDOWS_BY_NAME,
+        -     )
+        4     field_id in ("spectrum.scale", "spectrogram.scale", "persistence.scale") &&
+        -         return signal_settings_parse_draft_enum(
+        -             display_id,
+        -             field_id,
+        -             value,
+        -             SIGNAL_SPECTRUM_SCALES_BY_NAME,
+        -         )
+        2     field_id in ("spectrum.frequency_scale", "persistence.frequency_scale") &&
+        -         return signal_settings_parse_draft_enum(
+        -             display_id,
+        -             field_id,
+        -             value,
+        -             SIGNAL_SPECTRUM_FREQUENCY_SCALES_BY_NAME,
+        -         )
+        0     field_id == "spectrogram.frequency_scale" && return signal_settings_parse_draft_enum(
+        -         display_id,
+        -         field_id,
+        -         value,
+        -         SIGNAL_SPECTROGRAM_FREQUENCY_SCALES_BY_NAME,
+        -     )
+        0     throw(signal_setting_api_type_error(display_id, field_id, "Неподдерживаемый kind поля"))
+        - end
+        - 
+       28 function signal_settings_validate_typed_value!(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        -     field_id::String,
+        -     value,
+        - )
+       52     analysis_name = signal_analyser_display_analysis_name(display)
+       52     signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+        - 
+       28     if field_id == "time.x_limits"
+        2         if value !== nothing
+        2             signal === nothing && throw(signal_setting_validation_error(
+        -                 display.id, field_id, "Явный интервал требует analysis source",
+        -             ))
+        2             limits = SignalTimeLimits(value.minimum, value.maximum)
+        2             signal_time_limits_are_valid(state.measurements_service, signal, limits) || throw(
+        -                 signal_setting_validation_error(
+        -                     display.id,
+        -                     field_id,
+        -                     "Интервал должен содержать хотя бы один отсчёт и лежать в домене source",
+        -                 ),
+        -             )
+        -         end
+       26     elseif field_id == "time.link_time" && value && !(
+        -         display.active_plot == TIME_PLOT &&
+        -         signal_analyser_display_analysis_name(display) !== nothing &&
+        -         length(signal_analyser_compatible_time_panes(state, display)) >= 2
+        -     )
+        0         throw(signal_setting_validation_error(
+        -             display.id,
+        -             field_id,
+        -             "Связь времени требует как минимум две TIME pane с analysis source в одном Display",
+        -         ))
+       46     elseif field_id in ("spectrum.frequency_limits", "spectrogram.frequency_limits")
+       16         if value !== nothing
+       16             signal === nothing && throw(signal_setting_validation_error(
+        -                 display.id, field_id, "Явный интервал требует analysis source",
+        -             ))
+       16             limits = ExplicitSignalSpectrumFrequencyLimits(value.minimum, value.maximum)
+       16             signal_spectrum_frequency_limits_valid_for_signal(limits, signal) || begin
+        0                 domain = signal_spectrum_topology_limits(signal)
+        0                 throw(signal_setting_validation_error(
+        -                     display.id,
+        -                     field_id,
+        -                     "Интервал должен лежать в [$(domain.min_hz), $(domain.max_hz)] Hz",
+        -                 ))
+        -             end
+        -         end
+       10     elseif field_id == "persistence.frequency_limits" && value !== nothing
+        0         signal === nothing && throw(signal_setting_validation_error(
+        -             display.id, field_id, "Явный интервал требует analysis source",
+        -         ))
+        0         limits = ExplicitSignalSpectrumFrequencyLimits(value.minimum, value.maximum)
+        0         signal_spectrum_frequency_limits_valid_for_signal(limits, signal) || begin
+        0             domain = signal_spectrum_topology_limits(signal)
+        0             throw(signal_setting_validation_error(
+        -                 display.id,
+        -                 field_id,
+        -                 "Интервал должен лежать в [$(domain.min_hz), $(domain.max_hz)] Hz",
+        -             ))
+        -         end
+       10     elseif field_id == "persistence.density_limits" && value !== nothing
+        0         0.0 <= value.minimum < value.maximum <= 100.0 || throw(
+        -             signal_setting_validation_error(
+        -                 display.id,
+        -                 field_id,
+        -                 "Density Limits должны лежать внутри 0–100 процентов",
+        -             ),
+        -         )
+       10     elseif field_id == "spectrum.frequency_scale" &&
+        -         value == LOG_SPECTRUM_FREQUENCY_SCALE &&
+        -         signal_settings_has_complex_membership(state, display)
+        0         throw(signal_setting_validation_error(
+        -             display.id,
+        -             field_id,
+        -             "Log frequency scale недоступна для Display с комплексным сигналом",
+        -         ))
+       10     elseif field_id == "spectrogram.time_resolution" &&
+        -         value.mode == SPECIFIED_SIGNAL_SETTING
+        0         signal === nothing && throw(signal_setting_validation_error(
+        -             display.id, field_id, "Specified time resolution требует analysis source",
+        -         ))
+        0         value.seconds <= signal_duration_s(signal) || throw(signal_setting_validation_error(
+        -             display.id,
+        -             field_id,
+        -             "Time resolution не должна превышать duration analysis source",
+        -         ))
+       10     elseif field_id == "persistence.time_resolution" &&
+        -         value.mode == SPECIFIED_SIGNAL_SETTING && signal === nothing
+        0         throw(signal_setting_validation_error(
+        -             display.id, field_id, "Specified time resolution требует analysis source",
+        -         ))
+       10     elseif field_id == "spectrum.sidelobe_attenuation_db"
+        0         window = display.stored_settings.spectrum.window
+        0         window in (CHEBYSHEV_SPECTRUM_WINDOW, KAISER_SPECTRUM_WINDOW) || throw(
+        -             signal_setting_validation_error(
+        -                 display.id,
+        -                 field_id,
+        -                 "Sidelobe attenuation readonly для выбранного Window",
+        -             ),
+        -         )
+        0         window == CHEBYSHEV_SPECTRUM_WINDOW && value < 45 && throw(
+        -             signal_setting_validation_error(display.id, field_id, "Chebyshev требует не меньше 45 dB"),
+        -         )
+        0         window == KAISER_SPECTRUM_WINDOW && value < 21 && throw(
+        -             signal_setting_validation_error(display.id, field_id, "Kaiser требует не меньше 21 dB"),
+        -         )
+        -     end
+       28     nothing
+        - end
+        - 
+        2 function parse_signal_setting_command(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     data,
+        - )::UpdateSignalSettingCommand
+        2     data isa AbstractDict || throw(signal_setting_validation_error(
+        -         "",
+        -         "",
+        -         "Тело запроса должно быть JSON-объектом",
+        -     ))
+        2     display_value = signal_analyser_payload_value(data, "display_id")
+        2     display_id = display_value isa AbstractString ? String(display_value) : ""
+        2     field_value = signal_analyser_payload_value(data, "field_id")
+        2     field_id = field_value isa AbstractString ? String(field_value) : ""
+        - 
+        2     signal_analyser_payload_keys(data) == SIGNAL_SETTINGS_UPDATE_FIELDS || throw(
+        -         signal_setting_validation_error(
+        -             display_id,
+        -             field_id,
+        -             "Request должен содержать только state_revision, display_id, field_id и value",
+        -         ),
+        -     )
+        2     isempty(display_id) && throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "display_id должен быть непустой строкой",
+        -     ))
+        2     display = try
+        2         signal_analyser_display_by_id(state, display_id)
+        -     catch err
+        0         err isa ArgumentError || rethrow()
+        0         throw(signal_setting_validation_error(display_id, field_id, "Неизвестный display_id"))
+        -     end
+        2     isempty(field_id) && throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "field_id должен быть непустой строкой",
+        -     ))
+        2     definition = signal_settings_field(service.catalog, field_id)
+        2     definition === nothing && throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "Неизвестный field_id",
+        -     ))
+        - 
+        2     revision_value = signal_analyser_payload_value(data, "state_revision")
+        2     revision = signal_settings_parse_integer(display_id, field_id, revision_value)
+        2     revision >= 0 || throw(signal_setting_validation_error(
+        -         display_id,
+        -         field_id,
+        -         "state_revision не может быть отрицательной",
+        -     ))
+        2     value = try
+        2         signal_settings_parse_field_value(
+        -             definition,
+        -             display_id,
+        -             field_id,
+        -             signal_analyser_payload_value(data, "value"),
+        -         )
+        -     catch err
+        0         err isa ArgumentError || rethrow()
+        0         throw(signal_settings_semantic_validation_error(display_id, field_id, err))
+        -     end
+        2     try
+        4         signal_settings_validate_typed_value!(state, display, field_id, value)
+        -     catch err
+        0         err isa ArgumentError || rethrow()
+        0         throw(signal_settings_semantic_validation_error(display_id, field_id, err))
+        -     end
+        2     UpdateSignalSettingCommand(revision, display_id, field_id, value)
+        - end
+        - 
+      263 function signal_settings_replace(
+        -     stored::SignalDisplayStoredSettings;
+        -     display::SignalDisplayPreferences = stored.display,
+        -     time::SignalTimePreferences = stored.time,
+        -     spectrum::SignalSpectrumPreferences = stored.spectrum,
+        -     spectrogram::SignalSpectrogramPreferences = stored.spectrogram,
+        -     persistence::SignalPersistencePreferences = stored.persistence,
+        - )::SignalDisplayStoredSettings
+      263     SignalDisplayStoredSettings(display, time, spectrum, spectrogram, persistence)
+        - end
+        - 
+       30 function signal_settings_replace(
+        -     preferences::SignalTimePreferences;
+        -     normalize_y::Bool = preferences.normalize_y,
+        -     show_markers::Bool = preferences.show_markers,
+        -     units::SignalTimeUnitPreference = preferences.units,
+        -     y_limits::Union{Nothing,SignalSettingRange} = preferences.y_limits,
+        -     link_time::Bool = preferences.link_time,
+        - )::SignalTimePreferences
+       30     SignalTimePreferences(normalize_y, show_markers, units, y_limits, link_time)
+        - end
+        - 
+        - 
+       54 function signal_settings_replace(
+        -     preferences::SignalSpectrumPreferences;
+        -     frequency_units::SignalFrequencyUnitPreference = preferences.frequency_units,
+        -     y_limits::Union{Nothing,SignalSettingRange} = preferences.y_limits,
+        -     resolution_type::SignalSpectrumResolutionType = preferences.resolution_type,
+        -     rbw::SignalHertzResolution = preferences.rbw,
+        -     window_length::SignalSamplesResolution = preferences.window_length,
+        -     window::SignalSpectrumWindow = preferences.window,
+        -     sidelobe_attenuation_db::Real = preferences.sidelobe_attenuation_db,
+        -     overlap_percent::Real = preferences.overlap_percent,
+        -     nfft::SignalNfftResolution = preferences.nfft,
+        - )::SignalSpectrumPreferences
+       54     SignalSpectrumPreferences(
+        -         frequency_units,
+        -         y_limits,
+        -         resolution_type,
+        -         rbw,
+        -         window_length,
+        -         window,
+        -         sidelobe_attenuation_db,
+        -         overlap_percent,
+        -         nfft,
+        -     )
+        - end
+        - 
+      113 function signal_settings_replace(
+        -     preferences::SignalSpectrogramPreferences;
+        -     time_units::SignalTimeUnitPreference = preferences.time_units,
+        -     frequency_units::SignalFrequencyUnitPreference = preferences.frequency_units,
+        -     scale::SignalSpectrumScale = preferences.scale,
+        -     time_resolution::SignalSecondsResolution = preferences.time_resolution,
+        -     reassign::Bool = preferences.reassign,
+        - )::SignalSpectrogramPreferences
+      113     SignalSpectrogramPreferences(time_units, frequency_units, scale, time_resolution, reassign)
+        - end
+        - 
+      143 function signal_settings_replace(
+        -     preferences::SignalPersistencePreferences;
+        -     time_units::SignalTimeUnitPreference = preferences.time_units,
+        -     frequency_units::SignalFrequencyUnitPreference = preferences.frequency_units,
+        -     frequency_limits::Union{Nothing,SignalSettingRange} = preferences.frequency_limits,
+        -     power_limits::Union{Nothing,SignalSettingRange} = preferences.power_limits,
+        -     density_limits::Union{Nothing,SignalSettingRange} = preferences.density_limits,
+        -     frequency_scale::SignalSpectrumFrequencyScale = preferences.frequency_scale,
+        -     scale::SignalSpectrumScale = preferences.scale,
+        -     time_resolution::SignalSecondsResolution = preferences.time_resolution,
+        -     overlap_percent::Real = preferences.overlap_percent,
+        -     power_bins::SignalPowerBinsPreference = preferences.power_bins,
+        - )::SignalPersistencePreferences
+      143     SignalPersistencePreferences(
+        -         time_units,
+        -         frequency_units,
+        -         frequency_limits,
+        -         power_limits,
+        -         density_limits,
+        -         frequency_scale,
+        -         scale,
+        -         time_resolution,
+        -         overlap_percent,
+        -         power_bins,
+        -     )
+        - end
+        - 
+       58 function signal_settings_replace(
+        -     display::SignalAnalyserDisplayState;
+        -     time_limits::Union{Nothing,SignalTimeLimits} = display.time_limits,
+        -     spectrum_settings::SignalSpectrumSettings = display.spectrum_settings,
+        -     spectrogram_settings::SignalSpectrogramSettings = display.spectrogram_settings,
+        -     persistence_settings::SignalPersistenceSettings = display.persistence_settings,
+        -     stored_settings::SignalDisplayStoredSettings = display.stored_settings,
+        - )::SignalAnalyserDisplayState
+      100     SignalAnalyserDisplayState(
+        -         display.id,
+        -         display.name,
+        -         display.active_plot,
+        -         display.membership,
+        -         display.analysis_source,
+        -         time_limits,
+        -         display.measurement_selection,
+        -         spectrum_settings,
+        -         spectrogram_settings,
+        -         persistence_settings,
+        -         stored_settings,
+        -         display.peaks_enabled,
+        -     )
+        - end
+        - 
+      180 function signal_settings_apply_stored_value(
+        -     stored::SignalDisplayStoredSettings,
+        -     command::UpdateSignalSettingCommand,
+        - )::SignalDisplayStoredSettings
+      180     id = command.field_id
+      180     value = command.value
+      180     id == "display.show_legend" && return signal_settings_replace(
+        -         stored,
+        -         display = SignalDisplayPreferences(value),
+        -     )
+      174     id == "time.normalize_y" && return signal_settings_replace(
+        -         stored,
+        -         time = signal_settings_replace(stored.time, normalize_y = value),
+        -     )
+      168     id == "time.show_markers" && return signal_settings_replace(
+        -         stored,
+        -         time = signal_settings_replace(stored.time, show_markers = value),
+        -     )
+      162     id == "time.units" && return signal_settings_replace(
+        -         stored,
+        -         time = signal_settings_replace(stored.time, units = value),
+        -     )
+      156     id == "time.y_limits" && return signal_settings_replace(
+        -         stored,
+        -         time = signal_settings_replace(stored.time, y_limits = value),
+        -     )
+      150     id == "time.link_time" && return signal_settings_replace(
+        -         stored,
+        -         time = signal_settings_replace(stored.time, link_time = value),
+        -     )
+      144     id == "spectrum.frequency_units" && return signal_settings_replace(
+        -         stored,
+        -         spectrum = signal_settings_replace(stored.spectrum, frequency_units = value),
+        -     )
+      138     id == "spectrum.y_limits" && return signal_settings_replace(
+        -         stored,
+        -         spectrum = signal_settings_replace(stored.spectrum, y_limits = value),
+        -     )
+      132     id == "spectrum.resolution_type" && return signal_settings_replace(
+        -         stored,
+        -         spectrum = signal_settings_replace(stored.spectrum, resolution_type = value),
+        -     )
+      126     id == "spectrum.rbw" && return signal_settings_replace(
+        -         stored,
+        -         spectrum = signal_settings_replace(stored.spectrum, rbw = value),
+        -     )
+      120     id == "spectrum.window_length" && return signal_settings_replace(
+        -         stored,
+        -         spectrum = signal_settings_replace(stored.spectrum, window_length = value),
+        -     )
+      114     id == "spectrum.window" && return signal_settings_replace(
+        -         stored,
+        -         spectrum = signal_settings_replace(stored.spectrum, window = value),
+        -     )
+      108     id == "spectrum.sidelobe_attenuation_db" && return signal_settings_replace(
+        -         stored,
+        -         spectrum = signal_settings_replace(stored.spectrum, sidelobe_attenuation_db = value),
+        -     )
+      102     id == "spectrum.overlap_percent" && return signal_settings_replace(
+        -         stored,
+        -         spectrum = signal_settings_replace(stored.spectrum, overlap_percent = value),
+        -     )
+       96     id == "spectrum.nfft" && return signal_settings_replace(
+        -         stored,
+        -         spectrum = signal_settings_replace(stored.spectrum, nfft = value),
+        -     )
+       90     id == "spectrogram.time_units" && return signal_settings_replace(
+        -         stored,
+        -         spectrogram = signal_settings_replace(stored.spectrogram, time_units = value),
+        -     )
+       84     id == "spectrogram.frequency_units" && return signal_settings_replace(
+        -         stored,
+        -         spectrogram = signal_settings_replace(stored.spectrogram, frequency_units = value),
+        -     )
+       78     id == "spectrogram.scale" && return signal_settings_replace(
+        -         stored,
+        -         spectrogram = signal_settings_replace(stored.spectrogram, scale = value),
+        -     )
+       72     id == "spectrogram.time_resolution" && return signal_settings_replace(
+        -         stored,
+        -         spectrogram = signal_settings_replace(stored.spectrogram, time_resolution = value),
+        -     )
+       66     id == "spectrogram.reassign" && return signal_settings_replace(
+        -         stored,
+        -         spectrogram = signal_settings_replace(stored.spectrogram, reassign = value),
+        -     )
+       60     id == "persistence.time_units" && return signal_settings_replace(
+        -         stored,
+        -         persistence = signal_settings_replace(stored.persistence, time_units = value),
+        -     )
+       54     id == "persistence.frequency_units" && return signal_settings_replace(
+        -         stored,
+        -         persistence = signal_settings_replace(stored.persistence, frequency_units = value),
+        -     )
+       48     id == "persistence.frequency_limits" && return signal_settings_replace(
+        -         stored,
+        -         persistence = signal_settings_replace(stored.persistence, frequency_limits = value),
+        -     )
+       42     id == "persistence.power_limits" && return signal_settings_replace(
+        -         stored,
+        -         persistence = signal_settings_replace(stored.persistence, power_limits = value),
+        -     )
+       36     id == "persistence.density_limits" && return signal_settings_replace(
+        -         stored,
+        -         persistence = signal_settings_replace(stored.persistence, density_limits = value),
+        -     )
+       30     id == "persistence.frequency_scale" && return signal_settings_replace(
+        -         stored,
+        -         persistence = signal_settings_replace(stored.persistence, frequency_scale = value),
+        -     )
+       24     id == "persistence.scale" && return signal_settings_replace(
+        -         stored,
+        -         persistence = signal_settings_replace(stored.persistence, scale = value),
+        -     )
+       18     id == "persistence.time_resolution" && return signal_settings_replace(
+        -         stored,
+        -         persistence = signal_settings_replace(stored.persistence, time_resolution = value),
+        -     )
+       12     id == "persistence.overlap_percent" && return signal_settings_replace(
+        -         stored,
+        -         persistence = signal_settings_replace(stored.persistence, overlap_percent = value),
+        -     )
+        6     id == "persistence.power_bins" && return signal_settings_replace(
+        -         stored,
+        -         persistence = signal_settings_replace(stored.persistence, power_bins = value),
+        -     )
+        0     stored
+        - end
+        - 
+        - const SIGNAL_SETTINGS_EFFECTIVE_FIELD_IDS = Set([
+        -     "time.x_limits",
+        -     "spectrum.frequency_limits",
+        -     "spectrum.frequency_scale",
+        -     "spectrum.scale",
+        -     "spectrum.leakage",
+        -     "spectrogram.frequency_limits",
+        -     "spectrogram.power_limits",
+        -     "spectrogram.frequency_scale",
+        -     "spectrogram.scale",
+        -     "spectrogram.leakage",
+        -     "spectrogram.overlap_percent",
+        -     "persistence.leakage",
+        - ])
+        - 
+        - const SIGNAL_SETTINGS_BACKEND_PRESENTATION_FIELD_IDS = Set([
+        -     "persistence.density_limits",
+        - ])
+        - 
+        - """Only these product-effective settings participate in explicit calculation Apply."""
+        - const SIGNAL_SETTINGS_EXPLICIT_APPLY_FIELD_IDS = Set([
+        -     "time.x_limits",
+        -     "spectrum.frequency_limits",
+        -     "spectrum.scale",
+        -     "spectrum.leakage",
+        -     "spectrogram.frequency_limits",
+        -     "spectrogram.scale",
+        -     "spectrogram.leakage",
+        -     "spectrogram.overlap_percent",
+        -     "persistence.leakage",
+        - ])
+        - 
+        - """These controls publish immediately and never make calculation Apply dirty."""
+        - const SIGNAL_SETTINGS_IMMEDIATE_PRESENTATION_FIELD_IDS = Set([
+        -     "display.show_legend",
+        -     "time.normalize_y",
+        -     "time.show_markers",
+        - ])
+        - 
+       28 function signal_settings_apply_command(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        -     command::UpdateSignalSettingCommand,
+        - )::SignalAnalyserDisplayState
+       28     id = command.field_id
+       28     value = command.value
+       28     try
+       28         if id == "time.x_limits"
+        4             analysis_name = signal_analyser_display_analysis_name(display)
+        2             limits = if value === nothing
+        0                 analysis_name === nothing ? nothing : signal_full_time_limits(
+        -                     state.measurements_service,
+        -                     signal_by_name(state, analysis_name),
+        -                 )
+        -             else
+        2                 SignalTimeLimits(value.minimum, value.maximum)
+        -             end
+        2             return signal_settings_replace(display, time_limits = limits)
+       46         elseif id in ("spectrum.frequency_limits", "spectrum.frequency_scale", "spectrum.scale", "spectrum.leakage")
+       10             current = display.spectrum_settings
+       10             limits = id == "spectrum.frequency_limits" ? (
+        -                 value === nothing ? AutomaticSignalSpectrumFrequencyLimits() :
+        -                 ExplicitSignalSpectrumFrequencyLimits(value.minimum, value.maximum)
+        -             ) : current.frequency_limits
+       10             settings = SignalSpectrumSettings(
+        -                 id == "spectrum.scale" ? value : current.scale,
+        -                 id == "spectrum.frequency_scale" ? value : current.frequency_scale,
+        -                 id == "spectrum.leakage" ? value : current.leakage,
+        -                 limits,
+        -             )
+       10             return signal_settings_replace(display, spectrum_settings = settings)
+       22         elseif id in (
+        -             "spectrogram.frequency_limits",
+        -             "spectrogram.power_limits",
+        -             "spectrogram.frequency_scale",
+        -             "spectrogram.leakage",
+        -             "spectrogram.overlap_percent",
+        -         )
+       10             current = display.spectrogram_settings
+       10             frequency_limits = id == "spectrogram.frequency_limits" ? (
+        -                 value === nothing ? AutomaticSignalSpectrumFrequencyLimits() :
+        -                 ExplicitSignalSpectrumFrequencyLimits(value.minimum, value.maximum)
+        -             ) : current.frequency_limits
+       10             power_limits = id == "spectrogram.power_limits" ? (
+        -                 value === nothing ? AutomaticSignalSpectrogramPowerLimits() :
+        -                 ExplicitSignalSpectrogramPowerLimits(value.minimum, value.maximum)
+        -             ) : current.power_limits
+       10             settings = SignalSpectrogramSettings(
+        -                 id == "spectrogram.overlap_percent" ? value : current.overlap_percent,
+        -                 id == "spectrogram.leakage" ? value : current.leakage,
+        -                 frequency_limits,
+        -                 id == "spectrogram.frequency_scale" ? value : current.frequency_scale,
+        -                 power_limits,
+        -             )
+       10             prospective = signal_settings_replace(display, spectrogram_settings = settings)
+       10             SignalSpectrogramPresentationSettings(
+        -                 prospective.stored_settings.spectrogram.scale,
+        -                 prospective.spectrogram_settings.power_limits,
+        -             )
+       10             return prospective
+        6         elseif id == "persistence.leakage"
+        6             return signal_settings_replace(
+        -                 display,
+        -                 persistence_settings = SignalPersistenceSettings(value),
+        -             )
+        -         end
+        0         stored = signal_settings_apply_stored_value(display.stored_settings, command)
+        0         prospective = signal_settings_replace(display, stored_settings = stored)
+        0         SignalSpectrogramPresentationSettings(
+        -             prospective.stored_settings.spectrogram.scale,
+        -             prospective.spectrogram_settings.power_limits,
+        -         )
+        0         prospective
+        -     catch err
+        0         err isa ArgumentError || rethrow()
+        0         throw(signal_settings_semantic_validation_error(display.id, id, err))
+        -     end
+        - end
+        - 
+        - function signal_settings_displays_equal(
+        -     left::SignalAnalyserDisplayState,
+        -     right::SignalAnalyserDisplayState,
+        - )::Bool
+        2     left.time_limits == right.time_limits &&
+        -     left.spectrum_settings == right.spectrum_settings &&
+        -     left.spectrogram_settings == right.spectrogram_settings &&
+        -     left.persistence_settings == right.persistence_settings &&
+        -     left.stored_settings == right.stored_settings
+        - end
+        - 
+       90 signal_settings_state_draft_key(state::SignalAnalyserState)::UInt = objectid(state)
+        - 
+      160 function signal_settings_draft_store_unlocked(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState;
+        -     create::Bool,
+        - )::Union{Nothing,SignalSettingsDraftStore}
+       80     key = signal_settings_state_draft_key(state)
+       80     if create
+       14         return get!(service.draft_stores, key) do
+       12             SignalSettingsDraftStore()
+        -         end
+        -     end
+       66     get(service.draft_stores, key, nothing)
+        - end
+        - 
+      136 function signal_settings_display_draft_unlocked(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     display_id::AbstractString;
+        -     create::Bool,
+        - )::Union{Nothing,SignalSettingsDisplayDraft}
+       70     store = signal_settings_draft_store_unlocked(service, state; create = create)
+       70     store === nothing && return nothing
+       66     id = String(display_id)
+       66     if create
+       14         return get!((store::SignalSettingsDraftStore).displays, id) do
+       12             SignalSettingsDisplayDraft()
+        -         end
+        -     end
+       52     get((store::SignalSettingsDraftStore).displays, id, nothing)
+        - end
+        - 
+        - function signal_settings_clear_display_draft_unlocked!(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     display_id::AbstractString,
+        - )::Nothing
+       10     store = signal_settings_draft_store_unlocked(service, state; create = false)
+       10     store === nothing && return nothing
+       10     delete!((store::SignalSettingsDraftStore).displays, String(display_id))
+       10     isempty(store.displays) && delete!(
+        -         service.draft_stores,
+        -         signal_settings_state_draft_key(state),
+        -     )
+       10     nothing
+        - end
+        - 
+       55 function signal_settings_draft_domain_command(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        -     entry::SignalSettingDraftEntry,
+        - )::UpdateSignalSettingCommand
+       55     definition = signal_settings_field(service.catalog, entry.field_id)
+       55     definition === nothing && throw(signal_setting_validation_error(
+        -         display.id,
+        -         entry.field_id,
+        -         "Неизвестный field_id",
+        -     ))
+      110     typed_value = signal_settings_parse_field_value(
+        -         definition,
+        -         display.id,
+        -         entry.field_id,
+        -         signal_settings_draft_wire_value(entry.value),
+        -     )
+       52     UpdateSignalSettingCommand(
+        -         state.view.state_revision,
+        -         display.id,
+        -         entry.field_id,
+        -         typed_value,
+        -     )
+        - end
+        - 
+        - 
+        - """Build the complete prospective Display without publishing or calling providers."""
+       28 function signal_settings_draft_projection_unlocked(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        - )::Tuple{SignalAnalyserDisplayState,Dict{String,String}}
+       54     draft = signal_settings_display_draft_unlocked(service, state, display.id; create = false)
+       28     prospective = signal_settings_replace(display)
+       28     errors = Dict{String,String}()
+       28     draft === nothing && return prospective, errors
+        - 
+       26     for definition in service.catalog.fields
+     1066         entry = get((draft::SignalSettingsDisplayDraft).entries, definition.id, nothing)
+     1066         entry === nothing && continue
+       29         try
+       31             if definition.id == "time.x_limits" &&
+        -                 prospective.active_plot in (SPECTROGRAM_PLOT, PERSISTENCE_PLOT)
+        0                 throw(signal_setting_validation_error(
+        -                     display.id,
+        -                     definition.id,
+        -                     "Time ROI для Spectrogram/Persistence не поддержан проверенным Engee pspectrum contract",
+        -                 ))
+        -             end
+       29             command = signal_settings_draft_domain_command(
+        -                 service,
+        -                 state,
+        -                 prospective,
+        -                 entry::SignalSettingDraftEntry,
+        -             )
+       29             prospective = signal_settings_apply_command(state, prospective, command)
+        -         catch err
+        3             if err isa SignalSettingValidationError
+        3                 errors[definition.id] = sprint(showerror, err)
+        0             elseif err isa ArgumentError
+        0                 errors[definition.id] = sprint(showerror,
+        -                     signal_settings_semantic_validation_error(display.id, definition.id, err),
+        -                 )
+        -             else
+        3                 rethrow()
+        -             end
+        -         end
+     1092     end
+        - 
+       26     for definition in service.catalog.fields
+     1189         haskey(errors, definition.id) && continue
+     1063         entry = get((draft::SignalSettingsDisplayDraft).entries, definition.id, nothing)
+     1063         entry === nothing && continue
+       26         try
+       26             command = signal_settings_draft_domain_command(
+        -                 service,
+        -                 state,
+        -                 prospective,
+        -                 entry::SignalSettingDraftEntry,
+        -             )
+       26             signal_settings_validate_typed_value!(
+        -                 state,
+        -                 prospective,
+        -                 definition.id,
+        -                 command.value,
+        -             )
+        -         catch err
+        0             if err isa SignalSettingValidationError
+        0                 errors[definition.id] = sprint(showerror, err)
+        0             elseif err isa ArgumentError
+        0                 errors[definition.id] = sprint(showerror,
+        -                     signal_settings_semantic_validation_error(display.id, definition.id, err),
+        -                 )
+        -             else
+        0                 rethrow()
+        -             end
+        -         end
+     1092     end
+       26     prospective, errors
+        - end
+        - 
+       17 function parse_signal_setting_draft_command(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     data,
+        - )::UpdateSignalSettingCommand
+       17     data isa AbstractDict || throw(signal_setting_api_type_error(
+        -         "",
+        -         "",
+        -         "Тело запроса должно быть JSON-объектом",
+        -     ))
+       17     display_value = signal_analyser_payload_value(data, "display_id")
+       17     display_value isa AbstractString || throw(signal_setting_api_type_error(
+        -         "",
+        -         "",
+        -         "display_id должен быть строкой",
+        -     ))
+       17     display_id = String(display_value)
+       17     field_value = signal_analyser_payload_value(data, "field_id")
+       17     field_value isa AbstractString || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         "",
+        -         "field_id должен быть строкой",
+        -     ))
+       17     field_id = String(field_value)
+       17     signal_analyser_payload_keys(data) == SIGNAL_SETTINGS_UPDATE_FIELDS || throw(
+        -         signal_setting_api_type_error(
+        -             display_id,
+        -             field_id,
+        -             "Request должен содержать только state_revision, display_id, field_id и value",
+        -         ),
+        -     )
+       17     isempty(display_id) && throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "display_id должен быть непустой строкой",
+        -     ))
+       17     try
+       17         signal_analyser_display_by_id(state, display_id)
+        -     catch err
+        0         err isa ArgumentError || rethrow()
+        0         throw(signal_setting_api_type_error(display_id, field_id, "Неизвестный display_id"))
+        -     end
+       17     isempty(field_id) && throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "field_id должен быть непустой строкой",
+        -     ))
+       17     definition = signal_settings_field(service.catalog, field_id)
+       17     definition === nothing && throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "Неизвестный field_id",
+        -     ))
+       17     revision_value = signal_analyser_payload_value(data, "state_revision")
+       17     revision = signal_settings_parse_draft_integer(display_id, field_id, revision_value)
+       17     revision >= 0 || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         field_id,
+        -         "state_revision не может быть отрицательной",
+        -     ))
+       17     UpdateSignalSettingCommand(
+        -         revision,
+        -         display_id,
+        -         field_id,
+        -         signal_settings_parse_draft_field_value(
+        -             definition,
+        -             display_id,
+        -             field_id,
+        -             signal_analyser_payload_value(data, "value"),
+        -         ),
+        -     )
+        - end
+        - 
+       12 function parse_signal_settings_apply_command(
+        -     state::SignalAnalyserState,
+        -     data,
+        - )::ApplySignalSettingsCommand
+       12     data isa AbstractDict || throw(signal_setting_api_type_error(
+        -         "",
+        -         "",
+        -         "Тело Apply должно быть JSON-объектом",
+        -     ))
+       12     signal_analyser_payload_keys(data) == SIGNAL_SETTINGS_APPLY_FIELDS || throw(
+        -         signal_setting_api_type_error(
+        -             "",
+        -             "",
+        -             "Apply должен содержать только state_revision и display_id",
+        -         ),
+        -     )
+       12     display_value = signal_analyser_payload_value(data, "display_id")
+       12     display_value isa AbstractString || throw(signal_setting_api_type_error(
+        -         "",
+        -         "",
+        -         "display_id должен быть строкой",
+        -     ))
+       12     display_id = String(display_value)
+       12     isempty(display_id) && throw(signal_setting_api_type_error(
+        -         display_id,
+        -         "",
+        -         "display_id должен быть непустой строкой",
+        -     ))
+       12     try
+       12         signal_analyser_display_by_id(state, display_id)
+        -     catch err
+        0         err isa ArgumentError || rethrow()
+        0         throw(signal_setting_api_type_error(display_id, "", "Неизвестный display_id"))
+        -     end
+       12     revision = signal_settings_parse_draft_integer(
+        -         display_id,
+        -         "",
+        -         signal_analyser_payload_value(data, "state_revision"),
+        -     )
+       12     revision >= 0 || throw(signal_setting_api_type_error(
+        -         display_id,
+        -         "",
+        -         "state_revision не может быть отрицательной",
+        -     ))
+       12     ApplySignalSettingsCommand(revision, display_id)
+        - end
+        - 
+       73 function signal_settings_reconcile_stored_for_source(
+        -     stored::SignalDisplayStoredSettings,
+        -     signal::Union{Nothing,AnalysedSignal},
+        - )::SignalDisplayStoredSettings
+       83     spectrogram_resolution = stored.spectrogram.time_resolution
+       83     persistence_resolution = stored.persistence.time_resolution
+       83     persistence_frequency_limits = stored.persistence.frequency_limits
+       83     if signal === nothing
+       10         spectrogram_resolution = SignalSecondsResolution()
+       10         persistence_resolution = SignalSecondsResolution()
+       10         persistence_frequency_limits = nothing
+        -     else
+       73         if spectrogram_resolution.mode == SPECIFIED_SIGNAL_SETTING &&
+        -             (spectrogram_resolution.seconds::Float64) > signal_duration_s(signal)
+        0             spectrogram_resolution = SignalSecondsResolution()
+        -         end
+       73         if persistence_frequency_limits !== nothing
+        0             limits = ExplicitSignalSpectrumFrequencyLimits(
+        -                 persistence_frequency_limits.minimum,
+        -                 persistence_frequency_limits.maximum,
+        -             )
+        0             signal_spectrum_frequency_limits_valid_for_signal(limits, signal) ||
+        -                 (persistence_frequency_limits = nothing)
+        -         end
+        -     end
+       83     signal_settings_replace(
+        -         stored,
+        -         spectrogram = signal_settings_replace(
+        -             stored.spectrogram,
+        -             time_resolution = spectrogram_resolution,
+        -         ),
+        -         persistence = signal_settings_replace(
+        -             stored.persistence,
+        -             frequency_limits = persistence_frequency_limits,
+        -             time_resolution = persistence_resolution,
+        -         ),
+        -     )
+        - end
+        - 
+        - 
+        - struct SignalSettingsPreparedPassiveSnapshot
+        -     measurements::SignalMeasurementsSnapshot
+        -     peaks::SignalPeaksSnapshot
+        -     plots::SignalAnalyserPreparedDisplayPlots
+        - end
+        - 
+        - function signal_settings_peaks_settings_unlocked(
+        -     state::SignalAnalyserState,
+        -     display_id::AbstractString,
+        - )::SignalPeaksSettings
+        -     layout = signal_analyser_layout_by_display_id(state, display_id)
+        -     signal_display_active_pane(layout).peaks_settings
+        - end
+        - 
+        - function signal_settings_prepare_passive_snapshot_unlocked(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        -     state_revision::Int,
+        - )::SignalSettingsPreparedPassiveSnapshot
+        -     analysis_name = signal_analyser_display_analysis_name(display)
+        -     signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+        -     measurements = signal_measurements_snapshot(
+        -         state.measurements_service,
+        -         state_revision,
+        -         signal,
+        -         display.time_limits,
+        -         display.measurement_selection,
+        -     )
+        -     peaks = signal_peaks_snapshot(
+        -         state.peaks_service,
+        -         state_revision,
+        -         display,
+        -         signal,
+        -         settings = signal_settings_peaks_settings_unlocked(state, display.id),
+        -     )
+        -     prepared = signal_analyser_prepare_display_plots(
+        -         state,
+        -         display,
+        -         signal,
+        -         signal_analyser_display_members(display),
+        -         materialize_missing_spectra = false,
+        -         materialize_missing_spectrogram = false,
+        -         materialize_missing_persistence = false,
+        -     )
+        -     SignalSettingsPreparedPassiveSnapshot(measurements, peaks, prepared)
+        - end
+        - 
+        - function signal_settings_passive_snapshot_unlocked(
+        -     state::SignalAnalyserState,
+        - )::Dict{String,Any}
+        -     prepared = signal_settings_prepare_passive_snapshot_unlocked(
+        -         state,
+        -         signal_analyser_active_display(state),
+        -         state.view.state_revision,
+        -     )
+        -     signal_analyser_snapshot_from_prepared_unlocked(
+        -         state,
+        -         prepared.measurements,
+        -         prepared.peaks,
+        -         prepared.plots,
+        -     )
+        - end
+        - 
+        - """Provider-materialization policy for one accepted effective settings command."""
+        - struct SignalSettingsEffectPreparationPlan
+        -     materialize_spectra::Bool
+        -     materialize_spectrogram::Bool
+        -     materialize_persistence::Bool
+        - end
+        - 
+        - function SignalSettingsEffectPreparationPlan(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        -     prospective::SignalAnalyserDisplayState,
+        -     field_id::AbstractString,
+        - )
+        -     field_id == "spectrogram.scale" && return SignalSettingsEffectPreparationPlan(
+        -         false,
+        -         false,
+        -         false,
+        -     )
+        -     changes = SignalAnalyserViewChanges(
+        -         state.row_selection,
+        -         display,
+        -         state.row_selection,
+        -         prospective,
+        -     )
+        -     spectrogram_settings_only = signal_analyser_only_spectrogram_settings_changed(changes)
+        -     persistence_settings_only = signal_analyser_only_persistence_settings_changed(changes)
+        -     secondary_provider_settings_only =
+        -         signal_analyser_only_secondary_provider_settings_changed(changes)
+        -     spectrogram_presentation_only = spectrogram_settings_only &&
+        -         signal_spectrogram_provider_settings_equal(
+        -             display.spectrogram_settings,
+        -             prospective.spectrogram_settings,
+        -         )
+        -     SignalSettingsEffectPreparationPlan(
+        -         !secondary_provider_settings_only,
+        -         !spectrogram_presentation_only && !persistence_settings_only,
+        -         true,
+        -     )
+        - end
+        - 
+        - @enum SignalSettingsResponsePreparationMode begin
+        -     PASSIVE_SETTINGS_RESPONSE
+        -     ACTIVE_EFFECTIVE_SETTINGS_RESPONSE
+        -     ACTIVE_BACKEND_PRESENTATION_SETTINGS_RESPONSE
+        - end
+        - 
+        - """Field-scoped settings response policy; presentation status alone is not sufficient."""
+        - struct SignalSettingsResponsePreparationPlan
+        -     mode::SignalSettingsResponsePreparationMode
+        - end
+        - 
+        - function SignalSettingsResponsePreparationPlan(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        -     field_id::AbstractString,
+        - )
+        -     display.id == state.active_display_id || return SignalSettingsResponsePreparationPlan(
+        -         PASSIVE_SETTINGS_RESPONSE,
+        -     )
+        -     field_id in SIGNAL_SETTINGS_EFFECTIVE_FIELD_IDS && return SignalSettingsResponsePreparationPlan(
+        -         ACTIVE_EFFECTIVE_SETTINGS_RESPONSE,
+        -     )
+        -     field_id in SIGNAL_SETTINGS_BACKEND_PRESENTATION_FIELD_IDS &&
+        -         return SignalSettingsResponsePreparationPlan(
+        -             ACTIVE_BACKEND_PRESENTATION_SETTINGS_RESPONSE,
+        -         )
+        -     SignalSettingsResponsePreparationPlan(PASSIVE_SETTINGS_RESPONSE)
+        - end
+        - 
+        - function signal_settings_apply_active_effective_unlocked!(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        -     prospective::SignalAnalyserDisplayState,
+        -     field_id::AbstractString,
+        - )::Dict{String,Any}
+        -     preparation = SignalSettingsEffectPreparationPlan(state, display, prospective, field_id)
+        -     analysis_name = signal_analyser_display_analysis_name(prospective)
+        -     signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+        -     next_revision = state.view.state_revision + 1
+        -     prepared_plots = signal_analyser_prepare_display_plots(
+        -         state,
+        -         prospective,
+        -         signal,
+        -         signal_analyser_display_members(prospective),
+        -         materialize_missing_spectra = preparation.materialize_spectra,
+        -         materialize_missing_spectrogram = preparation.materialize_spectrogram,
+        -         materialize_missing_persistence = preparation.materialize_persistence,
+        -     )
+        -     measurements = signal_measurements_snapshot(
+        -         state.measurements_service,
+        -         next_revision,
+        -         signal,
+        -         prospective.time_limits,
+        -         prospective.measurement_selection,
+        -     )
+        -     peaks = signal_peaks_snapshot(
+        -         state.peaks_service,
+        -         next_revision,
+        -         prospective,
+        -         signal,
+        -         settings = signal_settings_peaks_settings_unlocked(state, prospective.id),
+        -     )
+        -     signal_analyser_publish_display_plots!(state, prepared_plots)
+        -     signal_analyser_publish_display_state!(display, prospective)
+        -     signal_analyser_sync_active_display!(state, display)
+        -     state.view.state_revision = next_revision
+        -     signal_analyser_snapshot_from_prepared_unlocked(state, measurements, peaks, prepared_plots)
+        - end
+        - 
+        - function signal_settings_apply_active_presentation_unlocked!(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        -     prospective::SignalAnalyserDisplayState,
+        - )::Dict{String,Any}
+        -     next_revision = state.view.state_revision + 1
+        -     prepared = signal_settings_prepare_passive_snapshot_unlocked(
+        -         state,
+        -         prospective,
+        -         next_revision,
+        -     )
+        -     signal_analyser_publish_display_state!(display, prospective)
+        -     signal_analyser_sync_active_display!(state, display)
+        -     state.view.state_revision = next_revision
+        -     signal_analyser_snapshot_from_prepared_unlocked(
+        -         state,
+        -         prepared.measurements,
+        -         prepared.peaks,
+        -         prepared.plots,
+        -     )
+        - end
+        - 
+        - function signal_settings_replace_display_unlocked!(
+        -     state::SignalAnalyserState,
+        -     prospective::SignalAnalyserDisplayState,
+        - )
+       36     index = findfirst(display -> display.id == prospective.id, state.displays)
+       12     index === nothing && throw(ArgumentError("Display не найден: $(prospective.id)"))
+       12     state.displays[index] = prospective
+       12     nothing
+        - end
+        - 
+       12 function signal_settings_publish_display_unlocked!(
+        -     state::SignalAnalyserState,
+        -     prospective::SignalAnalyserDisplayState,
+        - )::Nothing
+       12     layout = signal_analyser_layout_by_display_id(state, prospective.id)
+       12     active_pane = signal_display_active_pane(layout)
+       22     state.display_layouts[prospective.id] = signal_display_layout_replace_active_pane(
+        -         layout,
+        -         signal_display_pane_from_display(active_pane.id, prospective),
+        -     )
+       12     signal_settings_replace_display_unlocked!(state, prospective)
+       12     prospective.id == state.active_display_id &&
+        -         signal_analyser_sync_active_display!(state, prospective)
+       12     nothing
+        - end
+        - 
+        - function signal_settings_time_limits_compatible(
+        -     state::SignalAnalyserState,
+        -     pane::SignalDisplayPaneState,
+        -     limits::SignalTimeLimits,
+        - )::Bool
+        0     pane.plot_type == TIME_PLOT || return false
+        0     analysis_name = signal_display_pane_analysis_name(pane)
+        0     analysis_name === nothing && return false
+        0     signal_time_limits_are_valid(
+        -         state.measurements_service,
+        -         signal_by_name(state, analysis_name),
+        -         limits,
+        -     )
+        - end
+        - 
+        0 function signal_analyser_linked_time_pane_ids(
+        -     state::SignalAnalyserState,
+        -     display_id::AbstractString,
+        -     limits::SignalTimeLimits,
+        - )::Vector{String}
+        0     layout = signal_analyser_layout_by_display_id(state, display_id)
+        0     source = signal_display_active_pane(layout)
+        0     source.plot_type == TIME_PLOT || return String[]
+        0     source.stored_settings.time.link_time || return String[]
+        0     String[
+        -         pane.id for pane in layout.panes
+        -         if pane.id != source.id && signal_settings_time_limits_compatible(state, pane, limits)
+        -     ]
+        - end
+        - 
+        1 function signal_settings_link_time_limits_unlocked!(
+        -     state::SignalAnalyserState,
+        -     display_id::AbstractString,
+        - )::Vector{String}
+        1     layout = signal_analyser_layout_by_display_id(state, display_id)
+        1     source = signal_display_active_pane(layout)
+        1     source.plot_type == TIME_PLOT || return String[]
+        2     source.stored_settings.time.link_time || return String[]
+        0     source.time_limits === nothing && return String[]
+        0     limits = source.time_limits::SignalTimeLimits
+        0     changed_panes = String[]
+        0     linked_layout = layout
+        0     linked_ids = Set(signal_analyser_linked_time_pane_ids(state, display_id, limits))
+        0     for pane in layout.panes
+        0         pane.id in linked_ids || continue
+        0         pane.time_limits == limits && continue
+        0         linked_layout = signal_display_layout_replace_pane(
+        -             linked_layout,
+        -             signal_display_pane_with_time_limits(pane, limits),
+        -         )
+        0         push!(changed_panes, pane.id)
+        0     end
+        0     state.display_layouts[String(display_id)] = linked_layout
+        0     changed_panes
+        - end
+        - 
+       16 function signal_settings_update_response_unlocked(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     display_id::AbstractString,
+        - )::Dict{String,Any}
+       16     target = signal_analyser_display_by_id(state, display_id)
+       16     Dict{String,Any}(
+        -         "state" => signal_analyser_state_lite_unlocked(state),
+        -         "settings" => signal_settings_document_unlocked(service, state, target),
+        -     )
+        - end
+        - 
+        - """Refresh an already-ready presentation cache without invalidation or provider work."""
+        2 function signal_settings_refresh_cached_presentation_unlocked!(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        -     field_id::AbstractString,
+        - )::Nothing
+        2     display.id == state.active_display_id || return nothing
+        2     signal_analyser_sync_output_pages_unlocked!(state)
+        2     layout = signal_analyser_layout_by_display_id(state, display.id)
+        2     pane = signal_display_active_pane(layout)
+        2     page_id = signal_analyser_output_page_id(display.id, pane.id)
+        2     manager = state.output_manager
+        2     cache = get(manager.plot_cache, page_id, nothing)
+        2     cache === nothing && return nothing
+        0     context = signal_analyser_output_context_unlocked(state, display.id, pane.id)
+        0     (cache::SignalAnalyserPlotCacheEntry).context == context || return nothing
+        - 
+        0     active_group = signal_analyser_plot_name(pane.plot_type)
+        0     (field_id == "display.show_legend" || startswith(String(field_id), "$(active_group).")) ||
+        -         return nothing
+        0     analysis_name = signal_display_pane_analysis_name(pane)
+        0     analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+        0     signal_bindings = signal_display_pane_members(pane)
+        0     pane_display = signal_analyser_display_for_pane(display, pane)
+        0     prepared = signal_analyser_prepare_display_plots(
+        -         state,
+        -         pane_display,
+        -         analysis_signal,
+        -         signal_bindings,
+        -         materialize_missing_spectra = false,
+        -         materialize_missing_spectrogram = false,
+        -         materialize_missing_persistence = false,
+        -         materialize_spectrum_signal_names = String[],
+        -     )
+        0     output = SignalAnalyserPaneOutput(
+        -         pane.id,
+        -         pane.plot_type,
+        -         signal_bindings,
+        -         analysis_name,
+        -         true,
+        -         true,
+        -         "",
+        -         signal_analyser_pane_renderer_data(prepared, pane, signal_bindings),
+        -     )
+        0     plots = signal_analyser_plotly_payload(output, pane)
+        0     signal_analyser_publish_display_plots!(state, prepared)
+        0     manager.plot_cache[page_id] = SignalAnalyserPlotCacheEntry(context, plots)
+        0     manager.output_statuses[page_id] = SignalAnalyserOutputStatus(
+        -         context,
+        -         true,
+        -         true,
+        -         "",
+        -     )
+        0     nothing
+        - end
+        - 
+       17 function apply_signal_setting!(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     data;
+        -     lightweight::Bool = false,
+        - )::Dict{String,Any}
+       17     lock(state.lock) do
+       17         draft_command = parse_signal_setting_draft_command(service, state, data)
+       16         draft_command.state_revision == state.view.state_revision || throw(
+        -             SignalAnalyserStaleStateError(
+        -                 draft_command.state_revision,
+        -                 state.view.state_revision,
+        -             ),
+        -         )
+       16         definition = signal_settings_field(service.catalog, draft_command.field_id)::SignalSettingsFieldDefinition
+        - 
+       32         if !(draft_command.field_id in SIGNAL_SETTINGS_EXPLICIT_APPLY_FIELD_IDS)
+        2             command = parse_signal_setting_command(service, state, data)
+        2             display = signal_analyser_display_by_id(state, command.display_id)
+        2             prospective = signal_settings_apply_command(state, display, command)
+        2             signal_settings_displays_equal(display, prospective) &&
+        -                 return signal_settings_update_response_unlocked(
+        -                     service,
+        -                     state,
+        -                     command.display_id,
+        -                 )
+        2             signal_settings_publish_display_unlocked!(state, prospective)
+        2             state.view.state_revision += 1
+        2             definition.effect_status == "effective_presentation" &&
+        -                 signal_settings_refresh_cached_presentation_unlocked!(
+        -                     state,
+        -                     prospective,
+        -                     command.field_id,
+        -                 )
+        2             return signal_settings_update_response_unlocked(
+        -                 service,
+        -                 state,
+        -                 command.display_id,
+        -             )
+        -         end
+        - 
+       14         display = signal_analyser_display_by_id(state, draft_command.display_id)
+       28         display_draft = signal_settings_display_draft_unlocked(
+        -             service,
+        -             state,
+        -             display.id;
+        -             create = true,
+        -         )::SignalSettingsDisplayDraft
+       16         current_wire_value = if haskey(display_draft.entries, draft_command.field_id)
+        0             signal_settings_draft_wire_value(
+        -                 display_draft.entries[draft_command.field_id].value,
+        -             )
+        -         else
+       28             signal_settings_field_value(service, display, draft_command.field_id)
+        -         end
+       14         requested_wire_value = signal_settings_draft_wire_value(draft_command.value)
+       14         isequal(current_wire_value, requested_wire_value) &&
+        -             return signal_settings_update_response_unlocked(
+        -                 service,
+        -                 state,
+        -                 draft_command.display_id,
+        -             )
+        - 
+       13         applied_wire_value = signal_settings_field_value(
+        -             service,
+        -             display,
+        -             draft_command.field_id,
+        -         )
+       13         if isequal(applied_wire_value, requested_wire_value)
+        0             delete!(display_draft.entries, draft_command.field_id)
+        0             isempty(display_draft.entries) && signal_settings_clear_display_draft_unlocked!(
+        -                 service,
+        -                 state,
+        -                 display.id,
+        -             )
+        -         else
+       13             display_draft.entries[draft_command.field_id] = SignalSettingDraftEntry(
+        -                 draft_command.field_id,
+        -                 draft_command.value,
+        -             )
+        -         end
+       13         state.view.state_revision += 1
+       13         signal_settings_update_response_unlocked(service, state, draft_command.display_id)
+        -     end
+        - end
+        - 
+       12 function apply_signal_settings!(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     data,
+        - )::Dict{String,Any}
+       12     lock(state.lock) do
+       12         command = parse_signal_settings_apply_command(state, data)
+       13         command.state_revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
+        -             command.state_revision,
+        -             state.view.state_revision,
+        -         ))
+       11         display = signal_analyser_display_by_id(state, command.display_id)
+       11         layout = signal_analyser_layout_by_display_id(state, display.id)
+       11         active_pane = signal_display_active_pane(layout)
+       22         draft = signal_settings_display_draft_unlocked(
+        -             service,
+        -             state,
+        -             display.id;
+        -             create = false,
+        -         )
+       22         applies_time_limits = draft !== nothing && haskey(
+        -             (draft::SignalSettingsDisplayDraft).entries,
+        -             "time.x_limits",
+        -         )
+       11         cancellation_pages = String[
+        -             signal_analyser_output_page_id(display.id, active_pane.id),
+        -         ]
+       11         if applies_time_limits && active_pane.stored_settings.time.link_time
+        0             append!(
+        -                 cancellation_pages,
+        -                 signal_analyser_output_page_id(display.id, pane.id)
+        -                 for pane in signal_analyser_compatible_time_panes(state, display)
+        -                 if pane.id != active_pane.id
+        -             )
+        -         end
+       11         signal_analyser_cancel_output_pages_unlocked!(state, unique(cancellation_pages))
+       11         prospective, errors = signal_settings_draft_projection_unlocked(
+        -             service,
+        -             state,
+        -             display,
+        -         )
+       11         if !isempty(errors)
+        1             state.view.state_revision += 1
+        1             first_field = first(
+        -                 definition.id for definition in service.catalog.fields
+        -                 if haskey(errors, definition.id)
+        -             )
+        1             return Dict{String,Any}(
+        -                 "success" => false,
+        -                 "state_revision" => state.view.state_revision,
+        -                 "error" => "$(first_field): $(errors[first_field])",
+        -             )
+        -         end
+        - 
+       10         signal_settings_publish_display_unlocked!(state, prospective)
+       19         linked_pane_ids = applies_time_limits ?
+        -             signal_settings_link_time_limits_unlocked!(state, prospective.id) : String[]
+       10         state.view.state_revision += 1
+       10         affected_pages = String[
+        -             signal_analyser_output_page_id(prospective.id, active_pane.id),
+        -             (
+        -                 signal_analyser_output_page_id(prospective.id, pane_id)
+        -                 for pane_id in linked_pane_ids
+        -             )...,
+        -         ]
+       10         signal_analyser_invalidate_output_pages_unlocked!(state, affected_pages)
+       20         signal_settings_clear_display_draft_unlocked!(service, state, prospective.id)
+       10         Dict{String,Any}(
+        -             "success" => true,
+        -             "state_revision" => state.view.state_revision,
+        -         )
+        -     end
+        - end

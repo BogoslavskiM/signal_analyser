@@ -1,0 +1,14 @@
+        1 function example_payload()
+        2     items = default_items()
+        1     Dict(
+        -         "items" => [
+        -             Dict(
+        -                 "id" => item.id,
+        -                 "title" => item.title,
+        -                 "score" => item_score(item),
+        -             )
+        -             for item in items
+        -         ],
+        -     )
+        - end
+        - 

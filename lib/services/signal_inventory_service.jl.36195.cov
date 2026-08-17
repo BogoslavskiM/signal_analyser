@@ -1,0 +1,594 @@
+        - struct SignalInventoryService{W<:AbstractWorkspaceSignalSource}
+        5     workspace_source::W
+        -     palette::SignalColorPalette
+        -     source_reconciler::SignalAnalysisSourceReconciler
+        - end
+        - 
+        4 SignalInventoryService(workspace_source::W) where {W<:AbstractWorkspaceSignalSource} =
+        -     SignalInventoryService(
+        -         workspace_source,
+        -         SignalColorPalette(),
+        -         SignalAnalysisSourceReconciler(),
+        -     )
+        - 
+        1 SignalInventoryService(
+        -     workspace_source::W,
+        -     palette::SignalColorPalette,
+        - ) where {W<:AbstractWorkspaceSignalSource} = SignalInventoryService(
+        -     workspace_source,
+        -     palette,
+        -     SignalAnalysisSourceReconciler(),
+        - )
+        - 
+        - struct PreparedSignalInventoryMutation{S<:SignalAnalyserState}
+       27     state::S
+        -     snapshot::Dict{String,Any}
+        - end
+        - 
+        - function signal_inventory_validation_error(
+        -     field::AbstractString,
+        -     message::AbstractString,
+        - )
+        6     SignalAnalyserValidationError(
+        -         "Некорректный запрос Signals",
+        -         Dict(String(field) => String(message)),
+        -     )
+        - end
+        - 
+        - function signal_inventory_timed_fields(value)
+        8     if value isa NamedTuple
+        1         (:time in keys(value) && :value in keys(value)) || return nothing
+        1         return (time = getproperty(value, :time), value = getproperty(value, :value))
+        7     elseif value isa AbstractDict
+        0         has_time = haskey(value, "time") || haskey(value, :time)
+        0         has_value = haskey(value, "value") || haskey(value, :value)
+        0         has_time && has_value || return nothing
+        0         return (
+        -             time = haskey(value, "time") ? value["time"] : value[:time],
+        -             value = haskey(value, "value") ? value["value"] : value[:value],
+        -         )
+        -     end
+        7     fields = fieldnames(typeof(value))
+        7     (:time in fields && :value in fields) || return nothing
+        0     (time = getfield(value, :time), value = getfield(value, :value))
+        - end
+        - 
+        1 function signal_inventory_uniform_sample_rate(time_value)::Float64
+        1     time_value isa AbstractVector || throw(signal_inventory_validation_error(
+        -         "variable_name",
+        -         "Поле time должно быть числовым вектором",
+        -     ))
+        1     length(time_value) >= 2 || throw(signal_inventory_validation_error(
+        -         "variable_name",
+        -         "Поле time должно содержать не менее двух значений",
+        -     ))
+        4     all(value -> value isa Real && !(value isa Bool), time_value) ||
+        -         throw(signal_inventory_validation_error(
+        -             "variable_name",
+        -             "Поле time должно содержать числа, но не Bool",
+        -         ))
+        2     times = Float64.(time_value)
+        1     all(isfinite, times) || throw(signal_inventory_validation_error(
+        -         "variable_name",
+        -         "Поле time должно содержать конечные значения",
+        -     ))
+        1     intervals = diff(times)
+        3     all(interval -> interval > 0, intervals) || throw(signal_inventory_validation_error(
+        -         "variable_name",
+        -         "Поле time должно строго возрастать",
+        -     ))
+        1     reference = first(intervals)
+        1     tolerance = max(abs(reference) * 1.0e-9, 64eps(Float64))
+        3     all(interval -> abs(interval - reference) <= tolerance, intervals) ||
+        -         throw(signal_inventory_validation_error(
+        -             "variable_name",
+        -             "Поле time должно иметь равномерный шаг",
+        -         ))
+        1     rate = (length(times) - 1) / (last(times) - first(times))
+        1     isfinite(rate) && rate > 0 || throw(signal_inventory_validation_error(
+        -         "variable_name",
+        -         "По полю time не удалось определить частоту дискретизации",
+        -     ))
+        1     rate
+        - end
+        - 
+        7 function signal_inventory_numeric_series(
+        -     value,
+        -     sample_rate_hz::Float64,
+        - )::Vector{WorkspaceSignalSeries}
+        7     if value isa AbstractVector
+        6         try
+        6             return WorkspaceSignalSeries[WorkspaceSignalSeries(value, sample_rate_hz)]
+        -         catch err
+        2             err isa ArgumentError || rethrow()
+        2             throw(signal_inventory_validation_error("variable_name", sprint(showerror, err)))
+        -         end
+        1     elseif value isa AbstractMatrix
+        1         size(value, 1) >= 2 || throw(signal_inventory_validation_error(
+        -             "variable_name",
+        -             "Матрица должна содержать не менее двух строк",
+        -         ))
+        1         size(value, 2) >= 1 || throw(signal_inventory_validation_error(
+        -             "variable_name",
+        -             "Матрица должна содержать хотя бы один столбец",
+        -         ))
+        1         series = WorkspaceSignalSeries[]
+        1         for column in axes(value, 2)
+        2             try
+        2                 push!(series, WorkspaceSignalSeries(collect(view(value, :, column)), sample_rate_hz))
+        -             catch err
+        0                 err isa ArgumentError || rethrow()
+        0                 throw(signal_inventory_validation_error(
+        -                     "variable_name",
+        -                     "Столбец $(column): $(sprint(showerror, err))",
+        -                 ))
+        -             end
+        3         end
+        1         return series
+        -     end
+        0     throw(signal_inventory_validation_error(
+        -         "variable_name",
+        -         "Поддерживаются numeric vector, matrix или timed value",
+        -     ))
+        - end
+        - 
+        8 function signal_inventory_workspace_series(
+        -     value,
+        -     requested_sample_rate_hz::Union{Nothing,Float64},
+        - )::Vector{WorkspaceSignalSeries}
+        8     timed = signal_inventory_timed_fields(value)
+        8     if timed !== nothing
+        1         sample_rate = signal_inventory_uniform_sample_rate(timed.time)
+        1         requested_sample_rate_hz === nothing || isapprox(
+        -             requested_sample_rate_hz,
+        -             sample_rate;
+        -             rtol = 1.0e-9,
+        -             atol = 0.0,
+        -         ) || throw(signal_inventory_validation_error(
+        -             "sample_rate_hz",
+        -             "Частота дискретизации не совпадает с равномерным полем time",
+        -         ))
+        1         expected_count = length(timed.time)
+        1         actual_count = timed.value isa AbstractVector ? length(timed.value) :
+        -             timed.value isa AbstractMatrix ? size(timed.value, 1) : -1
+        1         actual_count == expected_count || throw(signal_inventory_validation_error(
+        -             "variable_name",
+        -             "Число строк value должно совпадать с длиной time",
+        -         ))
+        1         return signal_inventory_numeric_series(timed.value, sample_rate)
+        -     end
+        7     requested_sample_rate_hz === nothing && throw(signal_inventory_validation_error(
+        -         "sample_rate_hz",
+        -         "Для raw vector или matrix требуется частота дискретизации",
+        -     ))
+        6     signal_inventory_numeric_series(value, requested_sample_rate_hz)
+        - end
+        - 
+       52 function signal_inventory_unique_name(existing_names::Set{String}, base::String)::String
+       87     base in existing_names || return base
+       17     suffix = 2
+      244     while "$(base)$(suffix)" in existing_names
+      105         suffix += 1
+      105     end
+       17     "$(base)$(suffix)"
+        - end
+        - 
+        - function signal_inventory_next_color(
+        -     palette::SignalColorPalette,
+        -     signals::Vector{AnalysedSignal},
+        -     source_color::Union{Nothing,String} = nothing,
+        - )::String
+       29     signal_palette_next_color(
+        -         palette,
+        -         Set(signal.color for signal in signals),
+        -         length(signals) + 1,
+        -         source_color,
+        -     )
+        - end
+        - 
+       35 function signal_inventory_clone_display(display::SignalAnalyserDisplayState)
+       35     SignalAnalyserDisplayState(
+        -         display.id,
+        -         display.name,
+        -         display.active_plot,
+        -         display.membership,
+        -         display.analysis_source,
+        -         display.time_limits,
+        -         display.measurement_selection,
+        -         display.spectrum_settings,
+        -         display.spectrogram_settings,
+        -         display.persistence_settings,
+        -         display.stored_settings,
+        -         display.peaks_enabled,
+        -     )
+        - end
+        - 
+       34 function signal_inventory_clone_state(state::SignalAnalyserState)
+       34     typeof(state)(
+        -         copy(state.signals),
+        -         SignalAnalyserViewState(
+        -             state.view.state_revision,
+        -             state.view.active_plot,
+        -             state.view.selected_signal,
+        -         ),
+        -         state.row_selection,
+        -         [signal_inventory_clone_display(display) for display in state.displays],
+        -         state.active_display_id,
+        -         state.next_display_number,
+        -         Dict(
+        -             display_id => copy(layout)
+        -             for (display_id, layout) in state.display_layouts
+        -         ),
+        -         deepcopy(state.plot_cache),
+        -         copy(state.spectrum_cache),
+        -         copy(state.spectrogram_cache),
+        -         copy(state.persistence_cache),
+        -         state.measurements_service,
+        -         state.peaks_service,
+        -         state.spectrum_service,
+        -         state.spectrogram_service,
+        -         state.persistence_service,
+        -         signal_analyser_clone_calculation_manager(state.output_manager),
+        -         ReentrantLock(),
+        -     )
+        - end
+        - 
+        - function signal_inventory_replace_display!(
+        -     state::SignalAnalyserState,
+        -     prospective::SignalAnalyserDisplayState,
+        - )
+       78     index = findfirst(display -> display.id == prospective.id, state.displays)
+       26     index === nothing && throw(ArgumentError("Display не найден: $(prospective.id)"))
+       26     state.displays[index] = prospective
+       26     nothing
+        - end
+        - 
+       28 function signal_inventory_add_candidates!(
+        -     service::SignalInventoryService,
+        -     state::SignalAnalyserState,
+        -     candidates::AbstractVector{WorkspaceSignalCandidate},
+        - )::Vector{String}
+       28     isempty(candidates) && throw(ArgumentError("Signals mutation не может добавить пустой набор"))
+       28     existing_names = Set(signal.name for signal in state.signals)
+       28     added_names = String[]
+       28     added_signals = AnalysedSignal[]
+       56     working_signals = copy(state.signals)
+       28     for candidate in candidates
+       29         item = candidate.series
+       29         name = signal_inventory_unique_name(existing_names, candidate.base_name)
+       52         color = signal_inventory_next_color(
+        -             service.palette,
+        -             working_signals,
+        -             candidate.source_color,
+        -         )
+       58         signal = AnalysedSignal(
+        -             name,
+        -             color,
+        -             item.sample_rate_hz,
+        -             copy(item.values),
+        -             item.is_complex,
+        -             true,
+        -         )
+       29         push!(working_signals, signal)
+       29         push!(added_signals, signal)
+       29         push!(existing_names, name)
+       29         push!(added_names, name)
+       29     end
+        - 
+       28     active_display = signal_analyser_active_display(state)
+       28     members = vcat(signal_analyser_display_members(active_display), added_names)
+       28     member_names = Set(members)
+       56     prospective_members = [signal for signal in working_signals if signal.name in member_names]
+       28     selected_signal = first(added_signals)
+       32     reconciled_settings = signal_analyser_reconcile_analysis_source(
+        -         service.source_reconciler,
+        -         active_display,
+        -         prospective_members,
+        -         selected_signal,
+        -     )
+       52     append!(state.signals, added_signals)
+       26     first_added = selected_signal.name
+       26     prospective_display = SignalAnalyserDisplayState(
+        -         active_display.id,
+        -         active_display.name,
+        -         active_display.active_plot,
+        -         SignalDisplayMembership(members),
+        -         signal_analysis_source(first_added),
+        -         signal_full_time_limits(state.measurements_service, selected_signal),
+        -         active_display.measurement_selection,
+        -         reconciled_settings.spectrum,
+        -         reconciled_settings.spectrogram,
+        -         active_display.persistence_settings,
+        -         signal_settings_reconcile_stored_for_source(
+        -             active_display.stored_settings,
+        -             selected_signal,
+        -         ),
+        -         active_display.peaks_enabled,
+        -     )
+       26     signal_inventory_replace_display!(state, prospective_display)
+       26     active_pane = signal_display_active_pane(
+        -         signal_analyser_layout_by_display_id(state, active_display.id),
+        -     )
+       52     state.display_layouts[active_display.id] = signal_display_layout_replace_active_pane(
+        -         signal_analyser_layout_by_display_id(state, active_display.id),
+        -         signal_display_pane_from_display(active_pane.id, prospective_display),
+        -     )
+       26     state.row_selection = GlobalSignalSelection(first_added)
+       26     signal_analyser_sync_active_display!(state, prospective_display)
+       26     added_names
+        - end
+        - 
+       28 function signal_inventory_add_series!(
+        -     service::SignalInventoryService,
+        -     state::SignalAnalyserState,
+        -     series::Vector{WorkspaceSignalSeries},
+        -     base_name::String,
+        -     source_color::Union{Nothing,String} = nothing,
+        - )::Vector{String}
+       33     candidates = WorkspaceSignalCandidate[
+        -         WorkspaceSignalCandidate(base_name, item, source_color) for item in series
+        -     ]
+       28     signal_inventory_add_candidates!(service, state, candidates)
+        - end
+        - 
+        9 function signal_inventory_execute!(
+        -     service::SignalInventoryService,
+        -     state::SignalAnalyserState,
+        -     command::ImportWorkspaceSignalCommand,
+        - )
+        9     value = try
+       10         workspace_signal_value(service.workspace_source, command.variable_name)
+        -     catch err
+        2         err isa SignalWorkspaceSourceError || rethrow()
+        0         throw(signal_inventory_validation_error("variable_name", sprint(showerror, err)))
+        -     end
+        8     series = signal_inventory_workspace_series(value, command.sample_rate_hz)
+        6     base_name = command.signal_name === nothing ? command.variable_name : command.signal_name
+        5     signal_inventory_add_series!(service, state, series, base_name)
+        - end
+        - 
+       22 function signal_inventory_execute!(
+        -     service::SignalInventoryService,
+        -     state::SignalAnalyserState,
+        -     command::DuplicateSignalCommand,
+        - )
+       22     source = try
+       22         signal_by_name(state, command.signal_name)
+        -     catch err
+        0         err isa ArgumentError || rethrow()
+        0         throw(signal_inventory_validation_error("signal_name", "Неизвестное имя сигнала"))
+        -     end
+       22     existing_names = Set(signal.name for signal in state.signals)
+       22     base_name = signal_inventory_unique_name(existing_names, "$(source.name)_Copy")
+       44     series = WorkspaceSignalSeries[
+        -         WorkspaceSignalSeries(copy(source.values), source.sample_rate_hz, source.is_complex),
+        -     ]
+       22     signal_inventory_add_series!(service, state, series, base_name, source.color)
+        - end
+        - 
+        1 function signal_inventory_execute!(
+        -     service::SignalInventoryService,
+        -     state::SignalAnalyserState,
+        -     command::ExtractTimeLimitsSignalCommand,
+        - )
+        1     command.display_id == state.active_display_id || throw(signal_inventory_validation_error(
+        -         "display_id",
+        -         "Извлечение доступно только для active Display",
+        -     ))
+        1     display = try
+        1         signal_analyser_display_by_id(state, command.display_id)
+        -     catch err
+        0         err isa ArgumentError || rethrow()
+        0         throw(signal_inventory_validation_error("display_id", "Неизвестный идентификатор Display"))
+        -     end
+        2     analysis_name = signal_analyser_display_analysis_name(display)
+        1     analysis_name === nothing && throw(signal_inventory_validation_error(
+        -         "display_id",
+        -         "Пустой Display не имеет analysis source",
+        -     ))
+        1     display.time_limits === nothing && throw(signal_inventory_validation_error(
+        -         "display_id",
+        -         "Display не имеет Time Limits",
+        -     ))
+        1     source = signal_by_name(state, analysis_name)
+        1     sample_range = signal_time_sample_range(
+        -         state.measurements_service,
+        -         source,
+        -         display.time_limits,
+        -     )
+        1     length(sample_range) >= 2 || throw(signal_inventory_validation_error(
+        -         "display_id",
+        -         "Выбранный диапазон должен содержать не менее двух отсчётов",
+        -     ))
+        2     values = copy(source.values[sample_range.first_index:sample_range.last_index])
+        1     existing_names = Set(signal.name for signal in state.signals)
+        1     base_name = signal_inventory_unique_name(existing_names, "$(source.name)_Extract")
+        1     series = WorkspaceSignalSeries[
+        -         WorkspaceSignalSeries(values, source.sample_rate_hz, source.is_complex),
+        -     ]
+        1     signal_inventory_add_series!(service, state, series, base_name, source.color)
+        - end
+        - 
+        2 function signal_inventory_reconciled_display(
+        -     state::SignalAnalyserState,
+        -     display::SignalAnalyserDisplayState,
+        -     deleted_name::String,
+        - )::SignalAnalyserDisplayState
+        2     members = [name for name in signal_analyser_display_members(display) if name != deleted_name]
+        3     current_analysis = signal_analyser_display_analysis_name(display)
+        2     analysis_name = if isempty(members)
+        1         nothing
+        2     elseif current_analysis === nothing || current_analysis == deleted_name
+        0         first(members)
+        -     else
+        4         current_analysis
+        -     end
+        2     limits = if analysis_name === nothing
+        1         nothing
+        -     else
+        1         signal = signal_by_name(state, analysis_name)
+        1         if display.time_limits !== nothing && signal_time_limits_are_valid(
+        -             state.measurements_service,
+        -             signal,
+        -             display.time_limits,
+        -         )
+        1             display.time_limits
+        -         else
+        3             signal_full_time_limits(state.measurements_service, signal)
+        -         end
+        -     end
+        2     SignalAnalyserDisplayState(
+        -         display.id,
+        -         display.name,
+        -         display.active_plot,
+        -         SignalDisplayMembership(members),
+        -         signal_analysis_source(analysis_name),
+        -         limits,
+        -         display.measurement_selection,
+        -         display.spectrum_settings,
+        -         display.spectrogram_settings,
+        -         display.persistence_settings,
+        -         signal_settings_reconcile_stored_for_source(
+        -             display.stored_settings,
+        -             analysis_name === nothing ? nothing : signal_by_name(state, analysis_name),
+        -         ),
+        -         analysis_name === nothing ? false : display.peaks_enabled,
+        -     )
+        - end
+        - 
+        2 function signal_inventory_execute!(
+        -     ::SignalInventoryService,
+        -     state::SignalAnalyserState,
+        -     command::DeleteSignalCommand,
+        - )
+        3     length(state.signals) > 1 || throw(signal_inventory_validation_error(
+        -         "signal_name",
+        -         "Нельзя удалить последний сигнал",
+        -     ))
+        4     any(signal -> signal.name == command.signal_name, state.signals) ||
+        -         throw(signal_inventory_validation_error("signal_name", "Неизвестное имя сигнала"))
+        - 
+        1     state.signals = [signal for signal in state.signals if signal.name != command.signal_name]
+        1     state.display_layouts = Dict(
+        -         display_id => signal_display_layout_without_signal(layout, command.signal_name)
+        -         for (display_id, layout) in state.display_layouts
+        -     )
+        1     state.displays = [
+        -         signal_inventory_reconciled_display(state, display, command.signal_name)
+        -         for display in state.displays
+        -     ]
+        1     if state.row_selection.signal_name == command.signal_name
+        0         state.row_selection = GlobalSignalSelection(first(state.signals).name)
+        -     end
+        7     filter!(pair -> first(pair) != command.signal_name, state.plot_cache)
+        1     filter!(pair -> first(pair).signal_name != command.signal_name, state.spectrum_cache)
+        1     filter!(pair -> first(pair).signal_name != command.signal_name, state.spectrogram_cache)
+        1     filter!(pair -> first(pair).signal_name != command.signal_name, state.persistence_cache)
+        1     signal_analyser_sync_active_display!(state, signal_analyser_active_display(state))
+        1     nothing
+        - end
+        - 
+       68 function prepare_signal_inventory_mutation(
+        -     service::SignalInventoryService,
+        -     state::SignalAnalyserState,
+        -     command::AbstractSignalInventoryCommand,
+        -     ;
+        -     lightweight::Bool = false,
+        - )
+       34     prospective = signal_inventory_clone_state(state)
+       34     try
+       41         signal_inventory_execute!(service, prospective, command)
+        -     catch err
+       12         err isa SignalAnalysisSourceCompatibilityError || rethrow()
+        2         throw(signal_inventory_validation_error(
+        -             err.field,
+        -             sprint(showerror, err),
+        -         ))
+        -     end
+       27     prospective.view.state_revision += 1
+       27     signal_analyser_invalidate_all_outputs_unlocked!(prospective)
+       54     snapshot = lightweight ?
+        -         signal_analyser_state_lite_unlocked(prospective) :
+        -         signal_analyser_snapshot_unlocked(prospective)
+       27     PreparedSignalInventoryMutation(prospective, snapshot)
+        - end
+        - 
+        - function prepare_signal_inventory_batch_mutation(
+        -     service::SignalInventoryService,
+        -     state::SignalAnalyserState,
+        -     candidates::AbstractVector{WorkspaceSignalCandidate},
+        -     ;
+        -     lightweight::Bool = false,
+        - )::PreparedSignalInventoryMutation
+        -     prospective = signal_inventory_clone_state(state)
+        -     try
+        -         signal_inventory_add_candidates!(service, prospective, candidates)
+        -     catch err
+        -         err isa SignalAnalysisSourceCompatibilityError || rethrow()
+        -         throw(signal_inventory_validation_error(err.field, sprint(showerror, err)))
+        -     end
+        -     prospective.view.state_revision += 1
+        -     signal_analyser_invalidate_all_outputs_unlocked!(prospective)
+        -     snapshot = lightweight ?
+        -         signal_analyser_state_lite_unlocked(prospective) :
+        -         signal_analyser_snapshot_unlocked(prospective)
+        -     PreparedSignalInventoryMutation(prospective, snapshot)
+        - end
+        - 
+        - function publish_signal_inventory_mutation!(
+        -     state::SignalAnalyserState,
+        -     prepared::PreparedSignalInventoryMutation,
+        - )
+       27     prospective = prepared.state
+       27     signal_analyser_cancel_active_output_unlocked!(state)
+       27     state.signals = prospective.signals
+       27     state.view = prospective.view
+       27     state.row_selection = prospective.row_selection
+       27     state.displays = prospective.displays
+       27     state.active_display_id = prospective.active_display_id
+       27     state.next_display_number = prospective.next_display_number
+       27     state.display_layouts = prospective.display_layouts
+       27     state.plot_cache = prospective.plot_cache
+       27     state.spectrum_cache = prospective.spectrum_cache
+       27     state.spectrogram_cache = prospective.spectrogram_cache
+       27     state.persistence_cache = prospective.persistence_cache
+       27     state.output_manager = prospective.output_manager
+       27     nothing
+        - end
+        - 
+       34 function apply_signal_inventory!(
+        -     service::SignalInventoryService,
+        -     state::SignalAnalyserState,
+        -     command::AbstractSignalInventoryCommand;
+        -     lightweight::Bool = false,
+        - )::Dict{String,Any}
+       34     lock(state.lock) do
+       34         requested_revision = signal_inventory_command_revision(command)
+       34         requested_revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
+        -             requested_revision,
+        -             state.view.state_revision,
+        -         ))
+       34         prepared = prepare_signal_inventory_mutation(
+        -             service,
+        -             state,
+        -             command;
+        -             lightweight = lightweight,
+        -         )
+       27         publish_signal_inventory_mutation!(state, prepared)
+       27         prepared.snapshot
+        -     end
+        - end
+        - 
+        - function apply_signal_inventory!(
+        -     service::SignalInventoryService,
+        -     state::SignalAnalyserState,
+        -     data;
+        -     lightweight::Bool = false,
+        - )::Dict{String,Any}
+        -     apply_signal_inventory!(
+        -         service,
+        -         state,
+        -         parse_signal_inventory_command(data);
+        -         lightweight = lightweight,
+        -     )
+        - end

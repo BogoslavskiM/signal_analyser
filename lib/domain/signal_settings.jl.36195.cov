@@ -1,0 +1,736 @@
+        - const SIGNAL_SETTINGS_FIELD_KINDS = Set([
+        -     "boolean",
+        -     "enum",
+        -     "number",
+        -     "integer",
+        -     "optional_range",
+        -     "resolution",
+        -     "power_bins",
+        - ])
+        - 
+        - const SIGNAL_SETTINGS_EFFECT_STATUSES = Set([
+        -     "effective",
+        -     "effective_presentation",
+        -     "stored_only",
+        -     "blocked_contract",
+        -     "blocked_provider",
+        -     "blocked_prerequisite",
+        -     "blocked_resource",
+        - ])
+        - 
+        - const SIGNAL_SETTINGS_EFFECT_REASONS = Set([
+        -     "",
+        -     "milestone_3",
+        -     "milestone_3_contract",
+        -     "ENGEE-20260801-003",
+        -     "ENGEE-20260801-004",
+        -     "DEC-20260801-026",
+        -     "DEC-20260801-027",
+        - ])
+        - 
+        - const SIGNAL_SETTINGS_CONTROL_KINDS = Set([
+        -     "checkbox",
+        -     "combobox",
+        -     "number",
+        -     "integer",
+        -     "range",
+        -     "resolution",
+        -     "power_bins",
+        - ])
+        - 
+        - @enum SignalTimeUnitPreference begin
+        -     PICOSECONDS_TIME_UNIT
+        -     NANOSECONDS_TIME_UNIT
+        -     MICROSECONDS_TIME_UNIT
+        -     MILLISECONDS_TIME_UNIT
+        -     SECONDS_TIME_UNIT
+        -     MINUTES_TIME_UNIT
+        -     HOURS_TIME_UNIT
+        -     DAYS_TIME_UNIT
+        -     YEARS_TIME_UNIT
+        - end
+        - 
+        - @enum SignalFrequencyUnitPreference begin
+        -     CYCLES_PER_YEAR_FREQUENCY_UNIT
+        -     CYCLES_PER_DAY_FREQUENCY_UNIT
+        -     CYCLES_PER_HOUR_FREQUENCY_UNIT
+        -     CYCLES_PER_MINUTE_FREQUENCY_UNIT
+        -     MILLIHERTZ_FREQUENCY_UNIT
+        -     HERTZ_FREQUENCY_UNIT
+        -     KILOHERTZ_FREQUENCY_UNIT
+        -     MEGAHERTZ_FREQUENCY_UNIT
+        -     GIGAHERTZ_FREQUENCY_UNIT
+        -     TERAHERTZ_FREQUENCY_UNIT
+        - end
+        - 
+        - @enum SignalSpectrumResolutionType begin
+        -     LEAKAGE_SPECTRUM_RESOLUTION
+        -     RBW_SPECTRUM_RESOLUTION
+        -     WINDOW_LENGTH_SPECTRUM_RESOLUTION
+        - end
+        - 
+        - @enum SignalSpectrumWindow begin
+        -     BLACKMAN_HARRIS_SPECTRUM_WINDOW
+        -     CHEBYSHEV_SPECTRUM_WINDOW
+        -     FLAT_TOP_SPECTRUM_WINDOW
+        -     HAMMING_SPECTRUM_WINDOW
+        -     HANN_SPECTRUM_WINDOW
+        -     KAISER_SPECTRUM_WINDOW
+        -     RECTANGULAR_SPECTRUM_WINDOW
+        - end
+        - 
+        - @enum SignalSettingMode begin
+        -     AUTOMATIC_SIGNAL_SETTING
+        -     SPECIFIED_SIGNAL_SETTING
+        - end
+        - 
+        - """Finite strict pair used by stored-only range preferences."""
+        - struct SignalSettingRange
+        -     minimum::Float64
+        -     maximum::Float64
+        - 
+        -     function SignalSettingRange(minimum::Real, maximum::Real)
+       36         minimum isa Bool && throw(ArgumentError("Минимум диапазона должен быть числом, но не Bool"))
+       36         maximum isa Bool && throw(ArgumentError("Максимум диапазона должен быть числом, но не Bool"))
+       36         min_value = Float64(minimum)
+       36         max_value = Float64(maximum)
+       36         isfinite(min_value) && isfinite(max_value) || throw(ArgumentError(
+        -             "Границы диапазона должны быть конечными числами",
+        -         ))
+       36         min_value < max_value || throw(ArgumentError(
+        -             "Минимум диапазона должен быть меньше максимума",
+        -         ))
+       36         new(
+        -             min_value == 0.0 ? 0.0 : min_value,
+        -             max_value == 0.0 ? 0.0 : max_value,
+        -         )
+        -     end
+        - end
+        - 
+        0 Base.:(==)(left::SignalSettingRange, right::SignalSettingRange) =
+        -     left.minimum == right.minimum && left.maximum == right.maximum
+        - 
+        - struct SignalSecondsResolution
+        -     mode::SignalSettingMode
+        -     seconds::Union{Nothing,Float64}
+        - 
+        -     function SignalSecondsResolution(
+        -         mode::SignalSettingMode,
+        -         seconds::Union{Nothing,Real},
+        -     )
+     7284         if mode == AUTOMATIC_SIGNAL_SETTING
+     7284             seconds === nothing || throw(ArgumentError("Auto resolution требует seconds=null"))
+     7284             return new(mode, nothing)
+        -         end
+        0         seconds === nothing && throw(ArgumentError("Specified resolution требует seconds"))
+        0         seconds isa Bool && throw(ArgumentError("Seconds должны быть числом, но не Bool"))
+        0         value = Float64(seconds)
+        0         isfinite(value) && value > 0 || throw(ArgumentError(
+        -             "Seconds должны быть положительным конечным числом",
+        -         ))
+        0         new(mode, value)
+        -     end
+        - end
+        - 
+     7284 SignalSecondsResolution() = SignalSecondsResolution(AUTOMATIC_SIGNAL_SETTING, nothing)
+     1118 Base.:(==)(left::SignalSecondsResolution, right::SignalSecondsResolution) =
+        -     left.mode == right.mode && left.seconds == right.seconds
+        - 
+        - struct SignalHertzResolution
+        -     mode::SignalSettingMode
+        -     hz::Union{Nothing,Float64}
+        - 
+        -     function SignalHertzResolution(
+        -         mode::SignalSettingMode,
+        -         hz::Union{Nothing,Real},
+        -     )
+     3632         if mode == AUTOMATIC_SIGNAL_SETTING
+     3632             hz === nothing || throw(ArgumentError("Auto resolution требует hz=null"))
+     3632             return new(mode, nothing)
+        -         end
+        0         hz === nothing && throw(ArgumentError("Specified resolution требует hz"))
+        0         hz isa Bool && throw(ArgumentError("Hz должны быть числом, но не Bool"))
+        0         value = Float64(hz)
+        0         isfinite(value) && value > 0 || throw(ArgumentError(
+        -             "Hz должны быть положительным конечным числом",
+        -         ))
+        0         new(mode, value)
+        -     end
+        - end
+        - 
+     3632 SignalHertzResolution() = SignalHertzResolution(AUTOMATIC_SIGNAL_SETTING, nothing)
+      559 Base.:(==)(left::SignalHertzResolution, right::SignalHertzResolution) =
+        -     left.mode == right.mode && left.hz == right.hz
+        - 
+        - struct SignalSamplesResolution
+        -     mode::SignalSettingMode
+        -     samples::Union{Nothing,Int}
+        - 
+        -     function SignalSamplesResolution(
+        -         mode::SignalSettingMode,
+        -         samples::Union{Nothing,Integer},
+        -     )
+     3632         if mode == AUTOMATIC_SIGNAL_SETTING
+     3632             samples === nothing || throw(ArgumentError("Auto resolution требует samples=null"))
+     3632             return new(mode, nothing)
+        -         end
+        0         samples === nothing && throw(ArgumentError("Specified resolution требует samples"))
+        0         samples isa Bool && throw(ArgumentError("Samples должны быть integer, но не Bool"))
+        0         value = try
+        0             Int(samples)
+        -         catch err
+        0             (err isa InexactError || err isa OverflowError) || rethrow()
+        0             throw(ArgumentError("Samples выходят за диапазон Int"))
+        -         end
+        0         value >= 2 || throw(ArgumentError("Samples должны быть не меньше 2"))
+        0         new(mode, value)
+        -     end
+        - end
+        - 
+     3632 SignalSamplesResolution() = SignalSamplesResolution(AUTOMATIC_SIGNAL_SETTING, nothing)
+      559 Base.:(==)(left::SignalSamplesResolution, right::SignalSamplesResolution) =
+        -     left.mode == right.mode && left.samples == right.samples
+        - 
+        - struct SignalNfftResolution
+        -     mode::SignalSettingMode
+        -     nfft::Union{Nothing,Int}
+        - 
+        -     function SignalNfftResolution(
+        -         mode::SignalSettingMode,
+        -         nfft::Union{Nothing,Integer},
+        -     )
+     3632         if mode == AUTOMATIC_SIGNAL_SETTING
+     3632             nfft === nothing || throw(ArgumentError("Auto NFFT требует nfft=null"))
+     3632             return new(mode, nothing)
+        -         end
+        0         nfft === nothing && throw(ArgumentError("Specified NFFT требует nfft"))
+        0         nfft isa Bool && throw(ArgumentError("NFFT должен быть integer, но не Bool"))
+        0         value = try
+        0             Int(nfft)
+        -         catch err
+        0             (err isa InexactError || err isa OverflowError) || rethrow()
+        0             throw(ArgumentError("NFFT выходит за диапазон Int"))
+        -         end
+        0         value >= 2 || throw(ArgumentError("NFFT должен быть не меньше 2"))
+        0         new(mode, value)
+        -     end
+        - end
+        - 
+     3632 SignalNfftResolution() = SignalNfftResolution(AUTOMATIC_SIGNAL_SETTING, nothing)
+      559 Base.:(==)(left::SignalNfftResolution, right::SignalNfftResolution) =
+        -     left.mode == right.mode && left.nfft == right.nfft
+        - 
+        - struct SignalPowerBinsPreference
+        -     mode::SignalSettingMode
+        -     count::Union{Nothing,Int}
+        - 
+        -     function SignalPowerBinsPreference(
+        -         mode::SignalSettingMode,
+        -         count::Union{Nothing,Integer},
+        -     )
+     3632         if mode == AUTOMATIC_SIGNAL_SETTING
+     3632             count === nothing || throw(ArgumentError("Auto power bins требует count=null"))
+     3632             return new(mode, nothing)
+        -         end
+        0         count === nothing && throw(ArgumentError("Specified power bins требует count"))
+        0         count isa Bool && throw(ArgumentError("Power bins должны быть integer, но не Bool"))
+        0         value = try
+        0             Int(count)
+        -         catch err
+        0             (err isa InexactError || err isa OverflowError) || rethrow()
+        0             throw(ArgumentError("Power bins выходят за диапазон Int"))
+        -         end
+        0         20 <= value <= 1024 || throw(ArgumentError(
+        -             "Power bins должны быть целым числом от 20 до 1024",
+        -         ))
+        0         new(mode, value)
+        -     end
+        - end
+        - 
+     3632 SignalPowerBinsPreference() = SignalPowerBinsPreference(AUTOMATIC_SIGNAL_SETTING, nothing)
+      559 Base.:(==)(left::SignalPowerBinsPreference, right::SignalPowerBinsPreference) =
+        -     left.mode == right.mode && left.count == right.count
+        - 
+        - struct SignalDisplayPreferences
+     3632     show_legend::Bool
+        - end
+        - 
+     3626 SignalDisplayPreferences() = SignalDisplayPreferences(true)
+      559 Base.:(==)(left::SignalDisplayPreferences, right::SignalDisplayPreferences) =
+        -     left.show_legend == right.show_legend
+        - 
+        - struct SignalTimePreferences
+     3657     normalize_y::Bool
+        -     show_markers::Bool
+        -     units::SignalTimeUnitPreference
+        -     y_limits::Union{Nothing,SignalSettingRange}
+        -     link_time::Bool
+        - end
+        - 
+     3626 SignalTimePreferences() = SignalTimePreferences(
+        -     false,
+        -     false,
+        -     SECONDS_TIME_UNIT,
+        -     nothing,
+        -     false,
+        - )
+      559 Base.:(==)(left::SignalTimePreferences, right::SignalTimePreferences) =
+        -     left.normalize_y == right.normalize_y &&
+        -     left.show_markers == right.show_markers &&
+        -     left.units == right.units &&
+        -     left.y_limits == right.y_limits &&
+        -     left.link_time == right.link_time
+        - 
+        - struct SignalSpectrumPreferences
+        -     frequency_units::SignalFrequencyUnitPreference
+        -     y_limits::Union{Nothing,SignalSettingRange}
+        -     resolution_type::SignalSpectrumResolutionType
+        -     rbw::SignalHertzResolution
+        -     window_length::SignalSamplesResolution
+        -     window::SignalSpectrumWindow
+        -     sidelobe_attenuation_db::Float64
+        -     overlap_percent::Float64
+        -     nfft::SignalNfftResolution
+        - 
+       54     function SignalSpectrumPreferences(
+        -         frequency_units::SignalFrequencyUnitPreference,
+        -         y_limits::Union{Nothing,SignalSettingRange},
+        -         resolution_type::SignalSpectrumResolutionType,
+        -         rbw::SignalHertzResolution,
+        -         window_length::SignalSamplesResolution,
+        -         window::SignalSpectrumWindow,
+        -         sidelobe_attenuation_db::Real,
+        -         overlap_percent::Real,
+        -         nfft::SignalNfftResolution,
+        -     )
+     3680         sidelobe_attenuation_db isa Bool && throw(ArgumentError(
+        -             "Sidelobe attenuation должна быть числом, но не Bool",
+        -         ))
+     3680         attenuation = Float64(sidelobe_attenuation_db)
+     3680         isfinite(attenuation) || throw(ArgumentError(
+        -             "Sidelobe attenuation должна быть конечным числом",
+        -         ))
+     3680         window == CHEBYSHEV_SPECTRUM_WINDOW && attenuation < 45 && throw(ArgumentError(
+        -             "Chebyshev sidelobe attenuation должна быть не меньше 45 dB",
+        -         ))
+     3680         window == KAISER_SPECTRUM_WINDOW && attenuation < 21 && throw(ArgumentError(
+        -             "Kaiser sidelobe attenuation должна быть не меньше 21 dB",
+        -         ))
+     3680         overlap_percent isa Bool && throw(ArgumentError(
+        -             "Spectrum overlap должен быть числом, но не Bool",
+        -         ))
+     3680         overlap = Float64(overlap_percent)
+     3680         isfinite(overlap) && 0.0 <= overlap < 100.0 || throw(ArgumentError(
+        -             "Spectrum overlap должен быть конечным числом от 0 включительно до 100 исключительно",
+        -         ))
+     3680         if window_length.mode == SPECIFIED_SIGNAL_SETTING &&
+        -             nfft.mode == SPECIFIED_SIGNAL_SETTING &&
+        -             (nfft.nfft::Int) < (window_length.samples::Int)
+        0             throw(ArgumentError(
+        -                 "Specified NFFT должен быть не меньше specified Window Length",
+        -             ))
+        -         end
+     3680         new(
+        -             frequency_units,
+        -             y_limits,
+        -             resolution_type,
+        -             rbw,
+        -             window_length,
+        -             window,
+        -             attenuation == 0.0 ? 0.0 : attenuation,
+        -             overlap == 0.0 ? 0.0 : overlap,
+        -             nfft,
+        -         )
+        -     end
+        - end
+        - 
+        - SignalSpectrumPreferences(
+        -     frequency_units::SignalFrequencyUnitPreference,
+        -     y_limits::Union{Nothing,SignalSettingRange},
+        -     resolution_type::SignalSpectrumResolutionType,
+        -     rbw::SignalHertzResolution,
+        -     window_length::SignalSamplesResolution,
+        -     window::SignalSpectrumWindow,
+        -     sidelobe_attenuation_db::Real,
+        -     overlap_percent::Real,
+        - ) = SignalSpectrumPreferences(
+        -     frequency_units,
+        -     y_limits,
+        -     resolution_type,
+        -     rbw,
+        -     window_length,
+        -     window,
+        -     sidelobe_attenuation_db,
+        -     overlap_percent,
+        -     SignalNfftResolution(),
+        - )
+        - 
+     3626 SignalSpectrumPreferences() = SignalSpectrumPreferences(
+        -     HERTZ_FREQUENCY_UNIT,
+        -     nothing,
+        -     LEAKAGE_SPECTRUM_RESOLUTION,
+        -     SignalHertzResolution(),
+        -     SignalSamplesResolution(),
+        -     HAMMING_SPECTRUM_WINDOW,
+        -     60.0,
+        -     50.0,
+        -     SignalNfftResolution(),
+        - )
+      559 Base.:(==)(left::SignalSpectrumPreferences, right::SignalSpectrumPreferences) =
+        -     left.frequency_units == right.frequency_units &&
+        -     left.y_limits == right.y_limits &&
+        -     left.resolution_type == right.resolution_type &&
+        -     left.rbw == right.rbw &&
+        -     left.window_length == right.window_length &&
+        -     left.window == right.window &&
+        -     left.sidelobe_attenuation_db == right.sidelobe_attenuation_db &&
+        -     left.overlap_percent == right.overlap_percent &&
+        -     left.nfft == right.nfft
+        - 
+        - struct SignalSpectrogramPreferences
+     3739     time_units::SignalTimeUnitPreference
+        -     frequency_units::SignalFrequencyUnitPreference
+        -     scale::SignalSpectrumScale
+        -     time_resolution::SignalSecondsResolution
+        -     reassign::Bool
+        - end
+        - 
+     3626 SignalSpectrogramPreferences() = SignalSpectrogramPreferences(
+        -     SECONDS_TIME_UNIT,
+        -     HERTZ_FREQUENCY_UNIT,
+        -     DB_SPECTRUM_SCALE,
+        -     SignalSecondsResolution(),
+        -     false,
+        - )
+      559 Base.:(==)(left::SignalSpectrogramPreferences, right::SignalSpectrogramPreferences) =
+        -     left.time_units == right.time_units &&
+        -     left.frequency_units == right.frequency_units &&
+        -     left.scale == right.scale &&
+        -     left.time_resolution == right.time_resolution &&
+        -     left.reassign == right.reassign
+        - 
+        - struct SignalPersistencePreferences
+        -     time_units::SignalTimeUnitPreference
+        -     frequency_units::SignalFrequencyUnitPreference
+        -     frequency_limits::Union{Nothing,SignalSettingRange}
+        -     power_limits::Union{Nothing,SignalSettingRange}
+        -     density_limits::Union{Nothing,SignalSettingRange}
+        -     frequency_scale::SignalSpectrumFrequencyScale
+        -     scale::SignalSpectrumScale
+        -     time_resolution::SignalSecondsResolution
+        -     overlap_percent::Float64
+        -     power_bins::SignalPowerBinsPreference
+        - 
+        -     function SignalPersistencePreferences(
+        -         time_units::SignalTimeUnitPreference,
+        -         frequency_units::SignalFrequencyUnitPreference,
+        -         frequency_limits::Union{Nothing,SignalSettingRange},
+        -         power_limits::Union{Nothing,SignalSettingRange},
+        -         density_limits::Union{Nothing,SignalSettingRange},
+        -         frequency_scale::SignalSpectrumFrequencyScale,
+        -         scale::SignalSpectrumScale,
+        -         time_resolution::SignalSecondsResolution,
+        -         overlap_percent::Real,
+        -         power_bins::SignalPowerBinsPreference,
+        -     )
+     3769         overlap_percent isa Bool && throw(ArgumentError(
+        -             "Persistence overlap должен быть числом, но не Bool",
+        -         ))
+     3769         overlap = Float64(overlap_percent)
+     3769         isfinite(overlap) && 0.0 <= overlap < 100.0 || throw(ArgumentError(
+        -             "Persistence overlap должен быть конечным числом от 0 включительно до 100 исключительно",
+        -         ))
+     3769         if density_limits !== nothing
+        0             0.0 <= density_limits.minimum < density_limits.maximum <= 100.0 || throw(ArgumentError(
+        -                 "Density Limits должны находиться внутри диапазона 0–100 процентов",
+        -             ))
+        -         end
+     3769         new(
+        -             time_units,
+        -             frequency_units,
+        -             frequency_limits,
+        -             power_limits,
+        -             density_limits,
+        -             frequency_scale,
+        -             scale,
+        -             time_resolution,
+        -             overlap == 0.0 ? 0.0 : overlap,
+        -             power_bins,
+        -         )
+        -     end
+        - end
+        - 
+     3626 SignalPersistencePreferences() = SignalPersistencePreferences(
+        -     SECONDS_TIME_UNIT,
+        -     HERTZ_FREQUENCY_UNIT,
+        -     nothing,
+        -     nothing,
+        -     nothing,
+        -     LINEAR_SPECTRUM_FREQUENCY_SCALE,
+        -     DB_SPECTRUM_SCALE,
+        -     SignalSecondsResolution(),
+        -     50.0,
+        -     SignalPowerBinsPreference(),
+        - )
+      559 Base.:(==)(left::SignalPersistencePreferences, right::SignalPersistencePreferences) =
+        -     left.time_units == right.time_units &&
+        -     left.frequency_units == right.frequency_units &&
+        -     left.frequency_limits == right.frequency_limits &&
+        -     left.power_limits == right.power_limits &&
+        -     left.density_limits == right.density_limits &&
+        -     left.frequency_scale == right.frequency_scale &&
+        -     left.scale == right.scale &&
+        -     left.time_resolution == right.time_resolution &&
+        -     left.overlap_percent == right.overlap_percent &&
+        -     left.power_bins == right.power_bins
+        - 
+        - """Immutable typed preferences owned by exactly one Display aggregate."""
+        - struct SignalDisplayStoredSettings
+     3890     display::SignalDisplayPreferences
+        -     time::SignalTimePreferences
+        -     spectrum::SignalSpectrumPreferences
+        -     spectrogram::SignalSpectrogramPreferences
+        -     persistence::SignalPersistencePreferences
+        - end
+        - 
+        - 
+     3626 SignalDisplayStoredSettings() = SignalDisplayStoredSettings(
+        -     SignalDisplayPreferences(),
+        -     SignalTimePreferences(),
+        -     SignalSpectrumPreferences(),
+        -     SignalSpectrogramPreferences(),
+        -     SignalPersistencePreferences(),
+        - )
+      559 Base.:(==)(left::SignalDisplayStoredSettings, right::SignalDisplayStoredSettings) =
+        -     left.display == right.display &&
+        -     left.time == right.time &&
+        -     left.spectrum == right.spectrum &&
+        -     left.spectrogram == right.spectrogram &&
+        -     left.persistence == right.persistence
+        - 
+        - struct SignalSettingsOptionDefinition
+       66     value::String
+        -     label::String
+        - end
+        - 
+        - struct SignalSettingsGroupDefinition
+       10     id::String
+        -     label::String
+        - end
+        - 
+        - struct SignalSettingsSectionDefinition
+        -     id::String
+        -     group::String
+        -     label::String
+        -     order::Int
+        - 
+       58     function SignalSettingsSectionDefinition(
+        -         id::AbstractString,
+        -         group::AbstractString,
+        -         label::AbstractString,
+        -         order::Integer,
+        -     )
+       58         order isa Bool && throw(ArgumentError("Section order должен быть integer, но не Bool"))
+       58         order > 0 || throw(ArgumentError("Section order должен быть положительным"))
+       58         new(String(id), String(group), String(label), Int(order))
+        -     end
+        - end
+        - 
+        - struct SignalSettingsReadoutDefinition
+        -     id::String
+        -     group::String
+        -     section::String
+        -     label::String
+        -     units::String
+        -     status::String
+        -     reason::String
+        - 
+        6     function SignalSettingsReadoutDefinition(
+        -         id::AbstractString,
+        -         group::AbstractString,
+        -         section::AbstractString,
+        -         label::AbstractString,
+        -         units::AbstractString,
+        -         status::AbstractString,
+        -         reason::AbstractString,
+        -     )
+        6         status in ("available", "unavailable") || throw(ArgumentError(
+        -             "Readout status должен быть available или unavailable",
+        -         ))
+        6         new(
+        -             String(id),
+        -             String(group),
+        -             String(section),
+        -             String(label),
+        -             String(units),
+        -             String(status),
+        -             String(reason),
+        -         )
+        -     end
+        - end
+        - 
+        - struct SignalSettingsFieldDefinition
+        -     id::String
+        -     group::String
+        -     section::String
+        -     label::String
+        -     kind::String
+        -     control_kind::String
+        -     default_value::Any
+        -     units::String
+        -     minimum::Union{Nothing,Float64}
+        -     maximum::Union{Nothing,Float64}
+        -     step::Union{Nothing,Float64}
+        -     options::Tuple{Vararg{SignalSettingsOptionDefinition}}
+        -     checked_value::Any
+        -     unchecked_value::Any
+        -     effect_status::String
+        -     effect_reason::String
+        -     visibility_policy::Symbol
+        -     enabled_policy::Symbol
+        - 
+       82     function SignalSettingsFieldDefinition(
+        -         id::AbstractString,
+        -         group::AbstractString,
+        -         section::AbstractString,
+        -         label::AbstractString,
+        -         kind::AbstractString,
+        -         control_kind::AbstractString,
+        -         default_value,
+        -         units::AbstractString,
+        -         minimum::Union{Nothing,Real},
+        -         maximum::Union{Nothing,Real},
+        -         step::Union{Nothing,Real},
+        -         options::Tuple{Vararg{SignalSettingsOptionDefinition}},
+        -         checked_value,
+        -         unchecked_value,
+        -         effect_status::AbstractString,
+        -         effect_reason::AbstractString,
+        -         visibility_policy::Symbol,
+        -         enabled_policy::Symbol,
+        -     )
+       82         kind_value = String(kind)
+       82         kind_value in SIGNAL_SETTINGS_FIELD_KINDS || throw(ArgumentError(
+        -             "Неизвестный kind settings field: $kind_value",
+        -         ))
+       82         status_value = String(effect_status)
+       82         status_value in SIGNAL_SETTINGS_EFFECT_STATUSES || throw(ArgumentError(
+        -             "Неизвестный effect_status settings field: $status_value",
+        -         ))
+       82         reason_value = String(effect_reason)
+       82         reason_value in SIGNAL_SETTINGS_EFFECT_REASONS || throw(ArgumentError(
+        -             "Неизвестный effect_reason settings field: $reason_value",
+        -         ))
+       82         control_value = String(control_kind)
+       82         control_value in SIGNAL_SETTINGS_CONTROL_KINDS || throw(ArgumentError(
+        -             "Неизвестный control_kind settings field: $control_value",
+        -         ))
+       82         enum_checkbox = kind_value == "enum" && control_value == "checkbox"
+       82         enum_checkbox == (checked_value !== nothing || unchecked_value !== nothing) || throw(
+        -             ArgumentError("Checked mapping допускается только и обязательно для enum-checkbox"),
+        -         )
+       82         enum_checkbox && (checked_value === nothing || unchecked_value === nothing) && throw(
+        -             ArgumentError("Enum-checkbox требует checked_value и unchecked_value"),
+        -         )
+       82         new(
+        -             String(id),
+        -             String(group),
+        -             String(section),
+        -             String(label),
+        -             kind_value,
+        -             control_value,
+        -             default_value,
+        -             String(units),
+        -             minimum === nothing ? nothing : Float64(minimum),
+        -             maximum === nothing ? nothing : Float64(maximum),
+        -             step === nothing ? nothing : Float64(step),
+        -             options,
+        -             checked_value,
+        -             unchecked_value,
+        -             status_value,
+        -             reason_value,
+        -             visibility_policy,
+        -             enabled_policy,
+        -         )
+        -     end
+        - end
+        - 
+        - """Ordered immutable metadata catalog for the settings API."""
+        - struct SignalSettingsCatalog
+        -     groups::Tuple{Vararg{SignalSettingsGroupDefinition}}
+        -     sections::Tuple{Vararg{SignalSettingsSectionDefinition}}
+        -     fields::Tuple{Vararg{SignalSettingsFieldDefinition}}
+        -     readouts::Tuple{Vararg{SignalSettingsReadoutDefinition}}
+        - 
+        2     function SignalSettingsCatalog(
+        -         groups::Tuple{Vararg{SignalSettingsGroupDefinition}},
+        -         sections::Tuple{Vararg{SignalSettingsSectionDefinition}},
+        -         fields::Tuple{Vararg{SignalSettingsFieldDefinition}},
+        -         readouts::Tuple{Vararg{SignalSettingsReadoutDefinition}},
+        -     )
+       10         group_ids = Tuple(group.id for group in groups)
+        2         length(unique(group_ids)) == length(group_ids) || throw(ArgumentError(
+        -             "Settings groups должны иметь уникальные ids",
+        -         ))
+       58         section_ids = Tuple(section.id for section in sections)
+        2         length(unique(section_ids)) == length(section_ids) || throw(ArgumentError(
+        -             "Settings sections должны иметь уникальные ids",
+        -         ))
+      116         all(section -> section.group in group_ids, sections) || throw(ArgumentError(
+        -             "Каждая settings section должна ссылаться на известную group",
+        -         ))
+       82         field_ids = Tuple(field.id for field in fields)
+        2         length(unique(field_ids)) == length(field_ids) || throw(ArgumentError(
+        -             "Settings fields должны иметь уникальные ids",
+        -         ))
+      164         all(field -> field.group in group_ids, fields) || throw(ArgumentError(
+        -             "Каждый settings field должен ссылаться на известную group",
+        -         ))
+      164         all(field -> field.section in section_ids, fields) || throw(ArgumentError(
+        -             "Каждый settings field должен ссылаться на известную section",
+        -         ))
+       84         all(field -> begin
+     1266             section = sections[findfirst(item -> item.id == field.section, sections)]
+       82             section.group == field.group
+        -         end, fields) || throw(ArgumentError(
+        -             "Group settings field должна совпадать с group section",
+        -         ))
+        6         readout_ids = Tuple(readout.id for readout in readouts)
+        2         length(unique(readout_ids)) == length(readout_ids) || throw(ArgumentError(
+        -             "Settings readouts должны иметь уникальные ids",
+        -         ))
+       14         all(readout -> readout.group in group_ids && readout.section in section_ids, readouts) ||
+        -             throw(ArgumentError("Каждый settings readout должен ссылаться на известные group/section"))
+        2         new(groups, sections, fields, readouts)
+        -     end
+        - end
+        - 
+        - 
+      270 function signal_settings_field(
+        -     catalog::SignalSettingsCatalog,
+        -     field_id::AbstractString,
+        - )::Union{Nothing,SignalSettingsFieldDefinition}
+     5987     index = findfirst(field -> field.id == field_id, catalog.fields)
+      270     index === nothing ? nothing : catalog.fields[index]
+        - end
+        - 
+        - struct UpdateSignalSettingCommand{T}
+        -     state_revision::Int
+        -     display_id::String
+        -     field_id::String
+        -     value::T
+        - 
+       18     function UpdateSignalSettingCommand(
+        -         state_revision::Integer,
+        -         display_id::AbstractString,
+        -         field_id::AbstractString,
+        -         value::T,
+        -     ) where {T}
+      250         state_revision isa Bool && throw(ArgumentError("Revision должна быть integer, но не Bool"))
+      250         revision = Int(state_revision)
+      250         revision >= 0 || throw(ArgumentError("Revision не может быть отрицательной"))
+      250         isempty(display_id) && throw(ArgumentError("Display id не может быть пустым"))
+      250         isempty(field_id) && throw(ArgumentError("Field id не может быть пустым"))
+      250         new{T}(revision, String(display_id), String(field_id), value)
+        -     end
+        - end
