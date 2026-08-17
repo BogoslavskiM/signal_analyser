@@ -31,6 +31,11 @@ module.exports = async function(assert) {
   assert(/signalAddCatalogFresh\(\)[\s\S]*?model\.signalAddCachedOpen = true; renderSignalAddCatalog\(\)/.test(app) && /loadSignalAddCatalog\(false\)/.test(app), "fresh dialog reopen must render local cache rather than fetch");
   assert(/signalAddVariables\(\)[\s\S]*?variable\.selectable === true[\s\S]*?supported\.indexOf\(variable\.source_kind\) >= 0/.test(app), "client list must retain selectable supported variables only");
   assert(/allVariables\.filter\(function \(variable\) \{ return !search/.test(app) && /model\.signalAddSelection\[variable\.variable_id\]/.test(app), "search must filter locally while selection is stored independently of visible rows");
+  assert(/value="2048"[^>]*data-signal-add-sample-rate/.test(html) && /if \(rate\) rate\.value = "2048"/.test(app), "raw workspace imports must start and reset to the 2048 Hz default");
+  assert(/function workspaceVariableLength\(variable\)/.test(app) && /sampleCount \+ " отсчётов"/.test(app), "workspace rows must show only their sample length");
+  assert(!/workspaceVariableShape\(variable\)/.test(app) && !/\? "Timed" : "Raw"/.test(app), "workspace rows must not expose Raw or Timed implementation labels");
+  assert(/signalAddResetScroll=true; renderSignalAddCatalog\(\)/.test(app) && /if \(model\.signalAddResetScroll\) \{ list\.scrollTop = 0;/.test(app), "opening or filtering the catalog must reveal its first row rather than retaining stale scroll");
+  assert(/catalog && catalog\.truncated[^\n]*" из " \+ catalog\.total/.test(app) && /Показаны первые 1000 совместимых переменных/.test(app), "a real backend safety truncation must be disclosed instead of looking like a frontend omission");
 
   const listRule = (css.match(/\.workspace-list\s*\{([^}]*)\}/) || [])[1] || "";
   assert(/min-height:\s*0/.test(listRule) && /overflow-x:\s*hidden/.test(listRule) && /overflow-y:\s*auto/.test(listRule) && /overscroll-behavior:\s*contain/.test(listRule) && !/\boverflow\s*:/.test(listRule), "variable list must be the sole explicit vertical scroll owner without an overriding shorthand");

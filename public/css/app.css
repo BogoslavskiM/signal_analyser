@@ -20,9 +20,9 @@
 /* TASK-0106: native Engee Save / Import dialog geometry (design v24). */
 .native-modal-layer { z-index: 95000; padding: 16px; background: rgba(33, 33, 33, .2); }
 .native-modal-layer.native-import { pointer-events: auto; }
-.native-dialog { width: 560px; grid-template-rows: 48px minmax(0, 1fr) 56px; border-radius: 12px; }
-.native-save-dialog { width: 560px; height: 568px; min-width: 560px; min-height: 568px; }
-.native-import-dialog { width: 560px; height: 360px; min-width: 560px; min-height: 360px; }
+.native-dialog { width: 560px; grid-template-rows: 48px auto 56px; border-radius: 12px; }
+.native-save-dialog,
+.native-import-dialog { width: 560px; height: auto; min-width: 560px; min-height: 0; max-height: calc(100vh - 32px); }
 .native-message { z-index: 99000; }
 .native-message-dialog { width: 480px; min-height: 224px; height: auto; }
 .native-dialog-body { padding: 16px; }

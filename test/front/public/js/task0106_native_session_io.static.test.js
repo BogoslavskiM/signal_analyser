@@ -45,6 +45,9 @@ module.exports = async function task0106NativeSessionIoStatic(assert) {
   assert(/\["ArrowDown", "ArrowUp", "Home", "End"\][\s\S]*focusImportMenuItem/.test(native), "Import menu must support arrows and Home/End keyboard navigation");
   assert(/button\.dataset\.testid === "toolbar-import"[\s\S]*importMenuOpen = !importMenuOpen/.test(native), "click/touch activation must toggle the same two-action menu");
   assert(/\.menu\.toolbar-import-menu\s*\{[^}]*width:\s*196px[^}]*border:\s*0[^}]*box-shadow:\s*var\(--shadow-menu\)/.test(css), "Import menu must keep the compact borderless 196px visual contract");
+  assert(/\.native-dialog\s*\{[^}]*grid-template-rows:\s*48px auto 56px/.test(css), "native dialogs must size their body to content instead of reserving a blank flexible track");
+  assert(/\.native-save-dialog,\s*\n\.native-import-dialog\s*\{[^}]*height:\s*auto[^}]*min-height:\s*0[^}]*max-height:\s*calc\(100vh - 32px\)/.test(css), "Save and Import must remove fixed empty height while retaining the viewport cap");
+  assert(!/\.native-save-dialog\s*\{[^}]*height:\s*568px/.test(css) && !/\.native-import-dialog\s*\{[^}]*height:\s*360px/.test(css), "native dialogs must not retain the obsolete fixed blank heights");
 
   assert(/fileBrowserPayload\(action, patch\)[\s\S]*file_browser_target:[\s\S]*mode:[\s\S]*allowed_extensions:[\s\S]*root_path:[\s\S]*current_path:[\s\S]*selected_path:[\s\S]*sort_ascending:[\s\S]*expanded_paths:/.test(native), "every file-browser action must send the complete backend-owned state");
   assert(/runFileBrowserAction\("open", \{ initial_path:String\(browserTargetValue\(target\) \|\| ""\) \}\)/.test(native), "folder action must send the current field value as the open initial path");
