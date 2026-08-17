@@ -9,6 +9,7 @@ module.exports = async function testLayoutPreviewAndMeasurementsInspector(assert
   const app = read("public/js/app.js");
   const api = read("public/js/api.js");
   const css = read("public/css/app.css");
+  const html = read("public/index.html");
 
   const draft = (app.match(/function renderLayoutDraft\(\)[\s\S]*?\n  \}/) || [""])[0];
   assert(/gridTemplateColumns = "repeat\(" \+ draft\.columns/.test(draft), "layout preview must use the selected column count");
@@ -60,8 +61,14 @@ module.exports = async function testLayoutPreviewAndMeasurementsInspector(assert
   assert(/\.display-tablist::before,\s*\.settings-tabs::before,\s*\.inspector-tabs::before\s*\{[^}]*z-index:\s*2[^}]*height:\s*1px/.test(css), "All three tab families must paint the neutral 1px baseline above unselected tab backgrounds at z2");
   assert(/\.display-tabs\s*\{[^}]*border-bottom:\s*0/.test(css), "the screen-tabs wrapper must not physically clip the 3px indicator from below");
   assert(/\.inspector-header\s*\{[^}]*border-top:\s*0[^}]*border-bottom:\s*0/.test(css), "the fixed lower tab track must not lose pixels to physical top/bottom borders");
-  assert(!/\.inspector-header::before\s*\{/.test(css), "the lower panel must not paint an unexpected top rule above its state buttons");
+  assert(/\.inspector-header::before\s*\{[^}]*inset:\s*0[^}]*z-index:\s*4[^}]*border:\s*1px solid var\(--line\)[^}]*border-bottom:\s*0[^}]*border-radius:\s*var\(--control-radius\) var\(--control-radius\) 0 0[^}]*pointer-events:\s*none/.test(css), "the lower header must paint one full-width rounded upper edge without consuming its 32px track");
   assert(/\.inspector-header > \.inspector-tabs\s*\{[^}]*height:\s*32px[^}]*border-bottom:\s*0/.test(css), "the lower tab list must expose all 32 paint rows to its indicator");
   assert(/\.display-action-cluster\s*\{[^}]*position:\s*relative/.test(css) && /\.display-action-cluster::after\s*\{[^}]*right:\s*0[^}]*bottom:\s*0[^}]*left:\s*0[^}]*height:\s*1px[^}]*background:\s*var\(--line\)/.test(css), "Display action buttons must continue the neutral baseline across their full width");
   assert(/\.inspector-state-controls\s*\{[^}]*position:\s*relative[^}]*height:\s*31px/.test(css) && /\.inspector-state-controls::after\s*\{[^}]*right:\s*0[^}]*bottom:\s*-1px[^}]*left:\s*0[^}]*height:\s*1px[^}]*background:\s*var\(--line\)/.test(css), "Inspector state buttons must continue the neutral baseline across their full width without changing 32x31 geometry");
+  ["display-tab-scroll-prev", "display-tab-scroll-next", "display-tab-close", "display-add", "layout-trigger", "inspector-state-toggle"].forEach((className) => {
+    assert(new RegExp(`class=\\"[^\\"]*${className}[^\\"]*header-chrome-button|class=\\"[^\\"]*header-chrome-button[^\\"]*${className}`).test(html), `${className} must use the shared header chrome button type`);
+  });
+  assert(/display-tab-close header-chrome-button/.test(app), "dynamically rendered Display close buttons must retain the shared header chrome type");
+  assert(/\.header-chrome-button\s*\{[^}]*color:\s*var\(--muted\)/.test(css) && /\.header-chrome-button:not\(:disabled\):hover,[^}]*\{[^}]*background:\s*var\(--header-chrome-hover-bg\)[^}]*color:\s*var\(--text\)/.test(css), "shared header buttons must use neutral foregrounds with non-accent hover color");
+  assert(/\.inspector-state-toggle\.header-chrome-button\s*\{[^}]*--header-chrome-hover-bg:\s*var\(--button-active\)/.test(css), "inspector arrows must preserve their existing hover background without turning blue");
 };

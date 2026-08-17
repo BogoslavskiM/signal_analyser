@@ -1385,6 +1385,19 @@ body.is-resizing-workspace * {
   background: var(--surface);
 }
 
+/* Paint the rounded upper edge above tab/button backgrounds without consuming
+   a row from the fixed 32px header track. */
+.inspector-header::before {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: var(--control-radius) var(--control-radius) 0 0;
+  content: "";
+  pointer-events: none;
+}
+
 .inspector-header > .inspector-tabs {
   box-sizing: border-box;
   height: 32px;
@@ -1510,6 +1523,39 @@ body.is-resizing-workspace * {
 .inspector-state-toggle:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -3px;
+}
+
+/* Shared neutral chrome for compact controls embedded in analytical headers.
+   Per-control hover backgrounds stay configurable while foregrounds never
+   switch to the accent blue. */
+.header-chrome-button {
+  --header-chrome-hover-bg: var(--button-hover);
+  color: var(--muted);
+  transition: background var(--duration-fast) ease, color var(--duration-fast) ease;
+}
+
+.inspector-state-toggle.header-chrome-button {
+  --header-chrome-hover-bg: var(--button-active);
+}
+
+.layout-trigger.header-chrome-button {
+  --header-chrome-hover-bg: var(--surface);
+}
+
+.header-chrome-button:not(:disabled):hover,
+.header-chrome-button[aria-expanded="true"] {
+  background: var(--header-chrome-hover-bg);
+  color: var(--text);
+}
+
+.header-chrome-button:not(:disabled):active {
+  background: var(--button-active);
+  color: var(--text);
+}
+
+.header-chrome-button:not(:disabled):hover img,
+.header-chrome-button[aria-expanded="true"] img {
+  filter: grayscale(1) brightness(0.55);
 }
 
 .inspector-state-triangle {
