@@ -1374,6 +1374,7 @@ body.is-resizing-workspace * {
 
 .inspector-header {
   position: relative;
+  isolation: isolate;
   min-width: 0;
   display: flex;
   margin: 0;
@@ -1390,8 +1391,9 @@ body.is-resizing-workspace * {
 .inspector-header::before {
   position: absolute;
   inset: 0;
-  z-index: 4;
+  z-index: 10;
   border: 1px solid var(--line);
+  border-top-color: var(--line-strong);
   border-bottom: 0;
   border-radius: var(--control-radius) var(--control-radius) 0 0;
   content: "";
