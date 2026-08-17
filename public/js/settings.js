@@ -16,7 +16,7 @@
   ];
   var ru = {
     "display.plot_type": "Тип графика", "display.show_legend": "Показывать легенду",
-    "time.normalize_y": "Нормировать Y", "time.show_markers": "Показывать маркеры", "time.units": "Единицы времени", "time.x_limits": "Пределы X", "time.y_limits": "Пределы Y", "time.link_time": "Связать время", "time.not_applicable": "Применимость",
+    "time.normalize_y": "Нормировать Y", "time.show_markers": "Показывать маркеры", "time.units": "Единицы времени", "time.x_limits": "Пределы X", "time.y_limits": "Пределы Y", "time.link_time": "Связать время",
     "spectrum.frequency_units": "Единицы частоты", "spectrum.frequency_limits": "Пределы частоты", "spectrum.y_limits": "Пределы Y", "spectrum.frequency_scale": "Шкала частоты", "spectrum.scale": "Спектр в dB", "spectrum.resolution_type": "Тип разрешения", "spectrum.leakage": "Утечка", "spectrum.rbw": "Полоса разрешения", "spectrum.window_length": "Длина окна", "spectrum.window": "Окно", "spectrum.sidelobe_attenuation_db": "Подавление боковых лепестков", "spectrum.overlap_percent": "Перекрытие", "spectrum.nfft": "Точки DFT", "spectrum.frequency_resolution": "Частотное разрешение",
     "spectrogram.time_units": "Единицы времени", "spectrogram.frequency_units": "Единицы частоты", "spectrogram.frequency_limits": "Пределы частоты", "spectrogram.power_limits": "Пределы мощности", "spectrogram.frequency_scale": "Шкала частоты", "spectrogram.scale": "Спектр в dB", "spectrogram.leakage": "Утечка", "spectrogram.time_resolution": "Разрешение по времени", "spectrogram.overlap_percent": "Перекрытие", "spectrogram.reassign": "Переназначение", "spectrogram.actual_rbw": "Фактическая RBW",
     "persistence.time_units": "Единицы времени", "persistence.frequency_units": "Единицы частоты", "persistence.frequency_limits": "Пределы частоты", "persistence.power_limits": "Пределы мощности", "persistence.density_limits": "Пределы плотности", "persistence.frequency_scale": "Шкала частоты", "persistence.scale": "Спектр в dB", "persistence.leakage": "Утечка", "persistence.time_resolution": "Разрешение по времени", "persistence.overlap_percent": "Перекрытие", "persistence.power_bins": "Интервалы мощности", "persistence.rbw": "RBW"
@@ -39,9 +39,9 @@
     return { seconds:"s", milliseconds:"ms", microseconds:"μs", nanoseconds:"ns", picoseconds:"ps", minutes:"мин", hours:"ч", days:"дн", years:"г", hertz:"Hz", kilohertz:"kHz", megahertz:"MHz", gigahertz:"GHz", terahertz:"THz", linear:"Линейная", log:"Логарифмическая", db:"dB", leakage:"По утечке", rbw:"По RBW", window_length:"По длине окна" }[raw] || (typeof option === "object" && option.label) || raw;
   }
   function pseudo(id, kind, current, extra) { return Object.assign({ id:id, kind:kind, value:current, enabled:true, visible:true, pseudo:true }, extra || {}); }
-  function actual(id, forceVisible) {
+  function actual(id) {
     var item = sourceItem(id);
-    if (!item || (!forceVisible && item.visible === false)) return null;
+    if (!item || item.visible === false) return null;
     return item;
   }
   function group(key, title, items) { return { key:key, title:title, items:items.filter(Boolean) }; }
@@ -74,22 +74,25 @@
 
   function timeInventory(type) {
     if (type === "time") {
-      var linkTime = actual("time.link_time", true);
-      if (linkTime && linkTime.visible === false) linkTime = Object.assign({}, linkTime, { enabled:false });
       return [
-        group("parameters", "Параметры", [actual("time.normalize_y", true), actual("time.show_markers", true)]),
-        group("time-limits", "Пределы времени", [actual("time.units", true), actual("time.x_limits", true)]),
-        group("y-limits", "Пределы оси Y", [actual("time.y_limits", true)]),
-        group("area-link", "Связь областей", [linkTime])
+        group("parameters", "Параметры", [actual("time.normalize_y"), actual("time.show_markers")]),
+        group("time-limits", "Пределы времени", [actual("time.units"), actual("time.x_limits")]),
+        group("y-limits", "Пределы оси Y", [actual("time.y_limits")])
       ];
     }
-    if (type === "spectrogram") return [group("time-limits", "Пределы времени", [actual("time.x_limits", true)])];
-    return [group("not-applicable", "Временные настройки", [pseudo("time.not_applicable", "readout", "Не применяется", { readonly:true, enabled:false, message:"У этого типа графика нет собственных временных настроек." })])];
+    if (type === "spectrogram") return [group("time-limits", "Пределы времени", [actual("time.x_limits")])];
+    return [];
   }
 
   function inventory() {
     var type = context.plotType;
     return displayInventory(type).concat(timeInventory(type));
+  }
+
+  function visibleItems() {
+    return inventory().reduce(function (items, section) {
+      return items.concat(section.items.filter(function (item) { return item && !item.pseudo && item.visible !== false; }));
+    }, []);
   }
 
   function numericKind(item, key) {
@@ -241,11 +244,11 @@
   }
 
   function update(item, raw) {
-    if (item.pseudo) return updatePseudo(item, raw);
+    if (item.pseudo) { updatePseudo(item, raw); return Promise.resolve(); }
     var parsed = parse(item, raw), draft = context.drafts[item.id] || {};
     if (parsed === null && !(item.kind === "optional_range" && raw.min === "" && raw.max === "")) {
       draft.value = raw; draft.error = numericError(item, raw); context.drafts[item.id] = draft;
-      render(); window.dispatchEvent(new CustomEvent("signal-apply-state")); return;
+      render(); window.dispatchEvent(new CustomEvent("signal-apply-state")); return Promise.resolve();
     }
     draft.value = parsed; draft.error = ""; draft.intent = ++context.intent; context.drafts[item.id] = draft;
     if (item.kind === "resolution" || item.kind === "power_bins") render();
@@ -253,7 +256,9 @@
     if (isApply(item)) {
       clearTimeout(context.timers[item.id]);
       context.timers[item.id] = window.setTimeout(function () { send(item); }, 150);
-    } else send(item).catch(function () {});
+      return Promise.resolve();
+    }
+    return send(item);
   }
 
   function sameContext(token, displayId) { return token === context.contextToken && displayId === context.displayId; }
@@ -284,7 +289,7 @@
   }
 
   function send(item) {
-    if (!item || item.pseudo || !context.displayId || !context.drafts[item.id] || context.drafts[item.id].error) return Promise.resolve();
+    if (!item || item.pseudo || item.visible === false || !context.displayId || !context.drafts[item.id] || context.drafts[item.id].error) return Promise.resolve();
     clearTimeout(context.timers[item.id]);
     delete context.timers[item.id];
     if (context.pending[item.id]) return context.pending[item.id];
@@ -354,10 +359,12 @@
     render:render,
     flush:function () {
       Object.keys(context.timers).forEach(function (key) { clearTimeout(context.timers[key]); delete context.timers[key]; });
-      return Promise.all(fields().filter(isApply).map(send));
+      return Promise.all(visibleItems().filter(isApply).map(send));
     },
     markApplied:function () { context.drafts={}; render(); },
-    state:function () { var all=Object.keys(context.drafts).map(function (key) { return context.drafts[key]; }); return { dirty:all.some(function (draft) { return !draft.error; }), invalid:all.some(function (draft) { return draft.error; }), displayId:context.displayId, revision:context.revision }; },
+    state:function () { var visible=visibleItems().reduce(function(ids,item){ids[item.id]=true;return ids;},{}), all=Object.keys(context.drafts).filter(function(key){return visible[key];}).map(function (key) { return context.drafts[key]; }); return { dirty:all.some(function (draft) { return !draft.error; }), invalid:all.some(function (draft) { return draft.error; }), displayId:context.displayId, revision:context.revision }; },
+    value:function (id) { var item=sourceItem(id); return item ? value(item) : undefined; },
+    setValue:function (id, raw) { var item=sourceItem(id); return item ? update(Object.assign({}, item, { visible:true }), raw) : Promise.reject(new Error("Настройка недоступна: " + id)); },
     setRevision:function (revision) { if (typeof revision === "number" && revision >= context.revision) context.revision=revision; }
   };
 })(window, document);

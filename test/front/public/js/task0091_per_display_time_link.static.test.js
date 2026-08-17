@@ -8,6 +8,8 @@ module.exports = async function testTask0091PerDisplayAndTimeLinkContracts(asser
   const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
   const app = read("public/js/app.js");
   const settings = read("public/js/settings.js");
+  const html = read("public/index.html");
+  const css = read("public/css/app.css");
 
   assert(/function updateLayout\(snapshot\)[\s\S]*?item\.display_id === snapshot\.active_display_id/.test(app), "active Display must select its own authoritative layout");
   assert(/function paneRuntimeKey\(displayId, paneId\)/.test(app), "output runtime state must use a composite Display/pane key");
@@ -23,6 +25,8 @@ module.exports = async function testTask0091PerDisplayAndTimeLinkContracts(asser
   assert(/data-visible-signal[\s\S]*?pane\.signal_bindings/.test(app), "active-pane signal checkbox state must derive from pane bindings");
   assert(/node\.dataset\.visibleSignal[\s\S]*?postLayout\(\{ operation:"update_pane"[\s\S]*?signal_bindings:/.test(app), "active-pane signal checkbox changes must use update_pane only");
 
-  assert(/"Связь областей"/.test(settings), "time-link settings copy must say Связь областей");
-  assert(!/нескольк(?:их|ие) экран/.test(settings), "time-link settings copy must not mention multiple screens");
+  assert(!/group\("area-link"|"Связь областей"/.test(settings), "time-link must be absent from the right settings inventory");
+  assert(/class="layout-link-time"[^>]*data-testid="layout-link-time-row"[\s\S]*?data-layout-link-time[^>]*data-testid="layout-link-time"/.test(html), "layout popover must own the visible time-link checkbox");
+  assert(/\.layout-link-time\s*\{[^}]*border-top:\s*1px solid var\(--line\)[^}]*border-bottom:\s*1px solid var\(--line\)/.test(css), "time-link section must be separated above and below");
+  assert(/linkTime:!!settings\.value\("time\.link_time"\)/.test(app) && /settings\.setValue\("time\.link_time", draft\.linkTime\)/.test(app), "layout Apply must consume and persist the existing time-link setting");
 };

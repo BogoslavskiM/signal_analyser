@@ -2186,6 +2186,7 @@ function signal_settings_draft_projection_unlocked(
     for definition in service.catalog.fields
         entry = get((draft::SignalSettingsDisplayDraft).entries, definition.id, nothing)
         entry === nothing && continue
+        visible = signal_settings_field_visible(definition, state, prospective)
         try
             if definition.id == "time.x_limits" &&
                 prospective.active_plot in (SPECTROGRAM_PLOT, PERSISTENCE_PLOT)
@@ -2204,8 +2205,10 @@ function signal_settings_draft_projection_unlocked(
             prospective = signal_settings_apply_command(state, prospective, command)
         catch err
             if err isa SignalSettingValidationError
+                visible || continue
                 errors[definition.id] = sprint(showerror, err)
             elseif err isa ArgumentError
+                visible || continue
                 errors[definition.id] = sprint(showerror,
                     signal_settings_semantic_validation_error(display.id, definition.id, err),
                 )
@@ -2219,6 +2222,7 @@ function signal_settings_draft_projection_unlocked(
         haskey(errors, definition.id) && continue
         entry = get((draft::SignalSettingsDisplayDraft).entries, definition.id, nothing)
         entry === nothing && continue
+        visible = signal_settings_field_visible(definition, state, prospective)
         try
             command = signal_settings_draft_domain_command(
                 service,
@@ -2234,8 +2238,10 @@ function signal_settings_draft_projection_unlocked(
             )
         catch err
             if err isa SignalSettingValidationError
+                visible || continue
                 errors[definition.id] = sprint(showerror, err)
             elseif err isa ArgumentError
+                visible || continue
                 errors[definition.id] = sprint(showerror,
                     signal_settings_semantic_validation_error(display.id, definition.id, err),
                 )
@@ -2766,10 +2772,22 @@ function apply_signal_setting!(
             ),
         )
         definition = signal_settings_field(service.catalog, draft_command.field_id)::SignalSettingsFieldDefinition
+        display = signal_analyser_display_by_id(state, draft_command.display_id)
 
         if !(draft_command.field_id in SIGNAL_SETTINGS_EXPLICIT_APPLY_FIELD_IDS)
-            command = parse_signal_setting_command(service, state, data)
-            display = signal_analyser_display_by_id(state, command.display_id)
+            command = try
+                parse_signal_setting_command(service, state, data)
+            catch err
+                if err isa SignalSettingValidationError &&
+                    !signal_settings_field_visible(definition, state, display)
+                    return signal_settings_update_response_unlocked(
+                        service,
+                        state,
+                        draft_command.display_id,
+                    )
+                end
+                rethrow()
+            end
             prospective = signal_settings_apply_command(state, display, command)
             signal_settings_displays_equal(display, prospective) &&
                 return signal_settings_update_response_unlocked(
@@ -2792,7 +2810,6 @@ function apply_signal_setting!(
             )
         end
 
-        display = signal_analyser_display_by_id(state, draft_command.display_id)
         display_draft = signal_settings_display_draft_unlocked(
             service,
             state,

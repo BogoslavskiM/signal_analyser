@@ -16,7 +16,7 @@ SPS.signal_package_workspace_send(::SignalPackageNoSendPublisher, name::String, 
     @test package.signals == state.signals
     @test package.entry_count == package.checksum_count + 1
     entries = SPS.signal_package_entry_map(SPS.read_signal_package_archive(archive))
-    @test Set(SPS.SIGNAL_PACKAGE_REQUIRED_ENTRIES) \u2286 Set(keys(entries))
+    @test Set(SPS.SIGNAL_PACKAGE_REQUIRED_ENTRIES) ⊆ Set(keys(entries))
     @test occursin("time_s,real,imag", String(entries["signals/$(SPS.signal_package_signal_id(state.signals[1])).csv"]))
     @test occursin(",", String(entries["signals/$(SPS.signal_package_signal_id(state.signals[2])).csv"]))
     @test entries["scripts/reproduce.jl"] == SPS.signal_package_reproduce_script(package.signals, ["signals/$(SPS.signal_package_signal_id(s)).csv" for s in package.signals])

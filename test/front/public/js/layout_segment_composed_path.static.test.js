@@ -6,6 +6,7 @@ const path = require("path");
 module.exports = async function testLayoutSegmentComposedPath(assert) {
   const root = path.resolve(__dirname, "../../../..");
   const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
+  const html = fs.readFileSync(path.join(root, "public/index.html"), "utf8");
 
   const draftRenderer = (app.match(/function renderLayoutDraft\(\) \{[\s\S]*?\n  \}/) || [""])[0];
   assert(/data-layout-" \+ axis/.test(draftRenderer), "layout draft must render axis segment controls from the current draft");
@@ -22,4 +23,6 @@ module.exports = async function testLayoutSegmentComposedPath(assert) {
 
   const apply = (app.match(/if \(button\.dataset\.layoutApply !== undefined\) \{[\s\S]*?\}\); \}/) || [""])[0];
   assert(/var draft = model\.layoutDraft/.test(apply) && /postLayout\(\{ operation: "resize", variant: draft\.rows \+ "x" \+ draft\.columns, rows: draft\.rows, columns: draft\.columns \}\)/.test(apply), "after an internal segment click leaves the draft open, Apply must post that draft as a resize operation");
+  assert(html.indexOf("data-layout-link-time") < html.indexOf("data-layout-apply"), "time-link checkbox must be placed immediately before the layout footer actions");
+  assert(/node\.dataset\.layoutLinkTime !== undefined[\s\S]*?model\.layoutDraft\.linkTime = node\.checked/.test(app), "time-link changes must remain draft-only until layout Apply");
 };

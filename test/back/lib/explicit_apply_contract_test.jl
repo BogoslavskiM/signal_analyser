@@ -23,6 +23,10 @@ end
     empty!(EXPLICIT_APPLY.SPECTROGRAM_CALLS)
     EXPLICIT_APPLY.reset_persistence_double!()
     EXPLICIT_APPLY.reset_pspectrum_double!()
+    spectrum_view = EXPLICIT_APPLY.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "active_plot" => "spectrum",
+    ))
 
     before = EXPLICIT_APPLY.signal_analyser_snapshot(state)
     caches = (
@@ -31,33 +35,33 @@ end
     )
     calls = explicit_apply_provider_counts()
     draft = EXPLICIT_APPLY.apply_signal_setting!(service, state, Dict(
-        "state_revision" => 0,
+        "state_revision" => spectrum_view["state_revision"],
         "display_id" => "display-1",
         "field_id" => "spectrum.leakage",
         "value" => 0.25,
     ))
     @test Set(keys(draft)) == Set(["state", "settings"])
-    @test draft["state"]["state_revision"] == 1
+    @test draft["state"]["state_revision"] == 2
     @test explicit_apply_field(draft["settings"], "spectrum.leakage")["value"] == 0.25
     @test (state.plot_cache, state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches
     @test explicit_apply_provider_counts() == calls
     @test !haskey(draft["state"], "plots") && !haskey(draft["state"], "plot_payload")
 
     applied = EXPLICIT_APPLY.apply_signal_settings!(service, state, Dict(
-        "state_revision" => 1, "display_id" => "display-1",
+        "state_revision" => 2, "display_id" => "display-1",
     ))
-    @test applied == Dict{String,Any}("success" => true, "state_revision" => 2)
+    @test applied == Dict{String,Any}("success" => true, "state_revision" => 3)
     @test explicit_apply_provider_counts() == calls
-    @test state.view.state_revision == 2
+    @test state.view.state_revision == 3
     # A fresh Display has no bound signal; applying its settings must not turn
     # the intentional empty pane into scheduled provider work.
     @test !state.output_manager.need_update_pages[state.output_manager.active_page_id]
     @test_throws EXPLICIT_APPLY.SignalAnalyserStaleStateError EXPLICIT_APPLY.apply_signal_settings!(
-        service, state, Dict("state_revision" => 1, "display_id" => "display-1"),
+        service, state, Dict("state_revision" => 2, "display_id" => "display-1"),
     )
 
     invalid_draft = EXPLICIT_APPLY.apply_signal_setting!(service, state, Dict(
-        "state_revision" => 2,
+        "state_revision" => 3,
         "display_id" => "display-1",
         "field_id" => "spectrum.leakage",
         "value" => 2.0,

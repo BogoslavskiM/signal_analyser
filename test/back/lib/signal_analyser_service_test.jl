@@ -384,8 +384,8 @@ end
     @test repeated == initial # Typed-empty response never depends on cache history.
     @test isempty(SA.PERSISTENCE_CALLS) && isempty(state.persistence_cache)
 
-    # Inactive source/leakage mutations preserve their Display-owned intent
-    # and revision but never pay the Persistence provider cost.
+    # Hidden inactive settings may preserve valid intent but never pay the
+    # Persistence provider cost; invalid hidden drafts are covered separately.
     initial_revision = state.view.state_revision
     source_changed = SA.apply_signal_analyser_view!(state, Dict(
         "state_revision" => initial_revision, "analysis_signal" => second_name,
@@ -522,17 +522,22 @@ end
     @test SA.signal_analyser_snapshot(state) == initial
     empty!(SA.SPECTRUM_CALLS); empty!(state.spectrum_cache)
 
+    visible_spectrogram = SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "active_plot" => "spectrogram",
+    ))
+
     limits = Dict("min_hz" => 1.0, "max_hz" => 4.0, "units" => "Hz")
     explicit_settings = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => limits, "frequency_scale" => "linear", "power_limits" => nothing)
     provider_calls_before_apply = (length(SA.SPECTROGRAM_CALLS), length(SA.SPECTRUM_CALLS))
     draft = SA.apply_signal_setting!(settings_service, state, Dict(
-        "state_revision" => 0, "display_id" => "display-1",
+        "state_revision" => visible_spectrogram["state_revision"], "display_id" => "display-1",
         "field_id" => "spectrogram.frequency_limits", "value" => Dict("min" => 1.0, "max" => 4.0),
     ))
     changed = SA.apply_signal_settings!(settings_service, state, Dict(
         "state_revision" => draft["state"]["state_revision"], "display_id" => "display-1",
     ))
-    @test changed == Dict{String,Any}("success" => true, "state_revision" => 2)
+    @test changed == Dict{String,Any}("success" => true, "state_revision" => 3)
     @test (length(SA.SPECTROGRAM_CALLS), length(SA.SPECTRUM_CALLS)) == provider_calls_before_apply
     @test SA.signal_analyser_snapshot(state)["spectrogram_settings"] == explicit_settings
 
@@ -569,8 +574,12 @@ end
     complex_limits = Dict("min_hz" => 10.0, "max_hz" => 20.0, "units" => "Hz")
     c15_explicit = Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => complex_limits, "frequency_scale" => "linear", "power_limits" => nothing)
     transitions_service = SA.SignalSettingsService()
+    transition_view = SA.apply_signal_analyser_view!(transitions, Dict(
+        "state_revision" => 0,
+        "active_plot" => "spectrogram",
+    ))
     transition_draft = SA.apply_signal_setting!(transitions_service, transitions, Dict(
-        "state_revision" => 0, "display_id" => "display-1",
+        "state_revision" => transition_view["state_revision"], "display_id" => "display-1",
         "field_id" => "spectrogram.frequency_limits", "value" => Dict("min" => 10.0, "max" => 20.0),
     ))
     first = SA.apply_signal_settings!(transitions_service, transitions, Dict(
@@ -2340,6 +2349,7 @@ end
 
     empty!(SA.SPECTROGRAM_CALLS)
     state = p0_measurement_state()
+    legacy_bind_active_test_pane!(state)
     first = SA.signal_analyser_snapshot(state)
     @test isempty(SA.SPECTROGRAM_CALLS)
     @test isempty(state.spectrogram_cache)
@@ -2437,6 +2447,10 @@ end
     zero_key_dict = Dict(negative_zero_key => :canonical)
     @test zero_key_dict[positive_zero_key] == :canonical
     state = SA.default_signal_analyser_state()
+    SA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => state.view.state_revision,
+        "active_plot" => "spectrogram",
+    ))
     initial = SA.signal_analyser_snapshot(state)
     @test initial["spectrogram_settings"] == Dict("overlap_percent" => 50.0, "leakage" => 0.5, "frequency_limits" => nothing, "frequency_scale" => "linear", "power_limits" => nothing)
     settings_service = SA.SignalSettingsService()

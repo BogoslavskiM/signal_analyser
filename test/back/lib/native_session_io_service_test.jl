@@ -126,7 +126,7 @@ const NIO = Main.AppTestContext
 
     source = NIO.source("lib", "services", "native_session_io_service.jl")
     @test occursin("root_real = realpath", source) && occursin("child_real = try\n                realpath(child)", source)
-    @test occursin("inside(child_real) || continue", source) && occursin("startswith(name, \".\") && continue", source)
+    @test occursin("inside_child = inside(child_real)", source) && occursin("selectable = inside_child &&", source) && occursin("startswith(name, \".\") && continue", source)
     @test occursin("item.kind == \"directory\" ? 0 : 1", source) && occursin("sort_direction", source)
     @test occursin("native_remote_file_write_script", source) && occursin("finally\n            !isempty(temp)", source)
     @test occursin("NATIVE_IO_SCRATCH_NAME", source) && occursin("transfer_lock::ReentrantLock", source)

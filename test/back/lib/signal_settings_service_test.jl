@@ -70,6 +70,32 @@ without_revision(document) = Dict(key => value for (key, value) in document if k
     @test settings_field(SS.signal_settings_document(service, state, "display-1"), "time.units")["value"] == "minutes"
 end
 
+@testset "Hidden settings drafts are ignored by explicit Apply" begin
+    service = SS.SignalSettingsService()
+    state = SS.default_signal_analyser_state()
+    spectrum = SS.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => 0,
+        "active_plot" => "spectrum",
+    ))
+    hidden = settings_field(SS.signal_settings_document(service, state, "display-1"), "spectrum.window_length")
+    @test hidden["visible"] == false
+
+    draft = SS.apply_signal_setting!(service, state, Dict(
+        "state_revision" => spectrum["state_revision"],
+        "display_id" => "display-1",
+        "field_id" => "spectrum.window_length",
+        "value" => Dict("mode" => "specified", "samples" => 1),
+    ))
+    @test settings_field(draft["settings"], "spectrum.window_length")["visible"] == false
+
+    applied = SS.apply_signal_settings!(service, state, Dict(
+        "state_revision" => draft["state"]["state_revision"],
+        "display_id" => "display-1",
+    ))
+    @test applied["success"] == true
+    @test settings_field(SS.signal_settings_document(service, state, "display-1"), "spectrum.window_length")["error"] == ""
+end
+
 @testset "Calculation settings remain typed drafts until explicit Apply" begin
     service = SS.SignalSettingsService()
     state = SS.default_signal_analyser_state()
@@ -152,9 +178,13 @@ end
     # Spectrum intentionally retains its stricter any-visible-complex rule.
     spectrum_scale = settings_field(SS.signal_settings_document(service, state, "display-1"), "spectrum.frequency_scale")
     @test only(filter(option -> option["value"] == "log", spectrum_scale["options"]))["disabled"] == true
+    spectrum_view = SS.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => complex_source["state_revision"],
+        "active_plot" => "spectrum",
+    ))
     before_rejected_spectrum = SS.signal_analyser_snapshot(state)
     @test_throws SS.SignalSettingValidationError SS.apply_signal_setting!(service, state, Dict(
-        "state_revision" => complex_source["state_revision"],
+        "state_revision" => spectrum_view["state_revision"],
         "display_id" => "display-1",
         "field_id" => "spectrum.frequency_scale",
         "value" => "log",
