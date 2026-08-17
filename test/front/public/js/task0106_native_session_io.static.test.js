@@ -43,7 +43,7 @@ module.exports = async function task0106NativeSessionIoStatic(assert) {
   assert(/focusin[\s\S]*openImportMenu\(0\)/.test(native), "keyboard focus must open the Import menu immediately");
   assert(/event\.key === "Escape"[\s\S]*closeImportMenu\(true, 0\)/.test(native), "Escape must close the menu and restore the trigger");
   assert(/\["ArrowDown", "ArrowUp", "Home", "End"\][\s\S]*focusImportMenuItem/.test(native), "Import menu must support arrows and Home/End keyboard navigation");
-  assert(/button\.dataset\.testid === "toolbar-import"[\s\S]*importMenuOpen = !importMenuOpen/.test(native), "click/touch activation must toggle the same two-action menu");
+  assert(/button\.dataset\.testid === "toolbar-import"[\s\S]*importMenuOpen = false[\s\S]*openEngeeImport\(button\)/.test(native), "direct Import click must open the Engee session form while hover and keyboard retain the source menu");
   assert(/\.menu\.toolbar-import-menu\s*\{[^}]*width:\s*196px[^}]*border:\s*0[^}]*box-shadow:\s*var\(--shadow-menu\)/.test(css), "Import menu must keep the compact borderless 196px visual contract");
   assert(/\.native-dialog\s*\{[^}]*grid-template-rows:\s*48px auto 56px/.test(css), "native dialogs must size their body to content instead of reserving a blank flexible track");
   assert(/\.native-save-dialog,\s*\n\.native-import-dialog\s*\{[^}]*height:\s*auto[^}]*min-height:\s*0[^}]*max-height:\s*calc\(100vh - 32px\)/.test(css), "Save and Import must remove fixed empty height while retaining the viewport cap");

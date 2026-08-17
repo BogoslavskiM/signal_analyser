@@ -202,9 +202,14 @@ module.exports = async function task0108ImportBrowserBehavior(assert) {
   fire("pointerleave", eventFor(control, { relatedTarget:null }));
   assert(timers.some((timer) => !timer.cleared && timer.delay === 180), "menu pointerleave must schedule the 180ms grace close");
 
+  fire("click", eventFor(trigger));
+  await flush();
+  assert(optionsCalls === 1 && state.import === true, "direct Import click must open the Engee session form by default");
+  assert(browserCalls.length === 0 && state.importDraft.path === "/user/signal-analyser-session.jld2", "direct Import click must keep the browser closed and show the authoritative Engee path");
+
   fire("click", eventFor(engeeSource));
   await flush();
-  assert(optionsCalls === 1, "Engee source must fetch authoritative defaults once");
+  assert(optionsCalls === 2, "explicit Engee source must fetch authoritative defaults once for its own flow");
   assert(browserCalls.length === 0, "Engee source must not call a file-browser action before the folder button");
   assert(state.import === true && state.browserState.open === false, "Engee source must open only the parent Import dialog");
   assert(state.importDraft.path === "/user/signal-analyser-session.jld2", "Import path must be initialized from import_session_target");
@@ -237,18 +242,18 @@ module.exports = async function task0108ImportBrowserBehavior(assert) {
 
   fire("click", eventFor(localSource));
   assert(localPickerCalls === 1, "local source must invoke the .sazip file picker directly");
-  assert(optionsCalls === 1 && browserCalls.at(-1).action === "cancel", "local source must not load Engee options or browser data");
+  assert(optionsCalls === 2 && browserCalls.at(-1).action === "cancel", "local source must not load Engee options or browser data");
 
   fire("click", eventFor(saveTrigger));
   await flush();
-  assert(optionsCalls === 2 && state.save, "Save must still load typed options and open its dialog");
+  assert(optionsCalls === 3 && state.save, "Save must still load typed options and open its dialog");
   const saveTarget = runtimeRoot.single["[data-testid='native-save-variable-name']"];
   saveTarget.value = "existing_signal";
   runtimeRoot.single["[data-testid='native-save-overwrite']"].checked = false;
   saveFailure = { status:409, payload:{ code:"target_exists", error:{ code:"target_exists", message:"already exists" } } };
   runtimeRoot.single["[data-testid='native-save-submit']"].onclick();
   await flush();
-  assert(optionsCalls === 2, "target_exists must not reload options or reset the form");
+  assert(optionsCalls === 3, "target_exists must not reload options or reset the form");
   assert(state.saveDraft.target === "existing_signal" && state.saveDraft.overwrite === false, "target_exists must preserve the attempted target and overwrite choice");
   assert(state.message && state.message.code === "target_exists" && state.message.title === "Переменная уже существует", "workspace conflict must show the explicit variable-exists message");
   assert(state.message.text.includes("включите перезапись"), "workspace conflict must tell the user how to enable overwrite");
@@ -259,6 +264,6 @@ module.exports = async function task0108ImportBrowserBehavior(assert) {
   saveFailure = { status:409, payload:{ code:"stale_state", error:{ code:"stale_state", message:"stale" } } };
   runtimeRoot.single["[data-testid='native-save-submit']"].onclick();
   await flush();
-  assert(optionsCalls === 3, "stale_state, unlike target_exists, must refresh authoritative options");
+  assert(optionsCalls === 4, "stale_state, unlike target_exists, must refresh authoritative options");
   assert(state.message && state.message.code === "stale_state" && state.message.title === "Состояние обновлено", "stale_state must retain its distinct refresh warning");
 };
