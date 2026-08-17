@@ -1,0 +1,171 @@
+{
+  "id": "HND-0684",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "d52913aa1e635c5b6f1c5bbcd83d3008b5800705",
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "prototype source menu has two actions",
+      "status": "passed",
+      "evidence": [
+        "Из Engee",
+        "Из локального файла"
+      ]
+    },
+    {
+      "name": "availability and exact runtime revision",
+      "status": "passed",
+      "evidence": {
+        "status": 200,
+        "json": {
+          "runtime_revision": "d52913aa1e635c5b6f1c5bbcd83d3008b5800705",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "selected tab raster is 3/3/3",
+      "status": "failed",
+      "evidence": {
+        "display": 0,
+        "settings": {
+          "run": 3,
+          "rows": [
+            29,
+            30,
+            31
+          ],
+          "computed": {
+            "background": "rgb(27, 132, 184)",
+            "height": "3px",
+            "z": "2"
+          }
+        },
+        "inspector": {
+          "run": 3,
+          "rows": [
+            29,
+            30,
+            31
+          ],
+          "computed": {
+            "background": "rgb(27, 132, 184)",
+            "height": "3px",
+            "z": "2"
+          }
+        }
+      }
+    },
+    {
+      "name": "Import hover/focus menu has exactly two items and opens no browser API",
+      "status": "passed",
+      "evidence": {
+        "items": [
+          "Из Engee",
+          "Из локального файла"
+        ],
+        "hover": {
+          "background": "rgb(248, 248, 248)",
+          "outline": "rgb(107, 107, 107) none 3px"
+        },
+        "focus": {
+          "outline": "rgb(107, 107, 107) none 3px",
+          "outlineWidth": "3px"
+        },
+        "browserCalls": []
+      }
+    },
+    {
+      "name": "Engee opens parent only with exact backend default",
+      "status": "passed",
+      "evidence": {
+        "path": "/user/signal-analyser-session.jld2",
+        "browserCalls": []
+      }
+    },
+    {
+      "name": "folder opens centered browser",
+      "status": "passed",
+      "evidence": {
+        "x": 272,
+        "y": 194,
+        "width": 480,
+        "height": 380
+      }
+    },
+    {
+      "name": "caret toggles inline children without current_path change",
+      "status": "passed",
+      "evidence": {
+        "caret": "/user/apps",
+        "beforePath": "/user",
+        "afterPath": "/user",
+        "depths": [
+          16,
+          40,
+          40,
+          40,
+          40,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16,
+          16
+        ]
+      }
+    },
+    {
+      "name": "directory name navigates current_path",
+      "status": "passed",
+      "evidence": {
+        "beforePath": "/user",
+        "current": "/user/apps"
+      }
+    },
+    {
+      "name": "browser Cancel does not mutate Import field",
+      "status": "passed",
+      "evidence": {
+        "original": "/user/signal-analyser-session.jld2",
+        "final": "/user/signal-analyser-session.jld2"
+      }
+    }
+  ],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0684/prototype-import-menu-1024x768.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0684/production-tabs-1024x768.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0684/import-menu-1024x768.png"
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "tab_cleanup_status": "passed",
+  "started_at": "2026-08-14T10:32:48.123Z",
+  "error": {
+    "message": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\\'toolbar-import-local\\']')\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"button\" tabindex=\"-1\" role=\"menuitem\" data-native-import-source=\"local\" data-testid=\"toolbar-import-local\">Из локального файла</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n",
+    "stack": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid=\\'toolbar-import-local\\']')\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"button\" tabindex=\"-1\" role=\"menuitem\" data-native-import-source=\"local\" data-testid=\"toolbar-import-local\">Из локального файла</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    57 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\n    at production (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/hnd0684_visible_regression.cjs:16:152)\n    at async /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/hnd0684_visible_regression.cjs:20:288"
+  },
+  "finished_at": "2026-08-14T10:33:25.448Z"
+}

@@ -1,0 +1,169 @@
+        - module Genie
+        - module Renderer
+        - module Json
+        - json(payload; status::Int = 200) = (status = status, body = payload)
+        - end
+        - end
+        - end
+        - 
+        - module AppTestContext
+        - 
+        - using Test
+        - using UUIDs
+        - 
+        - const PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", "..", ".."))
+        - 
+        - """A deterministic double for EngeeDSP.Functions.pspectrum used only by unit/API tests."""
+        - const PSPECTRUM_CALLS = Any[]
+        - const PSPECTRUM_FAILURE = Ref(false)
+        - 
+        9 function reset_pspectrum_double!()
+        9     empty!(PSPECTRUM_CALLS)
+        9     PSPECTRUM_FAILURE[] = false
+        9     nothing
+        - end
+        - 
+        - function signal_analyser_pspectrum(
+        -     values::Vector{ComplexF64},
+        -     times::Vector{Float64},
+        -     representation::AbstractString,
+        -     options...,
+        - )
+        -     push!(PSPECTRUM_CALLS, (values = copy(values), times = copy(times), representation = String(representation), options = options))
+        -     PSPECTRUM_FAILURE[] && throw(ArgumentError("deterministic EngeeDSP failure"))
+        - 
+        -     if representation == "power"
+        -         return ([1.0, 4.0, 9.0], [-128.0, 0.0, 128.0], nothing)
+        -     elseif representation == "spectrogram"
+        -         # Deliberately time-by-frequency: production must orient it as frequency-by-time.
+        -         return ([1.0 4.0 9.0; 16.0 25.0 36.0], [-128.0, 0.0, 128.0], [0.0, 0.125])
+        -     elseif representation == "persistence"
+        -         return ([0.0 50.0 100.0; 25.0 75.0 90.0], [-128.0, 0.0, 128.0], [0.01, 0.1])
+        -     end
+        -     throw(ArgumentError("unsupported deterministic pspectrum representation: $representation"))
+        - end
+        - 
+        - include(joinpath(PROJECT_ROOT, "lib", "helpers.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "domain", "example_model.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "domain", "signal_analyser_state.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "domain", "signal_session.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "persistence", "storage.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "persistence", "signal_package_archive.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "services", "signal_analyser_math.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "services", "signal_analyser_service.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "services", "signal_session_service.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "services", "signal_package_service.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "adapters", "engee_native_io.jl"))
+        - include(joinpath(PROJECT_ROOT, "lib", "services", "native_session_io_service.jl"))
+        - 
+        - """Deterministic Spectrum provider used by unit/API tests; real EngeeDSP stays in test/engee."""
+        - const SPECTRUM_CALLS = Any[]
+        - const SPECTRUM_FAILURE = Ref(false)
+        4 function signal_spectrum_calculate(::EngeeDSPSpectrumProvider, query::SignalSpectrumQuery)::SignalSpectrumData
+        4     push!(SPECTRUM_CALLS, query)
+        4     SPECTRUM_FAILURE[] && throw(ArgumentError("deterministic Spectrum provider failure"))
+        4     frequencies = if query.frequency_limits isa ExplicitSignalSpectrumFrequencyLimits
+        0         limits = query.frequency_limits::ExplicitSignalSpectrumFrequencyLimits
+        0         [limits.min_hz, limits.max_hz]
+        4     elseif query.topology == ONE_SIDED_SPECTRUM
+        6         [0.0, query.sample_rate_hz / 2]
+        -     else
+        9         [-query.sample_rate_hz / 2, query.sample_rate_hz / 2]
+        -     end
+        4     SignalSpectrumData(frequencies, [1.0, 4.0], query.topology)
+        - end
+        - 
+        - """Deterministic typed Spectrogram provider double; EngeeDSP remains test/engee only."""
+        - const SPECTROGRAM_CALLS = Any[]
+        - const SPECTROGRAM_FAILURE = Ref(false)
+        5 function signal_spectrogram_calculate(::EngeeDSPSpectrogramProvider, query::SignalSpectrogramQuery)::SignalSpectrogramData
+        5     push!(SPECTROGRAM_CALLS, query)
+        5     SPECTROGRAM_FAILURE[] && throw(ArgumentError("deterministic Spectrogram provider failure"))
+        4     frequencies = if query.frequency_limits isa ExplicitSignalSpectrumFrequencyLimits
+        0         limits = query.frequency_limits::ExplicitSignalSpectrumFrequencyLimits
+        0         [limits.min_hz, limits.max_hz]
+        4     elseif query.topology == ONE_SIDED_SPECTRUM
+        2         [0.0, query.sample_rate_hz / 2]
+        -     else
+       11         [-query.sample_rate_hz / 2, query.sample_rate_hz / 2]
+        -     end
+        4     SignalSpectrogramData(frequencies, [0.0, (length(query.values) - 1) / query.sample_rate_hz], [1.0 4.0; 9.0 16.0], query.topology)
+        - end
+        - 
+        - """Deterministic typed Persistence provider double; real EngeeDSP remains test/engee only."""
+        - const PERSISTENCE_CALLS = Any[]
+        - const PERSISTENCE_FAILURE = Ref(false)
+       11 function reset_persistence_double!()
+       12     empty!(PERSISTENCE_CALLS)
+       11     PERSISTENCE_FAILURE[] = false
+       11     nothing
+        - end
+        4 function signal_persistence_calculate(::EngeeDSPPersistenceProvider, query::SignalPersistenceQuery)::SignalPersistenceData
+        4     push!(PERSISTENCE_CALLS, query)
+        4     PERSISTENCE_FAILURE[] && throw(ArgumentError("deterministic Persistence provider failure"))
+       10     frequencies = query.topology == ONE_SIDED_SPECTRUM ?
+        -         [0.0, query.sample_rate_hz / 4, query.sample_rate_hz / 2] :
+        -         [-query.sample_rate_hz / 2, 0.0, query.sample_rate_hz / 2]
+        -     # Deliberately asymmetric power-by-frequency matrix: a renderer/service
+        -     # transpose would be detected structurally and numerically.
+        4     powers = collect(range(0.01, 1.0, length = query.num_power_bins))
+        4     occurrence = [Float64(mod((row - 1) * 17 + (column - 1) * 29, 101))
+        -                   for row in eachindex(powers), column in eachindex(frequencies)]
+        4     SignalPersistenceData(frequencies, powers, occurrence, query.topology)
+        - end
+        - 
+        - # The API helpers use the tiny Main.Genie renderer double above. This keeps
+        - # route/API tests in-process and deliberately avoids starting a Genie server.
+        - include(joinpath(PROJECT_ROOT, "app", "api.jl"))
+        - 
+        - # Keep response-envelope assertions structural and deterministic even when a
+        - # local Genie installation is present: the helpers under test still build the
+        - # real payload, while this more-specific serializer exposes it in-process.
+        3 function api_json(payload::Dict{String,Any}; status::Int = 200, headers = nothing)
+        3     (status = status, body = json_safe(payload), headers = headers)
+        - end
+        - 
+        5 source(parts::AbstractString...) = read(joinpath(PROJECT_ROOT, parts...), String)
+        1 snapshot_keyset(snapshot) = Set(keys(snapshot))
+       19 all_finite(values) = all(isfinite, values)
+        2 all_finite_matrix(rows) = all(row -> all(isfinite, row), rows)
+        - 
+        - """Build the explicit real-plus-complex fixture required by tests of complex behavior.
+        - 
+        - Production bootstrap deliberately contains one real sine only.  Tests which
+        - exercise ordering, complex rendering, or complex-only validation must opt in
+        - to this inventory instead of restoring a second default signal.
+        - """
+       24 function test_state_with_complex_signal(;
+        -     peaks_provider::AbstractPeaksProvider = EngeeDSPPeaksProvider(),
+        -     spectrum_provider::AbstractSignalSpectrumProvider = EngeeDSPSpectrumProvider(),
+        -     spectrogram_provider::AbstractSignalSpectrogramProvider = EngeeDSPSpectrogramProvider(),
+        -     persistence_provider::AbstractSignalPersistenceProvider = EngeeDSPPersistenceProvider(),
+        - )
+       12     signals = default_signal_catalog()
+       12     real_signal = only(signals)
+       12     sample_count = length(real_signal.values)
+       12     time = collect(0:(sample_count - 1)) ./ real_signal.sample_rate_hz
+       24     chirp_phase = @. 2pi * (90.0 * time + 0.5 * 1100.0 * time^2)
+       12     complex_chirp = @. cis(chirp_phase) + 0.22 * cis(2pi * 510.0 * time)
+       24     push!(signals, AnalysedSignal(
+        -         "Комплексный ЛЧМ-сигнал",
+        -         "#dc2626",
+        -         real_signal.sample_rate_hz,
+        -         ComplexF64.(complex_chirp),
+        -         true,
+        -         true,
+        -     ))
+       12     SignalAnalyserState(
+        -         signals,
+        -         SignalAnalyserViewState(0, TIME_PLOT, real_signal.name),
+        -         Dict{String,Dict{String,Any}}(),
+        -         ReentrantLock();
+        -         peaks_provider = peaks_provider,
+        -         spectrum_provider = spectrum_provider,
+        -         spectrogram_provider = spectrogram_provider,
+        -         persistence_provider = persistence_provider,
+        -     )
+        - end
+        - 
+        - end

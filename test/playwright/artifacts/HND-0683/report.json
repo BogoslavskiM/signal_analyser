@@ -1,0 +1,202 @@
+{
+  "id": "HND-0683",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "7ac9c2f08ba48a16de6d0c944c4d66161b425631",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "prototype v25 walkthrough state",
+      "status": "passed",
+      "evidence": {
+        "accent": "#1b84b8",
+        "families": {
+          "display": {
+            "rect": {
+              "width": 160,
+              "height": 32
+            },
+            "computed": {
+              "after": "rgb(27, 132, 184)",
+              "afterHeight": "3px",
+              "afterBottom": "0px",
+              "zIndex": "2"
+            },
+            "rasterAccentRows": [
+              29,
+              30,
+              31
+            ],
+            "longestRasterAccentRunPx": 3
+          },
+          "settings": {
+            "rect": {
+              "width": 149,
+              "height": 32
+            },
+            "computed": {
+              "after": "rgb(27, 132, 184)",
+              "afterHeight": "3px",
+              "afterBottom": "0px",
+              "zIndex": "2"
+            },
+            "rasterAccentRows": [
+              29,
+              30,
+              31
+            ],
+            "longestRasterAccentRunPx": 3
+          },
+          "inspector": {
+            "rect": {
+              "width": 112,
+              "height": 32
+            },
+            "computed": {
+              "after": "rgb(27, 132, 184)",
+              "afterHeight": "3px",
+              "afterBottom": "0px",
+              "zIndex": "2"
+            },
+            "rasterAccentRows": [
+              29,
+              30,
+              31
+            ],
+            "longestRasterAccentRunPx": 3
+          }
+        },
+        "runs": {
+          "display": 3,
+          "settings": 3,
+          "inspector": 3
+        }
+      }
+    },
+    {
+      "name": "production availability and exact revision",
+      "status": "passed",
+      "evidence": {
+        "status": 200,
+        "json": {
+          "runtime_revision": "7ac9c2f08ba48a16de6d0c944c4d66161b425631",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "three selected indicators have uninterrupted computed 3px accent",
+      "status": "failed",
+      "evidence": {
+        "accent": "#1b84b8",
+        "families": {
+          "display": {
+            "rect": {
+              "width": 160,
+              "height": 32
+            },
+            "computed": {
+              "after": "rgb(27, 132, 184)",
+              "afterHeight": "3px",
+              "afterBottom": "0px",
+              "zIndex": "2"
+            },
+            "rasterAccentRows": [
+              29,
+              30
+            ],
+            "longestRasterAccentRunPx": 2
+          },
+          "settings": {
+            "rect": {
+              "width": 149,
+              "height": 32
+            },
+            "computed": {
+              "after": "rgb(27, 132, 184)",
+              "afterHeight": "3px",
+              "afterBottom": "0px",
+              "zIndex": "2"
+            },
+            "rasterAccentRows": [
+              29,
+              30,
+              31
+            ],
+            "longestRasterAccentRunPx": 3
+          },
+          "inspector": {
+            "rect": {
+              "width": 112,
+              "height": 32
+            },
+            "computed": {
+              "after": "rgb(27, 132, 184)",
+              "afterHeight": "3px",
+              "afterBottom": "0px",
+              "zIndex": "2"
+            },
+            "rasterAccentRows": [
+              29,
+              30
+            ],
+            "longestRasterAccentRunPx": 2
+          }
+        },
+        "runs": {
+          "display": 2,
+          "settings": 3,
+          "inspector": 2
+        }
+      }
+    },
+    {
+      "name": "Measurements uses 944px local table and shared 16px square swatch",
+      "status": "failed",
+      "evidence": {
+        "table": {
+          "width": 1004,
+          "minWidth": "944px"
+        },
+        "owner": {
+          "clientWidth": 1004,
+          "scrollWidth": 1004
+        },
+        "main": null,
+        "measurement": null
+      }
+    },
+    {
+      "name": "ready Values starts zero POST",
+      "status": "passed",
+      "evidence": {
+        "posts": 0,
+        "requestUrls": [],
+        "loading": false
+      }
+    },
+    {
+      "name": "repeat Values does not add calculation POST",
+      "status": "passed",
+      "evidence": {
+        "first": 0,
+        "final": 0,
+        "requestUrls": []
+      }
+    }
+  ],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0683/prototype-tabs-measurements-1024x768.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0683/production-tabs-measurements-1024x768.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0683/production-values-1024x768.png"
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "tab_cleanup_status": "passed",
+  "started_at": "2026-08-14T09:46:11.346Z",
+  "finished_at": "2026-08-14T09:46:17.835Z"
+}

@@ -1,0 +1,105 @@
+        - using Test
+        - 
+        - const NIO = Main.AppTestContext
+        - 
+        1 @testset "TASK-0106 native Engee I/O parser and safe service contracts" begin
+        2     browser = NIO.parse_native_file_browser_request(Dict(
+        -         "path" => "/user/sessions",
+        -         "selection_mode" => "file",
+        -         "extension" => ".JLD2",
+        -         "sort_direction" => "desc",
+        -     ))
+        1     @test browser.path == "/user/sessions"
+        2     @test browser.selection_mode == "file" && browser.extension == ".jld2"
+        2     @test !browser.sort_ascending
+        - 
+        1     for path in ("user", "/tmp/session.jld2", "/user/../secret", "/user/.hidden", "/user/a/./b")
+       15         @test_throws NIO.NativeEngeeIOError NIO.native_normalize_user_path(path)
+        5     end
+        3     @test_throws NIO.NativeEngeeIOError NIO.parse_native_file_browser_request(Dict(
+        -         "path" => "/user", "selection_mode" => "directory", "extension" => ".jld2", "sort_direction" => "asc",
+        -     ))
+        3     @test_throws NIO.NativeEngeeIOError NIO.parse_native_file_browser_request(Dict(
+        -         "path" => "/user", "selection_mode" => "file", "extension" => nothing, "sort_direction" => "asc", "extra" => true,
+        -     ))
+        - 
+        1     session = NIO.parse_native_save_command(Dict(
+        -         "state_revision" => 3, "operation" => "session", "scope" => "session",
+        -         "signal_names" => String[], "target" => "/user/session.jld2", "overwrite" => false,
+        -     ))
+        2     @test session.operation == "session" && isempty(session.signal_names)
+        1     @test session.scope == "session"
+        1     single = NIO.parse_native_save_command(Dict(
+        -         "state_revision" => 3, "operation" => "workspace", "scope" => "library",
+        -         "signal_names" => ["one"], "target" => "one_signal", "overwrite" => false,
+        -     ))
+        1     multiple = NIO.parse_native_save_command(Dict(
+        -         "state_revision" => 3, "operation" => "workspace", "scope" => "signal",
+        -         "signal_names" => ["one", "two"], "target" => "signal_library", "overwrite" => false,
+        -     ))
+        2     @test single.scope == "signal" && multiple.scope == "library"
+        1     for invalid in (
+        -         Dict("state_revision" => 3, "operation" => "session", "scope" => "signal", "signal_names" => ["x"], "target" => "/user/x.jld2", "overwrite" => false),
+        -         Dict("state_revision" => 3, "operation" => "workspace", "scope" => "signal", "signal_names" => String[], "target" => "x", "overwrite" => false),
+        -         Dict("state_revision" => 3, "operation" => "workspace", "scope" => "signal", "signal_names" => ["x"], "target" => "x", "overwrite" => false, "extra" => true),
+        -     )
+        9         @test_throws NIO.NativeEngeeIOError NIO.parse_native_save_command(invalid)
+        3     end
+        3     @test_throws NIO.NativeEngeeIOError NIO.parse_native_import_command(Dict(
+        -         "state_revision" => 3, "path" => "/user/session.sazip", "replace" => true,
+        -     ))
+        3     @test_throws NIO.NativeEngeeIOError NIO.parse_native_import_command(Dict(
+        -         "state_revision" => 3, "path" => "/user/session.jld2", "replace" => false,
+        -     ))
+        - 
+        1     @test NIO.native_require_workspace_name("signal_1", "target") == "signal_1"
+        1     for name in ("1signal", "signal-name", "Main", repeat("x", 129))
+       12         @test_throws NIO.NativeEngeeIOError NIO.native_require_workspace_name(name, "target")
+        4     end
+        - 
+        1     real_signal = NIO.AnalysedSignal("one", "#111111", 10.0, ComplexF64[1, 2], false, true)
+        1     complex_signal = NIO.AnalysedSignal("two", "#222222", 10.0, ComplexF64[3 + 4im], true, true)
+        1     single_value = NIO.native_workspace_value([real_signal])
+        1     library_value = NIO.native_workspace_value([real_signal, complex_signal])
+        2     @test single_value isa Vector{Float64} && single_value == [1.0, 2.0]
+        1     @test library_value isa Dict{String,Any}
+        1     @test library_value["one"] == [1.0, 2.0]
+        1     @test library_value["two"] == ComplexF64[3 + 4im]
+        - 
+        1     source = NIO.source("lib", "services", "native_session_io_service.jl")
+        2     @test occursin("root_real = realpath", source) && occursin("child_real = try\n                realpath(child)", source)
+        2     @test occursin("inside(child_real) || continue", source) && occursin("startswith(name, \".\") && continue", source)
+        2     @test occursin("item.kind == \"directory\" ? 0 : 1", source) && occursin("sort_direction", source)
+        2     @test occursin("native_remote_file_write_script", source) && occursin("finally\n            !isempty(temp)", source)
+        2     @test occursin("NATIVE_IO_SCRATCH_NAME", source) && occursin("transfer_lock::ReentrantLock", source)
+        2     @test occursin("previous = native_engee_recv(service.scratch_name)", source) && occursin("internal_name_conflict", source)
+        1     @test length(collect(eachmatch(r"lock\(service\.transfer_lock\) do", source))) == 3
+        1     @test length(collect(eachmatch(r"native_clear_scratch\(service\)", source))) == 3
+        2     @test occursin("NATIVE_REPRODUCER_MAX_BYTES", source) && occursin("script_too_large", source)
+        2     @test occursin("NATIVE_SIGNAL_JLD2_SCHEMA", source) && occursin("imag_values = payload.imag_values", source)
+        2     @test occursin("__genie_app_name", source) && occursin("SIGNAL_ANALYSER_SESSION_VERSION", source)
+        2     @test occursin("signal_analyser_session_candidate", source) && occursin("signal_analyser_publish_session!", source)
+        1     @test occursin("command.state_revision == state.view.state_revision", source)
+        1     @test occursin("scope = length(names) == 1 ? \"signal\" : \"library\"", source)
+        1     @test occursin("length(signals) == 1 && return native_signal_value(only(signals))", source)
+        2     @test occursin("values = Dict{String,Any}()", source) && occursin("values[signal.name] = native_signal_value(signal)", source)
+        1     workspace_start = first(findfirst("function native_save_workspace", source))
+        1     workspace_end = first(findfirst("function native_float_vector_literal", source))
+        1     workspace_save = source[workspace_start:(workspace_end - 1)]
+        1     @test length(collect(eachmatch(r"native_workspace_preflight\(target\)", workspace_save))) == 1
+        1     @test length(collect(eachmatch(r"native_engee_send\(target, native_workspace_value\(signals\)\)", workspace_save))) == 1
+        1     @test length(collect(eachmatch(r"\"variable_name\" => target", workspace_save))) == 1
+        1     @test first(findfirst("if !command.overwrite && existed", workspace_save)) <
+        -         first(findfirst("native_engee_send(target", workspace_save))
+        2     @test occursin("command.operation == \"session\"", source) &&
+        -         first(findfirst("if command.operation == \"session\"", source)) <
+        -         first(findfirst("signals = native_snapshot_signals", source))
+        - 
+        1     routes = NIO.source("app", "routes.jl")
+        1     for route in ("/api/save/options", "/api/file-browser/list", "/api/save", "/api/import/session")
+        4         @test length(collect(eachmatch(Regex("route\\(\\\"" * route * "\\\""), routes))) == 1
+        4     end
+        1     @test occursin("native_engee_provider_error_response", routes)
+        1     api = NIO.source("app", "api.jl")
+        2     @test occursin("\"engee_unavailable\"", api) && occursin("status = err isa WorkspaceUnavailableError ? 503 : 502", api)
+        - end

@@ -1,0 +1,17 @@
+{
+  "id": "HND-0610",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "c049f0b8ecedc720243927dcf7cafa91e2825505",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "network": [],
+  "errors": [
+    "page.goto: net::ERR_TIMED_OUT at https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\nCall log:\n\u001b[2m  - navigating to \"https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/hnd0610_final_binding_perf.js:21:101"
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "preexisting_page_urls": [],
+  "tab_cleanup_status": "passed"
+}

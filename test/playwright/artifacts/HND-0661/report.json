@@ -1,0 +1,256 @@
+{
+  "id": "HND-0661",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "5a7807635aafd2051dc6381c5c34d0d9d14dcc4e",
+  "design_ref": "architecture/design/TASK-0106-native-engee-session-io/DESIGN.md",
+  "design_version": 23,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "v23 prototype hidden message layer does not intercept",
+      "status": "failed",
+      "evidence": {
+        "hidden": true,
+        "hit": "message-layer"
+      }
+    },
+    {
+      "name": "availability and exact ready revision",
+      "status": "passed",
+      "evidence": {
+        "main": 200,
+        "st": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "5a7807635aafd2051dc6381c5c34d0d9d14dcc4e",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      }
+    },
+    {
+      "name": "file browser fixed centered 480x380 white child above inert parent",
+      "status": "passed",
+      "evidence": {
+        "fg": {
+          "browser": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 720,
+            "bottom": 720
+          },
+          "card": {
+            "x": 400,
+            "y": 170,
+            "width": 480,
+            "height": 380,
+            "bottom": 550
+          },
+          "parent": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 720,
+            "bottom": 720
+          },
+          "cardStyle": {
+            "position": "static",
+            "background": "rgb(255, 255, 255)",
+            "display": "grid"
+          },
+          "layerStyle": {
+            "position": "fixed",
+            "z": "97000",
+            "display": "flex"
+          },
+          "parentInert": true,
+          "hit": {
+            "tag": "BUTTON",
+            "cls": "file-browser-heading",
+            "inCard": true
+          },
+          "path": "/user",
+          "list": {
+            "scrollHeight": 298,
+            "clientHeight": 236,
+            "overflow": "auto"
+          },
+          "entries": [
+            "apps",
+            "backup-hnd-0417",
+            "backups",
+            "calculateafar-hnd0131-e2e-SdmpmS",
+            "EHA",
+            "HND0067ContractHarness_716e220_20260804",
+            "hnd0188-contract-tests",
+            "IEDScout",
+            "libe",
+            "new",
+            "start",
+            "test",
+            "Курсы_РЛС_15_06_2026"
+          ]
+        }
+      }
+    },
+    {
+      "name": "/user list has entries and scroll container",
+      "status": "passed",
+      "evidence": {
+        "browser": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 720,
+          "bottom": 720
+        },
+        "card": {
+          "x": 400,
+          "y": 170,
+          "width": 480,
+          "height": 380,
+          "bottom": 550
+        },
+        "parent": {
+          "x": 0,
+          "y": 0,
+          "width": 1280,
+          "height": 720,
+          "bottom": 720
+        },
+        "cardStyle": {
+          "position": "static",
+          "background": "rgb(255, 255, 255)",
+          "display": "grid"
+        },
+        "layerStyle": {
+          "position": "fixed",
+          "z": "97000",
+          "display": "flex"
+        },
+        "parentInert": true,
+        "hit": {
+          "tag": "BUTTON",
+          "cls": "file-browser-heading",
+          "inCard": true
+        },
+        "path": "/user",
+        "list": {
+          "scrollHeight": 298,
+          "clientHeight": 236,
+          "overflow": "auto"
+        },
+        "entries": [
+          "apps",
+          "backup-hnd-0417",
+          "backups",
+          "calculateafar-hnd0131-e2e-SdmpmS",
+          "EHA",
+          "HND0067ContractHarness_716e220_20260804",
+          "hnd0188-contract-tests",
+          "IEDScout",
+          "libe",
+          "new",
+          "start",
+          "test",
+          "Курсы_РЛС_15_06_2026"
+        ]
+      }
+    },
+    {
+      "name": "Escape closes top browser and restores Import browse focus",
+      "status": "passed",
+      "evidence": {}
+    },
+    {
+      "name": "Save type dropdown exposes four choices above modal",
+      "status": "failed",
+      "evidence": {
+        "opts": [
+          "В рабочую область Engee",
+          "Julia Script .jl",
+          "Данные сигнала JLD2 .jld2",
+          "Полная сессия JLD2 .jld2"
+        ],
+        "dg": {
+          "modal": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 720,
+            "bottom": 720
+          },
+          "menu": null,
+          "z": null,
+          "hitInMenu": false
+        }
+      }
+    }
+  ],
+  "network": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/file-browser/list",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/save/options",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/api/v1/touch",
+      "status": 200,
+      "method": "POST"
+    }
+  ],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0661/prototype-v23-blocked.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0661/production-import-browser-fixed.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0661/production-failure.png"
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "tab_cleanup_status": "passed",
+  "mutations": {
+    "workspace_save": "not_run: no cleanup API/UI contract",
+    "session_jld2": "not_run: replacement mutates live session and no reversible restore contract"
+  },
+  "preexisting_page_count": 0,
+  "run_error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('native-save-signal-menu')\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/hnd0656_v23_visible_rerun.cjs:12:1086",
+  "summary": {
+    "planned": 6,
+    "passed": 4,
+    "failed": 2,
+    "not_run": 2
+  }
+}

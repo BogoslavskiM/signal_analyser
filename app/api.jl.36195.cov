@@ -1,0 +1,618 @@
+        - using Genie.Renderer.Json
+        - 
+        - const SIGNAL_INVENTORY_REQUEST_FIELDS = Dict(
+        -     "import_workspace" => Set([
+        -         "state_revision",
+        -         "operation",
+        -         "variable_name",
+        -         "signal_name",
+        -         "sample_rate_hz",
+        -     ]),
+        -     "import_workspace_batch" => Set([
+        -         "state_revision",
+        -         "operation",
+        -         "catalog_revision",
+        -         "selections",
+        -     ]),
+        -     "duplicate" => Set(["state_revision", "operation", "signal_name"]),
+        -     "extract_time_limits" => Set(["state_revision", "operation", "display_id"]),
+        -     "delete" => Set(["state_revision", "operation", "signal_name"]),
+        - )
+        - 
+      100 json_safe(value::AbstractFloat) = isfinite(value) ? value : nothing
+      134 json_safe(value::Real) = value
+      470 json_safe(value::AbstractString) = value
+      187 json_safe(value::Bool) = value
+      105 json_safe(value::Nothing) = value
+      132 json_safe(value::AbstractVector) = Any[json_safe(item) for item in value]
+        - json_safe(value::Tuple) = Any[json_safe(item) for item in value]
+      198 json_safe(value::AbstractDict) = Dict(string(key) => json_safe(val) for (key, val) in pairs(value))
+        - json_safe(value::NamedTuple) = Dict(string(key) => json_safe(getproperty(value, key)) for key in keys(value))
+        - json_safe(value) = value
+        - 
+        - function api_json(payload; status::Int = 200, headers = nothing)
+        -     headers === nothing ?
+        -         Genie.Renderer.Json.json(json_safe(payload); status = status) :
+        -         Genie.Renderer.Json.json(json_safe(payload); status = status, headers = headers)
+        - end
+        - 
+        - function signal_analyser_layouts_bootstrap_payload(
+        -     snapshot::Dict{String,Any},
+        - )::Dict{String,Any}
+        -     state = snapshot["state"]::Dict{String,Any}
+        -     payload = copy(state)
+        -     merge!(payload, snapshot)
+        -     payload
+        - end
+        - 
+        - function workspace_api_error_response(
+        -     code::AbstractString,
+        -     err;
+        -     status::Int,
+        -     headers = nothing,
+        - )
+        -     api_json(Dict(
+        -         "ok" => false,
+        -         "code" => String(code),
+        -         "error" => Dict(
+        -             "code" => String(code),
+        -             "message" => sprint(showerror, err),
+        -         ),
+        -     ); status = status, headers = headers)
+        - end
+        - 
+        - function api_error_response(
+        -     action::AbstractString,
+        -     err;
+        -     status::Int = 400,
+        -     headers = nothing,
+        - )
+        -     @error action exception = (err, catch_backtrace())
+        -     api_json(Dict(
+        -         "ok" => false,
+        -         "error" => string(action, ": ", sprint(showerror, err)),
+        -     ); status = status, headers = headers)
+        - end
+        - 
+        - function signal_analyser_validation_response(err::SignalAnalyserValidationError)
+        -     api_json(Dict(
+        -         "ok" => false,
+        -         "code" => "invalid_request",
+        -         "error" => Dict(
+        -             "code" => "invalid_request",
+        -             "message" => err.message,
+        -             "fields" => err.fields,
+        -         ),
+        -     ); status = 422)
+        - end
+        - 
+        - function signal_analyser_session_validation_response(err)
+        -     api_json(Dict{String,Any}(
+        -         "ok" => false,
+        -         "code" => err.code,
+        -         "error" => Dict{String,Any}(
+        -             "code" => err.code,
+        -             "message" => err.message,
+        -             "fields" => err.fields,
+        -         ),
+        -     ); status = 422)
+        - end
+        - 
+        - function native_engee_io_error_response(err; headers = nothing)
+        -     api_json(Dict{String,Any}(
+        -         "ok" => false,
+        -         "code" => err.code,
+        -         "error" => Dict{String,Any}(
+        -             "code" => err.code,
+        -             "message" => err.message,
+        -             "fields" => err.fields,
+        -         ),
+        -     ); status = err.code in ("target_exists", "internal_name_conflict") ? 409 : 422, headers = headers)
+        - end
+        - 
+        - function native_engee_provider_error_response(err; headers = nothing)
+        -     code = err isa WorkspaceUnavailableError ? "engee_unavailable" : "engee_provider_error"
+        -     api_json(Dict{String,Any}(
+        -         "ok" => false,
+        -         "code" => code,
+        -         "error" => Dict{String,Any}(
+        -             "code" => code,
+        -             "message" => sprint(showerror, err),
+        -             "fields" => Dict{String,String}(),
+        -         ),
+        -     ); status = err isa WorkspaceUnavailableError ? 503 : 502, headers = headers)
+        - end
+        - 
+        - function signal_package_validation_response(err)
+        -     api_json(Dict{String,Any}(
+        -         "ok" => false,
+        -         "code" => err.code,
+        -         "error" => Dict{String,Any}(
+        -             "code" => err.code,
+        -             "message" => err.message,
+        -             "fields" => err.fields,
+        -         ),
+        -     ); status = if err.code in ("archive_size_limit", "archive_entry_limit", "archive_total_limit", "archive_file_limit")
+        -         413
+        -     elseif err.code == "workspace_unavailable"
+        -         503
+        -     elseif err.code == "workspace_provider_error"
+        -         502
+        -     else
+        -         422
+        -     end)
+        - end
+        - 
+        - function signal_package_base64(value)::Vector{UInt8}
+        -     value isa AbstractString || throw(signal_package_validation_error(
+        -         "invalid_request",
+        -         "archive_base64 должен быть строкой";
+        -         field = "archive_base64",
+        -     ))
+        -     encoded = String(value)
+        -     max_encoded = cld(SIGNAL_PACKAGE_MAX_ARCHIVE_BYTES, 3) * 4 + 4
+        -     ncodeunits(encoded) <= max_encoded || throw(signal_package_validation_error(
+        -         "archive_size_limit",
+        -         "Base64 payload превышает лимит пакета";
+        -         field = "archive_base64",
+        -     ))
+        -     bytes = try
+        -         base64decode(encoded)
+        -     catch
+        -         throw(signal_package_validation_error(
+        -             "invalid_base64",
+        -             "archive_base64 содержит некорректный Base64";
+        -             field = "archive_base64",
+        -         ))
+        -     end
+        -     length(bytes) <= SIGNAL_PACKAGE_MAX_ARCHIVE_BYTES || throw(signal_package_validation_error(
+        -         "archive_size_limit",
+        -         "Архив превышает лимит размера";
+        -         field = "archive_base64",
+        -     ))
+        -     bytes
+        - end
+        - 
+        - function parse_signal_package_validate_request(data)::Vector{UInt8}
+        -     request = signal_package_exact_object(data, Set(["archive_base64"]), "body")
+        -     signal_package_base64(signal_package_value(request, "archive_base64"))
+        - end
+        - 
+        - function parse_signal_package_workspace_preflight_request(data)::Tuple{Vector{UInt8},String}
+        -     request = signal_package_exact_object(
+        -         data,
+        -         Set(["archive_base64", "workspace_prefix"]),
+        -         "body",
+        -     )
+        -     archive = signal_package_base64(signal_package_value(request, "archive_base64"))
+        -     prefix = signal_package_string(
+        -         signal_package_value(request, "workspace_prefix"),
+        -         "workspace_prefix",
+        -     )
+        -     signal_package_workspace_names(AnalysedSignal[], prefix)
+        -     archive, prefix
+        - end
+        - 
+        - function parse_signal_package_import_request(data)::Tuple{Int,Vector{UInt8},Bool,String}
+        -     data isa AbstractDict || throw(signal_package_validation_error(
+        -         "invalid_request",
+        -         "body должен быть JSON-объектом";
+        -         field = "body",
+        -     ))
+        -     actual = Set(String(key) for key in keys(data))
+        -     minimal = Set(["state_revision", "archive_base64"])
+        -     workspace = Set(["state_revision", "archive_base64", "publish_workspace", "workspace_prefix"])
+        -     actual in (minimal, workspace) || throw(signal_package_validation_error(
+        -         "invalid_request",
+        -         "body имеет неверный набор полей";
+        -         field = "body",
+        -     ))
+        -     request = data
+        -     revision = signal_package_integer(
+        -         signal_package_value(request, "state_revision"),
+        -         "state_revision",
+        -     )
+        -     archive = signal_package_base64(signal_package_value(request, "archive_base64"))
+        -     publish_workspace = if actual == workspace
+        -         value = signal_package_value(request, "publish_workspace")
+        -         value isa Bool || throw(signal_package_validation_error(
+        -             "invalid_request",
+        -             "publish_workspace должен быть boolean";
+        -             field = "publish_workspace",
+        -         ))
+        -         value
+        -     else
+        -         false
+        -     end
+        -     workspace_prefix = actual == workspace ? signal_package_string(
+        -         signal_package_value(request, "workspace_prefix"),
+        -         "workspace_prefix",
+        -     ) : SIGNAL_PACKAGE_DEFAULT_WORKSPACE_PREFIX
+        -     publish_workspace && signal_package_workspace_names(AnalysedSignal[], workspace_prefix)
+        -     revision, archive, publish_workspace, workspace_prefix
+        - end
+        - 
+        - function signal_package_binary_response(bytes::Vector{UInt8})
+        -     headers = [
+        -         "Content-Type" => "application/vnd.engee.signal-analyser-package+zip",
+        -         "Content-Disposition" => "attachment; filename=\"$(SIGNAL_PACKAGE_DEFAULT_FILENAME)\"",
+        -         "Cache-Control" => "no-store",
+        -         "X-Content-Type-Options" => "nosniff",
+        -     ]
+        -     Genie.Renderer.HTTP.Response(200, headers; body = bytes)
+        - end
+        - 
+        - function signal_analyser_session_stale_response(
+        -     state::SignalAnalyserState,
+        -     err::SignalAnalyserStaleStateError,
+        - )
+        -     lock(state.lock) do
+        -         current = Dict{String,Any}("state_revision" => state.view.state_revision)
+        -         api_json(Dict{String,Any}(
+        -             "ok" => false,
+        -             "code" => "stale_state",
+        -             "error" => Dict{String,Any}(
+        -                 "code" => "stale_state",
+        -                 "message" => sprint(showerror, err),
+        -             ),
+        -             "state" => current,
+        -             "current" => current,
+        -         ); status = 409)
+        -     end
+        - end
+        - 
+        - function signal_analyser_stale_response(state::SignalAnalyserState, err::SignalAnalyserStaleStateError)
+        -     current = signal_analyser_state_lite(state)
+        -     api_json(Dict(
+        -         "ok" => false,
+        -         "code" => "stale_state",
+        -         "error" => Dict(
+        -             "code" => "stale_state",
+        -             "message" => sprint(showerror, err),
+        -         ),
+        -         "state" => current,
+        -         "current" => current,
+        -     ); status = 409)
+        - end
+        - 
+        2 function signal_analyser_layout_stale_response(
+        -     state::SignalAnalyserState,
+        -     err::SignalAnalyserStaleStateError,
+        - )
+        2     current = signal_analyser_layouts_lite_snapshot(state)
+        2     api_json(Dict{String,Any}(
+        -         "ok" => false,
+        -         "code" => "stale_state",
+        -         "error" => Dict{String,Any}(
+        -             "code" => "stale_state",
+        -             "message" => sprint(showerror, err),
+        -         ),
+        -         "state" => current["state"],
+        -         "current" => current,
+        -     ); status = 409)
+        - end
+        - 
+        - function signal_setting_validation_response(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     err::SignalSettingValidationError,
+        - )
+        -     settings = if isempty(err.display_id)
+        -         nothing
+        -     else
+        -         try
+        -             signal_settings_document(service, state, err.display_id)
+        -         catch nested
+        -             nested isa SignalAnalyserValidationError || rethrow()
+        -             nothing
+        -         end
+        -     end
+        -     api_json(Dict{String,Any}(
+        -         "ok" => false,
+        -         "code" => "invalid_setting",
+        -         "field_id" => err.field_id,
+        -         "error" => Dict{String,Any}(
+        -             "code" => "invalid_setting",
+        -             "message" => err.message,
+        -             "field_id" => err.field_id,
+        -         ),
+        -         "settings" => settings,
+        -     ); status = 422)
+        - end
+        - 
+        - function signal_setting_stale_response(
+        -     service::SignalSettingsService,
+        -     state::SignalAnalyserState,
+        -     err::SignalAnalyserStaleStateError,
+        -     display_id::AbstractString,
+        - )
+        -     current = signal_analyser_state_lite(state)
+        -     settings = signal_settings_document(service, state, display_id)
+        -     api_json(Dict{String,Any}(
+        -         "ok" => false,
+        -         "code" => "stale_state",
+        -         "error" => Dict{String,Any}(
+        -             "code" => "stale_state",
+        -             "message" => sprint(showerror, err),
+        -         ),
+        -         "state" => current,
+        -         "current" => current,
+        -         "settings" => settings,
+        -     ); status = 409)
+        - end
+        - 
+        2 function signal_analyser_inactive_output_response(
+        -     state::SignalAnalyserState,
+        -     err::SignalAnalyserInactiveOutputError;
+        -     headers = nothing,
+        - )
+        1     current = signal_analyser_state_lite(state)
+        1     api_json(Dict{String,Any}(
+        -         "ok" => false,
+        -         "code" => "inactive_output",
+        -         "error" => Dict{String,Any}(
+        -             "code" => "inactive_output",
+        -             "message" => sprint(showerror, err),
+        -         ),
+        -         "state" => current,
+        -         "current" => current,
+        -     ); status = 409, headers = headers)
+        - end
+        - 
+        - function signal_analyser_state_lite_api_payload(
+        -     state::SignalAnalyserState,
+        - )::Dict{String,Any}
+        -     payload = signal_analyser_state_lite(state)
+        -     payload["app_version"] = RUNTIME_REVISION.sha
+        -     payload["toolbar"] = Dict{String,Any}(
+        -         "import" => Dict{String,Any}(
+        -             "visible" => true,
+        -             "disabled" => false,
+        -             "icon" => "import",
+        -         ),
+        -         "export" => Dict{String,Any}(
+        -             "visible" => true,
+        -             "disabled" => false,
+        -             "icon" => "download",
+        -             "default_operation" => "workspace",
+        -             "operations" => String["workspace", "script", "jld2", "session"],
+        -         ),
+        -         "other" => Dict{String,Any}(
+        -             "visible" => false,
+        -             "disabled" => true,
+        -             "icon" => "more-vertical",
+        -         ),
+        -         "help" => Dict{String,Any}(
+        -             "visible" => false,
+        -             "disabled" => true,
+        -             "icon" => "help-circle",
+        -             "href" => "",
+        -         ),
+        -     )
+        -     payload
+        - end
+        - 
+        - function signal_inventory_request_exact_fields!(
+        -     field_errors::Dict{String,String},
+        -     data::AbstractDict,
+        -     expected::Set{String},
+        - )
+        -     actual = signal_analyser_payload_keys(data)
+        -     actual == expected && return
+        -     missing = sort!(collect(setdiff(expected, actual)))
+        -     unknown = sort!(collect(setdiff(actual, expected)))
+        -     details = String[]
+        -     isempty(missing) || push!(details, "отсутствуют: $(join(missing, ", "))")
+        -     isempty(unknown) || push!(details, "неизвестны: $(join(unknown, ", "))")
+        -     field_errors["body"] = "Ожидался точный набор полей ($(join(details, "; ")))"
+        - end
+        - 
+        - function signal_inventory_request_revision!(
+        -     field_errors::Dict{String,String},
+        -     data::AbstractDict,
+        - )::Union{Nothing,Int}
+        -     value = signal_analyser_payload_value(data, "state_revision")
+        -     if !(value isa Integer) || value isa Bool || value < 0
+        -         field_errors["state_revision"] = "Требуется неотрицательное целое число"
+        -         return nothing
+        -     end
+        -     try
+        -         Int(value)
+        -     catch err
+        -         (err isa InexactError || err isa OverflowError) || rethrow()
+        -         field_errors["state_revision"] = "Требуется целое число в диапазоне Int"
+        -         nothing
+        -     end
+        - end
+        - 
+        - function signal_inventory_batch_selections!(
+        -     field_errors::Dict{String,String},
+        -     value,
+        - )::Union{Nothing,Vector{WorkspaceImportSelection}}
+        -     if !(value isa AbstractVector) ||
+        -         !(1 <= length(value) <= WORKSPACE_CATALOG_MAX_SELECTIONS)
+        -         field_errors["selections"] = "Требуется массив от 1 до 1000 selections"
+        -         return nothing
+        -     end
+        -     selections = WorkspaceImportSelection[]
+        -     seen_ids = Set{String}()
+        -     for (index, item) in enumerate(value)
+        -         if !(item isa AbstractDict) ||
+        -             signal_analyser_payload_keys(item) != Set(["variable_id", "sample_rate_hz"])
+        -             field_errors["selections"] =
+        -                 "Selection $(index) должна содержать только variable_id и sample_rate_hz"
+        -             return nothing
+        -         end
+        -         id_value = signal_analyser_payload_value(item, "variable_id")
+        -         if !(id_value isa AbstractString) ||
+        -             !occursin(WORKSPACE_VARIABLE_ID_REGEX, String(id_value))
+        -             field_errors["selections"] = "Selection $(index) содержит некорректный variable_id"
+        -             return nothing
+        -         end
+        -         id = String(id_value)
+        -         if id in seen_ids
+        -             field_errors["selections"] = "Variable ID selections не должны повторяться"
+        -             return nothing
+        -         end
+        -         push!(seen_ids, id)
+        -         sample_rate_value = signal_analyser_payload_value(item, "sample_rate_hz")
+        -         sample_rate = if sample_rate_value === nothing
+        -             nothing
+        -         elseif sample_rate_value isa Real && !(sample_rate_value isa Bool)
+        -             rate = try
+        -                 Float64(sample_rate_value)
+        -             catch err
+        -                 (err isa InexactError || err isa OverflowError) || rethrow()
+        -                 nothing
+        -             end
+        -             if rate !== nothing && isfinite(rate) && rate > 0
+        -                 rate
+        -             else
+        -                 field_errors["selections"] =
+        -                     "Selection $(index) должна содержать null или положительный конечный sample_rate_hz"
+        -                 return nothing
+        -             end
+        -         else
+        -             field_errors["selections"] =
+        -                 "Selection $(index) должна содержать null или положительный конечный sample_rate_hz"
+        -             return nothing
+        -         end
+        -         push!(selections, WorkspaceImportSelection(id, sample_rate))
+        -     end
+        -     selections
+        - end
+        - 
+        - function parse_signal_inventory_command(data)::AbstractSignalInventoryCommand
+        -     data isa AbstractDict || throw(signal_inventory_validation_error(
+        -         "body",
+        -         "Ожидался JSON-объект",
+        -     ))
+        -     field_errors = Dict{String,String}()
+        -     operation_value = signal_analyser_payload_value(data, "operation")
+        -     operation = if operation_value isa AbstractString &&
+        -         haskey(SIGNAL_INVENTORY_REQUEST_FIELDS, String(operation_value))
+        -         String(operation_value)
+        -     else
+        -         field_errors["operation"] =
+        -             "Допустимо: import_workspace, import_workspace_batch, duplicate, extract_time_limits, delete"
+        -         nothing
+        -     end
+        -     expected_fields = operation === nothing ?
+        -         Set(["state_revision", "operation"]) :
+        -         SIGNAL_INVENTORY_REQUEST_FIELDS[operation]
+        -     signal_inventory_request_exact_fields!(field_errors, data, expected_fields)
+        -     revision = signal_inventory_request_revision!(field_errors, data)
+        - 
+        -     if operation == "import_workspace_batch"
+        -         catalog_value = signal_analyser_payload_value(data, "catalog_revision")
+        -         catalog_revision = if catalog_value isa AbstractString &&
+        -             occursin(WORKSPACE_CATALOG_REVISION_REGEX, String(catalog_value))
+        -             String(catalog_value)
+        -         else
+        -             field_errors["catalog_revision"] = "Требуется catalog revision формата wc_UUID"
+        -             nothing
+        -         end
+        -         selections = signal_inventory_batch_selections!(
+        -             field_errors,
+        -             signal_analyser_payload_value(data, "selections"),
+        -         )
+        -         isempty(field_errors) || throw(SignalAnalyserValidationError(
+        -             "Некорректный запрос Signals",
+        -             field_errors,
+        -         ))
+        -         return ImportWorkspaceBatchCommand(
+        -             revision::Int,
+        -             catalog_revision::String,
+        -             selections::Vector{WorkspaceImportSelection},
+        -         )
+        -     elseif operation == "import_workspace"
+        -         variable_value = signal_analyser_payload_value(data, "variable_name")
+        -         variable_name = if variable_value isa AbstractString &&
+        -             !isempty(strip(String(variable_value)))
+        -             String(variable_value)
+        -         else
+        -             field_errors["variable_name"] = "Требуется непустая строка"
+        -             nothing
+        -         end
+        -         signal_value = signal_analyser_payload_value(data, "signal_name")
+        -         signal_name = if signal_value === nothing
+        -             nothing
+        -         elseif signal_value isa AbstractString && !isempty(strip(String(signal_value)))
+        -             String(signal_value)
+        -         else
+        -             field_errors["signal_name"] = "Требуется null или непустая строка"
+        -             nothing
+        -         end
+        -         sample_rate_value = signal_analyser_payload_value(data, "sample_rate_hz")
+        -         sample_rate = if sample_rate_value === nothing
+        -             nothing
+        -         elseif sample_rate_value isa Real && !(sample_rate_value isa Bool)
+        -             value = try
+        -                 Float64(sample_rate_value)
+        -             catch err
+        -                 (err isa InexactError || err isa OverflowError) || rethrow()
+        -                 NaN
+        -             end
+        -             if isfinite(value) && value > 0
+        -                 value
+        -             else
+        -                 field_errors["sample_rate_hz"] =
+        -                     "Требуется null или положительное конечное число"
+        -                 nothing
+        -             end
+        -         else
+        -             field_errors["sample_rate_hz"] =
+        -                 "Требуется null или положительное конечное число"
+        -             nothing
+        -         end
+        -         isempty(field_errors) || throw(SignalAnalyserValidationError(
+        -             "Некорректный запрос Signals",
+        -             field_errors,
+        -         ))
+        -         return ImportWorkspaceSignalCommand(
+        -             revision::Int,
+        -             variable_name::String,
+        -             signal_name,
+        -             sample_rate,
+        -         )
+        -     elseif operation == "extract_time_limits"
+        -         display_value = signal_analyser_payload_value(data, "display_id")
+        -         display_id = if display_value isa AbstractString &&
+        -             !isempty(strip(String(display_value)))
+        -             String(display_value)
+        -         else
+        -             field_errors["display_id"] = "Требуется непустая строка"
+        -             nothing
+        -         end
+        -         isempty(field_errors) || throw(SignalAnalyserValidationError(
+        -             "Некорректный запрос Signals",
+        -             field_errors,
+        -         ))
+        -         return ExtractTimeLimitsSignalCommand(revision::Int, display_id::String)
+        -     end
+        - 
+        -     signal_value = signal_analyser_payload_value(data, "signal_name")
+        -     signal_name = if signal_value isa AbstractString &&
+        -         !isempty(strip(String(signal_value)))
+        -         String(signal_value)
+        -     else
+        -         field_errors["signal_name"] = "Требуется непустая строка"
+        -         nothing
+        -     end
+        -     isempty(field_errors) || throw(SignalAnalyserValidationError(
+        -         "Некорректный запрос Signals",
+        -         field_errors,
+        -     ))
+        -     operation == "duplicate" ?
+        -         DuplicateSignalCommand(revision::Int, signal_name::String) :
+        -         DeleteSignalCommand(revision::Int, signal_name::String)
+        - end
+        - 
+        - function status_payload()
+        -     Dict(
+        -         "ok" => true,
+        -         "project" => EXAMPLE_APP_STATE["project_name"],
+        -         "ready" => EXAMPLE_APP_STATE["ready"],
+        -         "runtime_revision" => RUNTIME_REVISION.sha,
+        -     )
+        - end

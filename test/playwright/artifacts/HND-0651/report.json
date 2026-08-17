@@ -1,0 +1,1265 @@
+{
+  "id": "HND-0651",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "7508de24ac72b630630e79eae2d5addc73df17a7",
+  "prototype_requested": "v23",
+  "prototype_used": "v21 (only pinned local prototype present)",
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "started_at": "2026-08-14T07:50:31.112Z",
+  "checks": [
+    {
+      "name": "prototype Save opens 560px contract dialog",
+      "status": "passed",
+      "evidence": [
+        {
+          "index": 0,
+          "tag": "SECTION",
+          "id": "",
+          "role": "dialog",
+          "cls": "dialog-card",
+          "text": "Сохранить переносимый пакет\n\nПроверьте состав переносимого пакета Engee. Все перечисленные материалы включаются всегда.\n\nСостав пакета\n✓\nСессия и настройки\nЭкраны, области, привязки и текущие настройки анализа.\n✓\nИсходные данные сигналов\nИмена, цвета, частоты дискретизации и исходные real/imag отсчёты.\n✓\nСнимки готовых графиков\nТекущие готовые снимки графиков; состояния загрузки и ошибки не включаются.\n✓\nreproduce.jl\nСкрипт включается как файл и никогда не запускается автоматически.\n✓\nМетаданные зависимостей\nProject.toml, Manifest.toml и сведения о среде Engee.\nОтмена\nСохранить пакет",
+          "rect": {
+            "x": 360,
+            "y": 16,
+            "width": 560,
+            "height": 688,
+            "bottom": 704
+          },
+          "position": "relative",
+          "zIndex": "95000",
+          "display": "grid",
+          "visibility": "visible",
+          "parent": {
+            "tag": "DIV",
+            "id": "",
+            "cls": "modal-layer"
+          }
+        },
+        {
+          "index": 1,
+          "tag": "SECTION",
+          "id": "",
+          "role": "dialog",
+          "cls": "dialog-card",
+          "text": "\n      \n        Импортировать переносимый пакет\n        \n      \n      \n      \n    ",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0,
+            "bottom": 0
+          },
+          "position": "relative",
+          "zIndex": "95000",
+          "display": "grid",
+          "visibility": "visible",
+          "parent": {
+            "tag": "DIV",
+            "id": "",
+            "cls": "modal-layer"
+          }
+        }
+      ]
+    },
+    {
+      "name": "prototype import validation contract",
+      "status": "passed",
+      "evidence": {
+        "dialog": [
+          {
+            "index": 0,
+            "tag": "SECTION",
+            "id": "",
+            "role": "dialog",
+            "cls": "dialog-card",
+            "text": "\n      \n        Сохранить переносимый пакет\n        \n      \n      \n        Проверьте состав переносимого пакета Engee. Все перечисленные материалы включаются всегда.\n        Состав пакета\n        \n          \n    \n      ✓\n      Сессия и настройкиЭкраны, области, привязки и текущие настройки анализа.\n    \n          \n    \n      ✓\n      Исходные данные сигналовИмена, цвета, частоты дискретизации и исходные real/imag отсчёты.\n    \n          \n    \n      ✓\n      Снимки готовых графиковТекущие готовые снимки графиков; состояния загрузки и ошибки не включаются.\n    \n          \n    \n      ✓\n      reproduce.jlСкрипт включается как файл и никогда не запускается автоматически.\n    \n          \n    \n      ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "bottom": 0
+            },
+            "position": "relative",
+            "zIndex": "95000",
+            "display": "grid",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "modal-layer"
+            }
+          },
+          {
+            "index": 1,
+            "tag": "SECTION",
+            "id": "",
+            "role": "dialog",
+            "cls": "dialog-card",
+            "text": "Импортировать переносимый пакет\nПакет проверен\n\nradar-session.sazip · формат v1 · session v3\n\nСоздан\n13 августа 2026, 12:40\nПриложение\nSignal Analyser 0.1.0\nКонтрольные суммы\nВсе совпадают\nСостав пакета\nПроверка ограничений приложения\nСигналы\n4 / 256\nЭкраны\n3 / 128\nОтсчёты суммарно\n1 248 000 / 5 000 000\nЗаменить текущую сессию\nЯ понимаю, что текущая сессия будет полностью и атомарно заменена содержимым пакета.\nОпубликовать сигналы в рабочую область Engee\nВыключено по умолчанию. Без публикации сигналы остаются только внутри приложения.\nСкрипты не выполняются\n\nreproduce.jl и любые другие файлы из загруженного пакета не запускаются при импорте.\n\nОтмена\nВосстановить сессию",
+            "rect": {
+              "x": 360,
+              "y": 16,
+              "width": 560,
+              "height": 688,
+              "bottom": 704
+            },
+            "position": "relative",
+            "zIndex": "95000",
+            "display": "grid",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "modal-layer"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "production availability",
+      "status": "passed",
+      "evidence": {
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+        "status": 200,
+        "time": "2026-08-14T07:50:35.312Z"
+      }
+    },
+    {
+      "name": "exact runtime revision",
+      "status": "passed",
+      "evidence": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "7508de24ac72b630630e79eae2d5addc73df17a7",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "Save trigger available",
+      "status": "passed",
+      "evidence": {
+        "buttons": [
+          "\n          \n        ",
+          "\n          \n        ",
+          "\n          \n        ",
+          "",
+          "\n              \n            ",
+          "\n              \n              1 × 1\n              \n            ",
+          "",
+          "",
+          "Применить",
+          "\n            \n          ",
+          "\n            \n          ",
+          "\n              \n            ",
+          "\n              \n            ",
+          "",
+          ""
+        ]
+      }
+    },
+    {
+      "name": "Save opens populated selector",
+      "status": "passed",
+      "evidence": {
+        "saveBody": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 1\nОбласть 1\nНастройки отображения\n\nОбласть 1 · Временная область\n\nОтображение\nЭкстремумы\nГрафик\nТип графика\nПоказывать легенду\nПараметры\nНормировать Y\nПоказывать маркеры\nПределы времени\nЕдиницы времени\nПределы X\ns\nПределы оси Y\nПределы Y\nСвязь областей\nСвязать время\nПрименить\nСигналы\nИзмерения\nЭкстремумы\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный\nСохранение\nТип\nОбласть\nОдин сигнал\nВыбранные сигналы\nСигналы\nГармонический сигнал\nИмя переменной\nПерезаписывать переменные\nОтмена\nСохранить",
+        "saveGeo": [
+          {
+            "index": 1,
+            "tag": "SECTION",
+            "id": "",
+            "role": "dialog",
+            "cls": "dialog-card message-dialog",
+            "text": "\n      \n        Очистить активную область?\n      \n      \n        График останется без видимых сигналов, пока вы не включите их снова.\n      \n      \n        Отмена\n        Очистить\n      \n    ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "bottom": 0
+            },
+            "position": "relative",
+            "zIndex": "97000",
+            "display": "grid",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "modal-layer nested-modal-layer"
+            }
+          },
+          {
+            "index": 2,
+            "tag": "SECTION",
+            "id": "signal-add-dialog",
+            "role": "dialog",
+            "cls": "dialog-card add-dialog",
+            "text": "\n      \n        Добавление сигналов\n        \n      \n      \n        \n        0 переменных\n      \n      \n      \n        Частота дискретизации Hz\n        \n        Требуется для выбранных raw-массивов.\n        \n      \n      \n        Загрузка переменных…\n        \n      \n      \n        Отмена\n        Добавить\n      \n    ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "bottom": 0
+            },
+            "position": "relative",
+            "zIndex": "95000",
+            "display": "grid",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "modal-layer primary-modal-layer"
+            }
+          },
+          {
+            "index": 3,
+            "tag": "DIV",
+            "id": "",
+            "role": null,
+            "cls": "signal-add-browser-head",
+            "text": "\n        \n        0 переменных\n      ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "bottom": 0
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "flex",
+            "visibility": "visible",
+            "parent": {
+              "tag": "SECTION",
+              "id": "signal-add-dialog",
+              "cls": "dialog-card add-dialog"
+            }
+          },
+          {
+            "index": 5,
+            "tag": "SECTION",
+            "id": "",
+            "role": "dialog",
+            "cls": "dialog-card native-dialog native-save-dialog",
+            "text": "Сохранение\nТип\nОбласть\nОдин сигнал\nВыбранные сигналы\nСигналы\nГармонический сигнал\nИмя переменной\nПерезаписывать переменные\nОтмена\nСохранить",
+            "rect": {
+              "x": 360,
+              "y": 76,
+              "width": 560,
+              "height": 568,
+              "bottom": 644
+            },
+            "position": "relative",
+            "zIndex": "auto",
+            "display": "grid",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "modal-layer native-modal-layer native-save"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Import trigger available",
+      "status": "passed",
+      "evidence": {
+        "buttons": [
+          "\n          \n        ",
+          "\n          \n        ",
+          "\n          \n        ",
+          "",
+          "\n              \n            ",
+          "\n              \n              1 × 1\n              \n            ",
+          "",
+          "",
+          "График",
+          "",
+          "Параметры",
+          "Пределы времени",
+          "",
+          "Пределы оси Y",
+          "Связь областей",
+          "Применить",
+          "\n            \n          ",
+          "\n            \n          ",
+          "\n              \n            ",
+          "\n              \n            ",
+          "",
+          ""
+        ]
+      }
+    },
+    {
+      "name": "Import opens visible overlay",
+      "status": "passed",
+      "evidence": {
+        "importStart": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 1\nОбласть 1\n0\n0.05\n0.1\n0.15\n0.2\n−1\n−0.5\n0\n0.5\n1\nВремя, с\nАмплитуда\nНастройки отображения\n\nОбласть 1 · Временная область\n\nОтображение\nЭкстремумы\nГрафик\nТип графика\nПоказывать легенду\nПараметры\nНормировать Y\nПоказывать маркеры\nПределы времени\nЕдиницы времени\nПределы X\ns\nПределы оси Y\nПределы Y\nСвязь областей\nСвязать время\nПрименить\nСигналы\nИзмерения\nЭкстремумы\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный\nИмпорт\nEngee /user (.jld2)Локальный .sazip\nФайл\nЗаменить текущую сессию\nОтмена\nИмпортировать\nФайлы Engee\nИмя↑\n\nВ этой папке нет элементов\n\nЗагрузка…\n/user\nОтменитьВыбрать",
+        "importStartGeo": [
+          {
+            "index": 1,
+            "tag": "SECTION",
+            "id": "",
+            "role": "dialog",
+            "cls": "dialog-card message-dialog",
+            "text": "\n      \n        Очистить активную область?\n      \n      \n        График останется без видимых сигналов, пока вы не включите их снова.\n      \n      \n        Отмена\n        Очистить\n      \n    ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "bottom": 0
+            },
+            "position": "relative",
+            "zIndex": "97000",
+            "display": "grid",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "modal-layer nested-modal-layer"
+            }
+          },
+          {
+            "index": 2,
+            "tag": "SECTION",
+            "id": "signal-add-dialog",
+            "role": "dialog",
+            "cls": "dialog-card add-dialog",
+            "text": "\n      \n        Добавление сигналов\n        \n      \n      \n        \n        0 переменных\n      \n      \n      \n        Частота дискретизации Hz\n        \n        Требуется для выбранных raw-массивов.\n        \n      \n      \n        Загрузка переменных…\n        \n      \n      \n        Отмена\n        Добавить\n      \n    ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "bottom": 0
+            },
+            "position": "relative",
+            "zIndex": "95000",
+            "display": "grid",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "modal-layer primary-modal-layer"
+            }
+          },
+          {
+            "index": 3,
+            "tag": "DIV",
+            "id": "",
+            "role": null,
+            "cls": "signal-add-browser-head",
+            "text": "\n        \n        0 переменных\n      ",
+            "rect": {
+              "x": 0,
+              "y": 0,
+              "width": 0,
+              "height": 0,
+              "bottom": 0
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "flex",
+            "visibility": "visible",
+            "parent": {
+              "tag": "SECTION",
+              "id": "signal-add-dialog",
+              "cls": "dialog-card add-dialog"
+            }
+          },
+          {
+            "index": 5,
+            "tag": "SECTION",
+            "id": "",
+            "role": "dialog",
+            "cls": "dialog-card native-dialog native-import-dialog",
+            "text": "Импорт\nEngee /user (.jld2)Локальный .sazip\nФайл\nЗаменить текущую сессию\nОтмена\nИмпортировать",
+            "rect": {
+              "x": 360,
+              "y": 180,
+              "width": 560,
+              "height": 360,
+              "bottom": 540
+            },
+            "position": "relative",
+            "zIndex": "auto",
+            "display": "grid",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "modal-layer native-modal-layer native-import"
+            }
+          },
+          {
+            "index": 6,
+            "tag": "DIV",
+            "id": "",
+            "role": null,
+            "cls": "file-browser-layer native-file-browser-layer",
+            "text": "Файлы Engee\nИмя↑\n\nВ этой папке нет элементов\n\nЗагрузка…\n/user\nОтменитьВыбрать",
+            "rect": {
+              "x": 0,
+              "y": 720,
+              "width": 1280,
+              "height": 428,
+              "bottom": 1148
+            },
+            "position": "static",
+            "zIndex": "97000",
+            "display": "block",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": ""
+            }
+          },
+          {
+            "index": 7,
+            "tag": "SECTION",
+            "id": "",
+            "role": "dialog",
+            "cls": "file-browser-card",
+            "text": "Файлы Engee\nИмя↑\n\nВ этой папке нет элементов\n\nЗагрузка…\n/user\nОтменитьВыбрать",
+            "rect": {
+              "x": 24,
+              "y": 744,
+              "width": 1232,
+              "height": 380,
+              "bottom": 1124
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "block",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "file-browser-layer native-file-browser-layer"
+            }
+          },
+          {
+            "index": 8,
+            "tag": "DIV",
+            "id": "",
+            "role": null,
+            "cls": "file-browser-top-gap",
+            "text": "",
+            "rect": {
+              "x": 24,
+              "y": 744,
+              "width": 1232,
+              "height": 0,
+              "bottom": 744
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "block",
+            "visibility": "visible",
+            "parent": {
+              "tag": "SECTION",
+              "id": "",
+              "cls": "file-browser-card"
+            }
+          },
+          {
+            "index": 9,
+            "tag": "BUTTON",
+            "id": "",
+            "role": null,
+            "cls": "file-browser-heading",
+            "text": "Имя↑",
+            "rect": {
+              "x": 24,
+              "y": 744,
+              "width": 51.0625,
+              "height": 24.890625,
+              "bottom": 768.890625
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "inline-block",
+            "visibility": "visible",
+            "parent": {
+              "tag": "SECTION",
+              "id": "",
+              "cls": "file-browser-card"
+            }
+          },
+          {
+            "index": 10,
+            "tag": "DIV",
+            "id": "",
+            "role": null,
+            "cls": "file-browser-list-wrap",
+            "text": "В этой папке нет элементов\n\nЗагрузка…",
+            "rect": {
+              "x": 24,
+              "y": 782.890625,
+              "width": 1232,
+              "height": 101.78125,
+              "bottom": 884.671875
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "block",
+            "visibility": "visible",
+            "parent": {
+              "tag": "SECTION",
+              "id": "",
+              "cls": "file-browser-card"
+            }
+          },
+          {
+            "index": 11,
+            "tag": "DIV",
+            "id": "",
+            "role": null,
+            "cls": "file-browser-list",
+            "text": "В этой папке нет элементов",
+            "rect": {
+              "x": 24,
+              "y": 782.890625,
+              "width": 1232,
+              "height": 18.890625,
+              "bottom": 801.78125
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "block",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "file-browser-list-wrap"
+            }
+          },
+          {
+            "index": 12,
+            "tag": "P",
+            "id": "",
+            "role": null,
+            "cls": "browser-empty",
+            "text": "В этой папке нет элементов",
+            "rect": {
+              "x": 24,
+              "y": 782.890625,
+              "width": 1232,
+              "height": 18.890625,
+              "bottom": 801.78125
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "block",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "file-browser-list"
+            }
+          },
+          {
+            "index": 13,
+            "tag": "DIV",
+            "id": "",
+            "role": null,
+            "cls": "file-browser-loading",
+            "text": "Загрузка…",
+            "rect": {
+              "x": 24,
+              "y": 815.78125,
+              "width": 1232,
+              "height": 68.890625,
+              "bottom": 884.671875
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "block",
+            "visibility": "visible",
+            "parent": {
+              "tag": "DIV",
+              "id": "",
+              "cls": "file-browser-list-wrap"
+            }
+          },
+          {
+            "index": 14,
+            "tag": "DIV",
+            "id": "",
+            "role": null,
+            "cls": "file-browser-current-path",
+            "text": "/user",
+            "rect": {
+              "x": 24,
+              "y": 884.671875,
+              "width": 1232,
+              "height": 20.890625,
+              "bottom": 905.5625
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "block",
+            "visibility": "visible",
+            "parent": {
+              "tag": "SECTION",
+              "id": "",
+              "cls": "file-browser-card"
+            }
+          },
+          {
+            "index": 15,
+            "tag": "FOOTER",
+            "id": "",
+            "role": null,
+            "cls": "file-browser-actions",
+            "text": "ОтменитьВыбрать",
+            "rect": {
+              "x": 24,
+              "y": 905.5625,
+              "width": 1232,
+              "height": 32.890625,
+              "bottom": 938.453125
+            },
+            "position": "static",
+            "zIndex": "auto",
+            "display": "block",
+            "visibility": "visible",
+            "parent": {
+              "tag": "SECTION",
+              "id": "",
+              "cls": "file-browser-card"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Import exposes folder browser trigger",
+      "status": "failed",
+      "evidence": {
+        "folderCount": 0,
+        "buttons": [
+          "\n          \n        ",
+          "\n          \n        ",
+          "\n          \n        ",
+          "",
+          "\n              \n            ",
+          "\n              \n              1 × 1\n              \n            ",
+          "",
+          "",
+          "График",
+          "",
+          "Параметры",
+          "Пределы времени",
+          "",
+          "Пределы оси Y",
+          "Связь областей",
+          "Применить",
+          "\n            \n          ",
+          "\n            \n          ",
+          "\n              \n            ",
+          "\n              \n            ",
+          "",
+          "",
+          "",
+          "Engee /user (.jld2)",
+          "Локальный .sazip",
+          "",
+          "Отмена",
+          "Импортировать",
+          "Имя↑",
+          "Отменить",
+          "Выбрать"
+        ]
+      }
+    }
+  ],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0651/prototype-save-v21.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0651/prototype-import-v21.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0651/production-ready.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0651/production-save-open.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0651/production-import-open.png"
+  ],
+  "network": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/css/theme.css",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/engee-logo.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/import.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/save.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/css/app.css",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/chevron-down-fill-16.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/close.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/search.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/trash.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/more-vertical.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/plus.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/tick-figma.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/help-circle.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/value-select.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/api.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/numeric.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/layouts.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/native-session-io.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/components/explicit-apply.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/vendor/vue/3.5.41/vue.global.prod.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/app.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-latin-medium.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-cyrillic-medium.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-latin-regular.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-cyrillic-regular.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/eye-off.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/eye.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/copy.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/save/options",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/vendor/plotly-cartesian-3.1.0.min.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/folder.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/folder-browser.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/Spinner.svg",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "tab_cleanup_status": "passed",
+  "preexisting_page_count": 0,
+  "main_document": {
+    "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+    "status": 200,
+    "time": "2026-08-14T07:50:35.312Z"
+  },
+  "runtime_status": {
+    "status": 200,
+    "body": {
+      "runtime_revision": "7508de24ac72b630630e79eae2d5addc73df17a7",
+      "project": "example_project",
+      "ready": true,
+      "ok": true
+    }
+  },
+  "production_dom_geometry": [
+    {
+      "index": 1,
+      "tag": "SECTION",
+      "id": "",
+      "role": "dialog",
+      "cls": "dialog-card message-dialog",
+      "text": "\n      \n        Очистить активную область?\n      \n      \n        График останется без видимых сигналов, пока вы не включите их снова.\n      \n      \n        Отмена\n        Очистить\n      \n    ",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "bottom": 0
+      },
+      "position": "relative",
+      "zIndex": "97000",
+      "display": "grid",
+      "visibility": "visible",
+      "parent": {
+        "tag": "DIV",
+        "id": "",
+        "cls": "modal-layer nested-modal-layer"
+      }
+    },
+    {
+      "index": 2,
+      "tag": "SECTION",
+      "id": "signal-add-dialog",
+      "role": "dialog",
+      "cls": "dialog-card add-dialog",
+      "text": "\n      \n        Добавление сигналов\n        \n      \n      \n        \n        0 переменных\n      \n      \n      \n        Частота дискретизации Hz\n        \n        Требуется для выбранных raw-массивов.\n        \n      \n      \n        Загрузка переменных…\n        \n      \n      \n        Отмена\n        Добавить\n      \n    ",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "bottom": 0
+      },
+      "position": "relative",
+      "zIndex": "95000",
+      "display": "grid",
+      "visibility": "visible",
+      "parent": {
+        "tag": "DIV",
+        "id": "",
+        "cls": "modal-layer primary-modal-layer"
+      }
+    },
+    {
+      "index": 3,
+      "tag": "DIV",
+      "id": "",
+      "role": null,
+      "cls": "signal-add-browser-head",
+      "text": "\n        \n        0 переменных\n      ",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0,
+        "bottom": 0
+      },
+      "position": "static",
+      "zIndex": "auto",
+      "display": "flex",
+      "visibility": "visible",
+      "parent": {
+        "tag": "SECTION",
+        "id": "signal-add-dialog",
+        "cls": "dialog-card add-dialog"
+      }
+    },
+    {
+      "index": 5,
+      "tag": "SECTION",
+      "id": "",
+      "role": "dialog",
+      "cls": "dialog-card native-dialog native-import-dialog",
+      "text": "Импорт\nEngee /user (.jld2)Локальный .sazip\nФайл\nЗаменить текущую сессию\nОтмена\nИмпортировать",
+      "rect": {
+        "x": 360,
+        "y": 180,
+        "width": 560,
+        "height": 360,
+        "bottom": 540
+      },
+      "position": "relative",
+      "zIndex": "auto",
+      "display": "grid",
+      "visibility": "visible",
+      "parent": {
+        "tag": "DIV",
+        "id": "",
+        "cls": "modal-layer native-modal-layer native-import"
+      }
+    },
+    {
+      "index": 6,
+      "tag": "DIV",
+      "id": "",
+      "role": null,
+      "cls": "file-browser-layer native-file-browser-layer",
+      "text": "Файлы Engee\nИмя↑\n\nВ этой папке нет элементов\n\nЗагрузка…\n/user\nОтменитьВыбрать",
+      "rect": {
+        "x": 0,
+        "y": 720,
+        "width": 1280,
+        "height": 428,
+        "bottom": 1148
+      },
+      "position": "static",
+      "zIndex": "97000",
+      "display": "block",
+      "visibility": "visible",
+      "parent": {
+        "tag": "DIV",
+        "id": "",
+        "cls": ""
+      }
+    },
+    {
+      "index": 7,
+      "tag": "SECTION",
+      "id": "",
+      "role": "dialog",
+      "cls": "file-browser-card",
+      "text": "Файлы Engee\nИмя↑\n\nВ этой папке нет элементов\n\nЗагрузка…\n/user\nОтменитьВыбрать",
+      "rect": {
+        "x": 24,
+        "y": 744,
+        "width": 1232,
+        "height": 380,
+        "bottom": 1124
+      },
+      "position": "static",
+      "zIndex": "auto",
+      "display": "block",
+      "visibility": "visible",
+      "parent": {
+        "tag": "DIV",
+        "id": "",
+        "cls": "file-browser-layer native-file-browser-layer"
+      }
+    },
+    {
+      "index": 8,
+      "tag": "DIV",
+      "id": "",
+      "role": null,
+      "cls": "file-browser-top-gap",
+      "text": "",
+      "rect": {
+        "x": 24,
+        "y": 744,
+        "width": 1232,
+        "height": 0,
+        "bottom": 744
+      },
+      "position": "static",
+      "zIndex": "auto",
+      "display": "block",
+      "visibility": "visible",
+      "parent": {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "file-browser-card"
+      }
+    },
+    {
+      "index": 9,
+      "tag": "BUTTON",
+      "id": "",
+      "role": null,
+      "cls": "file-browser-heading",
+      "text": "Имя↑",
+      "rect": {
+        "x": 24,
+        "y": 744,
+        "width": 51.0625,
+        "height": 24.890625,
+        "bottom": 768.890625
+      },
+      "position": "static",
+      "zIndex": "auto",
+      "display": "inline-block",
+      "visibility": "visible",
+      "parent": {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "file-browser-card"
+      }
+    },
+    {
+      "index": 10,
+      "tag": "DIV",
+      "id": "",
+      "role": null,
+      "cls": "file-browser-list-wrap",
+      "text": "В этой папке нет элементов\n\nЗагрузка…",
+      "rect": {
+        "x": 24,
+        "y": 782.890625,
+        "width": 1232,
+        "height": 101.78125,
+        "bottom": 884.671875
+      },
+      "position": "static",
+      "zIndex": "auto",
+      "display": "block",
+      "visibility": "visible",
+      "parent": {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "file-browser-card"
+      }
+    },
+    {
+      "index": 11,
+      "tag": "DIV",
+      "id": "",
+      "role": null,
+      "cls": "file-browser-list",
+      "text": "В этой папке нет элементов",
+      "rect": {
+        "x": 24,
+        "y": 782.890625,
+        "width": 1232,
+        "height": 18.890625,
+        "bottom": 801.78125
+      },
+      "position": "static",
+      "zIndex": "auto",
+      "display": "block",
+      "visibility": "visible",
+      "parent": {
+        "tag": "DIV",
+        "id": "",
+        "cls": "file-browser-list-wrap"
+      }
+    },
+    {
+      "index": 12,
+      "tag": "P",
+      "id": "",
+      "role": null,
+      "cls": "browser-empty",
+      "text": "В этой папке нет элементов",
+      "rect": {
+        "x": 24,
+        "y": 782.890625,
+        "width": 1232,
+        "height": 18.890625,
+        "bottom": 801.78125
+      },
+      "position": "static",
+      "zIndex": "auto",
+      "display": "block",
+      "visibility": "visible",
+      "parent": {
+        "tag": "DIV",
+        "id": "",
+        "cls": "file-browser-list"
+      }
+    },
+    {
+      "index": 13,
+      "tag": "DIV",
+      "id": "",
+      "role": null,
+      "cls": "file-browser-loading",
+      "text": "Загрузка…",
+      "rect": {
+        "x": 24,
+        "y": 815.78125,
+        "width": 1232,
+        "height": 68.890625,
+        "bottom": 884.671875
+      },
+      "position": "static",
+      "zIndex": "auto",
+      "display": "block",
+      "visibility": "visible",
+      "parent": {
+        "tag": "DIV",
+        "id": "",
+        "cls": "file-browser-list-wrap"
+      }
+    },
+    {
+      "index": 14,
+      "tag": "DIV",
+      "id": "",
+      "role": null,
+      "cls": "file-browser-current-path",
+      "text": "/user",
+      "rect": {
+        "x": 24,
+        "y": 884.671875,
+        "width": 1232,
+        "height": 20.890625,
+        "bottom": 905.5625
+      },
+      "position": "static",
+      "zIndex": "auto",
+      "display": "block",
+      "visibility": "visible",
+      "parent": {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "file-browser-card"
+      }
+    },
+    {
+      "index": 15,
+      "tag": "FOOTER",
+      "id": "",
+      "role": null,
+      "cls": "file-browser-actions",
+      "text": "ОтменитьВыбрать",
+      "rect": {
+        "x": 24,
+        "y": 905.5625,
+        "width": 1232,
+        "height": 32.890625,
+        "bottom": 938.453125
+      },
+      "position": "static",
+      "zIndex": "auto",
+      "display": "block",
+      "visibility": "visible",
+      "parent": {
+        "tag": "SECTION",
+        "id": "",
+        "cls": "file-browser-card"
+      }
+    }
+  ],
+  "finished_at": "2026-08-14T07:50:39.957Z",
+  "summary": {
+    "planned": 9,
+    "passed": 8,
+    "failed": 1,
+    "not_run": 0,
+    "quick_success_rate": 88.88888888888889
+  }
+}

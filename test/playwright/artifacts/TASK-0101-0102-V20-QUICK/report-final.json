@@ -1,0 +1,424 @@
+{
+  "id": "TASK-0101-0102-V20-QUICK",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "mode": "quick_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "01d0c431f2a24bc03f24900d633218f660262f6a",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "api_status_exact_revision",
+      "status": "failed",
+      "detail": {
+        "status": 200,
+        "revisionMatch": false,
+        "body": "{\"runtime_revision\":\"6b13ec9e394b6145683cef58fb0fac42cd7b4c14\",\"project\":\"example_project\",\"ready\":true,\"ok\":true}"
+      }
+    },
+    {
+      "name": "availability",
+      "status": "passed",
+      "detail": {
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+        "title": "Анализатор сигналов"
+      }
+    },
+    {
+      "name": "root_and_default_split",
+      "status": "passed",
+      "detail": {
+        "app": true,
+        "stack": "split",
+        "revision": null
+      }
+    },
+    {
+      "name": "split_controls_geometry_and_surface",
+      "status": "passed",
+      "detail": {
+        "s": {
+          "state": "split",
+          "group": {
+            "x": 950,
+            "y": 580.390625,
+            "width": 64,
+            "height": 31,
+            "right": 1014,
+            "bottom": 611.390625
+          },
+          "buttons": [
+            {
+              "id": "inspector-state-up",
+              "box": {
+                "x": 950,
+                "y": 580.390625,
+                "width": 32,
+                "height": 31,
+                "right": 982,
+                "bottom": 611.390625
+              },
+              "hidden": false,
+              "aria": "Нижняя зона: средний размер. Развернуть полностью",
+              "borderLeft": "0px",
+              "bg": "rgb(255, 255, 255)"
+            },
+            {
+              "id": "inspector-state-down",
+              "box": {
+                "x": 982,
+                "y": 580.390625,
+                "width": 32,
+                "height": 31,
+                "right": 1014,
+                "bottom": 611.390625
+              },
+              "hidden": false,
+              "aria": "Нижняя зона: средний размер. Свернуть полностью",
+              "borderLeft": "0px",
+              "bg": "rgb(255, 255, 255)"
+            }
+          ],
+          "headerBg": "rgb(255, 255, 255)",
+          "groupBg": "rgb(255, 255, 255)",
+          "groupBorderLeft": "0px",
+          "bodyDisplay": "grid",
+          "inspector": {
+            "x": 0,
+            "y": 570.390625,
+            "width": 1024,
+            "height": 197.609375,
+            "right": 1024,
+            "bottom": 768
+          },
+          "main": {
+            "x": 0,
+            "y": 52,
+            "width": 1024,
+            "height": 510.390625,
+            "right": 1024,
+            "bottom": 562.390625
+          }
+        }
+      }
+    },
+    {
+      "name": "up_from_split_expands",
+      "status": "passed",
+      "detail": {
+        "s": {
+          "state": "expanded",
+          "group": {
+            "x": 982,
+            "y": 144,
+            "width": 32,
+            "height": 31,
+            "right": 1014,
+            "bottom": 175
+          },
+          "buttons": [
+            {
+              "id": "inspector-state-down",
+              "box": {
+                "x": 982,
+                "y": 144,
+                "width": 32,
+                "height": 31,
+                "right": 1014,
+                "bottom": 175
+              },
+              "hidden": false,
+              "aria": "Нижняя зона: развернута. Вернуть средний размер",
+              "borderLeft": "0px",
+              "bg": "rgb(255, 255, 255)"
+            }
+          ],
+          "headerBg": "rgb(255, 255, 255)",
+          "groupBg": "rgb(255, 255, 255)",
+          "groupBorderLeft": "0px",
+          "bodyDisplay": "grid",
+          "inspector": {
+            "x": 0,
+            "y": 134,
+            "width": 1024,
+            "height": 634,
+            "right": 1024,
+            "bottom": 768
+          },
+          "main": {
+            "x": 0,
+            "y": 52,
+            "width": 1024,
+            "height": 74,
+            "right": 1024,
+            "bottom": 126
+          },
+          "active": "inspector-state-down"
+        }
+      }
+    },
+    {
+      "name": "down_from_expanded_returns_split",
+      "status": "passed",
+      "detail": {
+        "s": {
+          "state": "split",
+          "group": {
+            "x": 950,
+            "y": 580.390625,
+            "width": 64,
+            "height": 31,
+            "right": 1014,
+            "bottom": 611.390625
+          },
+          "buttons": [
+            {
+              "id": "inspector-state-up",
+              "box": {
+                "x": 950,
+                "y": 580.390625,
+                "width": 32,
+                "height": 31,
+                "right": 982,
+                "bottom": 611.390625
+              },
+              "hidden": false,
+              "aria": "Нижняя зона: средний размер. Развернуть полностью",
+              "borderLeft": "0px",
+              "bg": "rgb(255, 255, 255)"
+            },
+            {
+              "id": "inspector-state-down",
+              "box": {
+                "x": 982,
+                "y": 580.390625,
+                "width": 32,
+                "height": 31,
+                "right": 1014,
+                "bottom": 611.390625
+              },
+              "hidden": false,
+              "aria": "Нижняя зона: средний размер. Свернуть полностью",
+              "borderLeft": "0px",
+              "bg": "rgb(255, 255, 255)"
+            }
+          ],
+          "headerBg": "rgb(255, 255, 255)",
+          "groupBg": "rgb(255, 255, 255)",
+          "groupBorderLeft": "0px",
+          "bodyDisplay": "grid",
+          "inspector": {
+            "x": 0,
+            "y": 570.390625,
+            "width": 1024,
+            "height": 197.609375,
+            "right": 1024,
+            "bottom": 768
+          },
+          "main": {
+            "x": 0,
+            "y": 52,
+            "width": 1024,
+            "height": 510.390625,
+            "right": 1024,
+            "bottom": 562.390625
+          },
+          "active": "inspector-state-down"
+        }
+      }
+    },
+    {
+      "name": "down_from_split_collapses",
+      "status": "passed",
+      "detail": {
+        "s": {
+          "state": "collapsed",
+          "group": {
+            "x": 982,
+            "y": 736,
+            "width": 32,
+            "height": 31,
+            "right": 1014,
+            "bottom": 767
+          },
+          "buttons": [
+            {
+              "id": "inspector-state-up",
+              "box": {
+                "x": 982,
+                "y": 736,
+                "width": 32,
+                "height": 31,
+                "right": 1014,
+                "bottom": 767
+              },
+              "hidden": false,
+              "aria": "Нижняя зона: свернута. Вернуть средний размер",
+              "borderLeft": "0px",
+              "bg": "rgb(255, 255, 255)"
+            }
+          ],
+          "headerBg": "rgb(255, 255, 255)",
+          "groupBg": "rgb(255, 255, 255)",
+          "groupBorderLeft": "0px",
+          "bodyDisplay": "none",
+          "inspector": {
+            "x": 0,
+            "y": 726,
+            "width": 1024,
+            "height": 42,
+            "right": 1024,
+            "bottom": 768
+          },
+          "main": {
+            "x": 0,
+            "y": 52,
+            "width": 1024,
+            "height": 666,
+            "right": 1024,
+            "bottom": 718
+          },
+          "active": "inspector-state-up"
+        }
+      }
+    },
+    {
+      "name": "up_from_collapsed_returns_split",
+      "status": "passed",
+      "detail": {
+        "s": {
+          "state": "split",
+          "group": {
+            "x": 950,
+            "y": 580.390625,
+            "width": 64,
+            "height": 31,
+            "right": 1014,
+            "bottom": 611.390625
+          },
+          "buttons": [
+            {
+              "id": "inspector-state-up",
+              "box": {
+                "x": 950,
+                "y": 580.390625,
+                "width": 32,
+                "height": 31,
+                "right": 982,
+                "bottom": 611.390625
+              },
+              "hidden": false,
+              "aria": "Нижняя зона: средний размер. Развернуть полностью",
+              "borderLeft": "0px",
+              "bg": "rgb(255, 255, 255)"
+            },
+            {
+              "id": "inspector-state-down",
+              "box": {
+                "x": 982,
+                "y": 580.390625,
+                "width": 32,
+                "height": 31,
+                "right": 1014,
+                "bottom": 611.390625
+              },
+              "hidden": false,
+              "aria": "Нижняя зона: средний размер. Свернуть полностью",
+              "borderLeft": "0px",
+              "bg": "rgb(255, 255, 255)"
+            }
+          ],
+          "headerBg": "rgb(255, 255, 255)",
+          "groupBg": "rgb(255, 255, 255)",
+          "groupBorderLeft": "0px",
+          "bodyDisplay": "grid",
+          "inspector": {
+            "x": 0,
+            "y": 570.390625,
+            "width": 1024,
+            "height": 197.609375,
+            "right": 1024,
+            "bottom": 768
+          },
+          "main": {
+            "x": 0,
+            "y": 52,
+            "width": 1024,
+            "height": 510.390625,
+            "right": 1024,
+            "bottom": 562.390625
+          },
+          "active": "inspector-state-up"
+        }
+      }
+    },
+    {
+      "name": "controls_no_fetch_xhr",
+      "status": "passed",
+      "detail": {
+        "network": []
+      }
+    },
+    {
+      "name": "dropdown_frame_width_and_inline_search",
+      "status": "passed",
+      "detail": {
+        "menu": {
+          "anchor": 212,
+          "popup": 212,
+          "border": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "padding": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "inputFocused": true,
+          "inputReadonly": false,
+          "placeholder": "Поиск",
+          "inlineSearchRows": 0,
+          "arrow": true
+        }
+      }
+    },
+    {
+      "name": "no_runtime_errors",
+      "status": "failed",
+      "detail": {
+        "errors": [
+          {
+            "type": "console",
+            "text": "Failed to load resource: the server responded with a status of 404 ()"
+          }
+        ]
+      }
+    }
+  ],
+  "requests": [],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0101-0102-V20-QUICK/v20-production-dropdown-and-controls-1024x768.png"
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "passed",
+  "errors": [
+    {
+      "type": "console",
+      "text": "Failed to load resource: the server responded with a status of 404 ()"
+    }
+  ],
+  "planned": 11,
+  "passed": 9,
+  "failed": 2,
+  "not_run": 0,
+  "success_rate": 81.81818181818183
+}

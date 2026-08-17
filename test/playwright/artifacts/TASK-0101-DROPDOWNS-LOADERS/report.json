@@ -1,0 +1,199 @@
+{
+  "id": "HND-TASK-0100-0101",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "5bf4f95e4ca2db2da7bb0ce4f76f2858b54c9e02",
+  "design_version": 17,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "prototype pane menu search",
+      "status": "passed",
+      "data": {}
+    },
+    {
+      "name": "prototype field:display.plot_type popup",
+      "status": "passed",
+      "data": {}
+    },
+    {
+      "name": "prototype field:time.units popup",
+      "status": "passed",
+      "data": {}
+    },
+    {
+      "name": "production exact ready revision",
+      "status": "passed",
+      "data": {
+        "code": 200,
+        "body": {
+          "runtime_revision": "5bf4f95e4ca2db2da7bb0ce4f76f2858b54c9e02",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "temporary Display created",
+      "status": "passed",
+      "data": {}
+    },
+    {
+      "name": "temporary Display removed",
+      "status": "passed",
+      "data": {}
+    },
+    {
+      "name": "pre-existing state restored byte-for-byte",
+      "status": "passed",
+      "data": {}
+    }
+  ],
+  "errors": [
+    "locator.scrollIntoViewIfNeeded: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-testid^=\\'pane-plot-type-trigger\\']').first()\u001b[22m\n\n    at menuAudit (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0100_0101_production_regression.js:36:17)\n    at production (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0100_0101_production_regression.js:54:88)\n    at async /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0100_0101_production_regression.js:61:549"
+  ],
+  "screenshots": [
+    "prototype-v17-pane-search-1024x768.png",
+    "prototype-v17-extrema-menu-1440x900.png"
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "network": [
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite"
+    },
+    {
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/api/v1/touch"
+    },
+    {
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite"
+    },
+    {
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite"
+    }
+  ],
+  "preexisting_page_urls": [],
+  "baseline": {
+    "active": "display-1",
+    "displays": [
+      {
+        "id": "display-1",
+        "name": "Display 1"
+      }
+    ],
+    "layouts": [
+      {
+        "display_id": "display-1",
+        "layout": {
+          "variant": "1x1",
+          "rows": 1,
+          "next_pane_number": 2,
+          "panes": [
+            {
+              "signal_bindings": [],
+              "id": "pane-1",
+              "plot_type": "time",
+              "peaks_settings": {
+                "minimum_distance_samples": 1,
+                "threshold": 0,
+                "mode": "maxima",
+                "maximum_cutoff": null,
+                "minimum_cutoff": null,
+                "number_of_peaks": 5
+              }
+            }
+          ],
+          "version": 1,
+          "columns": 1,
+          "active_pane_id": "pane-1"
+        }
+      }
+    ]
+  },
+  "created_display_id": "display-2",
+  "restoration": {
+    "baseline_exact": true,
+    "final": {
+      "active": "display-1",
+      "displays": [
+        {
+          "id": "display-1",
+          "name": "Display 1"
+        }
+      ],
+      "layouts": [
+        {
+          "display_id": "display-1",
+          "layout": {
+            "variant": "1x1",
+            "rows": 1,
+            "next_pane_number": 2,
+            "panes": [
+              {
+                "signal_bindings": [],
+                "id": "pane-1",
+                "plot_type": "time",
+                "peaks_settings": {
+                  "minimum_distance_samples": 1,
+                  "threshold": 0,
+                  "mode": "maxima",
+                  "maximum_cutoff": null,
+                  "minimum_cutoff": null,
+                  "number_of_peaks": 5
+                }
+              }
+            ],
+            "version": 1,
+            "columns": 1,
+            "active_pane_id": "pane-1"
+          }
+        }
+      ]
+    }
+  },
+  "tab_cleanup_status": "passed"
+}

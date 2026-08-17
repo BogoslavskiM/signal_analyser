@@ -1,0 +1,532 @@
+{
+  "id": "HND-0596",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "70e95f532a7f2e969fa31ba25e6082c69596a571",
+  "design_version": 15,
+  "design_ref": "architecture/design/TASK-0080-explicit-apply-flow/DESIGN.md",
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "prototype disabled menu 1024x768",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "labels": [
+          "Очистить область",
+          "Слайдер диапазона",
+          "Управление графиком"
+        ],
+        "disabled": true,
+        "reason": "Слайдер диапазона, доступен только для загруженной временной области"
+      }
+    },
+    {
+      "name": "prototype native slider 1024x768",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "same": true,
+        "slider": 1,
+        "visible": "true",
+        "rail": {
+          "width": 653,
+          "height": 51.20001220703125
+        }
+      }
+    },
+    {
+      "name": "prototype disabled menu 1440x900",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "labels": [
+          "Очистить область",
+          "Слайдер диапазона",
+          "Управление графиком"
+        ],
+        "disabled": true,
+        "reason": "Слайдер диапазона, доступен только для загруженной временной области"
+      }
+    },
+    {
+      "name": "prototype native slider 1440x900",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "same": true,
+        "slider": 1,
+        "visible": "true",
+        "rail": {
+          "width": 1011,
+          "height": 67.0999755859375
+        }
+      }
+    },
+    {
+      "name": "production availability and exact revision",
+      "scope": "quick",
+      "status": "passed",
+      "detail": {
+        "root": 200,
+        "status": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "70e95f532a7f2e969fa31ba25e6082c69596a571",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      }
+    },
+    {
+      "name": "production empty pane menu order and disabled reason",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "labels": [
+          "Очистить область",
+          "Слайдер диапазона",
+          "Управление графиком"
+        ],
+        "disabled": true,
+        "reason": "Слайдер диапазона, доступен только для загруженной временной области",
+        "menuBox": {
+          "left": 480,
+          "top": 170,
+          "right": 704,
+          "bottom": 262,
+          "width": 224
+        }
+      }
+    },
+    {
+      "name": "Help opens on empty pane and owns focus",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "visible": true,
+        "focus": "Закрыть справку по управлению графиком",
+        "menuVisible": true
+      }
+    },
+    {
+      "name": "Help close button restores action focus",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": "pane-menu-help"
+    },
+    {
+      "name": "Help Escape restores action focus",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "hidden": true,
+        "focus": "pane-menu-help"
+      }
+    },
+    {
+      "name": "Help outside pointer closes overlay",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "hidden": true
+      }
+    },
+    {
+      "name": "signal bound to target pane through UI",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "signal": "Гармонический сигнал",
+        "status": 200
+      }
+    },
+    {
+      "name": "Range Slider enables on ready temporal plot without host/trace/revision/output change",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "enabledAction": {
+          "disabled": false,
+          "checked": "false"
+        },
+        "before": {
+          "identity": "host-1786603341969-0.766087647984623",
+          "sameTrace": true,
+          "traces": 1,
+          "range": [
+            0,
+            0.24951171875
+          ]
+        },
+        "after": {
+          "identity": "host-1786603341969-0.766087647984623",
+          "sameTrace": true,
+          "traces": 1,
+          "range": [
+            0,
+            0.24951171875
+          ]
+        },
+        "revisionBefore": 2,
+        "revisionAfter": 2,
+        "toggleRequests": [
+          {
+            "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+            "method": "GET",
+            "status": 200,
+            "at": "2026-08-13T06:42:22.330Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "native overview rail has canonical geometry and fixed y-axis",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "visible": "true",
+        "rail": {
+          "x": 63.5,
+          "y": 483,
+          "width": 631,
+          "height": 53
+        },
+        "thickness": 0.15,
+        "bgcolor": "#ffffff",
+        "borderwidth": 1,
+        "yfixed": true
+      }
+    },
+    {
+      "name": "native Range Slider pointer interaction changes enlarged x-range on same host",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "before": [
+          0,
+          0.24951171875
+        ],
+        "after": [
+          0.04346333165322581,
+          0.24951171875
+        ],
+        "identity": "host-1786603341969-0.766087647984623"
+      }
+    },
+    {
+      "name": "Range Slider toggles off pane-locally on same host and restores ellipsis focus",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "checked": "true",
+        "toggledOff": {
+          "identity": "host-1786603341969-0.766087647984623",
+          "sameTrace": true,
+          "traces": 1,
+          "range": [
+            0.04346333165322581,
+            0.24951171875
+          ]
+        },
+        "menuFocus": "pane-menu-pane-1"
+      }
+    },
+    {
+      "name": "Clear cancel preserves pane and restores ellipsis focus",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "confirmOpen": {
+          "visible": true,
+          "focus": "pane-clear-confirm-title",
+          "shellInert": true
+        },
+        "cancelState": {
+          "plot": true,
+          "focus": "pane-menu-pane-1",
+          "modalHidden": true
+        }
+      }
+    },
+    {
+      "name": "Clear confirm empties only targeted pane",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "panes": [
+          {
+            "id": "pane-1",
+            "bindings": []
+          }
+        ]
+      }
+    },
+    {
+      "name": "cleared signal membership restored through UI",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "signal": "Гармонический сигнал"
+      }
+    },
+    {
+      "name": "production layout and memberships restored to baseline",
+      "scope": "cleanup",
+      "status": "failed",
+      "detail": {
+        "status": "failed",
+        "expected": {
+          "rows": 1,
+          "columns": 1,
+          "panes": [
+            {
+              "id": "pane-1",
+              "plot_type": "time",
+              "bindings": []
+            }
+          ]
+        },
+        "actual": {
+          "rows": 1,
+          "columns": 1,
+          "panes": [
+            {
+              "id": "pane-1",
+              "plot_type": "time",
+              "bindings": [
+                "Гармонический сигнал"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "pane menu remains anchored and unclipped at 1440x900",
+      "scope": "quick",
+      "status": "passed",
+      "detail": {
+        "left": 838,
+        "right": 1062,
+        "top": 170,
+        "bottom": 262,
+        "width": 224
+      }
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:04.547Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:04.548Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:10.117Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "method": "POST",
+      "status": 200,
+      "at": "2026-08-13T06:42:19.078Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:19.942Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:20.411Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:21.274Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:22.102Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:22.330Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "method": "POST",
+      "status": 200,
+      "at": "2026-08-13T06:42:23.180Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:23.309Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "method": "POST",
+      "status": 200,
+      "at": "2026-08-13T06:42:23.489Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:23.616Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:23.617Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:24.160Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-13T06:42:24.267Z"
+    }
+  ],
+  "errors": [
+    "console: Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "screenshots": [
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0596-v15/prototype-menu-disabled-1024x768.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-13T06:41:58.309Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0596-v15/prototype-slider-on-1024x768.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-13T06:41:58.612Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0596-v15/prototype-menu-disabled-1440x900.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "at": "2026-08-13T06:41:59.165Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0596-v15/prototype-slider-on-1440x900.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "at": "2026-08-13T06:41:59.420Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0596-v15/production-empty-menu-1024x768.png",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-13T06:42:10.248Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0596-v15/production-slider-on-1024x768.png",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-13T06:42:22.495Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0596-v15/production-final-menu-1440x900.png",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "at": "2026-08-13T06:42:23.980Z"
+    }
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "preexisting_page_urls": [],
+  "baseline": {
+    "stateRevision": 0,
+    "displayId": "display-1",
+    "rows": 1,
+    "columns": 1,
+    "activePaneId": "pane-1",
+    "panes": [
+      {
+        "id": "pane-1",
+        "plot_type": "time",
+        "bindings": []
+      }
+    ]
+  },
+  "restoration": {
+    "status": "attempted-in-finally",
+    "rows": 1,
+    "columns": 1,
+    "panes": [
+      {
+        "id": "pane-1",
+        "bindings": [
+          "Гармонический сигнал"
+        ]
+      }
+    ]
+  },
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 20,
+    "passed": 19,
+    "failed": 1,
+    "success_rate": 95
+  }
+}

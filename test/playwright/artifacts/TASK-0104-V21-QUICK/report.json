@@ -1,0 +1,44 @@
+{
+  "id": "HND-TASK-0104-V21-E2E",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "94b7c8a6af8b883db9d78cd2f0f4767e138f2091",
+  "design_ref": "architecture/design/TASK-0104-engee-portable-session-package/DESIGN.md",
+  "design_version": 21,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "prototype Save: exactly five fixed included rows",
+      "status": "passed",
+      "detail": {
+        "rows": 5,
+        "inputs": 0
+      }
+    }
+  ],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0104-V21-QUICK/prototype-save.png"
+  ],
+  "network": [],
+  "errors": [
+    "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-design-id=prototype-file-picker]').getByText(/valid/i).first()\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0104_v21_quick.js:21:250"
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "preexisting_pages": [],
+  "tab_cleanup_status": "passed",
+  "planned": 1,
+  "passed": 1,
+  "failed": 0,
+  "success_rate": 100
+}

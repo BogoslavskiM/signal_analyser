@@ -1,0 +1,880 @@
+{
+  "id": "HND-0597-RETRY",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "70e95f532a7f2e969fa31ba25e6082c69596a571",
+  "e2e_mode": "analysis_regression",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "network": [
+    {
+      "phase": "request",
+      "at": 2552.6,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1"
+    },
+    {
+      "phase": "request",
+      "at": 2552.7,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-2"
+    },
+    {
+      "phase": "request",
+      "at": 2552.8,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1"
+    },
+    {
+      "phase": "response",
+      "at": 2670.9,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-2",
+      "bytes": 17619,
+      "output": {
+        "isready": true,
+        "success": true,
+        "revision": 14,
+        "calculation_revision": 4
+      }
+    },
+    {
+      "phase": "response",
+      "at": 2672.8,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "bytes": 17619,
+      "output": {
+        "isready": true,
+        "success": true,
+        "revision": 14,
+        "calculation_revision": 3
+      }
+    },
+    {
+      "phase": "response",
+      "at": 2674.2,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "bytes": 24863
+    },
+    {
+      "phase": "request",
+      "at": 2695.2,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/vendor/plotly-cartesian-3.1.0.min.js"
+    },
+    {
+      "phase": "request",
+      "at": 2733.1,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "phase": "response",
+      "at": 2916.4,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/vendor/plotly-cartesian-3.1.0.min.js",
+      "bytes": 1339916
+    },
+    {
+      "phase": "request",
+      "at": 3898.3,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2"
+    },
+    {
+      "phase": "response",
+      "at": 3896.4,
+      "method": "POST",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays",
+      "bytes": 3920
+    },
+    {
+      "phase": "response",
+      "at": 4013.6,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+      "bytes": 24845
+    },
+    {
+      "phase": "request",
+      "at": 4098.8,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts"
+    },
+    {
+      "phase": "request",
+      "at": 4214.3,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2"
+    },
+    {
+      "phase": "request",
+      "at": 4214.3,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1"
+    },
+    {
+      "phase": "response",
+      "at": 4208.8,
+      "method": "POST",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "bytes": 8893
+    },
+    {
+      "phase": "response",
+      "at": 4322.7,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+      "bytes": 206,
+      "output": {
+        "isready": false,
+        "success": false,
+        "revision": 16,
+        "calculation_revision": 5
+      }
+    },
+    {
+      "phase": "response",
+      "at": 4323.3,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+      "bytes": 24866
+    },
+    {
+      "phase": "request",
+      "at": 4676.6,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1"
+    },
+    {
+      "phase": "response",
+      "at": 4792.2,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+      "bytes": 17619,
+      "output": {
+        "isready": true,
+        "success": true,
+        "revision": 17,
+        "calculation_revision": 5
+      }
+    },
+    {
+      "phase": "request",
+      "at": 4914.5,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts"
+    },
+    {
+      "phase": "request",
+      "at": 5026.3,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2"
+    },
+    {
+      "phase": "response",
+      "at": 5024.7,
+      "method": "POST",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "bytes": 7859
+    },
+    {
+      "phase": "request",
+      "at": 5114.1,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts"
+    },
+    {
+      "phase": "response",
+      "at": 5143.5,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+      "bytes": 24845
+    },
+    {
+      "phase": "request",
+      "at": 5237,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2"
+    },
+    {
+      "phase": "request",
+      "at": 5237,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1"
+    },
+    {
+      "phase": "response",
+      "at": 5234.8,
+      "method": "POST",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "bytes": 8893
+    },
+    {
+      "phase": "response",
+      "at": 5356.3,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+      "bytes": 206,
+      "output": {
+        "isready": false,
+        "success": false,
+        "revision": 19,
+        "calculation_revision": 6
+      }
+    },
+    {
+      "phase": "response",
+      "at": 5356.9,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+      "bytes": 24866
+    },
+    {
+      "phase": "request",
+      "at": 5711.8,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1"
+    },
+    {
+      "phase": "response",
+      "at": 5829.3,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+      "bytes": 17619,
+      "output": {
+        "isready": true,
+        "success": true,
+        "revision": 20,
+        "calculation_revision": 6
+      }
+    },
+    {
+      "phase": "request",
+      "at": 5946.7,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts"
+    },
+    {
+      "phase": "request",
+      "at": 6159.8,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2"
+    },
+    {
+      "phase": "response",
+      "at": 6058,
+      "method": "POST",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "bytes": 7859
+    },
+    {
+      "phase": "response",
+      "at": 6277,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+      "bytes": 24845
+    },
+    {
+      "phase": "request",
+      "at": 6648.8,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays"
+    },
+    {
+      "phase": "request",
+      "at": 6904.6,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1"
+    },
+    {
+      "phase": "request",
+      "at": 6904.6,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1"
+    },
+    {
+      "phase": "request",
+      "at": 6904.7,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-2"
+    },
+    {
+      "phase": "response",
+      "at": 6902.4,
+      "method": "POST",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/displays",
+      "bytes": 3776
+    },
+    {
+      "phase": "response",
+      "at": 7021.9,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "bytes": 17619,
+      "output": {
+        "isready": true,
+        "success": true,
+        "revision": 23,
+        "calculation_revision": 3
+      }
+    },
+    {
+      "phase": "response",
+      "at": 7021.3,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-2",
+      "bytes": 206,
+      "output": {
+        "isready": false,
+        "success": false,
+        "revision": 22,
+        "calculation_revision": 7
+      }
+    },
+    {
+      "phase": "response",
+      "at": 7020.2,
+      "method": "GET",
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "bytes": 24863
+    }
+  ],
+  "scenarios": {
+    "cold-bind": {
+      "layout_status": 200,
+      "click_action_ms": 49.70000000000027,
+      "layout_response_ms": 159.5999999999999,
+      "terminal_ms": 800.5000000000005,
+      "dom_events": [
+        {
+          "name": "empty-visible",
+          "at": 1.6,
+          "detail": {}
+        },
+        {
+          "name": "probe-installed",
+          "at": 1.6,
+          "detail": {}
+        },
+        {
+          "name": "loader-visible",
+          "at": 180.9,
+          "detail": {}
+        },
+        {
+          "name": "plot-host-created",
+          "at": 759.9,
+          "detail": {
+            "ready": "false"
+          }
+        },
+        {
+          "name": "plot-ready",
+          "at": 795,
+          "detail": {
+            "traces": 1
+          }
+        }
+      ],
+      "longtasks": [],
+      "network": [
+        {
+          "phase": "request",
+          "at": 4098.8,
+          "method": "POST",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+          "since": 48.7
+        },
+        {
+          "phase": "request",
+          "at": 4214.3,
+          "method": "GET",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+          "since": 164.2
+        },
+        {
+          "phase": "request",
+          "at": 4214.3,
+          "method": "GET",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "since": 164.2
+        },
+        {
+          "phase": "response",
+          "at": 4208.8,
+          "method": "POST",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+          "bytes": 8893,
+          "since": 158.7
+        },
+        {
+          "phase": "response",
+          "at": 4322.7,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "bytes": 206,
+          "output": {
+            "isready": false,
+            "success": false,
+            "revision": 16,
+            "calculation_revision": 5
+          },
+          "since": 272.6
+        },
+        {
+          "phase": "response",
+          "at": 4323.3,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+          "bytes": 24866,
+          "since": 273.2
+        },
+        {
+          "phase": "request",
+          "at": 4676.6,
+          "method": "GET",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "since": 626.5
+        },
+        {
+          "phase": "response",
+          "at": 4792.2,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "bytes": 17619,
+          "output": {
+            "isready": true,
+            "success": true,
+            "revision": 17,
+            "calculation_revision": 5
+          },
+          "since": 742.1
+        }
+      ],
+      "output_responses": [
+        {
+          "phase": "response",
+          "at": 4322.7,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "bytes": 206,
+          "output": {
+            "isready": false,
+            "success": false,
+            "revision": 16,
+            "calculation_revision": 5
+          },
+          "since": 272.6
+        },
+        {
+          "phase": "response",
+          "at": 4792.2,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "bytes": 17619,
+          "output": {
+            "isready": true,
+            "success": true,
+            "revision": 17,
+            "calculation_revision": 5
+          },
+          "since": 742.1
+        }
+      ],
+      "plotly": []
+    },
+    "unbind": {
+      "layout_status": 200,
+      "click_action_ms": 38.30000000000018,
+      "layout_response_ms": 148.10000000000036,
+      "terminal_ms": 174.60000000000036,
+      "dom_events": [
+        {
+          "name": "plot-host-created",
+          "at": 1,
+          "detail": {
+            "ready": "true"
+          }
+        },
+        {
+          "name": "plot-ready",
+          "at": 1,
+          "detail": {
+            "traces": 1
+          }
+        },
+        {
+          "name": "probe-installed",
+          "at": 1,
+          "detail": {}
+        },
+        {
+          "name": "empty-visible",
+          "at": 995.3,
+          "detail": {}
+        }
+      ],
+      "longtasks": [],
+      "network": [
+        {
+          "phase": "request",
+          "at": 4914.5,
+          "method": "POST",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+          "since": 37.5
+        },
+        {
+          "phase": "request",
+          "at": 5026.3,
+          "method": "GET",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+          "since": 149.3
+        },
+        {
+          "phase": "response",
+          "at": 5024.7,
+          "method": "POST",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+          "bytes": 7859,
+          "since": 147.7
+        }
+      ],
+      "output_responses": [],
+      "plotly": []
+    },
+    "warm-bind": {
+      "layout_status": 200,
+      "click_action_ms": 38.30000000000018,
+      "layout_response_ms": 158.5,
+      "terminal_ms": 802.3000000000002,
+      "dom_events": [
+        {
+          "name": "empty-visible",
+          "at": 1.3,
+          "detail": {}
+        },
+        {
+          "name": "probe-installed",
+          "at": 1.3,
+          "detail": {}
+        },
+        {
+          "name": "loader-visible",
+          "at": 1189.2,
+          "detail": {}
+        },
+        {
+          "name": "plot-host-created",
+          "at": 1792.3,
+          "detail": {
+            "ready": "false"
+          }
+        },
+        {
+          "name": "plot-ready",
+          "at": 1825.7,
+          "detail": {
+            "traces": 1
+          }
+        }
+      ],
+      "longtasks": [],
+      "network": [
+        {
+          "phase": "request",
+          "at": 5114.1,
+          "method": "POST",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+          "since": 37.3
+        },
+        {
+          "phase": "response",
+          "at": 5143.5,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+          "bytes": 24845,
+          "since": 66.7
+        },
+        {
+          "phase": "request",
+          "at": 5237,
+          "method": "GET",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+          "since": 160.2
+        },
+        {
+          "phase": "request",
+          "at": 5237,
+          "method": "GET",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "since": 160.2
+        },
+        {
+          "phase": "response",
+          "at": 5234.8,
+          "method": "POST",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+          "bytes": 8893,
+          "since": 158
+        },
+        {
+          "phase": "response",
+          "at": 5356.3,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "bytes": 206,
+          "output": {
+            "isready": false,
+            "success": false,
+            "revision": 19,
+            "calculation_revision": 6
+          },
+          "since": 279.5
+        },
+        {
+          "phase": "response",
+          "at": 5356.9,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+          "bytes": 24866,
+          "since": 280.1
+        },
+        {
+          "phase": "request",
+          "at": 5711.8,
+          "method": "GET",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "since": 635
+        },
+        {
+          "phase": "response",
+          "at": 5829.3,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "bytes": 17619,
+          "output": {
+            "isready": true,
+            "success": true,
+            "revision": 20,
+            "calculation_revision": 6
+          },
+          "since": 752.5
+        }
+      ],
+      "output_responses": [
+        {
+          "phase": "response",
+          "at": 5356.3,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "bytes": 206,
+          "output": {
+            "isready": false,
+            "success": false,
+            "revision": 19,
+            "calculation_revision": 6
+          },
+          "since": 279.5
+        },
+        {
+          "phase": "response",
+          "at": 5829.3,
+          "method": "GET",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-2&pane_id=pane-1",
+          "bytes": 17619,
+          "output": {
+            "isready": true,
+            "success": true,
+            "revision": 20,
+            "calculation_revision": 6
+          },
+          "since": 752.5
+        }
+      ],
+      "plotly": []
+    },
+    "warm-unbind": {
+      "layout_status": 200,
+      "click_action_ms": 38,
+      "layout_response_ms": 148.69999999999982,
+      "terminal_ms": 330.39999999999964,
+      "dom_events": [
+        {
+          "name": "plot-host-created",
+          "at": 0.8,
+          "detail": {
+            "ready": "true"
+          }
+        },
+        {
+          "name": "plot-ready",
+          "at": 0.8,
+          "detail": {
+            "traces": 1
+          }
+        },
+        {
+          "name": "probe-installed",
+          "at": 0.8,
+          "detail": {}
+        },
+        {
+          "name": "empty-visible",
+          "at": 2113.2,
+          "detail": {}
+        }
+      ],
+      "longtasks": [],
+      "network": [
+        {
+          "phase": "request",
+          "at": 5946.7,
+          "method": "POST",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+          "since": 37.2
+        },
+        {
+          "phase": "request",
+          "at": 6159.8,
+          "method": "GET",
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+          "since": 250.3
+        },
+        {
+          "phase": "response",
+          "at": 6058,
+          "method": "POST",
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+          "bytes": 7859,
+          "since": 148.5
+        }
+      ],
+      "output_responses": [],
+      "plotly": []
+    }
+  },
+  "errors": [
+    "console: Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "preexisting_page_urls": [],
+  "baseline": {
+    "active": "display-1",
+    "displays": [
+      {
+        "id": "display-1",
+        "name": "Display 1"
+      }
+    ],
+    "layouts": [
+      {
+        "display_id": "display-1",
+        "rows": 1,
+        "columns": 2,
+        "active_pane_id": "pane-2",
+        "panes": [
+          {
+            "id": "pane-1",
+            "plot_type": "time",
+            "signal_bindings": [
+              "Гармонический сигнал"
+            ]
+          },
+          {
+            "id": "pane-2",
+            "plot_type": "time",
+            "signal_bindings": [
+              "Гармонический сигнал"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "isolated": {
+    "created_display_id": "display-2",
+    "pane_id": "pane-1",
+    "signal": "Гармонический сигнал"
+  },
+  "final": {
+    "active": "display-1",
+    "displays": [
+      {
+        "id": "display-1",
+        "name": "Display 1"
+      }
+    ],
+    "layouts": [
+      {
+        "display_id": "display-1",
+        "rows": 1,
+        "columns": 2,
+        "active_pane_id": "pane-2",
+        "panes": [
+          {
+            "id": "pane-1",
+            "plot_type": "time",
+            "signal_bindings": [
+              "Гармонический сигнал"
+            ]
+          },
+          {
+            "id": "pane-2",
+            "plot_type": "time",
+            "signal_bindings": [
+              "Гармонический сигнал"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "restoration": {
+    "created_removed": true,
+    "original_active": true,
+    "baseline_exact": true
+  },
+  "tab_cleanup_status": "passed"
+}
