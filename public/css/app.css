@@ -539,10 +539,23 @@ body.is-resizing-workspace * {
 .display-tab-scroll-next .display-tab-scroll-chevron { transform: rotate(-45deg); }
 
 .display-action-cluster {
+  position: relative;
   flex: 0 0 auto;
   display: flex;
   align-items: stretch;
   border-left: 1px solid var(--line);
+}
+
+.display-action-cluster::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  height: 1px;
+  background: var(--line);
+  content: "";
+  pointer-events: none;
 }
 
 .display-add {
@@ -1451,6 +1464,7 @@ body.is-resizing-workspace * {
 }
 
 .inspector-state-controls {
+  position: relative;
   height: 31px;
   flex: 0 0 auto;
   display: inline-flex;
@@ -1459,6 +1473,18 @@ body.is-resizing-workspace * {
   padding: 0;
   border: 0;
   background: var(--surface-muted);
+}
+
+.inspector-state-controls::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  z-index: 2;
+  height: 1px;
+  background: var(--line);
+  content: "";
+  pointer-events: none;
 }
 
 .inspector-header > .inspector-state-controls {
@@ -1803,7 +1829,7 @@ body.is-resizing-workspace * {
 
 .measurement-table {
   width: 100%;
-  min-width: var(--measurement-table-width, 944px);
+  min-width: var(--measurement-table-width, 832px);
 }
 
 .signal-table.measurement-table th,
@@ -1988,7 +2014,11 @@ body.is-resizing-workspace * {
 .extrema-table-marker.is-minimum i { border-top: 10px solid var(--marker-color, var(--accent)); }
 .extrema-table-marker b { font-size: 12px; font-weight: 500; line-height: 14px; }
 
-.measurement-line-cell { text-align: center !important; }
+.measurement-table th:first-child,
+.measurement-table td:first-child,
+.measurement-line-cell {
+  text-align: left !important;
+}
 
 .measurement-color-swatch {
   cursor: default;

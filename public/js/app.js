@@ -979,18 +979,18 @@
       return !!signalName && (!query || String(signalName).toLowerCase().indexOf(query) >= 0);
     });
     var columns = [
-      { id:"name", label:"Имя", width:152 },
-      { id:"line", label:"Цвет", width:56, className:"measurement-line-cell" },
-      { id:"roi_min", label:"Начало области", width:112 },
-      { id:"roi_max", label:"Конец области", width:104 }
+      { id:"name", label:"Имя", width:120 },
+      { id:"line", label:"Цвет", width:48, className:"measurement-line-cell" },
+      { id:"roi_min", label:"Начало области", width:96 },
+      { id:"roi_max", label:"Конец области", width:96 }
     ];
     var measurementColumns = {
-      minimum:[{ id:"minimum_value", kind:"minimum", itemKey:"value", label:"Минимум", width:88 }, { id:"minimum_time", kind:"minimum", itemKey:"time_s", label:"Время минимума", width:120 }],
-      maximum:[{ id:"maximum_value", kind:"maximum", itemKey:"value", label:"Максимум", width:96 }, { id:"maximum_time", kind:"maximum", itemKey:"time_s", label:"Время максимума", width:128 }],
-      mean:[{ id:"mean", kind:"mean", itemKey:"value", label:"Среднее", width:88 }],
-      median:[{ id:"median", kind:"median", itemKey:"value", label:"Медиана", width:150 }],
-      peak_to_peak:[{ id:"peak_to_peak", kind:"peak_to_peak", itemKey:"value", label:"Размах", width:150 }],
-      rms:[{ id:"rms", kind:"rms", itemKey:"value", label:"СКЗ", width:120 }]
+      minimum:[{ id:"minimum_value", kind:"minimum", itemKey:"value", label:"Минимум", width:80 }, { id:"minimum_time", kind:"minimum", itemKey:"time_s", label:"Время минимума", width:112 }],
+      maximum:[{ id:"maximum_value", kind:"maximum", itemKey:"value", label:"Максимум", width:88 }, { id:"maximum_time", kind:"maximum", itemKey:"time_s", label:"Время максимума", width:112 }],
+      mean:[{ id:"mean", kind:"mean", itemKey:"value", label:"Среднее", width:80 }],
+      median:[{ id:"median", kind:"median", itemKey:"value", label:"Медиана", width:80 }],
+      peak_to_peak:[{ id:"peak_to_peak", kind:"peak_to_peak", itemKey:"value", label:"Размах", width:72 }],
+      rms:[{ id:"rms", kind:"rms", itemKey:"value", label:"СКЗ", width:56 }]
     };
     var selectedKinds = Array.isArray(display.measurement_kinds) ? display.measurement_kinds : [];
     ["minimum", "maximum", "mean", "median", "peak_to_peak", "rms"].forEach(function (kind) {
@@ -998,7 +998,7 @@
     });
     var tableWidth = columns.reduce(function (total, column) { return total + column.width; }, 0);
     var colgroup = "<colgroup>" + columns.map(function (column) { return "<col style='width:" + column.width + "px'>"; }).join("") + "</colgroup>";
-    var headers = columns.map(function (column) { return "<th>" + column.label + "</th>"; }).join("");
+    var headers = columns.map(function (column) { return "<th" + (column.className ? " class='" + column.className + "'" : "") + ">" + column.label + "</th>"; }).join("");
     var rows = visibleRows.map(function (measurements) {
       var signalName = measurements.signal_name || "";
       var items = {};

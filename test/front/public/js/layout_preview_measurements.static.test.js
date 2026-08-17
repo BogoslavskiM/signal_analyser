@@ -31,14 +31,16 @@ module.exports = async function testLayoutPreviewAndMeasurementsInspector(assert
   assert(/measurements\.time_limits \|\| display\.time_limits/.test(measurements), "Each Measurements ROI row must prefer its authoritative signal limits");
   assert(/items\[column\.kind\], column\.itemKey/.test(measurements), "Each Measurements row must render its own authoritative statistics");
   assert(/measurementRows:Array\.isArray\(snapshot\.measurement_rows\)[\s\S]*snapshot\.measurements \? \[snapshot\.measurements\]/.test(app), "Measurements loading must consume all backend rows with a one-row compatibility fallback");
-  assert(/\{ id:"name", label:"Имя", width:152 \}[\s\S]*\{ id:"line", label:"Цвет", width:56[\s\S]*\{ id:"roi_min", label:"Начало области", width:112 \}[\s\S]*\{ id:"roi_max", label:"Конец области", width:104 \}/.test(measurements), "Measurements fixed columns must be exactly 152/56/112/104px");
-  assert(/minimum:\[\{[^}]*width:88 \}, \{[^}]*width:120 \}\][\s\S]*maximum:\[\{[^}]*width:96 \}, \{[^}]*width:128 \}\][\s\S]*mean:\[\{[^}]*width:88 \}/.test(measurements), "Measurements default metric columns must be exactly 88/120/96/128/88px");
+  assert(/\{ id:"name", label:"Имя", width:120 \}[\s\S]*\{ id:"line", label:"Цвет", width:48[\s\S]*\{ id:"roi_min", label:"Начало области", width:96 \}[\s\S]*\{ id:"roi_max", label:"Конец области", width:96 \}/.test(measurements), "Measurements fixed columns must use the compact 120/48/96/96px minima");
+  assert(/minimum:\[\{[^}]*width:80 \}, \{[^}]*width:112 \}\][\s\S]*maximum:\[\{[^}]*width:88 \}, \{[^}]*width:112 \}\][\s\S]*mean:\[\{[^}]*width:80 \}[\s\S]*median:\[\{[^}]*width:80 \}[\s\S]*peak_to_peak:\[\{[^}]*width:72 \}[\s\S]*rms:\[\{[^}]*width:56 \}/.test(measurements), "Measurements statistic columns must use compact content-aware minima");
   assert(/var tableWidth = columns\.reduce\(function \(total, column\) \{ return total \+ column\.width; \}, 0\);[\s\S]*--measurement-table-width:" \+ tableWidth \+ "px/.test(measurements), "Measurements table width must be derived from the actual selected column widths");
-  const defaultMeasurementWidth = [152, 56, 112, 104, 88, 120, 96, 128, 88].reduce((total, width) => total + width, 0);
-  assert(defaultMeasurementWidth === 944, "The fixed and default metric columns must total the 944px table minimum");
-  assert(/\.measurement-table\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*var\(--measurement-table-width, 944px\)/.test(css), "Measurements table must retain its 944px source-derived minimum width");
+  const defaultMeasurementWidth = [120, 48, 96, 96, 80, 112, 88, 112, 80].reduce((total, width) => total + width, 0);
+  assert(defaultMeasurementWidth === 832, "The fixed and default metric columns must total the compact 832px table minimum");
+  assert(/\.measurement-table\s*\{[^}]*width:\s*100%;[^}]*min-width:\s*var\(--measurement-table-width, 832px\)/.test(css), "Measurements table must retain its compact 832px source-derived minimum width");
   assert(/else if \(column\.id === "line"\) value = "<span class='color-swatch measurement-color-swatch'/.test(measurements), "Measurements Color must reuse the passive main color swatch");
   assert(/\.color-swatch\s*\{[^}]*width:\s*16px;[^}]*height:\s*16px;[^}]*border-radius:\s*2px/.test(css) && /\.measurement-color-swatch\s*\{[^}]*cursor:\s*default;[^}]*pointer-events:\s*none/.test(css), "Measurements Color swatch must be passive 16×16px with a 2px radius");
+  assert(/var headers = columns\.map\(function \(column\) \{ return "<th" \+ \(column\.className/.test(measurements), "Measurements headers must receive the same alignment class as their cells");
+  assert(/\.measurement-table th:first-child,\s*\.measurement-table td:first-child,\s*\.measurement-line-cell\s*\{[^}]*text-align:\s*left\s*!important/.test(css), "Measurements Name and Color headers/cells must align to the left edge");
   assert(!/measurement-line-swatch|\.measurement-line-cell\s*\{[^}]*width:\s*64px/.test(app + css), "Measurements must not retain the 64px color line");
 
   [
@@ -60,4 +62,6 @@ module.exports = async function testLayoutPreviewAndMeasurementsInspector(assert
   assert(/\.inspector-header\s*\{[^}]*border-top:\s*0[^}]*border-bottom:\s*0/.test(css), "the fixed lower tab track must not lose pixels to physical top/bottom borders");
   assert(/\.inspector-header::before\s*\{[^}]*top:\s*0[^}]*z-index:\s*3[^}]*height:\s*1px[^}]*pointer-events:\s*none/.test(css), "the lower panel top edge must be an overlay rule that cannot consume or cover the indicator row");
   assert(/\.inspector-header > \.inspector-tabs\s*\{[^}]*height:\s*32px[^}]*border-bottom:\s*0/.test(css), "the lower tab list must expose all 32 paint rows to its indicator");
+  assert(/\.display-action-cluster\s*\{[^}]*position:\s*relative/.test(css) && /\.display-action-cluster::after\s*\{[^}]*right:\s*0[^}]*bottom:\s*0[^}]*left:\s*0[^}]*height:\s*1px[^}]*background:\s*var\(--line\)/.test(css), "Display action buttons must continue the neutral baseline across their full width");
+  assert(/\.inspector-state-controls\s*\{[^}]*position:\s*relative[^}]*height:\s*31px/.test(css) && /\.inspector-state-controls::after\s*\{[^}]*right:\s*0[^}]*bottom:\s*-1px[^}]*left:\s*0[^}]*height:\s*1px[^}]*background:\s*var\(--line\)/.test(css), "Inspector state buttons must continue the neutral baseline across their full width without changing 32x31 geometry");
 };
