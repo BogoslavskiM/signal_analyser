@@ -54,13 +54,13 @@ module.exports = async function testLayoutPreviewAndMeasurementsInspector(assert
     const selectedStyles = stylesFor(selected);
     assert(parentStyles && !/border-bottom\s*:/.test(parentStyles), `${parent} must not paint a competing parent bottom border`);
     assert(tabStyles && /z-index\s*:\s*1\b/.test(tabStyles), `${tab} must paint above the neutral rule at z1`);
-    assert(selectedStyles && /z-index\s*:\s*2\b/.test(selectedStyles) && /height\s*:\s*var\(--selected-tab-indicator-thickness\)/.test(selectedStyles), `${selected} must paint the selected indicator above tabs at z2`);
+    assert(selectedStyles && /z-index\s*:\s*3\b/.test(selectedStyles) && /height\s*:\s*var\(--selected-tab-indicator-thickness\)/.test(selectedStyles), `${selected} must paint the selected indicator above the neutral baseline at z3`);
   });
   assert(/--selected-tab-indicator-thickness:\s*3px/.test(css), "All selected tab indicators must be exactly 3px");
-  assert(/\.display-tablist::before,\s*\.settings-tabs::before,\s*\.inspector-tabs::before\s*\{[^}]*z-index:\s*0[^}]*height:\s*1px/.test(css), "All three tab families must share a neutral 1px baseline at z0");
+  assert(/\.display-tablist::before,\s*\.settings-tabs::before,\s*\.inspector-tabs::before\s*\{[^}]*z-index:\s*2[^}]*height:\s*1px/.test(css), "All three tab families must paint the neutral 1px baseline above unselected tab backgrounds at z2");
   assert(/\.display-tabs\s*\{[^}]*border-bottom:\s*0/.test(css), "the screen-tabs wrapper must not physically clip the 3px indicator from below");
   assert(/\.inspector-header\s*\{[^}]*border-top:\s*0[^}]*border-bottom:\s*0/.test(css), "the fixed lower tab track must not lose pixels to physical top/bottom borders");
-  assert(/\.inspector-header::before\s*\{[^}]*top:\s*0[^}]*z-index:\s*3[^}]*height:\s*1px[^}]*pointer-events:\s*none/.test(css), "the lower panel top edge must be an overlay rule that cannot consume or cover the indicator row");
+  assert(!/\.inspector-header::before\s*\{/.test(css), "the lower panel must not paint an unexpected top rule above its state buttons");
   assert(/\.inspector-header > \.inspector-tabs\s*\{[^}]*height:\s*32px[^}]*border-bottom:\s*0/.test(css), "the lower tab list must expose all 32 paint rows to its indicator");
   assert(/\.display-action-cluster\s*\{[^}]*position:\s*relative/.test(css) && /\.display-action-cluster::after\s*\{[^}]*right:\s*0[^}]*bottom:\s*0[^}]*left:\s*0[^}]*height:\s*1px[^}]*background:\s*var\(--line\)/.test(css), "Display action buttons must continue the neutral baseline across their full width");
   assert(/\.inspector-state-controls\s*\{[^}]*position:\s*relative[^}]*height:\s*31px/.test(css) && /\.inspector-state-controls::after\s*\{[^}]*right:\s*0[^}]*bottom:\s*-1px[^}]*left:\s*0[^}]*height:\s*1px[^}]*background:\s*var\(--line\)/.test(css), "Inspector state buttons must continue the neutral baseline across their full width without changing 32x31 geometry");

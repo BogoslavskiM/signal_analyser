@@ -405,7 +405,7 @@ body.is-resizing-workspace * {
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 0;
+  z-index: 2;
   height: 1px;
   background: var(--line);
   content: "";
@@ -464,7 +464,7 @@ body.is-resizing-workspace * {
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 2;
+  z-index: 3;
   height: var(--selected-tab-indicator-thickness);
   background: var(--accent);
   content: "";
@@ -911,7 +911,7 @@ body.is-resizing-workspace * {
   right: 0;
   bottom: 0;
   left: 0;
-  z-index: 2;
+  z-index: 3;
   height: var(--selected-tab-indicator-thickness);
   background: var(--accent);
   content: "";
@@ -1383,20 +1383,6 @@ body.is-resizing-workspace * {
   border-bottom: 0;
   border-radius: var(--control-radius) var(--control-radius) 0 0;
   background: var(--surface);
-}
-
-/* Keep the 32px inspector strip available to its tabs. A physical top border
-   consumes one row in the fixed grid track and clips the last indicator row. */
-.inspector-header::before {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
-  z-index: 3;
-  height: 1px;
-  background: var(--line);
-  content: "";
-  pointer-events: none;
 }
 
 .inspector-header > .inspector-tabs {
