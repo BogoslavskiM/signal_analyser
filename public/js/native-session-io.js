@@ -328,7 +328,7 @@
       var saveReady = typeof state.revision === "number" && !!String(state.saveDraft.target || "").trim() &&
         (state.saveType === "session" || names.length > 0);
       html += layer("native-save", "Сохранение", "<div class='native-form'><div class='native-dialog-row'><span class='native-label'>Тип</span>" + saveTypeSelect() + "</div>" +
-        (state.saveType === "session" ? "<p class='native-hint'>Будет сохранена полная текущая сессия.</p>" : "<div class='native-dialog-row native-signals-row'><label class='native-label' for='native-save-signals-input'>Сигнал(ы)</label>" + signalPickerMarkup() + "</div>" + (names.length ? "" : "<small class='native-field-error native-signal-error' data-testid='save-signals-error'>Выберите хотя бы один сигнал.</small>")) +
+        (state.saveType === "session" ? "" : "<div class='native-dialog-row native-signals-row'><label class='native-label' for='native-save-signals-input'>Сигнал(ы)</label>" + signalPickerMarkup() + "</div>" + (names.length ? "" : "<small class='native-field-error native-signal-error' data-testid='save-signals-error'>Выберите хотя бы один сигнал.</small>")) +
         typeFields() + "</div>", "<button class='button' data-native-close data-testid='native-save-cancel'>Отмена</button><button class='button button-primary'" + (!saveReady || state.busy ? " disabled" : "") + " data-testid='native-save-submit'>" + (state.busy ? "Сохранение…" : "Сохранить") + "</button>", "native-save-dialog");
     }
     if (state.import) {
