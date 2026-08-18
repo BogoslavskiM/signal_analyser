@@ -15,7 +15,7 @@
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, graphDefaultRangeByPane:{}, graphDefaultSignatureByPane:{}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
-    layoutDraft: null, screenDraft: null, screenApplying: false, screenCollapsed: { layout:true }, renderFrame: null, plotlyPromise: null,
+    layoutDraft: null, screenDraft: null, screenApplying: false, screenApplyToken: 0, screenCollapsed: { layout:true }, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
@@ -28,6 +28,29 @@
   function q(selector) { return document.querySelector(selector); }
   function qa(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]; }); }
+  function boundedApply(promise, timeoutMs) {
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      var timer = window.setTimeout(function () {
+        if (settled) return;
+        settled = true;
+        var error = new Error("Применение заняло слишком много времени. Повторите действие.");
+        error.code = "apply_timeout";
+        reject(error);
+      }, timeoutMs);
+      Promise.resolve(promise).then(function (value) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        resolve(value);
+      }, function (error) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        reject(error);
+      });
+    });
+  }
   function stateRevision(value) { return value && typeof value.state_revision === "number" ? value.state_revision : null; }
   function activeDisplay() { return model.state && (model.state.displays || []).filter(function (display) { return display.id === model.state.active_display_id; })[0]; }
   function panes() { return model.layout && Array.isArray(model.layout.panes) ? model.layout.panes : []; }
@@ -1687,7 +1710,7 @@
     if (!footer || !button || !status || !values) return;
     if (model.settingsPage === "peaks") return renderPeaksApply(footer, button, status);
     values.hidden = true;
-    status.classList.remove("visually-hidden");
+    status.classList.add("visually-hidden");
     var draft = activeDisplay() && screenDraftFor(activeDisplay());
     var state = areaScreenApplyState(draft);
     var phase = footer.dataset.phase || "pristine";
@@ -2625,6 +2648,7 @@
     var resize = draft.rows !== draft.initialRows || draft.columns !== draft.initialColumns;
     var linksDirty = draft.linkTime !== draft.initialLinkTime || draft.linkAmplitude !== draft.initialLinkAmplitude;
     var needsSettingsApply = state.areaDirty || state.screenFieldsDirty || linksDirty;
+    var applyToken = ++model.screenApplyToken;
     model.screenApplying = true;
     draft.error = "";
     footer.dataset.phase = "applying";
@@ -2650,7 +2674,7 @@
     if (resize) result = result.then(function () {
       return postLayout({ operation:"resize", variant:draft.rows + "x" + draft.columns, rows:draft.rows, columns:draft.columns }, { skipSettings:true, skipOutput:true });
     });
-    result.then(function () {
+    result = result.then(function () {
       if (!activeDisplay() || activeDisplay().id !== displayId) throw new Error("Контекст экрана изменился; повторите действие.");
       return persistLayoutLinks(draft);
     }).then(function () {
@@ -2665,7 +2689,9 @@
         if (response.settings && typeof settings.accept === "function") settings.accept(response.settings);
       }
       return response;
-    }).then(function (response) {
+    });
+    boundedApply(result, 10000).then(function () {
+      if (applyToken !== model.screenApplyToken) return;
       model.screenApplying = false;
       previewScreenLinks(null);
       model.screenDraft = null;
@@ -2676,6 +2702,7 @@
       showToast("Настройки применены", false);
       output(true);
     }).catch(function (error) {
+      if (applyToken !== model.screenApplyToken) return;
       model.screenApplying = false;
       if (model.screenDraft && model.screenDraft.displayId === displayId) model.screenDraft.error = error.message || "Не удалось применить настройки.";
       footer.dataset.phase = error.status === 409 ? "stale" : "error";

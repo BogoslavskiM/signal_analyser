@@ -1352,13 +1352,7 @@ body.is-resizing-workspace * {
 }
 
 .settings-status {
-  min-width: 0;
-  flex: 1 1 auto;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .button,
@@ -1452,6 +1446,24 @@ body.is-resizing-workspace * {
 .settings-apply {
   min-width: 96px;
   padding: 7px 16px;
+}
+
+.settings-apply:disabled:not(.is-applying):not(.is-pending) {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  color: #9b9b9b;
+  cursor: default;
+  opacity: 1;
+  box-shadow: none;
+}
+
+.settings-apply.is-applying:disabled,
+.settings-apply.is-pending:disabled {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--surface);
+  cursor: wait;
+  opacity: 1;
 }
 
 .inspector {
