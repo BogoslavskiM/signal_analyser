@@ -16,7 +16,7 @@ module.exports = async function testTask0114ScreenSettings(assert) {
   assert(/data-settings-context>Экран 1 · Область 1</.test(html), "initial settings context must use Screen and Area numbering");
   assert(/context\.textContent = "Экран " \+ \(displayIndex \+ 1\) \+ " · Область " \+ \(paneIndex \+ 1\)/.test(app), "runtime context must derive Screen and Area numbers from active state");
 
-  assert(/function screenLayoutSelect\(display, axis[\s\S]*?valueSelect\.markup[\s\S]*?testId:"screen-layout-" \+ axis/.test(app), "Screen layout axes must use the shared searchable value selector");
+  assert(/function screenLayoutSegments\(axis, selected, label\)[\s\S]*?class='segments screen-layout-segments'[\s\S]*?data-screen-layout-" \+ axis/.test(app), "Screen layout axes must use the requested ten-button segmented controls");
   assert(/function renderScreenSettings\(display\)[\s\S]*?screenSettingsGroup\("layout", "Макет"[\s\S]*?screenSettingsGroup\("links", "Связь областей"/.test(app), "Screen page must render layout and link settings as shared collapsible groups");
   assert(/data-testid='screen-link-time-row'[\s\S]*?checkbox-control[\s\S]*?Связать амплитуду[\s\S]*?data-testid='screen-link-amplitude'/.test(app), "Screen links must use the shared field-row and checkbox-control geometry");
   assert(/screenDraftDirty\(draft\)[\s\S]*?draft\.rows !== draft\.initialRows[\s\S]*?draft\.linkAmplitude !== draft\.initialLinkAmplitude/.test(app), "Screen Apply state must cover layout and both independent links");
@@ -28,6 +28,7 @@ module.exports = async function testTask0114ScreenSettings(assert) {
 
   assert(/screenCollapsed:\s*\{\s*layout:true\s*\}/.test(app), "Screen layout group must be collapsed on first open");
   assert(!app.includes("screen-layout-preview") && !css.includes(".screen-layout-preview"), "Screen settings must not render the removed layout preview");
+  assert(/\.screen-layout-options\s*\{[^}]*padding:\s*4px 8px 12px 32px/.test(css) && /\.screen-layout-axis\s*\{[^}]*border:\s*1px solid var\(--line\)/.test(css), "Screen layout may use its special bordered fieldsets with the requested left inset");
   assert(/\.settings-field-row\s*\{[^}]*min-height:\s*40px/.test(css) && /\.checkbox-control\s*\{/.test(css), "Screen link rows must inherit the common field and checkbox geometry");
   assert(/linkTime \? null : group\("time-limits"/.test(settings) && /linkAmplitude \? null : group\("y-limits"/.test(settings), "linked limit sections must disappear from Area settings");
   assert(/draft\.linkTime \? screenSettingsGroup\("time-limits", "Пределы времени", settings\.renderRows\(\["time\.units", "time\.x_limits"\]\)\)/.test(app), "linked time limits must move to Screen settings");

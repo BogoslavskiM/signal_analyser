@@ -1358,17 +1358,11 @@
     renderApply();
   }
 
-  function screenLayoutSelect(display, axis, selected, label) {
-    return valueSelect.markup({
-      key:"screen::" + display.id + "::layout::" + axis,
-      value:String(selected),
-      label:String(selected),
-      options:Array.from({ length:10 }, function (_, index) { return { value:String(index + 1), label:String(index + 1) }; }),
-      className:"settings-value-select",
-      testId:"screen-layout-" + axis,
-      ariaLabel:label,
-      onSelect:function (value) { setScreenLayoutAxis(axis, value); }
-    });
+  function screenLayoutSegments(axis, selected, label) {
+    return "<div class='segments screen-layout-segments' role='group' aria-label='" + label + "'>" + Array.from({ length:10 }, function (_, index) {
+      var value = index + 1;
+      return "<button class='segment" + (selected === value ? " is-selected" : "") + "' type='button' data-screen-layout-" + axis + "='" + value + "' data-testid='screen-layout-" + axis + "-" + value + "' aria-pressed='" + String(selected === value) + "'>" + value + "</button>";
+    }).join("") + "</div>";
   }
 
   function screenSettingsGroup(key, title, body) {
@@ -1385,8 +1379,10 @@
     if (!content) return;
     var draft = screenDraftFor(display);
     settings.beginCustomRender();
-    var layoutFields = "<div class='settings-field-row' data-testid='screen-layout-rows-row'><label class='settings-label'>Строки</label><div class='settings-control-wrap'>" + screenLayoutSelect(display, "rows", draft.rows, "Строки макета") + "</div></div>" +
-      "<div class='settings-field-row' data-testid='screen-layout-columns-row'><label class='settings-label'>Столбцы</label><div class='settings-control-wrap'>" + screenLayoutSelect(display, "columns", draft.columns, "Столбцы макета") + "</div></div>";
+    var layoutFields = "<div class='screen-layout-options'>" +
+      "<fieldset class='screen-layout-axis' data-testid='screen-layout-rows'><legend>Строки</legend>" + screenLayoutSegments("rows", draft.rows, "Количество строк") + "</fieldset>" +
+      "<fieldset class='screen-layout-axis' data-testid='screen-layout-columns'><legend>Столбцы</legend>" + screenLayoutSegments("columns", draft.columns, "Количество столбцов") + "</fieldset>" +
+    "</div>";
     var linkFields = "<div class='settings-field-row' data-testid='screen-link-time-row'><label class='settings-label' for='screen-link-time'>Связать время</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-time' type='checkbox' data-screen-link-time data-testid='screen-link-time'" + (draft.linkTime ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>" +
       "<div class='settings-field-row' data-testid='screen-link-amplitude-row'><label class='settings-label' for='screen-link-amplitude'>Связать амплитуду</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-amplitude' type='checkbox' data-screen-link-amplitude data-testid='screen-link-amplitude'" + (draft.linkAmplitude ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>";
     var limitGroups = draft.linkTime ? screenSettingsGroup("time-limits", "Пределы времени", settings.renderRows(["time.units", "time.x_limits"])) : "";
@@ -2565,6 +2561,13 @@
     if (button.dataset.layoutRows || button.dataset.layoutColumns) { model.layoutDraft[button.dataset.layoutRows ? "rows" : "columns"] = Number(button.dataset.layoutRows || button.dataset.layoutColumns); return void renderLayoutDraft(); }
     if (button.dataset.layoutScreenSettings !== undefined) return void openScreenSettingsFromLayout();
     if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { if (model.screenDraft && model.screenDraft.displayId === displayId) { model.screenDraft.rows = draft.rows; model.screenDraft.columns = draft.columns; model.screenDraft.initialRows = draft.rows; model.screenDraft.initialColumns = draft.columns; } else model.screenDraft = null; if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
+    if (button.dataset.screenLayoutRows !== undefined || button.dataset.screenLayoutColumns !== undefined) {
+      var screenAxis = button.dataset.screenLayoutRows !== undefined ? "rows" : "columns";
+      var screenValue = Number(button.dataset.screenLayoutRows !== undefined ? button.dataset.screenLayoutRows : button.dataset.screenLayoutColumns);
+      setScreenLayoutAxis(screenAxis, screenValue);
+      window.requestAnimationFrame(function () { var restored = q("[data-screen-layout-" + screenAxis + "='" + screenValue + "']"); if (restored) restored.focus(); });
+      return;
+    }
     if (button.dataset.screenSettingsGroupToggle) {
       var screenGroup = button.dataset.screenSettingsGroupToggle;
       model.screenCollapsed[screenGroup] = button.getAttribute("aria-expanded") === "true";

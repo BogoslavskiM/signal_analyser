@@ -931,6 +931,29 @@ body.is-resizing-workspace * {
   min-width: 0;
 }
 
+.screen-layout-options {
+  display: grid;
+  gap: 14px;
+  padding: 4px 8px 12px 32px;
+}
+
+.screen-layout-axis {
+  min-width: 0;
+  margin: 0;
+  padding: 12px 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+}
+
+.screen-layout-axis legend {
+  padding: 0 8px;
+  font-weight: 500;
+}
+
+.screen-layout-segments {
+  width: 100%;
+}
+
 .settings-group {
   padding: 4px 0;
 }
