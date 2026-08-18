@@ -22,6 +22,7 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
       dataset: { paneHost:key, plotReady:"true" },
       isConnected: true,
       _fullLayout: { xaxis:{}, yaxis:{} },
+      contains() { return true; },
       on(name, handler) { (handlers[name] ||= []).push(handler); },
       emit(name, payload) { (handlers[name] || []).forEach((handler) => handler(payload)); },
       handlerCount(name) { return (handlers[name] || []).length; },
@@ -81,6 +82,7 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   ] };
 
   assert(api.update({ "yaxis.range[0]":-1, "yaxis.range[1]":1 }, true, false) === null, "Y-only changes must not enter the linked-time path");
+  assert(api.update({ "xaxis.range[0]":3, "xaxis.range[1]":3 }, true, false) === null, "a zero-width zoom range must be treated as a cancelled gesture");
   const parsed = api.update({ "xaxis.range[0]":2, "xaxis.range[1]":5, "yaxis.range[0]":-7, "yaxis.range[1]":9 }, true, false);
   assert(parsed["xaxis.range[0]"] === 2 && parsed["xaxis.range[1]"] === 5 && parsed["xaxis.autorange"] === false && Object.keys(parsed).every((key) => key.startsWith("xaxis.")), "linked updates must contain only the exact X range");
   const amplitudeParsed = api.update({ "xaxis.range[0]":2, "xaxis.range[1]":5, "yaxis.range[0]":-7, "yaxis.range[1]":9 }, false, true);
@@ -93,6 +95,28 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   api.bind(targetHost, "display-a", "time-2");
   assert(sourceHost.handlerCount("plotly_relayouting") === 1 && sourceHost.handlerCount("plotly_relayout") === 1, "each ready Plotly host must bind each live/final event exactly once");
   assert(sourceHost.handlerCount("plotly_doubleclick") === 0 && sourceHost.domHandlerCount("dblclick") === 0, "the linked-axis binding must not add a second graph or range-slider double-click handler");
+
+  const graphTarget = { closest(selector) { return selector === ".nsewdrag" ? this : null; } };
+  sourceHost._fullLayout = { dragmode:"zoom", xaxis:{ range:[0,10] }, yaxis:{ range:[-1,1] } };
+  sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:4, clientX:20, clientY:20, target:graphTarget });
+  sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":2, "xaxis.range[1]":8 });
+  sourceHost.emitDom("pointerup", { type:"pointerup", pointerId:4, clientX:20, clientY:20, target:graphTarget });
+  assert(frames.length === 0 && relayoutCalls.length === 0, "a zero-area LMB zoom must not scale linked neighbor panes");
+
+  sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:5, clientX:20, clientY:20, target:graphTarget });
+  sourceHost.emitDom("pointermove", { type:"pointermove", pointerId:5, clientX:40, clientY:40, target:graphTarget });
+  sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":2, "xaxis.range[1]":8 });
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  sourceHost.emitDom("pointermove", { type:"pointermove", pointerId:5, clientX:20, clientY:20, target:graphTarget });
+  sourceHost.emitDom("pointerup", { type:"pointerup", pointerId:5, clientX:20, clientY:20, target:graphTarget });
+  assert(frames.length === 1, "returning a box zoom to zero area must schedule restoration of any already-updated neighbors");
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 2 && relayoutCalls[1].target === targetHost && relayoutCalls[1].update["xaxis.range[0]"] === 0 && relayoutCalls[1].update["xaxis.range[1]"] === 10, "a cancelled box zoom must restore the neighbor to the source's pre-gesture range");
+  relayoutCalls.length = 0;
 
   linkTime = false;
   linkAmplitude = false;

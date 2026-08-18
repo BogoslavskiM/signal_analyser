@@ -1041,6 +1041,9 @@
     var start = Array.isArray(range) ? range[0] : eventData[startKey];
     var finish = Array.isArray(range) ? range[1] : eventData[finishKey];
     if (start !== undefined && finish !== undefined) {
+      start = Number(start);
+      finish = Number(finish);
+      if (!Number.isFinite(start) || !Number.isFinite(finish) || start === finish) return null;
       var rangeUpdate = {};
       rangeUpdate[startKey] = start;
       rangeUpdate[finishKey] = finish;
@@ -1067,12 +1070,12 @@
     var linkTime = !!(settings.screenValue ? settings.screenValue("time.link_time") : settings.value ? settings.value("time.link_time") : false);
     var linkAmplitude = !!(settings.screenValue ? settings.screenValue("time.link_amplitude") : settings.value ? settings.value("time.link_amplitude") : false);
     var update = linkedTimeRangeUpdate(eventData, linkTime, linkAmplitude);
-    if (!update || !sourcePane || ["time", "spectrogram"].indexOf(sourcePane.plot_type) < 0) return;
+    if (!update || !sourcePane || ["time", "spectrogram"].indexOf(sourcePane.plot_type) < 0) return false;
     if (sourcePane.plot_type !== "time") Object.keys(update).filter(function (key) { return key.indexOf("yaxis.") === 0; }).forEach(function (key) { delete update[key]; });
-    if (!Object.keys(update).length) return;
+    if (!Object.keys(update).length) return false;
     var token = ++model.axisLinkToken;
     model.axisLinkPending = { displayId:displayId, sourcePaneId:sourcePaneId, update:update, token:token };
-    if (model.axisLinkFrame !== null) return;
+    if (model.axisLinkFrame !== null) return true;
     model.axisLinkFrame = window.requestAnimationFrame(function () {
       model.axisLinkFrame = null;
       var pending = model.axisLinkPending;
@@ -1103,13 +1106,64 @@
         } catch (_) { delete model.axisLinkSuppressByPane[runtimeKey]; }
       });
     });
+    return true;
   }
 
   function bindLinkedTimeHost(host, displayId, paneId) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
     if (!host || typeof host.on !== "function" || host.dataset.axisLinkBound === runtimeKey) return;
+    var zoomGesture = null;
+    function graphZoomSurface(event) {
+      var target = event && event.target;
+      var surface = target && typeof target.closest === "function" ? target.closest(".nsewdrag") : null;
+      return surface && (!host.contains || host.contains(surface)) ? surface : null;
+    }
+    function zeroAreaGesture(gesture) {
+      return !gesture || Math.abs(gesture.x - gesture.startX) < 4 || Math.abs(gesture.y - gesture.startY) < 4;
+    }
+    function startingLinkedRange() {
+      var layout = host._fullLayout || {}, payload = {};
+      if (layout.xaxis && Array.isArray(layout.xaxis.range)) payload["xaxis.range"] = layout.xaxis.range.slice();
+      if (layout.yaxis && Array.isArray(layout.yaxis.range)) payload["yaxis.range"] = layout.yaxis.range.slice();
+      return payload;
+    }
+    function cancelPendingGesture() {
+      var pending = model.axisLinkPending;
+      if (!pending || pending.displayId !== displayId || pending.sourcePaneId !== paneId) return;
+      model.axisLinkToken += 1;
+      model.axisLinkPending = null;
+      if (model.axisLinkFrame !== null) window.cancelAnimationFrame(model.axisLinkFrame);
+      model.axisLinkFrame = null;
+    }
+    if (typeof host.addEventListener === "function") {
+      host.addEventListener("pointerdown", function (event) {
+        if ((event.button !== undefined && event.button !== 0) || !graphZoomSurface(event)) return;
+        var dragmode = host._fullLayout && host._fullLayout.dragmode;
+        if (dragmode && dragmode !== "zoom") return;
+        zoomGesture = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, x:event.clientX, y:event.clientY, initial:startingLinkedRange(), propagated:false };
+      }, true);
+      host.addEventListener("pointermove", function (event) {
+        if (!zoomGesture || zoomGesture.pointerId !== undefined && event.pointerId !== undefined && zoomGesture.pointerId !== event.pointerId) return;
+        zoomGesture.x = event.clientX;
+        zoomGesture.y = event.clientY;
+      }, true);
+      function finishZoomGesture(event) {
+        if (!zoomGesture || zoomGesture.pointerId !== undefined && event.pointerId !== undefined && zoomGesture.pointerId !== event.pointerId) return;
+        zoomGesture.x = event.clientX === undefined ? zoomGesture.x : event.clientX;
+        zoomGesture.y = event.clientY === undefined ? zoomGesture.y : event.clientY;
+        var cancelled = event.type === "pointercancel" || zeroAreaGesture(zoomGesture);
+        var initial = zoomGesture.initial, propagated = zoomGesture.propagated;
+        zoomGesture = null;
+        if (!cancelled) return;
+        cancelPendingGesture();
+        if (propagated) queueLinkedTimeRelayout(displayId, paneId, initial);
+      }
+      host.addEventListener("pointerup", finishZoomGesture, true);
+      host.addEventListener("pointercancel", finishZoomGesture, true);
+    }
     var handler = function (eventData) {
-      if (!model.axisLinkSuppressByPane[runtimeKey]) queueLinkedTimeRelayout(displayId, paneId, eventData);
+      if (zoomGesture && zeroAreaGesture(zoomGesture)) return;
+      if (!model.axisLinkSuppressByPane[runtimeKey] && queueLinkedTimeRelayout(displayId, paneId, eventData) && zoomGesture) zoomGesture.propagated = true;
       syncAmplitudeSliderFromRelayout(host, runtimeKey, eventData);
       var correction = adjustRangeSliderFullRange(runtimeKey, eventData);
       if (!correction || model.rangeSliderAdjustByPane[runtimeKey]) return;
