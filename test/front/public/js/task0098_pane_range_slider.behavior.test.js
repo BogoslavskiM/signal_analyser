@@ -201,6 +201,7 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   h.test.model.outputs["display-a::pane-2"] = { output: { isready: true, success: true, data: [{ x:[0, 1], y:[1, 0] }] } };
   h.test.model.rangeSliderDataRangeByPane["display-a::pane-1"] = [0, 1];
   h.test.model.amplitudeDataRangeByPane["display-a::pane-1"] = [-2, 2];
+  h.test.model.graphDefaultRangeByPane["display-a::pane-1"] = { x:[0, 1], y:[-2.2, 2.2] };
 
   const firstTrigger = trigger("pane-1");
   h.test.openMenu(firstTrigger);
@@ -242,7 +243,7 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   h.hosts["display-a::pane-1"].dispatch("pointerdown", graphPointerEvent());
   await h.settle();
   const graphReset = h.relayoutCalls[2].update;
-  assert(graphReset["xaxis.range[0]"] === 0 && graphReset["xaxis.range[1]"] === 1 && graphReset["yaxis.range[0]"] === -2 && graphReset["yaxis.range[1]"] === 2, "the first graph double-click must restore the exact projected X and signal Y ranges in one relayout");
+  assert(graphReset["xaxis.range[0]"] === 0 && graphReset["xaxis.range[1]"] === 1 && graphReset["yaxis.range[0]"] === -2.2 && graphReset["yaxis.range[1]"] === 2.2, "the first graph double-click must restore the exact rendered default X and padded Y ranges in one relayout");
   assert(graphReset["xaxis.autorange"] === false && graphReset["yaxis.autorange"] === false && immediateStopped === 1, "graph reset must suppress Plotly's later competing autorange pass");
   h.hosts["display-a::pane-1"].dispatch("dblclick", graphPointerEvent());
   await h.settle();

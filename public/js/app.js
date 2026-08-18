@@ -14,7 +14,7 @@
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
-    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
+    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, graphDefaultRangeByPane:{}, graphDefaultSignatureByPane:{}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
     layoutDraft: null, screenDraft: null, screenApplying: false, screenCollapsed: { layout:true }, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
@@ -86,6 +86,8 @@
           delete model.amplitudeDataRangeByPane[key];
           delete model.amplitudeFullRangeByPane[key];
           delete model.amplitudeSelectedRangeByPane[key];
+          delete model.graphDefaultRangeByPane[key];
+          delete model.graphDefaultSignatureByPane[key];
         }
       });
       if (!owningDisplay) itemPanes.forEach(function (pane) {
@@ -98,6 +100,8 @@
         delete model.amplitudeDataRangeByPane[key];
         delete model.amplitudeFullRangeByPane[key];
         delete model.amplitudeSelectedRangeByPane[key];
+        delete model.graphDefaultRangeByPane[key];
+        delete model.graphDefaultSignatureByPane[key];
       });
     });
     Object.keys(model.rangeSliderByPane).forEach(function (key) { if (!currentKeys[key]) delete model.rangeSliderByPane[key]; });
@@ -110,6 +114,8 @@
     Object.keys(model.amplitudeSelectedRangeByPane).forEach(function (key) { if (!currentKeys[key]) delete model.amplitudeSelectedRangeByPane[key]; });
     Object.keys(model.amplitudeFrameByPane).forEach(function (key) { if (!currentKeys[key]) delete model.amplitudeFrameByPane[key]; });
     Object.keys(model.amplitudePendingByPane).forEach(function (key) { if (!currentKeys[key]) delete model.amplitudePendingByPane[key]; });
+    Object.keys(model.graphDefaultRangeByPane).forEach(function (key) { if (!currentKeys[key]) delete model.graphDefaultRangeByPane[key]; });
+    Object.keys(model.graphDefaultSignatureByPane).forEach(function (key) { if (!currentKeys[key]) delete model.graphDefaultSignatureByPane[key]; });
   }
 
   function scheduleRender() {
@@ -781,7 +787,8 @@
       return true;
     }
     function resetGraphRange(event) {
-      var Plotly = window.Plotly, now = Date.now(), xRange = model.rangeSliderDataRangeByPane[runtimeKey];
+      var Plotly = window.Plotly, now = Date.now(), defaults = model.graphDefaultRangeByPane[runtimeKey];
+      var xRange = defaults && defaults.x || model.rangeSliderDataRangeByPane[runtimeKey];
       if (!xRange || !Plotly || typeof Plotly.relayout !== "function") return false;
       if (host._graphRangeResetAt && now - host._graphRangeResetAt < 240) {
         if (event) {
@@ -797,7 +804,7 @@
         "xaxis.range[1]":xRange[1],
         "xaxis.autorange":false
       };
-      var yRange = model.amplitudeDataRangeByPane[runtimeKey];
+      var yRange = defaults && defaults.y || model.amplitudeDataRangeByPane[runtimeKey];
       if (yRange) {
         update["yaxis.range[0]"] = yRange[0];
         update["yaxis.range[1]"] = yRange[1];
@@ -1317,6 +1324,8 @@
       delete model.amplitudeDataRangeByPane[runtimeKey];
       delete model.amplitudeFullRangeByPane[runtimeKey];
       delete model.amplitudeSelectedRangeByPane[runtimeKey];
+      delete model.graphDefaultRangeByPane[runtimeKey];
+      delete model.graphDefaultSignatureByPane[runtimeKey];
       showToast("Область очищена", false);
       var target = q("[data-pane-id='" + CSS.escape(context.paneId) + "']");
       if (target) target.focus();
@@ -1338,12 +1347,30 @@
         var payload = plotEnvelope(queued.output.data);
         var traces = Array.isArray(payload) ? payload : (Array.isArray(payload.data) ? payload.data : [{ type: "heatmap", x: payload.x, y: payload.y, z: payload.z, colorscale: payload.colorscale }]);
         var dataRange = pane.plot_type === "time" ? traceXDataRange(traces) : null;
+        var amplitudeDataRange = pane.plot_type === "time" ? traceYDataRange(traces) : null;
+        var sourceLayout = payload.layout || {};
+        var defaultSignature = JSON.stringify({ xData:dataRange, yData:amplitudeDataRange, xaxis:sourceLayout.xaxis || null, yaxis:sourceLayout.yaxis || null });
+        var defaultChanged = model.graphDefaultSignatureByPane[runtimeKey] !== defaultSignature;
+        model.graphDefaultSignatureByPane[runtimeKey] = defaultSignature;
+        if (defaultChanged) {
+          delete model.rangeSliderFullRangeByPane[runtimeKey];
+          delete model.amplitudeFullRangeByPane[runtimeKey];
+          delete model.amplitudeSelectedRangeByPane[runtimeKey];
+        }
         if (dataRange) model.rangeSliderDataRangeByPane[runtimeKey] = dataRange;
         else { delete model.rangeSliderDataRangeByPane[runtimeKey]; delete model.rangeSliderFullRangeByPane[runtimeKey]; }
-        var amplitudeDataRange = pane.plot_type === "time" ? traceYDataRange(traces) : null;
         if (amplitudeDataRange) model.amplitudeDataRangeByPane[runtimeKey] = amplitudeDataRange;
         else { delete model.amplitudeDataRangeByPane[runtimeKey]; delete model.amplitudeFullRangeByPane[runtimeKey]; delete model.amplitudeSelectedRangeByPane[runtimeKey]; }
-        return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({}, payload.config || {}, { displayModeBar:false, displaylogo:false, responsive:true, doubleClick:false })).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); host.dataset.amplitudeSliderVisible = String(amplitudeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); bindRangeSliderDoubleClick(host, runtimeKey); syncAmplitudeSlider(host, runtimeKey); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
+        return Plotly.react(host, traces, plotLayoutWithRangeSlider(sourceLayout, runtimeKey, defaultChanged ? null : host), Object.assign({}, payload.config || {}, { displayModeBar:false, displaylogo:false, responsive:true, doubleClick:false })).then(function () {
+          if (defaultChanged || !model.graphDefaultRangeByPane[runtimeKey]) {
+            var fullLayout = host._fullLayout || {}, xaxis = fullLayout.xaxis, yaxis = fullLayout.yaxis;
+            model.graphDefaultRangeByPane[runtimeKey] = {
+              x:xaxis && Array.isArray(xaxis.range) ? xaxis.range.slice() : dataRange && dataRange.slice(),
+              y:yaxis && Array.isArray(yaxis.range) ? yaxis.range.slice() : amplitudeDataRange && amplitudeDataRange.slice()
+            };
+          }
+          host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); host.dataset.amplitudeSliderVisible = String(amplitudeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); bindRangeSliderDoubleClick(host, runtimeKey); syncAmplitudeSlider(host, runtimeKey); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]);
+        });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
         model.plotInFlight[runtimeKey] = false;
         if (model.plotQueue[runtimeKey]) enqueuePlot(displayId, pane, model.plotQueue[runtimeKey]);
