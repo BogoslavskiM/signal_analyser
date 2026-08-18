@@ -20,6 +20,9 @@ module.exports = async function testTask0114ScreenSettings(assert) {
   assert(/screenDraftDirty\(draft\)[\s\S]*?draft\.rows !== draft\.initialRows[\s\S]*?draft\.linkAmplitude !== draft\.initialLinkAmplitude/.test(app), "Screen Apply state must cover layout and both independent links");
   assert(/function applyScreenSettings\(\)[\s\S]*?postLayout\(\{ operation:"resize"[\s\S]*?persistLayoutLinks\(draft\)[\s\S]*?settings\.load\(\)/.test(app), "Screen Apply must serialize layout before axis-link persistence and authoritative reload");
   assert(/context\.page === "screen"\) return/.test(settings), "shared pane-settings renderer must not overwrite the app-owned Screen page during persistence");
+  assert(/signal-settings-loaded/.test(settings) && /signal-settings-loaded[\s\S]*?model\.settingsPage === "screen"[\s\S]*?renderSettings\(display\)/.test(app), "a newly selected Screen must hydrate link values after its authoritative settings document loads");
+  assert(/draft\.linksReady \? "" : " disabled"/.test(app) && /!draft\.linksReady \|\| !screenDraftDirty\(draft\)/.test(app), "axis links and Apply must stay disabled until Screen settings are authoritative");
+  assert(/model\.screenDraft\.initialRows = draft\.rows[\s\S]*?model\.screenDraft\.initialColumns = draft\.columns/.test(app), "layout popover Apply must rebase the Screen layout draft without discarding independent link edits");
 
   assert(/\.screen-layout-preview\s*\{[^}]*grid-template-columns:\s*repeat\(var\(--screen-layout-columns\)/.test(css), "Screen layout preview must reflect selected column count");
   assert(/\.screen-link-setting\s*\{[^}]*min-height:\s*40px/.test(css), "Screen link rows must retain dense control geometry");
