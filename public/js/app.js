@@ -1088,6 +1088,35 @@
     return Object.keys(update).length ? update : null;
   }
 
+  function collapsedAxisRange(eventData, axis) {
+    if (!eventData || typeof eventData !== "object") return false;
+    var rangeKey = axis + ".range", range = eventData[rangeKey];
+    var start = Array.isArray(range) ? range[0] : eventData[rangeKey + "[0]"];
+    var finish = Array.isArray(range) ? range[1] : eventData[rangeKey + "[1]"];
+    start = Number(start);
+    finish = Number(finish);
+    return Number.isFinite(start) && Number.isFinite(finish) && start === finish;
+  }
+
+  function settledLinkedRange(host, includeX, includeY) {
+    var layout = host && host._fullLayout || {}, payload = {};
+    if (includeX && layout.xaxis && Array.isArray(layout.xaxis.range)) payload["xaxis.range"] = layout.xaxis.range.slice();
+    if (includeY && layout.yaxis && Array.isArray(layout.yaxis.range)) payload["yaxis.range"] = layout.yaxis.range.slice();
+    return Object.keys(payload).length ? payload : null;
+  }
+
+  function reconcileCancelledZoom(host, displayId, paneId, includeX, includeY, baseline) {
+    window.requestAnimationFrame(function () {
+      var payload = settledLinkedRange(host, includeX, includeY);
+      var unchanged = payload && baseline && Object.keys(payload).every(function (key) {
+        var current = payload[key], prior = baseline[key];
+        return Array.isArray(current) && Array.isArray(prior) && current.length === prior.length && current.every(function (value, index) { return Number(value) === Number(prior[index]); });
+      });
+      if (unchanged) return;
+      if (payload) queueLinkedTimeRelayout(displayId, paneId, payload);
+    });
+  }
+
   function currentScreenLinkFlags() {
     var display = activeDisplay(), draft = model.screenDraft;
     if (display && draft && draft.displayId === display.id) return { time:!!draft.linkTime, amplitude:!!draft.linkAmplitude };
@@ -1184,17 +1213,24 @@
         zoomGesture.x = event.clientX === undefined ? zoomGesture.x : event.clientX;
         zoomGesture.y = event.clientY === undefined ? zoomGesture.y : event.clientY;
         var cancelled = event.type === "pointercancel" || zeroAreaGesture(zoomGesture);
-        var initial = zoomGesture.initial, propagated = zoomGesture.propagated;
+        var initial = zoomGesture.initial;
         zoomGesture = null;
         if (!cancelled) return;
         cancelPendingGesture();
-        if (propagated) queueLinkedTimeRelayout(displayId, paneId, initial);
+        queueLinkedTimeRelayout(displayId, paneId, initial);
+        reconcileCancelledZoom(host, displayId, paneId, true, true, initial);
       }
       host.addEventListener("pointerup", finishZoomGesture, true);
       host.addEventListener("pointercancel", finishZoomGesture, true);
     }
     var handler = function (eventData) {
-      if (!model.axisLinkSuppressByPane[runtimeKey] && queueLinkedTimeRelayout(displayId, paneId, eventData) && zoomGesture) zoomGesture.propagated = true;
+      if (!model.axisLinkSuppressByPane[runtimeKey]) {
+        if (queueLinkedTimeRelayout(displayId, paneId, eventData) && zoomGesture) zoomGesture.propagated = true;
+        var links = currentScreenLinkFlags();
+        var collapsedX = links.time && collapsedAxisRange(eventData, "xaxis");
+        var collapsedY = links.amplitude && collapsedAxisRange(eventData, "yaxis");
+        if (collapsedX || collapsedY) reconcileCancelledZoom(host, displayId, paneId, collapsedX, collapsedY);
+      }
       syncAmplitudeSliderFromRelayout(host, runtimeKey, eventData);
       var correction = adjustRangeSliderFullRange(runtimeKey, eventData);
       if (!correction || model.rangeSliderAdjustByPane[runtimeKey]) return;

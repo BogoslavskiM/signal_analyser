@@ -101,11 +101,13 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:4, clientX:20, clientY:20, target:graphTarget });
   sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":2, "xaxis.range[1]":8 });
   sourceHost.emitDom("pointerup", { type:"pointerup", pointerId:4, clientX:20, clientY:20, target:graphTarget });
-  assert(frames.length === 1 && relayoutCalls.length === 0, "a zero-area LMB zoom must replace its pending linked update before the animation frame paints");
+  assert(frames.length === 2 && relayoutCalls.length === 0, "a zero-area LMB zoom must replace its pending linked update and schedule one settled-source check before painting");
   frames.shift()();
   await Promise.resolve();
   await Promise.resolve();
   assert(relayoutCalls.length === 1 && relayoutCalls[0].update["xaxis.range[0]"] === 0 && relayoutCalls[0].update["xaxis.range[1]"] === 10, "a zero-area LMB zoom must leave the linked neighbor at the source pre-gesture range");
+  frames.shift()();
+  assert(frames.length === 0 && relayoutCalls.length === 1, "an unchanged settled source range must not issue a duplicate follower relayout");
   relayoutCalls.length = 0;
 
   sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:41, clientX:20, clientY:20, target:graphTarget });
@@ -151,11 +153,24 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   await Promise.resolve();
   sourceHost.emitDom("pointermove", { type:"pointermove", pointerId:5, clientX:20, clientY:20, target:graphTarget });
   sourceHost.emitDom("pointerup", { type:"pointerup", pointerId:5, clientX:20, clientY:20, target:graphTarget });
-  assert(frames.length === 1, "returning a box zoom to zero area must schedule restoration of any already-updated neighbors");
+  assert(frames.length === 2, "returning a box zoom to zero area must schedule restoration and a settled-source check for already-updated neighbors");
   frames.shift()();
   await Promise.resolve();
   await Promise.resolve();
   assert(relayoutCalls.length === 2 && relayoutCalls[1].target === targetHost && relayoutCalls[1].update["xaxis.range[0]"] === 0 && relayoutCalls[1].update["xaxis.range[1]"] === 10, "a cancelled box zoom must restore the neighbor to the source's pre-gesture range");
+  frames.shift()();
+  assert(frames.length === 0 && relayoutCalls.length === 2, "the post-cancel source check must stay silent when Plotly kept the initial range");
+  relayoutCalls.length = 0;
+
+  sourceHost._fullLayout.xaxis.range = [0, 10];
+  sourceHost.emit("plotly_relayout", { "xaxis.range[0]":4, "xaxis.range[1]":4 });
+  assert(frames.length === 1, "Plotly's collapsed final range must schedule reconciliation from the settled source axis");
+  frames.shift()();
+  assert(frames.length === 1, "settled source reconciliation must use the ordinary linked animation-frame queue");
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 1 && relayoutCalls[0].target === targetHost && relayoutCalls[0].update["xaxis.range[0]"] === 0 && relayoutCalls[0].update["xaxis.range[1]"] === 10, "a collapsed Plotly range must restore the linked neighbor to the source's actual cancelled range");
   relayoutCalls.length = 0;
 
   linkTime = false;
