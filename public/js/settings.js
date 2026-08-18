@@ -31,7 +31,12 @@
     var readout = readouts().filter(function (item) { return item.id === id; })[0];
     return readout ? Object.assign({}, readout, { kind:"readout", readonly:true, enabled:false }) : null;
   }
-  function value(item) { return context.drafts[item.id] && context.drafts[item.id].value !== undefined ? context.drafts[item.id].value : item.value; }
+  function screenValue(item) {
+    if (context.drafts[item.id] && context.drafts[item.id].value !== undefined) return context.drafts[item.id].value;
+    var screen = context.document && context.document.screen;
+    return screen && Object.prototype.hasOwnProperty.call(screen, item.id) ? screen[item.id] : item.value;
+  }
+  function value(item) { return context.page === "screen" ? screenValue(item) : context.drafts[item.id] && context.drafts[item.id].value !== undefined ? context.drafts[item.id].value : item.value; }
   function booleanValue(id) { var item = sourceItem(id); return !!(item && value(item)); }
   function label(item) { return ru[item.id] || item.label || item.id; }
   function isApply(item) { return item && !item.pseudo && item.effect_status === "requires_apply"; }
@@ -382,6 +387,7 @@
     markApplied:function () { context.drafts={}; render(); },
     state:function () { var visible=visibleItems().reduce(function(ids,item){ids[item.id]=true;return ids;},{}), all=Object.keys(context.drafts).filter(function(key){return visible[key];}).map(function (key) { return context.drafts[key]; }); return { dirty:all.some(function (draft) { return !draft.error; }), invalid:all.some(function (draft) { return draft.error; }), displayId:context.displayId, revision:context.revision }; },
     value:function (id) { var item=sourceItem(id); return item ? value(item) : undefined; },
+    screenValue:function (id) { var item=sourceItem(id); return item ? screenValue(item) : undefined; },
     setValue:function (id, raw) { var item=sourceItem(id); return item ? update(Object.assign({}, item, { visible:true }), raw) : Promise.reject(new Error("Настройка недоступна: " + id)); },
     setRevision:function (revision) { if (typeof revision === "number" && revision >= context.revision) context.revision=revision; }
   };

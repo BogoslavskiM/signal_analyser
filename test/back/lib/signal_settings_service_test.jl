@@ -10,7 +10,7 @@ without_revision(document) = Dict(key => value for (key, value) in document if k
     state = SS.default_signal_analyser_state()
     initial = SS.signal_settings_document(service, state, "display-1")
 
-    @test Set(keys(initial)) == Set(["state_revision", "display_id", "groups", "sections", "fields", "readouts"])
+    @test Set(keys(initial)) == Set(["state_revision", "display_id", "groups", "sections", "fields", "readouts", "screen"])
     @test initial["display_id"] == "display-1"
     @test all(group -> Set(keys(group)) == Set(["id", "label", "visible"]), initial["groups"])
     @test all(section -> Set(keys(section)) == Set(["id", "group", "label", "order", "visible"]), initial["sections"])
@@ -37,6 +37,7 @@ without_revision(document) = Dict(key => value for (key, value) in document if k
     @test (SS.SPECTRUM_CALLS, SS.SPECTROGRAM_CALLS, SS.PERSISTENCE_CALLS, SS.PSPECTRUM_CALLS) == calls
     @test !haskey(changed["state"], "plots") && !haskey(changed["state"], "plot_payload")
     @test !haskey(changed["state"], "measurements") && !haskey(changed["state"], "peaks")
+    @test state.displays[1].stored_settings.time.units == SS.SECONDS_TIME_UNIT
 
     # An equal write is a no-op; a stale write cannot overwrite the newer one.
     equal = SS.apply_signal_setting!(service, state, Dict(
@@ -46,26 +47,41 @@ without_revision(document) = Dict(key => value for (key, value) in document if k
     @test_throws SS.SignalAnalyserStaleStateError SS.apply_signal_setting!(service, state, Dict(
         "state_revision" => 0, "display_id" => "display-1", "field_id" => "time.units", "value" => "seconds",
     ))
+    applied_units = SS.apply_signal_settings!(service, state, Dict(
+        "state_revision" => state.view.state_revision, "display_id" => "display-1",
+    ))
+    @test applied_units["success"] === true
+    @test state.displays[1].stored_settings.time.units == SS.MINUTES_TIME_UNIT
 
-    # Immediate/presentation settings still reject malformed wire values before
-    # publication. Calculation settings intentionally keep even semantically
-    # invalid drafts until explicit Apply reports the field error.
+    # Immediate/presentation settings still reject malformed wire values before publication.
     committed = SS.signal_analyser_snapshot(state)
-    for (payload, error_type) in (
-        (Dict("state_revision" => 1, "display_id" => "display-1", "field_id" => "display.show_legend", "value" => 1), SS.SignalSettingApiTypeError),
-        (Dict("state_revision" => 1, "display_id" => "display-1", "field_id" => "time.units", "value" => "not-a-unit"), SS.SignalSettingValidationError),
-    )
-        @test_throws error_type SS.apply_signal_setting!(service, state, payload)
-        @test SS.signal_analyser_snapshot(state) == committed
-    end
+    @test_throws SS.SignalSettingApiTypeError SS.apply_signal_setting!(service, state, Dict(
+        "state_revision" => state.view.state_revision, "display_id" => "display-1",
+        "field_id" => "display.show_legend", "value" => 1,
+    ))
+    @test SS.signal_analyser_snapshot(state) == committed
+
+    invalid_units = SS.apply_signal_setting!(service, state, Dict(
+        "state_revision" => state.view.state_revision, "display_id" => "display-1",
+        "field_id" => "time.units", "value" => "not-a-unit",
+    ))
+    rejected_units = SS.apply_signal_settings!(service, state, Dict(
+        "state_revision" => invalid_units["state"]["state_revision"], "display_id" => "display-1",
+    ))
+    @test rejected_units["success"] === false
+    @test state.displays[1].stored_settings.time.units == SS.MINUTES_TIME_UNIT
+    SS.apply_signal_setting!(service, state, Dict(
+        "state_revision" => state.view.state_revision, "display_id" => "display-1",
+        "field_id" => "time.units", "value" => "minutes",
+    ))
 
     # Stored state belongs to its display.  A new display starts from its own
     # defaults and selecting the original display restores its saved value.
-    created = SS.apply_signal_analyser_display!(state, Dict("state_revision" => 1, "operation" => "create"))
+    created = SS.apply_signal_analyser_display!(state, Dict("state_revision" => state.view.state_revision, "operation" => "create"))
     @test created["active_display_id"] == "display-2"
     display_two = SS.signal_settings_document(service, state, "display-2")
     @test settings_field(display_two, "time.units")["value"] != "minutes"
-    selected = SS.apply_signal_analyser_display!(state, Dict("state_revision" => 2, "operation" => "select", "display_id" => "display-1"))
+    selected = SS.apply_signal_analyser_display!(state, Dict("state_revision" => state.view.state_revision, "operation" => "select", "display_id" => "display-1"))
     @test selected["active_display_id"] == "display-1"
     @test settings_field(SS.signal_settings_document(service, state, "display-1"), "time.units")["value"] == "minutes"
 end
@@ -197,7 +213,7 @@ end
     state = SS.test_state_with_complex_signal()
     initial = SS.signal_settings_document(service, state, "display-1")
     nfft = settings_field(initial, "spectrum.nfft")
-    @test (length(initial["fields"]), length(initial["sections"]), length(initial["readouts"])) == (41, 29, 3)
+    @test (length(initial["fields"]), length(initial["sections"]), length(initial["readouts"])) == (42, 29, 3)
     @test nfft == Dict(
         "id" => "spectrum.nfft", "group" => "spectrum", "section" => "spectrum.window_options", "label" => "DFT Points",
         "kind" => "resolution", "control_kind" => "resolution", "value" => Dict("mode" => "auto", "nfft" => nothing),
@@ -319,19 +335,33 @@ end
         @test without_revision(projected["measurements"]) == without_revision(before["measurements"])
         @test without_revision(projected["peaks"]) == without_revision(before["peaks"])
     end
+    applied_units = SS.apply_signal_settings!(service, state, Dict(
+        "state_revision" => revision, "display_id" => "display-1",
+    ))
+    @test applied_units["success"] === true
+    revision = applied_units["state_revision"]
     @test (state.plot_cache, state.spectrum_cache, state.spectrogram_cache, state.persistence_cache) == caches
     @test (SS.SPECTRUM_CALLS, SS.SPECTROGRAM_CALLS, SS.PERSISTENCE_CALLS, SS.PSPECTRUM_CALLS) == calls
     @test SS.apply_signal_setting!(service, state, Dict(
         "state_revision" => revision, "display_id" => "display-1", "field_id" => "time.units", "value" => "minutes",
     ))["state"]["state_revision"] == revision
-    committed = SS.signal_analyser_snapshot(state)
-    @test_throws SS.SignalSettingValidationError SS.apply_signal_setting!(service, state, Dict(
+    invalid_units = SS.apply_signal_setting!(service, state, Dict(
         "state_revision" => revision, "display_id" => "display-1", "field_id" => "time.units", "value" => "fortnights",
     ))
-    @test SS.signal_analyser_snapshot(state) == committed
+    revision = invalid_units["state"]["state_revision"]
+    rejected_units = SS.apply_signal_settings!(service, state, Dict(
+        "state_revision" => revision, "display_id" => "display-1",
+    ))
+    @test rejected_units["success"] === false
+    revision = rejected_units["state_revision"]
+    @test state.displays[1].stored_settings.time.units == SS.MINUTES_TIME_UNIT
     @test_throws SS.SignalAnalyserStaleStateError SS.apply_signal_setting!(service, state, Dict(
         "state_revision" => revision - 1, "display_id" => "display-1", "field_id" => "time.units", "value" => "hours",
     ))
+    repaired = SS.apply_signal_setting!(service, state, Dict(
+        "state_revision" => revision, "display_id" => "display-1", "field_id" => "time.units", "value" => "minutes",
+    ))
+    revision = repaired["state"]["state_revision"]
 
     created = SS.apply_signal_analyser_display!(state, Dict("state_revision" => revision, "operation" => "create"))
     @test settings_field(SS.signal_settings_document(service, state, "display-2"), "time.units")["value"] == "seconds"

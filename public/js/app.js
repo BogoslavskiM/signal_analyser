@@ -1003,9 +1003,12 @@
 
   function queueLinkedTimeRelayout(displayId, sourcePaneId, eventData) {
     var sourcePane = paneById(sourcePaneId);
-    var linkTime = !!settings.value("time.link_time"), linkAmplitude = !!settings.value("time.link_amplitude");
+    var linkTime = !!(settings.screenValue ? settings.screenValue("time.link_time") : settings.value("time.link_time"));
+    var linkAmplitude = !!(settings.screenValue ? settings.screenValue("time.link_amplitude") : settings.value("time.link_amplitude"));
     var update = linkedTimeRangeUpdate(eventData, linkTime, linkAmplitude);
-    if (!update || !sourcePane || sourcePane.plot_type !== "time") return;
+    if (!update || !sourcePane || ["time", "spectrogram"].indexOf(sourcePane.plot_type) < 0) return;
+    if (sourcePane.plot_type !== "time") Object.keys(update).filter(function (key) { return key.indexOf("yaxis.") === 0; }).forEach(function (key) { delete update[key]; });
+    if (!Object.keys(update).length) return;
     var token = ++model.axisLinkToken;
     model.axisLinkPending = { displayId:displayId, sourcePaneId:sourcePaneId, update:update, token:token };
     if (model.axisLinkFrame !== null) return;
@@ -1015,7 +1018,8 @@
       model.axisLinkPending = null;
       var display = activeDisplay();
       if (!pending || pending.token !== model.axisLinkToken || !display || display.id !== pending.displayId) return;
-      var currentTime = !!settings.value("time.link_time"), currentAmplitude = !!settings.value("time.link_amplitude");
+      var currentTime = !!(settings.screenValue ? settings.screenValue("time.link_time") : settings.value("time.link_time"));
+      var currentAmplitude = !!(settings.screenValue ? settings.screenValue("time.link_amplitude") : settings.value("time.link_amplitude"));
       var currentUpdate = Object.keys(pending.update).reduce(function (result, key) {
         if ((currentTime && key.indexOf("xaxis.") === 0) || (currentAmplitude && key.indexOf("yaxis.") === 0)) result[key] = pending.update[key];
         return result;
@@ -1023,13 +1027,18 @@
       if (!Object.keys(currentUpdate).length) return;
       var Plotly = window.Plotly;
       if (!Plotly || typeof Plotly.relayout !== "function") return;
-      panes().filter(function (pane) { return pane.id !== pending.sourcePaneId && pane.plot_type === "time"; }).forEach(function (pane) {
+      panes().filter(function (pane) { return pane.id !== pending.sourcePaneId && (pane.plot_type === "time" || pane.plot_type === "spectrogram" && currentTime); }).forEach(function (pane) {
+        var paneUpdate = Object.keys(currentUpdate).reduce(function (result, key) {
+          if (pane.plot_type === "time" || key.indexOf("xaxis.") === 0) result[key] = currentUpdate[key];
+          return result;
+        }, {});
+        if (!Object.keys(paneUpdate).length) return;
         var runtimeKey = paneRuntimeKey(pending.displayId, pane.id);
         var host = q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
         if (!host || host.dataset.plotReady !== "true") return;
         model.axisLinkSuppressByPane[runtimeKey] = true;
         try {
-          Promise.resolve(Plotly.relayout(host, currentUpdate)).catch(function () { /* Keep one failed pane isolated. */ }).finally(function () { delete model.axisLinkSuppressByPane[runtimeKey]; });
+          Promise.resolve(Plotly.relayout(host, paneUpdate)).catch(function () { /* Keep one failed pane isolated. */ }).finally(function () { delete model.axisLinkSuppressByPane[runtimeKey]; });
         } catch (_) { delete model.axisLinkSuppressByPane[runtimeKey]; }
       });
     });
@@ -1299,8 +1308,8 @@
   function screenDraftFor(display) {
     var authoritativeRows = model.layout && model.layout.rows || 1;
     var authoritativeColumns = model.layout && model.layout.columns || 1;
-    var rawLinkTime = typeof settings.value === "function" ? settings.value("time.link_time") : undefined;
-    var rawLinkAmplitude = typeof settings.value === "function" ? settings.value("time.link_amplitude") : undefined;
+    var rawLinkTime = typeof settings.screenValue === "function" ? settings.screenValue("time.link_time") : typeof settings.value === "function" ? settings.value("time.link_time") : undefined;
+    var rawLinkAmplitude = typeof settings.screenValue === "function" ? settings.screenValue("time.link_amplitude") : typeof settings.value === "function" ? settings.value("time.link_amplitude") : undefined;
     var linksReady = rawLinkTime !== undefined && rawLinkAmplitude !== undefined;
     if (!model.screenDraft || model.screenDraft.displayId !== display.id) {
       var linkTime = !!rawLinkTime;

@@ -149,4 +149,25 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   frames.shift()();
   await Promise.resolve();
   assert(relayoutCalls.length === 3 && relayoutCalls[2].target === sourceHost && relayoutCalls[2].update["xaxis.autorange"] === true && relayoutCalls[2].update["yaxis.autorange"] === true, "enabled X and amplitude resets must propagate back together");
+  await Promise.resolve();
+  await Promise.resolve();
+
+  const spectrogramHost = hosts["display-a::spectrum-1"];
+  api.model.layout.panes[2].plot_type = "spectrogram";
+  api.bind(spectrogramHost, "display-a", "spectrum-1");
+  linkTime = true;
+  linkAmplitude = true;
+  sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":4, "xaxis.range[1]":7, "yaxis.range[0]":-2, "yaxis.range[1]":2 });
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 5, "one TIME source must update the other TIME pane and the Spectrogram pane");
+  assert(relayoutCalls[3].target === targetHost && relayoutCalls[3].update["yaxis.range[0]"] === -2, "TIME followers must receive linked X and amplitude ranges");
+  assert(relayoutCalls[4].target === spectrogramHost && relayoutCalls[4].update["xaxis.range[0]"] === 4 && !Object.keys(relayoutCalls[4].update).some((key) => key.startsWith("yaxis.")), "Spectrogram followers must receive only the linked time range");
+
+  spectrogramHost.emit("plotly_relayout", { "xaxis.range[0]":8, "xaxis.range[1]":11, "yaxis.range[0]":20, "yaxis.range[1]":30 });
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 7 && relayoutCalls.slice(5).every((call) => !Object.keys(call.update).some((key) => key.startsWith("yaxis."))), "a Spectrogram source must drive X on TIME followers without ever driving amplitude");
 };

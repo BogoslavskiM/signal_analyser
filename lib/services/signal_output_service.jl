@@ -717,7 +717,7 @@ function signal_analyser_plotly_axis_metadata(
             y_range = y_range,
         )
     elseif pane.plot_type == SPECTROGRAM_PLOT
-        _, time_label = signal_analyser_time_unit_projection(
+        seconds_per_unit, time_label = signal_analyser_time_unit_projection(
             pane.stored_settings.spectrogram.time_units,
         )
         _, frequency_label = signal_analyser_frequency_unit_projection(
@@ -731,7 +731,10 @@ function signal_analyser_plotly_axis_metadata(
             y_label = "Частота, $(frequency_label)",
             x_type = "linear",
             y_type = effective_scale == "log" ? "log" : "linear",
-            x_range = nothing,
+            x_range = pane.time_limits === nothing ? nothing : Float64[
+                (pane.time_limits::SignalTimeLimits).min_s / seconds_per_unit,
+                (pane.time_limits::SignalTimeLimits).max_s / seconds_per_unit,
+            ],
             y_range = nothing,
         )
     end

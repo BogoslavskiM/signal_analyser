@@ -37,5 +37,7 @@ module.exports = async function testTask0114ScreenSettings(assert) {
   assert(/draft\.linkTime \? screenSettingsGroup\("time-limits", "Пределы времени", settings\.renderRows\(\["time\.units", "time\.x_limits"\]\)\)/.test(app), "linked time limits must move to Screen settings");
   assert(/draft\.linkAmplitude[\s\S]*?screenSettingsGroup\("y-limits", "Пределы оси Y", settings\.renderRows\(\["time\.y_limits"\]\)\)/.test(app), "linked amplitude limits must move to Screen settings");
   assert(/function areaScreenApplyState\(draft\)[\s\S]*?settings\.state\(\)[\s\S]*?settings\.stateFor\(screenLimitFieldIds\(draft\)\)/.test(app) && /settings\.flushFields\(linkIds\.concat\(limitIds\)\)/.test(app), "the shared Apply state must combine Area fields with only currently visible Screen-linked limit fields");
+  assert(/function screenValue\(item\)[\s\S]*?context\.document && context\.document\.screen/.test(settings) && /screenValue:function \(id\)/.test(settings), "Screen controls must consume the backend-owned canonical Screen values instead of the active pane projection");
+  assert(/settings\.screenValue \? settings\.screenValue\("time\.link_time"\)/.test(app) && /\["time", "spectrogram"\]\.indexOf\(sourcePane\.plot_type\)/.test(app), "live linked X must use Screen flags and accept both Time and Spectrogram sources");
   assert(/data-layout-screen-settings[\s\S]*?Настроить экран/.test(html), "layout popover must expose the Screen settings shortcut");
 };

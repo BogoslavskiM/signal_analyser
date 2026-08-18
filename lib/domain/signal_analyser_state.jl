@@ -2170,16 +2170,19 @@ struct SignalDisplayLayoutState
             "Active pane должна входить в panes layout",
         ))
         active_index = findfirst(==(active_id), pane_ids)::Int
-        time_link_source = pane_values[active_index].plot_type == TIME_PLOT ?
+        time_link_source = pane_values[active_index].plot_type in (TIME_PLOT, SPECTROGRAM_PLOT) ?
             pane_values[active_index] : begin
-                first_time_index = findfirst(pane -> pane.plot_type == TIME_PLOT, pane_values)
+                first_time_index = findfirst(
+                    pane -> pane.plot_type in (TIME_PLOT, SPECTROGRAM_PLOT),
+                    pane_values,
+                )
                 first_time_index === nothing ? nothing : pane_values[first_time_index]
             end
         if time_link_source !== nothing
             link_time = (time_link_source::SignalDisplayPaneState).stored_settings.time.link_time
             link_amplitude = (time_link_source::SignalDisplayPaneState).stored_settings.time.link_amplitude
             pane_values = SignalDisplayPaneState[
-                pane.plot_type == TIME_PLOT && (
+                (
                     pane.stored_settings.time.link_time != link_time ||
                     pane.stored_settings.time.link_amplitude != link_amplitude
                 ) ? signal_display_pane_with_time_links(pane, link_time, link_amplitude) : pane
