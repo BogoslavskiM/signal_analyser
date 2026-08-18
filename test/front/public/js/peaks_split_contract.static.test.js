@@ -4,6 +4,10 @@ module.exports=async function(assert){const root=path.resolve(__dirname,"../../.
 const html=fs.readFileSync(path.join(root,"public/index.html"),"utf8");
 assert((html.match(/data-bottom-tab=/g)||[]).length===3&&/data-bottom-tab="signals"[\s\S]*data-bottom-tab="measurements"[\s\S]*data-bottom-tab="peaks"/.test(html)&&html.includes(">Экстремумы<"),"lower inspector must expose exactly Signals, Measurements and Extrema");
 assert((html.match(/data-settings-page=/g)||[]).length===2&&/data-settings-page="display"[\s\S]*data-settings-page="peaks"/.test(html)&&html.includes(">Экстремумы<")&&!html.includes('data-settings-page="time"'),"right sidebar must expose Display and Extrema tabs");
+assert(/function extremaTabsAvailable\(pane\)[\s\S]*pane\.plot_type === "time"/.test(app),"Extrema availability must be derived from the active temporal pane");
+assert(/data-settings-page[\s\S]*button\.hidden = !available[\s\S]*data-bottom-tab[\s\S]*tab\.hidden = !available/.test(app),"unavailable Extrema tabs must be removed from both right and lower visible tab strips");
+assert(/model\.settingsPage === "peaks"\)[^}]*model\.settingsPage = "display"[\s\S]*model\.inspectorPage === "peaks"\)[^}]*model\.inspectorPage = "signals"/.test(app),"an unavailable active Extrema surface must fall back to visible Display and Signals pages");
+assert(/qa\("\[data-bottom-tab\]"\)\.filter\(function \(item\) \{ return !item\.hidden; \}\)/.test(app)&&/qa\("\[data-settings-page\]"\)\.filter\(function \(item\) \{ return !item\.hidden; \}\)/.test(app),"roving keyboard navigation must skip context-hidden tabs");
 assert(/function renderPeaksInspector\(body\)[\s\S]*?peaks-table-scroll/.test(app)&&!/peaks-split|peaks-settings-panel|peaks-table-zone/.test(app+css),"lower Extrema must be full-width table-only without a sibling settings panel");
 assert(/\.inspector-body\.is-table-only\s*\{[^}]*padding:\s*0 0 8px/.test(css),"table-only Extrema track must retain its source-derived inset");
 assert(/\.peaks-table\s*\{[^}]*min-width:\s*880px/.test(css)&&/signal-table-scroll peaks-table-scroll/.test(app),"Extrema table must preserve its local scroll owner and 880px minimum width");

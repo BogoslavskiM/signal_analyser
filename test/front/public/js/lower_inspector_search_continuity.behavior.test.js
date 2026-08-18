@@ -78,8 +78,8 @@ module.exports = async function testLowerInspectorSearchContinuity(assert) {
   };
   const esc = (value) => String(value == null ? "" : value).replace(/[&<>"']/g, "");
   const renderSignals = compile(signalSource, "renderInspector",
-    ["q", "qa", "model", "document", "paneById", "esc", "renderMeasurementsInspector", "renderPeaksInspector", "peaksSurfaceActive", "stopPeaksPolling"],
-    [signalQ, () => [], signalModel, document, () => ({ signal_bindings:[] }), esc, () => {}, () => {}, () => false, () => {}]);
+    ["q", "qa", "model", "document", "paneById", "esc", "renderMeasurementsInspector", "renderPeaksInspector", "reconcileContextTabs", "contextTabAvailable", "peaksSurfaceActive", "stopPeaksPolling"],
+    [signalQ, () => [], signalModel, document, () => ({ plot_type:"time", signal_bindings:[] }), esc, () => {}, () => {}, () => false, () => true, () => false, () => {}]);
   renderSignals();
   document.activeElement = signalInput;
   const signalIdentity = signalInput;

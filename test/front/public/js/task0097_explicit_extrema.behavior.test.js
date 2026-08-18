@@ -44,7 +44,7 @@ function element(extra) {
   }, extra || {});
 }
 
-function snapshot(bindings) {
+function snapshot(bindings, plotType) {
   return {
     state_revision: 3,
     active_display_id: "display-1",
@@ -56,7 +56,7 @@ function snapshot(bindings) {
         rows: 1,
         columns: 1,
         active_pane_id: "pane-1",
-        panes: [{ id: "pane-1", plot_type: "time", signal_bindings: bindings }]
+        panes: [{ id: "pane-1", plot_type: plotType || "time", signal_bindings: bindings }]
       }
     }]
   };
@@ -85,7 +85,7 @@ function createHarness(options) {
   let source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   const numericSource = fs.readFileSync(path.join(root, "public/js/numeric.js"), "utf8");
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
-  source = source.replace("})(window, document);", "window.__explicitExtrema = { model:model, accept:accept, loadPeaks:loadPeaks, calculatePeaks:calculatePeaks, configureActivePeaks:configureActivePeaks, showActivePeaksValues:showActivePeaksValues, renderPeaksInspector:renderPeaksInspector, renderPeaksApply:renderPeaksApply }; })(window, document);");
+  source = source.replace("})(window, document);", "window.__explicitExtrema = { model:model, accept:accept, loadPeaks:loadPeaks, calculatePeaks:calculatePeaks, configureActivePeaks:configureActivePeaks, showActivePeaksValues:showActivePeaksValues, renderPeaksInspector:renderPeaksInspector, renderPeaksApply:renderPeaksApply, renderContext:renderActivePaneContext, extremaTabsAvailable:extremaTabsAvailable }; })(window, document);");
 
   const body = element();
   const peaksHost = element();
@@ -97,6 +97,11 @@ function createHarness(options) {
   const status = element();
   const values = element({ hidden: true });
   const tabs = element();
+  const settingsDisplayTab = element({ dataset:{ settingsPage:"display" } });
+  const settingsPeaksTab = element({ dataset:{ settingsPage:"peaks" } });
+  const inspectorSignalsTab = element({ dataset:{ bottomTab:"signals" } });
+  const inspectorMeasurementsTab = element({ dataset:{ bottomTab:"measurements" } });
+  const inspectorPeaksTab = element({ dataset:{ bottomTab:"peaks" } });
   const timers = [];
   const activeCalls = [];
   const calculateCalls = [];
@@ -112,8 +117,8 @@ function createHarness(options) {
     "[data-testid='extrema-values']": values,
     "[data-testid='display-tabs']": tabs,
     "[data-testid='display-tabs-wrap']": element(),
-    "[data-testid='settings-tab-peaks']": element(),
-    "[data-testid='inspector-tab-peaks']": element()
+    "[data-testid='settings-tab-peaks']": settingsPeaksTab,
+    "[data-testid='inspector-tab-peaks']": inspectorPeaksTab
   };
   const api = {
     activePeaks(displayId, paneId) {
@@ -150,7 +155,12 @@ function createHarness(options) {
   };
   const document = {
     querySelector(selector) { return nodes[selector] || null; },
-    querySelectorAll() { return []; },
+    querySelectorAll(selector) {
+      if (selector === "[data-settings-page]") return [settingsDisplayTab, settingsPeaksTab];
+      if (selector === "[data-bottom-tab]") return [inspectorSignalsTab, inspectorMeasurementsTab, inspectorPeaksTab];
+      if (selector === "[data-pane-id]") return [];
+      return [];
+    },
     addEventListener() {},
     createElement() { return element(); },
     head: { appendChild() {} }
@@ -163,8 +173,8 @@ function createHarness(options) {
   vm.runInNewContext(numericSource, runtime, { filename: "public/js/numeric.js" });
   vm.runInNewContext(source, runtime, { filename: "public/js/app.js" });
   const test = window.__explicitExtrema;
-  test.accept(snapshot(options.bindings === undefined ? ["Сигнал 1"] : options.bindings));
-  return { test, body, peaksHost, settingsContent, footer, apply, status, values, timers, activeCalls, calculateCalls };
+  test.accept(snapshot(options.bindings === undefined ? ["Сигнал 1"] : options.bindings, options.plotType));
+  return { test, body, peaksHost, settingsContent, footer, apply, status, values, timers, activeCalls, calculateCalls, settingsDisplayTab, settingsPeaksTab, inspectorSignalsTab, inspectorMeasurementsTab, inspectorPeaksTab };
 }
 
 module.exports = async function testExplicitExtremaBehavior(assert) {
@@ -281,4 +291,14 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   await settle();
   assert(empty.activeCalls.length === 0 && empty.calculateCalls.length === 0, "an empty pane must make neither Extrema GET nor POST requests");
   assert(empty.peaksHost.innerHTML.includes("Выберете сигнал для отображения") && !empty.peaksHost.innerHTML.includes("extrema-calculate"), "an empty pane must keep the exact signal guidance without a calculation CTA");
+
+  const spectrogram = createHarness({ plotType:"spectrogram" });
+  spectrogram.test.model.settingsPage = "peaks";
+  spectrogram.test.model.inspectorPage = "peaks";
+  spectrogram.test.model.extremaTargetKey = "display-1::pane-1";
+  spectrogram.test.renderContext();
+  assert(!spectrogram.test.extremaTabsAvailable(spectrogram.test.model.layout.panes[0]), "Extrema must be unavailable for a Spectrogram pane");
+  assert(spectrogram.settingsPeaksTab.hidden && spectrogram.inspectorPeaksTab.hidden, "both right and lower Extrema tabs must be removed from the visible tab strips for Spectrogram");
+  assert(!spectrogram.settingsDisplayTab.hidden && !spectrogram.inspectorSignalsTab.hidden && !spectrogram.inspectorMeasurementsTab.hidden, "the still-applicable Display, Signals and Measurements tabs must remain visible");
+  assert(spectrogram.test.model.settingsPage === "display" && spectrogram.test.model.inspectorPage === "signals" && spectrogram.test.model.extremaTargetKey === null, "an active Extrema surface must fall back to visible pages and clear its target when the pane becomes unavailable");
 };
