@@ -1541,6 +1541,25 @@
     "</div>";
   }
 
+  function keepAutomaticRangeInputsEmpty(fieldId, axis, draft) {
+    var row = q("[data-testid='settings-field-" + CSS.escape(fieldId) + "']");
+    var reader = model.settingsPage === "screen" && typeof settings.screenValue === "function" ? settings.screenValue : settings.value;
+    if (typeof reader !== "function") return;
+    var current = reader(fieldId);
+    var domain = screenRangeDomain(axis, draft);
+    if (!row || !current || !domain || !(domain[0] < domain[1])) return;
+    var tolerance = Math.max(Math.abs(domain[1]-domain[0]) * 1.0e-9, Number.EPSILON);
+    var minimum = row.querySelector("[data-range-part='min']"), maximum = row.querySelector("[data-range-part='max']");
+    if (minimum && (current.min == null || Math.abs(Number(current.min)-domain[0]) <= tolerance)) minimum.value = "";
+    if (maximum && (current.max == null || Math.abs(Number(current.max)-domain[1]) <= tolerance)) maximum.value = "";
+  }
+
+  function keepVisibleAutomaticRangeInputsEmpty(draft) {
+    if (!draft) return;
+    keepAutomaticRangeInputsEmpty("time.x_limits", "x", draft);
+    keepAutomaticRangeInputsEmpty("time.y_limits", "y", draft);
+  }
+
   function renderScreenSettings(display) {
     var content = q("[data-testid='settings-content']");
     if (!content) return;
@@ -1556,6 +1575,7 @@
     var limitGroups = draft.linkTime ? screenSettingsGroup("time-limits", "Пределы времени", settings.renderRows(["time.units", "time.x_limits"]) + screenRangeSlider("time.x_limits", "x", draft)) : "";
     if (draft.linkAmplitude) limitGroups += screenSettingsGroup("y-limits", "Пределы оси Y", settings.renderRows(["time.y_limits"]) + screenRangeSlider("time.y_limits", "y", draft));
     content.innerHTML = "<div class='screen-settings' data-testid='screen-settings'>" + screenSettingsGroup("layout", "Макет", layoutFields) + screenSettingsGroup("links", "Связь областей", linkFields) + limitGroups + "</div>";
+    keepVisibleAutomaticRangeInputsEmpty(draft);
     valueSelect.reconcile();
   }
 
@@ -1593,6 +1613,7 @@
     }
     settings.setView(model.settingsPage, (pane && pane.plot_type) || "time");
     settings.render();
+    keepVisibleAutomaticRangeInputsEmpty(screenDraftFor(display));
     renderApply();
   }
 
