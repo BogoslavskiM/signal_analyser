@@ -933,14 +933,14 @@ body.is-resizing-workspace * {
 
 .screen-layout-options {
   display: grid;
-  gap: 14px;
+  gap: 6px;
   padding: 4px 8px 12px 32px;
 }
 
 .screen-layout-axis {
   min-width: 0;
   margin: 0;
-  padding: 12px 16px 16px;
+  padding: 8px;
   border: 1px solid var(--line);
   border-radius: var(--control-radius);
 }
