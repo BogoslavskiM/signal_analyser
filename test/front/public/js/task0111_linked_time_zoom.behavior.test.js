@@ -92,7 +92,7 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   api.bind(sourceHost, "display-a", "time-1");
   api.bind(targetHost, "display-a", "time-2");
   assert(sourceHost.handlerCount("plotly_relayouting") === 1 && sourceHost.handlerCount("plotly_relayout") === 1, "each ready Plotly host must bind each live/final event exactly once");
-  assert(sourceHost.handlerCount("plotly_doubleclick") === 0 && sourceHost.domHandlerCount("dblclick") === 0, "the application must not add duplicate graph or range-slider double-click behavior");
+  assert(sourceHost.handlerCount("plotly_doubleclick") === 0 && sourceHost.domHandlerCount("dblclick") === 0, "the linked-axis binding must not add a second graph or range-slider double-click handler");
 
   linkTime = false;
   linkAmplitude = false;

@@ -229,8 +229,18 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   h.hosts["display-a::pane-1"].dispatch("pointerdown", sliderPointerEvent());
   await h.settle();
   const horizontalReset = h.relayoutCalls[1].update;
-  assert(horizontalReset["xaxis.range"] === null && horizontalReset["xaxis.autorange"] === true && horizontalReset["xaxis.rangeslider.range"] === null && horizontalReset["xaxis.rangeslider.autorange"] === true, "double-clicking the horizontal slider must delegate the default X range to Plotly autorange without invented numeric bounds");
+  assert(horizontalReset["xaxis.range[0]"] === 0 && horizontalReset["xaxis.range[1]"] === 1 && horizontalReset["xaxis.autorange"] === false && horizontalReset["xaxis.rangeslider.range"][0] === 0 && horizontalReset["xaxis.rangeslider.range"][1] === 1 && horizontalReset["xaxis.rangeslider.autorange"] === false, "double-clicking the horizontal slider must restore its already projected signal range without a transient Plotly autorange");
   assert(!Object.keys(horizontalReset).some((key) => key.indexOf("yaxis.") === 0) && prevented === 1 && stopped === 1, "horizontal slider reset must not alter Y and must consume the slider double-click");
+
+  let immediateStopped = 0;
+  h.hosts["display-a::pane-1"].dispatch("dblclick", {
+    target:{ closest() { return null; } },
+    preventDefault() { prevented += 1; }, stopPropagation() { stopped += 1; }, stopImmediatePropagation() { immediateStopped += 1; }
+  });
+  await h.settle();
+  const graphReset = h.relayoutCalls[2].update;
+  assert(graphReset["xaxis.range[0]"] === 0 && graphReset["xaxis.range[1]"] === 1 && graphReset["yaxis.range[0]"] === -2 && graphReset["yaxis.range[1]"] === 2, "the first graph double-click must restore the exact projected X and signal Y ranges in one relayout");
+  assert(graphReset["xaxis.autorange"] === false && graphReset["yaxis.autorange"] === false && immediateStopped === 1, "graph reset must suppress Plotly's later competing autorange pass");
 
   const secondTrigger = trigger("pane-2");
   h.test.openMenu(secondTrigger);
@@ -240,18 +250,18 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   assert(h.rangeAction.getAttribute("aria-checked") === "true", "reopening the original pane must restore its checked state during the session");
   h.test.toggle();
   await h.settle();
-  assert(h.relayoutCalls.length === 3 && h.relayoutCalls[2].update["xaxis.rangeslider.visible"] === false, "the checked action must disable the native overview on the same host");
-  assert(!Object.keys(h.relayoutCalls[2].update).some((key) => /^yaxis.*\.fixedrange$/.test(key)) && h.test.model.rangeSliderByPane["display-a::pane-1"] === false, "disable must leave ordinary Y interaction untouched and retain off state");
+  assert(h.relayoutCalls.length === 4 && h.relayoutCalls[3].update["xaxis.rangeslider.visible"] === false, "the checked action must disable the native overview on the same host");
+  assert(!Object.keys(h.relayoutCalls[3].update).some((key) => /^yaxis.*\.fixedrange$/.test(key)) && h.test.model.rangeSliderByPane["display-a::pane-1"] === false, "disable must leave ordinary Y interaction untouched and retain off state");
 
   h.test.openMenu(firstTrigger);
   h.test.toggleAmplitude();
   await h.settle();
-  assert(h.relayoutCalls.length === 4 && h.relayoutCalls[3].update["margin.r"] >= 48, "the amplitude toggle must reserve only its own narrow in-plot control margin");
+  assert(h.relayoutCalls.length === 5 && h.relayoutCalls[4].update["margin.r"] >= 48, "the amplitude toggle must reserve only its own narrow in-plot control margin");
   assert(h.test.model.amplitudeSliderByPane["display-a::pane-1"] === true && h.test.model.rangeSliderByPane["display-a::pane-1"] === false, "amplitude and range sliders must remain independently selectable");
   h.test.queueAmplitude(h.hosts["display-a::pane-1"], "display-a::pane-1", [-3, 1]);
   h.flushFrame();
   await h.settle();
-  const amplitudeUpdate = h.relayoutCalls[4].update;
+  const amplitudeUpdate = h.relayoutCalls[5].update;
   assert(amplitudeUpdate["yaxis.range[0]"] === -3 && amplitudeUpdate["yaxis.range[1]"] === 1 && amplitudeUpdate["yaxis.autorange"] === false, "amplitude interaction must relayout only the Y range");
   assert(!Object.keys(amplitudeUpdate).some((key) => key.indexOf("xaxis.") === 0), "amplitude interaction must not change the independent X range");
   assert(JSON.stringify(h.test.model.amplitudeFullRangeByPane["display-a::pane-1"]) === "[-3,2]", "amplitude full range must include both selected handles and all signal values");

@@ -310,7 +310,7 @@ end
             field["effect_status"] == "effective_presentation" && field["effect_reason"] == ""
     end, keys(unit_fields))
     @test all(id -> !isempty(settings_field(initial, id)["options"]), keys(unit_fields))
-    time_options = ["picoseconds", "nanoseconds", "microseconds", "milliseconds", "seconds", "minutes", "hours", "days", "years"]
+    time_options = ["auto", "picoseconds", "nanoseconds", "microseconds", "milliseconds", "seconds", "minutes", "hours", "days", "years"]
     frequency_options = ["cycles_per_year", "cycles_per_day", "cycles_per_hour", "cycles_per_minute", "millihertz", "hertz", "kilohertz", "megahertz", "gigahertz", "terahertz"]
     @test all(id -> [option["value"] for option in settings_field(initial, id)["options"]] == time_options, ("time.units", "spectrogram.time_units", "persistence.time_units"))
     @test all(id -> [option["value"] for option in settings_field(initial, id)["options"]] == frequency_options, ("spectrum.frequency_units", "spectrogram.frequency_units", "persistence.frequency_units"))

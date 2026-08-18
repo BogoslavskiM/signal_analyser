@@ -11,6 +11,7 @@ const SIGNAL_SETTINGS_APPLY_FIELDS = Set([
 ])
 
 const SIGNAL_TIME_UNIT_NAMES = Dict(
+    AUTO_TIME_UNIT => "auto",
     PICOSECONDS_TIME_UNIT => "picoseconds",
     NANOSECONDS_TIME_UNIT => "nanoseconds",
     MICROSECONDS_TIME_UNIT => "microseconds",
@@ -23,6 +24,7 @@ const SIGNAL_TIME_UNIT_NAMES = Dict(
 )
 const SIGNAL_TIME_UNITS_BY_NAME = Dict(value => key for (key, value) in SIGNAL_TIME_UNIT_NAMES)
 const SIGNAL_TIME_UNIT_OPTIONS = (
+    SignalSettingsOptionDefinition("auto", "Auto"),
     SignalSettingsOptionDefinition("picoseconds", "ps"),
     SignalSettingsOptionDefinition("nanoseconds", "ns"),
     SignalSettingsOptionDefinition("microseconds", "μs"),
@@ -33,6 +35,22 @@ const SIGNAL_TIME_UNIT_OPTIONS = (
     SignalSettingsOptionDefinition("days", "days"),
     SignalSettingsOptionDefinition("years", "years"),
 )
+
+function signal_settings_time_unit_label(
+    unit::SignalTimeUnitPreference,
+    maximum_seconds::Real = 1.0,
+)::String
+    resolved = signal_resolved_time_unit(unit, maximum_seconds)
+    resolved == PICOSECONDS_TIME_UNIT && return "ps"
+    resolved == NANOSECONDS_TIME_UNIT && return "ns"
+    resolved == MICROSECONDS_TIME_UNIT && return "μs"
+    resolved == MILLISECONDS_TIME_UNIT && return "ms"
+    resolved == SECONDS_TIME_UNIT && return "s"
+    resolved == MINUTES_TIME_UNIT && return "мин"
+    resolved == HOURS_TIME_UNIT && return "ч"
+    resolved == DAYS_TIME_UNIT && return "дн"
+    "г"
+end
 
 const SIGNAL_FREQUENCY_UNIT_NAMES = Dict(
     CYCLES_PER_YEAR_FREQUENCY_UNIT => "cycles_per_year",
@@ -505,8 +523,8 @@ Base.showerror(io::IO, err::SignalSettingApiTypeError) = print(io, err.message)
 
 """Finite but not necessarily ordered range retained until explicit Apply."""
 struct SignalSettingDraftRange
-    minimum::Float64
-    maximum::Float64
+    minimum::Union{Nothing,Float64}
+    maximum::Union{Nothing,Float64}
 end
 
 """Typed mode/value pair retained without applying semantic bounds early."""
@@ -800,7 +818,15 @@ function signal_settings_field_value(
     field_id == "time.normalize_y" && return stored.time.normalize_y
     field_id == "time.show_markers" && return stored.time.show_markers
     field_id == "time.units" && return SIGNAL_TIME_UNIT_NAMES[stored.time.units]
-    field_id == "time.x_limits" && return signal_settings_range_payload(display.time_limits)
+    if field_id == "time.x_limits"
+        limits = display.time_limits
+        limits === nothing && return nothing
+        factor = signal_seconds_per_time_unit(stored.time.units, limits.max_s)
+        return Dict{String,Any}(
+            "min" => limits.min_s / factor,
+            "max" => limits.max_s / factor,
+        )
+    end
     field_id == "time.y_limits" && return signal_settings_range_payload(stored.time.y_limits)
     field_id == "time.link_time" && return stored.time.link_time
     field_id == "time.link_amplitude" && return stored.time.link_amplitude
@@ -878,7 +904,10 @@ function signal_settings_field_payload(
         "control_kind" => definition.control_kind,
         "value" => signal_settings_field_value(service, display, definition.id),
         "default" => signal_settings_wire_value(definition.default_value),
-        "units" => definition.units,
+        "units" => definition.id == "time.x_limits" ? signal_settings_time_unit_label(
+            display.stored_settings.time.units,
+            display.time_limits === nothing ? 1.0 : display.time_limits.max_s,
+        ) : definition.units,
         "min" => definition.minimum,
         "max" => definition.maximum,
         "step" => definition.step,
@@ -961,15 +990,27 @@ function signal_settings_document_unlocked(
         layout.panes,
     )
     amplitude_source = amplitude_index === nothing ? time_source : layout.panes[amplitude_index]
+    screen_time_unit = time_source.plot_type == SPECTROGRAM_PLOT ?
+        time_source.stored_settings.spectrogram.time_units :
+        time_source.stored_settings.time.units
+    if draft !== nothing
+        unit_entry = get((draft::SignalSettingsDisplayDraft).entries, "time.units", nothing)
+        unit_entry === nothing || (unit_entry.value isa SignalTimeUnitPreference &&
+            (screen_time_unit = unit_entry.value))
+    end
+    screen_time_factor = signal_seconds_per_time_unit(
+        screen_time_unit,
+        time_source.time_limits === nothing ? 1.0 : time_source.time_limits.max_s,
+    )
+    screen_time_limits = time_source.time_limits === nothing ? nothing : Dict{String,Any}(
+        "min" => time_source.time_limits.min_s / screen_time_factor,
+        "max" => time_source.time_limits.max_s / screen_time_factor,
+    )
     screen_values = Dict{String,Any}(
         "time.link_time" => projected_display.stored_settings.time.link_time,
         "time.link_amplitude" => projected_display.stored_settings.time.link_amplitude,
-        "time.units" => SIGNAL_TIME_UNIT_NAMES[
-            time_source.plot_type == SPECTROGRAM_PLOT ?
-                time_source.stored_settings.spectrogram.time_units :
-                time_source.stored_settings.time.units
-        ],
-        "time.x_limits" => signal_settings_range_payload(time_source.time_limits),
+        "time.units" => SIGNAL_TIME_UNIT_NAMES[screen_time_unit],
+        "time.x_limits" => screen_time_limits,
         "time.y_limits" => signal_settings_range_payload(amplitude_source.stored_settings.time.y_limits),
     )
     if draft !== nothing
@@ -1451,18 +1492,16 @@ function signal_settings_parse_draft_range(
             "Range должен содержать только min и max",
         ),
     )
-    SignalSettingDraftRange(
-        signal_settings_parse_draft_real(
-            display_id,
-            field_id,
-            signal_analyser_payload_value(value, "min"),
-        ),
-        signal_settings_parse_draft_real(
-            display_id,
-            field_id,
-            signal_analyser_payload_value(value, "max"),
-        ),
+    minimum_value = signal_analyser_payload_value(value, "min")
+    maximum_value = signal_analyser_payload_value(value, "max")
+    minimum = minimum_value === nothing ? nothing : signal_settings_parse_draft_real(
+        display_id, field_id, minimum_value,
     )
+    maximum = maximum_value === nothing ? nothing : signal_settings_parse_draft_real(
+        display_id, field_id, maximum_value,
+    )
+    minimum === nothing && maximum === nothing && return nothing
+    SignalSettingDraftRange(minimum, maximum)
 end
 
 function signal_settings_parse_draft_resolution(
@@ -2224,11 +2263,29 @@ function signal_settings_draft_domain_command(
         entry.field_id,
         "Неизвестный field_id",
     ))
+    wire_value = signal_settings_draft_wire_value(entry.value)
+    if entry.value isa SignalSettingDraftRange && entry.field_id in ("time.x_limits", "time.y_limits")
+        draft_range = entry.value::SignalSettingDraftRange
+        if entry.field_id == "time.x_limits"
+            full = signal_settings_full_time_range(state, display)
+            factor = signal_seconds_per_time_unit(display.stored_settings.time.units, full.max_s)
+            wire_value = Dict{String,Any}(
+                "min" => (draft_range.minimum === nothing ? full.min_s : draft_range.minimum * factor),
+                "max" => (draft_range.maximum === nothing ? full.max_s : draft_range.maximum * factor),
+            )
+        else
+            full = signal_settings_full_amplitude_range(state, display)
+            wire_value = Dict{String,Any}(
+                "min" => (draft_range.minimum === nothing ? full.minimum : draft_range.minimum),
+                "max" => (draft_range.maximum === nothing ? full.maximum : draft_range.maximum),
+            )
+        end
+    end
     typed_value = signal_settings_parse_field_value(
         definition,
         display.id,
         entry.field_id,
-        signal_settings_draft_wire_value(entry.value),
+        wire_value,
     )
     UpdateSignalSettingCommand(
         state.view.state_revision,
@@ -2236,6 +2293,68 @@ function signal_settings_draft_domain_command(
         entry.field_id,
         typed_value,
     )
+end
+
+function signal_settings_axis_panes(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    plot_types::Tuple,
+    linked::Bool,
+)::Vector{SignalDisplayPaneState}
+    layout = signal_analyser_layout_by_display_id(state, display.id)
+    if linked
+        return SignalDisplayPaneState[
+            pane for pane in layout.panes
+            if pane.plot_type in plot_types && !isempty(pane.membership.signal_names)
+        ]
+    end
+    active = signal_display_active_pane(layout)
+    active.plot_type in plot_types && !isempty(active.membership.signal_names) ?
+        SignalDisplayPaneState[active] : SignalDisplayPaneState[]
+end
+
+function signal_settings_full_time_range(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::SignalTimeLimits
+    panes = signal_settings_axis_panes(
+        state, display, (TIME_PLOT, SPECTROGRAM_PLOT), display.stored_settings.time.link_time,
+    )
+    durations = Float64[
+        signal_duration_s(signal_by_name(state, name))
+        for pane in panes for name in pane.membership.signal_names
+    ]
+    isempty(durations) && return SignalTimeLimits(0.0, 1.0)
+    SignalTimeLimits(0.0, maximum(durations))
+end
+
+function signal_settings_full_amplitude_range(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::SignalSettingRange
+    panes = signal_settings_axis_panes(
+        state, display, (TIME_PLOT,), display.stored_settings.time.link_amplitude,
+    )
+    values = Float64[]
+    for pane in panes
+        if pane.stored_settings.time.normalize_y
+            append!(values, (0.0, 1.0))
+            continue
+        end
+        for name in pane.membership.signal_names
+            signal = signal_by_name(state, name)
+            append!(values, real.(signal.values))
+            signal.is_complex && append!(values, imag.(signal.values))
+        end
+    end
+    isempty(values) && return SignalSettingRange(-1.0, 1.0)
+    minimum, maximum = extrema(values)
+    if minimum == maximum
+        padding = max(abs(minimum) * 0.05, 1.0)
+        minimum -= padding
+        maximum += padding
+    end
+    SignalSettingRange(minimum, maximum)
 end
 
 
@@ -2765,10 +2884,17 @@ function signal_settings_apply_screen_axes_unlocked!(
         (time_source::SignalDisplayPaneState).plot_type == SPECTROGRAM_PLOT ?
             (time_source::SignalDisplayPaneState).stored_settings.spectrogram.time_units :
             (time_source::SignalDisplayPaneState).stored_settings.time.units
-    time_limits = haskey(entries, "time.x_limits") ? prospective.time_limits :
+    time_limits = haskey(entries, "time.x_limits") ? (
+        entries["time.x_limits"].value === nothing ?
+            signal_settings_full_time_range(state, prospective) : prospective.time_limits
+    ) :
         time_source === nothing ? prospective.time_limits :
         (time_source::SignalDisplayPaneState).time_limits
-    y_limits = haskey(entries, "time.y_limits") ? prospective.stored_settings.time.y_limits :
+    y_limits = haskey(entries, "time.y_limits") ? (
+        entries["time.y_limits"].value === nothing ?
+            signal_settings_full_amplitude_range(state, prospective) :
+            prospective.stored_settings.time.y_limits
+    ) :
         amplitude_source === nothing ? prospective.stored_settings.time.y_limits :
         (amplitude_source::SignalDisplayPaneState).stored_settings.time.y_limits
 

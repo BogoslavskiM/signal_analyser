@@ -39,6 +39,7 @@ const SIGNAL_SETTINGS_CONTROL_KINDS = Set([
 ])
 
 @enum SignalTimeUnitPreference begin
+    AUTO_TIME_UNIT
     PICOSECONDS_TIME_UNIT
     NANOSECONDS_TIME_UNIT
     MICROSECONDS_TIME_UNIT
@@ -48,6 +49,48 @@ const SIGNAL_SETTINGS_CONTROL_KINDS = Set([
     HOURS_TIME_UNIT
     DAYS_TIME_UNIT
     YEARS_TIME_UNIT
+end
+
+"""Resolve automatic time units so the largest displayed value stays in [1, 1000)."""
+function signal_resolved_time_unit(
+    unit::SignalTimeUnitPreference,
+    maximum_seconds::Real,
+)::SignalTimeUnitPreference
+    unit != AUTO_TIME_UNIT && return unit
+    value = abs(Float64(maximum_seconds))
+    isfinite(value) && value > 0 || return SECONDS_TIME_UNIT
+    candidates = (
+        (PICOSECONDS_TIME_UNIT, 1.0e-12),
+        (NANOSECONDS_TIME_UNIT, 1.0e-9),
+        (MICROSECONDS_TIME_UNIT, 1.0e-6),
+        (MILLISECONDS_TIME_UNIT, 1.0e-3),
+        (SECONDS_TIME_UNIT, 1.0),
+        (MINUTES_TIME_UNIT, 60.0),
+        (HOURS_TIME_UNIT, 3600.0),
+        (DAYS_TIME_UNIT, 86400.0),
+        (YEARS_TIME_UNIT, 31557600.0),
+    )
+    for (candidate, seconds_per_unit) in candidates
+        rendered = value / seconds_per_unit
+        1.0 <= rendered < 1000.0 && return candidate
+    end
+    value < 1.0e-12 ? PICOSECONDS_TIME_UNIT : YEARS_TIME_UNIT
+end
+
+function signal_seconds_per_time_unit(
+    unit::SignalTimeUnitPreference,
+    maximum_seconds::Real = 1.0,
+)::Float64
+    resolved = signal_resolved_time_unit(unit, maximum_seconds)
+    resolved == PICOSECONDS_TIME_UNIT && return 1.0e-12
+    resolved == NANOSECONDS_TIME_UNIT && return 1.0e-9
+    resolved == MICROSECONDS_TIME_UNIT && return 1.0e-6
+    resolved == MILLISECONDS_TIME_UNIT && return 1.0e-3
+    resolved == SECONDS_TIME_UNIT && return 1.0
+    resolved == MINUTES_TIME_UNIT && return 60.0
+    resolved == HOURS_TIME_UNIT && return 3600.0
+    resolved == DAYS_TIME_UNIT && return 86400.0
+    31557600.0
 end
 
 @enum SignalFrequencyUnitPreference begin

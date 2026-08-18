@@ -554,16 +554,10 @@ end
 
 function signal_analyser_time_unit_projection(
     unit::SignalTimeUnitPreference,
+    maximum_seconds::Real = 1.0,
 )::Tuple{Float64,String}
-    unit == PICOSECONDS_TIME_UNIT && return (1.0e-12, "пс")
-    unit == NANOSECONDS_TIME_UNIT && return (1.0e-9, "нс")
-    unit == MICROSECONDS_TIME_UNIT && return (1.0e-6, "мкс")
-    unit == MILLISECONDS_TIME_UNIT && return (1.0e-3, "мс")
-    unit == SECONDS_TIME_UNIT && return (1.0, "с")
-    unit == MINUTES_TIME_UNIT && return (60.0, "мин")
-    unit == HOURS_TIME_UNIT && return (3600.0, "ч")
-    unit == DAYS_TIME_UNIT && return (86400.0, "д")
-    (31557600.0, "лет")
+    resolved = signal_resolved_time_unit(unit, maximum_seconds)
+    (signal_seconds_per_time_unit(resolved), signal_settings_time_unit_label(resolved))
 end
 
 function signal_analyser_frequency_unit_projection(
@@ -591,14 +585,18 @@ function signal_analyser_plotly_line_trace(
     source::Dict{String,Any},
     plot_type::SignalAnalyserPlot,
     pane::SignalDisplayPaneState,
+    projected_maximum_seconds::Union{Nothing,Float64} = nothing,
 )::Dict{String,Any}
     name = String(get(source, "name", get(source, "signal", "")))
     color = String(get(source, "color", "#2563eb"))
     source_x = Float64.(get(source, "x", Float64[]))
     source_y = Float64.(get(source, "y", Float64[]))
     x, y, mode, hovertemplate = if plot_type == TIME_PLOT
+        maximum_seconds = projected_maximum_seconds === nothing ?
+            (pane.time_limits === nothing ? maximum(abs, source_x; init = 1.0) :
+                (pane.time_limits::SignalTimeLimits).max_s) : projected_maximum_seconds
         seconds_per_unit, unit_label = signal_analyser_time_unit_projection(
-            pane.stored_settings.time.units,
+            pane.stored_settings.time.units, maximum_seconds,
         )
         values = pane.stored_settings.time.normalize_y ?
             signal_analyser_normalized_values(source_y) : source_y
@@ -635,15 +633,17 @@ function signal_analyser_plotly_heatmap_trace(
     source::Dict{String,Any},
     pane::SignalDisplayPaneState,
 )::Dict{String,Any}
+    x = Float64.(get(source, "x", Float64[]))
+    y = Float64.(get(source, "y", Float64[]))
+    maximum_seconds = pane.time_limits === nothing ? maximum(abs, x; init = 1.0) :
+        (pane.time_limits::SignalTimeLimits).max_s
     time_scale, _ = signal_analyser_time_unit_projection(
-        pane.stored_settings.spectrogram.time_units,
+        pane.stored_settings.spectrogram.time_units, maximum_seconds,
     )
     frequency_unit = pane.plot_type == SPECTROGRAM_PLOT ?
         pane.stored_settings.spectrogram.frequency_units :
         pane.stored_settings.persistence.frequency_units
     frequency_scale, _ = signal_analyser_frequency_unit_projection(frequency_unit)
-    x = Float64.(get(source, "x", Float64[]))
-    y = Float64.(get(source, "y", Float64[]))
     if pane.plot_type == SPECTROGRAM_PLOT
         x ./= time_scale
         y ./= frequency_scale
@@ -682,10 +682,15 @@ end
 function signal_analyser_plotly_axis_metadata(
     pane::SignalDisplayPaneState,
     source::Dict{String,Any},
+    projected_maximum_seconds::Union{Nothing,Float64} = nothing,
 )::NamedTuple
     if pane.plot_type == TIME_PLOT
+        source_x = Float64.(get(source, "x", Float64[]))
+        maximum_seconds = projected_maximum_seconds === nothing ?
+            (pane.time_limits === nothing ? maximum(abs, source_x; init = 1.0) :
+                (pane.time_limits::SignalTimeLimits).max_s) : projected_maximum_seconds
         seconds_per_unit, unit_label = signal_analyser_time_unit_projection(
-            pane.stored_settings.time.units,
+            pane.stored_settings.time.units, maximum_seconds,
         )
         x_range = pane.time_limits === nothing ? nothing : Float64[
             (pane.time_limits::SignalTimeLimits).min_s / seconds_per_unit,
@@ -717,8 +722,12 @@ function signal_analyser_plotly_axis_metadata(
             y_range = y_range,
         )
     elseif pane.plot_type == SPECTROGRAM_PLOT
+        source_x = Float64.(get(source, "x", Float64[]))
+        maximum_seconds = projected_maximum_seconds === nothing ?
+            (pane.time_limits === nothing ? maximum(abs, source_x; init = 1.0) :
+                (pane.time_limits::SignalTimeLimits).max_s) : projected_maximum_seconds
         seconds_per_unit, time_label = signal_analyser_time_unit_projection(
-            pane.stored_settings.spectrogram.time_units,
+            pane.stored_settings.spectrogram.time_units, maximum_seconds,
         )
         _, frequency_label = signal_analyser_frequency_unit_projection(
             pane.stored_settings.spectrogram.frequency_units,
@@ -761,15 +770,25 @@ function signal_analyser_plotly_payload(
 )::Vector{Dict{String,Any}}
     source_items = output.data isa Vector{Dict{String,Any}} ?
         output.data : Dict{String,Any}[output.data::Dict{String,Any}]
+    projected_maximum_seconds = if output.plot_type in (TIME_PLOT, SPECTROGRAM_PLOT)
+        pane.time_limits === nothing ? maximum((
+            maximum(abs, Float64.(get(item, "x", Float64[])); init = 1.0)
+            for item in source_items
+        ); init = 1.0) : (pane.time_limits::SignalTimeLimits).max_s
+    else
+        nothing
+    end
     traces = if output.plot_type in (TIME_PLOT, SPECTRUM_PLOT)
         Dict{String,Any}[
-            signal_analyser_plotly_line_trace(item, output.plot_type, pane) for item in source_items
+            signal_analyser_plotly_line_trace(
+                item, output.plot_type, pane, projected_maximum_seconds,
+            ) for item in source_items
         ]
     else
         Dict{String,Any}[signal_analyser_plotly_heatmap_trace(first(source_items), pane)]
     end
     first_source = isempty(source_items) ? Dict{String,Any}() : first(source_items)
-    axes = signal_analyser_plotly_axis_metadata(pane, first_source)
+    axes = signal_analyser_plotly_axis_metadata(pane, first_source, projected_maximum_seconds)
     xaxis = Dict{String,Any}(
         "title" => Dict{String,Any}("text" => axes.x_label),
         "type" => axes.x_type,

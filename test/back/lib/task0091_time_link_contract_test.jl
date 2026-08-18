@@ -18,6 +18,73 @@ function task0091_layout!(state, operation::String; pane_id::String = "", plot_t
     TASK0091_TIME_LINK.apply_signal_analyser_layout!(state, payload; lightweight = true)
 end
 
+@testset "TASK-0116 displayed X units, automatic scale and partial automatic bounds" begin
+    @test TASK0091_TIME_LINK.signal_resolved_time_unit(
+        TASK0091_TIME_LINK.AUTO_TIME_UNIT, 0.2495,
+    ) == TASK0091_TIME_LINK.MILLISECONDS_TIME_UNIT
+    @test TASK0091_TIME_LINK.signal_resolved_time_unit(
+        TASK0091_TIME_LINK.AUTO_TIME_UNIT, 0.0000015,
+    ) == TASK0091_TIME_LINK.MICROSECONDS_TIME_UNIT
+
+    state = TASK0091_TIME_LINK.default_signal_analyser_state()
+    service = TASK0091_TIME_LINK.SignalSettingsService()
+    TASK0091_TIME_LINK.apply_signal_analyser_layout!(state, Dict{String,Any}(
+        "state_revision" => state.view.state_revision, "operation" => "update_pane",
+        "display_id" => "display-1", "version" => 1, "pane_id" => "pane-1",
+        "plot_type" => "time", "signal_bindings" => [only(state.signals).name],
+    ); lightweight = true)
+    TASK0091_TIME_LINK.apply_signal_setting!(service, state, Dict(
+        "state_revision" => state.view.state_revision, "display_id" => "display-1",
+        "field_id" => "time.units", "value" => "milliseconds",
+    ))
+    TASK0091_TIME_LINK.apply_signal_setting!(service, state, Dict(
+        "state_revision" => state.view.state_revision, "display_id" => "display-1",
+        "field_id" => "time.x_limits", "value" => Dict("min" => nothing, "max" => 100.0),
+    ))
+    applied = TASK0091_TIME_LINK.apply_signal_settings!(service, state, Dict(
+        "state_revision" => state.view.state_revision, "display_id" => "display-1",
+    ))
+    @test applied["success"] === true
+    pane = state.display_layouts["display-1"].panes[1]
+    @test pane.time_limits == TASK0091_TIME_LINK.SignalTimeLimits(0.0, 0.1)
+    document = TASK0091_TIME_LINK.signal_settings_document(service, state, "display-1")
+    @test document["screen"]["time.x_limits"] == Dict("min" => 0.0, "max" => 100.0)
+
+    auto_state = TASK0091_TIME_LINK.default_signal_analyser_state()
+    auto_service = TASK0091_TIME_LINK.SignalSettingsService()
+    TASK0091_TIME_LINK.apply_signal_analyser_layout!(auto_state, Dict{String,Any}(
+        "state_revision" => auto_state.view.state_revision, "operation" => "update_pane",
+        "display_id" => "display-1", "version" => 1, "pane_id" => "pane-1",
+        "plot_type" => "time", "signal_bindings" => [only(auto_state.signals).name],
+    ); lightweight = true)
+    TASK0091_TIME_LINK.apply_signal_setting!(auto_service, auto_state, Dict(
+        "state_revision" => auto_state.view.state_revision, "display_id" => "display-1",
+        "field_id" => "time.units", "value" => "auto",
+    ))
+    TASK0091_TIME_LINK.apply_signal_setting!(auto_service, auto_state, Dict(
+        "state_revision" => auto_state.view.state_revision, "display_id" => "display-1",
+        "field_id" => "time.x_limits", "value" => nothing,
+    ))
+    TASK0091_TIME_LINK.apply_signal_settings!(auto_service, auto_state, Dict(
+        "state_revision" => auto_state.view.state_revision, "display_id" => "display-1",
+    ))
+    auto_document = TASK0091_TIME_LINK.signal_settings_document(auto_service, auto_state, "display-1")
+    rendered_maximum = auto_document["screen"]["time.x_limits"]["max"]
+    @test 1.0 <= rendered_maximum < 1000.0
+    @test auto_document["screen"]["time.units"] == "auto"
+    auto_pane = auto_state.display_layouts["display-1"].panes[1]
+    source = Dict{String,Any}(
+        "name" => "test", "signal" => "test", "color" => "#000000",
+        "x" => [0.0, 0.2495], "y" => [0.0, 1.0],
+    )
+    trace = TASK0091_TIME_LINK.signal_analyser_plotly_line_trace(
+        source, TASK0091_TIME_LINK.TIME_PLOT, auto_pane,
+    )
+    axes = TASK0091_TIME_LINK.signal_analyser_plotly_axis_metadata(auto_pane, source)
+    @test trace["x"] ≈ [0.0, 249.5]
+    @test occursin("ms", axes.x_label) && axes.x_range ≈ [0.0, 249.51171875]
+end
+
 function task0091_apply_x_limits!(service, state, value::Dict{String,Float64})
     drafted = TASK0091_TIME_LINK.apply_signal_setting!(service, state, Dict(
         "state_revision" => state.view.state_revision, "display_id" => "display-1",
@@ -125,7 +192,7 @@ end
     spectrogram_axes = TASK0091_TIME_LINK.signal_analyser_plotly_axis_metadata(
         propagated.panes[3], Dict{String,Any}(),
     )
-    @test spectrogram_axes.x_range == [140.0, 180.0]
+    @test spectrogram_axes.x_range == [0.14, 0.18]
     screen = TASK0091_TIME_LINK.signal_settings_document(service, state, "display-1")["screen"]
     @test screen["time.link_time"] === true
     @test screen["time.link_amplitude"] === true
@@ -176,7 +243,7 @@ end
     TASK0091_TIME_LINK.apply_signal_settings!(service, state, Dict(
         "state_revision" => state.view.state_revision, "display_id" => "display-1",
     ))
-    task0091_apply_x_limits!(service, state, Dict("min" => 0.19, "max" => 0.22))
+    task0091_apply_x_limits!(service, state, Dict("min" => 190.0, "max" => 220.0))
     unlinked_again = state.display_layouts["display-1"]
     @test unlinked_again.panes[1].time_limits != unlinked_again.panes[2].time_limits
 end

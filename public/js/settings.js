@@ -42,7 +42,7 @@
   function isApply(item) { return item && !item.pseudo && item.effect_status === "requires_apply"; }
   function optionLabel(option) {
     var raw = typeof option === "object" ? option.value : option;
-    return { seconds:"s", milliseconds:"ms", microseconds:"μs", nanoseconds:"ns", picoseconds:"ps", minutes:"мин", hours:"ч", days:"дн", years:"г", hertz:"Hz", kilohertz:"kHz", megahertz:"MHz", gigahertz:"GHz", terahertz:"THz", linear:"Линейная", log:"Логарифмическая", db:"dB", leakage:"По утечке", rbw:"По RBW", window_length:"По длине окна" }[raw] || (typeof option === "object" && option.label) || raw;
+    return { auto:"Авто", seconds:"s", milliseconds:"ms", microseconds:"μs", nanoseconds:"ns", picoseconds:"ps", minutes:"мин", hours:"ч", days:"дн", years:"г", hertz:"Hz", kilohertz:"kHz", megahertz:"MHz", gigahertz:"GHz", terahertz:"THz", linear:"Линейная", log:"Логарифмическая", db:"dB", leakage:"По утечке", rbw:"По RBW", window_length:"По длине окна" }[raw] || (typeof option === "object" && option.label) || raw;
   }
   function pseudo(id, kind, current, extra) { return Object.assign({ id:id, kind:kind, value:current, enabled:true, visible:true, pseudo:true }, extra || {}); }
   function actual(id) {
@@ -111,6 +111,7 @@
     var values = item.kind === "range" || item.kind === "optional_range" ? [raw && raw.min, raw && raw.max] :
       item.kind === "resolution" || item.kind === "power_bins" ? [raw && raw.value] : [raw];
     for (var index=0; index<values.length; index++) {
+      if ((item.kind === "optional_range") && (values[index] === "" || values[index] == null)) continue;
       var result = numericResult(item, values[index], raw && raw.key);
       if (!result.valid) return result.error;
     }
@@ -122,8 +123,11 @@
     if (item.kind === "range" || item.kind === "optional_range") {
       var minimum = raw && raw.min, maximum = raw && raw.max;
       if (minimum === "" && maximum === "" && item.kind === "optional_range") return null;
-      var minimumResult = numericResult(item, minimum), maximumResult = numericResult(item, maximum);
-      return minimumResult.valid && maximumResult.valid && minimumResult.value < maximumResult.value ? { min:minimumResult.value, max:maximumResult.value } : null;
+      var minimumResult = minimum === "" && item.kind === "optional_range" ? { valid:true, value:null } : numericResult(item, minimum);
+      var maximumResult = maximum === "" && item.kind === "optional_range" ? { valid:true, value:null } : numericResult(item, maximum);
+      if (!minimumResult.valid || !maximumResult.valid) return null;
+      if (minimumResult.value !== null && maximumResult.value !== null && minimumResult.value >= maximumResult.value) return null;
+      return { min:minimumResult.value, max:maximumResult.value };
     }
     if (item.kind === "number" || item.kind === "integer") {
       var number = numericResult(item, raw);
