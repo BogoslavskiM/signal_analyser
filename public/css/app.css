@@ -1548,6 +1548,7 @@ body.is-resizing-workspace * {
 .header-chrome-button[aria-expanded="true"] {
   background: var(--header-chrome-hover-bg);
   color: var(--text);
+  .display-add:hover { background: var(--button-hover); }
 }
 
 .header-chrome-button:not(:disabled):active {
