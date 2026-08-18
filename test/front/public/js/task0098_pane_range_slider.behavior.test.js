@@ -277,6 +277,7 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   h.test.model.rangeSliderByPane["display-a::pane-1"] = true;
   const decorated = h.test.layout(baseLayout, "display-a::pane-1");
   assert(decorated !== baseLayout && decorated.xaxis !== baseLayout.xaxis && decorated.xaxis.rangeslider.visible === true && decorated.xaxis.rangeslider.thickness === 0.15, "ordinary Plotly refresh must reapply the current-session native slider without mutating provider layout");
+  assert(decorated.hovermode === false, "hovering a graph must not display Plotly value/name labels");
   assert(decorated.yaxis.fixedrange === undefined && decorated.yaxis2.fixedrange === undefined && decorated.margin.l === 51 && decorated.margin.r === 48, "both slider decorations must preserve provider layout without blocking either Y axis");
   assert(JSON.stringify(decorated.yaxis.range) === "[-3,1]" && decorated.legend.x === 0.99 && decorated.legend.xanchor === "right" && decorated.legend.y === 0.99 && decorated.legend.yanchor === "top", "refresh must preserve amplitude selection and force the legend to overlay the plot at top right");
   h.test.enqueue("display-a", p1, h.test.model.outputs["display-a::pane-1"]);
