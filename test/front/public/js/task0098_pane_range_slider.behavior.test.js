@@ -226,9 +226,7 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
     preventDefault() { prevented += 1; }, stopPropagation() { stopped += 1; }
   });
   h.hosts["display-a::pane-1"].dispatch("pointerdown", sliderPointerEvent());
-  h.hosts["display-a::pane-1"].dispatch("pointerup", sliderPointerEvent());
   h.hosts["display-a::pane-1"].dispatch("pointerdown", sliderPointerEvent());
-  h.hosts["display-a::pane-1"].dispatch("pointerup", sliderPointerEvent());
   await h.settle();
   const horizontalReset = h.relayoutCalls[1].update;
   assert(horizontalReset["xaxis.range"] === null && horizontalReset["xaxis.autorange"] === true && horizontalReset["xaxis.rangeslider.range"] === null && horizontalReset["xaxis.rangeslider.autorange"] === true, "double-clicking the horizontal slider must delegate the default X range to Plotly autorange without invented numeric bounds");

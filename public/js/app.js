@@ -749,7 +749,7 @@
 
   function bindRangeSliderDoubleClick(host, runtimeKey) {
     if (!host || typeof host.addEventListener !== "function" || host.dataset.rangeSliderDoubleClickBound === runtimeKey) return;
-    var pointerDown = null, previousTap = null;
+    var previousPointerDown = null;
     function rangeSliderTarget(event) {
       var target = event && event.target;
       var slider = target && typeof target.closest === "function" ? target.closest(".rangeslider-container") : null;
@@ -777,23 +777,12 @@
     }
     host.addEventListener("pointerdown", function (event) {
       if ((event.button !== undefined && event.button !== 0) || !rangeSliderTarget(event)) return;
-      pointerDown = { pointerId:event.pointerId, x:event.clientX, y:event.clientY, moved:false };
-    }, true);
-    host.addEventListener("pointermove", function (event) {
-      if (!pointerDown || (event.pointerId !== undefined && pointerDown.pointerId !== event.pointerId)) return;
-      if (Math.abs(event.clientX - pointerDown.x) > 4 || Math.abs(event.clientY - pointerDown.y) > 4) pointerDown.moved = true;
-    }, true);
-    host.addEventListener("pointerup", function (event) {
-      if (!pointerDown || (event.pointerId !== undefined && pointerDown.pointerId !== event.pointerId)) return;
-      var tap = !pointerDown.moved && rangeSliderTarget(event) ? { time:Date.now(), x:event.clientX, y:event.clientY } : null;
-      pointerDown = null;
-      if (!tap) { previousTap = null; return; }
-      if (previousTap && tap.time - previousTap.time <= 420 && Math.abs(tap.x - previousTap.x) <= 6 && Math.abs(tap.y - previousTap.y) <= 6) {
-        previousTap = null;
+      var pointerDown = { time:Date.now(), x:event.clientX, y:event.clientY };
+      if (previousPointerDown && pointerDown.time - previousPointerDown.time <= 420 && Math.abs(pointerDown.x - previousPointerDown.x) <= 6 && Math.abs(pointerDown.y - previousPointerDown.y) <= 6) {
+        previousPointerDown = null;
         resetHorizontalRange(event);
-      } else previousTap = tap;
+      } else previousPointerDown = pointerDown;
     }, true);
-    host.addEventListener("pointercancel", function () { pointerDown = null; previousTap = null; }, true);
     host.addEventListener("dblclick", function (event) {
       if (rangeSliderTarget(event)) resetHorizontalRange(event);
     }, true);
