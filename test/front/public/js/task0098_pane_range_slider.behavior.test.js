@@ -233,14 +233,20 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   assert(!Object.keys(horizontalReset).some((key) => key.indexOf("yaxis.") === 0) && prevented === 1 && stopped === 1, "horizontal slider reset must not alter Y and must consume the slider double-click");
 
   let immediateStopped = 0;
-  h.hosts["display-a::pane-1"].dispatch("dblclick", {
-    target:{ closest() { return null; } },
+  const graphPointerEvent = () => ({
+    button:0, pointerId:8, clientX:260, clientY:180,
+    target:{ closest(selector) { return selector === ".nsewdrag" ? element() : null; } },
     preventDefault() { prevented += 1; }, stopPropagation() { stopped += 1; }, stopImmediatePropagation() { immediateStopped += 1; }
   });
+  h.hosts["display-a::pane-1"].dispatch("pointerdown", graphPointerEvent());
+  h.hosts["display-a::pane-1"].dispatch("pointerdown", graphPointerEvent());
   await h.settle();
   const graphReset = h.relayoutCalls[2].update;
   assert(graphReset["xaxis.range[0]"] === 0 && graphReset["xaxis.range[1]"] === 1 && graphReset["yaxis.range[0]"] === -2 && graphReset["yaxis.range[1]"] === 2, "the first graph double-click must restore the exact projected X and signal Y ranges in one relayout");
   assert(graphReset["xaxis.autorange"] === false && graphReset["yaxis.autorange"] === false && immediateStopped === 1, "graph reset must suppress Plotly's later competing autorange pass");
+  h.hosts["display-a::pane-1"].dispatch("dblclick", graphPointerEvent());
+  await h.settle();
+  assert(h.relayoutCalls.length === 3, "the native dblclick fallback must be absorbed after the pointer pair instead of issuing a second reset");
 
   const secondTrigger = trigger("pane-2");
   h.test.openMenu(secondTrigger);
@@ -272,6 +278,10 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   assert(decorated !== baseLayout && decorated.xaxis !== baseLayout.xaxis && decorated.xaxis.rangeslider.visible === true && decorated.xaxis.rangeslider.thickness === 0.15, "ordinary Plotly refresh must reapply the current-session native slider without mutating provider layout");
   assert(decorated.yaxis.fixedrange === undefined && decorated.yaxis2.fixedrange === undefined && decorated.margin.l === 51 && decorated.margin.r === 48, "both slider decorations must preserve provider layout without blocking either Y axis");
   assert(JSON.stringify(decorated.yaxis.range) === "[-3,1]" && decorated.legend.x === 0.99 && decorated.legend.xanchor === "right" && decorated.legend.y === 0.99 && decorated.legend.yanchor === "top", "refresh must preserve amplitude selection and force the legend to overlay the plot at top right");
+  h.test.enqueue("display-a", p1, h.test.model.outputs["display-a::pane-1"]);
+  h.flushFrame();
+  await h.settle();
+  assert(h.reactCalls.length === 1 && h.reactCalls[0].config.doubleClick === false, "Plotly's competing built-in double-click autorange must remain disabled on every render");
   h.test.model.amplitudeSliderByPane["display-a::pane-1"] = false;
   const overlayOnly = h.test.layout(baseLayout, "display-a::pane-1");
   assert(overlayOnly.margin.r === 12, "an in-plot legend must not retain the provider's old side-column margin");

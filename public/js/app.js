@@ -764,6 +764,7 @@
       if (event) {
         event.preventDefault();
         event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
       }
       var update = {
         "xaxis.range[0]":xRange[0],
@@ -780,8 +781,17 @@
       return true;
     }
     function resetGraphRange(event) {
-      var Plotly = window.Plotly, xRange = model.rangeSliderDataRangeByPane[runtimeKey];
+      var Plotly = window.Plotly, now = Date.now(), xRange = model.rangeSliderDataRangeByPane[runtimeKey];
       if (!xRange || !Plotly || typeof Plotly.relayout !== "function") return false;
+      if (host._graphRangeResetAt && now - host._graphRangeResetAt < 240) {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
+        }
+        return true;
+      }
+      host._graphRangeResetAt = now;
       var update = {
         "xaxis.range[0]":xRange[0],
         "xaxis.range[1]":xRange[1],
@@ -815,11 +825,15 @@
       return true;
     }
     host.addEventListener("pointerdown", function (event) {
-      if ((event.button !== undefined && event.button !== 0) || !rangeSliderTarget(event)) return;
-      var pointerDown = { time:Date.now(), x:event.clientX, y:event.clientY };
-      if (previousPointerDown && pointerDown.time - previousPointerDown.time <= 420 && Math.abs(pointerDown.x - previousPointerDown.x) <= 6 && Math.abs(pointerDown.y - previousPointerDown.y) <= 6) {
+      if (event.button !== undefined && event.button !== 0) return;
+      var slider = rangeSliderTarget(event), target = event && event.target;
+      var graph = !slider && target && typeof target.closest === "function" ? target.closest(".nsewdrag") : null;
+      if (!slider && !(graph && host.contains(graph))) return;
+      var pointerDown = { time:Date.now(), x:event.clientX, y:event.clientY, kind:slider ? "slider" : "graph" };
+      if (previousPointerDown && previousPointerDown.kind === pointerDown.kind && pointerDown.time - previousPointerDown.time <= 420 && Math.abs(pointerDown.x - previousPointerDown.x) <= 6 && Math.abs(pointerDown.y - previousPointerDown.y) <= 6) {
         previousPointerDown = null;
-        resetHorizontalRange(event);
+        if (pointerDown.kind === "slider") resetHorizontalRange(event);
+        else resetGraphRange(event);
       } else previousPointerDown = pointerDown;
     }, true);
     host.addEventListener("dblclick", function (event) {
@@ -1329,7 +1343,7 @@
         var amplitudeDataRange = pane.plot_type === "time" ? traceYDataRange(traces) : null;
         if (amplitudeDataRange) model.amplitudeDataRangeByPane[runtimeKey] = amplitudeDataRange;
         else { delete model.amplitudeDataRangeByPane[runtimeKey]; delete model.amplitudeFullRangeByPane[runtimeKey]; delete model.amplitudeSelectedRangeByPane[runtimeKey]; }
-        return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); host.dataset.amplitudeSliderVisible = String(amplitudeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); bindRangeSliderDoubleClick(host, runtimeKey); syncAmplitudeSlider(host, runtimeKey); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
+        return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({}, payload.config || {}, { displayModeBar:false, displaylogo:false, responsive:true, doubleClick:false })).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); host.dataset.amplitudeSliderVisible = String(amplitudeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); bindRangeSliderDoubleClick(host, runtimeKey); syncAmplitudeSlider(host, runtimeKey); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
         model.plotInFlight[runtimeKey] = false;
         if (model.plotQueue[runtimeKey]) enqueuePlot(displayId, pane, model.plotQueue[runtimeKey]);
