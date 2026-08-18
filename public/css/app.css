@@ -929,49 +929,21 @@ body.is-resizing-workspace * {
 
 .screen-settings {
   min-width: 0;
-  padding: 0 8px 12px;
 }
 
-.screen-settings-section {
-  min-width: 0;
-  padding: 10px 0 12px;
-  border-bottom: 1px solid var(--line);
-}
-
-.screen-settings-title {
-  margin: 0 0 10px;
-  font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
-}
-
-.screen-layout-axis {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.screen-layout-axis > span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.screen-layout-axis .segment {
-  min-width: 0;
-  height: 28px;
-  font-size: 12px;
+.screen-layout-preview-row,
+.screen-layout-warning-row {
+  grid-template-rows: auto;
+  align-items: start;
 }
 
 .screen-layout-preview {
-  height: 112px;
+  width: 100%;
+  height: 96px;
   display: grid;
   grid-template-columns: repeat(var(--screen-layout-columns), minmax(0, 1fr));
   grid-template-rows: repeat(var(--screen-layout-rows), minmax(0, 1fr));
   gap: 3px;
-  margin-top: 10px;
   padding: 8px;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -988,30 +960,10 @@ body.is-resizing-workspace * {
 }
 
 .screen-layout-warning {
-  margin: 8px 0 0;
+  margin: 0;
   color: var(--warning);
   font-size: 12px;
   line-height: 16px;
-}
-
-.screen-axis-links {
-  padding-bottom: 8px;
-}
-
-.screen-link-setting {
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 0;
-}
-
-.screen-link-setting input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--accent);
 }
 
 .settings-group {

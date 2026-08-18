@@ -15,7 +15,7 @@
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
-    layoutDraft: null, screenDraft: null, screenApplying: false, renderFrame: null, plotlyPromise: null,
+    layoutDraft: null, screenDraft: null, screenApplying: false, screenCollapsed: {}, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
@@ -1341,31 +1341,60 @@
     return !!draft && (draft.rows !== draft.initialRows || draft.columns !== draft.initialColumns || draft.linkTime !== draft.initialLinkTime || draft.linkAmplitude !== draft.initialLinkAmplitude);
   }
 
-  function screenAxisSegments(axis, selected) {
-    return Array.from({ length:10 }, function (_, index) {
-      var value = index + 1;
-      return "<button class='segment" + (selected === value ? " is-selected" : "") + "' type='button' data-screen-layout-" + axis + "='" + value + "' data-testid='screen-layout-" + axis + "-" + value + "' aria-pressed='" + (selected === value) + "'>" + value + "</button>";
-    }).join("");
+  function screenLimitFieldIds(draft) {
+    var ids = [];
+    if (draft && draft.linkTime) ids.push("time.units", "time.x_limits");
+    if (draft && draft.linkAmplitude) ids.push("time.y_limits");
+    return ids;
+  }
+
+  function setScreenLayoutAxis(axis, selected) {
+    var draft = activeDisplay() && screenDraftFor(activeDisplay());
+    var value = Number(selected);
+    if (!draft || ["rows", "columns"].indexOf(axis) < 0 || !Number.isInteger(value) || value < 1 || value > 10 || draft[axis] === value) return;
+    draft[axis] = value;
+    draft.error = "";
+    renderScreenSettings(activeDisplay());
+    renderApply();
+  }
+
+  function screenLayoutSelect(display, axis, selected, label) {
+    return valueSelect.markup({
+      key:"screen::" + display.id + "::layout::" + axis,
+      value:String(selected),
+      label:String(selected),
+      options:Array.from({ length:10 }, function (_, index) { return { value:String(index + 1), label:String(index + 1) }; }),
+      className:"settings-value-select",
+      testId:"screen-layout-" + axis,
+      ariaLabel:label,
+      onSelect:function (value) { setScreenLayoutAxis(axis, value); }
+    });
+  }
+
+  function screenSettingsGroup(key, title, body) {
+    var collapsed = !!model.screenCollapsed[key];
+    var bodyId = "screen-settings-group-" + key;
+    return "<section class='settings-group screen-settings-group" + (collapsed ? " is-collapsed" : "") + "' data-screen-settings-group='" + key + "'>" +
+      "<button class='settings-group-title' type='button' data-screen-settings-group-toggle='" + key + "' aria-expanded='" + String(!collapsed) + "' aria-controls='" + bodyId + "'><span>" + title + "</span></button>" +
+      "<div class='settings-group-fields' id='" + bodyId + "'" + (collapsed ? " hidden" : "") + ">" + body + "</div>" +
+    "</section>";
   }
 
   function renderScreenSettings(display) {
     var content = q("[data-testid='settings-content']");
     if (!content) return;
     var draft = screenDraftFor(display);
-    content.innerHTML = "<div class='screen-settings' data-testid='screen-settings'>" +
-      "<section class='screen-settings-section' aria-labelledby='screen-layout-title'>" +
-        "<h3 id='screen-layout-title' class='screen-settings-title'>Макет</h3>" +
-        "<div class='screen-layout-axis'><span>Строки</span><div class='segments' data-screen-layout-rows>" + screenAxisSegments("rows", draft.rows) + "</div></div>" +
-        "<div class='screen-layout-axis'><span>Столбцы</span><div class='segments' data-screen-layout-columns>" + screenAxisSegments("columns", draft.columns) + "</div></div>" +
-        "<div class='screen-layout-preview' data-testid='screen-layout-preview' style='--screen-layout-rows:" + draft.rows + ";--screen-layout-columns:" + draft.columns + "' aria-label='Макет " + draft.rows + " на " + draft.columns + "'>" + Array.from({ length:draft.rows * draft.columns }, function () { return "<i></i>"; }).join("") + "</div>" +
-        (draft.rows > 4 || draft.columns > 4 ? "<p class='screen-layout-warning' role='status'>Для читаемости рекомендуется макет не более 4 × 4.</p>" : "") +
-      "</section>" +
-      "<section class='screen-settings-section screen-axis-links' aria-labelledby='screen-links-title'>" +
-        "<h3 id='screen-links-title' class='screen-settings-title'>Связь областей</h3>" +
-        "<label class='screen-link-setting' data-testid='screen-link-time-row'><span>Связать время</span><input class='ui-checkbox' type='checkbox' data-screen-link-time data-testid='screen-link-time'" + (draft.linkTime ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></label>" +
-        "<label class='screen-link-setting' data-testid='screen-link-amplitude-row'><span>Связать амплитуду</span><input class='ui-checkbox' type='checkbox' data-screen-link-amplitude data-testid='screen-link-amplitude'" + (draft.linkAmplitude ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></label>" +
-      "</section>" +
-    "</div>";
+    settings.beginCustomRender();
+    var layoutFields = "<div class='settings-field-row' data-testid='screen-layout-rows-row'><label class='settings-label'>Строки</label><div class='settings-control-wrap'>" + screenLayoutSelect(display, "rows", draft.rows, "Строки макета") + "</div></div>" +
+      "<div class='settings-field-row' data-testid='screen-layout-columns-row'><label class='settings-label'>Столбцы</label><div class='settings-control-wrap'>" + screenLayoutSelect(display, "columns", draft.columns, "Столбцы макета") + "</div></div>" +
+      "<div class='settings-field-row screen-layout-preview-row'><span class='settings-label'>Предпросмотр</span><div class='screen-layout-preview' data-testid='screen-layout-preview' style='--screen-layout-rows:" + draft.rows + ";--screen-layout-columns:" + draft.columns + "' aria-label='Макет " + draft.rows + " на " + draft.columns + "'>" + Array.from({ length:draft.rows * draft.columns }, function () { return "<i></i>"; }).join("") + "</div></div>" +
+      (draft.rows > 4 || draft.columns > 4 ? "<div class='settings-field-row screen-layout-warning-row'><span></span><p class='screen-layout-warning' role='status'>Для читаемости рекомендуется макет не более 4 × 4.</p></div>" : "");
+    var linkFields = "<div class='settings-field-row' data-testid='screen-link-time-row'><label class='settings-label' for='screen-link-time'>Связать время</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-time' type='checkbox' data-screen-link-time data-testid='screen-link-time'" + (draft.linkTime ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>" +
+      "<div class='settings-field-row' data-testid='screen-link-amplitude-row'><label class='settings-label' for='screen-link-amplitude'>Связать амплитуду</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-amplitude' type='checkbox' data-screen-link-amplitude data-testid='screen-link-amplitude'" + (draft.linkAmplitude ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>";
+    var limitGroups = draft.linkTime ? screenSettingsGroup("time-limits", "Пределы времени", settings.renderRows(["time.units", "time.x_limits"])) : "";
+    if (draft.linkAmplitude) limitGroups += screenSettingsGroup("y-limits", "Пределы оси Y", settings.renderRows(["time.y_limits"]));
+    content.innerHTML = "<div class='screen-settings' data-testid='screen-settings'>" + screenSettingsGroup("layout", "Макет", layoutFields) + screenSettingsGroup("links", "Связь областей", linkFields) + limitGroups + "</div>";
+    valueSelect.reconcile();
   }
 
   function reconcileContextTabs(pane) {
@@ -1415,13 +1444,15 @@
     if (model.settingsPage === "screen") {
       var draft = activeDisplay() && screenDraftFor(activeDisplay());
       var applying = model.screenApplying;
+      var fieldState = settings.stateFor(screenLimitFieldIds(draft));
+      var dirty = screenDraftDirty(draft) || fieldState.dirty;
       values.hidden = true;
       status.classList.remove("visually-hidden");
-      footer.dataset.applyState = applying ? "applying" : draft && draft.error ? "error" : screenDraftDirty(draft) ? "dirty" : "pristine";
-      button.disabled = applying || !draft || !draft.linksReady || !screenDraftDirty(draft);
+      footer.dataset.applyState = applying ? "applying" : draft && draft.error || fieldState.invalid ? "error" : dirty ? "dirty" : "pristine";
+      button.disabled = applying || !draft || !draft.linksReady || fieldState.invalid || !dirty;
       button.textContent = applying ? "Применение…" : draft && draft.error ? "Повторить" : "Применить";
       syncApplyLoader(button, footer, applying ? "applying" : "pristine", "screen-settings::apply");
-      status.textContent = draft && draft.error ? draft.error : draft && !draft.linksReady ? "Загрузка настроек экрана…" : "";
+      status.textContent = draft && draft.error ? draft.error : fieldState.invalid ? "Исправьте выделенные поля" : draft && !draft.linksReady ? "Загрузка настроек экрана…" : "";
       return;
     }
     values.hidden = true;
@@ -2458,7 +2489,9 @@
   function applyScreenSettings() {
     var draft = model.screenDraft;
     var display = activeDisplay();
-    if (!draft || !display || draft.displayId !== display.id || model.screenApplying || !screenDraftDirty(draft)) return;
+    var limitIds = screenLimitFieldIds(draft);
+    var fieldState = settings.stateFor(limitIds);
+    if (!draft || !display || draft.displayId !== display.id || model.screenApplying || fieldState.invalid || !(screenDraftDirty(draft) || fieldState.dirty)) return;
     model.screenApplying = true;
     draft.error = "";
     renderApply();
@@ -2474,8 +2507,28 @@
       if (!activeDisplay() || activeDisplay().id !== displayId) throw new Error("Контекст экрана изменился; повторите действие.");
       return persistLayoutLinks(draft);
     }).then(function () {
+      return settings.flushFields(limitIds);
+    }).then(function () {
+      if (!fieldState.dirty) return null;
+      function applyLatest(retries) {
+        if (!activeDisplay() || activeDisplay().id !== displayId) return Promise.reject(new Error("Контекст экрана изменился; повторите действие."));
+        return api.applySettings({ state_revision:settings.stateFor(limitIds).revision, display_id:displayId }).catch(function (error) {
+          var current = error && error.payload && (error.payload.current || error.payload.state);
+          if (error && error.status === 409 && retries < 1 && current) {
+            if (accept(current)) renderActivePaneContext();
+            else if (typeof current.state_revision === "number") { model.revision = Math.max(model.revision, current.state_revision); settings.setRevision(current.state_revision); }
+            return applyLatest(retries + 1);
+          }
+          throw error;
+        });
+      }
+      return applyLatest(0);
+    }).then(function (result) {
+      if (result && result.success === false) throw new Error(result.error || "Сервер отклонил настройки.");
+      if (result) { model.revision = Math.max(model.revision, result.state_revision || model.revision); settings.setRevision(model.revision); output(true); }
       return settings.load();
     }).then(function () {
+      settings.markApplied();
       model.screenApplying = false;
       model.screenDraft = null;
       renderSettings(activeDisplay());
@@ -2514,15 +2567,11 @@
     if (button.dataset.layoutRows || button.dataset.layoutColumns) { model.layoutDraft[button.dataset.layoutRows ? "rows" : "columns"] = Number(button.dataset.layoutRows || button.dataset.layoutColumns); return void renderLayoutDraft(); }
     if (button.dataset.layoutScreenSettings !== undefined) return void openScreenSettingsFromLayout();
     if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { if (model.screenDraft && model.screenDraft.displayId === displayId) { model.screenDraft.rows = draft.rows; model.screenDraft.columns = draft.columns; model.screenDraft.initialRows = draft.rows; model.screenDraft.initialColumns = draft.columns; } else model.screenDraft = null; if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
-    if (button.dataset.screenLayoutRows !== undefined || button.dataset.screenLayoutColumns !== undefined) {
-      var screenAxis = button.dataset.screenLayoutRows !== undefined ? "rows" : "columns";
-      var screenValue = Number(button.dataset.screenLayoutRows !== undefined ? button.dataset.screenLayoutRows : button.dataset.screenLayoutColumns);
-      var screenDraft = screenDraftFor(activeDisplay());
-      screenDraft[screenAxis] = screenValue;
-      screenDraft.error = "";
+    if (button.dataset.screenSettingsGroupToggle) {
+      var screenGroup = button.dataset.screenSettingsGroupToggle;
+      model.screenCollapsed[screenGroup] = button.getAttribute("aria-expanded") === "true";
       renderScreenSettings(activeDisplay());
-      renderApply();
-      window.requestAnimationFrame(function () { var restored = q("[data-screen-layout-" + screenAxis + "='" + screenValue + "']"); if (restored) restored.focus(); });
+      window.requestAnimationFrame(function () { var restored = q("[data-screen-settings-group-toggle='" + screenGroup + "']"); if (restored) restored.focus(); });
       return;
     }
     if (button.dataset.testid === "extrema-calculate") return void calculatePeaks();
@@ -2586,8 +2635,8 @@
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]").filter(function (item) { return !item.hidden; }),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
-    if (node.dataset.screenLinkTime !== undefined && model.screenDraft) { model.screenDraft.linkTime = node.checked; model.screenDraft.error = ""; renderApply(); return; }
-    if (node.dataset.screenLinkAmplitude !== undefined && model.screenDraft) { model.screenDraft.linkAmplitude = node.checked; model.screenDraft.error = ""; renderApply(); return; }
+    if (node.dataset.screenLinkTime !== undefined && model.screenDraft) { model.screenDraft.linkTime = node.checked; model.screenDraft.error = ""; renderScreenSettings(activeDisplay()); renderApply(); window.requestAnimationFrame(function () { var restored=q("[data-testid='screen-link-time']"); if(restored)restored.focus(); }); return; }
+    if (node.dataset.screenLinkAmplitude !== undefined && model.screenDraft) { model.screenDraft.linkAmplitude = node.checked; model.screenDraft.error = ""; renderScreenSettings(activeDisplay()); renderApply(); window.requestAnimationFrame(function () { var restored=q("[data-testid='screen-link-amplitude']"); if(restored)restored.focus(); }); return; }
     if (node.dataset.testid === "native-local-file-input" || node.dataset.testid === "session-package-file-input") { readSessionDocument(node.files && node.files[0]); return; }
     if (node.dataset.visibleAllSignals !== undefined) { var allPane = paneById(model.activePane); if (allPane) return void postLayout({ operation:"update_pane", pane_id:allPane.id, plot_type:allPane.plot_type, signal_bindings:node.checked ? (model.state.signals || []).map(function (signal) { return signal.name; }) : [] }); }
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }

@@ -178,7 +178,7 @@ module.exports = async function testTask0101UnifiedValueSelect(assert) {
   assert(/item\.kind === "resolution" \|\| item\.kind === "power_bins"[\s\S]*?valueSelect\.markup/.test(settings), "all resolution and power-bin modes must use the shared selector");
   assert(/valueSelect\.configure\(select,[\s\S]*?testId:"pane-type-"/.test(app), "every pane plot-type trigger must use the shared selector");
   assert(/testId:"extrema-mode-trigger"[\s\S]*?onSelect:chooseExtremaMode/.test(app), "Extrema mode must use the same selector and existing draft callback");
-  assert(/data-testid="display-overflow-menu"/.test(html) && /data-testid="signal-columns-menu"/.test(html) && !/valueSelect\.(?:markup|configure)[\s\S]{0,100}(?:column|layout|overflow)/.test(app), "action, layout and eye-state menus must remain excluded from the value selector");
+  assert(/data-testid="display-overflow-menu"/.test(html) && /data-testid="signal-columns-menu"/.test(html) && !/function renderColumnMenu\(\)[\s\S]*?valueSelect\.(?:markup|configure)/.test(app) && !/function renderLayoutDraft\(\)[\s\S]*?valueSelect\.(?:markup|configure)/.test(app), "action, popover-layout and eye-state menus must remain excluded from the value selector while Screen form fields may use it");
 
   const triggerRule = (css.match(/\.control,\s*\n\.select-trigger\s*\{[^}]*\}/) || [""])[0];
   const paneRule = (css.match(/\.plot-control-cluster \.pane-select\s*\{[^}]*\}/) || [""])[0];

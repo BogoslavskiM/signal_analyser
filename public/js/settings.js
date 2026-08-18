@@ -32,6 +32,7 @@
     return readout ? Object.assign({}, readout, { kind:"readout", readonly:true, enabled:false }) : null;
   }
   function value(item) { return context.drafts[item.id] && context.drafts[item.id].value !== undefined ? context.drafts[item.id].value : item.value; }
+  function booleanValue(id) { var item = sourceItem(id); return !!(item && value(item)); }
   function label(item) { return ru[item.id] || item.label || item.id; }
   function isApply(item) { return item && !item.pseudo && item.effect_status === "requires_apply"; }
   function optionLabel(option) {
@@ -73,14 +74,16 @@
   }
 
   function timeInventory(type) {
+    var linkTime = booleanValue("time.link_time");
+    var linkAmplitude = booleanValue("time.link_amplitude");
     if (type === "time") {
       return [
         group("parameters", "Параметры", [actual("time.normalize_y"), actual("time.show_markers")]),
-        group("time-limits", "Пределы времени", [actual("time.units"), actual("time.x_limits")]),
-        group("y-limits", "Пределы оси Y", [actual("time.y_limits")])
-      ];
+        linkTime ? null : group("time-limits", "Пределы времени", [actual("time.units"), actual("time.x_limits")]),
+        linkAmplitude ? null : group("y-limits", "Пределы оси Y", [actual("time.y_limits")])
+      ].filter(Boolean);
     }
-    if (type === "spectrogram") return [group("time-limits", "Пределы времени", [actual("time.x_limits")])];
+    if (type === "spectrogram" && !linkTime) return [group("time-limits", "Пределы времени", [actual("time.x_limits")])];
     return [];
   }
 
@@ -349,6 +352,17 @@
     },
     setView:function (page, plotType) {
       context.page=page || "display"; context.plotType=plotType || "time";
+    },
+    beginCustomRender:function () { context.renderedFields={}; },
+    renderRows:function (ids) {
+      return (ids || []).map(function (id) { var item=sourceItem(id); return item ? Object.assign({}, item, { visible:true }) : null; }).filter(Boolean).map(renderField).join("");
+    },
+    stateFor:function (ids) {
+      var drafts=(ids || []).map(function (id) { return context.drafts[id]; }).filter(Boolean);
+      return { dirty:drafts.some(function (draft) { return !draft.error; }), invalid:drafts.some(function (draft) { return !!draft.error; }), revision:context.revision };
+    },
+    flushFields:function (ids) {
+      return Promise.all((ids || []).map(function (id) { var item=sourceItem(id); return item ? Object.assign({}, item, { visible:true }) : null; }).filter(isApply).map(send));
     },
     load:function () {
       var id=context.displayId, token=++context.loadToken;

@@ -29,7 +29,7 @@ module.exports = async function testTask0091PerDisplayAndTimeLinkContracts(asser
   assert(/data-settings-page="screen"[^>]*data-testid="settings-tab-screen">Экран</.test(html), "right settings must expose the dedicated Screen tab");
   assert(/data-screen-link-time[\s\S]*?Связать амплитуду[\s\S]*?data-screen-link-amplitude/.test(app), "Screen settings must own both independent axis-link checkboxes");
   assert(!html.includes("data-layout-link-time") && !html.includes("data-layout-link-amplitude"), "layout popover must not duplicate axis-link checkboxes");
-  assert(/\.screen-settings-section\s*\{[^}]*border-bottom:\s*1px solid var\(--line\)/.test(css), "Screen settings sections must retain a clear separator");
+  assert(/\.settings-group-title::after\s*\{[^}]*background:\s*var\(--line\)/.test(css) && /screenSettingsGroup\([\s\S]*?settings-group-title/.test(app), "Screen settings must reuse the shared collapsible title and separator");
   assert(/linkTime:linkTime[\s\S]*?settings\.setValue\("time\.link_time", draft\.linkTime\)/.test(app), "Screen Apply must consume and persist the existing time-link setting");
   assert(/linkAmplitude:linkAmplitude[\s\S]*?settings\.setValue\("time\.link_amplitude", draft\.linkAmplitude\)/.test(app), "Screen Apply must consume and persist the amplitude-link setting independently");
 };
