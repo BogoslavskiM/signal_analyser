@@ -20,10 +20,11 @@ module.exports = async function testTask0114ScreenSettings(assert) {
   assert(/function renderScreenSettings\(display\)[\s\S]*?screenSettingsGroup\("layout", "Макет"[\s\S]*?screenSettingsGroup\("links", "Связь областей"/.test(app), "Screen page must render layout and link settings as shared collapsible groups");
   assert(/data-testid='screen-link-time-row'[\s\S]*?checkbox-control[\s\S]*?Связать амплитуду[\s\S]*?data-testid='screen-link-amplitude'/.test(app), "Screen links must use the shared field-row and checkbox-control geometry");
   assert(/screenDraftDirty\(draft\)[\s\S]*?draft\.rows !== draft\.initialRows[\s\S]*?draft\.linkAmplitude !== draft\.initialLinkAmplitude/.test(app), "Screen Apply state must cover layout and both independent links");
-  assert(/function applyScreenSettings\(\)[\s\S]*?postLayout\(\{ operation:"resize"[\s\S]*?persistLayoutLinks\(draft\)[\s\S]*?settings\.load\(\)/.test(app), "Screen Apply must serialize layout before axis-link persistence and authoritative reload");
+  assert(/function applySettings\(\)[\s\S]*?postLayout\(\{ operation:"resize"[\s\S]*?persistLayoutLinks\(draft\)[\s\S]*?settings\.flush\(\)[\s\S]*?settings\.flushFields\(linkIds\.concat\(limitIds\)\)[\s\S]*?settings\.load\(\)/.test(app), "the shared Area/Screen Apply must serialize layout, links, both field sets, and authoritative reload");
+  assert(/dataset\.testid === "settings-apply"\) return void \(model\.settingsPage === "peaks" \? applyPeaksSettings\(\) : applySettings\(\)\)/.test(app), "Area and Screen tabs must invoke the same Apply pipeline while Extrema stays independent");
   assert(/context\.page === "screen"\) return/.test(settings), "shared pane-settings renderer must not overwrite the app-owned Screen page during persistence");
   assert(/signal-settings-loaded/.test(settings) && /signal-settings-loaded[\s\S]*?model\.settingsPage === "screen"[\s\S]*?renderSettings\(display\)/.test(app), "a newly selected Screen must hydrate link values after its authoritative settings document loads");
-  assert(/draft\.linksReady \? "" : " disabled"/.test(app) && /!draft\.linksReady \|\| fieldState\.invalid \|\| !dirty/.test(app), "axis links and Apply must stay disabled until Screen settings are authoritative and valid");
+  assert(/draft\.linksReady \? "" : " disabled"/.test(app) && /!draft\.linksReady \|\| !state\.dirty \|\| state\.invalid/.test(app), "axis links and the shared Apply must stay disabled until Screen settings are authoritative, dirty, and valid");
   assert(/model\.screenDraft\.initialRows = draft\.rows[\s\S]*?model\.screenDraft\.initialColumns = draft\.columns/.test(app), "layout popover Apply must rebase the Screen layout draft without discarding independent link edits");
 
   assert(/screenCollapsed:\s*\{\s*layout:true\s*\}/.test(app), "Screen layout group must be collapsed on first open");
@@ -33,6 +34,6 @@ module.exports = async function testTask0114ScreenSettings(assert) {
   assert(/linkTime \? null : group\("time-limits"/.test(settings) && /linkAmplitude \? null : group\("y-limits"/.test(settings), "linked limit sections must disappear from Area settings");
   assert(/draft\.linkTime \? screenSettingsGroup\("time-limits", "Пределы времени", settings\.renderRows\(\["time\.units", "time\.x_limits"\]\)\)/.test(app), "linked time limits must move to Screen settings");
   assert(/draft\.linkAmplitude[\s\S]*?screenSettingsGroup\("y-limits", "Пределы оси Y", settings\.renderRows\(\["time\.y_limits"\]\)\)/.test(app), "linked amplitude limits must move to Screen settings");
-  assert(/screenLimitFieldIds\(draft\)[\s\S]*?settings\.stateFor\(limitIds\)[\s\S]*?settings\.flushFields\(limitIds\)/.test(app), "only currently visible linked limit fields may validate and persist on Screen Apply");
+  assert(/function areaScreenApplyState\(draft\)[\s\S]*?settings\.state\(\)[\s\S]*?settings\.stateFor\(screenLimitFieldIds\(draft\)\)/.test(app) && /settings\.flushFields\(linkIds\.concat\(limitIds\)\)/.test(app), "the shared Apply state must combine Area fields with only currently visible Screen-linked limit fields");
   assert(/data-layout-screen-settings[\s\S]*?Настроить экран/.test(html), "layout popover must expose the Screen settings shortcut");
 };

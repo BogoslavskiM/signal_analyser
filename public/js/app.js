@@ -1299,8 +1299,8 @@
   function screenDraftFor(display) {
     var authoritativeRows = model.layout && model.layout.rows || 1;
     var authoritativeColumns = model.layout && model.layout.columns || 1;
-    var rawLinkTime = settings.value("time.link_time");
-    var rawLinkAmplitude = settings.value("time.link_amplitude");
+    var rawLinkTime = typeof settings.value === "function" ? settings.value("time.link_time") : undefined;
+    var rawLinkAmplitude = typeof settings.value === "function" ? settings.value("time.link_amplitude") : undefined;
     var linksReady = rawLinkTime !== undefined && rawLinkAmplitude !== undefined;
     if (!model.screenDraft || model.screenDraft.displayId !== display.id) {
       var linkTime = !!rawLinkTime;
@@ -1346,6 +1346,18 @@
     if (draft && draft.linkTime) ids.push("time.units", "time.x_limits");
     if (draft && draft.linkAmplitude) ids.push("time.y_limits");
     return ids;
+  }
+
+  function areaScreenApplyState(draft) {
+    var area = settings.state();
+    var screen = typeof settings.stateFor === "function" ? settings.stateFor(screenLimitFieldIds(draft)) : { dirty:false, invalid:false, revision:area.revision };
+    return {
+      dirty:screenDraftDirty(draft) || area.dirty || screen.dirty,
+      invalid:area.invalid || screen.invalid,
+      areaDirty:area.dirty,
+      screenFieldsDirty:screen.dirty,
+      revision:Math.max(area.revision || 0, screen.revision || 0)
+    };
   }
 
   function setScreenLayoutAxis(axis, selected) {
@@ -1435,31 +1447,18 @@
     var values = q("[data-testid='extrema-values']");
     if (!footer || !button || !status || !values) return;
     if (model.settingsPage === "peaks") return renderPeaksApply(footer, button, status);
-    if (model.settingsPage === "screen") {
-      var draft = activeDisplay() && screenDraftFor(activeDisplay());
-      var applying = model.screenApplying;
-      var fieldState = settings.stateFor(screenLimitFieldIds(draft));
-      var dirty = screenDraftDirty(draft) || fieldState.dirty;
-      values.hidden = true;
-      status.classList.remove("visually-hidden");
-      footer.dataset.applyState = applying ? "applying" : draft && draft.error || fieldState.invalid ? "error" : dirty ? "dirty" : "pristine";
-      button.disabled = applying || !draft || !draft.linksReady || fieldState.invalid || !dirty;
-      button.textContent = applying ? "Применение…" : draft && draft.error ? "Повторить" : "Применить";
-      syncApplyLoader(button, footer, applying ? "applying" : "pristine", "screen-settings::apply");
-      status.textContent = draft && draft.error ? draft.error : fieldState.invalid ? "Исправьте выделенные поля" : draft && !draft.linksReady ? "Загрузка настроек экрана…" : "";
-      return;
-    }
     values.hidden = true;
     status.classList.remove("visually-hidden");
-    var state = settings.state();
+    var draft = activeDisplay() && screenDraftFor(activeDisplay());
+    var state = areaScreenApplyState(draft);
     var phase = footer.dataset.phase || "pristine";
-    var disabled = !state.dirty || state.invalid || phase === "applying" || phase === "pending";
+    var disabled = !draft || !draft.linksReady || !state.dirty || state.invalid || model.screenApplying || phase === "applying" || phase === "pending";
     var label = phase === "error" || phase === "stale" ? "Повторить" : phase === "applying" ? "Применение…" : phase === "pending" ? "Ожидание…" : "Применить";
-    footer.dataset.applyState = phase;
+    footer.dataset.applyState = draft && draft.error || state.invalid ? "error" : phase === "pristine" && state.dirty ? "dirty" : phase;
     button.disabled = disabled;
     button.textContent = label;
     syncApplyLoader(button, footer, phase, footer.dataset.loaderEpisodeKey);
-    status.textContent = footer.dataset.message || (state.invalid ? "Исправьте выделенные поля" : "");
+    status.textContent = draft && draft.error ? draft.error : footer.dataset.message || (state.invalid ? "Исправьте выделенные поля" : draft && !draft.linksReady ? "Загрузка настроек экрана…" : "");
   }
 
   function syncApplyLoader(button, footer, phase, episodeKey) {
@@ -2377,17 +2376,25 @@
 
   function applySettings() {
     var footer = q("[data-testid='settings-footer']");
-    var state = settings.state();
-    if (!footer || state.invalid || !state.dirty) return;
-    var displayId = activeDisplay() && activeDisplay().id;
-    if (!displayId) return;
+    var display = activeDisplay();
+    var draft = display && screenDraftFor(display);
+    var state = areaScreenApplyState(draft);
+    if (!footer || !display || !draft || draft.displayId !== display.id || model.screenApplying || state.invalid || !state.dirty) return;
+    var displayId = display.id;
+    var limitIds = screenLimitFieldIds(draft);
+    var linkIds = ["time.link_time", "time.link_amplitude"];
+    var resize = draft.rows !== draft.initialRows || draft.columns !== draft.initialColumns;
+    var linksDirty = draft.linkTime !== draft.initialLinkTime || draft.linkAmplitude !== draft.initialLinkAmplitude;
+    var needsSettingsApply = state.areaDirty || state.screenFieldsDirty || linksDirty;
+    model.screenApplying = true;
+    draft.error = "";
     footer.dataset.phase = "applying";
-    footer.dataset.loaderEpisodeKey = "settings-display::" + displayId + "::" + String(model.activePane || "") + "::" + String(model.revision);
-    footer.dataset.message = "Применяем сохранённый черновик";
+    footer.dataset.loaderEpisodeKey = "settings-area-screen::" + displayId + "::" + String(model.revision);
+    footer.dataset.message = "Применяем настройки области и экрана";
     renderApply();
     function applyLatest(retries) {
       if (!activeDisplay() || activeDisplay().id !== displayId) return Promise.reject(new Error("Контекст экрана изменился; повторите действие."));
-      return api.applySettings({ state_revision: settings.state().revision, display_id: displayId }).catch(function (error) {
+      return api.applySettings({ state_revision:settings.stateFor(linkIds.concat(limitIds)).revision, display_id:displayId }).catch(function (error) {
         var current = error && error.payload && (error.payload.current || error.payload.state);
         if (error && error.status === 409 && retries < 1 && current) {
           if (accept(current)) renderActivePaneContext();
@@ -2400,17 +2407,45 @@
         throw error;
       });
     }
-    settings.flush().then(function () { return applyLatest(0); }).then(function (result) {
-      if (result.success === false) throw new Error(result.error || "Сервер отклонил настройки.");
-      model.revision = Math.max(model.revision, result.state_revision || model.revision);
-      footer.dataset.phase = "pending";
-      footer.dataset.message = "Обновляется активная область";
-      renderApply();
-      output(true);
+    var result = Promise.resolve();
+    if (resize) result = result.then(function () {
+      return postLayout({ operation:"resize", variant:draft.rows + "x" + draft.columns, rows:draft.rows, columns:draft.columns }, { skipSettings:true });
+    });
+    result.then(function () {
+      if (!activeDisplay() || activeDisplay().id !== displayId) throw new Error("Контекст экрана изменился; повторите действие.");
+      return persistLayoutLinks(draft);
+    }).then(function () {
+      return Promise.all([settings.flush(), settings.flushFields(linkIds.concat(limitIds))]);
+    }).then(function () {
+      return needsSettingsApply ? applyLatest(0) : null;
+    }).then(function (response) {
+      if (response && response.success === false) throw new Error(response.error || "Сервер отклонил настройки.");
+      if (response) {
+        model.revision = Math.max(model.revision, response.state_revision || model.revision);
+        settings.setRevision(model.revision);
+      }
+      return settings.load().then(function () { return response; });
+    }).then(function (response) {
+      model.screenApplying = false;
+      model.screenDraft = null;
+      if (response) {
+        footer.dataset.phase = "pending";
+        footer.dataset.message = "Обновляется активная область";
+        renderSettings(activeDisplay());
+        output(true);
+      } else {
+        footer.dataset.phase = "pristine";
+        footer.dataset.message = "";
+        settings.markApplied();
+        renderSettings(activeDisplay());
+        showToast("Настройки применены", false);
+      }
     }).catch(function (error) {
+      model.screenApplying = false;
+      if (model.screenDraft && model.screenDraft.displayId === displayId) model.screenDraft.error = error.message || "Не удалось применить настройки.";
       footer.dataset.phase = error.status === 409 ? "stale" : "error";
       footer.dataset.message = error.message || "Не удалось применить настройки.";
-      renderApply();
+      renderSettings(activeDisplay());
       showToast(footer.dataset.message, true);
     });
   }
@@ -2480,61 +2515,6 @@
     });
   }
 
-  function applyScreenSettings() {
-    var draft = model.screenDraft;
-    var display = activeDisplay();
-    var limitIds = screenLimitFieldIds(draft);
-    var fieldState = settings.stateFor(limitIds);
-    if (!draft || !display || draft.displayId !== display.id || model.screenApplying || fieldState.invalid || !(screenDraftDirty(draft) || fieldState.dirty)) return;
-    model.screenApplying = true;
-    draft.error = "";
-    renderApply();
-    var displayId = display.id;
-    var resize = draft.rows !== draft.initialRows || draft.columns !== draft.initialColumns;
-    var result = Promise.resolve();
-    if (resize) {
-      result = result.then(function () {
-        return postLayout({ operation:"resize", variant:draft.rows + "x" + draft.columns, rows:draft.rows, columns:draft.columns }, { skipSettings:true });
-      });
-    }
-    result.then(function () {
-      if (!activeDisplay() || activeDisplay().id !== displayId) throw new Error("Контекст экрана изменился; повторите действие.");
-      return persistLayoutLinks(draft);
-    }).then(function () {
-      return settings.flushFields(limitIds);
-    }).then(function () {
-      if (!fieldState.dirty) return null;
-      function applyLatest(retries) {
-        if (!activeDisplay() || activeDisplay().id !== displayId) return Promise.reject(new Error("Контекст экрана изменился; повторите действие."));
-        return api.applySettings({ state_revision:settings.stateFor(limitIds).revision, display_id:displayId }).catch(function (error) {
-          var current = error && error.payload && (error.payload.current || error.payload.state);
-          if (error && error.status === 409 && retries < 1 && current) {
-            if (accept(current)) renderActivePaneContext();
-            else if (typeof current.state_revision === "number") { model.revision = Math.max(model.revision, current.state_revision); settings.setRevision(current.state_revision); }
-            return applyLatest(retries + 1);
-          }
-          throw error;
-        });
-      }
-      return applyLatest(0);
-    }).then(function (result) {
-      if (result && result.success === false) throw new Error(result.error || "Сервер отклонил настройки.");
-      if (result) { model.revision = Math.max(model.revision, result.state_revision || model.revision); settings.setRevision(model.revision); output(true); }
-      return settings.load();
-    }).then(function () {
-      settings.markApplied();
-      model.screenApplying = false;
-      model.screenDraft = null;
-      renderSettings(activeDisplay());
-      showToast("Настройки экрана применены", false);
-    }).catch(function (error) {
-      model.screenApplying = false;
-      if (model.screenDraft && model.screenDraft.displayId === displayId) model.screenDraft.error = error.message || "Не удалось применить настройки экрана.";
-      renderSettings(activeDisplay());
-      showToast(error.message || "Не удалось применить настройки экрана.", true);
-    });
-  }
-
   function completePendingApply() {
     var footer = q("[data-testid='settings-footer']");
     if (!footer || footer.dataset.phase !== "pending") return;
@@ -2578,7 +2558,7 @@
     if (button.dataset.testid === "extrema-calculate") return void calculatePeaks();
     if (button.dataset.testid === "extrema-configure") return void configureActivePeaks();
     if (button.dataset.testid === "extrema-values") return void showActivePeaksValues();
-    if (button.dataset.testid === "settings-apply") return void (model.settingsPage === "peaks" ? applyPeaksSettings() : model.settingsPage === "screen" ? applyScreenSettings() : applySettings());
+    if (button.dataset.testid === "settings-apply") return void (model.settingsPage === "peaks" ? applyPeaksSettings() : applySettings());
     if (button.dataset.testid === "signals-add-action") return void openSignalAddDialog(button);
     if (button.dataset.signalAddClose !== undefined || button.dataset.signalAddCancel !== undefined) return void closeSignalAddDialog(true);
     if (button.dataset.signalAddRetry !== undefined) return void loadSignalAddCatalog(true);
