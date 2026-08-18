@@ -16,6 +16,7 @@ function classList() {
 
 function element(extra) {
   const attributes = {};
+  const eventListeners = {};
   return Object.assign({
     hidden: false,
     disabled: false,
@@ -31,7 +32,8 @@ function element(extra) {
     setAttribute(name, value) { attributes[name] = String(value); },
     getAttribute(name) { return attributes[name]; },
     focus() { this.focusCount += 1; },
-    addEventListener() {},
+    addEventListener(type, listener) { (eventListeners[type] || (eventListeners[type] = [])).push(listener); },
+    dispatch(type, event) { (eventListeners[type] || []).forEach((listener) => listener(event)); },
     contains(target) { return target === this; },
     querySelector() { return null; },
     getBoundingClientRect() { return { left: 100, right: 400, top: 100, bottom: 300, width: 300, height: 200 }; }
@@ -56,7 +58,7 @@ function createHarness() {
   const root = path.resolve(__dirname, "../../../..");
   let source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
-  source = source.replace("})(window, document);", "window.__task0098 = { model:model, accept:accept, eligible:rangeSliderEligible, sync:syncPaneMenuState, openMenu:openPaneMenu, closeMenu:closePaneMenu, toggle:togglePaneRangeSlider, toggleAmplitude:togglePaneAmplitudeSlider, queueAmplitude:queueAmplitudeRange, layout:plotLayoutWithRangeSlider, enqueue:enqueuePlot, openHelp:openGraphHelp, closeHelp:closeGraphHelp, openClear:openPaneClearConfirm, closeClear:closePaneClearConfirm, confirmClear:confirmPaneClear }; })(window, document);");
+  source = source.replace("})(window, document);", "window.__task0098 = { model:model, accept:accept, eligible:rangeSliderEligible, sync:syncPaneMenuState, openMenu:openPaneMenu, closeMenu:closePaneMenu, toggle:togglePaneRangeSlider, bindRangeReset:bindRangeSliderDoubleClick, toggleAmplitude:togglePaneAmplitudeSlider, queueAmplitude:queueAmplitudeRange, layout:plotLayoutWithRangeSlider, enqueue:enqueuePlot, openHelp:openGraphHelp, closeHelp:closeGraphHelp, openClear:openPaneClearConfirm, closeClear:closePaneClearConfirm, confirmClear:confirmPaneClear }; })(window, document);");
 
   const listeners = {};
   const apiCalls = [];
@@ -104,6 +106,7 @@ function createHarness() {
     hosts[`display-a::${paneId}`] = element({
       dataset: { paneHost: `display-a::${paneId}`, plotReady: "true" },
       _fullLayout: { xaxis: { range:[0, 1] }, yaxis: { range:[-1, 1] }, yaxis2: {} },
+      contains() { return true; },
       getBoundingClientRect() { return { width: 480, height: 260 }; }
     });
     return { canvas, host: hosts[`display-a::${paneId}`] };
@@ -196,6 +199,7 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   h.test.model.activePane = "pane-1";
   h.test.model.outputs["display-a::pane-1"] = { output: { isready: true, success: true, data: [{ x:[0, 1], y:[0, 1] }] } };
   h.test.model.outputs["display-a::pane-2"] = { output: { isready: true, success: true, data: [{ x:[0, 1], y:[1, 0] }] } };
+  h.test.model.rangeSliderDataRangeByPane["display-a::pane-1"] = [0, 1];
   h.test.model.amplitudeDataRangeByPane["display-a::pane-1"] = [-2, 2];
 
   const firstTrigger = trigger("pane-1");
@@ -214,6 +218,17 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   assert(!Object.keys(on).some((key) => /^yaxis.*\.fixedrange$/.test(key)), "enabling the X range slider must not block vertical scaling on any Y axis");
   assert(h.test.model.revision === revision && h.apiCalls.length === 0 && h.reactCalls.length === 0, "toggle must not change revision, call any API or remount/react Plotly");
   assert(h.test.model.rangeSliderByPane["display-a::pane-1"] === true && !h.test.model.rangeSliderByPane["display-a::pane-2"], "Range Slider preference must remain pane-local");
+  h.test.bindRangeReset(h.hosts["display-a::pane-1"], "display-a::pane-1");
+  let prevented = 0, stopped = 0;
+  h.hosts["display-a::pane-1"].dispatch("dblclick", {
+    target:{ closest(selector) { return selector === ".rangeslider-container" ? element() : null; } },
+    preventDefault() { prevented += 1; },
+    stopPropagation() { stopped += 1; }
+  });
+  await h.settle();
+  const horizontalReset = h.relayoutCalls[1].update;
+  assert(horizontalReset["xaxis.range[0]"] === 0 && horizontalReset["xaxis.range[1]"] === 1 && JSON.stringify(horizontalReset["xaxis.rangeslider.range"]) === "[0,1]", "double-clicking the horizontal slider must restore the full signal X range");
+  assert(!Object.keys(horizontalReset).some((key) => key.indexOf("yaxis.") === 0) && prevented === 1 && stopped === 1, "horizontal slider reset must not alter Y and must consume the slider double-click");
 
   const secondTrigger = trigger("pane-2");
   h.test.openMenu(secondTrigger);
@@ -223,18 +238,18 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   assert(h.rangeAction.getAttribute("aria-checked") === "true", "reopening the original pane must restore its checked state during the session");
   h.test.toggle();
   await h.settle();
-  assert(h.relayoutCalls.length === 2 && h.relayoutCalls[1].update["xaxis.rangeslider.visible"] === false, "the checked action must disable the native overview on the same host");
-  assert(!Object.keys(h.relayoutCalls[1].update).some((key) => /^yaxis.*\.fixedrange$/.test(key)) && h.test.model.rangeSliderByPane["display-a::pane-1"] === false, "disable must leave ordinary Y interaction untouched and retain off state");
+  assert(h.relayoutCalls.length === 3 && h.relayoutCalls[2].update["xaxis.rangeslider.visible"] === false, "the checked action must disable the native overview on the same host");
+  assert(!Object.keys(h.relayoutCalls[2].update).some((key) => /^yaxis.*\.fixedrange$/.test(key)) && h.test.model.rangeSliderByPane["display-a::pane-1"] === false, "disable must leave ordinary Y interaction untouched and retain off state");
 
   h.test.openMenu(firstTrigger);
   h.test.toggleAmplitude();
   await h.settle();
-  assert(h.relayoutCalls.length === 3 && h.relayoutCalls[2].update["margin.r"] >= 48, "the amplitude toggle must reserve only its own narrow in-plot control margin");
+  assert(h.relayoutCalls.length === 4 && h.relayoutCalls[3].update["margin.r"] >= 48, "the amplitude toggle must reserve only its own narrow in-plot control margin");
   assert(h.test.model.amplitudeSliderByPane["display-a::pane-1"] === true && h.test.model.rangeSliderByPane["display-a::pane-1"] === false, "amplitude and range sliders must remain independently selectable");
   h.test.queueAmplitude(h.hosts["display-a::pane-1"], "display-a::pane-1", [-3, 1]);
   h.flushFrame();
   await h.settle();
-  const amplitudeUpdate = h.relayoutCalls[3].update;
+  const amplitudeUpdate = h.relayoutCalls[4].update;
   assert(amplitudeUpdate["yaxis.range[0]"] === -3 && amplitudeUpdate["yaxis.range[1]"] === 1 && amplitudeUpdate["yaxis.autorange"] === false, "amplitude interaction must relayout only the Y range");
   assert(!Object.keys(amplitudeUpdate).some((key) => key.indexOf("xaxis.") === 0), "amplitude interaction must not change the independent X range");
   assert(JSON.stringify(h.test.model.amplitudeFullRangeByPane["display-a::pane-1"]) === "[-3,2]", "amplitude full range must include both selected handles and all signal values");

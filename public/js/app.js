@@ -747,6 +747,29 @@
     return { "xaxis.rangeslider.range":fullRange.slice(), "xaxis.rangeslider.autorange":false };
   }
 
+  function bindRangeSliderDoubleClick(host, runtimeKey) {
+    if (!host || typeof host.addEventListener !== "function" || host.dataset.rangeSliderDoubleClickBound === runtimeKey) return;
+    host.addEventListener("dblclick", function (event) {
+      var target = event.target;
+      var rangeSlider = target && typeof target.closest === "function" ? target.closest(".rangeslider-container") : null;
+      var dataRange = model.rangeSliderDataRangeByPane[runtimeKey], Plotly = window.Plotly;
+      if (!rangeSlider || !host.contains(rangeSlider) || !model.rangeSliderByPane[runtimeKey] || !dataRange || !Plotly || typeof Plotly.relayout !== "function") return;
+      model.rangeSliderFullRangeByPane[runtimeKey] = dataRange.slice();
+      event.preventDefault();
+      event.stopPropagation();
+      try {
+        Promise.resolve(Plotly.relayout(host, {
+          "xaxis.range[0]":dataRange[0],
+          "xaxis.range[1]":dataRange[1],
+          "xaxis.autorange":false,
+          "xaxis.rangeslider.range":dataRange.slice(),
+          "xaxis.rangeslider.autorange":false
+        })).catch(function () { /* Keep the existing graph state when Plotly rejects reset. */ });
+      } catch (_) { /* Keep the existing graph state when Plotly rejects reset. */ }
+    }, true);
+    host.dataset.rangeSliderDoubleClickBound = runtimeKey;
+  }
+
   function plotLayoutWithRangeSlider(layout, runtimeKey, host) {
     var source = layout || {};
     var enabled = !!model.rangeSliderByPane[runtimeKey], amplitudeEnabled = !!model.amplitudeSliderByPane[runtimeKey];
@@ -1139,7 +1162,7 @@
     closePaneMenu(true);
     loadPlotly().then(function (Plotly) {
       if (!host.isConnected || !paneById(paneId)) return;
-      return Plotly.relayout(host, rangeSliderRelayout(host, enabled)).then(function () { host.dataset.rangeSliderVisible = String(enabled); syncAmplitudeSlider(host, runtimeKey); });
+      return Plotly.relayout(host, rangeSliderRelayout(host, enabled)).then(function () { host.dataset.rangeSliderVisible = String(enabled); bindRangeSliderDoubleClick(host, runtimeKey); syncAmplitudeSlider(host, runtimeKey); });
     }).catch(function () {
       if (prior) model.rangeSliderByPane[runtimeKey] = true; else delete model.rangeSliderByPane[runtimeKey];
       showToast("Не удалось изменить слайдер диапазона.", true);
@@ -1238,7 +1261,7 @@
         var amplitudeDataRange = pane.plot_type === "time" ? traceYDataRange(traces) : null;
         if (amplitudeDataRange) model.amplitudeDataRangeByPane[runtimeKey] = amplitudeDataRange;
         else { delete model.amplitudeDataRangeByPane[runtimeKey]; delete model.amplitudeFullRangeByPane[runtimeKey]; delete model.amplitudeSelectedRangeByPane[runtimeKey]; }
-        return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); host.dataset.amplitudeSliderVisible = String(amplitudeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); syncAmplitudeSlider(host, runtimeKey); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
+        return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); host.dataset.amplitudeSliderVisible = String(amplitudeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); bindRangeSliderDoubleClick(host, runtimeKey); syncAmplitudeSlider(host, runtimeKey); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
         model.plotInFlight[runtimeKey] = false;
         if (model.plotQueue[runtimeKey]) enqueuePlot(displayId, pane, model.plotQueue[runtimeKey]);

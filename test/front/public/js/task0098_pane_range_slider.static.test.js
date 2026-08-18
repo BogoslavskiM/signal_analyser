@@ -30,6 +30,7 @@ module.exports = async function testTask0098PaneRangeSliderStatic(assert) {
   assert(/function togglePaneAmplitudeSlider\(\)/.test(app) && /"yaxis\.range\[0\]"/.test(app) && /"yaxis\.range\[1\]"/.test(app), "Amplitude Slider must independently relayout the existing Y axis");
   assert(/function rangeSliderFullRange\([\s\S]*Math\.min\(dataRange\[0\], selectedRange\[0\]\)[\s\S]*Math\.max\(dataRange\[1\], selectedRange\[1\]\)/.test(app), "both sliders must keep a full range that includes signal data and dragged handles");
   assert(/slider\.addEventListener\("dblclick"[\s\S]*amplitudeDataRangeByPane[\s\S]*queueAmplitudeRange/.test(app), "double-clicking the amplitude slider must restore its full signal range");
+  assert(/function bindRangeSliderDoubleClick\([\s\S]*addEventListener\("dblclick"[\s\S]*\.rangeslider-container[\s\S]*"xaxis\.range\[0\]"[\s\S]*"xaxis\.range\[1\]"/.test(app), "double-clicking the horizontal Plotly slider must restore the full signal X range");
   assert(/result\.legend\s*=\s*Object\.assign\([\s\S]*x\s*:\s*0\.99[\s\S]*xanchor\s*:\s*"right"[\s\S]*y\s*:\s*0\.99[\s\S]*yanchor\s*:\s*"top"/.test(app), "Plotly legend placement must be forced inside the graph at top right");
   assert(/r\s*:\s*amplitudeEnabled\s*\?\s*48\s*:\s*12/.test(app), "the in-plot legend must remove the obsolete side-column margin while retaining the amplitude-slider margin");
   assert(/доступен только для загруженной временной области/.test(app), "disabled states must explain the ready temporal pane requirement in Russian");
