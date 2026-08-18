@@ -5,5 +5,5 @@ tmp/
 coverage/
 node_modules/
 architecture/
-.codex
+.codex/
 AGENTS.md
