@@ -14,7 +14,7 @@
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
-    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
+    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
@@ -82,6 +82,10 @@
           delete model.rangeSliderDataRangeByPane[key];
           delete model.rangeSliderFullRangeByPane[key];
           delete model.rangeSliderAdjustByPane[key];
+          delete model.amplitudeSliderByPane[key];
+          delete model.amplitudeDataRangeByPane[key];
+          delete model.amplitudeFullRangeByPane[key];
+          delete model.amplitudeSelectedRangeByPane[key];
         }
       });
       if (!owningDisplay) itemPanes.forEach(function (pane) {
@@ -90,12 +94,22 @@
         delete model.rangeSliderDataRangeByPane[key];
         delete model.rangeSliderFullRangeByPane[key];
         delete model.rangeSliderAdjustByPane[key];
+        delete model.amplitudeSliderByPane[key];
+        delete model.amplitudeDataRangeByPane[key];
+        delete model.amplitudeFullRangeByPane[key];
+        delete model.amplitudeSelectedRangeByPane[key];
       });
     });
     Object.keys(model.rangeSliderByPane).forEach(function (key) { if (!currentKeys[key]) delete model.rangeSliderByPane[key]; });
     Object.keys(model.rangeSliderDataRangeByPane).forEach(function (key) { if (!currentKeys[key]) delete model.rangeSliderDataRangeByPane[key]; });
     Object.keys(model.rangeSliderFullRangeByPane).forEach(function (key) { if (!currentKeys[key]) delete model.rangeSliderFullRangeByPane[key]; });
     Object.keys(model.rangeSliderAdjustByPane).forEach(function (key) { if (!currentKeys[key]) delete model.rangeSliderAdjustByPane[key]; });
+    Object.keys(model.amplitudeSliderByPane).forEach(function (key) { if (!currentKeys[key]) delete model.amplitudeSliderByPane[key]; });
+    Object.keys(model.amplitudeDataRangeByPane).forEach(function (key) { if (!currentKeys[key]) delete model.amplitudeDataRangeByPane[key]; });
+    Object.keys(model.amplitudeFullRangeByPane).forEach(function (key) { if (!currentKeys[key]) delete model.amplitudeFullRangeByPane[key]; });
+    Object.keys(model.amplitudeSelectedRangeByPane).forEach(function (key) { if (!currentKeys[key]) delete model.amplitudeSelectedRangeByPane[key]; });
+    Object.keys(model.amplitudeFrameByPane).forEach(function (key) { if (!currentKeys[key]) delete model.amplitudeFrameByPane[key]; });
+    Object.keys(model.amplitudePendingByPane).forEach(function (key) { if (!currentKeys[key]) delete model.amplitudePendingByPane[key]; });
   }
 
   function scheduleRender() {
@@ -666,6 +680,10 @@
     return !!model.rangeSliderByPane[paneRuntimeKey(displayId, paneId)];
   }
 
+  function amplitudeSliderEnabled(displayId, paneId) {
+    return !!model.amplitudeSliderByPane[paneRuntimeKey(displayId, paneId)];
+  }
+
   function traceXDataRange(traces) {
     var minimum = Infinity, maximum = -Infinity;
     (traces || []).forEach(function (trace) {
@@ -681,12 +699,36 @@
     return Number.isFinite(minimum) && Number.isFinite(maximum) && maximum > minimum ? [minimum, maximum] : null;
   }
 
-  function selectedXRange(eventData) {
+  function traceYDataRange(traces) {
+    var minimum = Infinity, maximum = -Infinity;
+    (traces || []).forEach(function (trace) {
+      var values = trace && trace.y;
+      if (!values || typeof values.length !== "number") return;
+      for (var index = 0; index < values.length; index += 1) {
+        var value = Number(values[index]);
+        if (!Number.isFinite(value)) continue;
+        minimum = Math.min(minimum, value);
+        maximum = Math.max(maximum, value);
+      }
+    });
+    if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) return null;
+    if (minimum === maximum) {
+      var padding = Math.max(1, Math.abs(minimum) * 0.05);
+      return [minimum - padding, maximum + padding];
+    }
+    return [minimum, maximum];
+  }
+
+  function selectedAxisRange(eventData, axis) {
     if (!eventData || typeof eventData !== "object") return null;
-    var range = eventData["xaxis.range"];
-    var start = Number(Array.isArray(range) ? range[0] : eventData["xaxis.range[0]"]);
-    var finish = Number(Array.isArray(range) ? range[1] : eventData["xaxis.range[1]"]);
+    var range = eventData[axis + ".range"];
+    var start = Number(Array.isArray(range) ? range[0] : eventData[axis + ".range[0]"]);
+    var finish = Number(Array.isArray(range) ? range[1] : eventData[axis + ".range[1]"]);
     return Number.isFinite(start) && Number.isFinite(finish) && start < finish ? [start, finish] : null;
+  }
+
+  function selectedXRange(eventData) {
+    return selectedAxisRange(eventData, "xaxis");
   }
 
   function rangeSliderFullRange(dataRange, selectedRange) {
@@ -707,25 +749,186 @@
 
   function plotLayoutWithRangeSlider(layout, runtimeKey, host) {
     var source = layout || {};
-    var enabled = !!model.rangeSliderByPane[runtimeKey];
+    var enabled = !!model.rangeSliderByPane[runtimeKey], amplitudeEnabled = !!model.amplitudeSliderByPane[runtimeKey];
     var result = Object.assign({ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", showlegend:true }, source);
-    result.margin = Object.assign({ l:44, r:12, t:12, b:enabled ? 34 : 30 }, source.margin || {}, { b:enabled ? 34 : 30 });
-    if (!enabled) return result;
-    result.xaxis = Object.assign({}, source.xaxis || {});
-    result.xaxis.rangeslider = Object.assign({}, (source.xaxis && source.xaxis.rangeslider) || {}, { visible:true, thickness:0.15, bgcolor:"#ffffff", bordercolor:"#e1e1e1", borderwidth:1 });
-    var dataRange = model.rangeSliderDataRangeByPane[runtimeKey];
-    var currentRange = host && host._fullLayout && host._fullLayout.xaxis && Array.isArray(host._fullLayout.xaxis.range) ? host._fullLayout.xaxis.range : null;
-    var fullRange = rangeSliderFullRange(dataRange, currentRange);
-    if (fullRange) model.rangeSliderFullRangeByPane[runtimeKey] = fullRange;
-    if (fullRange) {
-      result.xaxis.rangeslider.range = fullRange.slice();
-      result.xaxis.rangeslider.autorange = false;
+    result.legend = Object.assign({}, source.legend || {}, { x:0.99, xanchor:"right", y:0.99, yanchor:"top", bgcolor:"rgba(255,255,255,0.82)", bordercolor:"#e1e1e1", borderwidth:1 });
+    result.margin = Object.assign({ l:44, r:12, t:12, b:enabled ? 34 : 30 }, source.margin || {}, { r:amplitudeEnabled ? 48 : 12, b:enabled ? 34 : 30 });
+    if (enabled) {
+      result.xaxis = Object.assign({}, source.xaxis || {});
+      result.xaxis.rangeslider = Object.assign({}, (source.xaxis && source.xaxis.rangeslider) || {}, { visible:true, thickness:0.15, bgcolor:"#ffffff", bordercolor:"#e1e1e1", borderwidth:1 });
+      var dataRange = model.rangeSliderDataRangeByPane[runtimeKey];
+      var currentRange = host && host._fullLayout && host._fullLayout.xaxis && Array.isArray(host._fullLayout.xaxis.range) ? host._fullLayout.xaxis.range : null;
+      var fullRange = rangeSliderFullRange(dataRange, currentRange);
+      if (fullRange) model.rangeSliderFullRangeByPane[runtimeKey] = fullRange;
+      if (fullRange) {
+        result.xaxis.rangeslider.range = fullRange.slice();
+        result.xaxis.rangeslider.autorange = false;
+      }
+      if (currentRange) {
+        result.xaxis.range = currentRange.slice();
+        result.xaxis.autorange = false;
+      }
     }
-    if (currentRange) {
-      result.xaxis.range = currentRange.slice();
-      result.xaxis.autorange = false;
+    if (amplitudeEnabled) {
+      var currentAmplitudeRange = model.amplitudeSelectedRangeByPane[runtimeKey] || (host && host._fullLayout && host._fullLayout.yaxis && Array.isArray(host._fullLayout.yaxis.range) ? host._fullLayout.yaxis.range : null);
+      if (currentAmplitudeRange) {
+        result.yaxis = Object.assign({}, source.yaxis || {}, { range:currentAmplitudeRange.slice(), autorange:false });
+      }
     }
     return result;
+  }
+
+  function amplitudeRangeFromHost(host, runtimeKey) {
+    var retained = model.amplitudeSelectedRangeByPane[runtimeKey];
+    if (retained) return retained.slice();
+    var axis = host && host._fullLayout && host._fullLayout.yaxis;
+    return axis && Array.isArray(axis.range) ? axis.range.slice() : null;
+  }
+
+  function syncAmplitudeSlider(host, runtimeKey) {
+    if (!host) return;
+    var slider = typeof host.querySelector === "function" ? host.querySelector("[data-amplitude-slider]") : null;
+    if (!model.amplitudeSliderByPane[runtimeKey] || host.dataset.plotReady !== "true") {
+      if (slider && typeof slider.remove === "function") slider.remove();
+      return;
+    }
+    var dataRange = model.amplitudeDataRangeByPane[runtimeKey], selectedRange = amplitudeRangeFromHost(host, runtimeKey);
+    if (!dataRange || !selectedRange) return;
+    var fullRange = rangeSliderFullRange(dataRange, selectedRange);
+    model.amplitudeSelectedRangeByPane[runtimeKey] = selectedRange.slice();
+    model.amplitudeFullRangeByPane[runtimeKey] = fullRange.slice();
+    if (!slider) {
+      if (typeof document.createElement !== "function" || typeof host.appendChild !== "function") return;
+      slider = document.createElement("div");
+      slider.className = "amplitude-slider";
+      slider.dataset.amplitudeSlider = runtimeKey;
+      slider.dataset.testid = "amplitude-slider-" + runtimeKey.split("::").pop();
+      slider.setAttribute("role", "group");
+      slider.setAttribute("aria-label", "Слайдер амплитуды");
+      slider.innerHTML = "<div class='amplitude-slider-rail' data-amplitude-rail><div class='amplitude-slider-window' data-amplitude-window></div><button class='amplitude-slider-handle is-maximum' type='button' role='slider' aria-orientation='vertical' aria-label='Максимум амплитуды' data-amplitude-handle='maximum'></button><button class='amplitude-slider-handle is-minimum' type='button' role='slider' aria-orientation='vertical' aria-label='Минимум амплитуды' data-amplitude-handle='minimum'></button></div>";
+      host.appendChild(slider);
+      bindAmplitudeSlider(slider, host, runtimeKey);
+    }
+    slider.classList.toggle("has-range-slider", !!model.rangeSliderByPane[runtimeKey]);
+    var span = fullRange[1] - fullRange[0];
+    if (!(span > 0)) return;
+    var maximumTop = (fullRange[1] - selectedRange[1]) / span * 100;
+    var minimumTop = (fullRange[1] - selectedRange[0]) / span * 100;
+    maximumTop = Math.max(0, Math.min(100, maximumTop));
+    minimumTop = Math.max(0, Math.min(100, minimumTop));
+    var windowNode = slider.querySelector("[data-amplitude-window]");
+    var maximumHandle = slider.querySelector("[data-amplitude-handle='maximum']");
+    var minimumHandle = slider.querySelector("[data-amplitude-handle='minimum']");
+    if (windowNode) { windowNode.style.top = maximumTop + "%"; windowNode.style.bottom = (100 - minimumTop) + "%"; }
+    if (maximumHandle) {
+      maximumHandle.style.top = maximumTop + "%";
+      maximumHandle.setAttribute("aria-valuemin", String(fullRange[0]));
+      maximumHandle.setAttribute("aria-valuemax", String(fullRange[1]));
+      maximumHandle.setAttribute("aria-valuenow", String(selectedRange[1]));
+    }
+    if (minimumHandle) {
+      minimumHandle.style.top = minimumTop + "%";
+      minimumHandle.setAttribute("aria-valuemin", String(fullRange[0]));
+      minimumHandle.setAttribute("aria-valuemax", String(fullRange[1]));
+      minimumHandle.setAttribute("aria-valuenow", String(selectedRange[0]));
+    }
+  }
+
+  function queueAmplitudeRange(host, runtimeKey, range) {
+    if (!host || !range || !(range[0] < range[1])) return;
+    model.amplitudeSelectedRangeByPane[runtimeKey] = range.slice();
+    model.amplitudeFullRangeByPane[runtimeKey] = rangeSliderFullRange(model.amplitudeDataRangeByPane[runtimeKey], range);
+    syncAmplitudeSlider(host, runtimeKey);
+    model.amplitudePendingByPane[runtimeKey] = range.slice();
+    if (model.amplitudeFrameByPane[runtimeKey]) return;
+    model.amplitudeFrameByPane[runtimeKey] = window.requestAnimationFrame(function () {
+      delete model.amplitudeFrameByPane[runtimeKey];
+      var pending = model.amplitudePendingByPane[runtimeKey];
+      delete model.amplitudePendingByPane[runtimeKey];
+      var Plotly = window.Plotly;
+      if (!pending || !host.isConnected || !model.amplitudeSliderByPane[runtimeKey] || !Plotly || typeof Plotly.relayout !== "function") return;
+      try { Promise.resolve(Plotly.relayout(host, { "yaxis.range[0]":pending[0], "yaxis.range[1]":pending[1], "yaxis.autorange":false })).catch(function () { /* Keep amplitude interaction pane-local. */ }); }
+      catch (_) { /* Keep amplitude interaction pane-local. */ }
+    });
+  }
+
+  function bindAmplitudeSlider(slider, host, runtimeKey) {
+    slider.addEventListener("pointerdown", function (event) {
+      if (event.button !== undefined && event.button !== 0) return;
+      var target = event.target && event.target.closest && event.target.closest("[data-amplitude-handle], [data-amplitude-window]");
+      if (!target) return;
+      var rail = slider.querySelector("[data-amplitude-rail]"), fullRange = model.amplitudeFullRangeByPane[runtimeKey], selectedRange = amplitudeRangeFromHost(host, runtimeKey);
+      if (!rail || !fullRange || !selectedRange) return;
+      model.amplitudeDrag = { runtimeKey:runtimeKey, pointerId:event.pointerId, mode:target.dataset.amplitudeHandle || "window", startY:event.clientY, startRange:selectedRange.slice(), fullRange:fullRange.slice(), rail:rail };
+      if (typeof slider.setPointerCapture === "function") slider.setPointerCapture(event.pointerId);
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    slider.addEventListener("pointermove", function (event) {
+      var drag = model.amplitudeDrag;
+      if (!drag || drag.runtimeKey !== runtimeKey || drag.pointerId !== event.pointerId) return;
+      var rect = drag.rail.getBoundingClientRect(), fullSpan = drag.fullRange[1] - drag.fullRange[0];
+      if (!(rect.height > 0) || !(fullSpan > 0)) return;
+      var next = drag.startRange.slice(), minimumGap = Math.max(fullSpan * 1.0e-9, Number.EPSILON);
+      if (drag.mode === "window") {
+        var delta = -(event.clientY - drag.startY) / rect.height * fullSpan;
+        next[0] += delta; next[1] += delta;
+      } else {
+        var value = drag.fullRange[1] - (event.clientY - rect.top) / rect.height * fullSpan;
+        if (drag.mode === "minimum") next[0] = Math.min(value, next[1] - minimumGap);
+        else next[1] = Math.max(value, next[0] + minimumGap);
+      }
+      queueAmplitudeRange(host, runtimeKey, next);
+      event.preventDefault();
+    });
+    function finish(event) {
+      var drag = model.amplitudeDrag;
+      if (!drag || drag.runtimeKey !== runtimeKey || (event.pointerId !== undefined && drag.pointerId !== event.pointerId)) return;
+      model.amplitudeDrag = null;
+      if (typeof slider.releasePointerCapture === "function" && event.pointerId !== undefined && slider.hasPointerCapture && slider.hasPointerCapture(event.pointerId)) slider.releasePointerCapture(event.pointerId);
+    }
+    slider.addEventListener("pointerup", finish);
+    slider.addEventListener("pointercancel", finish);
+    slider.addEventListener("dblclick", function (event) {
+      var dataRange = model.amplitudeDataRangeByPane[runtimeKey];
+      if (!dataRange) return;
+      model.amplitudeDrag = null;
+      queueAmplitudeRange(host, runtimeKey, dataRange.slice());
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    slider.addEventListener("keydown", function (event) {
+      var handle = event.target && event.target.closest && event.target.closest("[data-amplitude-handle]");
+      if (!handle || ["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Home","End"].indexOf(event.key) < 0) return;
+      var fullRange = model.amplitudeFullRangeByPane[runtimeKey], selectedRange = amplitudeRangeFromHost(host, runtimeKey);
+      if (!fullRange || !selectedRange) return;
+      var index = handle.dataset.amplitudeHandle === "minimum" ? 0 : 1;
+      var step = (fullRange[1] - fullRange[0]) / 100;
+      var value = selectedRange[index];
+      if (event.key === "Home") value = fullRange[0];
+      else if (event.key === "End") value = fullRange[1];
+      else value += (event.key === "ArrowUp" || event.key === "ArrowRight" ? step : -step);
+      if (index === 0) selectedRange[0] = Math.min(value, selectedRange[1] - Math.max(step * 0.001, Number.EPSILON));
+      else selectedRange[1] = Math.max(value, selectedRange[0] + Math.max(step * 0.001, Number.EPSILON));
+      queueAmplitudeRange(host, runtimeKey, selectedRange);
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  }
+
+  function syncAmplitudeSliderFromRelayout(host, runtimeKey, eventData) {
+    if (!model.amplitudeSliderByPane[runtimeKey]) return;
+    var selectedRange = selectedAxisRange(eventData, "yaxis");
+    if (selectedRange) {
+      model.amplitudeSelectedRangeByPane[runtimeKey] = selectedRange.slice();
+      model.amplitudeFullRangeByPane[runtimeKey] = rangeSliderFullRange(model.amplitudeDataRangeByPane[runtimeKey], selectedRange);
+      syncAmplitudeSlider(host, runtimeKey);
+      return;
+    }
+    if (eventData && eventData["yaxis.autorange"] === true) window.requestAnimationFrame(function () {
+      delete model.amplitudeSelectedRangeByPane[runtimeKey];
+      syncAmplitudeSlider(host, runtimeKey);
+    });
   }
 
   function linkedAxisRangeUpdate(eventData, axis) {
@@ -795,6 +998,7 @@
     if (!host || typeof host.on !== "function" || host.dataset.axisLinkBound === runtimeKey) return;
     var handler = function (eventData) {
       if (!model.axisLinkSuppressByPane[runtimeKey]) queueLinkedTimeRelayout(displayId, paneId, eventData);
+      syncAmplitudeSliderFromRelayout(host, runtimeKey, eventData);
       var correction = adjustRangeSliderFullRange(runtimeKey, eventData);
       if (!correction || model.rangeSliderAdjustByPane[runtimeKey]) return;
       var Plotly = window.Plotly;
@@ -819,13 +1023,20 @@
     var menu = q("[data-testid='display-overflow-menu']");
     if (!menu || menu.hidden) return;
     var display = activeDisplay(), paneId = menu.dataset.paneId, displayId = menu.dataset.displayId;
-    var rangeAction = menu.querySelector("[data-plot-range-slider]");
+    var rangeAction = menu.querySelector("[data-plot-range-slider]"), amplitudeAction = menu.querySelector("[data-plot-amplitude-slider]");
     var eligible = !!display && display.id === displayId && rangeSliderEligible(displayId, paneId);
-    var checked = rangeSliderEnabled(displayId, paneId);
-    rangeAction.disabled = !eligible;
-    rangeAction.setAttribute("aria-checked", String(checked));
-    rangeAction.setAttribute("aria-label", eligible ? "Слайдер диапазона" : "Слайдер диапазона, доступен только для загруженной временной области");
-    rangeAction.title = eligible ? "" : "Доступно только для загруженной временной области";
+    if (rangeAction) {
+      rangeAction.disabled = !eligible;
+      rangeAction.setAttribute("aria-checked", String(rangeSliderEnabled(displayId, paneId)));
+      rangeAction.setAttribute("aria-label", eligible ? "Слайдер диапазона" : "Слайдер диапазона, доступен только для загруженной временной области");
+      rangeAction.title = eligible ? "" : "Доступно только для загруженной временной области";
+    }
+    if (amplitudeAction) {
+      amplitudeAction.disabled = !eligible;
+      amplitudeAction.setAttribute("aria-checked", String(amplitudeSliderEnabled(displayId, paneId)));
+      amplitudeAction.setAttribute("aria-label", eligible ? "Слайдер амплитуды" : "Слайдер амплитуды, доступен только для загруженной временной области");
+      amplitudeAction.title = eligible ? "" : "Доступно только для загруженной временной области";
+    }
   }
 
   function positionPaneMenu() {
@@ -928,10 +1139,45 @@
     closePaneMenu(true);
     loadPlotly().then(function (Plotly) {
       if (!host.isConnected || !paneById(paneId)) return;
-      return Plotly.relayout(host, rangeSliderRelayout(host, enabled)).then(function () { host.dataset.rangeSliderVisible = String(enabled); });
+      return Plotly.relayout(host, rangeSliderRelayout(host, enabled)).then(function () { host.dataset.rangeSliderVisible = String(enabled); syncAmplitudeSlider(host, runtimeKey); });
     }).catch(function () {
       if (prior) model.rangeSliderByPane[runtimeKey] = true; else delete model.rangeSliderByPane[runtimeKey];
       showToast("Не удалось изменить слайдер диапазона.", true);
+    });
+  }
+
+  function amplitudeSliderRelayout(host, enabled) {
+    var runtimeKey = host && host.dataset && host.dataset.paneHost;
+    if (host && host.dataset && host.dataset.amplitudeBaseMarginRight === undefined) {
+      var currentMargin = host._fullLayout && host._fullLayout.margin && Number(host._fullLayout.margin.r);
+      host.dataset.amplitudeBaseMarginRight = String(Number.isFinite(currentMargin) ? currentMargin : 20);
+    }
+    var baseMargin = host && host.dataset ? Number(host.dataset.amplitudeBaseMarginRight) : 20;
+    return { "margin.r":enabled ? Math.max(48, baseMargin) : baseMargin };
+  }
+
+  function togglePaneAmplitudeSlider() {
+    var menu = q("[data-testid='display-overflow-menu']"), display = activeDisplay();
+    if (!menu || menu.hidden || !display) return;
+    var displayId = menu.dataset.displayId, paneId = menu.dataset.paneId, runtimeKey = paneRuntimeKey(displayId, paneId);
+    var host = q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
+    if (display.id !== displayId || !rangeSliderEligible(displayId, paneId) || !host) return;
+    var prior = amplitudeSliderEnabled(displayId, paneId), enabled = !prior;
+    model.amplitudeSliderByPane[runtimeKey] = enabled;
+    if (enabled) {
+      var currentRange = amplitudeRangeFromHost(host, runtimeKey);
+      if (currentRange) model.amplitudeSelectedRangeByPane[runtimeKey] = currentRange;
+    }
+    closePaneMenu(true);
+    loadPlotly().then(function (Plotly) {
+      if (!host.isConnected || !paneById(paneId)) return;
+      return Plotly.relayout(host, amplitudeSliderRelayout(host, enabled)).then(function () {
+        host.dataset.amplitudeSliderVisible = String(enabled);
+        syncAmplitudeSlider(host, runtimeKey);
+      });
+    }).catch(function () {
+      if (prior) model.amplitudeSliderByPane[runtimeKey] = true; else delete model.amplitudeSliderByPane[runtimeKey];
+      showToast("Не удалось изменить слайдер амплитуды.", true);
     });
   }
 
@@ -960,7 +1206,12 @@
     if (!context || !display || display.id !== context.displayId || !pane) return closePaneClearConfirm(true);
     closePaneClearConfirm(false);
     postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:pane.plot_type, signal_bindings:[] }).then(function () {
-      delete model.rangeSliderByPane[paneRuntimeKey(context.displayId, context.paneId)];
+      var runtimeKey = paneRuntimeKey(context.displayId, context.paneId);
+      delete model.rangeSliderByPane[runtimeKey];
+      delete model.amplitudeSliderByPane[runtimeKey];
+      delete model.amplitudeDataRangeByPane[runtimeKey];
+      delete model.amplitudeFullRangeByPane[runtimeKey];
+      delete model.amplitudeSelectedRangeByPane[runtimeKey];
       showToast("Область очищена", false);
       var target = q("[data-pane-id='" + CSS.escape(context.paneId) + "']");
       if (target) target.focus();
@@ -984,7 +1235,10 @@
         var dataRange = pane.plot_type === "time" ? traceXDataRange(traces) : null;
         if (dataRange) model.rangeSliderDataRangeByPane[runtimeKey] = dataRange;
         else { delete model.rangeSliderDataRangeByPane[runtimeKey]; delete model.rangeSliderFullRangeByPane[runtimeKey]; }
-        return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
+        var amplitudeDataRange = pane.plot_type === "time" ? traceYDataRange(traces) : null;
+        if (amplitudeDataRange) model.amplitudeDataRangeByPane[runtimeKey] = amplitudeDataRange;
+        else { delete model.amplitudeDataRangeByPane[runtimeKey]; delete model.amplitudeFullRangeByPane[runtimeKey]; delete model.amplitudeSelectedRangeByPane[runtimeKey]; }
+        return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); host.dataset.amplitudeSliderVisible = String(amplitudeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); syncAmplitudeSlider(host, runtimeKey); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
         model.plotInFlight[runtimeKey] = false;
         if (model.plotQueue[runtimeKey]) enqueuePlot(displayId, pane, model.plotQueue[runtimeKey]);
@@ -2083,6 +2337,7 @@
     if (button.dataset.paneMenu) return void openPaneMenu(button);
     if (button.matches("[data-plot-clear]")) return void openPaneClearConfirm();
     if (button.dataset.plotRangeSlider !== undefined) return void togglePaneRangeSlider();
+    if (button.dataset.plotAmplitudeSlider !== undefined) return void togglePaneAmplitudeSlider();
     if (button.matches("[data-plot-help]")) return void (q("[data-testid='graph-help-overlay']").hidden ? openGraphHelp(button) : closeGraphHelp(true));
     if (button.dataset.graphHelpClose !== undefined) return void closeGraphHelp(true);
     if (button.dataset.paneClearCancel !== undefined) return void closePaneClearConfirm(true);
