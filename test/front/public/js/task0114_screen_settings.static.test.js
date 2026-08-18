@@ -26,7 +26,8 @@ module.exports = async function testTask0114ScreenSettings(assert) {
   assert(/draft\.linksReady \? "" : " disabled"/.test(app) && /!draft\.linksReady \|\| fieldState\.invalid \|\| !dirty/.test(app), "axis links and Apply must stay disabled until Screen settings are authoritative and valid");
   assert(/model\.screenDraft\.initialRows = draft\.rows[\s\S]*?model\.screenDraft\.initialColumns = draft\.columns/.test(app), "layout popover Apply must rebase the Screen layout draft without discarding independent link edits");
 
-  assert(/\.screen-layout-preview\s*\{[^}]*grid-template-columns:\s*repeat\(var\(--screen-layout-columns\)/.test(css), "Screen layout preview must reflect selected column count");
+  assert(/screenCollapsed:\s*\{\s*layout:true\s*\}/.test(app), "Screen layout group must be collapsed on first open");
+  assert(!app.includes("screen-layout-preview") && !css.includes(".screen-layout-preview"), "Screen settings must not render the removed layout preview");
   assert(/\.settings-field-row\s*\{[^}]*min-height:\s*40px/.test(css) && /\.checkbox-control\s*\{/.test(css), "Screen link rows must inherit the common field and checkbox geometry");
   assert(/linkTime \? null : group\("time-limits"/.test(settings) && /linkAmplitude \? null : group\("y-limits"/.test(settings), "linked limit sections must disappear from Area settings");
   assert(/draft\.linkTime \? screenSettingsGroup\("time-limits", "Пределы времени", settings\.renderRows\(\["time\.units", "time\.x_limits"\]\)\)/.test(app), "linked time limits must move to Screen settings");
