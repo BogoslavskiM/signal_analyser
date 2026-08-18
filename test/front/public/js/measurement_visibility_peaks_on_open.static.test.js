@@ -34,7 +34,7 @@ module.exports = async function testMeasurementVisibilityAndPeaksOnOpen(assert) 
   assert(/fetchActivePeaks\(displayId, paneId, false, false\)/.test(loadPeaks), "Extrema on-open must perform passive GET without polling");
   assert(!/calculateActivePeaks|fetchActivePeaks\(displayId, paneId, true/.test(loadPeaks), "Extrema on-open must not calculate");
   const peaksInspector = (app.match(/function renderPeaksInspector\(body\)[\s\S]*?\n  \}/) || [""])[0];
-  assert(/data-testid='extrema-start'[\s\S]*Рассчет экстремумы для области /.test(peaksInspector), "Extrema must render its exact area start state");
+  assert(/data-testid='extrema-start'[\s\S]*Рассчитать экстремумы для области /.test(peaksInspector), "Extrema must render its exact area start state");
   const calculateIndex = peaksInspector.indexOf("data-testid='extrema-calculate'");
   const configureIndex = peaksInspector.indexOf("data-testid='extrema-configure'");
   const tableIndex = peaksInspector.indexOf("data-testid='peaks-table'");

@@ -199,7 +199,7 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   flow.test.model.inspectorPage = "peaks";
   await flow.test.loadPeaks();
   assert(flow.activeCalls.length === 1 && flow.calculateCalls.length === 0, "opening Extrema must make one passive GET and no calculation POST");
-  assert(flow.peaksHost.innerHTML.includes("Рассчет экстремумы для области 1") && flow.peaksHost.innerHTML.includes("extrema-calculate") && flow.peaksHost.innerHTML.includes("extrema-configure"), "passive first-open must show the exact area copy and both actions");
+  assert(flow.peaksHost.innerHTML.includes("Рассчитать экстремумы для области 1") && flow.peaksHost.innerHTML.includes("extrema-calculate") && flow.peaksHost.innerHTML.includes("extrema-configure"), "passive first-open must show the exact area copy and both actions");
 
   flow.test.calculatePeaks();
   await settle();

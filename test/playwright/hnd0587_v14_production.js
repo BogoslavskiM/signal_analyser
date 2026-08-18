@@ -95,7 +95,7 @@ async function prototypeWalkthrough(page) {
     await page.evaluate(() => window.__TASK0080_DESIGN__.waitForPlots());
     await page.locator("[data-inspector-page='peaks']").click();
     const start = await page.locator("[data-design-id='extrema-start']").innerText();
-    check(`prototype start ${viewport.width}x${viewport.height}`, start === "Рассчет экстремумы для области 1\nРассчитать\nНастроить рассчет", { start, viewport }, "design");
+    check(`prototype start ${viewport.width}x${viewport.height}`, start === "Рассчитать экстремумы для области 1\nРассчитать\nНастроить рассчет", { start, viewport }, "design");
     await screenshot(page, `prototype-start-${viewport.width}x${viewport.height}`);
     await page.locator("[data-design-id='extrema-configure']").click();
     const configured = await page.evaluate(() => ({
@@ -207,7 +207,7 @@ async function waitExtremaTerminal(page) {
       loader: document.querySelectorAll("[data-testid='peaks-loader']").length,
     }));
     const openRequests = report.requests.slice(beforeOpen);
-    check("Extrema first-open is explicit start without calculation", firstOpen.text === "Рассчет экстремумы для области 1\nРассчитать\nНастроить рассчет" && firstOpen.table === 0 && firstOpen.loader === 0 && openRequests.filter((item) => item.method === "POST" && /\/api\/peaks\/active/.test(item.url)).length === 0, { firstOpen, openRequests });
+    check("Extrema first-open is explicit start without calculation", firstOpen.text === "Рассчитать экстремумы для области 1\nРассчитать\nНастроить рассчет" && firstOpen.table === 0 && firstOpen.loader === 0 && openRequests.filter((item) => item.method === "POST" && /\/api\/peaks\/active/.test(item.url)).length === 0, { firstOpen, openRequests });
     await screenshot(productionPage, "production-extrema-start-1024x768");
 
     const beforeConfigure = report.requests.length;
@@ -247,7 +247,7 @@ async function waitExtremaTerminal(page) {
       targetCount: document.querySelectorAll(".plot-pane.is-extrema-settings-target").length,
       start: document.querySelector("[data-testid='extrema-start']")?.innerText,
     }));
-    check("Values returns to Extrema without calculation and retains target", values.selected === "true" && values.focused === "inspector-tab-peaks" && values.targetCount === 1 && values.start === "Рассчет экстремумы для области 1\nРассчитать\nНастроить рассчет", values);
+    check("Values returns to Extrema without calculation and retains target", values.selected === "true" && values.focused === "inspector-tab-peaks" && values.targetCount === 1 && values.start === "Рассчитать экстремумы для области 1\nРассчитать\nНастроить рассчет", values);
 
     await productionPage.setViewportSize({ width: 1440, height: 900 });
     await front(productionPage);

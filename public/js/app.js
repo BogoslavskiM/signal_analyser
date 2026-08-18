@@ -1511,7 +1511,7 @@
     if (!pane || pane.plot_type !== "time") { host.innerHTML = "<div class='inspector-empty' role='status'>Экстремумы доступны для временной области</div>"; return; }
     if (!current || (!record.pending && !record.error && !record.calculated)) {
       var areaNumber = Math.max(1, panes().indexOf(pane) + 1);
-      host.innerHTML = "<div class='peaks-state peaks-start' data-testid='extrema-start' data-extrema-state='start' role='status'><strong>Рассчет экстремумы для области " + areaNumber + "</strong><div class='peaks-start-actions'><button class='button' type='button' data-testid='extrema-configure'>Настроить рассчет</button><button class='button button-primary' type='button' data-testid='extrema-calculate'>Рассчитать</button></div></div>";
+      host.innerHTML = "<div class='peaks-state peaks-start' data-testid='extrema-start' data-extrema-state='start' role='status'><strong>Рассчитать экстремумы для области " + areaNumber + "</strong><div class='peaks-start-actions'><button class='button' type='button' data-testid='extrema-configure'>Настроить рассчет</button><button class='button button-primary' type='button' data-testid='extrema-calculate'>Рассчитать</button></div></div>";
       return;
     }
     if (record.pending) {
