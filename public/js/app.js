@@ -14,7 +14,7 @@
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
-    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, plotResetFrames:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
+    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, rangeSliderFullRangeByPane:{}, rangeSliderClampByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
@@ -77,11 +77,17 @@
       itemPanes.forEach(function (pane) {
         var key = paneRuntimeKey(item.display_id, pane.id);
         currentKeys[key] = true;
-        if (pane.plot_type !== "time" || !paneHasSignals(pane)) delete model.rangeSliderByPane[key];
+        if (pane.plot_type !== "time" || !paneHasSignals(pane)) {
+          delete model.rangeSliderByPane[key];
+          delete model.rangeSliderFullRangeByPane[key];
+          delete model.rangeSliderClampByPane[key];
+        }
       });
       if (!owningDisplay) itemPanes.forEach(function (pane) { delete model.rangeSliderByPane[paneRuntimeKey(item.display_id, pane.id)]; });
     });
     Object.keys(model.rangeSliderByPane).forEach(function (key) { if (!currentKeys[key]) delete model.rangeSliderByPane[key]; });
+    Object.keys(model.rangeSliderFullRangeByPane).forEach(function (key) { if (!currentKeys[key]) delete model.rangeSliderFullRangeByPane[key]; });
+    Object.keys(model.rangeSliderClampByPane).forEach(function (key) { if (!currentKeys[key]) delete model.rangeSliderClampByPane[key]; });
   }
 
   function scheduleRender() {
@@ -652,6 +658,41 @@
     return !!model.rangeSliderByPane[paneRuntimeKey(displayId, paneId)];
   }
 
+  function traceXFullRange(traces) {
+    var minimum = Infinity, maximum = -Infinity;
+    (traces || []).forEach(function (trace) {
+      var values = trace && trace.x;
+      if (!values || typeof values.length !== "number") return;
+      [values[0], values[values.length - 1]].forEach(function (candidate) {
+        var value = Number(candidate);
+        if (!Number.isFinite(value)) return;
+        minimum = Math.min(minimum, value);
+        maximum = Math.max(maximum, value);
+      });
+    });
+    return Number.isFinite(minimum) && Number.isFinite(maximum) && maximum > minimum ? [minimum, maximum] : null;
+  }
+
+  function clampRangeSliderEvent(runtimeKey, eventData) {
+    var fullRange = model.rangeSliderFullRangeByPane[runtimeKey];
+    if (!model.rangeSliderByPane[runtimeKey] || !fullRange || !eventData || typeof eventData !== "object") return { eventData:eventData, correction:null };
+    var range = eventData["xaxis.range"];
+    var start = Number(Array.isArray(range) ? range[0] : eventData["xaxis.range[0]"]);
+    var finish = Number(Array.isArray(range) ? range[1] : eventData["xaxis.range[1]"]);
+    if (!Number.isFinite(start) || !Number.isFinite(finish)) return { eventData:eventData, correction:null };
+    var boundedStart = Math.max(fullRange[0], Math.min(fullRange[1], start));
+    var boundedFinish = Math.max(fullRange[0], Math.min(fullRange[1], finish));
+    if (boundedStart >= boundedFinish) { boundedStart = fullRange[0]; boundedFinish = fullRange[1]; }
+    if (boundedStart === start && boundedFinish === finish) return { eventData:eventData, correction:null };
+    var correctedEvent = Object.assign({}, eventData, {
+      "xaxis.range[0]":boundedStart,
+      "xaxis.range[1]":boundedFinish,
+      "xaxis.autorange":false
+    });
+    delete correctedEvent["xaxis.range"];
+    return { eventData:correctedEvent, correction:{ "xaxis.range[0]":boundedStart, "xaxis.range[1]":boundedFinish, "xaxis.autorange":false } };
+  }
+
   function plotLayoutWithRangeSlider(layout, runtimeKey, host) {
     var source = layout || {};
     var enabled = !!model.rangeSliderByPane[runtimeKey];
@@ -660,8 +701,16 @@
     if (!enabled) return result;
     result.xaxis = Object.assign({}, source.xaxis || {});
     result.xaxis.rangeslider = Object.assign({}, (source.xaxis && source.xaxis.rangeslider) || {}, { visible:true, thickness:0.15, bgcolor:"#ffffff", bordercolor:"#e1e1e1", borderwidth:1 });
+    var fullRange = model.rangeSliderFullRangeByPane[runtimeKey];
+    if (fullRange) {
+      result.xaxis.rangeslider.range = fullRange.slice();
+      result.xaxis.rangeslider.autorange = false;
+    }
     if (host && host._fullLayout && host._fullLayout.xaxis && Array.isArray(host._fullLayout.xaxis.range)) {
-      result.xaxis.range = host._fullLayout.xaxis.range.slice();
+      var currentRange = host._fullLayout.xaxis.range;
+      var currentStart = fullRange ? Math.max(fullRange[0], Math.min(fullRange[1], Number(currentRange[0]))) : Number(currentRange[0]);
+      var currentFinish = fullRange ? Math.max(fullRange[0], Math.min(fullRange[1], Number(currentRange[1]))) : Number(currentRange[1]);
+      result.xaxis.range = Number.isFinite(currentStart) && Number.isFinite(currentFinish) && currentStart < currentFinish ? [currentStart, currentFinish] : (fullRange ? fullRange.slice() : currentRange.slice());
       result.xaxis.autorange = false;
     }
     Object.keys(result).forEach(function (key) {
@@ -733,44 +782,22 @@
     });
   }
 
-  function plotAxesAutorangeUpdate(host) {
-    var update = {}, fullLayout = host && host._fullLayout || {};
-    Object.keys(fullLayout).forEach(function (key) {
-      if (/^[xy]axis(?:[1-9][0-9]*)?$/.test(key)) update[key + ".autorange"] = true;
-    });
-    if (!Object.keys(update).length) return { "xaxis.autorange":true, "yaxis.autorange":true };
-    if (update["xaxis.autorange"] === undefined) update["xaxis.autorange"] = true;
-    if (update["yaxis.autorange"] === undefined) update["yaxis.autorange"] = true;
-    return update;
-  }
-
-  function queuePlotAxesReset(host, runtimeKey) {
-    if (!host || host.dataset.plotReady !== "true" || model.plotResetFrames[runtimeKey]) return;
-    model.plotResetFrames[runtimeKey] = window.requestAnimationFrame(function () {
-      delete model.plotResetFrames[runtimeKey];
-      var Plotly = window.Plotly;
-      if (!host.isConnected || host.dataset.plotReady !== "true" || !Plotly || typeof Plotly.relayout !== "function") return;
-      try { Promise.resolve(Plotly.relayout(host, plotAxesAutorangeUpdate(host))).catch(function () { /* Keep reset failure pane-local. */ }); }
-      catch (_) { /* Keep reset failure pane-local. */ }
-    });
-  }
-
   function bindLinkedTimeHost(host, displayId, paneId) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
     if (!host || typeof host.on !== "function" || host.dataset.axisLinkBound === runtimeKey) return;
     var handler = function (eventData) {
-      if (!model.axisLinkSuppressByPane[runtimeKey]) queueLinkedTimeRelayout(displayId, paneId, eventData);
+      var bounded = clampRangeSliderEvent(runtimeKey, eventData);
+      if (!model.axisLinkSuppressByPane[runtimeKey]) queueLinkedTimeRelayout(displayId, paneId, bounded.eventData);
+      if (!bounded.correction || model.rangeSliderClampByPane[runtimeKey]) return;
+      var Plotly = window.Plotly;
+      if (!Plotly || typeof Plotly.relayout !== "function") return;
+      model.rangeSliderClampByPane[runtimeKey] = true;
+      try {
+        Promise.resolve(Plotly.relayout(host, bounded.correction)).catch(function () { /* Keep one boundary correction pane-local. */ }).finally(function () { delete model.rangeSliderClampByPane[runtimeKey]; });
+      } catch (_) { delete model.rangeSliderClampByPane[runtimeKey]; }
     };
     host.on("plotly_relayouting", handler);
     host.on("plotly_relayout", handler);
-    host.on("plotly_doubleclick", function () { queuePlotAxesReset(host, runtimeKey); });
-    if (typeof host.addEventListener === "function") host.addEventListener("dblclick", function (event) {
-      var target = event && event.target;
-      if (!target || typeof target.closest !== "function" || !target.closest(".rangeslider-container")) return;
-      event.preventDefault();
-      event.stopPropagation();
-      queuePlotAxesReset(host, runtimeKey);
-    }, true);
     host.dataset.axisLinkBound = runtimeKey;
   }
 
@@ -863,7 +890,7 @@
   }
 
   function rangeSliderRelayout(host, enabled) {
-    var fullLayout = host && host._fullLayout || {}, update = {
+    var fullLayout = host && host._fullLayout || {}, runtimeKey = host && host.dataset && host.dataset.paneHost, fullRange = runtimeKey && model.rangeSliderFullRangeByPane[runtimeKey], update = {
       "xaxis.rangeslider.visible":enabled,
       "xaxis.rangeslider.thickness":0.15,
       "xaxis.rangeslider.bgcolor":"#ffffff",
@@ -871,6 +898,10 @@
       "xaxis.rangeslider.borderwidth":1,
       "margin.b":enabled ? 34 : 30
     };
+    if (enabled && fullRange) {
+      update["xaxis.rangeslider.range"] = fullRange.slice();
+      update["xaxis.rangeslider.autorange"] = false;
+    }
     Object.keys(fullLayout).forEach(function (key) {
       if (/^yaxis(?:[1-9][0-9]*)?$/.test(key)) update[key + ".fixedrange"] = enabled;
     });
@@ -942,6 +973,8 @@
         if (!host || !queued || !hasPlotData(queued.output.data)) return;
         var payload = plotEnvelope(queued.output.data);
         var traces = Array.isArray(payload) ? payload : (Array.isArray(payload.data) ? payload.data : [{ type: "heatmap", x: payload.x, y: payload.y, z: payload.z, colorscale: payload.colorscale }]);
+        var fullRange = pane.plot_type === "time" ? traceXFullRange(traces) : null;
+        if (fullRange) model.rangeSliderFullRangeByPane[runtimeKey] = fullRange; else delete model.rangeSliderFullRangeByPane[runtimeKey];
         return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
         model.plotInFlight[runtimeKey] = false;

@@ -92,26 +92,24 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   api.bind(sourceHost, "display-a", "time-1");
   api.bind(targetHost, "display-a", "time-2");
   assert(sourceHost.handlerCount("plotly_relayouting") === 1 && sourceHost.handlerCount("plotly_relayout") === 1, "each ready Plotly host must bind each live/final event exactly once");
-  assert(sourceHost.handlerCount("plotly_doubleclick") === 1 && sourceHost.domHandlerCount("dblclick") === 1, "each ready Plotly host must bind graph and range-slider double-click reset exactly once");
+  assert(sourceHost.handlerCount("plotly_doubleclick") === 0 && sourceHost.domHandlerCount("dblclick") === 0, "the application must not add duplicate graph or range-slider double-click behavior");
 
   linkTime = false;
   linkAmplitude = false;
-  let prevented = 0, stopped = 0;
-  sourceHost.emit("plotly_doubleclick", {});
-  sourceHost.emitDom("dblclick", {
-    target:{ closest(selector) { return selector === ".rangeslider-container" ? {} : null; } },
-    preventDefault() { prevented++; },
-    stopPropagation() { stopped++; }
-  });
-  assert(frames.length === 1, "graph and slider double-clicks in one gesture must coalesce into one reset frame");
-  frames.shift()();
+  api.model.rangeSliderByPane["display-a::time-1"] = true;
+  api.model.rangeSliderFullRangeByPane["display-a::time-1"] = [0, 10];
+  sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":-3, "xaxis.range[1]":4 });
   await Promise.resolve();
-  assert(relayoutCalls.length === 1 && relayoutCalls[0].target === sourceHost, "double-click reset must relayout only its source host directly");
-  assert(relayoutCalls[0].update["xaxis.autorange"] === true && relayoutCalls[0].update["yaxis.autorange"] === true, "double-click reset must restore the full default X and Y ranges");
-  assert(prevented === 1 && stopped === 1, "range-slider reset must suppress the slider's native double-click side effects");
+  assert(relayoutCalls.length === 1 && relayoutCalls[0].target === sourceHost, "an out-of-bounds slider drag must be corrected on its source host");
+  assert(relayoutCalls[0].update["xaxis.range[0]"] === 0 && relayoutCalls[0].update["xaxis.range[1]"] === 4, "the left slider edge must be clamped to the data boundary after every drag or resize");
   relayoutCalls.length = 0;
-  sourceHost.emitDom("dblclick", { target:{ closest() { return null; } }, preventDefault() {}, stopPropagation() {} });
-  assert(frames.length === 0, "native graph double-click must be left to the Plotly double-click event instead of duplicating reset");
+  await Promise.resolve();
+  sourceHost.emit("plotly_relayout", { "xaxis.range[0]":7, "xaxis.range[1]":14 });
+  await Promise.resolve();
+  assert(relayoutCalls.length === 1 && relayoutCalls[0].update["xaxis.range[0]"] === 7 && relayoutCalls[0].update["xaxis.range[1]"] === 10, "the right slider edge must be clamped to the data boundary after the final relayout");
+  relayoutCalls.length = 0;
+  await Promise.resolve();
+  delete api.model.rangeSliderByPane["display-a::time-1"];
 
   sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":1, "xaxis.range[1]":4 });
   assert(frames.length === 0 && relayoutCalls.length === 0, "disabled Связать время must keep zoom pane-local");
