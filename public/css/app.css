@@ -1375,48 +1375,36 @@ body.is-resizing-workspace * {
 .inspector-header {
   position: relative;
   isolation: isolate;
-  min-width: 0;
   display: flex;
-  margin: 0;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-top: 0;
-  border-bottom: 0;
   border-radius: var(--control-radius) var(--control-radius) 0 0;
   background: var(--surface);
 }
 
-/* Paint the rounded upper edge above tab/button backgrounds without consuming
-   a row from the fixed 32px header track. */
+/* One overlay owns the complete header edge. It paints above every tab/button
+   background and does not consume the fixed 32px track. */
 .inspector-header::before {
   position: absolute;
   inset: 0;
   z-index: 10;
-  border: 1px solid var(--line);
-  border-top-color: var(--line-strong);
-  border-bottom: 0;
   border-radius: var(--control-radius) var(--control-radius) 0 0;
+  box-shadow:
+    inset 0 1px 0 var(--line-strong),
+    inset 1px 0 0 var(--line),
+    inset -1px 0 0 var(--line);
   content: "";
   pointer-events: none;
 }
 
 .inspector-header > .inspector-tabs {
-  box-sizing: border-box;
-  height: 32px;
-  min-width: 0;
-  min-height: 32px;
-  max-height: 32px;
+  height: 100%;
   flex: 1 1 auto;
   overflow-x: hidden;
   overflow-y: hidden;
-  border-bottom: 0;
 }
 
 .inspector-header > .inspector-tabs button {
-  box-sizing: border-box;
-  height: 32px;
-  min-height: 32px;
-  max-height: 32px;
+  height: 100%;
   line-height: 20px;
 }
 

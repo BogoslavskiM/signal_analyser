@@ -738,9 +738,9 @@
     event.stopImmediatePropagation();
     if (button.dataset.testid === "toolbar-import") {
       clearImportMenuTimers();
-      importMenuOpen = !importMenuOpen;
-      importMenuActiveIndex = 0;
+      importMenuOpen = false;
       syncImportMenu();
+      openEngeeImport(button);
       return;
     }
     closeImportMenu(false, 0);
