@@ -14,7 +14,7 @@
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
-    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
+    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, plotResetFrames:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
@@ -733,6 +733,28 @@
     });
   }
 
+  function plotAxesAutorangeUpdate(host) {
+    var update = {}, fullLayout = host && host._fullLayout || {};
+    Object.keys(fullLayout).forEach(function (key) {
+      if (/^[xy]axis(?:[1-9][0-9]*)?$/.test(key)) update[key + ".autorange"] = true;
+    });
+    if (!Object.keys(update).length) return { "xaxis.autorange":true, "yaxis.autorange":true };
+    if (update["xaxis.autorange"] === undefined) update["xaxis.autorange"] = true;
+    if (update["yaxis.autorange"] === undefined) update["yaxis.autorange"] = true;
+    return update;
+  }
+
+  function queuePlotAxesReset(host, runtimeKey) {
+    if (!host || host.dataset.plotReady !== "true" || model.plotResetFrames[runtimeKey]) return;
+    model.plotResetFrames[runtimeKey] = window.requestAnimationFrame(function () {
+      delete model.plotResetFrames[runtimeKey];
+      var Plotly = window.Plotly;
+      if (!host.isConnected || host.dataset.plotReady !== "true" || !Plotly || typeof Plotly.relayout !== "function") return;
+      try { Promise.resolve(Plotly.relayout(host, plotAxesAutorangeUpdate(host))).catch(function () { /* Keep reset failure pane-local. */ }); }
+      catch (_) { /* Keep reset failure pane-local. */ }
+    });
+  }
+
   function bindLinkedTimeHost(host, displayId, paneId) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
     if (!host || typeof host.on !== "function" || host.dataset.axisLinkBound === runtimeKey) return;
@@ -741,6 +763,14 @@
     };
     host.on("plotly_relayouting", handler);
     host.on("plotly_relayout", handler);
+    host.on("plotly_doubleclick", function () { queuePlotAxesReset(host, runtimeKey); });
+    if (typeof host.addEventListener === "function") host.addEventListener("dblclick", function (event) {
+      var target = event && event.target;
+      if (!target || typeof target.closest !== "function" || !target.closest(".rangeslider-container")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      queuePlotAxesReset(host, runtimeKey);
+    }, true);
     host.dataset.axisLinkBound = runtimeKey;
   }
 
