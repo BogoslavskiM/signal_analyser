@@ -14,7 +14,7 @@
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
-    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, toastTimer: null,
+    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, timeLinkFrame:null, timeLinkPending:null, timeLinkToken:0, timeLinkSuppressByPane:{}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
@@ -671,6 +671,52 @@
     return result;
   }
 
+  function linkedTimeRangeUpdate(eventData) {
+    if (!eventData || typeof eventData !== "object") return null;
+    var range = eventData["xaxis.range"];
+    var start = Array.isArray(range) ? range[0] : eventData["xaxis.range[0]"];
+    var finish = Array.isArray(range) ? range[1] : eventData["xaxis.range[1]"];
+    if (start !== undefined && finish !== undefined) return { "xaxis.range[0]":start, "xaxis.range[1]":finish, "xaxis.autorange":false };
+    return eventData["xaxis.autorange"] === true ? { "xaxis.autorange":true } : null;
+  }
+
+  function queueLinkedTimeRelayout(displayId, sourcePaneId, eventData) {
+    var sourcePane = paneById(sourcePaneId), update = linkedTimeRangeUpdate(eventData);
+    if (!update || !sourcePane || sourcePane.plot_type !== "time" || !settings.value("time.link_time")) return;
+    var token = ++model.timeLinkToken;
+    model.timeLinkPending = { displayId:displayId, sourcePaneId:sourcePaneId, update:update, token:token };
+    if (model.timeLinkFrame !== null) return;
+    model.timeLinkFrame = window.requestAnimationFrame(function () {
+      model.timeLinkFrame = null;
+      var pending = model.timeLinkPending;
+      model.timeLinkPending = null;
+      var display = activeDisplay();
+      if (!pending || pending.token !== model.timeLinkToken || !display || display.id !== pending.displayId || !settings.value("time.link_time")) return;
+      var Plotly = window.Plotly;
+      if (!Plotly || typeof Plotly.relayout !== "function") return;
+      panes().filter(function (pane) { return pane.id !== pending.sourcePaneId && pane.plot_type === "time"; }).forEach(function (pane) {
+        var runtimeKey = paneRuntimeKey(pending.displayId, pane.id);
+        var host = q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
+        if (!host || host.dataset.plotReady !== "true") return;
+        model.timeLinkSuppressByPane[runtimeKey] = true;
+        try {
+          Promise.resolve(Plotly.relayout(host, pending.update)).catch(function () { /* Keep one failed pane isolated. */ }).finally(function () { delete model.timeLinkSuppressByPane[runtimeKey]; });
+        } catch (_) { delete model.timeLinkSuppressByPane[runtimeKey]; }
+      });
+    });
+  }
+
+  function bindLinkedTimeHost(host, displayId, paneId) {
+    var runtimeKey = paneRuntimeKey(displayId, paneId);
+    if (!host || typeof host.on !== "function" || host.dataset.timeLinkBound === runtimeKey) return;
+    var handler = function (eventData) {
+      if (!model.timeLinkSuppressByPane[runtimeKey]) queueLinkedTimeRelayout(displayId, paneId, eventData);
+    };
+    host.on("plotly_relayouting", handler);
+    host.on("plotly_relayout", handler);
+    host.dataset.timeLinkBound = runtimeKey;
+  }
+
   function rangeSliderEligible(displayId, paneId) {
     var display = activeDisplay(), pane = paneById(paneId), runtimeKey = paneRuntimeKey(displayId, paneId);
     var record = model.outputs[runtimeKey], host = q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
@@ -839,7 +885,7 @@
         if (!host || !queued || !hasPlotData(queued.output.data)) return;
         var payload = plotEnvelope(queued.output.data);
         var traces = Array.isArray(payload) ? payload : (Array.isArray(payload.data) ? payload.data : [{ type: "heatmap", x: payload.x, y: payload.y, z: payload.z, colorscale: payload.colorscale }]);
-        return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
+        return Plotly.react(host, traces, plotLayoutWithRangeSlider(payload.layout || {}, runtimeKey, host), Object.assign({ displayModeBar: false, displaylogo: false, responsive: true }, payload.config || {})).then(function () { host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]); });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
         model.plotInFlight[runtimeKey] = false;
         if (model.plotQueue[runtimeKey]) enqueuePlot(displayId, pane, model.plotQueue[runtimeKey]);
