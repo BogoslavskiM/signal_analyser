@@ -132,6 +132,15 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   assert(relayoutCalls.length === 1 && relayoutCalls[0].update["yaxis.range[0]"] === -0.5, "a vertical-only zoom must reach the linked amplitude pane");
   relayoutCalls.length = 0;
   linkTime = true;
+  linkAmplitude = true;
+  sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":2, "xaxis.range[1]":7 });
+  sourceHost.emit("plotly_relayouting", { "yaxis.range[0]":-0.75, "yaxis.range[1]":0.75 });
+  assert(frames.length === 1, "separate Plotly X and Y relayout events from one source must share one frame");
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 1 && relayoutCalls[0].update["xaxis.range[0]"] === 2 && relayoutCalls[0].update["yaxis.range[0]"] === -0.75, "coalescing must merge independent time and amplitude changes instead of dropping one axis");
+  relayoutCalls.length = 0;
   linkAmplitude = false;
 
   sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:5, clientX:20, clientY:20, target:graphTarget });

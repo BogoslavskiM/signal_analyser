@@ -1073,6 +1073,8 @@
     if (!update || !sourcePane || ["time", "spectrogram"].indexOf(sourcePane.plot_type) < 0) return false;
     if (sourcePane.plot_type !== "time") Object.keys(update).filter(function (key) { return key.indexOf("yaxis.") === 0; }).forEach(function (key) { delete update[key]; });
     if (!Object.keys(update).length) return false;
+    var previous = model.axisLinkPending;
+    if (previous && previous.displayId === displayId && previous.sourcePaneId === sourcePaneId) update = Object.assign({}, previous.update, update);
     var token = ++model.axisLinkToken;
     model.axisLinkPending = { displayId:displayId, sourcePaneId:sourcePaneId, update:update, token:token };
     if (model.axisLinkFrame !== null) return true;
