@@ -1119,7 +1119,7 @@
       return surface && (!host.contains || host.contains(surface)) ? surface : null;
     }
     function zeroAreaGesture(gesture) {
-      return !gesture || Math.abs(gesture.x - gesture.startX) < 4 || Math.abs(gesture.y - gesture.startY) < 4;
+      return !gesture || Math.abs(gesture.x - gesture.startX) < 4 && Math.abs(gesture.y - gesture.startY) < 4;
     }
     function startingLinkedRange() {
       var layout = host._fullLayout || {}, payload = {};

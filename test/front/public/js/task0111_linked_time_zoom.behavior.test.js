@@ -103,6 +103,32 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   sourceHost.emitDom("pointerup", { type:"pointerup", pointerId:4, clientX:20, clientY:20, target:graphTarget });
   assert(frames.length === 0 && relayoutCalls.length === 0, "a zero-area LMB zoom must not scale linked neighbor panes");
 
+  sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:41, clientX:20, clientY:20, target:graphTarget });
+  sourceHost.emitDom("pointermove", { type:"pointermove", pointerId:41, clientX:44, clientY:20, target:graphTarget });
+  sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":1, "xaxis.range[1]":6 });
+  sourceHost.emitDom("pointerup", { type:"pointerup", pointerId:41, clientX:44, clientY:20, target:graphTarget });
+  assert(frames.length === 1, "a horizontal-only zoom must remain valid for Связать время");
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 1 && relayoutCalls[0].update["xaxis.range[0]"] === 1, "a horizontal-only zoom must reach the linked time pane");
+  relayoutCalls.length = 0;
+
+  linkTime = false;
+  linkAmplitude = true;
+  sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:42, clientX:20, clientY:20, target:graphTarget });
+  sourceHost.emitDom("pointermove", { type:"pointermove", pointerId:42, clientX:20, clientY:44, target:graphTarget });
+  sourceHost.emit("plotly_relayouting", { "yaxis.range[0]":-0.5, "yaxis.range[1]":0.5 });
+  sourceHost.emitDom("pointerup", { type:"pointerup", pointerId:42, clientX:20, clientY:44, target:graphTarget });
+  assert(frames.length === 1, "a vertical-only zoom must remain valid for Связать амплитуду");
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 1 && relayoutCalls[0].update["yaxis.range[0]"] === -0.5, "a vertical-only zoom must reach the linked amplitude pane");
+  relayoutCalls.length = 0;
+  linkTime = true;
+  linkAmplitude = false;
+
   sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:5, clientX:20, clientY:20, target:graphTarget });
   sourceHost.emitDom("pointermove", { type:"pointermove", pointerId:5, clientX:40, clientY:40, target:graphTarget });
   sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":2, "xaxis.range[1]":8 });
