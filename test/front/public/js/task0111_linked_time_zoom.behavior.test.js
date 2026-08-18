@@ -14,6 +14,7 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   let linkAmplitude = false;
   const frames = [];
   const relayoutCalls = [];
+  const windowDomHandlers = Object.create(null);
   const hosts = Object.create(null);
   function host(key) {
     const handlers = Object.create(null);
@@ -67,7 +68,9 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
     },
     requestAnimationFrame(callback) { frames.push(callback); return frames.length; },
     cancelAnimationFrame() {},
-    addEventListener() {},
+    addEventListener(name, handler) { (windowDomHandlers[name] ||= []).push(handler); },
+    removeEventListener(name, handler) { windowDomHandlers[name] = (windowDomHandlers[name] || []).filter((candidate) => candidate !== handler); },
+    emitDom(name, payload) { (windowDomHandlers[name] || []).slice().forEach((handler) => handler(payload)); },
     setTimeout() { return 1; },
     clearTimeout() {},
     getComputedStyle() { return { display:"block", visibility:"visible" }; }
@@ -171,6 +174,22 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   await Promise.resolve();
   await Promise.resolve();
   assert(relayoutCalls.length === 1 && relayoutCalls[0].target === targetHost && relayoutCalls[0].update["xaxis.range[0]"] === 0 && relayoutCalls[0].update["xaxis.range[1]"] === 10, "a collapsed Plotly range must restore the linked neighbor to the source's actual cancelled range");
+  relayoutCalls.length = 0;
+
+  sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:51, clientX:20, clientY:20, target:graphTarget });
+  sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":2, "xaxis.range[1]":8 });
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 1 && relayoutCalls[0].update["xaxis.range[0]"] === 2, "live box zoom must reach the neighbor before a global Plotly dragcover release");
+  window.emitDom("pointerup", { type:"pointerup", pointerId:51, clientX:20, clientY:20, target:{} });
+  assert(frames.length === 2, "a pointerup on Plotly's global dragcover must restore the linked range and schedule the settled-source check");
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  frames.shift()();
+  assert(relayoutCalls.length === 2 && relayoutCalls[1].update["xaxis.range[0]"] === 0 && relayoutCalls[1].update["xaxis.range[1]"] === 10, "global dragcover release at zero area must restore the neighbor to the unchanged source range");
+  assert((windowDomHandlers.pointerup || []).length === 0 && (windowDomHandlers.pointercancel || []).length === 0, "temporary global zoom completion listeners must be removed after the gesture");
   relayoutCalls.length = 0;
 
   linkTime = false;

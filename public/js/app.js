@@ -1196,30 +1196,41 @@
       model.axisLinkToken += 1;
       model.axisLinkPending = null;
     }
+    function finishZoomGesture(event) {
+      if (!zoomGesture || zoomGesture.pointerId !== undefined && event.pointerId !== undefined && zoomGesture.pointerId !== event.pointerId) return;
+      removeGlobalZoomFinish();
+      zoomGesture.x = event.clientX === undefined ? zoomGesture.x : event.clientX;
+      zoomGesture.y = event.clientY === undefined ? zoomGesture.y : event.clientY;
+      var cancelled = event.type === "pointercancel" || zeroAreaGesture(zoomGesture);
+      var initial = zoomGesture.initial;
+      zoomGesture = null;
+      if (!cancelled) return;
+      cancelPendingGesture();
+      queueLinkedTimeRelayout(displayId, paneId, initial);
+      reconcileCancelledZoom(host, displayId, paneId, true, true, initial);
+    }
+    function removeGlobalZoomFinish() {
+      if (typeof window.removeEventListener !== "function") return;
+      window.removeEventListener("pointerup", finishZoomGesture, true);
+      window.removeEventListener("pointercancel", finishZoomGesture, true);
+    }
     if (typeof host.addEventListener === "function") {
       host.addEventListener("pointerdown", function (event) {
         if ((event.button !== undefined && event.button !== 0) || !graphZoomSurface(event)) return;
         var dragmode = host._fullLayout && host._fullLayout.dragmode;
         if (dragmode && dragmode !== "zoom") return;
+        removeGlobalZoomFinish();
         zoomGesture = { pointerId:event.pointerId, startX:event.clientX, startY:event.clientY, x:event.clientX, y:event.clientY, initial:startingLinkedRange(), propagated:false };
+        if (typeof window.addEventListener === "function") {
+          window.addEventListener("pointerup", finishZoomGesture, true);
+          window.addEventListener("pointercancel", finishZoomGesture, true);
+        }
       }, true);
       host.addEventListener("pointermove", function (event) {
         if (!zoomGesture || zoomGesture.pointerId !== undefined && event.pointerId !== undefined && zoomGesture.pointerId !== event.pointerId) return;
         zoomGesture.x = event.clientX;
         zoomGesture.y = event.clientY;
       }, true);
-      function finishZoomGesture(event) {
-        if (!zoomGesture || zoomGesture.pointerId !== undefined && event.pointerId !== undefined && zoomGesture.pointerId !== event.pointerId) return;
-        zoomGesture.x = event.clientX === undefined ? zoomGesture.x : event.clientX;
-        zoomGesture.y = event.clientY === undefined ? zoomGesture.y : event.clientY;
-        var cancelled = event.type === "pointercancel" || zeroAreaGesture(zoomGesture);
-        var initial = zoomGesture.initial;
-        zoomGesture = null;
-        if (!cancelled) return;
-        cancelPendingGesture();
-        queueLinkedTimeRelayout(displayId, paneId, initial);
-        reconcileCancelledZoom(host, displayId, paneId, true, true, initial);
-      }
       host.addEventListener("pointerup", finishZoomGesture, true);
       host.addEventListener("pointercancel", finishZoomGesture, true);
     }
