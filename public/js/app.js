@@ -1065,11 +1065,19 @@
     return Object.keys(update).length ? update : null;
   }
 
+  function currentScreenLinkFlags() {
+    var display = activeDisplay(), draft = model.screenDraft;
+    if (display && draft && draft.displayId === display.id) return { time:!!draft.linkTime, amplitude:!!draft.linkAmplitude };
+    return {
+      time:!!(settings.screenValue ? settings.screenValue("time.link_time") : settings.value ? settings.value("time.link_time") : false),
+      amplitude:!!(settings.screenValue ? settings.screenValue("time.link_amplitude") : settings.value ? settings.value("time.link_amplitude") : false)
+    };
+  }
+
   function queueLinkedTimeRelayout(displayId, sourcePaneId, eventData) {
     var sourcePane = paneById(sourcePaneId);
-    var linkTime = !!(settings.screenValue ? settings.screenValue("time.link_time") : settings.value ? settings.value("time.link_time") : false);
-    var linkAmplitude = !!(settings.screenValue ? settings.screenValue("time.link_amplitude") : settings.value ? settings.value("time.link_amplitude") : false);
-    var update = linkedTimeRangeUpdate(eventData, linkTime, linkAmplitude);
+    var links = currentScreenLinkFlags();
+    var update = linkedTimeRangeUpdate(eventData, links.time, links.amplitude);
     if (!update || !sourcePane || ["time", "spectrogram"].indexOf(sourcePane.plot_type) < 0) return false;
     if (sourcePane.plot_type !== "time") Object.keys(update).filter(function (key) { return key.indexOf("yaxis.") === 0; }).forEach(function (key) { delete update[key]; });
     if (!Object.keys(update).length) return false;
@@ -1084,8 +1092,9 @@
       model.axisLinkPending = null;
       var display = activeDisplay();
       if (!pending || pending.token !== model.axisLinkToken || !display || display.id !== pending.displayId) return;
-      var currentTime = !!(settings.screenValue ? settings.screenValue("time.link_time") : settings.value ? settings.value("time.link_time") : false);
-      var currentAmplitude = !!(settings.screenValue ? settings.screenValue("time.link_amplitude") : settings.value ? settings.value("time.link_amplitude") : false);
+      var currentLinks = currentScreenLinkFlags();
+      var currentTime = currentLinks.time;
+      var currentAmplitude = currentLinks.amplitude;
       var currentUpdate = Object.keys(pending.update).reduce(function (result, key) {
         if ((currentTime && key.indexOf("xaxis.") === 0) || (currentAmplitude && key.indexOf("yaxis.") === 0)) result[key] = pending.update[key];
         return result;

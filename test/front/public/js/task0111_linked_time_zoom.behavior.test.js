@@ -184,6 +184,16 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":1, "xaxis.range[1]":4 });
   assert(frames.length === 0 && relayoutCalls.length === 0, "disabled Связать время must keep zoom pane-local");
 
+  api.model.screenDraft = { displayId:"display-a", linkTime:true, linkAmplitude:true };
+  sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":1, "xaxis.range[1]":4, "yaxis.range[0]":-0.25, "yaxis.range[1]":0.25 });
+  assert(frames.length === 1, "the visible Screen draft must drive both links immediately while Apply is still persisting");
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 1 && relayoutCalls[0].update["xaxis.range[0]"] === 1 && relayoutCalls[0].update["yaxis.range[0]"] === -0.25, "stale stored settings must not override current Screen link checkboxes");
+  relayoutCalls.length = 0;
+  api.model.screenDraft = null;
+
   linkTime = true;
   sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":1, "xaxis.range[1]":4 });
   sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":3, "xaxis.range[1]":8 });
