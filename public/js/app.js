@@ -749,23 +749,53 @@
 
   function bindRangeSliderDoubleClick(host, runtimeKey) {
     if (!host || typeof host.addEventListener !== "function" || host.dataset.rangeSliderDoubleClickBound === runtimeKey) return;
-    host.addEventListener("dblclick", function (event) {
-      var target = event.target;
-      var rangeSlider = target && typeof target.closest === "function" ? target.closest(".rangeslider-container") : null;
-      var dataRange = model.rangeSliderDataRangeByPane[runtimeKey], Plotly = window.Plotly;
-      if (!rangeSlider || !host.contains(rangeSlider) || !model.rangeSliderByPane[runtimeKey] || !dataRange || !Plotly || typeof Plotly.relayout !== "function") return;
-      model.rangeSliderFullRangeByPane[runtimeKey] = dataRange.slice();
-      event.preventDefault();
-      event.stopPropagation();
+    var pointerDown = null, previousTap = null;
+    function rangeSliderTarget(event) {
+      var target = event && event.target;
+      var slider = target && typeof target.closest === "function" ? target.closest(".rangeslider-container") : null;
+      return slider && host.contains(slider) ? slider : null;
+    }
+    function resetHorizontalRange(event) {
+      var Plotly = window.Plotly, now = Date.now();
+      if (!model.rangeSliderByPane[runtimeKey] || !Plotly || typeof Plotly.relayout !== "function") return false;
+      if (host._rangeSliderResetAt && now - host._rangeSliderResetAt < 240) return true;
+      host._rangeSliderResetAt = now;
+      delete model.rangeSliderFullRangeByPane[runtimeKey];
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       try {
         Promise.resolve(Plotly.relayout(host, {
-          "xaxis.range[0]":dataRange[0],
-          "xaxis.range[1]":dataRange[1],
-          "xaxis.autorange":false,
-          "xaxis.rangeslider.range":dataRange.slice(),
-          "xaxis.rangeslider.autorange":false
+          "xaxis.range":null,
+          "xaxis.autorange":true,
+          "xaxis.rangeslider.range":null,
+          "xaxis.rangeslider.autorange":true
         })).catch(function () { /* Keep the existing graph state when Plotly rejects reset. */ });
       } catch (_) { /* Keep the existing graph state when Plotly rejects reset. */ }
+      return true;
+    }
+    host.addEventListener("pointerdown", function (event) {
+      if ((event.button !== undefined && event.button !== 0) || !rangeSliderTarget(event)) return;
+      pointerDown = { pointerId:event.pointerId, x:event.clientX, y:event.clientY, moved:false };
+    }, true);
+    host.addEventListener("pointermove", function (event) {
+      if (!pointerDown || (event.pointerId !== undefined && pointerDown.pointerId !== event.pointerId)) return;
+      if (Math.abs(event.clientX - pointerDown.x) > 4 || Math.abs(event.clientY - pointerDown.y) > 4) pointerDown.moved = true;
+    }, true);
+    host.addEventListener("pointerup", function (event) {
+      if (!pointerDown || (event.pointerId !== undefined && pointerDown.pointerId !== event.pointerId)) return;
+      var tap = !pointerDown.moved && rangeSliderTarget(event) ? { time:Date.now(), x:event.clientX, y:event.clientY } : null;
+      pointerDown = null;
+      if (!tap) { previousTap = null; return; }
+      if (previousTap && tap.time - previousTap.time <= 420 && Math.abs(tap.x - previousTap.x) <= 6 && Math.abs(tap.y - previousTap.y) <= 6) {
+        previousTap = null;
+        resetHorizontalRange(event);
+      } else previousTap = tap;
+    }, true);
+    host.addEventListener("pointercancel", function () { pointerDown = null; previousTap = null; }, true);
+    host.addEventListener("dblclick", function (event) {
+      if (rangeSliderTarget(event)) resetHorizontalRange(event);
     }, true);
     host.dataset.rangeSliderDoubleClickBound = runtimeKey;
   }

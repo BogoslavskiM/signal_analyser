@@ -220,14 +220,18 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   assert(h.test.model.rangeSliderByPane["display-a::pane-1"] === true && !h.test.model.rangeSliderByPane["display-a::pane-2"], "Range Slider preference must remain pane-local");
   h.test.bindRangeReset(h.hosts["display-a::pane-1"], "display-a::pane-1");
   let prevented = 0, stopped = 0;
-  h.hosts["display-a::pane-1"].dispatch("dblclick", {
+  const sliderPointerEvent = () => ({
+    button:0, pointerId:7, clientX:220, clientY:240,
     target:{ closest(selector) { return selector === ".rangeslider-container" ? element() : null; } },
-    preventDefault() { prevented += 1; },
-    stopPropagation() { stopped += 1; }
+    preventDefault() { prevented += 1; }, stopPropagation() { stopped += 1; }
   });
+  h.hosts["display-a::pane-1"].dispatch("pointerdown", sliderPointerEvent());
+  h.hosts["display-a::pane-1"].dispatch("pointerup", sliderPointerEvent());
+  h.hosts["display-a::pane-1"].dispatch("pointerdown", sliderPointerEvent());
+  h.hosts["display-a::pane-1"].dispatch("pointerup", sliderPointerEvent());
   await h.settle();
   const horizontalReset = h.relayoutCalls[1].update;
-  assert(horizontalReset["xaxis.range[0]"] === 0 && horizontalReset["xaxis.range[1]"] === 1 && JSON.stringify(horizontalReset["xaxis.rangeslider.range"]) === "[0,1]", "double-clicking the horizontal slider must restore the full signal X range");
+  assert(horizontalReset["xaxis.range"] === null && horizontalReset["xaxis.autorange"] === true && horizontalReset["xaxis.rangeslider.range"] === null && horizontalReset["xaxis.rangeslider.autorange"] === true, "double-clicking the horizontal slider must delegate the default X range to Plotly autorange without invented numeric bounds");
   assert(!Object.keys(horizontalReset).some((key) => key.indexOf("yaxis.") === 0) && prevented === 1 && stopped === 1, "horizontal slider reset must not alter Y and must consume the slider double-click");
 
   const secondTrigger = trigger("pane-2");
