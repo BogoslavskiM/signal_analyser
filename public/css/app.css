@@ -927,6 +927,93 @@ body.is-resizing-workspace * {
   scrollbar-gutter: stable;
 }
 
+.screen-settings {
+  min-width: 0;
+  padding: 0 8px 12px;
+}
+
+.screen-settings-section {
+  min-width: 0;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.screen-settings-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.screen-layout-axis {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.screen-layout-axis > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.screen-layout-axis .segment {
+  min-width: 0;
+  height: 28px;
+  font-size: 12px;
+}
+
+.screen-layout-preview {
+  height: 112px;
+  display: grid;
+  grid-template-columns: repeat(var(--screen-layout-columns), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--screen-layout-rows), minmax(0, 1fr));
+  gap: 3px;
+  margin-top: 10px;
+  padding: 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: var(--surface-muted);
+}
+
+.screen-layout-preview i {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+  background: var(--surface);
+}
+
+.screen-layout-warning {
+  margin: 8px 0 0;
+  color: var(--warning);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.screen-axis-links {
+  padding-bottom: 8px;
+}
+
+.screen-link-setting {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.screen-link-setting input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .settings-group {
   padding: 4px 0;
 }
@@ -2438,22 +2525,16 @@ body.is-resizing-workspace * {
   justify-content: flex-end;
 }
 
-.layout-link-settings {
+.layout-screen-settings {
+  display: flex;
+  justify-content: stretch;
+  padding: 8px 12px;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
 
-.layout-link-setting {
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 4px 12px;
-}
-
-.layout-link-setting input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.layout-screen-settings-button { width: 100%; }
 
 .layout-popover h2,
 .layout-popover p {

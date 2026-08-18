@@ -23,6 +23,7 @@ module.exports = async function testLayoutSegmentComposedPath(assert) {
 
   const apply = (app.match(/if \(button\.dataset\.layoutApply !== undefined\) \{[\s\S]*?\}\); \}/) || [""])[0];
   assert(/var draft = model\.layoutDraft/.test(apply) && /postLayout\(\{ operation: "resize", variant: draft\.rows \+ "x" \+ draft\.columns, rows: draft\.rows, columns: draft\.columns \}\)/.test(apply), "after an internal segment click leaves the draft open, Apply must post that draft as a resize operation");
-  assert(html.indexOf("data-layout-link-time") < html.indexOf("data-layout-apply"), "time-link checkbox must be placed immediately before the layout footer actions");
-  assert(/node\.dataset\.layoutLinkTime !== undefined[\s\S]*?model\.layoutDraft\.linkTime = node\.checked/.test(app), "time-link changes must remain draft-only until layout Apply");
+  assert(/data-layout-screen-settings[\s\S]*?Настроить экран[\s\S]*?data-layout-apply/.test(html), "layout popover must link to Screen settings immediately before its footer actions");
+  assert(!html.includes("data-layout-link-time") && !html.includes("data-layout-link-amplitude"), "layout popover must not duplicate Screen axis-link settings");
+  assert(/button\.dataset\.layoutScreenSettings !== undefined[\s\S]*?openScreenSettingsFromLayout/.test(app), "Screen settings shortcut must open the dedicated settings page");
 };

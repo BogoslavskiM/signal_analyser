@@ -15,7 +15,7 @@
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
-    layoutDraft: null, renderFrame: null, plotlyPromise: null,
+    layoutDraft: null, screenDraft: null, screenApplying: false, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
@@ -1296,6 +1296,59 @@
     return page !== "peaks" || extremaTabsAvailable(pane);
   }
 
+  function screenDraftFor(display) {
+    if (!model.screenDraft || model.screenDraft.displayId !== display.id) {
+      var rows = model.layout && model.layout.rows || 1;
+      var columns = model.layout && model.layout.columns || 1;
+      var linkTime = !!settings.value("time.link_time");
+      var linkAmplitude = !!settings.value("time.link_amplitude");
+      model.screenDraft = {
+        displayId:display.id,
+        rows:rows,
+        columns:columns,
+        initialRows:rows,
+        initialColumns:columns,
+        linkTime:linkTime,
+        initialLinkTime:linkTime,
+        linkAmplitude:linkAmplitude,
+        initialLinkAmplitude:linkAmplitude,
+        error:""
+      };
+    }
+    return model.screenDraft;
+  }
+
+  function screenDraftDirty(draft) {
+    return !!draft && (draft.rows !== draft.initialRows || draft.columns !== draft.initialColumns || draft.linkTime !== draft.initialLinkTime || draft.linkAmplitude !== draft.initialLinkAmplitude);
+  }
+
+  function screenAxisSegments(axis, selected) {
+    return Array.from({ length:10 }, function (_, index) {
+      var value = index + 1;
+      return "<button class='segment" + (selected === value ? " is-selected" : "") + "' type='button' data-screen-layout-" + axis + "='" + value + "' data-testid='screen-layout-" + axis + "-" + value + "' aria-pressed='" + (selected === value) + "'>" + value + "</button>";
+    }).join("");
+  }
+
+  function renderScreenSettings(display) {
+    var content = q("[data-testid='settings-content']");
+    if (!content) return;
+    var draft = screenDraftFor(display);
+    content.innerHTML = "<div class='screen-settings' data-testid='screen-settings'>" +
+      "<section class='screen-settings-section' aria-labelledby='screen-layout-title'>" +
+        "<h3 id='screen-layout-title' class='screen-settings-title'>Макет</h3>" +
+        "<div class='screen-layout-axis'><span>Строки</span><div class='segments' data-screen-layout-rows>" + screenAxisSegments("rows", draft.rows) + "</div></div>" +
+        "<div class='screen-layout-axis'><span>Столбцы</span><div class='segments' data-screen-layout-columns>" + screenAxisSegments("columns", draft.columns) + "</div></div>" +
+        "<div class='screen-layout-preview' data-testid='screen-layout-preview' style='--screen-layout-rows:" + draft.rows + ";--screen-layout-columns:" + draft.columns + "' aria-label='Макет " + draft.rows + " на " + draft.columns + "'>" + Array.from({ length:draft.rows * draft.columns }, function () { return "<i></i>"; }).join("") + "</div>" +
+        (draft.rows > 4 || draft.columns > 4 ? "<p class='screen-layout-warning' role='status'>Для читаемости рекомендуется макет не более 4 × 4.</p>" : "") +
+      "</section>" +
+      "<section class='screen-settings-section screen-axis-links' aria-labelledby='screen-links-title'>" +
+        "<h3 id='screen-links-title' class='screen-settings-title'>Связь областей</h3>" +
+        "<label class='screen-link-setting' data-testid='screen-link-time-row'><span>Связать время</span><input class='ui-checkbox' type='checkbox' data-screen-link-time data-testid='screen-link-time'" + (draft.linkTime ? " checked" : "") + "></label>" +
+        "<label class='screen-link-setting' data-testid='screen-link-amplitude-row'><span>Связать амплитуду</span><input class='ui-checkbox' type='checkbox' data-screen-link-amplitude data-testid='screen-link-amplitude'" + (draft.linkAmplitude ? " checked" : "") + "></label>" +
+      "</section>" +
+    "</div>";
+  }
+
   function reconcileContextTabs(pane) {
     if (extremaTabsAvailable(pane)) return false;
     var wasPeaksActive = peaksSurfaceActive(), changed = false;
@@ -1310,13 +1363,21 @@
     var pane = paneById(model.activePane);
     reconcileContextTabs(pane);
     var context = q("[data-settings-context]");
-    if (context) context.textContent = "Область " + (panes().indexOf(pane) + 1) + " · " + titles[(pane && pane.plot_type) || "time"];
+    var displayIndex = (model.state && model.state.displays || []).map(function (item) { return item.id; }).indexOf(display.id);
+    var paneIndex = panes().indexOf(pane);
+    if (context) context.textContent = "Экран " + (displayIndex + 1) + " · Область " + (paneIndex + 1);
     qa("[data-settings-page]").forEach(function (button) { var available = contextTabAvailable(button.dataset.settingsPage, pane), active = available && button.dataset.settingsPage === model.settingsPage; button.hidden = !available; button.setAttribute("aria-hidden", String(!available)); button.setAttribute("aria-selected", String(active)); button.tabIndex = active ? 0 : -1; });
     var content = q("[data-testid='settings-content']");
     if (content) content.setAttribute("aria-labelledby", "settings-tab-" + model.settingsPage);
     settings.setContext(display.id, model.revision);
     if (model.settingsPage === "peaks") {
       renderPeaksSettings(display, pane, model.peaksRecords[peaksSettingsKey(display, pane)]);
+      renderApply();
+      return;
+    }
+    if (model.settingsPage === "screen") {
+      settings.setView("screen", (pane && pane.plot_type) || "time");
+      renderScreenSettings(display);
       renderApply();
       return;
     }
@@ -1332,6 +1393,18 @@
     var values = q("[data-testid='extrema-values']");
     if (!footer || !button || !status || !values) return;
     if (model.settingsPage === "peaks") return renderPeaksApply(footer, button, status);
+    if (model.settingsPage === "screen") {
+      var draft = activeDisplay() && screenDraftFor(activeDisplay());
+      var applying = model.screenApplying;
+      values.hidden = true;
+      status.classList.remove("visually-hidden");
+      footer.dataset.applyState = applying ? "applying" : draft && draft.error ? "error" : screenDraftDirty(draft) ? "dirty" : "pristine";
+      button.disabled = applying || !screenDraftDirty(draft);
+      button.textContent = applying ? "Применение…" : draft && draft.error ? "Повторить" : "Применить";
+      syncApplyLoader(button, footer, applying ? "applying" : "pristine", "screen-settings::apply");
+      status.textContent = draft && draft.error || "";
+      return;
+    }
     values.hidden = true;
     status.classList.remove("visually-hidden");
     var state = settings.state();
@@ -2312,10 +2385,6 @@
     preview.style.gridTemplateRows = "repeat(" + draft.rows + ", minmax(0, 1fr))";
     preview.innerHTML = Array.from({ length:draft.rows * draft.columns }, function () { return "<i></i>"; }).join("");
     q("[data-layout-warning]").hidden = draft.rows <= 4 && draft.columns <= 4;
-    var linkTime = q("[data-layout-link-time]");
-    if (linkTime) linkTime.checked = !!draft.linkTime;
-    var linkAmplitude = q("[data-layout-link-amplitude]");
-    if (linkAmplitude) linkAmplitude.checked = !!draft.linkAmplitude;
   }
   function repositionLayout() {
     var popover = q("[data-testid='layout-popover']"), trigger = q("[data-testid='layout-trigger']");
@@ -2330,10 +2399,6 @@
     model.layoutDraft = {
       rows:model.layout.rows,
       columns:model.layout.columns,
-      linkTime:!!settings.value("time.link_time"),
-      initialLinkTime:!!settings.value("time.link_time"),
-      linkAmplitude:!!settings.value("time.link_amplitude"),
-      initialLinkAmplitude:!!settings.value("time.link_amplitude"),
       trigger:trigger
     };
     renderLayoutDraft();
@@ -2361,6 +2426,49 @@
     return result;
   }
 
+  function openScreenSettingsFromLayout() {
+    closeLayout();
+    model.settingsPage = "screen";
+    renderSettings(activeDisplay());
+    window.requestAnimationFrame(function () {
+      var tab = q("[data-testid='settings-tab-screen']");
+      if (tab) tab.focus();
+    });
+  }
+
+  function applyScreenSettings() {
+    var draft = model.screenDraft;
+    var display = activeDisplay();
+    if (!draft || !display || draft.displayId !== display.id || model.screenApplying || !screenDraftDirty(draft)) return;
+    model.screenApplying = true;
+    draft.error = "";
+    renderApply();
+    var displayId = display.id;
+    var resize = draft.rows !== draft.initialRows || draft.columns !== draft.initialColumns;
+    var result = Promise.resolve();
+    if (resize) {
+      result = result.then(function () {
+        return postLayout({ operation:"resize", variant:draft.rows + "x" + draft.columns, rows:draft.rows, columns:draft.columns }, { skipSettings:true });
+      });
+    }
+    result.then(function () {
+      if (!activeDisplay() || activeDisplay().id !== displayId) throw new Error("Контекст экрана изменился; повторите действие.");
+      return persistLayoutLinks(draft);
+    }).then(function () {
+      return settings.load();
+    }).then(function () {
+      model.screenApplying = false;
+      model.screenDraft = null;
+      renderSettings(activeDisplay());
+      showToast("Настройки экрана применены", false);
+    }).catch(function (error) {
+      model.screenApplying = false;
+      if (model.screenDraft && model.screenDraft.displayId === displayId) model.screenDraft.error = error.message || "Не удалось применить настройки экрана.";
+      renderSettings(activeDisplay());
+      showToast(error.message || "Не удалось применить настройки экрана.", true);
+    });
+  }
+
   function completePendingApply() {
     var footer = q("[data-testid='settings-footer']");
     if (!footer || footer.dataset.phase !== "pending") return;
@@ -2385,18 +2493,30 @@
     if (button.dataset.testid === "layout-trigger") return void openLayout(button);
     if (button.dataset.layoutClose !== undefined || button.dataset.layoutCancel !== undefined) return void closeLayout();
     if (button.dataset.layoutRows || button.dataset.layoutColumns) { model.layoutDraft[button.dataset.layoutRows ? "rows" : "columns"] = Number(button.dataset.layoutRows || button.dataset.layoutColumns); return void renderLayoutDraft(); }
-    if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { return persistLayoutLinks(draft); }).then(function () { if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
+    if (button.dataset.layoutScreenSettings !== undefined) return void openScreenSettingsFromLayout();
+    if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { model.screenDraft = null; if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
+    if (button.dataset.screenLayoutRows !== undefined || button.dataset.screenLayoutColumns !== undefined) {
+      var screenAxis = button.dataset.screenLayoutRows !== undefined ? "rows" : "columns";
+      var screenValue = Number(button.dataset.screenLayoutRows !== undefined ? button.dataset.screenLayoutRows : button.dataset.screenLayoutColumns);
+      var screenDraft = screenDraftFor(activeDisplay());
+      screenDraft[screenAxis] = screenValue;
+      screenDraft.error = "";
+      renderScreenSettings(activeDisplay());
+      renderApply();
+      window.requestAnimationFrame(function () { var restored = q("[data-screen-layout-" + screenAxis + "='" + screenValue + "']"); if (restored) restored.focus(); });
+      return;
+    }
     if (button.dataset.testid === "extrema-calculate") return void calculatePeaks();
     if (button.dataset.testid === "extrema-configure") return void configureActivePeaks();
     if (button.dataset.testid === "extrema-values") return void showActivePeaksValues();
-    if (button.dataset.testid === "settings-apply") return void (model.settingsPage === "peaks" ? applyPeaksSettings() : applySettings());
+    if (button.dataset.testid === "settings-apply") return void (model.settingsPage === "peaks" ? applyPeaksSettings() : model.settingsPage === "screen" ? applyScreenSettings() : applySettings());
     if (button.dataset.testid === "signals-add-action") return void openSignalAddDialog(button);
     if (button.dataset.signalAddClose !== undefined || button.dataset.signalAddCancel !== undefined) return void closeSignalAddDialog(true);
     if (button.dataset.signalAddRetry !== undefined) return void loadSignalAddCatalog(true);
     if (button.dataset.signalAddSubmit !== undefined) return void submitSignalAddDialog();
     if (button.dataset.signalDelete) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "delete", signal_name: button.dataset.signalDelete }); });
     if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });
-    if (button.dataset.settingsPage) { if (!contextTabAvailable(button.dataset.settingsPage, paneById(model.activePane))) return; model.settingsPage = button.dataset.settingsPage; if (!peaksSurfaceActive()) stopPeaksPolling(""); renderSettings(activeDisplay()); if (model.settingsPage === "peaks") loadPeaks(); return; }
+    if (button.dataset.settingsPage) { if (!contextTabAvailable(button.dataset.settingsPage, paneById(model.activePane)) || model.screenApplying) return; model.settingsPage = button.dataset.settingsPage; if (!peaksSurfaceActive()) stopPeaksPolling(""); renderSettings(activeDisplay()); if (model.settingsPage === "peaks") loadPeaks(); return; }
     if (button.dataset.paneMenu) return void openPaneMenu(button);
     if (button.matches("[data-plot-clear]")) return void openPaneClearConfirm();
     if (button.dataset.plotRangeSlider !== undefined) return void togglePaneRangeSlider();
@@ -2447,8 +2567,8 @@
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]").filter(function (item) { return !item.hidden; }),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
-    if (node.dataset.layoutLinkTime !== undefined && model.layoutDraft) { model.layoutDraft.linkTime = node.checked; return; }
-    if (node.dataset.layoutLinkAmplitude !== undefined && model.layoutDraft) { model.layoutDraft.linkAmplitude = node.checked; return; }
+    if (node.dataset.screenLinkTime !== undefined && model.screenDraft) { model.screenDraft.linkTime = node.checked; model.screenDraft.error = ""; renderApply(); return; }
+    if (node.dataset.screenLinkAmplitude !== undefined && model.screenDraft) { model.screenDraft.linkAmplitude = node.checked; model.screenDraft.error = ""; renderApply(); return; }
     if (node.dataset.testid === "native-local-file-input" || node.dataset.testid === "session-package-file-input") { readSessionDocument(node.files && node.files[0]); return; }
     if (node.dataset.visibleAllSignals !== undefined) { var allPane = paneById(model.activePane); if (allPane) return void postLayout({ operation:"update_pane", pane_id:allPane.id, plot_type:allPane.plot_type, signal_bindings:node.checked ? (model.state.signals || []).map(function (signal) { return signal.name; }) : [] }); }
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }

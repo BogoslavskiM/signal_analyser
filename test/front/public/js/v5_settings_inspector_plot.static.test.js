@@ -11,14 +11,14 @@ module.exports = async function testV5SettingsInspectorAndPlotContracts(assert) 
   const app = read("public/js/app.js");
   const settings = read("public/js/settings.js");
 
-  ["settings-content", "settings-footer", "settings-apply", "settings-tab-display", "settings-tab-peaks"].forEach((id) => {
+  ["settings-content", "settings-footer", "settings-apply", "settings-tab-display", "settings-tab-screen", "settings-tab-peaks"].forEach((id) => {
     assert(html.includes(`data-testid="${id}"`), `v5 settings must expose stable selector ${id}`);
   });
   assert(!html.includes('data-testid="statistics-settings-tab"'), "Measurements must not remain in the settings tablist");
   assert(/var ru\s*=/.test(settings) && /function inventory\(\)/.test(settings), "v5 settings labels and inventory must be localized in Russian");
   const inventory = (settings.match(/function inventory\(\)[\s\S]*?\n  \}/) || [""])[0];
   assert(/displayInventory\(type\)\.concat\(timeInventory\(type\)\)/.test(inventory) && !/context\.page === "measurements"/.test(inventory) && /context\.plotType/.test(inventory), "v8 Display inventory must retain merged graph/time fields and plot-type filtering");
-  assert(/settings\.setView\(model\.settingsPage, \(pane && pane\.plot_type\) \|\| "time"\)/.test(app), "active settings page/type must be passed without measurement presentation state");
+  assert(/settings\.setView\("screen", \(pane && pane\.plot_type\) \|\| "time"\)/.test(app) && /settings\.setView\(model\.settingsPage, \(pane && pane\.plot_type\) \|\| "time"\)/.test(app), "active Screen or area settings page/type must be passed without measurement presentation state");
   assert(/item\.kind === "range" \|\| item\.kind === "optional_range"[\s\S]*typeof current === "object" \? current : \{\}/.test(settings), "optional_range must normalize a non-object value before rendering");
   assert(/data-range-part='min'[\s\S]*data-range-part='max'/.test(settings), "optional_range must render distinct minimum and maximum inputs");
   assert(!/value='"\+esc\(current\)/.test(settings), "settings controls must not stringify object values into [object Object]");

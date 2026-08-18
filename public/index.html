@@ -74,12 +74,13 @@
         <header class="settings-heading" data-testid="settings-heading">
           <div class="settings-heading-copy">
             <h2 id="settings-title">Настройки отображения</h2>
-            <p data-settings-context>Область 1 · Временная область</p>
+            <p data-settings-context>Экран 1 · Область 1</p>
           </div>
           <span class="settings-context-dot" aria-hidden="true"></span>
         </header>
         <div class="settings-tabs" role="tablist" aria-label="Страницы настроек" data-testid="settings-tabs">
-          <button id="settings-tab-display" type="button" role="tab" aria-selected="true" tabindex="0" aria-controls="settings-content" data-settings-page="display" data-testid="settings-tab-display">Отображение</button>
+          <button id="settings-tab-display" type="button" role="tab" aria-selected="true" tabindex="0" aria-controls="settings-content" data-settings-page="display" data-testid="settings-tab-display">Область</button>
+          <button id="settings-tab-screen" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="settings-content" data-settings-page="screen" data-testid="settings-tab-screen">Экран</button>
           <button id="settings-tab-peaks" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="settings-content" data-settings-page="peaks" data-testid="settings-tab-peaks">Экстремумы</button>
         </div>
         <!-- Legacy static-contract aliases: settings-catalog-panel / explicit-apply-root / bottom-panel-signals. -->
@@ -230,9 +231,8 @@
         <span>Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.</span>
       </div>
     </div>
-    <div class="layout-link-settings" data-testid="layout-link-settings">
-      <label class="layout-link-setting" data-testid="layout-link-time-row"><span>Связать время</span><input class="ui-checkbox" type="checkbox" data-layout-link-time data-testid="layout-link-time"></label>
-      <label class="layout-link-setting" data-testid="layout-link-amplitude-row"><span>Связать амплитуду</span><input class="ui-checkbox" type="checkbox" data-layout-link-amplitude data-testid="layout-link-amplitude"></label>
+    <div class="layout-screen-settings" data-testid="layout-screen-settings">
+      <button class="button layout-screen-settings-button" type="button" data-layout-screen-settings data-testid="layout-screen-settings-button">Настроить экран</button>
     </div>
     <footer><button class="button" type="button" data-testid="layout-cancel" data-layout-cancel>Отмена</button><button class="button button-primary" type="button" data-testid="layout-apply" data-layout-apply>Применить</button></footer>
   </section>

@@ -204,6 +204,7 @@
   }
 
   function render() {
+    if (context.page === "screen") return;
     var host = document.querySelector("[data-testid='settings-content']") || document.querySelector("[data-settings-content]");
     if (!host) return;
     /* Pane-scoped Peaks is owned by app.js: it uses its independent GET/POST

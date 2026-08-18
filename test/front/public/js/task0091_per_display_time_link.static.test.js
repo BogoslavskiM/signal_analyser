@@ -25,10 +25,11 @@ module.exports = async function testTask0091PerDisplayAndTimeLinkContracts(asser
   assert(/data-visible-signal[\s\S]*?pane\.signal_bindings/.test(app), "active-pane signal checkbox state must derive from pane bindings");
   assert(/node\.dataset\.visibleSignal[\s\S]*?postLayout\(\{ operation:"update_pane"[\s\S]*?signal_bindings:/.test(app), "active-pane signal checkbox changes must use update_pane only");
 
-  assert(!/group\("area-link"|"Связь областей"/.test(settings), "time-link must be absent from the right settings inventory");
-  assert(/class="layout-link-setting"[^>]*data-testid="layout-link-time-row"[\s\S]*?data-layout-link-time[^>]*data-testid="layout-link-time"/.test(html), "layout popover must own the visible time-link checkbox");
-  assert(/class="layout-link-setting"[^>]*data-testid="layout-link-amplitude-row"[\s\S]*?Связать амплитуду[\s\S]*?data-layout-link-amplitude[^>]*data-testid="layout-link-amplitude"/.test(html), "layout popover must own the visible amplitude-link checkbox with the exact label");
-  assert(/\.layout-link-settings\s*\{[^}]*border-top:\s*1px solid var\(--line\)[^}]*border-bottom:\s*1px solid var\(--line\)/.test(css), "axis-link section must be separated above and below");
-  assert(/linkTime:!!settings\.value\("time\.link_time"\)/.test(app) && /settings\.setValue\("time\.link_time", draft\.linkTime\)/.test(app), "layout Apply must consume and persist the existing time-link setting");
-  assert(/linkAmplitude:!!settings\.value\("time\.link_amplitude"\)/.test(app) && /settings\.setValue\("time\.link_amplitude", draft\.linkAmplitude\)/.test(app), "layout Apply must consume and persist the amplitude-link setting independently");
+  assert(!/group\("area-link"|"Связь областей"/.test(settings), "axis links must remain outside the pane-specific settings inventory");
+  assert(/data-settings-page="screen"[^>]*data-testid="settings-tab-screen">Экран</.test(html), "right settings must expose the dedicated Screen tab");
+  assert(/data-screen-link-time[\s\S]*?Связать амплитуду[\s\S]*?data-screen-link-amplitude/.test(app), "Screen settings must own both independent axis-link checkboxes");
+  assert(!html.includes("data-layout-link-time") && !html.includes("data-layout-link-amplitude"), "layout popover must not duplicate axis-link checkboxes");
+  assert(/\.screen-settings-section\s*\{[^}]*border-bottom:\s*1px solid var\(--line\)/.test(css), "Screen settings sections must retain a clear separator");
+  assert(/linkTime:linkTime[\s\S]*?settings\.setValue\("time\.link_time", draft\.linkTime\)/.test(app), "Screen Apply must consume and persist the existing time-link setting");
+  assert(/linkAmplitude:linkAmplitude[\s\S]*?settings\.setValue\("time\.link_amplitude", draft\.linkAmplitude\)/.test(app), "Screen Apply must consume and persist the amplitude-link setting independently");
 };
