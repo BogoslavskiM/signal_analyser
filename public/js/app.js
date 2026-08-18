@@ -725,10 +725,6 @@
       result.xaxis.range = currentRange.slice();
       result.xaxis.autorange = false;
     }
-    Object.keys(result).forEach(function (key) {
-      if (/^yaxis(?:[1-9][0-9]*)?$/.test(key)) result[key] = Object.assign({}, result[key] || {}, { fixedrange:true });
-    });
-    if (!result.yaxis) result.yaxis = { fixedrange:true };
     return result;
   }
 
@@ -918,10 +914,6 @@
       update["xaxis.rangeslider.range"] = fullRange.slice();
       update["xaxis.rangeslider.autorange"] = false;
     }
-    Object.keys(fullLayout).forEach(function (key) {
-      if (/^yaxis(?:[1-9][0-9]*)?$/.test(key)) update[key + ".fixedrange"] = enabled;
-    });
-    if (!Object.keys(update).some(function (key) { return /^yaxis/.test(key); })) update["yaxis.fixedrange"] = enabled;
     return update;
   }
 

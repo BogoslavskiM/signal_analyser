@@ -207,7 +207,7 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   assert(h.relayoutCalls.length === 1 && h.relayoutCalls[0].host === h.hosts["display-a::pane-1"], "enabling must relayout only the host whose ellipsis opened the menu");
   const on = h.relayoutCalls[0].update;
   assert(on["xaxis.rangeslider.visible"] === true && on["xaxis.rangeslider.thickness"] === 0.15 && on["xaxis.rangeslider.bgcolor"] === "#ffffff" && on["xaxis.rangeslider.borderwidth"] === 1, "enable relayout must use the exact native overview geometry");
-  assert(on["yaxis.fixedrange"] === true && on["yaxis2.fixedrange"] === true, "enabling must fix every perpendicular y axis");
+  assert(!Object.keys(on).some((key) => /^yaxis.*\.fixedrange$/.test(key)), "enabling the X range slider must not block vertical scaling on any Y axis");
   assert(h.test.model.revision === revision && h.apiCalls.length === 0 && h.reactCalls.length === 0, "toggle must not change revision, call any API or remount/react Plotly");
   assert(h.test.model.rangeSliderByPane["display-a::pane-1"] === true && !h.test.model.rangeSliderByPane["display-a::pane-2"], "Range Slider preference must remain pane-local");
 
@@ -220,13 +220,13 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   h.test.toggle();
   await h.settle();
   assert(h.relayoutCalls.length === 2 && h.relayoutCalls[1].update["xaxis.rangeslider.visible"] === false, "the checked action must disable the native overview on the same host");
-  assert(h.relayoutCalls[1].update["yaxis.fixedrange"] === false && h.test.model.rangeSliderByPane["display-a::pane-1"] === false, "disable must restore ordinary y interaction and retained off state");
+  assert(!Object.keys(h.relayoutCalls[1].update).some((key) => /^yaxis.*\.fixedrange$/.test(key)) && h.test.model.rangeSliderByPane["display-a::pane-1"] === false, "disable must leave ordinary Y interaction untouched and retain off state");
 
   const baseLayout = { xaxis:{ title:"Время" }, yaxis:{ title:"A" }, yaxis2:{ title:"B" }, margin:{ l:51 } };
   h.test.model.rangeSliderByPane["display-a::pane-1"] = true;
   const decorated = h.test.layout(baseLayout, "display-a::pane-1");
   assert(decorated !== baseLayout && decorated.xaxis !== baseLayout.xaxis && decorated.xaxis.rangeslider.visible === true && decorated.xaxis.rangeslider.thickness === 0.15, "ordinary Plotly refresh must reapply the current-session native slider without mutating provider layout");
-  assert(decorated.yaxis.fixedrange === true && decorated.yaxis2.fixedrange === true && decorated.margin.l === 51, "slider decoration must preserve provider layout while fixing all y axes");
+  assert(decorated.yaxis.fixedrange === undefined && decorated.yaxis2.fixedrange === undefined && decorated.margin.l === 51, "slider decoration must preserve provider layout without blocking either Y axis");
 
   h.test.model.layout.panes[0].plot_type = "spectrum";
   h.test.openMenu(firstTrigger);
