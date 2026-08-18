@@ -1297,23 +1297,42 @@
   }
 
   function screenDraftFor(display) {
+    var authoritativeRows = model.layout && model.layout.rows || 1;
+    var authoritativeColumns = model.layout && model.layout.columns || 1;
+    var rawLinkTime = settings.value("time.link_time");
+    var rawLinkAmplitude = settings.value("time.link_amplitude");
+    var linksReady = rawLinkTime !== undefined && rawLinkAmplitude !== undefined;
     if (!model.screenDraft || model.screenDraft.displayId !== display.id) {
-      var rows = model.layout && model.layout.rows || 1;
-      var columns = model.layout && model.layout.columns || 1;
-      var linkTime = !!settings.value("time.link_time");
-      var linkAmplitude = !!settings.value("time.link_amplitude");
+      var linkTime = !!rawLinkTime;
+      var linkAmplitude = !!rawLinkAmplitude;
       model.screenDraft = {
         displayId:display.id,
-        rows:rows,
-        columns:columns,
-        initialRows:rows,
-        initialColumns:columns,
+        rows:authoritativeRows,
+        columns:authoritativeColumns,
+        initialRows:authoritativeRows,
+        initialColumns:authoritativeColumns,
         linkTime:linkTime,
         initialLinkTime:linkTime,
         linkAmplitude:linkAmplitude,
         initialLinkAmplitude:linkAmplitude,
+        linksReady:linksReady,
         error:""
       };
+    } else if (!model.screenApplying) {
+      var draft = model.screenDraft;
+      if (draft.rows === draft.initialRows) draft.rows = authoritativeRows;
+      if (draft.columns === draft.initialColumns) draft.columns = authoritativeColumns;
+      draft.initialRows = authoritativeRows;
+      draft.initialColumns = authoritativeColumns;
+      if (linksReady) {
+        var timeDirty = draft.linkTime !== draft.initialLinkTime;
+        var amplitudeDirty = draft.linkAmplitude !== draft.initialLinkAmplitude;
+        if (!timeDirty) draft.linkTime = !!rawLinkTime;
+        if (!amplitudeDirty) draft.linkAmplitude = !!rawLinkAmplitude;
+        draft.initialLinkTime = !!rawLinkTime;
+        draft.initialLinkAmplitude = !!rawLinkAmplitude;
+        draft.linksReady = true;
+      }
     }
     return model.screenDraft;
   }
@@ -1343,8 +1362,8 @@
       "</section>" +
       "<section class='screen-settings-section screen-axis-links' aria-labelledby='screen-links-title'>" +
         "<h3 id='screen-links-title' class='screen-settings-title'>Связь областей</h3>" +
-        "<label class='screen-link-setting' data-testid='screen-link-time-row'><span>Связать время</span><input class='ui-checkbox' type='checkbox' data-screen-link-time data-testid='screen-link-time'" + (draft.linkTime ? " checked" : "") + "></label>" +
-        "<label class='screen-link-setting' data-testid='screen-link-amplitude-row'><span>Связать амплитуду</span><input class='ui-checkbox' type='checkbox' data-screen-link-amplitude data-testid='screen-link-amplitude'" + (draft.linkAmplitude ? " checked" : "") + "></label>" +
+        "<label class='screen-link-setting' data-testid='screen-link-time-row'><span>Связать время</span><input class='ui-checkbox' type='checkbox' data-screen-link-time data-testid='screen-link-time'" + (draft.linkTime ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></label>" +
+        "<label class='screen-link-setting' data-testid='screen-link-amplitude-row'><span>Связать амплитуду</span><input class='ui-checkbox' type='checkbox' data-screen-link-amplitude data-testid='screen-link-amplitude'" + (draft.linkAmplitude ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></label>" +
       "</section>" +
     "</div>";
   }
@@ -1399,10 +1418,10 @@
       values.hidden = true;
       status.classList.remove("visually-hidden");
       footer.dataset.applyState = applying ? "applying" : draft && draft.error ? "error" : screenDraftDirty(draft) ? "dirty" : "pristine";
-      button.disabled = applying || !screenDraftDirty(draft);
+      button.disabled = applying || !draft || !draft.linksReady || !screenDraftDirty(draft);
       button.textContent = applying ? "Применение…" : draft && draft.error ? "Повторить" : "Применить";
       syncApplyLoader(button, footer, applying ? "applying" : "pristine", "screen-settings::apply");
-      status.textContent = draft && draft.error || "";
+      status.textContent = draft && draft.error ? draft.error : draft && !draft.linksReady ? "Загрузка настроек экрана…" : "";
       return;
     }
     values.hidden = true;
@@ -2494,7 +2513,7 @@
     if (button.dataset.layoutClose !== undefined || button.dataset.layoutCancel !== undefined) return void closeLayout();
     if (button.dataset.layoutRows || button.dataset.layoutColumns) { model.layoutDraft[button.dataset.layoutRows ? "rows" : "columns"] = Number(button.dataset.layoutRows || button.dataset.layoutColumns); return void renderLayoutDraft(); }
     if (button.dataset.layoutScreenSettings !== undefined) return void openScreenSettingsFromLayout();
-    if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { model.screenDraft = null; if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
+    if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { if (model.screenDraft && model.screenDraft.displayId === displayId) { model.screenDraft.rows = draft.rows; model.screenDraft.columns = draft.columns; model.screenDraft.initialRows = draft.rows; model.screenDraft.initialColumns = draft.columns; } else model.screenDraft = null; if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
     if (button.dataset.screenLayoutRows !== undefined || button.dataset.screenLayoutColumns !== undefined) {
       var screenAxis = button.dataset.screenLayoutRows !== undefined ? "rows" : "columns";
       var screenValue = Number(button.dataset.screenLayoutRows !== undefined ? button.dataset.screenLayoutRows : button.dataset.screenLayoutColumns);
@@ -2578,6 +2597,7 @@
   document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) { model.signalAddSelection[event.target.value]=event.target.checked; updateSignalAddControls(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName === "SELECT") { var select=event.target; model.peaksDraft.values[select.dataset.peaksSetting]=select.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:select.dataset.peaksSetting }); renderApply(); } });
   document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); if (event.target.dataset.signalAddSearch !== undefined) { model.signalAddSearch=event.target.value; model.signalAddResetScroll=true; renderSignalAddCatalog(); var search=q("[data-signal-add-search]"); if(search){search.focus();search.setSelectionRange(model.signalAddSearch.length,model.signalAddSearch.length);} } });
   window.addEventListener("signal-apply-state", renderApply);
+  window.addEventListener("signal-settings-loaded", function (event) { var display = activeDisplay(), detail = event.detail || {}; if (model.settingsPage === "screen" && display && detail.displayId === display.id) renderSettings(display); });
   window.addEventListener("signal-settings-saved", function (event) { var revision = event.detail && event.detail.state && event.detail.state.state_revision; if (typeof revision === "number") model.revision = Math.max(model.revision, revision); });
   window.addEventListener("signal-settings-plot-type", function (event) {
     var pane = paneById(model.activePane), plotType = event.detail && event.detail.plotType;

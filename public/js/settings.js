@@ -354,7 +354,7 @@
       var id=context.displayId, token=++context.loadToken;
       return api.settings(id).then(function (documentValue) {
         if (token !== context.loadToken || id !== context.displayId || (typeof documentValue.state_revision === "number" && documentValue.state_revision < context.revision)) return context.document;
-        context.document=documentValue; context.revision=documentValue.state_revision || context.revision; render(); return documentValue;
+        context.document=documentValue; context.revision=documentValue.state_revision || context.revision; render(); window.dispatchEvent(new CustomEvent("signal-settings-loaded", { detail:{ displayId:id, stateRevision:context.revision } })); return documentValue;
       });
     },
     render:render,
