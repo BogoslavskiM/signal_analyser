@@ -99,6 +99,29 @@ end
         session_cache_families(target) == caches
 end
 
+@testset "TASK-0111 legacy v3 sessions default amplitude linking off" begin
+    service = SS.SignalAnalyserSessionService()
+    document = SS.export_signal_analyser_session(
+        service,
+        SS.test_state_with_complex_signal(),
+    )["document"]
+    for display in document["state"]["displays"]
+        delete!(display["stored_settings"], "time.link_amplitude")
+    end
+    target = SS.default_signal_analyser_state()
+    imported = SS.import_signal_analyser_session!(
+        service,
+        target,
+        Dict("state_revision" => 0, "document" => document),
+    )
+    @test imported["ok"] === true
+    @test all(
+        !pane.stored_settings.time.link_amplitude
+        for layout in values(target.display_layouts)
+        for pane in layout.panes
+    )
+end
+
 @testset "TASK-0020 session parser and API error envelopes are exact" begin
     service = SS.SignalAnalyserSessionService()
     state = SS.default_signal_analyser_state()

@@ -26,7 +26,9 @@ module.exports = async function testTask0091PerDisplayAndTimeLinkContracts(asser
   assert(/node\.dataset\.visibleSignal[\s\S]*?postLayout\(\{ operation:"update_pane"[\s\S]*?signal_bindings:/.test(app), "active-pane signal checkbox changes must use update_pane only");
 
   assert(!/group\("area-link"|"Связь областей"/.test(settings), "time-link must be absent from the right settings inventory");
-  assert(/class="layout-link-time"[^>]*data-testid="layout-link-time-row"[\s\S]*?data-layout-link-time[^>]*data-testid="layout-link-time"/.test(html), "layout popover must own the visible time-link checkbox");
-  assert(/\.layout-link-time\s*\{[^}]*border-top:\s*1px solid var\(--line\)[^}]*border-bottom:\s*1px solid var\(--line\)/.test(css), "time-link section must be separated above and below");
+  assert(/class="layout-link-setting"[^>]*data-testid="layout-link-time-row"[\s\S]*?data-layout-link-time[^>]*data-testid="layout-link-time"/.test(html), "layout popover must own the visible time-link checkbox");
+  assert(/class="layout-link-setting"[^>]*data-testid="layout-link-amplitude-row"[\s\S]*?Связать амплитуду[\s\S]*?data-layout-link-amplitude[^>]*data-testid="layout-link-amplitude"/.test(html), "layout popover must own the visible amplitude-link checkbox with the exact label");
+  assert(/\.layout-link-settings\s*\{[^}]*border-top:\s*1px solid var\(--line\)[^}]*border-bottom:\s*1px solid var\(--line\)/.test(css), "axis-link section must be separated above and below");
   assert(/linkTime:!!settings\.value\("time\.link_time"\)/.test(app) && /settings\.setValue\("time\.link_time", draft\.linkTime\)/.test(app), "layout Apply must consume and persist the existing time-link setting");
+  assert(/linkAmplitude:!!settings\.value\("time\.link_amplitude"\)/.test(app) && /settings\.setValue\("time\.link_amplitude", draft\.linkAmplitude\)/.test(app), "layout Apply must consume and persist the amplitude-link setting independently");
 };

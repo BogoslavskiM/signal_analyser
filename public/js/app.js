@@ -14,7 +14,7 @@
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
-    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, timeLinkFrame:null, timeLinkPending:null, timeLinkToken:0, timeLinkSuppressByPane:{}, toastTimer: null,
+    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, rangeSliderByPane: {}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
     layoutDraft: null, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
@@ -671,50 +671,77 @@
     return result;
   }
 
-  function linkedTimeRangeUpdate(eventData) {
+  function linkedAxisRangeUpdate(eventData, axis) {
     if (!eventData || typeof eventData !== "object") return null;
-    var range = eventData["xaxis.range"];
-    var start = Array.isArray(range) ? range[0] : eventData["xaxis.range[0]"];
-    var finish = Array.isArray(range) ? range[1] : eventData["xaxis.range[1]"];
-    if (start !== undefined && finish !== undefined) return { "xaxis.range[0]":start, "xaxis.range[1]":finish, "xaxis.autorange":false };
-    return eventData["xaxis.autorange"] === true ? { "xaxis.autorange":true } : null;
+    var rangeKey = axis + ".range", startKey = rangeKey + "[0]", finishKey = rangeKey + "[1]", autorangeKey = axis + ".autorange";
+    var range = eventData[rangeKey];
+    var start = Array.isArray(range) ? range[0] : eventData[startKey];
+    var finish = Array.isArray(range) ? range[1] : eventData[finishKey];
+    if (start !== undefined && finish !== undefined) {
+      var rangeUpdate = {};
+      rangeUpdate[startKey] = start;
+      rangeUpdate[finishKey] = finish;
+      rangeUpdate[autorangeKey] = false;
+      return rangeUpdate;
+    }
+    if (eventData[autorangeKey] === true) {
+      var autorangeUpdate = {};
+      autorangeUpdate[autorangeKey] = true;
+      return autorangeUpdate;
+    }
+    return null;
+  }
+
+  function linkedTimeRangeUpdate(eventData, linkTime, linkAmplitude) {
+    var update = {};
+    if (linkTime) Object.assign(update, linkedAxisRangeUpdate(eventData, "xaxis") || {});
+    if (linkAmplitude) Object.assign(update, linkedAxisRangeUpdate(eventData, "yaxis") || {});
+    return Object.keys(update).length ? update : null;
   }
 
   function queueLinkedTimeRelayout(displayId, sourcePaneId, eventData) {
-    var sourcePane = paneById(sourcePaneId), update = linkedTimeRangeUpdate(eventData);
-    if (!update || !sourcePane || sourcePane.plot_type !== "time" || !settings.value("time.link_time")) return;
-    var token = ++model.timeLinkToken;
-    model.timeLinkPending = { displayId:displayId, sourcePaneId:sourcePaneId, update:update, token:token };
-    if (model.timeLinkFrame !== null) return;
-    model.timeLinkFrame = window.requestAnimationFrame(function () {
-      model.timeLinkFrame = null;
-      var pending = model.timeLinkPending;
-      model.timeLinkPending = null;
+    var sourcePane = paneById(sourcePaneId);
+    var linkTime = !!settings.value("time.link_time"), linkAmplitude = !!settings.value("time.link_amplitude");
+    var update = linkedTimeRangeUpdate(eventData, linkTime, linkAmplitude);
+    if (!update || !sourcePane || sourcePane.plot_type !== "time") return;
+    var token = ++model.axisLinkToken;
+    model.axisLinkPending = { displayId:displayId, sourcePaneId:sourcePaneId, update:update, token:token };
+    if (model.axisLinkFrame !== null) return;
+    model.axisLinkFrame = window.requestAnimationFrame(function () {
+      model.axisLinkFrame = null;
+      var pending = model.axisLinkPending;
+      model.axisLinkPending = null;
       var display = activeDisplay();
-      if (!pending || pending.token !== model.timeLinkToken || !display || display.id !== pending.displayId || !settings.value("time.link_time")) return;
+      if (!pending || pending.token !== model.axisLinkToken || !display || display.id !== pending.displayId) return;
+      var currentTime = !!settings.value("time.link_time"), currentAmplitude = !!settings.value("time.link_amplitude");
+      var currentUpdate = Object.keys(pending.update).reduce(function (result, key) {
+        if ((currentTime && key.indexOf("xaxis.") === 0) || (currentAmplitude && key.indexOf("yaxis.") === 0)) result[key] = pending.update[key];
+        return result;
+      }, {});
+      if (!Object.keys(currentUpdate).length) return;
       var Plotly = window.Plotly;
       if (!Plotly || typeof Plotly.relayout !== "function") return;
       panes().filter(function (pane) { return pane.id !== pending.sourcePaneId && pane.plot_type === "time"; }).forEach(function (pane) {
         var runtimeKey = paneRuntimeKey(pending.displayId, pane.id);
         var host = q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
         if (!host || host.dataset.plotReady !== "true") return;
-        model.timeLinkSuppressByPane[runtimeKey] = true;
+        model.axisLinkSuppressByPane[runtimeKey] = true;
         try {
-          Promise.resolve(Plotly.relayout(host, pending.update)).catch(function () { /* Keep one failed pane isolated. */ }).finally(function () { delete model.timeLinkSuppressByPane[runtimeKey]; });
-        } catch (_) { delete model.timeLinkSuppressByPane[runtimeKey]; }
+          Promise.resolve(Plotly.relayout(host, currentUpdate)).catch(function () { /* Keep one failed pane isolated. */ }).finally(function () { delete model.axisLinkSuppressByPane[runtimeKey]; });
+        } catch (_) { delete model.axisLinkSuppressByPane[runtimeKey]; }
       });
     });
   }
 
   function bindLinkedTimeHost(host, displayId, paneId) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
-    if (!host || typeof host.on !== "function" || host.dataset.timeLinkBound === runtimeKey) return;
+    if (!host || typeof host.on !== "function" || host.dataset.axisLinkBound === runtimeKey) return;
     var handler = function (eventData) {
-      if (!model.timeLinkSuppressByPane[runtimeKey]) queueLinkedTimeRelayout(displayId, paneId, eventData);
+      if (!model.axisLinkSuppressByPane[runtimeKey]) queueLinkedTimeRelayout(displayId, paneId, eventData);
     };
     host.on("plotly_relayouting", handler);
     host.on("plotly_relayout", handler);
-    host.dataset.timeLinkBound = runtimeKey;
+    host.dataset.axisLinkBound = runtimeKey;
   }
 
   function rangeSliderEligible(displayId, paneId) {
@@ -1898,6 +1925,8 @@
     q("[data-layout-warning]").hidden = draft.rows <= 4 && draft.columns <= 4;
     var linkTime = q("[data-layout-link-time]");
     if (linkTime) linkTime.checked = !!draft.linkTime;
+    var linkAmplitude = q("[data-layout-link-amplitude]");
+    if (linkAmplitude) linkAmplitude.checked = !!draft.linkAmplitude;
   }
   function repositionLayout() {
     var popover = q("[data-testid='layout-popover']"), trigger = q("[data-testid='layout-trigger']");
@@ -1909,7 +1938,15 @@
   function openLayout(trigger) {
     if (!model.layout) return;
     if (model.layoutDraft) return closeLayout();
-    model.layoutDraft = { rows: model.layout.rows, columns: model.layout.columns, linkTime:!!settings.value("time.link_time"), initialLinkTime:!!settings.value("time.link_time"), trigger: trigger };
+    model.layoutDraft = {
+      rows:model.layout.rows,
+      columns:model.layout.columns,
+      linkTime:!!settings.value("time.link_time"),
+      initialLinkTime:!!settings.value("time.link_time"),
+      linkAmplitude:!!settings.value("time.link_amplitude"),
+      initialLinkAmplitude:!!settings.value("time.link_amplitude"),
+      trigger:trigger
+    };
     renderLayoutDraft();
     q("[data-testid='layout-popover']").hidden = false;
     trigger.setAttribute("aria-expanded", "true");
@@ -1926,6 +1963,13 @@
       trigger.focus();
     }
     model.layoutDraft = null;
+  }
+
+  function persistLayoutLinks(draft) {
+    var result = Promise.resolve();
+    if (draft.linkTime !== draft.initialLinkTime) result = result.then(function () { return settings.setValue("time.link_time", draft.linkTime); });
+    if (draft.linkAmplitude !== draft.initialLinkAmplitude) result = result.then(function () { return settings.setValue("time.link_amplitude", draft.linkAmplitude); });
+    return result;
   }
 
   function completePendingApply() {
@@ -1952,7 +1996,7 @@
     if (button.dataset.testid === "layout-trigger") return void openLayout(button);
     if (button.dataset.layoutClose !== undefined || button.dataset.layoutCancel !== undefined) return void closeLayout();
     if (button.dataset.layoutRows || button.dataset.layoutColumns) { model.layoutDraft[button.dataset.layoutRows ? "rows" : "columns"] = Number(button.dataset.layoutRows || button.dataset.layoutColumns); return void renderLayoutDraft(); }
-    if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { return draft.linkTime === draft.initialLinkTime ? null : settings.setValue("time.link_time", draft.linkTime); }).then(function () { if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
+    if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { return persistLayoutLinks(draft); }).then(function () { if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
     if (button.dataset.testid === "extrema-calculate") return void calculatePeaks();
     if (button.dataset.testid === "extrema-configure") return void configureActivePeaks();
     if (button.dataset.testid === "extrema-values") return void showActivePeaksValues();
@@ -2014,6 +2058,7 @@
   document.addEventListener("change", function (event) {
     var node = event.target;
     if (node.dataset.layoutLinkTime !== undefined && model.layoutDraft) { model.layoutDraft.linkTime = node.checked; return; }
+    if (node.dataset.layoutLinkAmplitude !== undefined && model.layoutDraft) { model.layoutDraft.linkAmplitude = node.checked; return; }
     if (node.dataset.testid === "native-local-file-input" || node.dataset.testid === "session-package-file-input") { readSessionDocument(node.files && node.files[0]); return; }
     if (node.dataset.visibleAllSignals !== undefined) { var allPane = paneById(model.activePane); if (allPane) return void postLayout({ operation:"update_pane", pane_id:allPane.id, plot_type:allPane.plot_type, signal_bindings:node.checked ? (model.state.signals || []).map(function (signal) { return signal.name; }) : [] }); }
     if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }

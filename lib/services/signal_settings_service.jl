@@ -153,6 +153,7 @@ const SIGNAL_SETTINGS_FIELD_SECTIONS = Dict(
     "time.x_limits" => "time.time_limits",
     "time.y_limits" => "time.y_axis_limits",
     "time.link_time" => "time.linking",
+    "time.link_amplitude" => "time.linking",
     "spectrum.frequency_units" => "spectrum.frequency_limits",
     "spectrum.frequency_limits" => "spectrum.frequency_limits",
     "spectrum.y_limits" => "spectrum.y_axis_limits",
@@ -306,6 +307,12 @@ const SIGNAL_SETTINGS_FIELDS = (
     ),
     signal_settings_field_definition(
         "time.link_time", "time", "Link time", "boolean", false;
+        effect_status = "effective", effect_reason = "",
+        visibility_policy = :multiple_time_panes,
+        enabled_policy = :compatible_time_panes,
+    ),
+    signal_settings_field_definition(
+        "time.link_amplitude", "time", "Link amplitude", "boolean", false;
         effect_status = "effective", effect_reason = "",
         visibility_policy = :multiple_time_panes,
         enabled_policy = :compatible_time_panes,
@@ -784,6 +791,7 @@ function signal_settings_field_value(
     field_id == "time.x_limits" && return signal_settings_range_payload(display.time_limits)
     field_id == "time.y_limits" && return signal_settings_range_payload(stored.time.y_limits)
     field_id == "time.link_time" && return stored.time.link_time
+    field_id == "time.link_amplitude" && return stored.time.link_amplitude
     field_id == "spectrum.frequency_units" &&
         return SIGNAL_FREQUENCY_UNIT_NAMES[stored.spectrum.frequency_units]
     field_id == "spectrum.frequency_limits" &&
@@ -1568,7 +1576,7 @@ function signal_settings_validate_typed_value!(
                 ),
             )
         end
-    elseif field_id == "time.link_time" && value && !(
+    elseif field_id in ("time.link_time", "time.link_amplitude") && value && !(
         display.active_plot == TIME_PLOT &&
         signal_analyser_display_analysis_name(display) !== nothing &&
         length(signal_analyser_compatible_time_panes(state, display)) >= 2
@@ -1576,7 +1584,7 @@ function signal_settings_validate_typed_value!(
         throw(signal_setting_validation_error(
             display.id,
             field_id,
-            "Связь времени требует как минимум две TIME pane с analysis source в одном Display",
+            "Связь масштаба требует как минимум две TIME pane с analysis source в одном Display",
         ))
     elseif field_id in ("spectrum.frequency_limits", "spectrogram.frequency_limits")
         if value !== nothing
@@ -1746,8 +1754,9 @@ function signal_settings_replace(
     units::SignalTimeUnitPreference = preferences.units,
     y_limits::Union{Nothing,SignalSettingRange} = preferences.y_limits,
     link_time::Bool = preferences.link_time,
+    link_amplitude::Bool = preferences.link_amplitude,
 )::SignalTimePreferences
-    SignalTimePreferences(normalize_y, show_markers, units, y_limits, link_time)
+    SignalTimePreferences(normalize_y, show_markers, units, y_limits, link_time, link_amplitude)
 end
 
 
@@ -1867,6 +1876,10 @@ function signal_settings_apply_stored_value(
     id == "time.link_time" && return signal_settings_replace(
         stored,
         time = signal_settings_replace(stored.time, link_time = value),
+    )
+    id == "time.link_amplitude" && return signal_settings_replace(
+        stored,
+        time = signal_settings_replace(stored.time, link_amplitude = value),
     )
     id == "spectrum.frequency_units" && return signal_settings_replace(
         stored,

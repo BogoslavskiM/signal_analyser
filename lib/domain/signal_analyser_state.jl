@@ -2007,9 +2007,10 @@ function signal_display_pane_with_id(
     )
 end
 
-function signal_display_pane_with_time_link(
+function signal_display_pane_with_time_links(
     pane::SignalDisplayPaneState,
     link_time::Bool,
+    link_amplitude::Bool,
 )::SignalDisplayPaneState
     time = pane.stored_settings.time
     stored = SignalDisplayStoredSettings(
@@ -2020,6 +2021,7 @@ function signal_display_pane_with_time_link(
             time.units,
             time.y_limits,
             link_time,
+            link_amplitude,
         ),
         pane.stored_settings.spectrum,
         pane.stored_settings.spectrogram,
@@ -2040,6 +2042,15 @@ function signal_display_pane_with_time_link(
         pane.peaks_settings,
     )
 end
+
+signal_display_pane_with_time_link(
+    pane::SignalDisplayPaneState,
+    link_time::Bool,
+)::SignalDisplayPaneState = signal_display_pane_with_time_links(
+    pane,
+    link_time,
+    pane.stored_settings.time.link_amplitude,
+)
 
 function signal_display_pane_with_time_limits(
     pane::SignalDisplayPaneState,
@@ -2166,9 +2177,12 @@ struct SignalDisplayLayoutState
             end
         if time_link_source !== nothing
             link_time = (time_link_source::SignalDisplayPaneState).stored_settings.time.link_time
+            link_amplitude = (time_link_source::SignalDisplayPaneState).stored_settings.time.link_amplitude
             pane_values = SignalDisplayPaneState[
-                pane.plot_type == TIME_PLOT && pane.stored_settings.time.link_time != link_time ?
-                    signal_display_pane_with_time_link(pane, link_time) : pane
+                pane.plot_type == TIME_PLOT && (
+                    pane.stored_settings.time.link_time != link_time ||
+                    pane.stored_settings.time.link_amplitude != link_amplitude
+                ) ? signal_display_pane_with_time_links(pane, link_time, link_amplitude) : pane
                 for pane in pane_values
             ]
         end
@@ -2242,7 +2256,13 @@ function signal_display_layout_replace_pane(
         )
         inherited_link = time_source_index === nothing ? false :
             layout.panes[time_source_index::Int].stored_settings.time.link_time
-        replacement = signal_display_pane_with_time_link(replacement, inherited_link)
+        inherited_amplitude_link = time_source_index === nothing ? false :
+            layout.panes[time_source_index::Int].stored_settings.time.link_amplitude
+        replacement = signal_display_pane_with_time_links(
+            replacement,
+            inherited_link,
+            inherited_amplitude_link,
+        )
     end
     panes = copy(layout.panes)
     panes[index] = replacement

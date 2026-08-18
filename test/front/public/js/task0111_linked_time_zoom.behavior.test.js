@@ -10,7 +10,8 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
   source = source.replace("})(window, document);", "window.__task0111 = { model:model, bind:bindLinkedTimeHost, queue:queueLinkedTimeRelayout, update:linkedTimeRangeUpdate }; })(window, document);");
 
-  let linked = true;
+  let linkTime = true;
+  let linkAmplitude = false;
   const frames = [];
   const relayoutCalls = [];
   const hosts = Object.create(null);
@@ -43,7 +44,11 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   };
   const window = {
     SignalAnalyserApi: {},
-    SignalAnalyserSettings: { value(field) { return field === "time.link_time" ? linked : null; } },
+    SignalAnalyserSettings: { value(field) {
+      if (field === "time.link_time") return linkTime;
+      if (field === "time.link_amplitude") return linkAmplitude;
+      return null;
+    } },
     SignalAnalyserNumeric: {},
     SignalAnalyserValueSelect: { close() {} },
     CSS: { escape(value) { return String(value); } },
@@ -70,21 +75,25 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
     { id:"spectrum-1", plot_type:"spectrum", signal_bindings:["A"] }
   ] };
 
-  assert(api.update({ "yaxis.range[0]":-1, "yaxis.range[1]":1 }) === null, "Y-only changes must never enter the linked-time path");
-  const parsed = api.update({ "xaxis.range[0]":2, "xaxis.range[1]":5, "yaxis.range[0]":-7, "yaxis.range[1]":9 });
+  assert(api.update({ "yaxis.range[0]":-1, "yaxis.range[1]":1 }, true, false) === null, "Y-only changes must not enter the linked-time path");
+  const parsed = api.update({ "xaxis.range[0]":2, "xaxis.range[1]":5, "yaxis.range[0]":-7, "yaxis.range[1]":9 }, true, false);
   assert(parsed["xaxis.range[0]"] === 2 && parsed["xaxis.range[1]"] === 5 && parsed["xaxis.autorange"] === false && Object.keys(parsed).every((key) => key.startsWith("xaxis.")), "linked updates must contain only the exact X range");
-  assert(api.update({ "xaxis.autorange":true, "yaxis.autorange":true })["xaxis.autorange"] === true, "X autorange reset must be linkable without Y autorange");
+  const amplitudeParsed = api.update({ "xaxis.range[0]":2, "xaxis.range[1]":5, "yaxis.range[0]":-7, "yaxis.range[1]":9 }, false, true);
+  assert(amplitudeParsed["yaxis.range[0]"] === -7 && amplitudeParsed["yaxis.range[1]"] === 9 && Object.keys(amplitudeParsed).every((key) => key.startsWith("yaxis.")), "Связать амплитуду must contain only the exact Y range");
+  const bothParsed = api.update({ "xaxis.autorange":true, "yaxis.autorange":true }, true, true);
+  assert(bothParsed["xaxis.autorange"] === true && bothParsed["yaxis.autorange"] === true, "both independent links must preserve both autorange resets");
 
   api.bind(sourceHost, "display-a", "time-1");
   api.bind(sourceHost, "display-a", "time-1");
   api.bind(targetHost, "display-a", "time-2");
   assert(sourceHost.handlerCount("plotly_relayouting") === 1 && sourceHost.handlerCount("plotly_relayout") === 1, "each ready Plotly host must bind each live/final event exactly once");
 
-  linked = false;
+  linkTime = false;
+  linkAmplitude = false;
   sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":1, "xaxis.range[1]":4 });
   assert(frames.length === 0 && relayoutCalls.length === 0, "disabled Связать время must keep zoom pane-local");
 
-  linked = true;
+  linkTime = true;
   sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":1, "xaxis.range[1]":4 });
   sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":3, "xaxis.range[1]":8 });
   assert(frames.length === 1, "frequent pan/zoom events must coalesce into one animation frame");
@@ -96,9 +105,21 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   assert(!Object.keys(relayoutCalls[0].update).some((key) => key.startsWith("yaxis.")), "linked zoom must leave every Y axis independent");
   assert(frames.length === 0, "programmatic follower relayout must be suppressed instead of creating an event loop");
 
+  linkTime = false;
+  linkAmplitude = true;
+  sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":20, "xaxis.range[1]":30, "yaxis.range[0]":-4, "yaxis.range[1]":6 });
+  assert(frames.length === 1, "live Y scaling must be coalesced through the same animation-frame path");
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 2 && relayoutCalls[1].target === targetHost, "another temporal pane must follow the amplitude source");
+  assert(relayoutCalls[1].update["yaxis.range[0]"] === -4 && relayoutCalls[1].update["yaxis.range[1]"] === 6, "the follower must receive the latest live Y range");
+  assert(!Object.keys(relayoutCalls[1].update).some((key) => key.startsWith("xaxis.")), "amplitude linking must leave every X axis independent");
+
+  linkTime = true;
   targetHost.emit("plotly_relayout", { "xaxis.autorange":true, "yaxis.autorange":true });
   assert(frames.length === 1, "a later user reset on either temporal pane must become the new source");
   frames.shift()();
   await Promise.resolve();
-  assert(relayoutCalls.length === 2 && relayoutCalls[1].target === sourceHost && relayoutCalls[1].update["xaxis.autorange"] === true, "X reset must propagate back to the other temporal pane only");
+  assert(relayoutCalls.length === 3 && relayoutCalls[2].target === sourceHost && relayoutCalls[2].update["xaxis.autorange"] === true && relayoutCalls[2].update["yaxis.autorange"] === true, "enabled X and amplitude resets must propagate back together");
 };

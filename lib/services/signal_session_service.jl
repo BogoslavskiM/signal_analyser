@@ -80,6 +80,7 @@ const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
     "time.units",
     "time.y_limits",
     "time.link_time",
+    "time.link_amplitude",
     "spectrum.frequency_units",
     "spectrum.y_limits",
     "spectrum.resolution_type",
@@ -107,6 +108,8 @@ const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
 )
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS =
     Set(SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS)
+const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_LEGACY =
+    setdiff(SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS, Set(["time.link_amplitude"]))
 const SIGNAL_ANALYSER_SESSION_MAX_SIGNALS = 256
 const SIGNAL_ANALYSER_SESSION_MAX_DISPLAYS = 128
 const SIGNAL_ANALYSER_SESSION_MAX_TOTAL_SAMPLES = 5_000_000
@@ -371,11 +374,17 @@ function signal_analyser_session_parse_stored_settings(
     display::SignalAnalyserDisplayState,
 )::SignalDisplayStoredSettings
     path = "document.state.displays.$(display.id).stored_settings"
-    data = signal_analyser_session_exact_object(
+    value isa AbstractDict || throw(signal_analyser_session_error(path, "Требуется JSON-объект"))
+    actual_fields = signal_analyser_payload_keys(value)
+    actual_fields in (
+        SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS,
+        SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_LEGACY,
+    ) || signal_analyser_session_exact_object(
         value,
         SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS,
         path,
     )
+    data = value
     stored = SignalDisplayStoredSettings()
     for field_id in SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS
         definition = signal_settings_field(SIGNAL_SETTINGS_CATALOG, field_id)::SignalSettingsFieldDefinition
@@ -384,7 +393,8 @@ function signal_analyser_session_parse_stored_settings(
                 definition,
                 display.id,
                 field_id,
-                signal_analyser_payload_value(data, field_id),
+                field_id == "time.link_amplitude" && !(field_id in actual_fields) ? false :
+                    signal_analyser_payload_value(data, field_id),
             )
         catch err
             err isa SignalSettingValidationError || rethrow()

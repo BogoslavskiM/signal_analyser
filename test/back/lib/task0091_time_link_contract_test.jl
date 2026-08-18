@@ -46,6 +46,9 @@ end
     ); lightweight = true)
 
     task0091_layout!(state, "resize")
+    task0091_layout!(state, "update_pane"; pane_id = "pane-1", plot_type = "time", bindings = [signal_name])
+    task0091_layout!(state, "update_pane"; pane_id = "pane-2", plot_type = "time", bindings = [signal_name])
+    task0091_layout!(state, "update_pane"; pane_id = "pane-3", plot_type = "time", bindings = [signal_name])
     layout = state.display_layouts["display-1"]
     @test length(layout.panes) == 3
     @test all(pane -> TASK0091_TIME_LINK.signal_display_pane_members(pane) == [signal_name], layout.panes)
@@ -68,6 +71,19 @@ end
     @test linked["state"]["state_revision"] == state.view.state_revision
     @test all(pane.stored_settings.time.link_time for pane in state.display_layouts["display-1"].panes[1:2])
     @test !state.display_layouts["display-1"].panes[3].stored_settings.time.link_time
+
+    amplitude_linked = TASK0091_TIME_LINK.apply_signal_setting!(service, state, Dict(
+        "state_revision" => state.view.state_revision, "display_id" => "display-1",
+        "field_id" => "time.link_amplitude", "value" => true,
+    ))
+    @test amplitude_linked["state"]["state_revision"] == state.view.state_revision
+    @test all(pane.stored_settings.time.link_amplitude for pane in state.display_layouts["display-1"].panes[1:2])
+    @test !state.display_layouts["display-1"].panes[3].stored_settings.time.link_amplitude
+    @test TASK0091_TIME_LINK.signal_settings_field_value(
+        service,
+        TASK0091_TIME_LINK.signal_analyser_display_by_id(state, "display-1"),
+        "time.link_amplitude",
+    ) === true
 
     lock(state.lock) do
         for key in keys(state.output_manager.need_update_pages)

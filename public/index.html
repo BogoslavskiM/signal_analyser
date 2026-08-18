@@ -225,7 +225,10 @@
         <span>Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.</span>
       </div>
     </div>
-    <label class="layout-link-time" data-testid="layout-link-time-row"><span>Связать время</span><input class="ui-checkbox" type="checkbox" data-layout-link-time data-testid="layout-link-time"></label>
+    <div class="layout-link-settings" data-testid="layout-link-settings">
+      <label class="layout-link-setting" data-testid="layout-link-time-row"><span>Связать время</span><input class="ui-checkbox" type="checkbox" data-layout-link-time data-testid="layout-link-time"></label>
+      <label class="layout-link-setting" data-testid="layout-link-amplitude-row"><span>Связать амплитуду</span><input class="ui-checkbox" type="checkbox" data-layout-link-amplitude data-testid="layout-link-amplitude"></label>
+    </div>
     <footer><button class="button" type="button" data-testid="layout-cancel" data-layout-cancel>Отмена</button><button class="button button-primary" type="button" data-testid="layout-apply" data-layout-apply>Применить</button></footer>
   </section>
 

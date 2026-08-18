@@ -265,6 +265,7 @@ struct SignalTimePreferences
     units::SignalTimeUnitPreference
     y_limits::Union{Nothing,SignalSettingRange}
     link_time::Bool
+    link_amplitude::Bool
 end
 
 SignalTimePreferences() = SignalTimePreferences(
@@ -273,13 +274,15 @@ SignalTimePreferences() = SignalTimePreferences(
     SECONDS_TIME_UNIT,
     nothing,
     false,
+    false,
 )
 Base.:(==)(left::SignalTimePreferences, right::SignalTimePreferences) =
     left.normalize_y == right.normalize_y &&
     left.show_markers == right.show_markers &&
     left.units == right.units &&
     left.y_limits == right.y_limits &&
-    left.link_time == right.link_time
+    left.link_time == right.link_time &&
+    left.link_amplitude == right.link_amplitude
 
 struct SignalSpectrumPreferences
     frequency_units::SignalFrequencyUnitPreference

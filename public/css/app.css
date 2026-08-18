@@ -2341,19 +2341,24 @@ body.is-resizing-workspace * {
   justify-content: flex-end;
 }
 
-.layout-link-time {
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 12px;
+.layout-link-settings {
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
 
-.layout-link-time input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+.layout-link-setting {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 12px;
+}
+
+.layout-link-setting + .layout-link-setting { border-top: 1px solid var(--line); }
+
+.layout-link-setting input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
 
 .layout-popover h2,
 .layout-popover p {
