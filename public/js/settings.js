@@ -6,7 +6,7 @@
   var numeric = window.SignalAnalyserNumeric;
   var context = {
     displayId: "", revision: 0, document: null, drafts: {}, pending: {}, timers: {}, requestQueue: Promise.resolve(), intent: 0, contextToken: 0, loadToken: 0,
-    page: "display", plotType: "time", collapsed: {}, renderedFields: {}
+    page: "display", plotType: "time", collapsed: {}, renderedFields: {}, linkPreview: null
   };
   var plotOptions = [
     { value: "time", label: "Временная область" },
@@ -74,8 +74,8 @@
   }
 
   function timeInventory(type) {
-    var linkTime = booleanValue("time.link_time");
-    var linkAmplitude = booleanValue("time.link_amplitude");
+    var linkTime = context.linkPreview ? context.linkPreview.linkTime : booleanValue("time.link_time");
+    var linkAmplitude = context.linkPreview ? context.linkPreview.linkAmplitude : booleanValue("time.link_amplitude");
     if (type === "time") {
       return [
         group("parameters", "Параметры", [actual("time.normalize_y"), actual("time.show_markers")]),
@@ -346,12 +346,15 @@
     setContext:function (id, revision) {
       if (context.displayId && context.displayId !== id) {
         Object.keys(context.timers).forEach(function (key) { clearTimeout(context.timers[key]); });
-        context.contextToken++; context.drafts={}; context.pending={}; context.timers={}; context.document=null;
+        context.contextToken++; context.drafts={}; context.pending={}; context.timers={}; context.document=null; context.linkPreview=null;
       }
       context.displayId=id; context.revision=Math.max(context.revision, revision || 0);
     },
     setView:function (page, plotType) {
       context.page=page || "display"; context.plotType=plotType || "time";
+    },
+    setLinkPreview:function (linkTime, linkAmplitude) {
+      context.linkPreview = typeof linkTime === "boolean" && typeof linkAmplitude === "boolean" ? { linkTime:linkTime, linkAmplitude:linkAmplitude } : null;
     },
     beginCustomRender:function () { context.renderedFields={}; },
     renderRows:function (ids) {
