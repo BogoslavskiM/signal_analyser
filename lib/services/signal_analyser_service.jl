@@ -1576,7 +1576,64 @@ function signal_analyser_new_pane_template(
     layout::SignalDisplayLayoutState,
 )::SignalDisplayPaneState
     active_pane = signal_display_active_pane(layout)
-    signal_display_empty_pane(active_pane.id)
+    empty = signal_display_empty_pane(active_pane.id)
+    link_time = any(pane -> pane.stored_settings.time.link_time, layout.panes)
+    link_amplitude = any(pane -> pane.stored_settings.time.link_amplitude, layout.panes)
+    time_source_index = findfirst(
+        pane -> pane.stored_settings.time.link_time &&
+            pane.plot_type in (TIME_PLOT, SPECTROGRAM_PLOT),
+        layout.panes,
+    )
+    amplitude_source_index = findfirst(
+        pane -> pane.stored_settings.time.link_amplitude && pane.plot_type == TIME_PLOT,
+        layout.panes,
+    )
+    time_source = time_source_index === nothing ? nothing : layout.panes[time_source_index::Int]
+    amplitude_source = amplitude_source_index === nothing ? nothing :
+        layout.panes[amplitude_source_index::Int]
+    time_units = time_source === nothing ? empty.stored_settings.time.units :
+        (time_source::SignalDisplayPaneState).plot_type == SPECTROGRAM_PLOT ?
+            (time_source::SignalDisplayPaneState).stored_settings.spectrogram.time_units :
+            (time_source::SignalDisplayPaneState).stored_settings.time.units
+    y_limits = link_amplitude && amplitude_source !== nothing ?
+        (amplitude_source::SignalDisplayPaneState).stored_settings.time.y_limits : nothing
+    time_preferences = SignalTimePreferences(
+        empty.stored_settings.time.normalize_y,
+        empty.stored_settings.time.show_markers,
+        time_units,
+        y_limits,
+        link_time,
+        link_amplitude,
+    )
+    spectrogram = empty.stored_settings.spectrogram
+    spectrogram_preferences = SignalSpectrogramPreferences(
+        time_units,
+        spectrogram.frequency_units,
+        spectrogram.scale,
+        spectrogram.time_resolution,
+        spectrogram.reassign,
+    )
+    stored = SignalDisplayStoredSettings(
+        empty.stored_settings.display,
+        time_preferences,
+        empty.stored_settings.spectrum,
+        spectrogram_preferences,
+        empty.stored_settings.persistence,
+    )
+    SignalDisplayPaneState(
+        empty.id,
+        empty.plot_type,
+        empty.membership,
+        empty.analysis_source,
+        nothing,
+        empty.measurement_selection,
+        empty.spectrum_settings,
+        empty.spectrogram_settings,
+        empty.persistence_settings,
+        stored,
+        empty.peaks_enabled,
+        empty.peaks_settings,
+    )
 end
 
 function signal_analyser_display_payload(display::SignalAnalyserDisplayState)::Dict{String,Any}
@@ -2087,6 +2144,8 @@ function signal_display_pane_reconfigured(
     )
     time_limits = if analysis_signal === nothing
         nothing
+    elseif pane.stored_settings.time.link_time && pane.time_limits !== nothing
+        pane.time_limits
     elseif current_analysis == analysis_name && pane.time_limits !== nothing &&
         signal_time_limits_are_valid(
             state.measurements_service,

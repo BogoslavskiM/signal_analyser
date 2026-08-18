@@ -2423,7 +2423,7 @@
     }
     var result = Promise.resolve();
     if (resize) result = result.then(function () {
-      return postLayout({ operation:"resize", variant:draft.rows + "x" + draft.columns, rows:draft.rows, columns:draft.columns }, { skipSettings:true });
+      return postLayout({ operation:"resize", variant:draft.rows + "x" + draft.columns, rows:draft.rows, columns:draft.columns }, { skipSettings:true, skipOutput:true });
     });
     result.then(function () {
       if (!activeDisplay() || activeDisplay().id !== displayId) throw new Error("Контекст экрана изменился; повторите действие.");
@@ -2437,24 +2437,19 @@
       if (response) {
         model.revision = Math.max(model.revision, response.state_revision || model.revision);
         settings.setRevision(model.revision);
+        if (response.settings && typeof settings.accept === "function") settings.accept(response.settings);
       }
-      return settings.load().then(function () { return response; });
+      return response;
     }).then(function (response) {
       model.screenApplying = false;
       previewScreenLinks(null);
       model.screenDraft = null;
-      if (response) {
-        footer.dataset.phase = "pending";
-        footer.dataset.message = "Обновляется активная область";
-        renderSettings(activeDisplay());
-        output(true);
-      } else {
-        footer.dataset.phase = "pristine";
-        footer.dataset.message = "";
-        settings.markApplied();
-        renderSettings(activeDisplay());
-        showToast("Настройки применены", false);
-      }
+      footer.dataset.phase = "pristine";
+      footer.dataset.message = "";
+      settings.markApplied();
+      renderSettings(activeDisplay());
+      showToast("Настройки применены", false);
+      output(true);
     }).catch(function (error) {
       model.screenApplying = false;
       if (model.screenDraft && model.screenDraft.displayId === displayId) model.screenDraft.error = error.message || "Не удалось применить настройки.";

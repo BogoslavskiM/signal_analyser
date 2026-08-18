@@ -132,12 +132,37 @@ end
     @test screen["time.units"] == "milliseconds"
     @test screen["time.x_limits"] == Dict("min" => 0.14, "max" => 0.18)
     @test screen["time.y_limits"] == Dict("min" => -2.0, "max" => 3.0)
+    @test accepted["settings"]["screen"] == screen
     @test state.display_layouts["display-2"] == display_two_layout
     @test TASK0091_TIME_LINK.signal_analyser_display_by_id(state, "display-2").time_limits == display_two_limits
     @test state.output_manager.need_update_pages["display-1::pane-1"]
     @test state.output_manager.need_update_pages["display-1::pane-2"]
     @test state.output_manager.need_update_pages["display-1::pane-3"]
     @test !state.output_manager.need_update_pages["display-2::pane-1"]
+
+    TASK0091_TIME_LINK.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => state.view.state_revision,
+        "operation" => "resize",
+        "display_id" => "display-1",
+        "version" => 1,
+        "variant" => "2x2",
+        "rows" => 2,
+        "columns" => 2,
+    ); lightweight = true)
+    inherited_empty = state.display_layouts["display-1"].panes[4]
+    @test inherited_empty.stored_settings.time.link_time
+    @test inherited_empty.stored_settings.time.link_amplitude
+    @test inherited_empty.stored_settings.time.units == TASK0091_TIME_LINK.MILLISECONDS_TIME_UNIT
+    @test inherited_empty.stored_settings.spectrogram.time_units == TASK0091_TIME_LINK.MILLISECONDS_TIME_UNIT
+    @test inherited_empty.time_limits === nothing
+    @test inherited_empty.stored_settings.time.y_limits == propagated.panes[1].stored_settings.time.y_limits
+
+    task0091_layout!(state, "update_pane";
+        pane_id = "pane-4", plot_type = "time", bindings = [signal_name])
+    inherited_configured = state.display_layouts["display-1"].panes[4]
+    @test inherited_configured.stored_settings.time.units == TASK0091_TIME_LINK.MILLISECONDS_TIME_UNIT
+    @test inherited_configured.time_limits == propagated.panes[1].time_limits
+    @test inherited_configured.stored_settings.time.y_limits == propagated.panes[1].stored_settings.time.y_limits
 
     task0091_layout!(state, "select_pane"; pane_id = "pane-2")
     TASK0091_TIME_LINK.apply_signal_setting!(service, state, Dict(

@@ -2252,19 +2252,74 @@ function signal_display_layout_replace_pane(
 )::SignalDisplayLayoutState
     index = findfirst(pane -> pane.id == replacement.id, layout.panes)
     index === nothing && throw(ArgumentError("Pane не найдена: $(replacement.id)"))
-    if layout.panes[index].plot_type != TIME_PLOT && replacement.plot_type == TIME_PLOT
-        time_source_index = findfirst(
-            pane -> pane.id != replacement.id && pane.plot_type == TIME_PLOT,
-            layout.panes,
+    link_time = any(pane -> pane.stored_settings.time.link_time, layout.panes)
+    link_amplitude = any(pane -> pane.stored_settings.time.link_amplitude, layout.panes)
+    time_source_index = findfirst(
+        pane -> pane.id != replacement.id && pane.stored_settings.time.link_time &&
+            pane.plot_type in (TIME_PLOT, SPECTROGRAM_PLOT) &&
+            signal_display_pane_analysis_name(pane) !== nothing,
+        layout.panes,
+    )
+    amplitude_source_index = findfirst(
+        pane -> pane.id != replacement.id && pane.stored_settings.time.link_amplitude &&
+            pane.plot_type == TIME_PLOT && signal_display_pane_analysis_name(pane) !== nothing,
+        layout.panes,
+    )
+    time_source = time_source_index === nothing ? nothing : layout.panes[time_source_index::Int]
+    amplitude_source = amplitude_source_index === nothing ? nothing :
+        layout.panes[amplitude_source_index::Int]
+    if link_time || link_amplitude
+        current_time = replacement.stored_settings.time
+        time_units = link_time && time_source !== nothing ?
+            (time_source::SignalDisplayPaneState).plot_type == SPECTROGRAM_PLOT ?
+                (time_source::SignalDisplayPaneState).stored_settings.spectrogram.time_units :
+                (time_source::SignalDisplayPaneState).stored_settings.time.units :
+            current_time.units
+        y_limits = link_amplitude && replacement.plot_type == TIME_PLOT &&
+            amplitude_source !== nothing ?
+                (amplitude_source::SignalDisplayPaneState).stored_settings.time.y_limits :
+                current_time.y_limits
+        time = SignalTimePreferences(
+            current_time.normalize_y,
+            current_time.show_markers,
+            time_units,
+            y_limits,
+            link_time,
+            link_amplitude,
         )
-        inherited_link = time_source_index === nothing ? false :
-            layout.panes[time_source_index::Int].stored_settings.time.link_time
-        inherited_amplitude_link = time_source_index === nothing ? false :
-            layout.panes[time_source_index::Int].stored_settings.time.link_amplitude
-        replacement = signal_display_pane_with_time_links(
-            replacement,
-            inherited_link,
-            inherited_amplitude_link,
+        current_spectrogram = replacement.stored_settings.spectrogram
+        spectrogram = SignalSpectrogramPreferences(
+            link_time && replacement.plot_type == SPECTROGRAM_PLOT ?
+                time_units : current_spectrogram.time_units,
+            current_spectrogram.frequency_units,
+            current_spectrogram.scale,
+            current_spectrogram.time_resolution,
+            current_spectrogram.reassign,
+        )
+        stored = SignalDisplayStoredSettings(
+            replacement.stored_settings.display,
+            time,
+            replacement.stored_settings.spectrum,
+            spectrogram,
+            replacement.stored_settings.persistence,
+        )
+        linked_limits = link_time && time_source !== nothing &&
+            replacement.plot_type in (TIME_PLOT, SPECTROGRAM_PLOT) &&
+            signal_display_pane_analysis_name(replacement) !== nothing ?
+                (time_source::SignalDisplayPaneState).time_limits : replacement.time_limits
+        replacement = SignalDisplayPaneState(
+            replacement.id,
+            replacement.plot_type,
+            replacement.membership,
+            replacement.analysis_source,
+            linked_limits,
+            replacement.measurement_selection,
+            replacement.spectrum_settings,
+            replacement.spectrogram_settings,
+            replacement.persistence_settings,
+            stored,
+            replacement.peaks_enabled,
+            replacement.peaks_settings,
         )
     end
     panes = copy(layout.panes)
@@ -2318,7 +2373,7 @@ function signal_display_layout_resize(
     layout::SignalDisplayLayoutState,
     rows::Int,
     columns::Int,
-    ::SignalDisplayPaneState,
+    new_pane_template::SignalDisplayPaneState,
 )::SignalDisplayLayoutState
     signal_display_layout_validate_dimensions(rows, columns)
     requested_count = rows * columns
@@ -2326,7 +2381,10 @@ function signal_display_layout_resize(
     panes = SignalDisplayPaneState[copy(layout.panes[index]) for index in 1:surviving_count]
     next_pane_number = layout.next_pane_number
     while length(panes) < requested_count
-        push!(panes, signal_display_empty_pane("pane-$next_pane_number"))
+        push!(panes, signal_display_pane_with_id(
+            new_pane_template,
+            "pane-$next_pane_number",
+        ))
         next_pane_number += 1
     end
     active_pane_id = any(pane -> pane.id == layout.active_pane_id, panes) ?

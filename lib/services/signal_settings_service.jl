@@ -3031,9 +3031,15 @@ function apply_signal_settings!(
         ]
         signal_analyser_invalidate_output_pages_unlocked!(state, affected_pages)
         signal_settings_clear_display_draft_unlocked!(service, state, prospective.id)
+        authoritative_settings = signal_settings_document_unlocked(
+            service,
+            state,
+            signal_analyser_display_by_id(state, prospective.id),
+        )
         Dict{String,Any}(
             "success" => true,
             "state_revision" => state.view.state_revision,
+            "settings" => authoritative_settings,
         )
     end
 end

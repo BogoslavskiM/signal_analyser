@@ -379,6 +379,14 @@
         context.document=documentValue; context.revision=documentValue.state_revision || context.revision; render(); window.dispatchEvent(new CustomEvent("signal-settings-loaded", { detail:{ displayId:id, stateRevision:context.revision } })); return documentValue;
       });
     },
+    accept:function (documentValue) {
+      if (!documentValue || documentValue.display_id !== context.displayId || (typeof documentValue.state_revision === "number" && documentValue.state_revision < context.revision)) return false;
+      context.document=documentValue;
+      context.revision=documentValue.state_revision || context.revision;
+      render();
+      window.dispatchEvent(new CustomEvent("signal-settings-loaded", { detail:{ displayId:context.displayId, stateRevision:context.revision } }));
+      return true;
+    },
     render:render,
     flush:function () {
       Object.keys(context.timers).forEach(function (key) { clearTimeout(context.timers[key]); delete context.timers[key]; });
