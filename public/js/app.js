@@ -1132,8 +1132,6 @@
       if (!pending || pending.displayId !== displayId || pending.sourcePaneId !== paneId) return;
       model.axisLinkToken += 1;
       model.axisLinkPending = null;
-      if (model.axisLinkFrame !== null) window.cancelAnimationFrame(model.axisLinkFrame);
-      model.axisLinkFrame = null;
     }
     if (typeof host.addEventListener === "function") {
       host.addEventListener("pointerdown", function (event) {
@@ -1162,7 +1160,6 @@
       host.addEventListener("pointercancel", finishZoomGesture, true);
     }
     var handler = function (eventData) {
-      if (zoomGesture && zeroAreaGesture(zoomGesture)) return;
       if (!model.axisLinkSuppressByPane[runtimeKey] && queueLinkedTimeRelayout(displayId, paneId, eventData) && zoomGesture) zoomGesture.propagated = true;
       syncAmplitudeSliderFromRelayout(host, runtimeKey, eventData);
       var correction = adjustRangeSliderFullRange(runtimeKey, eventData);

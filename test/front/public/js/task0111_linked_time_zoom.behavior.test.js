@@ -101,7 +101,12 @@ module.exports = async function task0111LinkedTimeZoomBehavior(assert) {
   sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:4, clientX:20, clientY:20, target:graphTarget });
   sourceHost.emit("plotly_relayouting", { "xaxis.range[0]":2, "xaxis.range[1]":8 });
   sourceHost.emitDom("pointerup", { type:"pointerup", pointerId:4, clientX:20, clientY:20, target:graphTarget });
-  assert(frames.length === 0 && relayoutCalls.length === 0, "a zero-area LMB zoom must not scale linked neighbor panes");
+  assert(frames.length === 1 && relayoutCalls.length === 0, "a zero-area LMB zoom must replace its pending linked update before the animation frame paints");
+  frames.shift()();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert(relayoutCalls.length === 1 && relayoutCalls[0].update["xaxis.range[0]"] === 0 && relayoutCalls[0].update["xaxis.range[1]"] === 10, "a zero-area LMB zoom must leave the linked neighbor at the source pre-gesture range");
+  relayoutCalls.length = 0;
 
   sourceHost.emitDom("pointerdown", { type:"pointerdown", button:0, pointerId:41, clientX:20, clientY:20, target:graphTarget });
   sourceHost.emitDom("pointermove", { type:"pointermove", pointerId:41, clientX:44, clientY:20, target:graphTarget });
