@@ -297,17 +297,32 @@ module.exports = async function testTask0099AdaptiveBindingOutput(assert) {
   assert(polling.timers.length === 4, "a ready response must stop the polling chain without another timer");
   assert(polling.outputCalls.length === 6, "each scheduled step must issue exactly one request with no duplicate timer request");
 
+  const fanout = createHarness([p1, p2]);
+  const paneOneReady = deferred();
+  const paneTwoPending = deferred();
+  fanout.outputQueue.push(paneOneReady, paneTwoPending);
+  fanout.test.model.revision = 10;
+  fanout.test.output(true);
+  assert(fanout.outputCalls.length === 2, "screen output refresh must start one independent request for every populated pane");
+  paneOneReady.resolve(outputResponse(11, "pane-1", true, 11, "ctx-pane-1-new"));
+  await fanout.settle();
+  assert(fanout.test.model.revision === 11, "the first completed pane may advance the shared state revision");
+  paneTwoPending.resolve(outputResponse(10, "pane-2", false, 10, "ctx-pane-2-new"));
+  await fanout.settle();
+  assert(fanout.test.model.outputs["display-1::pane-2"].context_key === "ctx-pane-2-new", "a still-current pane response must not be discarded only because another pane advanced the shared revision");
+  assert(fanout.timers.length === 1 && fanout.timers[0].delay === 50, "the still-current pending pane must keep its own polling chain after another pane completes");
+
   const stale = createHarness([p1]);
   stale.test.model.outputs["display-1::pane-1"] = { context_key: "current", calculation_revision: 5, output: outputResponse(5, "pane-1", true, 5, "current") };
   stale.test.model.revision = 5;
   stale.outputQueue.push(Promise.resolve(outputResponse(4, "pane-1", true, 6, "newer-context")));
   stale.test.fetchPaneOutput("display-1", "pane-1", true, 50);
   await stale.settle();
-  assert(stale.test.model.outputs["display-1::pane-1"].context_key === "current", "an output carrying an older state revision must be rejected without replacing the ready record");
+  assert(stale.test.model.outputs["display-1::pane-1"].context_key === "newer-context", "a current per-pane request must be accepted even when its state revision trails an independently completed pane");
   stale.outputQueue.push(Promise.resolve(outputResponse(5, "pane-1", true, 4, "different-context")));
   stale.test.fetchPaneOutput("display-1", "pane-1", true, 50);
   await stale.settle();
-  assert(stale.test.model.outputs["display-1::pane-1"].context_key === "current", "a different context with an older calculation revision must be rejected");
+  assert(stale.test.model.outputs["display-1::pane-1"].context_key === "newer-context", "a different context with an older calculation revision must be rejected");
 
   const transition = createHarness([pane("pane-1", "time", [])]);
   transition.test.renderGrid();

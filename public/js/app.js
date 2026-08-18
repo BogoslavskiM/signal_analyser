@@ -2303,7 +2303,7 @@
     api.activeOutput(display.id, pane.id).then(function (response) {
       var prior = model.outputs[runtimeKey];
       var currentPane = paneById(paneId);
-      if (!activeDisplay() || activeDisplay().id !== displayId || token !== model.outputTokens[runtimeKey] || !paneHasSignals(currentPane) || (stateRevision(response) !== null && stateRevision(response) < model.revision) || response.display_id !== display.id || response.pane_id !== pane.id || response.plot_type !== currentPane.plot_type || (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision < prior.calculation_revision)) return;
+      if (!activeDisplay() || activeDisplay().id !== displayId || token !== model.outputTokens[runtimeKey] || !paneHasSignals(currentPane) || response.display_id !== display.id || response.pane_id !== pane.id || response.plot_type !== currentPane.plot_type || (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision < prior.calculation_revision)) return;
       model.revision = Math.max(model.revision, stateRevision(response) || model.revision);
       if (!response.isready && prior && prior.output && prior.output.isready && prior.output.success) {
         if (poll) schedulePaneOutputPoll(displayId, paneId, pollDelay);
