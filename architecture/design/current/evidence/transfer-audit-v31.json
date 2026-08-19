@@ -1,0 +1,30 @@
+{
+  "design_version": 31,
+  "visual_baseline_version": 28,
+  "generated_at": "2026-08-19T10:23:15.420Z",
+  "passed": 21,
+  "failed": 0,
+  "checks": [
+    {"id": "manifest-additive-only", "passed": true, "detail": "transfer_mode=additive_integration_only and copy_as_is is empty"},
+    {"id": "production-index-immutable", "passed": true, "detail": "frontend-source/index.html and prototype scripts are design-only; public/index.html remains immutable"},
+    {"id": "production-modules-not-replaced", "passed": true, "detail": "app.js, settings.js and api.js remain extend-in-place; no production module replacement is mapped"},
+    {"id": "task0117-intent-fragment", "passed": true, "detail": "the transferable fragment exposes exact rowClick and checkboxChange intents without API paths or authoritative state"},
+    {"id": "task0117-prototype-bridge-design-only", "passed": true, "detail": "the file:// bridge is explicitly non-transferable and exercises existing production API/state-acceptance seams only"},
+    {"id": "standalone-production-snapshot", "passed": true, "detail": "prototype/index.html renders actual local production DOM/CSS/components/modules rather than an alternative shell"},
+    {"id": "file-protocol-no-partial-fetch", "passed": true, "detail": "all four nonempty zones render over file:// without HTML partial fetches or a local HTTP server"},
+    {"id": "network-free-fixtures", "passed": true, "detail": "browser run records zero HTTP(S), CORS, console or page errors"},
+    {"id": "plotly-host-identity", "passed": true, "detail": "[data-pane-host] remains immutable and is updated only through existing Plotly/slider paths"},
+    {"id": "main-signal-row-state", "passed": true, "detail": "only [data-main-signal=true].is-main-signal receives persistent blue, independent of checkbox state"},
+    {"id": "row-click-main-and-on", "passed": true, "detail": "plain LMB on a checked row keeps it checked and selects it as main_signal; row click on hidden main restores visibility"},
+    {"id": "checkbox-visibility-only", "passed": true, "detail": "direct checkbox OFF/ON changes graph membership/trace only and never selects or replaces main_signal"},
+    {"id": "hidden-main-supported", "passed": true, "detail": "unchecking current main leaves that row blue/main while its checkbox is OFF"},
+    {"id": "samples-provider-shape", "passed": true, "detail": "fixture returns the production {signal,rows,next_cursor,total} page shape"},
+    {"id": "samples-pagination-visible", "passed": true, "detail": "scroll issues multiple cursor requests and appends all three 24-row pages across five populated columns; footer shows total 72"},
+    {"id": "signal-settings-standard-collapse", "passed": true, "detail": "Основное and Сводка retain the existing disclosure contract and Дискретизация, Гц label"},
+    {"id": "workspace-context-routing", "passed": true, "detail": "pane click selects Область; display tab/create selects Экран"},
+    {"id": "spectrum-slider-dual-projection", "passed": true, "detail": "pane-menu and Area checkbox projections share one active-pane draft"},
+    {"id": "body-modal-portal", "passed": true, "detail": "operation dialog remains an on-demand body singleton using the existing value-select popup"},
+    {"id": "provider-seams", "passed": true, "detail": "sample pages and state mutations remain existing public/js/api.js -> public/js/app.js seams"},
+    {"id": "production-visual-baseline-preserved", "passed": true, "detail": "v31 changes no style or geometry; production-faithful walkthrough passes 26/26"}
+  ]
+}

@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `30`
+- Design version: `31`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V30 is the current integration-safe package for the accepted Signal Analyser
+V31 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, unified Apply and existing import/save toolbar seams.
@@ -32,14 +32,14 @@ The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
 transaction implementation, Plotly payloads, pagination implementation and
 session serialization remain outside Designer ownership.
 
-V30 preserves the v29 transfer boundary and production-faithful harness. It
-adds only the TASK-0116 interaction/state corrections: the checked/visible
-signal set no longer paints every row blue; the sole `main_signal` row owns the
-blue state, ordinary rows stay white with grey hover, and plain LMB on a signal
-row toggles its checkbox membership and main-signal selection. `Сигнал`
-settings groups use the existing disclosure component, the sampling label is
-`Дискретизация, Гц`, a pane click opens `Область`, and a display-tab click or
-display creation opens `Экран`.
+V31 preserves the v30 visual baseline and production-faithful harness. It
+changes only TASK-0117 interaction semantics. Plain LMB on the non-control row
+surface makes that signal `main_signal` and ensures its checkbox is ON; it can
+never hide a signal. Direct checkbox interaction changes only active-pane graph
+visibility and never changes `main_signal`, including when the hidden signal is
+the current main. Blue emphasis therefore remains independently bound to the
+single `main_signal` row. The dynamic samples tab now has a deterministic
+cursor fixture whose second page appends visible rows across all five columns.
 
 V29 changed no approved product surface. It corrected the transfer boundary and
 the review harness: production `public/index.html`, shell/module identities,
@@ -53,18 +53,19 @@ entry baseline or production transfer inputs.
 
 | # | Surface | Approval decision | Evidence |
 |---:|---|---|---|
-| 1 | First `Сигнал` tab | Metadata first, then compact two-column `Сводка`; one `Значения` action | `screenshots/v30--standalone-production-signal--1440x900.png` |
-| 2 | Dynamic samples tab | Tab label is current `main_signal.name`; five fixed semantic columns; lazy footer | `screenshots/v30--standalone-production-samples--1440x900.png` |
-| 3 | Spectrum extrema | Markers overlay the spectrum, lower table uses Magnitude + projected Frequency | `screenshots/v30--standalone-production-spectrum-extrema--1440x900.png` |
-| 4 | Spectrum Area settings | Frequency/magnitude slider checkboxes; independent local magnitude limits | `screenshots/v30--standalone-production-spectrum-area--1440x900.png` |
-| 5 | Screen spectrum links | Four independent checkboxes; linked frequency limits appear as a separate group | `screenshots/v30--standalone-production-screen-links--1440x900.png` |
-| 6 | Operation selector | Seven operations use the existing shared `SignalAnalyserValueSelect`, including inline search and modal-owned options popup | `screenshots/v30--standalone-production-operation-menu--1440x900.png` |
-| 7 | User operation body | Editor shows only the body written by the user and a neutral Engee/`init_signal` hint | `screenshots/v30--standalone-production-operation-custom--1440x900.png` |
-| 8 | Engee operation states | Backend execution error, busy and success remain inside the same dialog context | `screenshots/v30--standalone-production-operation-{error,progress}--1440x900.png` |
-| 9 | Signal table emphasis | Exactly one `main_signal` row is blue; other checked rows stay white and ordinary hover is grey | `screenshots/v30--main-signal-only-and-hover--1440x900.png` |
-| 10 | Signal row interaction | LMB on `noiseFloor` checks it and makes it the sole blue `main_signal` without clearing unrelated checked rows | `screenshots/v30--row-click-main-signal--1440x900.png` |
-| 11 | Signal disclosures | `Основное` and `Сводка` use standard settings disclosures; collapsed summary and `Дискретизация, Гц` are visible | `screenshots/v30--signal-settings-collapsed--1440x900.png` |
-| 12 | Screen context after create | Display selection/creation selects the `Экран` settings page and updates its heading context | `screenshots/v30--screen-focus-after-display-add--1440x900.png` |
+| 1 | First `Сигнал` tab | Metadata first, then compact two-column `Сводка`; one `Значения` action | `screenshots/v31--standalone-production-signal--1440x900.png` |
+| 2 | Dynamic samples tab | Tab label is current `main_signal.name`; five populated semantic columns; cursor fixture visibly appends page 2 | `screenshots/v31--standalone-production-samples--1440x900.png` |
+| 3 | Spectrum extrema | Markers overlay the spectrum, lower table uses Magnitude + projected Frequency | `screenshots/v31--standalone-production-spectrum-extrema--1440x900.png` |
+| 4 | Spectrum Area settings | Frequency/magnitude slider checkboxes; independent local magnitude limits | `screenshots/v31--standalone-production-spectrum-area--1440x900.png` |
+| 5 | Screen spectrum links | Four independent checkboxes; linked frequency limits appear as a separate group | `screenshots/v31--standalone-production-screen-links--1440x900.png` |
+| 6 | Operation selector | Seven operations use the existing shared `SignalAnalyserValueSelect`, including inline search and modal-owned options popup | `screenshots/v31--standalone-production-operation-menu--1440x900.png` |
+| 7 | User operation body | Editor shows only the body written by the user and a neutral Engee/`init_signal` hint | `screenshots/v31--standalone-production-operation-custom--1440x900.png` |
+| 8 | Engee operation states | Backend execution error, busy and success remain inside the same dialog context | `screenshots/v31--standalone-production-operation-{error,progress}--1440x900.png` |
+| 9 | Signal table emphasis | Exactly one `main_signal` row is blue; other checked rows stay white and ordinary hover is grey | `screenshots/v31--main-signal-only-and-hover--1440x900.png` |
+| 10 | Row click | LMB on an already checked row keeps it checked and makes it the sole blue `main_signal` | `screenshots/v31--row-click-main-signal--1440x900.png` |
+| 11 | Direct checkbox | Unchecking the current main removes its graph trace but leaves the same row blue/main | `screenshots/v31--checkbox-hides-current-main--1440x900.png` |
+| 12 | Signal disclosures | `Основное` and `Сводка` use standard settings disclosures; collapsed summary and `Дискретизация, Гц` are visible | `screenshots/v31--signal-settings-collapsed--1440x900.png` |
+| 13 | Screen context after create | Display selection/creation selects the `Экран` settings page and updates its heading context | `screenshots/v31--screen-focus-after-display-add--1440x900.png` |
 
 ## Autonomous decisions
 
@@ -102,11 +103,11 @@ entry baseline or production transfer inputs.
 - Signal membership and main-signal selection are distinct states. Checkbox
   checked means the signal is shown in the active pane; the one
   `[data-main-signal=true].is-main-signal` row alone uses persistent blue.
-- Plain LMB on a non-control part of a signal row toggles that row's checkbox.
-  When the result is checked, that signal becomes `main_signal`; when the
-  current main is unchecked, the first remaining checked signal becomes main,
-  or the main context becomes empty if none remain. Direct checkbox interaction
-  follows the same membership/main invariant.
+- Plain LMB on a non-control part of a signal row always makes that signal
+  `main_signal` and ensures membership/visibility is ON. Clicking a checked row
+  never turns it off. Direct checkbox interaction changes only membership/
+  visibility and never changes `main_signal`; consequently a hidden current
+  main remains the sole blue row and remains the Signal settings context.
 - “Focus settings” means selecting the matching right-panel page and updating
   its screen/pane context: pane → `Область`; display tab or Add display →
   `Экран`. It does not mean forcing browser keyboard focus away from the click.
@@ -169,6 +170,22 @@ entry baseline or production transfer inputs.
 - Re-ran the full walkthrough as 23/23 with zero HTTP(S), CORS, console or page
   errors in `evidence/interaction-walkthrough-v30-standalone.json`.
 
+## Exact delta v30 → v31
+
+- No visual, layout, sizing, typography, color, graph, dialog, settings, tab or
+  table geometry changed.
+- Replaced the shared row/checkbox toggle with two independent UI intents:
+  row surface = ensure visibility ON + select main; checkbox = visibility only.
+- Preserved blue emphasis from `main_signal` even when that signal's visibility
+  checkbox is OFF.
+- Added an exact UI-only intent fragment for Frontend integration and a
+  prototype-only bridge over the real production DOM/API modules.
+- Corrected the standalone samples response to the real paginated provider
+  shape and added three deterministic pages; page 2 appends real five-column
+  rows during the walkthrough instead of leaving the table body empty.
+- Re-ran the full walkthrough as 26/26 with zero HTTP(S), CORS, console or page
+  errors in `evidence/interaction-walkthrough-v31-standalone.json`.
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -179,10 +196,22 @@ entry baseline or production transfer inputs.
 - `architecture/tasks/TASK-0115-derived-signal-operations.md`.
 - User TASK-0116 brief for signal-row state, collapsible signal groups, sampling
   label and settings context routing.
+- User TASK-0117 correction separating row-click main selection from direct
+  checkbox graph visibility.
 - Read-only current selectors/geometry in `public/index.html`,
   `public/css/app.css`, `public/js/app.js`, `public/js/settings.js`.
 - Canonical local `designer/visual-system`, application composition, settings,
   output, dialog and page-sizing references.
+
+### Skills for v31 revision
+
+- Applied: `designer/designer-workflow` for the complete-current revision and
+  `designer/data-entry-and-inspection` for explicit row/checkbox/table states.
+- Skipped: `designer/visual-system` because TASK-0117 changes no visual
+  component, token, geometry or style; the approved v28 visual baseline is
+  inherited unchanged. Application composition, sizing, output and dialog
+  skills were also not reloaded because their accepted contracts are untouched.
+- Figma reference status for v31: `not_required`; no new visual decision exists.
 
 ### Used visual references
 
@@ -258,7 +287,8 @@ claimed as newly Figma-derived.
 | Limits fields/slider | type/drag/double-click | One draft model; empty means auto; double-click clears both bounds | default, hover, focus, drag, dirty, invalid | no geometry change between scopes |
 | Plot slider pane-menu item or Area checkbox | change | Both controls synchronize immediately and the slider preview changes without remount; unified Apply persists the same pane draft | unchecked, checked, focus | pane-local, both sliders may coexist |
 | Display/pane name | input + Apply | Stored name appears in all labels; stable id unchanged | pristine, dirty, invalid, applying, applied | ellipsis in tabs/header |
-| Signal row | plain LMB outside controls/actions | Toggles row checkbox; checked row becomes `main_signal`; unchecking current main selects first remaining checked row | white, grey-hover, main-blue, checkbox-checked/unchecked, busy | fixed 32px row; no geometry shift |
+| Signal row | plain LMB outside controls/actions | Makes row `main_signal`; ensures checkbox ON; never toggles it OFF | white, grey-hover, main-blue, checkbox-checked/unchecked, busy | fixed 32px row; no geometry shift |
+| Signal checkbox | direct click/change | Adds/removes only that graph trace; never changes `main_signal`, including OFF on current main | unchecked, checked, disabled, busy; row blue remains independent | fixed 16px control; no row geometry shift |
 | Signal settings group | click title/keyboard | `Основное` or `Сводка` body independently hides/shows using standard disclosure arrow | expanded, hover, pressed, focus-visible, collapsed | settings body remains y-scroll owner |
 | Plot pane | plain LMB outside controls/modebar | Active pane updates and right panel selects `Область` | inactive, hover, active, loading | Plotly host identity unchanged |
 | Display tab / Add display | click/keyboard | Active/new display updates and right panel selects `Экран` | default, selected, creating, error | tab row remains horizontal-only |
@@ -281,29 +311,31 @@ The harness remains design-only and is not a production transfer input.
 
 | Step | Stable hook | User action | Expected state | Screenshot |
 |---:|---|---|---|---|
-| 1 | `[data-testid=settings-tab-signal]` | Open prototype via `file://` | Four production zones are nonempty; Signal is first/selected; no network/CORS errors | `v30--standalone-production-signal--1440x900.png` |
-| 2 | `[data-testid=signal-values-action]` | Click | Dynamic `radarPulse` tab selected; five populated columns | `v30--standalone-production-samples--1440x900.png` |
-| 3 | `[data-testid=settings-tab-display]` | Click | Two synchronized spectrum slider toggles and local magnitude limits | `v30--standalone-production-spectrum-area--1440x900.png` |
-| 4 | `[data-testid=settings-tab-screen]` | Click | Four links; linked frequency limits include units/fields/slider | `v30--standalone-production-screen-links--1440x900.png` |
-| 5 | `[data-testid=extrema-values]` | Click | Spectrum markers and frequency table aligned by marker number | `v30--standalone-production-spectrum-extrema--1440x900.png` |
-| 6 | `[data-testid=signal-operation-radarPulse]` | Click | Production-styled operation dialog | `v30--standalone-production-operation-default--1440x900.png` |
-| 7 | `[data-testid=signal-operation-select-input]` | Click | Shared same-field search, seven options, exact anchor width | `v30--standalone-production-operation-menu--1440x900.png` |
-| 8 | shared option index `6` | Select `Пользовательское` | Only user body editor and neutral Engee/`init_signal` hint are visible | `v30--standalone-production-operation-custom--1440x900.png` |
-| 9 | `[data-signal-operation-submit]` | Submit invalid then valid body | Engee error, blocking busy, then success | `v30--standalone-production-operation-{error,progress}--1440x900.png` |
-| 10 | `[data-testid=app-shell]` | Resize to 840×620 | Production canvas remains 920×680 and document scrolls | `v30--standalone-production-undersized--840x620.png` |
+| 1 | `[data-testid=settings-tab-signal]` | Open prototype via `file://` | Four production zones are nonempty; Signal is first/selected; no network/CORS errors | `v31--standalone-production-signal--1440x900.png` |
+| 2 | `[data-testid=signal-values-action]` | Click, then scroll | Dynamic `radarPulse` tab selected; page 2 appends populated rows in all five columns | `v31--standalone-production-samples--1440x900.png` |
+| 3 | `[data-testid=settings-tab-display]` | Click | Two synchronized spectrum slider toggles and local magnitude limits | `v31--standalone-production-spectrum-area--1440x900.png` |
+| 4 | `[data-testid=settings-tab-screen]` | Click | Four links; linked frequency limits include units/fields/slider | `v31--standalone-production-screen-links--1440x900.png` |
+| 5 | `[data-testid=extrema-values]` | Click | Spectrum markers and frequency table aligned by marker number | `v31--standalone-production-spectrum-extrema--1440x900.png` |
+| 6 | `[data-testid=signal-operation-radarPulse]` | Click | Production-styled operation dialog | `v31--standalone-production-operation-default--1440x900.png` |
+| 7 | `[data-testid=signal-operation-select-input]` | Click | Shared same-field search, seven options, exact anchor width | `v31--standalone-production-operation-menu--1440x900.png` |
+| 8 | shared option index `6` | Select `Пользовательское` | Only user body editor and neutral Engee/`init_signal` hint are visible | `v31--standalone-production-operation-custom--1440x900.png` |
+| 9 | `[data-signal-operation-submit]` | Submit invalid then valid body | Engee error, blocking busy, then success | `v31--standalone-production-operation-{error,progress}--1440x900.png` |
+| 10 | `[data-testid=app-shell]` | Resize to 840×620 | Production canvas remains 920×680 and document scrolls | `v31--standalone-production-undersized--840x620.png` |
 | 11 | display close/add hooks | Delete `Экран 1`, add display | `ВЧ-контроль` unchanged; new default is `Экран 4` | JSON evidence |
-| 12 | `[data-signal-rows]` | Hover checked `echoComplex` | Only `radarPulse` remains blue; hovered checked row is grey | `v30--main-signal-only-and-hover--1440x900.png` |
-| 13 | `[data-testid=signal-row-noiseFloor] td` | Plain LMB | Checkbox becomes checked and `noiseFloor` becomes sole blue `main_signal` | `v30--row-click-main-signal--1440x900.png` |
-| 14 | `[data-signal-settings-group-toggle=summary]` | Click | Summary collapses; `Основное` stays expanded; label is `Дискретизация, Гц` | `v30--signal-settings-collapsed--1440x900.png` |
-| 15 | `[data-testid=plot-pane-pane-time]` | Plain LMB | `Область` page selected with `Импульс во времени` context | JSON evidence |
-| 16 | display tab then `[data-testid=add-display]` | Click each | `Экран` page selected for existing and newly created display | `v30--screen-focus-after-display-add--1440x900.png` |
+| 12 | `[data-signal-rows]` | Hover checked `echoComplex` | Only `radarPulse` remains blue; hovered checked row is grey | `v31--main-signal-only-and-hover--1440x900.png` |
+| 13 | `[data-testid=signal-row-echoComplex] td` | Plain LMB on checked row | Checkbox stays ON and `echoComplex` becomes sole blue `main_signal` | `v31--row-click-main-signal--1440x900.png` |
+| 14 | `echoComplex [data-visible-signal]` | Direct uncheck | Signal is hidden; `echoComplex` stays blue and remains `main_signal` | `v31--checkbox-hides-current-main--1440x900.png` |
+| 15 | `echoComplex` row, then `noiseFloor` checkbox | Row click, direct check | Row restores echo visibility/main; noise visibility changes without main switch | JSON evidence |
+| 16 | `[data-signal-settings-group-toggle=summary]` | Click | Summary collapses; `Основное` stays expanded; label is `Дискретизация, Гц` | `v31--signal-settings-collapsed--1440x900.png` |
+| 17 | `[data-testid=plot-pane-pane-time]` | Plain LMB | `Область` page selected with `Импульс во времени` context | JSON evidence |
+| 18 | display tab then `[data-testid=add-display]` | Click each | `Экран` page selected for existing and newly created display | `v31--screen-focus-after-display-add--1440x900.png` |
 
 Walkthrough result:
-`evidence/interaction-walkthrough-v30-standalone.json`, `23 passed / 0 failed`,
+`evidence/interaction-walkthrough-v31-standalone.json`, `26 passed / 0 failed`,
 `runtime_errors: []`. The gate explicitly verifies four nonempty zone slots,
 `file:` protocol, zero HTTP(S) resource entries, zero CORS/console/page errors,
 the actual production `app.css` base, shared selector geometry and every state
-listed above. Baseline hashes are in `evidence/production-baseline-v30.json`.
+listed above. Baseline hashes are in `evidence/production-baseline-v31.json`.
 
 ## Transfer contract
 
@@ -316,6 +348,7 @@ listed above. Baseline hashes are in `evidence/production-baseline-v30.json`.
 |---|---|---|---|
 | `integration/css/task-0112-0115-additions.css` | `public/css/app.css` | append once | Exact rules; do not overwrite existing CSS |
 | `integration/css/task-0116-refinements.css` | matching signal-row selectors in `public/css/app.css` | replace selector bodies | Exact final selectors; remove the previous `.is-selected` row/color state |
+| `integration/js/task-0117-signal-row-intent.js` | signal row/checkbox branches in `public/js/app.js` | integrate exact intent split | Do not install the prototype bridge; preserve existing revision/provider flow |
 | `integration/html/dialogs/signal-operation.fragment.html` | `public/js/app.js` runtime template → `document.body` | integrate unchanged singleton | Never edit `public/index.html` |
 | Mock shell/zones/renderers/providers/prototype | none | design-only | Never transfer |
 
@@ -457,7 +490,7 @@ top menu restores selector focus; closing the dialog restores the row action.
 
 ## Local asset inventory
 
-V30 transfers no asset. Production already contains every required icon and
+V31 transfers no asset. Production already contains every required icon and
 font; package copies below remain visual-harness inputs only.
 
 | Asset | Existing production path | Package mock reference | Used by |
@@ -487,7 +520,7 @@ font; package copies below remain visual-harness inputs only.
 
 - Complete current package paths exist and are local.
 - Prototype remains the accepted visual harness and is wholly design-only.
-- 23/23 interaction checks pass; zero required viewports are pending.
+- 26/26 interaction checks pass; zero required viewports are pending.
 - Transfer audit confirms `copy_as_is: []`, the existing two feature fragments
   plus one selector-replacement CSS fragment, immutable
   production document/shell/module/Plotly-host identities and zero mock paths
@@ -498,7 +531,7 @@ font; package copies below remain visual-harness inputs only.
 - Signal metadata, summary, dynamic samples and operation surfaces are covered.
 - Stable ordinal behavior is click-tested: after deleting `Экран 1`,
   `ВЧ-контроль` remains unchanged and the next default is `Экран 4`.
-- Signal membership/main behavior, both Signal disclosures, exact sampling
+- Independent row/main and checkbox/visibility behavior, both Signal disclosures, exact sampling
   label and pane/display settings routing are click-tested against production
   UI code rather than a parallel mock renderer.
 - Figma reference failure is explicit; local values are not mislabeled as
@@ -534,3 +567,8 @@ render or leak the wrapper mechanics.
   `Дискретизация, Гц`, and pane/display actions route to Area/Screen settings.
   The production-faithful `file://` walkthrough passed 23/23 with zero runtime,
   CORS or network errors.
+- `v31`: TASK-0117 interaction correction. Row surface selects main and ensures
+  visibility ON; direct checkbox changes visibility only, even for the current
+  main. The cursor fixture visibly appends a second samples page. Production-
+  faithful `file://` walkthrough passed 26/26 with zero runtime, CORS or network
+  errors; visual baseline remains v28.

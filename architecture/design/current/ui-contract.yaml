@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 30
+design_version: 31
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116]
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -18,6 +18,7 @@ production_integration_contract:
   transferable_sources:
     - frontend-source/integration/css/task-0112-0115-additions.css
     - frontend-source/integration/css/task-0116-refinements.css
+    - frontend-source/integration/js/task-0117-signal-row-intent.js
     - frontend-source/integration/html/dialogs/signal-operation.fragment.html
   mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
 
@@ -40,10 +41,11 @@ prototype_contract:
     - public/js/native-session-io.js
     - public/js/app.js
   deterministic_provider: prototype/mock-fetch.js
-  production_baseline_evidence: evidence/production-baseline-v30.json
+  task0117_interaction_bridge: prototype/task-0117-interaction-bridge.js
+  production_baseline_evidence: evidence/production-baseline-v31.json
   required_nonempty_zone_slots: [toolbar, workspace, settings, inspector]
   forbidden: [fetch_html_partials, http_server, network_api, cors_dependency, alternative_mock_shell]
-  browser_result: {checks: 23, passed: 23, failed: 0, runtime_errors: 0, http_resources: 0}
+  browser_result: {checks: 26, passed: 26, failed: 0, runtime_errors: 0, http_resources: 0}
 
 screens:
   - id: main
@@ -287,10 +289,10 @@ tables:
   - id: signals-table
     tab: signals
     columns: [name, color, sample_rate, sample_count, duration, data_type]
-    checkbox_semantics: "checked means membership/visibility in active pane"
+    checkbox_semantics: "checked means membership/visibility in active pane; direct checkbox never changes main_signal"
     main_signal_semantics:
       selector: "[data-main-signal='true'].is-main-signal"
-      cardinality: "zero_or_one; exactly one while the active pane has checked signals"
+      cardinality: "zero_or_one; independent of checked membership, so current main may be hidden"
       persistent_fill: row-selected-analytical
       settings_context: signal
     ordinary_row_semantics:
@@ -298,7 +300,7 @@ tables:
       hover_fill: row-hover
       checked_fill: surface
     plain_row_click:
-      effect: "toggle the row checkbox; checked result becomes main_signal; unchecking current main selects first remaining checked signal or clears main"
+      effect: "set main_signal to the clicked row and ensure its checkbox/membership is ON; never toggle OFF"
       excluded_targets: [checkbox, row_actions, buttons, links, form_controls, contenteditable, plotly_modebar]
     row_actions:
       - {id: duplicate-signal, icon: copy.svg, tooltip: "Дублировать сигнал"}
@@ -322,6 +324,7 @@ tables:
       - {id: magnitude, label: "Модуль"}
       - {id: square, label: "Квадрат"}
     loading: paged_or_virtualized
+    prototype_fixture: {page_size: 24, pages: 3, total: 72, second_page_appends_visible_rows: true}
     full_array_in_state_or_dom: false
     footer: [visible_range, total_count, lazy_loading_note]
 
@@ -385,7 +388,11 @@ elements:
 interactions:
   - id: signal-row-membership-and-main
     trigger: {element: signals-table-row-noncontrol-surface, action: click}
-    visible_result: "row checkbox toggles; checked row becomes sole blue main_signal; other checked rows remain white"
+    visible_result: "clicked row becomes sole blue main_signal and its checkbox is ON; an already checked row stays checked"
+    seam: signal-membership-main
+  - id: signal-checkbox-visibility-only
+    trigger: {element: signals-table-visibility-checkbox, action: change}
+    visible_result: "only that graph trace/membership is added or removed; blue main_signal remains unchanged even when its checkbox becomes OFF"
     seam: signal-membership-main
   - id: signal-settings-group-collapse
     trigger: {element: signal-main-group-or-signal-summary-group, action: click_or_keyboard}
@@ -489,8 +496,8 @@ overlays:
 
 integration_seams:
   - id: signal-membership-main
-    ui_contract: "active-pane checkbox membership remains distinct from zero-or-one main_signal; row click commits membership then main context using existing revision flow"
-    mock_provider: prototype/mock-fetch.js
+    ui_contract: "row click ensures membership ON then selects main; direct checkbox changes membership only; blue main_signal is independent of visibility"
+    mock_provider: "prototype/mock-fetch.js plus design-only prototype/task-0117-interaction-bridge.js"
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
     hosts: ["[data-signal-rows]", "[data-settings-content]"]
@@ -577,7 +584,7 @@ page_sizing_contract:
 
 evidence:
   visual_baseline_version: 28
-  carry_forward_reason: "Product visuals remain approved; v30 evidence adds only TASK-0116 state/interaction checks against the actual current production DOM/CSS/JS."
+  carry_forward_reason: "Product visuals remain approved; v31 changes only TASK-0117 row/checkbox interaction semantics and paginated mock evidence against the actual current production DOM/CSS/JS."
   viewports: ["1440x900", "840x620"]
   prototype_steps:
     - 01-standalone-file-no-network-no-cors
@@ -599,26 +606,30 @@ evidence:
     - 17-undersized-keeps-production-minimum-canvas
     - 18-stable-display-names-and-ordinals
     - 19-only-main-signal-has-blue-row
-    - 20-row-click-toggles-checkbox-and-main-signal
-    - 21-signal-groups-collapse-and-sample-rate-label
-    - 22-pane-click-focuses-area-settings
-    - 23-display-click-and-add-focus-screen-settings
+    - 20-row-click-selects-main-and-never-unchecks
+    - 21-checkbox-only-hides-without-changing-main
+    - 22-row-click-restores-hidden-main-visibility
+    - 23-checkbox-on-does-not-select-main
+    - 24-signal-groups-collapse-and-sample-rate-label
+    - 25-pane-click-focuses-area-settings
+    - 26-display-click-and-add-focus-screen-settings
   screenshots:
-    - screenshots/v30--standalone-production-signal--1440x900.png
-    - screenshots/v30--standalone-production-samples--1440x900.png
-    - screenshots/v30--standalone-production-spectrum-area--1440x900.png
-    - screenshots/v30--standalone-production-screen-links--1440x900.png
-    - screenshots/v30--standalone-production-spectrum-extrema--1440x900.png
-    - screenshots/v30--standalone-production-operation-default--1440x900.png
-    - screenshots/v30--standalone-production-operation-menu--1440x900.png
-    - screenshots/v30--standalone-production-operation-custom--1440x900.png
-    - screenshots/v30--standalone-production-operation-error--1440x900.png
-    - screenshots/v30--standalone-production-operation-progress--1440x900.png
-    - screenshots/v30--standalone-production-undersized--840x620.png
-    - screenshots/v30--main-signal-only-and-hover--1440x900.png
-    - screenshots/v30--row-click-main-signal--1440x900.png
-    - screenshots/v30--signal-settings-collapsed--1440x900.png
-    - screenshots/v30--screen-focus-after-display-add--1440x900.png
-  interaction_report: evidence/interaction-walkthrough-v30-standalone.json
-  production_baseline: evidence/production-baseline-v30.json
-  transfer_audit: evidence/transfer-audit-v30.json
+    - screenshots/v31--standalone-production-signal--1440x900.png
+    - screenshots/v31--standalone-production-samples--1440x900.png
+    - screenshots/v31--standalone-production-spectrum-area--1440x900.png
+    - screenshots/v31--standalone-production-screen-links--1440x900.png
+    - screenshots/v31--standalone-production-spectrum-extrema--1440x900.png
+    - screenshots/v31--standalone-production-operation-default--1440x900.png
+    - screenshots/v31--standalone-production-operation-menu--1440x900.png
+    - screenshots/v31--standalone-production-operation-custom--1440x900.png
+    - screenshots/v31--standalone-production-operation-error--1440x900.png
+    - screenshots/v31--standalone-production-operation-progress--1440x900.png
+    - screenshots/v31--standalone-production-undersized--840x620.png
+    - screenshots/v31--main-signal-only-and-hover--1440x900.png
+    - screenshots/v31--row-click-main-signal--1440x900.png
+    - screenshots/v31--checkbox-hides-current-main--1440x900.png
+    - screenshots/v31--signal-settings-collapsed--1440x900.png
+    - screenshots/v31--screen-focus-after-display-add--1440x900.png
+  interaction_report: evidence/interaction-walkthrough-v31-standalone.json
+  production_baseline: evidence/production-baseline-v31.json
+  transfer_audit: evidence/transfer-audit-v31.json

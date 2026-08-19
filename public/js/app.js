@@ -1600,15 +1600,10 @@
   }
 
   function mainSignalForPane(pane) {
-    var bindings=pane && Array.isArray(pane.signal_bindings) ? pane.signal_bindings : [];
     var signals=model.state && Array.isArray(model.state.signals) ? model.state.signals : [];
     var selected=model.state && (model.state.row_selected_signal || model.state.selected_signal || model.state.analysis_signal);
     return signals.filter(function (signal) {
-      return bindings.indexOf(signal.name) >= 0 || bindings.indexOf(stableSignalId(signal)) >= 0;
-    }).filter(function (signal) {
       return selected && (signal.name === selected || stableSignalId(signal) === selected);
-    })[0] || signals.filter(function (signal) {
-      return bindings.indexOf(signal.name) >= 0 || bindings.indexOf(stableSignalId(signal)) >= 0;
     })[0] || null;
   }
 
@@ -1663,15 +1658,20 @@
   }
 
   function showSignalSamples() {
-    var signal=mainSignalForPane(paneById(model.activePane)), tabs=q(".inspector-tabs");
-    if (!signal || !tabs) return;
+    syncSignalSamplesWithMain(true);
+  }
+
+  function syncSignalSamplesWithMain(openInspector) {
+    var signal=mainSignalForPane(paneById(model.activePane)), tabs=q(".inspector-tabs"), tab=q("[data-bottom-tab='samples']");
+    if (!signal || !tabs || (!openInspector && !tab)) return;
     var signalId=stableSignalId(signal);
     if (!signalId) return;
     var state=model.signalSamples;
     if (state.signalId !== signalId) state=model.signalSamples={ signalId:signalId, signalName:signal.name, rows:[], nextCursor:null, total:0, loading:false, error:"", token:0 };
-    var tab=q("[data-bottom-tab='samples']");
     if (!tab) { tab=document.createElement("button"); tab.type="button"; tab.setAttribute("role", "tab"); tab.dataset.bottomTab="samples"; tab.dataset.testid="inspector-tab-samples"; tab.setAttribute("data-testid", "inspector-tab-samples"); tabs.appendChild(tab); }
-    tab.textContent=signal.name; model.inspectorPage="samples"; renderInspector(); tab.focus();
+    tab.textContent=signal.name;
+    if (openInspector) { model.inspectorPage="samples"; renderInspector(); tab.focus(); }
+    else if (model.inspectorPage === "samples") renderInspector();
     if (!state.rows.length && !state.loading) loadSignalSamples();
   }
 
@@ -1681,7 +1681,8 @@
     var token=++state.token; state.loading=true; renderInspector();
     boundedRequest(api.signalSamples(state.signalId, state.nextCursor, 200), 10000).then(function (page) {
       if (state !== model.signalSamples || token !== state.token) return;
-      state.rows=state.rows.concat(Array.isArray(page.rows) ? page.rows : []); state.nextCursor=page.next_cursor == null ? false : page.next_cursor; state.total=Number(page.total || state.rows.length); state.loading=false; renderInspector();
+      if (!page || !page.signal || String(page.signal.id) !== state.signalId || !Array.isArray(page.rows)) throw new Error("Сервер вернул некорректную страницу значений сигнала.");
+      state.rows=state.rows.concat(page.rows); state.nextCursor=page.next_cursor == null ? false : page.next_cursor; state.total=Number(page.total || state.rows.length); state.loading=false; renderInspector();
     }).catch(function (error) { if (state === model.signalSamples && token === state.token) { state.loading=false; state.error=safeErrorText(error, "Не удалось загрузить значения."); renderInspector(); } });
   }
 
@@ -1689,7 +1690,7 @@
     var state=model.signalSamples;
     body.innerHTML="<div class='signal-table-scroll' data-testid='samples-table-scroll'><table class='signal-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>"+state.rows.map(function (row) { return "<tr><td>"+esc(row.sample_index == null ? row.index : row.sample_index)+"</td><td>"+esc(row.time == null ? (row.time_s == null ? "—" : row.time_s) : row.time)+"</td><td>"+esc(row.value == null ? "—" : row.value)+"</td><td>"+esc(row.magnitude == null ? "—" : row.magnitude)+"</td><td>"+esc(row.square == null ? "—" : row.square)+"</td></tr>"; }).join("")+"</tbody></table><div class='samples-footer'><span>Показаны строки 1–"+esc(state.rows.length)+"</span><span>"+esc(state.total || state.rows.length)+" отсчётов · подгрузка при прокрутке</span></div>"+(state.loading ? "<div class='samples-loading' role='status'>Загрузка…</div>" : state.error ? "<div class='samples-loading' role='alert'>"+esc(state.error)+"</div>" : "")+"</div>";
     var scroll=body.querySelector("[data-testid='samples-table-scroll']");
-    if (scroll) scroll.addEventListener("scroll", function () { if (!state.loading && state.nextCursor && scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 48) loadSignalSamples(); }, { passive:true, once:true });
+    if (scroll) scroll.addEventListener("scroll", function () { if (!state.loading && state.nextCursor && scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 48) loadSignalSamples(); }, { passive:true });
   }
 
   function screenDraftFor(display) {
@@ -2040,8 +2041,9 @@
     var everySignalVisible = signalNames.length > 0 && signalNames.every(function (name) { return bindings.indexOf(name) >= 0; });
     head.innerHTML = "<th><input class='ui-checkbox' type='checkbox' data-visible-all-signals aria-label='Показывать все сигналы в активной области'" + (everySignalVisible ? " checked" : "") + "></th>" + renderedColumns.map(function (column) { return "<th>" + column.label + "</th>"; }).join("");
     var selectedSignal = model.state && (model.state.row_selected_signal || model.state.selected_signal || model.state.analysis_signal);
-    var mainSignal = signals.filter(function (signal) { return bindings.indexOf(signal.name) >= 0 && signal.name === selectedSignal; })[0] ||
-      signals.filter(function (signal) { return bindings.indexOf(signal.name) >= 0; })[0] || null;
+    var mainSignal = signals.filter(function (signal) {
+      return selectedSignal && (signal.name === selectedSignal || signal.id === selectedSignal);
+    })[0] || null;
     rows.innerHTML = signals.map(function (signal) {
       var values = { name:esc(signal.name), color:"<span class='color-swatch' data-testid='signal-color-" + esc(signal.name) + "' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signal.name) + "'></span>", sample_rate:esc(signal.sample_rate_hz == null ? "—" : signal.sample_rate_hz), sample_count:esc(signal.sample_count == null ? "—" : signal.sample_count), duration:esc(signal.duration_s == null ? "—" : signal.duration_s), data_type:esc(signal.data_type || "—") };
       var selected = bindings.indexOf(signal.name) >= 0;
@@ -2899,30 +2901,45 @@
     });
   }
 
-  function setActivePaneSignalMembership(signalName, checked) {
+  function setActivePaneSignalMembership(signalName, checked, options) {
     var pane = paneById(model.activePane);
     if (!pane || model.signalMembershipBusy) return Promise.resolve(null);
     var bindings = Array.isArray(pane.signal_bindings) ? pane.signal_bindings.slice() : [];
     var index = bindings.indexOf(signalName);
-    var wasMain = signalNameMatches(mainSignalForPane(pane), signalName);
     if (checked && index < 0) bindings.push(signalName);
     if (!checked && index >= 0) bindings.splice(index, 1);
     if ((checked && index >= 0) || (!checked && index < 0)) return Promise.resolve(null);
 
     model.signalMembershipBusy = true;
     renderInspector();
-    return postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:pane.plot_type, signal_bindings:bindings }).then(function () {
-      var nextMain = checked ? signalName : wasMain ? bindings[0] : "";
-      if (!nextMain || selectedSignalName() === nextMain) return null;
-      return mutate(function () {
-        return api.view({ state_revision:model.revision, row_selected_signal:nextMain });
-      }, { preservePlots:true });
-    }).catch(function (error) {
+    return postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:pane.plot_type, signal_bindings:bindings }).catch(function (error) {
       showToast(safeErrorText(error, "Не удалось обновить состав области."), true);
+      if (options && options.rethrow) throw error;
       return null;
     }).finally(function () {
       model.signalMembershipBusy = false;
       renderInspector();
+    });
+  }
+
+  function setActivePaneMainSignal(signalName) {
+    var pane = paneById(model.activePane);
+    if (!pane || model.signalMembershipBusy) return Promise.resolve(null);
+    var bindings = Array.isArray(pane.signal_bindings) ? pane.signal_bindings : [];
+    var alreadySelected = selectedSignalName() === signalName;
+    if (alreadySelected && bindings.indexOf(signalName) >= 0) return Promise.resolve(null);
+    var ensureMembership = bindings.indexOf(signalName) >= 0 ? Promise.resolve(null) : setActivePaneSignalMembership(signalName, true, { rethrow:true });
+    return ensureMembership.then(function () {
+      if (alreadySelected) return null;
+      return mutate(function () {
+        return api.view({ state_revision:model.revision, row_selected_signal:signalName });
+      }, { preservePlots:true });
+    }).then(function (snapshot) {
+      syncSignalSamplesWithMain(false);
+      return snapshot;
+    }).catch(function (error) {
+      showToast(safeErrorText(error, "Не удалось выбрать основной сигнал."), true);
+      return null;
     });
   }
 
@@ -3270,7 +3287,8 @@
     if (node.dataset.visibleAllSignals !== undefined) { var allPane = paneById(model.activePane); if (allPane) return void postLayout({ operation:"update_pane", pane_id:allPane.id, plot_type:allPane.plot_type, signal_bindings:node.checked ? (model.state.signals || []).map(function (signal) { return signal.name; }) : [] }); }
     if (node.dataset.visibleSignal) {
       var activePane = paneById(model.activePane);
-      /* The helper commits only this activePane through postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings }) before selecting its main signal. */
+      /* Checkbox membership is intentionally independent from the main signal;
+         the helper commits only this active pane with postLayout({ operation:"update_pane", pane_id:activePane.id, ... }). */
       if (activePane) return void setActivePaneSignalMembership(node.dataset.visibleSignal, node.checked);
     }
   });
@@ -3280,7 +3298,7 @@
     var row = target.closest("[data-signal-row]");
     if (row) {
       var rowCheckbox = row.querySelector("[data-visible-signal]");
-      if (rowCheckbox && !rowCheckbox.disabled) setActivePaneSignalMembership(rowCheckbox.dataset.visibleSignal, !rowCheckbox.checked);
+      if (rowCheckbox && !rowCheckbox.disabled) setActivePaneMainSignal(rowCheckbox.dataset.visibleSignal);
       return;
     }
     var pane = target.closest("[data-pane-id]");

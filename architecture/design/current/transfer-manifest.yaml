@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 30
+design_version: 31
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -14,12 +14,14 @@ prototype_baseline:
   network_requests_allowed: false
   provider_fixture: prototype/mock-fetch.js
   provider_fixture_scope: data_and_api_responses_only
+  interaction_fixture: prototype/task-0117-interaction-bridge.js
+  interaction_fixture_scope: "design-only adapter proving the v31 row/checkbox intents against the actual production DOM and API modules"
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
-  pinned_hashes: evidence/production-baseline-v30.json
-  walkthrough: evidence/interaction-walkthrough-v30-standalone.json
-  result: "23/23; four nonempty zones; zero HTTP/CORS/runtime errors"
+  pinned_hashes: evidence/production-baseline-v31.json
+  walkthrough: evidence/interaction-walkthrough-v31-standalone.json
+  result: "26/26; four nonempty zones; paged five-column samples visible; zero HTTP/CORS/runtime errors"
 
-# There is intentionally no whole-file production copy in v30. Production
+# There is intentionally no whole-file production copy in v31. Production
 # already owns the application document, boot sequence, UI modules and Plotly
 # hosts. The sources below are exact integration fragments.
 copy_as_is: []
@@ -68,6 +70,14 @@ additive_fragments:
     portal: document.body
     singleton_selector: "[data-testid='signal-operation-layer']"
     content_changes_allowed: false
+  - id: task-0117-signal-row-intent
+    source: integration/js/task-0117-signal-row-intent.js
+    target: public/js/app.js
+    mode: integrate_functions_unchanged_into_existing_event_delegation
+    content_changes_allowed: false
+    marker: "TASK-0117 independent row/main and checkbox/visibility intents"
+    scope: [row_surface_click, direct_visibility_checkbox]
+    prototype_bridge_not_transferable: prototype/task-0117-interaction-bridge.js
 
 existing_assets_reused:
   - {path: public/icons/function.svg, use: signal-row-operation-action}
@@ -94,7 +104,7 @@ integration_hosts:
     integration: "Existing renderInspector page switch renders samples or spectrum extrema into this body; do not replace the inspector shell."
   inspector_rows:
     selector: "[data-signal-rows]"
-    integration: "Existing signals renderer keeps checkbox membership distinct from one [data-main-signal=true].is-main-signal row; plain row LMB excludes controls/actions and uses the existing revision flow."
+    integration: "Existing signals renderer keeps checkbox membership distinct from one [data-main-signal=true].is-main-signal row. Plain row LMB excludes controls/actions, ensures membership ON and selects main; direct checkbox changes membership only. Both use the existing revision flow."
   signal_settings_groups:
     selector: "[data-signal-settings-group]"
     integration: "Reuse existing .settings-group-title/.settings-group-fields disclosure; main and summary start expanded and are independently collapsible."
@@ -113,11 +123,11 @@ integration_hosts:
 
 integration_seams:
   - id: signal-membership-main
-    action_interface: "toggle active-pane signal membership; if checked make that signal main, if unchecking current main choose first remaining checked signal or clear main"
+    action_interface: "row click => ensure active-pane membership ON then select that signal as main; direct checkbox => set active-pane membership only and never change main"
     production_consumers: [public/js/app.js]
     production_providers: [public/js/api.js]
     hosts: ["[data-signal-rows]", "[data-settings-content]"]
-    state_separation: {checkbox: pane_membership, blue_row: main_signal}
+    state_separation: {checkbox: pane_membership_only, blue_row: main_signal_only, hidden_main_allowed: true}
     replacement_forbidden: true
   - id: signal-settings-disclosure
     action_interface: "render and toggle Signal Основное/Сводка through the existing settings-group disclosure contract; exact field label Дискретизация, Гц"
@@ -206,6 +216,7 @@ invariants:
   visual_baseline_unchanged: true
   mock_owns_ui_behavior: false
   mock_scope_is_data_provider_only: true
+  prototype_task0117_bridge_transfer_forbidden: true
   history_is_not_a_source: true
   prototype_uses_production_shell_and_components: true
   prototype_partial_fetch_loader_forbidden: true

@@ -102,7 +102,7 @@
     };
   }
 
-  function spectrumEnvelope() {
+  function spectrumEnvelope(pane) {
     var x=[], a=[], b=[];
     for (var index=0; index<=120; index++) {
       var f=index * 4.1666667;
@@ -110,22 +110,26 @@
       a.push(-104 + 92 * Math.exp(-Math.pow((f-184)/32, 2)) + 3*Math.sin(index/5));
       b.push(-112 + 74 * Math.exp(-Math.pow((f-368)/45, 2)) + 2*Math.cos(index/6));
     }
-    return { data:[
+    var data=[
       { type:"scatter", mode:"lines", name:"radarPulse", x:x, y:a, line:{ color:"#2166df", width:2 } },
       { type:"scatter", mode:"lines", name:"echoComplex", x:x, y:b, line:{ color:"#e1262e", width:2 } }
-    ], layout:{ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", margin:{ l:58, r:22, t:24, b:56 }, xaxis:{ title:{ text:"Частота, кГц" }, range:[0,500], rangeslider:{ visible:true } }, yaxis:{ title:{ text:"Магнитуда, dB" }, range:[-120,0] }, legend:{ x:0.98, y:0.98, xanchor:"right", yanchor:"top", bgcolor:"rgba(255,255,255,0.88)" }, showlegend:true }, config:{ displayModeBar:false } };
+    ];
+    var bindings=Array.isArray(pane && pane.signal_bindings) ? pane.signal_bindings : [];
+    return { data:data.filter(function (trace) { return bindings.indexOf(trace.name) >= 0; }), layout:{ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", margin:{ l:58, r:22, t:24, b:56 }, xaxis:{ title:{ text:"Частота, кГц" }, range:[0,500], rangeslider:{ visible:true } }, yaxis:{ title:{ text:"Магнитуда, dB" }, range:[-120,0] }, legend:{ x:0.98, y:0.98, xanchor:"right", yanchor:"top", bgcolor:"rgba(255,255,255,0.88)" }, showlegend:true }, config:{ displayModeBar:false } };
   }
-  function timeEnvelope() {
+  function timeEnvelope(pane) {
     var x=[], y=[];
     for (var index=0; index<=160; index++) { x.push(index*0.0025); y.push(Math.sin(index*0.48)*Math.exp(-index/520)); }
-    return { data:[{ type:"scatter", mode:"lines", name:"radarPulse", x:x, y:y, line:{ color:"#2166df", width:2 } }], layout:{ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", margin:{ l:55, r:22, t:24, b:52 }, xaxis:{ title:{ text:"Время, мс" }, range:[0,0.4], rangeslider:{ visible:true } }, yaxis:{ title:{ text:"Амплитуда" }, range:[-1.1,1.1] }, showlegend:true }, config:{ displayModeBar:false } };
+    var data=[{ type:"scatter", mode:"lines", name:"radarPulse", x:x, y:y, line:{ color:"#2166df", width:2 } }];
+    var bindings=Array.isArray(pane && pane.signal_bindings) ? pane.signal_bindings : [];
+    return { data:data.filter(function (trace) { return bindings.indexOf(trace.name) >= 0; }), layout:{ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", margin:{ l:55, r:22, t:24, b:52 }, xaxis:{ title:{ text:"Время, мс" }, range:[0,0.4], rangeslider:{ visible:true } }, yaxis:{ title:{ text:"Амплитуда" }, range:[-1.1,1.1] }, showlegend:true }, config:{ displayModeBar:false } };
   }
   function outputPayload(path) {
     var query=new URL(path, "https://prototype.invalid/").searchParams;
     var paneId=query.get("pane_id") || (activePane() && activePane().id) || "pane-spectrum";
     var entry=activeLayout();
     var pane=entry && entry.layout.panes.filter(function (item) { return item.id === paneId; })[0] || activePane();
-    return { state_revision:revision, calculation_revision:calculationRevision, display_id:activeDisplayId, pane_id:pane.id, plot_type:pane.plot_type, context_key:"prototype-"+pane.id, isready:true, success:true, error:null, data:pane.plot_type === "time" ? timeEnvelope() : spectrumEnvelope() };
+    return { state_revision:revision, calculation_revision:calculationRevision, display_id:activeDisplayId, pane_id:pane.id, plot_type:pane.plot_type, context_key:"prototype-"+pane.id, isready:true, success:true, error:null, data:pane.plot_type === "time" ? timeEnvelope(pane) : spectrumEnvelope(pane) };
   }
   function extremaPayload(path) {
     var query=new URL(path, "https://prototype.invalid/").searchParams;
@@ -145,13 +149,17 @@
     var signal=signals.filter(function (item) { return item.id === id; })[0] || signals[0];
     return { signal_id:signal.id, summary:{ sample_count:signal.sample_count, data_type:signal.data_type, duration_s:String(Number(signal.duration_s * 1000).toFixed(3)).replace(".", ",")+" мс", mean:signal.id === "signal-noise" ? "0,000" : "0,008", minimum:signal.id === "signal-noise" ? "−0,142" : "−0,984", maximum:signal.id === "signal-noise" ? "0,139" : "1,000", rms:signal.id === "signal-noise" ? "0,032" : "0,516" } };
   }
-  function samples() {
+  function samples(path) {
+    var query=new URL(path, "https://prototype.invalid/").searchParams;
+    var cursor=Math.max(0, Number(query.get("cursor") || 0));
+    var limit=Math.max(1, Math.min(24, Number(query.get("limit") || 24)));
+    var fixtureTotal=72;
     var rows=[];
-    for (var index=0; index<24; index++) {
+    for (var index=cursor; index<Math.min(cursor+limit, fixtureTotal); index++) {
       var value=Math.sin(index*Math.PI/10), magnitude=Math.abs(value);
       rows.push({ sample_index:index, time:index+" мкс", value:value.toFixed(6), magnitude:magnitude.toFixed(6), square:(value*value).toFixed(6) });
     }
-    return { signal_id:"signal-radar", rows:rows, next_cursor:null, total:400000 };
+    return { signal:{ id:"signal-radar", name:"radarPulse" }, rows:rows, next_cursor:cursor+rows.length < fixtureTotal ? cursor+rows.length : null, total:fixtureTotal };
   }
   function fullState() {
     return Object.assign(state(), { measurement_rows:[{ signal_name:"radarPulse", time_limits:{ min_s:0, max_s:0.399999 }, items:[{ id:"minimum", value:-0.984 }, { id:"maximum", value:1 }, { id:"mean", value:0.008 }] }] });
@@ -212,7 +220,7 @@
     if (/\/api\/peaks\/active/.test(path)) return Promise.resolve(json(extremaPayload(path)));
     if (/\/api\/peaks\/settings/.test(path)) { revision+=1; return Promise.resolve(json({ state:state() })); }
     if (/\/api\/signals\/[^/]+\/summary/.test(path)) return Promise.resolve(json(summary(path)));
-    if (/\/api\/signals\/[^/]+\/samples/.test(path)) return Promise.resolve(json(samples()));
+    if (/\/api\/signals\/[^/]+\/samples/.test(path)) return Promise.resolve(json(samples(path)));
     if (/\/api\/signals\/derive/.test(path)) {
       if (body.operation === "custom" && /missing_variable/.test(body.body || "")) return Promise.resolve(json({ error:"Engee: имя missing_variable не определено." }, 422));
       return new Promise(function (resolve) { window.setTimeout(function () { resolve(json({ state:state(), created_signal_id:"derived-prototype" })); }, 420); });

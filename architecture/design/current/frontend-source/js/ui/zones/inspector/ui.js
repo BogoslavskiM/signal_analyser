@@ -21,7 +21,9 @@
     return "<div class='data-table-wrap' style='height:100%'><table class='data-table'><thead><tr><th style='width:6%'>№</th><th style='width:24%'>Сигнал</th><th style='width:8%'>Цвет</th><th style='width:14%'>Тип</th><th style='width:16%'>Магнитуда</th><th style='width:18%'>Частота</th><th style='width:14%'>Метка</th></tr></thead><tbody>" + state.extrema.map(function (x) { return "<tr><td>" + x.n + "</td><td>" + x.signal + "</td><td><i class='table-swatch' style='background:" + x.color + "'></i></td><td>" + x.type + "</td><td>" + x.value + "</td><td>" + x.position + "</td><td class='extrema-marker-cell'>" + x.marker + "</td></tr>"; }).join("") + "</tbody></table></div>";
   }
   function samples(state) {
-    return "<div class='data-table-wrap' style='height:100%;position:relative'><table class='data-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>" + state.sampleRows.map(function (row) { return "<tr>" + row.map(function (cell) { return "<td>" + cell + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table><div class='samples-footer'><span>Показаны строки 1–200</span><span>400 000 отсчётов · подгрузка при прокрутке</span></div></div>";
+    var page=state.samplePage || { cursor:0, limit:state.sampleRows.length, nextCursor:null, total:state.sampleRows.length };
+    var end=page.cursor + state.sampleRows.length;
+    return "<div class='data-table-wrap' style='height:100%;position:relative'><table class='data-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>" + state.sampleRows.map(function (row) { return "<tr>" + row.map(function (cell) { return "<td>" + cell + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table><div class='samples-footer'><span>Показаны строки " + (page.cursor+1) + "–" + end + "</span><span>" + page.total + " отсчётов · следующая страница с " + page.nextCursor + "</span></div></div>";
   }
   function render(state) {
     document.querySelector("[data-testid='inspector-tabs']").innerHTML = tabs(state);

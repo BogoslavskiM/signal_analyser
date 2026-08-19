@@ -43,9 +43,8 @@
       if (signalRow && !target.closest("input,button,a,[role='button'],.signal-row-actions")) {
         var signal=state.signals.find(function (item) { return item.name === signalRow.dataset.signalRow; });
         if (signal) {
-          signal.visible=!signal.visible;
-          if (signal.visible) { state.mainSignalName=signal.name; state.signal.name=signal.name; state.signal.color=signal.color; state.signal.sampleRate=signal.sampleRate.replace(/\s*МГц$/u, "000000"); }
-          else if (state.mainSignalName === signal.name) { var fallback=state.signals.find(function (item) { return item.visible; }); state.mainSignalName=fallback ? fallback.name : ""; }
+          signal.visible=true;
+          state.mainSignalName=signal.name; state.signal.name=signal.name; state.signal.color=signal.color; state.signal.sampleRate=signal.sampleRate.replace(/\s*МГц$/u, "000000");
           render();
         }
         return;
@@ -67,6 +66,13 @@
       }
     });
     document.addEventListener("change", function (event) {
+      var signalVisibility = event.target.closest("[data-signal-visible]");
+      if (signalVisibility) {
+        var changedSignal=state.signals.find(function (item) { return item.name === signalVisibility.dataset.signalVisible; });
+        if (changedSignal) changedSignal.visible=signalVisibility.checked;
+        render();
+        return;
+      }
       var input = event.target.closest("[data-setting-toggle]");
       if (!input) return;
       var key = input.dataset.settingToggle;
