@@ -16,8 +16,25 @@
   }
   function paneMarkup(pane, active) {
     var spectrum = pane.type === "spectrum";
+    var paneTypeLabel = pane.type === "spectrum" ? "Спектр" : (pane.type === "spectrogram" ? "Спектрограмма" : "Временная область");
+    var paneType = window.SignalAnalyserValueSelect.markup({
+      key:"pane-type-" + pane.id,
+      value:pane.type,
+      label:paneTypeLabel,
+      options:[
+        { value:"time", label:"Временная область" },
+        { value:"spectrum", label:"Спектр" },
+        { value:"spectrogram", label:"Спектрограмма" }
+      ],
+      className:"plot-type",
+      testId:"pane-type-" + pane.id,
+      ariaLabel:"Тип графика " + pane.name,
+      onSelect:function (value) {
+        window.dispatchEvent(new CustomEvent("signal-analyser:pane-type", { detail:{ paneId:pane.id, value:value } }));
+      }
+    });
     return "<article class='plot-pane" + (active ? " is-active" : "") + "' data-pane-id='" + esc(pane.id) + "' data-testid='plot-pane-" + esc(pane.id) + "' tabindex='0'>" +
-      "<header class='plot-pane-header'><span class='plot-pane-name'>" + esc(pane.name) + "</span><button class='plot-type' type='button'>" + (spectrum ? "Спектр" : "Временная область") + "</button><button class='header-chrome-button' type='button' aria-label='Меню области'><img src='" + base() + "/icons/more-vertical.svg' alt=''></button></header>" +
+      "<header class='plot-pane-header'><span class='plot-pane-name'>" + esc(pane.name) + "</span>" + paneType + "<button class='header-chrome-button' type='button' aria-label='Меню области'><img src='" + base() + "/icons/more-vertical.svg' alt=''></button></header>" +
       "<div class='plot-canvas'>" + (spectrum ? spectrumSvg() : timeSvg()) +
       "<span class='plot-axis-label x'>" + (spectrum ? "Частота, кГц" : "Время, мс") + "</span><span class='plot-axis-label y'>" + (spectrum ? "Магнитуда, dB" : "Амплитуда") + "</span>" +
       "<div class='plot-legend'><div class='legend-row'><i class='legend-line'></i><span>radarPulse</span></div></div>" +
@@ -33,6 +50,7 @@
     }).join("");
     var display = activeDisplay(state);
     document.querySelector("[data-testid='plot-grid']").innerHTML = display.panes.length ? display.panes.map(function (pane) { return paneMarkup(pane, pane.id === state.activePaneId); }).join("") : "<div class='status-note info'>В этом экране пока нет областей.</div>";
+    window.SignalAnalyserValueSelect.reconcile();
   }
   window.SignalAnalyserZones = window.SignalAnalyserZones || {};
   window.SignalAnalyserZones.workspace = { render: render, activeDisplay: activeDisplay };

@@ -1641,7 +1641,7 @@
     var editor=model.signalEditor;
     if (!editor.collapsed) editor.collapsed={ main:false, summary:false };
     if (editor.signalId !== signalId) {
-      editor={ signalId:signalId, summary:null, loading:true, error:"", collapsed:{ main:false, summary:false }, draft:{ name:signal.name, color:signal.color || "#1686c3", sample_rate_hz:String(signal.sample_rate_hz == null ? "" : signal.sample_rate_hz) } };
+      editor={ signalId:signalId, summary:null, loading:true, error:"", collapsed:{ main:false, summary:false }, applying:false, draft:{ name:signal.name, color:signal.color || "#1686c3", sample_rate_hz:String(signal.sample_rate_hz == null ? "" : signal.sample_rate_hz) } };
       model.signalEditor=editor;
       boundedRequest(api.signalSummary(signalId), 10000).then(function (summary) {
         if (model.signalEditor !== editor) return;
@@ -1651,28 +1651,52 @@
         editor.loading=false; editor.error=safeErrorText(error, "Не удалось загрузить сводку."); renderSettings(activeDisplay());
       });
     }
-    var d=editor.draft, s=(editor.summary && editor.summary.summary) || editor.summary || {}, metrics=[["Отсчёты", s.sample_count], ["Тип", s.data_type], ["Длительность", s.duration_s], ["Среднее", s.mean], ["Минимум", s.minimum], ["Максимум", s.maximum], ["СКЗ", s.rms]];
-    var mainBody="<label class='settings-field-row'><span class='settings-label'>Имя</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='name' value='"+esc(d.name)+"'></span></label><label class='settings-field-row'><span class='settings-label'>Цвет</span><span class='settings-control-wrap color-field'><button class='color-swatch-button' type='button' aria-label='Цвет сигнала'><i style='--signal-color:"+esc(d.color)+"'></i></button><input class='control' data-signal-metadata='color' value='"+esc(d.color)+"'></span></label><label class='settings-field-row'><span class='settings-label'>Дискретизация, Гц</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='sample_rate_hz' inputmode='decimal' value='"+esc(d.sample_rate_hz)+"'></span></label>";
+    var d=editor.draft, rate=signalSampleRateValidation(d.sample_rate_hz), disabled=editor.applying ? " disabled" : "", s=(editor.summary && editor.summary.summary) || editor.summary || {}, metrics=[["Отсчёты", s.sample_count], ["Тип", s.data_type], ["Длительность", s.duration_s], ["Среднее", s.mean], ["Минимум", s.minimum], ["Максимум", s.maximum], ["СКЗ", s.rms]];
+    var mainBody="<label class='settings-field-row'><span class='settings-label'>Имя</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='name' value='"+esc(d.name)+"'"+disabled+"></span></label><label class='settings-field-row'><span class='settings-label'>Цвет</span><span class='settings-control-wrap color-field'><button class='color-swatch-button' type='button' data-signal-color-trigger aria-label='Цвет сигнала'"+disabled+"><i style='--signal-color:"+esc(d.color)+"'></i></button><input class='control' data-signal-metadata='color' data-signal-color-input value='"+esc(d.color)+"'"+disabled+"></span></label><label class='settings-field-row"+(rate.error ? " has-error" : "")+"' data-signal-metadata-row='sample_rate_hz'><span class='settings-label'>Дискретизация, Гц</span><span class='settings-control-wrap'><input class='control' type='text' data-signal-metadata='sample_rate_hz' inputmode='decimal' value='"+esc(d.sample_rate_hz)+"' aria-invalid='"+String(!!rate.error)+"'"+disabled+"></span><small class='field-message is-error' data-signal-metadata-error='sample_rate_hz'"+(rate.error ? "" : " hidden")+">"+esc(rate.error)+"</small></label>";
     var summaryBody="<div class='summary-grid'>"+metrics.map(function (item) { return "<div class='summary-item'><span>"+item[0]+"</span><strong>"+esc(item[1] == null ? "—" : item[1])+"</strong></div>"; }).join("")+"</div><button class='button summary-action' type='button' data-testid='signal-values-action'>Значения</button>"+(editor.loading ? "<p class='status-note info'>Загрузка сводки…</p>" : editor.error ? "<p class='status-note error'>"+esc(editor.error)+"</p>" : "");
     host.innerHTML=signalSettingsGroup(editor, "main", "Основное", mainBody) + signalSettingsGroup(editor, "summary", "Сводка", summaryBody);
   }
 
   function showSignalSamples() {
     syncSignalSamplesWithMain(true);
+    renderInspector();
+  }
+
+  function signalSampleRateValidation(raw) {
+    var parsed=numeric.parse(raw, "decimal");
+    if (!parsed.valid) return { valid:false, value:null, error:parsed.error };
+    if (parsed.value <= 0) return { valid:false, value:null, error:"Введите положительную частоту дискретизации." };
+    return { valid:true, value:parsed.value, error:"" };
+  }
+
+  function projectSignalSampleRateValidation(input) {
+    var validation=signalSampleRateValidation(input.value), row=input.closest("[data-signal-metadata-row]"), message=row && row.querySelector("[data-signal-metadata-error]");
+    input.setCustomValidity(validation.error || "");
+    input.setAttribute("aria-invalid", String(!validation.valid));
+    if (row) row.classList.toggle("has-error", !validation.valid);
+    if (message) { message.hidden=validation.valid; message.textContent=validation.error; }
+    return validation;
   }
 
   function syncSignalSamplesWithMain(openInspector) {
     var signal=mainSignalForPane(paneById(model.activePane)), tabs=q(".inspector-tabs"), tab=q("[data-bottom-tab='samples']");
-    if (!signal || !tabs || (!openInspector && !tab)) return;
+    if (!signal) {
+      if (tab) tab.remove();
+      if (model.inspectorPage === "samples") model.inspectorPage="signals";
+      model.signalSamples={ signalId:"", signalName:"", rows:[], nextCursor:null, total:0, loading:false, error:"", token:(model.signalSamples.token || 0) + 1 };
+      return false;
+    }
+    if (!tabs) return false;
     var signalId=stableSignalId(signal);
-    if (!signalId) return;
+    if (!signalId) return false;
     var state=model.signalSamples;
     if (state.signalId !== signalId) state=model.signalSamples={ signalId:signalId, signalName:signal.name, rows:[], nextCursor:null, total:0, loading:false, error:"", token:0 };
     if (!tab) { tab=document.createElement("button"); tab.type="button"; tab.setAttribute("role", "tab"); tab.dataset.bottomTab="samples"; tab.dataset.testid="inspector-tab-samples"; tab.setAttribute("data-testid", "inspector-tab-samples"); tabs.appendChild(tab); }
     tab.textContent=signal.name;
     if (openInspector) { model.inspectorPage="samples"; renderInspector(); tab.focus(); }
-    else if (model.inspectorPage === "samples") renderInspector();
+    if (state.error) return true;
     if (!state.rows.length && !state.loading) loadSignalSamples();
+    return true;
   }
 
   function loadSignalSamples() {
@@ -1969,9 +1993,10 @@
     if (model.settingsPage === "peaks") return renderPeaksApply(footer, button, status);
     if (model.settingsPage === "signal") {
       values.hidden = true;
-      footer.dataset.applyState = model.signalEditor.dirty ? "dirty" : "pristine";
-      button.disabled = !model.signalEditor.dirty;
-      button.textContent = "Применить";
+      var rate=signalSampleRateValidation(model.signalEditor.draft && model.signalEditor.draft.sample_rate_hz);
+      footer.dataset.applyState = model.signalEditor.applying ? "applying" : model.signalEditor.dirty && rate.valid ? "dirty" : "pristine";
+      button.disabled = !model.signalEditor.dirty || !rate.valid || !!model.signalEditor.applying;
+      button.textContent = model.signalEditor.applying ? "Применение…" : "Применить";
       status.classList.add("visually-hidden");
       return;
     }
@@ -2011,6 +2036,9 @@
     var body = q("[data-inspector-content]");
     if (!body) return;
     var pane = paneById(model.activePane);
+    /* The samples tab follows main_signal, not the Values button and not the
+       pane visibility checkbox. */
+    if (typeof syncSignalSamplesWithMain === "function") syncSignalSamplesWithMain(false);
     reconcileContextTabs(pane);
     qa("[data-bottom-tab]").forEach(function (tab) { var available = contextTabAvailable(tab.dataset.bottomTab, pane), active = available && tab.dataset.bottomTab === model.inspectorPage; tab.hidden = !available; tab.setAttribute("aria-hidden", String(!available)); tab.setAttribute("aria-selected", String(active)); tab.tabIndex = active ? 0 : -1; });
     body.setAttribute("aria-labelledby", model.inspectorPage === "signals" ? "signals-tab" : model.inspectorPage === "measurements" ? "measurements-tab" : model.inspectorPage === "samples" ? "inspector-tab-samples" : "peaks-tab");
@@ -2230,7 +2258,7 @@
   function renderPeaksSettings(display, pane, record, restoreFocus) {
     var host = q("[data-testid='settings-content']");
     if (!host) return;
-    if (!display || !pane || pane.plot_type !== "time") { host.innerHTML = "<div class='inspector-empty' role='status'>Настройки доступны для временной области</div>"; valueSelect.reconcile(); return; }
+    if (!display || !extremaTabsAvailable(pane)) { host.innerHTML = "<div class='inspector-empty' role='status'>Настройки доступны для временной области и спектра</div>"; valueSelect.reconcile(); return; }
     var settings = activePeaksSettings(pane, record);
     var key = peaksSettingsKey(display, pane);
     if (!model.peaksDraft || model.peaksDraft.key !== key) model.peaksDraft = createPeaksDraft(display, pane, settings);
@@ -2264,7 +2292,7 @@
     var parsed = draft && draft.key === peaksSettingsKey(display, pane) ? parsePeaksSettings(draft) : null;
     var dirty = !!parsed && peaksSettingsDirty(draft, parsed);
     var invalid = !!draft && !parsed;
-    var unavailable = !pane || pane.plot_type !== "time" || !draft;
+    var unavailable = !extremaTabsAvailable(pane) || !draft;
     var phase = model.peaksApplying ? "pending" : invalid ? "invalid" : dirty ? "dirty" : "pristine";
     footer.dataset.applyState = phase;
     footer.setAttribute("aria-busy", String(model.peaksApplying));
@@ -2886,6 +2914,10 @@
       mutationOptions.outputPaneId = payload.pane_id;
       mutationOptions.skipSettings = !plotTypeChanged;
       mutationOptions.preservePlots = hadSignals && willHaveSignals;
+      /* Keep the previous contextual page visible while the mutation is in
+         flight.  Area becomes active only after its authoritative snapshot
+         has been accepted. */
+      mutationOptions.focusAreaAfterPlotTypeChange = plotTypeChanged;
     }
     var request = Object.assign({ display_id:targetDisplayId, version:1 }, payload);
     return mutate(function () {
@@ -2896,6 +2928,13 @@
       }
       return api.layouts(Object.assign({}, request, { state_revision:model.revision }));
     }, mutationOptions).then(function (snapshot) {
+      if (mutationOptions.focusAreaAfterPlotTypeChange) {
+        var currentDisplay = activeDisplay(), currentPane = paneById(payload.pane_id);
+        if (currentDisplay && currentPane && currentPane.plot_type === payload.plot_type) {
+          model.settingsPage = "display";
+          renderSettings(currentDisplay);
+        }
+      }
       if (peaksSurfaceActive()) loadPeaks();
       return snapshot;
     });
@@ -3134,7 +3173,7 @@
     var options=["abs", "square", "sqrt", "signed_sqrt_abs", "multiply", "fft", "custom"].map(function (value) { return { value:value, label:signalOperationLabel(value) }; });
     var select=valueSelect.markup({ key:"signal-operation-type", value:operation, label:signalOperationLabel(operation), options:options, testId:"signal-operation-select", ariaLabel:"Операция", disabled:state.busy, className:"settings-value-select", onSelect:function (value) { state.operation=value; state.error=""; state.success=false; renderSignalOperation(); } });
     var status=state.busy ? "<div class='operation-status status-note info operation-progress' role='status'><img src='./icons/Spinner.svg' alt=''><span>Выполняется преобразование…</span></div>" : state.error ? "<div class='operation-status status-note error' role='alert'><strong>Операция не выполнена.</strong><br>" + esc(state.error) + "</div>" : state.success ? "<div class='operation-status status-note success' role='status'><strong>Сигнал создан.</strong></div>" : "";
-    form.innerHTML="<div class='operation-form'><div class='operation-form-row'><span class='operation-form-label'>Исходный сигнал</span><input class='control' value='" + esc(source.name || "") + "' readonly></div><div class='operation-form-row'><label>Операция</label><div>" + select + "</div></div>" + (multiply ? "<div class='operation-form-row'><label for='signal-operation-multiplier'>Множитель</label><input id='signal-operation-multiplier' class='control' type='text' inputmode='decimal' value='2'></div>" : "") + (custom ? "<div class='operation-form-row operation-code-row'><label for='signal-operation-body'>Тело операции</label><textarea id='signal-operation-body' class='operation-code-editor' spellcheck='false'></textarea></div><p class='operation-body-help'>Код выполняется в Engee. Входной сигнал доступен как <code>init_signal</code>; результатом должно быть выражение, возвращающее новый вектор.</p>" : "") + "<div class='operation-form-row'><label for='signal-operation-name'>Имя нового сигнала</label><input id='signal-operation-name' class='control' value='" + esc((source.name || "signal") + "_" + operation.replace(/[^a-z0-9]+/gi, "_")) + "'></div><div class='operation-form-row'><span class='operation-form-label'></span><label class='checkbox-control'><input type='checkbox' data-signal-operation-overwrite><span>Затирать сигнал с таким именем</span></label></div>" + status + "</div>";
+    form.innerHTML="<div class='operation-form'><div class='operation-form-row'><span class='operation-form-label'>Исходный сигнал</span><input class='control' value='" + esc(source.name || "") + "' readonly></div><div class='operation-form-row'><label>Операция</label><div>" + select + "</div></div>" + (multiply ? "<div class='operation-form-row'><label for='signal-operation-multiplier'>Множитель</label><input id='signal-operation-multiplier' class='control' type='text' inputmode='decimal' value='2'></div>" : "") + (custom ? "<div class='operation-form-row operation-code-row'><label for='signal-operation-body'>Тело операции</label><textarea id='signal-operation-body' class='operation-code-editor' spellcheck='false'></textarea></div><p class='operation-body-help'>Код выполняется в Engee. Входной сигнал доступен как <code>init_signal</code>; результатом должно быть выражение, возвращающее новый вектор.</p>" : "") + "<div class='operation-form-row'><label for='signal-operation-name'>Имя нового сигнала</label><input id='signal-operation-name' class='control' value='" + esc((source.name || "signal") + "_" + operation.replace(/[^a-z0-9]+/gi, "_")) + "'></div><div class='operation-form-row'><span class='operation-form-label'></span><label class='operation-overwrite-control'><span class='checkbox-control'><input type='checkbox' data-signal-operation-overwrite" + (state.busy ? " disabled" : "") + "></span><span>Затирать сигнал с таким именем</span></label></div>" + status + "</div>";
     layer.hidden=!state.open; q("[data-testid='app-shell']").inert=state.open;
     layer.querySelector("[data-signal-operation-submit]").disabled=state.busy || state.success;
     layer.querySelector("[data-signal-operation-cancel]").disabled=state.busy;
@@ -3164,11 +3203,11 @@
 
   function applySignalMetadata() {
     var editor=model.signalEditor, button=q("[data-testid='settings-apply']");
-    if (!editor || !editor.signalId || !editor.draft || !button) return;
-    var sampleRate=Number(editor.draft.sample_rate_hz);
-    if (!Number.isFinite(sampleRate) || sampleRate <= 0) { showToast("Введите положительную частоту дискретизации.", true); return; }
-    button.disabled=true; button.textContent="Применение…";
-    api.updateSignalMetadata({ state_revision:model.revision, operation:"update_metadata", signal_id:editor.signalId, name:editor.draft.name, color:editor.draft.color, sample_rate_hz:sampleRate }).then(function (response) { var snapshot=response && (response.state || response); if (snapshot && snapshot.displays) accept(snapshot); editor.dirty=false; render(); }).catch(function (error) { showToast(safeErrorText(error, "Не удалось обновить сигнал."), true); renderApply(); });
+    if (!editor || !editor.signalId || !editor.draft || !button || editor.applying) return;
+    var sampleRate=signalSampleRateValidation(editor.draft.sample_rate_hz);
+    if (!sampleRate.valid) { showToast(sampleRate.error, true); return; }
+    editor.applying=true; renderSettings(activeDisplay()); renderApply();
+    api.updateSignalMetadata({ state_revision:model.revision, operation:"update_metadata", signal_id:editor.signalId, name:editor.draft.name, color:editor.draft.color, sample_rate_hz:sampleRate.value }).then(function (response) { var snapshot=response && (response.state || response); if (snapshot && snapshot.displays) accept(snapshot); editor.dirty=false; editor.applying=false; render(); }).catch(function (error) { editor.applying=false; showToast(safeErrorText(error, "Не удалось обновить сигнал."), true); renderSettings(activeDisplay()); renderApply(); });
   }
 
   document.addEventListener("click", function (event) {
@@ -3304,7 +3343,7 @@
     var pane = target.closest("[data-pane-id]");
     if (pane) focusAreaSettings(pane.dataset.paneId);
   });
-  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft) { model.signalEditor.draft[event.target.dataset.signalMetadata]=event.target.value; model.signalEditor.dirty=true; renderApply(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
+  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft && !model.signalEditor.applying) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; renderApply(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
   document.addEventListener("input", function (event) {
     var input = event.target, slider = input.closest && input.closest("[data-screen-range-slider]");
     if (!slider || input.dataset.screenRangeInput === undefined) return;
@@ -3400,3 +3439,27 @@
     return settings.load().then(function () { render(); }).catch(showSettingsLoadError).then(schedulePlotlyIdlePreload);
   }).catch(showBootstrapError);
 })(window, document);
+
+(function registerSignalColorPicker(window, document) {
+  "use strict";
+  var palette = ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"];
+  var picker = null, trigger = null, sourceInput = null, initialColor = "#2166df", busy = false;
+  function normalize(value) { var raw = String(value || "").trim(); if (/^#[0-9a-f]{6}$/i.test(raw)) return raw.toLowerCase(); if (/^[0-9a-f]{6}$/i.test(raw)) return ("#" + raw).toLowerCase(); return ""; }
+  function tickAsset() { var base = window.SignalAnalyserUIBase || (window.SignalAnalyserUIDesign && window.SignalAnalyserUIDesign.assetBase) || "."; return String(base).replace(/\/$/, "") + "/icons/tick-figma.svg"; }
+  function colorFrom(control, input) { var direct = normalize(input && input.value); if (direct) return direct; var chip = control && control.querySelector("i"); return normalize(chip && (chip.style.getPropertyValue("--signal-color") || chip.style.backgroundColor)) || "#2166df"; }
+  function swatches() { return palette.map(function (color, index) { var light = index >= 5 && index <= 10; return "<button class='signal-color-picker-swatch' type='button' role='option' data-color='" + color + "' data-light='" + light + "' aria-label='Цвет " + color + "' aria-selected='false' style='--palette-color:" + color + "'><img src='" + tickAsset() + "' alt=''></button>"; }).join(""); }
+  function markup() { return "<section class='signal-color-picker' role='dialog' aria-modal='false' aria-labelledby='signal-color-picker-title' data-testid='signal-color-picker' data-invalid='false' data-busy='false' hidden><div class='signal-color-picker-body'><h3 class='signal-color-picker-title' id='signal-color-picker-title'>Цвет сигнала</h3><label class='signal-color-picker-hex-label'><span>HEX</span><span class='signal-color-picker-hex-control'><i class='signal-color-picker-current' aria-hidden='true'></i><input class='signal-color-picker-hex' data-testid='signal-color-picker-hex' maxlength='7' spellcheck='false' autocomplete='off' aria-describedby='signal-color-picker-error'></span></label><p class='signal-color-picker-error' id='signal-color-picker-error' role='alert'></p><p class='signal-color-picker-section-title'>Палитра Jet</p><div class='signal-color-picker-palette' role='listbox' aria-label='Палитра Jet'>" + swatches() + "</div></div><footer class='signal-color-picker-footer'><button class='signal-color-picker-action' type='button' data-color-picker-cancel>Отмена</button><button class='signal-color-picker-action is-primary' type='button' data-color-picker-apply data-testid='signal-color-picker-apply'>Применить</button></footer></section>"; }
+  function ensure() { if (!picker) { document.body.insertAdjacentHTML("beforeend", markup()); picker = document.querySelector("[data-testid='signal-color-picker']"); } return picker; }
+  function provider() { return window.SignalColorPickerProvider || {}; }
+  function preview(color, source) { picker.style.setProperty("--draft-color", color || initialColor); var chip = trigger && trigger.querySelector("i"); if (chip) { chip.style.background = color || initialColor; chip.style.setProperty("--signal-color", color || initialColor); } if (typeof provider().preview === "function") provider().preview({ color:color || initialColor, source:source || "picker" }); }
+  function render() { var input = picker.querySelector("[data-testid='signal-color-picker-hex']"), valid = !!normalize(input.value); picker.dataset.invalid = String(!valid); picker.dataset.busy = String(busy); picker.querySelector("[data-color-picker-apply]").disabled = !valid || busy; picker.querySelector("[data-color-picker-cancel]").disabled = busy; picker.querySelector(".signal-color-picker-error").textContent = valid ? "" : "Введите HEX в формате #RRGGBB."; picker.querySelectorAll("[data-color]").forEach(function (swatch) { var selected = valid && swatch.dataset.color === normalize(input.value); swatch.classList.toggle("is-selected", selected); swatch.setAttribute("aria-selected", String(selected)); swatch.disabled = busy; }); }
+  function position() { if (!picker || picker.hidden || !trigger) return; var rect = trigger.getBoundingClientRect(), left = Math.max(8, Math.min(window.innerWidth - picker.offsetWidth - 8, rect.right - picker.offsetWidth)), below = rect.bottom + 6, top = below + picker.offsetHeight <= window.innerHeight - 8 ? below : rect.top - picker.offsetHeight - 6; picker.style.left = left + "px"; picker.style.top = Math.max(8, Math.min(window.innerHeight - picker.offsetHeight - 8, top)) + "px"; }
+  function close(commit) { if (!picker || picker.hidden || busy) return; if (!commit) { preview(initialColor, "cancel"); if (typeof provider().cancel === "function") provider().cancel({ color:initialColor }); } picker.hidden = true; if (trigger) trigger.setAttribute("aria-expanded", "false"); var restore = trigger; trigger = null; sourceInput = null; window.requestAnimationFrame(function () { if (restore && restore.isConnected) restore.focus(); }); }
+  function open(control, input) { ensure(); if (!picker.hidden && trigger === control) return close(false); if (!picker.hidden) close(false); trigger = control; sourceInput = input; initialColor = colorFrom(control, input); busy = false; trigger.setAttribute("aria-haspopup", "dialog"); trigger.setAttribute("aria-expanded", "true"); picker.hidden = false; var hex = picker.querySelector("[data-testid='signal-color-picker-hex']"); hex.value = initialColor; preview(initialColor, "open"); render(); position(); window.requestAnimationFrame(function () { hex.focus(); hex.select(); }); }
+  function commit() { var color = normalize(picker.querySelector("[data-testid='signal-color-picker-hex']").value); if (!color || busy) return; busy = true; render(); Promise.resolve(typeof provider().commit === "function" ? provider().commit({ color:color, input:sourceInput, trigger:trigger }) : null).then(function () { if (sourceInput) { sourceInput.value = color; sourceInput.dispatchEvent(new Event("input", { bubbles:true })); } initialColor = color; busy = false; close(true); }).catch(function () { busy = false; picker.dataset.invalid = "true"; picker.querySelector(".signal-color-picker-error").textContent = "Не удалось применить цвет."; render(); }); }
+  document.addEventListener("click", function (event) { var control = event.target.closest("[data-signal-color-trigger], .settings-panel .color-swatch-button"), input = event.target.closest("[data-signal-color-input], [data-signal-metadata='color']"); if (control || input) { event.preventDefault(); event.stopPropagation(); var row = (control || input).closest(".color-field") || (control || input).parentElement; return open(control || row.querySelector(".color-swatch-button") || input, input || row.querySelector("[data-signal-color-input], [data-signal-metadata='color']")); } if (!picker || picker.hidden) return; var swatch = event.target.closest("[data-color]"); if (swatch) { var hex = picker.querySelector("[data-testid='signal-color-picker-hex']"); hex.value = swatch.dataset.color; preview(swatch.dataset.color, "palette"); return render(); } if (event.target.closest("[data-color-picker-cancel]")) return close(false); if (event.target.closest("[data-color-picker-apply]")) return commit(); if (!event.target.closest("[data-testid='signal-color-picker']")) close(false); }, true);
+  document.addEventListener("input", function (event) { if (!event.target.matches("[data-testid='signal-color-picker-hex']")) return; var color = normalize(event.target.value); if (color) preview(color, "hex"); render(); });
+  document.addEventListener("keydown", function (event) { if (!picker || picker.hidden) return; if (event.key === "Escape") { event.preventDefault(); close(false); } if (event.key === "Enter" && event.target.matches("[data-testid='signal-color-picker-hex']")) { event.preventDefault(); commit(); } }, true);
+  window.addEventListener("resize", position); document.addEventListener("scroll", position, true);
+  window.SignalColorPickerUI = { open:open, close:close, palette:palette.slice() };
+}(window, document));

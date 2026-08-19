@@ -16,7 +16,7 @@
     "public/js/native-session-io.js",
     "public/js/app.js"
   ],
-  "generated_at": "2026-08-19T10:23:15.420Z",
+  "generated_at": "2026-08-19T11:09:23.049Z",
   "passed": 26,
   "failed": 0,
   "runtime_errors": [],
@@ -24,13 +24,13 @@
     {
       "id": "01-standalone-file-no-network-no-cors",
       "passed": true,
-      "detail": "{\"protocol\":\"file:\",\"network\":[],\"zones\":[{\"slot\":\"toolbar\",\"children\":2,\"text\":171},{\"slot\":\"workspace\",\"children\":3,\"text\":407},{\"slot\":\"settings\",\"children\":4,\"text\":407},{\"slot\":\"inspector\",\"children\":2,\"text\":594}],\"errorHidden\":true}",
+      "detail": "{\"protocol\":\"file:\",\"network\":[],\"zones\":[{\"slot\":\"toolbar\",\"children\":2,\"text\":171},{\"slot\":\"workspace\",\"children\":3,\"text\":407},{\"slot\":\"settings\",\"children\":4,\"text\":407},{\"slot\":\"inspector\",\"children\":2,\"text\":604}],\"errorHidden\":true}",
       "screenshot": "screenshots/v31--standalone-production-signal--1440x900.png"
     },
     {
       "id": "02-production-shell-and-components",
       "passed": true,
-      "detail": "{\"toolbar\":true,\"workspace\":true,\"settings\":true,\"inspector\":true,\"plots\":2,\"css\":[\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/public/css/theme.css\",\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/public/css/app.css\",\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/current/frontend-source/integration/css/task-0112-0115-additions.css\",\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/current/frontend-source/integration/css/task-0116-refinements.css\"]}",
+      "detail": "{\"toolbar\":true,\"workspace\":true,\"settings\":true,\"inspector\":true,\"plots\":2,\"css\":[\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/public/css/theme.css\",\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/public/css/app.css\",\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/current/frontend-source/integration/css/task-0112-0115-additions.css\",\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/current/frontend-source/integration/css/task-0116-refinements.css\",\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/current/frontend-source/integration/css/task-0118-color-picker.css\"]}",
       "screenshot": "screenshots/v31--standalone-production-signal--1440x900.png"
     },
     {

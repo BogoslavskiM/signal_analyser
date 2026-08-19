@@ -4,7 +4,7 @@
   function esc(value) { return String(value).replace(/[&<>"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]; }); }
   function tabs(state) {
     var items = [["signals","Сигналы"],["measurements","Измерения"],["peaks","Экстремумы"]];
-    if (state.dynamicSamplesOpen) items.push(["samples",state.signal.name]);
+    if (state.mainSignalName) items.push(["samples",state.signal.name]);
     return items.map(function (item) { var selected = state.inspectorPage === item[0]; return "<button type='button' role='tab' data-inspector-page='" + item[0] + "' aria-selected='" + selected + "' tabindex='" + (selected ? 0 : -1) + "'>" + esc(item[1]) + "</button>"; }).join("");
   }
   function signals(state) {

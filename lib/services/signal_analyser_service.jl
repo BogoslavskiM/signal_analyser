@@ -3250,13 +3250,21 @@ function signal_analyser_cached_peaks_snapshot(
         signal_display_active_pane(layout::SignalDisplayLayoutState)
     settings = pane === nothing ? SignalPeaksSettings() :
         (pane::SignalDisplayPaneState).peaks_settings
-    passive = signal_peaks_snapshot(
-        state.peaks_service,
-        state_revision,
-        display,
-        signal,
-        settings = settings,
-    )
+    passive = display.active_plot == SPECTRUM_PLOT ?
+        signal_spectrum_peaks_snapshot(
+            state,
+            state_revision,
+            display,
+            signal,
+            settings = settings,
+        ) :
+        signal_peaks_snapshot(
+            state.peaks_service,
+            state_revision,
+            display,
+            signal,
+            settings = settings,
+        )
     (!display.peaks_enabled || signal === nothing) && return passive
     if layout !== nothing
         typed_pane = pane::SignalDisplayPaneState
@@ -3302,6 +3310,10 @@ function signal_analyser_cached_peaks_snapshot(
             end
         end
     end
+    # The legacy per-signal cache predates typed Spectrum positions and is
+    # keyed only by Time Limits.  It is therefore valid only for TIME; Spectrum
+    # results are read exclusively from the pane/revision-aware cache above.
+    display.active_plot == TIME_PLOT || return passive
     plots = get(state.plot_cache, signal.name, nothing)
     plots === nothing && return passive
     cached = get(plots, signal_peaks_cache_field(display.id), nothing)

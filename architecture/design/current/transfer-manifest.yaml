@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 31
+design_version: 32
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -14,14 +14,14 @@ prototype_baseline:
   network_requests_allowed: false
   provider_fixture: prototype/mock-fetch.js
   provider_fixture_scope: data_and_api_responses_only
-  interaction_fixture: prototype/task-0117-interaction-bridge.js
-  interaction_fixture_scope: "design-only adapter proving the v31 row/checkbox intents against the actual production DOM and API modules"
+  interaction_fixture: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js]
+  interaction_fixture_scope: "design-only adapters proving row/checkbox separation plus automatic samples, pane-type routing and Jet color draft against actual production DOM/API modules"
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
-  pinned_hashes: evidence/production-baseline-v31.json
-  walkthrough: evidence/interaction-walkthrough-v31-standalone.json
-  result: "26/26; four nonempty zones; paged five-column samples visible; zero HTTP/CORS/runtime errors"
+  pinned_hashes: evidence/production-baseline-v32.json
+  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json]
+  result: "Inherited 26/26 plus v32 delta 9/9; automatic populated five-column samples, Jet picker, context routing, spectrum extrema and spectrogram hiding; zero HTTP/CORS/runtime errors"
 
-# There is intentionally no whole-file production copy in v31. Production
+# There is intentionally no whole-file production copy in v32. Production
 # already owns the application document, boot sequence, UI modules and Plotly
 # hosts. The sources below are exact integration fragments.
 copy_as_is: []
@@ -78,6 +78,28 @@ additive_fragments:
     marker: "TASK-0117 independent row/main and checkbox/visibility intents"
     scope: [row_surface_click, direct_visibility_checkbox]
     prototype_bridge_not_transferable: prototype/task-0117-interaction-bridge.js
+  - id: task-0118-signal-color-picker-styles
+    source: integration/css/task-0118-color-picker.css
+    target: public/css/app.css
+    mode: append_once
+    content_changes_allowed: false
+    marker: "TASK-0118 compact Signal color picker with explicit Jet palette"
+    scope: [anchored_popover, hex, fifteen_jet_swatches, selected_tick, draft_footer]
+  - id: task-0118-signal-color-picker-ui
+    source: integration/js/task-0118-color-picker.js
+    target: public/js/app.js
+    mode: integrate_ui_module_unchanged_into_existing_boot
+    content_changes_allowed: false
+    marker: "TASK-0118 nested Signal color draft"
+    scope: [open_position, hex_validation, jet_selection, cancel_restore, apply_to_page_draft]
+  - id: task-0119-context-and-samples-intent
+    source: integration/js/task-0119-context-and-samples-intent.js
+    target: public/js/app.js
+    mode: integrate_functions_unchanged_into_existing_pane_and_samples_lifecycle
+    content_changes_allowed: false
+    marker: "TASK-0119 Area routing, automatic main-signal sample tab and sample-rate validation"
+    scope: [pane_type_to_area, automatic_sample_tab, values_focus_only, positive_dot_decimal_sample_rate]
+    prototype_bridge_not_transferable: prototype/task-0119-interaction-bridge.js
 
 existing_assets_reused:
   - {path: public/icons/function.svg, use: signal-row-operation-action}
@@ -85,6 +107,7 @@ existing_assets_reused:
   - {path: public/icons/Spinner.svg, use: signal-operation-busy}
   - {path: public/icons/chevron-down-fill-16.svg, use: SignalAnalyserValueSelect}
   - {path: public/icons/tick-figma.svg, use: pane-menu-checked-state}
+  - {path: public/icons/tick-figma.svg, use: selected-Jet-swatch}
 
 integration_hosts:
   settings_tabs:
@@ -98,7 +121,7 @@ integration_hosts:
     integration: "All Signal/Area/Screen/Extrema drafts use the existing unified Apply lifecycle; no second footer or action."
   inspector_tabs:
     selector: ".inspector-tabs"
-    integration: "public/js/app.js inserts/removes one dynamic sample tab keyed by stable signal id; existing [data-bottom-tab] tabs remain in place."
+    integration: "public/js/app.js automatically ensures/rebinds one sample tab keyed by stable main-signal id and preloads page 1; Values only selects/focuses it."
   inspector_body:
     selector: "[data-inspector-content]"
     integration: "Existing renderInspector page switch renders samples or spectrum extrema into this body; do not replace the inspector shell."
@@ -109,8 +132,11 @@ integration_hosts:
     selector: "[data-signal-settings-group]"
     integration: "Reuse existing .settings-group-title/.settings-group-fields disclosure; main and summary start expanded and are independently collapsible."
   workspace_context:
-    selector: "[data-pane-id], [data-display-select], [data-testid='add-display']"
-    integration: "Pane click selects Area settings; display selection/creation selects Screen settings without remounting shell or settings panel."
+    selector: "[data-pane-id], [data-display-select], [data-testid='add-display'], [data-value-select-key$='::plot_type']"
+    integration: "Pane click and accepted pane-type change select Area settings; display selection/creation selects Screen settings without remounting shell or settings panel."
+  signal_color:
+    selector: ".settings-panel .color-swatch-button, [data-signal-metadata='color']"
+    integration: "One fixed 284px Jet popover is appended to body; its Apply writes only the existing Signal metadata draft and dispatches the existing input lifecycle."
   pane_menu:
     selector: "[data-testid='display-overflow-menu']"
     integration: "Reuse [data-plot-range-slider] for time/frequency and [data-plot-amplitude-slider] for amplitude/magnitude; labels and aria state project the active pane type."
@@ -134,10 +160,29 @@ integration_seams:
     production_consumers: [public/js/app.js]
     host: "[data-settings-content]"
     replacement_forbidden: true
+  - id: signal-color-draft
+    action_interface: "open HEX + exact 15 Jet swatches; preview nested draft; popover Apply updates Signal page draft; Cancel/Escape/outside restore opening color"
+    production_consumers: [public/js/app.js]
+    host: "document.body + [data-settings-content]"
+    direct_api_call_forbidden: true
+    replacement_forbidden: true
   - id: settings-context-routing
-    action_interface: "pane click -> Area settings; display-tab/add-display click -> Screen settings"
+    action_interface: "pane click or accepted pane-type mutation -> Area settings; display-tab/add-display click -> Screen settings"
     production_consumers: [public/js/app.js]
     hosts: ["[data-pane-id]", "[data-display-select]", "[data-testid='add-display']", "[data-settings-page]"]
+    replacement_forbidden: true
+  - id: automatic-main-signal-samples
+    action_interface: "valid main signal => ensure/rebind named sample tab and request first page without focus; Values => select/focus the same tab"
+    production_consumers: [public/js/app.js]
+    production_providers: [public/js/api.js]
+    hosts: [".inspector-tabs", "[data-inspector-content]"]
+    full_array_in_dom_or_state_forbidden: true
+    replacement_forbidden: true
+  - id: signal-sample-rate-draft
+    action_interface: "editable Дискретизация, Гц metadata; positive finite dot-decimal UI validation; shared Apply persistence"
+    production_consumers: [public/js/app.js]
+    production_providers: [public/js/api.js]
+    host: "[data-settings-content]"
     replacement_forbidden: true
   - id: settings-page-extension
     action_interface: "ensure signal tab; render Signal/Area/Screen/Extrema into existing settings content"
@@ -217,6 +262,7 @@ invariants:
   mock_owns_ui_behavior: false
   mock_scope_is_data_provider_only: true
   prototype_task0117_bridge_transfer_forbidden: true
+  prototype_task0119_bridge_transfer_forbidden: true
   history_is_not_a_source: true
   prototype_uses_production_shell_and_components: true
   prototype_partial_fetch_loader_forbidden: true

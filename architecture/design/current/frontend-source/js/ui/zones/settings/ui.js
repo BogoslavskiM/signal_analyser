@@ -13,8 +13,8 @@
   function signalPage(state) {
     var s = state.signal;
     var main = row("Имя", "<input class='field' data-dirty-input data-signal-name value='" + esc(s.name) + "'>") +
-      row("Цвет", "<div class='color-field'><button class='color-swatch-button' type='button' aria-label='Выбрать цвет'><i style='background:" + s.color + "'></i></button><input class='field' data-dirty-input value='" + s.color + "'></div>") +
-      row("Дискретизация, Гц", "<input class='field' type='text' inputmode='decimal' data-dirty-input value='" + s.sampleRate + "'>", "Дискретизация, Гц");
+      row("Цвет", "<div class='color-field'><button class='color-swatch-button' type='button' data-signal-color-trigger aria-label='Выбрать цвет'><i style='background:" + s.color + "'></i></button><input class='field' data-dirty-input data-signal-color-input data-signal-metadata='color' value='" + s.color + "'></div>") +
+      row("Дискретизация, Гц", "<input class='field' type='text' inputmode='decimal' data-dirty-input data-signal-sample-rate data-signal-metadata='sample_rate_hz' value='" + s.sampleRate + "' aria-describedby='signal-sample-rate-error'><small id='signal-sample-rate-error' class='field-message is-error' role='alert' hidden>Введите положительное число через точку.</small>", "Дискретизация, Гц");
     var summary = "<div class='summary-grid'><div class='summary-item'><span>Отсчёты</span><strong>" + s.samples.toLocaleString("ru-RU") + "</strong></div><div class='summary-item'><span>Тип</span><strong>" + s.type + "</strong></div><div class='summary-item'><span>Длительность</span><strong>" + s.duration + "</strong></div><div class='summary-item'><span>Среднее</span><strong>" + s.mean + "</strong></div><div class='summary-item'><span>Минимум</span><strong>" + s.minimum + "</strong></div><div class='summary-item'><span>Максимум</span><strong>" + s.maximum + "</strong></div><div class='summary-item'><span>СКЗ</span><strong>" + s.rms + "</strong></div></div><button class='ui-button summary-action' type='button' data-testid='signal-values-action'>Значения</button>";
     return group("signal-main", "Основное", main) + group("signal-summary", "Сводка", summary);
   }

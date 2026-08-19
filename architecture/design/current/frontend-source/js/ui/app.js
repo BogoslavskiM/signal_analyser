@@ -15,6 +15,17 @@
   function dirty() { state.dirty = true; document.querySelector("[data-testid='settings-apply']").disabled = false; document.querySelector("[data-testid='settings-panel']").dataset.applyState = "dirty"; }
 
   function bind() {
+    window.addEventListener("signal-analyser:pane-type", function (event) {
+      var detail=event.detail || {};
+      var display=activeDisplay();
+      var changedPane=display.panes.find(function (item) { return item.id === detail.paneId; });
+      if (!changedPane) return;
+      changedPane.type=detail.value;
+      state.activePaneId=detail.paneId;
+      state.settingsPage="display";
+      render();
+      document.querySelector("[data-testid='settings-tab-display']").focus();
+    });
     document.addEventListener("click", function (event) {
       var target = event.target;
       if (!document.querySelector("[data-testid='signal-operation-layer']").hidden && window.SignalAnalyserDialogs.signalOperation.click(target, provider)) return;
@@ -52,7 +63,7 @@
       var toggle = target.closest("[data-group-toggle]");
       if (toggle) { var section = toggle.closest(".settings-group"); section.classList.toggle("is-collapsed"); toggle.setAttribute("aria-expanded", String(!section.classList.contains("is-collapsed"))); return; }
       var values = target.closest("[data-testid='signal-values-action']");
-      if (values) { state.dynamicSamplesOpen = true; state.inspectorPage = "samples"; render(); document.querySelector("[data-inspector-page='samples']").focus(); return; }
+      if (values) { state.inspectorPage = "samples"; render(); document.querySelector("[data-inspector-page='samples']").focus(); return; }
       if (target.closest("[data-testid='extrema-values']")) { state.inspectorPage = "peaks"; render(); document.querySelector("[data-inspector-page='peaks']").focus(); return; }
       var operation = target.closest("[data-signal-operation]");
       if (operation) { window.SignalAnalyserDialogs.signalOperation.open(operation.dataset.signalOperation); return; }
@@ -61,6 +72,10 @@
         var displayName = document.querySelector("[data-display-name]"); if (displayName) activeDisplay().name = displayName.value.trim() || activeDisplay().name;
         var paneName = document.querySelector("[data-pane-name]"); if (paneName) activePane().name = paneName.value.trim() || activePane().name;
         var signalName = document.querySelector("[data-signal-name]"); if (signalName) state.signal.name = signalName.value.trim() || state.signal.name;
+        var signalColor = document.querySelector("[data-signal-color-input]"); if (signalColor) state.signal.color = signalColor.value;
+        var sampleRate = document.querySelector("[data-signal-sample-rate]");
+        if (sampleRate && window.SignalAnalyserTask0119 && !window.SignalAnalyserTask0119.validateSampleRate(sampleRate.value).valid) { sampleRate.focus(); return; }
+        if (sampleRate) state.signal.sampleRate = sampleRate.value;
         apply.disabled = true; apply.textContent = "Применение…";
         Promise.resolve(provider.onApply ? provider.onApply(state) : null).then(function () { state.dirty = false; apply.textContent = "Применить"; render(); });
       }
@@ -81,7 +96,15 @@
       else if (key === "magnitudeSlider") activePane().magnitudeSlider = input.checked;
       dirty(); render();
     });
-    document.addEventListener("input", function (event) { if (event.target.matches("[data-dirty-input]")) dirty(); });
+    document.addEventListener("input", function (event) {
+      if (event.target.matches("[data-signal-sample-rate]") && window.SignalAnalyserTask0119) {
+        var valid = window.SignalAnalyserTask0119.validateSampleRate(event.target.value).valid;
+        event.target.setAttribute("aria-invalid", String(!valid));
+        var message = document.getElementById("signal-sample-rate-error");
+        if (message) message.hidden = valid;
+      }
+      if (event.target.matches("[data-dirty-input]")) dirty();
+    });
     document.addEventListener("keydown", function (event) { if (event.defaultPrevented) return; if (event.key === "Escape" && !document.querySelector("[data-testid='signal-operation-layer']").hidden) window.SignalAnalyserDialogs.signalOperation.close(); });
   }
 
@@ -97,7 +120,7 @@
           if (surface === "spectrum") state.settingsPage = "display";
           if (surface === "screen") state.settingsPage = "screen";
           if (surface === "extrema") { state.settingsPage = "peaks"; state.inspectorPage = "peaks"; }
-          if (surface === "samples") { state.dynamicSamplesOpen = true; state.inspectorPage = "samples"; }
+          if (surface === "samples") state.inspectorPage = "samples";
           if (surface === "operation") { state.inspectorPage = "signals"; render(); window.SignalAnalyserDialogs.signalOperation.open(state.signal.name); return; }
           render();
         }
