@@ -6,7 +6,7 @@
   var numeric = window.SignalAnalyserNumeric;
   var context = {
     displayId: "", revision: 0, document: null, drafts: {}, pending: {}, timers: {}, requestQueue: Promise.resolve(), intent: 0, contextToken: 0, loadToken: 0,
-    page: "display", plotType: "time", collapsed: {}, renderedFields: {}, linkPreview: null, extraVisible: {}
+    page: "display", plotType: "time", collapsed: {}, renderedFields: {}, linkPreview: null, extraVisible: {}, extraItems: {}
   };
   var plotOptions = [
     { value: "time", label: "Временная область" },
@@ -26,6 +26,7 @@
   function fields() { return context.document && Array.isArray(context.document.fields) ? context.document.fields : []; }
   function readouts() { return context.document && Array.isArray(context.document.readouts) ? context.document.readouts : []; }
   function sourceItem(id) {
+    if (context.extraItems[id]) return context.extraItems[id];
     var found = fields().filter(function (item) { return item.id === id; })[0];
     if (found) return found;
     var readout = readouts().filter(function (item) { return item.id === id; })[0];
@@ -365,6 +366,7 @@
       context.page=page || "display"; context.plotType=plotType || "time";
     },
     setExtraVisible:function (ids) { context.extraVisible={}; (ids || []).forEach(function (id) { context.extraVisible[id]=true; }); },
+    setExtraItems:function (items) { context.extraItems={}; (items || []).forEach(function (item) { if (item && item.id) context.extraItems[item.id]=item; }); },
     setLinkPreview:function (linkTime, linkAmplitude) {
       context.linkPreview = typeof linkTime === "boolean" && typeof linkAmplitude === "boolean" ? { linkTime:linkTime, linkAmplitude:linkAmplitude } : null;
     },

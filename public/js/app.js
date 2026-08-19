@@ -1875,6 +1875,10 @@
     previewScreenLinks(draft);
     settings.beginCustomRender();
     if (typeof settings.setExtraVisible === "function") settings.setExtraVisible(["display.name"]);
+    if (typeof settings.setExtraItems === "function") settings.setExtraItems([{
+      id:"display.name", kind:"text", label:"Имя экрана", value:display.name || "",
+      enabled:true, visible:true, effect_status:"requires_apply"
+    }]);
     var layoutFields = "<div class='screen-layout-options'>" +
       "<fieldset class='screen-layout-axis' data-testid='screen-layout-rows'><legend>Строки</legend>" + screenLayoutSegments("rows", draft.rows, "Количество строк") + "</fieldset>" +
       "<fieldset class='screen-layout-axis' data-testid='screen-layout-columns'><legend>Столбцы</legend>" + screenLayoutSegments("columns", draft.columns, "Количество столбцов") + "</fieldset>" +
@@ -1887,7 +1891,7 @@
     if (draft.linkAmplitude) limitGroups += screenSettingsGroup("y-limits", "Пределы оси Y", settings.renderRows(["time.y_limits"]) + screenRangeSlider("time.y_limits", "y", draft));
     if (draft.linkFrequency) limitGroups += screenSettingsGroup("frequency-limits", "Пределы частоты", settings.renderRows(["spectrum.frequency_units", "spectrum.frequency_limits"]) + screenRangeSlider("spectrum.frequency_limits", "frequency", draft));
     if (draft.linkMagnitude) limitGroups += screenSettingsGroup("magnitude-limits", "Пределы магнитуды", settings.renderRows(["spectrum.y_limits"]) + screenRangeSlider("spectrum.y_limits", "magnitude", draft));
-    content.innerHTML = "<div class='screen-settings' data-testid='screen-settings'>" + screenSettingsGroup("screen-name", "Экран", settings.renderRows(["display.name"])) + screenSettingsGroup("layout", "Макет", layoutFields) + screenSettingsGroup("links", "Связь областей", linkFields) + limitGroups + "</div>";
+    content.innerHTML = "<div class='screen-settings' data-testid='screen-settings'>" + screenSettingsGroup("screen-name", "Основное", settings.renderRows(["display.name"])) + screenSettingsGroup("layout", "Макет", layoutFields) + screenSettingsGroup("links", "Связь областей", linkFields) + limitGroups + "</div>";
     keepVisibleAutomaticRangeInputsEmpty(draft);
     valueSelect.reconcile();
   }
@@ -1913,6 +1917,7 @@
     if (content) content.setAttribute("aria-labelledby", "settings-tab-" + model.settingsPage);
     settings.setContext(display.id, model.revision);
     if (typeof settings.setExtraVisible === "function") settings.setExtraVisible([]);
+    if (typeof settings.setExtraItems === "function") settings.setExtraItems([]);
     if (model.settingsPage === "signal") {
       renderSignalSettings(pane);
       renderApply();
