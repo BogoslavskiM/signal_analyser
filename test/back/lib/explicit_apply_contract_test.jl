@@ -50,7 +50,14 @@ end
     applied = EXPLICIT_APPLY.apply_signal_settings!(service, state, Dict(
         "state_revision" => 2, "display_id" => "display-1",
     ))
-    @test applied == Dict{String,Any}("success" => true, "state_revision" => 3)
+    @test applied["success"] === true
+    @test applied["state_revision"] == 3
+    # Apply now returns the authoritative settings document so one Screen/Area
+    # footer can hydrate all immediately moved linked-axis controls.  It must
+    # still be output-free and must not schedule a calculation.
+    @test haskey(applied, "settings")
+    @test applied["settings"]["state_revision"] == 3
+    @test !haskey(applied, "plots") && !haskey(applied, "plot_payload")
     @test explicit_apply_provider_counts() == calls
     @test state.view.state_revision == 3
     # A fresh Display has no bound signal; applying its settings must not turn

@@ -116,13 +116,13 @@ const NIO = Main.AppTestContext
     end
 
     real_signal = NIO.AnalysedSignal("one", "#111111", 10.0, ComplexF64[1, 2], false, true)
-    complex_signal = NIO.AnalysedSignal("two", "#222222", 10.0, ComplexF64[3 + 4im], true, true)
+    complex_signal = NIO.AnalysedSignal("two", "#222222", 10.0, ComplexF64[3 + 4im, 5 + 6im], true, true)
     single_value = NIO.native_workspace_value([real_signal])
     library_value = NIO.native_workspace_value([real_signal, complex_signal])
     @test single_value isa Vector{Float64} && single_value == [1.0, 2.0]
     @test library_value isa Dict{String,Any}
     @test library_value["one"] == [1.0, 2.0]
-    @test library_value["two"] == ComplexF64[3 + 4im]
+    @test library_value["two"] == ComplexF64[3 + 4im, 5 + 6im]
 
     source = NIO.source("lib", "services", "native_session_io_service.jl")
     @test occursin("root_real = realpath", source) && occursin("child_real = try\n                realpath(child)", source)

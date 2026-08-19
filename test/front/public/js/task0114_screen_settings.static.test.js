@@ -13,8 +13,8 @@ module.exports = async function testTask0114ScreenSettings(assert) {
 
   assert(/data-settings-page="display"[^>]*>Область</.test(html), "Display settings tab must be visibly renamed to Area");
   assert(/data-settings-page="display"[\s\S]*?data-settings-page="screen"[\s\S]*?data-settings-page="peaks"/.test(html), "settings tab order must be Area, Screen, Extrema");
-  assert(/data-settings-context>Экран 1 · Область 1</.test(html), "initial settings context must use Screen and Area numbering");
-  assert(/context\.textContent = "Экран " \+ \(displayIndex \+ 1\) \+ " · Область " \+ \(paneIndex \+ 1\)/.test(app), "runtime context must derive Screen and Area numbers from active state");
+  assert(/data-settings-context>Экран 1 · Область 1</.test(html), "static shell may retain default labels before the first authoritative state");
+  assert(/context\.textContent = \(display\.name \|\| "Экран"\) \+ " · " \+ \(pane && pane\.name \|\| "Область"\)/.test(app), "runtime context must use persisted Screen and Area names, never their array indices");
 
   assert(/function screenLayoutSegments\(axis, selected, label\)[\s\S]*?class='segments screen-layout-segments'[\s\S]*?data-screen-layout-" \+ axis/.test(app), "Screen layout axes must use the requested ten-button segmented controls");
   assert(/function renderScreenSettings\(display\)[\s\S]*?screenSettingsGroup\("layout", "Макет"[\s\S]*?screenSettingsGroup\("links", "Связь областей"/.test(app), "Screen page must render layout and link settings as shared collapsible groups");
@@ -28,7 +28,7 @@ module.exports = async function testTask0114ScreenSettings(assert) {
   assert(/\.settings-apply:disabled:not\(\.is-applying\):not\(\.is-pending\)[\s\S]*?opacity:\s*1/.test(css) && /\.settings-apply\.is-applying:disabled,[\s\S]*?cursor:\s*wait/.test(css), "Apply must use distinct polished idle-disabled and busy-disabled appearances");
   assert(!/footer\.dataset\.phase = "pending"[\s\S]*?Обновляется активная область/.test(app), "Apply must not remain busy until a potentially long output calculation finishes");
   assert(/accept:function \(documentValue\)[\s\S]*?context\.document=documentValue/.test(settings), "the authoritative Apply document must be accepted without an extra settings GET");
-  assert(/dataset\.testid === "settings-apply"\) return void \(model\.settingsPage === "peaks" \? applyPeaksSettings\(\) : applySettings\(\)\)/.test(app), "Area and Screen tabs must invoke the same Apply pipeline while Extrema stays independent");
+  assert(/dataset\.testid === "settings-apply"\) return void \(model\.settingsPage === "peaks" \? applyPeaksSettings\(\) : model\.settingsPage === "signal" \? applySignalMetadata\(\) : applySettings\(\)\)/.test(app), "Area and Screen tabs must invoke the same Apply pipeline while Extrema and Signal retain their own actions");
   assert(/context\.page === "screen"\) return/.test(settings), "shared pane-settings renderer must not overwrite the app-owned Screen page during persistence");
   assert(/signal-settings-loaded/.test(settings) && /signal-settings-loaded[\s\S]*?model\.settingsPage === "screen"[\s\S]*?renderSettings\(display\)/.test(app), "a newly selected Screen must hydrate link values after its authoritative settings document loads");
   assert(/draft\.linksReady \? "" : " disabled"/.test(app) && /!draft\.linksReady \|\| !state\.dirty \|\| state\.invalid/.test(app), "axis links and the shared Apply must stay disabled until Screen settings are authoritative, dirty, and valid");

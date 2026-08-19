@@ -1,0 +1,17 @@
+<aside class="settings-panel ui-panel" data-testid="settings-panel" aria-labelledby="settings-title" data-apply-state="pristine">
+  <header class="settings-heading">
+    <div><h2 id="settings-title">Настройки отображения</h2><p data-settings-context></p></div>
+    <span class="settings-context-dot" aria-hidden="true"></span>
+  </header>
+  <div class="settings-tabs" role="tablist" aria-label="Страницы настроек" data-testid="settings-tabs">
+    <button type="button" role="tab" data-settings-page="signal" data-testid="settings-tab-signal">Сигнал</button>
+    <button type="button" role="tab" data-settings-page="display" data-testid="settings-tab-display">Область</button>
+    <button type="button" role="tab" data-settings-page="screen" data-testid="settings-tab-screen">Экран</button>
+    <button type="button" role="tab" data-settings-page="peaks" data-testid="settings-tab-peaks">Экстремумы</button>
+  </div>
+  <div class="settings-scroll" role="tabpanel" data-testid="settings-content"></div>
+  <footer class="settings-apply-block" data-testid="settings-footer">
+    <button class="ui-button" type="button" data-testid="extrema-values" hidden>Показать значения</button>
+    <button class="ui-button ui-button-primary settings-apply" type="button" data-testid="settings-apply">Применить</button>
+  </footer>
+</aside>

@@ -755,6 +755,88 @@ route("/api/signals", method = POST) do
     end
 end
 
+route("/api/signals/derive", method = POST) do
+    try
+        api_json(apply_derived_signal!(
+            SIGNAL_OPERATION_PROVIDER,
+            SIGNAL_INVENTORY_SERVICE,
+            SIGNAL_ANALYSER_STATE,
+            parse_derive_signal_command(jsonpayload());
+            lightweight = true,
+        ))
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)
+        elseif err isa SignalOperationProviderError
+            signal_operation_error_response(err)
+        elseif err isa WorkspaceUnavailableError
+            workspace_api_error_response("workspace_unavailable", err; status = 503)
+        elseif err isa WorkspaceProviderError
+            workspace_api_error_response("workspace_provider_error", err; status = 502)
+        else
+            api_error_response("Не удалось выполнить операцию над сигналом", err; status = 500)
+        end
+    end
+end
+
+route("/api/signals/:signal_id/summary", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            signal_inventory_summary_payload(
+                SIGNAL_ANALYSER_STATE,
+                String(params(:signal_id)),
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        else
+            api_error_response("Не удалось получить сводку сигнала", err; status = 500)
+        end
+    end
+end
+
+route("/api/signals/:signal_id/samples", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        cursor_value = try
+            params(:cursor)
+        catch
+            nothing
+        end
+        limit_value = try
+            params(:limit)
+        catch
+            nothing
+        end
+        cursor = signal_inventory_query_integer(cursor_value, "cursor", 0)
+        limit = signal_inventory_query_integer(
+            limit_value,
+            "limit",
+            SIGNAL_INVENTORY_SAMPLES_DEFAULT_LIMIT,
+        )
+        api_json(
+            signal_inventory_samples_payload(
+                SIGNAL_ANALYSER_STATE,
+                String(params(:signal_id)),
+                cursor,
+                limit,
+            );
+            headers = response_headers,
+        )
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        else
+            api_error_response("Не удалось получить отсчёты сигнала", err; status = 500)
+        end
+    end
+end
+
 route("/api/example", method = GET) do
     try
         api_json(example_payload())

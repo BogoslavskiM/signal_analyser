@@ -653,6 +653,7 @@ function export_signal_package(
         payload = signal_analyser_session_payload(document)
         signal_copies = AnalysedSignal[
             AnalysedSignal(
+                signal.id,
                 signal.name,
                 signal.color,
                 signal.sample_rate_hz,
@@ -827,8 +828,8 @@ function signal_package_validate_manifest!(value)::Tuple{Int,Int}
     signal_package_integer(
         signal_package_value(application, "session_version"),
         "manifest.application.session_version",
-    ) == SIGNAL_ANALYSER_SESSION_VERSION || throw(
-        signal_package_validation_error("unsupported_session_version", "Требуется session v3"),
+    ) in (SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION, SIGNAL_ANALYSER_SESSION_VERSION) || throw(
+        signal_package_validation_error("unsupported_session_version", "Требуется session v3 или v4"),
     )
     contents = signal_package_exact_object(
         signal_package_value(manifest, "contents"),
@@ -1169,8 +1170,8 @@ function validate_signal_package(
         err isa SignalAnalyserSessionValidationError || rethrow()
         throw(SignalPackageValidationError(err.code, err.message, err.fields))
     end
-    document.version == SIGNAL_ANALYSER_SESSION_VERSION || throw(
-        signal_package_validation_error("unsupported_session_version", "В пакете требуется session v3"),
+    document.version in (SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION, SIGNAL_ANALYSER_SESSION_VERSION) || throw(
+        signal_package_validation_error("unsupported_session_version", "В пакете требуется session v3 или v4"),
     )
     signal_paths = signal_package_validate_signals!(entries, document.signals)
     graphs, graph_paths = signal_package_validate_graphs!(entries, document)

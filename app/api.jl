@@ -17,6 +17,14 @@ const SIGNAL_INVENTORY_REQUEST_FIELDS = Dict(
     "duplicate" => Set(["state_revision", "operation", "signal_name"]),
     "extract_time_limits" => Set(["state_revision", "operation", "display_id"]),
     "delete" => Set(["state_revision", "operation", "signal_name"]),
+    "update_metadata" => Set([
+        "state_revision",
+        "operation",
+        "signal_id",
+        "name",
+        "color",
+        "sample_rate_hz",
+    ]),
 )
 
 json_safe(value::AbstractFloat) = isfinite(value) ? value : nothing
@@ -425,6 +433,31 @@ function signal_inventory_request_revision!(
     end
 end
 
+function signal_inventory_query_integer(
+    value,
+    field::AbstractString,
+    default::Int,
+)::Int
+    (value === nothing || value == "") && return default
+    parsed = if value isa Integer && !(value isa Bool)
+        try
+            Int(value)
+        catch err
+            (err isa InexactError || err isa OverflowError) || rethrow()
+            nothing
+        end
+    elseif value isa AbstractString && occursin(r"^[0-9]+$", String(value))
+        tryparse(Int, String(value))
+    else
+        nothing
+    end
+    parsed === nothing && throw(signal_inventory_validation_error(
+        field,
+        "Требуется неотрицательное целое число",
+    ))
+    parsed::Int
+end
+
 function signal_inventory_batch_selections!(
     field_errors::Dict{String,String},
     value,
@@ -494,7 +527,7 @@ function parse_signal_inventory_command(data)::AbstractSignalInventoryCommand
         String(operation_value)
     else
         field_errors["operation"] =
-            "Допустимо: import_workspace, import_workspace_batch, duplicate, extract_time_limits, delete"
+            "Допустимо: import_workspace, import_workspace_batch, duplicate, extract_time_limits, delete, update_metadata"
         nothing
     end
     expected_fields = operation === nothing ?
@@ -589,6 +622,44 @@ function parse_signal_inventory_command(data)::AbstractSignalInventoryCommand
             field_errors,
         ))
         return ExtractTimeLimitsSignalCommand(revision::Int, display_id::String)
+    elseif operation == "update_metadata"
+        signal_id_value = signal_analyser_payload_value(data, "signal_id")
+        signal_id = signal_id_value isa AbstractString &&
+            !isempty(strip(String(signal_id_value))) ? String(signal_id_value) : nothing
+        signal_id === nothing && (field_errors["signal_id"] = "Требуется непустая строка")
+        name_value = signal_analyser_payload_value(data, "name")
+        name = name_value isa AbstractString && !isempty(strip(String(name_value))) ?
+            strip(String(name_value)) : nothing
+        name === nothing && (field_errors["name"] = "Требуется непустая строка")
+        color_value = signal_analyser_payload_value(data, "color")
+        color = color_value isa AbstractString &&
+            occursin(r"^#[0-9A-Fa-f]{6}$", String(color_value)) ? String(color_value) : nothing
+        color === nothing && (field_errors["color"] = "Требуется цвет формата #RRGGBB")
+        rate_value = signal_analyser_payload_value(data, "sample_rate_hz")
+        rate = if rate_value isa Real && !(rate_value isa Bool)
+            converted = try
+                Float64(rate_value)
+            catch err
+                (err isa InexactError || err isa OverflowError) || rethrow()
+                NaN
+            end
+            isfinite(converted) && converted > 0 ? converted : nothing
+        else
+            nothing
+        end
+        rate === nothing && (field_errors["sample_rate_hz"] =
+            "Требуется положительное конечное число")
+        isempty(field_errors) || throw(SignalAnalyserValidationError(
+            "Некорректный запрос Signals",
+            field_errors,
+        ))
+        return UpdateSignalMetadataCommand(
+            revision::Int,
+            signal_id::String,
+            name::String,
+            color::String,
+            rate::Float64,
+        )
     end
 
     signal_value = signal_analyser_payload_value(data, "signal_name")
@@ -606,6 +677,97 @@ function parse_signal_inventory_command(data)::AbstractSignalInventoryCommand
     operation == "duplicate" ?
         DuplicateSignalCommand(revision::Int, signal_name::String) :
         DeleteSignalCommand(revision::Int, signal_name::String)
+end
+
+function parse_derive_signal_command(data)::DeriveSignalCommand
+    data isa AbstractDict || throw(signal_inventory_validation_error(
+        "body",
+        "Ожидался JSON-объект",
+    ))
+    expected = Set([
+        "state_revision",
+        "source_signal_id",
+        "operation",
+        "target_name",
+        "overwrite",
+        "multiplier",
+        "body",
+    ])
+    errors = Dict{String,String}()
+    signal_inventory_request_exact_fields!(errors, data, expected)
+    revision = signal_inventory_request_revision!(errors, data)
+    source_value = signal_analyser_payload_value(data, "source_signal_id")
+    source_id = source_value isa AbstractString && !isempty(strip(String(source_value))) ?
+        String(source_value) : nothing
+    source_id === nothing && (errors["source_signal_id"] = "Требуется непустая строка")
+    operation_value = signal_analyser_payload_value(data, "operation")
+    operation = operation_value isa AbstractString &&
+        String(operation_value) in SIGNAL_DERIVED_OPERATION_NAMES ? String(operation_value) : nothing
+    operation === nothing && (errors["operation"] =
+        "Допустимо: abs, square, sqrt, signed_sqrt_abs, multiply, fft, custom")
+    target_value = signal_analyser_payload_value(data, "target_name")
+    target_name = target_value isa AbstractString && !isempty(strip(String(target_value))) ?
+        strip(String(target_value)) : nothing
+    target_name === nothing && (errors["target_name"] = "Требуется непустая строка")
+    overwrite_value = signal_analyser_payload_value(data, "overwrite")
+    overwrite = overwrite_value isa Bool ? overwrite_value : nothing
+    overwrite === nothing && (errors["overwrite"] = "Требуется boolean")
+    multiplier_value = signal_analyser_payload_value(data, "multiplier")
+    multiplier = if multiplier_value === nothing
+        nothing
+    elseif multiplier_value isa Real && !(multiplier_value isa Bool)
+        converted = try
+            Float64(multiplier_value)
+        catch err
+            (err isa InexactError || err isa OverflowError) || rethrow()
+            NaN
+        end
+        isfinite(converted) ? converted : nothing
+    else
+        nothing
+    end
+    multiplier_value !== nothing && multiplier === nothing &&
+        (errors["multiplier"] = "Требуется null или конечное число")
+    body_value = signal_analyser_payload_value(data, "body")
+    body = body_value === nothing ? nothing :
+        body_value isa AbstractString ? String(body_value) : nothing
+    body_value !== nothing && body === nothing &&
+        (errors["body"] = "Требуется null или строка")
+    isempty(errors) || throw(SignalAnalyserValidationError(
+        "Некорректный запрос операции над сигналом",
+        errors,
+    ))
+    try
+        DeriveSignalCommand(
+            revision::Int,
+            source_id::String,
+            operation::String,
+            target_name::String,
+            overwrite::Bool,
+            multiplier,
+            body,
+        )
+    catch err
+        err isa ArgumentError || rethrow()
+        throw(signal_inventory_validation_error("operation", sprint(showerror, err)))
+    end
+end
+
+function signal_operation_error_response(err::SignalOperationProviderError)
+    status = err.code == "operation_unavailable" ? 503 :
+        err.code in ("engee_transport_error", "engee_scratch_collision") ? 502 : 422
+    api_json(Dict{String,Any}(
+        "ok" => false,
+        "code" => err.code,
+        "error" => Dict{String,Any}(
+            "code" => err.code,
+            "message" => err.message,
+            "fields" => Dict{String,String}(
+                err.code in ("operation_failed", "invalid_operation_body") ?
+                    "body" => err.message : "operation" => err.message,
+            ),
+        ),
+    ); status = status)
 end
 
 function status_payload()

@@ -115,6 +115,160 @@ struct DeleteSignalCommand <: AbstractSignalInventoryCommand
     end
 end
 
+struct UpdateSignalMetadataCommand <: AbstractSignalInventoryCommand
+    revision::Int
+    signal_id::String
+    name::String
+    color::String
+    sample_rate_hz::Float64
+
+    function UpdateSignalMetadataCommand(
+        revision::Int,
+        signal_id::AbstractString,
+        name::AbstractString,
+        color::AbstractString,
+        sample_rate_hz::Real,
+    )
+        revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
+        id = strip(String(signal_id))
+        isempty(id) && throw(ArgumentError("Signal id не может быть пустым"))
+        signal_name = strip(String(name))
+        isempty(signal_name) && throw(ArgumentError("Имя сигнала не может быть пустым"))
+        ncodeunits(signal_name) <= 128 || throw(ArgumentError(
+            "Имя сигнала не может быть длиннее 128 байт",
+        ))
+        signal_color = String(color)
+        occursin(r"^#[0-9A-Fa-f]{6}$", signal_color) || throw(ArgumentError(
+            "Цвет сигнала должен иметь формат #RRGGBB",
+        ))
+        sample_rate_hz isa Bool && throw(ArgumentError(
+            "Частота дискретизации должна быть числом, но не Bool",
+        ))
+        rate = Float64(sample_rate_hz)
+        isfinite(rate) && rate > 0 || throw(ArgumentError(
+            "Частота дискретизации должна быть положительной и конечной",
+        ))
+        new(revision, id, signal_name, signal_color, rate)
+    end
+end
+
+const SIGNAL_DERIVED_OPERATION_NAMES = Set([
+    "abs",
+    "square",
+    "sqrt",
+    "signed_sqrt_abs",
+    "multiply",
+    "fft",
+    "custom",
+])
+const SIGNAL_DERIVED_MAX_SAMPLES = 5_000_000
+
+struct DeriveSignalCommand <: AbstractSignalInventoryCommand
+    revision::Int
+    source_signal_id::String
+    operation::String
+    target_name::String
+    overwrite::Bool
+    multiplier::Union{Nothing,Float64}
+    body::Union{Nothing,String}
+
+    function DeriveSignalCommand(
+        revision::Int,
+        source_signal_id::AbstractString,
+        operation::AbstractString,
+        target_name::AbstractString,
+        overwrite::Bool,
+        multiplier::Union{Nothing,Real},
+        body::Union{Nothing,AbstractString},
+    )
+        revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
+        source_id = strip(String(source_signal_id))
+        isempty(source_id) && throw(ArgumentError("Source signal id не может быть пустым"))
+        operation_name = String(operation)
+        operation_name in SIGNAL_DERIVED_OPERATION_NAMES || throw(ArgumentError(
+            "Неподдерживаемая операция над сигналом",
+        ))
+        name = strip(String(target_name))
+        isempty(name) && throw(ArgumentError("Имя производного сигнала не может быть пустым"))
+        ncodeunits(name) <= 128 || throw(ArgumentError(
+            "Имя производного сигнала не может быть длиннее 128 байт",
+        ))
+        typed_multiplier = if multiplier === nothing
+            nothing
+        else
+            multiplier isa Bool && throw(ArgumentError("Множитель должен быть числом, но не Bool"))
+            value = Float64(multiplier)
+            isfinite(value) || throw(ArgumentError("Множитель должен быть конечным числом"))
+            value
+        end
+        operation_name == "multiply" && typed_multiplier === nothing && throw(ArgumentError(
+            "Для операции multiply требуется множитель",
+        ))
+        operation_name != "multiply" && typed_multiplier !== nothing && throw(ArgumentError(
+            "Множитель допустим только для операции multiply",
+        ))
+        operation_body = body === nothing ? nothing : String(body)
+        if operation_name == "custom"
+            operation_body === nothing || !isempty(strip(operation_body)) || throw(ArgumentError(
+                "Тело пользовательской операции не может быть пустым",
+            ))
+            operation_body === nothing && throw(ArgumentError(
+                "Для пользовательской операции требуется тело",
+            ))
+            ncodeunits(operation_body) <= 16_384 || throw(ArgumentError(
+                "Тело пользовательской операции не может быть длиннее 16384 байт",
+            ))
+        elseif operation_body !== nothing
+            throw(ArgumentError("Тело допустимо только для пользовательской операции"))
+        end
+        new(
+            revision,
+            source_id,
+            operation_name,
+            name,
+            overwrite,
+            typed_multiplier,
+            operation_body,
+        )
+    end
+end
+
+abstract type AbstractSignalOperationProvider end
+
+struct SignalOperationProviderResult
+    values::Vector{ComplexF64}
+    is_complex::Bool
+
+    function SignalOperationProviderResult(values::AbstractVector, is_complex::Bool)
+        samples = ComplexF64.(values)
+        2 <= length(samples) <= SIGNAL_DERIVED_MAX_SAMPLES || throw(ArgumentError(
+            "Результат операции должен содержать от 2 до $(SIGNAL_DERIVED_MAX_SAMPLES) отсчётов",
+        ))
+        all(value -> isfinite(real(value)) && isfinite(imag(value)), samples) || throw(
+            ArgumentError("Результат операции содержит неконечные значения"),
+        )
+        !is_complex && any(value -> !iszero(imag(value)), samples) && throw(ArgumentError(
+            "Вещественный результат содержит комплексные отсчёты",
+        ))
+        new(samples, is_complex)
+    end
+end
+
+struct SignalOperationProviderError <: Exception
+    code::String
+    message::String
+end
+
+Base.showerror(io::IO, err::SignalOperationProviderError) = print(io, err.message)
+
+function signal_operation_execute(
+    provider::AbstractSignalOperationProvider,
+    source,
+    command::DeriveSignalCommand,
+)::SignalOperationProviderResult
+    throw(MethodError(signal_operation_execute, (provider, source, command)))
+end
+
 signal_inventory_command_revision(command::AbstractSignalInventoryCommand)::Int =
     command.revision
 

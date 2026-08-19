@@ -50,7 +50,7 @@ end
     target = SS.default_signal_analyser_state()
     imported = SS.import_signal_analyser_session!(service, target, Dict("state_revision" => 0, "document" => document))
 
-    @test imported == Dict("ok" => true, "schema" => SS.SIGNAL_ANALYSER_SESSION_SCHEMA, "version" => 3, "imported_source_revision" => 0, "state_revision" => 1)
+    @test imported == Dict("ok" => true, "schema" => SS.SIGNAL_ANALYSER_SESSION_SCHEMA, "version" => SS.SIGNAL_ANALYSER_SESSION_VERSION, "imported_source_revision" => 0, "state_revision" => 1)
     @test SS.export_signal_analyser_session(service, target)["document"]["state"] == document["state"]
     @test target.view.state_revision == 1
     @test isempty(target.plot_cache) && isempty(target.spectrum_cache) && isempty(target.spectrogram_cache) && isempty(target.persistence_cache)
@@ -105,8 +105,17 @@ end
         service,
         SS.test_state_with_complex_signal(),
     )["document"]
+    document["version"] = SS.SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION
+    for signal in document["state"]["signals"]
+        delete!(signal, "id")
+    end
     for display in document["state"]["displays"]
+        for pane in display["layout"]["panes"]
+            delete!(pane, "name")
+        end
         delete!(display["stored_settings"], "time.link_amplitude")
+        delete!(display["stored_settings"], "spectrum.link_frequency")
+        delete!(display["stored_settings"], "spectrum.link_magnitude")
     end
     target = SS.default_signal_analyser_state()
     imported = SS.import_signal_analyser_session!(

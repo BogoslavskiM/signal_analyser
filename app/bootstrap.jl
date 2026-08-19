@@ -37,6 +37,7 @@ const WORKSPACE_CATALOG_SERVICE = WorkspaceCatalogService(WORKSPACE_VARIABLE_PRO
 const SIGNAL_INVENTORY_SERVICE = SignalInventoryService(
     EngeeWorkspaceSignalSource(WORKSPACE_VARIABLE_PROVIDER),
 )
+const SIGNAL_OPERATION_PROVIDER = EngeeSignalOperationProvider()
 const WORKSPACE_BATCH_IMPORT_SERVICE = WorkspaceBatchImportService(
     WORKSPACE_CATALOG_SERVICE,
     SIGNAL_INVENTORY_SERVICE,

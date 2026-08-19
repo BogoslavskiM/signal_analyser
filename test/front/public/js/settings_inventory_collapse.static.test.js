@@ -23,7 +23,7 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
   assert(!/group\("area-link"|"Связь областей"|time\.not_applicable|Не применяется/.test(settings), "right settings must contain neither time-link nor not-applicable placeholder rows");
   const exactInventories = [
     ["time", ["Параметры", "Пределы времени", "Пределы оси Y"], ["time.normalize_y", "time.show_markers", "time.units", "time.x_limits", "time.y_limits"]],
-    ["spectrum", ["График", "Частотная ось", "Спектральный анализ"], ["display.plot_type", "display.show_legend", "spectrum.frequency_units", "spectrum.frequency_limits", "spectrum.frequency_scale", "spectrum.y_limits", "spectrum.scale", "spectrum.resolution_type", "spectrum.leakage", "spectrum.rbw", "spectrum.window_length", "spectrum.window", "spectrum.sidelobe_attenuation_db", "spectrum.overlap_percent", "spectrum.nfft", "spectrum.frequency_resolution"]],
+    ["spectrum", ["График", "Частотная ось", "Спектральный анализ"], ["display.plot_type", "display.show_legend", "spectrum.frequency_units", "spectrum.frequency_scale", "spectrum.scale", "spectrum.resolution_type", "spectrum.leakage", "spectrum.rbw", "spectrum.window_length", "spectrum.window", "spectrum.sidelobe_attenuation_db", "spectrum.overlap_percent", "spectrum.nfft", "spectrum.frequency_resolution"]],
     ["spectrogram", ["График", "Частотная ось", "Мощность"], ["display.plot_type", "display.show_legend", "spectrogram.time_units", "spectrogram.frequency_units", "spectrogram.frequency_limits", "spectrogram.frequency_scale", "spectrogram.power_limits", "spectrogram.scale", "spectrogram.leakage", "spectrogram.time_resolution", "spectrogram.overlap_percent", "spectrogram.reassign", "spectrogram.actual_rbw"]],
     ["persistence", ["График", "Частотная ось", "Плотность и мощность"], ["display.plot_type", "display.show_legend", "persistence.time_units", "persistence.frequency_units", "persistence.frequency_limits", "persistence.frequency_scale", "persistence.power_limits", "persistence.density_limits", "persistence.scale", "persistence.leakage", "persistence.time_resolution", "persistence.overlap_percent", "persistence.power_bins", "persistence.rbw"]]
   ];
@@ -31,6 +31,7 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
     titles.forEach((title) => assert(inventorySource.includes(`"${title}"`), `${type} inventory must include group ${title}`));
     ids.forEach((id) => assert(inventorySource.includes(`"${id}"`), `${type} inventory must include ${id}`));
   });
+  assert(/function injectSpectrumSliderSettings[\s\S]*?setExtraVisible\(\["spectrum.frequency_limits", "spectrum.y_limits"\]\)[\s\S]*?local-frequency-limits[\s\S]*?local-magnitude-limits/.test(app), "Spectrum limits must be injected as independent local Area groups beside their shared sliders");
   assert(!/context\.page === "measurements"|measurementItem\(|action:"peaks"|action:"measurement"/.test(settings), "measurement and Peaks controls must be absent from the right settings inventory");
   assert(/function timeInventory\(type\)[\s\S]*?type === "spectrogram"[\s\S]*?"Пределы времени"[\s\S]*?return \[\];/.test(settings), "non-applicable time branches must render nothing instead of a placeholder section");
 

@@ -48,17 +48,22 @@ end
     v3 = EXTREMA.export_signal_analyser_session(service, EXTREMA.default_signal_analyser_state())["document"]
     v1 = deepcopy(v3)
     v1["version"] = 1
+    # Version 1 predates persisted signal IDs. Its exact legacy schema must
+    # not carry v4-only fields when the fixture is down-migrated.
+    for signal in v1["state"]["signals"]
+        delete!(signal, "id")
+    end
     for pane in v1["state"]["displays"][1]["layout"]["panes"]
-        delete!(pane["peaks_settings"], "mode")
-        delete!(pane["peaks_settings"], "maximum_cutoff")
-        delete!(pane["peaks_settings"], "minimum_cutoff")
-        pane["peaks_settings"]["minimum_height"] = nothing
+        # v1 had neither pane names nor a peaks-settings object; its legacy
+        # pane schema is exactly id/plot_type/signal_bindings.
+        delete!(pane, "name")
+        delete!(pane, "peaks_settings")
     end
     target = EXTREMA.default_signal_analyser_state()
     imported = EXTREMA.import_signal_analyser_session!(service, target, Dict("state_revision" => 0, "document" => v1))
     exported = EXTREMA.export_signal_analyser_session(service, target)["document"]
     @test imported["version"] == 1
-    @test exported["version"] == 3
+    @test exported["version"] == EXTREMA.SIGNAL_ANALYSER_SESSION_VERSION
     @test all(
         pane["peaks_settings"]["mode"] == "maxima" &&
         pane["peaks_settings"]["maximum_cutoff"] === nothing &&

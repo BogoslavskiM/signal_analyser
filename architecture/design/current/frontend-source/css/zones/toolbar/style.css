@@ -1,0 +1,32 @@
+.application-toolbar {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+}
+.application-toolbar-brand, .application-toolbar-actions { display: flex; align-items: center; }
+.application-toolbar-brand { min-width: 0; gap: 8px; }
+.application-toolbar-logo { width: 32px; height: 32px; }
+.application-toolbar-title { margin: 0; font-size: 18px; line-height: 22px; white-space: nowrap; }
+.application-toolbar-separator { width: 1px; height: 32px; margin: 0 2px 0 8px; background: var(--line); }
+.application-toolbar-version { white-space: nowrap; }
+.application-toolbar-actions { gap: 2px; }
+.toolbar-button {
+  width: 36px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.toolbar-button:hover { background: var(--surface-muted); }
+.toolbar-button:active { background: var(--button-active); }
+.toolbar-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.toolbar-button img { width: 24px; height: 24px; }

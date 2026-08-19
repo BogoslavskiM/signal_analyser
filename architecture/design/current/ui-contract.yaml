@@ -1,0 +1,541 @@
+schema_version: 1
+design_version: 29
+status: ready
+application_spec: ../../application-spec.yaml
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115]
+visual_profile: analytical-dense
+visual_baseline_version: 28
+
+production_integration_contract:
+  mode: additive_only
+  immutable_document: public/index.html
+  invariant_module_identities: [public/js/app.js, public/js/settings.js, public/js/api.js, public/js/value-select.js]
+  module_rule: "extend existing render/provider seams in place; never replace a module or its bootstrap"
+  immutable_shell_selectors: ["[data-testid='app-shell']", "[data-testid='display-workspace']", "[data-testid='settings-panel']", ".inspector"]
+  immutable_plot_host_selector: "[data-pane-host]"
+  plot_host_rule: "use the existing Plotly queue/react/relayout and amplitude-slider path; never assign host innerHTML or replace its children"
+  body_modal_portal: body
+  transferable_sources:
+    - frontend-source/integration/css/task-0112-0115-additions.css
+    - frontend-source/integration/html/dialogs/signal-operation.fragment.html
+  mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
+
+screens:
+  - id: main
+    route: "/"
+    layout_source: "current production geometry + explicit user requirements"
+    root_testid: app-shell
+    zones:
+      - id: toolbar
+        type: toolbar
+        purpose: "Brand, import, save, help"
+        parent: main
+        slot: toolbar
+        repeated: false
+        production_host: "public/index.html .application-toolbar"
+        transfer: none_existing_production_zone
+        design_mock: {html: frontend-source/html/zones/toolbar/view.html, css: frontend-source/css/zones/toolbar/style.css, ui_js: frontend-source/js/ui/zones/toolbar/ui.js}
+        sizing: {min_width: 920, min_height: 44, width_growth_ratio: 1, height_growth_ratio: 0}
+        scroll: {owner: none, axes: none, sticky: []}
+        collapse: {allowed: false, initial: expanded, direction: null, reason: null}
+        states: [default, hover, pressed, focus_visible, disabled]
+      - id: plot-workspace
+        type: graph
+        purpose: "Stable screens, pane headers, time/spectrum plots, plot sliders and extrema markers"
+        parent: main-stage
+        slot: workspace
+        repeated: false
+        production_host: "public/index.html [data-testid='display-workspace']; Plotly hosts [data-pane-host]"
+        transfer: additive_existing_app_and_plotly_seams_only
+        design_mock: {html: frontend-source/html/zones/workspace/view.html, css: frontend-source/css/zones/workspace/style.css, ui_js: frontend-source/js/ui/zones/workspace/ui.js}
+        sizing: {min_width: 612, min_height: 440, width_growth_ratio: 3, height_growth_ratio: 4}
+        scroll: {owner: display-tablist, axes: x, sticky: [workspace-titlebar, display-tabs]}
+        collapse: {allowed: false, initial: expanded, direction: null, reason: null}
+        states: [ready, empty, loading, error, active_pane, linked_zoom]
+      - id: display-settings
+        type: settings
+        purpose: "Signal, Area, Screen and Extrema settings with one Apply"
+        parent: main-stage
+        slot: settings
+        repeated: false
+        tabs: [signal, display, screen, peaks]
+        production_host: "[data-testid='settings-tabs'] + [data-settings-content] + [data-testid='settings-apply']"
+        transfer: additive_existing_settings_renderers_only
+        design_mock: {html: frontend-source/html/zones/settings/view.html, css: frontend-source/css/zones/settings/style.css, ui_js: frontend-source/js/ui/zones/settings/ui.js}
+        sizing: {min_width: 300, min_height: 440, width_growth_ratio: 1, height_growth_ratio: 4}
+        scroll: {owner: settings-scroll, axes: y, sticky: [settings-heading, settings-tabs, settings-footer]}
+        collapse: {allowed: false, initial: expanded, direction: null, reason: null}
+        states: [pristine, dirty, applying, applied, invalid, error, empty_context]
+      - id: lower-inspector
+        type: table
+        purpose: "Signals, measurements, extrema and dynamic samples"
+        parent: main
+        slot: inspector
+        repeated: false
+        tabs: [signals, measurements, peaks, dynamic-main-signal]
+        production_host: ".inspector-tabs + [data-inspector-content] + [data-signal-rows]"
+        transfer: additive_existing_inspector_renderer_only
+        design_mock: {html: frontend-source/html/zones/inspector/view.html, css: frontend-source/css/zones/inspector/style.css, ui_js: frontend-source/js/ui/zones/inspector/ui.js}
+        sizing: {min_width: 920, min_height: 180, width_growth_ratio: 1, height_growth_ratio: 1}
+        scroll: {owner: inspector-body, axes: both, sticky: [inspector-header, table-header, samples-footer]}
+        collapse: {allowed: true, initial: split, direction: vertical, reason: "Existing explicit user-controlled lower-panel states"}
+        states: [split, expanded, collapsed, ready, loading_page, empty, error]
+      - id: signal-operation-dialog
+        type: dialog
+        purpose: "Create one derived signal using a built-in operation or a user operation body executed by Engee"
+        parent: main
+        slot: signal-operation
+        repeated: false
+        production_host: "document.body singleton [data-testid='signal-operation-layer']"
+        transfer: {markup: frontend-source/integration/html/dialogs/signal-operation.fragment.html, css: frontend-source/integration/css/task-0112-0115-additions.css, ui: public/js/app.js additive state machine}
+        design_mock: {html: frontend-source/html/dialogs/signal-operation/view.html, css: frontend-source/css/dialogs/signal-operation.css, ui_js: frontend-source/js/ui/dialogs/signal-operation.js}
+        sizing: {min_width: 660, min_height: 300, width_growth_ratio: 0, height_growth_ratio: 0}
+        scroll: {owner: dialog-body, axes: y, sticky: [dialog-titlebar, dialog-actions]}
+        collapse: {allowed: false, initial: expanded, direction: null, reason: null}
+        states: [closed, built_in, menu_open, custom, busy, error, success]
+
+capabilities:
+  toolbar: present
+  settings: {status: present, mode: multi_tab}
+  data_tables: {status: present, mode: multi_tab}
+  graphs: {status: present, mode: multi_layout}
+  dialogs: present
+  import_export: present
+
+production_hosts:
+  settings:
+    tabs: "[data-testid='settings-tabs']"
+    content: "[data-settings-content][data-testid='settings-content']"
+    footer: "[data-testid='settings-footer']"
+    unified_apply: "[data-testid='settings-apply']"
+    policy: "insert/render affected controls only; never replace settings panel or create another Apply"
+  inspector:
+    tabs: ".inspector-tabs"
+    body: "[data-inspector-content]"
+    signal_rows: "[data-signal-rows]"
+    row_actions: ".signal-row-actions"
+    duplicate_action: "[data-signal-duplicate]"
+    operation_action: "[data-signal-operation]"
+    policy: "extend existing tab/page/row renderers; preserve inspector shell and existing rows"
+  pane_menu:
+    root: "[data-testid='display-overflow-menu']"
+    x_slider_action: "[data-plot-range-slider]"
+    y_slider_action: "[data-plot-amplitude-slider]"
+  plots:
+    hosts: "[data-pane-host]"
+    policy: "Plotly-owned descendants; marker traces and slider layout only through existing public/js/app.js Plotly paths"
+  dialogs:
+    portal: body
+    operation_singleton: "[data-testid='signal-operation-layer']"
+    shared_select_popup: "[data-value-select-popup]"
+
+settings_tabs:
+  - id: signal
+    order: 1
+    label: "Сигнал"
+    testid: settings-tab-signal
+    visibility: "visible only when active pane has main_signal"
+    groups:
+      - id: signal-main
+        label: "Основное"
+        fields:
+          - {id: signal-name, label: "Имя", type: text, testid: signal-name, states: [default, focus_visible, dirty, invalid, disabled]}
+          - {id: signal-color, label: "Цвет", type: color_picker_plus_text, testid: signal-color, states: [default, hover, focus_visible, open, invalid]}
+          - {id: signal-sample-rate, label: "Частота дискретизации", type: numeric_with_unit, unit: "Гц", testid: signal-sample-rate, states: [default, focus_visible, dirty, invalid]}
+      - id: signal-summary
+        label: "Сводка"
+        authored_by: backend
+        values: [sample_count, data_type, duration, mean, minimum, maximum, rms]
+        actions:
+          - {id: signal-values, label: "Значения", type: text_button, testid: signal-values-action}
+  - id: display
+    order: 2
+    label: "Область"
+    testid: settings-tab-display
+    groups:
+      - id: area-main
+        label: "Основное"
+        fields: [pane-name, plot-type]
+      - id: area-parameters
+        label: "Параметры"
+        time_fields: [show-legend, show-time-range-slider, show-amplitude-slider]
+        spectrum_fields: [show-legend, show-frequency-slider, show-magnitude-slider]
+        hidden_when_inapplicable: true
+      - id: local-time-limits
+        label: "Пределы времени"
+        component: axis-limits
+        visible_when: "time_link=false and time pane"
+      - id: local-amplitude-limits
+        label: "Пределы амплитуды"
+        component: axis-limits
+        visible_when: "amplitude_link=false and time pane"
+      - id: local-frequency-limits
+        label: "Пределы частоты"
+        component: axis-limits
+        visible_when: "spectrum_frequency_link=false and spectrum pane"
+      - id: local-magnitude-limits
+        label: "Пределы магнитуды"
+        component: axis-limits
+        visible_when: "spectrum_magnitude_link=false and spectrum pane"
+      - id: spectrum-analysis
+        label: "Спектральный анализ"
+        fields: [spectrum-scale, frequency-scale, window, dft-points, overlap]
+        states: [expanded, collapsed]
+        visibility: "spectrum pane only; hidden parameters are not validated"
+  - id: screen
+    order: 3
+    label: "Экран"
+    testid: settings-tab-screen
+    groups:
+      - id: screen-main
+        label: "Основное"
+        fields: [display-name]
+      - id: screen-layout
+        label: "Макет"
+        initial: collapsed
+        fields: [rows-columns]
+      - id: screen-links
+        label: "Связь областей"
+        fields:
+          - {id: link-time, label: "Связать время", type: checkbox}
+          - {id: link-amplitude, label: "Связать амплитуду", type: checkbox}
+          - {id: link-spectrum-frequency, label: "Связать частоты спектров", type: checkbox}
+          - {id: link-spectrum-magnitude, label: "Связать магнитуды спектров", type: checkbox}
+        divider_between_fields: false
+      - {id: screen-time-limits, label: "Пределы времени", component: axis-limits, visible_when: "link-time=true"}
+      - {id: screen-amplitude-limits, label: "Пределы амплитуды", component: axis-limits, visible_when: "link-amplitude=true"}
+      - {id: screen-frequency-limits, label: "Пределы частоты", component: axis-limits, visible_when: "link-spectrum-frequency=true"}
+      - {id: screen-magnitude-limits, label: "Пределы магнитуды", component: axis-limits, visible_when: "link-spectrum-magnitude=true"}
+  - id: peaks
+    order: 4
+    label: "Экстремумы"
+    testid: settings-tab-peaks
+    visibility: "time and spectrum only; hidden otherwise"
+    groups:
+      - id: extrema-calculation
+        fields: [mode, count, cutoff, minimum-distance, threshold]
+      - id: extrema-presentation
+        fields: [show-markers, projected-coordinate-note]
+    actions:
+      - {id: show-extrema-values, label: "Показать значения", testid: extrema-values}
+
+components:
+  axis-limits:
+    exact_same_markup_for_scopes: [area, screen]
+    fields:
+      - {id: units, type: select, options_by_axis: {time: [auto, s, ms, us, ns], frequency: [auto, Hz, kHz, MHz], amplitude: [], magnitude: []}}
+      - {id: minimum, type: text_numeric, empty_semantics: auto_full_minimum, placeholder: "Мин."}
+      - {id: maximum, type: text_numeric, empty_semantics: auto_full_maximum, placeholder: "Макс."}
+      - {id: double-slider, type: dual_thumb_horizontal_slider, reset: double_click_to_auto}
+    states: [default, hover, drag_min, drag_max, keyboard_focus, dirty, invalid, disabled]
+    validation: "only while visible"
+  plot-slider:
+    variants:
+      - {id: time-range, orientation: horizontal, pane_types: [time]}
+      - {id: amplitude, orientation: vertical, pane_types: [time]}
+      - {id: spectrum-frequency, orientation: horizontal, pane_types: [spectrum]}
+      - {id: spectrum-magnitude, orientation: vertical, pane_types: [spectrum]}
+    independent_visibility: true
+    control_projections:
+      pane_menu:
+        host: "[data-testid='display-overflow-menu']"
+        x_axis_control: "[data-plot-range-slider]"
+        y_axis_control: "[data-plot-amplitude-slider]"
+        spectrum_labels: ["Слайдер частоты", "Слайдер магнитуды"]
+      settings_checkboxes:
+        host: "[data-settings-content]"
+        group: area-parameters
+        spectrum_fields: [show-frequency-slider, show-magnitude-slider]
+    synchronization: "Both projections read/write the same active-pane draft immediately; menu aria-checked and settings checked state must never diverge."
+    persistence: "Existing unified Apply persists the shared draft; neither projection owns a second state."
+    plot_host_mutation: "Use existing Plotly layout/relayout and amplitude-slider overlay path only; never overwrite [data-pane-host]."
+    states: [hidden, default, hover, drag, keyboard_focus, reset]
+  persisted-name:
+    entities: [display, pane]
+    visible_source: persisted_name
+    id_source: stable_id
+    default_ordinal: monotonic_never_automatic_reuse
+
+tables:
+  - id: signals-table
+    tab: signals
+    columns: [name, color, sample_rate, sample_count, duration, data_type]
+    row_actions:
+      - {id: duplicate-signal, icon: copy.svg, tooltip: "Дублировать сигнал"}
+      - {id: signal-operation, icon: function.svg, tooltip: "Операция над сигналом", testid_pattern: "signal-operation-{name}"}
+      - {id: delete-signal, icon: trash.svg, tooltip: "Удалить сигнал"}
+  - id: measurements-table
+    tab: measurements
+    columns: [name, color, minimum, maximum, mean, rms]
+    alignment: {name: left, color: left}
+  - id: spectrum-extrema-table
+    tab: peaks
+    columns: [number, signal, color, type, magnitude, frequency, marker]
+    coordinate_projection: "frequency displayed in the pane-selected unit"
+  - id: main-signal-samples-table
+    tab: dynamic-main-signal
+    tab_label: main_signal.name
+    columns:
+      - {id: sample-index, label: "№ точки"}
+      - {id: time, label: "Время"}
+      - {id: value, label: "Значение"}
+      - {id: magnitude, label: "Модуль"}
+      - {id: square, label: "Квадрат"}
+    loading: paged_or_virtualized
+    full_array_in_state_or_dom: false
+    footer: [visible_range, total_count, lazy_loading_note]
+
+graphs:
+  - id: time-plot
+    pane_type: time
+    axes: [time, amplitude]
+    sliders: [time-range, amplitude]
+    legend: overlay_inside_plot
+    hover_label: absent
+  - id: spectrum-plot
+    pane_type: spectrum
+    axes: [frequency, magnitude]
+    sliders: [spectrum-frequency, spectrum-magnitude]
+    extrema_markers: present
+    marker_positions: projected_frequency
+    legend: overlay_inside_plot
+    hover_label: absent
+
+dialogs:
+  - id: signal-operation
+    trigger: "row operation button adjacent to duplicate"
+    testid: signal-operation-dialog
+    width: 660
+    title: "Операция над сигналом"
+    fields:
+      - {id: source, label: "Исходный сигнал", type: readonly_text}
+      - {id: operation, label: "Операция", type: shared_value_select, implementation: SignalAnalyserValueSelect, options: [abs, square, sqrt, signed_sqrt_abs, multiply, fft, custom]}
+      - {id: multiplier, label: "Множитель", type: numeric, visible_when: "operation=multiply"}
+      - {id: custom-operation-body, label: "Тело операции", type: code_editor, visible_when: "operation=custom", input_name: init_signal}
+      - {id: target-name, label: "Имя нового сигнала", type: text}
+      - {id: overwrite, label: "Затирать сигнал с таким именем", type: checkbox}
+    actions: [cancel, create-signal, close]
+    states: [default, menu_open, custom, busy, error, success]
+    custom_copy: "Код выполняется в Engee. Входной сигнал доступен как init_signal; результатом должно быть выражение, возвращающее новый вектор."
+    custom_integration: "UI sends only the user operation body. Backend provider owns engee.genie.recv execution envelope, temporary binding and cleanup; none is generated or rendered by UI."
+    operation_select_contract:
+      component: SignalAnalyserValueSelect
+      closed: "readonly selected-value input plus 24px down arrow"
+      open: "same editable input, placeholder Поиск, 24px up arrow"
+      popup: "options-only; no search row; border/padding 0; width equals anchor border-box except viewport clamp"
+      option_height: 34
+      selected_check: true
+      closes_on: [selection, escape, tab, outside_click]
+      modal_owned: true
+
+elements:
+  - {id: settings-apply, zone: display-settings, type: primary_button, label: "Применить", testid: settings-apply, states: [disabled_pristine, default_dirty, hover, pressed, focus_visible, busy]}
+  - {id: signal-values, zone: display-settings, type: button, label: "Значения", testid: signal-values-action, states: [default, hover, pressed, focus_visible]}
+  - {id: pane-frequency-slider, zone: plot-workspace, type: dual_thumb_slider, label: "Слайдер частоты", testid: pane-frequency-slider, states: [default, hover, drag, focus_visible]}
+  - {id: pane-magnitude-slider, zone: plot-workspace, type: dual_thumb_slider, label: "Слайдер магнитуды", testid: pane-magnitude-slider, states: [default, hover, drag, focus_visible]}
+  - {id: pane-menu-frequency-slider, zone: plot-workspace, type: menuitemcheckbox, label: "Слайдер частоты", selector: "[data-plot-range-slider]", states: [default, hover, checked, disabled, focus_visible]}
+  - {id: pane-menu-magnitude-slider, zone: plot-workspace, type: menuitemcheckbox, label: "Слайдер магнитуды", selector: "[data-plot-amplitude-slider]", states: [default, hover, checked, disabled, focus_visible]}
+  - {id: settings-frequency-slider, zone: display-settings, type: checkbox, label: "Слайдер частоты", field: show-frequency-slider, states: [default, hover, checked, disabled, focus_visible]}
+  - {id: settings-magnitude-slider, zone: display-settings, type: checkbox, label: "Слайдер магнитуды", field: show-magnitude-slider, states: [default, hover, checked, disabled, focus_visible]}
+  - {id: inspector-up, zone: lower-inspector, type: icon_button, label: "Развернуть нижнюю зону", testid: inspector-state-up, tooltip: {enabled: true, delay_ms: 1500, text: "Развернуть нижнюю зону"}, states: [default, hover, pressed, focus_visible]}
+  - {id: inspector-down, zone: lower-inspector, type: icon_button, label: "Свернуть нижнюю зону", testid: inspector-state-down, tooltip: {enabled: true, delay_ms: 1500, text: "Свернуть нижнюю зону"}, states: [default, hover, pressed, focus_visible]}
+
+interactions:
+  - id: signal-values-focus
+    trigger: {element: signal-values, action: click}
+    visible_result: "dynamic tab named main_signal appears, is selected and receives focus"
+    seam: signal-samples-provider
+  - id: toggle-spectrum-frequency-link
+    trigger: {element: link-spectrum-frequency, action: change}
+    visible_result: "same frequency limits component moves Area <-> Screen immediately without value loss"
+    seam: linked-axis-draft
+  - id: toggle-spectrum-magnitude-link
+    trigger: {element: link-spectrum-magnitude, action: change}
+    visible_result: "same magnitude limits component moves Area <-> Screen immediately without value loss"
+    seam: linked-axis-draft
+  - id: show-spectrum-extrema
+    trigger: {element: show-extrema-values, action: click}
+    visible_result: "spectrum extrema tab is selected in lower inspector; plot markers remain visible"
+    seam: spectrum-extrema-provider
+  - id: toggle-spectrum-frequency-slider-from-menu
+    trigger: {element: pane-menu-frequency-slider, action: click}
+    visible_result: "horizontal spectrum slider and Area checkbox update from the same active-pane state"
+    seam: pane-slider-visibility
+  - id: toggle-spectrum-frequency-slider-from-settings
+    trigger: {element: settings-frequency-slider, action: change}
+    visible_result: "horizontal spectrum slider and pane-menu aria-checked update from the same active-pane state"
+    seam: pane-slider-visibility
+  - id: toggle-spectrum-magnitude-slider-from-menu
+    trigger: {element: pane-menu-magnitude-slider, action: click}
+    visible_result: "vertical spectrum slider and Area checkbox update from the same active-pane state"
+    seam: pane-slider-visibility
+  - id: toggle-spectrum-magnitude-slider-from-settings
+    trigger: {element: settings-magnitude-slider, action: change}
+    visible_result: "vertical spectrum slider and pane-menu aria-checked update from the same active-pane state"
+    seam: pane-slider-visibility
+  - id: open-operation
+    trigger: {element: signal-operation, action: click}
+    visible_result: signal-operation
+    seam: signal-operation-provider
+  - id: apply-all-settings
+    trigger: {element: settings-apply, action: click}
+    visible_result: "one busy state, then applied or error; no extra side status text"
+    seam: settings-apply-provider
+  - id: delete-and-add-display
+    trigger: {element: display-close-and-add, action: click}
+    visible_result: "remaining persisted names stay unchanged; new default uses next monotonic ordinal"
+    seam: workspace-state-provider
+
+dropdown_contract:
+  settings_open_on: click
+  settings_search_inside_control: false
+  lmb_selection_closes_popup_and_sets_not_active: true
+  lmb_selection_forces_dom_blur: false
+  outside_canvas_click_closes_all: true
+  another_dropdown_closes_previous: true
+
+operation_menu_contract:
+  component: SignalAnalyserValueSelect
+  trigger: "click anywhere on selected-value field or its 24px arrow"
+  closed: "readonly selected-value input plus down arrow"
+  open: "same editable input with placeholder Поиск plus up arrow"
+  popup: "options only; no separate search row; border/padding 0; anchor border-box width except viewport clamp"
+  option_height: 34
+  selected_check: true
+  closes_on: [selection, outside_click, escape, tab]
+  keyboard: "ArrowUp/ArrowDown move active option; Enter selects; focus returns to anchor on Escape"
+  stacking: modal_owned
+
+dialog_contract:
+  ordinary_close: [close_button, cancel_button, escape]
+  backdrop_close: false
+  busy_close: false
+  destructive_close: not_applicable
+  body_scroll: true
+  fixed_parts: [titlebar, actions]
+
+overlays:
+  combinations:
+    - id: operation-with-dropdown
+      bottom_to_top: [application, modal_backdrop, operation_dialog, operation_dropdown]
+      pointer_owner: operation_dropdown
+      focus_owner: active_option
+      inert_layers: [application]
+      restore_target: operation-select
+    - id: operation-busy
+      bottom_to_top: [application, modal_backdrop, operation_dialog, busy_status]
+      pointer_owner: none
+      focus_owner: operation_dialog
+      inert_layers: [application, close, cancel, submit]
+      restore_target: submit_or_error
+
+integration_seams:
+  - id: workspace-state-provider
+    ui_contract: "read/persist stable display/pane ids, names and monotonic default ordinals"
+    mock_provider: mock/mock-provider.js
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+  - id: settings-apply-provider
+    ui_contract: "one draft/apply lifecycle for Signal/Area/Screen/Extrema using existing Apply"
+    mock_provider: mock/mock-provider.js
+    production_provider: public/js/settings.js
+    production_consumer: public/js/app.js
+    host: "[data-testid='settings-apply']"
+  - id: pane-slider-visibility
+    ui_contract: "one active-pane x/y visibility draft projected synchronously into existing pane menu and settings checkboxes"
+    mock_provider: frontend-source/js/ui/app.js
+    production_provider: public/js/app.js
+    settings_inventory: public/js/settings.js
+    hosts: ["[data-plot-range-slider]", "[data-plot-amplitude-slider]", "[data-settings-content]", "[data-pane-host]"]
+  - id: linked-axis-draft
+    ui_contract: "move identical time/amplitude/frequency/magnitude limit controls by linked scope"
+    mock_provider: frontend-source/js/ui/zones/settings/ui.js
+    production_provider: public/js/app.js
+    settings_inventory: public/js/settings.js
+  - id: spectrum-extrema-provider
+    ui_contract: "projected spectrum extrema ready/loading/error rows and Plotly marker coordinates; UI performs no DSP or unit projection"
+    mock_provider: mock/mock-provider.js
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    hosts: ["[data-pane-host]", "[data-inspector-content]"]
+  - id: signal-summary-provider
+    ui_contract: "main-signal metadata and summary for active pane"
+    mock_provider: mock/mock-provider.js
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+  - id: signal-samples-provider
+    ui_contract: "cursor/limit page by stable signal id -> rows,next_cursor,total; no full-array DOM/app state"
+    mock_provider: mock/mock-provider.js
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    hosts: [".inspector-tabs", "[data-inspector-content]"]
+  - id: signal-operation-provider
+    ui_contract: "send user operation body unchanged with source/target metadata; backend owns Engee execution envelope"
+    mock_provider: mock/mock-provider.js
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    portal: body
+
+engee_unavailable_states:
+  - id: spectrum-provider-gap
+    zone: display-settings
+    exact_system_functions: ["production Engee spectrum/window/FFT/extrema functions pending TASK-0112 verification"]
+    presentation: inline_warning
+    fake_success_forbidden: true
+
+page_sizing_contract:
+  application_min_width: 920
+  application_min_height: 680
+  layout_invariant_on_resize: true
+  undersized_viewport_behavior: document_scroll
+  structural_max_sizes: none
+  zones:
+    - {id: toolbar, min_width: 920, min_height: 44, width_growth_ratio: 1, height_growth_ratio: 0, scroll_owner: none, scroll_axes: none, sticky_parts: [], collapse_allowed: false}
+    - {id: plot-workspace, min_width: 612, min_height: 440, width_growth_ratio: 3, height_growth_ratio: 4, scroll_owner: none, scroll_axes: none, sticky_parts: [titlebar, tabs], collapse_allowed: false}
+    - {id: display-settings, min_width: 300, min_height: 440, width_growth_ratio: 1, height_growth_ratio: 4, scroll_owner: settings-scroll, scroll_axes: y, sticky_parts: [heading, tabs, footer], collapse_allowed: false}
+    - {id: lower-inspector, min_width: 920, min_height: 180, width_growth_ratio: 1, height_growth_ratio: 1, scroll_owner: inspector-body, scroll_axes: both, sticky_parts: [tabs, table-header, samples-footer], collapse_allowed: true}
+    - {id: signal-operation-dialog, min_width: 660, min_height: 300, width_growth_ratio: 0, height_growth_ratio: 0, scroll_owner: dialog-body, scroll_axes: y, sticky_parts: [titlebar, actions], collapse_allowed: false}
+  fixed_template_controls:
+    - {id: toolbar-icon-button, width: 36, height: 32}
+    - {id: settings-control, width: intrinsic, height: 32}
+    - {id: tab-row, width: intrinsic, height: 32}
+    - {id: checkbox, width: 16, height: 16}
+
+evidence:
+  visual_baseline_version: 28
+  carry_forward_reason: "v29 changes transfer boundaries only; approved visuals and interactions are unchanged"
+  viewports: ["920x680", "1024x768", "1440x900", "840x620"]
+  prototype_steps:
+    - signal-tab-first-and-summary
+    - values-focuses-dynamic-samples
+    - spectrum-sliders-and-local-magnitude
+    - screen-four-links-and-frequency-limits
+    - spectrum-extrema-markers-and-table
+    - operation-dialog-default
+    - operation-select-closed-shared-contract
+    - operation-menu-shared-value-select
+    - operation-menu-escape-keeps-dialog
+    - operation-menu-inline-search
+    - operation-menu-tab-closes
+    - operation-menu-outside-closes
+    - custom-operation-body-only
+    - custom-operation-engee-error
+    - operation-progress-blocks-close
+    - operation-success
+    - undersized-keeps-minimum-canvas
+    - stable-display-ordinals
+  screenshots:
+    - screenshots/v27--signal-tab-summary--920x680.png
+    - screenshots/v27--signal-samples--1024x768.png
+    - screenshots/v27--spectrum-area-sliders-and-limits--1024x768.png
+    - screenshots/v27--screen-spectrum-links--1440x900.png
+    - screenshots/v27--spectrum-extrema--1440x900.png
+    - screenshots/v27--signal-operation-default--1024x768.png
+    - screenshots/v28--signal-operation-menu--1024x768.png
+    - screenshots/v28--signal-operation-custom-body--1024x768.png
+    - screenshots/v28--signal-operation-engee-error--1024x768.png
+    - screenshots/v28--signal-operation-progress--1024x768.png
+    - screenshots/v28--signal-operation-success--1024x768.png
+    - screenshots/v27--undersized-document-scroll--840x620.png
+  interaction_report: evidence/interaction-walkthrough-v28.json
+  transfer_audit: evidence/transfer-audit-v29.json

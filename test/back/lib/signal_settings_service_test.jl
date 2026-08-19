@@ -407,7 +407,8 @@ end
     linear_apply = SS.apply_signal_settings!(service, state, Dict(
         "state_revision" => linear["state"]["state_revision"], "display_id" => "display-1",
     ))
-    @test linear_apply == Dict{String,Any}("success" => true, "state_revision" => 4)
+    @test linear_apply["success"] === true && linear_apply["state_revision"] == 4
+    @test haskey(linear_apply, "settings") && !haskey(linear_apply, "output")
     plot = SS.signal_analyser_snapshot(state)["plots"]["spectrogram"]
     @test plot["z"] == [[1.0, 4.0], [9.0, 16.0]] && plot["x"] == db["x"] && plot["y"] == db["y"]
     @test plot["color_label"] == "Мощность"

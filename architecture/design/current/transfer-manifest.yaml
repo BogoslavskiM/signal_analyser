@@ -1,0 +1,163 @@
+schema_version: 2
+design_version: 29
+visual_baseline_version: 28
+source_root: frontend-source
+target_root: public
+transfer_mode: additive_integration_only
+ui_contract: ui-contract.yaml
+
+# There is intentionally no whole-file production copy in v29. Production
+# already owns the application document, boot sequence, UI modules and Plotly
+# hosts. The two sources below are exact additive fragments.
+copy_as_is: []
+
+production_invariants:
+  - path: public/index.html
+    policy: immutable
+    reason: "Existing application shell, script order, static tabs, pane menu and overlay roots stay authoritative."
+  - path: public/js/app.js
+    policy: extend_in_place_never_replace
+    preserve: [bootstrap, model_lifecycle, existing_renderers, Plotly_queue, event_delegation]
+  - path: public/js/settings.js
+    policy: extend_in_place_never_replace
+    preserve: [settings_document_lifecycle, draft_revision, validation, unified_apply]
+  - path: public/js/api.js
+    policy: extend_in_place_never_replace
+    preserve: [request_transport, error_projection, existing_exports]
+  - path: public/js/value-select.js
+    policy: reuse_unchanged
+    reason: "Operation uses the existing production SignalAnalyserValueSelect; design copy is mock-only."
+  - selector: "[data-pane-host]"
+    owner: "public/js/app.js + Plotly"
+    policy: never_replace_or_overwrite_dom
+    allowed: ["Plotly.react using the existing queue", "Plotly.relayout", "existing amplitude-slider overlay path"]
+
+additive_fragments:
+  - id: task-0112-0115-feature-styles
+    source: integration/css/task-0112-0115-additions.css
+    target: public/css/app.css
+    mode: append_once
+    content_changes_allowed: false
+    marker: "Additive v29 feature rules"
+    scope: [signal_summary, signal_samples_table, spectrum_extrema_cell, signal_operation_dialog]
+  - id: signal-operation-modal-template
+    source: integration/html/dialogs/signal-operation.fragment.html
+    target: public/js/app.js
+    mode: integrate_markup_unchanged_as_runtime_singleton
+    portal: document.body
+    singleton_selector: "[data-testid='signal-operation-layer']"
+    content_changes_allowed: false
+
+existing_assets_reused:
+  - {path: public/icons/function.svg, use: signal-row-operation-action}
+  - {path: public/icons/close.svg, use: signal-operation-close}
+  - {path: public/icons/Spinner.svg, use: signal-operation-busy}
+  - {path: public/icons/chevron-down-fill-16.svg, use: SignalAnalyserValueSelect}
+  - {path: public/icons/tick-figma.svg, use: pane-menu-checked-state}
+
+integration_hosts:
+  settings_tabs:
+    selector: "[data-testid='settings-tabs']"
+    integration: "public/js/app.js ensures one Signal tab immediately before [data-settings-page='display']; do not replace tablist."
+  settings_content:
+    selector: "[data-settings-content][data-testid='settings-content']"
+    integration: "public/js/app.js and public/js/settings.js render only the active page into the existing content owner."
+  settings_apply:
+    selector: "[data-testid='settings-footer'] [data-testid='settings-apply']"
+    integration: "All Signal/Area/Screen/Extrema drafts use the existing unified Apply lifecycle; no second footer or action."
+  inspector_tabs:
+    selector: ".inspector-tabs"
+    integration: "public/js/app.js inserts/removes one dynamic sample tab keyed by stable signal id; existing [data-bottom-tab] tabs remain in place."
+  inspector_body:
+    selector: "[data-inspector-content]"
+    integration: "Existing renderInspector page switch renders samples or spectrum extrema into this body; do not replace the inspector shell."
+  inspector_rows:
+    selector: "[data-signal-rows]"
+    integration: "Existing signals renderer adds the operation action inside each .signal-row-actions immediately after [data-signal-duplicate]."
+  pane_menu:
+    selector: "[data-testid='display-overflow-menu']"
+    integration: "Reuse [data-plot-range-slider] for time/frequency and [data-plot-amplitude-slider] for amplitude/magnitude; labels and aria state project the active pane type."
+  plot_host:
+    selector: "[data-pane-host]"
+    integration: "Projected spectrum-extrema marker traces and slider layout go through the existing Plotly render/relayout queue; never set innerHTML or replaceChildren on the host."
+  modal_portal:
+    selector: body
+    integration: "Append the signal-operation singleton on first use; reuse existing [data-value-select-popup] and modal stacking."
+
+integration_seams:
+  - id: settings-page-extension
+    action_interface: "ensure signal tab; render Signal/Area/Screen/Extrema into existing settings content"
+    production_consumers: [public/js/app.js, public/js/settings.js]
+    hosts: ["[data-testid='settings-tabs']", "[data-settings-content]", "[data-testid='settings-apply']"]
+    replacement_forbidden: true
+  - id: pane-slider-visibility
+    action_interface: "get/set active pane x/y slider visibility from pane menu or settings checkbox; synchronously project both controls from one draft"
+    production_consumers: [public/js/app.js, public/js/settings.js]
+    hosts: ["[data-plot-range-slider]", "[data-plot-amplitude-slider]", "[data-settings-content]", "[data-pane-host]"]
+    replacement_forbidden: true
+  - id: projected-spectrum-extrema
+    provider_interface: "read projected spectrum extrema for active display/pane/signal and expose ready/loading/error rows plus marker coordinates"
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    hosts: ["[data-pane-host]", "[data-inspector-content]"]
+    ui_does_no_dsp_or_unit_projection: true
+  - id: signal-summary-provider
+    provider_interface: "read main-signal metadata and summary for the active pane"
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    host: "[data-settings-content]"
+  - id: signal-samples-pagination
+    provider_interface: "get page by stable signal id, cursor and limit; return rows, next cursor and total"
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    hosts: [".inspector-tabs", "[data-inspector-content]"]
+    full_array_in_dom_or_app_state_forbidden: true
+  - id: signal-operation-provider
+    provider_interface: "submit {operation, source, body, target_name, overwrite, multiplier}; backend owns Engee recv envelope/temp binding/cleanup"
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    portal: body
+  - id: stable-name-state
+    provider_interface: "persist display/pane names by stable ids and allocate monotonic default ordinals"
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+
+design_only:
+  - frontend-source/index.html
+  - frontend-source/css/theme.css
+  - frontend-source/css/app-shell.css
+  - frontend-source/css/components/**
+  - frontend-source/css/dialogs/**
+  - frontend-source/css/fonts/**
+  - frontend-source/css/zones/**
+  - frontend-source/html/dialogs/**
+  - frontend-source/html/zones/**
+  - frontend-source/icons/**
+  - frontend-source/js/**
+  - mock/**
+  - prototype/**
+  - screenshots/**
+  - evidence/**
+  - DESIGN.md
+  - ui-contract.yaml
+  - transfer-manifest.yaml
+
+forbidden_transfers:
+  - {source: frontend-source/index.html, target: public/index.html, reason: immutable_production_document}
+  - {source: frontend-source/js/ui/app.js, target: public/js/app.js, reason: mock_renderer_must_not_replace_production_module}
+  - {source: frontend-source/js/ui/zones/workspace/ui.js, target: public/js/app.js, reason: mock_svg_plot_must_not_replace_Plotly}
+  - {source: frontend-source/js/ui/components/value-select.js, target: public/js/value-select.js, reason: production_component_already_exists}
+  - {source: frontend-source/css/theme.css, target: public/css/theme.css, reason: production_theme_is_authoritative}
+
+invariants:
+  additive_only: true
+  immutable_production_document: true
+  immutable_shell_composition: true
+  existing_module_identity_preserved: true
+  existing_plot_host_identity_preserved: true
+  plot_host_dom_overwrite_forbidden: true
+  mock_shell_transfer_forbidden: true
+  mock_provider_transfer_forbidden: true
+  copied_fragment_content_changes_allowed: false
+  visual_baseline_unchanged: true
+  history_is_not_a_source: true

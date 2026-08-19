@@ -400,10 +400,10 @@ end
     leakage_changed = SA.apply_signal_settings!(settings_service, state, Dict(
         "state_revision" => leakage_draft["state"]["state_revision"], "display_id" => "display-1",
     ))
-    @test leakage_changed == Dict{String,Any}(
-        "success" => true,
-        "state_revision" => source_changed["state_revision"] + 2,
-    )
+    @test leakage_changed["success"] === true
+    @test leakage_changed["state_revision"] == source_changed["state_revision"] + 2
+    @test haskey(leakage_changed, "settings")
+    @test !haskey(leakage_changed, "output")
     leakage_snapshot = SA.signal_analyser_snapshot(state)
     @test leakage_snapshot["persistence_settings"] == Dict("leakage" => 0.25)
     @test leakage_snapshot["displays"][1]["persistence_settings"] == Dict("leakage" => 0.25)
@@ -537,7 +537,8 @@ end
     changed = SA.apply_signal_settings!(settings_service, state, Dict(
         "state_revision" => draft["state"]["state_revision"], "display_id" => "display-1",
     ))
-    @test changed == Dict{String,Any}("success" => true, "state_revision" => 3)
+    @test changed["success"] === true && changed["state_revision"] == 3
+    @test haskey(changed, "settings") && !haskey(changed, "output")
     @test (length(SA.SPECTROGRAM_CALLS), length(SA.SPECTRUM_CALLS)) == provider_calls_before_apply
     @test SA.signal_analyser_snapshot(state)["spectrogram_settings"] == explicit_settings
 
@@ -554,12 +555,8 @@ end
     ))
     @test full_changed["success"] === true && isempty(SA.SPECTROGRAM_CALLS) && isempty(SA.SPECTRUM_CALLS)
 
-    # C11 short-input bypass still avoids the provider; N=2 delegates.
-    short = SA.AnalysedSignal("c15-short", "#111111", 10.0, ComplexF64[1], false, true)
+    # The domain admits a minimum of two samples; N=2 delegates.
     empty!(SA.SPECTROGRAM_CALLS)
-    short_data = SA.signal_spectrogram_data(SA.SignalSpectrogramService(SA.EngeeDSPSpectrogramProvider()), short)
-    @test isempty(SA.SPECTROGRAM_CALLS)
-    @test isempty(short_data.frequencies_hz)
     two = SA.AnalysedSignal("c15-two", "#111111", 10.0, ComplexF64[1, 2], false, true)
     SA.signal_spectrogram_data(SA.SignalSpectrogramService(SA.EngeeDSPSpectrogramProvider()), two)
     @test length(SA.SPECTROGRAM_CALLS) == 1
@@ -677,21 +674,21 @@ end
     @test closed["active_display_id"] == "display-2" && closed["active_plot"] == "time"
     @test isempty(closed["plots"]["persistence"]["x"]) && isempty(SA.PERSISTENCE_CALLS)
 
-    # N<2 is decided by the new preparation plan/state-service seam, not the
-    # legacy raw provider helper; it cannot populate Persistence cache.
+    # The domain admits a minimum of two samples. Preparation delegates the
+    # smallest valid signal but does not publish it into the state cache.
     SA.reset_persistence_double!()
     short_state = SA.default_signal_analyser_state()
-    short_signal = SA.AnalysedSignal("c23-plan-short", "#333333", 10.0, ComplexF64[1], false, true)
+    short_signal = SA.AnalysedSignal("c23-plan-short", "#333333", 10.0, ComplexF64[1, 2], false, true)
     short_display = SA.signal_analyser_active_display(short_state)
     short_display.active_plot = SA.PERSISTENCE_PLOT
     plan = SA.SignalAnalyserPersistencePreparationPlan(short_display, short_signal)
-    @test !SA.signal_analyser_persistence_required(plan)
-    two_signal = SA.AnalysedSignal("c23-plan-two", "#333333", 10.0, ComplexF64[1, 2], false, true)
-    @test SA.signal_analyser_persistence_required(
-        SA.SignalAnalyserPersistencePreparationPlan(short_display, two_signal),
-    )
+    @test SA.signal_analyser_persistence_required(plan)
     prepared = SA.signal_analyser_prepared_persistences(short_state, short_display, short_signal)
-    @test isempty(prepared) && isempty(short_state.persistence_cache) && isempty(SA.PERSISTENCE_CALLS)
+    @test length(prepared) == 1
+    @test isempty(short_state.persistence_cache)
+    @test length(SA.PERSISTENCE_CALLS) == 1
+    @test only(SA.PERSISTENCE_CALLS).sample_rate_hz == 10.0
+    @test length(only(SA.PERSISTENCE_CALLS).values) == 2
 end
 
 @testset "Cascade 19 Persistence Leakage typed defaults" begin
@@ -789,12 +786,6 @@ end
     @test rendered["y"] == 10 .* log10.([0.01, 0.1])
     @test rendered["z"] == [[0.0, 25.0, 50.0], [75.0, 90.0, 100.0]]
     @test rendered["x_label"] == "Частота, Гц" && rendered["y_label"] == "Мощность, дБ" && rendered["color_label"] == "Встречаемость, %"
-    short = SA.AnalysedSignal("c18-short", "#333333", 100.0, ComplexF64[1], false, true)
-    before_short = length(SA.PERSISTENCE_CALLS)
-    empty_data = SA.signal_persistence_data(SA.SignalPersistenceService(), short)
-    @test isempty(empty_data.frequencies_hz) && isempty(empty_data.power_levels) && size(empty_data.occurrence_percent) == (0, 0)
-    @test length(SA.PERSISTENCE_CALLS) == before_short
-
     SA.reset_pspectrum_double!(); empty!(SA.SPECTRUM_CALLS); empty!(SA.SPECTROGRAM_CALLS); SA.reset_persistence_double!()
 end
 
@@ -1755,7 +1746,8 @@ end
     four_apply = SA.apply_signal_settings!(settings_service, state, Dict(
         "state_revision" => four_draft["state"]["state_revision"], "display_id" => "display-1",
     ))
-    @test four_apply == Dict{String,Any}("success" => true, "state_revision" => 2)
+    @test four_apply["success"] === true && four_apply["state_revision"] == 2
+    @test haskey(four_apply, "settings") && !haskey(four_apply, "output")
     @test isempty(provider.calls)
     @test state.output_manager.need_update_pages[state.output_manager.active_page_id]
 
@@ -2173,7 +2165,7 @@ end
     # while a two-sample real source remains a legitimate raw provider query.
     empty!(SA.SPECTRUM_CALLS)
     long = SA.AnalysedSignal("long", "#111111", 10.0, ComplexF64[1, 2, 3], false, true)
-    short = SA.AnalysedSignal("short", "#222222", 10.0, ComplexF64[1], false, true)
+    short = SA.AnalysedSignal("short", "#222222", 10.0, ComplexF64[1, 2], false, true)
     roi_state = SA.SignalAnalyserState(SA.AnalysedSignal[long, short],
         SA.SignalAnalyserViewState(0, SA.TIME_PLOT, "long"), Dict{String,Dict{String,Any}}(), ReentrantLock())
     legacy_bind_active_test_pane!(roi_state)
@@ -2388,12 +2380,6 @@ end
     @test only(only(second_output["data"])["data"])["z"] == [
         [0.0, 10 * log10(4.0)], [10 * log10(9.0), 10 * log10(16.0)],
     ]
-
-    short = SA.AnalysedSignal("short-spectrogram", "#555555", 10.0, ComplexF64[1], false, true)
-    calls_before_short = length(SA.SPECTROGRAM_CALLS)
-    short_data = SA.signal_spectrogram_data(SA.SignalSpectrogramService(SA.EngeeDSPSpectrogramProvider()), short)
-    @test length(SA.SPECTROGRAM_CALLS) == calls_before_short
-    @test isempty(short_data.frequencies_hz) && size(short_data.power) == (0, 0)
 
     last_good_page_id = state.output_manager.active_page_id
     last_good_output = state.output_manager.plot_cache[last_good_page_id]
@@ -2809,11 +2795,11 @@ end
     stale = try SA.apply_signal_analyser_view!(state, Dict("state_revision" => state.view.state_revision - 1, "active_plot" => "spectrum")); nothing catch caught; caught end
     @test stale isa SA.SignalAnalyserStaleStateError
 
-    short = SA.AnalysedSignal("c16-short", "#111111", 10.0, ComplexF64[1], false, true)
+    short = SA.AnalysedSignal("c16-short", "#111111", 10.0, ComplexF64[1, 2], false, true)
     @test SA.signal_spectrogram_frequency_scale_metadata(SA.SignalSpectrogramSettings(50, 0.5, SA.AutomaticSignalSpectrumFrequencyLimits(), log), short) == Dict("requested" => "log", "effective" => "log", "available" => ["linear", "log"])
     short_calls = length(SA.SPECTROGRAM_CALLS)
     SA.signal_spectrogram_data(SA.SignalSpectrogramService(SA.EngeeDSPSpectrogramProvider()), short)
-    @test length(SA.SPECTROGRAM_CALLS) == short_calls
+    @test length(SA.SPECTROGRAM_CALLS) == short_calls + 1
 end
 
 @testset "Cascade 17 Spectrogram Power Limits are presentation-only and full-raw" begin

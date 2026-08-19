@@ -66,8 +66,10 @@ function createHarness() {
   const reactCalls = [];
   const frames = [];
   const shell = element();
-  const rangeAction = element();
-  const amplitudeAction = element();
+  // The menu labels change between Time and Spectrum. Keep the action's
+  // authored trailing label node in this lightweight DOM double.
+  const rangeAction = element({ querySelector(selector) { return selector === "span:last-of-type" ? element({ textContent:"" }) : null; } });
+  const amplitudeAction = element({ querySelector(selector) { return selector === "span:last-of-type" ? element({ textContent:"" }) : null; } });
   const clearAction = element();
   const helpAction = element();
   const menu = element({
@@ -290,8 +292,13 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
 
   h.test.model.layout.panes[0].plot_type = "spectrum";
   h.test.openMenu(firstTrigger);
-  assert(h.rangeAction.disabled && /доступен только для загруженной временной области/.test(h.rangeAction.getAttribute("aria-label")), "a non-time pane must keep a disabled toggle with the accessible reason");
-  assert(h.amplitudeAction.disabled && /доступен только для загруженной временной области/.test(h.amplitudeAction.getAttribute("aria-label")), "a non-time pane must disable the mirrored amplitude control with the same reason");
+  assert(!h.rangeAction.disabled && h.rangeAction.getAttribute("aria-label") === "Слайдер частоты", "a ready Spectrum pane must expose the frequency slider");
+  assert(!h.amplitudeAction.disabled && h.amplitudeAction.getAttribute("aria-label") === "Слайдер магнитуды", "a ready Spectrum pane must expose the independent magnitude slider");
+  h.test.closeMenu(false);
+  h.test.model.layout.panes[0].plot_type = "spectrogram";
+  h.test.openMenu(firstTrigger);
+  assert(h.rangeAction.disabled && /доступен только для загруженной области/.test(h.rangeAction.getAttribute("aria-label")), "a non-Time/non-Spectrum pane must retain a disabled slider with its accessible reason");
+  assert(h.amplitudeAction.disabled && /доступен только для загруженной области/.test(h.amplitudeAction.getAttribute("aria-label")), "a non-Time/non-Spectrum pane must disable the mirrored slider");
   h.test.closeMenu(false);
   h.test.model.layout.panes[0].plot_type = "time";
   h.test.model.layout.panes[0].signal_bindings = [];

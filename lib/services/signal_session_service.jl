@@ -12,6 +12,7 @@ const SIGNAL_ANALYSER_SESSION_STATE_FIELDS = Set([
     "next_display_number",
 ])
 const SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS = Set([
+    "id",
     "name",
     "color",
     "sample_rate_hz",
@@ -19,6 +20,8 @@ const SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS = Set([
     "visible",
     "values",
 ])
+const SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS_V3 =
+    setdiff(SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS, Set(["id"]))
 const SIGNAL_ANALYSER_SESSION_VALUES_FIELDS = Set(["real", "imag"])
 const SIGNAL_ANALYSER_SESSION_DISPLAY_FIELDS = Set([
     "id",
@@ -47,10 +50,13 @@ const SIGNAL_ANALYSER_SESSION_LAYOUT_FIELDS = Set([
 ])
 const SIGNAL_ANALYSER_SESSION_PANE_FIELDS = Set([
     "id",
+    "name",
     "plot_type",
     "signal_bindings",
     "peaks_settings",
 ])
+const SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V3 =
+    setdiff(SIGNAL_ANALYSER_SESSION_PANE_FIELDS, Set(["name"]))
 const SIGNAL_ANALYSER_SESSION_LEGACY_PANE_FIELDS = Set([
     "id",
     "plot_type",
@@ -90,6 +96,8 @@ const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
     "spectrum.sidelobe_attenuation_db",
     "spectrum.overlap_percent",
     "spectrum.nfft",
+    "spectrum.link_frequency",
+    "spectrum.link_magnitude",
     "spectrogram.time_units",
     "spectrogram.frequency_units",
     "spectrogram.scale",
@@ -108,8 +116,12 @@ const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
 )
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS =
     Set(SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS)
+const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V3 = setdiff(
+    SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS,
+    Set(["spectrum.link_frequency", "spectrum.link_magnitude"]),
+)
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_LEGACY =
-    setdiff(SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS, Set(["time.link_amplitude"]))
+    setdiff(SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V3, Set(["time.link_amplitude"]))
 const SIGNAL_ANALYSER_SESSION_MAX_SIGNALS = 256
 const SIGNAL_ANALYSER_SESSION_MAX_DISPLAYS = 128
 const SIGNAL_ANALYSER_SESSION_MAX_TOTAL_SAMPLES = 5_000_000
@@ -207,6 +219,7 @@ end
 
 function signal_analyser_session_signal_payload(signal::AnalysedSignal)::Dict{String,Any}
     Dict{String,Any}(
+        "id" => signal.id,
         "name" => signal.name,
         "color" => signal.color,
         "sample_rate_hz" => signal.sample_rate_hz,
@@ -301,13 +314,18 @@ function signal_analyser_session_parse_signal(
     value,
     index::Int,
     maximum_samples::Int,
+    session_version::Int,
 )::AnalysedSignal
     path = "document.state.signals[$index]"
     data = signal_analyser_session_exact_object(
         value,
-        SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS,
+        session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+            SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS : SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS_V3,
         path,
     )
+    id = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+        signal_analyser_session_string(signal_analyser_payload_value(data, "id"), "$path.id") :
+        signal_analyser_new_signal_id()
     name = signal_analyser_session_string(signal_analyser_payload_value(data, "name"), "$path.name")
     color = signal_analyser_session_string(signal_analyser_payload_value(data, "color"), "$path.color")
     sample_rate_hz = signal_analyser_session_float(
@@ -359,14 +377,15 @@ function signal_analyser_session_parse_signal(
         ))
         samples[sample_index] = ComplexF64(real_part, imag_part)
     end
-    AnalysedSignal(name, color, sample_rate_hz, samples, is_complex, visible)
+    AnalysedSignal(id, name, color, sample_rate_hz, samples, is_complex, visible)
 end
 
-signal_analyser_session_parse_signal(value, index::Int)::AnalysedSignal =
+signal_analyser_session_parse_signal(value, index::Int, session_version::Int)::AnalysedSignal =
     signal_analyser_session_parse_signal(
         value,
         index,
         SIGNAL_ANALYSER_SESSION_MAX_TOTAL_SAMPLES,
+        session_version,
     )
 
 function signal_analyser_session_parse_stored_settings(
@@ -378,6 +397,7 @@ function signal_analyser_session_parse_stored_settings(
     actual_fields = signal_analyser_payload_keys(value)
     actual_fields in (
         SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS,
+        SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V3,
         SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_LEGACY,
     ) || signal_analyser_session_exact_object(
         value,
@@ -393,7 +413,8 @@ function signal_analyser_session_parse_stored_settings(
                 definition,
                 display.id,
                 field_id,
-                field_id == "time.link_amplitude" && !(field_id in actual_fields) ? false :
+                field_id in ("time.link_amplitude", "spectrum.link_frequency", "spectrum.link_magnitude") &&
+                    !(field_id in actual_fields) ? false :
                     signal_analyser_payload_value(data, field_id),
             )
         catch err
@@ -533,8 +554,10 @@ function signal_analyser_session_parse_layout_pane(
     is_legacy_pane && session_version != SIGNAL_ANALYSER_LEGACY_SESSION_VERSION && throw(
         signal_analyser_session_error(path, "Session v2+ требует peaks_settings для каждой pane"),
     )
+    expected_pane_fields = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+        SIGNAL_ANALYSER_SESSION_PANE_FIELDS : SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V3
     data = is_legacy_pane ? value :
-        signal_analyser_session_exact_object(value, SIGNAL_ANALYSER_SESSION_PANE_FIELDS, path)
+        signal_analyser_session_exact_object(value, expected_pane_fields, path)
     pane_id = signal_analyser_session_string(
         signal_analyser_payload_value(data, "id"),
         "$path.id",
@@ -542,6 +565,11 @@ function signal_analyser_session_parse_layout_pane(
     occursin(SIGNAL_DISPLAY_PANE_ID_REGEX, pane_id) || throw(
         signal_analyser_session_error("$path.id", "Ожидался идентификатор pane-N"),
     )
+    pane_name = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+        signal_analyser_session_string(
+            signal_analyser_payload_value(data, "name"),
+            "$path.name",
+        ) : signal_display_default_pane_name(pane_id)
     plot_value = signal_analyser_payload_value(data, "plot_type")
     plot_value isa AbstractString && haskey(SIGNAL_ANALYSER_PLOTS_BY_NAME, String(plot_value)) ||
         throw(signal_analyser_session_error(
@@ -611,7 +639,7 @@ function signal_analyser_session_parse_layout_pane(
                 "$path.peaks_settings.$field_id",
             )
         end
-        maximum_cutoff, minimum_cutoff = if session_version == SIGNAL_ANALYSER_SESSION_VERSION
+        maximum_cutoff, minimum_cutoff = if session_version >= SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION
             parse_cutoff("maximum_cutoff"), parse_cutoff("minimum_cutoff")
         else
             legacy_height = parse_cutoff("minimum_height")
@@ -649,6 +677,7 @@ function signal_analyser_session_parse_layout_pane(
         return try
             SignalDisplayPaneState(
                 pane_id,
+                pane_name,
                 plot_type,
                 SignalDisplayMembership(bindings),
                 display.analysis_source,
@@ -678,6 +707,7 @@ function signal_analyser_session_parse_layout_pane(
     try
         SignalDisplayPaneState(
             pane_id,
+            pane_name,
             plot_type,
             SignalDisplayMembership(bindings),
             signal_analysis_source(analysis_signal === nothing ? nothing : analysis_signal.name),
@@ -987,6 +1017,7 @@ function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDoc
     version in (
         SIGNAL_ANALYSER_LEGACY_SESSION_VERSION,
         SIGNAL_ANALYSER_EXTREMA_SESSION_VERSION,
+        SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION,
         SIGNAL_ANALYSER_SESSION_VERSION,
     ) || throw(signal_analyser_session_error(
         "document.version",
@@ -1016,13 +1047,17 @@ function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDoc
     signals = AnalysedSignal[]
     remaining_samples = SIGNAL_ANALYSER_SESSION_MAX_TOTAL_SAMPLES
     for (index, value) in enumerate(signal_values)
-        signal = signal_analyser_session_parse_signal(value, index, remaining_samples)
+        signal = signal_analyser_session_parse_signal(value, index, remaining_samples, version)
         push!(signals, signal)
         remaining_samples -= length(signal.values)
     end
     allunique(signal.name for signal in signals) || throw(signal_analyser_session_error(
         "document.state.signals",
         "Имена сигналов не должны повторяться",
+    ))
+    allunique(signal.id for signal in signals) || throw(signal_analyser_session_error(
+        "document.state.signals",
+        "Идентификаторы сигналов не должны повторяться",
     ))
     row_selection = GlobalSignalSelection(signal_analyser_session_string(
         signal_analyser_payload_value(state_data, "row_selected_signal"),

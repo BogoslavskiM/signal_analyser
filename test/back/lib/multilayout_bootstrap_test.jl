@@ -86,6 +86,7 @@ end
     @test layout_document["active_pane_id"] == "pane-2"
     @test layout_document["panes"][2] == Dict(
         "id" => "pane-2",
+        "name" => "Область 2",
         "plot_type" => "spectrogram",
         "signal_bindings" => [names[2]],
         "peaks_settings" => Dict(

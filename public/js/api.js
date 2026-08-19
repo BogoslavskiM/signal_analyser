@@ -92,6 +92,29 @@
         body: JSON.stringify(payload),
       });
     },
+    updateSignalMetadata: function (payload) {
+      return request("./api/signals", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    },
+    signalSummary: function (signalId, paneId) {
+      var query = paneId ? "?pane_id=" + encodeURIComponent(paneId) : "";
+      return request("./api/signals/" + encodeURIComponent(signalId) + "/summary" + query, { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" });
+    },
+    signalSamples: function (signalId, cursor, limit) {
+      var query = "?limit=" + encodeURIComponent(Math.min(500, Math.max(1, Number(limit) || 200)));
+      if (cursor) query += "&cursor=" + encodeURIComponent(cursor);
+      return request("./api/signals/" + encodeURIComponent(signalId) + "/samples" + query, { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" });
+    },
+    deriveSignal: function (payload) {
+      return request("./api/signals/derive", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    },
     settings: function (displayId) {
       return request("./api/settings?display_id=" + encodeURIComponent(displayId));
     },

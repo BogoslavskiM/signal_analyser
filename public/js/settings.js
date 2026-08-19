@@ -6,7 +6,7 @@
   var numeric = window.SignalAnalyserNumeric;
   var context = {
     displayId: "", revision: 0, document: null, drafts: {}, pending: {}, timers: {}, requestQueue: Promise.resolve(), intent: 0, contextToken: 0, loadToken: 0,
-    page: "display", plotType: "time", collapsed: {}, renderedFields: {}, linkPreview: null
+    page: "display", plotType: "time", collapsed: {}, renderedFields: {}, linkPreview: null, extraVisible: {}
   };
   var plotOptions = [
     { value: "time", label: "Временная область" },
@@ -15,9 +15,9 @@
     { value: "persistence", label: "Спектр персистентности" }
   ];
   var ru = {
-    "display.plot_type": "Тип графика", "display.show_legend": "Показывать легенду",
+    "display.plot_type": "Тип графика", "display.show_legend": "Показывать легенду", "display.name":"Имя экрана", "pane.name":"Имя области",
     "time.normalize_y": "Нормировать Y", "time.show_markers": "Показывать маркеры", "time.units": "Единицы времени", "time.x_limits": "Пределы X", "time.y_limits": "Пределы Y", "time.link_time": "Связать время", "time.link_amplitude": "Связать амплитуду",
-    "spectrum.frequency_units": "Единицы частоты", "spectrum.frequency_limits": "Пределы частоты", "spectrum.y_limits": "Пределы Y", "spectrum.frequency_scale": "Шкала частоты", "spectrum.scale": "Спектр в dB", "spectrum.resolution_type": "Тип разрешения", "spectrum.leakage": "Утечка", "spectrum.rbw": "Полоса разрешения", "spectrum.window_length": "Длина окна", "spectrum.window": "Окно", "spectrum.sidelobe_attenuation_db": "Подавление боковых лепестков", "spectrum.overlap_percent": "Перекрытие", "spectrum.nfft": "Точки DFT", "spectrum.frequency_resolution": "Частотное разрешение",
+    "spectrum.frequency_units": "Единицы частоты", "spectrum.frequency_limits": "Пределы частоты", "spectrum.y_limits": "Пределы магнитуды", "spectrum.link_frequency":"Связать частоты спектров", "spectrum.link_magnitude":"Связать магнитуды спектров", "spectrum.frequency_scale": "Шкала частоты", "spectrum.scale": "Спектр в dB", "spectrum.resolution_type": "Тип разрешения", "spectrum.leakage": "Утечка", "spectrum.rbw": "Полоса разрешения", "spectrum.window_length": "Длина окна", "spectrum.window": "Окно", "spectrum.sidelobe_attenuation_db": "Подавление боковых лепестков", "spectrum.overlap_percent": "Перекрытие", "spectrum.nfft": "Точки DFT", "spectrum.frequency_resolution": "Частотное разрешение",
     "spectrogram.time_units": "Единицы времени", "spectrogram.frequency_units": "Единицы частоты", "spectrogram.frequency_limits": "Пределы частоты", "spectrogram.power_limits": "Пределы мощности", "spectrogram.frequency_scale": "Шкала частоты", "spectrogram.scale": "Спектр в dB", "spectrogram.leakage": "Утечка", "spectrogram.time_resolution": "Разрешение по времени", "spectrogram.overlap_percent": "Перекрытие", "spectrogram.reassign": "Переназначение", "spectrogram.actual_rbw": "Фактическая RBW",
     "persistence.time_units": "Единицы времени", "persistence.frequency_units": "Единицы частоты", "persistence.frequency_limits": "Пределы частоты", "persistence.power_limits": "Пределы мощности", "persistence.density_limits": "Пределы плотности", "persistence.frequency_scale": "Шкала частоты", "persistence.scale": "Спектр в dB", "persistence.leakage": "Утечка", "persistence.time_resolution": "Разрешение по времени", "persistence.overlap_percent": "Перекрытие", "persistence.power_bins": "Интервалы мощности", "persistence.rbw": "RBW"
   };
@@ -53,14 +53,14 @@
   function group(key, title, items) { return { key:key, title:title, items:items.filter(Boolean) }; }
   function displayInventory(type) {
     var graph = group("graph", "График", [
-      pseudo("display.plot_type", "enum", type, { action:"plot-type", options:plotOptions }),
+      actual("pane.name"), pseudo("display.plot_type", "enum", type, { action:"plot-type", options:plotOptions }),
       actual("display.show_legend", true)
     ]);
     if (type === "time") return [graph];
     if (type === "spectrum") {
       return [
         graph,
-        group("frequency-axis", "Частотная ось", [actual("spectrum.frequency_units", true), actual("spectrum.frequency_limits", true), actual("spectrum.frequency_scale", true), actual("spectrum.y_limits", true)]),
+        group("frequency-axis", "Частотная ось", [actual("spectrum.frequency_units", true), actual("spectrum.frequency_scale", true)]),
         group("spectrum-analysis", "Спектральный анализ", [actual("spectrum.scale", true), actual("spectrum.resolution_type", true), actual("spectrum.leakage"), actual("spectrum.rbw"), actual("spectrum.window_length"), actual("spectrum.window"), actual("spectrum.sidelobe_attenuation_db"), actual("spectrum.overlap_percent"), actual("spectrum.nfft"), actual("spectrum.frequency_resolution")])
       ];
     }
@@ -98,9 +98,11 @@
   }
 
   function visibleItems() {
-    return inventory().reduce(function (items, section) {
+    var items=inventory().reduce(function (items, section) {
       return items.concat(section.items.filter(function (item) { return item && !item.pseudo && item.visible !== false; }));
     }, []);
+    Object.keys(context.extraVisible).forEach(function (id) { var item=sourceItem(id); if (item && item.visible !== false && !items.some(function (candidate) { return candidate.id === id; })) items.push(item); });
+    return items;
   }
 
   function numericKind(item, key) {
@@ -362,6 +364,7 @@
     setView:function (page, plotType) {
       context.page=page || "display"; context.plotType=plotType || "time";
     },
+    setExtraVisible:function (ids) { context.extraVisible={}; (ids || []).forEach(function (id) { context.extraVisible[id]=true; }); },
     setLinkPreview:function (linkTime, linkAmplitude) {
       context.linkPreview = typeof linkTime === "boolean" && typeof linkAmplitude === "boolean" ? { linkTime:linkTime, linkAmplitude:linkAmplitude } : null;
     },

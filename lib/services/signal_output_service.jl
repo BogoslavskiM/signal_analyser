@@ -96,12 +96,18 @@ function signal_analyser_peaks_context_is_current_unlocked(
     layout = signal_analyser_layout_by_display_id(state, context.display_id)
     layout.active_pane_id == context.pane_id || return false
     pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
-    pane.plot_type == TIME_PLOT || return false
+    pane.plot_type in (TIME_PLOT, SPECTRUM_PLOT) || return false
     page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
     get(state.output_manager.peaks_page_calculation_revisions, page_id, -1) ==
         context.calculation_revision || return false
     Tuple(signal_display_pane_members(pane)) == context.signal_names || return false
-    isequal(pane.time_limits, context.time_limits) && pane.peaks_settings == context.settings
+    pane.plot_type == context.plot_type &&
+        isequal(pane.time_limits, context.time_limits) &&
+        isequal(
+            pane.plot_type == SPECTRUM_PLOT ? pane.spectrum_settings : nothing,
+            context.spectrum_settings,
+        ) &&
+        pane.peaks_settings == context.settings
 end
 
 function signal_analyser_sync_output_pages_unlocked!(state::SignalAnalyserState)::Nothing
@@ -385,17 +391,19 @@ function signal_analyser_peaks_context_unlocked(
         ))
     end
     pane = signal_display_active_pane(active_layout)
-    pane.plot_type == TIME_PLOT || throw(SignalAnalyserValidationError(
+    pane.plot_type in (TIME_PLOT, SPECTRUM_PLOT) || throw(SignalAnalyserValidationError(
         "Некорректный запрос экстремумов",
-        Dict("pane_id" => "Экстремумы доступны только для активной TIME pane"),
+        Dict("pane_id" => "Экстремумы доступны только для активной TIME или SPECTRUM pane"),
     ))
     page_id = signal_analyser_output_page_id(state.active_display_id, pane.id)
     revision = state.output_manager.peaks_page_calculation_revisions[page_id]
     SignalAnalyserPeaksContextKey(
         state.active_display_id,
         pane.id,
+        pane.plot_type,
         signal_display_pane_members(pane),
         pane.time_limits,
+        pane.plot_type == SPECTRUM_PLOT ? pane.spectrum_settings : nothing,
         pane.peaks_settings,
         revision,
     )
@@ -563,16 +571,16 @@ end
 function signal_analyser_frequency_unit_projection(
     unit::SignalFrequencyUnitPreference,
 )::Tuple{Float64,String}
-    unit == CYCLES_PER_YEAR_FREQUENCY_UNIT && return (1.0 / 31557600.0, "циклов/год")
-    unit == CYCLES_PER_DAY_FREQUENCY_UNIT && return (1.0 / 86400.0, "циклов/день")
-    unit == CYCLES_PER_HOUR_FREQUENCY_UNIT && return (1.0 / 3600.0, "циклов/час")
-    unit == CYCLES_PER_MINUTE_FREQUENCY_UNIT && return (1.0 / 60.0, "циклов/мин")
-    unit == MILLIHERTZ_FREQUENCY_UNIT && return (1.0e-3, "мГц")
-    unit == HERTZ_FREQUENCY_UNIT && return (1.0, "Гц")
-    unit == KILOHERTZ_FREQUENCY_UNIT && return (1.0e3, "кГц")
-    unit == MEGAHERTZ_FREQUENCY_UNIT && return (1.0e6, "МГц")
-    unit == GIGAHERTZ_FREQUENCY_UNIT && return (1.0e9, "ГГц")
-    (1.0e12, "ТГц")
+    label = unit == CYCLES_PER_YEAR_FREQUENCY_UNIT ? "циклов/год" :
+        unit == CYCLES_PER_DAY_FREQUENCY_UNIT ? "циклов/день" :
+        unit == CYCLES_PER_HOUR_FREQUENCY_UNIT ? "циклов/час" :
+        unit == CYCLES_PER_MINUTE_FREQUENCY_UNIT ? "циклов/мин" :
+        unit == MILLIHERTZ_FREQUENCY_UNIT ? "мГц" :
+        unit == HERTZ_FREQUENCY_UNIT ? "Гц" :
+        unit == KILOHERTZ_FREQUENCY_UNIT ? "кГц" :
+        unit == MEGAHERTZ_FREQUENCY_UNIT ? "МГц" :
+        unit == GIGAHERTZ_FREQUENCY_UNIT ? "ГГц" : "ТГц"
+    (signal_hertz_per_frequency_unit(unit), label)
 end
 
 function signal_analyser_normalized_values(values::Vector{Float64})::Vector{Float64}
@@ -1235,13 +1243,21 @@ function signal_analyser_passive_peaks_snapshot_unlocked(
     pane_display = signal_analyser_display_for_pane(display, pane)
     analysis_name = signal_display_pane_analysis_name(pane)
     analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
-    signal_peaks_snapshot(
-        state.peaks_service,
-        state.view.state_revision,
-        pane_display,
-        analysis_signal,
-        settings = pane.peaks_settings,
-    )
+    pane.plot_type == SPECTRUM_PLOT ?
+        signal_spectrum_peaks_snapshot(
+            state,
+            state.view.state_revision,
+            pane_display,
+            analysis_signal,
+            settings = pane.peaks_settings,
+        ) :
+        signal_peaks_snapshot(
+            state.peaks_service,
+            state.view.state_revision,
+            pane_display,
+            analysis_signal,
+            settings = pane.peaks_settings,
+        )
 end
 
 function signal_analyser_empty_peaks_table_unlocked(
@@ -1255,13 +1271,21 @@ function signal_analyser_empty_peaks_table_unlocked(
         pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
         pane_display = signal_analyser_display_for_pane(display, pane)
         SignalPeaksSnapshot[
-            signal_peaks_snapshot(
-                state.peaks_service,
-                state.view.state_revision,
-                pane_display,
-                signal_by_name(state, signal_name),
-                settings = context.settings,
-            )
+            pane.plot_type == SPECTRUM_PLOT ?
+                signal_spectrum_peaks_snapshot(
+                    state,
+                    state.view.state_revision,
+                    pane_display,
+                    signal_by_name(state, signal_name),
+                    settings = context.settings,
+                ) :
+                signal_peaks_snapshot(
+                    state.peaks_service,
+                    state.view.state_revision,
+                    pane_display,
+                    signal_by_name(state, signal_name),
+                    settings = context.settings,
+                )
             for signal_name in context.signal_names
         ]
     else
@@ -1335,10 +1359,36 @@ function signal_analyser_active_peaks_response_unlocked(
     error::AbstractString,
 )::Dict{String,Any}
     table_payload = signal_peaks_table_payload(table)
+    layout = signal_analyser_layout_by_display_id(state, context.display_id)
+    pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
+    position_scale, position_unit = if pane.plot_type == TIME_PLOT
+        maximum_seconds = pane.time_limits === nothing ? 1.0 :
+            (pane.time_limits::SignalTimeLimits).max_s
+        signal_analyser_time_unit_projection(
+            pane.stored_settings.time.units,
+            maximum_seconds,
+        )
+    else
+        signal_analyser_frequency_unit_projection(
+            pane.stored_settings.spectrum.frequency_units,
+        )
+    end
+    for row in table_payload["rows"]
+        canonical = pane.plot_type == TIME_PLOT ? row["time_s"] : row["frequency_hz"]
+        row["position"] = canonical === nothing ? nothing : canonical / position_scale
+        row["position_unit"] = position_unit
+    end
     settings_payload = signal_peaks_settings_payload(context.settings)
+    legacy_payload = signal_peaks_payload(legacy)
+    for item in legacy_payload["items"]
+        canonical = pane.plot_type == TIME_PLOT ? item["time_s"] : item["frequency_hz"]
+        item["position"] = canonical === nothing ? nothing : canonical / position_scale
+        item["position_unit"] = position_unit
+    end
     Dict{String,Any}(
         "display_id" => context.display_id,
         "pane_id" => context.pane_id,
+        "plot_type" => signal_analyser_plot_name(context.plot_type),
         "mode" => signal_extrema_mode_name(context.settings.mode),
         "calculation_revision" => context.calculation_revision,
         "context_key" => signal_analyser_peaks_context_id(context),
@@ -1346,7 +1396,7 @@ function signal_analyser_active_peaks_response_unlocked(
         "peaks_table" => table_payload,
         "settings" => settings_payload,
         "settings_fields" => signal_peaks_settings_fields_payload(context.settings),
-        "peaks" => signal_peaks_payload(legacy),
+        "peaks" => legacy_payload,
         "isready" => isready,
         "success" => success,
         "error" => String(error),
@@ -1449,8 +1499,8 @@ function signal_analyser_run_peaks_task!(
         layout = signal_analyser_layout_by_display_id(snapshot, context.display_id)
         pane = signal_analyser_layout_pane_by_id(layout, context.pane_id)
         pane_display = signal_analyser_display_for_pane(display, pane)
-        pane.plot_type == TIME_PLOT && pane.peaks_enabled || throw(ArgumentError(
-            "Snapshot extrema context не соответствует enabled TIME pane",
+        pane.plot_type in (TIME_PLOT, SPECTRUM_PLOT) && pane.peaks_enabled || throw(ArgumentError(
+            "Snapshot extrema context не соответствует enabled TIME/SPECTRUM pane",
         ))
         snapshots = SignalPeaksSnapshot[]
         for signal_name in context.signal_names
@@ -1458,14 +1508,23 @@ function signal_analyser_run_peaks_task!(
             signal = signal_by_name(snapshot, signal_name)
             push!(
                 snapshots,
-                signal_peaks_snapshot(
-                    snapshot.peaks_service,
-                    snapshot.view.state_revision,
-                    pane_display,
-                    signal,
-                    materialize = true,
-                    settings = context.settings,
-                ),
+                pane.plot_type == SPECTRUM_PLOT ?
+                    signal_spectrum_peaks_snapshot(
+                        snapshot,
+                        snapshot.view.state_revision,
+                        pane_display,
+                        signal,
+                        materialize = true,
+                        settings = context.settings,
+                    ) :
+                    signal_peaks_snapshot(
+                        snapshot.peaks_service,
+                        snapshot.view.state_revision,
+                        pane_display,
+                        signal,
+                        materialize = true,
+                        settings = context.settings,
+                    ),
             )
         end
         token.cancelled[] && return nothing

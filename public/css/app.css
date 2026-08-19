@@ -3125,3 +3125,146 @@ body {
 .app-status > * {
   pointer-events: auto;
 }
+
+/* Additive v29 feature rules. Append once to public/css/app.css.
+   Existing shell, tabs, settings rows, tables, Plotly hosts and modal base
+   classes remain production-owned. */
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 12px;
+  padding: 0 8px 8px 28px;
+}
+
+.summary-item {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.summary-item span { color: var(--muted); }
+.summary-item strong {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary-action { margin: 4px 8px 8px 28px; }
+
+.color-field {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 6px;
+}
+
+.color-swatch-button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: var(--surface);
+}
+
+.color-swatch-button i {
+  width: 16px;
+  height: 16px;
+  display: block;
+  margin: auto;
+  border-radius: 2px;
+  background: var(--signal-color, var(--accent));
+}
+
+.sample-table { min-width: 760px; }
+.sample-table th:nth-child(1) { width: 90px; }
+.sample-table th:nth-child(2) { width: 170px; }
+.sample-table th:nth-child(n + 3) { width: 165px; }
+
+.samples-footer {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 10px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.samples-loading {
+  position: absolute;
+  inset: 32px 0 0;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.extrema-marker-cell {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.signal-operation-dialog {
+  width: 660px;
+  min-width: 660px;
+  max-height: calc(100vh - 32px);
+  grid-template-rows: 48px minmax(0, 1fr) 56px;
+}
+
+.operation-form { display: grid; gap: 12px; }
+
+.operation-form-row {
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: 152px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.operation-form-row > label,
+.operation-form-label { color: var(--muted); }
+
+.operation-code-row { align-items: start; }
+.operation-code-row > label { padding-top: 8px; }
+
+.operation-code-editor {
+  min-height: 142px;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius);
+  background: #fbfbfb;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  tab-size: 2;
+}
+
+.operation-code-editor:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.operation-body-help {
+  margin: -4px 0 0 164px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.operation-body-help code { color: var(--text); }
+.operation-status { margin-left: 164px; }
+.operation-progress { display: flex; align-items: center; gap: 8px; }
+.operation-progress img { width: 20px; height: 20px; animation: signal-operation-spin 1s linear infinite; }
+
+@keyframes signal-operation-spin {
+  to { transform: rotate(360deg); }
+}

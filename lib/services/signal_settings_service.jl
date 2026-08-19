@@ -145,6 +145,7 @@ const SIGNAL_SETTINGS_SECTIONS = (
     SignalSettingsSectionDefinition("spectrum.rbw", "spectrum", "RBW", 60),
     SignalSettingsSectionDefinition("spectrum.window_options", "spectrum", "Window Options", 70),
     SignalSettingsSectionDefinition("spectrum.frequency_resolution", "spectrum", "Frequency Resolution", 80),
+    SignalSettingsSectionDefinition("spectrum.linking", "spectrum", "Spectrum links", 90),
     SignalSettingsSectionDefinition("spectrogram.time_limits", "spectrogram", "Time Limits", 10),
     SignalSettingsSectionDefinition("spectrogram.frequency_limits", "spectrogram", "Frequency Limits", 20),
     SignalSettingsSectionDefinition("spectrogram.power_limits", "spectrogram", "Power Limits", 30),
@@ -164,6 +165,8 @@ const SIGNAL_SETTINGS_SECTIONS = (
 )
 
 const SIGNAL_SETTINGS_FIELD_SECTIONS = Dict(
+    "display.name" => "display.view",
+    "pane.name" => "display.view",
     "display.show_legend" => "display.view",
     "time.normalize_y" => "time.options",
     "time.show_markers" => "time.options",
@@ -185,6 +188,8 @@ const SIGNAL_SETTINGS_FIELD_SECTIONS = Dict(
     "spectrum.sidelobe_attenuation_db" => "spectrum.window_options",
     "spectrum.overlap_percent" => "spectrum.window_options",
     "spectrum.nfft" => "spectrum.window_options",
+    "spectrum.link_frequency" => "spectrum.linking",
+    "spectrum.link_magnitude" => "spectrum.linking",
     "spectrogram.time_units" => "spectrogram.time_limits",
     "spectrogram.frequency_units" => "spectrogram.frequency_limits",
     "spectrogram.frequency_limits" => "spectrogram.frequency_limits",
@@ -247,6 +252,7 @@ const SIGNAL_SETTINGS_READOUTS = (
 signal_settings_auto_default(key::Symbol) = NamedTuple{(:mode, key)}(("auto", nothing))
 
 function signal_settings_control_kind(id::AbstractString, kind::AbstractString)::String
+    kind == "text" && return "text"
     id in SIGNAL_SETTINGS_ENUM_CHECKBOX_IDS && return "checkbox"
     kind == "boolean" && return "checkbox"
     kind == "enum" && return "combobox"
@@ -298,6 +304,14 @@ end
 
 const SIGNAL_SETTINGS_FIELDS = (
     signal_settings_field_definition(
+        "display.name", "display", "Screen name", "text", "";
+        effect_status = "effective_presentation", effect_reason = "", visibility_policy = :always,
+    ),
+    signal_settings_field_definition(
+        "pane.name", "display", "Area name", "text", "";
+        effect_status = "effective_presentation", effect_reason = "", visibility_policy = :always,
+    ),
+    signal_settings_field_definition(
         "display.show_legend", "display", "Show legend", "boolean", true;
         effect_status = "effective_presentation", effect_reason = "", visibility_policy = :always,
     ),
@@ -345,7 +359,8 @@ const SIGNAL_SETTINGS_FIELDS = (
         units = "Hz", effect_status = "effective", effect_reason = "", enabled_policy = :source,
     ),
     signal_settings_field_definition(
-        "spectrum.y_limits", "spectrum", "Y limits", "optional_range", nothing,
+        "spectrum.y_limits", "spectrum", "Y limits", "optional_range", nothing;
+        effect_status = "effective", effect_reason = "",
     ),
     signal_settings_field_definition(
         "spectrum.frequency_scale", "spectrum", "Frequency scale", "enum", "linear";
@@ -395,6 +410,18 @@ const SIGNAL_SETTINGS_FIELDS = (
         signal_settings_auto_default(:nfft); minimum = 2, step = 1,
         visibility_policy = :spectrum_window_length,
         effect_status = "blocked_contract", effect_reason = "milestone_3_contract",
+    ),
+    signal_settings_field_definition(
+        "spectrum.link_frequency", "spectrum", "Link spectrum frequencies", "boolean", false;
+        effect_status = "effective", effect_reason = "",
+        visibility_policy = :multiple_spectrum_panes,
+        enabled_policy = :compatible_spectrum_panes,
+    ),
+    signal_settings_field_definition(
+        "spectrum.link_magnitude", "spectrum", "Link spectrum magnitudes", "boolean", false;
+        effect_status = "effective", effect_reason = "",
+        visibility_policy = :multiple_spectrum_panes,
+        enabled_policy = :compatible_spectrum_panes,
     ),
     signal_settings_field_definition(
         "spectrogram.time_units", "spectrogram", "Time units", "enum", "seconds";
@@ -541,6 +568,7 @@ end
 
 const SignalSettingDraftValue = Union{
     Nothing,
+    String,
     Bool,
     Float64,
     Int,
@@ -690,6 +718,18 @@ function signal_analyser_compatible_time_axis_panes(
     ]
 end
 
+function signal_analyser_compatible_spectrum_panes(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::Vector{SignalDisplayPaneState}
+    layout = signal_analyser_layout_by_display_id(state, display.id)
+    SignalDisplayPaneState[
+        pane for pane in layout.panes
+        if pane.plot_type == SPECTRUM_PLOT &&
+            signal_display_pane_analysis_name(pane) !== nothing
+    ]
+end
+
 function signal_settings_field_visible(
     definition::SignalSettingsFieldDefinition,
     state::SignalAnalyserState,
@@ -704,6 +744,8 @@ function signal_settings_field_visible(
     policy == :persistence && return display.active_plot == PERSISTENCE_PLOT
     policy == :multiple_time_panes && return display.active_plot == TIME_PLOT &&
         length(signal_settings_time_panes(state, display)) >= 2
+    policy == :multiple_spectrum_panes && return display.active_plot == SPECTRUM_PLOT &&
+        length(signal_analyser_compatible_spectrum_panes(state, display)) >= 2
     resolution_type = display.stored_settings.spectrum.resolution_type
     policy == :spectrum_rbw && return display.active_plot == SPECTRUM_PLOT &&
         resolution_type == RBW_SPECTRUM_RESOLUTION
@@ -725,6 +767,9 @@ function signal_settings_field_enabled(
     policy == :compatible_time_panes && return display.active_plot == TIME_PLOT &&
         signal_analyser_display_analysis_name(display) !== nothing &&
         length(signal_analyser_compatible_time_panes(state, display)) >= 2
+    policy == :compatible_spectrum_panes && return display.active_plot == SPECTRUM_PLOT &&
+        signal_analyser_display_analysis_name(display) !== nothing &&
+        length(signal_analyser_compatible_spectrum_panes(state, display)) >= 2
     policy == :spectrum_frequency_scale && return true
     policy == :spectrogram_frequency_scale && return true
     policy == :sidelobe_attenuation && return display.stored_settings.spectrum.window in (
@@ -814,6 +859,7 @@ function signal_settings_field_value(
     field_id::AbstractString,
 )
     stored = display.stored_settings
+    field_id == "display.name" && return display.name
     field_id == "display.show_legend" && return stored.display.show_legend
     field_id == "time.normalize_y" && return stored.time.normalize_y
     field_id == "time.show_markers" && return stored.time.show_markers
@@ -832,8 +878,13 @@ function signal_settings_field_value(
     field_id == "time.link_amplitude" && return stored.time.link_amplitude
     field_id == "spectrum.frequency_units" &&
         return SIGNAL_FREQUENCY_UNIT_NAMES[stored.spectrum.frequency_units]
-    field_id == "spectrum.frequency_limits" &&
-        return signal_settings_range_payload(display.spectrum_settings.frequency_limits)
+    if field_id == "spectrum.frequency_limits"
+        limits = display.spectrum_settings.frequency_limits
+        limits isa AutomaticSignalSpectrumFrequencyLimits && return nothing
+        typed = limits::ExplicitSignalSpectrumFrequencyLimits
+        factor = signal_hertz_per_frequency_unit(stored.spectrum.frequency_units)
+        return Dict{String,Any}("min" => typed.min_hz / factor, "max" => typed.max_hz / factor)
+    end
     field_id == "spectrum.y_limits" && return signal_settings_range_payload(stored.spectrum.y_limits)
     field_id == "spectrum.frequency_scale" &&
         return SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[display.spectrum_settings.frequency_scale]
@@ -849,6 +900,8 @@ function signal_settings_field_value(
         return stored.spectrum.sidelobe_attenuation_db
     field_id == "spectrum.overlap_percent" && return stored.spectrum.overlap_percent
     field_id == "spectrum.nfft" && return signal_settings_resolution_payload(stored.spectrum.nfft)
+    field_id == "spectrum.link_frequency" && return stored.spectrum.link_frequency
+    field_id == "spectrum.link_magnitude" && return stored.spectrum.link_magnitude
     field_id == "spectrogram.time_units" &&
         return SIGNAL_TIME_UNIT_NAMES[stored.spectrogram.time_units]
     field_id == "spectrogram.frequency_units" &&
@@ -887,6 +940,19 @@ function signal_settings_field_value(
     throw(ArgumentError("Неизвестный settings field: $field_id"))
 end
 
+function signal_settings_field_value(
+    service::SignalSettingsService,
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    field_id::AbstractString,
+)
+    if field_id == "pane.name"
+        layout = signal_analyser_layout_by_display_id(state, display.id)
+        return signal_display_active_pane(layout).name
+    end
+    signal_settings_field_value(service, display, field_id)
+end
+
 function signal_settings_field_payload(
     service::SignalSettingsService,
     definition::SignalSettingsFieldDefinition,
@@ -902,7 +968,7 @@ function signal_settings_field_payload(
         "label" => definition.label,
         "kind" => definition.kind,
         "control_kind" => definition.control_kind,
-        "value" => signal_settings_field_value(service, display, definition.id),
+        "value" => signal_settings_field_value(service, state, display, definition.id),
         "default" => signal_settings_wire_value(definition.default_value),
         "units" => definition.id == "time.x_limits" ? signal_settings_time_unit_label(
             display.stored_settings.time.units,
@@ -990,6 +1056,12 @@ function signal_settings_document_unlocked(
         layout.panes,
     )
     amplitude_source = amplitude_index === nothing ? time_source : layout.panes[amplitude_index]
+    spectrum_index = findfirst(
+        pane -> pane.plot_type == SPECTRUM_PLOT &&
+            signal_display_pane_analysis_name(pane) !== nothing,
+        layout.panes,
+    )
+    spectrum_source = spectrum_index === nothing ? active_pane : layout.panes[spectrum_index]
     screen_time_unit = time_source.plot_type == SPECTROGRAM_PLOT ?
         time_source.stored_settings.spectrogram.time_units :
         time_source.stored_settings.time.units
@@ -1006,12 +1078,34 @@ function signal_settings_document_unlocked(
         "min" => time_source.time_limits.min_s / screen_time_factor,
         "max" => time_source.time_limits.max_s / screen_time_factor,
     )
+    screen_frequency_unit = spectrum_source.stored_settings.spectrum.frequency_units
+    if draft !== nothing
+        entry = get((draft::SignalSettingsDisplayDraft).entries, "spectrum.frequency_units", nothing)
+        entry === nothing || (entry.value isa SignalFrequencyUnitPreference &&
+            (screen_frequency_unit = entry.value))
+    end
+    screen_frequency_factor = signal_hertz_per_frequency_unit(screen_frequency_unit)
+    screen_frequency_limits = spectrum_source.spectrum_settings.frequency_limits
+    projected_frequency_limits = screen_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits ?
+        Dict{String,Any}(
+            "min" => (screen_frequency_limits::ExplicitSignalSpectrumFrequencyLimits).min_hz /
+                screen_frequency_factor,
+            "max" => (screen_frequency_limits::ExplicitSignalSpectrumFrequencyLimits).max_hz /
+                screen_frequency_factor,
+        ) : nothing
     screen_values = Dict{String,Any}(
         "time.link_time" => projected_display.stored_settings.time.link_time,
         "time.link_amplitude" => projected_display.stored_settings.time.link_amplitude,
         "time.units" => SIGNAL_TIME_UNIT_NAMES[screen_time_unit],
         "time.x_limits" => screen_time_limits,
         "time.y_limits" => signal_settings_range_payload(amplitude_source.stored_settings.time.y_limits),
+        "spectrum.link_frequency" => projected_display.stored_settings.spectrum.link_frequency,
+        "spectrum.link_magnitude" => projected_display.stored_settings.spectrum.link_magnitude,
+        "spectrum.frequency_units" => SIGNAL_FREQUENCY_UNIT_NAMES[screen_frequency_unit],
+        "spectrum.frequency_limits" => projected_frequency_limits,
+        "spectrum.y_limits" => signal_settings_range_payload(
+            spectrum_source.stored_settings.spectrum.y_limits,
+        ),
     )
     if draft !== nothing
         for field_id in keys(screen_values)
@@ -1319,7 +1413,25 @@ function signal_settings_parse_field_value(
     field_id::String,
     value,
 )
-    if definition.kind == "boolean"
+    if definition.kind == "text"
+        value isa AbstractString || throw(signal_setting_validation_error(
+            display_id,
+            field_id,
+            "Требуется строка",
+        ))
+        text = strip(String(value))
+        isempty(text) && throw(signal_setting_validation_error(
+            display_id,
+            field_id,
+            "Имя не может быть пустым",
+        ))
+        ncodeunits(text) <= 128 || throw(signal_setting_validation_error(
+            display_id,
+            field_id,
+            "Имя не может быть длиннее 128 байт",
+        ))
+        return text
+    elseif definition.kind == "boolean"
         value isa Bool || throw(signal_setting_validation_error(
             display_id,
             field_id,
@@ -1409,6 +1521,7 @@ signal_setting_api_type_error(
 ) = SignalSettingApiTypeError(String(display_id), String(field_id), String(message))
 
 signal_settings_draft_wire_value(value::Nothing) = nothing
+signal_settings_draft_wire_value(value::String) = value
 signal_settings_draft_wire_value(value::Bool) = value
 signal_settings_draft_wire_value(value::Float64) = value
 signal_settings_draft_wire_value(value::Int) = value
@@ -1556,7 +1669,14 @@ function signal_settings_parse_draft_field_value(
     field_id::String,
     value,
 )::SignalSettingDraftValue
-    if definition.kind == "boolean"
+    if definition.kind == "text"
+        value isa AbstractString || throw(signal_setting_api_type_error(
+            display_id,
+            field_id,
+            "Требуется строка",
+        ))
+        return String(value)
+    elseif definition.kind == "boolean"
         value isa Bool || throw(signal_setting_api_type_error(
             display_id,
             field_id,
@@ -1658,7 +1778,8 @@ function signal_settings_validate_typed_value!(
                 signal === nothing && throw(signal_setting_validation_error(
                     display.id, field_id, "Явный интервал требует analysis source",
                 ))
-                signal_time_limits_are_valid(state.measurements_service, signal, limits) || throw(
+                limits.max_s <= signal_duration_s(signal) &&
+                    signal_time_limits_are_valid(state.measurements_service, signal, limits) || throw(
                     signal_setting_validation_error(
                         display.id,
                         field_id,
@@ -1675,12 +1796,32 @@ function signal_settings_validate_typed_value!(
         length(signal_analyser_compatible_time_panes(state, display)) < 2
         throw(signal_setting_validation_error(display.id, field_id,
             "Связь амплитуды требует как минимум два временных графика в одном экране"))
+    elseif field_id == "spectrum.link_frequency" && value &&
+        length(signal_analyser_compatible_spectrum_panes(state, display)) < 2
+        throw(signal_setting_validation_error(display.id, field_id,
+            "Связь частот требует как минимум два спектра в одном экране"))
+    elseif field_id == "spectrum.link_magnitude" && value &&
+        length(signal_analyser_compatible_spectrum_panes(state, display)) < 2
+        throw(signal_setting_validation_error(display.id, field_id,
+            "Связь магнитуд требует как минимум два спектра в одном экране"))
     elseif field_id in ("spectrum.frequency_limits", "spectrogram.frequency_limits")
         if value !== nothing
             signal === nothing && throw(signal_setting_validation_error(
                 display.id, field_id, "Явный интервал требует analysis source",
             ))
             limits = ExplicitSignalSpectrumFrequencyLimits(value.minimum, value.maximum)
+            if field_id == "spectrum.frequency_limits" &&
+                display.stored_settings.spectrum.link_frequency
+                domain = signal_settings_full_frequency_range(state, display)
+                limits.min_hz >= domain.minimum && limits.max_hz <= domain.maximum || throw(
+                    signal_setting_validation_error(
+                        display.id,
+                        field_id,
+                        "Интервал должен лежать в общем домене [$(domain.minimum), $(domain.maximum)] Hz",
+                    ),
+                )
+                return nothing
+            end
             signal_spectrum_frequency_limits_valid_for_signal(limits, signal) || begin
                 domain = signal_spectrum_topology_limits(signal)
                 throw(signal_setting_validation_error(
@@ -1860,6 +2001,8 @@ function signal_settings_replace(
     sidelobe_attenuation_db::Real = preferences.sidelobe_attenuation_db,
     overlap_percent::Real = preferences.overlap_percent,
     nfft::SignalNfftResolution = preferences.nfft,
+    link_frequency::Bool = preferences.link_frequency,
+    link_magnitude::Bool = preferences.link_magnitude,
 )::SignalSpectrumPreferences
     SignalSpectrumPreferences(
         frequency_units,
@@ -1871,6 +2014,8 @@ function signal_settings_replace(
         sidelobe_attenuation_db,
         overlap_percent,
         nfft,
+        link_frequency,
+        link_magnitude,
     )
 end
 
@@ -1914,6 +2059,7 @@ end
 
 function signal_settings_replace(
     display::SignalAnalyserDisplayState;
+    name::AbstractString = display.name,
     time_limits::Union{Nothing,SignalTimeLimits} = display.time_limits,
     spectrum_settings::SignalSpectrumSettings = display.spectrum_settings,
     spectrogram_settings::SignalSpectrogramSettings = display.spectrogram_settings,
@@ -1922,7 +2068,7 @@ function signal_settings_replace(
 )::SignalAnalyserDisplayState
     SignalAnalyserDisplayState(
         display.id,
-        display.name,
+        name,
         display.active_plot,
         display.membership,
         display.analysis_source,
@@ -2005,6 +2151,14 @@ function signal_settings_apply_stored_value(
     id == "spectrum.nfft" && return signal_settings_replace(
         stored,
         spectrum = signal_settings_replace(stored.spectrum, nfft = value),
+    )
+    id == "spectrum.link_frequency" && return signal_settings_replace(
+        stored,
+        spectrum = signal_settings_replace(stored.spectrum, link_frequency = value),
+    )
+    id == "spectrum.link_magnitude" && return signal_settings_replace(
+        stored,
+        spectrum = signal_settings_replace(stored.spectrum, link_magnitude = value),
     )
     id == "spectrogram.time_units" && return signal_settings_replace(
         stored,
@@ -2090,12 +2244,18 @@ const SIGNAL_SETTINGS_BACKEND_PRESENTATION_FIELD_IDS = Set([
 
 """Only these product-effective settings participate in explicit calculation Apply."""
 const SIGNAL_SETTINGS_EXPLICIT_APPLY_FIELD_IDS = Set([
+    "display.name",
+    "pane.name",
     "time.units",
     "time.x_limits",
     "time.y_limits",
     "time.link_time",
     "time.link_amplitude",
     "spectrum.frequency_limits",
+    "spectrum.frequency_units",
+    "spectrum.y_limits",
+    "spectrum.link_frequency",
+    "spectrum.link_magnitude",
     "spectrum.scale",
     "spectrum.leakage",
     "spectrogram.frequency_limits",
@@ -2120,7 +2280,11 @@ function signal_settings_apply_command(
     id = command.field_id
     value = command.value
     try
-        if id == "time.x_limits"
+        if id == "display.name"
+            return signal_settings_replace(display, name = value)
+        elseif id == "pane.name"
+            return display
+        elseif id == "time.x_limits"
             analysis_name = signal_analyser_display_analysis_name(display)
             limits = if value === nothing
                 analysis_name === nothing ? nothing : signal_full_time_limits(
@@ -2196,6 +2360,7 @@ function signal_settings_displays_equal(
     left::SignalAnalyserDisplayState,
     right::SignalAnalyserDisplayState,
 )::Bool
+    left.name == right.name &&
     left.time_limits == right.time_limits &&
     left.spectrum_settings == right.spectrum_settings &&
     left.spectrogram_settings == right.spectrogram_settings &&
@@ -2264,7 +2429,9 @@ function signal_settings_draft_domain_command(
         "Неизвестный field_id",
     ))
     wire_value = signal_settings_draft_wire_value(entry.value)
-    if entry.value isa SignalSettingDraftRange && entry.field_id in ("time.x_limits", "time.y_limits")
+    if entry.value isa SignalSettingDraftRange && entry.field_id in (
+        "time.x_limits", "time.y_limits", "spectrum.frequency_limits",
+    )
         draft_range = entry.value::SignalSettingDraftRange
         if entry.field_id == "time.x_limits"
             full = signal_settings_full_time_range(state, display)
@@ -2273,11 +2440,22 @@ function signal_settings_draft_domain_command(
                 "min" => (draft_range.minimum === nothing ? full.min_s : draft_range.minimum * factor),
                 "max" => (draft_range.maximum === nothing ? full.max_s : draft_range.maximum * factor),
             )
-        else
+        elseif entry.field_id == "time.y_limits"
             full = signal_settings_full_amplitude_range(state, display)
             wire_value = Dict{String,Any}(
                 "min" => (draft_range.minimum === nothing ? full.minimum : draft_range.minimum),
                 "max" => (draft_range.maximum === nothing ? full.maximum : draft_range.maximum),
+            )
+        else
+            factor = signal_hertz_per_frequency_unit(
+                display.stored_settings.spectrum.frequency_units,
+            )
+            full = signal_settings_full_frequency_range(state, display)
+            wire_value = Dict{String,Any}(
+                "min" => draft_range.minimum === nothing ?
+                    full.minimum : draft_range.minimum * factor,
+                "max" => draft_range.maximum === nothing ?
+                    full.maximum : draft_range.maximum * factor,
             )
         end
     end
@@ -2355,6 +2533,27 @@ function signal_settings_full_amplitude_range(
         maximum += padding
     end
     SignalSettingRange(minimum, maximum)
+end
+
+function signal_settings_full_frequency_range(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::SignalSettingRange
+    panes = signal_settings_axis_panes(
+        state,
+        display,
+        (SPECTRUM_PLOT,),
+        display.stored_settings.spectrum.link_frequency,
+    )
+    domains = [
+        signal_spectrum_topology_limits(signal_by_name(state, name))
+        for pane in panes for name in pane.membership.signal_names
+    ]
+    isempty(domains) && return SignalSettingRange(0.0, 1.0)
+    lower = maximum(domain.min_hz for domain in domains)
+    upper = minimum(domain.max_hz for domain in domains)
+    lower < upper || return SignalSettingRange(0.0, 1.0)
+    SignalSettingRange(lower, upper)
 end
 
 
@@ -2803,11 +3002,30 @@ function signal_settings_publish_display_unlocked!(
     active_pane = signal_display_active_pane(layout)
     state.display_layouts[prospective.id] = signal_display_layout_replace_active_pane(
         layout,
-        signal_display_pane_from_display(active_pane.id, prospective),
+        signal_display_pane_from_display(active_pane.id, prospective, active_pane.name),
     )
     signal_settings_replace_display_unlocked!(state, prospective)
     prospective.id == state.active_display_id &&
         signal_analyser_sync_active_display!(state, prospective)
+    nothing
+end
+
+function signal_settings_apply_pane_name_unlocked!(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    draft::Union{Nothing,SignalSettingsDisplayDraft},
+)::Nothing
+    draft === nothing && return nothing
+    entry = get((draft::SignalSettingsDisplayDraft).entries, "pane.name", nothing)
+    entry === nothing && return nothing
+    pane_name = strip(String((entry::SignalSettingDraftEntry).value))
+    layout = signal_analyser_layout_by_display_id(state, display_id)
+    pane = signal_display_active_pane(layout)
+    renamed = signal_display_pane_with_name(pane, pane_name)
+    state.display_layouts[String(display_id)] = signal_display_layout_replace_active_pane(
+        layout,
+        renamed,
+    )
     nothing
 end
 
@@ -2853,12 +3071,62 @@ function signal_settings_pane_with_screen_axes(
         signal_display_pane_analysis_name(pane) !== nothing ? time_limits : pane.time_limits
     SignalDisplayPaneState(
         pane.id,
+        pane.name,
         pane.plot_type,
         pane.membership,
         pane.analysis_source,
         linked_limits,
         pane.measurement_selection,
         pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        stored,
+        pane.peaks_enabled,
+        pane.peaks_settings,
+    )
+end
+
+function signal_settings_pane_with_screen_spectrum_axes(
+    pane::SignalDisplayPaneState,
+    link_frequency::Bool,
+    link_magnitude::Bool,
+    frequency_units::SignalFrequencyUnitPreference,
+    frequency_limits::AbstractSignalSpectrumFrequencyLimits,
+    magnitude_limits::Union{Nothing,SignalSettingRange},
+)::SignalDisplayPaneState
+    spectrum_preferences = signal_settings_replace(
+        pane.stored_settings.spectrum,
+        frequency_units = link_frequency && pane.plot_type == SPECTRUM_PLOT ?
+            frequency_units : pane.stored_settings.spectrum.frequency_units,
+        y_limits = link_magnitude && pane.plot_type == SPECTRUM_PLOT ?
+            magnitude_limits : pane.stored_settings.spectrum.y_limits,
+        link_frequency = link_frequency,
+        link_magnitude = link_magnitude,
+    )
+    stored = signal_settings_replace(
+        pane.stored_settings,
+        spectrum = spectrum_preferences,
+    )
+    spectrum_settings = if link_frequency && pane.plot_type == SPECTRUM_PLOT
+        current = pane.spectrum_settings
+        SignalSpectrumSettings(
+            current.scale,
+            current.frequency_scale,
+            current.leakage,
+            frequency_limits,
+        )
+    else
+        pane.spectrum_settings
+    end
+    SignalDisplayPaneState(
+        pane.id,
+        pane.name,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        spectrum_settings,
         pane.spectrogram_settings,
         pane.persistence_settings,
         stored,
@@ -2876,9 +3144,12 @@ function signal_settings_apply_screen_axes_unlocked!(
     layout = signal_analyser_layout_by_display_id(state, display_id)
     time_source = signal_settings_screen_source_pane(layout, (TIME_PLOT, SPECTROGRAM_PLOT))
     amplitude_source = signal_settings_screen_source_pane(layout, (TIME_PLOT,))
+    spectrum_source = signal_settings_screen_source_pane(layout, (SPECTRUM_PLOT,))
     entries = draft === nothing ? Dict{String,SignalSettingDraftEntry}() : draft.entries
     link_time = prospective.stored_settings.time.link_time
     link_amplitude = prospective.stored_settings.time.link_amplitude
+    link_frequency = prospective.stored_settings.spectrum.link_frequency
+    link_magnitude = prospective.stored_settings.spectrum.link_magnitude
     time_units = haskey(entries, "time.units") ? prospective.stored_settings.time.units :
         time_source === nothing ? prospective.stored_settings.time.units :
         (time_source::SignalDisplayPaneState).plot_type == SPECTROGRAM_PLOT ?
@@ -2897,12 +3168,32 @@ function signal_settings_apply_screen_axes_unlocked!(
     ) :
         amplitude_source === nothing ? prospective.stored_settings.time.y_limits :
         (amplitude_source::SignalDisplayPaneState).stored_settings.time.y_limits
+    frequency_units = haskey(entries, "spectrum.frequency_units") ?
+        prospective.stored_settings.spectrum.frequency_units :
+        spectrum_source === nothing ? prospective.stored_settings.spectrum.frequency_units :
+        (spectrum_source::SignalDisplayPaneState).stored_settings.spectrum.frequency_units
+    frequency_limits = haskey(entries, "spectrum.frequency_limits") ?
+        prospective.spectrum_settings.frequency_limits :
+        spectrum_source === nothing ? prospective.spectrum_settings.frequency_limits :
+        (spectrum_source::SignalDisplayPaneState).spectrum_settings.frequency_limits
+    magnitude_limits = haskey(entries, "spectrum.y_limits") ?
+        prospective.stored_settings.spectrum.y_limits :
+        spectrum_source === nothing ? prospective.stored_settings.spectrum.y_limits :
+        (spectrum_source::SignalDisplayPaneState).stored_settings.spectrum.y_limits
 
     changed = String[]
     panes = SignalDisplayPaneState[]
     for pane in layout.panes
         next_pane = signal_settings_pane_with_screen_axes(
             pane, link_time, link_amplitude, time_units, time_limits, y_limits,
+        )
+        next_pane = signal_settings_pane_with_screen_spectrum_axes(
+            next_pane,
+            link_frequency,
+            link_magnitude,
+            frequency_units,
+            frequency_limits,
+            magnitude_limits,
         )
         push!(panes, next_pane)
         next_pane == pane || push!(changed, pane.id)
@@ -3052,7 +3343,7 @@ function apply_signal_setting!(
                 display_draft.entries[draft_command.field_id].value,
             )
         else
-            signal_settings_field_value(service, display, draft_command.field_id)
+            signal_settings_field_value(service, state, display, draft_command.field_id)
         end
         requested_wire_value = signal_settings_draft_wire_value(draft_command.value)
         isequal(current_wire_value, requested_wire_value) &&
@@ -3064,6 +3355,7 @@ function apply_signal_setting!(
 
         applied_wire_value = signal_settings_field_value(
             service,
+            state,
             display,
             draft_command.field_id,
         )
@@ -3108,6 +3400,8 @@ function apply_signal_settings!(
         screen_field_ids = Set((
             "time.units", "time.x_limits", "time.y_limits",
             "time.link_time", "time.link_amplitude",
+            "spectrum.frequency_units", "spectrum.frequency_limits", "spectrum.y_limits",
+            "spectrum.link_frequency", "spectrum.link_magnitude",
         ))
         applies_screen_axes = draft !== nothing && any(
             field_id -> haskey((draft::SignalSettingsDisplayDraft).entries, field_id),
@@ -3144,6 +3438,7 @@ function apply_signal_settings!(
         end
 
         signal_settings_publish_display_unlocked!(state, prospective)
+        signal_settings_apply_pane_name_unlocked!(state, prospective.id, draft)
         linked_pane_ids = applies_screen_axes ?
             signal_settings_apply_screen_axes_unlocked!(state, prospective.id, prospective, draft) :
             String[]

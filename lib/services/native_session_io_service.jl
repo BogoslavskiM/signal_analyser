@@ -878,6 +878,7 @@ function native_selected_signals_unlocked(
     AnalysedSignal[
         let signal = by_name[name]
             AnalysedSignal(
+                signal.id,
                 signal.name,
                 signal.color,
                 signal.sample_rate_hz,
@@ -1392,7 +1393,7 @@ function prepare_native_session_import(
         "JLD2 содержит неподдерживаемую schema";
         field = "path",
     ))
-    Int(version) == SIGNAL_ANALYSER_SESSION_VERSION || throw(native_io_error(
+    Int(version) in (SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION, SIGNAL_ANALYSER_SESSION_VERSION) || throw(native_io_error(
         "unsupported_session_version",
         "JLD2 содержит неподдерживаемую version";
         field = "path",
@@ -1407,9 +1408,9 @@ function prepare_native_session_import(
         ))
     end
     document = parse_signal_analyser_session_document(document_value)
-    document.version == SIGNAL_ANALYSER_SESSION_VERSION || throw(native_io_error(
+    document.version in (SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION, SIGNAL_ANALYSER_SESSION_VERSION) || throw(native_io_error(
         "unsupported_session_version",
-        "Для native import требуется session v3";
+        "Для native import требуется session v3 или v4";
         field = "path",
     ))
     NativePreparedSessionImport(String(path), document)

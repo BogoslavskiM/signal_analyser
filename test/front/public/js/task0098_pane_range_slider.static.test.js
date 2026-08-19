@@ -38,7 +38,7 @@ module.exports = async function testTask0098PaneRangeSliderStatic(assert) {
   assert(/graphDefaultSignatureByPane[\s\S]*defaultChanged[\s\S]*graphDefaultRangeByPane[\s\S]*fullLayout\.xaxis[\s\S]*fullLayout\.yaxis/.test(app), "each presentation signature must retain the exact rendered default axis ranges instead of recomputing a different first reset");
   assert(/result\.legend\s*=\s*Object\.assign\([\s\S]*x\s*:\s*0\.99[\s\S]*xanchor\s*:\s*"right"[\s\S]*y\s*:\s*0\.99[\s\S]*yanchor\s*:\s*"top"/.test(app), "Plotly legend placement must be forced inside the graph at top right");
   assert(/r\s*:\s*amplitudeEnabled\s*\?\s*48\s*:\s*12/.test(app), "the in-plot legend must remove the obsolete side-column margin while retaining the amplitude-slider margin");
-  assert(/доступен только для загруженной временной области/.test(app), "disabled states must explain the ready temporal pane requirement in Russian");
+  assert(/доступен только для загруженной области/.test(app), "disabled states must explain the ready Time or Spectrum pane requirement in Russian");
 
   assert(/\.plot-menu-check/.test(css), "the checked state must reserve a trailing canonical check affordance");
   assert(/\.range-slider-menu-icon/.test(css), "the toggle must retain a dedicated 16px overview glyph");

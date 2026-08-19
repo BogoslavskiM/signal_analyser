@@ -1,4 +1,5 @@
 const SIGNAL_SETTINGS_FIELD_KINDS = Set([
+    "text",
     "boolean",
     "enum",
     "number",
@@ -29,6 +30,7 @@ const SIGNAL_SETTINGS_EFFECT_REASONS = Set([
 ])
 
 const SIGNAL_SETTINGS_CONTROL_KINDS = Set([
+    "text",
     "checkbox",
     "combobox",
     "number",
@@ -104,6 +106,19 @@ end
     MEGAHERTZ_FREQUENCY_UNIT
     GIGAHERTZ_FREQUENCY_UNIT
     TERAHERTZ_FREQUENCY_UNIT
+end
+
+function signal_hertz_per_frequency_unit(unit::SignalFrequencyUnitPreference)::Float64
+    unit == CYCLES_PER_YEAR_FREQUENCY_UNIT && return 1.0 / 31557600.0
+    unit == CYCLES_PER_DAY_FREQUENCY_UNIT && return 1.0 / 86400.0
+    unit == CYCLES_PER_HOUR_FREQUENCY_UNIT && return 1.0 / 3600.0
+    unit == CYCLES_PER_MINUTE_FREQUENCY_UNIT && return 1.0 / 60.0
+    unit == MILLIHERTZ_FREQUENCY_UNIT && return 1.0e-3
+    unit == HERTZ_FREQUENCY_UNIT && return 1.0
+    unit == KILOHERTZ_FREQUENCY_UNIT && return 1.0e3
+    unit == MEGAHERTZ_FREQUENCY_UNIT && return 1.0e6
+    unit == GIGAHERTZ_FREQUENCY_UNIT && return 1.0e9
+    1.0e12
 end
 
 @enum SignalSpectrumResolutionType begin
@@ -337,6 +352,8 @@ struct SignalSpectrumPreferences
     sidelobe_attenuation_db::Float64
     overlap_percent::Float64
     nfft::SignalNfftResolution
+    link_frequency::Bool
+    link_magnitude::Bool
 
     function SignalSpectrumPreferences(
         frequency_units::SignalFrequencyUnitPreference,
@@ -348,6 +365,8 @@ struct SignalSpectrumPreferences
         sidelobe_attenuation_db::Real,
         overlap_percent::Real,
         nfft::SignalNfftResolution,
+        link_frequency::Bool,
+        link_magnitude::Bool,
     )
         sidelobe_attenuation_db isa Bool && throw(ArgumentError(
             "Sidelobe attenuation должна быть числом, но не Bool",
@@ -386,9 +405,35 @@ struct SignalSpectrumPreferences
             attenuation == 0.0 ? 0.0 : attenuation,
             overlap == 0.0 ? 0.0 : overlap,
             nfft,
+            link_frequency,
+            link_magnitude,
         )
     end
 end
+
+SignalSpectrumPreferences(
+    frequency_units::SignalFrequencyUnitPreference,
+    y_limits::Union{Nothing,SignalSettingRange},
+    resolution_type::SignalSpectrumResolutionType,
+    rbw::SignalHertzResolution,
+    window_length::SignalSamplesResolution,
+    window::SignalSpectrumWindow,
+    sidelobe_attenuation_db::Real,
+    overlap_percent::Real,
+    nfft::SignalNfftResolution,
+) = SignalSpectrumPreferences(
+    frequency_units,
+    y_limits,
+    resolution_type,
+    rbw,
+    window_length,
+    window,
+    sidelobe_attenuation_db,
+    overlap_percent,
+    nfft,
+    false,
+    false,
+)
 
 SignalSpectrumPreferences(
     frequency_units::SignalFrequencyUnitPreference,
@@ -431,7 +476,9 @@ Base.:(==)(left::SignalSpectrumPreferences, right::SignalSpectrumPreferences) =
     left.window == right.window &&
     left.sidelobe_attenuation_db == right.sidelobe_attenuation_db &&
     left.overlap_percent == right.overlap_percent &&
-    left.nfft == right.nfft
+    left.nfft == right.nfft &&
+    left.link_frequency == right.link_frequency &&
+    left.link_magnitude == right.link_magnitude
 
 struct SignalSpectrogramPreferences
     time_units::SignalTimeUnitPreference
