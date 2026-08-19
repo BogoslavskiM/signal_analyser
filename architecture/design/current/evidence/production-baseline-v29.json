@@ -1,0 +1,34 @@
+{
+  "design_version": 29,
+  "captured_at": "2026-08-19T08:39:28.905Z",
+  "purpose": "Pin the actual current production frontend files used by the standalone file:// design prototype.",
+  "prototype_mode": "production DOM/CSS/components plus deterministic local provider fixture",
+  "network_policy": "no HTTP(S), no fetch to a browser network stack",
+  "files": [
+    {"path": "public/index.html", "sha256": "df2c0ddb7b52f3a061093a323dd79dcc323fbb994e7f4a10121dee2d0acfdd42", "use": "structural shell copied into prototype/index.html"},
+    {"path": "public/css/theme.css", "sha256": "9a87f09edd729001dae467d9b96447d116a744627a1d0beb0037e42343ffd1a5", "use": "rendered theme"},
+    {"path": "public/css/app.css", "sha256": "c6279041c073793efd6cd24125ac52ac9e2186f7c28706cd906345280e4d37d6", "use": "rendered shell, zones and production component geometry"},
+    {"path": "public/js/api.js", "sha256": "6bcf6dce1509dcccce36eaeeb9a5638f16d5b89538597cc17cfaede078bd4701", "use": "production API adapter driven by the local provider fixture"},
+    {"path": "public/js/value-select.js", "sha256": "f3a97c55550e159b2b81c894f600a49ae1cf0b35485ac48f1fb6bdee1f2ebf8e", "use": "shared production dropdown"},
+    {"path": "public/js/numeric.js", "sha256": "d686c0817edba73db9cf17a3719c7e95ca7e6204464589d0ebf5edd67075eab4", "use": "production numeric controls"},
+    {"path": "public/js/settings.js", "sha256": "0889ccc656305b3a1c8c8736e44becab74128b79f5ee061ad0c8bdfa5fef6e10", "use": "production settings controls and drafts"},
+    {"path": "public/js/layouts.js", "sha256": "273485fead78718e2b9b8aaa22d273865c339e769688e7b0eb994dbd9cebf88b", "use": "production layout dialog"},
+    {"path": "public/vendor/vue/3.5.41/vue.global.prod.js", "sha256": "45c5186437878319a4b86339f475e8e2f0b27e1752f9e6387ebb15854425847f", "use": "local production runtime dependency"},
+    {"path": "public/js/components/explicit-apply.js", "sha256": "ee8f6400a426051089055f7f0841f91cb24bfb7b2b92449a40ada49c36dc1f5b", "use": "production explicit Apply control"},
+    {"path": "public/js/native-session-io.js", "sha256": "b35c62a7363b6b80d5d1bf96d57b2caeee9f9560a2e1afda0a725447f80a5f7c", "use": "production session import/export UI"},
+    {"path": "public/js/app.js", "sha256": "4d0f01103f3088eea7f63a5cce908aa6117f8dc83b0121de74fbea686251ead2", "use": "production renderers and UI-only interactions"},
+    {"path": "architecture/design/current/prototype/index.html", "sha256": "cb74e95735a27f699cec5d58150c246bad1e011e98a6f001645378cf6ae999bd", "use": "standalone entrypoint"},
+    {"path": "architecture/design/current/prototype/mock-fetch.js", "sha256": "8abc33f486e7e4881bc5421bb5874e2c3c4cab0135f470dcc82c1f90a3dc0e5f", "use": "network-free provider and local plot fixture"},
+    {"path": "architecture/design/current/frontend-source/integration/css/task-0112-0115-additions.css", "sha256": "fdaf8ae058bb2816abf1abce5566f8899554c798bb1e9fb0f6480b207a2a0390", "use": "approved additive feature styling, including the full-height samples scroll owner"}
+  ],
+  "browser_gate": {
+    "entry": "file://.../architecture/design/current/prototype/index.html",
+    "viewport": [1440, 900],
+    "zone_slots": {"toolbar": "nonempty", "workspace": "nonempty", "settings": "nonempty", "inspector": "nonempty"},
+    "http_resources": 0,
+    "cors_errors": 0,
+    "runtime_errors": 0,
+    "walkthrough": "evidence/interaction-walkthrough-v29-standalone.json",
+    "result": "18/18"
+  }
+}

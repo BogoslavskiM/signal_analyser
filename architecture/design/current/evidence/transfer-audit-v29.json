@@ -1,14 +1,16 @@
 {
   "design_version": 29,
   "visual_baseline_version": 28,
-  "generated_at": "2026-08-19T00:00:00+03:00",
-  "passed": 12,
+  "generated_at": "2026-08-19T08:39:28.905Z",
+  "passed": 14,
   "failed": 0,
   "checks": [
     {"id": "manifest-additive-only", "passed": true, "detail": "transfer_mode=additive_integration_only and copy_as_is is empty"},
     {"id": "production-index-immutable", "passed": true, "detail": "frontend-source/index.html is design-only and explicitly forbidden from public/index.html"},
     {"id": "production-modules-not-replaced", "passed": true, "detail": "app.js, settings.js, api.js are extend-in-place; value-select.js is reused unchanged"},
-    {"id": "mock-shell-design-only", "passed": true, "detail": "mock zone HTML/CSS/JS, shell, fonts/icons copies, provider and prototype have no production mapping"},
+    {"id": "standalone-production-snapshot-design-only", "passed": true, "detail": "prototype/index.html mirrors the current public document and renders the actual local production CSS/components; it has no production transfer mapping"},
+    {"id": "file-protocol-no-partial-fetch", "passed": true, "detail": "entrypoint renders all four nonempty zones over file:// without HTML partial fetches or a local HTTP server"},
+    {"id": "network-free-provider-fixture", "passed": true, "detail": "prototype/mock-fetch.js intercepts provider calls before browser networking; the browser run records zero HTTP(S), CORS, console or page errors"},
     {"id": "plotly-host-identity", "passed": true, "detail": "[data-pane-host] is immutable and can be updated only through existing Plotly/slider paths"},
     {"id": "settings-hosts-resolved", "passed": true, "detail": "settings tabs, content, footer and unified Apply selectors exist in public/index.html"},
     {"id": "inspector-hosts-resolved", "passed": true, "detail": "inspector tabs/body/rows and current row-action renderer seams exist"},
@@ -16,6 +18,6 @@
     {"id": "spectrum-slider-dual-projection", "passed": true, "detail": "pane-menu and Area settings checkbox projections share one active-pane draft"},
     {"id": "body-modal-portal", "passed": true, "detail": "operation dialog is an on-demand document.body singleton and reuses the existing value-select popup"},
     {"id": "provider-seams", "passed": true, "detail": "projected spectrum extrema and cursor-based sample pages are public/js/api.js -> public/js/app.js seams"},
-    {"id": "visual-baseline-preserved", "passed": true, "detail": "all v27/v28 screenshots and 18/18 interaction evidence are carried forward unchanged"}
+    {"id": "production-visual-baseline-preserved", "passed": true, "detail": "v29 screenshots are regenerated from the current production DOM/CSS/components and the standalone interaction walkthrough passes 18/18"}
   ]
 }

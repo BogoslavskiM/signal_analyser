@@ -20,6 +20,30 @@ production_integration_contract:
     - frontend-source/integration/html/dialogs/signal-operation.fragment.html
   mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
 
+prototype_contract:
+  entry: prototype/index.html
+  protocol: file
+  local_server_required: false
+  http_requests_allowed: false
+  structure_source: public/index.html
+  rendered_production_sources:
+    - public/css/theme.css
+    - public/css/app.css
+    - public/js/api.js
+    - public/js/value-select.js
+    - public/js/numeric.js
+    - public/js/settings.js
+    - public/js/layouts.js
+    - public/vendor/vue/3.5.41/vue.global.prod.js
+    - public/js/components/explicit-apply.js
+    - public/js/native-session-io.js
+    - public/js/app.js
+  deterministic_provider: prototype/mock-fetch.js
+  production_baseline_evidence: evidence/production-baseline-v29.json
+  required_nonempty_zone_slots: [toolbar, workspace, settings, inspector]
+  forbidden: [fetch_html_partials, http_server, network_api, cors_dependency, alternative_mock_shell]
+  browser_result: {checks: 18, passed: 18, failed: 0, runtime_errors: 0, http_resources: 0}
+
 screens:
   - id: main
     route: "/"
@@ -503,39 +527,39 @@ page_sizing_contract:
 
 evidence:
   visual_baseline_version: 28
-  carry_forward_reason: "v29 changes transfer boundaries only; approved visuals and interactions are unchanged"
-  viewports: ["920x680", "1024x768", "1440x900", "840x620"]
+  carry_forward_reason: "Product visuals remain approved; v29 evidence is regenerated against the actual current production DOM/CSS/components rather than the obsolete partial-fetch mock."
+  viewports: ["1440x900", "840x620"]
   prototype_steps:
-    - signal-tab-first-and-summary
-    - values-focuses-dynamic-samples
-    - spectrum-sliders-and-local-magnitude
-    - screen-four-links-and-frequency-limits
-    - spectrum-extrema-markers-and-table
-    - operation-dialog-default
-    - operation-select-closed-shared-contract
-    - operation-menu-shared-value-select
-    - operation-menu-escape-keeps-dialog
-    - operation-menu-inline-search
-    - operation-menu-tab-closes
-    - operation-menu-outside-closes
-    - custom-operation-body-only
-    - custom-operation-engee-error
-    - operation-progress-blocks-close
-    - operation-success
-    - undersized-keeps-minimum-canvas
-    - stable-display-ordinals
+    - 01-standalone-file-no-network-no-cors
+    - 02-production-shell-and-components
+    - 03-signal-first-selected-summary
+    - 04-values-focus-dynamic-five-column-table
+    - 05-spectrum-area-sliders-and-local-magnitude
+    - 06-pane-menu-spectrum-slider-projections
+    - 07-screen-four-links-and-frequency-range
+    - 08-linked-magnitude-relocates-immediately
+    - 09-spectrum-extrema-table-and-markers
+    - 10-operation-dialog-production-style
+    - 11-operation-select-closed-shared-contract
+    - 12-operation-menu-seven-options-production-value-select
+    - 13-operation-menu-search-escape-tab-outside
+    - 14-custom-body-only-hidden-envelope
+    - 15-custom-operation-engee-error
+    - 16-operation-progress-blocks-close-then-success
+    - 17-undersized-keeps-production-minimum-canvas
+    - 18-stable-display-names-and-ordinals
   screenshots:
-    - screenshots/v27--signal-tab-summary--920x680.png
-    - screenshots/v27--signal-samples--1024x768.png
-    - screenshots/v27--spectrum-area-sliders-and-limits--1024x768.png
-    - screenshots/v27--screen-spectrum-links--1440x900.png
-    - screenshots/v27--spectrum-extrema--1440x900.png
-    - screenshots/v27--signal-operation-default--1024x768.png
-    - screenshots/v28--signal-operation-menu--1024x768.png
-    - screenshots/v28--signal-operation-custom-body--1024x768.png
-    - screenshots/v28--signal-operation-engee-error--1024x768.png
-    - screenshots/v28--signal-operation-progress--1024x768.png
-    - screenshots/v28--signal-operation-success--1024x768.png
-    - screenshots/v27--undersized-document-scroll--840x620.png
-  interaction_report: evidence/interaction-walkthrough-v28.json
+    - screenshots/v29--standalone-production-signal--1440x900.png
+    - screenshots/v29--standalone-production-samples--1440x900.png
+    - screenshots/v29--standalone-production-spectrum-area--1440x900.png
+    - screenshots/v29--standalone-production-screen-links--1440x900.png
+    - screenshots/v29--standalone-production-spectrum-extrema--1440x900.png
+    - screenshots/v29--standalone-production-operation-default--1440x900.png
+    - screenshots/v29--standalone-production-operation-menu--1440x900.png
+    - screenshots/v29--standalone-production-operation-custom--1440x900.png
+    - screenshots/v29--standalone-production-operation-error--1440x900.png
+    - screenshots/v29--standalone-production-operation-progress--1440x900.png
+    - screenshots/v29--standalone-production-undersized--840x620.png
+  interaction_report: evidence/interaction-walkthrough-v29-standalone.json
+  production_baseline: evidence/production-baseline-v29.json
   transfer_audit: evidence/transfer-audit-v29.json

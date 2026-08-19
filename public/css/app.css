@@ -1856,7 +1856,7 @@ body.is-resizing-workspace * {
 .signal-table th:nth-child(2) { width: 28%; }
 .signal-table td.is-actions-host {
   position: relative;
-  padding-right: 72px;
+  padding-right: 92px;
 }
 
 .signal-cell-value {
@@ -1871,14 +1871,14 @@ body.is-resizing-workspace * {
   position: absolute;
   top: 3px;
   right: 4px;
-  width: 60px;
+  width: 80px;
   height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
   opacity: 0;
-  pointer-events: none;
+  pointer-events: auto;
   background: inherit;
   transition: opacity 120ms ease;
 }

@@ -6,6 +6,18 @@ target_root: public
 transfer_mode: additive_integration_only
 ui_contract: ui-contract.yaml
 
+prototype_baseline:
+  entry: prototype/index.html
+  protocol: file
+  structure_snapshot_of: public/index.html
+  local_server_required: false
+  network_requests_allowed: false
+  provider_fixture: prototype/mock-fetch.js
+  production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
+  pinned_hashes: evidence/production-baseline-v29.json
+  walkthrough: evidence/interaction-walkthrough-v29-standalone.json
+  result: "18/18; four nonempty zones; zero HTTP/CORS/runtime errors"
+
 # There is intentionally no whole-file production copy in v29. Production
 # already owns the application document, boot sequence, UI modules and Plotly
 # hosts. The two sources below are exact additive fragments.
@@ -39,7 +51,7 @@ additive_fragments:
     mode: append_once
     content_changes_allowed: false
     marker: "Additive v29 feature rules"
-    scope: [signal_summary, signal_samples_table, spectrum_extrema_cell, signal_operation_dialog]
+    scope: [signal_summary, signal_samples_table, spectrum_extrema_cell, signal_operation_dialog, operation_overwrite_checkbox_label]
   - id: signal-operation-modal-template
     source: integration/html/dialogs/signal-operation.fragment.html
     target: public/js/app.js
@@ -161,3 +173,5 @@ invariants:
   copied_fragment_content_changes_allowed: false
   visual_baseline_unchanged: true
   history_is_not_a_source: true
+  prototype_uses_production_shell_and_components: true
+  prototype_partial_fetch_loader_forbidden: true

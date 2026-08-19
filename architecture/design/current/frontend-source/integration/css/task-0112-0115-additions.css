@@ -57,6 +57,17 @@
 .sample-table th:nth-child(2) { width: 170px; }
 .sample-table th:nth-child(n + 3) { width: 165px; }
 
+/* The production inspector reserves its first grid track for search. The
+   approved per-signal values view has no search row, so its only child owns
+   the full body height and remains the sole vertical scroll container. */
+.inspector-body[data-testid="inspector-pane-samples"] {
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.inspector-body[data-testid="inspector-pane-samples"] > .signal-table-scroll {
+  height: 100%;
+}
+
 .samples-footer {
   position: sticky;
   bottom: 0;
@@ -101,6 +112,16 @@
 
 .operation-form-row > label,
 .operation-form-label { color: var(--muted); }
+
+.operation-form-row > .checkbox-control {
+  width: auto;
+  min-width: 0;
+  justify-content: flex-start;
+  gap: 8px;
+  color: var(--text);
+}
+
+.operation-form-row > .checkbox-control span { min-width: 0; }
 
 .operation-code-row { align-items: start; }
 .operation-code-row > label { padding-top: 8px; }

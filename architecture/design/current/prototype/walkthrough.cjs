@@ -4,157 +4,225 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const screenshots = path.join(root, "screenshots");
-const evidencePath = path.join(root, "evidence", "interaction-walkthrough-v28.json");
-const chrome = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const baseUrl = "http://127.0.0.1:4177/prototype/index.html";
+const evidencePath = path.join(root, "evidence", "interaction-walkthrough-v29-standalone.json");
+const entry = "file://" + path.resolve(__dirname, "index.html");
 const results = [];
+const runtimeErrors = [];
 
 async function ready(page) {
-  await page.goto(baseUrl, { waitUntil: "networkidle" });
+  await page.goto(entry, { waitUntil:"load" });
   await page.waitForFunction(() => document.documentElement.dataset.designReady === "true");
+  await page.waitForSelector("[data-testid='signal-values-action']");
 }
 async function shot(page, name) {
   const file = path.join(screenshots, name);
-  await page.screenshot({ path: file });
+  await page.screenshot({ path:file, fullPage:true });
   return "screenshots/" + name;
 }
-async function check(page, id, assertion, screenshot) {
-  let passed = false, detail = "";
-  try { await assertion(); passed = true; detail = "passed"; } catch (error) { detail = error.message; }
-  results.push({ id, passed, detail, screenshot });
+async function check(id, assertion, screenshot) {
+  let passed=false, detail="";
+  try { detail=await assertion() || "passed"; passed=true; }
+  catch (error) { detail=String(error && error.message || error); }
+  results.push({ id, passed, detail, screenshot:screenshot || null });
 }
+function assert(condition, message) { if (!condition) throw new Error(message); }
 
 (async () => {
-  fs.mkdirSync(screenshots, { recursive: true });
-  const browser = await chromium.launch({ executablePath: chrome, headless: true });
-  const page = await browser.newPage({ viewport: { width: 920, height: 680 } });
-  page.setDefaultTimeout(5000);
-  page.on("pageerror", error => console.error("PAGEERROR", error.message));
+  fs.mkdirSync(screenshots, { recursive:true });
+  const browser=await chromium.launch({ channel:"chrome", headless:true });
+  const page=await browser.newPage({ viewport:{ width:1440, height:900 } });
+  page.setDefaultTimeout(7000);
+  page.on("pageerror", error => runtimeErrors.push("pageerror: " + error.message));
+  page.on("console", message => { if (message.type() === "error") runtimeErrors.push("console: " + message.text()); });
   await ready(page);
-  let screenshot = await shot(page, "v27--signal-tab-summary--920x680.png");
-  await check(page, "signal-tab-first-and-summary", async () => {
-    if (await page.locator("[data-settings-page='signal']").getAttribute("aria-selected") !== "true") throw new Error("Signal tab is not first/selected");
-    await page.locator("[data-testid='signal-values-action']").waitFor();
+
+  let screenshot=await shot(page, "v29--standalone-production-signal--1440x900.png");
+  await check("01-standalone-file-no-network-no-cors", async () => {
+    const audit=await page.evaluate(() => ({
+      protocol:location.protocol,
+      network:window.SignalAnalyserPrototypeEvidence.networkRequests().map(item => item.name),
+      zones:Array.from(document.querySelectorAll("[data-zone-slot]")).map(node => ({ slot:node.dataset.zoneSlot, children:node.childElementCount, text:node.textContent.trim().length })),
+      errorHidden:document.querySelector("[data-testid='app-error']").hidden
+    }));
+    assert(audit.protocol === "file:", JSON.stringify(audit));
+    assert(audit.network.length === 0, "HTTP(S) resources: " + JSON.stringify(audit.network));
+    assert(audit.zones.length === 4 && audit.zones.every(zone => zone.children > 0 && zone.text > 0), "Empty zones: " + JSON.stringify(audit.zones));
+    assert(audit.errorHidden && runtimeErrors.length === 0, JSON.stringify(runtimeErrors));
+    return JSON.stringify(audit);
+  }, screenshot);
+  await check("02-production-shell-and-components", async () => {
+    const audit=await page.evaluate(() => ({
+      toolbar:!!document.querySelector(".application-toolbar.ui-panel"),
+      workspace:!!document.querySelector(".workspace.ui-panel [data-testid='plot-grid']"),
+      settings:!!document.querySelector(".settings-panel.ui-panel .settings-tabs"),
+      inspector:!!document.querySelector(".inspector.ui-panel .inspector-header"),
+      plots:document.querySelectorAll(".plot-pane .plot-chart.js-plotly-plot").length,
+      css:Array.from(document.styleSheets).map(sheet => sheet.href).filter(Boolean)
+    }));
+    assert(audit.toolbar && audit.workspace && audit.settings && audit.inspector && audit.plots === 2, JSON.stringify(audit));
+    assert(audit.css.some(href => /public\/css\/app\.css$/.test(href)), "Production app.css is not the rendered base");
+    return JSON.stringify(audit);
+  }, screenshot);
+  await check("03-signal-first-selected-summary", async () => {
+    const tabs=await page.locator("[data-settings-page]:visible").allTextContents();
+    assert(JSON.stringify(tabs.map(v => v.trim())) === JSON.stringify(["Сигнал", "Область", "Экран", "Экстремумы"]), JSON.stringify(tabs));
+    assert(await page.getByTestId("settings-tab-signal").getAttribute("aria-selected") === "true", "Signal tab is not selected");
+    assert(await page.locator(".summary-grid .summary-item").count() === 7, "Summary must contain seven values");
   }, screenshot);
 
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await page.locator("[data-testid='signal-values-action']").click();
-  screenshot = await shot(page, "v27--signal-samples--1024x768.png");
-  await check(page, "values-focuses-dynamic-samples", async () => {
-    if (await page.locator("button[data-inspector-page='samples']").getAttribute("aria-selected") !== "true") throw new Error("Dynamic samples tab not selected");
-    if (await page.locator(".sample-table th").count() !== 5) throw new Error("Sample table must have five columns");
+  await page.getByTestId("signal-values-action").click();
+  await page.waitForSelector("[data-testid='samples-table-scroll']");
+  await page.waitForFunction(() => document.querySelectorAll(".sample-table tbody tr").length >= 20);
+  screenshot=await shot(page, "v29--standalone-production-samples--1440x900.png");
+  await check("04-values-focus-dynamic-five-column-table", async () => {
+    assert(await page.locator("[data-bottom-tab='samples']").getAttribute("aria-selected") === "true", "Dynamic sample tab is not selected");
+    assert(await page.locator(".sample-table th").count() === 5, "Sample table does not have five columns");
+    assert((await page.locator(".sample-table tbody tr").count()) >= 20, "Fixture does not demonstrate pagination-ready rows");
   }, screenshot);
 
-  await page.locator("[data-settings-page='display']").click();
-  screenshot = await shot(page, "v27--spectrum-area-sliders-and-limits--1024x768.png");
-  await check(page, "spectrum-sliders-and-local-magnitude", async () => {
-    if (!await page.locator("[data-testid='pane-frequency-slider']").isVisible()) throw new Error("Frequency plot slider missing");
-    if (!await page.locator("[data-testid='pane-magnitude-slider']").isVisible()) throw new Error("Magnitude plot slider missing");
-    if (!await page.locator("[data-range-control='area-magnitude']").isVisible()) throw new Error("Local magnitude limits missing");
+  await page.getByTestId("settings-tab-display").click();
+  screenshot=await shot(page, "v29--standalone-production-spectrum-area--1440x900.png");
+  await check("05-spectrum-area-sliders-and-local-magnitude", async () => {
+    const frequency=page.locator("[data-spectrum-slider-axis='x']"), magnitude=page.locator("[data-spectrum-slider-axis='y']");
+    assert(await frequency.isChecked() && await magnitude.isChecked(), "Spectrum slider toggles are not synchronized/enabled");
+    assert(await page.locator("[data-screen-settings-group='local-magnitude-limits']").isVisible(), "Local magnitude limits missing");
+    assert(await page.locator("[data-screen-range-slider='spectrum.y_limits']").isVisible(), "Local magnitude dual slider missing");
+    assert(await page.locator("[data-screen-settings-group='local-frequency-limits']").count() === 0, "Linked frequency limits must not remain local");
   }, screenshot);
 
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.locator("[data-settings-page='screen']").click();
-  screenshot = await shot(page, "v27--screen-spectrum-links--1440x900.png");
-  await check(page, "screen-four-links-and-frequency-limits", async () => {
-    if (await page.locator("[data-setting-toggle='spectrumFrequency']").count() !== 1) throw new Error("Spectrum frequency link missing");
-    if (!await page.locator("[data-range-control='screen-frequency']").isVisible()) throw new Error("Screen frequency limits missing");
+  await page.getByTestId("pane-menu-pane-spectrum").click();
+  await page.waitForSelector("[data-testid='display-overflow-menu']:not([hidden])");
+  await check("06-pane-menu-spectrum-slider-projections", async () => {
+    const menu=page.getByTestId("display-overflow-menu");
+    const labels=await menu.locator("button").allTextContents();
+    assert(labels.some(v => v.includes("Слайдер частоты")) && labels.some(v => v.includes("Слайдер магнитуды")), JSON.stringify(labels));
+    assert(await menu.locator("[data-plot-range-slider]").getAttribute("aria-checked") === "true", "Frequency menu state is not checked");
+    assert(await menu.locator("[data-plot-amplitude-slider]").getAttribute("aria-checked") === "true", "Magnitude menu state is not checked");
+  }, screenshot);
+  await page.keyboard.press("Escape");
+
+  await page.getByTestId("settings-tab-screen").click();
+  screenshot=await shot(page, "v29--standalone-production-screen-links--1440x900.png");
+  await check("07-screen-four-links-and-frequency-range", async () => {
+    const links=await page.locator("[data-screen-settings-group='links'] input[type='checkbox']").count();
+    assert(links === 4, "Expected four screen links, got " + links);
+    assert(await page.locator("[data-screen-link-frequency]").isChecked(), "Frequency link is not checked");
+    assert(await page.locator("[data-screen-settings-group='frequency-limits']").isVisible(), "Frequency limits missing on Screen");
+    assert(await page.locator("[data-screen-range-slider='spectrum.frequency_limits']").isVisible(), "Frequency dual slider missing");
   }, screenshot);
 
-  await page.locator("[data-settings-page='peaks']").click();
-  await page.locator("[data-testid='extrema-values']").click();
-  screenshot = await shot(page, "v27--spectrum-extrema--1440x900.png");
-  await check(page, "spectrum-extrema-markers-and-table", async () => {
-    if (await page.locator(".plot-peak").count() < 3) throw new Error("Spectrum markers missing");
-    if (await page.locator("button[data-inspector-page='peaks']").getAttribute("aria-selected") !== "true") throw new Error("Extrema table not selected");
+  await page.locator("[data-screen-link-magnitude]").check();
+  await page.waitForSelector("[data-screen-settings-group='magnitude-limits']");
+  await check("08-linked-magnitude-relocates-immediately", async () => {
+    assert(await page.locator("[data-screen-settings-group='magnitude-limits']").isVisible(), "Magnitude limits did not appear on Screen");
+    await page.getByTestId("settings-tab-display").click();
+    assert(await page.locator("[data-screen-settings-group='local-magnitude-limits']").count() === 0, "Magnitude limits did not disappear from Area");
+  }, null);
+
+  await page.getByTestId("settings-tab-peaks").click();
+  await page.getByTestId("extrema-values").click();
+  await page.waitForSelector("[data-testid='peaks-table']");
+  screenshot=await shot(page, "v29--standalone-production-spectrum-extrema--1440x900.png");
+  await check("09-spectrum-extrema-table-and-markers", async () => {
+    const headers=(await page.locator("[data-testid='peaks-table'] th").allTextContents()).map(v => v.trim());
+    assert(headers.includes("Магнитуда") && headers.includes("Частота"), JSON.stringify(headers));
+    assert(await page.locator("[data-testid='peaks-table'] tbody tr").count() === 3, "Expected three extrema rows");
+    const markers=await page.evaluate(() => Array.from(document.querySelectorAll("[data-pane-host]")).some(host => (host.data || []).some(trace => trace.meta && trace.meta.signal_analyser_peaks_overlay)));
+    assert(markers, "Spectrum marker overlay missing");
   }, screenshot);
 
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await page.locator("[data-inspector-page='signals']").click();
-  await page.locator("[data-testid='signal-operation-radarPulse']").click();
-  screenshot = await shot(page, "v27--signal-operation-default--1024x768.png");
-  await check(page, "operation-dialog-default", async () => {
-    if (!await page.locator("[data-testid='signal-operation-dialog']").isVisible()) throw new Error("Dialog missing");
+  await page.getByTestId("inspector-tab-signals").click();
+  await page.locator("[data-testid='signal-rows'] tr").first().hover();
+  await page.getByTestId("signal-operation-radarPulse").click();
+  screenshot=await shot(page, "v29--standalone-production-operation-default--1440x900.png");
+  await check("10-operation-dialog-production-style", async () => {
+    assert(await page.getByTestId("signal-operation-dialog").isVisible(), "Operation dialog missing");
+    assert((await page.locator("[data-signal-operation-form]").innerText()).includes("Исходный сигнал"), "Operation form missing");
   }, screenshot);
-  await check(page, "operation-select-closed-shared-contract", async () => {
-    const closed = await page.locator("[data-testid='signal-operation-select-input']").evaluate(node => ({readOnly:node.readOnly, arrowWidth:getComputedStyle(node.parentElement.querySelector("[data-value-select-arrow]")).width}));
-    if (!closed.readOnly || closed.arrowWidth !== "24px") throw new Error(JSON.stringify(closed));
+  await check("11-operation-select-closed-shared-contract", async () => {
+    const contract=await page.getByTestId("signal-operation-select-input").evaluate(node => ({ readOnly:node.readOnly, arrow:getComputedStyle(node.parentElement.querySelector("[data-value-select-arrow]")).width }));
+    assert(contract.readOnly && contract.arrow === "24px", JSON.stringify(contract));
   }, screenshot);
-  await page.locator("[data-testid='signal-operation-select-input']").click();
-  screenshot = await shot(page, "v28--signal-operation-menu--1024x768.png");
-  await check(page, "operation-menu-shared-value-select", async () => {
-    const contract = await page.evaluate(() => {
+
+  await page.getByTestId("signal-operation-select-input").click();
+  screenshot=await shot(page, "v29--standalone-production-operation-menu--1440x900.png");
+  await check("12-operation-menu-seven-options-production-value-select", async () => {
+    const contract=await page.evaluate(() => {
       const trigger=document.querySelector("[data-testid='signal-operation-select']"), input=document.querySelector("[data-testid='signal-operation-select-input']"), popup=document.querySelector("[data-value-select-popup]"), option=popup.querySelector("[data-value-select-option-index]");
       const a=trigger.getBoundingClientRect(), b=popup.getBoundingClientRect(), ps=getComputedStyle(popup), os=getComputedStyle(option);
-      return {readOnly:input.readOnly, placeholder:input.placeholder, options:popup.querySelectorAll("[data-value-select-option-index]").length, popupInputs:popup.querySelectorAll("input").length, widthDelta:Math.abs(a.width-b.width), padding:ps.padding, border:ps.borderTopWidth, optionHeight:os.height, modalOwned:popup.classList.contains("is-modal-owned"), selected:popup.querySelectorAll(".is-selected").length};
+      return { readOnly:input.readOnly, placeholder:input.placeholder, options:popup.querySelectorAll("[data-value-select-option-index]").length, popupInputs:popup.querySelectorAll("input").length, widthDelta:Math.abs(a.width-b.width), padding:ps.padding, border:ps.borderTopWidth, optionHeight:os.height, modalOwned:popup.classList.contains("is-modal-owned"), selected:popup.querySelectorAll(".is-selected").length };
     });
-    if (contract.readOnly || contract.placeholder !== "Поиск" || contract.options !== 7 || contract.popupInputs !== 0 || contract.widthDelta > 1 || contract.padding !== "0px" || contract.border !== "0px" || contract.optionHeight !== "34px" || !contract.modalOwned || contract.selected !== 1) throw new Error(JSON.stringify(contract));
+    assert(!contract.readOnly && contract.placeholder === "Поиск" && contract.options === 7 && contract.popupInputs === 0 && contract.widthDelta <= 1 && contract.padding === "0px" && contract.border === "0px" && contract.optionHeight === "34px" && contract.modalOwned && contract.selected === 1, JSON.stringify(contract));
   }, screenshot);
-  await page.keyboard.press("Escape");
-  await check(page, "operation-menu-escape-keeps-dialog", async () => {
-    if (!await page.locator("[data-value-select-popup]").isHidden() || !await page.locator("[data-testid='signal-operation-dialog']").isVisible()) throw new Error("Escape contract failed");
+
+  await page.getByTestId("signal-operation-select-input").fill("Кор");
+  await check("13-operation-menu-search-escape-tab-outside", async () => {
+    assert(await page.locator("[data-value-select-option-index]").count() === 2, "Inline search did not filter to two options");
+    await page.keyboard.press("Escape");
+    assert(await page.locator("[data-value-select-popup]").isHidden() && await page.getByTestId("signal-operation-dialog").isVisible(), "Escape closed wrong layer");
+    await page.getByTestId("signal-operation-select-input").click();
+    await page.keyboard.press("Tab");
+    assert(await page.locator("[data-value-select-popup]").isHidden(), "Tab did not close popup");
+    await page.getByTestId("signal-operation-select-input").click();
+    await page.locator("[data-testid='signal-operation-dialog'] .dialog-titlebar").click({ position:{ x:18, y:18 } });
+    assert(await page.locator("[data-value-select-popup]").isHidden(), "Outside click did not close popup");
   }, null);
-  await page.locator("[data-testid='signal-operation-select-input']").click();
-  await page.locator("[data-testid='signal-operation-select-input']").fill("Кор");
-  await check(page, "operation-menu-inline-search", async () => { if (await page.locator("[data-value-select-option-index]").count() !== 2) throw new Error("Search must filter in the trigger input"); }, null);
-  await page.keyboard.press("Escape");
-  await page.locator("[data-testid='signal-operation-select-input']").click();
-  await page.keyboard.press("Tab");
-  await check(page, "operation-menu-tab-closes", async () => { if (!await page.locator("[data-value-select-popup]").isHidden()) throw new Error("Tab did not close popup"); }, null);
-  await page.locator("[data-testid='signal-operation-select-input']").click();
-  await page.locator(".dialog-titlebar").click({position:{x:20,y:20}});
-  await check(page, "operation-menu-outside-closes", async () => { if (!await page.locator("[data-value-select-popup]").isHidden()) throw new Error("Outside click did not close popup"); }, null);
-  await page.locator("[data-testid='signal-operation-select-input']").click();
+
+  await page.getByTestId("signal-operation-select-input").click();
   await page.locator("[data-value-select-option-index='6']").click();
-  screenshot = await shot(page, "v28--signal-operation-custom-body--1024x768.png");
-  await check(page, "custom-operation-body-only", async () => {
-    const surface = await page.locator("[data-operation-form]").innerText();
-    const code = await page.locator("[data-operation-code]").inputValue();
-    if (!surface.includes("Код выполняется в Engee") || !surface.includes("init_signal") || /temporary|cleanup|wrapper|let init_signal/i.test(surface) || code !== "init_signal .* 2") throw new Error(surface + " / " + code);
-  }, screenshot);
-  await page.locator("[data-operation-code]").fill("init_signal .* missing_variable");
-  await page.locator("[data-operation-submit]").click();
-  await page.waitForTimeout(700);
-  screenshot = await shot(page, "v28--signal-operation-engee-error--1024x768.png");
-  await check(page, "custom-operation-engee-error", async () => {
-    if (!await page.locator(".operation-status.error").isVisible() || !(await page.locator(".operation-status.error").innerText()).includes("Engee")) throw new Error("Engee error not shown");
-  }, screenshot);
-  await page.locator("[data-operation-code]").fill("init_signal ./ maximum(abs.(init_signal))");
-  await page.locator("[data-operation-submit]").click();
-  screenshot = await shot(page, "v28--signal-operation-progress--1024x768.png");
-  await check(page, "operation-progress-blocks-close", async () => {
-    if (!await page.locator(".operation-progress").isVisible()) throw new Error("Progress missing");
-    if (!await page.locator("[data-dialog-close]").isDisabled()) throw new Error("Busy dialog close must be disabled");
-  }, screenshot);
-  await page.waitForTimeout(750);
-  screenshot = await shot(page, "v28--signal-operation-success--1024x768.png");
-  await check(page, "operation-success", async () => {
-    if (!await page.locator(".operation-status.success").isVisible()) throw new Error("Success missing");
+  screenshot=await shot(page, "v29--standalone-production-operation-custom--1440x900.png");
+  await check("14-custom-body-only-hidden-envelope", async () => {
+    const text=await page.locator("[data-signal-operation-form]").innerText();
+    assert(text.includes("Тело операции") && text.includes("init_signal") && text.includes("Код выполняется в Engee"), text);
+    assert(!/temporary|cleanup|wrapper|let init_signal/i.test(text), "Hidden execution envelope leaked into UI: " + text);
+    assert(await page.locator("#signal-operation-body").count() === 1, "Custom body editor missing");
   }, screenshot);
 
-  await page.setViewportSize({ width: 840, height: 620 });
-  await page.reload({ waitUntil: "networkidle" });
-  await page.waitForFunction(() => document.documentElement.dataset.designReady === "true");
-  screenshot = await shot(page, "v27--undersized-document-scroll--840x620.png");
-  await check(page, "undersized-keeps-minimum-canvas", async () => {
-    const size = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, sh: document.documentElement.scrollHeight, iw: innerWidth, ih: innerHeight }));
-    if (!(size.sw >= 920 && size.sh >= 680 && size.sw > size.iw && size.sh > size.ih)) throw new Error(JSON.stringify(size));
+  await page.locator("#signal-operation-body").fill("init_signal .* missing_variable");
+  await page.locator("[data-signal-operation-submit]").click();
+  await page.waitForSelector(".operation-status.error");
+  screenshot=await shot(page, "v29--standalone-production-operation-error--1440x900.png");
+  await check("15-custom-operation-engee-error", async () => {
+    const text=await page.locator(".operation-status.error").innerText();
+    assert(text.includes("Engee") && text.includes("missing_variable"), text);
   }, screenshot);
 
-  await page.setViewportSize({ width: 920, height: 680 });
-  await page.reload({ waitUntil: "networkidle" });
-  await page.waitForFunction(() => document.documentElement.dataset.designReady === "true");
-  const before = await page.locator("[data-testid='display-tabs']").innerText();
-  await page.locator("[data-close-display='display-1']").click();
-  await page.locator("[data-testid='add-display']").click();
-  const after = await page.locator("[data-testid='display-tabs']").innerText();
-  await check(page, "stable-display-ordinals", async () => {
-    if (!before.includes("Экран 1") || !before.includes("ВЧ-контроль") || !after.includes("ВЧ-контроль") || !after.includes("Экран 4") || after.includes("Экран 2")) throw new Error("Stable naming failed: " + after);
+  await page.locator("#signal-operation-body").fill("init_signal ./ maximum(abs.(init_signal))");
+  await page.locator("[data-signal-operation-submit]").click();
+  screenshot=await shot(page, "v29--standalone-production-operation-progress--1440x900.png");
+  await check("16-operation-progress-blocks-close-then-success", async () => {
+    assert(await page.locator(".operation-progress").isVisible(), "Progress state missing");
+    assert(await page.locator("[data-signal-operation-close]").isDisabled(), "Close must be disabled while busy");
+    await page.waitForSelector(".operation-status.success");
+    assert(await page.locator(".operation-status.success").isVisible(), "Success state missing");
+  }, screenshot);
+
+  await page.setViewportSize({ width:840, height:620 });
+  await ready(page);
+  screenshot=await shot(page, "v29--standalone-production-undersized--840x620.png");
+  await check("17-undersized-keeps-production-minimum-canvas", async () => {
+    const size=await page.evaluate(() => ({ sw:document.documentElement.scrollWidth, sh:document.documentElement.scrollHeight, iw:innerWidth, ih:innerHeight }));
+    assert(size.sw > size.iw && size.sh > size.ih && size.sw >= 920 && size.sh >= 680, JSON.stringify(size));
+    return JSON.stringify(size);
+  }, screenshot);
+
+  await page.setViewportSize({ width:1440, height:900 });
+  await ready(page);
+  const before=await page.getByTestId("display-tabs").innerText();
+  await page.getByTestId("display-close-display-1").click();
+  await page.waitForFunction(() => !document.querySelector("[data-testid='display-tab-display-1']"));
+  await page.getByTestId("add-display").click();
+  await page.waitForSelector("[data-testid='display-tab-display-4']");
+  const after=await page.getByTestId("display-tabs").innerText();
+  await check("18-stable-display-names-and-ordinals", async () => {
+    assert(before.includes("Экран 1") && before.includes("ВЧ-контроль"), before);
+    assert(after.includes("ВЧ-контроль") && after.includes("Экран 4") && !after.includes("Экран 2"), after);
+    return after;
   }, null);
 
-  const output = { design_version: 28, generated_at: new Date().toISOString(), passed: results.filter(x => x.passed).length, failed: results.filter(x => !x.passed).length, results };
+  const output={ design_version:29, prototype_entry:"prototype/index.html", protocol:"file://", production_base:["public/index.html", "public/css/theme.css", "public/css/app.css", "public/js/api.js", "public/js/value-select.js", "public/js/numeric.js", "public/js/settings.js", "public/js/layouts.js", "public/vendor/vue/3.5.41/vue.global.prod.js", "public/js/components/explicit-apply.js", "public/js/native-session-io.js", "public/js/app.js"], generated_at:new Date().toISOString(), passed:results.filter(item => item.passed).length, failed:results.filter(item => !item.passed).length, runtime_errors:runtimeErrors, results };
   fs.writeFileSync(evidencePath, JSON.stringify(output, null, 2) + "\n");
   await browser.close();
   console.log(JSON.stringify(output, null, 2));
-  process.exit(output.failed ? 1 : 0);
+  process.exit(output.failed || runtimeErrors.length ? 1 : 0);
 })().catch(error => { console.error(error); process.exit(1); });

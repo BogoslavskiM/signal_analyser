@@ -32,23 +32,26 @@ The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
 transaction implementation, Plotly payloads, pagination implementation and
 session serialization remain outside Designer ownership.
 
-V29 changes no approved surface. It corrects only the transfer boundary:
-production `public/index.html`, shell/module identities and existing
-`[data-pane-host]` Plotly hosts are authoritative. The mock shell, SVG plots,
-renderers and provider remain design-only and must never replace production.
+V29 changes no approved product surface. It corrects the transfer boundary and
+the review harness: production `public/index.html`, shell/module identities,
+component CSS and existing `[data-pane-host]` Plotly hosts are authoritative.
+`prototype/index.html` is now a direct `file://` snapshot of that production
+DOM/CSS/component base with deterministic local state/data adapters. The older
+zone mock modules remain design-only reference files and are not the prototype
+entry baseline or production transfer inputs.
 
 ## Key approval surfaces
 
 | # | Surface | Approval decision | Evidence |
 |---:|---|---|---|
-| 1 | First `Сигнал` tab | Metadata first, then compact two-column `Сводка`; one `Значения` action | `screenshots/v27--signal-tab-summary--920x680.png` |
-| 2 | Dynamic samples tab | Tab label is current `main_signal.name`; five fixed semantic columns; lazy footer | `screenshots/v27--signal-samples--1024x768.png` |
-| 3 | Spectrum extrema | Markers overlay the spectrum, lower table uses Magnitude + projected Frequency | `screenshots/v27--spectrum-extrema--1440x900.png` |
-| 4 | Spectrum Area settings | Frequency/magnitude slider checkboxes; independent local magnitude limits | `screenshots/v27--spectrum-area-sliders-and-limits--1024x768.png` |
-| 5 | Screen spectrum links | Four independent checkboxes; linked frequency limits appear as a separate group | `screenshots/v27--screen-spectrum-links--1440x900.png` |
-| 6 | Operation selector | Seven operations use the existing shared `SignalAnalyserValueSelect`, including inline search and modal-owned options popup | `screenshots/v28--signal-operation-menu--1024x768.png` |
-| 7 | User operation body | Editor shows only the body written by the user and a neutral Engee/`init_signal` hint | `screenshots/v28--signal-operation-custom-body--1024x768.png` |
-| 8 | Engee operation states | Backend execution error, busy and success remain inside the same dialog context | `screenshots/v28--signal-operation-{engee-error,progress,success}--1024x768.png` |
+| 1 | First `Сигнал` tab | Metadata first, then compact two-column `Сводка`; one `Значения` action | `screenshots/v29--standalone-production-signal--1440x900.png` |
+| 2 | Dynamic samples tab | Tab label is current `main_signal.name`; five fixed semantic columns; lazy footer | `screenshots/v29--standalone-production-samples--1440x900.png` |
+| 3 | Spectrum extrema | Markers overlay the spectrum, lower table uses Magnitude + projected Frequency | `screenshots/v29--standalone-production-spectrum-extrema--1440x900.png` |
+| 4 | Spectrum Area settings | Frequency/magnitude slider checkboxes; independent local magnitude limits | `screenshots/v29--standalone-production-spectrum-area--1440x900.png` |
+| 5 | Screen spectrum links | Four independent checkboxes; linked frequency limits appear as a separate group | `screenshots/v29--standalone-production-screen-links--1440x900.png` |
+| 6 | Operation selector | Seven operations use the existing shared `SignalAnalyserValueSelect`, including inline search and modal-owned options popup | `screenshots/v29--standalone-production-operation-menu--1440x900.png` |
+| 7 | User operation body | Editor shows only the body written by the user and a neutral Engee/`init_signal` hint | `screenshots/v29--standalone-production-operation-custom--1440x900.png` |
+| 8 | Engee operation states | Backend execution error, busy and success remain inside the same dialog context | `screenshots/v29--standalone-production-operation-{error,progress}--1440x900.png` |
 
 ## Autonomous decisions
 
@@ -116,7 +119,12 @@ renderers and provider remain design-only and must never replace production.
 - Pinned projected spectrum extrema and cursor-based signal sample pagination to
   provider methods added through existing `public/js/api.js` and consumed by
   existing `public/js/app.js`; endpoints remain Frontend/Backend-owned.
-- Preserved every v27/v28 screenshot and the 18/18 v28 visual walkthrough.
+- Replaced the unusable fetch-partial prototype entry with a production-faithful
+  `file://` snapshot: four nonempty zones, no server and no network requests.
+- Pinned the exact rendered production baseline and hashes in
+  `evidence/production-baseline-v29.json`.
+- Re-ran the complete production-component walkthrough as 18/18 with zero
+  runtime/CORS errors in `evidence/interaction-walkthrough-v29-standalone.json`.
 
 ## Sources
 
@@ -209,33 +217,34 @@ claimed as newly Figma-derived.
 
 ## Prototype walkthrough
 
-`prototype/index.html` is a thin visual harness over the v28-approved mock
-shell. In v29 the entire harness, mock shell/renderers/SVG plots and provider
-are explicitly design-only; they demonstrate the preserved visual contract and
-are not production transfer inputs.
+`prototype/index.html` is a standalone `file://` harness copied from the current
+production document structure. It loads the actual local production theme,
+application CSS, shared value selector, settings renderer and UI-only app
+renderer. `prototype/mock-fetch.js` intercepts provider calls before they reach
+the browser network stack and supplies deterministic state, plot and table
+fixtures. The prototype performs no HTTP(S) request and needs no local server.
+The harness remains design-only and is not a production transfer input.
 
 | Step | Stable hook | User action | Expected state | Screenshot |
 |---:|---|---|---|---|
-| 1 | `[data-testid=settings-tab-signal]` | Open prototype | Signal is first and selected; summary visible | `v27--signal-tab-summary--920x680.png` |
-| 2 | `[data-testid=signal-values-action]` | Click | Dynamic `radarPulse` tab selected; five columns | `v27--signal-samples--1024x768.png` |
-| 3 | `[data-testid=settings-tab-display]` | Click | Two spectrum slider toggles and local magnitude limits | `v27--spectrum-area-sliders-and-limits--1024x768.png` |
-| 4 | `[data-testid=settings-tab-screen]` | Click | Four links; linked frequency limits include units/fields/slider | `v27--screen-spectrum-links--1440x900.png` |
-| 5 | `[data-testid=extrema-values]` | Click | Spectrum markers and frequency table aligned by marker number | `v27--spectrum-extrema--1440x900.png` |
-| 6 | `[data-testid=signal-operation-radarPulse]` | Click | Default operation dialog | `v27--signal-operation-default--1024x768.png` |
-| 7 | `[data-testid=signal-operation-select-input]` | Click | Shared same-field search, seven options, exact anchor width | `v28--signal-operation-menu--1024x768.png` |
-| 8 | shared option index `6` | Select `Пользовательское` | Only user body editor and neutral Engee/`init_signal` hint are visible | `v28--signal-operation-custom-body--1024x768.png` |
-| 9 | `[data-operation-submit]` | Submit invalid then valid body | Engee error, blocking busy, then success | `v28--signal-operation-{engee-error,progress,success}--1024x768.png` |
-| 10 | `[data-testid=app-shell]` | Resize to 840×620 | Canvas remains ≥920×680 and document scrolls | `v27--undersized-document-scroll--840x620.png` |
+| 1 | `[data-testid=settings-tab-signal]` | Open prototype via `file://` | Four production zones are nonempty; Signal is first/selected; no network/CORS errors | `v29--standalone-production-signal--1440x900.png` |
+| 2 | `[data-testid=signal-values-action]` | Click | Dynamic `radarPulse` tab selected; five populated columns | `v29--standalone-production-samples--1440x900.png` |
+| 3 | `[data-testid=settings-tab-display]` | Click | Two synchronized spectrum slider toggles and local magnitude limits | `v29--standalone-production-spectrum-area--1440x900.png` |
+| 4 | `[data-testid=settings-tab-screen]` | Click | Four links; linked frequency limits include units/fields/slider | `v29--standalone-production-screen-links--1440x900.png` |
+| 5 | `[data-testid=extrema-values]` | Click | Spectrum markers and frequency table aligned by marker number | `v29--standalone-production-spectrum-extrema--1440x900.png` |
+| 6 | `[data-testid=signal-operation-radarPulse]` | Click | Production-styled operation dialog | `v29--standalone-production-operation-default--1440x900.png` |
+| 7 | `[data-testid=signal-operation-select-input]` | Click | Shared same-field search, seven options, exact anchor width | `v29--standalone-production-operation-menu--1440x900.png` |
+| 8 | shared option index `6` | Select `Пользовательское` | Only user body editor and neutral Engee/`init_signal` hint are visible | `v29--standalone-production-operation-custom--1440x900.png` |
+| 9 | `[data-signal-operation-submit]` | Submit invalid then valid body | Engee error, blocking busy, then success | `v29--standalone-production-operation-{error,progress}--1440x900.png` |
+| 10 | `[data-testid=app-shell]` | Resize to 840×620 | Production canvas remains 920×680 and document scrolls | `v29--standalone-production-undersized--840x620.png` |
 | 11 | display close/add hooks | Delete `Экран 1`, add display | `ВЧ-контроль` unchanged; new default is `Экран 4` | JSON evidence |
 
-Walkthrough result: `evidence/interaction-walkthrough-v28.json`, `18 passed / 0 failed`.
-The amendment additionally verifies closed readonly state, 24px arrow, open
-editable `Поиск`, options-only popup, exact anchor width, zero popup
-border/padding, 34px options, selected check, modal ownership, search,
-Escape/Tab/outside close behavior and that Escape does not close the parent dialog.
-V29 carries these screenshots and interactions forward unchanged and adds a
-structural transfer audit; no screenshot was regenerated because no visible
-surface changed.
+Walkthrough result:
+`evidence/interaction-walkthrough-v29-standalone.json`, `18 passed / 0 failed`,
+`runtime_errors: []`. The gate explicitly verifies four nonempty zone slots,
+`file:` protocol, zero HTTP(S) resource entries, zero CORS/console/page errors,
+the actual production `app.css` base, shared selector geometry and every state
+listed above. Baseline hashes are in `evidence/production-baseline-v29.json`.
 
 ## Transfer contract
 
@@ -448,8 +457,8 @@ render or leak the wrapper mechanics.
   Engee-executed user operation body over `init_signal`; execution wrapper,
   temporary binding and cleanup are provider-owned and invisible. No other
   layout, token, geometry or existing application surface changed.
-- `v29`: transfer-only correction. The production document, shell, existing JS
-  module identities and Plotly hosts are explicit invariants; mock shell/SVG/
-  render/provider/prototype are design-only. Manifest is additive-only with two
-  exact fragments and production selectors/seams. All visuals and screenshots
-  remain v28-identical.
+- `v29`: integration and evidence correction. The production document, shell,
+  existing JS module identities and Plotly hosts are explicit invariants;
+  additive transfer remains limited to two exact fragments. The prototype was
+  rebuilt from the current production DOM/CSS/components as a standalone
+  network-free `file://` fixture and passed 18/18 real-browser checks.
