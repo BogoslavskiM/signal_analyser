@@ -1931,8 +1931,7 @@ body.is-resizing-workspace * {
 
 .color-swatch:hover { opacity: 0.78; }
 .color-swatch:focus-visible { outline: 0; }
-.signal-table tbody tr:has(.color-swatch:focus-visible) .color-cell,
-.signal-table tbody tr.is-selected .color-cell { background: var(--accent-soft); }
+.signal-table tbody tr.is-main-signal .color-cell { background: var(--accent-soft); }
 .color-swatch:active { opacity: 0.68; }
 .color-swatch:disabled { cursor: not-allowed; opacity: 0.45; }
 
@@ -1949,7 +1948,7 @@ body.is-resizing-workspace * {
 }
 .signal-table tbody tr { background: var(--surface); cursor: pointer; }
 .signal-table tbody tr:hover { background: var(--row-hover); }
-.signal-table tbody tr.is-selected { background: var(--row-selected-analytical); }
+.signal-table tbody tr.is-main-signal { background: var(--row-selected-analytical); }
 
 .measurement-table {
   width: 100%;

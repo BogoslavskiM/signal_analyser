@@ -24,6 +24,7 @@
     sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
     signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
+    signalMembershipBusy: false,
     signalSamples: { signalId:"", signalName:"", rows:[], nextCursor:null, total:0, loading:false, error:"", token:0 },
     signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }
   };
@@ -1611,6 +1612,20 @@
     })[0] || null;
   }
 
+  function selectedSignalName() {
+    return model.state && (model.state.row_selected_signal || model.state.selected_signal || model.state.analysis_signal) || "";
+  }
+
+  function signalNameMatches(signal, name) {
+    return !!signal && !!name && (signal.name === name || stableSignalId(signal) === name);
+  }
+
+  function signalSettingsGroup(editor, key, title, body) {
+    var collapsed = !!(editor.collapsed && editor.collapsed[key]);
+    var bodyId = "signal-settings-" + editor.signalId.replace(/[^a-zA-Z0-9_-]/g, "-") + "-" + key;
+    return "<section class='settings-group" + (collapsed ? " is-collapsed" : "") + "' data-signal-settings-group='" + esc(key) + "'><button class='settings-group-title' type='button' data-signal-settings-group-toggle='" + esc(key) + "' aria-expanded='" + String(!collapsed) + "' aria-controls='" + esc(bodyId) + "'><span>" + esc(title) + "</span></button><div class='settings-group-fields' id='" + esc(bodyId) + "'" + (collapsed ? " hidden" : "") + ">" + body + "</div></section>";
+  }
+
   function ensureSignalSettingsTab() {
     var tabs=q("[data-testid='settings-tabs']");
     if (!tabs || q("[data-testid='settings-tab-signal']")) return;
@@ -1629,8 +1644,9 @@
       return;
     }
     var editor=model.signalEditor;
+    if (!editor.collapsed) editor.collapsed={ main:false, summary:false };
     if (editor.signalId !== signalId) {
-      editor={ signalId:signalId, summary:null, loading:true, error:"", draft:{ name:signal.name, color:signal.color || "#1686c3", sample_rate_hz:String(signal.sample_rate_hz == null ? "" : signal.sample_rate_hz) } };
+      editor={ signalId:signalId, summary:null, loading:true, error:"", collapsed:{ main:false, summary:false }, draft:{ name:signal.name, color:signal.color || "#1686c3", sample_rate_hz:String(signal.sample_rate_hz == null ? "" : signal.sample_rate_hz) } };
       model.signalEditor=editor;
       boundedRequest(api.signalSummary(signalId), 10000).then(function (summary) {
         if (model.signalEditor !== editor) return;
@@ -1641,7 +1657,9 @@
       });
     }
     var d=editor.draft, s=(editor.summary && editor.summary.summary) || editor.summary || {}, metrics=[["Отсчёты", s.sample_count], ["Тип", s.data_type], ["Длительность", s.duration_s], ["Среднее", s.mean], ["Минимум", s.minimum], ["Максимум", s.maximum], ["СКЗ", s.rms]];
-    host.innerHTML="<section class='settings-group'><button class='settings-group-title' type='button' aria-expanded='true' disabled><span>Основное</span></button><div class='settings-group-fields'><label class='settings-field-row'><span class='settings-label'>Имя</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='name' value='"+esc(d.name)+"'></span></label><label class='settings-field-row'><span class='settings-label'>Цвет</span><span class='settings-control-wrap color-field'><button class='color-swatch-button' type='button' aria-label='Цвет сигнала'><i style='--signal-color:"+esc(d.color)+"'></i></button><input class='control' data-signal-metadata='color' value='"+esc(d.color)+"'></span></label><label class='settings-field-row'><span class='settings-label'>Частота дискретизации <span class='unit'>Гц</span></span><span class='settings-control-wrap'><input class='control' data-signal-metadata='sample_rate_hz' inputmode='decimal' value='"+esc(d.sample_rate_hz)+"'></span></label></div></section><section class='settings-group'><button class='settings-group-title' type='button' aria-expanded='true' disabled><span>Сводка</span></button><div class='summary-grid'>"+metrics.map(function (item) { return "<div class='summary-item'><span>"+item[0]+"</span><strong>"+esc(item[1] == null ? "—" : item[1])+"</strong></div>"; }).join("")+"</div><button class='button summary-action' type='button' data-testid='signal-values-action'>Значения</button>"+(editor.loading ? "<p class='status-note info'>Загрузка сводки…</p>" : editor.error ? "<p class='status-note error'>"+esc(editor.error)+"</p>" : "")+"</section>";
+    var mainBody="<label class='settings-field-row'><span class='settings-label'>Имя</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='name' value='"+esc(d.name)+"'></span></label><label class='settings-field-row'><span class='settings-label'>Цвет</span><span class='settings-control-wrap color-field'><button class='color-swatch-button' type='button' aria-label='Цвет сигнала'><i style='--signal-color:"+esc(d.color)+"'></i></button><input class='control' data-signal-metadata='color' value='"+esc(d.color)+"'></span></label><label class='settings-field-row'><span class='settings-label'>Дискретизация, Гц</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='sample_rate_hz' inputmode='decimal' value='"+esc(d.sample_rate_hz)+"'></span></label>";
+    var summaryBody="<div class='summary-grid'>"+metrics.map(function (item) { return "<div class='summary-item'><span>"+item[0]+"</span><strong>"+esc(item[1] == null ? "—" : item[1])+"</strong></div>"; }).join("")+"</div><button class='button summary-action' type='button' data-testid='signal-values-action'>Значения</button>"+(editor.loading ? "<p class='status-note info'>Загрузка сводки…</p>" : editor.error ? "<p class='status-note error'>"+esc(editor.error)+"</p>" : "");
+    host.innerHTML=signalSettingsGroup(editor, "main", "Основное", mainBody) + signalSettingsGroup(editor, "summary", "Сводка", summaryBody);
   }
 
   function showSignalSamples() {
@@ -2021,9 +2039,13 @@
     var signalNames = (model.state.signals || []).map(function (signal) { return signal.name; });
     var everySignalVisible = signalNames.length > 0 && signalNames.every(function (name) { return bindings.indexOf(name) >= 0; });
     head.innerHTML = "<th><input class='ui-checkbox' type='checkbox' data-visible-all-signals aria-label='Показывать все сигналы в активной области'" + (everySignalVisible ? " checked" : "") + "></th>" + renderedColumns.map(function (column) { return "<th>" + column.label + "</th>"; }).join("");
+    var selectedSignal = model.state && (model.state.row_selected_signal || model.state.selected_signal || model.state.analysis_signal);
+    var mainSignal = signals.filter(function (signal) { return bindings.indexOf(signal.name) >= 0 && signal.name === selectedSignal; })[0] ||
+      signals.filter(function (signal) { return bindings.indexOf(signal.name) >= 0; })[0] || null;
     rows.innerHTML = signals.map(function (signal) {
       var values = { name:esc(signal.name), color:"<span class='color-swatch' data-testid='signal-color-" + esc(signal.name) + "' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signal.name) + "'></span>", sample_rate:esc(signal.sample_rate_hz == null ? "—" : signal.sample_rate_hz), sample_count:esc(signal.sample_count == null ? "—" : signal.sample_count), duration:esc(signal.duration_s == null ? "—" : signal.duration_s), data_type:esc(signal.data_type || "—") };
       var selected = bindings.indexOf(signal.name) >= 0;
+      var main = !!mainSignal && mainSignal.name === signal.name;
       var signalId = typeof signal.id === "string" && signal.id.trim() ? signal.id : null;
       var actions = "<span class='signal-row-actions'><button type='button' class='signal-row-action' data-signal-duplicate='" + esc(signal.name) + "' data-testid='signal-duplicate-" + esc(signal.name) + "' aria-label='Копировать " + esc(signal.name) + "'><img src='./icons/copy.svg' alt=''></button><button type='button' class='signal-row-action'" + (signalId ? " data-signal-operation='" + esc(signalId) + "'" : " disabled") + " data-testid='signal-operation-" + esc(signal.name) + "' aria-label='Операция над " + esc(signal.name) + "'><img src='./icons/function.svg' alt=''></button><button type='button' class='signal-row-action is-danger' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "' aria-label='Удалить " + esc(signal.name) + "'><img src='./icons/trash.svg' alt=''></button></span>";
       var cells = renderedColumns.map(function (column, index) {
@@ -2031,7 +2053,7 @@
         var classes = (column.id === "color" ? "color-cell " : "") + (last ? "is-actions-host" : "");
         return "<td class='" + classes.trim() + "'><span class='signal-cell-value'>" + values[column.id] + "</span>" + (last ? actions : "") + "</td>";
       }).join("");
-      return "<tr data-testid='signal-row-" + esc(signal.name) + "' class='" + (selected ? "is-selected" : "") + "'><td><input class='ui-checkbox' type='checkbox' data-visible-signal='" + esc(signal.name) + "' aria-label='Показывать " + esc(signal.name) + " в активной области'" + (selected ? " checked" : "") + "></td>" + cells + "</tr>";
+      return "<tr data-testid='signal-row-" + esc(signal.name) + "' data-signal-row data-signal-name='" + esc(signal.name) + "'" + (main ? " data-main-signal='true' class='is-main-signal'" : "") + "><td><input class='ui-checkbox' type='checkbox' data-visible-signal='" + esc(signal.name) + "' aria-label='Показывать " + esc(signal.name) + " в активной области'" + (selected ? " checked" : "") + (model.signalMembershipBusy ? " disabled" : "") + "></td>" + cells + "</tr>";
     }).join("");
     var toggleAll = q("[data-visible-all-signals]");
     if (toggleAll) toggleAll.indeterminate = !everySignalVisible && bindings.length > 0;
@@ -2877,6 +2899,47 @@
     });
   }
 
+  function setActivePaneSignalMembership(signalName, checked) {
+    var pane = paneById(model.activePane);
+    if (!pane || model.signalMembershipBusy) return Promise.resolve(null);
+    var bindings = Array.isArray(pane.signal_bindings) ? pane.signal_bindings.slice() : [];
+    var index = bindings.indexOf(signalName);
+    var wasMain = signalNameMatches(mainSignalForPane(pane), signalName);
+    if (checked && index < 0) bindings.push(signalName);
+    if (!checked && index >= 0) bindings.splice(index, 1);
+    if ((checked && index >= 0) || (!checked && index < 0)) return Promise.resolve(null);
+
+    model.signalMembershipBusy = true;
+    renderInspector();
+    return postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:pane.plot_type, signal_bindings:bindings }).then(function () {
+      var nextMain = checked ? signalName : wasMain ? bindings[0] : "";
+      if (!nextMain || selectedSignalName() === nextMain) return null;
+      return mutate(function () {
+        return api.view({ state_revision:model.revision, row_selected_signal:nextMain });
+      }, { preservePlots:true });
+    }).catch(function (error) {
+      showToast(safeErrorText(error, "Не удалось обновить состав области."), true);
+      return null;
+    }).finally(function () {
+      model.signalMembershipBusy = false;
+      renderInspector();
+    });
+  }
+
+  function focusAreaSettings(paneId) {
+    var pane = paneById(paneId);
+    if (!pane) return;
+    model.settingsPage = "display";
+    if (!peaksSurfaceActive()) stopPeaksPolling("");
+    if (pane.id === model.activePane) {
+      renderSettings(activeDisplay());
+      return;
+    }
+    postLayout({ operation: "select_pane", pane_id:pane.id }, { preservePlots:true, skipOutput:true }).catch(function (error) {
+      showToast(safeErrorText(error, "Не удалось выбрать область."), true);
+    });
+  }
+
   function showToast(copy, warning) {
     var toast = q("[data-testid='layout-toast']");
     if (!toast) return;
@@ -3099,9 +3162,9 @@
     if (button.dataset.inspectorStateAction) return void changeWorkspaceInspectorState(button);
     if (button.dataset.testid === "display-scroll-left") return void scrollDisplayTabs(-1);
     if (button.dataset.testid === "display-scroll-right") return void scrollDisplayTabs(1);
-    if (button.dataset.displaySelect) return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "select", display_id: button.dataset.displaySelect }); });
+    if (button.dataset.displaySelect) { model.settingsPage="screen"; renderSettings(activeDisplay()); return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "select", display_id: button.dataset.displaySelect }); }); }
     if (button.dataset.displayClose) return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "close", display_id: button.dataset.displayClose }); });
-    if (button.dataset.testid === "add-display") return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "create" }); });
+    if (button.dataset.testid === "add-display") { model.settingsPage="screen"; renderSettings(activeDisplay()); return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "create" }); }); }
     if (button.dataset.testid === "layout-trigger") return void openLayout(button);
     if (button.dataset.layoutClose !== undefined || button.dataset.layoutCancel !== undefined) return void closeLayout();
     if (button.dataset.layoutRows || button.dataset.layoutColumns) { model.layoutDraft[button.dataset.layoutRows ? "rows" : "columns"] = Number(button.dataset.layoutRows || button.dataset.layoutColumns); return void renderLayoutDraft(); }
@@ -3119,6 +3182,15 @@
       model.screenCollapsed[screenGroup] = button.getAttribute("aria-expanded") === "true";
       renderScreenSettings(activeDisplay());
       window.requestAnimationFrame(function () { var restored = q("[data-screen-settings-group-toggle='" + screenGroup + "']"); if (restored) restored.focus(); });
+      return;
+    }
+    if (button.dataset.signalSettingsGroupToggle) {
+      var signalGroup = button.dataset.signalSettingsGroupToggle;
+      if (model.signalEditor && model.signalEditor.collapsed) {
+        model.signalEditor.collapsed[signalGroup] = button.getAttribute("aria-expanded") === "true";
+        renderSignalSettings(paneById(model.activePane));
+        window.requestAnimationFrame(function () { var restored = q("[data-signal-settings-group-toggle='" + signalGroup + "']"); if (restored) restored.focus(); });
+      }
       return;
     }
     if (button.dataset.testid === "extrema-calculate") return void calculatePeaks();
@@ -3196,9 +3268,24 @@
     }
     if (node.dataset.testid === "native-local-file-input" || node.dataset.testid === "session-package-file-input") { readSessionDocument(node.files && node.files[0]); return; }
     if (node.dataset.visibleAllSignals !== undefined) { var allPane = paneById(model.activePane); if (allPane) return void postLayout({ operation:"update_pane", pane_id:allPane.id, plot_type:allPane.plot_type, signal_bindings:node.checked ? (model.state.signals || []).map(function (signal) { return signal.name; }) : [] }); }
-    if (node.dataset.visibleSignal) { var activePane = paneById(model.activePane), bindings = activePane && Array.isArray(activePane.signal_bindings) ? activePane.signal_bindings.slice() : [], index = bindings.indexOf(node.dataset.visibleSignal); if (node.checked && index < 0) bindings.push(node.dataset.visibleSignal); if (!node.checked && index >= 0) bindings.splice(index, 1); if (activePane) return void postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings:bindings }); }
+    if (node.dataset.visibleSignal) {
+      var activePane = paneById(model.activePane);
+      /* The helper commits only this activePane through postLayout({ operation:"update_pane", pane_id:activePane.id, plot_type:activePane.plot_type, signal_bindings }) before selecting its main signal. */
+      if (activePane) return void setActivePaneSignalMembership(node.dataset.visibleSignal, node.checked);
+    }
   });
-  document.addEventListener("click", function (event) { if (event.target.closest("[data-value-select-key]") || event.target.closest(".signal-row-actions")) return; var pane = event.target.closest("[data-pane-id]"); if (pane && pane.dataset.paneId !== model.activePane) postLayout({ operation: "select_pane", pane_id: pane.dataset.paneId }, { preservePlots:true, skipOutput:true }); });
+  document.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target || target.closest("[data-value-select-key], .signal-row-actions, button, input, select, textarea, a, [contenteditable], .modebar")) return;
+    var row = target.closest("[data-signal-row]");
+    if (row) {
+      var rowCheckbox = row.querySelector("[data-visible-signal]");
+      if (rowCheckbox && !rowCheckbox.disabled) setActivePaneSignalMembership(rowCheckbox.dataset.visibleSignal, !rowCheckbox.checked);
+      return;
+    }
+    var pane = target.closest("[data-pane-id]");
+    if (pane) focusAreaSettings(pane.dataset.paneId);
+  });
   document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft) { model.signalEditor.draft[event.target.dataset.signalMetadata]=event.target.value; model.signalEditor.dirty=true; renderApply(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
   document.addEventListener("input", function (event) {
     var input = event.target, slider = input.closest && input.closest("[data-screen-range-slider]");

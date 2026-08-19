@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 29
+design_version: 30
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115]
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -17,6 +17,7 @@ production_integration_contract:
   body_modal_portal: body
   transferable_sources:
     - frontend-source/integration/css/task-0112-0115-additions.css
+    - frontend-source/integration/css/task-0116-refinements.css
     - frontend-source/integration/html/dialogs/signal-operation.fragment.html
   mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
 
@@ -39,10 +40,10 @@ prototype_contract:
     - public/js/native-session-io.js
     - public/js/app.js
   deterministic_provider: prototype/mock-fetch.js
-  production_baseline_evidence: evidence/production-baseline-v29.json
+  production_baseline_evidence: evidence/production-baseline-v30.json
   required_nonempty_zone_slots: [toolbar, workspace, settings, inspector]
   forbidden: [fetch_html_partials, http_server, network_api, cors_dependency, alternative_mock_shell]
-  browser_result: {checks: 18, passed: 18, failed: 0, runtime_errors: 0, http_resources: 0}
+  browser_result: {checks: 23, passed: 23, failed: 0, runtime_errors: 0, http_resources: 0}
 
 screens:
   - id: main
@@ -162,12 +163,14 @@ settings_tabs:
     groups:
       - id: signal-main
         label: "Основное"
+        disclosure: {component: settings-group, initial: expanded, user_collapsible: true, state_owner: active_signal_editor}
         fields:
           - {id: signal-name, label: "Имя", type: text, testid: signal-name, states: [default, focus_visible, dirty, invalid, disabled]}
           - {id: signal-color, label: "Цвет", type: color_picker_plus_text, testid: signal-color, states: [default, hover, focus_visible, open, invalid]}
-          - {id: signal-sample-rate, label: "Частота дискретизации", type: numeric_with_unit, unit: "Гц", testid: signal-sample-rate, states: [default, focus_visible, dirty, invalid]}
+          - {id: signal-sample-rate, label: "Дискретизация, Гц", type: numeric, unit_in_label: true, testid: signal-sample-rate, states: [default, focus_visible, dirty, invalid]}
       - id: signal-summary
         label: "Сводка"
+        disclosure: {component: settings-group, initial: expanded, user_collapsible: true, state_owner: active_signal_editor}
         authored_by: backend
         values: [sample_count, data_type, duration, mean, minimum, maximum, rms]
         actions:
@@ -284,6 +287,19 @@ tables:
   - id: signals-table
     tab: signals
     columns: [name, color, sample_rate, sample_count, duration, data_type]
+    checkbox_semantics: "checked means membership/visibility in active pane"
+    main_signal_semantics:
+      selector: "[data-main-signal='true'].is-main-signal"
+      cardinality: "zero_or_one; exactly one while the active pane has checked signals"
+      persistent_fill: row-selected-analytical
+      settings_context: signal
+    ordinary_row_semantics:
+      default_fill: surface
+      hover_fill: row-hover
+      checked_fill: surface
+    plain_row_click:
+      effect: "toggle the row checkbox; checked result becomes main_signal; unchecking current main selects first remaining checked signal or clears main"
+      excluded_targets: [checkbox, row_actions, buttons, links, form_controls, contenteditable, plotly_modebar]
     row_actions:
       - {id: duplicate-signal, icon: copy.svg, tooltip: "Дублировать сигнал"}
       - {id: signal-operation, icon: function.svg, tooltip: "Операция над сигналом", testid_pattern: "signal-operation-{name}"}
@@ -363,8 +379,26 @@ elements:
   - {id: settings-magnitude-slider, zone: display-settings, type: checkbox, label: "Слайдер магнитуды", field: show-magnitude-slider, states: [default, hover, checked, disabled, focus_visible]}
   - {id: inspector-up, zone: lower-inspector, type: icon_button, label: "Развернуть нижнюю зону", testid: inspector-state-up, tooltip: {enabled: true, delay_ms: 1500, text: "Развернуть нижнюю зону"}, states: [default, hover, pressed, focus_visible]}
   - {id: inspector-down, zone: lower-inspector, type: icon_button, label: "Свернуть нижнюю зону", testid: inspector-state-down, tooltip: {enabled: true, delay_ms: 1500, text: "Свернуть нижнюю зону"}, states: [default, hover, pressed, focus_visible]}
+  - {id: signal-main-group, zone: display-settings, type: disclosure, label: "Основное", selector: "[data-signal-settings-group-toggle='main']", states: [expanded, hover, pressed, focus_visible, collapsed]}
+  - {id: signal-summary-group, zone: display-settings, type: disclosure, label: "Сводка", selector: "[data-signal-settings-group-toggle='summary']", states: [expanded, hover, pressed, focus_visible, collapsed]}
 
 interactions:
+  - id: signal-row-membership-and-main
+    trigger: {element: signals-table-row-noncontrol-surface, action: click}
+    visible_result: "row checkbox toggles; checked row becomes sole blue main_signal; other checked rows remain white"
+    seam: signal-membership-main
+  - id: signal-settings-group-collapse
+    trigger: {element: signal-main-group-or-signal-summary-group, action: click_or_keyboard}
+    visible_result: "only the selected group body hides/shows; standard disclosure arrow and settings scroll owner remain"
+    seam: signal-settings-disclosure
+  - id: pane-focus-area-settings
+    trigger: {element: plot-pane-noncontrol-surface, action: click}
+    visible_result: "clicked pane becomes active and the right panel selects Область with updated pane context"
+    seam: settings-context-routing
+  - id: display-focus-screen-settings
+    trigger: {element: display-tab-or-add-display, action: click}
+    visible_result: "selected/new display becomes active and the right panel selects Экран with updated display context"
+    seam: settings-context-routing
   - id: signal-values-focus
     trigger: {element: signal-values, action: click}
     visible_result: "dynamic tab named main_signal appears, is selected and receives focus"
@@ -454,6 +488,22 @@ overlays:
       restore_target: submit_or_error
 
 integration_seams:
+  - id: signal-membership-main
+    ui_contract: "active-pane checkbox membership remains distinct from zero-or-one main_signal; row click commits membership then main context using existing revision flow"
+    mock_provider: prototype/mock-fetch.js
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    hosts: ["[data-signal-rows]", "[data-settings-content]"]
+  - id: signal-settings-disclosure
+    ui_contract: "Signal Основное/Сводка reuse standard settings-group disclosure and retain state for the active signal editor"
+    mock_provider: "actual public/js/app.js rendered over deterministic provider fixture"
+    production_consumer: public/js/app.js
+    host: "[data-settings-content]"
+  - id: settings-context-routing
+    ui_contract: "plain pane click selects Area; display-tab or add-display click selects Screen; no shell/page remount"
+    mock_provider: "actual public/js/app.js rendered over deterministic provider fixture"
+    production_consumer: public/js/app.js
+    hosts: ["[data-pane-id]", "[data-display-select]", "[data-testid='add-display']", "[data-settings-page]"]
   - id: workspace-state-provider
     ui_contract: "read/persist stable display/pane ids, names and monotonic default ordinals"
     mock_provider: mock/mock-provider.js
@@ -527,7 +577,7 @@ page_sizing_contract:
 
 evidence:
   visual_baseline_version: 28
-  carry_forward_reason: "Product visuals remain approved; v29 evidence is regenerated against the actual current production DOM/CSS/components rather than the obsolete partial-fetch mock."
+  carry_forward_reason: "Product visuals remain approved; v30 evidence adds only TASK-0116 state/interaction checks against the actual current production DOM/CSS/JS."
   viewports: ["1440x900", "840x620"]
   prototype_steps:
     - 01-standalone-file-no-network-no-cors
@@ -548,18 +598,27 @@ evidence:
     - 16-operation-progress-blocks-close-then-success
     - 17-undersized-keeps-production-minimum-canvas
     - 18-stable-display-names-and-ordinals
+    - 19-only-main-signal-has-blue-row
+    - 20-row-click-toggles-checkbox-and-main-signal
+    - 21-signal-groups-collapse-and-sample-rate-label
+    - 22-pane-click-focuses-area-settings
+    - 23-display-click-and-add-focus-screen-settings
   screenshots:
-    - screenshots/v29--standalone-production-signal--1440x900.png
-    - screenshots/v29--standalone-production-samples--1440x900.png
-    - screenshots/v29--standalone-production-spectrum-area--1440x900.png
-    - screenshots/v29--standalone-production-screen-links--1440x900.png
-    - screenshots/v29--standalone-production-spectrum-extrema--1440x900.png
-    - screenshots/v29--standalone-production-operation-default--1440x900.png
-    - screenshots/v29--standalone-production-operation-menu--1440x900.png
-    - screenshots/v29--standalone-production-operation-custom--1440x900.png
-    - screenshots/v29--standalone-production-operation-error--1440x900.png
-    - screenshots/v29--standalone-production-operation-progress--1440x900.png
-    - screenshots/v29--standalone-production-undersized--840x620.png
-  interaction_report: evidence/interaction-walkthrough-v29-standalone.json
-  production_baseline: evidence/production-baseline-v29.json
-  transfer_audit: evidence/transfer-audit-v29.json
+    - screenshots/v30--standalone-production-signal--1440x900.png
+    - screenshots/v30--standalone-production-samples--1440x900.png
+    - screenshots/v30--standalone-production-spectrum-area--1440x900.png
+    - screenshots/v30--standalone-production-screen-links--1440x900.png
+    - screenshots/v30--standalone-production-spectrum-extrema--1440x900.png
+    - screenshots/v30--standalone-production-operation-default--1440x900.png
+    - screenshots/v30--standalone-production-operation-menu--1440x900.png
+    - screenshots/v30--standalone-production-operation-custom--1440x900.png
+    - screenshots/v30--standalone-production-operation-error--1440x900.png
+    - screenshots/v30--standalone-production-operation-progress--1440x900.png
+    - screenshots/v30--standalone-production-undersized--840x620.png
+    - screenshots/v30--main-signal-only-and-hover--1440x900.png
+    - screenshots/v30--row-click-main-signal--1440x900.png
+    - screenshots/v30--signal-settings-collapsed--1440x900.png
+    - screenshots/v30--screen-focus-after-display-add--1440x900.png
+  interaction_report: evidence/interaction-walkthrough-v30-standalone.json
+  production_baseline: evidence/production-baseline-v30.json
+  transfer_audit: evidence/transfer-audit-v30.json

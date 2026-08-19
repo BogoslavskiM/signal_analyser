@@ -23,10 +23,12 @@
 .data-table th, .data-table td { height: 32px; overflow: hidden; padding: 6px 8px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
 .data-table th { position: sticky; top: 0; z-index: 2; background: var(--surface-muted); font-weight: 500; }
 .data-table tbody tr:hover { background: var(--row-hover); }
-.data-table tbody tr.is-selected { background: var(--row-selected-analytical); }
+.data-table tbody tr { background: var(--surface); cursor: pointer; }
+.data-table tbody tr.is-main-signal,
+.data-table tbody tr.is-main-signal:hover { background: var(--row-selected-analytical); }
 .row-name-cell { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .signal-row-actions { display: flex; flex: 0 0 auto; opacity: 0; }
-tr:hover .signal-row-actions, tr:focus-within .signal-row-actions, tr.is-selected .signal-row-actions { opacity: 1; }
+tr:hover .signal-row-actions, tr:focus-within .signal-row-actions, tr.is-main-signal .signal-row-actions { opacity: 1; }
 .signal-row-action { width: 26px; height: 24px; display: grid; place-items: center; padding: 4px; border: 0; border-radius: 4px; background: transparent; cursor: pointer; }
 .signal-row-action:hover { background: var(--button-active); }
 .signal-row-action img { width: 16px; height: 16px; }

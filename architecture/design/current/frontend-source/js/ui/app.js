@@ -19,7 +19,7 @@
       var target = event.target;
       if (!document.querySelector("[data-testid='signal-operation-layer']").hidden && window.SignalAnalyserDialogs.signalOperation.click(target, provider)) return;
       var displayTab = target.closest("[data-display-id]");
-      if (displayTab) { state.activeDisplayId = displayTab.dataset.displayId; var display = activeDisplay(); state.activePaneId = display.panes[0] ? display.panes[0].id : ""; render(); return; }
+      if (displayTab) { state.activeDisplayId = displayTab.dataset.displayId; var display = activeDisplay(); state.activePaneId = display.panes[0] ? display.panes[0].id : ""; state.settingsPage="screen"; render(); document.querySelector("[data-testid='settings-tab-screen']").focus(); return; }
       var closeDisplay = target.closest("[data-close-display]");
       if (closeDisplay && state.displays.length > 1) {
         var closing = closeDisplay.dataset.closeDisplay;
@@ -31,14 +31,25 @@
         var ordinal = state.nextDisplayOrdinal || 1;
         state.nextDisplayOrdinal = ordinal + 1;
         state.displays.push({ id: "display-new-" + ordinal, name: "Экран " + ordinal, panes: [] });
-        state.activeDisplayId = "display-new-" + ordinal; state.activePaneId = ""; render(); return;
+        state.activeDisplayId = "display-new-" + ordinal; state.activePaneId = ""; state.settingsPage="screen"; render(); document.querySelector("[data-testid='settings-tab-screen']").focus(); return;
       }
       var pane = target.closest("[data-pane-id]");
-      if (pane) { state.activePaneId = pane.dataset.paneId; render(); return; }
+      if (pane) { state.activePaneId = pane.dataset.paneId; state.settingsPage="display"; render(); document.querySelector("[data-testid='settings-tab-display']").focus(); return; }
       var settingTab = target.closest("[data-settings-page]");
       if (settingTab) { state.settingsPage = settingTab.dataset.settingsPage; render(); return; }
       var inspectorTab = target.closest("[data-inspector-page]");
       if (inspectorTab) { state.inspectorPage = inspectorTab.dataset.inspectorPage; render(); return; }
+      var signalRow=target.closest("[data-signal-row]");
+      if (signalRow && !target.closest("input,button,a,[role='button'],.signal-row-actions")) {
+        var signal=state.signals.find(function (item) { return item.name === signalRow.dataset.signalRow; });
+        if (signal) {
+          signal.visible=!signal.visible;
+          if (signal.visible) { state.mainSignalName=signal.name; state.signal.name=signal.name; state.signal.color=signal.color; state.signal.sampleRate=signal.sampleRate.replace(/\s*МГц$/u, "000000"); }
+          else if (state.mainSignalName === signal.name) { var fallback=state.signals.find(function (item) { return item.visible; }); state.mainSignalName=fallback ? fallback.name : ""; }
+          render();
+        }
+        return;
+      }
       var toggle = target.closest("[data-group-toggle]");
       if (toggle) { var section = toggle.closest(".settings-group"); section.classList.toggle("is-collapsed"); toggle.setAttribute("aria-expanded", String(!section.classList.contains("is-collapsed"))); return; }
       var values = target.closest("[data-testid='signal-values-action']");

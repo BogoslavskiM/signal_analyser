@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 29
+design_version: 30
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -13,14 +13,15 @@ prototype_baseline:
   local_server_required: false
   network_requests_allowed: false
   provider_fixture: prototype/mock-fetch.js
+  provider_fixture_scope: data_and_api_responses_only
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
-  pinned_hashes: evidence/production-baseline-v29.json
-  walkthrough: evidence/interaction-walkthrough-v29-standalone.json
-  result: "18/18; four nonempty zones; zero HTTP/CORS/runtime errors"
+  pinned_hashes: evidence/production-baseline-v30.json
+  walkthrough: evidence/interaction-walkthrough-v30-standalone.json
+  result: "23/23; four nonempty zones; zero HTTP/CORS/runtime errors"
 
-# There is intentionally no whole-file production copy in v29. Production
+# There is intentionally no whole-file production copy in v30. Production
 # already owns the application document, boot sequence, UI modules and Plotly
-# hosts. The two sources below are exact additive fragments.
+# hosts. The sources below are exact integration fragments.
 copy_as_is: []
 
 production_invariants:
@@ -52,6 +53,14 @@ additive_fragments:
     content_changes_allowed: false
     marker: "Additive v29 feature rules"
     scope: [signal_summary, signal_samples_table, spectrum_extrema_cell, signal_operation_dialog, operation_overwrite_checkbox_label]
+  - id: task-0116-signal-row-state
+    source: integration/css/task-0116-refinements.css
+    target: public/css/app.css
+    mode: replace_matching_selector_bodies
+    content_changes_allowed: false
+    remove_obsolete_selectors: [".signal-table tbody tr.is-selected", ".signal-table tbody tr.is-selected .color-cell"]
+    marker: "V30 TASK-0116 final selector replacements"
+    scope: [main_signal_row_fill, ordinary_row_hover, color_cell_main_signal_only]
   - id: signal-operation-modal-template
     source: integration/html/dialogs/signal-operation.fragment.html
     target: public/js/app.js
@@ -85,7 +94,13 @@ integration_hosts:
     integration: "Existing renderInspector page switch renders samples or spectrum extrema into this body; do not replace the inspector shell."
   inspector_rows:
     selector: "[data-signal-rows]"
-    integration: "Existing signals renderer adds the operation action inside each .signal-row-actions immediately after [data-signal-duplicate]."
+    integration: "Existing signals renderer keeps checkbox membership distinct from one [data-main-signal=true].is-main-signal row; plain row LMB excludes controls/actions and uses the existing revision flow."
+  signal_settings_groups:
+    selector: "[data-signal-settings-group]"
+    integration: "Reuse existing .settings-group-title/.settings-group-fields disclosure; main and summary start expanded and are independently collapsible."
+  workspace_context:
+    selector: "[data-pane-id], [data-display-select], [data-testid='add-display']"
+    integration: "Pane click selects Area settings; display selection/creation selects Screen settings without remounting shell or settings panel."
   pane_menu:
     selector: "[data-testid='display-overflow-menu']"
     integration: "Reuse [data-plot-range-slider] for time/frequency and [data-plot-amplitude-slider] for amplitude/magnitude; labels and aria state project the active pane type."
@@ -97,6 +112,23 @@ integration_hosts:
     integration: "Append the signal-operation singleton on first use; reuse existing [data-value-select-popup] and modal stacking."
 
 integration_seams:
+  - id: signal-membership-main
+    action_interface: "toggle active-pane signal membership; if checked make that signal main, if unchecking current main choose first remaining checked signal or clear main"
+    production_consumers: [public/js/app.js]
+    production_providers: [public/js/api.js]
+    hosts: ["[data-signal-rows]", "[data-settings-content]"]
+    state_separation: {checkbox: pane_membership, blue_row: main_signal}
+    replacement_forbidden: true
+  - id: signal-settings-disclosure
+    action_interface: "render and toggle Signal Основное/Сводка through the existing settings-group disclosure contract; exact field label Дискретизация, Гц"
+    production_consumers: [public/js/app.js]
+    host: "[data-settings-content]"
+    replacement_forbidden: true
+  - id: settings-context-routing
+    action_interface: "pane click -> Area settings; display-tab/add-display click -> Screen settings"
+    production_consumers: [public/js/app.js]
+    hosts: ["[data-pane-id]", "[data-display-select]", "[data-testid='add-display']", "[data-settings-page]"]
+    replacement_forbidden: true
   - id: settings-page-extension
     action_interface: "ensure signal tab; render Signal/Area/Screen/Extrema into existing settings content"
     production_consumers: [public/js/app.js, public/js/settings.js]
@@ -172,6 +204,8 @@ invariants:
   mock_provider_transfer_forbidden: true
   copied_fragment_content_changes_allowed: false
   visual_baseline_unchanged: true
+  mock_owns_ui_behavior: false
+  mock_scope_is_data_provider_only: true
   history_is_not_a_source: true
   prototype_uses_production_shell_and_components: true
   prototype_partial_fetch_loader_forbidden: true

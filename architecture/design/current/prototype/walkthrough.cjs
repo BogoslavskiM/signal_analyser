@@ -4,7 +4,7 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const screenshots = path.join(root, "screenshots");
-const evidencePath = path.join(root, "evidence", "interaction-walkthrough-v29-standalone.json");
+const evidencePath = path.join(root, "evidence", "interaction-walkthrough-v30-standalone.json");
 const entry = "file://" + path.resolve(__dirname, "index.html");
 const results = [];
 const runtimeErrors = [];
@@ -36,7 +36,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
   page.on("console", message => { if (message.type() === "error") runtimeErrors.push("console: " + message.text()); });
   await ready(page);
 
-  let screenshot=await shot(page, "v29--standalone-production-signal--1440x900.png");
+  let screenshot=await shot(page, "v30--standalone-production-signal--1440x900.png");
   await check("01-standalone-file-no-network-no-cors", async () => {
     const audit=await page.evaluate(() => ({
       protocol:location.protocol,
@@ -73,7 +73,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
   await page.getByTestId("signal-values-action").click();
   await page.waitForSelector("[data-testid='samples-table-scroll']");
   await page.waitForFunction(() => document.querySelectorAll(".sample-table tbody tr").length >= 20);
-  screenshot=await shot(page, "v29--standalone-production-samples--1440x900.png");
+  screenshot=await shot(page, "v30--standalone-production-samples--1440x900.png");
   await check("04-values-focus-dynamic-five-column-table", async () => {
     assert(await page.locator("[data-bottom-tab='samples']").getAttribute("aria-selected") === "true", "Dynamic sample tab is not selected");
     assert(await page.locator(".sample-table th").count() === 5, "Sample table does not have five columns");
@@ -81,7 +81,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
   }, screenshot);
 
   await page.getByTestId("settings-tab-display").click();
-  screenshot=await shot(page, "v29--standalone-production-spectrum-area--1440x900.png");
+  screenshot=await shot(page, "v30--standalone-production-spectrum-area--1440x900.png");
   await check("05-spectrum-area-sliders-and-local-magnitude", async () => {
     const frequency=page.locator("[data-spectrum-slider-axis='x']"), magnitude=page.locator("[data-spectrum-slider-axis='y']");
     assert(await frequency.isChecked() && await magnitude.isChecked(), "Spectrum slider toggles are not synchronized/enabled");
@@ -102,7 +102,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
   await page.keyboard.press("Escape");
 
   await page.getByTestId("settings-tab-screen").click();
-  screenshot=await shot(page, "v29--standalone-production-screen-links--1440x900.png");
+  screenshot=await shot(page, "v30--standalone-production-screen-links--1440x900.png");
   await check("07-screen-four-links-and-frequency-range", async () => {
     const links=await page.locator("[data-screen-settings-group='links'] input[type='checkbox']").count();
     assert(links === 4, "Expected four screen links, got " + links);
@@ -122,7 +122,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
   await page.getByTestId("settings-tab-peaks").click();
   await page.getByTestId("extrema-values").click();
   await page.waitForSelector("[data-testid='peaks-table']");
-  screenshot=await shot(page, "v29--standalone-production-spectrum-extrema--1440x900.png");
+  screenshot=await shot(page, "v30--standalone-production-spectrum-extrema--1440x900.png");
   await check("09-spectrum-extrema-table-and-markers", async () => {
     const headers=(await page.locator("[data-testid='peaks-table'] th").allTextContents()).map(v => v.trim());
     assert(headers.includes("Магнитуда") && headers.includes("Частота"), JSON.stringify(headers));
@@ -134,7 +134,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
   await page.getByTestId("inspector-tab-signals").click();
   await page.locator("[data-testid='signal-rows'] tr").first().hover();
   await page.getByTestId("signal-operation-radarPulse").click();
-  screenshot=await shot(page, "v29--standalone-production-operation-default--1440x900.png");
+  screenshot=await shot(page, "v30--standalone-production-operation-default--1440x900.png");
   await check("10-operation-dialog-production-style", async () => {
     assert(await page.getByTestId("signal-operation-dialog").isVisible(), "Operation dialog missing");
     assert((await page.locator("[data-signal-operation-form]").innerText()).includes("Исходный сигнал"), "Operation form missing");
@@ -145,7 +145,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
   }, screenshot);
 
   await page.getByTestId("signal-operation-select-input").click();
-  screenshot=await shot(page, "v29--standalone-production-operation-menu--1440x900.png");
+  screenshot=await shot(page, "v30--standalone-production-operation-menu--1440x900.png");
   await check("12-operation-menu-seven-options-production-value-select", async () => {
     const contract=await page.evaluate(() => {
       const trigger=document.querySelector("[data-testid='signal-operation-select']"), input=document.querySelector("[data-testid='signal-operation-select-input']"), popup=document.querySelector("[data-value-select-popup]"), option=popup.querySelector("[data-value-select-option-index]");
@@ -170,7 +170,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
 
   await page.getByTestId("signal-operation-select-input").click();
   await page.locator("[data-value-select-option-index='6']").click();
-  screenshot=await shot(page, "v29--standalone-production-operation-custom--1440x900.png");
+  screenshot=await shot(page, "v30--standalone-production-operation-custom--1440x900.png");
   await check("14-custom-body-only-hidden-envelope", async () => {
     const text=await page.locator("[data-signal-operation-form]").innerText();
     assert(text.includes("Тело операции") && text.includes("init_signal") && text.includes("Код выполняется в Engee"), text);
@@ -181,7 +181,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
   await page.locator("#signal-operation-body").fill("init_signal .* missing_variable");
   await page.locator("[data-signal-operation-submit]").click();
   await page.waitForSelector(".operation-status.error");
-  screenshot=await shot(page, "v29--standalone-production-operation-error--1440x900.png");
+  screenshot=await shot(page, "v30--standalone-production-operation-error--1440x900.png");
   await check("15-custom-operation-engee-error", async () => {
     const text=await page.locator(".operation-status.error").innerText();
     assert(text.includes("Engee") && text.includes("missing_variable"), text);
@@ -189,7 +189,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
 
   await page.locator("#signal-operation-body").fill("init_signal ./ maximum(abs.(init_signal))");
   await page.locator("[data-signal-operation-submit]").click();
-  screenshot=await shot(page, "v29--standalone-production-operation-progress--1440x900.png");
+  screenshot=await shot(page, "v30--standalone-production-operation-progress--1440x900.png");
   await check("16-operation-progress-blocks-close-then-success", async () => {
     assert(await page.locator(".operation-progress").isVisible(), "Progress state missing");
     assert(await page.locator("[data-signal-operation-close]").isDisabled(), "Close must be disabled while busy");
@@ -199,7 +199,7 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
 
   await page.setViewportSize({ width:840, height:620 });
   await ready(page);
-  screenshot=await shot(page, "v29--standalone-production-undersized--840x620.png");
+  screenshot=await shot(page, "v30--standalone-production-undersized--840x620.png");
   await check("17-undersized-keeps-production-minimum-canvas", async () => {
     const size=await page.evaluate(() => ({ sw:document.documentElement.scrollWidth, sh:document.documentElement.scrollHeight, iw:innerWidth, ih:innerHeight }));
     assert(size.sw > size.iw && size.sh > size.ih && size.sw >= 920 && size.sh >= 680, JSON.stringify(size));
@@ -220,7 +220,75 @@ function assert(condition, message) { if (!condition) throw new Error(message); 
     return after;
   }, null);
 
-  const output={ design_version:29, prototype_entry:"prototype/index.html", protocol:"file://", production_base:["public/index.html", "public/css/theme.css", "public/css/app.css", "public/js/api.js", "public/js/value-select.js", "public/js/numeric.js", "public/js/settings.js", "public/js/layouts.js", "public/vendor/vue/3.5.41/vue.global.prod.js", "public/js/components/explicit-apply.js", "public/js/native-session-io.js", "public/js/app.js"], generated_at:new Date().toISOString(), passed:results.filter(item => item.passed).length, failed:results.filter(item => !item.passed).length, runtime_errors:runtimeErrors, results };
+  await ready(page);
+  await page.getByTestId("inspector-tab-signals").click();
+  await page.waitForSelector("[data-testid='signal-row-radarPulse'].is-main-signal");
+  await page.getByTestId("signal-row-echoComplex").hover();
+  screenshot=await shot(page, "v30--main-signal-only-and-hover--1440x900.png");
+  await check("19-only-main-signal-has-blue-row", async () => {
+    const audit=await page.evaluate(() => {
+      const rows=Array.from(document.querySelectorAll("[data-signal-rows] tr"));
+      return rows.map(row => ({ name:row.getAttribute("data-testid"), main:row.classList.contains("is-main-signal"), selected:row.classList.contains("is-selected"), background:getComputedStyle(row).backgroundColor }));
+    });
+    assert(audit.filter(row => row.main).length === 1 && audit.find(row => row.main).name === "signal-row-radarPulse", JSON.stringify(audit));
+    const main=audit.find(row => row.main), echo=audit.find(row => row.name === "signal-row-echoComplex"), noise=audit.find(row => row.name === "signal-row-noiseFloor");
+    assert(main.background !== echo.background && main.background !== noise.background, JSON.stringify(audit));
+    assert(echo.background === "rgb(242, 242, 242)", "Hover is not grey: "+JSON.stringify(echo));
+    return JSON.stringify(audit);
+  }, screenshot);
+
+  await page.getByTestId("signal-row-noiseFloor").locator("td").nth(1).click();
+  await page.waitForSelector("[data-testid='signal-row-noiseFloor'][data-main-signal='true']");
+  await page.waitForFunction(() => document.querySelector("[data-testid='signal-row-noiseFloor'] [data-visible-signal]").checked);
+  screenshot=await shot(page, "v30--row-click-main-signal--1440x900.png");
+  await check("20-row-click-toggles-checkbox-and-main-signal", async () => {
+    const main=page.locator("[data-signal-rows] tr.is-main-signal");
+    assert(await main.count() === 1 && await main.getAttribute("data-testid") === "signal-row-noiseFloor", "Wrong main row");
+    assert(await page.getByTestId("signal-row-noiseFloor").locator("[data-visible-signal]").isChecked(), "Row checkbox was not toggled");
+    assert(await page.getByTestId("signal-row-radarPulse").locator("[data-visible-signal]").isChecked(), "Other visibility changed unexpectedly");
+  }, screenshot);
+
+  await page.getByTestId("settings-tab-signal").click();
+  await page.waitForSelector("[data-signal-settings-group-toggle='summary']");
+  await page.locator("[data-signal-settings-group-toggle='summary']").click();
+  screenshot=await shot(page, "v30--signal-settings-collapsed--1440x900.png");
+  await check("21-signal-groups-collapse-and-sample-rate-label", async () => {
+    const summary=page.locator("[data-signal-settings-group-toggle='summary']");
+    assert(await summary.getAttribute("aria-expanded") === "false", "Summary did not collapse");
+    assert(await page.locator("#signal-settings-group-summary").isHidden(), "Collapsed summary body remains visible");
+    assert(await page.locator("[data-testid='settings-content'] .settings-label", { hasText:"Дискретизация, Гц" }).count() === 1, "Exact sampling label missing");
+  }, screenshot);
+
+  await page.getByTestId("settings-tab-signal").click();
+  await page.getByTestId("plot-pane-pane-time").locator(".plot-pane-title").click();
+  await page.waitForFunction(() => {
+    const area=document.querySelector("[data-testid='settings-tab-display']");
+    return area && area.getAttribute("aria-selected") === "true";
+  });
+  await check("22-pane-click-focuses-area-settings", async () => {
+    assert(await page.getByTestId("settings-tab-display").getAttribute("aria-selected") === "true", "Area page was not selected");
+    assert((await page.locator("[data-settings-context]").innerText()).includes("Импульс во времени"), "Area settings context was not updated");
+  }, null);
+
+  await page.getByTestId("display-tab-display-3").click();
+  await page.waitForFunction(() => {
+    const screen=document.querySelector("[data-testid='settings-tab-screen']");
+    return screen && screen.getAttribute("aria-selected") === "true";
+  });
+  await page.getByTestId("add-display").click();
+  await page.waitForSelector("[data-testid='display-tab-display-4']");
+  await page.waitForFunction(() => {
+    const screen=document.querySelector("[data-testid='settings-tab-screen']");
+    return screen && screen.getAttribute("aria-selected") === "true";
+  });
+  screenshot=await shot(page, "v30--screen-focus-after-display-add--1440x900.png");
+  await check("23-display-click-and-add-focus-screen-settings", async () => {
+    assert(await page.getByTestId("settings-tab-screen").getAttribute("aria-selected") === "true", "Screen page was not selected");
+    assert((await page.locator("[data-settings-context]").innerText()).includes("Экран 4"), "Screen settings context was not updated");
+    assert(await page.getByTestId("display-tab-display-4").getAttribute("aria-selected") === "true", "Created display is not active");
+  }, screenshot);
+
+  const output={ design_version:30, prototype_entry:"prototype/index.html", protocol:"file://", production_base:["public/index.html", "public/css/theme.css", "public/css/app.css", "public/js/api.js", "public/js/value-select.js", "public/js/numeric.js", "public/js/settings.js", "public/js/layouts.js", "public/vendor/vue/3.5.41/vue.global.prod.js", "public/js/components/explicit-apply.js", "public/js/native-session-io.js", "public/js/app.js"], generated_at:new Date().toISOString(), passed:results.filter(item => item.passed).length, failed:results.filter(item => !item.passed).length, runtime_errors:runtimeErrors, results };
   fs.writeFileSync(evidencePath, JSON.stringify(output, null, 2) + "\n");
   await browser.close();
   console.log(JSON.stringify(output, null, 2));

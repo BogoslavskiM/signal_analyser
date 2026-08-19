@@ -1,7 +1,7 @@
 (function standaloneProductionFixture(window, document) {
   "use strict";
 
-  var revision = 29;
+  var revision = 30;
   var calculationRevision = 8;
   var nextDisplayOrdinal = 4;
   var fetchLog = [];
@@ -19,6 +19,7 @@
     ] } }
   ];
   var activeDisplayId = "display-1";
+  var mainSignalName = "radarPulse";
   var signals = [
     { id:"signal-radar", name:"radarPulse", color:"#2166df", sample_rate_hz:1000000, sample_count:400000, duration_s:0.399999, data_type:"Вещественный", is_complex:false, visible:true },
     { id:"signal-echo", name:"echoComplex", color:"#e1262e", sample_rate_hz:1000000, sample_count:348000, duration_s:0.347999, data_type:"Комплексный", is_complex:true, visible:true },
@@ -37,10 +38,10 @@
       signals:clone(signals),
       measurement_kinds:["minimum", "maximum", "mean"],
       active_plot:"spectrum",
-      selected_signal:"radarPulse",
-      analysis_signal:"radarPulse",
-      row_selected_signal:"radarPulse",
-      visible_signals:["radarPulse", "echoComplex"],
+      selected_signal:mainSignalName,
+      analysis_signal:mainSignalName,
+      row_selected_signal:mainSignalName,
+      visible_signals:(activePane() && activePane().signal_bindings || []).slice(),
       time_limits:{ min_s:0, max_s:0.399999 }
     };
   }
@@ -139,7 +140,11 @@
       ] }
     };
   }
-  function summary() { return { signal_id:"signal-radar", summary:{ sample_count:400000, data_type:"Вещественный", duration_s:"399,999 мс", mean:"0,008", minimum:"−0,984", maximum:"1,000", rms:"0,516" } }; }
+  function summary(path) {
+    var id=(/\/api\/signals\/([^/]+)\/summary/.exec(path) || [])[1] || "signal-radar";
+    var signal=signals.filter(function (item) { return item.id === id; })[0] || signals[0];
+    return { signal_id:signal.id, summary:{ sample_count:signal.sample_count, data_type:signal.data_type, duration_s:String(Number(signal.duration_s * 1000).toFixed(3)).replace(".", ",")+" мс", mean:signal.id === "signal-noise" ? "0,000" : "0,008", minimum:signal.id === "signal-noise" ? "−0,142" : "−0,984", maximum:signal.id === "signal-noise" ? "0,139" : "1,000", rms:signal.id === "signal-noise" ? "0,032" : "0,516" } };
+  }
   function samples() {
     var rows=[];
     for (var index=0; index<24; index++) {
@@ -168,6 +173,20 @@
     revision+=1;
     return state();
   }
+  function updateLayout(body) {
+    var entry=activeLayout();
+    if (!entry) return state();
+    if (body.operation === "select_pane" && entry.layout.panes.some(function (pane) { return pane.id === body.pane_id; })) entry.layout.active_pane_id=body.pane_id;
+    if (body.operation === "update_pane") {
+      var pane=entry.layout.panes.filter(function (item) { return item.id === body.pane_id; })[0];
+      if (pane) {
+        if (Array.isArray(body.signal_bindings)) pane.signal_bindings=body.signal_bindings.slice();
+        if (typeof body.plot_type === "string") pane.plot_type=body.plot_type;
+      }
+    }
+    revision+=1;
+    return state();
+  }
   function json(payload, status) { return new Response(JSON.stringify(payload), { status:status || 200, headers:{ "Content-Type":"application/json" } }); }
   function normalizedPath(input) {
     var raw=typeof input === "string" ? input : input && input.url || "";
@@ -192,7 +211,7 @@
     if (/\/api\/outputs\/active/.test(path)) return Promise.resolve(json(outputPayload(path)));
     if (/\/api\/peaks\/active/.test(path)) return Promise.resolve(json(extremaPayload(path)));
     if (/\/api\/peaks\/settings/.test(path)) { revision+=1; return Promise.resolve(json({ state:state() })); }
-    if (/\/api\/signals\/[^/]+\/summary/.test(path)) return Promise.resolve(json(summary()));
+    if (/\/api\/signals\/[^/]+\/summary/.test(path)) return Promise.resolve(json(summary(path)));
     if (/\/api\/signals\/[^/]+\/samples/.test(path)) return Promise.resolve(json(samples()));
     if (/\/api\/signals\/derive/.test(path)) {
       if (body.operation === "custom" && /missing_variable/.test(body.body || "")) return Promise.resolve(json({ error:"Engee: имя missing_variable не определено." }, 422));
@@ -200,8 +219,8 @@
     }
     if (/\/api\/signals(?:\?|$)/.test(path)) { revision+=1; return Promise.resolve(json({ state:state() })); }
     if (/\/api\/displays(?:\?|$)/.test(path)) return Promise.resolve(json(updateDisplays(body)));
-    if (/\/api\/layouts(?:\?|$)/.test(path)) return Promise.resolve(json(state()));
-    if (/\/api\/view(?:\?|$)/.test(path)) { var display=displays.filter(function (item) { return item.id === activeDisplayId; })[0]; if (display && body.peaks_enabled !== undefined) display.peaks_enabled=!!body.peaks_enabled; revision+=1; return Promise.resolve(json(state())); }
+    if (/\/api\/layouts(?:\?|$)/.test(path)) return Promise.resolve(json(updateLayout(body)));
+    if (/\/api\/view(?:\?|$)/.test(path)) { var display=displays.filter(function (item) { return item.id === activeDisplayId; })[0]; if (display && body.peaks_enabled !== undefined) display.peaks_enabled=!!body.peaks_enabled; if (typeof body.row_selected_signal === "string") mainSignalName=body.row_selected_signal; revision+=1; return Promise.resolve(json(state())); }
     if (/\/api\/workspace\/variables/.test(path)) return Promise.resolve(json({ variables:[], cached:true }));
     return Promise.resolve(json({ error:"Standalone prototype has no fixture for "+method+" "+path }, 404));
   };

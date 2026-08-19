@@ -9,6 +9,7 @@
         settingsPage: "signal",
         inspectorPage: "signals",
         dynamicSamplesOpen: false,
+        mainSignalName: "radarPulse",
         dirty: false,
         displays: [
           { id: "display-1", name: "Экран 1", panes: [
@@ -20,9 +21,9 @@
         links: { time: false, amplitude: false, spectrumFrequency: true, spectrumMagnitude: false },
         signal: { name: "radarPulse", color: "#2166df", sampleRate: "1000000", samples: 400000, duration: "399,999 мс", minimum: "−0,984", maximum: "1,000", rms: "0,516", mean: "0,008", type: "Вещественный" },
         signals: [
-          { name: "radarPulse", color: "#2166df", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный" },
-          { name: "echoComplex", color: "#e1262e", sampleRate: "1 МГц", count: "348 000", duration: "347,999 мс", type: "Комплексный" },
-          { name: "noiseFloor", color: "#1a8f58", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный" }
+          { name: "radarPulse", color: "#2166df", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный", visible:true },
+          { name: "echoComplex", color: "#e1262e", sampleRate: "1 МГц", count: "348 000", duration: "347,999 мс", type: "Комплексный", visible:true },
+          { name: "noiseFloor", color: "#1a8f58", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный", visible:false }
         ],
         extrema: [
           { n: 1, signal: "radarPulse", color: "#2166df", type: "Максимум", value: "−3,18 dB", position: "184,2 кГц", marker: "▲ 1" },
