@@ -528,13 +528,9 @@ function signal_inventory_reconciled_display(
 )::SignalAnalyserDisplayState
     members = [name for name in signal_analyser_display_members(display) if name != deleted_name]
     current_analysis = signal_analyser_display_analysis_name(display)
-    analysis_name = if isempty(members)
-        nothing
-    elseif current_analysis === nothing || current_analysis == deleted_name
-        first(members)
-    else
-        current_analysis
-    end
+    # Deleting a binding does not select another main implicitly.  Only
+    # deleting the main signal itself clears the persisted inspector focus.
+    analysis_name = current_analysis == deleted_name ? nothing : current_analysis
     limits = if analysis_name === nothing
         nothing
     else
@@ -564,7 +560,7 @@ function signal_inventory_reconciled_display(
             display.stored_settings,
             analysis_name === nothing ? nothing : signal_by_name(state, analysis_name),
         ),
-        analysis_name === nothing ? false : display.peaks_enabled,
+        analysis_name === nothing || isempty(members) ? false : display.peaks_enabled,
     )
 end
 

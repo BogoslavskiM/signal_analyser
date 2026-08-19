@@ -53,10 +53,13 @@ const SIGNAL_ANALYSER_SESSION_PANE_FIELDS = Set([
     "name",
     "plot_type",
     "signal_bindings",
+    "analysis_signal",
     "peaks_settings",
 ])
+const SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY =
+    setdiff(SIGNAL_ANALYSER_SESSION_PANE_FIELDS, Set(["analysis_signal"]))
 const SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V3 =
-    setdiff(SIGNAL_ANALYSER_SESSION_PANE_FIELDS, Set(["name"]))
+    setdiff(SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY, Set(["name"]))
 const SIGNAL_ANALYSER_SESSION_LEGACY_PANE_FIELDS = Set([
     "id",
     "plot_type",
@@ -554,8 +557,11 @@ function signal_analyser_session_parse_layout_pane(
     is_legacy_pane && session_version != SIGNAL_ANALYSER_LEGACY_SESSION_VERSION && throw(
         signal_analyser_session_error(path, "Session v2+ требует peaks_settings для каждой pane"),
     )
+    is_v4_without_main = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
+        pane_fields == SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY
     expected_pane_fields = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
-        SIGNAL_ANALYSER_SESSION_PANE_FIELDS : SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V3
+        (is_v4_without_main ? SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY :
+            SIGNAL_ANALYSER_SESSION_PANE_FIELDS) : SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V3
     data = is_legacy_pane ? value :
         signal_analyser_session_exact_object(value, expected_pane_fields, path)
     pane_id = signal_analyser_session_string(
@@ -592,6 +598,27 @@ function signal_analyser_session_parse_layout_pane(
         "$path.signal_bindings",
         "Имена сигналов не должны повторяться",
     ))
+    known_names = Set(signal.name for signal in signals)
+    unknown_name = findfirst(name -> !(name in known_names), bindings)
+    unknown_name === nothing || throw(signal_analyser_session_error(
+        "$path.signal_bindings[$unknown_name]",
+        "Pane ссылается на неизвестный сигнал",
+    ))
+    has_explicit_main = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
+        !is_v4_without_main
+    explicit_main = if has_explicit_main
+        value = signal_analyser_payload_value(data, "analysis_signal")
+        value === nothing ? nothing :
+            signal_analyser_session_string(value, "$path.analysis_signal")
+    else
+        nothing
+    end
+    explicit_main === nothing || explicit_main in known_names || throw(
+        signal_analyser_session_error(
+            "$path.analysis_signal",
+            "Main signal pane отсутствует в inventory",
+        ),
+    )
     plot_type = SIGNAL_ANALYSER_PLOTS_BY_NAME[String(plot_value)]
     peaks_settings = if is_legacy_pane
         SignalPeaksSettings()
@@ -672,6 +699,17 @@ function signal_analyser_session_parse_layout_pane(
         )
     end
     display_members = signal_analyser_display_members(display)
+    analysis_name = if has_explicit_main
+        explicit_main
+    elseif pane_id == active_pane_id
+        signal_analyser_display_analysis_name(display)
+    elseif isempty(bindings)
+        nothing
+    else
+        # v1-v3 and the original v4 format had no per-pane main field.
+        # Only those legacy documents receive the deterministic fallback.
+        first(bindings)
+    end
     if pane_id == active_pane_id && plot_type == display.active_plot &&
         Set(bindings) == Set(display_members)
         return try
@@ -680,8 +718,8 @@ function signal_analyser_session_parse_layout_pane(
                 pane_name,
                 plot_type,
                 SignalDisplayMembership(bindings),
-                display.analysis_source,
-                display.time_limits,
+                signal_analysis_source(analysis_name),
+                analysis_name === nothing ? nothing : display.time_limits,
                 display.measurement_selection,
                 display.spectrum_settings,
                 display.spectrogram_settings,
@@ -695,14 +733,8 @@ function signal_analyser_session_parse_layout_pane(
             throw(signal_analyser_session_error(path, sprint(showerror, err)))
         end
     end
-    known_names = Set(signal.name for signal in signals)
-    unknown_name = findfirst(name -> !(name in known_names), bindings)
-    unknown_name === nothing || throw(signal_analyser_session_error(
-        "$path.signal_bindings[$unknown_name]",
-        "Pane ссылается на неизвестный сигнал",
-    ))
-    analysis_signal = isempty(bindings) ? nothing : signals[
-        findfirst(signal -> signal.name == first(bindings), signals)::Int
+    analysis_signal = analysis_name === nothing ? nothing : signals[
+        findfirst(signal -> signal.name == analysis_name, signals)::Int
     ]
     try
         SignalDisplayPaneState(
@@ -710,7 +742,7 @@ function signal_analyser_session_parse_layout_pane(
             pane_name,
             plot_type,
             SignalDisplayMembership(bindings),
-            signal_analysis_source(analysis_signal === nothing ? nothing : analysis_signal.name),
+            signal_analysis_source(analysis_name),
             analysis_signal === nothing ? nothing : signal_full_time_limits(
                 SignalMeasurementsService(),
                 analysis_signal,
@@ -873,6 +905,13 @@ function signal_analyser_session_validate_candidate!(
                     "Pane ссылается на неизвестный сигнал",
                 ),
             )
+            pane_main = signal_display_pane_analysis_name(pane)
+            pane_main === nothing || pane_main in known_names || throw(
+                signal_analyser_session_error(
+                    "$path.layout.panes.$(pane.id).analysis_signal",
+                    "Main signal pane отсутствует в inventory",
+                ),
+            )
         end
         active_pane = signal_display_active_pane(layout)
         members = signal_analyser_display_members(display)
@@ -899,6 +938,18 @@ function signal_analyser_session_validate_candidate!(
             ),
         )
         analysis_name = signal_analyser_display_analysis_name(display)
+        analysis_name === nothing || analysis_name in known_names || throw(
+            signal_analyser_session_error(
+                "$path.analysis_signal",
+                "Main signal Display отсутствует в inventory",
+            ),
+        )
+        isequal(signal_display_pane_analysis_name(active_pane), analysis_name) || throw(
+            signal_analyser_session_error(
+                "$path.layout.active_pane_id",
+                "Main signal active pane не совпадает с legacy Display projection",
+            ),
+        )
         analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
         if analysis_signal !== nothing
             signal_time_limits_are_valid(

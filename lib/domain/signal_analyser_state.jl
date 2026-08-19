@@ -2032,14 +2032,8 @@ struct SignalDisplayPaneState
         pane_name = String(name)
         isempty(strip(pane_name)) && throw(ArgumentError("Имя pane не может быть пустым"))
         analysis_name = signal_analysis_name(analysis_source)
-        isempty(membership.signal_names) == (analysis_name === nothing) || throw(ArgumentError(
-            "Analysis source должна отсутствовать только у пустой pane",
-        ))
-        analysis_name === nothing || analysis_name in membership.signal_names || throw(ArgumentError(
-            "Analysis source должна входить в signal bindings pane",
-        ))
         (analysis_name === nothing) == (time_limits === nothing) || throw(ArgumentError(
-            "Time Limits должны отсутствовать только у пустой pane",
+            "Time Limits должны отсутствовать только у pane без main signal",
         ))
         peaks_enabled && !(plot_type in (TIME_PLOT, SPECTRUM_PLOT)) && throw(ArgumentError(
             "Экстремумы доступны только для Time или Spectrum pane",
@@ -2734,13 +2728,7 @@ function signal_display_pane_without_signal(
         if name != signal_name
     ]
     current_analysis = signal_display_pane_analysis_name(pane)
-    analysis_name = if isempty(members)
-        nothing
-    elseif current_analysis !== nothing && current_analysis in members
-        current_analysis
-    else
-        first(members)
-    end
+    analysis_name = current_analysis == signal_name ? nothing : current_analysis
     SignalDisplayPaneState(
         pane.id,
         pane.name,
@@ -2753,7 +2741,8 @@ function signal_display_pane_without_signal(
         pane.spectrogram_settings,
         pane.persistence_settings,
         pane.stored_settings,
-        analysis_name !== nothing && pane.plot_type in (TIME_PLOT, SPECTRUM_PLOT) && pane.peaks_enabled,
+        analysis_name !== nothing && !isempty(members) &&
+            pane.plot_type in (TIME_PLOT, SPECTRUM_PLOT) && pane.peaks_enabled,
         pane.peaks_settings,
     )
 end
@@ -2787,14 +2776,8 @@ mutable struct SignalAnalyserDisplayState
         peaks_enabled::Bool,
     )
         analysis_name = signal_analysis_name(analysis_source)
-        isempty(membership.signal_names) == (analysis_name === nothing) || throw(ArgumentError(
-            "Analysis source должен отсутствовать только у пустого Display",
-        ))
-        analysis_name === nothing || analysis_name in membership.signal_names || throw(ArgumentError(
-            "Analysis source должен входить в membership Display",
-        ))
         (analysis_name === nothing) == (time_limits === nothing) || throw(ArgumentError(
-            "Time Limits должны отсутствовать только у пустого Display",
+            "Time Limits должны отсутствовать только у Display без main signal",
         ))
         peaks_enabled && !(active_plot in (TIME_PLOT, SPECTRUM_PLOT)) && throw(ArgumentError(
             "Экстремумы доступны только для Time или Spectrum plot",

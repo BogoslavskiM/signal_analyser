@@ -1305,18 +1305,21 @@ function signal_analyser_prepare_pane_output!(
     pane_display = signal_analyser_display_for_pane(display, pane)
     signal_bindings = signal_display_pane_members(pane)
     analysis_name = signal_display_pane_analysis_name(pane)
-    analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+    # `analysis_name` is the persisted pane main signal used by the inspector.
+    # Rendering is intentionally driven only by checkbox membership, so an
+    # unbound main signal must never reappear on the graph.
+    render_signal = isempty(signal_bindings) ? nothing :
+        signal_by_name(state, first(signal_bindings))
     try
         prepared = signal_analyser_prepare_display_plots(
             state,
             pane_display,
-            analysis_signal,
+            render_signal,
             signal_bindings,
             materialize_missing_spectra = pane.plot_type == SPECTRUM_PLOT,
             materialize_missing_spectrogram = pane.plot_type == SPECTROGRAM_PLOT,
             materialize_missing_persistence = pane.plot_type == PERSISTENCE_PLOT,
-            materialize_spectrum_signal_names = analysis_name === nothing ?
-                String[] : String[analysis_name],
+            materialize_spectrum_signal_names = signal_bindings,
         )
         data = signal_analyser_pane_renderer_data(
             prepared,
@@ -1398,6 +1401,7 @@ function signal_display_pane_payload(pane::SignalDisplayPaneState)::Dict{String,
         "name" => pane.name,
         "plot_type" => signal_analyser_plot_name(pane.plot_type),
         "signal_bindings" => signal_display_pane_members(pane),
+        "analysis_signal" => signal_display_pane_analysis_name(pane),
         "peaks_settings" => signal_peaks_settings_payload(pane.peaks_settings),
     )
 end
@@ -1502,11 +1506,8 @@ function signal_analyser_validate_selection_layout_invariants(
             ),
         )
         analysis_name = signal_analyser_display_analysis_name(display)
-        isempty(members) == (analysis_name === nothing) || throw(ArgumentError(
-            "Analysis signal Display $(display.id) должна отсутствовать только при пустом membership",
-        ))
-        analysis_name === nothing || analysis_name in members || throw(ArgumentError(
-            "Analysis signal Display $(display.id) отсутствует в authoritative membership",
+        analysis_name === nothing || analysis_name in known_names || throw(ArgumentError(
+            "Main signal Display $(display.id) отсутствует в authoritative inventory",
         ))
 
         layout = signal_analyser_layout_by_display_id(state, display.id)
@@ -1514,11 +1515,8 @@ function signal_analyser_validate_selection_layout_invariants(
             pane_members = signal_display_pane_members(pane)
             signal_analyser_inventory_ordered_names(state, pane_members)
             pane_analysis = signal_display_pane_analysis_name(pane)
-            isempty(pane_members) == (pane_analysis === nothing) || throw(ArgumentError(
-                "Analysis signal pane $(pane.id) должна отсутствовать только при пустых bindings",
-            ))
-            pane_analysis === nothing || pane_analysis in pane_members || throw(ArgumentError(
-                "Analysis signal pane $(pane.id) отсутствует в authoritative bindings",
+            pane_analysis === nothing || pane_analysis in known_names || throw(ArgumentError(
+                "Main signal pane $(pane.id) отсутствует в authoritative inventory",
             ))
         end
 
@@ -1529,6 +1527,12 @@ function signal_analyser_validate_selection_layout_invariants(
         ))
         active_pane.plot_type == display.active_plot || throw(ArgumentError(
             "Plot type active pane не совпадает с Display $(display.id)",
+        ))
+        isequal(
+            signal_display_pane_analysis_name(active_pane),
+            signal_analyser_display_analysis_name(display),
+        ) || throw(ArgumentError(
+            "Main signal active pane не совпадает с Display $(display.id)",
         ))
     end
 
@@ -2152,13 +2156,9 @@ function signal_display_pane_reconfigured(
     membership = SignalDisplayMembership(signal_bindings)
     members = collect(membership.signal_names)
     current_analysis = signal_display_pane_analysis_name(pane)
-    analysis_name = if isempty(members)
-        nothing
-    elseif current_analysis !== nothing && current_analysis in members
-        current_analysis
-    else
-        first(members)
-    end
+    # Checkbox membership and main signal are independent.  update_pane only
+    # changes graph bindings and therefore never promotes/demotes main signal.
+    analysis_name = current_analysis
     analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
     prospective_members = AnalysedSignal[signal_by_name(state, name) for name in members]
     reconciled_settings = analysis_signal === nothing ? ReconciledSignalAnalysisSettings(
@@ -2198,7 +2198,8 @@ function signal_display_pane_reconfigured(
         reconciled_settings.spectrogram,
         pane.persistence_settings,
         signal_settings_reconcile_stored_for_source(pane.stored_settings, analysis_signal),
-        analysis_signal !== nothing && plot_type in (TIME_PLOT, SPECTRUM_PLOT) && pane.peaks_enabled,
+        analysis_signal !== nothing && !isempty(members) &&
+            plot_type in (TIME_PLOT, SPECTRUM_PLOT) && pane.peaks_enabled,
         pane.peaks_settings,
     )
 end
@@ -4069,11 +4070,14 @@ function signal_analyser_snapshot_unlocked(
     active_display = signal_analyser_active_display(state)
     analysis_name = signal_analyser_display_analysis_name(active_display)
     signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+    visible_names = signal_analyser_visible_signal_names(state)
+    render_signal = isempty(visible_names) ? nothing :
+        signal_by_name(state, first(visible_names))
     prepared_display_plots = signal_analyser_prepare_display_plots(
         state,
         active_display,
-        signal,
-        signal_analyser_visible_signal_names(state),
+        render_signal,
+        visible_names,
         materialize_missing_spectra = materialize_missing_spectra,
         materialize_missing_spectrogram = materialize_missing_spectrogram,
         materialize_missing_persistence = materialize_missing_persistence,
@@ -4777,24 +4781,7 @@ function validate_signal_analyser_view_payload(
     explicit_analysis = has_analysis_signal || has_selected_signal
     explicit_analysis_name = has_analysis_signal ? validated_analysis_signal : validated_selected_signal
     current_analysis_name = signal_analyser_display_analysis_name(display)
-    requested_analysis_name = if isempty(visible_names)
-        explicit_analysis && explicit_analysis_name !== nothing && (field_errors["analysis_signal"] = "Пустой Display не имеет analysis source")
-        nothing
-    elseif explicit_analysis
-        if explicit_analysis_name === nothing
-            field_errors["analysis_signal"] = "Analysis source может быть null только у пустого Display"
-            current_analysis_name in visible_names ? current_analysis_name : first(visible_names)
-        elseif !(explicit_analysis_name in visible_names)
-            field_errors["analysis_signal"] = "Analysis source должен входить в membership Display"
-            current_analysis_name in visible_names ? current_analysis_name : first(visible_names)
-        else
-            explicit_analysis_name
-        end
-    elseif current_analysis_name in visible_names
-        current_analysis_name
-    else
-        first(visible_names)
-    end
+    requested_analysis_name = explicit_analysis ? explicit_analysis_name : current_analysis_name
 
     has_time_limits = signal_analyser_payload_contains(data, "time_limits")
     time_limits_value = signal_analyser_payload_value(data, "time_limits")
@@ -4995,7 +4982,7 @@ function validate_signal_analyser_view_payload(
             field_errors["peaks_enabled"] = "Требуется boolean"
         end
     end
-    if isempty(visible_names)
+    if isempty(visible_names) || requested_analysis_name === nothing
         requested_peaks_enabled = false
     elseif !(requested_plot in (TIME_PLOT, SPECTRUM_PLOT))
         if has_peaks_enabled && requested_peaks_enabled
@@ -5043,10 +5030,12 @@ function signal_analyser_prepare_view_snapshot_unlocked(
     prospective_analysis_name = signal_analyser_display_analysis_name(prospective_display)
     prospective_signal = prospective_analysis_name === nothing ? nothing :
         signal_by_name(state, prospective_analysis_name)
+    render_signal = isempty(prospective_members) ? nothing :
+        signal_by_name(state, first(prospective_members))
     prepared_display_plots = signal_analyser_prepare_display_plots(
         state,
         prospective_display,
-        prospective_signal,
+        render_signal,
         prospective_members,
         materialize_missing_spectra = false,
         materialize_missing_spectrogram = false,

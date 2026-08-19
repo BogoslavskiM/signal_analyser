@@ -40,6 +40,11 @@ session_cache_families(state) = (
     @test all(Set(keys(signal["values"])) == SS.SIGNAL_ANALYSER_SESSION_VALUES_FIELDS for signal in payload["signals"])
     @test payload["signals"][2]["values"] == Dict("real" => [1.0, 3.0, 5.0], "imag" => [2.0, 4.0, 6.0])
     @test all(Set(keys(display)) == SS.SIGNAL_ANALYSER_SESSION_DISPLAY_WITH_LAYOUT_FIELDS for display in payload["displays"])
+    @test all(
+        Set(keys(pane)) == SS.SIGNAL_ANALYSER_SESSION_PANE_FIELDS
+        for display in payload["displays"]
+        for pane in display["layout"]["panes"]
+    )
     @test all(Set(keys(display["stored_settings"])) == SS.SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS for display in payload["displays"])
 end
 

@@ -1601,14 +1601,18 @@
 
   function mainSignalForPane(pane) {
     var signals=model.state && Array.isArray(model.state.signals) ? model.state.signals : [];
-    var selected=model.state && (model.state.row_selected_signal || model.state.selected_signal || model.state.analysis_signal);
+    /* Membership controls graph visibility only.  A pane's persisted analysis
+       source is authoritative even when it is currently unbound/hidden. */
+    var hasPaneMain=!!pane && Object.prototype.hasOwnProperty.call(pane, "analysis_signal");
+    var selected=hasPaneMain ? pane.analysis_signal : model.state && (model.state.selected_signal || model.state.analysis_signal || model.state.row_selected_signal);
     return signals.filter(function (signal) {
       return selected && (signal.name === selected || stableSignalId(signal) === selected);
     })[0] || null;
   }
 
   function selectedSignalName() {
-    return model.state && (model.state.row_selected_signal || model.state.selected_signal || model.state.analysis_signal) || "";
+    var paneMain=mainSignalForPane(paneById(model.activePane));
+    return paneMain ? paneMain.name : "";
   }
 
   function signalNameMatches(signal, name) {
@@ -2068,10 +2072,13 @@
     var signalNames = (model.state.signals || []).map(function (signal) { return signal.name; });
     var everySignalVisible = signalNames.length > 0 && signalNames.every(function (name) { return bindings.indexOf(name) >= 0; });
     head.innerHTML = "<th><input class='ui-checkbox' type='checkbox' data-visible-all-signals aria-label='Показывать все сигналы в активной области'" + (everySignalVisible ? " checked" : "") + "></th>" + renderedColumns.map(function (column) { return "<th>" + column.label + "</th>"; }).join("");
+    /* Legacy snapshot fallback keeps this renderer independently executable;
+       current snapshots replace it with the pane-local authoritative source. */
     var selectedSignal = model.state && (model.state.row_selected_signal || model.state.selected_signal || model.state.analysis_signal);
     var mainSignal = signals.filter(function (signal) {
       return selectedSignal && (signal.name === selectedSignal || signal.id === selectedSignal);
     })[0] || null;
+    if (typeof mainSignalForPane === "function") mainSignal=mainSignalForPane(activePane);
     rows.innerHTML = signals.map(function (signal) {
       var values = { name:esc(signal.name), color:"<span class='color-swatch' data-testid='signal-color-" + esc(signal.name) + "' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signal.name) + "'></span>", sample_rate:esc(signal.sample_rate_hz == null ? "—" : signal.sample_rate_hz), sample_count:esc(signal.sample_count == null ? "—" : signal.sample_count), duration:esc(signal.duration_s == null ? "—" : signal.duration_s), data_type:esc(signal.data_type || "—") };
       var selected = bindings.indexOf(signal.name) >= 0;
