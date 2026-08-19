@@ -2,7 +2,7 @@
 
 status: confirmed  
 stub_authorization: false  
-reported_to_user: false
+reported_to_user: true
 
 ## Environment and public contract
 
