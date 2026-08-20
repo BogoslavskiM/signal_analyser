@@ -3563,7 +3563,7 @@ function default_signal_catalog()::Vector{AnalysedSignal}
     AnalysedSignal[
         AnalysedSignal(
             "Гармонический сигнал",
-            "#000080",
+            "#2563eb",
             sample_rate_hz,
             ComplexF64.(harmonic),
             false,

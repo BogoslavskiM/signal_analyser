@@ -2,9 +2,8 @@
   "use strict";
 
   var palette = [
-    "#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff",
-    "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06",
-    "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"
+    "#2563eb", "#dc2626", "#16a34a", "#9333ea",
+    "#ea580c", "#0891b2", "#ca8a04", "#db2777"
   ];
   var picker = null;
   var trigger = null;
@@ -33,8 +32,8 @@
   }
 
   function swatches() {
-    return palette.map(function (color, index) {
-      var light = index >= 5 && index <= 10;
+    return palette.map(function (color) {
+      var light = color === "#ca8a04";
       return "<button class='signal-color-picker-swatch' type='button' role='option' data-color='" + color + "' data-light='" + light + "' aria-label='Цвет " + color + "' aria-selected='false' style='--palette-color:" + color + "'><img src='" + tickAsset() + "' alt=''></button>";
     }).join("");
   }
@@ -45,8 +44,8 @@
         "<h3 class='signal-color-picker-title' id='signal-color-picker-title'>Цвет сигнала</h3>" +
         "<label class='signal-color-picker-hex-label'><span>HEX</span><span class='signal-color-picker-hex-control'><i class='signal-color-picker-current' aria-hidden='true'></i><input class='signal-color-picker-hex' data-testid='signal-color-picker-hex' maxlength='7' spellcheck='false' autocomplete='off' aria-describedby='signal-color-picker-error'></span></label>" +
         "<p class='signal-color-picker-error' id='signal-color-picker-error' role='alert'></p>" +
-        "<p class='signal-color-picker-section-title'>Палитра Jet</p>" +
-        "<div class='signal-color-picker-palette' role='listbox' aria-label='Палитра Jet'>" + swatches() + "</div>" +
+        "<p class='signal-color-picker-section-title'>Палитра</p>" +
+        "<div class='signal-color-picker-palette' role='listbox' aria-label='Палитра'>" + swatches() + "</div>" +
       "</div>" +
       "<footer class='signal-color-picker-footer'>" +
         "<button class='signal-color-picker-action' type='button' data-color-picker-cancel>Отмена</button>" +

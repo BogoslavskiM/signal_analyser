@@ -6,8 +6,8 @@ module.exports = async function(assert) {
   const html=fs.readFileSync(path.join(root,"public/index.html"),"utf8");
   const settings=fs.readFileSync(path.join(root,"public/js/settings.js"),"utf8");
   assert(!/data-testid="settings-apply"|dataset\.testid === "settings-apply"/.test(html+app),"general settings Apply control and handler must be absent");
-  assert(/data-testid="extrema-values"[^>]*>Рассчитать</.test(html),"the sole footer action must be named Рассчитать");
-  assert(/footer\.hidden = model\.settingsPage !== "peaks"/.test(app),"only Extrema may expose the footer action");
+  assert(/data-testid="signal-values-action"[^>]*>Значения</.test(html) && /data-testid="extrema-values"[^>]*>Рассчитать</.test(html),"Signal Values and Extrema Calculate must be the two contextual footer actions");
+  assert(/footer\.hidden = model\.settingsPage !== "peaks" && model\.settingsPage !== "signal"/.test(app),"only Signal and Extrema may expose a contextual footer action");
   assert(/function scheduleSignalMetadataSave\(\)[\s\S]*?setTimeout[\s\S]*?applySignalMetadata\(\)[\s\S]*?150/.test(app),"Signal metadata must autosave on the shared 150ms cadence");
   assert(/signalSampleRateValidation[\s\S]*?if \(!sampleRate\.valid\)[\s\S]*?return;/.test(app),"invalid visible Signal metadata must not send");
   assert(/function scheduleScreenSettingsApply\(\)[\s\S]*?applySettings\(\)/.test(app) && /dataset\.screenLinkTime[\s\S]*?scheduleScreenSettingsApply/.test(app),"Screen layout/links must autosave through the serialized pipeline");

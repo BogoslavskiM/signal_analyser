@@ -31,9 +31,9 @@ function task0126_bound_state(; peaks_provider = TASK0126.EngeeDSPPeaksProvider(
     state, signal, pane.id
 end
 
-@testset "TASK-0126 summary and Jet palette remain exact" begin
+@testset "TASK-0126 summary and original signal palette remain exact" begin
     signal = TASK0126.AnalysedSignal(
-        "summary-fixture", "#000080", 2.0, ComplexF64[3, -2, 1, 4], false, true,
+        "summary-fixture", "#2563eb", 2.0, ComplexF64[3, -2, 1, 4], false, true,
     )
     state = TASK0126.SignalAnalyserState(
         [signal], TASK0126.SignalAnalyserViewState(11, TASK0126.TIME_PLOT, signal.name),
@@ -64,15 +64,14 @@ end
         "units" => Dict{String,Any}("value" => "1", "time" => "s"),
     )
 
-    jet = [
-        "#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff",
-        "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06",
-        "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000",
+    original_palette = [
+        "#2563eb", "#dc2626", "#16a34a", "#9333ea",
+        "#ea580c", "#0891b2", "#ca8a04", "#db2777",
     ]
     palette = TASK0126.SignalColorPalette()
-    @test collect(palette.colors) == jet
-    @test TASK0126.default_signal_catalog()[1].color == first(jet)
-    @test TASK0126.signal_palette_next_color(palette, Set([first(jet)]), 2, first(jet)) == jet[2]
+    @test collect(palette.colors) == original_palette
+    @test TASK0126.default_signal_catalog()[1].color == first(original_palette)
+    @test TASK0126.signal_palette_next_color(palette, Set([first(original_palette)]), 2, first(original_palette)) == original_palette[2]
 end
 
 @testset "TASK-0126 pane/display names are output-neutral and warmup binds a valid main" begin

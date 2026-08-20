@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var jetPalette = ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"];
+  var signalPalette = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04", "#db2777"];
   var summaryFields = [
     ["sample_count", "Отсчёты"], ["data_type", "Тип"], ["duration", "Длительность"],
     ["region_start", "Начало области"], ["region_end", "Конец области"],
@@ -58,7 +58,7 @@
   }
 
   window.SignalAnalyserTask0126 = {
-    jetPalette:jetPalette.slice(),
+    signalPalette:signalPalette.slice(),
     summaryFields:summaryFields.slice(),
     decorateNoHistory:decorateNoHistory,
     projectCanonical:projectCanonical,
@@ -167,7 +167,7 @@
   function signalColor(signal) {
     if (signal && typeof signal.color === "string" && signal.color) return signal.color;
     var signals=model.state && Array.isArray(model.state.signals) ? model.state.signals : [], index=Math.max(0, signals.indexOf(signal));
-    var palette=task0126 && task0126.jetPalette || ["#000080"];
+    var palette=task0126 && task0126.signalPalette || ["#2563eb"];
     return palette[index % palette.length];
   }
   function boundedApply(promise, timeoutMs) {
@@ -1850,7 +1850,7 @@
     var d=editor.draft, rate=signalSampleRateValidation(d.sample_rate_hz), disabled=editor.applying ? " disabled" : "", s=(editor.summary && editor.summary.summary) || editor.summary || {}, metrics=signalSummaryMetrics(pane, signal, s);
     var noHistory=" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'";
     var mainBody="<label class='settings-field-row'><span class='settings-label'>Имя</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='name'"+noHistory+" value='"+esc(d.name)+"'"+disabled+"></span></label><label class='settings-field-row'><span class='settings-label'>Цвет</span><span class='settings-control-wrap color-field'><button class='color-swatch-button' type='button' data-signal-color-trigger aria-label='Цвет сигнала'"+disabled+"><i style='--signal-color:"+esc(d.color)+"'></i></button><input class='control' data-signal-metadata='color' data-signal-color-input"+noHistory+" value='"+esc(d.color)+"'"+disabled+"></span></label><label class='settings-field-row"+(rate.error ? " has-error" : "")+"' data-signal-metadata-row='sample_rate_hz'><span class='settings-label'>Дискретизация, Гц</span><span class='settings-control-wrap'><input class='control' type='text' data-signal-metadata='sample_rate_hz' inputmode='decimal'"+noHistory+" value='"+esc(d.sample_rate_hz)+"' aria-invalid='"+String(!!rate.error)+"'"+disabled+"></span><small class='field-message is-error' data-signal-metadata-error='sample_rate_hz'"+(rate.error ? "" : " hidden")+">"+esc(rate.error)+"</small></label>";
-    var summaryBody="<div class='summary-grid'>"+metrics.map(function (item) { return "<div class='summary-item'><span>"+item[0]+"</span><strong>"+esc(item[1] == null ? "—" : item[1])+"</strong></div>"; }).join("")+"</div><button class='button summary-action' type='button' data-testid='signal-values-action'>Значения</button>"+(editor.loading ? "<p class='status-note info'>Загрузка сводки…</p>" : editor.error ? "<p class='status-note error'>"+esc(editor.error)+"</p>" : "");
+    var summaryBody="<div class='summary-grid'>"+metrics.map(function (item) { return "<div class='summary-item'><span>"+item[0]+"</span><strong>"+esc(item[1] == null ? "—" : item[1])+"</strong></div>"; }).join("")+"</div>"+(editor.loading ? "<p class='status-note info'>Загрузка сводки…</p>" : editor.error ? "<p class='status-note error'>"+esc(editor.error)+"</p>" : "");
     host.innerHTML=signalSettingsGroup(editor, "main", "Основное", mainBody) + signalSettingsGroup(editor, "summary", "Сводка", summaryBody);
     decorateNoHistory(host);
   }
@@ -2249,8 +2249,18 @@
     var footer = q("[data-testid='settings-footer']");
     var status = q("[data-settings-status]");
     var values = q("[data-testid='extrema-values']");
+    var signalValues = q("[data-testid='signal-values-action']");
     if (!footer || !status || !values) return;
-    footer.hidden = model.settingsPage !== "peaks";
+    footer.hidden = model.settingsPage !== "peaks" && model.settingsPage !== "signal";
+    if (model.settingsPage === "signal") {
+      values.hidden = true;
+      if (signalValues) { signalValues.hidden = false; signalValues.disabled = !mainSignalForPane(paneById(model.activePane)); }
+      footer.removeAttribute("aria-busy");
+      footer.dataset.applyState = "pristine";
+      status.classList.add("visually-hidden");
+      return;
+    }
+    if (signalValues) signalValues.hidden = true;
     if (model.settingsPage === "peaks") return renderPeaksApply(footer, values, status);
     values.hidden = true;
     footer.removeAttribute("aria-busy");
@@ -3828,13 +3838,13 @@
 
 (function registerSignalColorPicker(window, document) {
   "use strict";
-  var palette = ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"];
+  var palette = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04", "#db2777"];
   var picker = null, trigger = null, sourceInput = null, initialColor = "#2166df", busy = false;
   function normalize(value) { var raw = String(value || "").trim(); if (/^#[0-9a-f]{6}$/i.test(raw)) return raw.toLowerCase(); if (/^[0-9a-f]{6}$/i.test(raw)) return ("#" + raw).toLowerCase(); return ""; }
   function tickAsset() { var base = window.SignalAnalyserUIBase || (window.SignalAnalyserUIDesign && window.SignalAnalyserUIDesign.assetBase) || "."; return String(base).replace(/\/$/, "") + "/icons/tick-figma.svg"; }
   function colorFrom(control, input) { var direct = normalize(input && input.value); if (direct) return direct; var chip = control && control.querySelector("i"); return normalize(chip && (chip.style.getPropertyValue("--signal-color") || chip.style.backgroundColor)) || "#2166df"; }
-  function swatches() { return palette.map(function (color, index) { var light = index >= 5 && index <= 10; return "<button class='signal-color-picker-swatch' type='button' role='option' data-color='" + color + "' data-light='" + light + "' aria-label='Цвет " + color + "' aria-selected='false' style='--palette-color:" + color + "'><img src='" + tickAsset() + "' alt=''></button>"; }).join(""); }
-  function markup() { return "<section class='signal-color-picker' role='dialog' aria-modal='false' aria-labelledby='signal-color-picker-title' data-testid='signal-color-picker' data-invalid='false' data-busy='false' hidden><div class='signal-color-picker-body'><h3 class='signal-color-picker-title' id='signal-color-picker-title'>Цвет сигнала</h3><label class='signal-color-picker-hex-label'><span>HEX</span><span class='signal-color-picker-hex-control'><i class='signal-color-picker-current' aria-hidden='true'></i><input class='signal-color-picker-hex' data-testid='signal-color-picker-hex' maxlength='7' spellcheck='false' autocomplete='off' aria-describedby='signal-color-picker-error'></span></label><p class='signal-color-picker-error' id='signal-color-picker-error' role='alert'></p><p class='signal-color-picker-section-title'>Палитра Jet</p><div class='signal-color-picker-palette' role='listbox' aria-label='Палитра Jet'>" + swatches() + "</div></div><footer class='signal-color-picker-footer'><button class='signal-color-picker-action' type='button' data-color-picker-cancel>Отмена</button><button class='signal-color-picker-action is-primary' type='button' data-color-picker-apply data-testid='signal-color-picker-apply'>Применить</button></footer></section>"; }
+  function swatches() { return palette.map(function (color) { var light = color === "#ca8a04"; return "<button class='signal-color-picker-swatch' type='button' role='option' data-color='" + color + "' data-light='" + light + "' aria-label='Цвет " + color + "' aria-selected='false' style='--palette-color:" + color + "'><img src='" + tickAsset() + "' alt=''></button>"; }).join(""); }
+  function markup() { return "<section class='signal-color-picker' role='dialog' aria-modal='false' aria-labelledby='signal-color-picker-title' data-testid='signal-color-picker' data-invalid='false' data-busy='false' hidden><div class='signal-color-picker-body'><h3 class='signal-color-picker-title' id='signal-color-picker-title'>Цвет сигнала</h3><label class='signal-color-picker-hex-label'><span>HEX</span><span class='signal-color-picker-hex-control'><i class='signal-color-picker-current' aria-hidden='true'></i><input class='signal-color-picker-hex' data-testid='signal-color-picker-hex' maxlength='7' spellcheck='false' autocomplete='off' aria-describedby='signal-color-picker-error'></span></label><p class='signal-color-picker-error' id='signal-color-picker-error' role='alert'></p><p class='signal-color-picker-section-title'>Палитра</p><div class='signal-color-picker-palette' role='listbox' aria-label='Палитра'>" + swatches() + "</div></div><footer class='signal-color-picker-footer'><button class='signal-color-picker-action' type='button' data-color-picker-cancel>Отмена</button><button class='signal-color-picker-action is-primary' type='button' data-color-picker-apply data-testid='signal-color-picker-apply'>Применить</button></footer></section>"; }
   function ensure() { if (!picker) { document.body.insertAdjacentHTML("beforeend", markup()); picker = document.querySelector("[data-testid='signal-color-picker']"); } return picker; }
   function provider() { return window.SignalColorPickerProvider || {}; }
   function preview(color, source) { picker.style.setProperty("--draft-color", color || initialColor); var chip = trigger && trigger.querySelector("i"); if (chip) { chip.style.background = color || initialColor; chip.style.setProperty("--signal-color", color || initialColor); } if (typeof provider().preview === "function") provider().preview({ color:color || initialColor, source:source || "picker" }); }

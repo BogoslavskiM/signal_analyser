@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 34
+design_version: 35
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -19,7 +19,7 @@ prototype_baseline:
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
   pinned_hashes: evidence/production-baseline-v32.json
   walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json]
-  result: "Inherited 35/35; v34 adds complete Summary, deterministic Values focus/loading, optimistic names, unit projection, Jet identity and checkbox continuity without visual redesign"
+  result: "Inherited contracts; v35 restores the original eight-color identity, makes Summary one column and moves Values to the contextual settings footer"
 
 # There is intentionally no whole-file production copy in v34. Production
 # already owns the application document, boot sequence, UI modules and Plotly
@@ -105,7 +105,7 @@ additive_fragments:
     target: public/js/app.js
     mode: integrate_named_helpers_and_contracts_into_existing_renderers
     content_changes_allowed: false
-    marker: "TASK-0126 complete Summary, unit projection, Jet identity and checkbox continuity"
+    marker: "TASK-0126 complete Summary, unit projection, color identity and checkbox continuity; v35 palette override applies"
     scope: [summary_inventory, input_history_opt_out, selected_unit_projection, exact_jet_palette, stable_busy_checkboxes, effective_extrema_viewport]
     prototype_bridge_not_transferable: prototype/task-0126-interaction-bridge.js
 
@@ -125,8 +125,8 @@ integration_hosts:
     selector: "[data-settings-content][data-testid='settings-content']"
     integration: "public/js/app.js and public/js/settings.js render only the active page into the existing content owner."
   settings_autosave:
-    selector: "[data-settings-content], [data-testid='settings-footer'] [data-testid='extrema-values']"
-    integration: "Signal/Area/Screen changes autosave through one revision-safe queue; footer is hidden outside Extrema and its sole action is Рассчитать."
+    selector: "[data-settings-content], [data-testid='settings-footer']"
+    integration: "Signal/Area/Screen changes autosave through one revision-safe queue; the contextual footer shows Значения for Signal and Рассчитать for Extrema."
   inspector_tabs:
     selector: ".inspector-tabs"
     integration: "public/js/app.js automatically ensures/rebinds one sample tab keyed by stable main-signal id and preloads page 1; Values only selects/focuses it."
@@ -178,13 +178,13 @@ integration_seams:
     host: "[data-settings-content]"
     replacement_forbidden: true
   - id: complete-signal-summary
-    action_interface: "render sample count/type/duration plus region start/end, min and position, max and position, mean, median, range and RMS regardless of Measurements column visibility"
+    action_interface: "render one vertical column with sample count/type/duration plus region start/end, min and position, max and position, mean, median, range and RMS regardless of Measurements column visibility; Values is owned by the settings footer"
     production_consumers: [public/js/app.js]
     production_providers: [public/js/api.js]
     host: "[data-signal-settings-group='summary']"
     replacement_forbidden: true
   - id: signal-color-draft
-    action_interface: "open HEX + exact 15 Jet swatches; preview nested draft; popover Apply updates Signal page draft; Cancel/Escape/outside restore opening color"
+    action_interface: "open HEX + exact original eight swatches; preview nested draft; popover Apply updates Signal page draft; Cancel/Escape/outside restore opening color"
     production_consumers: [public/js/app.js]
     host: "document.body + [data-settings-content]"
     direct_api_call_forbidden: true
@@ -215,11 +215,11 @@ integration_seams:
     production_consumers: [public/js/app.js, public/js/settings.js]
     host: "[data-setting-id$='limits'][data-range-part]"
     replacement_forbidden: true
-  - id: exact-jet-default-colors
-    provider_interface: "automatic signal colors cycle only through the exact 15 values exposed by SignalColorPickerUI.palette"
+  - id: original-default-colors
+    provider_interface: "automatic signal colors cycle only through the restored eight values exposed by SignalColorPickerUI.palette"
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
-    palette: ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"]
+    palette: ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04", "#db2777"]
   - id: checkbox-mutation-continuity
     action_interface: "retain visible signal/catalog rows and checkbox nodes plus checked state while pending; set disabled and aria-busy in place"
     production_consumers: [public/js/app.js]

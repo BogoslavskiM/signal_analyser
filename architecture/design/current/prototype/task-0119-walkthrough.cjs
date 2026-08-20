@@ -64,20 +64,20 @@ async function shot(page, name) { const file=path.join(screenshots, name); await
   await page.waitForSelector("[data-testid='signal-color-picker']:not([hidden])");
   const colorSource=page.locator("[data-signal-metadata='color']");
   const colorOpening=await colorSource.inputValue();
-  await page.getByTestId("signal-color-picker").locator("[data-color='#ff7300']").click();
+  await page.getByTestId("signal-color-picker").locator("[data-color='#ea580c']").click();
   await check("04-jet-color-picker-draft-and-apply", async () => {
     const picker=page.getByTestId("signal-color-picker");
     const geometry=await picker.evaluate(node => ({ width:node.getBoundingClientRect().width, text:node.innerText, swatches:node.querySelectorAll("[data-color]").length }));
     assert(geometry.width === 284 && geometry.swatches === 15, JSON.stringify(geometry));
-    assert(geometry.text.includes("Палитра Jet") && !/Цветовая схема|Линия|Маркер|Заливка|Интерполяция/.test(geometry.text), geometry.text);
+    assert(geometry.text.includes("Палитра") && !/Цветовая схема|Линия|Маркер|Заливка|Интерполяция/.test(geometry.text), geometry.text);
     const exact=await page.evaluate(() => window.SignalColorPickerUI.palette);
-    assert(JSON.stringify(exact) === JSON.stringify(["#000080","#0000d1","#0010ff","#0058ff","#00a4ff","#06ecf1","#40ffb7","#7dff7a","#b7ff40","#f1fc06","#ffb900","#ff7300","#ff3000","#d10000","#800000"]), JSON.stringify(exact));
+    assert(JSON.stringify(exact) === JSON.stringify(["#2563eb","#dc2626","#16a34a","#9333ea","#ea580c","#0891b2","#ca8a04","#db2777"]), JSON.stringify(exact));
     const source=colorSource;
     assert(await source.inputValue() === colorOpening, "Palette click committed before popover Apply");
-    assert(await picker.locator("[data-color='#ff7300']").getAttribute("aria-selected") === "true", "Jet draft tick missing");
+    assert(await picker.locator("[data-color='#ea580c']").getAttribute("aria-selected") === "true", "palette draft tick missing");
     await page.getByTestId("signal-color-picker-apply").click();
     await page.waitForFunction(() => document.querySelector("[data-testid='signal-color-picker']").hidden);
-    assert(await source.inputValue() === "#ff7300", "Popover Apply did not update Signal draft");
+    assert(await source.inputValue() === "#ea580c", "Popover Apply did not update Signal draft");
   }, await shot(page, "v32--jet-color-picker--1440x900.png"));
 
   await page.getByTestId("inspector-tab-signals").click();

@@ -35,13 +35,14 @@ module.exports = async function task0119SignalFlowStatic(assert) {
   assert(/label class='operation-overwrite-control'[\s\S]*?<span class='checkbox-control'><input type='checkbox' data-signal-operation-overwrite/.test(app), "operation overwrite must expose a standalone checkbox control");
   assert(/\.operation-overwrite-control \{[^}]*min-height:\s*32px[^}]*display:\s*inline-flex[^}]*align-items:\s*center/.test(css), "operation overwrite must retain a full aligned control row");
 
-  // The compact picker is deliberately a Signal-draft editor: exact Jet
+  // The compact picker is deliberately a Signal-draft editor: original
   // palette, no extra chart controls, and no metadata API until normal Apply.
-  const jet = ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"];
+  const palette = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04", "#db2777"];
   const picker = (app.match(/\(function registerSignalColorPicker[\s\S]*?\}\(window, document\)\);/) || [""])[0];
-  assert(jet.every((color) => picker.includes(`"${color}"`)), "picker must contain the exact fifteen-color Jet palette");
-  assert((picker.match(/#[0-9a-f]{6}/gi) || []).filter((color) => jet.includes(color.toLowerCase())).length === 15, "picker must not duplicate or omit a Jet swatch");
-  assert(/data-testid='signal-color-picker'[\s\S]*?Палитра Jet[\s\S]*?data-color-picker-cancel[\s\S]*?data-color-picker-apply/.test(picker), "picker must expose compact Jet palette plus Cancel/Apply actions");
+  const pickerPalette = (picker.match(/var palette = \[[^\]]+\]/) || [""])[0];
+  assert(palette.every((color) => picker.includes(`"${color}"`)), "picker must contain the exact original signal palette");
+  assert((pickerPalette.match(/#[0-9a-f]{6}/gi) || []).filter((color) => palette.includes(color.toLowerCase())).length === palette.length, "picker must not duplicate or omit an original palette swatch");
+  assert(/data-testid='signal-color-picker'[\s\S]*?>Палитра<[\s\S]*?data-color-picker-cancel[\s\S]*?data-color-picker-apply/.test(picker), "picker must expose the compact original palette plus Cancel/Apply actions");
   assert(/width:\s*var\(--signal-color-picker-width\)/.test(css) && /--signal-color-picker-width:\s*284px/.test(css), "picker width must remain the approved 284px");
   assert(/function close\(commit\)[\s\S]*?if \(!commit\) \{ preview\(initialColor, "cancel"\)/.test(picker), "Cancel must restore the pre-open draft color");
   assert(/function commit\(\)[\s\S]*?sourceInput\.value = color; sourceInput\.dispatchEvent\(new Event\("input", \{ bubbles:true \}\)\)/.test(picker), "picker Apply must update only the existing Signal draft through its normal input seam");

@@ -287,21 +287,14 @@ struct SignalColorPalette
 end
 
 SignalColorPalette() = SignalColorPalette([
-    "#000080",
-    "#0000d1",
-    "#0010ff",
-    "#0058ff",
-    "#00a4ff",
-    "#06ecf1",
-    "#40ffb7",
-    "#7dff7a",
-    "#b7ff40",
-    "#f1fc06",
-    "#ffb900",
-    "#ff7300",
-    "#ff3000",
-    "#d10000",
-    "#800000",
+    "#2563eb",
+    "#dc2626",
+    "#16a34a",
+    "#9333ea",
+    "#ea580c",
+    "#0891b2",
+    "#ca8a04",
+    "#db2777",
 ])
 
 function signal_palette_next_color(

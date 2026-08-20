@@ -4,8 +4,8 @@
 
 .summary-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
   padding: 0 8px 8px 28px;
 }
 
@@ -26,8 +26,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
-.summary-action { margin: 4px 8px 8px 28px; }
 
 .color-field {
   display: grid;

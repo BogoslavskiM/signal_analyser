@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var jetPalette = ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"];
+  var signalPalette = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04", "#db2777"];
   var summaryFields = [
     ["sample_count", "Отсчёты"], ["data_type", "Тип"], ["duration", "Длительность"],
     ["region_start", "Начало области"], ["region_end", "Конец области"],
@@ -58,7 +58,7 @@
   }
 
   window.SignalAnalyserTask0126 = {
-    jetPalette:jetPalette.slice(),
+    signalPalette:signalPalette.slice(),
     summaryFields:summaryFields.slice(),
     decorateNoHistory:decorateNoHistory,
     projectCanonical:projectCanonical,

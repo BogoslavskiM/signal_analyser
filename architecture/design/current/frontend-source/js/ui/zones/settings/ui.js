@@ -24,7 +24,7 @@
       ["Максимум", s.maximum], ["Время максимума", s.maximumTime],
       ["Среднее", s.mean], ["Медиана", s.median], ["Размах", s.peakToPeak], ["СКЗ", s.rms]
     ];
-    var summary = "<div class='summary-grid'>" + summaryMetrics.map(function (metric) { return "<div class='summary-item' data-signal-summary-key='" + esc(metric[0]) + "'><span>" + esc(metric[0]) + "</span><strong>" + esc(metric[1] == null ? "—" : metric[1]) + "</strong></div>"; }).join("") + "</div><button class='ui-button summary-action' type='button' data-testid='signal-values-action'>Значения</button>";
+    var summary = "<div class='summary-grid'>" + summaryMetrics.map(function (metric) { return "<div class='summary-item' data-signal-summary-key='" + esc(metric[0]) + "'><span>" + esc(metric[0]) + "</span><strong>" + esc(metric[1] == null ? "—" : metric[1]) + "</strong></div>"; }).join("") + "</div>";
     return group("signal-main", "Основное", main) + group("signal-summary", "Сводка", summary);
   }
   function areaPage(state, pane) {
@@ -66,8 +66,9 @@
     else if (state.settingsPage === "display") content.innerHTML = areaPage(state, pane);
     else if (state.settingsPage === "screen") content.innerHTML = screenPage(state, display);
     else content.innerHTML = peaksPage();
+    document.querySelector("[data-testid='signal-values-action']").hidden = state.settingsPage !== "signal";
     document.querySelector("[data-testid='extrema-values']").hidden = state.settingsPage !== "peaks";
-    document.querySelector("[data-testid='settings-footer']").hidden = state.settingsPage !== "peaks";
+    document.querySelector("[data-testid='settings-footer']").hidden = state.settingsPage !== "peaks" && state.settingsPage !== "signal";
     document.querySelector("[data-testid='settings-panel']").dataset.applyState = state.dirty ? "dirty" : "pristine";
   }
   window.SignalAnalyserZones = window.SignalAnalyserZones || {};

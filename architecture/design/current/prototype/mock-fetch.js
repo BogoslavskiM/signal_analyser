@@ -21,9 +21,9 @@
   var activeDisplayId = "display-1";
   var mainSignalName = "radarPulse";
   var signals = [
-    { id:"signal-radar", name:"radarPulse", color:"#0058ff", sample_rate_hz:1000000, sample_count:400000, duration_s:0.399999, data_type:"Вещественный", is_complex:false, visible:true },
-    { id:"signal-echo", name:"echoComplex", color:"#ff3000", sample_rate_hz:1000000, sample_count:348000, duration_s:0.347999, data_type:"Комплексный", is_complex:true, visible:true },
-    { id:"signal-noise", name:"noiseFloor", color:"#40ffb7", sample_rate_hz:1000000, sample_count:400000, duration_s:0.399999, data_type:"Вещественный", is_complex:false, visible:false }
+    { id:"signal-radar", name:"radarPulse", color:"#2563eb", sample_rate_hz:1000000, sample_count:400000, duration_s:0.399999, data_type:"Вещественный", is_complex:false, visible:true },
+    { id:"signal-echo", name:"echoComplex", color:"#dc2626", sample_rate_hz:1000000, sample_count:348000, duration_s:0.347999, data_type:"Комплексный", is_complex:true, visible:true },
+    { id:"signal-noise", name:"noiseFloor", color:"#16a34a", sample_rate_hz:1000000, sample_count:400000, duration_s:0.399999, data_type:"Вещественный", is_complex:false, visible:false }
   ];
   var links = { time:false, amplitude:false, frequency:true, magnitude:false };
 
@@ -111,8 +111,8 @@
       b.push(-112 + 74 * Math.exp(-Math.pow((f-368)/45, 2)) + 2*Math.cos(index/6));
     }
     var data=[
-      { type:"scatter", mode:"lines", name:"radarPulse", x:x, y:a, line:{ color:"#0058ff", width:2 } },
-      { type:"scatter", mode:"lines", name:"echoComplex", x:x, y:b, line:{ color:"#ff3000", width:2 } }
+      { type:"scatter", mode:"lines", name:"radarPulse", x:x, y:a, line:{ color:"#2563eb", width:2 } },
+      { type:"scatter", mode:"lines", name:"echoComplex", x:x, y:b, line:{ color:"#dc2626", width:2 } }
     ];
     var bindings=Array.isArray(pane && pane.signal_bindings) ? pane.signal_bindings : [];
     return { data:data.filter(function (trace) { return bindings.indexOf(trace.name) >= 0; }), layout:{ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", margin:{ l:58, r:22, t:24, b:56 }, xaxis:{ title:{ text:"Частота, кГц" }, range:[0,500], rangeslider:{ visible:true } }, yaxis:{ title:{ text:"Магнитуда, dB" }, range:[-120,0] }, legend:{ x:0.98, y:0.98, xanchor:"right", yanchor:"top", bgcolor:"rgba(255,255,255,0.88)" }, showlegend:true }, config:{ displayModeBar:false } };
@@ -120,7 +120,7 @@
   function timeEnvelope(pane) {
     var x=[], y=[];
     for (var index=0; index<=160; index++) { x.push(index*0.0025); y.push(Math.sin(index*0.48)*Math.exp(-index/520)); }
-    var data=[{ type:"scatter", mode:"lines", name:"radarPulse", x:x, y:y, line:{ color:"#0058ff", width:2 } }];
+    var data=[{ type:"scatter", mode:"lines", name:"radarPulse", x:x, y:y, line:{ color:"#2563eb", width:2 } }];
     var bindings=Array.isArray(pane && pane.signal_bindings) ? pane.signal_bindings : [];
     return { data:data.filter(function (trace) { return bindings.indexOf(trace.name) >= 0; }), layout:{ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", margin:{ l:55, r:22, t:24, b:52 }, xaxis:{ title:{ text:"Время, мс" }, range:[0,0.4], rangeslider:{ visible:true } }, yaxis:{ title:{ text:"Амплитуда" }, range:[-1.1,1.1] }, showlegend:true }, config:{ displayModeBar:false } };
   }
@@ -138,9 +138,9 @@
       state_revision:revision, calculation_revision:calculationRevision, display_id:activeDisplayId, pane_id:paneId, context_key:"prototype-peaks-"+paneId,
       isready:true, success:true,
       data:{ settings:{ mode:"maxima", number_of_peaks:5, maximum_cutoff:null, minimum_cutoff:null, minimum_distance_samples:1, threshold:0 }, signals:[{ name:"radarPulse", ordinate:"magnitude" }], rows:[
-        { row_number:1, signal_name:"radarPulse", signal_color:"#0058ff", type:"maximum", value:-3.18, frequency:184.2, frequency_hz:184200, graph_number:1 },
-        { row_number:2, signal_name:"radarPulse", signal_color:"#0058ff", type:"maximum", value:-18.42, frequency:368.4, frequency_hz:368400, graph_number:2 },
-        { row_number:3, signal_name:"echoComplex", signal_color:"#ff3000", type:"maximum", value:-24.1, frequency:452.7, frequency_hz:452700, graph_number:3 }
+        { row_number:1, signal_name:"radarPulse", signal_color:"#2563eb", type:"maximum", value:-3.18, frequency:184.2, frequency_hz:184200, graph_number:1 },
+        { row_number:2, signal_name:"radarPulse", signal_color:"#2563eb", type:"maximum", value:-18.42, frequency:368.4, frequency_hz:368400, graph_number:2 },
+        { row_number:3, signal_name:"echoComplex", signal_color:"#dc2626", type:"maximum", value:-24.1, frequency:452.7, frequency_hz:452700, graph_number:3 }
       ] }
     };
   }
@@ -249,9 +249,9 @@
     for (var index=0; index<=4; index++) { var gx=pad.l+plotWidth*index/4, gy=pad.t+plotHeight*index/4; grid+="<path d='M"+gx+" "+pad.t+"V"+(pad.t+plotHeight)+" M"+pad.l+" "+gy+"H"+(pad.l+plotWidth)+"'/>"; }
     var lines=traces.filter(function (trace) { return !trace.meta || !trace.meta.signal_analyser_peaks_overlay; }).map(function (trace) {
       var points=(trace.x || []).map(function (x, index) { return px(x).toFixed(2)+","+py((trace.y || [])[index]).toFixed(2); }).join(" ");
-      return "<polyline points='"+points+"' fill='none' stroke='"+((trace.line && trace.line.color) || "#0058ff")+"' stroke-width='2' vector-effect='non-scaling-stroke'/>";
+      return "<polyline points='"+points+"' fill='none' stroke='"+((trace.line && trace.line.color) || "#2563eb")+"' stroke-width='2' vector-effect='non-scaling-stroke'/>";
     }).join("");
-    var markers=traces.filter(function (trace) { return trace.meta && trace.meta.signal_analyser_peaks_overlay; }).map(function (trace) { return (trace.x || []).map(function (x,index) { return "<g transform='translate("+px(x)+" "+py((trace.y || [])[index])+")'><path d='M0 -7 L7 5 L-7 5 Z' fill='"+((trace.marker && trace.marker.color) || "#0058ff")+"'/><text y='-10' text-anchor='middle' font-size='11'>"+((trace.text || [])[index] || "")+"</text></g>"; }).join(""); }).join("");
+    var markers=traces.filter(function (trace) { return trace.meta && trace.meta.signal_analyser_peaks_overlay; }).map(function (trace) { return (trace.x || []).map(function (x,index) { return "<g transform='translate("+px(x)+" "+py((trace.y || [])[index])+")'><path d='M0 -7 L7 5 L-7 5 Z' fill='"+((trace.marker && trace.marker.color) || "#2563eb")+"'/><text y='-10' text-anchor='middle' font-size='11'>"+((trace.text || [])[index] || "")+"</text></g>"; }).join(""); }).join("");
     host.innerHTML="<svg class='prototype-plot-svg' viewBox='0 0 "+width+" "+height+"' width='100%' height='100%' aria-label='Локальный макет графика'><g stroke='#e5e8eb' stroke-width='1'>"+grid+"</g><path d='M"+pad.l+" "+pad.t+"V"+(pad.t+plotHeight)+"H"+(pad.l+plotWidth)+"' fill='none' stroke='#61676c'/>"+lines+markers+"<text x='"+(pad.l+plotWidth/2)+"' y='"+(height-12)+"' text-anchor='middle' font-size='13' fill='#3a3d40'>"+((layout.xaxis && layout.xaxis.title && layout.xaxis.title.text) || "X")+"</text><text transform='translate(16 "+(pad.t+plotHeight/2)+") rotate(-90)' text-anchor='middle' font-size='13' fill='#3a3d40'>"+((layout.yaxis && layout.yaxis.title && layout.yaxis.title.text) || "Y")+"</text></svg>";
   }
   window.Plotly={

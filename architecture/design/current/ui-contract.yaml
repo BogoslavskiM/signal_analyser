@@ -1,5 +1,5 @@
 schema_version: 1
-design_version: 34
+design_version: 35
 status: ready
 application_spec: ../../application-spec.yaml
 design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126]
@@ -189,12 +189,12 @@ settings_tabs:
       - id: signal-summary
         label: "Сводка"
         disclosure: {component: settings-group, initial: expanded, user_collapsible: true, state_owner: active_signal_editor}
+        layout: {columns: 1, direction: vertical}
         authored_by: backend
         values: [sample_count, data_type, duration, region_start, region_end, minimum, minimum_position, maximum, maximum_position, mean, median, peak_to_peak, rms]
         value_labels: {sample_count: "Отсчёты", data_type: "Тип", duration: "Длительность", region_start: "Начало области", region_end: "Конец области", minimum: "Минимум", minimum_position: "Время минимума", maximum: "Максимум", maximum_position: "Время максимума", mean: "Среднее", median: "Медиана", peak_to_peak: "Размах", rms: "СКЗ"}
         completeness: "independent of Measurements table column visibility; hidden measurement columns remain present in Summary"
-        actions:
-          - {id: signal-values, label: "Значения", type: text_button, testid: signal-values-action}
+        actions: []
   - id: display
     order: 2
     label: "Область"
@@ -315,8 +315,8 @@ components:
     attributes: {autocomplete: off, spellcheck: false, autocapitalize: off, autocorrect: off, semantic_name_attribute: absent}
     browser_profile_suggestions: forbidden
 
-  jet-signal-colors:
-    palette: ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"]
+  signal-colors:
+    palette: ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04", "#db2777"]
     default_assignment: "Every automatically assigned signal color is selected from this exact ordered palette; no default color outside this list."
     picker_identity: "The color picker exposes the same exact ordered values, byte-for-byte and case-normalized."
 
@@ -407,11 +407,11 @@ dialogs:
     figma_node: "1779:11344"
     fields:
       - {id: hex, label: "HEX", type: text, format: "#RRGGBB"}
-      - {id: jet-palette, label: "Палитра Jet", type: swatch_grid, swatches: ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"]}
+      - {id: signal-palette, label: "Палитра", type: swatch_grid, swatches: ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04", "#db2777"]}
     omitted: [palette_scheme_dropdown, line, marker, fill, interpolation]
     actions: [cancel, apply_to_signal_page_draft]
     states: [closed, open, hover, selected_draft, invalid_hex, busy]
-    figma_deviation: "Figma Parula palette is replaced by exactly 15 Jet swatches by explicit user request."
+    figma_deviation: "Palette contents use the restored original eight Signal Analyser colors by explicit user request."
   - id: signal-operation
     trigger: "row operation button adjacent to duplicate"
     testid: signal-operation-dialog
@@ -440,7 +440,7 @@ dialogs:
 
 elements:
   - {id: extrema-calculate, zone: display-settings, type: primary_button, label: "Рассчитать", testid: extrema-values, visibility: extrema_only, states: [default, hover, pressed, focus_visible, busy, disabled_invalid]}
-  - {id: signal-values, zone: display-settings, type: button, label: "Значения", testid: signal-values-action, states: [default, hover, pressed, focus_visible]}
+  - {id: signal-values, zone: display-settings-footer, type: button, label: "Значения", testid: signal-values-action, visibility: signal_only, states: [default, hover, pressed, focus_visible]}
   - {id: pane-frequency-slider, zone: plot-workspace, type: dual_thumb_slider, label: "Слайдер частоты", testid: pane-frequency-slider, states: [default, hover, drag, focus_visible]}
   - {id: pane-magnitude-slider, zone: plot-workspace, type: dual_thumb_slider, label: "Слайдер магнитуды", testid: pane-magnitude-slider, states: [default, hover, drag, focus_visible]}
   - {id: pane-menu-frequency-slider, zone: plot-workspace, type: menuitemcheckbox, label: "Слайдер частоты", selector: "[data-plot-range-slider]", states: [default, hover, checked, disabled, focus_visible]}
@@ -489,7 +489,7 @@ interactions:
     seam: signal-samples-provider
   - id: signal-color-draft
     trigger: {element: signal-color-trigger, action: click}
-    visible_result: "284px HEX + 15 Jet popover; selection previews nested draft and Apply updates only the Signal page draft"
+    visible_result: "284px HEX + original eight-color palette popover; selection previews nested draft and Apply updates only the Signal page draft"
     seam: signal-color-draft
   - id: signal-sample-rate-edit
     trigger: {element: signal-sample-rate, action: input_then_autosave}
@@ -618,7 +618,7 @@ integration_seams:
     production_consumer: public/js/app.js
     host: "[data-settings-content]"
   - id: signal-color-draft
-    ui_contract: "HEX/15 Jet nested draft; popover Apply updates Signal editor draft only; Cancel/Escape/outside restore opening color"
+    ui_contract: "HEX/original eight-color nested draft; popover Apply updates Signal editor draft only; Cancel/Escape/outside restore opening color"
     mock_provider: "frontend-source/integration/js/task-0118-color-picker.js plus prototype/task-0119-interaction-bridge.js"
     production_consumer: public/js/app.js
     host: "document.body + [data-settings-content]"
