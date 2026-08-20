@@ -63,7 +63,12 @@
         body: JSON.stringify(payload),
       });
     },
-    workspaceVariables: function (refresh) { return request("./api/workspace/variables" + (refresh ? "?refresh=true" : ""), { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" }); },
+    workspaceVariables: function () {
+      return request("./api/workspace/variables", {
+        headers: { Accept: "application/json", "Cache-Control": "no-store", Pragma: "no-cache" },
+        cache: "no-store"
+      });
+    },
     view: function (payload) {
       return request("./api/view", {
         method: "POST",

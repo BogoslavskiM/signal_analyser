@@ -19,7 +19,7 @@
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
-    signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false, signalAddSearch:"", signalAddSelection:{}, signalAddCatalogError:"", signalAddCachedOpen:false, signalAddResetScroll:false,
+    signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false, signalAddSearch:"", signalAddSelection:{}, signalAddCatalogError:"", signalAddResetScroll:false,
     paneMenuTrigger: null, graphHelpRestoreTarget: null, paneClearContext: null,
     sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
@@ -2652,20 +2652,20 @@
     if (model.signalAddResetScroll) { list.scrollTop = 0; model.signalAddResetScroll = false; }
     if (count) count.textContent = variables.length + (catalog && catalog.truncated && !search ? " из " + catalog.total : "") + " переменных";
     state.hidden = false;
-    state.textContent = catalog && catalog.truncated && !search ? "Показаны первые 1000 совместимых переменных" : (model.signalAddCachedOpen ? "Каталог открыт из кеша" : "Только совместимые переменные");
+    state.textContent = catalog && catalog.truncated && !search ? "Показаны первые 1000 совместимых переменных" : "Только совместимые переменные";
     updateSignalAddControls();
   }
 
-  function loadSignalAddCatalog(refresh) {
+  function loadSignalAddCatalog() {
     var token = ++model.signalAddToken;
+    model.signalAddCatalog = null;
     model.signalAddCatalogError = "";
     model.signalAddLoading = true;
     renderSignalAddCatalog();
-    return api.workspaceVariables(!!refresh).then(function (catalog) {
+    return api.workspaceVariables().then(function (catalog) {
       if (token !== model.signalAddToken) return;
       model.signalAddLoading = false;
       model.signalAddCatalog = catalog;
-      model.signalAddCachedOpen = false;
       model.signalAddResetScroll = true;
       if (signalAddLayer() && !signalAddLayer().hidden) renderSignalAddCatalog();
     }).catch(function (caught) {
@@ -2674,11 +2674,6 @@
       model.signalAddCatalogError = safeErrorText(caught, "Не удалось получить переменные рабочей области.");
       if (signalAddLayer() && !signalAddLayer().hidden) renderSignalAddCatalog();
     });
-  }
-
-  function signalAddCatalogFresh() {
-    var expires = model.signalAddCatalog && Date.parse(model.signalAddCatalog.expires_at || "");
-    return !!(expires && expires > Date.now());
   }
 
   function openSignalAddDialog(trigger) {
@@ -2697,8 +2692,7 @@
     var rate = layer.querySelector("[data-signal-add-sample-rate]");
     if (rate) rate.value = "2048";
     layer.querySelector("[data-signal-add-submit]").textContent = "Добавить";
-    if (signalAddCatalogFresh()) { model.signalAddCachedOpen = true; renderSignalAddCatalog(); }
-    else { model.signalAddCachedOpen = false; loadSignalAddCatalog(false); }
+    loadSignalAddCatalog();
     layer.querySelector("#signal-add-title").focus();
   }
 
@@ -2713,6 +2707,9 @@
       if (restoreFocus) trigger.focus();
     }
     model.signalAddTrigger = null;
+    ++model.signalAddToken;
+    model.signalAddCatalog = null;
+    model.signalAddCatalogError = "";
     model.signalAddLoading = false;
     model.signalAddSubmitting = false;
   }
@@ -3263,7 +3260,7 @@
     if (button.dataset.testid === "settings-apply") return void (model.settingsPage === "peaks" ? applyPeaksSettings() : model.settingsPage === "signal" ? applySignalMetadata() : applySettings());
     if (button.dataset.testid === "signals-add-action") return void openSignalAddDialog(button);
     if (button.dataset.signalAddClose !== undefined || button.dataset.signalAddCancel !== undefined) return void closeSignalAddDialog(true);
-    if (button.dataset.signalAddRetry !== undefined) return void loadSignalAddCatalog(true);
+    if (button.dataset.signalAddRetry !== undefined) return void loadSignalAddCatalog();
     if (button.dataset.signalAddSubmit !== undefined) return void submitSignalAddDialog();
     if (button.dataset.signalDelete) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "delete", signal_name: button.dataset.signalDelete }); });
     if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });

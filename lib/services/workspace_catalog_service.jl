@@ -302,17 +302,12 @@ function workspace_catalog_snapshot(
     end
 end
 
-function latest_workspace_catalog!(
+function load_workspace_catalog!(
     service::WorkspaceCatalogService;
     now::Dates.DateTime = Dates.now(Dates.UTC),
-    refresh::Bool = false,
     catalog_revision::AbstractString = workspace_catalog_revision(),
 )::WorkspaceCatalogSnapshot
     lock(service.lock) do
-        service.registry = workspace_catalog_registry_prune(service.registry, now)
-        if !refresh && !isempty(service.registry.snapshots)
-            return last(service.registry.snapshots)
-        end
         enumeration = workspace_catalog_enumeration(service)
         snapshot = workspace_catalog_snapshot(
             enumeration;
@@ -322,19 +317,6 @@ function latest_workspace_catalog!(
         service.registry = workspace_catalog_registry_store(service.registry, snapshot, now)
         snapshot
     end
-end
-
-function load_workspace_catalog!(
-    service::WorkspaceCatalogService;
-    now::Dates.DateTime = Dates.now(Dates.UTC),
-    catalog_revision::AbstractString = workspace_catalog_revision(),
-)::WorkspaceCatalogSnapshot
-    latest_workspace_catalog!(
-        service;
-        now = now,
-        refresh = true,
-        catalog_revision = catalog_revision,
-    )
 end
 
 function fresh_workspace_catalog_enumeration(
