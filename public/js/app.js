@@ -2975,7 +2975,7 @@
     return ensureMembership.then(function () {
       if (alreadySelected) return null;
       return mutate(function () {
-        return api.view({ state_revision:model.revision, row_selected_signal:signalName });
+        return api.view({ state_revision:model.revision, row_selected_signal:signalName, analysis_signal:signalName });
       }, { preservePlots:true });
     }).then(function (snapshot) {
       syncSignalSamplesWithMain(false);
