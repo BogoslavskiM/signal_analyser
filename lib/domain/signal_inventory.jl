@@ -130,9 +130,9 @@ struct UpdateSignalMetadataCommand <: AbstractSignalInventoryCommand
         sample_rate_hz::Real,
     )
         revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
-        id = strip(String(signal_id))
+        id = String(strip(String(signal_id)))
         isempty(id) && throw(ArgumentError("Signal id не может быть пустым"))
-        signal_name = strip(String(name))
+        signal_name = String(strip(String(name)))
         isempty(signal_name) && throw(ArgumentError("Имя сигнала не может быть пустым"))
         ncodeunits(signal_name) <= 128 || throw(ArgumentError(
             "Имя сигнала не может быть длиннее 128 байт",

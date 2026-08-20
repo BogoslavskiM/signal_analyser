@@ -24,7 +24,7 @@
     sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
     signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
-    signalMembershipBusy: false,
+    signalMembershipBusy: false, pendingMainSignal: "",
     signalSamples: { signalId:"", signalName:"", rows:[], nextCursor:null, total:0, loading:false, error:"", token:0 },
     signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }
   };
@@ -1899,12 +1899,10 @@
     var reader = model.settingsPage === "screen" && typeof settings.screenValue === "function" ? settings.screenValue : settings.value;
     if (typeof reader !== "function") return;
     var current = reader(fieldId);
-    var domain = screenRangeDomain(axis, draft);
-    if (!row || !current || !domain || !(domain[0] < domain[1])) return;
-    var tolerance = Math.max(Math.abs(domain[1]-domain[0]) * 1.0e-9, Number.EPSILON);
+    if (!row || !current) return;
     var minimum = row.querySelector("[data-range-part='min']"), maximum = row.querySelector("[data-range-part='max']");
-    if (minimum && (current.min == null || Math.abs(Number(current.min)-domain[0]) <= tolerance)) minimum.value = "";
-    if (maximum && (current.max == null || Math.abs(Number(current.max)-domain[1]) <= tolerance)) maximum.value = "";
+    if (minimum && current.min == null) minimum.value = "";
+    if (maximum && current.max == null) maximum.value = "";
   }
 
   function keepVisibleAutomaticRangeInputsEmpty(draft) {
@@ -2084,7 +2082,7 @@
       var selected = bindings.indexOf(signal.name) >= 0;
       var main = !!mainSignal && mainSignal.name === signal.name;
       var signalId = typeof signal.id === "string" && signal.id.trim() ? signal.id : null;
-      var actions = "<span class='signal-row-actions'><button type='button' class='signal-row-action' data-signal-duplicate='" + esc(signal.name) + "' data-testid='signal-duplicate-" + esc(signal.name) + "' aria-label='Копировать " + esc(signal.name) + "'><img src='./icons/copy.svg' alt=''></button><button type='button' class='signal-row-action'" + (signalId ? " data-signal-operation='" + esc(signalId) + "'" : " disabled") + " data-testid='signal-operation-" + esc(signal.name) + "' aria-label='Операция над " + esc(signal.name) + "'><img src='./icons/function.svg' alt=''></button><button type='button' class='signal-row-action is-danger' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "' aria-label='Удалить " + esc(signal.name) + "'><img src='./icons/trash.svg' alt=''></button></span>";
+      var actions = "<span class='signal-row-actions" + (model.pendingMainSignal === signal.name ? " is-pinned" : "") + "'><button type='button' class='signal-row-action' data-signal-duplicate='" + esc(signal.name) + "' data-testid='signal-duplicate-" + esc(signal.name) + "' aria-label='Копировать " + esc(signal.name) + "'><img src='./icons/copy.svg' alt=''></button><button type='button' class='signal-row-action'" + (signalId ? " data-signal-operation='" + esc(signalId) + "'" : " disabled") + " data-testid='signal-operation-" + esc(signal.name) + "' aria-label='Операция над " + esc(signal.name) + "'><img src='./icons/function.svg' alt=''></button><button type='button' class='signal-row-action is-danger' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "' aria-label='Удалить " + esc(signal.name) + "'><img src='./icons/trash.svg' alt=''></button></span>";
       var cells = renderedColumns.map(function (column, index) {
         var last = index === renderedColumns.length - 1;
         var classes = (column.id === "color" ? "color-cell " : "") + (last ? "is-actions-host" : "");
@@ -2954,33 +2952,46 @@
     if ((checked && index >= 0) || (!checked && index < 0)) return Promise.resolve(null);
 
     model.signalMembershipBusy = true;
-    renderInspector();
-    return postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:pane.plot_type, signal_bindings:bindings }).catch(function (error) {
+    var accepted = false;
+    return postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:pane.plot_type, signal_bindings:bindings }).then(function (snapshot) {
+      accepted = true;
+      return snapshot;
+    }).catch(function (error) {
       showToast(safeErrorText(error, "Не удалось обновить состав области."), true);
       if (options && options.rethrow) throw error;
       return null;
     }).finally(function () {
       model.signalMembershipBusy = false;
-      renderInspector();
+      if (!accepted) renderInspector();
     });
   }
 
   function setActivePaneMainSignal(signalName) {
     var pane = paneById(model.activePane);
-    if (!pane || model.signalMembershipBusy) return Promise.resolve(null);
+    if (!pane) return Promise.resolve(null);
     var bindings = Array.isArray(pane.signal_bindings) ? pane.signal_bindings : [];
     var alreadySelected = selectedSignalName() === signalName;
     if (alreadySelected && bindings.indexOf(signalName) >= 0) return Promise.resolve(null);
-    var ensureMembership = bindings.indexOf(signalName) >= 0 ? Promise.resolve(null) : setActivePaneSignalMembership(signalName, true, { rethrow:true });
-    return ensureMembership.then(function () {
-      if (alreadySelected) return null;
-      return mutate(function () {
-        return api.view({ state_revision:model.revision, row_selected_signal:signalName, analysis_signal:signalName });
-      }, { preservePlots:true });
-    }).then(function (snapshot) {
+    model.pendingMainSignal = signalName;
+    renderInspector();
+    return mutate(function () {
+      var currentPane = paneById(model.activePane);
+      if (!currentPane) {
+        var error = new Error("Контекст области изменился; повторите действие.");
+        error.code = "pane_context_changed";
+        return Promise.reject(error);
+      }
+      var visibleSignals = Array.isArray(currentPane.signal_bindings) ? currentPane.signal_bindings.slice() : [];
+      if (visibleSignals.indexOf(signalName) < 0) visibleSignals.push(signalName);
+      return api.view({ state_revision:model.revision, row_selected_signal:signalName, analysis_signal:signalName, visible_signals:visibleSignals });
+    }, { preservePlots:true }).then(function (snapshot) {
       syncSignalSamplesWithMain(false);
+      model.pendingMainSignal = "";
+      renderInspector();
       return snapshot;
     }).catch(function (error) {
+      model.pendingMainSignal = "";
+      renderInspector();
       showToast(safeErrorText(error, "Не удалось выбрать основной сигнал."), true);
       return null;
     });
@@ -3052,7 +3063,7 @@
       if (!activeDisplay() || activeDisplay().id !== displayId) throw new Error("Контекст экрана изменился; повторите действие.");
       return persistLayoutLinks(draft);
     }).then(function () {
-      return Promise.all([settings.flush(), settings.flushFields(linkIds.concat(limitIds))]);
+      return settings.flush();
     }).then(function () {
       return needsSettingsApply ? applyLatest(0) : null;
     }).then(function (response) {
@@ -3210,8 +3221,22 @@
     if (!editor || !editor.signalId || !editor.draft || !button || editor.applying) return;
     var sampleRate=signalSampleRateValidation(editor.draft.sample_rate_hz);
     if (!sampleRate.valid) { showToast(sampleRate.error, true); return; }
+    var draft=editor.draft;
     editor.applying=true; renderSettings(activeDisplay()); renderApply();
-    api.updateSignalMetadata({ state_revision:model.revision, operation:"update_metadata", signal_id:editor.signalId, name:editor.draft.name, color:editor.draft.color, sample_rate_hz:sampleRate.value }).then(function (response) { var snapshot=response && (response.state || response); if (snapshot && snapshot.displays) accept(snapshot); editor.dirty=false; editor.applying=false; render(); }).catch(function (error) { editor.applying=false; showToast(safeErrorText(error, "Не удалось обновить сигнал."), true); renderSettings(activeDisplay()); renderApply(); });
+    mutate(function () {
+      return api.updateSignalMetadata({ state_revision:model.revision, operation:"update_metadata", signal_id:editor.signalId, name:draft.name, color:draft.color, sample_rate_hz:sampleRate.value });
+    }, { preservePlots:true, skipSettings:true }).then(function () {
+      if (model.signalEditor !== editor) return;
+      editor.dirty=false;
+      editor.applying=false;
+      render();
+    }).catch(function (error) {
+      if (model.signalEditor !== editor) return;
+      editor.applying=false;
+      showToast(safeErrorText(error, "Не удалось обновить сигнал."), true);
+      renderSettings(activeDisplay());
+      renderApply();
+    });
   }
 
   document.addEventListener("click", function (event) {

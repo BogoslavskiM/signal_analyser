@@ -10,11 +10,10 @@ module.exports = async function task0122MainSignalClickStatic(assert) {
   const membership = (app.match(/function setActivePaneSignalMembership\(signalName, checked, options\)[\s\S]*?\n  \}/) || [""])[0];
   const mutate = (app.match(/function mutate\(call, options\)[\s\S]*?\n  \}/) || [""])[0];
 
-  // Plain LMB selects the row's signal as main. If it is unbound, membership
-  // completes first; if it is already bound, the view call is immediate.
-  assert(/var pane = paneById\(model\.activePane\);[\s\S]*?var bindings = Array\.isArray\(pane\.signal_bindings\) \? pane\.signal_bindings : \[\];/.test(main), "row selection must derive membership from the active pane only");
-  assert(/var ensureMembership = bindings\.indexOf\(signalName\) >= 0 \? Promise\.resolve\(null\) : setActivePaneSignalMembership\(signalName, true, \{ rethrow:true \}\);[\s\S]*?return ensureMembership\.then/.test(main), "an unbound row must be added before main selection, while an already-bound row avoids a membership mutation");
-  assert(/api\.view\(\{ state_revision:model\.revision, row_selected_signal:signalName, analysis_signal:signalName \}\)/.test(main), "main selection must submit the target atomically as state revision, row selection and pane analysis signal");
+  // Plain LMB owns both main selection and membership in a single retryable
+  // view mutation; bindings are recomputed inside the callback on every retry.
+  assert(/mutate\(function \(\) \{[\s\S]*?var currentPane = paneById\(model\.activePane\);[\s\S]*?var visibleSignals = Array\.isArray\(currentPane\.signal_bindings\) \? currentPane\.signal_bindings\.slice\(\) : \[\];[\s\S]*?if \(visibleSignals\.indexOf\(signalName\) < 0\) visibleSignals\.push\(signalName\);[\s\S]*?api\.view\(\{ state_revision:model\.revision, row_selected_signal:signalName, analysis_signal:signalName, visible_signals:visibleSignals \}\)/.test(main), "row main switch must send main and recomputed visible signals in one atomic view mutation");
+  assert(!/setActivePaneSignalMembership|postLayout/.test(main), "plain row must not split an unbound signal into a membership/layout request");
   assert(/\}, \{ preservePlots:true \}\)[\s\S]*?syncSignalSamplesWithMain\(false\)/.test(main), "only the accepted main-selection path may refresh pane-local main state and its sample-tab lifecycle");
 
   // Checkbox controls remain intentionally separate: they alter one active

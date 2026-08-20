@@ -21,7 +21,10 @@ module.exports = async function task0116SignalFocusStatic(assert) {
   // A plain row click makes the clicked signal main and ensures membership ON.
   // It must never invert an existing checkbox. A checkbox click changes only
   // membership/visibility and must never update the selected main signal.
-  assert(/function setActivePaneMainSignal\(signalName\)[\s\S]*?var ensureMembership = bindings\.indexOf\(signalName\) >= 0 \? Promise\.resolve\(null\) : setActivePaneSignalMembership\(signalName, true, \{ rethrow:true \}\);[\s\S]*?api\.view\(\{ state_revision:model\.revision, row_selected_signal:signalName, analysis_signal:signalName \}\)/.test(app), "plain-row main selection must first ensure membership ON, then persist both authoritative main-signal fields");
+  const mainStart = app.indexOf("function setActivePaneMainSignal(");
+  const mainBody = app.slice(mainStart, app.indexOf("\n  function focusAreaSettings(", mainStart));
+  assert(/mutate\(function \(\) \{[\s\S]*?var currentPane = paneById\(model\.activePane\);[\s\S]*?var visibleSignals = Array\.isArray\(currentPane\.signal_bindings\) \? currentPane\.signal_bindings\.slice\(\) : \[\];[\s\S]*?if \(visibleSignals\.indexOf\(signalName\) < 0\) visibleSignals\.push\(signalName\);[\s\S]*?api\.view\(\{ state_revision:model\.revision, row_selected_signal:signalName, analysis_signal:signalName, visible_signals:visibleSignals \}\)/.test(mainBody), "plain-row selection must atomically recompute active-pane membership and persist all main/visible fields through one view mutation");
+  assert(!/setActivePaneSignalMembership|postLayout/.test(mainBody), "plain-row selection must not split membership into a second layout mutation");
   assert(/function setActivePaneSignalMembership\(signalName, checked, options\)[\s\S]*?postLayout\(\{ operation:"update_pane", pane_id:pane\.id, plot_type:pane\.plot_type, signal_bindings:bindings \}\)[\s\S]*?finally/.test(app), "checkbox membership must update only active-pane bindings and release its busy lock");
   const membershipStart = app.indexOf("function setActivePaneSignalMembership(");
   const membershipBody = app.slice(membershipStart, app.indexOf("\n  function setActivePaneMainSignal(", membershipStart));

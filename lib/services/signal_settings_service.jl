@@ -949,6 +949,25 @@ function signal_settings_field_value(
     if field_id == "pane.name"
         layout = signal_analyser_layout_by_display_id(state, display.id)
         return signal_display_active_pane(layout).name
+    elseif field_id == "time.x_limits"
+        limits = display.time_limits
+        full = signal_settings_full_time_range(state, display)
+        if display.stored_settings.time.link_time
+            layout = signal_analyser_layout_by_display_id(state, display.id)
+            source = signal_settings_screen_source_pane(layout, (TIME_PLOT, SPECTROGRAM_PLOT))
+            if source !== nothing
+                limits = signal_settings_screen_time_limits(
+                    state,
+                    display,
+                    source::SignalDisplayPaneState,
+                )
+            end
+        end
+        return signal_settings_time_limits_wire_value(
+            limits,
+            full,
+            display.stored_settings.time.units,
+        )
     end
     signal_settings_field_value(service, display, field_id)
 end
@@ -1070,13 +1089,18 @@ function signal_settings_document_unlocked(
         unit_entry === nothing || (unit_entry.value isa SignalTimeUnitPreference &&
             (screen_time_unit = unit_entry.value))
     end
-    screen_time_factor = signal_seconds_per_time_unit(
-        screen_time_unit,
-        time_source.time_limits === nothing ? 1.0 : time_source.time_limits.max_s,
+    screen_runtime_time_limits = signal_settings_screen_time_limits(
+        state,
+        projected_display,
+        time_source,
     )
-    screen_time_limits = time_source.time_limits === nothing ? nothing : Dict{String,Any}(
-        "min" => time_source.time_limits.min_s / screen_time_factor,
-        "max" => time_source.time_limits.max_s / screen_time_factor,
+    screen_full_time_limits = projected_display.stored_settings.time.link_time ?
+        signal_settings_full_time_range(state, projected_display) :
+        signal_settings_full_time_range(state, SignalDisplayPaneState[time_source])
+    screen_time_limits = signal_settings_time_limits_wire_value(
+        screen_runtime_time_limits,
+        screen_full_time_limits,
+        screen_time_unit,
     )
     screen_frequency_unit = spectrum_source.stored_settings.spectrum.frequency_units
     if draft !== nothing
@@ -2434,7 +2458,20 @@ function signal_settings_draft_domain_command(
     )
         draft_range = entry.value::SignalSettingDraftRange
         if entry.field_id == "time.x_limits"
-            full = signal_settings_full_time_range(state, display)
+            draft = signal_settings_display_draft_unlocked(
+                service,
+                state,
+                display.id;
+                create = false,
+            )
+            link_entry = draft === nothing ? nothing : get(
+                (draft::SignalSettingsDisplayDraft).entries,
+                "time.link_time",
+                nothing,
+            )
+            linked = link_entry === nothing ? display.stored_settings.time.link_time :
+                (link_entry::SignalSettingDraftEntry).value::Bool
+            full = signal_settings_full_time_range(state, display; linked = linked)
             factor = signal_seconds_per_time_unit(display.stored_settings.time.units, full.max_s)
             wire_value = Dict{String,Any}(
                 "min" => (draft_range.minimum === nothing ? full.min_s : draft_range.minimum * factor),
@@ -2493,17 +2530,71 @@ end
 
 function signal_settings_full_time_range(
     state::SignalAnalyserState,
-    display::SignalAnalyserDisplayState,
+    panes::AbstractVector{SignalDisplayPaneState},
 )::SignalTimeLimits
-    panes = signal_settings_axis_panes(
-        state, display, (TIME_PLOT, SPECTROGRAM_PLOT), display.stored_settings.time.link_time,
-    )
     durations = Float64[
         signal_duration_s(signal_by_name(state, name))
         for pane in panes for name in pane.membership.signal_names
     ]
     isempty(durations) && return SignalTimeLimits(0.0, 1.0)
     SignalTimeLimits(0.0, maximum(durations))
+end
+
+function signal_settings_full_time_range(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    ;
+    linked::Bool = display.stored_settings.time.link_time,
+)::SignalTimeLimits
+    panes = signal_settings_axis_panes(
+        state, display, (TIME_PLOT, SPECTROGRAM_PLOT), linked,
+    )
+    signal_settings_full_time_range(state, panes)
+end
+
+function signal_settings_time_bound_is_automatic(value::Float64, boundary::Float64)::Bool
+    scale = max(abs(boundary), floatmin(Float64))
+    isapprox(
+        value,
+        boundary;
+        rtol = 8 * eps(Float64),
+        atol = 8 * eps(scale),
+    )
+end
+
+function signal_settings_time_limits_wire_value(
+    limits::Union{Nothing,SignalTimeLimits},
+    full::SignalTimeLimits,
+    unit::SignalTimeUnitPreference,
+)
+    limits === nothing && return nothing
+    typed = limits::SignalTimeLimits
+    automatic_minimum = signal_settings_time_bound_is_automatic(typed.min_s, full.min_s)
+    automatic_maximum = signal_settings_time_bound_is_automatic(typed.max_s, full.max_s)
+    automatic_minimum && automatic_maximum && return nothing
+    factor = signal_seconds_per_time_unit(unit, typed.max_s)
+    Dict{String,Any}(
+        "min" => automatic_minimum ? nothing : typed.min_s / factor,
+        "max" => automatic_maximum ? nothing : typed.max_s / factor,
+    )
+end
+
+function signal_settings_screen_time_limits(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    source::SignalDisplayPaneState,
+)::Union{Nothing,SignalTimeLimits}
+    limits = source.time_limits
+    limits === nothing && return nothing
+    display.stored_settings.time.link_time || return limits
+    source_full = signal_settings_full_time_range(state, SignalDisplayPaneState[source])
+    linked_full = signal_settings_full_time_range(state, display; linked = true)
+    typed = limits::SignalTimeLimits
+    minimum = signal_settings_time_bound_is_automatic(typed.min_s, source_full.min_s) ?
+        linked_full.min_s : typed.min_s
+    maximum = signal_settings_time_bound_is_automatic(typed.max_s, source_full.max_s) ?
+        linked_full.max_s : typed.max_s
+    SignalTimeLimits(minimum, maximum)
 end
 
 function signal_settings_full_amplitude_range(
@@ -3160,7 +3251,11 @@ function signal_settings_apply_screen_axes_unlocked!(
             signal_settings_full_time_range(state, prospective) : prospective.time_limits
     ) :
         time_source === nothing ? prospective.time_limits :
-        (time_source::SignalDisplayPaneState).time_limits
+        signal_settings_screen_time_limits(
+            state,
+            prospective,
+            time_source::SignalDisplayPaneState,
+        )
     y_limits = haskey(entries, "time.y_limits") ? (
         entries["time.y_limits"].value === nothing ?
             signal_settings_full_amplitude_range(state, prospective) :

@@ -629,7 +629,7 @@ function parse_signal_inventory_command(data)::AbstractSignalInventoryCommand
         signal_id === nothing && (field_errors["signal_id"] = "Требуется непустая строка")
         name_value = signal_analyser_payload_value(data, "name")
         name = name_value isa AbstractString && !isempty(strip(String(name_value))) ?
-            strip(String(name_value)) : nothing
+            String(strip(String(name_value))) : nothing
         name === nothing && (field_errors["name"] = "Требуется непустая строка")
         color_value = signal_analyser_payload_value(data, "color")
         color = color_value isa AbstractString &&

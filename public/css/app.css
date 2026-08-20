@@ -1884,7 +1884,8 @@ body.is-resizing-workspace * {
 }
 
 .signal-table tbody tr:hover .signal-row-actions,
-.signal-table tbody tr:focus-within .signal-row-actions {
+.signal-table tbody tr:focus-within .signal-row-actions,
+.signal-row-actions.is-pinned {
   opacity: 1;
   pointer-events: auto;
 }
