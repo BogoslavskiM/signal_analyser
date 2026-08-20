@@ -15,5 +15,5 @@ module.exports = async function task0120PaneMainStatic(assert) {
   const inspector = (app.match(/function renderInspector\(\)[\s\S]*?\n  \}\n\n  function measurementValue/) || [""])[0];
   assert(/var activePane = paneById\(model\.activePane\);[\s\S]*?if \(typeof mainSignalForPane === "function"\) mainSignal=mainSignalForPane\(activePane\);/.test(inspector), "signal table main-row paint must consume the active pane source rather than global visibility selection");
   assert(/var selected = bindings\.indexOf\(signal\.name\) >= 0;[\s\S]*?var main = !!mainSignal && mainSignal\.name === signal\.name;/.test(inspector), "graph checkbox membership and blue main-row identity must remain independent");
-  assert(/syncSignalSamplesWithMain\(false\)/.test(inspector), "sample tab lifecycle must follow pane-local main even while it is hidden from graph bindings");
+  assert(/syncSignalSamplesWithMain\(\)/.test(inspector), "sample tab lifecycle must follow pane-local main even while it is hidden from graph bindings");
 };

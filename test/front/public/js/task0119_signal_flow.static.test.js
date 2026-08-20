@@ -16,9 +16,9 @@ module.exports = async function task0119SignalFlowStatic(assert) {
   // The main signal owns a stable values tab without requiring the Values
   // button. Its removal is reserved for an absent main signal, not an empty
   // page or a checkbox visibility change.
-  assert(/function syncSignalSamplesWithMain\(openInspector\)[\s\S]*?if \(!signal\) \{[\s\S]*?tab\.remove\(\)[\s\S]*?model\.inspectorPage === "samples"[\s\S]*?model\.inspectorPage="signals"/.test(app), "sample tab must disappear only when there is no main signal");
+  assert(/function syncSignalSamplesWithMain\(\)[\s\S]*?if \(!signal \|\| !signalId\) \{[\s\S]*?tab\.remove\(\)[\s\S]*?model\.inspectorPage === "samples"[\s\S]*?model\.inspectorPage="signals"/.test(app), "sample tab must disappear when there is no valid stable main signal");
   assert(/if \(!tab\) \{ tab=document\.createElement\("button"\)[\s\S]*?tab\.dataset\.bottomTab="samples"[\s\S]*?tab\.textContent=signal\.name/.test(app), "a main signal must create and name the stable sample tab automatically");
-  assert(/renderInspector\(\)[\s\S]*?syncSignalSamplesWithMain\(false\)/.test(app), "ordinary inspector renders must keep the sample tab synchronized without Values");
+  assert(/renderInspector\(\)[\s\S]*?syncSignalSamplesWithMain\(\)/.test(app), "ordinary inspector renders must keep the sample tab synchronized without Values");
   assert(/data-testid='samples-table-scroll'[\s\S]*?<th>№ точки<\/th><th>Время<\/th><th>Значение<\/th><th>Модуль<\/th><th>Квадрат<\/th>[\s\S]*?state\.rows\.map/.test(app), "selected sample tab must visibly render all five columns and received rows");
   assert(/if \(!state\.rows\.length && !state\.loading\) loadSignalSamples\(\)/.test(app), "an empty main-signal page must request its first page rather than remain blank");
 
@@ -50,5 +50,5 @@ module.exports = async function task0119SignalFlowStatic(assert) {
   // Extrema surfaces are intentionally limited to Time and Spectrum; the
   // area settings page itself stays available for every plot kind.
   assert(/function extremaTabsAvailable\(pane\)[\s\S]*?\["time", "spectrum"\]/.test(app), "Extrema must be available for Time and Spectrum only");
-  assert(/function contextTabAvailable\(page, pane\) \{\s*return page === "signal" \? !!mainSignalForPane\(pane\) : page !== "peaks" \|\| extremaTabsAvailable\(pane\);/.test(app), "only Extrema tabs may disappear for Spectrogram; Area/Screen remain available and Signal follows main signal");
+  assert(/function contextTabAvailable\(page, pane\) \{[\s\S]*?page === "signal" \? !!signal : page === "samples" \? !!stableSignalId\(signal\) : page !== "peaks" \|\| extremaTabsAvailable\(pane\);/.test(app), "Signal follows resolved main while samples additionally requires its stable id; only Extrema may disappear for Spectrogram");
 };

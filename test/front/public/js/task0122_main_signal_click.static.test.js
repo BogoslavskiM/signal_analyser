@@ -14,7 +14,7 @@ module.exports = async function task0122MainSignalClickStatic(assert) {
   // view mutation; bindings are recomputed inside the callback on every retry.
   assert(/mutate\(function \(\) \{[\s\S]*?var currentPane = paneById\(model\.activePane\);[\s\S]*?var visibleSignals = Array\.isArray\(currentPane\.signal_bindings\) \? currentPane\.signal_bindings\.slice\(\) : \[\];[\s\S]*?if \(visibleSignals\.indexOf\(signalName\) < 0\) visibleSignals\.push\(signalName\);[\s\S]*?api\.view\(\{ state_revision:model\.revision, row_selected_signal:signalName, analysis_signal:signalName, visible_signals:visibleSignals \}\)/.test(main), "row main switch must send main and recomputed visible signals in one atomic view mutation");
   assert(!/setActivePaneSignalMembership|postLayout/.test(main), "plain row must not split an unbound signal into a membership/layout request");
-  assert(/\}, \{ preservePlots:true \}\)[\s\S]*?syncSignalSamplesWithMain\(false\)/.test(main), "only the accepted main-selection path may refresh pane-local main state and its sample-tab lifecycle");
+  assert(/\}, \{ preservePlots:true \}\)[\s\S]*?syncSignalSamplesWithMain\(\)/.test(main), "only the accepted main-selection path may refresh pane-local main state and its sample-tab lifecycle");
 
   // Checkbox controls remain intentionally separate: they alter one active
   // pane binding via the layout API and cannot select a main signal.

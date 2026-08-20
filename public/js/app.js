@@ -1592,7 +1592,8 @@
   }
 
   function contextTabAvailable(page, pane) {
-    return page === "signal" ? !!mainSignalForPane(pane) : page !== "peaks" || extremaTabsAvailable(pane);
+    var signal=mainSignalForPane(pane);
+    return page === "signal" ? !!signal : page === "samples" ? !!stableSignalId(signal) : page !== "peaks" || extremaTabsAvailable(pane);
   }
 
   function stableSignalId(signal) {
@@ -1662,8 +1663,11 @@
   }
 
   function showSignalSamples() {
-    syncSignalSamplesWithMain(true);
+    if (!syncSignalSamplesWithMain()) return;
+    model.inspectorPage="samples";
     renderInspector();
+    var tab=q("[data-bottom-tab='samples']");
+    if (tab) tab.focus();
   }
 
   function signalSampleRateValidation(raw) {
@@ -1682,22 +1686,20 @@
     return validation;
   }
 
-  function syncSignalSamplesWithMain(openInspector) {
+  function syncSignalSamplesWithMain() {
     var signal=mainSignalForPane(paneById(model.activePane)), tabs=q(".inspector-tabs"), tab=q("[data-bottom-tab='samples']");
-    if (!signal) {
+    var signalId=stableSignalId(signal);
+    if (!signal || !signalId) {
       if (tab) tab.remove();
       if (model.inspectorPage === "samples") model.inspectorPage="signals";
       model.signalSamples={ signalId:"", signalName:"", rows:[], nextCursor:null, total:0, loading:false, error:"", token:(model.signalSamples.token || 0) + 1 };
       return false;
     }
     if (!tabs) return false;
-    var signalId=stableSignalId(signal);
-    if (!signalId) return false;
     var state=model.signalSamples;
     if (state.signalId !== signalId) state=model.signalSamples={ signalId:signalId, signalName:signal.name, rows:[], nextCursor:null, total:0, loading:false, error:"", token:0 };
     if (!tab) { tab=document.createElement("button"); tab.type="button"; tab.setAttribute("role", "tab"); tab.dataset.bottomTab="samples"; tab.dataset.testid="inspector-tab-samples"; tab.setAttribute("data-testid", "inspector-tab-samples"); tabs.appendChild(tab); }
     tab.textContent=signal.name;
-    if (openInspector) { model.inspectorPage="samples"; renderInspector(); tab.focus(); }
     if (state.error) return true;
     if (!state.rows.length && !state.loading) loadSignalSamples();
     return true;
@@ -1716,6 +1718,8 @@
 
   function renderSignalSamplesInspector(body) {
     var state=model.signalSamples;
+    if (!state.signalId) { body.innerHTML="<div class='table-empty' role='status'>Выберите основной сигнал.</div>"; return; }
+    if (!state.rows.length && !state.loading && !state.error) { loadSignalSamples(); return; }
     body.innerHTML="<div class='signal-table-scroll' data-testid='samples-table-scroll'><table class='signal-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>"+state.rows.map(function (row) { return "<tr><td>"+esc(row.sample_index == null ? row.index : row.sample_index)+"</td><td>"+esc(row.time == null ? (row.time_s == null ? "—" : row.time_s) : row.time)+"</td><td>"+esc(row.value == null ? "—" : row.value)+"</td><td>"+esc(row.magnitude == null ? "—" : row.magnitude)+"</td><td>"+esc(row.square == null ? "—" : row.square)+"</td></tr>"; }).join("")+"</tbody></table><div class='samples-footer'><span>Показаны строки 1–"+esc(state.rows.length)+"</span><span>"+esc(state.total || state.rows.length)+" отсчётов · подгрузка при прокрутке</span></div>"+(state.loading ? "<div class='samples-loading' role='status'>Загрузка…</div>" : state.error ? "<div class='samples-loading' role='alert'>"+esc(state.error)+"</div>" : "")+"</div>";
     var scroll=body.querySelector("[data-testid='samples-table-scroll']");
     if (scroll) scroll.addEventListener("scroll", function () { if (!state.loading && state.nextCursor && scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 48) loadSignalSamples(); }, { passive:true });
@@ -2057,7 +2061,7 @@
     var pane = paneById(model.activePane);
     /* The samples tab follows main_signal, not the Values button and not the
        pane visibility checkbox. */
-    if (typeof syncSignalSamplesWithMain === "function") syncSignalSamplesWithMain(false);
+    if (typeof syncSignalSamplesWithMain === "function") syncSignalSamplesWithMain();
     reconcileContextTabs(pane);
     qa("[data-bottom-tab]").forEach(function (tab) { var available = contextTabAvailable(tab.dataset.bottomTab, pane), active = available && tab.dataset.bottomTab === model.inspectorPage; tab.hidden = !available; tab.setAttribute("aria-hidden", String(!available)); tab.setAttribute("aria-selected", String(active)); tab.tabIndex = active ? 0 : -1; });
     body.setAttribute("aria-labelledby", model.inspectorPage === "signals" ? "signals-tab" : model.inspectorPage === "measurements" ? "measurements-tab" : model.inspectorPage === "samples" ? "inspector-tab-samples" : "peaks-tab");
@@ -3007,7 +3011,7 @@
       if (visibleSignals.indexOf(signalName) < 0) visibleSignals.push(signalName);
       return api.view({ state_revision:model.revision, row_selected_signal:signalName, analysis_signal:signalName, visible_signals:visibleSignals });
     }, { preservePlots:true }).then(function (snapshot) {
-      syncSignalSamplesWithMain(false);
+      syncSignalSamplesWithMain();
       model.pendingMainSignal = "";
       renderInspector();
       return snapshot;
