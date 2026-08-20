@@ -602,6 +602,14 @@
     };
   }
 
+  function internalErrorText(value) {
+    return /(?:ArgumentError|MethodError|LoadError|BoundsError|UndefVarError|Stacktrace|Непустой Display должен иметь Time Limits|\.jl:\d+)/i.test(String(value || ""));
+  }
+
+  function outputErrorText(error) {
+    return safeErrorText(error, "Не удалось построить график. Проверьте настройки области и повторите действие.");
+  }
+
   function outputMarkup(displayId, pane, record) {
     var output = record && record.output;
     if (!pane.signal_bindings || !pane.signal_bindings.length) return "<div class='plot-empty' data-pane-output-state='empty' data-testid='pane-empty-" + esc(pane.id) + "' role='status'>Выберете сигнал для отображения</div>";
@@ -609,7 +617,7 @@
       var episode = graphLoaderEpisode(displayId, pane, record);
       return "<div class='plot-initial-loading' data-pane-output-state='loading' data-loader-episode-key='" + esc(episode.key) + "' data-loader-episode-provisional='" + String(episode.provisional) + "' data-testid='pane-loader-" + esc(pane.id) + "' role='status' aria-label='Загрузка графика'><span class='spinner' data-loader-spinner data-loader-episode-key='" + esc(episode.key) + "' aria-hidden='true'></span><span>Загрузка графика</span></div>";
     }
-    if (!output.success) return "<div class='plot-error' data-pane-output-state='error' data-testid='pane-error-" + esc(pane.id) + "' role='alert'>" + esc(output.error || "Не удалось загрузить график.") + "</div>";
+    if (!output.success) return "<div class='plot-error' data-pane-output-state='error' data-testid='pane-error-" + esc(pane.id) + "' role='alert'>" + esc(outputErrorText(output.error)) + "</div>";
     return "<div class='plot-chart' data-pane-output-state='ready' data-pane-host='" + esc(paneRuntimeKey(displayId, pane.id)) + "' data-testid='plot-host-" + esc(pane.id) + "' data-plot-ready='false'></div>";
   }
 
@@ -2019,6 +2027,7 @@
   }
 
   function revertPublicationNamePreviews(batch) {
+    if (typeof settings.releaseActiveNameEditor === "function") settings.releaseActiveNameEditor();
     (batch || []).forEach(function (event) {
       if (event.fieldId === "display.name" || event.fieldId === "pane.name") clearNamePreview(event.fieldId, event.displayId, event.paneId);
     });
@@ -2198,6 +2207,10 @@
   }
 
   function renderSettings(display) {
+    if (typeof settings.activeNameEditor === "function" && settings.activeNameEditor()) {
+      renderApply();
+      return;
+    }
     var pane = paneById(model.activePane);
     ensureSignalSettingsTab();
     reconcileContextTabs(pane);
@@ -3167,7 +3180,7 @@
       if (response.isready && response.success) completePendingApply();
     }).catch(function (error) {
       if (activeDisplay() && activeDisplay().id === displayId && token === model.outputTokens[runtimeKey] && paneHasSignals(paneById(paneId))) {
-        model.outputs[runtimeKey] = { output: { isready: true, success: false, error: error.message || "Не удалось загрузить график." } };
+        model.outputs[runtimeKey] = { output: { isready: true, success:false, error:"Не удалось построить график. Проверьте настройки области и повторите действие." } };
         scheduleRender();
       }
     });
@@ -3731,6 +3744,7 @@
   window.addEventListener("signal-settings-save-failed", function (event) {
     var detail=event.detail || {}, displayId=detail.display_id || activeDisplay() && activeDisplay().id;
     var paneId=model.namePreviewIntents[displayId + "::pane.name::" + String(detail.intent || 0)] || model.activePane;
+    if (typeof settings.releaseActiveNameEditor === "function") settings.releaseActiveNameEditor();
     clearNamePreview(detail.field_id, displayId, paneId);
     render();
     showToast(safeErrorText(detail.error, "Не удалось сохранить имя."), true);
@@ -3770,11 +3784,12 @@
   }
 
   function safeErrorText(error, fallback) {
-    if (error && typeof error.message === "string" && error.message) return error.message;
-    if (error && error.payload && typeof error.payload.message === "string") return error.payload.message;
-    if (error && error.payload && error.payload.error && typeof error.payload.error.message === "string") return error.payload.error.message;
-    if (typeof error === "string" && error) return error;
-    return fallback;
+    var text="";
+    if (error && typeof error.message === "string" && error.message) text=error.message;
+    else if (error && error.payload && typeof error.payload.message === "string") text=error.payload.message;
+    else if (error && error.payload && error.payload.error && typeof error.payload.error.message === "string") text=error.payload.error.message;
+    else if (typeof error === "string" && error) text=error;
+    return !text || internalErrorText(text) ? fallback : text;
   }
   function showBootstrapError(error) {
     var target = q("[data-testid='app-error']");

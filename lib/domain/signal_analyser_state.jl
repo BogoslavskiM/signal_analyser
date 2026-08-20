@@ -2073,9 +2073,9 @@ struct SignalDisplayPaneState
         pane_name = String(name)
         isempty(strip(pane_name)) && throw(ArgumentError("Имя pane не может быть пустым"))
         analysis_name = signal_analysis_name(analysis_source)
-        (analysis_name === nothing) == (time_limits === nothing) || throw(ArgumentError(
-            "Time Limits должны отсутствовать только у pane без main signal",
-        ))
+        # Legacy/current state is normalized at calculation and persistence
+        # boundaries. Keep construction permissive so an old occupied pane can
+        # be represented and repaired atomically instead of failing mid-route.
         peaks_enabled && !(plot_type in (TIME_PLOT, SPECTRUM_PLOT)) && throw(ArgumentError(
             "Экстремумы доступны только для Time или Spectrum pane",
         ))
@@ -2817,9 +2817,8 @@ mutable struct SignalAnalyserDisplayState
         peaks_enabled::Bool,
     )
         analysis_name = signal_analysis_name(analysis_source)
-        (analysis_name === nothing) == (time_limits === nothing) || throw(ArgumentError(
-            "Time Limits должны отсутствовать только у Display без main signal",
-        ))
+        # The mutable legacy Display projection is normalized from its
+        # authoritative active pane at service boundaries.
         peaks_enabled && !(active_plot in (TIME_PLOT, SPECTRUM_PLOT)) && throw(ArgumentError(
             "Экстремумы доступны только для Time или Spectrum plot",
         ))

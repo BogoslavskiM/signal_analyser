@@ -305,6 +305,7 @@ function export_signal_analyser_session(
     state::SignalAnalyserState,
 )::Dict{String,Any}
     lock(state.lock) do
+        signal_analyser_recover_time_limits_unlocked!(state)
         document = signal_analyser_session_document_unlocked(state)
         Dict{String,Any}(
             "ok" => true,
@@ -1219,9 +1220,15 @@ function signal_analyser_session_candidate(
     )
     candidate.active_display_id = document.active_display_id
     candidate.next_display_number = document.next_display_number
-    # Session import restores its authoritative bindings verbatim.  Fresh-state
-    # bootstrap is empty by design, but it must not erase a saved layout here.
-    signal_analyser_sync_active_display!(candidate, active_display)
+    # Session import restores authoritative bindings, then migrates the one
+    # legacy state that cannot be calculated: an occupied pane without a time
+    # domain. Explicit persisted limits are preserved verbatim.
+    signal_analyser_recover_time_limits_unlocked!(
+        candidate;
+        invalidate_outputs = false,
+        increment_state_revision = false,
+    )
+    signal_analyser_sync_active_display!(candidate, signal_analyser_active_display(candidate))
     signal_analyser_session_validate_candidate!(candidate)
     candidate
 end

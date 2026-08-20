@@ -23,6 +23,13 @@
   };
 
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[character]; }); }
+  function nameField(id) { return id === "display.name" || id === "pane.name"; }
+  function activeNameEditor() {
+    var node=document.activeElement;
+    var id=node && node.dataset && node.dataset.settingId;
+    if (!nameField(id) || !context.renderedFields[id]) return null;
+    return { node:node, fieldId:id, intent:context.drafts[id] && context.drafts[id].intent || 0 };
+  }
   function noHistory() { return " autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'"; }
   function decorateNoHistory(root) {
     var helper=window.SignalAnalyserTask0126;
@@ -275,7 +282,8 @@
     return "<label class='settings-field-row"+(invalid ? " has-error" : "")+(warning ? " has-warning" : "")+"' data-testid='settings-field-"+esc(item.id)+"'><span class='settings-label'><span>"+esc(label(item))+"</span>"+(item.units ? "<span class='unit'>"+esc(item.units)+"</span>" : "")+"</span><span class='settings-control-wrap'>"+control(item, current, id)+"</span>"+(invalid ? "<small class='field-message is-error' role='alert'>"+esc(draft.error)+"</small>" : warning ? "<small class='field-message is-warning'>"+esc(warning)+"</small>" : "")+"</label>";
   }
 
-  function render() {
+  function render(force) {
+    if (!force && activeNameEditor()) return;
     if (context.page === "screen") return;
     var host = document.querySelector("[data-testid='settings-content']") || document.querySelector("[data-settings-content]");
     if (!host) return;
@@ -406,7 +414,7 @@
         if (error && error.status === 409 && retries < 1 && rebaseConflict(error, token, displayId)) return persistLatest(retries + 1);
         if (latest && !latest.error && (latest.intent || 0) > intent) return persistLatest(0);
         if (latest) latest.error = (error.payload && (error.payload.message || error.payload.error && error.payload.error.message)) || error.message || "Не удалось сохранить черновик.";
-        render();
+        render(true);
         window.dispatchEvent(new CustomEvent("signal-settings-save-failed", { detail:{ field_id:item.id, display_id:displayId, intent:intent, error:error } }));
         throw error;
       });
@@ -516,6 +524,8 @@
     value:function (id) { var item=sourceItem(id); return item ? value(item) : undefined; },
     screenValue:function (id) { var item=sourceItem(id); return item ? screenValue(item) : undefined; },
     setValue:function (id, raw) { var item=sourceItem(id); return item ? update(Object.assign({}, item, { visible:true }), raw) : Promise.reject(new Error("Настройка недоступна: " + id)); },
-    setRevision:function (revision) { if (typeof revision === "number" && revision >= context.revision) context.revision=revision; }
+    setRevision:function (revision) { if (typeof revision === "number" && revision >= context.revision) context.revision=revision; },
+    activeNameEditor:activeNameEditor,
+    releaseActiveNameEditor:function () { var editor=activeNameEditor(); if (editor && editor.node && typeof editor.node.blur === "function") editor.node.blur(); }
   };
 })(window, document);

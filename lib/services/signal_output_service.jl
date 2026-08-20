@@ -502,6 +502,7 @@ function signal_analyser_layout_entries_lite_payload(
 end
 
 function signal_analyser_state_lite_unlocked(state::SignalAnalyserState)::Dict{String,Any}
+    signal_analyser_recover_time_limits_unlocked!(state)
     signal_analyser_validate_selection_layout_invariants(state)
     signal_analyser_sync_output_pages_unlocked!(state)
     active_display = signal_analyser_active_display(state)
@@ -1122,6 +1123,35 @@ function signal_analyser_active_output(
     pane_id::AbstractString,
 )::Dict{String,Any}
     response, yield_scheduler = lock(state.lock) do
+        try
+            signal_analyser_recover_time_limits_unlocked!(
+                state;
+                display_ids = String[String(display_id)],
+            )
+        catch err
+            err isa SignalAnalyserTimeLimitsRecoveryError || rethrow()
+            context = signal_analyser_output_context_unlocked(state, display_id, pane_id)
+            page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+            manager = state.output_manager
+            manager.need_update_pages[page_id] = false
+            manager.output_statuses[page_id] = SignalAnalyserOutputStatus(
+                context,
+                true,
+                false,
+                err.message,
+            )
+            result = signal_analyser_output_response_unlocked(
+                state,
+                context,
+                Dict{String,Any}[],
+                true,
+                false,
+                err.message,
+            )
+            result["code"] = err.code
+            result["recoverable"] = true
+            return result, false
+        end
         context = signal_analyser_output_context_unlocked(state, display_id, pane_id)
         manager = state.output_manager
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
@@ -1656,6 +1686,18 @@ function signal_analyser_calculate_active_peaks!(
                     state.view.state_revision,
                 ),
             )
+        try
+            signal_analyser_recover_time_limits_unlocked!(
+                state;
+                display_ids = String[String(display_id)],
+            )
+        catch err
+            err isa SignalAnalyserTimeLimitsRecoveryError || rethrow()
+            throw(SignalAnalyserValidationError(
+                "Временной диапазон области недоступен",
+                Dict("pane_id" => err.message),
+            ))
+        end
         active_layout = signal_analyser_layout_by_display_id(state, state.active_display_id)
         active_pane = signal_display_active_pane(active_layout)
         if active_pane.plot_type == TIME_PLOT &&
@@ -1816,6 +1858,18 @@ function signal_analyser_active_peaks(
     pane_id::AbstractString,
 )::Dict{String,Any}
     lock(state.lock) do
+        try
+            signal_analyser_recover_time_limits_unlocked!(
+                state;
+                display_ids = String[String(display_id)],
+            )
+        catch err
+            err isa SignalAnalyserTimeLimitsRecoveryError || rethrow()
+            throw(SignalAnalyserValidationError(
+                "Временной диапазон области недоступен",
+                Dict("pane_id" => err.message),
+            ))
+        end
         context = signal_analyser_peaks_context_unlocked(state, display_id, pane_id)
         manager = state.output_manager
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)

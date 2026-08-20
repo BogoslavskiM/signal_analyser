@@ -1928,6 +1928,182 @@ end
 signal_full_time_limits(service::SignalMeasurementsService, signal::AnalysedSignal) =
     signal_full_time_limits(service.roi_service, signal)
 
+const SIGNAL_ANALYSER_TIME_LIMIT_PLOTS = (TIME_PLOT, SPECTRUM_PLOT, SPECTROGRAM_PLOT)
+
+"""A persisted pane could not be repaired into a safe calculation domain."""
+struct SignalAnalyserTimeLimitsRecoveryError <: Exception
+    code::String
+    display_id::String
+    pane_id::String
+    message::String
+end
+
+Base.showerror(io::IO, err::SignalAnalyserTimeLimitsRecoveryError) = print(io, err.message)
+
+struct SignalAnalyserTimeLimitsRecovery
+    changed_page_ids::Vector{String}
+end
+
+function signal_analyser_full_bound_time_limits(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString,
+    members::AbstractVector{<:AbstractString},
+)::SignalTimeLimits
+    isempty(members) && throw(SignalAnalyserTimeLimitsRecoveryError(
+        "time_limits_recovery_failed",
+        String(display_id),
+        String(pane_id),
+        "Не удалось восстановить временной диапазон пустой области",
+    ))
+    maximum_seconds = 0.0
+    for name in members
+        signal = try
+            signal_by_name(state, name)
+        catch err
+            err isa ArgumentError || rethrow()
+            throw(SignalAnalyserTimeLimitsRecoveryError(
+                "time_limits_recovery_failed",
+                String(display_id),
+                String(pane_id),
+                "Не удалось восстановить временной диапазон: сигнал области отсутствует",
+            ))
+        end
+        limits = try
+            signal_full_time_limits(state.measurements_service, signal)
+        catch err
+            err isa ArgumentError || rethrow()
+            throw(SignalAnalyserTimeLimitsRecoveryError(
+                "time_limits_recovery_failed",
+                String(display_id),
+                String(pane_id),
+                "Не удалось восстановить временной диапазон сигнала",
+            ))
+        end
+        maximum_seconds = max(maximum_seconds, limits.max_s)
+    end
+    SignalTimeLimits(0.0, maximum_seconds)
+end
+
+signal_analyser_full_bound_time_limits(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane::SignalDisplayPaneState,
+) = signal_analyser_full_bound_time_limits(
+    state,
+    display_id,
+    pane.id,
+    signal_display_pane_members(pane),
+)
+
+function signal_analyser_pane_with_recovered_time_limits(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+    layout::SignalDisplayLayoutState,
+    pane::SignalDisplayPaneState,
+)::SignalDisplayPaneState
+    pane.plot_type in SIGNAL_ANALYSER_TIME_LIMIT_PLOTS || return pane
+    isempty(signal_display_pane_members(pane)) && return pane
+    pane.time_limits !== nothing && return pane
+
+    # The mutable legacy Display may still carry an explicit interval which
+    # predates the authoritative pane layout. Preserve it for the active pane.
+    carries_display_limits = pane.id == layout.active_pane_id &&
+        display.time_limits !== nothing &&
+        pane.plot_type == display.active_plot &&
+        Set(signal_display_pane_members(pane)) == Set(signal_analyser_display_members(display)) &&
+        isequal(
+            signal_display_pane_analysis_name(pane),
+            signal_analyser_display_analysis_name(display),
+        )
+    limits = carries_display_limits ?
+        display.time_limits::SignalTimeLimits :
+        signal_analyser_full_bound_time_limits(state, display.id, pane)
+    SignalDisplayPaneState(
+        pane.id,
+        pane.name,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+        pane.peaks_settings,
+    )
+end
+
+"""Idempotent migration of legacy/current layouts; explicit limits are immutable here."""
+function signal_analyser_recover_time_limits_unlocked!(
+    state::SignalAnalyserState;
+    display_ids::AbstractVector{<:AbstractString} = String[display.id for display in state.displays],
+    invalidate_outputs::Bool = true,
+    increment_state_revision::Bool = true,
+)::SignalAnalyserTimeLimitsRecovery
+    requested = Set(String.(display_ids))
+    changed_page_ids = String[]
+    projection_changed_any = false
+    for display_index in eachindex(state.displays)
+        display = state.displays[display_index]
+        display.id in requested || continue
+        layout = signal_analyser_layout_by_display_id(state, display.id)
+        panes = SignalDisplayPaneState[]
+        for pane in layout.panes
+            recovered = signal_analyser_pane_with_recovered_time_limits(
+                state, display, layout, pane,
+            )
+            push!(panes, recovered)
+            recovered == pane || push!(
+                changed_page_ids,
+                "$(display.id)::$(pane.id)",
+            )
+        end
+        recovered_layout = isempty(changed_page_ids) || panes == layout.panes ? layout :
+            SignalDisplayLayoutState(
+                layout.version,
+                layout.variant,
+                layout.rows,
+                layout.columns,
+                panes,
+                layout.active_pane_id,
+                layout.next_pane_number,
+            )
+        state.display_layouts[display.id] = recovered_layout
+        active_pane = signal_display_active_pane(recovered_layout)
+        projected = signal_analyser_display_for_pane(display, active_pane)
+        projection_changed = !(
+            display.active_plot == projected.active_plot &&
+            display.membership.signal_names == projected.membership.signal_names &&
+            isequal(
+                signal_analyser_display_analysis_name(display),
+                signal_analyser_display_analysis_name(projected),
+            ) &&
+            isequal(display.time_limits, projected.time_limits)
+        )
+        if projection_changed
+            state.displays[display_index] = projected
+            projection_changed_any = true
+        end
+    end
+    unique!(changed_page_ids)
+    if !isempty(changed_page_ids) || projection_changed_any
+        state.active_display_id in requested && signal_analyser_sync_active_display!(
+            state,
+            signal_analyser_active_display(state),
+        )
+        invalidate_outputs && !isempty(changed_page_ids) &&
+            signal_analyser_invalidate_output_pages_unlocked!(
+            state,
+            changed_page_ids,
+        )
+        increment_state_revision && (state.view.state_revision += 1)
+    end
+    SignalAnalyserTimeLimitsRecovery(changed_page_ids)
+end
+
 function signal_ordinate_roi(
     service::SignalTimeRoiService,
     signal::AnalysedSignal,
@@ -2172,7 +2348,8 @@ function signal_display_pane_reconfigured(
         analysis_signal,
     )
     time_limits = if analysis_signal === nothing
-        nothing
+        isempty(members) || !(plot_type in SIGNAL_ANALYSER_TIME_LIMIT_PLOTS) ? nothing :
+            signal_analyser_full_bound_time_limits(state, "", pane.id, members)
     elseif pane.stored_settings.time.link_time && pane.time_limits !== nothing
         pane.time_limits
     elseif current_analysis == analysis_name && pane.time_limits !== nothing &&
@@ -2829,6 +3006,31 @@ function signal_measurements_snapshot(
     signal_measurements_snapshot(service, state_revision, signal, SignalMeasurementSelection())
 end
 
+
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
+    state_revision::Int,
+    signal::Nothing,
+    ::SignalTimeLimits,
+    selection::SignalMeasurementSelection,
+)::SignalMeasurementsSnapshot
+    signal_measurements_snapshot(service, state_revision, signal, selection)
+end
+
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
+    state_revision::Int,
+    signal::Nothing,
+    limits::SignalTimeLimits,
+)::SignalMeasurementsSnapshot
+    signal_measurements_snapshot(
+        service,
+        state_revision,
+        signal,
+        limits,
+        SignalMeasurementSelection(),
+    )
+end
 
 function signal_measurements_snapshot(
     service::SignalMeasurementsService,
@@ -4331,6 +4533,7 @@ end
 
 function signal_analyser_snapshot(state::SignalAnalyserState)::Dict{String,Any}
     lock(state.lock) do
+        signal_analyser_recover_time_limits_unlocked!(state)
         signal_analyser_snapshot_unlocked(state)
     end
 end

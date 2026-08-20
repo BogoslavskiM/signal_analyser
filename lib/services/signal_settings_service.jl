@@ -1178,6 +1178,10 @@ function signal_settings_document(
     display_id::AbstractString,
 )::Dict{String,Any}
     lock(state.lock) do
+        signal_analyser_recover_time_limits_unlocked!(
+            state;
+            display_ids = String[String(display_id)],
+        )
         display = try
             signal_analyser_display_by_id(state, display_id)
         catch err
@@ -3388,6 +3392,10 @@ function apply_signal_setting!(
                 state.view.state_revision,
             ),
         )
+        signal_analyser_recover_time_limits_unlocked!(
+            state;
+            display_ids = String[draft_command.display_id],
+        )
         definition = signal_settings_field(service.catalog, draft_command.field_id)::SignalSettingsFieldDefinition
         display = signal_analyser_display_by_id(state, draft_command.display_id)
 
@@ -3483,6 +3491,10 @@ function apply_signal_settings!(
             command.state_revision,
             state.view.state_revision,
         ))
+        signal_analyser_recover_time_limits_unlocked!(
+            state;
+            display_ids = String[command.display_id],
+        )
         display = signal_analyser_display_by_id(state, command.display_id)
         layout = signal_analyser_layout_by_display_id(state, display.id)
         active_pane = signal_display_active_pane(layout)

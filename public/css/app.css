@@ -1310,6 +1310,13 @@ body.is-resizing-workspace * {
   opacity: 0.72;
 }
 
+.checkbox-control input:checked:disabled,
+.workspace-list input:checked:disabled,
+.signal-table input:checked:disabled {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
 .range-control {
   min-width: 0;
   display: grid;
