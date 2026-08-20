@@ -71,14 +71,18 @@ function signal_analyser_warmup_active_output!(;
         "Startup-прогрев не нашёл встроенный Гармонический сигнал",
     ))
 
-    apply_signal_analyser_layout!(state, Dict{String,Any}(
+    # Bind both independent concepts: graph membership and the main analysis
+    # signal. `update_pane` intentionally changes membership only, so using it
+    # here used to leave an occupied pane without main-signal Time Limits.
+    apply_signal_analyser_view!(state, Dict{String,Any}(
         "state_revision" => state.view.state_revision,
-        "operation" => "update_pane",
-        "display_id" => display_id,
-        "version" => layout.version,
-        "pane_id" => pane.id,
-        "plot_type" => "time",
-        "signal_bindings" => String[signal_name],
+        "active_plot" => "time",
+        "row_selected_signal" => signal_name,
+        "analysis_signal" => signal_name,
+        "selected_signal" => signal_name,
+        "visible_signals" => String[signal_name],
+        "measurement_kinds" => String[],
+        "peaks_enabled" => false,
     ); lightweight = true)
 
     deadline_seconds = time() + timeout

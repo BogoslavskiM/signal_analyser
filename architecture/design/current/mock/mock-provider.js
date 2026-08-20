@@ -19,16 +19,16 @@
           { id: "display-3", name: "ВЧ-контроль", panes: [] }
         ],
         links: { time: false, amplitude: false, spectrumFrequency: true, spectrumMagnitude: false },
-        signal: { name: "radarPulse", color: "#2166df", sampleRate: "1000000", samples: 400000, duration: "399,999 мс", minimum: "−0,984", maximum: "1,000", rms: "0,516", mean: "0,008", type: "Вещественный" },
+        signal: { name: "radarPulse", color: "#0058ff", sampleRate: "1000000", samples: 400000, duration: "399,999 мс", regionStart: "0 мс", regionEnd: "399,999 мс", minimum: "−0,984", minimumTime: "291,503 мс", maximum: "1,000", maximumTime: "386,230 мс", rms: "0,516", mean: "0,008", median: "0,006", peakToPeak: "1,984", type: "Вещественный" },
         signals: [
-          { name: "radarPulse", color: "#2166df", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный", visible:true },
-          { name: "echoComplex", color: "#e1262e", sampleRate: "1 МГц", count: "348 000", duration: "347,999 мс", type: "Комплексный", visible:true },
-          { name: "noiseFloor", color: "#1a8f58", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный", visible:false }
+          { name: "radarPulse", color: "#0058ff", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный", visible:true },
+          { name: "echoComplex", color: "#ff3000", sampleRate: "1 МГц", count: "348 000", duration: "347,999 мс", type: "Комплексный", visible:true },
+          { name: "noiseFloor", color: "#40ffb7", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный", visible:false }
         ],
         extrema: [
-          { n: 1, signal: "radarPulse", color: "#2166df", type: "Максимум", value: "−3,18 dB", position: "184,2 кГц", marker: "▲ 1" },
-          { n: 2, signal: "radarPulse", color: "#2166df", type: "Максимум", value: "−18,42 dB", position: "368,4 кГц", marker: "▲ 2" },
-          { n: 3, signal: "echoComplex", color: "#e1262e", type: "Максимум", value: "−24,10 dB", position: "552,7 кГц", marker: "▲ 3" }
+          { n: 1, signal: "radarPulse", color: "#0058ff", type: "Максимум", value: "−3,18 dB", position: "184,2 кГц", marker: "▲ 1" },
+          { n: 2, signal: "radarPulse", color: "#0058ff", type: "Максимум", value: "−18,42 dB", position: "368,4 кГц", marker: "▲ 2" },
+          { n: 3, signal: "echoComplex", color: "#ff3000", type: "Максимум", value: "−24,10 dB", position: "552,7 кГц", marker: "▲ 3" }
         ],
         samplePage: { cursor:0, limit:12, nextCursor:12, total:400000 },
         sampleRows: [

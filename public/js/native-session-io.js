@@ -341,6 +341,7 @@
       html += layer("native-message", state.message.title, "<div class='alert " + state.message.kind + "'><p>" + esc(state.message.text) + "</p></div>", "<button class='button button-primary' data-native-message-close data-testid='native-message-close'>Понятно</button>", "native-message-dialog", state.message.code ? " data-error-code='" + esc(state.message.code) + "'" : "");
     }
     root.innerHTML = html;
+    if (window.SignalAnalyserTask0126 && typeof window.SignalAnalyserTask0126.decorateNoHistory === "function") window.SignalAnalyserTask0126.decorateNoHistory(root);
     var parent = q("[data-testid='native-save-dialog'], [data-testid='native-import-dialog']");
     if (parent && (state.browserState.open || (state.message && text(state.message.title) && text(state.message.text)))) {
       parent.inert = true;

@@ -34,7 +34,7 @@ module.exports = async function testMeasurementAndPeaksMinimalViewContracts(asse
   assertMinimalView(assert, peaksEnable, "state_revision:model.revision,peaks_enabled:true", "Extrema enablement");
   assert(/fetchActivePeaks\(displayId, paneId, false, false\)/.test(peaksOpen), "Extrema tab open must use a single passive GET without requesting calculation or polling");
   assert(!/calculateActivePeaks|fetchActivePeaks\(displayId, paneId, true/.test(peaksOpen), "Extrema tab open must never start its provider calculation");
-  assert(/api\.calculateActivePeaks\(\{\s*state_revision:model\.revision,\s*display_id:displayId,\s*pane_id:paneId\s*\}\)/.test(peaksCalculate), "only the explicit Calculate action may POST the exact active-pane calculation payload");
+  assert(/var payload=\{ state_revision:model\.revision, display_id:displayId, pane_id:paneId \};[\s\S]*?if \(visibleRange\) payload\.visible_range=visibleRange;[\s\S]*?api\.calculateActivePeaks\(payload\)/.test(peaksCalculate), "only the explicit Calculate action may POST its active-pane payload, adding canonical visible_range only when a Plotly viewport is available");
   assert(/acceptPeaksPayload\(response, displayId, paneId, token, true, true\)/.test(peaksCalculate), "Calculate must accept POST pending state and then enable passive polling");
   assert(/peaksRecords\[runtimeKey\][\s\S]*?data:response\.data/.test(app), "the pane-scoped Peaks response must retain the authoritative split table data");
 

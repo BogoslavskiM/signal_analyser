@@ -3492,6 +3492,12 @@ function apply_signal_settings!(
             display.id;
             create = false,
         )
+        draft_field_ids = draft === nothing ? Set{String}() :
+            Set(keys((draft::SignalSettingsDisplayDraft).entries))
+        affects_output = any(
+            field_id -> !(field_id in ("display.name", "pane.name")),
+            draft_field_ids,
+        )
         screen_field_ids = Set((
             "time.units", "time.x_limits", "time.y_limits",
             "time.link_time", "time.link_amplitude",
@@ -3502,10 +3508,10 @@ function apply_signal_settings!(
             field_id -> haskey((draft::SignalSettingsDisplayDraft).entries, field_id),
             screen_field_ids,
         )
-        cancellation_pages = String[
+        cancellation_pages = affects_output ? String[
             signal_analyser_output_page_id(display.id, active_pane.id),
-        ]
-        if applies_screen_axes
+        ] : String[]
+        if affects_output && applies_screen_axes
             append!(
                 cancellation_pages,
                 signal_analyser_output_page_id(display.id, pane.id)
@@ -3513,7 +3519,8 @@ function apply_signal_settings!(
                 if pane.id != active_pane.id
             )
         end
-        signal_analyser_cancel_output_pages_unlocked!(state, unique(cancellation_pages))
+        isempty(cancellation_pages) ||
+            signal_analyser_cancel_output_pages_unlocked!(state, unique(cancellation_pages))
         prospective, errors = signal_settings_draft_projection_unlocked(
             service,
             state,
@@ -3538,14 +3545,16 @@ function apply_signal_settings!(
             signal_settings_apply_screen_axes_unlocked!(state, prospective.id, prospective, draft) :
             String[]
         state.view.state_revision += 1
-        affected_pages = String[
-            signal_analyser_output_page_id(prospective.id, active_pane.id),
-            (
-                signal_analyser_output_page_id(prospective.id, pane_id)
-                for pane_id in linked_pane_ids
-            )...,
-        ]
-        signal_analyser_invalidate_output_pages_unlocked!(state, affected_pages)
+        if affects_output
+            affected_pages = String[
+                signal_analyser_output_page_id(prospective.id, active_pane.id),
+                (
+                    signal_analyser_output_page_id(prospective.id, pane_id)
+                    for pane_id in linked_pane_ids
+                )...,
+            ]
+            signal_analyser_invalidate_output_pages_unlocked!(state, affected_pages)
+        end
         signal_settings_clear_display_draft_unlocked!(service, state, prospective.id)
         authoritative_settings = signal_settings_document_unlocked(
             service,

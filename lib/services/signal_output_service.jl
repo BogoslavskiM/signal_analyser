@@ -42,12 +42,23 @@ function signal_analyser_output_context_id(context::SignalAnalyserOutputContextK
 end
 
 function signal_analyser_peaks_context_id(context::SignalAnalyserPeaksContextKey)::String
+    visible_range_id = if context.visible_range === nothing
+        "full"
+    elseif context.visible_range isa SignalTimePeaksVisibleRange
+        range = context.visible_range::SignalTimePeaksVisibleRange
+        "s$(range.min_s):$(range.max_s)"
+    else
+        range = context.visible_range::SignalSpectrumPeaksVisibleRange
+        "hz$(range.min_hz):$(range.max_hz)"
+    end
     string(
         context.display_id,
         "::",
         context.pane_id,
         "::peaks::r",
         context.calculation_revision,
+        "::",
+        visible_range_id,
     )
 end
 
@@ -106,6 +117,14 @@ function signal_analyser_peaks_context_is_current_unlocked(
         isequal(
             pane.plot_type == SPECTRUM_PLOT ? pane.spectrum_settings : nothing,
             context.spectrum_settings,
+        ) &&
+        !(
+            pane.plot_type == TIME_PLOT &&
+            context.visible_range isa SignalSpectrumPeaksVisibleRange
+        ) &&
+        !(
+            pane.plot_type == SPECTRUM_PLOT &&
+            context.visible_range isa SignalTimePeaksVisibleRange
         ) &&
         pane.peaks_settings == context.settings
 end
@@ -378,6 +397,7 @@ function signal_analyser_peaks_context_unlocked(
     state::SignalAnalyserState,
     display_id::AbstractString,
     pane_id::AbstractString,
+    visible_range::Union{Nothing,SignalPeaksVisibleRange} = nothing,
 )::SignalAnalyserPeaksContextKey
     signal_analyser_sync_output_pages_unlocked!(state)
     active_layout = signal_analyser_layout_by_display_id(state, state.active_display_id)
@@ -404,6 +424,7 @@ function signal_analyser_peaks_context_unlocked(
         signal_display_pane_members(pane),
         pane.time_limits,
         pane.plot_type == SPECTRUM_PLOT ? pane.spectrum_settings : nothing,
+        visible_range,
         pane.peaks_settings,
         revision,
     )
@@ -1250,6 +1271,8 @@ function signal_analyser_passive_peaks_snapshot_unlocked(
             pane_display,
             analysis_signal,
             settings = pane.peaks_settings,
+            visible_range = context.visible_range === nothing ? nothing :
+                context.visible_range::SignalSpectrumPeaksVisibleRange,
         ) :
         signal_peaks_snapshot(
             state.peaks_service,
@@ -1257,6 +1280,8 @@ function signal_analyser_passive_peaks_snapshot_unlocked(
             pane_display,
             analysis_signal,
             settings = pane.peaks_settings,
+            visible_range = context.visible_range === nothing ? nothing :
+                context.visible_range::SignalTimePeaksVisibleRange,
         )
 end
 
@@ -1278,6 +1303,8 @@ function signal_analyser_empty_peaks_table_unlocked(
                     pane_display,
                     signal_by_name(state, signal_name),
                     settings = context.settings,
+                    visible_range = context.visible_range === nothing ? nothing :
+                        context.visible_range::SignalSpectrumPeaksVisibleRange,
                 ) :
                 signal_peaks_snapshot(
                     state.peaks_service,
@@ -1285,6 +1312,8 @@ function signal_analyser_empty_peaks_table_unlocked(
                     pane_display,
                     signal_by_name(state, signal_name),
                     settings = context.settings,
+                    visible_range = context.visible_range === nothing ? nothing :
+                        context.visible_range::SignalTimePeaksVisibleRange,
                 )
             for signal_name in context.signal_names
         ]
@@ -1379,6 +1408,15 @@ function signal_analyser_active_peaks_response_unlocked(
         row["position_unit"] = position_unit
     end
     settings_payload = signal_peaks_settings_payload(context.settings)
+    visible_range_payload = if context.visible_range === nothing
+        nothing
+    elseif context.visible_range isa SignalTimePeaksVisibleRange
+        range = context.visible_range::SignalTimePeaksVisibleRange
+        Dict{String,Any}("min_s" => range.min_s, "max_s" => range.max_s)
+    else
+        range = context.visible_range::SignalSpectrumPeaksVisibleRange
+        Dict{String,Any}("min_hz" => range.min_hz, "max_hz" => range.max_hz)
+    end
     legacy_payload = signal_peaks_payload(legacy)
     for item in legacy_payload["items"]
         canonical = pane.plot_type == TIME_PLOT ? item["time_s"] : item["frequency_hz"]
@@ -1392,6 +1430,7 @@ function signal_analyser_active_peaks_response_unlocked(
         "mode" => signal_extrema_mode_name(context.settings.mode),
         "calculation_revision" => context.calculation_revision,
         "context_key" => signal_analyser_peaks_context_id(context),
+        "visible_range" => visible_range_payload,
         "data" => table_payload,
         "peaks_table" => table_payload,
         "settings" => settings_payload,
@@ -1516,6 +1555,8 @@ function signal_analyser_run_peaks_task!(
                         signal,
                         materialize = true,
                         settings = context.settings,
+                        visible_range = context.visible_range === nothing ? nothing :
+                            context.visible_range::SignalSpectrumPeaksVisibleRange,
                     ) :
                     signal_peaks_snapshot(
                         snapshot.peaks_service,
@@ -1524,6 +1565,8 @@ function signal_analyser_run_peaks_task!(
                         signal,
                         materialize = true,
                         settings = context.settings,
+                        visible_range = context.visible_range === nothing ? nothing :
+                            context.visible_range::SignalTimePeaksVisibleRange,
                     ),
             )
         end
@@ -1603,6 +1646,7 @@ function signal_analyser_calculate_active_peaks!(
     pane_id::AbstractString,
     ;
     expected_state_revision::Union{Nothing,Int} = nothing,
+    visible_range::Union{Nothing,SignalPeaksVisibleRange} = nothing,
 )::Dict{String,Any}
     response, yield_scheduler = lock(state.lock) do
         expected_state_revision === nothing ||
@@ -1612,9 +1656,42 @@ function signal_analyser_calculate_active_peaks!(
                     state.view.state_revision,
                 ),
             )
-        context = signal_analyser_peaks_context_unlocked(state, display_id, pane_id)
+        active_layout = signal_analyser_layout_by_display_id(state, state.active_display_id)
+        active_pane = signal_display_active_pane(active_layout)
+        if active_pane.plot_type == TIME_PLOT &&
+            visible_range isa SignalSpectrumPeaksVisibleRange
+            throw(SignalAnalyserValidationError(
+                "Некорректный запрос расчёта экстремумов",
+                Dict("visible_range" => "TIME pane требует {min_s,max_s}"),
+            ))
+        elseif active_pane.plot_type == SPECTRUM_PLOT &&
+            visible_range isa SignalTimePeaksVisibleRange
+            throw(SignalAnalyserValidationError(
+                "Некорректный запрос расчёта экстремумов",
+                Dict("visible_range" => "SPECTRUM pane требует {min_hz,max_hz}"),
+            ))
+        end
+        context = signal_analyser_peaks_context_unlocked(
+            state,
+            display_id,
+            pane_id,
+            visible_range,
+        )
         manager = state.output_manager
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+        previous_status = get(manager.peaks_statuses, page_id, nothing)
+        if previous_status !== nothing && !isequal(
+            (previous_status::SignalAnalyserPeaksStatus).context.visible_range,
+            visible_range,
+        )
+            signal_analyser_invalidate_peaks_pages_unlocked!(state, String[page_id])
+            context = signal_analyser_peaks_context_unlocked(
+                state,
+                display_id,
+                pane_id,
+                visible_range,
+            )
+        end
         passive = signal_analyser_passive_peaks_snapshot_unlocked(state, context)
         if !passive.enabled
             table = signal_analyser_empty_peaks_table_unlocked(state, context, false)
@@ -1742,6 +1819,12 @@ function signal_analyser_active_peaks(
         context = signal_analyser_peaks_context_unlocked(state, display_id, pane_id)
         manager = state.output_manager
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
+        recorded_status = get(manager.peaks_statuses, page_id, nothing)
+        if recorded_status !== nothing
+            recorded_context = (recorded_status::SignalAnalyserPeaksStatus).context
+            signal_analyser_peaks_context_is_current_unlocked(state, recorded_context) &&
+                (context = recorded_context)
+        end
         passive = signal_analyser_passive_peaks_snapshot_unlocked(state, context)
         if !passive.enabled
             table = signal_analyser_empty_peaks_table_unlocked(state, context, false)

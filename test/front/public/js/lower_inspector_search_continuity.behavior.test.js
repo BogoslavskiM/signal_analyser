@@ -78,8 +78,8 @@ module.exports = async function testLowerInspectorSearchContinuity(assert) {
   };
   const esc = (value) => String(value == null ? "" : value).replace(/[&<>"']/g, "");
   const renderSignals = compile(signalSource, "renderInspector",
-    ["q", "qa", "model", "document", "paneById", "esc", "renderMeasurementsInspector", "renderPeaksInspector", "reconcileContextTabs", "contextTabAvailable", "peaksSurfaceActive", "stopPeaksPolling"],
-    [signalQ, () => [], signalModel, document, () => ({ plot_type:"time", signal_bindings:[] }), esc, () => {}, () => {}, () => false, () => true, () => false, () => {}]);
+    ["q", "qa", "model", "document", "paneById", "esc", "renderMeasurementsInspector", "renderPeaksInspector", "reconcileContextTabs", "contextTabAvailable", "peaksSurfaceActive", "stopPeaksPolling", "setSignalTableMutationBusy", "decorateNoHistory", "signalColor"],
+    [signalQ, () => [], signalModel, document, () => ({ plot_type:"time", signal_bindings:[] }), esc, () => {}, () => {}, () => false, () => true, () => false, () => {}, () => {}, () => {}, (signal) => signal.color]);
   renderSignals();
   document.activeElement = signalInput;
   const signalIdentity = signalInput;
@@ -114,8 +114,8 @@ module.exports = async function testLowerInspectorSearchContinuity(assert) {
     measurementsRecord:{ displayId:"display-1", paneId:"pane-1", measurementRows:[{ signal_name:"Гармонический сигнал", items:[] }, { signal_name:"Белый шум", items:[] }] }
   };
   const renderMeasurements = compile(measurementSource, "renderMeasurementsInspector",
-    ["activeDisplay", "paneById", "model", "q", "document", "esc", "measurementValue"],
-    [() => display, () => pane, measurementModel, () => null, document, esc, (item, key) => item && item[key] != null ? String(item[key]) : "—"]);
+    ["activeDisplay", "paneById", "model", "q", "document", "esc", "measurementValue", "signalColor"],
+    [() => display, () => pane, measurementModel, () => null, document, esc, (item, key) => item && item[key] != null ? String(item[key]) : "—", (signal) => signal.color]);
   renderMeasurements(measurementBody);
   document.activeElement = measurementInput;
   const measurementIdentity = measurementInput;

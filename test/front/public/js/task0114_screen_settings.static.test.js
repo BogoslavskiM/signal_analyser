@@ -14,7 +14,7 @@ module.exports = async function testTask0114ScreenSettings(assert) {
   assert(/data-settings-page="display"[^>]*>Область</.test(html), "Display settings tab must be visibly renamed to Area");
   assert(/data-settings-page="display"[\s\S]*?data-settings-page="screen"[\s\S]*?data-settings-page="peaks"/.test(html), "settings tab order must be Area, Screen, Extrema");
   assert(/data-settings-context>Экран 1 · Область 1</.test(html), "static shell may retain default labels before the first authoritative state");
-  assert(/context\.textContent = \(display\.name \|\| "Экран"\) \+ " · " \+ \(pane && pane\.name \|\| "Область"\)/.test(app), "runtime context must use persisted Screen and Area names, never their array indices");
+  assert(/function displayPreviewName\(display\)[\s\S]*?display\.name \|\| "Экран"/.test(app) && /function panePreviewName\(displayId, pane\)[\s\S]*?pane\.name \|\| "Область"/.test(app) && /context\.textContent = displayPreviewName\(display\) \+ " · " \+ panePreviewName\(display\.id, pane\)/.test(app), "runtime context must use persisted or optimistic Screen and Area names, never their array indices");
 
   assert(/function screenLayoutSegments\(axis, selected, label\)[\s\S]*?class='segments screen-layout-segments'[\s\S]*?data-screen-layout-" \+ axis/.test(app), "Screen layout axes must use the requested ten-button segmented controls");
   assert(/function renderScreenSettings\(display\)[\s\S]*?screenSettingsGroup\("layout", "Макет"[\s\S]*?screenSettingsGroup\("links", "Связь областей"/.test(app), "Screen page must render layout and link settings as shared collapsible groups");

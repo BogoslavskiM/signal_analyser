@@ -23,6 +23,12 @@
   };
 
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[character]; }); }
+  function noHistory() { return " autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'"; }
+  function decorateNoHistory(root) {
+    var helper=window.SignalAnalyserTask0126;
+    var target=root || document;
+    if (target && typeof target.querySelectorAll === "function" && helper && typeof helper.decorateNoHistory === "function") helper.decorateNoHistory(target);
+  }
   function fields() { return context.document && Array.isArray(context.document.fields) ? context.document.fields : []; }
   function readouts() { return context.document && Array.isArray(context.document.readouts) ? context.document.readouts : []; }
   function sourceItem(id) {
@@ -44,6 +50,52 @@
   function optionLabel(option) {
     var raw = typeof option === "object" ? option.value : option;
     return { auto:"Авто", seconds:"s", milliseconds:"ms", microseconds:"μs", nanoseconds:"ns", picoseconds:"ps", minutes:"мин", hours:"ч", days:"дн", years:"г", hertz:"Hz", kilohertz:"kHz", megahertz:"MHz", gigahertz:"GHz", terahertz:"THz", linear:"Линейная", log:"Логарифмическая", db:"dB", leakage:"По утечке", rbw:"По RBW", window_length:"По длине окна" }[raw] || (typeof option === "object" && option.label) || raw;
+  }
+  function rangeForUnitField(id) {
+    return { "time.units":"time.x_limits", "spectrum.frequency_units":"spectrum.frequency_limits", "spectrogram.frequency_units":"spectrogram.frequency_limits", "persistence.frequency_units":"persistence.frequency_limits" }[id] || "";
+  }
+  function unitScale(unit) {
+    return {
+      picoseconds:1e-12, nanoseconds:1e-9, microseconds:1e-6, milliseconds:1e-3, seconds:1, minutes:60, hours:3600, days:86400, years:31557600,
+      cycles_per_year:1/31557600, cycles_per_day:1/86400, cycles_per_hour:1/3600, cycles_per_minute:1/60, millihertz:1e-3,
+      hertz:1, kilohertz:1e3, megahertz:1e6, gigahertz:1e9, terahertz:1e12
+    }[unit] || 1;
+  }
+  function helperUnitSupported(unit) { return ["seconds", "milliseconds", "microseconds", "nanoseconds", "hertz", "kilohertz", "megahertz", "gigahertz"].indexOf(unit) >= 0; }
+  function canonicalFromVisible(value, unit) {
+    if (value === null || value === undefined || value === "") return null;
+    var helper=window.SignalAnalyserTask0126;
+    if (helper && helperUnitSupported(unit)) return helper.toCanonical(value, unit);
+    return Number(value) * unitScale(unit);
+  }
+  function visibleFromCanonical(value, unit) {
+    if (value === null || value === undefined || value === "") return "";
+    var helper=window.SignalAnalyserTask0126;
+    if (helper && helperUnitSupported(unit)) return helper.projectCanonical(value, unit);
+    return Number(value) / unitScale(unit);
+  }
+  function unitFromRenderedLabel(labelValue, fallback) {
+    var key=String(labelValue || "").trim();
+    return { ps:"picoseconds", ns:"nanoseconds", "μs":"microseconds", us:"microseconds", ms:"milliseconds", s:"seconds", Hz:"hertz", kHz:"kilohertz", MHz:"megahertz", GHz:"gigahertz", THz:"terahertz" }[key] || fallback;
+  }
+  function automaticTimeUnit(maximumSeconds) {
+    var value=Math.abs(Number(maximumSeconds));
+    var choices=[["picoseconds",1e-12],["nanoseconds",1e-9],["microseconds",1e-6],["milliseconds",1e-3],["seconds",1],["minutes",60],["hours",3600],["days",86400],["years",31557600]];
+    for (var index=0; index<choices.length; index++) { var rendered=value/choices[index][1]; if (rendered >= 1 && rendered < 1000) return choices[index][0]; }
+    return value > 0 && value < 1e-12 ? "picoseconds" : value > 0 ? "years" : "seconds";
+  }
+  function reprojectRangeForUnitChange(item, nextUnit, previousUnit) {
+    var rangeId=rangeForUnitField(item.id), rangeItem=rangeId && sourceItem(rangeId);
+    if (!rangeItem) return Promise.resolve();
+    var current=value(rangeItem);
+    if (!current || typeof current !== "object" || current.min == null && current.max == null) return Promise.resolve();
+    var currentUnit=String(previousUnit || value(item) || ""), renderedUnit=currentUnit === "auto" ? unitFromRenderedLabel(rangeItem.units, "seconds") : currentUnit;
+    var canonical={ min:canonicalFromVisible(current.min, renderedUnit), max:canonicalFromVisible(current.max, renderedUnit) };
+    var projectedUnit=nextUnit === "auto" ? automaticTimeUnit(Math.max(Math.abs(canonical.min || 0), Math.abs(canonical.max || 0))) : nextUnit;
+    return update(rangeItem, {
+      min:current.min == null ? "" : String(visibleFromCanonical(canonical.min, projectedUnit)),
+      max:current.max == null ? "" : String(visibleFromCanonical(canonical.max, projectedUnit))
+    });
   }
   function pseudo(id, kind, current, extra) { return Object.assign({ id:id, kind:kind, value:current, enabled:true, visible:true, pseudo:true }, extra || {}); }
   function actual(id) {
@@ -172,12 +224,17 @@
         className:"settings-value-select",
         testId:"setting-select-" + item.id.replace(/[^a-zA-Z0-9_-]/g, "-"),
         ariaLabel:label(item),
-        onSelect:function (selected) { if (selected !== enumCurrent) update(item, selected); }
+        onSelect:function (selected) {
+          if (selected === enumCurrent) return;
+          update(item, selected);
+          var reproject=rangeForUnitField(item.id) ? reprojectRangeForUnitChange(item, selected, enumCurrent) : Promise.resolve();
+          reproject.catch(function () {});
+        }
       });
     }
     if (item.kind === "range" || item.kind === "optional_range") {
       var range = current && typeof current === "object" ? current : {};
-      return "<span class='range-control'><input class='control' type='text' inputmode='decimal' step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='min' placeholder='Мин.' aria-label='"+esc(label(item))+": минимум' value='"+esc(range.min == null ? "" : range.min)+"'"+disabled+"><input class='control' type='text' inputmode='decimal' step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='max' placeholder='Макс.' aria-label='"+esc(label(item))+": максимум' value='"+esc(range.max == null ? "" : range.max)+"'"+disabled+"></span>";
+      return "<span class='range-control'><input class='control' type='text' inputmode='decimal'"+noHistory()+" step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='min' placeholder='Мин.' aria-label='"+esc(label(item))+": минимум' value='"+esc(range.min == null ? "" : range.min)+"'"+disabled+"><input class='control' type='text' inputmode='decimal'"+noHistory()+" step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='max' placeholder='Макс.' aria-label='"+esc(label(item))+": максимум' value='"+esc(range.max == null ? "" : range.max)+"'"+disabled+"></span>";
     }
     if (item.kind === "resolution" || item.kind === "power_bins") {
       var resolution = current && typeof current === "object" ? current : { mode:"auto" };
@@ -202,11 +259,11 @@
         }
       });
       var resolutionNumericKind=numericKind(item, key);
-      return "<span class='resolution-control' data-resolution-current-mode='"+esc(normalizedMode)+"'>"+resolutionMarkup+"<input class='control' type='text' inputmode='"+(resolutionNumericKind === "integer" ? "numeric" : "decimal")+"' step='"+(resolutionNumericKind === "integer" ? "1" : esc(item.step == null ? "any" : item.step))+"' data-setting-id='"+esc(item.id)+"' data-resolution-value data-resolution-key='"+esc(key)+"' value='"+esc(amount == null ? "" : amount)+"'"+(disabled || normalizedMode === "auto" ? " disabled" : "")+"></span>";
+      return "<span class='resolution-control' data-resolution-current-mode='"+esc(normalizedMode)+"'>"+resolutionMarkup+"<input class='control' type='text' inputmode='"+(resolutionNumericKind === "integer" ? "numeric" : "decimal")+"'"+noHistory()+" step='"+(resolutionNumericKind === "integer" ? "1" : esc(item.step == null ? "any" : item.step))+"' data-setting-id='"+esc(item.id)+"' data-resolution-value data-resolution-key='"+esc(key)+"' value='"+esc(amount == null ? "" : amount)+"'"+(disabled || normalizedMode === "auto" ? " disabled" : "")+"></span>";
     }
     if (item.kind === "readout" || item.readonly) return "<span class='readonly-control'>"+esc(current == null || current === "" ? "—" : current)+(item.units ? " "+esc(item.units) : "")+"</span>";
     var scalarKind=numericKind(item);
-    return "<input class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"' type='text' inputmode='"+(scalarKind === "integer" ? "numeric" : "decimal")+"' step='"+(scalarKind === "integer" ? "1" : esc(item.step == null ? "any" : item.step))+"' value='"+esc(current == null ? "" : current)+"'"+disabled+">";
+    return "<input class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"' type='text' inputmode='"+(scalarKind === "integer" ? "numeric" : "decimal")+"'"+noHistory()+" step='"+(scalarKind === "integer" ? "1" : esc(item.step == null ? "any" : item.step))+"' value='"+esc(current == null ? "" : current)+"'"+disabled+">";
   }
 
   function renderField(item) {
@@ -234,6 +291,7 @@
       return "<section class='settings-group"+(collapsed ? " is-collapsed" : "")+"' data-settings-group='"+esc(item.key)+"'><button class='settings-group-title' type='button' data-settings-group-toggle='"+esc(collapseKey)+"' aria-expanded='"+String(!collapsed)+"' aria-controls='"+esc(bodyId)+"'><span>"+esc(item.title)+"</span></button><div class='settings-group-fields' id='"+esc(bodyId)+"'"+(collapsed ? " hidden" : "")+">"+item.items.map(renderField).join("")+"</div></section>";
     }).join("");
     valueSelect.reconcile();
+    decorateNoHistory(host);
   }
 
   function rawFor(item, node) {
@@ -267,6 +325,7 @@
       render(); window.dispatchEvent(new CustomEvent("signal-apply-state")); return Promise.resolve();
     }
     draft.value = parsed; draft.error = ""; draft.intent = ++context.intent; context.drafts[item.id] = draft;
+    if (item.id === "display.name" || item.id === "pane.name") window.dispatchEvent(new CustomEvent("signal-settings-name-preview", { detail:{ field_id:item.id, value:parsed, display_id:context.displayId, intent:draft.intent } }));
     if (item.kind === "resolution" || item.kind === "power_bins") render();
     window.dispatchEvent(new CustomEvent("signal-apply-state"));
     if (isApply(item)) {
@@ -339,7 +398,7 @@
         var latest = context.drafts[item.id];
         if (latest && !latest.error && (latest.intent || 0) > intent) return persistLatest(0);
         render();
-        window.dispatchEvent(new CustomEvent("signal-settings-saved", { detail:response }));
+        window.dispatchEvent(new CustomEvent("signal-settings-saved", { detail:Object.assign({}, response || {}, { field_id:item.id, value:value, display_id:displayId, intent:intent }) }));
         return response;
       }).catch(function (error) {
         if (!sameContext(token, displayId)) return;
@@ -348,6 +407,7 @@
         if (latest && !latest.error && (latest.intent || 0) > intent) return persistLatest(0);
         if (latest) latest.error = (error.payload && (error.payload.message || error.payload.error && error.payload.error.message)) || error.message || "Не удалось сохранить черновик.";
         render();
+        window.dispatchEvent(new CustomEvent("signal-settings-save-failed", { detail:{ field_id:item.id, display_id:displayId, intent:intent, error:error } }));
         throw error;
       });
     }
@@ -370,7 +430,11 @@
   document.addEventListener("change", function (event) {
     var node = event.target;
     var item = node && node.dataset && context.renderedFields[node.dataset.settingId];
-    if (item) update(item, rawFor(item, node));
+    if (item && ["display.name", "pane.name"].indexOf(item.id) < 0) update(item, rawFor(item, node));
+  });
+  document.addEventListener("input", function (event) {
+    var node=event.target, item=node && node.dataset && context.renderedFields[node.dataset.settingId];
+    if (item && ["display.name", "pane.name"].indexOf(item.id) >= 0) update(item, rawFor(item, node));
   });
 
   window.SignalAnalyserSettings = {

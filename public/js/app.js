@@ -1,3 +1,73 @@
+(function () {
+  "use strict";
+
+  var jetPalette = ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"];
+  var summaryFields = [
+    ["sample_count", "Отсчёты"], ["data_type", "Тип"], ["duration", "Длительность"],
+    ["region_start", "Начало области"], ["region_end", "Конец области"],
+    ["minimum", "Минимум"], ["minimum_position", "Время минимума"],
+    ["maximum", "Максимум"], ["maximum_position", "Время максимума"],
+    ["mean", "Среднее"], ["median", "Медиана"], ["peak_to_peak", "Размах"], ["rms", "СКЗ"]
+  ];
+  var unitFactors = {
+    seconds:1, milliseconds:1e3, microseconds:1e6, nanoseconds:1e9,
+    hertz:1, kilohertz:1e-3, megahertz:1e-6, gigahertz:1e-9
+  };
+
+  function decorateNoHistory(root) {
+    (root || document).querySelectorAll("input:not([type]), input[type='text'], input[type='search'], input[type='number'], textarea").forEach(function (input) {
+      input.setAttribute("autocomplete", "off");
+      input.setAttribute("spellcheck", "false");
+      input.setAttribute("autocapitalize", "off");
+      input.setAttribute("autocorrect", "off");
+      input.removeAttribute("name");
+    });
+  }
+
+  function projectCanonical(value, unit) {
+    if (value === null || value === undefined || value === "") return "";
+    var factor=unitFactors[unit] || 1;
+    return Number(value) * factor;
+  }
+
+  function toCanonical(value, unit) {
+    if (value === null || value === undefined || value === "") return null;
+    var factor=unitFactors[unit] || 1;
+    return Number(value) / factor;
+  }
+
+  function setBusyPreservingCheckboxes(root, busy) {
+    if (!root) return;
+    root.setAttribute("aria-busy", String(!!busy));
+    root.querySelectorAll("input[type='checkbox']").forEach(function (checkbox) {
+      if (busy) {
+        checkbox.dataset.wasDisabledBeforeBusy=String(checkbox.disabled);
+        checkbox.disabled=true;
+      } else {
+        checkbox.disabled=checkbox.dataset.wasDisabledBeforeBusy === "true";
+        delete checkbox.dataset.wasDisabledBeforeBusy;
+      }
+    });
+  }
+
+  function effectiveViewport(displayedRange, unit, canonicalFullRange) {
+    if (!Array.isArray(displayedRange) || displayedRange.length !== 2) return canonicalFullRange ? canonicalFullRange.slice() : null;
+    var result=[toCanonical(displayedRange[0], unit), toCanonical(displayedRange[1], unit)];
+    if (!canonicalFullRange) return result;
+    return [Math.max(canonicalFullRange[0], Math.min(result[0], result[1])), Math.min(canonicalFullRange[1], Math.max(result[0], result[1]))];
+  }
+
+  window.SignalAnalyserTask0126 = {
+    jetPalette:jetPalette.slice(),
+    summaryFields:summaryFields.slice(),
+    decorateNoHistory:decorateNoHistory,
+    projectCanonical:projectCanonical,
+    toCanonical:toCanonical,
+    setBusyPreservingCheckboxes:setBusyPreservingCheckboxes,
+    effectiveViewport:effectiveViewport
+  };
+}());
+
 (function signalAnalyserApp(window, document) {
   "use strict";
 
@@ -5,6 +75,7 @@
   var settings = window.SignalAnalyserSettings;
   var numeric = window.SignalAnalyserNumeric;
   var valueSelect = window.SignalAnalyserValueSelect;
+  var task0126 = window.SignalAnalyserTask0126;
   var titles = { time: "Временная область", spectrum: "Спектр", spectrogram: "Спектрограмма", persistence: "Спектр персистентности" };
   var measurementOptions = [
     { id:"minimum", label:"Минимум" }, { id:"maximum", label:"Максимум" },
@@ -24,7 +95,7 @@
     sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
     signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
-    signalMembershipBusy: false, pendingMainSignal: "",
+    signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [],
     signalSamples: { signalId:"", signalName:"", rows:[], nextCursor:null, total:0, loading:false, error:"", token:0 },
     signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }
   };
@@ -32,6 +103,73 @@
   function q(selector) { return document.querySelector(selector); }
   function qa(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]; }); }
+  function decorateNoHistory(root) { var target=root || document; if (target && typeof target.querySelectorAll === "function" && task0126 && typeof task0126.decorateNoHistory === "function") task0126.decorateNoHistory(target); }
+  function setCheckboxRegionBusy(root, busy) {
+    if (!root || !task0126 || typeof task0126.setBusyPreservingCheckboxes !== "function") return;
+    if (root.dataset.task0126Busy === String(!!busy)) return;
+    root.dataset.task0126Busy=String(!!busy);
+    task0126.setBusyPreservingCheckboxes(root, busy);
+  }
+  function setSignalTableMutationBusy(busy, signalName) {
+    var rows=q("[data-signal-rows]"), region=rows && rows.closest(".signal-table-scroll");
+    setCheckboxRegionBusy(region, busy);
+    qa(".signal-row-actions.is-pinned").forEach(function (actions) { actions.classList.remove("is-pinned"); });
+    if (busy && signalName) {
+      var row=q("[data-signal-row][data-signal-name='" + CSS.escape(signalName) + "']");
+      var actions=row && row.querySelector(".signal-row-actions");
+      if (actions) actions.classList.add("is-pinned");
+    }
+  }
+  function displayPreviewName(display) {
+    if (!display) return "Экран";
+    return Object.prototype.hasOwnProperty.call(model.namePreview.displays, display.id) ? model.namePreview.displays[display.id] : display.name || "Экран";
+  }
+  function panePreviewName(displayId, pane) {
+    if (!pane) return "Область";
+    var key=paneRuntimeKey(displayId, pane.id);
+    return Object.prototype.hasOwnProperty.call(model.namePreview.panes, key) ? model.namePreview.panes[key] : pane.name || "Область";
+  }
+  function projectNamePreview(detail) {
+    var display=activeDisplay(), value=String(detail && detail.value == null ? "" : detail.value), fieldId=detail && detail.field_id;
+    if (!display || detail.display_id && detail.display_id !== display.id) return;
+    if (fieldId === "display.name") model.namePreview.displays[display.id]=value;
+    else if (fieldId === "pane.name" && model.activePane) {
+      model.namePreview.panes[paneRuntimeKey(display.id, model.activePane)]=value;
+      model.namePreviewIntents[display.id + "::pane.name::" + String(detail.intent || 0)]=model.activePane;
+    }
+    else return;
+    if (fieldId === "display.name") {
+      var tab=q("[data-screen-id='" + CSS.escape(display.id) + "'] .display-tab span");
+      if (tab) tab.textContent=value;
+    }
+    if (fieldId === "pane.name") {
+      var title=q("[data-display-id='" + CSS.escape(display.id) + "'][data-pane-id='" + CSS.escape(model.activePane) + "'] .plot-pane-title");
+      if (title) title.textContent=value;
+    }
+    var context=q("[data-settings-context]"), pane=paneById(model.activePane);
+    if (context) context.textContent=displayPreviewName(display) + " · " + panePreviewName(display.id, pane);
+  }
+  function clearNamePreview(fieldId, displayId, paneId) {
+    if (fieldId === "display.name") delete model.namePreview.displays[displayId];
+    if (fieldId === "pane.name" && paneId) delete model.namePreview.panes[paneRuntimeKey(displayId, paneId)];
+  }
+  function reconcileNamePreviews(snapshot) {
+    (snapshot.displays || []).forEach(function (display) {
+      if (Object.prototype.hasOwnProperty.call(model.namePreview.displays, display.id) && display.name === model.namePreview.displays[display.id]) delete model.namePreview.displays[display.id];
+    });
+    (snapshot.layouts || []).forEach(function (entry) {
+      ((entry.layout && entry.layout.panes) || []).forEach(function (pane) {
+        var key=paneRuntimeKey(entry.display_id, pane.id);
+        if (Object.prototype.hasOwnProperty.call(model.namePreview.panes, key) && pane.name === model.namePreview.panes[key]) delete model.namePreview.panes[key];
+      });
+    });
+  }
+  function signalColor(signal) {
+    if (signal && typeof signal.color === "string" && signal.color) return signal.color;
+    var signals=model.state && Array.isArray(model.state.signals) ? model.state.signals : [], index=Math.max(0, signals.indexOf(signal));
+    var palette=task0126 && task0126.jetPalette || ["#000080"];
+    return palette[index % palette.length];
+  }
   function boundedApply(promise, timeoutMs) {
     return new Promise(function (resolve, reject) {
       var settled = false;
@@ -103,6 +241,7 @@
     if (!snapshot || r === null || r<model.revision || !Array.isArray(snapshot.displays) || !snapshot.displays.length) return false;
     model.state = snapshot;
     model.revision = r;
+    reconcileNamePreviews(snapshot);
     settings.setRevision(r);
     updateLayout(snapshot);
     var display = activeDisplay();
@@ -190,6 +329,7 @@
     renderInspector();
     renderColumnMenu();
     renderMeasurementMenu();
+    decorateNoHistory(document);
   }
 
   function renderTabs() {
@@ -199,7 +339,7 @@
     var revealActive = model.renderedDisplayId !== activeId;
     tablist.innerHTML = (model.state.displays || []).map(function (display) {
       var selected = display.id === model.state.active_display_id;
-      var displayName = display.name || "Экран";
+      var displayName = displayPreviewName(display);
       return "<div class='display-tab-shell" + (selected ? " is-selected" : "") + "' data-screen-id='" + esc(display.id) + "'>" +
         "<button class='display-tab' type='button' role='tab' data-display-select='" + esc(display.id) + "' data-testid='display-tab-" + esc(display.id) + "' aria-selected='" + selected + "'><span>" + esc(displayName) + "</span></button>" +
         "<button class='display-tab-close header-chrome-button' type='button' data-display-close='" + esc(display.id) + "' data-testid='display-close-" + esc(display.id) + "' aria-label='Удалить " + esc(displayName) + "' data-tooltip='Удалить " + esc(displayName) + "'" + (model.state.displays.length === 1 ? " disabled" : "") + "><img src='./icons/close.svg' alt=''></button>" +
@@ -514,7 +654,7 @@
     node.dataset.displayId = displayId;
     node.dataset.paneSelected = String(selected);
     node.dataset.testid = "plot-pane-" + pane.id;
-    var paneName = pane.name || "Область";
+    var paneName = panePreviewName(displayId, pane);
     node.setAttribute("aria-label", paneName + (selected ? ", активная" : "") + (extremaTarget ? ", настраивается расчёт экстремумов" : ""));
     var title = node.querySelector(".plot-pane-title");
     if (title) title.textContent = paneName;
@@ -592,7 +732,7 @@
       var selected = node.dataset.paneId === model.activePane;
       var extremaTarget = display && paneRuntimeKey(display.id, node.dataset.paneId) === model.extremaTargetKey;
       var pane = paneById(node.dataset.paneId);
-      var paneName = pane && pane.name || "Область";
+      var paneName = panePreviewName(display.id, pane);
       node.classList.toggle("is-active", selected);
       node.classList.toggle("is-extrema-settings-target", extremaTarget);
       node.dataset.paneSelected = String(selected);
@@ -633,6 +773,7 @@
     else { body="<p class='dialog-intro'>Перед восстановлением приложение проверит структуру, версию, ограничения и контрольные суммы.</p><div class='selected-file'><img src='./icons/file.svg' alt=''><div><strong>"+esc(current.file&&current.file.name)+"</strong><small>.sazip</small></div></div><div class='alert alert-warning'><strong>Безопасный импорт</strong><p>Скрипт reproduce.jl будет сохранён как файл пакета и никогда не выполняется при импорте.</p></div>"; footer="<button class='button' data-package-close>Отмена</button><button class='button button-primary' data-testid='import-validate'>Проверить пакет</button>"; }
     if(current.phase==="summary") { body="<div class='result-heading'><img class='result-icon' src='./icons/tick-figma.svg' alt=''><div><h3>Пакет проверен</h3><p>.sazip v"+esc(v.version)+" · контрольных сумм: "+esc(v.contents&&v.contents.checksum_count)+"</p></div></div><dl class='summary-grid'><dt>Сигналы</dt><dd>"+esc(v.contents&&v.contents.signals)+"</dd><dt>Экраны</dt><dd>"+esc(v.contents&&v.contents.displays)+"</dd><dt>Готовые графики</dt><dd>"+esc(v.contents&&v.contents.graph_snapshots)+"</dd><dt>Отсчёты</dt><dd>"+esc(v.limits&&v.limits.total_samples)+" / "+esc(v.limits&&v.limits.max_total_samples)+"</dd></dl><details data-testid='package-contents'><summary>Состав пакета</summary><ul><li>Сессия и настройки</li><li>Исходные данные сигналов</li><li>Готовые снимки графиков</li><li>reproduce.jl · не будет выполнен</li><li>Метаданные зависимостей</li></ul></details><label class='package-checkbox'><input type='checkbox' data-testid='workspace-publish'"+(current.publish?" checked":"")+"> Опубликовать сигналы в рабочую область Engee<small>Выключено по умолчию. Без публикации сигналы остаются только внутри приложения.</small></label>"+(current.publish?"<label class='field-label'>Префикс имён<input class='text-input' data-testid='workspace-prefix' value='"+esc(current.prefix)+"'><small>Префикс добавляется к именам публикуемых переменных.</small></label>"+(current.preflightLoading?"<p class='muted-copy' role='status'>Проверяем имена рабочей области…</p>":"")+(current.preflightError?"<p class='session-import-error' role='alert'>"+esc(current.preflightError)+"</p>":"")+(collisions.length?"<div class='alert alert-warning' data-testid='workspace-collision-warning'><strong>Обнаружены совпадения имён</strong><p>"+esc(collisions.join(", "))+"</p><p>Проверьте префикс перед импортом.</p></div>":"")+"<div class='alert alert-warning'><strong>Публикация не входит в атомарную замену</strong><p>При сбое часть переменных может быть создана. После импорта проверьте итоговый отчёт.</p></div>":"")+"<label class='package-checkbox'><input type='checkbox' data-testid='replace-confirm'"+(current.replace?" checked":"")+"> Я подтверждаю замену текущей сессии</label>"; footer="<button class='button' data-package-close>Отмена</button><button class='button button-primary' data-testid='import-commit'"+(current.replace?"":" disabled")+">Восстановить сессию</button>"; }
     dialog.innerHTML=modalLayer("session-package-import", "Импортировать переносимый пакет", body, footer, current.busy);
+    decorateNoHistory(dialog);
     bindPackageDialog(dialog);
   }
   function closeSessionImport(restoreFocus) {
@@ -703,7 +844,7 @@
       if (current.open) renderSessionImportDialog();
     });
   }
-  function renderSessionSaveDialog() { var s=model.sessionSave, dialog=q("[data-testid='session-package-save-dialog']"), rows=packageRows().map(function(row){return "<div class='content-row'><span class='included-mark'>✓</span><div><strong>"+row[0]+"</strong><small>"+row[1]+"</small></div></div>";}).join(""), body,footer; if(!s.open){if(dialog)dialog.remove();if(!model.sessionImport.open)setSessionImportModalBackground(false);return;} if(!dialog){dialog=document.createElement("div");dialog.className="modal-layer primary-modal-layer package-modal";dialog.dataset.testid="session-package-save-dialog";document.body.appendChild(dialog);}setSessionImportModalBackground(true);if(s.phase==="progress"){body=packageProgress("Подготавливаем сессию","Экспортируем сигналы и графики");footer="<button class='button' disabled>Проверяем архив и контрольные суммы</button>";}else if(s.phase==="error"){body="<div class='alert alert-error' role='alert'><strong>Не удалось создать пакет</strong><p>"+esc(s.error||"Не удалось сохранить снимки графиков. Данные сессии не были скачаны.")+"</p></div>";footer="<button class='button' data-package-save-close>Закрыть</button><button class='button button-primary' data-package-save-create>Повторить</button>";}else if(s.phase==="ready"){body="<div class='result-heading' data-testid='save-ready'><img class='result-icon' src='./icons/tick-figma.svg' alt=''><div><h3>Пакет успешно создан</h3><p>Файл готов к скачиванию.</p></div></div>";footer="<button class='button' data-package-save-close>Закрыть</button><button class='button button-primary' data-testid='session-package-save-download' data-package-save-download>Скачать .sazip</button>";}else{body="<p class='dialog-intro'>Проверьте состав переносимого пакета Engee. Все перечисленные материалы включаются всегда.</p><h3 class='section-title'>Состав пакета</h3><div class='content-list' data-testid='save-content-list'>"+rows+"</div>";footer="<button class='button' data-package-save-close>Отмена</button><button class='button button-primary' data-testid='session-package-save-create' data-package-save-create>Сохранить пакет</button>";}dialog.innerHTML=modalLayer("session-package-save","Сохранить переносимый пакет",body,footer,s.busy);bindSaveDialog(dialog); }
+  function renderSessionSaveDialog() { var s=model.sessionSave, dialog=q("[data-testid='session-package-save-dialog']"), rows=packageRows().map(function(row){return "<div class='content-row'><span class='included-mark'>✓</span><div><strong>"+row[0]+"</strong><small>"+row[1]+"</small></div></div>";}).join(""), body,footer; if(!s.open){if(dialog)dialog.remove();if(!model.sessionImport.open)setSessionImportModalBackground(false);return;} if(!dialog){dialog=document.createElement("div");dialog.className="modal-layer primary-modal-layer package-modal";dialog.dataset.testid="session-package-save-dialog";document.body.appendChild(dialog);}setSessionImportModalBackground(true);if(s.phase==="progress"){body=packageProgress("Подготавливаем сессию","Экспортируем сигналы и графики");footer="<button class='button' disabled>Проверяем архив и контрольные суммы</button>";}else if(s.phase==="error"){body="<div class='alert alert-error' role='alert'><strong>Не удалось создать пакет</strong><p>"+esc(s.error||"Не удалось сохранить снимки графиков. Данные сессии не были скачаны.")+"</p></div>";footer="<button class='button' data-package-save-close>Закрыть</button><button class='button button-primary' data-package-save-create>Повторить</button>";}else if(s.phase==="ready"){body="<div class='result-heading' data-testid='save-ready'><img class='result-icon' src='./icons/tick-figma.svg' alt=''><div><h3>Пакет успешно создан</h3><p>Файл готов к скачиванию.</p></div></div>";footer="<button class='button' data-package-save-close>Закрыть</button><button class='button button-primary' data-testid='session-package-save-download' data-package-save-download>Скачать .sazip</button>";}else{body="<p class='dialog-intro'>Проверьте состав переносимого пакета Engee. Все перечисленные материалы включаются всегда.</p><h3 class='section-title'>Состав пакета</h3><div class='content-list' data-testid='save-content-list'>"+rows+"</div>";footer="<button class='button' data-package-save-close>Отмена</button><button class='button button-primary' data-testid='session-package-save-create' data-package-save-create>Сохранить пакет</button>";}dialog.innerHTML=modalLayer("session-package-save","Сохранить переносимый пакет",body,footer,s.busy);decorateNoHistory(dialog);bindSaveDialog(dialog); }
   function openSessionSave(trigger) { var s=model.sessionSave; if(s.busy)return; s.open=true;s.phase="summary";s.error="";s.package=null;s.trigger=trigger;renderSessionSaveDialog();window.requestAnimationFrame(function(){var n=q("[data-testid='session-package-save-create']");if(n)n.focus();}); }
   function downloadSessionDocument(trigger) { var s=model.sessionSave; if(s.busy)return; s.open=true;s.phase="progress";s.busy=true;s.error="";s.trigger=trigger||s.trigger;renderSessionSaveDialog();api.exportPackage().then(function(result){s.package=result;s.phase="ready";}).catch(function(error){s.error=packageError(error,"Не удалось сохранить снимки графиков. Данные сессии не были скачаны.");s.phase="error";}).finally(function(){s.busy=false;renderSessionSaveDialog();}); }
   function closePackageDetails() { var layer=q("[data-testid='session-package-details-dialog']"); if(layer)layer.remove(); var target=q("[data-testid='import-error-details']"); if(target)target.focus(); }
@@ -1634,6 +1775,48 @@
     var display=q("[data-settings-page='display']"); tabs.insertBefore(button, display || tabs.firstChild);
   }
 
+  function summaryTimeProjection(pane, summary) {
+    var fieldId=pane && pane.plot_type === "spectrogram" ? "spectrogram.time_units" : pane && pane.plot_type === "persistence" ? "persistence.time_units" : "time.units";
+    var unit=(typeof settings.value === "function" && settings.value(fieldId)) || "seconds";
+    var maximumSeconds=Math.max(Math.abs(Number(summary && summary.region_end_s) || 0), Math.abs(Number(summary && summary.duration_s) || 0));
+    var secondsPerUnit=screenTimeUnitFactor(unit, maximumSeconds || 1);
+    var labels={ picoseconds:"ps", nanoseconds:"ns", microseconds:"μs", milliseconds:"ms", seconds:"s", minutes:"мин", hours:"ч", days:"дн", years:"г" };
+    var resolved=unit;
+    if (unit === "auto") {
+      var factors={ "1e-12":"picoseconds", "1e-9":"nanoseconds", "0.000001":"microseconds", "0.001":"milliseconds", "1":"seconds", "60":"minutes", "3600":"hours", "86400":"days", "31557600":"years" };
+      resolved=factors[String(secondsPerUnit)] || "seconds";
+    }
+    return { secondsPerUnit:secondsPerUnit, label:labels[resolved] || "s" };
+  }
+
+  function summaryNumber(value) {
+    if (value === null || value === undefined || value === "" || !Number.isFinite(Number(value))) return "—";
+    return measurementValue({ value:Number(value) }, "value");
+  }
+
+  function summaryTimeValue(value, projection, sampleIndex) {
+    if (value === null || value === undefined || value === "" || !Number.isFinite(Number(value))) return "—";
+    var copy=summaryNumber(Number(value) / projection.secondsPerUnit) + " " + projection.label;
+    return sampleIndex === null || sampleIndex === undefined ? copy : copy + " · индекс " + String(sampleIndex);
+  }
+
+  function signalSummaryMetrics(pane, signal, summary) {
+    var projection=summaryTimeProjection(pane, summary), fields=task0126 && task0126.summaryFields || [];
+    return fields.map(function (field) {
+      var id=field[0], value;
+      if (id === "sample_count") value=summary.sample_count == null ? signal.sample_count : summary.sample_count;
+      else if (id === "data_type") value=summary.data_type || signal.data_type;
+      else if (id === "duration") value=summaryTimeValue(summary.duration_s == null ? signal.duration_s : summary.duration_s, projection);
+      else if (id === "region_start") value=summaryTimeValue(summary.region_start_s, projection);
+      else if (id === "region_end") value=summaryTimeValue(summary.region_end_s, projection);
+      else if (id === "minimum_position") value=summaryTimeValue(summary.minimum_time_s, projection, summary.minimum_sample_index);
+      else if (id === "maximum_position") value=summaryTimeValue(summary.maximum_time_s, projection, summary.maximum_sample_index);
+      else if (id === "peak_to_peak") value=summaryNumber(summary.peak_to_peak == null ? summary.range : summary.peak_to_peak);
+      else value=summaryNumber(summary[id]);
+      return [field[1], value == null || value === "" ? "—" : value];
+    });
+  }
+
   function renderSignalSettings(pane) {
     var host=q("[data-testid='settings-content']"), signal=mainSignalForPane(pane);
     if (!host) return;
@@ -1646,7 +1829,7 @@
     var editor=model.signalEditor;
     if (!editor.collapsed) editor.collapsed={ main:false, summary:false };
     if (editor.signalId !== signalId) {
-      editor={ signalId:signalId, summary:null, loading:true, error:"", collapsed:{ main:false, summary:false }, applying:false, draft:{ name:signal.name, color:signal.color || "#1686c3", sample_rate_hz:String(signal.sample_rate_hz == null ? "" : signal.sample_rate_hz) } };
+      editor={ signalId:signalId, summary:null, loading:true, error:"", collapsed:{ main:false, summary:false }, applying:false, draft:{ name:signal.name, color:signalColor(signal), sample_rate_hz:String(signal.sample_rate_hz == null ? "" : signal.sample_rate_hz) } };
       model.signalEditor=editor;
       boundedRequest(api.signalSummary(signalId), 10000).then(function (summary) {
         if (model.signalEditor !== editor) return;
@@ -1656,10 +1839,12 @@
         editor.loading=false; editor.error=safeErrorText(error, "Не удалось загрузить сводку."); renderSettings(activeDisplay());
       });
     }
-    var d=editor.draft, rate=signalSampleRateValidation(d.sample_rate_hz), disabled=editor.applying ? " disabled" : "", s=(editor.summary && editor.summary.summary) || editor.summary || {}, metrics=[["Отсчёты", s.sample_count], ["Тип", s.data_type], ["Длительность", s.duration_s], ["Среднее", s.mean], ["Минимум", s.minimum], ["Максимум", s.maximum], ["СКЗ", s.rms]];
-    var mainBody="<label class='settings-field-row'><span class='settings-label'>Имя</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='name' value='"+esc(d.name)+"'"+disabled+"></span></label><label class='settings-field-row'><span class='settings-label'>Цвет</span><span class='settings-control-wrap color-field'><button class='color-swatch-button' type='button' data-signal-color-trigger aria-label='Цвет сигнала'"+disabled+"><i style='--signal-color:"+esc(d.color)+"'></i></button><input class='control' data-signal-metadata='color' data-signal-color-input value='"+esc(d.color)+"'"+disabled+"></span></label><label class='settings-field-row"+(rate.error ? " has-error" : "")+"' data-signal-metadata-row='sample_rate_hz'><span class='settings-label'>Дискретизация, Гц</span><span class='settings-control-wrap'><input class='control' type='text' data-signal-metadata='sample_rate_hz' inputmode='decimal' value='"+esc(d.sample_rate_hz)+"' aria-invalid='"+String(!!rate.error)+"'"+disabled+"></span><small class='field-message is-error' data-signal-metadata-error='sample_rate_hz'"+(rate.error ? "" : " hidden")+">"+esc(rate.error)+"</small></label>";
+    var d=editor.draft, rate=signalSampleRateValidation(d.sample_rate_hz), disabled=editor.applying ? " disabled" : "", s=(editor.summary && editor.summary.summary) || editor.summary || {}, metrics=signalSummaryMetrics(pane, signal, s);
+    var noHistory=" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'";
+    var mainBody="<label class='settings-field-row'><span class='settings-label'>Имя</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='name'"+noHistory+" value='"+esc(d.name)+"'"+disabled+"></span></label><label class='settings-field-row'><span class='settings-label'>Цвет</span><span class='settings-control-wrap color-field'><button class='color-swatch-button' type='button' data-signal-color-trigger aria-label='Цвет сигнала'"+disabled+"><i style='--signal-color:"+esc(d.color)+"'></i></button><input class='control' data-signal-metadata='color' data-signal-color-input"+noHistory+" value='"+esc(d.color)+"'"+disabled+"></span></label><label class='settings-field-row"+(rate.error ? " has-error" : "")+"' data-signal-metadata-row='sample_rate_hz'><span class='settings-label'>Дискретизация, Гц</span><span class='settings-control-wrap'><input class='control' type='text' data-signal-metadata='sample_rate_hz' inputmode='decimal'"+noHistory+" value='"+esc(d.sample_rate_hz)+"' aria-invalid='"+String(!!rate.error)+"'"+disabled+"></span><small class='field-message is-error' data-signal-metadata-error='sample_rate_hz'"+(rate.error ? "" : " hidden")+">"+esc(rate.error)+"</small></label>";
     var summaryBody="<div class='summary-grid'>"+metrics.map(function (item) { return "<div class='summary-item'><span>"+item[0]+"</span><strong>"+esc(item[1] == null ? "—" : item[1])+"</strong></div>"; }).join("")+"</div><button class='button summary-action' type='button' data-testid='signal-values-action'>Значения</button>"+(editor.loading ? "<p class='status-note info'>Загрузка сводки…</p>" : editor.error ? "<p class='status-note error'>"+esc(editor.error)+"</p>" : "");
     host.innerHTML=signalSettingsGroup(editor, "main", "Основное", mainBody) + signalSettingsGroup(editor, "summary", "Сводка", summaryBody);
+    decorateNoHistory(host);
   }
 
   function showSignalSamples() {
@@ -1825,6 +2010,21 @@
     }, 150);
   }
 
+  function publicationBatch(targetRevision) {
+    return model.settingsPublishEvents.filter(function (event) { return event.revision <= targetRevision; });
+  }
+
+  function consumePublicationBatch(targetRevision) {
+    model.settingsPublishEvents=model.settingsPublishEvents.filter(function (event) { return event.revision > targetRevision; });
+  }
+
+  function revertPublicationNamePreviews(batch) {
+    (batch || []).forEach(function (event) {
+      if (event.fieldId === "display.name" || event.fieldId === "pane.name") clearNamePreview(event.fieldId, event.displayId, event.paneId);
+    });
+    render();
+  }
+
   function scheduleSettingsPublication(revision) {
     model.settingsPublishWanted=Math.max(model.settingsPublishWanted, Number(revision) || model.revision);
     if (model.settingsPublishing || model.screenApplying) return;
@@ -1833,6 +2033,8 @@
       model.settingsPublishTimer=null;
       if (model.settingsPublishing || model.screenApplying || model.settingsPublishWanted <= model.settingsPublishPublished) return;
       var targetRevision=model.settingsPublishWanted;
+      var batch=publicationBatch(targetRevision);
+      var namesOnly=batch.length > 0 && batch.every(function (event) { return event.fieldId === "display.name" || event.fieldId === "pane.name"; });
       model.settingsPublishing=true;
       boundedApply(settings.commit(), 10000).then(function (response) {
         if (response && response.success === false) throw new Error(response.error || "Сервер отклонил настройки.");
@@ -1841,8 +2043,13 @@
         model.settingsPublishPublished=Math.max(model.settingsPublishPublished, targetRevision);
         settings.setRevision(model.revision);
         if (response && response.settings && typeof settings.accept === "function") settings.accept(response.settings);
-        output(true);
+        consumePublicationBatch(targetRevision);
+        return refreshSnapshot(render).catch(function () { render(); return null; }).then(function () {
+          if (!namesOnly) output(true);
+          return response;
+        });
       }).catch(function (error) {
+        revertPublicationNamePreviews(batch);
         showToast(safeErrorText(error, "Не удалось применить настройки."), true);
       }).finally(function () {
         model.settingsPublishing=false;
@@ -1959,7 +2166,7 @@
     settings.beginCustomRender();
     if (typeof settings.setExtraVisible === "function") settings.setExtraVisible(["display.name"]);
     if (typeof settings.setExtraItems === "function") settings.setExtraItems([{
-      id:"display.name", kind:"text", label:"Имя экрана", value:display.name || "",
+      id:"display.name", kind:"text", label:"Имя экрана", value:displayPreviewName(display),
       enabled:true, visible:true, effect_status:"requires_apply"
     }]);
     var layoutFields = "<div class='screen-layout-options'>" +
@@ -1977,6 +2184,7 @@
     content.innerHTML = "<div class='screen-settings' data-testid='screen-settings'>" + screenSettingsGroup("screen-name", "Основное", settings.renderRows(["display.name"])) + screenSettingsGroup("layout", "Макет", layoutFields) + screenSettingsGroup("links", "Связь областей", linkFields) + limitGroups + "</div>";
     keepVisibleAutomaticRangeInputsEmpty(draft);
     valueSelect.reconcile();
+    decorateNoHistory(content);
   }
 
   function reconcileContextTabs(pane) {
@@ -1994,7 +2202,7 @@
     ensureSignalSettingsTab();
     reconcileContextTabs(pane);
     var context = q("[data-settings-context]");
-    if (context) context.textContent = (display.name || "Экран") + " · " + (pane && pane.name || "Область");
+    if (context) context.textContent = displayPreviewName(display) + " · " + panePreviewName(display.id, pane);
     qa("[data-settings-page]").forEach(function (button) { var available = contextTabAvailable(button.dataset.settingsPage, pane), active = available && button.dataset.settingsPage === model.settingsPage; button.hidden = !available; button.setAttribute("aria-hidden", String(!available)); button.setAttribute("aria-selected", String(active)); button.tabIndex = active ? 0 : -1; });
     var content = q("[data-testid='settings-content']");
     if (content) content.setAttribute("aria-labelledby", "settings-tab-" + model.settingsPage);
@@ -2099,7 +2307,7 @@
     })[0] || null;
     if (typeof mainSignalForPane === "function") mainSignal=mainSignalForPane(activePane);
     rows.innerHTML = signals.map(function (signal) {
-      var values = { name:esc(signal.name), color:"<span class='color-swatch' data-testid='signal-color-" + esc(signal.name) + "' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signal.name) + "'></span>", sample_rate:esc(signal.sample_rate_hz == null ? "—" : signal.sample_rate_hz), sample_count:esc(signal.sample_count == null ? "—" : signal.sample_count), duration:esc(signal.duration_s == null ? "—" : signal.duration_s), data_type:esc(signal.data_type || "—") };
+      var values = { name:esc(signal.name), color:"<span class='color-swatch' data-testid='signal-color-" + esc(signal.name) + "' style='--swatch:" + esc(signalColor(signal)) + "' aria-label='Цвет " + esc(signal.name) + "'></span>", sample_rate:esc(signal.sample_rate_hz == null ? "—" : signal.sample_rate_hz), sample_count:esc(signal.sample_count == null ? "—" : signal.sample_count), duration:esc(signal.duration_s == null ? "—" : signal.duration_s), data_type:esc(signal.data_type || "—") };
       var selected = bindings.indexOf(signal.name) >= 0;
       var main = !!mainSignal && mainSignal.name === signal.name;
       var signalId = typeof signal.id === "string" && signal.id.trim() ? signal.id : null;
@@ -2109,11 +2317,13 @@
         var classes = (column.id === "color" ? "color-cell " : "") + (last ? "is-actions-host" : "");
         return "<td class='" + classes.trim() + "'><span class='signal-cell-value'>" + values[column.id] + "</span>" + (last ? actions : "") + "</td>";
       }).join("");
-      return "<tr data-testid='signal-row-" + esc(signal.name) + "' data-signal-row data-signal-name='" + esc(signal.name) + "'" + (main ? " data-main-signal='true' class='is-main-signal'" : "") + "><td><input class='ui-checkbox' type='checkbox' data-visible-signal='" + esc(signal.name) + "' aria-label='Показывать " + esc(signal.name) + " в активной области'" + (selected ? " checked" : "") + (model.signalMembershipBusy ? " disabled" : "") + "></td>" + cells + "</tr>";
+      return "<tr data-testid='signal-row-" + esc(signal.name) + "' data-signal-row data-signal-name='" + esc(signal.name) + "'" + (main ? " data-main-signal='true' class='is-main-signal'" : "") + "><td><input class='ui-checkbox' type='checkbox' data-visible-signal='" + esc(signal.name) + "' aria-label='Показывать " + esc(signal.name) + " в активной области'" + (selected ? " checked" : "") + "></td>" + cells + "</tr>";
     }).join("");
     var toggleAll = q("[data-visible-all-signals]");
     if (toggleAll) toggleAll.indeterminate = !everySignalVisible && bindings.length > 0;
     q("[data-testid='signal-search-empty']").hidden = signals.length > 0;
+    setSignalTableMutationBusy(model.signalMembershipBusy || !!model.pendingMainSignal, model.pendingMainSignal);
+    decorateNoHistory(body);
   }
 
   function measurementValue(item, key) {
@@ -2175,7 +2385,7 @@
       var cells = columns.map(function (column) {
         var value = "—";
         if (column.id === "name") value = "<span class='signal-cell-value'>" + esc(signalName) + "</span>";
-        else if (column.id === "line") value = "<span class='color-swatch measurement-color-swatch' style='--swatch:" + esc(signal.color || "#1686c3") + "' aria-label='Цвет " + esc(signalName) + "'></span>";
+        else if (column.id === "line") value = "<span class='color-swatch measurement-color-swatch' style='--swatch:" + esc(signalColor(signal)) + "' aria-label='Цвет " + esc(signalName) + "'></span>";
         else if (column.id === "roi_min") value = esc(measurementValue({ value:limits.min_s }, "value"));
         else if (column.id === "roi_max") value = esc(measurementValue({ value:limits.max_s }, "value"));
         else value = esc(measurementValue(items[column.kind], column.itemKey));
@@ -2215,7 +2425,7 @@
     if (pane && !paneHasSignals(pane)) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберете сигнал для отображения</strong></div>"; return; }
     if (!extremaTabsAvailable(pane)) { host.innerHTML = "<div class='inspector-empty' role='status'>Экстремумы доступны для временной области и спектра</div>"; return; }
     if (!current || (!record.pending && !record.error && !record.calculated)) {
-      var paneName = pane && pane.name || "Область";
+      var paneName = panePreviewName(display.id, pane);
       host.innerHTML = "<div class='peaks-state peaks-start' data-testid='extrema-start' data-extrema-state='start' role='status'><strong>Рассчитать экстремумы для области " + esc(paneName) + "</strong><div class='peaks-start-actions'><button class='button' type='button' data-testid='extrema-configure'>Настроить рассчет</button><button class='button button-primary' type='button' data-testid='extrema-calculate'>Рассчитать</button></div></div>";
       return;
     }
@@ -2236,7 +2446,9 @@
       var type = row.type === "minimum" ? "minimum" : "maximum", typeLabel = type === "minimum" ? "Минимум" : "Максимум";
       var number = row.graph_number == null ? "" : row.graph_number;
       var coordinate = spectrum ? (row.frequency == null ? row.frequency_hz : row.frequency) : (row.time == null ? row.time_s : row.time);
-      return "<tr data-testid='extrema-row-" + esc(row.row_number == null ? index + 1 : row.row_number) + "'><td>" + esc(row.row_number == null ? index + 1 : row.row_number) + "</td><td>" + esc(row.signal_name || "") + "</td><td class='color-cell'><span class='peaks-color-swatch' style='--swatch:" + esc(row.signal_color || "#1686c3") + "' aria-label='Цвет " + esc(row.signal_name || "") + "'></span></td><td data-testid='extrema-type-" + esc(row.row_number == null ? index + 1 : row.row_number) + "'>" + typeLabel + "</td><td>" + esc(measurementValue(row, "value")) + "</td><td>" + esc(coordinate == null ? "—" : coordinate) + "</td><td><span class='extrema-table-marker is-" + type + "' style='--marker-color:" + esc(row.signal_color || "#1686c3") + "' data-marker-symbol='" + (type === "minimum" ? "triangle-down" : "triangle-up") + "' aria-label='" + typeLabel + ", метка " + esc(number) + "'><i aria-hidden='true'></i><b>" + esc(number) + "</b></span></td></tr>";
+      var rowSignal=(model.state.signals || []).filter(function (signal) { return signalNameMatches(signal, row.signal_name); })[0];
+      var rowColor=row.signal_color || signalColor(rowSignal);
+      return "<tr data-testid='extrema-row-" + esc(row.row_number == null ? index + 1 : row.row_number) + "'><td>" + esc(row.row_number == null ? index + 1 : row.row_number) + "</td><td>" + esc(row.signal_name || "") + "</td><td class='color-cell'><span class='peaks-color-swatch' style='--swatch:" + esc(rowColor) + "' aria-label='Цвет " + esc(row.signal_name || "") + "'></span></td><td data-testid='extrema-type-" + esc(row.row_number == null ? index + 1 : row.row_number) + "'>" + typeLabel + "</td><td>" + esc(measurementValue(row, "value")) + "</td><td>" + esc(coordinate == null ? "—" : coordinate) + "</td><td><span class='extrema-table-marker is-" + type + "' style='--marker-color:" + esc(rowColor) + "' data-marker-symbol='" + (type === "minimum" ? "triangle-down" : "triangle-up") + "' aria-label='" + typeLabel + ", метка " + esc(number) + "'><i aria-hidden='true'></i><b>" + esc(number) + "</b></span></td></tr>";
     }).join("") + "</tbody></table>";
   }
 
@@ -2309,6 +2521,7 @@
     var modeControl = "<label class='settings-field-row" + (modeError ? " has-error" : "") + "' data-testid='settings-field-mode'><span class='settings-label'><span>Режим расчёта</span></span><span class='settings-control-wrap'>" + modeSelector + "</span>" + (modeError ? "<small class='field-message is-error' role='alert'>" + esc(modeError) + "</small>" : "") + "</label><p class='extrema-magnitude-note" + (complexSignal ? " is-current" : "") + "' data-testid='extrema-magnitude-copy'><span>Для комплексных сигналов экстремумы рассчитываются по модулю |y|.</span>" + (complexSignal ? "<em>Активный сигнал комплексный · используется |y|.</em>" : "") + "</p>";
     host.innerHTML = "<section class='settings-group' data-testid='extrema-settings-group'><button class='settings-group-title' type='button' aria-expanded='true' disabled><span>Расчёт экстремумов</span></button><div class='settings-group-fields'>" + modeControl + labels.map(function (field) { var id=field[0], error=draft.invalid[id], integer=id === "number_of_peaks" || id === "minimum_distance_samples", helper=field[2] ? "<small class='field-message extrema-field-helper'>" + esc(field[2]) + "</small>" : ""; return "<label class='settings-field-row" + (error ? " has-error" : "") + "' data-testid='settings-field-" + id + "'><span class='settings-label' title='" + esc(field[1]) + "'><span>" + field[1] + "</span></span><span class='settings-control-wrap'><input class='control' type='text' inputmode='" + (integer ? "numeric" : "decimal") + "' step='" + (integer ? "1" : "any") + "' data-peaks-setting='" + id + "' value='" + esc(draft.values[id]) + "' aria-invalid='" + String(!!error) + "' aria-label='" + field[1] + "'" + disabled + "></span>" + (error ? "<small class='field-message is-error' role='alert'>" + esc(error) + "</small>" : "") + helper + "</label>"; }).join("") + "</div></section>";
     valueSelect.reconcile();
+    decorateNoHistory(host);
     if (restoreFocus) { var input = host.querySelector("[data-peaks-setting='" + restoreFocus.id + "']"); if (input) { input.focus(); if (typeof input.setSelectionRange === "function") input.setSelectionRange(restoreFocus.start, restoreFocus.end); } }
   }
 
@@ -2420,7 +2633,7 @@
     if (!host || !host.data) return;
     var grouped = {};
     record.data.rows.forEach(function (row) { var key=row.signal_name || ""; if (!key) return; (grouped[key] || (grouped[key]=[])).push(row); });
-    var traces = Object.keys(grouped).map(function (name) { var rows=grouped[name], color=rows[0].signal_color || "#1686c3"; return { type:"scatter", mode:"markers+text", x:rows.map(function(row){return pane.plot_type === "spectrum" ? (row.frequency == null ? row.frequency_hz : row.frequency) : (row.time == null ? row.time_s : row.time);}), y:rows.map(function(row){return row.value;}), text:rows.map(function(row){return row.graph_number == null ? "" : String(row.graph_number);}), textposition:"top center", marker:{color:color,size:8,symbol:rows.map(function(row){ return row.type === "minimum" ? "triangle-down" : "triangle-up"; })}, hoverinfo:"skip", showlegend:false, meta:{signal_analyser_peaks_overlay:true} }; });
+    var traces = Object.keys(grouped).map(function (name) { var rows=grouped[name], signal=(model.state.signals || []).filter(function (candidate) { return signalNameMatches(candidate, name); })[0], color=rows[0].signal_color || signalColor(signal); return { type:"scatter", mode:"markers+text", x:rows.map(function(row){return pane.plot_type === "spectrum" ? (row.frequency == null ? row.frequency_hz : row.frequency) : (row.time == null ? row.time_s : row.time);}), y:rows.map(function(row){return row.value;}), text:rows.map(function(row){return row.graph_number == null ? "" : String(row.graph_number);}), textposition:"top center", marker:{color:color,size:8,symbol:rows.map(function(row){ return row.type === "minimum" ? "triangle-down" : "triangle-up"; })}, hoverinfo:"skip", showlegend:false, meta:{signal_analyser_peaks_overlay:true} }; });
     var existing = ownedPeakTraceIndexes(host), remove = existing.length ? window.Plotly.deleteTraces(host, existing) : Promise.resolve();
     Promise.resolve(remove).then(function () { if (traces.length && activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId) return window.Plotly.addTraces(host, traces); }).catch(function () {});
   }
@@ -2502,10 +2715,48 @@
     return model.peaksEnableByPane[runtimeKey];
   }
 
+  function canonicalAxisScale(unit, pane, displayedFullRange) {
+    if (pane.plot_type === "time") {
+      var maximumSeconds=(model.state.signals || []).reduce(function (maximum, signal) {
+        return (pane.signal_bindings || []).indexOf(signal.name) >= 0 ? Math.max(maximum, Number(signal.duration_s) || 0) : maximum;
+      }, 0);
+      return screenTimeUnitFactor(unit, maximumSeconds || Math.max(Math.abs(Number(displayedFullRange && displayedFullRange[0]) || 0), Math.abs(Number(displayedFullRange && displayedFullRange[1]) || 1)));
+    }
+    return {
+      cycles_per_year:1/31557600, cycles_per_day:1/86400, cycles_per_hour:1/3600, cycles_per_minute:1/60,
+      millihertz:1e-3, hertz:1, kilohertz:1e3, megahertz:1e6, gigahertz:1e9, terahertz:1e12
+    }[unit] || 1;
+  }
+
+  function currentPeaksVisibleRange(display, pane) {
+    if (!display || !pane || ["time", "spectrum"].indexOf(pane.plot_type) < 0) return null;
+    var runtimeKey=paneRuntimeKey(display.id, pane.id), host=q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
+    var axis=host && host.dataset.plotReady === "true" && host._fullLayout && host._fullLayout.xaxis;
+    if (!axis || !Array.isArray(axis.range) || axis.range.length !== 2) return null;
+    var displayed=host._fullLayout.xaxis.range.map(Number);
+    if (axis.type === "log") displayed=displayed.map(function (value) { return Math.pow(10, value); });
+    if (!displayed.every(Number.isFinite) || displayed[0] === displayed[1]) return null;
+    displayed=[Math.min(displayed[0], displayed[1]), Math.max(displayed[0], displayed[1])];
+    var displayedFull=model.rangeSliderDataRangeByPane[runtimeKey];
+    if (!displayedFull) {
+      var record=model.outputs[runtimeKey], envelope=record && record.output && plotEnvelope(record.output.data);
+      var traces=Array.isArray(envelope) ? envelope : envelope && envelope.data;
+      displayedFull=traceXDataRange(traces || []);
+    }
+    var unit=pane.plot_type === "time" ? (settings.value("time.units") || "seconds") : (settings.value("spectrum.frequency_units") || "hertz");
+    var helperSupported=["seconds","milliseconds","microseconds","nanoseconds","hertz","kilohertz","megahertz","gigahertz"].indexOf(unit) >= 0;
+    var scale=canonicalAxisScale(unit, pane, displayedFull);
+    var canonicalFull=displayedFull && displayedFull.length === 2 ? [Number(displayedFull[0]) * scale, Number(displayedFull[1]) * scale] : null;
+    var canonical=task0126 && helperSupported ? task0126.effectiveViewport(displayed, unit, canonicalFull) : [displayed[0] * scale, displayed[1] * scale];
+    if (canonicalFull && !helperSupported) canonical=[Math.max(Math.min(canonicalFull[0], canonicalFull[1]), canonical[0]), Math.min(Math.max(canonicalFull[0], canonicalFull[1]), canonical[1])];
+    if (!canonical || !canonical.every(Number.isFinite) || !(canonical[0] < canonical[1])) return null;
+    return pane.plot_type === "time" ? { min_s:canonical[0], max_s:canonical[1] } : { min_hz:canonical[0], max_hz:canonical[1] };
+  }
+
   function calculatePeaks() {
     var display = activeDisplay(), pane = paneById(model.activePane);
     if (!display || !pane || !extremaTabsAvailable(pane) || !paneHasSignals(pane)) return;
-    var displayId = display.id, paneId = pane.id, runtimeKey = paneRuntimeKey(displayId, paneId);
+    var displayId = display.id, paneId = pane.id, runtimeKey = paneRuntimeKey(displayId, paneId), visibleRange=currentPeaksVisibleRange(display, pane);
     var existing = model.peaksRecords[runtimeKey];
     if (existing && existing.displayId === displayId && existing.paneId === paneId && existing.pending) return;
     stopPeaksPolling(runtimeKey);
@@ -2530,7 +2781,9 @@
       token = (model.peaksTokens[runtimeKey] || 0) + 1;
       model.peaksTokens[runtimeKey] = token;
       function requestCalculation(retries) {
-        return api.calculateActivePeaks({ state_revision:model.revision, display_id:displayId, pane_id:paneId }).catch(function (error) {
+        var payload={ state_revision:model.revision, display_id:displayId, pane_id:paneId };
+        if (visibleRange) payload.visible_range=visibleRange;
+        return api.calculateActivePeaks(payload).catch(function (error) {
           var current = error && error.payload && (error.payload.current || error.payload.state);
           if (!current || error.status !== 409 || retries >= 1 || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) throw error;
           var snapshot = current.state || current;
@@ -2654,6 +2907,13 @@
     error.hidden = true;
     if (searchInput) { searchInput.value = model.signalAddSearch; searchInput.disabled = model.signalAddLoading || model.signalAddSubmitting; }
     if (model.signalAddLoading) {
+      if (catalog && list.querySelector("[data-signal-add-variable]")) {
+        setCheckboxRegionBusy(list, true);
+        state.hidden = false;
+        state.textContent = "Обновляем переменные…";
+        decorateNoHistory(layer);
+        return updateSignalAddControls();
+      }
       list.innerHTML = "<div class='signal-add-list-state'><span class='spinner'></span><span>Загрузка переменных…</span></div>";
       if (count) count.textContent = "0 переменных";
       state.hidden = false;
@@ -2661,6 +2921,14 @@
       return updateSignalAddControls();
     }
     if (model.signalAddCatalogError) {
+      if (catalog && list.querySelector("[data-signal-add-variable]")) {
+        setCheckboxRegionBusy(list, false);
+        state.hidden = false;
+        state.textContent = "Не удалось обновить список";
+        error.hidden = false;
+        error.textContent = model.signalAddCatalogError;
+        return updateSignalAddControls();
+      }
       list.innerHTML = "<div class='signal-add-list-state'>Не удалось получить переменные рабочей области.<button class='button button-compact' type='button' data-signal-add-retry>Повторить</button></div>";
       state.hidden = true; error.hidden = false; error.textContent = model.signalAddCatalogError;
       if (count) count.textContent = "0 переменных";
@@ -2672,17 +2940,19 @@
       var checked = !!model.signalAddSelection[variable.variable_id];
       return "<label title='" + esc(variable.name + " · " + variable.type + " · " + workspaceVariableLength(variable)) + "'><input class='ui-checkbox' type='checkbox' data-signal-add-variable value='" + esc(variable.variable_id) + "' aria-label='Добавить " + esc(variable.name) + "'" + (checked ? " checked" : "") + (model.signalAddSubmitting ? " disabled" : "") + "><span class='workspace-variable-name'><strong>" + esc(variable.name) + "</strong><small>" + esc(variable.type || "Переменная") + "</small></span><small class='workspace-variable-meta'>" + esc(workspaceVariableLength(variable)) + "</small></label>";
     }).join("");
+    setCheckboxRegionBusy(list, false);
     if (!variables.length) list.innerHTML = "<div class='signal-add-list-state'>" + (search && allVariables.length ? "Ничего не найдено." : "Поддерживаемые переменные не найдены.") + (!search ? "<button class='button button-compact' type='button' data-signal-add-retry>Повторить</button>" : "") + "</div>";
     if (model.signalAddResetScroll) { list.scrollTop = 0; model.signalAddResetScroll = false; }
     if (count) count.textContent = variables.length + (catalog && catalog.truncated && !search ? " из " + catalog.total : "") + " переменных";
     state.hidden = false;
     state.textContent = catalog && catalog.truncated && !search ? "Показаны первые 1000 совместимых переменных" : "Только совместимые переменные";
+    decorateNoHistory(layer);
     updateSignalAddControls();
   }
 
-  function loadSignalAddCatalog() {
+  function loadSignalAddCatalog(preserveVisibleRows) {
     var token = ++model.signalAddToken;
-    model.signalAddCatalog = null;
+    if (!preserveVisibleRows) model.signalAddCatalog = null;
     model.signalAddCatalogError = "";
     model.signalAddLoading = true;
     renderSignalAddCatalog();
@@ -2749,13 +3019,16 @@
     var error = layer.querySelector("[data-testid='signal-add-error']");
     submit.textContent = "Добавление…";
     error.hidden = true;
+    setCheckboxRegionBusy(layer.querySelector("[data-testid='signal-add-variables']"), true);
     updateSignalAddControls();
     mutate(function () { return api.signals({ state_revision:model.revision, operation:"import_workspace_batch", catalog_revision:catalog.catalog_revision, selections:selections }); }).then(function () {
       model.signalAddSubmitting = false;
+      setCheckboxRegionBusy(layer.querySelector("[data-testid='signal-add-variables']"), false);
       closeSignalAddDialog(true);
       showToast("Добавлено сигналов: " + selections.length, false);
     }).catch(function (caught) {
       model.signalAddSubmitting = false;
+      setCheckboxRegionBusy(layer.querySelector("[data-testid='signal-add-variables']"), false);
       submit.textContent = "Добавить";
       error.hidden = false;
       error.textContent = safeErrorText(caught, "Не удалось добавить выбранные сигналы.");
@@ -2970,7 +3243,7 @@
 
   function setActivePaneSignalMembership(signalName, checked, options) {
     var pane = paneById(model.activePane);
-    if (!pane || model.signalMembershipBusy) return Promise.resolve(null);
+    if (!pane || model.signalMembershipBusy || model.pendingMainSignal) return Promise.resolve(null);
     var bindings = Array.isArray(pane.signal_bindings) ? pane.signal_bindings.slice() : [];
     var index = bindings.indexOf(signalName);
     if (checked && index < 0) bindings.push(signalName);
@@ -2978,6 +3251,7 @@
     if ((checked && index >= 0) || (!checked && index < 0)) return Promise.resolve(null);
 
     model.signalMembershipBusy = true;
+    setSignalTableMutationBusy(true, "");
     var accepted = false;
     return postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:pane.plot_type, signal_bindings:bindings }).then(function (snapshot) {
       accepted = true;
@@ -2988,18 +3262,19 @@
       return null;
     }).finally(function () {
       model.signalMembershipBusy = false;
+      setSignalTableMutationBusy(false, "");
       if (!accepted) renderInspector();
     });
   }
 
   function setActivePaneMainSignal(signalName) {
     var pane = paneById(model.activePane);
-    if (!pane) return Promise.resolve(null);
+    if (!pane || model.pendingMainSignal || model.signalMembershipBusy) return Promise.resolve(null);
     var bindings = Array.isArray(pane.signal_bindings) ? pane.signal_bindings : [];
     var alreadySelected = selectedSignalName() === signalName;
     if (alreadySelected && bindings.indexOf(signalName) >= 0) return Promise.resolve(null);
     model.pendingMainSignal = signalName;
-    renderInspector();
+    setSignalTableMutationBusy(true, signalName);
     return mutate(function () {
       var currentPane = paneById(model.activePane);
       if (!currentPane) {
@@ -3013,11 +3288,11 @@
     }, { preservePlots:true }).then(function (snapshot) {
       syncSignalSamplesWithMain();
       model.pendingMainSignal = "";
-      renderInspector();
+      setSignalTableMutationBusy(false, "");
       return snapshot;
     }).catch(function (error) {
       model.pendingMainSignal = "";
-      renderInspector();
+      setSignalTableMutationBusy(false, "");
       showToast(safeErrorText(error, "Не удалось выбрать основной сигнал."), true);
       return null;
     });
@@ -3102,6 +3377,7 @@
         model.settingsPublishPublished = Math.max(model.settingsPublishPublished, publicationTarget);
         settings.setRevision(model.revision);
         if (response.settings && typeof settings.accept === "function") settings.accept(response.settings);
+        consumePublicationBatch(publicationTarget);
       }
       return response;
     });
@@ -3115,6 +3391,7 @@
       settings.markApplied();
       renderSettings(activeDisplay());
       showToast("Настройки применены", false);
+      refreshSnapshot(render).catch(function () {});
       output(true);
       if (model.settingsPublishWanted > model.settingsPublishPublished) scheduleSettingsPublication(model.settingsPublishWanted);
     }).catch(function (error) {
@@ -3221,6 +3498,7 @@
     var select=valueSelect.markup({ key:"signal-operation-type", value:operation, label:signalOperationLabel(operation), options:options, testId:"signal-operation-select", ariaLabel:"Операция", disabled:state.busy, className:"settings-value-select", onSelect:function (value) { state.operation=value; state.error=""; state.success=false; renderSignalOperation(); } });
     var status=state.busy ? "<div class='operation-status status-note info operation-progress' role='status'><img src='./icons/Spinner.svg' alt=''><span>Выполняется преобразование…</span></div>" : state.error ? "<div class='operation-status status-note error' role='alert'><strong>Операция не выполнена.</strong><br>" + esc(state.error) + "</div>" : state.success ? "<div class='operation-status status-note success' role='status'><strong>Сигнал создан.</strong></div>" : "";
     form.innerHTML="<div class='operation-form'><div class='operation-form-row'><span class='operation-form-label'>Исходный сигнал</span><input class='control' value='" + esc(source.name || "") + "' readonly></div><div class='operation-form-row'><label>Операция</label><div>" + select + "</div></div>" + (multiply ? "<div class='operation-form-row'><label for='signal-operation-multiplier'>Множитель</label><input id='signal-operation-multiplier' class='control' type='text' inputmode='decimal' value='2'></div>" : "") + (custom ? "<div class='operation-form-row operation-code-row'><label for='signal-operation-body'>Тело операции</label><textarea id='signal-operation-body' class='operation-code-editor' spellcheck='false'></textarea></div><p class='operation-body-help'>Код выполняется в Engee. Входной сигнал доступен как <code>init_signal</code>; результатом должно быть выражение, возвращающее новый вектор.</p>" : "") + "<div class='operation-form-row'><label for='signal-operation-name'>Имя нового сигнала</label><input id='signal-operation-name' class='control' value='" + esc((source.name || "signal") + "_" + operation.replace(/[^a-z0-9]+/gi, "_")) + "'></div><div class='operation-form-row'><span class='operation-form-label'></span><label class='operation-overwrite-control'><span class='checkbox-control'><input type='checkbox' data-signal-operation-overwrite" + (state.busy ? " disabled" : "") + "></span><span>Затирать сигнал с таким именем</span></label></div>" + status + "</div>";
+    decorateNoHistory(form);
     layer.hidden=!state.open; q("[data-testid='app-shell']").inert=state.open;
     layer.querySelector("[data-signal-operation-submit]").disabled=state.busy || state.success;
     layer.querySelector("[data-signal-operation-cancel]").disabled=state.busy;
@@ -3326,7 +3604,7 @@
     if (button.dataset.testid === "signal-values-action") return void showSignalSamples();
     if (button.dataset.testid === "signals-add-action") return void openSignalAddDialog(button);
     if (button.dataset.signalAddClose !== undefined || button.dataset.signalAddCancel !== undefined) return void closeSignalAddDialog(true);
-    if (button.dataset.signalAddRetry !== undefined) return void loadSignalAddCatalog();
+    if (button.dataset.signalAddRetry !== undefined) return void loadSignalAddCatalog(true);
     if (button.dataset.signalAddSubmit !== undefined) return void submitSignalAddDialog();
     if (button.dataset.signalDelete) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "delete", signal_name: button.dataset.signalDelete }); });
     if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });
@@ -3449,7 +3727,25 @@
   document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); if (event.target.dataset.signalAddSearch !== undefined) { model.signalAddSearch=event.target.value; model.signalAddResetScroll=true; renderSignalAddCatalog(); var search=q("[data-signal-add-search]"); if(search){search.focus();search.setSelectionRange(model.signalAddSearch.length,model.signalAddSearch.length);} } });
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-loaded", function (event) { var display = activeDisplay(), detail = event.detail || {}; if (model.settingsPage === "screen" && display && detail.displayId === display.id) renderSettings(display); });
-  window.addEventListener("signal-settings-saved", function (event) { var detail=event.detail || {}, revision=detail.state && detail.state.state_revision; if (typeof revision === "number") { model.revision=Math.max(model.revision, revision); scheduleSettingsPublication(revision); } });
+  window.addEventListener("signal-settings-name-preview", function (event) { projectNamePreview(event.detail || {}); });
+  window.addEventListener("signal-settings-save-failed", function (event) {
+    var detail=event.detail || {}, displayId=detail.display_id || activeDisplay() && activeDisplay().id;
+    var paneId=model.namePreviewIntents[displayId + "::pane.name::" + String(detail.intent || 0)] || model.activePane;
+    clearNamePreview(detail.field_id, displayId, paneId);
+    render();
+    showToast(safeErrorText(detail.error, "Не удалось сохранить имя."), true);
+  });
+  window.addEventListener("signal-settings-saved", function (event) {
+    var detail=event.detail || {}, revision=detail.state && detail.state.state_revision;
+    if (typeof revision !== "number") revision=detail.state_revision;
+    if (typeof revision === "number") {
+      var displayId=detail.display_id || activeDisplay() && activeDisplay().id;
+      var paneId=detail.field_id === "pane.name" ? model.namePreviewIntents[displayId + "::pane.name::" + String(detail.intent || 0)] || model.activePane : "";
+      model.settingsPublishEvents.push({ revision:revision, fieldId:detail.field_id || "", displayId:displayId, paneId:paneId });
+      model.revision=Math.max(model.revision, revision);
+      scheduleSettingsPublication(revision);
+    }
+  });
   window.addEventListener("signal-settings-plot-type", function (event) {
     var pane = paneById(model.activePane), plotType = event.detail && event.detail.plotType;
     if (pane && titles[plotType] && pane.plot_type !== plotType) postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:plotType, signal_bindings:pane.signal_bindings || [] });
@@ -3501,6 +3797,11 @@
     render();
     output(true);
     settings.load().then(render).catch(showSettingsLoadError);
+  });
+  document.addEventListener("click", function (event) {
+    if (event.target && event.target.closest && event.target.closest("[data-signal-color-trigger], .settings-panel .color-swatch-button, [data-signal-color-input], [data-signal-metadata='color']")) {
+      window.requestAnimationFrame(function () { decorateNoHistory(document); });
+    }
   });
 
   refreshSnapshot().then(function () {

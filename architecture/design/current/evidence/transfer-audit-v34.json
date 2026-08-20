@@ -1,0 +1,11 @@
+{
+  "design_version": 34,
+  "status": "pass",
+  "copy_as_is_count": 0,
+  "new_transfer_fragment": "frontend-source/integration/js/task-0126-summary-units-continuity.js",
+  "production_targets": ["public/js/app.js", "public/js/settings.js"],
+  "prototype_bridge_transfer_forbidden": true,
+  "immutable_invariants": ["public/index.html", "public/js/app.js module identity", "public/js/settings.js module identity", "[data-pane-host] Plotly ownership"],
+  "mock_or_prototype_paths_mapped_to_production": 0,
+  "visual_baseline_changed": false
+}

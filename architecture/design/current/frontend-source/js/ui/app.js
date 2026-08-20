@@ -13,6 +13,19 @@
 
   function activeDisplay() { return window.SignalAnalyserZones.workspace.activeDisplay(state); }
   function activePane() { var display = activeDisplay(); return display.panes.find(function (pane) { return pane.id === state.activePaneId; }) || display.panes[0]; }
+  function previewName(kind, value) {
+    var display=activeDisplay(), pane=activePane();
+    if (kind === "display" && display) {
+      display.name=value;
+      document.querySelectorAll("[data-display-id]").forEach(function (tab) { if (tab.dataset.displayId === display.id) { var label=tab.querySelector("span"); if (label) label.textContent=value; } });
+    }
+    if (kind === "pane" && pane) {
+      pane.name=value;
+      document.querySelectorAll("[data-pane-id]").forEach(function (host) { if (host.dataset.paneId === pane.id) { var label=host.querySelector(".plot-pane-name"); if (label) label.textContent=value; } });
+    }
+    var context=document.querySelector("[data-settings-context]");
+    if (context) context.textContent=(display && display.name || "Экран") + " · " + (pane && pane.name || "Нет области");
+  }
   function dirty() {
     state.dirty = true;
     document.querySelector("[data-testid='settings-panel']").dataset.applyState = "dirty";
@@ -96,6 +109,8 @@
       dirty(); render();
     });
     document.addEventListener("input", function (event) {
+      if (event.target.matches("[data-display-name]")) previewName("display", event.target.value);
+      if (event.target.matches("[data-pane-name]")) previewName("pane", event.target.value);
       if (event.target.matches("[data-signal-sample-rate]") && window.SignalAnalyserTask0119) {
         var valid = window.SignalAnalyserTask0119.validateSampleRate(event.target.value).valid;
         event.target.setAttribute("aria-invalid", String(!valid));
@@ -110,7 +125,7 @@
   function init(nextProvider) {
     provider = nextProvider || {};
     return Promise.resolve(provider.getState ? provider.getState() : null).then(function (nextState) {
-      state = nextState || { activeDisplayId: "display-1", activePaneId: "", settingsPage: "screen", inspectorPage: "signals", dynamicSamplesOpen: false, dirty: false, displays: [{ id: "display-1", name: "Экран 1", panes: [] }], links: { time:false, amplitude:false, spectrumFrequency:false, spectrumMagnitude:false }, signal: { name:"", color:"#2166df", sampleRate:"", samples:0, duration:"—", minimum:"—", maximum:"—", rms:"—", mean:"—", type:"—" }, signals:[], extrema:[], sampleRows:[] };
+      state = nextState || { activeDisplayId: "display-1", activePaneId: "", settingsPage: "screen", inspectorPage: "signals", dynamicSamplesOpen: false, dirty: false, displays: [{ id: "display-1", name: "Экран 1", panes: [] }], links: { time:false, amplitude:false, spectrumFrequency:false, spectrumMagnitude:false }, signal: { name:"", color:"#0058ff", sampleRate:"", samples:0, duration:"—", regionStart:"—", regionEnd:"—", minimum:"—", minimumTime:"—", maximum:"—", maximumTime:"—", rms:"—", mean:"—", median:"—", peakToPeak:"—", type:"—" }, signals:[], extrema:[], sampleRows:[] };
       bind(); render();
       window.SignalAnalyserDesignReview = {
         getState: function () { return state; },

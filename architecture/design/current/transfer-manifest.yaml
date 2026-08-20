@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 33
+design_version: 34
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -14,14 +14,14 @@ prototype_baseline:
   network_requests_allowed: false
   provider_fixture: prototype/mock-fetch.js
   provider_fixture_scope: data_and_api_responses_only
-  interaction_fixture: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js]
-  interaction_fixture_scope: "design-only adapters proving row/checkbox separation plus automatic samples, pane-type routing and Jet color draft against actual production DOM/API modules"
+  interaction_fixture: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js]
+  interaction_fixture_scope: "design-only adapters proving row/checkbox separation, automatic samples, pane-type routing, Jet color draft, complete Summary, projected limit units, optimistic names and stable busy checkboxes against actual production DOM/API modules"
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
   pinned_hashes: evidence/production-baseline-v32.json
-  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json]
-  result: "Inherited 26/26 plus v32 delta 9/9; automatic populated five-column samples, Jet picker, context routing, spectrum extrema and spectrogram hiding; zero HTTP/CORS/runtime errors"
+  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json]
+  result: "Inherited 35/35; v34 adds complete Summary, deterministic Values focus/loading, optimistic names, unit projection, Jet identity and checkbox continuity without visual redesign"
 
-# There is intentionally no whole-file production copy in v33. Production
+# There is intentionally no whole-file production copy in v34. Production
 # already owns the application document, boot sequence, UI modules and Plotly
 # hosts. The sources below are exact integration fragments.
 copy_as_is: []
@@ -100,6 +100,14 @@ additive_fragments:
     marker: "TASK-0119 Area routing, automatic main-signal sample tab and sample-rate validation"
     scope: [pane_type_to_area, automatic_sample_tab, values_focus_only, positive_dot_decimal_sample_rate]
     prototype_bridge_not_transferable: prototype/task-0119-interaction-bridge.js
+  - id: task-0126-summary-units-continuity
+    source: integration/js/task-0126-summary-units-continuity.js
+    target: public/js/app.js
+    mode: integrate_named_helpers_and_contracts_into_existing_renderers
+    content_changes_allowed: false
+    marker: "TASK-0126 complete Summary, unit projection, Jet identity and checkbox continuity"
+    scope: [summary_inventory, input_history_opt_out, selected_unit_projection, exact_jet_palette, stable_busy_checkboxes, effective_extrema_viewport]
+    prototype_bridge_not_transferable: prototype/task-0126-interaction-bridge.js
 
 existing_assets_reused:
   - {path: public/icons/function.svg, use: signal-row-operation-action}
@@ -131,6 +139,15 @@ integration_hosts:
   signal_settings_groups:
     selector: "[data-signal-settings-group]"
     integration: "Reuse existing .settings-group-title/.settings-group-fields disclosure; main and summary start expanded and are independently collapsible."
+  optimistic_names:
+    selector: "[data-setting-id='display.name'], [data-setting-id='pane.name']"
+    integration: "Input events preview the draft immediately in the selected display tab or active pane title and settings context; autosave persists through existing queue."
+  axis_limit_inputs:
+    selector: "[data-setting-id$='limits'][data-range-part]"
+    integration: "Render/edit in selected axis units; convert to canonical seconds/Hz only at the provider boundary; empty auto bounds remain empty."
+  stable_checkbox_regions:
+    selector: "[data-signal-rows], [data-testid='signal-add-variables']"
+    integration: "Pending operations retain row and checkbox node identity plus checked state; only disabled and aria-busy change."
   workspace_context:
     selector: "[data-pane-id], [data-display-select], [data-testid='add-display'], [data-value-select-key$='::plot_type']"
     integration: "Pane click and accepted pane-type change select Area settings; display selection/creation selects Screen settings without remounting shell or settings panel."
@@ -160,6 +177,12 @@ integration_seams:
     production_consumers: [public/js/app.js]
     host: "[data-settings-content]"
     replacement_forbidden: true
+  - id: complete-signal-summary
+    action_interface: "render sample count/type/duration plus region start/end, min and position, max and position, mean, median, range and RMS regardless of Measurements column visibility"
+    production_consumers: [public/js/app.js]
+    production_providers: [public/js/api.js]
+    host: "[data-signal-settings-group='summary']"
+    replacement_forbidden: true
   - id: signal-color-draft
     action_interface: "open HEX + exact 15 Jet swatches; preview nested draft; popover Apply updates Signal page draft; Cancel/Escape/outside restore opening color"
     production_consumers: [public/js/app.js]
@@ -172,12 +195,41 @@ integration_seams:
     hosts: ["[data-pane-id]", "[data-display-select]", "[data-testid='add-display']", "[data-settings-page]"]
     replacement_forbidden: true
   - id: automatic-main-signal-samples
-    action_interface: "valid main signal => ensure/rebind named sample tab and request first page without focus; Values => select/focus the same tab"
+    action_interface: "valid main signal => ensure/rebind named sample tab and request first page without focus; Values => expand inspector, guarantee/select/focus tab and request missing page 1"
     production_consumers: [public/js/app.js]
     production_providers: [public/js/api.js]
     hosts: [".inspector-tabs", "[data-inspector-content]"]
     full_array_in_dom_or_state_forbidden: true
     replacement_forbidden: true
+  - id: optimistic-name-preview
+    action_interface: "display.name or pane.name input => update the matching existing header/tab and settings context in the same frame; preserve debounced autosave"
+    production_consumers: [public/js/app.js]
+    hosts: ["[data-setting-id='display.name']", "[data-setting-id='pane.name']", "[data-display-select]", "[data-pane-id]", "[data-settings-context]"]
+    replacement_forbidden: true
+  - id: input-history-opt-out
+    action_interface: "decorate all settings/dialog text/search/numeric inputs with autocomplete off and non-profile metadata; never show browser history/profile suggestions"
+    production_consumers: [public/js/app.js, public/js/settings.js]
+    replacement_forbidden: true
+  - id: selected-unit-axis-limits
+    action_interface: "display/edit nonempty time/frequency bounds in selected units, preserve physical interval on unit changes, serialize canonical seconds/Hz, preserve empty bounds"
+    production_consumers: [public/js/app.js, public/js/settings.js]
+    host: "[data-setting-id$='limits'][data-range-part]"
+    replacement_forbidden: true
+  - id: exact-jet-default-colors
+    provider_interface: "automatic signal colors cycle only through the exact 15 values exposed by SignalColorPickerUI.palette"
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    palette: ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"]
+  - id: checkbox-mutation-continuity
+    action_interface: "retain visible signal/catalog rows and checkbox nodes plus checked state while pending; set disabled and aria-busy in place"
+    production_consumers: [public/js/app.js]
+    hosts: ["[data-signal-rows]", "[data-testid='signal-add-variables']"]
+    row_replacement_while_pending_forbidden: true
+  - id: viewport-scoped-extrema
+    provider_interface: "read active Plotly visible X interval and send optional visible_range: TIME {min_s,max_s}, SPECTRUM {min_hz,max_hz}; absent means full domain; ignore Y zoom"
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    hosts: ["[data-pane-host]", "[data-testid='extrema-values']"]
   - id: signal-sample-rate-draft
     action_interface: "editable Дискретизация, Гц metadata; positive finite dot-decimal UI validation; debounced autosave persistence"
     production_consumers: [public/js/app.js]
@@ -263,6 +315,7 @@ invariants:
   mock_scope_is_data_provider_only: true
   prototype_task0117_bridge_transfer_forbidden: true
   prototype_task0119_bridge_transfer_forbidden: true
+  prototype_task0126_bridge_transfer_forbidden: true
   history_is_not_a_source: true
   prototype_uses_production_shell_and_components: true
   prototype_partial_fetch_loader_forbidden: true

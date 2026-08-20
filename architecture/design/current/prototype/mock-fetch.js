@@ -21,9 +21,9 @@
   var activeDisplayId = "display-1";
   var mainSignalName = "radarPulse";
   var signals = [
-    { id:"signal-radar", name:"radarPulse", color:"#2166df", sample_rate_hz:1000000, sample_count:400000, duration_s:0.399999, data_type:"Вещественный", is_complex:false, visible:true },
-    { id:"signal-echo", name:"echoComplex", color:"#e1262e", sample_rate_hz:1000000, sample_count:348000, duration_s:0.347999, data_type:"Комплексный", is_complex:true, visible:true },
-    { id:"signal-noise", name:"noiseFloor", color:"#1a8f58", sample_rate_hz:1000000, sample_count:400000, duration_s:0.399999, data_type:"Вещественный", is_complex:false, visible:false }
+    { id:"signal-radar", name:"radarPulse", color:"#0058ff", sample_rate_hz:1000000, sample_count:400000, duration_s:0.399999, data_type:"Вещественный", is_complex:false, visible:true },
+    { id:"signal-echo", name:"echoComplex", color:"#ff3000", sample_rate_hz:1000000, sample_count:348000, duration_s:0.347999, data_type:"Комплексный", is_complex:true, visible:true },
+    { id:"signal-noise", name:"noiseFloor", color:"#40ffb7", sample_rate_hz:1000000, sample_count:400000, duration_s:0.399999, data_type:"Вещественный", is_complex:false, visible:false }
   ];
   var links = { time:false, amplitude:false, frequency:true, magnitude:false };
 
@@ -65,7 +65,7 @@
         field("time.normalize_y", "boolean", false),
         field("time.show_markers", "boolean", false),
         field("time.units", "enum", "milliseconds", { options:["auto", "seconds", "milliseconds", "microseconds", "nanoseconds"] }),
-        field("time.x_limits", "optional_range", null),
+        field("time.x_limits", "optional_range", { min:0.00015, max:0.000166015625 }),
         field("time.y_limits", "optional_range", null),
         field("time.link_time", "boolean", links.time),
         field("time.link_amplitude", "boolean", links.amplitude),
@@ -93,7 +93,7 @@
         "spectrum.link_frequency":links.frequency,
         "spectrum.link_magnitude":links.magnitude,
         "time.units":"milliseconds",
-        "time.x_limits":null,
+        "time.x_limits":{ min:0.00015, max:0.000166015625 },
         "time.y_limits":null,
         "spectrum.frequency_units":"kilohertz",
         "spectrum.frequency_limits":null,
@@ -111,8 +111,8 @@
       b.push(-112 + 74 * Math.exp(-Math.pow((f-368)/45, 2)) + 2*Math.cos(index/6));
     }
     var data=[
-      { type:"scatter", mode:"lines", name:"radarPulse", x:x, y:a, line:{ color:"#2166df", width:2 } },
-      { type:"scatter", mode:"lines", name:"echoComplex", x:x, y:b, line:{ color:"#e1262e", width:2 } }
+      { type:"scatter", mode:"lines", name:"radarPulse", x:x, y:a, line:{ color:"#0058ff", width:2 } },
+      { type:"scatter", mode:"lines", name:"echoComplex", x:x, y:b, line:{ color:"#ff3000", width:2 } }
     ];
     var bindings=Array.isArray(pane && pane.signal_bindings) ? pane.signal_bindings : [];
     return { data:data.filter(function (trace) { return bindings.indexOf(trace.name) >= 0; }), layout:{ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", margin:{ l:58, r:22, t:24, b:56 }, xaxis:{ title:{ text:"Частота, кГц" }, range:[0,500], rangeslider:{ visible:true } }, yaxis:{ title:{ text:"Магнитуда, dB" }, range:[-120,0] }, legend:{ x:0.98, y:0.98, xanchor:"right", yanchor:"top", bgcolor:"rgba(255,255,255,0.88)" }, showlegend:true }, config:{ displayModeBar:false } };
@@ -120,7 +120,7 @@
   function timeEnvelope(pane) {
     var x=[], y=[];
     for (var index=0; index<=160; index++) { x.push(index*0.0025); y.push(Math.sin(index*0.48)*Math.exp(-index/520)); }
-    var data=[{ type:"scatter", mode:"lines", name:"radarPulse", x:x, y:y, line:{ color:"#2166df", width:2 } }];
+    var data=[{ type:"scatter", mode:"lines", name:"radarPulse", x:x, y:y, line:{ color:"#0058ff", width:2 } }];
     var bindings=Array.isArray(pane && pane.signal_bindings) ? pane.signal_bindings : [];
     return { data:data.filter(function (trace) { return bindings.indexOf(trace.name) >= 0; }), layout:{ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", margin:{ l:55, r:22, t:24, b:52 }, xaxis:{ title:{ text:"Время, мс" }, range:[0,0.4], rangeslider:{ visible:true } }, yaxis:{ title:{ text:"Амплитуда" }, range:[-1.1,1.1] }, showlegend:true }, config:{ displayModeBar:false } };
   }
@@ -138,16 +138,16 @@
       state_revision:revision, calculation_revision:calculationRevision, display_id:activeDisplayId, pane_id:paneId, context_key:"prototype-peaks-"+paneId,
       isready:true, success:true,
       data:{ settings:{ mode:"maxima", number_of_peaks:5, maximum_cutoff:null, minimum_cutoff:null, minimum_distance_samples:1, threshold:0 }, signals:[{ name:"radarPulse", ordinate:"magnitude" }], rows:[
-        { row_number:1, signal_name:"radarPulse", signal_color:"#2166df", type:"maximum", value:-3.18, frequency:184.2, frequency_hz:184200, graph_number:1 },
-        { row_number:2, signal_name:"radarPulse", signal_color:"#2166df", type:"maximum", value:-18.42, frequency:368.4, frequency_hz:368400, graph_number:2 },
-        { row_number:3, signal_name:"echoComplex", signal_color:"#e1262e", type:"maximum", value:-24.1, frequency:452.7, frequency_hz:452700, graph_number:3 }
+        { row_number:1, signal_name:"radarPulse", signal_color:"#0058ff", type:"maximum", value:-3.18, frequency:184.2, frequency_hz:184200, graph_number:1 },
+        { row_number:2, signal_name:"radarPulse", signal_color:"#0058ff", type:"maximum", value:-18.42, frequency:368.4, frequency_hz:368400, graph_number:2 },
+        { row_number:3, signal_name:"echoComplex", signal_color:"#ff3000", type:"maximum", value:-24.1, frequency:452.7, frequency_hz:452700, graph_number:3 }
       ] }
     };
   }
   function summary(path) {
     var id=(/\/api\/signals\/([^/]+)\/summary/.exec(path) || [])[1] || "signal-radar";
     var signal=signals.filter(function (item) { return item.id === id; })[0] || signals[0];
-    return { signal_id:signal.id, summary:{ sample_count:signal.sample_count, data_type:signal.data_type, duration_s:String(Number(signal.duration_s * 1000).toFixed(3)).replace(".", ",")+" мс", mean:signal.id === "signal-noise" ? "0,000" : "0,008", minimum:signal.id === "signal-noise" ? "−0,142" : "−0,984", maximum:signal.id === "signal-noise" ? "0,139" : "1,000", rms:signal.id === "signal-noise" ? "0,032" : "0,516" } };
+    return { signal_id:signal.id, summary:{ sample_count:signal.sample_count, data_type:signal.data_type, duration_s:String(Number(signal.duration_s * 1000).toFixed(3)).replace(".", ",")+" мс", region_start:"0 мс", region_end:String(Number(signal.duration_s * 1000).toFixed(3)).replace(".", ",")+" мс", mean:signal.id === "signal-noise" ? "0,000" : "0,008", median:signal.id === "signal-noise" ? "0,001" : "0,006", minimum:signal.id === "signal-noise" ? "−0,142" : "−0,984", minimum_position:"291,503 мс", maximum:signal.id === "signal-noise" ? "0,139" : "1,000", maximum_position:"386,230 мс", peak_to_peak:signal.id === "signal-noise" ? "0,281" : "1,984", rms:signal.id === "signal-noise" ? "0,032" : "0,516" } };
   }
   function samples(path) {
     var query=new URL(path, "https://prototype.invalid/").searchParams;
@@ -162,7 +162,7 @@
     return { signal:{ id:"signal-radar", name:"radarPulse" }, rows:rows, next_cursor:cursor+rows.length < fixtureTotal ? cursor+rows.length : null, total:fixtureTotal };
   }
   function fullState() {
-    return Object.assign(state(), { measurement_rows:[{ signal_name:"radarPulse", time_limits:{ min_s:0, max_s:0.399999 }, items:[{ id:"minimum", value:-0.984 }, { id:"maximum", value:1 }, { id:"mean", value:0.008 }] }] });
+    return Object.assign(state(), { measurement_rows:[{ signal_name:"radarPulse", time_limits:{ min_s:0, max_s:0.399999 }, items:[{ id:"minimum", value:-0.984, time_s:0.291503 }, { id:"maximum", value:1, time_s:0.386230 }, { id:"mean", value:0.008 }, { id:"median", value:0.006 }, { id:"peak_to_peak", value:1.984 }, { id:"rms", value:0.516 }] }] });
   }
   function parseBody(options) { try { return JSON.parse(options && options.body || "{}"); } catch (_) { return {}; } }
   function updateDisplays(body) {
@@ -249,9 +249,9 @@
     for (var index=0; index<=4; index++) { var gx=pad.l+plotWidth*index/4, gy=pad.t+plotHeight*index/4; grid+="<path d='M"+gx+" "+pad.t+"V"+(pad.t+plotHeight)+" M"+pad.l+" "+gy+"H"+(pad.l+plotWidth)+"'/>"; }
     var lines=traces.filter(function (trace) { return !trace.meta || !trace.meta.signal_analyser_peaks_overlay; }).map(function (trace) {
       var points=(trace.x || []).map(function (x, index) { return px(x).toFixed(2)+","+py((trace.y || [])[index]).toFixed(2); }).join(" ");
-      return "<polyline points='"+points+"' fill='none' stroke='"+((trace.line && trace.line.color) || "#2166df")+"' stroke-width='2' vector-effect='non-scaling-stroke'/>";
+      return "<polyline points='"+points+"' fill='none' stroke='"+((trace.line && trace.line.color) || "#0058ff")+"' stroke-width='2' vector-effect='non-scaling-stroke'/>";
     }).join("");
-    var markers=traces.filter(function (trace) { return trace.meta && trace.meta.signal_analyser_peaks_overlay; }).map(function (trace) { return (trace.x || []).map(function (x,index) { return "<g transform='translate("+px(x)+" "+py((trace.y || [])[index])+")'><path d='M0 -7 L7 5 L-7 5 Z' fill='"+((trace.marker && trace.marker.color) || "#2166df")+"'/><text y='-10' text-anchor='middle' font-size='11'>"+((trace.text || [])[index] || "")+"</text></g>"; }).join(""); }).join("");
+    var markers=traces.filter(function (trace) { return trace.meta && trace.meta.signal_analyser_peaks_overlay; }).map(function (trace) { return (trace.x || []).map(function (x,index) { return "<g transform='translate("+px(x)+" "+py((trace.y || [])[index])+")'><path d='M0 -7 L7 5 L-7 5 Z' fill='"+((trace.marker && trace.marker.color) || "#0058ff")+"'/><text y='-10' text-anchor='middle' font-size='11'>"+((trace.text || [])[index] || "")+"</text></g>"; }).join(""); }).join("");
     host.innerHTML="<svg class='prototype-plot-svg' viewBox='0 0 "+width+" "+height+"' width='100%' height='100%' aria-label='Локальный макет графика'><g stroke='#e5e8eb' stroke-width='1'>"+grid+"</g><path d='M"+pad.l+" "+pad.t+"V"+(pad.t+plotHeight)+"H"+(pad.l+plotWidth)+"' fill='none' stroke='#61676c'/>"+lines+markers+"<text x='"+(pad.l+plotWidth/2)+"' y='"+(height-12)+"' text-anchor='middle' font-size='13' fill='#3a3d40'>"+((layout.xaxis && layout.xaxis.title && layout.xaxis.title.text) || "X")+"</text><text transform='translate(16 "+(pad.t+plotHeight/2)+") rotate(-90)' text-anchor='middle' font-size='13' fill='#3a3d40'>"+((layout.yaxis && layout.yaxis.title && layout.yaxis.title.text) || "Y")+"</text></svg>";
   }
   window.Plotly={

@@ -3010,6 +3010,7 @@ function signal_peaks_snapshot(
     ;
     materialize::Bool = false,
     settings::SignalPeaksSettings = SignalPeaksSettings(),
+    visible_range::Union{Nothing,SignalTimePeaksVisibleRange} = nothing,
 )::SignalPeaksSnapshot
     if signal === nothing
         display.peaks_enabled && throw(ArgumentError("Пустой Display не может иметь enabled Peaks"))
@@ -3055,7 +3056,27 @@ function signal_peaks_snapshot(
             SignalPeakItem[],
         )
     end
-    roi = signal_ordinate_roi(service.ordinate_service, signal, limits)
+    effective_limits = if visible_range === nothing
+        limits
+    else
+        visible = visible_range::SignalTimePeaksVisibleRange
+        minimum_value = max(limits.min_s, visible.min_s)
+        maximum_value = min(limits.max_s, visible.max_s)
+        if minimum_value >= maximum_value
+            return SignalPeaksSnapshot(
+                true,
+                settings.mode,
+                state_revision,
+                display.id,
+                signal.name,
+                ordinate_kind,
+                units,
+                SignalPeakItem[],
+            )
+        end
+        SignalTimeLimits(minimum_value, maximum_value)
+    end
+    roi = signal_ordinate_roi(service.ordinate_service, signal, effective_limits)
     if length(roi.values) < 3
         return SignalPeaksSnapshot(
             true,
@@ -3127,6 +3148,7 @@ function signal_spectrum_peaks_snapshot(
     signal::Union{Nothing,AnalysedSignal};
     materialize::Bool = false,
     settings::SignalPeaksSettings = SignalPeaksSettings(),
+    visible_range::Union{Nothing,SignalSpectrumPeaksVisibleRange} = nothing,
 )::SignalPeaksSnapshot
     units = signal_spectrum_peaks_units()
     if signal === nothing
@@ -3159,7 +3181,15 @@ function signal_spectrum_peaks_snapshot(
     )
     frequencies = Float64[data.frequencies_hz...]
     values = signal_spectrum_extrema_ordinate(data, display.spectrum_settings.scale)
-    length(values) < 3 && return SignalPeaksSnapshot(
+    source_indices = if visible_range === nothing
+        collect(eachindex(frequencies))
+    else
+        visible = visible_range::SignalSpectrumPeaksVisibleRange
+        findall(frequency -> visible.min_hz <= frequency <= visible.max_hz, frequencies)
+    end
+    frequencies_in_range = frequencies[source_indices]
+    values_in_range = values[source_indices]
+    length(values_in_range) < 3 && return SignalPeaksSnapshot(
         true, settings.mode, state_revision, display.id, signal.name,
         MAGNITUDE_ORDINATE, units, SignalPeakItem[],
     )
@@ -3168,7 +3198,7 @@ function signal_spectrum_peaks_snapshot(
         display.id,
         signal.name,
         MAGNITUDE_ORDINATE,
-        values,
+        values_in_range,
         1.0,
         0,
         settings,
@@ -3179,8 +3209,8 @@ function signal_spectrum_peaks_snapshot(
             result.kinds[index],
             result.peak_values[index],
             SignalSpectrumPeakPosition(
-                result.locations_1based[index],
-                frequencies[result.locations_1based[index]],
+                source_indices[result.locations_1based[index]],
+                frequencies_in_range[result.locations_1based[index]],
             ),
             result.widths_samples[index],
             result.prominences[index],
@@ -3283,6 +3313,7 @@ function signal_analyser_cached_peaks_snapshot(
                 signal_display_pane_members(typed_pane),
                 typed_pane.time_limits,
                 typed_pane.plot_type == SPECTRUM_PLOT ? typed_pane.spectrum_settings : nothing,
+                nothing,
                 typed_pane.peaks_settings,
                 revision,
             )
@@ -3658,6 +3689,7 @@ struct SignalPeaksCalculationRequest
     state_revision::Int
     display_id::String
     pane_id::String
+    visible_range::Union{Nothing,SignalPeaksVisibleRange}
 end
 
 const SIGNAL_PEAKS_SETTINGS_REQUEST_FIELDS = Set([
@@ -3671,6 +3703,9 @@ const SIGNAL_PEAKS_CALCULATION_REQUEST_FIELDS = Set([
     "display_id",
     "pane_id",
 ])
+const SIGNAL_PEAKS_CALCULATION_REQUEST_OPTIONAL_FIELDS = Set(["visible_range"])
+const SIGNAL_TIME_PEAKS_VISIBLE_RANGE_FIELDS = Set(["min_s", "max_s"])
+const SIGNAL_SPECTRUM_PEAKS_VISIBLE_RANGE_FIELDS = Set(["min_hz", "max_hz"])
 const SIGNAL_PEAKS_SETTINGS_VALUE_FIELDS = Set([
     "mode",
     "number_of_peaks",
@@ -3700,9 +3735,14 @@ function validate_signal_peaks_calculation_request(data)::SignalPeaksCalculation
     ))
     field_errors = Dict{String,String}()
     request_keys = signal_analyser_payload_keys(data)
-    request_keys == SIGNAL_PEAKS_CALCULATION_REQUEST_FIELDS || begin
+    allowed_keys = union(
+        SIGNAL_PEAKS_CALCULATION_REQUEST_FIELDS,
+        SIGNAL_PEAKS_CALCULATION_REQUEST_OPTIONAL_FIELDS,
+    )
+    (issubset(SIGNAL_PEAKS_CALCULATION_REQUEST_FIELDS, request_keys) &&
+        issubset(request_keys, allowed_keys)) || begin
         missing = sort!(collect(setdiff(SIGNAL_PEAKS_CALCULATION_REQUEST_FIELDS, request_keys)))
-        unknown = sort!(collect(setdiff(request_keys, SIGNAL_PEAKS_CALCULATION_REQUEST_FIELDS)))
+        unknown = sort!(collect(setdiff(request_keys, allowed_keys)))
         isempty(missing) || (field_errors["request"] = "Отсутствуют поля: $(join(missing, ", "))")
         isempty(unknown) || (field_errors["request"] = get(field_errors, "request", "") *
             (haskey(field_errors, "request") ? "; " : "") * "Неизвестные поля: $(join(unknown, ", "))")
@@ -3729,11 +3769,50 @@ function validate_signal_peaks_calculation_request(data)::SignalPeaksCalculation
     pane_value = signal_analyser_payload_value(data, "pane_id")
     pane_id = pane_value isa AbstractString && !isempty(String(pane_value)) ? String(pane_value) : ""
     isempty(pane_id) && (field_errors["pane_id"] = "Требуется непустой идентификатор pane")
+
+    visible_range = nothing
+    if signal_analyser_payload_contains(data, "visible_range")
+        range_value = signal_analyser_payload_value(data, "visible_range")
+        if !(range_value isa AbstractDict)
+            field_errors["visible_range"] = "Требуется JSON-объект canonical visible range"
+        else
+            range_keys = signal_analyser_payload_keys(range_value)
+            range_kind = if range_keys == SIGNAL_TIME_PEAKS_VISIBLE_RANGE_FIELDS
+                :time
+            elseif range_keys == SIGNAL_SPECTRUM_PEAKS_VISIBLE_RANGE_FIELDS
+                :spectrum
+            else
+                field_errors["visible_range"] =
+                    "Допустимы ровно {min_s,max_s} или {min_hz,max_hz}"
+                nothing
+            end
+            if range_kind !== nothing
+                minimum_key, maximum_key = range_kind == :time ?
+                    ("min_s", "max_s") : ("min_hz", "max_hz")
+                minimum_raw = signal_analyser_payload_value(range_value, minimum_key)
+                maximum_raw = signal_analyser_payload_value(range_value, maximum_key)
+                if !(minimum_raw isa Real) || minimum_raw isa Bool ||
+                    !(maximum_raw isa Real) || maximum_raw isa Bool
+                    field_errors["visible_range"] =
+                        "Границы canonical visible range должны быть числами"
+                else
+                    try
+                        visible_range = range_kind == :time ?
+                            SignalTimePeaksVisibleRange(minimum_raw, maximum_raw) :
+                            SignalSpectrumPeaksVisibleRange(minimum_raw, maximum_raw)
+                    catch err
+                        err isa ArgumentError || rethrow()
+                        field_errors["visible_range"] = sprint(showerror, err)
+                    end
+                end
+            end
+        end
+    end
     isempty(field_errors) || throw(SignalAnalyserValidationError(
         "Некорректный запрос расчёта экстремумов",
         field_errors,
     ))
-    SignalPeaksCalculationRequest(revision, display_id, pane_id)
+    SignalPeaksCalculationRequest(revision, display_id, pane_id, visible_range)
 end
 
 function validate_signal_peaks_settings_request(data)::SignalPeaksSettingsRequest
@@ -3948,6 +4027,7 @@ function calculate_signal_analyser_active_peaks!(
         requested.display_id,
         requested.pane_id;
         expected_state_revision = requested.state_revision,
+        visible_range = requested.visible_range,
     )
 end
 

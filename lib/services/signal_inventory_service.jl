@@ -57,10 +57,7 @@ function signal_inventory_summary_payload(
     lock(state.lock) do
         signal = signal_inventory_signal_by_id(state, signal_id)
         selection = SignalMeasurementSelection(SignalMeasurementKind[
-            MINIMUM_MEASUREMENT,
-            MAXIMUM_MEASUREMENT,
-            MEAN_MEASUREMENT,
-            RMS_MEASUREMENT,
+            SIGNAL_MEASUREMENT_CANONICAL_KINDS...,
         ])
         measurements = signal_measurements_snapshot(
             state.measurements_service,
@@ -68,10 +65,15 @@ function signal_inventory_summary_payload(
             signal,
             selection,
         )
-        values = Dict(
-            signal_measurement_metadata(measurement.kind).id => measurement.value
+        items = Dict(
+            signal_measurement_metadata(measurement.kind).id => measurement
             for measurement in measurements.items
         )
+        minimum_item = items["minimum"]::SignalMeasurementItem
+        maximum_item = items["maximum"]::SignalMeasurementItem
+        minimum_position = minimum_item.position::SignalMeasurementPosition
+        maximum_position = maximum_item.position::SignalMeasurementPosition
+        full_limits = signal_full_time_limits(state.measurements_service, signal)
         Dict{String,Any}(
             "ok" => true,
             "state_revision" => state.view.state_revision,
@@ -81,10 +83,23 @@ function signal_inventory_summary_payload(
                 "duration_s" => signal_duration_s(signal),
                 "data_type" => signal_data_type(signal),
                 "ordinate" => signal_measurement_ordinate_name(measurements.ordinate),
-                "minimum" => values["minimum"],
-                "maximum" => values["maximum"],
-                "mean" => values["mean"],
-                "rms" => values["rms"],
+                "region_start_s" => full_limits.min_s,
+                "region_end_s" => full_limits.max_s,
+                "minimum" => minimum_item.value,
+                "minimum_time_s" => minimum_position.time_s,
+                "minimum_sample_index" => minimum_position.sample_index,
+                "maximum" => maximum_item.value,
+                "maximum_time_s" => maximum_position.time_s,
+                "maximum_sample_index" => maximum_position.sample_index,
+                "mean" => items["mean"].value,
+                "median" => items["median"].value,
+                "range" => items["peak_to_peak"].value,
+                "peak_to_peak" => items["peak_to_peak"].value,
+                "rms" => items["rms"].value,
+                "units" => Dict{String,Any}(
+                    "value" => measurements.units.value,
+                    "time" => measurements.units.time,
+                ),
             ),
         )
     end

@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `33`
+- Design version: `34`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V33 is the current integration-safe package for the accepted Signal Analyser
+V34 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -45,6 +45,16 @@ changes save through one debounced revision-safe queue; invalid or hidden fields
 do not publish. The settings footer is visible only for `Экстремумы` and contains
 one action `Рассчитать`, which saves a valid changed extrema configuration before
 starting a missing/stale calculation or focusing its current values.
+
+V34 keeps the v33 appearance and adds only the requested content/state rules:
+Signal `Сводка` exposes every measurement column even when the lower table hides
+it; `Значения` deterministically opens the populated named sample table; display
+and pane drafts preview in their tab/header immediately; editable fields opt out
+of browser history/profile suggestions; numeric limits use the currently chosen
+axis units while canonical state remains seconds/Hz; automatically assigned
+colors and the picker use one exact Jet list; extrema calculate inside the
+active plot's current visible X interval; signal-table and Engee-catalog
+checkboxes remain mounted and checked through pending operations.
 
 V31 changed only TASK-0117 interaction semantics. Plain LMB on the non-control row
 surface makes that signal `main_signal` and ensures its checkbox is ON; it can
@@ -101,8 +111,9 @@ entry baseline or production transfer inputs.
   is shared between graph and table. Unit projection is provider-authored.
 - Display and pane rename inputs live in `Экран → Основное` and
   `Область → Основное`; stable IDs never appear as labels.
-- `Значения` does not create a second dialog: it reveals/selects/focuses a
-  dynamic lower tab, preserving the graph and settings context.
+- `Значения` does not create a second dialog: it guarantees/selects/focuses the
+  dynamic lower tab, expands a collapsed inspector and starts missing page 1,
+  preserving the graph and settings context.
 - The operation dialog is `660px` wide (a documented deviation from the
   standard `560px` analytical dialog) because the custom operation body
   needs a readable editor. Built-in form remains compact; the menu-open state
@@ -130,7 +141,8 @@ entry baseline or production transfer inputs.
   `Экран`. It does not mean forcing browser keyboard focus away from the click.
 - The sample tab for the current `main_signal` is structural, not an action
   result. It is created/rebound and its first cursor page is requested whenever
-  a valid main signal exists. `Значения` performs only select + focus.
+  a valid main signal exists. `Значения` also recovers a missing/stale first
+  page, selects/focuses the tab and expands the lower inspector.
 - The signal color popover follows Figma node `1779:11344` geometry but contains
   only `HEX`, a fixed 15-swatch Jet palette and `Отмена / Применить`. The Figma
   palette was Parula; Jet is an explicit user override. Palette scheme, line,
@@ -138,6 +150,25 @@ entry baseline or production transfer inputs.
 - `Дискретизация, Гц` is editable Signal metadata, not summary output. Comma
   decimals, non-finite values, zero and negatives are invalid; dot-decimal and
   exponent notation are accepted only when finite and strictly positive.
+- Signal `Сводка` is not coupled to the lower Measurements visibility menu. It
+  always includes counts/type/duration, ROI start/end, min/max with positions,
+  mean, median, peak-to-peak range and RMS.
+- Display/pane name drafts immediately project into the selected screen tab or
+  active pane title and settings context; the existing debounced autosave remains
+  authoritative and does not delay this preview.
+- Every text/search/numeric entry surface opts out of browser autocomplete,
+  spellcheck, autocapitalization and semantic profile field names. Native
+  browser profile/history suggestions are not an application overlay.
+- Selected time/frequency units own the visible Min/Max numbers. Canonical state
+  and requests remain seconds/Hz; empty bounds stay empty instead of being
+  materialized from a full range.
+- The exact 15 Jet swatches are the only automatic signal-color source and the
+  picker inventory. Pending signal membership or Engee catalog operations keep
+  the same checkbox nodes and checked state visible, applying only disabled and
+  `aria-busy` in place.
+- `Рассчитать` scopes extrema to the active graph's current visible X interval:
+  optional `visible_range` is `{min_s,max_s}` for time or `{min_hz,max_hz}` for
+  spectrum; absence means full domain and Y zoom is intentionally ignored.
 
 ## Exact delta v27 → v28
 
@@ -231,6 +262,24 @@ entry baseline or production transfer inputs.
 - Preserved spectrum Extrema settings, bottom tab, calculated frequency rows and
   Plotly markers for spectrum; both tabs are hidden for spectrogram.
 
+## Exact delta v33 → v34
+
+- No shell, spacing, typography, control, table, graph, dialog or overlay style
+  changed; the accepted production appearance remains the visual baseline.
+- Expanded Signal `Сводка` to the complete measurement inventory independent of
+  the lower table's visible-column choices.
+- Strengthened `Значения` from focus-only to a deterministic expand/ensure/
+  select/focus/load-first-page interaction over the existing dynamic tab.
+- Added same-frame display/pane name preview while preserving debounced autosave.
+- Added a browser input-history opt-out contract to settings and dialog inputs.
+- Defined selected-unit projection for limits with seconds/Hz canonical state,
+  including the invariant that empty automatic bounds remain empty.
+- Made the picker palette and automatic color allocation one exact 15-entry Jet
+  sequence.
+- Scoped extrema calculation to the current visible X/frequency interval.
+- Added stable-row/checkbox busy projection for the Signals table and Engee add
+  catalog: disabled plus `aria-busy`, never removal/recreation or checked loss.
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -245,10 +294,23 @@ entry baseline or production transfer inputs.
   checkbox graph visibility.
 - Approved TASK-0118 Signal color picker and TASK-0119 corrections from user
   chat on 2026-08-19.
+- User TASK-0126 corrections from chat on 2026-08-20 for complete summary,
+  immediate names, input-history opt-out, Jet identity, unit-aware limits,
+  zoom-scoped extrema, deterministic Values and checkbox continuity.
 - Read-only current selectors/geometry in `public/index.html`,
   `public/css/app.css`, `public/js/app.js`, `public/js/settings.js`.
 - Canonical local `designer/visual-system`, application composition, settings,
   output, dialog and page-sizing references.
+
+### Skills for v34 revision
+
+- Applied: `designer/designer-workflow` for complete-current publication and
+  `designer/data-entry-and-inspection` for summary/input/table state contracts.
+- Skipped: `designer/visual-system` because v34 introduces no new visual
+  component or style and explicitly preserves current appearance; Figma
+  reference status is `not_required`. Application composition, page sizing,
+  output and dialog skills were also skipped because their geometry/patterns do
+  not change.
 
 ### Skills for v32 revision
 
@@ -308,7 +370,7 @@ override the successful v32 node-specific read above.
 |---|---|---|---|---|---|---|---|
 | Main | Toolbar | root/toolbar | Global application actions | Existing `.application-toolbar`; mock `html/zones/toolbar/**` is design-only | none | false | all |
 | Main | Plot workspace | main-stage/workspace | Screen tabs, panes, plots, sliders, markers | Existing `[data-testid=display-workspace]` and `[data-pane-host]`; workspace SVG is mock-only | display tabs/x | false | all |
-| Main | Settings | main-stage/settings | Four settings pages + one Apply | Existing settings tabs/content/footer; mock `html/zones/settings/**` is design-only | body/y; sticky header/tabs/footer | false | all |
+| Main | Settings | main-stage/settings | Four pages; Signal/Area/Screen autosave and Extrema `Рассчитать` | Existing settings tabs/content/footer; mock `html/zones/settings/**` is design-only | body/y; sticky header/tabs/footer | false | all |
 | Main | Inspector | root/inspector | Signals, measurements, extrema, samples | Existing `.inspector-tabs`, `[data-inspector-content]`, `[data-signal-rows]`; mock zone is design-only | body/both; sticky tabs/headers/footer | manual three-state | all |
 | Main | Signal operation | body/dialog | Derived signal form and states | Runtime singleton from `integration/html/dialogs/signal-operation.fragment.html` | body/y; fixed title/actions | false | 1024×768, 1440×900; document clip forbidden |
 
@@ -336,25 +398,25 @@ override the successful v32 node-specific read above.
 |---|---|---|---|---|
 | Settings tab | click/keyboard | One page selected; footer remains shared | default, hover, pressed, selected, focus-visible, hidden-inapplicable | fixed 32px row, horizontal overflow only |
 | Link checkbox | change | Corresponding limits group moves Area ↔ Screen immediately | unchecked, hover, checked, focus-visible, disabled | settings body owns vertical scroll |
-| Limits fields/slider | type/drag/double-click | One draft model; empty means auto; double-click clears both bounds | default, hover, focus, drag, dirty, invalid | no geometry change between scopes |
+| Limits fields/slider | type/select unit/drag/double-click | Visible numbers use selected units; canonical seconds/Hz persist; empty means auto; double-click clears both bounds | default, hover, focus, drag, dirty, invalid | no geometry change between scopes |
 | Plot slider pane-menu item or Area checkbox | change | Both controls synchronize immediately and the slider preview changes without remount; autosave persists the same pane draft | unchecked, checked, focus | pane-local, both sliders may coexist |
-| Display/pane name | input + Apply | Stored name appears in all labels; stable id unchanged | pristine, dirty, invalid, applying, applied | ellipsis in tabs/header |
+| Display/pane name | input | Draft appears in tab/header/context in the same frame; autosave persists it; stable id unchanged | pristine, dirty, invalid, applying, applied | ellipsis in tabs/header |
 | Signal row | plain LMB outside controls/actions | Makes row `main_signal`; ensures checkbox ON; never toggles it OFF | white, grey-hover, main-blue, checkbox-checked/unchecked, busy | fixed 32px row; no geometry shift |
-| Signal checkbox | direct click/change | Adds/removes only that graph trace; never changes `main_signal`, including OFF on current main | unchecked, checked, disabled, busy; row blue remains independent | fixed 16px control; no row geometry shift |
+| Signal checkbox | direct click/change | Adds/removes only that graph trace; never changes `main_signal`; pending keeps the same visible node and checked state, disabled in place | unchecked, checked, disabled, busy; row blue remains independent | fixed 16px control; no row geometry shift |
 | Signal settings group | click title/keyboard | `Основное` or `Сводка` body independently hides/shows using standard disclosure arrow | expanded, hover, pressed, focus-visible, collapsed | settings body remains y-scroll owner |
 | Plot pane | plain LMB outside controls/modebar | Active pane updates and right panel selects `Область` | inactive, hover, active, loading | Plotly host identity unchanged |
 | Pane type dropdown | select option | Authoritative pane type updates, then right panel selects `Область` even if `Сигнал` was open | closed, open, selected, loading, error | Same pane/Plotly host identity; no Signal markup may remain in Area content |
 | Display tab / Add display | click/keyboard | Active/new display updates and right panel selects `Экран` | default, selected, creating, error | tab row remains horizontal-only |
 | Automatic sample tab | main signal exists/changes | One tab named after `main_signal` exists and loads its first page without changing inspector focus | absent-without-main, loading, ready, error | table owns x/y scroll when selected |
-| Signal `Значения` | click | Existing main-signal sample tab selects and receives focus; no new tab is created | default, hover, focus, loading, ready, error | table owns x/y scroll |
+| Signal `Значения` | click | Ensure/select/focus populated main-signal tab, expand inspector and request missing first page | default, hover, focus, loading, ready, error | table owns x/y scroll |
 | Signal color trigger | click/keyboard | 284px anchored non-modal popover opens with HEX and exactly 15 Jet swatches | closed, open, hover, selected-draft, invalid, busy | fixed overlay; flips/clamps to viewport, no settings scroll ownership change |
 | Color popover Apply/Cancel | click/Escape/outside | Apply writes Signal color draft; Cancel paths restore opening color | draft, busy, committed-to-page-draft, cancelled | focus returns to color trigger |
 | Signal sample rate | type | Editable dot-decimal metadata autosaves after validation | pristine, focus, dirty, invalid, applying | inline error does not shift adjacent controls |
-| Spectrum extrema `Рассчитать` | click | Valid changed settings save first; calculation begins if absent, then lower Extrema table receives focus | absent, loading, ready, error, stale | graph remains visible |
+| Spectrum/time extrema `Рассчитать` | click | Valid changed settings save first; calculate only in active visible X interval, then lower Extrema table receives focus | absent, loading, ready, error, stale | graph remains visible; Y zoom ignored |
 | Operation row icon | click | Blocking operation dialog opens with source signal | default, hover, focus, modal-open | icon occupies reserved row-action width |
 | Operation selector (`SignalAnalyserValueSelect`) | click/type/keyboard | Closed readonly value becomes same-field search; external modal-owned options popup | closed, open/search, hover, active, selected, focus | popup width equals 32px anchor border-box; viewport clamp only |
 | Operation submit | click | User body goes to Engee provider; busy blocks close, then inline success or recoverable Engee error | default, busy, error, success | title/actions fixed, body scrolls |
-| Shared Apply | click | One busy state for the draft across Signal/Area/Screen/Extrema | disabled-pristine, ready, hover, busy, retry | fixed footer; no side commentary |
+| Engee catalog checkbox | refresh/add pending | Same visible checkbox node and checked state remain; list/dialog gets `aria-busy` and controls disable in place | unchecked, checked, disabled, busy | fixed 16px control; no list replacement/flicker |
 
 ## Prototype walkthrough
 
@@ -392,6 +454,14 @@ The harness remains design-only and is not a production transfer input.
 | 22 | pane type ValueSelect | While `Сигнал` open, select another type | Settings page and content owner switch to `Область` | `v32--pane-type-change-focuses-area--1440x900.png` |
 | 23 | spectrum pane type | Calculate, then show values | Spectrum settings+bottom Extrema tab, frequency rows and markers use frequency positions | `v32--spectrum-extrema-settings-values--1440x900.png` |
 | 24 | spectrogram pane type | Switch the same pane to spectrogram | Unsupported settings and lower Extrema tabs are both hidden | `v32--spectrogram-hides-extrema-tabs--1440x900.png` |
+| 25 | Signal `Сводка` | Open Signal settings | All 13 summary measurements remain present regardless of table-column visibility | v34 contract audit |
+| 26 | `[data-testid=signal-values-action]` | Click from a collapsed/missing-page state | Inspector expands; named tab selects/focuses; page 1 loads | v34 contract audit |
+| 27 | `display.name` / `pane.name` | Type one character | Screen tab or pane title plus context changes before autosave resolves | v34 contract audit |
+| 28 | settings/dialog text inputs | Focus fields | `autocomplete=off`; no browser profile/history popup | v34 contract audit |
+| 29 | time/frequency limits | Choose units and edit bounds | Visible values/labels use selected units; empty bounds remain empty | v34 contract audit |
+| 30 | new signals + color picker | Inspect default colors/palette | Every default is one of the exact same 15 Jet values | v34 contract audit |
+| 31 | Extrema `Рассчитать` | Zoom X, then click | Optional canonical `visible_range` matches current X interval; Y ignored | v34 contract audit |
+| 32 | Signals/Engee checkboxes | Start a pending mutation | Same node remains visible/checked and becomes disabled under `aria-busy` | v34 contract audit |
 
 Walkthrough result: complete inherited walkthrough
 `evidence/interaction-walkthrough-v31-standalone.json`, `26 passed / 0 failed`,
@@ -402,6 +472,9 @@ listed above. V32 delta result is
 `evidence/interaction-walkthrough-v32-standalone.json`, `9 passed / 0 failed`,
 with `runtime_errors: []`; baseline hashes are in
 `evidence/production-baseline-v32.json`.
+V34 adds no visual geometry and therefore carries screenshots forward. Its
+behavior/transfer audit is `evidence/interaction-contract-v34.json`; no
+redundant screenshots are required for the unchanged appearance.
 
 ## Transfer contract
 
@@ -418,6 +491,7 @@ with `runtime_errors: []`; baseline hashes are in
 | `integration/css/task-0118-color-picker.css` | `public/css/app.css` | append once | Exact 284px Jet popover geometry/states |
 | `integration/js/task-0118-color-picker.js` | `public/js/app.js` boot/import | integrate UI-only popover unchanged | Use existing Signal draft/input event; no API call from popover |
 | `integration/js/task-0119-context-and-samples-intent.js` | pane type/sample tab branches in `public/js/app.js` | integrate exact intent | Preserve provider/revision flow; do not install prototype bridge |
+| `integration/js/task-0126-summary-units-continuity.js` | existing settings/summary/extrema/catalog renderers | integrate named inventories/helpers | Preserve existing DOM/queues; do not install prototype bridge |
 | `integration/html/dialogs/signal-operation.fragment.html` | `public/js/app.js` runtime template → `document.body` | integrate unchanged singleton | Never edit `public/index.html` |
 | Mock shell/zones/renderers/providers/prototype | none | design-only | Never transfer |
 
@@ -604,8 +678,8 @@ font; package copies below remain visual-harness inputs only.
 
 - Complete current package paths exist and are local.
 - Prototype remains the accepted visual harness and is wholly design-only.
-- Inherited 26/26 plus the v32 delta walkthrough pass; zero required viewports
-  are pending.
+- Inherited 35/35 walkthrough checks plus the v34 interaction/transfer audit;
+  zero required visual viewports are pending because geometry is unchanged.
 - Transfer audit confirms `copy_as_is: []`, the existing two feature fragments
   plus one selector-replacement CSS fragment, immutable
   production document/shell/module/Plotly-host identities and zero mock paths
@@ -624,6 +698,9 @@ font; package copies below remain visual-harness inputs only.
   click-tested against the production-faithful file harness.
 - Exact Figma ColorPicker node access and the explicit Jet deviation are both
   recorded; inherited unavailable-reference rows remain historical provenance.
+- Complete Summary inventory, deterministic Values table focus/loading,
+  same-frame names, history-free inputs, selected-unit bounds, exact Jet default
+  identity, zoom-scoped extrema and stable busy checkboxes are explicit seams.
 
 ## Backend integration boundary
 
@@ -665,3 +742,9 @@ render or leak the wrapper mechanics.
   made the populated main-signal sample tab automatic and Values focus-only;
   routed pane-type changes to Area; specified editable strict dot-decimal
   sampling metadata and verified the standard operation overwrite checkbox row.
+- `v33`: removed the general Apply button and made valid Signal/Area/Screen
+  changes autosave through one serialized revision-safe queue; Extrema retained
+  the sole explicit `Рассчитать` action.
+- `v34`: preserved all visuals and added the complete summary/sample-table,
+  immediate-name, no-history-input, selected-unit-limit, exact-Jet-default,
+  visible-range-extrema and stable-checkbox continuity contracts for TASK-0126.

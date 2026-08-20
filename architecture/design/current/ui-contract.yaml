@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 33
+design_version: 34
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124]
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -22,6 +22,7 @@ production_integration_contract:
     - frontend-source/integration/css/task-0118-color-picker.css
     - frontend-source/integration/js/task-0118-color-picker.js
     - frontend-source/integration/js/task-0119-context-and-samples-intent.js
+    - frontend-source/integration/js/task-0126-summary-units-continuity.js
     - frontend-source/integration/html/dialogs/signal-operation.fragment.html
   mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
 
@@ -44,7 +45,7 @@ prototype_contract:
     - public/js/native-session-io.js
     - public/js/app.js
   deterministic_provider: prototype/mock-fetch.js
-  interaction_bridges: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js]
+  interaction_bridges: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js]
   production_baseline_evidence: evidence/production-baseline-v32.json
   required_nonempty_zone_slots: [toolbar, workspace, settings, inspector]
   forbidden: [fetch_html_partials, http_server, network_api, cors_dependency, alternative_mock_shell]
@@ -84,7 +85,7 @@ screens:
         states: [ready, empty, loading, error, active_pane, linked_zoom]
       - id: display-settings
         type: settings
-        purpose: "Signal, Area, Screen and Extrema settings with one Apply"
+        purpose: "Signal, Area and Screen automatic settings plus explicit Extrema calculation"
         parent: main-stage
         slot: settings
         repeated: false
@@ -182,14 +183,16 @@ settings_tabs:
         label: "Основное"
         disclosure: {component: settings-group, initial: expanded, user_collapsible: true, state_owner: active_signal_editor}
         fields:
-          - {id: signal-name, label: "Имя", type: text, testid: signal-name, states: [default, focus_visible, dirty, invalid, disabled]}
-          - {id: signal-color, label: "Цвет", type: color_picker_plus_text, testid: signal-color, states: [default, hover, focus_visible, open, invalid]}
-          - {id: signal-sample-rate, label: "Дискретизация, Гц", type: editable_metadata_numeric, unit_in_label: true, testid: signal-sample-rate, inputmode: decimal, format: positive_finite_dot_decimal, persisted_by: settings-autosave, states: [default, focus_visible, dirty, invalid, applying]}
+          - {id: signal-name, label: "Имя", type: text, testid: signal-name, autocomplete: off, states: [default, focus_visible, dirty, invalid, disabled]}
+          - {id: signal-color, label: "Цвет", type: color_picker_plus_text, testid: signal-color, autocomplete: off, states: [default, hover, focus_visible, open, invalid]}
+          - {id: signal-sample-rate, label: "Дискретизация, Гц", type: editable_metadata_numeric, unit_in_label: true, testid: signal-sample-rate, inputmode: decimal, autocomplete: off, format: positive_finite_dot_decimal, persisted_by: settings-autosave, states: [default, focus_visible, dirty, invalid, applying]}
       - id: signal-summary
         label: "Сводка"
         disclosure: {component: settings-group, initial: expanded, user_collapsible: true, state_owner: active_signal_editor}
         authored_by: backend
-        values: [sample_count, data_type, duration, mean, minimum, maximum, rms]
+        values: [sample_count, data_type, duration, region_start, region_end, minimum, minimum_position, maximum, maximum_position, mean, median, peak_to_peak, rms]
+        value_labels: {sample_count: "Отсчёты", data_type: "Тип", duration: "Длительность", region_start: "Начало области", region_end: "Конец области", minimum: "Минимум", minimum_position: "Время минимума", maximum: "Максимум", maximum_position: "Время максимума", mean: "Среднее", median: "Медиана", peak_to_peak: "Размах", rms: "СКЗ"}
+        completeness: "independent of Measurements table column visibility; hidden measurement columns remain present in Summary"
         actions:
           - {id: signal-values, label: "Значения", type: text_button, testid: signal-values-action}
   - id: display
@@ -200,6 +203,7 @@ settings_tabs:
       - id: area-main
         label: "Основное"
         fields: [pane-name, plot-type]
+        pane_name: {autocomplete: off, optimistic_preview_targets: [active-pane-header, settings-context], preview_on: input, persistence: debounced_autosave}
         plot_type_transition: "after accepted plot-type mutation, select Area and render only Area content even when Signal was previously active"
       - id: area-parameters
         label: "Параметры"
@@ -235,6 +239,7 @@ settings_tabs:
       - id: screen-main
         label: "Основное"
         fields: [display-name]
+        display_name: {autocomplete: off, optimistic_preview_targets: [active-display-tab, settings-context], preview_on: input, persistence: debounced_autosave}
       - id: screen-layout
         label: "Макет"
         initial: collapsed
@@ -267,13 +272,16 @@ settings_tabs:
 components:
   axis-limits:
     exact_same_markup_for_scopes: [area, screen]
+    state_model: {canonical_time: seconds, canonical_frequency: hertz, visible_values: selected_axis_unit}
     fields:
       - {id: units, type: select, options_by_axis: {time: [auto, s, ms, us, ns], frequency: [auto, Hz, kHz, MHz], amplitude: [], magnitude: []}}
-      - {id: minimum, type: text_numeric, empty_semantics: auto_full_minimum, placeholder: "Мин."}
-      - {id: maximum, type: text_numeric, empty_semantics: auto_full_maximum, placeholder: "Макс."}
+      - {id: minimum, type: text_numeric, autocomplete: off, empty_semantics: auto_full_minimum, placeholder: "Мин.", display_unit: selected_axis_unit}
+      - {id: maximum, type: text_numeric, autocomplete: off, empty_semantics: auto_full_maximum, placeholder: "Макс.", display_unit: selected_axis_unit}
       - {id: double-slider, type: dual_thumb_horizontal_slider, reset: double_click_to_auto}
     states: [default, hover, drag_min, drag_max, keyboard_focus, dirty, invalid, disabled]
     validation: "only while visible"
+    projection: "On unit selection, nonempty numeric drafts are immediately reprojected without changing their physical canonical interval. Saving converts time to seconds and frequency to hertz. Empty auto Min/Max stay empty and keep placeholders."
+    valid_projection_message: "No seconds/Hz mismatch warning is shown when a displayed number is valid in the selected unit."
   plot-slider:
     variants:
       - {id: time-range, orientation: horizontal, pane_types: [time]}
@@ -300,6 +308,17 @@ components:
     visible_source: persisted_name
     id_source: stable_id
     default_ordinal: monotonic_never_automatic_reuse
+    preview: "Each input event updates the active display tab or pane title plus settings context immediately; debounced persistence continues independently and never delays the visible name."
+
+  text-entry-memory:
+    scope: [signal-settings, area-settings, screen-settings, axis-limits, settings-search, signal-add-search, signal-operation]
+    attributes: {autocomplete: off, spellcheck: false, autocapitalize: off, autocorrect: off, semantic_name_attribute: absent}
+    browser_profile_suggestions: forbidden
+
+  jet-signal-colors:
+    palette: ["#000080", "#0000d1", "#0010ff", "#0058ff", "#00a4ff", "#06ecf1", "#40ffb7", "#7dff7a", "#b7ff40", "#f1fc06", "#ffb900", "#ff7300", "#ff3000", "#d10000", "#800000"]
+    default_assignment: "Every automatically assigned signal color is selected from this exact ordered palette; no default color outside this list."
+    picker_identity: "The color picker exposes the same exact ordered values, byte-for-byte and case-normalized."
 
 tables:
   - id: signals-table
@@ -315,6 +334,10 @@ tables:
       default_fill: surface
       hover_fill: row-hover
       checked_fill: surface
+    mutation_continuity:
+      identity: "row keyed by stable signal id; existing tbody/row/checkbox DOM is retained while a membership or main-signal mutation is pending"
+      busy_projection: "set aria-busy on the table region and disable the same visible checkbox in place"
+      forbidden: [replace_checkbox_with_spinner, remove_checked_row_during_pending, recreate_tbody_for_pending_only, hide_checkbox]
     plain_row_click:
       effect: "set main_signal to the clicked row and ensure its checkbox/membership is ON; never toggle OFF"
       excluded_targets: [checkbox, row_actions, buttons, links, form_controls, contenteditable, plotly_modebar]
@@ -324,7 +347,8 @@ tables:
       - {id: delete-signal, icon: trash.svg, tooltip: "Удалить сигнал"}
   - id: measurements-table
     tab: measurements
-    columns: [name, color, minimum, maximum, mean, rms]
+    columns: [name, color, region_start, region_end, minimum, minimum_position, maximum, maximum_position, mean, median, peak_to_peak, rms]
+    visibility_menu: "Columns may be hidden in the table, but the Signal Summary always retains all values."
     alignment: {name: left, color: left}
   - id: spectrum-extrema-table
     tab: peaks
@@ -340,11 +364,20 @@ tables:
       - {id: magnitude, label: "Модуль"}
       - {id: square, label: "Квадрат"}
     loading: paged_or_virtualized
-    lifecycle: "tab exists/rebinds and first page loads automatically whenever valid main_signal exists; Values only selects/focuses it"
+    lifecycle: "tab exists/rebinds and first page loads automatically whenever valid main_signal exists; Values always selects/focuses it, expands the inspector from collapsed state, and starts page 1 when rows are missing"
     absent_when: no_main_signal
     prototype_fixture: {page_size: 24, pages: 3, total: 72, second_page_appends_visible_rows: true}
     full_array_in_state_or_dom: false
     footer: [visible_range, total_count, lazy_loading_note]
+
+  - id: engee-add-signal-catalog
+    dialog: signal-add
+    checkbox_semantics: "checked means selected for addition"
+    mutation_continuity:
+      identity: "once catalog rows are visible, rows and checkbox nodes stay mounted through refresh and submit loading"
+      busy_projection: "dialog/list receives aria-busy and existing checkbox/search/action controls become disabled in place"
+      initial_empty_loading: "loader may replace the empty list only before the first catalog rows exist"
+      forbidden: [replace_visible_rows_with_loader, clear_checked_state_during_refresh, hide_checkbox, recreate_checkbox_for_busy_only]
 
 graphs:
   - id: time-plot
@@ -353,6 +386,7 @@ graphs:
     sliders: [time-range, amplitude]
     legend: overlay_inside_plot
     hover_label: absent
+    extrema_scope: current_visible_x_interval
   - id: spectrum-plot
     pane_type: spectrum
     axes: [frequency, magnitude]
@@ -361,6 +395,7 @@ graphs:
     marker_positions: projected_frequency
     legend: overlay_inside_plot
     hover_label: absent
+    extrema_scope: current_visible_frequency_interval
 
 dialogs:
   - id: signal-color-picker
@@ -446,7 +481,7 @@ interactions:
     seam: settings-context-routing
   - id: signal-values-focus
     trigger: {element: signal-values, action: click}
-    visible_result: "the already existing tab named main_signal is selected and receives focus; no duplicate/create side effect"
+    visible_result: "the named main_signal tab is guaranteed, selected and focused; a collapsed inspector expands and a missing first page starts loading into the five-column table"
     seam: signal-samples-provider
   - id: automatic-main-signal-samples
     trigger: {element: main-signal-state, action: available_or_changed}
@@ -470,8 +505,12 @@ interactions:
     seam: linked-axis-draft
   - id: show-spectrum-extrema
     trigger: {element: show-extrema-values, action: click}
-    visible_result: "spectrum extrema tab is selected in lower inspector; plot markers remain visible"
+    visible_result: "calculation uses only the active plot's current visible X/frequency interval, then the Extrema tab is selected and plot markers remain visible"
     seam: spectrum-extrema-provider
+  - id: calculate-time-extrema-in-visible-zoom
+    trigger: {element: show-extrema-values, action: click}
+    visible_result: "calculation uses only the active time plot's current visible X interval; Y zoom never constrains extrema"
+    seam: viewport-extrema-provider
   - id: toggle-spectrum-frequency-slider-from-menu
     trigger: {element: pane-menu-frequency-slider, action: click}
     visible_result: "horizontal spectrum slider and Area checkbox update from the same active-pane state"
@@ -496,6 +535,22 @@ interactions:
     trigger: {element: any-valid-visible-setting, action: input_or_change}
     visible_result: "debounced serialized save and publication; no general Apply control"
     seam: settings-autosave-provider
+  - id: optimistic-display-name
+    trigger: {element: display-name, action: input}
+    visible_result: "active screen tab and settings context update on the same frame, before autosave settles"
+    seam: optimistic-name-preview
+  - id: optimistic-pane-name
+    trigger: {element: pane-name, action: input}
+    visible_result: "active pane title and settings context update on the same frame, before autosave settles"
+    seam: optimistic-name-preview
+  - id: selected-unit-limit-editing
+    trigger: {element: axis-limit-units-or-number, action: select_or_input}
+    visible_result: "nonempty Min/Max values and inline unit label use the selected axis unit; empty bounds remain empty placeholders"
+    seam: axis-limit-projection
+  - id: loading-preserves-checkbox
+    trigger: {element: signal-membership-or-engee-add-submit, action: pending_mutation}
+    visible_result: "the same checkbox remains visible with its checked state, disabled/aria-busy only; no loading replacement or blink"
+    seam: checkbox-mutation-continuity
   - id: delete-and-add-display
     trigger: {element: display-close-and-add, action: click}
     visible_result: "remaining persisted names stay unchanged; new default uses next monotonic ordinal"
@@ -573,7 +628,7 @@ integration_seams:
     production_consumer: public/js/app.js
     hosts: ["[data-pane-id]", "[data-display-select]", "[data-testid='add-display']", "[data-settings-page]"]
   - id: workspace-state-provider
-    ui_contract: "read/persist stable display/pane ids, names and monotonic default ordinals"
+    ui_contract: "read/persist stable display/pane ids, names and monotonic default ordinals; name drafts preview in existing headers immediately"
     mock_provider: mock/mock-provider.js
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
@@ -595,22 +650,46 @@ integration_seams:
     production_provider: public/js/app.js
     settings_inventory: public/js/settings.js
   - id: spectrum-extrema-provider
-    ui_contract: "projected spectrum extrema ready/loading/error rows and Plotly marker coordinates; UI performs no DSP or unit projection"
+    ui_contract: "projected spectrum extrema ready/loading/error rows and Plotly marker coordinates within the active plot's current visible frequency interval; UI projects that interval to canonical Hz but performs no DSP"
     mock_provider: mock/mock-provider.js
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
     hosts: ["[data-pane-host]", "[data-inspector-content]"]
   - id: signal-summary-provider
-    ui_contract: "main-signal metadata and summary for active pane"
+    ui_contract: "main-signal metadata plus complete measurement summary independent of hidden Measurements table columns"
     mock_provider: mock/mock-provider.js
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
   - id: signal-samples-provider
-    ui_contract: "valid main signal automatically ensures/rebinds tab and first cursor page; Values focuses same tab; no full-array DOM/app state"
+    ui_contract: "valid main signal automatically ensures/rebinds tab and first cursor page; Values expands inspector, guarantees and focuses the same tab, and retries missing page 1; no full-array DOM/app state"
     mock_provider: mock/mock-provider.js
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
     hosts: [".inspector-tabs", "[data-inspector-content]"]
+  - id: optimistic-name-preview
+    ui_contract: "display.name input -> selected tab/context in the same frame; pane.name input -> active pane title/context in the same frame; autosave remains authoritative"
+    mock_provider: frontend-source/js/ui/app.js
+    production_consumer: public/js/app.js
+    hosts: ["[data-setting-id='display.name']", "[data-setting-id='pane.name']", "[data-display-select]", "[data-pane-id]", "[data-settings-context]"]
+  - id: input-history-opt-out
+    ui_contract: "all text/search/numeric settings and dialog inputs use autocomplete=off plus spellcheck/autocapitalize/autocorrect off and no semantic name; browser profile suggestions are forbidden"
+    mock_provider: frontend-source/integration/js/task-0126-summary-units-continuity.js
+    production_consumers: [public/js/settings.js, public/js/app.js]
+  - id: axis-limit-projection
+    ui_contract: "visible time/frequency limits use selected units while provider/state remain canonical seconds/Hz; empty bounds are never materialized"
+    mock_provider: frontend-source/integration/js/task-0126-summary-units-continuity.js
+    production_consumers: [public/js/settings.js, public/js/app.js]
+    host: "[data-setting-id$='limits'][data-range-part]"
+  - id: checkbox-mutation-continuity
+    ui_contract: "keep stable signal-table and Engee-catalog checkbox nodes/checked state mounted during pending operations; disabled plus aria-busy are the only busy projection"
+    mock_provider: frontend-source/integration/js/task-0126-summary-units-continuity.js
+    production_consumer: public/js/app.js
+    hosts: ["[data-signal-rows]", "[data-testid='signal-add-variables']"]
+  - id: viewport-extrema-provider
+    ui_contract: "read current visible Plotly X range for the active pane, convert and send optional visible_range canonical TIME {min_s,max_s} or SPECTRUM {min_hz,max_hz}; calculate extrema only inside it; absent means full domain and Y range is ignored"
+    mock_provider: frontend-source/integration/js/task-0126-summary-units-continuity.js
+    production_consumers: [public/js/app.js, public/js/api.js]
+    host: "[data-pane-host]"
   - id: signal-operation-provider
     ui_contract: "send user operation body unchanged with source/target metadata; backend owns Engee execution envelope"
     mock_provider: mock/mock-provider.js
@@ -683,6 +762,14 @@ evidence:
     - 33-spectrum-extrema-settings-values-markers
     - 34-spectrogram-hides-unsupported-extrema-tabs
     - 35-file-prototype-no-network-or-errors
+    - 36-summary-complete-independent-of-hidden-columns
+    - 37-values-expands-focuses-and-loads-samples
+    - 38-display-pane-names-preview-immediately
+    - 39-settings-input-history-opt-out
+    - 40-limit-values-use-selected-units
+    - 41-default-colors-equal-picker-jet
+    - 42-extrema-uses-current-visible-x-range
+    - 43-pending-checkboxes-retain-node-and-state
   screenshots:
     - screenshots/v31--standalone-production-signal--1440x900.png
     - screenshots/v31--standalone-production-samples--1440x900.png
@@ -707,6 +794,6 @@ evidence:
     - screenshots/v32--pane-type-change-focuses-area--1440x900.png
     - screenshots/v32--spectrum-extrema-settings-values--1440x900.png
     - screenshots/v32--spectrogram-hides-extrema-tabs--1440x900.png
-  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json]
+  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json]
   production_baseline: evidence/production-baseline-v32.json
-  transfer_audit: evidence/transfer-audit-v32.json
+  transfer_audit: evidence/transfer-audit-v34.json

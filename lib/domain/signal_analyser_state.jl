@@ -1435,6 +1435,47 @@ SignalPeaksSettings(
 
 SignalPeaksSettings() = SignalPeaksSettings(MAXIMA_EXTREMA_MODE, 5, nothing, nothing, 1, 0.0)
 
+"""Transient canonical viewport used only by an explicit TIME extrema calculation."""
+struct SignalTimePeaksVisibleRange
+    min_s::Float64
+    max_s::Float64
+
+    function SignalTimePeaksVisibleRange(min_s::Real, max_s::Real)
+        minimum_value = Float64(min_s)
+        maximum_value = Float64(max_s)
+        isfinite(minimum_value) && isfinite(maximum_value) || throw(ArgumentError(
+            "Visible TIME range должен содержать конечные числа",
+        ))
+        minimum_value < maximum_value || throw(ArgumentError(
+            "Минимум visible TIME range должен быть меньше максимума",
+        ))
+        new(minimum_value, maximum_value)
+    end
+end
+
+"""Transient canonical viewport used only by an explicit SPECTRUM extrema calculation."""
+struct SignalSpectrumPeaksVisibleRange
+    min_hz::Float64
+    max_hz::Float64
+
+    function SignalSpectrumPeaksVisibleRange(min_hz::Real, max_hz::Real)
+        minimum_value = Float64(min_hz)
+        maximum_value = Float64(max_hz)
+        isfinite(minimum_value) && isfinite(maximum_value) || throw(ArgumentError(
+            "Visible SPECTRUM range должен содержать конечные числа",
+        ))
+        minimum_value < maximum_value || throw(ArgumentError(
+            "Минимум visible SPECTRUM range должен быть меньше максимума",
+        ))
+        new(minimum_value, maximum_value)
+    end
+end
+
+const SignalPeaksVisibleRange = Union{
+    SignalTimePeaksVisibleRange,
+    SignalSpectrumPeaksVisibleRange,
+}
+
 struct SignalPeaksQuery
     state_revision::Int
     display_id::String
@@ -3134,6 +3175,7 @@ struct SignalAnalyserPeaksContextKey
     signal_names::Tuple{Vararg{String}}
     time_limits::Union{Nothing,SignalTimeLimits}
     spectrum_settings::Union{Nothing,SignalSpectrumSettings}
+    visible_range::Union{Nothing,SignalPeaksVisibleRange}
     settings::SignalPeaksSettings
     calculation_revision::Int
 
@@ -3144,6 +3186,7 @@ struct SignalAnalyserPeaksContextKey
         signal_names::AbstractVector{<:AbstractString},
         time_limits::Union{Nothing,SignalTimeLimits},
         spectrum_settings::Union{Nothing,SignalSpectrumSettings},
+        visible_range::Union{Nothing,SignalPeaksVisibleRange},
         settings::SignalPeaksSettings,
         calculation_revision::Int,
     )
@@ -3163,6 +3206,12 @@ struct SignalAnalyserPeaksContextKey
         plot_type == SPECTRUM_PLOT && spectrum_settings === nothing && throw(ArgumentError(
             "SPECTRUM extrema context требует Spectrum settings",
         ))
+        plot_type == TIME_PLOT && visible_range isa SignalSpectrumPeaksVisibleRange && throw(
+            ArgumentError("TIME extrema context не принимает частотный visible range"),
+        )
+        plot_type == SPECTRUM_PLOT && visible_range isa SignalTimePeaksVisibleRange && throw(
+            ArgumentError("SPECTRUM extrema context не принимает временной visible range"),
+        )
         new(
             String(display_id),
             String(pane_id),
@@ -3170,6 +3219,7 @@ struct SignalAnalyserPeaksContextKey
             Tuple(names),
             time_limits,
             spectrum_settings,
+            visible_range,
             settings,
             calculation_revision,
         )
@@ -3183,6 +3233,7 @@ Base.:(==)(left::SignalAnalyserPeaksContextKey, right::SignalAnalyserPeaksContex
     left.signal_names == right.signal_names &&
     isequal(left.time_limits, right.time_limits) &&
     isequal(left.spectrum_settings, right.spectrum_settings) &&
+    isequal(left.visible_range, right.visible_range) &&
     left.settings == right.settings &&
     left.calculation_revision == right.calculation_revision
 Base.isequal(left::SignalAnalyserPeaksContextKey, right::SignalAnalyserPeaksContextKey) =
@@ -3195,6 +3246,7 @@ Base.hash(key::SignalAnalyserPeaksContextKey, seed::UInt) = hash(
         key.signal_names,
         key.time_limits,
         key.spectrum_settings,
+        key.visible_range,
         key.settings,
         key.calculation_revision,
     ),
@@ -3209,6 +3261,7 @@ struct SignalAnalyserPeaksSignalContextKey
     signal_name::String
     time_limits::Union{Nothing,SignalTimeLimits}
     spectrum_settings::Union{Nothing,SignalSpectrumSettings}
+    visible_range::Union{Nothing,SignalPeaksVisibleRange}
     settings::SignalPeaksSettings
     calculation_revision::Int
 
@@ -3227,6 +3280,7 @@ struct SignalAnalyserPeaksSignalContextKey
             name,
             context.time_limits,
             context.spectrum_settings,
+            context.visible_range,
             context.settings,
             context.calculation_revision,
         )
@@ -3243,6 +3297,7 @@ Base.:(==)(
     left.signal_name == right.signal_name &&
     isequal(left.time_limits, right.time_limits) &&
     isequal(left.spectrum_settings, right.spectrum_settings) &&
+    isequal(left.visible_range, right.visible_range) &&
     left.settings == right.settings &&
     left.calculation_revision == right.calculation_revision
 
@@ -3509,7 +3564,7 @@ function default_signal_catalog()::Vector{AnalysedSignal}
     AnalysedSignal[
         AnalysedSignal(
             "Гармонический сигнал",
-            "#2563eb",
+            "#000080",
             sample_rate_hz,
             ComplexF64.(harmonic),
             false,
