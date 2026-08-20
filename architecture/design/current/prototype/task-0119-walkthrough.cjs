@@ -57,7 +57,7 @@ async function shot(page, name) { const file=path.join(screenshots, name); await
     const verdict=await page.evaluate(() => window.SignalAnalyserTask0119.validateSampleRate("2048.5"));
     const comma=await page.evaluate(() => window.SignalAnalyserTask0119.validateSampleRate("2048,5"));
     assert(verdict.valid && !comma.valid, "Sample-rate dot-decimal validation contract failed");
-    assert(!(await page.getByTestId("settings-apply").isDisabled()), "Unified Apply did not become dirty");
+    assert(await page.getByTestId("settings-apply").count() === 0, "General Apply must be absent");
   }, await shot(page, "v32--editable-sample-rate--1440x900.png"));
 
   await page.locator(".settings-panel .color-swatch-button").click();

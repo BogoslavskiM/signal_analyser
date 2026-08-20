@@ -11,7 +11,7 @@ module.exports = async function testV5SettingsInspectorAndPlotContracts(assert) 
   const app = read("public/js/app.js");
   const settings = read("public/js/settings.js");
 
-  ["settings-content", "settings-footer", "settings-apply", "settings-tab-display", "settings-tab-screen", "settings-tab-peaks"].forEach((id) => {
+  ["settings-content", "settings-footer", "extrema-values", "settings-tab-display", "settings-tab-screen", "settings-tab-peaks"].forEach((id) => {
     assert(html.includes(`data-testid="${id}"`), `v5 settings must expose stable selector ${id}`);
   });
   assert(!html.includes('data-testid="statistics-settings-tab"'), "Measurements must not remain in the settings tablist");

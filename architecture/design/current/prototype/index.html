@@ -87,13 +87,12 @@
           <button id="settings-tab-screen" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="settings-content" data-settings-page="screen" data-testid="settings-tab-screen">Экран</button>
           <button id="settings-tab-peaks" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="settings-content" data-settings-page="peaks" data-testid="settings-tab-peaks">Экстремумы</button>
         </div>
-        <!-- Legacy static-contract aliases: settings-catalog-panel / explicit-apply-root / bottom-panel-signals. -->
-        <!-- data-testid="settings-catalog-panel" data-testid="explicit-apply-root" data-testid="bottom-panel-signals" -->
+        <!-- Legacy static-contract aliases: settings-catalog-panel / bottom-panel-signals. -->
+        <!-- data-testid="settings-catalog-panel" data-testid="bottom-panel-signals" -->
         <div id="settings-content" class="settings-scroll" role="tabpanel" aria-labelledby="settings-tab-display" data-settings-content data-testid="settings-content"></div>
         <footer class="settings-apply-block" data-testid="settings-footer" data-apply-root="true">
           <span class="settings-status visually-hidden" role="status" aria-live="polite" data-settings-status></span>
-          <button class="button" type="button" data-testid="extrema-values" hidden>Показать значения</button>
-          <button class="button button-primary settings-apply" type="button" data-testid="settings-apply" aria-describedby="settings-apply-status" disabled>Применить</button>
+          <button class="button" type="button" data-testid="extrema-values" hidden>Рассчитать</button>
           <span id="settings-apply-status" class="visually-hidden" data-apply-announcement aria-live="assertive"></span>
         </footer>
       </aside>

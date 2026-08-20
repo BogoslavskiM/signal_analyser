@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 32
+design_version: 33
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -21,7 +21,7 @@ prototype_baseline:
   walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json]
   result: "Inherited 26/26 plus v32 delta 9/9; automatic populated five-column samples, Jet picker, context routing, spectrum extrema and spectrogram hiding; zero HTTP/CORS/runtime errors"
 
-# There is intentionally no whole-file production copy in v32. Production
+# There is intentionally no whole-file production copy in v33. Production
 # already owns the application document, boot sequence, UI modules and Plotly
 # hosts. The sources below are exact integration fragments.
 copy_as_is: []
@@ -35,7 +35,7 @@ production_invariants:
     preserve: [bootstrap, model_lifecycle, existing_renderers, Plotly_queue, event_delegation]
   - path: public/js/settings.js
     policy: extend_in_place_never_replace
-    preserve: [settings_document_lifecycle, draft_revision, validation, unified_apply]
+    preserve: [settings_document_lifecycle, draft_revision, validation, serialized_autosave]
   - path: public/js/api.js
     policy: extend_in_place_never_replace
     preserve: [request_transport, error_projection, existing_exports]
@@ -116,9 +116,9 @@ integration_hosts:
   settings_content:
     selector: "[data-settings-content][data-testid='settings-content']"
     integration: "public/js/app.js and public/js/settings.js render only the active page into the existing content owner."
-  settings_apply:
-    selector: "[data-testid='settings-footer'] [data-testid='settings-apply']"
-    integration: "All Signal/Area/Screen/Extrema drafts use the existing unified Apply lifecycle; no second footer or action."
+  settings_autosave:
+    selector: "[data-settings-content], [data-testid='settings-footer'] [data-testid='extrema-values']"
+    integration: "Signal/Area/Screen changes autosave through one revision-safe queue; footer is hidden outside Extrema and its sole action is Рассчитать."
   inspector_tabs:
     selector: ".inspector-tabs"
     integration: "public/js/app.js automatically ensures/rebinds one sample tab keyed by stable main-signal id and preloads page 1; Values only selects/focuses it."
@@ -179,7 +179,7 @@ integration_seams:
     full_array_in_dom_or_state_forbidden: true
     replacement_forbidden: true
   - id: signal-sample-rate-draft
-    action_interface: "editable Дискретизация, Гц metadata; positive finite dot-decimal UI validation; shared Apply persistence"
+    action_interface: "editable Дискретизация, Гц metadata; positive finite dot-decimal UI validation; debounced autosave persistence"
     production_consumers: [public/js/app.js]
     production_providers: [public/js/api.js]
     host: "[data-settings-content]"
@@ -187,7 +187,7 @@ integration_seams:
   - id: settings-page-extension
     action_interface: "ensure signal tab; render Signal/Area/Screen/Extrema into existing settings content"
     production_consumers: [public/js/app.js, public/js/settings.js]
-    hosts: ["[data-testid='settings-tabs']", "[data-settings-content]", "[data-testid='settings-apply']"]
+    hosts: ["[data-testid='settings-tabs']", "[data-settings-content]", "[data-testid='settings-footer']"]
     replacement_forbidden: true
   - id: pane-slider-visibility
     action_interface: "get/set active pane x/y slider visibility from pane menu or settings checkbox; synchronously project both controls from one draft"

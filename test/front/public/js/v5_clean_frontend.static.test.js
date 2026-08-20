@@ -15,7 +15,7 @@ module.exports = async function testV5CleanFrontendContracts(assert) {
   [
     "app-shell", "display-workspace", "display-tabs", "layout-trigger",
     "layout-popover", "plot-grid", "settings-panel", "settings-catalog-panel",
-    "explicit-apply-root", "bottom-panel-signals", "signal-search-input",
+    "bottom-panel-signals", "signal-search-input",
     "signal-rows", "signal-columns-menu", "measurement-columns-menu", "overlay-tooltip", "runtime-dialog-root",
   ].forEach((id) => assert(html.includes(`data-testid=\"${id}\"`), `v5 shell must expose ${id}`));
   assert(!/\.\.?\/assets\/|design\.css|demo\.js/.test(html), "production shell must not retain prototype-relative assets or demo runtime");
@@ -34,7 +34,7 @@ module.exports = async function testV5CleanFrontendContracts(assert) {
   assert(!/(?:filter|backdrop-filter)\s*:\s*[^;}]*blur/i.test(css), "empty/loading/ready/error panes must not blur graphs");
   assert(/\.layout-grid-icon[^{]*\{[^}]*width:\s*16px[^}]*height:\s*16px/s.test(css), "the copied TASK-0044 grid vector must render at 16×16px");
   assert(/<svg class="layout-grid-icon" viewBox="0 0 24 24"[^>]*><rect x="3" y="3" width="7" height="7" rx="1"><\/rect><rect x="14" y="3" width="7" height="7" rx="1"><\/rect><rect x="3" y="14" width="7" height="7" rx="1"><\/rect><rect x="14" y="14" width="7" height="7" rx="1"><\/rect><\/svg>/.test(html), "layout trigger must retain the exact four-rectangle TASK-0044 inline SVG");
-  assert((html.match(/data-testid="explicit-apply-root"/g) || []).length === 1, "v5 shell must expose exactly one explicit Apply root");
+  assert(!(html.match(/data-testid="explicit-apply-root"/g) || []).length, "v5 shell must not retain the removed general Apply root");
   assert((html.match(/data-settings-content/g) || []).length === 1, "v5 shell must expose exactly one canonical settings-content subtree");
 
   assert(api.includes('"./api/state-lite"') && /function refreshSnapshot\(renderAccepted\) \{ return api\.getState\(\)/.test(app), "bootstrap and normal snapshots must use state-lite rather than eager graph state");

@@ -26,7 +26,7 @@ module.exports = async function task0119SignalFlowStatic(assert) {
   // decimal text must disable Apply and cannot reach the metadata API.
   assert(/function signalSampleRateValidation\(raw\)[\s\S]*?numeric\.parse\(raw, "decimal"\)[\s\S]*?parsed\.value <= 0/.test(app), "sample rate must use strict decimal parsing and reject non-positive values");
   assert(/data-signal-metadata='sample_rate_hz'[\s\S]*?aria-invalid/.test(app), "the sample-rate control must expose immediate invalid state");
-  assert(/button\.disabled = !model\.signalEditor\.dirty \|\| !rate\.valid/.test(app), "invalid sample rate must disable Signal Apply");
+  assert(/if \(!sampleRate\.valid\) \{ showToast\(sampleRate\.error, true\); return; \}/.test(app), "invalid sample rate must stop Signal autosave before an API request");
   const apply = (app.match(/function applySignalMetadata\(\)[\s\S]*?\n  \}/) || [""])[0];
   assert(/var sampleRate=signalSampleRateValidation\(editor\.draft\.sample_rate_hz\);[\s\S]*?if \(!sampleRate\.valid\) \{ showToast[\s\S]*?return;[\s\S]*?api\.updateSignalMetadata\([\s\S]*?sample_rate_hz:sampleRate\.value/.test(apply), "metadata API must execute only after the parsed rate is valid");
 

@@ -280,7 +280,7 @@
   function sameContext(token, displayId) { return token === context.contextToken && displayId === context.displayId; }
   function responseRevision(response) {
     var state = response && response.state;
-    return state && typeof state.state_revision === "number" ? state.state_revision : null;
+    return state && typeof state.state_revision === "number" ? state.state_revision : response && typeof response.state_revision === "number" ? response.state_revision : null;
   }
   function adoptAuthoritative(response, token, displayId) {
     if (!sameContext(token, displayId)) return false;
@@ -302,6 +302,25 @@
     var queued = context.requestQueue.catch(function () {}).then(task);
     context.requestQueue = queued.catch(function () {});
     return queued;
+  }
+
+  function validVisibleDraftItems() {
+    return visibleItems().filter(function (item) {
+      var draft = context.drafts[item.id];
+      return !!draft && !draft.error;
+    });
+  }
+
+  function clearCommittedDrafts(capturedIntents) {
+    Object.keys(capturedIntents || {}).forEach(function (id) {
+      var draft = context.drafts[id];
+      if (draft && !draft.error && draft.intent <= capturedIntents[id]) delete context.drafts[id];
+    });
+  }
+
+  function flushVisibleDrafts() {
+    Object.keys(context.timers).forEach(function (key) { clearTimeout(context.timers[key]); delete context.timers[key]; });
+    return Promise.all(validVisibleDraftItems().map(send));
   }
 
   function send(item) {
@@ -398,8 +417,35 @@
     },
     render:render,
     flush:function () {
-      Object.keys(context.timers).forEach(function (key) { clearTimeout(context.timers[key]); delete context.timers[key]; });
-      return Promise.all(visibleItems().filter(isApply).map(send));
+      return flushVisibleDrafts();
+    },
+    commit:function () {
+      var displayId=context.displayId, token=context.contextToken;
+      function publish(retries) {
+        if (!sameContext(token, displayId)) return Promise.resolve();
+        return api.applySettings({ state_revision:context.revision, display_id:displayId }).then(function (response) {
+          adoptAuthoritative(response, token, displayId);
+          return response;
+        }).catch(function (error) {
+          if (error && error.status === 409 && retries < 1 && rebaseConflict(error, token, displayId)) return publish(retries + 1);
+          throw error;
+        });
+      }
+      return flushVisibleDrafts().then(function () {
+        if (!sameContext(token, displayId)) return;
+        var capturedIntents={};
+        validVisibleDraftItems().forEach(function (item) { capturedIntents[item.id]=context.drafts[item.id].intent || 0; });
+        return enqueue(function () {
+          return publish(0).then(function (response) {
+            if (response && response.success === false) return response;
+            if (sameContext(token, displayId)) {
+              clearCommittedDrafts(capturedIntents);
+              render();
+            }
+            return response;
+          });
+        });
+      });
     },
     markApplied:function () { context.drafts={}; render(); },
     state:function () { var visible=visibleItems().reduce(function(ids,item){ids[item.id]=true;return ids;},{}), all=Object.keys(context.drafts).filter(function(key){return visible[key];}).map(function (key) { return context.drafts[key]; }); return { dirty:all.some(function (draft) { return !draft.error; }), invalid:all.some(function (draft) { return draft.error; }), displayId:context.displayId, revision:context.revision }; },

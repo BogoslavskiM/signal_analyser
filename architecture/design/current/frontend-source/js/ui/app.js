@@ -2,6 +2,7 @@
   "use strict";
   var provider = {};
   var state = null;
+  var autosaveTimer = null;
 
   function render() {
     window.SignalAnalyserZones.workspace.render(state);
@@ -12,7 +13,17 @@
 
   function activeDisplay() { return window.SignalAnalyserZones.workspace.activeDisplay(state); }
   function activePane() { var display = activeDisplay(); return display.panes.find(function (pane) { return pane.id === state.activePaneId; }) || display.panes[0]; }
-  function dirty() { state.dirty = true; document.querySelector("[data-testid='settings-apply']").disabled = false; document.querySelector("[data-testid='settings-panel']").dataset.applyState = "dirty"; }
+  function dirty() {
+    state.dirty = true;
+    document.querySelector("[data-testid='settings-panel']").dataset.applyState = "dirty";
+    clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(function () {
+      Promise.resolve(provider.onApply ? provider.onApply(state) : null).then(function () {
+        state.dirty = false;
+        render();
+      });
+    }, 150);
+  }
 
   function bind() {
     window.addEventListener("signal-analyser:pane-type", function (event) {
@@ -67,18 +78,6 @@
       if (target.closest("[data-testid='extrema-values']")) { state.inspectorPage = "peaks"; render(); document.querySelector("[data-inspector-page='peaks']").focus(); return; }
       var operation = target.closest("[data-signal-operation]");
       if (operation) { window.SignalAnalyserDialogs.signalOperation.open(operation.dataset.signalOperation); return; }
-      var apply = target.closest("[data-testid='settings-apply']");
-      if (apply && !apply.disabled) {
-        var displayName = document.querySelector("[data-display-name]"); if (displayName) activeDisplay().name = displayName.value.trim() || activeDisplay().name;
-        var paneName = document.querySelector("[data-pane-name]"); if (paneName) activePane().name = paneName.value.trim() || activePane().name;
-        var signalName = document.querySelector("[data-signal-name]"); if (signalName) state.signal.name = signalName.value.trim() || state.signal.name;
-        var signalColor = document.querySelector("[data-signal-color-input]"); if (signalColor) state.signal.color = signalColor.value;
-        var sampleRate = document.querySelector("[data-signal-sample-rate]");
-        if (sampleRate && window.SignalAnalyserTask0119 && !window.SignalAnalyserTask0119.validateSampleRate(sampleRate.value).valid) { sampleRate.focus(); return; }
-        if (sampleRate) state.signal.sampleRate = sampleRate.value;
-        apply.disabled = true; apply.textContent = "Применение…";
-        Promise.resolve(provider.onApply ? provider.onApply(state) : null).then(function () { state.dirty = false; apply.textContent = "Применить"; render(); });
-      }
     });
     document.addEventListener("change", function (event) {
       var signalVisibility = event.target.closest("[data-signal-visible]");

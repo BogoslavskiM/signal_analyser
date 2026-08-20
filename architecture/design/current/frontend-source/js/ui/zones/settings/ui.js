@@ -58,8 +58,8 @@
     else if (state.settingsPage === "screen") content.innerHTML = screenPage(state, display);
     else content.innerHTML = peaksPage();
     document.querySelector("[data-testid='extrema-values']").hidden = state.settingsPage !== "peaks";
+    document.querySelector("[data-testid='settings-footer']").hidden = state.settingsPage !== "peaks";
     document.querySelector("[data-testid='settings-panel']").dataset.applyState = state.dirty ? "dirty" : "pristine";
-    document.querySelector("[data-testid='settings-apply']").disabled = !state.dirty;
   }
   window.SignalAnalyserZones = window.SignalAnalyserZones || {};
   window.SignalAnalyserZones.settings = { render: render, limits: limits };

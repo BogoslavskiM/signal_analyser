@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 32
+design_version: 33
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119]
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -89,7 +89,7 @@ screens:
         slot: settings
         repeated: false
         tabs: [signal, display, screen, peaks]
-        production_host: "[data-testid='settings-tabs'] + [data-settings-content] + [data-testid='settings-apply']"
+        production_host: "[data-testid='settings-tabs'] + [data-settings-content] + [data-testid='settings-footer']"
         transfer: additive_existing_settings_renderers_only
         design_mock: {html: frontend-source/html/zones/settings/view.html, css: frontend-source/css/zones/settings/style.css, ui_js: frontend-source/js/ui/zones/settings/ui.js}
         sizing: {min_width: 300, min_height: 440, width_growth_ratio: 1, height_growth_ratio: 4}
@@ -149,7 +149,7 @@ production_hosts:
     tabs: "[data-testid='settings-tabs']"
     content: "[data-settings-content][data-testid='settings-content']"
     footer: "[data-testid='settings-footer']"
-    unified_apply: "[data-testid='settings-apply']"
+    autosave: "public/js/settings.js requestQueue + public/js/app.js publication queue"
     policy: "insert/render affected controls only; never replace settings panel or create another Apply"
   inspector:
     tabs: ".inspector-tabs"
@@ -184,7 +184,7 @@ settings_tabs:
         fields:
           - {id: signal-name, label: "Имя", type: text, testid: signal-name, states: [default, focus_visible, dirty, invalid, disabled]}
           - {id: signal-color, label: "Цвет", type: color_picker_plus_text, testid: signal-color, states: [default, hover, focus_visible, open, invalid]}
-          - {id: signal-sample-rate, label: "Дискретизация, Гц", type: editable_metadata_numeric, unit_in_label: true, testid: signal-sample-rate, inputmode: decimal, format: positive_finite_dot_decimal, persisted_by: settings-apply, states: [default, focus_visible, dirty, invalid, applying]}
+          - {id: signal-sample-rate, label: "Дискретизация, Гц", type: editable_metadata_numeric, unit_in_label: true, testid: signal-sample-rate, inputmode: decimal, format: positive_finite_dot_decimal, persisted_by: settings-autosave, states: [default, focus_visible, dirty, invalid, applying]}
       - id: signal-summary
         label: "Сводка"
         disclosure: {component: settings-group, initial: expanded, user_collapsible: true, state_owner: active_signal_editor}
@@ -262,7 +262,7 @@ settings_tabs:
       - id: extrema-presentation
         fields: [show-markers, projected-coordinate-note]
     actions:
-      - {id: show-extrema-values, label: "Показать значения", testid: extrema-values}
+      - {id: show-extrema-values, label: "Рассчитать", testid: extrema-values}
 
 components:
   axis-limits:
@@ -292,7 +292,7 @@ components:
         group: area-parameters
         spectrum_fields: [show-frequency-slider, show-magnitude-slider]
     synchronization: "Both projections read/write the same active-pane draft immediately; menu aria-checked and settings checked state must never diverge."
-    persistence: "Existing unified Apply persists the shared draft; neither projection owns a second state."
+    persistence: "Existing serialized autosave persists the shared draft; neither projection owns a second state."
     plot_host_mutation: "Use existing Plotly layout/relayout and amplitude-slider overlay path only; never overwrite [data-pane-host]."
     states: [hidden, default, hover, drag, keyboard_focus, reset]
   persisted-name:
@@ -404,7 +404,7 @@ dialogs:
       modal_owned: true
 
 elements:
-  - {id: settings-apply, zone: display-settings, type: primary_button, label: "Применить", testid: settings-apply, states: [disabled_pristine, default_dirty, hover, pressed, focus_visible, busy]}
+  - {id: extrema-calculate, zone: display-settings, type: primary_button, label: "Рассчитать", testid: extrema-values, visibility: extrema_only, states: [default, hover, pressed, focus_visible, busy, disabled_invalid]}
   - {id: signal-values, zone: display-settings, type: button, label: "Значения", testid: signal-values-action, states: [default, hover, pressed, focus_visible]}
   - {id: pane-frequency-slider, zone: plot-workspace, type: dual_thumb_slider, label: "Слайдер частоты", testid: pane-frequency-slider, states: [default, hover, drag, focus_visible]}
   - {id: pane-magnitude-slider, zone: plot-workspace, type: dual_thumb_slider, label: "Слайдер магнитуды", testid: pane-magnitude-slider, states: [default, hover, drag, focus_visible]}
@@ -457,9 +457,9 @@ interactions:
     visible_result: "284px HEX + 15 Jet popover; selection previews nested draft and Apply updates only the Signal page draft"
     seam: signal-color-draft
   - id: signal-sample-rate-edit
-    trigger: {element: signal-sample-rate, action: input_then_shared_apply}
+    trigger: {element: signal-sample-rate, action: input_then_autosave}
     visible_result: "valid positive finite dot-decimal draft persists; comma/nonfinite/zero/negative stays invalid"
-    seam: settings-apply-provider
+    seam: settings-autosave-provider
   - id: toggle-spectrum-frequency-link
     trigger: {element: link-spectrum-frequency, action: change}
     visible_result: "same frequency limits component moves Area <-> Screen immediately without value loss"
@@ -492,10 +492,10 @@ interactions:
     trigger: {element: signal-operation, action: click}
     visible_result: signal-operation
     seam: signal-operation-provider
-  - id: apply-all-settings
-    trigger: {element: settings-apply, action: click}
-    visible_result: "one busy state, then applied or error; no extra side status text"
-    seam: settings-apply-provider
+  - id: autosave-settings
+    trigger: {element: any-valid-visible-setting, action: input_or_change}
+    visible_result: "debounced serialized save and publication; no general Apply control"
+    seam: settings-autosave-provider
   - id: delete-and-add-display
     trigger: {element: display-close-and-add, action: click}
     visible_result: "remaining persisted names stay unchanged; new default uses next monotonic ordinal"
@@ -577,12 +577,12 @@ integration_seams:
     mock_provider: mock/mock-provider.js
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
-  - id: settings-apply-provider
-    ui_contract: "one draft/apply lifecycle for Signal/Area/Screen/Extrema using existing Apply"
+  - id: settings-autosave-provider
+    ui_contract: "Signal/Area/Screen autosave through one revision-safe queue; Extrema settings save before explicit Рассчитать"
     mock_provider: mock/mock-provider.js
     production_provider: public/js/settings.js
     production_consumer: public/js/app.js
-    host: "[data-testid='settings-apply']"
+    host: "[data-settings-content] + [data-testid='settings-footer']"
   - id: pane-slider-visibility
     ui_contract: "one active-pane x/y visibility draft projected synchronously into existing pane menu and settings checkboxes"
     mock_provider: frontend-source/js/ui/app.js
