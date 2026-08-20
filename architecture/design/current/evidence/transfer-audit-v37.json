@@ -1,0 +1,14 @@
+{
+  "design_version": 37,
+  "status": "passed",
+  "checks": [
+    {"id":"cursor-fragments-declared","passed":true,"detail":"TASK-0130 CSS and UI-only controller remain exact additive fragments"},
+    {"id":"existing-menu-host-reused","passed":true,"detail":"Курсор and Два курсора remain before existing graph help in display-overflow-menu"},
+    {"id":"plotly-host-preserved","passed":true,"detail":"cursor layer remains a sibling inside plot-canvas; data/fullLayout are read-only and host descendants are untouched"},
+    {"id":"frontend-state-only","passed":true,"detail":"off/single/dual mode and positions remain keyed by paneRuntimeKey with no API, DSP, autosave, session or state revision"},
+    {"id":"linked-axes-independent","passed":true,"detail":"relayout clamps only cursors already owned by that pane and never propagates cursor mode or positions"},
+    {"id":"zero-is-valid-nearest-candidate","passed":true,"detail":"nearestX distinguishes null/non-finite absence from the finite sample X=0 across heterogeneous traces"},
+    {"id":"prototype-bridge-excluded","passed":true,"detail":"TASK-0130 prototype bridge and regression walkthrough are design-only"},
+    {"id":"immutable-production-document","passed":true,"detail":"public/index.html remains immutable; runtime menu installation is owned by existing app boot"}
+  ]
+}

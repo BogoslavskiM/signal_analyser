@@ -1,0 +1,58 @@
+{
+  "design_version": 36,
+  "prototype_entry": "prototype/index.html",
+  "protocol": "file://",
+  "passed": 8,
+  "failed": 0,
+  "runtime_errors": [],
+  "results": [
+    {
+      "id": "01-menu-has-single-and-dual-cursor",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v36--pane-menu-cursor-options--1440x900.png"
+    },
+    {
+      "id": "02-single-cursor-readout-and-no-api",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v36--spectrum-single-cursor--1440x900.png"
+    },
+    {
+      "id": "03-drag-snaps-inside-visible-domain",
+      "passed": true,
+      "detail": null,
+      "screenshot": null
+    },
+    {
+      "id": "04-menu-projects-active-single-mode",
+      "passed": true,
+      "detail": null,
+      "screenshot": null
+    },
+    {
+      "id": "05-dual-cursor-delta-and-per-trace-values",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v36--spectrum-dual-cursor--1440x900.png"
+    },
+    {
+      "id": "06-repeat-active-mode-turns-cursors-off",
+      "passed": true,
+      "detail": null,
+      "screenshot": null
+    },
+    {
+      "id": "07-time-and-spectrum-state-are-pane-local",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v36--time-single-cursor--1440x900.png"
+    },
+    {
+      "id": "08-file-prototype-no-network-or-errors",
+      "passed": true,
+      "detail": null,
+      "screenshot": null
+    }
+  ]
+}

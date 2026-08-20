@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `34`
+- Design version: `37`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,11 +12,12 @@
 
 ## Scope
 
-V35 is the current integration-safe package for the accepted Signal Analyser
+V37 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
-It contains the four previously accepted user-valued surfaces:
+It contains the four previously accepted user-valued surfaces plus the narrow
+TASK-0130 graph-cursor extension:
 
 1. Spectrum extrema, independent frequency/magnitude plot sliders, independent
    screen links and separate frequency/magnitude limits.
@@ -27,6 +28,8 @@ It contains the four previously accepted user-valued surfaces:
 4. One signal-operation dialog next to Duplicate, with six built-ins plus a
    user operation body executed by the Engee backend provider with
    `init_signal` available as its input binding.
+5. Two existing-style pane-menu choices, `Курсор` and `Два курсора`, controlling
+   mutually exclusive pane-local draggable X cursors for ready Time/Spectrum plots.
 
 The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
 transaction implementation, Plotly payloads, pagination implementation and
@@ -94,6 +97,8 @@ entry baseline or production transfer inputs.
 | 15 | Signal color | Compact 284px anchored popover; HEX, the restored eight swatches, selected tick and draft-only footer | `screenshots/v32--jet-color-picker--1440x900.png` |
 | 16 | Pane type context | Selecting another type while `Сигнал` is open selects `Область`; Signal content cannot remain under the Area page | `screenshots/v32--pane-type-change-focuses-area--1440x900.png` |
 | 17 | Operation overwrite row | Standard visible 16px checkbox followed by the full label `Затирать сигнал с таким именем` | `screenshots/v32--operation-overwrite-checkbox--1440x900.png` |
+| 18 | Graph cursor modes | Existing menu rows select one or two snapped vertical X cursors; readout overlays the graph and never calls backend/DSP | `screenshots/v36--spectrum-{single,dual}-cursor--1440x900.png` |
+| 19 | Cursor menu inventory | `Курсор` and `Два курсора` appear before `Управление графиком` with the existing icon/check columns | `screenshots/v36--pane-menu-cursor-options--1440x900.png` |
 
 ## Autonomous decisions
 
@@ -170,6 +175,20 @@ entry baseline or production transfer inputs.
 - `Рассчитать` scopes extrema to the active graph's current visible X interval:
   optional `visible_range` is `{min_s,max_s}` for time or `{min_hz,max_hz}` for
   spectrum; absence means full domain and Y zoom is intentionally ignored.
+- Graph cursor mode is exactly one of `off | single | dual` per pane runtime key.
+  Selecting the already active menu item toggles back to `off`; selecting the
+  other item switches mode without a transient backend state.
+- Cursor lines are vertical Plotly-sibling overlays constrained to the current
+  visible X domain. Pointer drag and Arrow/Home/End movement snap to the nearest
+  available X sample/bin. They consume only their own pointer gesture and do
+  not initiate Plotly zoom, pan, slider movement or linked-axis propagation.
+- Single mode reports X and the nearest value of every visible trace. Dual mode
+  reports X1, X2, ΔX and Y1/Y2 for every visible trace. There is no interpolation,
+  DSP recalculation, API call, state revision or session persistence.
+- Time and Spectrum use the same component. Spectrogram, loading, empty, error
+  and no-visible-trace panes disable both menu actions. Axis linking can change
+  a pane's visible domain and therefore clamp its own cursor, but never copies
+  cursor mode or positions to another pane.
 
 ## Exact delta v27 → v28
 
@@ -289,6 +308,30 @@ entry baseline or production transfer inputs.
 - Moved `Значения` from the Summary body into the contextual settings footer;
   the footer shows `Значения` for `Сигнал` and `Рассчитать` for `Экстремумы`.
 
+## Exact delta v35 → v36
+
+- Added only two existing-style pane-menu rows before `Управление графиком`:
+  `Курсор` and `Два курсора`, each with the established checkbox/tick semantics.
+- Added one reusable Plotly-sibling overlay for mutually exclusive single/dual
+  X cursors on ready Time/Spectrum panes. No application shell, plot layout,
+  settings, inspector, dialog, table, signal color or backend surface changed.
+- Cursor drag/keyboard movement is constrained to the visible X domain and
+  snaps to the nearest available sample/bin; dual mode adds X1/X2/ΔX and
+  per-visible-trace values. Repeat selection toggles the active mode off.
+- Added deterministic `file://` interaction evidence: 8/8 passed, zero API/
+  HTTP resources and zero console/page errors.
+
+## Exact delta v36 → v37
+
+- Corrected only the existing cursor snap comparator: a finite nearest sample
+  at `X = 0` remains the current best candidate while heterogeneous visible
+  traces are compared. Only explicit `null` or non-finite candidates mean that
+  no valid best value exists.
+- No menu, cursor overlay, plot, settings, table, dialog, sizing or visual state
+  changed; visual baseline and all v36 screenshots are carried forward.
+- Added a deterministic local regression with candidates `0` and `0.7` for a
+  target of `0`; the controller returns `0` with zero runtime errors.
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -304,22 +347,34 @@ entry baseline or production transfer inputs.
 - Approved TASK-0118 Signal color picker and TASK-0119 corrections from user
   chat on 2026-08-19.
 - User TASK-0126 corrections from chat on 2026-08-20 for complete summary,
-  immediate names, input-history opt-out, Jet identity, unit-aware limits,
+  immediate names, input-history opt-out, restored color identity, unit-aware limits,
   zoom-scoped extrema, deterministic Values and checkbox continuity.
+- User TASK-0130 request from chat on 2026-08-20 for one- or two-cursor graph
+  modes in the existing pane menu.
 - Read-only current selectors/geometry in `public/index.html`,
   `public/css/app.css`, `public/js/app.js`, `public/js/settings.js`.
 - Canonical local `designer/visual-system`, application composition, settings,
   output, dialog and page-sizing references.
 
-### Skills for v34 revision
+### Skills for v36 revision
 
 - Applied: `designer/designer-workflow` for complete-current publication and
-  `designer/data-entry-and-inspection` for summary/input/table state contracts.
-- Skipped: `designer/visual-system` because v34 introduces no new visual
-  component or style and explicitly preserves current appearance; Figma
-  reference status is `not_required`. Application composition, page sizing,
-  output and dialog skills were also skipped because their geometry/patterns do
-  not change.
+  `designer/output-and-visualization` for graph overlay ownership, ready/
+  unavailable states and overlay priority.
+- Skipped: `designer/visual-system` because TASK-0130 reuses the already accepted
+  pane-menu rows, tick, accent and graph-overlay surface without a new visual
+  decision; Figma reference status is `not_required`. Engee Apps research,
+  application composition, page sizing, data-entry and dialog skills were also
+  skipped because composition, sizing, forms and dialogs do not change.
+
+### Skills for v37 revision
+
+- Applied: `designer/designer-workflow` for complete-current revision and
+  `designer/output-and-visualization` for the graph cursor interaction contract.
+- Skipped: `designer/visual-system`, Engee Apps research, application
+  composition, page sizing, data-entry and dialog skills because this revision
+  changes only finite candidate semantics inside the accepted cursor controller;
+  Figma reference status is `not_required`.
 
 ### Skills for v32 revision
 
@@ -409,6 +464,9 @@ override the successful v32 node-specific read above.
 | Link checkbox | change | Corresponding limits group moves Area ↔ Screen immediately | unchecked, hover, checked, focus-visible, disabled | settings body owns vertical scroll |
 | Limits fields/slider | type/select unit/drag/double-click | Visible numbers use selected units; canonical seconds/Hz persist; empty means auto; double-click clears both bounds | default, hover, focus, drag, dirty, invalid | no geometry change between scopes |
 | Plot slider pane-menu item or Area checkbox | change | Both controls synchronize immediately and the slider preview changes without remount; autosave persists the same pane draft | unchecked, checked, focus | pane-local, both sliders may coexist |
+| `Курсор` / `Два курсора` menu row | click/keyboard | Selects one mutually exclusive pane-local mode; clicking the active row turns it off | default, hover, focus-visible, checked, disabled | menu closes; no API, autosave or cross-pane state |
+| Graph cursor line | pointer drag / Arrow / Home / End | Snaps to nearest visible X sample/bin and updates the overlaid X/ΔX/trace readout | default, hover, focus-visible, dragging, clamped | constrained to current Plotly plot rectangle; consumes only its own gesture |
+| Graph relayout/refresh with cursors | zoom/pan/linked-axis relayout | Existing cursor is retained or clamped to nearest sample inside the new visible X range | ready, clamped, unavailable | no cursor position/mode propagation to linked panes |
 | Display/pane name | input | Draft appears in tab/header/context in the same frame; autosave persists it; stable id unchanged | pristine, dirty, invalid, applying, applied | ellipsis in tabs/header |
 | Signal row | plain LMB outside controls/actions | Makes row `main_signal`; ensures checkbox ON; never toggles it OFF | white, grey-hover, main-blue, checkbox-checked/unchecked, busy | fixed 32px row; no geometry shift |
 | Signal checkbox | direct click/change | Adds/removes only that graph trace; never changes `main_signal`; pending keeps the same visible node and checked state, disabled in place | unchecked, checked, disabled, busy; row blue remains independent | fixed 16px control; no row geometry shift |
@@ -471,6 +529,9 @@ The harness remains design-only and is not a production transfer input.
 | 30 | new signals + color picker | Inspect default colors/palette | Every default is one of the exact same restored eight values | v35 contract audit |
 | 31 | Extrema `Рассчитать` | Zoom X, then click | Optional canonical `visible_range` matches current X interval; Y ignored | v34 contract audit |
 | 32 | Signals/Engee checkboxes | Start a pending mutation | Same node remains visible/checked and becomes disabled under `aria-busy` | v34 contract audit |
+| 33 | `[data-testid=pane-menu-cursor]` | Select, drag, reopen menu | One vertical snapped cursor, X + visible-trace values, checked row and zero provider calls | `v36--spectrum-single-cursor--1440x900.png` |
+| 34 | `[data-testid=pane-menu-dual-cursor]` | Switch from single to dual | Two lines plus X1/X2/ΔX and Y1/Y2 per visible trace | `v36--spectrum-dual-cursor--1440x900.png` |
+| 35 | active cursor menu row | Select again; then enable on time pane | Active pane returns off; time pane gains its own cursor without restoring spectrum cursor | `v36--time-single-cursor--1440x900.png` |
 
 Walkthrough result: complete inherited walkthrough
 `evidence/interaction-walkthrough-v31-standalone.json`, `26 passed / 0 failed`,
@@ -484,13 +545,22 @@ with `runtime_errors: []`; baseline hashes are in
 V34 adds no visual geometry and therefore carries screenshots forward. Its
 behavior/transfer audit is `evidence/interaction-contract-v34.json`; no
 redundant screenshots are required for the unchanged appearance.
+V36 cursor delta is `evidence/interaction-walkthrough-v36-graph-cursors.json`,
+`8 passed / 0 failed`, `runtime_errors: []`, with zero HTTP resources. It covers
+menu inventory/checks, single/dual readouts, snapped drag, repeat-off and
+pane-local Time/Spectrum independence.
+V37 zero-snap regression is
+`evidence/interaction-regression-v37-zero-snap.json`, `1 passed / 0 failed`,
+`runtime_errors: []`; across heterogeneous traces, a valid nearest `X = 0`
+remains selected over the farther candidate `0.7`.
 
 ## Transfer contract
 
 - Manifest: `transfer-manifest.yaml`
 - Source root: `frontend-source/`
 - Target root: `public/`
-- Mode: additive integration only; `copy_as_is: []` by design.
+- Mode: additive integration only; `copy_as_is` contains only the already
+  identical local icon inventory, while feature fragments integrate in place.
 
 | Design source | Existing production target/host | Mode | Constraint |
 |---|---|---|---|
@@ -501,6 +571,8 @@ redundant screenshots are required for the unchanged appearance.
 | `integration/js/task-0118-color-picker.js` | `public/js/app.js` boot/import | integrate UI-only popover unchanged | Use existing Signal draft/input event; no API call from popover |
 | `integration/js/task-0119-context-and-samples-intent.js` | pane type/sample tab branches in `public/js/app.js` | integrate exact intent | Preserve provider/revision flow; do not install prototype bridge |
 | `integration/js/task-0126-summary-units-continuity.js` | existing settings/summary/extrema/catalog renderers | integrate named inventories/helpers | Preserve existing DOM/queues; do not install prototype bridge |
+| `integration/css/task-0130-graph-cursors.css` | `public/css/app.css` | append once | Exact existing-menu/check and Plotly-sibling overlay styles |
+| `integration/js/task-0130-graph-cursors.js` | pane menu + plot lifecycle branches in `public/js/app.js` | integrate controller unchanged | Frontend-only map; install rows, attach after react, update after relayout, clear with pane; never install prototype bridge |
 | `integration/html/dialogs/signal-operation.fragment.html` | `public/js/app.js` runtime template → `document.body` | integrate unchanged singleton | Never edit `public/index.html` |
 | Mock shell/zones/renderers/providers/prototype | none | design-only | Never transfer |
 
@@ -508,7 +580,8 @@ Production selectors are fixed: `[data-testid=settings-tabs]`,
 `[data-settings-content]`, `[data-testid=settings-footer]`, `.inspector-tabs`,
 `[data-inspector-content]`, `[data-signal-rows]`, `.signal-row-actions`,
 `[data-testid=display-overflow-menu]`, `[data-plot-range-slider]`,
-`[data-plot-amplitude-slider]`, `[data-pane-host]` and `document.body`.
+`[data-plot-amplitude-slider]`, `[data-plot-cursor-mode]`,
+`[data-pane-host]`, `.plot-canvas` and `document.body`.
 Features extend those hosts; they do not replace their parents or bootstrap.
 
 ### Integration seams
@@ -518,6 +591,7 @@ Features extend those hosts; they do not replace their parents or bootstrap.
 | `workspace-state-provider` | Stable displays/panes/names and active context | `mock/mock-provider.js` | `public/js/api.js` → existing `public/js/app.js` |
 | `settings-autosave-provider` | Serialized autosave for Signal, Area and Screen; Extrema calculation remains explicit | same | existing `public/js/settings.js` + `public/js/app.js` |
 | `pane-slider-visibility` | One active-pane draft projected into pane menu and Area checkboxes; both synchronize immediately | UI mock | existing `public/js/app.js` + inventory in `public/js/settings.js` |
+| `pane-graph-cursors` | Existing menu gains single/dual check rows; pane-local off/single/dual controller snaps and clamps overlay cursors, preserving finite `X = 0` as a valid nearest candidate | v37 UI fragment + bridge | existing `public/js/app.js` menu sync/click + Plotly react/relayout/clear lifecycle |
 | `linked-axis-draft` | Immediate scope relocation, values retained | UI mock | existing `public/js/app.js` + `public/js/settings.js` |
 | `projected-spectrum-extrema` | Ready/loading/error rows and marker coordinates already projected into selected units; UI does no DSP | mock | `public/js/api.js` → existing `public/js/app.js` Plotly queue |
 | `signal-summary-provider` | Backend-authored summary view model | mock | `public/js/api.js` → existing `public/js/app.js` |
@@ -534,7 +608,8 @@ authoritative revision state or Engee function names. `public/index.html`,
 existing JS module identities, shell geometry and Plotly host identity are
 invariants. `[data-pane-host]` may be updated only through existing Plotly
 react/relayout and the existing amplitude-slider overlay path; host DOM
-replacement is forbidden.
+replacement is forbidden. Cursor UI is appended only as a sibling inside the
+same `.plot-canvas` and reads Plotly data/fullLayout without altering them.
 
 ## Page sizing contract
 
@@ -617,10 +692,17 @@ and the document owns both scroll axes. Verified screenshots cover 920×680,
 - Checkboxes are 16×16px; plot/settings slider handles have persistent focus.
 - Graph canvas is white; legends overlay inside the plot and hover labels are
   absent. Extrema markers use signal/accent color and do not alter plot layout.
+- Cursor menu rows are the same 28px compact `menuitemcheckbox` rows as plot
+  sliders. A 16px line icon occupies the existing icon column and the existing
+  tick appears only for the active pane-local mode.
+- Cursor 1 uses a 2px solid accent line, cursor 2 a 1px dashed accent line; both
+  have 14px numbered drag handles and persistent focus halo. The white 92%
+  readout uses the existing menu border, radius and shadow over the upper-left
+  plot interior, while the legend remains over the upper-right.
 - Hover/pressed/selected/focus never changes component geometry.
 - Signal color popover is 284px, 8px radius and `0 2px 8px #2121211A`;
-  palette grid is six columns with 32px targets/24px swatches and exactly 15
-  Jet values. No palette selector, line, marker, fill or interpolation appears.
+  palette grid uses 32px targets/24px swatches and exactly the restored eight
+  colors. No palette selector, line, marker, fill or interpolation appears.
 
 ### Proportion contract
 
@@ -629,7 +711,7 @@ and the document owns both scroll axes. Verified screenshots cover 920×680,
 | Toolbar | analytical-dense | 44px, 36×32 actions, 32px logo | none | none |
 | Settings | analytical-dense | 40px rows, 140-ish label/control split, 32px fields | four tabs and new groups | label column is 132px at 300px panel minimum |
 | Tabs | v25/current | 32px row, 3px indicator | add Signal and dynamic sample tab | horizontal scroll, never vertical |
-| Plot | current | white canvas, local controls, overlay legend | two independent spectrum sliders and markers | none |
+| Plot | current | white canvas, local controls, overlay legend | two independent spectrum sliders, markers and pane-local cursor layer | cursor readout overlays upper-left without changing plot margins |
 | Tables | analytical-dense | 32px rows, sticky header, left name/color | add five-column lazy samples table | samples table local min-width 760px |
 | Dialog | analytical modal | 48px title, 56px actions, 12px radius | code editor and seven operations | width 660px; menu-open height 500px |
 | Signal color popover | Figma `1779:11344` | 284px, radius 8px, 16px padding, 32px targets, equal footer buttons | Original eight swatches only | Palette content follows the explicit restored-color requirement |
@@ -638,6 +720,7 @@ and the document owns both scroll axes. Verified screenshots cover 920×680,
 
 | Combination | Bottom → top | Pointer owner | Focus owner | Restore after close |
 |---|---|---|---|---|
+| Plot + legend/sliders/cursors | Plotly graph → legend/sliders → cursor lines → cursor readout | cursor handle only while hovered/focused/dragged; Plotly elsewhere | focused cursor or Plotly graph | pane menu trigger after mode choice |
 | Application + operation dialog | app → backdrop → dialog | dialog | first form control | originating row operation button |
 | Dialog + operation menu | app → backdrop → dialog → menu | menu | active option | operation selector |
 | Settings + Signal color popover | app → settings → color popover | popover | HEX then swatches/actions | Signal color trigger |
@@ -682,15 +765,19 @@ font; package copies below remain visual-harness inputs only.
   Success keeps the dialog until explicit acknowledgement in production.
 - Custom execution errors are returned by the Engee provider and shown without
   exposing the hidden execution envelope, temporary binding or cleanup.
+- Cursor actions are disabled for loading/empty/error/Spectrogram/no-visible-
+  trace states. A ready Time/Spectrum plot supports off, single, dual, hover,
+  focus-visible, dragging and clamped-after-relayout states. Cursor state is
+  discarded when its pane is cleared/removed and is not session-persisted.
 
 ## Acceptance
 
 - Complete current package paths exist and are local.
 - Prototype remains the accepted visual harness and is wholly design-only.
-- Inherited 35/35 walkthrough checks plus the v34 interaction/transfer audit;
-  zero required visual viewports are pending because geometry is unchanged.
-- Transfer audit confirms `copy_as_is: []`, the existing two feature fragments
-  plus one selector-replacement CSS fragment, immutable
+- Inherited 35/35 walkthrough checks plus TASK-0130 delta 8/8, v37 zero-snap
+  regression 1/1 and the current transfer audit; zero runtime/network errors.
+- Transfer audit confirms icon-only direct copy plus exact additive fragments,
+  immutable
   production document/shell/module/Plotly-host identities and zero mock paths
   mapped to production.
 - Four link flags and four limits groups are independent and scope-correct.
@@ -710,6 +797,10 @@ font; package copies below remain visual-harness inputs only.
 - Complete Summary inventory, deterministic Values table focus/loading,
   same-frame names, history-free inputs, selected-unit bounds, restored color default
   identity, zoom-scoped extrema and stable busy checkboxes are explicit seams.
+- Pane menu contains exactly `Курсор` and `Два курсора` before graph help; modes
+  are mutually exclusive and repeat-toggle off. Time/Spectrum lines snap inside
+  visible X, dual readout includes ΔX and per-trace values, and no API/DSP,
+  state revision or cross-pane cursor link occurs.
 
 ## Backend integration boundary
 
@@ -757,3 +848,11 @@ render or leak the wrapper mechanics.
 - `v34`: preserved all visuals and added the complete summary/sample-table,
   immediate-name, no-history-input, selected-unit-limit, exact-Jet-default,
   visible-range-extrema and stable-checkbox continuity contracts for TASK-0126.
+- `v35`: restored the original eight-color identity, changed Summary to one
+  column and moved Values into the contextual settings footer.
+- `v36`: added only the existing-style `Курсор` / `Два курсора` menu rows and
+  pane-local snapped Time/Spectrum cursor overlay. The production-faithful
+  `file://` delta walkthrough passed 8/8 with no API, HTTP or runtime errors.
+- `v37`: corrected the cursor nearest-X comparator so finite zero is not treated
+  as an absent best candidate. The heterogeneous-trace zero-snap regression
+  passed 1/1 with no runtime errors; all visual evidence remains unchanged.

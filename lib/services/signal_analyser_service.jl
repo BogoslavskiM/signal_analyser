@@ -1996,6 +1996,64 @@ signal_analyser_full_bound_time_limits(
     signal_display_pane_members(pane),
 )
 
+function signal_analyser_time_bound_matches_full(
+    value::Float64,
+    boundary::Float64,
+)::Bool
+    scale = max(abs(boundary), floatmin(Float64))
+    isapprox(
+        value,
+        boundary;
+        rtol = 8 * eps(Float64),
+        atol = 8 * eps(scale),
+    )
+end
+
+"""Carry each automatic endpoint from an old membership domain to its new domain.
+
+The settings API represents an automatic endpoint as `null`, while calculation
+state keeps the effective numeric interval.  Membership changes therefore have
+to move endpoints which still equal the old full domain; otherwise the same
+numeric value is exposed as an explicit user limit against the new domain.
+"""
+function signal_analyser_rebase_automatic_time_limits(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString,
+    limits::Union{Nothing,SignalTimeLimits},
+    previous_members::AbstractVector{<:AbstractString},
+    prospective_members::AbstractVector{<:AbstractString},
+)::Union{Nothing,SignalTimeLimits}
+    limits === nothing && return nothing
+    isempty(previous_members) && return limits
+    isempty(prospective_members) && return limits
+    Set(previous_members) == Set(prospective_members) && return limits
+
+    previous_full = signal_analyser_full_bound_time_limits(
+        state,
+        display_id,
+        pane_id,
+        previous_members,
+    )
+    prospective_full = signal_analyser_full_bound_time_limits(
+        state,
+        display_id,
+        pane_id,
+        prospective_members,
+    )
+    typed = limits::SignalTimeLimits
+    minimum = signal_analyser_time_bound_matches_full(typed.min_s, previous_full.min_s) ?
+        prospective_full.min_s : typed.min_s
+    maximum = signal_analyser_time_bound_matches_full(typed.max_s, previous_full.max_s) ?
+        prospective_full.max_s : typed.max_s
+
+    # Do not erase a still-explicit endpoint when the reduced full domain can no
+    # longer contain it.  The normal semantic validation path remains owner of
+    # that incompatible-range decision.
+    minimum < maximum || return limits
+    SignalTimeLimits(minimum, maximum)
+end
+
 function signal_analyser_pane_with_recovered_time_limits(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
@@ -2347,19 +2405,29 @@ function signal_display_pane_reconfigured(
         prospective_members,
         analysis_signal,
     )
+    rebased_time_limits = signal_analyser_rebase_automatic_time_limits(
+        state,
+        "",
+        pane.id,
+        pane.time_limits,
+        signal_display_pane_members(pane),
+        members,
+    )
     time_limits = if analysis_signal === nothing
         isempty(members) || !(plot_type in SIGNAL_ANALYSER_TIME_LIMIT_PLOTS) ? nothing :
             signal_analyser_full_bound_time_limits(state, "", pane.id, members)
-    elseif pane.stored_settings.time.link_time && pane.time_limits !== nothing
-        pane.time_limits
-    elseif current_analysis == analysis_name && pane.time_limits !== nothing &&
-        (pane.time_limits::SignalTimeLimits).max_s <= signal_duration_s(analysis_signal) &&
+    elseif !isequal(rebased_time_limits, pane.time_limits)
+        rebased_time_limits
+    elseif pane.stored_settings.time.link_time && rebased_time_limits !== nothing
+        rebased_time_limits
+    elseif current_analysis == analysis_name && rebased_time_limits !== nothing &&
+        (rebased_time_limits::SignalTimeLimits).max_s <= signal_duration_s(analysis_signal) &&
         signal_time_limits_are_valid(
             state.measurements_service,
             analysis_signal,
-            pane.time_limits,
+            rebased_time_limits,
         )
-        pane.time_limits
+        rebased_time_limits
     else
         signal_full_time_limits(state.measurements_service, analysis_signal)
     end
@@ -5076,6 +5144,20 @@ function validate_signal_analyser_view_payload(
     else
         validated_time_limits !== nothing && validated_time_limits == display.time_limits
     end
+    previous_members = signal_analyser_display_members(display)
+    membership_changed = Set(previous_members) != Set(visible_names)
+    active_pane_id = signal_analyser_layout_by_display_id(
+        state,
+        display.id,
+    ).active_pane_id
+    rebased_carried_time_limits = signal_analyser_rebase_automatic_time_limits(
+        state,
+        display.id,
+        active_pane_id,
+        display.time_limits,
+        previous_members,
+        visible_names,
+    )
     requested_time_limits = if requested_analysis_name === nothing
         if has_time_limits && time_limits_value !== nothing && !(source_changed && carried_time_limits) &&
             !haskey(field_errors, "time_limits")
@@ -5084,13 +5166,15 @@ function validate_signal_analyser_view_payload(
         nothing
     else
         prospective_signal = signal_by_name(state, requested_analysis_name)
-        if has_time_limits && source_changed && carried_time_limits
-            if display.time_limits !== nothing && signal_time_limits_are_valid(
+        if has_time_limits && membership_changed && carried_time_limits
+            rebased_carried_time_limits
+        elseif has_time_limits && source_changed && carried_time_limits
+            if rebased_carried_time_limits !== nothing && signal_time_limits_are_valid(
                 state.measurements_service,
                 prospective_signal,
-                display.time_limits,
+                rebased_carried_time_limits,
             )
-                display.time_limits
+                rebased_carried_time_limits
             else
                 signal_full_time_limits(state.measurements_service, prospective_signal)
             end
@@ -5117,14 +5201,14 @@ function validate_signal_analyser_view_payload(
                     end
                 end
             end
-        elseif current_analysis_name == requested_analysis_name && display.time_limits !== nothing
-            display.time_limits
-        elseif display.time_limits !== nothing && signal_time_limits_are_valid(
+        elseif current_analysis_name == requested_analysis_name && rebased_carried_time_limits !== nothing
+            rebased_carried_time_limits
+        elseif rebased_carried_time_limits !== nothing && signal_time_limits_are_valid(
             state.measurements_service,
             prospective_signal,
-            display.time_limits,
+            rebased_carried_time_limits,
         )
-            display.time_limits
+            rebased_carried_time_limits
         else
             signal_full_time_limits(state.measurements_service, prospective_signal)
         end

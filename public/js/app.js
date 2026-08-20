@@ -95,7 +95,7 @@
     sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
     signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
-    signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [],
+    signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{},
     signalSamples: { signalId:"", signalName:"", rows:[], nextCursor:null, total:0, loading:false, error:"", token:0 },
     signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }
   };
@@ -717,7 +717,12 @@
       if (grid.children[index] !== node) grid.insertBefore(node, grid.children[index] || null);
     });
     Array.prototype.slice.call(grid.children).forEach(function (node) {
-      if (!retained[paneRuntimeKey(node.dataset.displayId, node.dataset.paneId)]) node.remove();
+      var runtimeKey=paneRuntimeKey(node.dataset.displayId, node.dataset.paneId);
+      if (!retained[runtimeKey]) {
+        var cursors=paneGraphCursorController();
+        if (cursors) cursors.clear(runtimeKey);
+        node.remove();
+      }
     });
     displayPanes.forEach(function (pane) {
       var record = model.outputs[paneRuntimeKey(display.id, pane.id)];
@@ -818,6 +823,8 @@
     Promise.resolve(file.arrayBuffer ? file.arrayBuffer() : new Promise(function(resolve,reject){var reader=new FileReader();reader.onload=function(){resolve(reader.result);};reader.onerror=reject;reader.readAsArrayBuffer(file);})).then(bytesToBase64).then(function(encoded){ current.archiveBase64=encoded; }).catch(function(error){ current.phase="error"; current.error=packageError(error,"Не удалось прочитать пакет."); }).finally(function(){current.busy=false;renderSessionImportDialog();});
   }
   function clearSessionTransientState() {
+    var cursors=paneGraphCursorController();
+    if (cursors) Object.keys(model.outputs).forEach(function (key) { cursors.clear(key); });
     Object.keys(model.pollByPane).forEach(function (key) { window.clearTimeout(model.pollByPane[key]); });
     Object.keys(model.peaksPollByPane).forEach(function (key) { window.clearTimeout(model.peaksPollByPane[key]); });
     model.outputs = {}; model.outputTokens = {}; model.pollByPane = {}; model.plotQueue = {};
@@ -825,6 +832,7 @@
     model.peaksDraft = null; model.peaksApplying = false; model.peaksApplyQueued = false; model.peaksMessage = ""; model.extremaTargetKey = null;
     model.measurementsRecord = null; model.measurementsToken += 1;
     model.layoutDraft = null;
+    model.rangeBoundaryIntents = {};
   }
   function refreshImportedSession() {
     clearSessionTransientState();
@@ -1444,6 +1452,8 @@
         if (collapsedX || collapsedY) reconcileCancelledZoom(host, displayId, paneId, collapsedX, collapsedY);
       }
       syncAmplitudeSliderFromRelayout(host, runtimeKey, eventData);
+      var cursors=paneGraphCursorController();
+      if (cursors) cursors.update(runtimeKey);
       var correction = adjustRangeSliderFullRange(runtimeKey, eventData);
       if (!correction || model.rangeSliderAdjustByPane[runtimeKey]) return;
       var Plotly = window.Plotly;
@@ -1455,6 +1465,15 @@
     };
     host.on("plotly_relayouting", handler);
     host.on("plotly_relayout", handler);
+    host.on("plotly_restyle", function () {
+      window.requestAnimationFrame(function () {
+        var cursors=paneGraphCursorController();
+        if (!cursors) return;
+        if (graphCursorEligible(displayId, paneId)) cursors.attach(runtimeKey, host);
+        else cursors.update(runtimeKey);
+        syncPaneMenuState();
+      });
+    });
     host.dataset.axisLinkBound = runtimeKey;
   }
 
@@ -1464,9 +1483,27 @@
     return !!(display && display.id === displayId && pane && ["time", "spectrum"].indexOf(pane.plot_type) >= 0 && paneHasSignals(pane) && record && record.output && record.output.isready && record.output.success && host && host.dataset.plotReady === "true" && currentReadyPlotHost(host, displayId));
   }
 
+  var graphCursorController = null;
+  function paneGraphCursorController() {
+    if (!graphCursorController && window.SignalAnalyserGraphCursorUI) graphCursorController = window.SignalAnalyserGraphCursorUI.createController();
+    return graphCursorController;
+  }
+
+  function graphCursorEligible(displayId, paneId) {
+    if (!rangeSliderEligible(displayId, paneId)) return false;
+    var runtimeKey=paneRuntimeKey(displayId, paneId), host=q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
+    return !!(host && Array.isArray(host.data) && host.data.some(function (trace) {
+      return trace && trace.visible !== false && trace.visible !== "legendonly" &&
+        !(trace.meta && trace.meta.signal_analyser_peaks_overlay) &&
+        Array.isArray(trace.x) && Array.isArray(trace.y) && trace.x.length && trace.y.length;
+    }));
+  }
+
   function syncPaneMenuState() {
     var menu = q("[data-testid='display-overflow-menu']");
     if (!menu || menu.hidden) return;
+    var cursorMenuSupported=typeof menu.insertAdjacentHTML === "function" && typeof menu.querySelectorAll === "function";
+    if (cursorMenuSupported && window.SignalAnalyserGraphCursorUI) window.SignalAnalyserGraphCursorUI.ensureMenuItems(menu);
     var display = activeDisplay(), paneId = menu.dataset.paneId, displayId = menu.dataset.displayId;
     var rangeAction = menu.querySelector("[data-plot-range-slider]"), amplitudeAction = menu.querySelector("[data-plot-amplitude-slider]");
     var pane = paneById(paneId), spectrum = !!pane && pane.plot_type === "spectrum";
@@ -1484,6 +1521,12 @@
       amplitudeAction.querySelector("span:last-of-type").textContent = spectrum ? "Слайдер магнитуды" : "Слайдер амплитуды";
       amplitudeAction.setAttribute("aria-label", eligible ? (spectrum ? "Слайдер магнитуды" : "Слайдер амплитуды") : "Слайдер доступен только для загруженной области");
       amplitudeAction.title = eligible ? "" : "Доступно только для загруженной области";
+    }
+    var cursors=cursorMenuSupported && paneGraphCursorController(), cursorKey=paneRuntimeKey(displayId, paneId), cursorEligible=!!display && display.id === displayId && graphCursorEligible(displayId, paneId);
+    if (cursors) {
+      if (cursorEligible) cursors.attach(cursorKey, q("[data-pane-host='" + CSS.escape(cursorKey) + "']"));
+      else cursors.update(cursorKey);
+      cursors.syncMenu(menu, cursorKey, cursorEligible);
     }
   }
 
@@ -1629,6 +1672,16 @@
     });
   }
 
+  function togglePaneGraphCursor(mode) {
+    var menu=q("[data-testid='display-overflow-menu']"), display=activeDisplay(), cursors=paneGraphCursorController();
+    if (!menu || menu.hidden || !display || !cursors) return;
+    var displayId=menu.dataset.displayId, paneId=menu.dataset.paneId, runtimeKey=paneRuntimeKey(displayId, paneId);
+    var host=q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
+    if (display.id !== displayId || !graphCursorEligible(displayId, paneId) || !host) return;
+    cursors.setMode(runtimeKey, host, mode);
+    closePaneMenu(true);
+  }
+
   function setPaneSliderVisibility(displayId, paneId, axis, visible) {
     var pane=paneById(paneId), runtimeKey=paneRuntimeKey(displayId, paneId), host=q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
     if (!pane || !host || !rangeSliderEligible(displayId, paneId)) return;
@@ -1684,6 +1737,8 @@
       delete model.amplitudeSelectedRangeByPane[runtimeKey];
       delete model.graphDefaultRangeByPane[runtimeKey];
       delete model.graphDefaultSignatureByPane[runtimeKey];
+      var cursors=paneGraphCursorController();
+      if (cursors) cursors.clear(runtimeKey);
       showToast("Область очищена", false);
       var target = q("[data-pane-id='" + CSS.escape(context.paneId) + "']");
       if (target) target.focus();
@@ -1728,6 +1783,8 @@
             };
           }
           host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); host.dataset.amplitudeSliderVisible = String(amplitudeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); bindRangeSliderDoubleClick(host, runtimeKey); syncAmplitudeSlider(host, runtimeKey); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]);
+          var cursors=paneGraphCursorController();
+          if (cursors) cursors.attach(runtimeKey, host);
         });
       }).catch(function () { /* The visible provider error is rendered on the next authoritative response. */ }).finally(function () {
         model.plotInFlight[runtimeKey] = false;
@@ -2130,11 +2187,29 @@
     return domain || [-1, 1];
   }
 
+  function rangeBoundaryIntentKey(fieldId) {
+    var display=activeDisplay(), scope=model.settingsPage === "screen" ? "screen" : "pane::" + String(model.activePane || "");
+    return String(display && display.id || "") + "::" + scope + "::" + String(fieldId);
+  }
+
+  function rangeBoundaryIntent(fieldId, boundary) {
+    var entry=model.rangeBoundaryIntents[rangeBoundaryIntentKey(fieldId)];
+    return entry && Object.prototype.hasOwnProperty.call(entry, boundary) ? entry[boundary] : null;
+  }
+
+  function rememberRangeBoundaryIntent(fieldId, boundary, value) {
+    var key=rangeBoundaryIntentKey(fieldId), entry=model.rangeBoundaryIntents[key] || (model.rangeBoundaryIntents[key]={});
+    if (value === null || value === undefined || String(value).trim() === "") delete entry[boundary];
+    else entry[boundary]=String(value);
+    if (!Object.keys(entry).length) delete model.rangeBoundaryIntents[key];
+  }
+
   function screenRangeSlider(fieldId, axis, draft) {
     var reader = model.settingsPage === "screen" && typeof settings.screenValue === "function" ? settings.screenValue : settings.value;
     var domain = screenRangeDomain(axis, draft), current = reader(fieldId) || {};
-    var minimum = current.min == null ? domain[0] : Number(current.min);
-    var maximum = current.max == null ? domain[1] : Number(current.max);
+    var minimumIntent=rangeBoundaryIntent(fieldId, "min"), maximumIntent=rangeBoundaryIntent(fieldId, "max");
+    var minimum = current.min == null ? minimumIntent == null ? domain[0] : Number(minimumIntent) : Number(current.min);
+    var maximum = current.max == null ? maximumIntent == null ? domain[1] : Number(maximumIntent) : Number(current.max);
     minimum = Math.max(domain[0], Math.min(minimum, domain[1]));
     maximum = Math.max(domain[0], Math.min(maximum, domain[1]));
     if (!(minimum < maximum)) { minimum = domain[0]; maximum = domain[1]; }
@@ -2155,8 +2230,11 @@
     var current = reader(fieldId);
     if (!row || !current) return;
     var minimum = row.querySelector("[data-range-part='min']"), maximum = row.querySelector("[data-range-part='max']");
+    var minimumIntent=rangeBoundaryIntent(fieldId, "min"), maximumIntent=rangeBoundaryIntent(fieldId, "max");
     if (minimum && current.min == null) minimum.value = "";
     if (maximum && current.max == null) maximum.value = "";
+    if (minimum && current.min == null && minimumIntent != null) minimum.value = minimumIntent;
+    if (maximum && current.max == null && maximumIntent != null) maximum.value = maximumIntent;
   }
 
   function keepVisibleAutomaticRangeInputsEmpty(draft) {
@@ -3639,6 +3717,7 @@
     if (button.matches("[data-plot-clear]")) return void openPaneClearConfirm();
     if (button.dataset.plotRangeSlider !== undefined) return void togglePaneRangeSlider();
     if (button.dataset.plotAmplitudeSlider !== undefined) return void togglePaneAmplitudeSlider();
+    if (button.dataset.plotCursorMode !== undefined) return void togglePaneGraphCursor(button.dataset.plotCursorMode);
     if (button.matches("[data-plot-help]")) return void (q("[data-testid='graph-help-overlay']").hidden ? openGraphHelp(button) : closeGraphHelp(true));
     if (button.dataset.graphHelpClose !== undefined) return void closeGraphHelp(true);
     if (button.dataset.paneClearCancel !== undefined) return void closePaneClearConfirm(true);
@@ -3716,6 +3795,11 @@
   });
   document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft && !model.signalEditor.applying) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; scheduleSignalMetadataSave(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
   document.addEventListener("input", function (event) {
+    var input=event.target;
+    if (!input || !input.dataset || input.dataset.rangePart === undefined || !input.dataset.settingId || typeof input.closest === "function" && input.closest("[data-screen-range-slider]")) return;
+    rememberRangeBoundaryIntent(input.dataset.settingId, input.dataset.rangePart, input.value);
+  }, true);
+  document.addEventListener("input", function (event) {
     var input = event.target, slider = input.closest && input.closest("[data-screen-range-slider]");
     if (!slider || input.dataset.screenRangeInput === undefined) return;
     var minimumInput = slider.querySelector("[data-screen-range-input='min']"), maximumInput = slider.querySelector("[data-screen-range-input='max']");
@@ -3728,10 +3812,11 @@
     var span = fullMaximum-fullMinimum, selection = slider.querySelector(".screen-range-selection");
     if (selection && span > 0) { selection.style.left = ((minimum-fullMinimum)/span*100) + "%"; selection.style.right = ((fullMaximum-maximum)/span*100) + "%"; }
     var fieldId = slider.dataset.screenRangeSlider, row = q("[data-testid='settings-field-" + CSS.escape(fieldId) + "']");
-    var minimumText = Math.abs(minimum-fullMinimum) <= step/2 ? "" : String(Number(minimum.toPrecision(12)));
-    var maximumText = Math.abs(maximum-fullMaximum) <= step/2 ? "" : String(Number(maximum.toPrecision(12)));
+    var minimumNode = row && row.querySelector("[data-range-part='min']"), maximumNode = row && row.querySelector("[data-range-part='max']");
+    var minimumText = input.dataset.screenRangeInput === "min" ? String(Number(minimum.toPrecision(12))) : minimumNode && minimumNode.value || "";
+    var maximumText = input.dataset.screenRangeInput === "max" ? String(Number(maximum.toPrecision(12))) : maximumNode && maximumNode.value || "";
+    rememberRangeBoundaryIntent(fieldId, input.dataset.screenRangeInput, input.dataset.screenRangeInput === "min" ? minimumText : maximumText);
     if (row) {
-      var minimumNode = row.querySelector("[data-range-part='min']"), maximumNode = row.querySelector("[data-range-part='max']");
       if (minimumNode) minimumNode.value = minimumText;
       if (maximumNode) maximumNode.value = maximumText;
     }
@@ -3742,6 +3827,8 @@
     if (!slider) return;
     event.preventDefault();
     var fieldId=slider.dataset.screenRangeSlider, row=q("[data-testid='settings-field-" + CSS.escape(fieldId) + "']");
+    rememberRangeBoundaryIntent(fieldId, "min", "");
+    rememberRangeBoundaryIntent(fieldId, "max", "");
     if (row) { var minimum=row.querySelector("[data-range-part='min']"), maximum=row.querySelector("[data-range-part='max']"); if (minimum) minimum.value=""; if (maximum) maximum.value=""; }
     settings.setValue(fieldId, { min:"", max:"" });
     if (model.settingsPage === "screen" && activeDisplay()) renderScreenSettings(activeDisplay());
@@ -3819,6 +3906,9 @@
   document.addEventListener("native-session-imported", function (event) {
     var snapshot=event && event.detail;
     if (!accept(snapshot)) return;
+    var cursors=paneGraphCursorController();
+    if (cursors) Object.keys(model.outputs).forEach(function (key) { cursors.clear(key); });
+    model.rangeBoundaryIntents={};
     render();
     output(true);
     settings.load().then(render).catch(showSettingsLoadError);
@@ -3859,3 +3949,265 @@
   window.addEventListener("resize", position); document.addEventListener("scroll", position, true);
   window.SignalColorPickerUI = { open:open, close:close, palette:palette.slice() };
 }(window, document));
+
+(function task0130GraphCursors(window, document) {
+  "use strict";
+
+  var MODE_OFF="off", MODE_SINGLE="single", MODE_DUAL="dual";
+
+  function finite(value) { return Number.isFinite(Number(value)); }
+  function clamp(value, minimum, maximum) { return Math.max(minimum, Math.min(maximum, value)); }
+  function formatNumber(value) {
+    if (!finite(value)) return "—";
+    var number=Number(value), absolute=Math.abs(number);
+    if (absolute !== 0 && (absolute >= 1e6 || absolute < 1e-4)) return number.toExponential(4);
+    return String(Number(number.toPrecision(7)));
+  }
+  function titleText(axis) {
+    var title=axis && axis.title;
+    return typeof title === "string" ? title : title && title.text || "";
+  }
+  function axisUnit(axis) {
+    var text=titleText(axis), parts=text.split(",");
+    return parts.length > 1 ? parts.slice(1).join(",").trim() : "";
+  }
+  function visibleTraces(host) {
+    return (host && Array.isArray(host.data) ? host.data : []).filter(function (trace) {
+      return trace && trace.visible !== false && trace.visible !== "legendonly" &&
+        !(trace.meta && trace.meta.signal_analyser_peaks_overlay) &&
+        Array.isArray(trace.x) && Array.isArray(trace.y) && trace.x.length && trace.y.length;
+    });
+  }
+  function closestIndex(values, target) {
+    var low=0, high=values.length-1;
+    if (!values.length) return -1;
+    if (Number(values[low]) >= target) return low;
+    if (Number(values[high]) <= target) return high;
+    while (high-low > 1) {
+      var middle=(low+high)>>1;
+      if (Number(values[middle]) < target) low=middle; else high=middle;
+    }
+    return Math.abs(Number(values[low])-target) <= Math.abs(Number(values[high])-target) ? low : high;
+  }
+  function nearestPoint(trace, target) {
+    var index=closestIndex(trace.x || [], target);
+    return index < 0 ? null : { index:index, x:Number(trace.x[index]), y:trace.y[index] };
+  }
+  function nearestX(host, target) {
+    var best=null;
+    visibleTraces(host).forEach(function (trace) {
+      var point=nearestPoint(trace, target);
+      if (point && finite(point.x) && (best === null || !finite(best) || Math.abs(point.x-target) < Math.abs(best-target))) best=point.x;
+    });
+    return best;
+  }
+  function adjacentX(host,current,direction,domain) {
+    var best=null, epsilon=Math.max(1,Math.abs(current))*1e-12;
+    visibleTraces(host).forEach(function (trace) {
+      var values=trace.x || [], index=closestIndex(values,current);
+      if (index < 0) return;
+      if (direction > 0) {
+        while (index < values.length && Number(values[index]) <= current+epsilon) index+=1;
+        if (index < values.length) {
+          var next=Number(values[index]);
+          if (next <= domain[1] && (!finite(best) || next < best)) best=next;
+        }
+      } else {
+        while (index >= 0 && Number(values[index]) >= current-epsilon) index-=1;
+        if (index >= 0) {
+          var previous=Number(values[index]);
+          if (previous >= domain[0] && (!finite(best) || previous > best)) best=previous;
+        }
+      }
+    });
+    return finite(best) ? best : current;
+  }
+  function fullAxis(host) { return host && host._fullLayout && host._fullLayout.xaxis || host && host.layout && host.layout.xaxis || {}; }
+  function visibleDomain(host) {
+    var axis=fullAxis(host), range=Array.isArray(axis.range) ? axis.range.slice(0,2).map(Number) : null;
+    if (range && axis.type === "log") range=range.map(function (value) { return Math.pow(10,value); });
+    if (!range || !finite(range[0]) || !finite(range[1])) {
+      var values=[];
+      visibleTraces(host).forEach(function (trace) { trace.x.forEach(function (value) { if (finite(value)) values.push(Number(value)); }); });
+      if (!values.length) return null;
+      range=[Math.min.apply(Math,values),Math.max.apply(Math,values)];
+    }
+    return range[0] <= range[1] ? range : [range[1],range[0]];
+  }
+  function geometry(host) {
+    var full=host && host._fullLayout || {}, size=full._size || {}, rect=host.getBoundingClientRect();
+    var left=finite(size.l) ? Number(size.l) : Math.max(38, Number(full.margin && full.margin.l) || 58);
+    var top=finite(size.t) ? Number(size.t) : Math.max(8, Number(full.margin && full.margin.t) || 22);
+    var width=finite(size.w) ? Number(size.w) : Math.max(1, rect.width-left-(Number(full.margin && full.margin.r) || 22));
+    var height=finite(size.h) ? Number(size.h) : Math.max(1, rect.height-top-(Number(full.margin && full.margin.b) || 54));
+    return {left:left,top:top,width:width,height:height};
+  }
+  function valueToPixel(host, value) {
+    var axis=fullAxis(host), box=geometry(host), domain=visibleDomain(host);
+    if (!domain) return box.left;
+    if (axis && typeof axis.d2p === "function") {
+      var nativePixel=Number(axis.d2p(value));
+      if (finite(nativePixel)) return box.left+nativePixel;
+    }
+    var start=domain[0], end=domain[1], transformed=value;
+    if (axis.type === "log") { start=Math.log10(start); end=Math.log10(end); transformed=Math.log10(value); }
+    return box.left+clamp((transformed-start)/(end-start || 1),0,1)*box.width;
+  }
+  function pixelToValue(host, clientX) {
+    var rect=host.getBoundingClientRect(), axis=fullAxis(host), box=geometry(host), domain=visibleDomain(host);
+    if (!domain) return null;
+    var local=clamp(clientX-rect.left-box.left,0,box.width);
+    if (axis && typeof axis.p2d === "function") {
+      var nativeValue=Number(axis.p2d(local));
+      if (finite(nativeValue)) return nativeValue;
+    }
+    var ratio=local/(box.width || 1);
+    if (axis.type === "log") return Math.pow(10,Math.log10(domain[0])+(Math.log10(domain[1])-Math.log10(domain[0]))*ratio);
+    return domain[0]+(domain[1]-domain[0])*ratio;
+  }
+  function snapWithin(host, target) {
+    var domain=visibleDomain(host);
+    if (!domain) return null;
+    var clamped=clamp(Number(target),domain[0],domain[1]), snapped=nearestX(host,clamped);
+    return finite(snapped) ? clamp(snapped,domain[0],domain[1]) : clamped;
+  }
+  function initialValues(host, mode, previous) {
+    var domain=visibleDomain(host);
+    if (!domain) return [];
+    var first=previous && finite(previous[0]) ? snapWithin(host,previous[0]) : snapWithin(host,domain[0]+(domain[1]-domain[0])*(mode === MODE_DUAL ? 1/3 : 1/2));
+    if (mode === MODE_SINGLE) return [first];
+    var second=previous && finite(previous[1]) ? snapWithin(host,previous[1]) : snapWithin(host,domain[0]+(domain[1]-domain[0])*2/3);
+    return [first,second];
+  }
+  function readoutMarkup(host, values) {
+    var axis=fullAxis(host), unit=axisUnit(axis), x=function (value) { return formatNumber(value)+(unit ? " "+unit : ""); };
+    var header=values.length === 1 ? "<span>X: "+x(values[0])+"</span>" : "<span>X1: "+x(values[0])+"</span><span>X2: "+x(values[1])+"</span><span>ΔX: "+x(Math.abs(values[1]-values[0]))+"</span>";
+    var rows=visibleTraces(host).map(function (trace) {
+      var points=values.map(function (value) { return nearestPoint(trace,value); });
+      var valueText=points.map(function (point,index) { return (values.length > 1 ? "Y"+(index+1)+": " : "")+formatNumber(point && point.y); }).join(" · ");
+      return "<div class='plot-cursor-readout-row'><span>"+String(trace.name || "Сигнал").replace(/[&<>\"]/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[c];})+"</span><span class='plot-cursor-readout-values'>"+valueText+"</span></div>";
+    }).join("");
+    return "<div class='plot-cursor-readout-header'>"+header+"</div>"+rows;
+  }
+
+  function createController() {
+    var records={};
+    function record(key) { return records[key] || (records[key]={mode:MODE_OFF,values:[],host:null,overlay:null}); }
+    function removeOverlay(entry) { if (entry.overlay && entry.overlay.isConnected) entry.overlay.remove(); entry.overlay=null; entry.host=null; }
+    function update(key) {
+      var entry=record(key), host=entry.host;
+      if (!host || !host.isConnected || entry.mode === MODE_OFF || !visibleTraces(host).length) { removeOverlay(entry); return; }
+      var domain=visibleDomain(host);
+      if (!domain) { removeOverlay(entry); return; }
+      entry.values=initialValues(host,entry.mode,entry.values);
+      var box=geometry(host), overlay=entry.overlay;
+      if (!overlay || !overlay.isConnected) {
+        overlay=document.createElement("div");
+        overlay.className="plot-cursor-layer";
+        overlay.dataset.graphCursorOverlay=key;
+        overlay.dataset.testid="graph-cursor-overlay";
+        host.parentElement.appendChild(overlay);
+        entry.overlay=overlay;
+      }
+      overlay.dataset.cursorMode=entry.mode;
+      if (overlay.querySelectorAll(".plot-cursor-line").length !== entry.values.length || !overlay.querySelector(".plot-cursor-readout")) {
+        overlay.innerHTML=entry.values.map(function (_,index) {
+          return "<button class='plot-cursor-line' type='button' role='slider' data-cursor-index='"+index+"' data-cursor-label='"+(index+1)+"' aria-label='Курсор "+(index+1)+"'></button>";
+        }).join("")+"<div class='plot-cursor-readout' role='status' aria-live='polite'></div>";
+      }
+      entry.values.forEach(function (value,index) {
+        var line=overlay.querySelector("[data-cursor-index='"+index+"']");
+        line.style.left=valueToPixel(host,value)+"px";
+        line.style.top=box.top+"px";
+        line.style.height=box.height+"px";
+        line.setAttribute("aria-valuemin",String(domain[0]));
+        line.setAttribute("aria-valuemax",String(domain[1]));
+        line.setAttribute("aria-valuenow",String(value));
+        line.setAttribute("aria-valuetext",formatNumber(value)+(axisUnit(fullAxis(host)) ? " "+axisUnit(fullAxis(host)) : ""));
+      });
+      var readout=overlay.querySelector(".plot-cursor-readout");
+      readout.style.left=(box.left+8)+"px";
+      readout.style.top=(box.top+8)+"px";
+      readout.innerHTML=readoutMarkup(host,entry.values);
+    }
+    function setMode(key, host, mode) {
+      var entry=record(key), next=mode === entry.mode ? MODE_OFF : mode;
+      entry.mode=next;
+      entry.host=host || entry.host;
+      if (next === MODE_OFF) { entry.values=[]; removeOverlay(entry); }
+      else { entry.values=initialValues(entry.host,next,entry.values); update(key); }
+      return next;
+    }
+    function attach(key,host) { var entry=record(key); entry.host=host; if (entry.mode !== MODE_OFF) update(key); }
+    function clear(key) { var entry=record(key); entry.mode=MODE_OFF; entry.values=[]; removeOverlay(entry); }
+    function mode(key) { return record(key).mode; }
+    function syncMenu(menu,key,eligible) {
+      if (!menu) return;
+      menu.querySelectorAll("[data-plot-cursor-mode]").forEach(function (button) {
+        var checked=eligible && button.dataset.plotCursorMode === mode(key);
+        button.disabled=!eligible;
+        button.setAttribute("aria-checked",String(checked));
+        button.setAttribute("aria-label",eligible ? button.querySelector("span:nth-of-type(2)").textContent : "Курсоры доступны только для загруженной временной области или спектра");
+        button.title=eligible ? "" : "Доступно только для загруженной временной области или спектра";
+      });
+    }
+    function moveFromClient(key,index,clientX) {
+      var entry=record(key), value=entry.host && pixelToValue(entry.host,clientX), snapped=entry.host && snapWithin(entry.host,value);
+      if (!finite(snapped)) return;
+      entry.values[index]=snapped;
+      update(key);
+    }
+    function step(key,index,direction,toEdge) {
+      var entry=record(key), host=entry.host, domain=host && visibleDomain(host);
+      if (!domain) return;
+      var target=toEdge === "start" ? domain[0] : toEdge === "end" ? domain[1] : adjacentX(host,entry.values[index],direction,domain);
+      var snapped=snapWithin(host,target);
+      if (finite(snapped)) { entry.values[index]=snapped; update(key); }
+    }
+    document.addEventListener("pointerdown",function (event) {
+      var line=event.target.closest && event.target.closest(".plot-cursor-line");
+      if (!line) return;
+      var overlay=line.closest("[data-graph-cursor-overlay]"), key=overlay && overlay.dataset.graphCursorOverlay;
+      if (!key) return;
+      event.preventDefault(); event.stopPropagation();
+      line.classList.add("is-dragging");
+      if (line.setPointerCapture && event.pointerId !== undefined) line.setPointerCapture(event.pointerId);
+      moveFromClient(key,Number(line.dataset.cursorIndex),event.clientX);
+    },true);
+    document.addEventListener("pointermove",function (event) {
+      var line=event.target.closest && event.target.closest(".plot-cursor-line.is-dragging");
+      if (!line) return;
+      var overlay=line.closest("[data-graph-cursor-overlay]");
+      event.preventDefault(); event.stopPropagation();
+      moveFromClient(overlay.dataset.graphCursorOverlay,Number(line.dataset.cursorIndex),event.clientX);
+    },true);
+    document.addEventListener("pointerup",function (event) {
+      var line=event.target.closest && event.target.closest(".plot-cursor-line.is-dragging");
+      if (!line) return;
+      event.preventDefault(); event.stopPropagation(); line.classList.remove("is-dragging");
+    },true);
+    document.addEventListener("keydown",function (event) {
+      var line=event.target.closest && event.target.closest(".plot-cursor-line");
+      if (!line || ["ArrowLeft","ArrowRight","Home","End"].indexOf(event.key)<0) return;
+      var overlay=line.closest("[data-graph-cursor-overlay]"), key=overlay.dataset.graphCursorOverlay, index=Number(line.dataset.cursorIndex);
+      event.preventDefault(); event.stopPropagation();
+      step(key,index,event.key === "ArrowLeft" ? -1 : 1,event.key === "Home" ? "start" : event.key === "End" ? "end" : "");
+      window.requestAnimationFrame(function () { var restored=document.querySelector("[data-graph-cursor-overlay='"+CSS.escape(key)+"'] [data-cursor-index='"+index+"']"); if (restored) restored.focus(); });
+    },true);
+    return { setMode:setMode, mode:mode, attach:attach, update:update, clear:clear, syncMenu:syncMenu };
+  }
+
+  function ensureMenuItems(menu) {
+    if (!menu || menu.querySelector("[data-plot-cursor-mode]")) return;
+    var help=menu.querySelector("[data-plot-help]");
+    var markup="<button type='button' role='menuitemcheckbox' data-plot-cursor-mode='single' data-testid='pane-menu-cursor' aria-checked='false'><span class='cursor-menu-icon' aria-hidden='true'></span><span>Курсор</span><img class='plot-menu-check' src='./icons/tick-figma.svg' alt=''></button>"+
+      "<button type='button' role='menuitemcheckbox' data-plot-cursor-mode='dual' data-testid='pane-menu-dual-cursor' aria-checked='false'><span class='cursor-menu-icon is-dual' aria-hidden='true'></span><span>Два курсора</span><img class='plot-menu-check' src='./icons/tick-figma.svg' alt=''></button>";
+    if (help) help.insertAdjacentHTML("beforebegin",markup); else menu.insertAdjacentHTML("beforeend",markup);
+  }
+
+  window.SignalAnalyserGraphCursorUI={
+    modes:{off:MODE_OFF,single:MODE_SINGLE,dual:MODE_DUAL},
+    ensureMenuItems:ensureMenuItems,
+    createController:createController
+  };
+}(window,document));

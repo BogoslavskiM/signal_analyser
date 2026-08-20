@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 35
+design_version: 37
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126]
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -23,6 +23,8 @@ production_integration_contract:
     - frontend-source/integration/js/task-0118-color-picker.js
     - frontend-source/integration/js/task-0119-context-and-samples-intent.js
     - frontend-source/integration/js/task-0126-summary-units-continuity.js
+    - frontend-source/integration/css/task-0130-graph-cursors.css
+    - frontend-source/integration/js/task-0130-graph-cursors.js
     - frontend-source/integration/html/dialogs/signal-operation.fragment.html
   mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
 
@@ -45,11 +47,11 @@ prototype_contract:
     - public/js/native-session-io.js
     - public/js/app.js
   deterministic_provider: prototype/mock-fetch.js
-  interaction_bridges: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js]
+  interaction_bridges: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js, prototype/task-0130-graph-cursors-bridge.js]
   production_baseline_evidence: evidence/production-baseline-v32.json
   required_nonempty_zone_slots: [toolbar, workspace, settings, inspector]
   forbidden: [fetch_html_partials, http_server, network_api, cors_dependency, alternative_mock_shell]
-  browser_result: {inherited_checks: 26, delta_checks: 9, passed: 35, failed: 0, runtime_errors: 0, http_resources: 0}
+  browser_result: {inherited_checks: 35, delta_checks: 8, passed: 43, failed: 0, runtime_errors: 0, http_resources: 0}
 
 screens:
   - id: main
@@ -72,7 +74,7 @@ screens:
         states: [default, hover, pressed, focus_visible, disabled]
       - id: plot-workspace
         type: graph
-        purpose: "Stable screens, pane headers, time/spectrum plots, plot sliders and extrema markers"
+        purpose: "Stable screens, pane headers, time/spectrum plots, plot sliders, pane-local cursors and extrema markers"
         parent: main-stage
         slot: workspace
         repeated: false
@@ -82,7 +84,7 @@ screens:
         sizing: {min_width: 612, min_height: 440, width_growth_ratio: 3, height_growth_ratio: 4}
         scroll: {owner: display-tablist, axes: x, sticky: [workspace-titlebar, display-tabs]}
         collapse: {allowed: false, initial: expanded, direction: null, reason: null}
-        states: [ready, empty, loading, error, active_pane, linked_zoom]
+        states: [ready, empty, loading, error, active_pane, linked_zoom, cursor_off, cursor_single, cursor_dual, cursor_dragging]
       - id: display-settings
         type: settings
         purpose: "Signal, Area and Screen automatic settings plus explicit Extrema calculation"
@@ -126,7 +128,7 @@ screens:
         states: [closed, built_in, menu_open, custom, busy, error, success]
       - id: signal-color-picker
         type: popover
-        purpose: "Edit nested Signal color draft through HEX or a fixed Jet palette"
+        purpose: "Edit nested Signal color draft through HEX or the restored original eight-color palette"
         parent: display-settings
         slot: body-fixed-overlay
         repeated: false
@@ -136,6 +138,18 @@ screens:
         scroll: {owner: none, axes: none, sticky: []}
         collapse: {allowed: false, initial: closed, direction: null, reason: null}
         states: [closed, open, hover, selected_draft, invalid_hex, busy]
+      - id: graph-cursor-overlay
+        type: graph_overlay
+        purpose: "Pane-local snapped X cursors and trace values for ready Time/Spectrum plots"
+        parent: plot-workspace
+        slot: "eligible pane .plot-canvas sibling of [data-pane-host]"
+        repeated: true
+        production_host: ".plot-canvas + stable [data-pane-host] coordinate source"
+        transfer: {css: frontend-source/integration/css/task-0130-graph-cursors.css, ui: frontend-source/integration/js/task-0130-graph-cursors.js}
+        sizing: {width: plot_rect, min_height: plot_rect, width_growth_ratio: 1, height_growth_ratio: 1}
+        scroll: {owner: none, axes: none, sticky: []}
+        collapse: {allowed: false, initial: closed, direction: null, reason: null}
+        states: [off, single, dual, hover, focus_visible, dragging, clamped_after_relayout]
 
 capabilities:
   toolbar: present
@@ -164,9 +178,11 @@ production_hosts:
     root: "[data-testid='display-overflow-menu']"
     x_slider_action: "[data-plot-range-slider]"
     y_slider_action: "[data-plot-amplitude-slider]"
+    single_cursor_action: "[data-plot-cursor-mode='single']"
+    dual_cursor_action: "[data-plot-cursor-mode='dual']"
   plots:
     hosts: "[data-pane-host]"
-    policy: "Plotly-owned descendants; marker traces and slider layout only through existing public/js/app.js Plotly paths"
+    policy: "Plotly-owned descendants remain untouched; cursor layer is an absolute sibling inside .plot-canvas and reads host data/fullLayout only"
   dialogs:
     portal: body
     operation_singleton: "[data-testid='signal-operation-layer']"
@@ -301,7 +317,7 @@ components:
         spectrum_fields: [show-frequency-slider, show-magnitude-slider]
     synchronization: "Both projections read/write the same active-pane draft immediately; menu aria-checked and settings checked state must never diverge."
     persistence: "Existing serialized autosave persists the shared draft; neither projection owns a second state."
-    plot_host_mutation: "Use existing Plotly layout/relayout and amplitude-slider overlay path only; never overwrite [data-pane-host]."
+    plot_host_mutation: "Use existing Plotly layout/relayout, amplitude-slider path and cursor sibling overlay only; never overwrite [data-pane-host]."
     states: [hidden, default, hover, drag, keyboard_focus, reset]
   persisted-name:
     entities: [display, pane]
@@ -445,6 +461,10 @@ elements:
   - {id: pane-magnitude-slider, zone: plot-workspace, type: dual_thumb_slider, label: "Слайдер магнитуды", testid: pane-magnitude-slider, states: [default, hover, drag, focus_visible]}
   - {id: pane-menu-frequency-slider, zone: plot-workspace, type: menuitemcheckbox, label: "Слайдер частоты", selector: "[data-plot-range-slider]", states: [default, hover, checked, disabled, focus_visible]}
   - {id: pane-menu-magnitude-slider, zone: plot-workspace, type: menuitemcheckbox, label: "Слайдер магнитуды", selector: "[data-plot-amplitude-slider]", states: [default, hover, checked, disabled, focus_visible]}
+  - {id: pane-menu-single-cursor, zone: plot-workspace, type: menuitemcheckbox, label: "Курсор", testid: pane-menu-cursor, selector: "[data-plot-cursor-mode='single']", states: [default, hover, checked, disabled, focus_visible]}
+  - {id: pane-menu-dual-cursor, zone: plot-workspace, type: menuitemcheckbox, label: "Два курсора", testid: pane-menu-dual-cursor, selector: "[data-plot-cursor-mode='dual']", states: [default, hover, checked, disabled, focus_visible]}
+  - {id: graph-cursor-line, zone: graph-cursor-overlay, type: draggable_vertical_slider, label: "Курсор X", selector: ".plot-cursor-line", states: [default, hover, focus_visible, dragging, clamped]}
+  - {id: graph-cursor-readout, zone: graph-cursor-overlay, type: nonblocking_graph_readout, label: "Координаты курсоров", selector: ".plot-cursor-readout", states: [single_values, dual_values_delta]}
   - {id: settings-frequency-slider, zone: display-settings, type: checkbox, label: "Слайдер частоты", field: show-frequency-slider, states: [default, hover, checked, disabled, focus_visible]}
   - {id: settings-magnitude-slider, zone: display-settings, type: checkbox, label: "Слайдер магнитуды", field: show-magnitude-slider, states: [default, hover, checked, disabled, focus_visible]}
   - {id: inspector-up, zone: lower-inspector, type: icon_button, label: "Развернуть нижнюю зону", testid: inspector-state-up, tooltip: {enabled: true, delay_ms: 1500, text: "Развернуть нижнюю зону"}, states: [default, hover, pressed, focus_visible]}
@@ -527,6 +547,22 @@ interactions:
     trigger: {element: settings-magnitude-slider, action: change}
     visible_result: "vertical spectrum slider and pane-menu aria-checked update from the same active-pane state"
     seam: pane-slider-visibility
+  - id: toggle-single-graph-cursor
+    trigger: {element: pane-menu-single-cursor, action: click}
+    visible_result: "off/dual -> one snapped draggable vertical cursor; selecting Курсор again -> off; menu closes and its check projects pane-local mode"
+    seam: pane-graph-cursors
+  - id: toggle-dual-graph-cursors
+    trigger: {element: pane-menu-dual-cursor, action: click}
+    visible_result: "off/single -> two snapped draggable vertical cursors with X1, X2, ΔX and per-visible-trace Y1/Y2; selecting Два курсора again -> off"
+    seam: pane-graph-cursors
+  - id: drag-or-keyboard-move-graph-cursor
+    trigger: {element: graph-cursor-line, action: pointer_drag_or_arrow_home_end}
+    visible_result: "cursor stays inside current visible X domain, snaps to nearest available X sample/bin (including finite X=0 across heterogeneous traces) and updates only this pane readout without starting Plotly zoom or axis linking"
+    seam: pane-graph-cursors
+  - id: reconcile-cursor-after-plot-relayout
+    trigger: {element: plot-host, action: plotly_relayout_or_plot_refresh}
+    visible_result: "each existing cursor remains when possible; an out-of-domain cursor clamps to the new nearest visible sample/bin; linked axes never copy cursor mode or position across panes"
+    seam: pane-graph-cursors
   - id: open-operation
     trigger: {element: signal-operation, action: click}
     visible_result: signal-operation
@@ -586,6 +622,12 @@ dialog_contract:
 
 overlays:
   combinations:
+    - id: plot-with-legend-cursors-and-sliders
+      bottom_to_top: [plotly_graph, plotly_legend, plot_sliders, graph_cursor_layer, graph_cursor_readout]
+      pointer_owner: "cursor line only while hovered/focused/dragged; otherwise Plotly graph"
+      focus_owner: focused_cursor_or_plot
+      inert_layers: []
+      restore_target: pane-menu-trigger
     - id: settings-with-color-picker
       bottom_to_top: [application, settings_panel, signal_color_picker]
       pointer_owner: signal_color_picker
@@ -644,6 +686,18 @@ integration_seams:
     production_provider: public/js/app.js
     settings_inventory: public/js/settings.js
     hosts: ["[data-plot-range-slider]", "[data-plot-amplitude-slider]", "[data-settings-content]", "[data-pane-host]"]
+  - id: pane-graph-cursors
+    ui_contract: "two existing-style pane-menu checks select one pane-local off/single/dual mode; vertical overlay cursors snap to visible X samples/bins and report X/ΔX plus visible-trace values"
+    mock_provider: "frontend-source/integration/js/task-0130-graph-cursors.js plus prototype/task-0130-graph-cursors-bridge.js"
+    production_provider: public/js/app.js
+    frontend_state: "Map<paneRuntimeKey,{mode,values}>; never backend/session/state_revision"
+    hosts: ["[data-testid='display-overflow-menu']", "[data-pane-host]", ".plot-canvas"]
+    eligible_plot_types: [time, spectrum]
+    disabled_when: [loading, empty, error, spectrogram, no_visible_trace]
+    linked_axis_policy: "relayout may clamp cursors already owned by that pane; cursor mode and positions never propagate"
+    nearest_candidate_policy: "null or non-finite means absent; every finite X including 0 is a valid current nearest candidate across heterogeneous visible traces"
+    plotly_dom_mutation_forbidden: true
+    api_and_dsp_calls_forbidden: true
   - id: linked-axis-draft
     ui_contract: "move identical time/amplitude/frequency/magnitude limit controls by linked scope"
     mock_provider: frontend-source/js/ui/zones/settings/ui.js
@@ -724,7 +778,7 @@ page_sizing_contract:
 
 evidence:
   visual_baseline_version: 28
-  carry_forward_reason: "V32 preserves approved shell/graphs/dialog geometry; only the Figma-derived color popover is new, while context/sample corrections change interaction lifecycle."
+  carry_forward_reason: "V37 changes only nearest-candidate semantics for the accepted graph cursor controller; approved v36 visuals, shell, graph geometry and overlays are unchanged."
   viewports: ["1440x900", "840x620"]
   prototype_steps:
     - 01-standalone-file-no-network-no-cors
@@ -770,6 +824,15 @@ evidence:
     - 41-default-colors-equal-picker-jet
     - 42-extrema-uses-current-visible-x-range
     - 43-pending-checkboxes-retain-node-and-state
+    - 44-pane-menu-single-and-dual-cursor-items
+    - 45-single-cursor-values-no-api
+    - 46-cursor-drag-snaps-visible-domain
+    - 47-active-mode-check-projection
+    - 48-dual-cursor-delta-per-trace-values
+    - 49-repeat-active-mode-turns-off
+    - 50-time-spectrum-cursors-pane-local
+    - 51-cursor-file-prototype-no-network-errors
+    - 52-zero-remains-nearest-across-heterogeneous-traces
   screenshots:
     - screenshots/v31--standalone-production-signal--1440x900.png
     - screenshots/v31--standalone-production-samples--1440x900.png
@@ -794,6 +857,10 @@ evidence:
     - screenshots/v32--pane-type-change-focuses-area--1440x900.png
     - screenshots/v32--spectrum-extrema-settings-values--1440x900.png
     - screenshots/v32--spectrogram-hides-extrema-tabs--1440x900.png
-  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json]
+    - screenshots/v36--spectrum-single-cursor--1440x900.png
+    - screenshots/v36--spectrum-dual-cursor--1440x900.png
+    - screenshots/v36--time-single-cursor--1440x900.png
+    - screenshots/v36--pane-menu-cursor-options--1440x900.png
+  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json]
   production_baseline: evidence/production-baseline-v32.json
-  transfer_audit: evidence/transfer-audit-v34.json
+  transfer_audit: evidence/transfer-audit-v37.json
