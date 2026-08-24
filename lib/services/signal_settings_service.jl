@@ -1178,6 +1178,10 @@ function signal_settings_document(
     display_id::AbstractString,
 )::Dict{String,Any}
     lock(state.lock) do
+        signal_analyser_recover_membership_order_unlocked!(
+            state;
+            display_ids = String[String(display_id)],
+        )
         signal_analyser_recover_time_limits_unlocked!(
             state;
             display_ids = String[String(display_id)],

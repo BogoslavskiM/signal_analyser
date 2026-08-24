@@ -305,6 +305,7 @@ function export_signal_analyser_session(
     state::SignalAnalyserState,
 )::Dict{String,Any}
     lock(state.lock) do
+        signal_analyser_recover_membership_order_unlocked!(state)
         signal_analyser_recover_time_limits_unlocked!(state)
         document = signal_analyser_session_document_unlocked(state)
         Dict{String,Any}(
@@ -1220,9 +1221,15 @@ function signal_analyser_session_candidate(
     )
     candidate.active_display_id = document.active_display_id
     candidate.next_display_number = document.next_display_number
-    # Session import restores authoritative bindings, then migrates the one
-    # legacy state that cannot be calculated: an occupied pane without a time
-    # domain. Explicit persisted limits are preserved verbatim.
+    # Session import restores authoritative bindings, then migrates legacy
+    # ordering and the one state that cannot be calculated: an occupied pane
+    # without a time domain. Membership sets, main signals and explicit limits
+    # are preserved verbatim.
+    signal_analyser_recover_membership_order_unlocked!(
+        candidate;
+        invalidate_outputs = false,
+        increment_state_revision = false,
+    )
     signal_analyser_recover_time_limits_unlocked!(
         candidate;
         invalidate_outputs = false,

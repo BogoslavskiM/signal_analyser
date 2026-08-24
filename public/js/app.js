@@ -3275,6 +3275,15 @@
   }
 
   function refreshSnapshot(renderAccepted) { return api.getState().then(function (snapshot) { if (!accept(snapshot)) throw new Error("Получен устаревший снимок состояния."); (renderAccepted || scheduleRender)(); return snapshot; }); }
+
+  function signalNamesInInventoryOrder(names) {
+    var requested=Object.create(null);
+    (Array.isArray(names) ? names : []).forEach(function (name) { requested[String(name)]=true; });
+    return (model.state && Array.isArray(model.state.signals) ? model.state.signals : []).map(function (signal) { return signal.name; }).filter(function (name) {
+      return Object.prototype.hasOwnProperty.call(requested, name);
+    });
+  }
+
   function mutate(call, options) {
     var retried = false;
     var renderAccepted = options && options.preservePlots ? renderActivePaneContext : scheduleRender;
@@ -3309,6 +3318,7 @@
     var targetDisplayId = activeDisplay() && activeDisplay().id;
     var mutationOptions = Object.assign({}, options || {});
     if (payload.operation === "update_pane") {
+      payload=Object.assign({}, payload, { signal_bindings:signalNamesInInventoryOrder(payload.signal_bindings) });
       var previousPane = paneById(payload.pane_id);
       var plotTypeChanged = !previousPane || previousPane.plot_type !== payload.plot_type;
       var hadSignals = paneHasSignals(previousPane);
@@ -3328,7 +3338,9 @@
         error.code = "display_context_changed";
         return Promise.reject(error);
       }
-      return api.layouts(Object.assign({}, request, { state_revision:model.revision }));
+      var outgoing=Object.assign({}, request, { state_revision:model.revision });
+      if (outgoing.operation === "update_pane") outgoing.signal_bindings=signalNamesInInventoryOrder(outgoing.signal_bindings);
+      return api.layouts(outgoing);
     }, mutationOptions).then(function (snapshot) {
       if (mutationOptions.focusAreaAfterPlotTypeChange) {
         var currentDisplay = activeDisplay(), currentPane = paneById(payload.pane_id);
@@ -3350,6 +3362,7 @@
     if (checked && index < 0) bindings.push(signalName);
     if (!checked && index >= 0) bindings.splice(index, 1);
     if ((checked && index >= 0) || (!checked && index < 0)) return Promise.resolve(null);
+    bindings=signalNamesInInventoryOrder(bindings);
 
     model.signalMembershipBusy = true;
     setSignalTableMutationBusy(true, "");
@@ -3385,6 +3398,7 @@
       }
       var visibleSignals = Array.isArray(currentPane.signal_bindings) ? currentPane.signal_bindings.slice() : [];
       if (visibleSignals.indexOf(signalName) < 0) visibleSignals.push(signalName);
+      visibleSignals=signalNamesInInventoryOrder(visibleSignals);
       return api.view({ state_revision:model.revision, row_selected_signal:signalName, analysis_signal:signalName, visible_signals:visibleSignals });
     }, { preservePlots:true }).then(function (snapshot) {
       syncSignalSamplesWithMain();

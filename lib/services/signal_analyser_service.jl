@@ -1513,7 +1513,10 @@ function signal_analyser_validate_selection_layout_invariants(
         layout = signal_analyser_layout_by_display_id(state, display.id)
         for pane in layout.panes
             pane_members = signal_display_pane_members(pane)
-            signal_analyser_inventory_ordered_names(state, pane_members)
+            pane_members == signal_analyser_inventory_ordered_names(state, pane_members) ||
+                throw(ArgumentError(
+                    "Signal bindings pane $(pane.id) не следуют authoritative inventory order",
+                ))
             pane_analysis = signal_display_pane_analysis_name(pane)
             pane_analysis === nothing || pane_analysis in known_names || throw(ArgumentError(
                 "Main signal pane $(pane.id) отсутствует в authoritative inventory",
@@ -1942,6 +1945,96 @@ Base.showerror(io::IO, err::SignalAnalyserTimeLimitsRecoveryError) = print(io, e
 
 struct SignalAnalyserTimeLimitsRecovery
     changed_page_ids::Vector{String}
+end
+
+"""Pages whose persisted pane membership was reordered to inventory order."""
+struct SignalAnalyserMembershipOrderRecovery
+    changed::Bool
+    changed_page_ids::Vector{String}
+end
+
+function signal_analyser_pane_with_inventory_ordered_membership(
+    state::SignalAnalyserState,
+    pane::SignalDisplayPaneState,
+)::SignalDisplayPaneState
+    members = signal_display_pane_members(pane)
+    ordered_members = signal_analyser_inventory_ordered_names(state, members)
+    members == ordered_members && return pane
+    SignalDisplayPaneState(
+        pane.id,
+        pane.name,
+        pane.plot_type,
+        SignalDisplayMembership(ordered_members),
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+        pane.peaks_settings,
+    )
+end
+
+"""Idempotently migrate known pane/display memberships to inventory order.
+
+The set of bound signals and every analysis source are preserved. Unknown or
+duplicate names still fail validation instead of being silently discarded.
+"""
+function signal_analyser_recover_membership_order_unlocked!(
+    state::SignalAnalyserState;
+    display_ids::AbstractVector{<:AbstractString} = String[display.id for display in state.displays],
+    invalidate_outputs::Bool = true,
+    increment_state_revision::Bool = true,
+)::SignalAnalyserMembershipOrderRecovery
+    requested = Set(String.(display_ids))
+    changed_page_ids = String[]
+    display_changed = false
+    for display in state.displays
+        display.id in requested || continue
+        layout = signal_analyser_layout_by_display_id(state, display.id)
+        panes = SignalDisplayPaneState[
+            signal_analyser_pane_with_inventory_ordered_membership(state, pane)
+            for pane in layout.panes
+        ]
+        for (pane, recovered) in zip(layout.panes, panes)
+            pane == recovered || push!(
+                changed_page_ids,
+                signal_analyser_output_page_id(display.id, pane.id),
+            )
+        end
+        if panes != layout.panes
+            state.display_layouts[display.id] = SignalDisplayLayoutState(
+                layout.version,
+                layout.variant,
+                layout.rows,
+                layout.columns,
+                panes,
+                layout.active_pane_id,
+                layout.next_pane_number,
+            )
+        end
+
+        members = signal_analyser_display_members(display)
+        ordered_members = signal_analyser_inventory_ordered_names(state, members)
+        if members != ordered_members
+            display.membership = SignalDisplayMembership(ordered_members)
+            display_changed = true
+        end
+    end
+    unique!(changed_page_ids)
+    changed = display_changed || !isempty(changed_page_ids)
+    if changed
+        state.active_display_id in requested && signal_analyser_sync_active_display!(
+            state,
+            signal_analyser_active_display(state),
+        )
+        invalidate_outputs && !isempty(changed_page_ids) &&
+            signal_analyser_invalidate_output_pages_unlocked!(state, changed_page_ids)
+        increment_state_revision && (state.view.state_revision += 1)
+    end
+    SignalAnalyserMembershipOrderRecovery(changed, changed_page_ids)
 end
 
 function signal_analyser_full_bound_time_limits(
@@ -2387,7 +2480,9 @@ function signal_display_pane_reconfigured(
     plot_type::SignalAnalyserPlot,
     signal_bindings::AbstractVector{<:AbstractString},
 )::SignalDisplayPaneState
-    membership = SignalDisplayMembership(signal_bindings)
+    membership = SignalDisplayMembership(
+        signal_analyser_inventory_ordered_names(state, signal_bindings),
+    )
     members = collect(membership.signal_names)
     current_analysis = signal_display_pane_analysis_name(pane)
     # Checkbox membership and main signal are independent.  update_pane only
@@ -4601,6 +4696,7 @@ end
 
 function signal_analyser_snapshot(state::SignalAnalyserState)::Dict{String,Any}
     lock(state.lock) do
+        signal_analyser_recover_membership_order_unlocked!(state)
         signal_analyser_recover_time_limits_unlocked!(state)
         signal_analyser_snapshot_unlocked(state)
     end
@@ -5507,6 +5603,12 @@ function apply_signal_analyser_view!(
         output_changed && signal_analyser_invalidate_active_output_unlocked!(candidate)
         !output_changed && signal_analyser_view_changes_affect_peaks(changes) &&
             signal_analyser_invalidate_active_peaks_unlocked!(candidate)
+        signal_analyser_recover_membership_order_unlocked!(
+            candidate;
+            invalidate_outputs = false,
+            increment_state_revision = false,
+        )
+        signal_analyser_validate_selection_layout_invariants(candidate)
         snapshot = if lightweight
             signal_analyser_state_lite_unlocked(candidate)
         else
@@ -6047,6 +6149,21 @@ function apply_signal_analyser_layout!(
             end
             candidate.view.state_revision += 1
         end
+        membership_recovery = signal_analyser_recover_membership_order_unlocked!(
+            candidate;
+            invalidate_outputs = false,
+            increment_state_revision = false,
+        )
+        if membership_recovery.changed && !changed
+            candidate.view.state_revision += 1
+        end
+        changed = changed || membership_recovery.changed
+        append!(affected_output_pages, membership_recovery.changed_page_ids)
+        unique!(affected_output_pages)
+        signal_analyser_validate_selection_layout_invariants(candidate)
+        # Preflight the invariant-bearing response before publication. A
+        # response validation failure therefore cannot poison live state.
+        signal_analyser_layouts_lite_snapshot_unlocked(candidate)
         if changed
             signal_analyser_publish_layout_candidate!(
                 state,

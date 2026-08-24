@@ -502,6 +502,7 @@ function signal_analyser_layout_entries_lite_payload(
 end
 
 function signal_analyser_state_lite_unlocked(state::SignalAnalyserState)::Dict{String,Any}
+    signal_analyser_recover_membership_order_unlocked!(state)
     signal_analyser_recover_time_limits_unlocked!(state)
     signal_analyser_validate_selection_layout_invariants(state)
     signal_analyser_sync_output_pages_unlocked!(state)
@@ -1123,6 +1124,10 @@ function signal_analyser_active_output(
     pane_id::AbstractString,
 )::Dict{String,Any}
     response, yield_scheduler = lock(state.lock) do
+        signal_analyser_recover_membership_order_unlocked!(
+            state;
+            display_ids = String[String(display_id)],
+        )
         try
             signal_analyser_recover_time_limits_unlocked!(
                 state;
@@ -1686,6 +1691,10 @@ function signal_analyser_calculate_active_peaks!(
                     state.view.state_revision,
                 ),
             )
+        signal_analyser_recover_membership_order_unlocked!(
+            state;
+            display_ids = String[String(display_id)],
+        )
         try
             signal_analyser_recover_time_limits_unlocked!(
                 state;
@@ -1858,6 +1867,10 @@ function signal_analyser_active_peaks(
     pane_id::AbstractString,
 )::Dict{String,Any}
     lock(state.lock) do
+        signal_analyser_recover_membership_order_unlocked!(
+            state;
+            display_ids = String[String(display_id)],
+        )
         try
             signal_analyser_recover_time_limits_unlocked!(
                 state;
