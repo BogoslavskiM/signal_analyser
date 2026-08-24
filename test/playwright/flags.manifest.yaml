@@ -1,0 +1,8 @@
+schema_version: 1
+flags:
+  - id: TASK-0152-V54
+    description: "Visible integrated V54 regression: bootstrap, viewport mirrors, cursors, labels, hover, custom operation and trim contract."
+  - id: TASK-0152-V54-READONLY
+    description: "Visible read-only production inventory diagnostic for the V54 isolated E2E workflow."
+  - id: TASK-0152-V54-CLEANUP
+    description: "Visible exact cleanup of the confirmed task-owned display-2 residual."
