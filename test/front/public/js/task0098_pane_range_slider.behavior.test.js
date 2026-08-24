@@ -58,6 +58,7 @@ function createHarness() {
   const root = path.resolve(__dirname, "../../../..");
   let source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
+  source = source.replace("bootstrapAttempt(bootstrapController.begin({ timeoutMs:bootstrapController.DEFAULT_TIMEOUT_MS }));", "");
   source = source.replace("})(window, document);", "window.__task0098 = { model:model, accept:accept, eligible:rangeSliderEligible, sync:syncPaneMenuState, openMenu:openPaneMenu, closeMenu:closePaneMenu, toggle:togglePaneRangeSlider, bindRangeReset:bindRangeSliderDoubleClick, toggleAmplitude:togglePaneAmplitudeSlider, queueAmplitude:queueAmplitudeRange, layout:plotLayoutWithRangeSlider, enqueue:enqueuePlot, openHelp:openGraphHelp, closeHelp:closeGraphHelp, openClear:openPaneClearConfirm, closeClear:closePaneClearConfirm, confirmClear:confirmPaneClear }; })(window, document);");
 
   const listeners = {};

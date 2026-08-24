@@ -122,9 +122,9 @@
     document.addEventListener("keydown", function (event) { if (event.defaultPrevented) return; if (event.key === "Escape" && !document.querySelector("[data-testid='signal-operation-layer']").hidden) window.SignalAnalyserDialogs.signalOperation.close(); });
   }
 
-  function init(nextProvider) {
+  function init(nextProvider, initialState) {
     provider = nextProvider || {};
-    return Promise.resolve(provider.getState ? provider.getState() : null).then(function (nextState) {
+    return Promise.resolve(initialState !== undefined ? initialState : (provider.getState ? provider.getState() : null)).then(function (nextState) {
       state = nextState || { activeDisplayId: "display-1", activePaneId: "", settingsPage: "screen", inspectorPage: "signals", dynamicSamplesOpen: false, dirty: false, displays: [{ id: "display-1", name: "Экран 1", panes: [] }], links: { time:false, amplitude:false, spectrumFrequency:false, spectrumMagnitude:false }, signal: { name:"", color:"#2563eb", sampleRate:"", samples:0, duration:"—", regionStart:"—", regionEnd:"—", minimum:"—", minimumTime:"—", maximum:"—", maximumTime:"—", rms:"—", mean:"—", median:"—", peakToPeak:"—", type:"—" }, signals:[], extrema:[], sampleRows:[] };
       bind(); render();
       window.SignalAnalyserDesignReview = {

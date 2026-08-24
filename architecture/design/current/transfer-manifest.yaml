@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 46
+design_version: 48
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -14,13 +14,13 @@ prototype_baseline:
   network_requests_allowed: false
   provider_fixture: prototype/mock-fetch.js
   provider_fixture_scope: data_and_api_responses_only
-  interaction_fixture: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js, prototype/task-0130-graph-cursors-bridge.js, prototype/task-0138-values-columns-bridge.js]
-  interaction_fixture_scope: "design-only adapters proving inherited flows, pane-local graph cursors and sample-column eye-menu reflow against actual production DOM/API modules"
+  interaction_fixture: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js, prototype/task-0130-graph-cursors-bridge.js, prototype/task-0138-values-columns-bridge.js, prototype/task-0143-bootstrap-loader-bridge.js]
+  interaction_fixture_scope: "design-only adapters proving inherited flows, pane-local graph cursors, sample-column eye-menu reflow and the V48 bootstrap barrier against actual production DOM/API modules"
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
   pinned_hashes: evidence/production-baseline-v32.json
-  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json, evidence/interaction-regression-v46-task0142.json]
+  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json, evidence/interaction-regression-v46-task0142.json, evidence/interaction-regression-v48-task0143-0144.json]
   transfer_audit: evidence/transfer-audit-v46.json
-  result: "V46 bounded source/contract regression verifies enabled applicable endpoints, independent boundary borders, left-first message priority and local Russian error copy."
+  result: "V48 bounded source/contract regression verifies the three-milestone bootstrap barrier, stale retry guard, sanitized error, unified range grouping, log/Auto projection and settled publication boundary."
 
 # Production already owns the document, boot sequence, UI modules and Plotly
 # hosts. Only the already-identical local icon inventory is copied directly;
@@ -238,6 +238,31 @@ additive_fragments:
     integration_points: [control_range_markup, renderField_range_state, numeric_and_unit_projection_results, settings_busy_state]
     invariants: [blank_auto_preserved, slider_state_does_not_disable, link_state_does_not_disable, pair_border_forbidden, row_border_forbidden]
     prototype_regression_not_transferable: prototype/task-0142-range-boundary-validation-regression.cjs
+  - id: task-0143-bootstrap-loader-styles
+    source: integration/css/task-0143-bootstrap-loader.css
+    target: public/css/app.css
+    mode: append_once_after_existing_app_status_and_loader_rules
+    content_changes_allowed: false
+    marker: "TASK-0143 global application bootstrap overlay"
+    scope: [existing_app_status_singleton, whole_application_pointer_block, existing_64px_spinner_tokens, rotating_reduced_motion, centered_sanitized_retry]
+  - id: task-0143-bootstrap-loader-ui
+    source: integration/js/task-0143-bootstrap-loader.js
+    target: public/js/app.js
+    mode: integrate_controller_definition_unchanged_before_existing_application_bootstrap
+    content_changes_allowed: false
+    marker: "TASK-0143 token-guarded bootstrap readiness lifecycle"
+    scope: [begin_before_state_lite, state_lite_accepted, active_display_settings_accepted, initial_render_committed, timeout_error_retry, stale_attempt_guard, inert_aria_busy]
+    integration_points: [existing_app_status_singleton, refreshSnapshot_initial_call, settings_load_initial_call, render_commit_requestAnimationFrame, bootstrap_retry_event]
+    prototype_bridge_not_transferable: prototype/task-0143-bootstrap-loader-bridge.js
+  - id: task-0144-synchronized-ranges-ui
+    source: integration/js/task-0144-synchronized-ranges.js
+    target: public/js/app.js
+    mode: integrate_helper_definition_unchanged_once_then_wire_existing_app_and_settings_consumers
+    content_changes_allowed: false
+    marker: "TASK-0144 synchronized pane and settings ranges"
+    scope: [area_screen_single_ranges_group, units_in_parameters, relayouting_live_projection, relayout_settle, settings_to_plot, linked_projection, log_coordinates, double_click_auto_reset, v46_validation_gate]
+    integration_points: [renderSettings, renderScreenSettings, public_js_settings_range_renderer, plotly_relayouting, plotly_relayout, screenRangeSlider, amplitude_slider, range_slider_double_click, serialized_settings_autosave]
+    prototype_regression_not_transferable: prototype/task-0143-0144-regression.cjs
 
 existing_assets_reused:
   - {path: public/icons/function.svg, use: signal-row-operation-action}
@@ -250,6 +275,14 @@ existing_assets_reused:
   - {path: public/icons/eye-off.svg, use: hidden-sample-calculated-column}
 
 integration_hosts:
+  application_bootstrap:
+    overlay_selector: ".app-status"
+    shell_selector: "[data-testid='app-shell']"
+    integration: "Keep one mounted status host. Begin before initial state-lite; accept only current-token state-lite with signals/displays/layout and current active-display settings; close after the matching first render commits. Required failure/20s timeout stays blocking with sanitized Retry. Pane outputs and secondary data are excluded."
+  synchronized_ranges:
+    settings_selector: "[data-settings-content] [data-settings-group$='ranges'], [data-settings-content] [data-screen-settings-group='ranges']"
+    plot_selector: "[data-pane-host]"
+    integration: "One active/clicked pane range projects between Plotly, in-plot sliders and Area/Screen fields/handles. relayouting is preview-only; relayout or settings commit settles once after 150ms through existing serialized autosave and eligible link queues."
   settings_tabs:
     selector: "[data-testid='settings-tabs']"
     integration: "public/js/app.js ensures one Signal tab immediately before [data-settings-page='display']; do not replace tablist."
@@ -319,6 +352,27 @@ integration_hosts:
     integration: "Append the signal-operation singleton on first use; reuse existing [data-value-select-popup] and modal stacking."
 
 integration_seams:
+  - id: application-bootstrap-readiness
+    action_interface: "begin one token before state-lite; accept current-token state-lite containing signal/display/layout inventory; accept active-display settings; after initial DOM render call commitInitialRender in requestAnimationFrame; only all three milestones dismiss"
+    production_consumers: [public/js/app.js]
+    production_providers: [public/js/api.js, public/js/settings.js]
+    controller: frontend-source/integration/js/task-0143-bootstrap-loader.js
+    styles: frontend-source/integration/css/task-0143-bootstrap-loader.css
+    hosts: [".app-status", "[data-testid='app-shell']"]
+    timeout_ms: 20000
+    excluded_from_barrier: [pane_outputs, signal_summary, signal_samples, measurements, extrema]
+    retry: "new token and full required bootstrap chain; stale completion ignored"
+    sanitized_error: "Не удалось загрузить данные анализатора. Проверьте соединение и повторите попытку."
+  - id: synchronized-pane-ranges
+    action_interface: "current pane Plotly/in-plot slider relayout => immediate selected-unit Area/Screen field and handle projection; valid settings edit => rAF-coalesced Plotly update; settled edge => one deduplicated serialized publish; links reuse existing eligible queues"
+    production_consumers: [public/js/app.js, public/js/settings.js]
+    helper: frontend-source/integration/js/task-0144-synchronized-ranges.js
+    hosts: ["[data-pane-host]", "[data-settings-content]"]
+    plot_types: [time, spectrum, spectrogram, persistence]
+    settings_groups: {parameters: axis_unit_fields, ranges: "single expanded user-collapsible Диапазоны group"}
+    settle_boundary: {preview_event: plotly_relayouting, terminal_event: plotly_relayout, debounce_ms: 150, serialized_autosave: true}
+    reset: "double-click settings range row/slider or matching in-plot slider clears both explicit intents and publishes one Auto/full-domain result"
+    validation: "TASK-0142 per-boundary validation gates preview/link/publish; invalid endpoints remain local only"
   - id: signal-membership-main
     action_interface: "row click => ensure active-pane membership ON then select that signal as main; direct checkbox => set active-pane membership only and never change main"
     production_consumers: [public/js/app.js]

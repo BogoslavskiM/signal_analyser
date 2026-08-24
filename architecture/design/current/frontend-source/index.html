@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Анализатор сигналов — design v46</title>
+  <title>Анализатор сигналов — design v48</title>
   <link rel="stylesheet" href="./css/theme.css">
   <link rel="stylesheet" href="./css/app-shell.css">
   <link rel="stylesheet" href="./css/components/value-select.css">
@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="./integration/css/task-0138-values-columns.css">
   <link rel="stylesheet" href="./integration/css/task-0139-loading-overlays.css">
   <link rel="stylesheet" href="./integration/css/task-0142-range-boundary-validation.css">
+  <link rel="stylesheet" href="./integration/css/task-0143-bootstrap-loader.css">
 </head>
 <body>
   <main id="app" class="app-shell" data-testid="app-shell" aria-label="Анализатор сигналов">
@@ -32,9 +33,15 @@
     </div>
     <div data-dialog-slot="signal-operation"></div>
   </main>
+  <footer class="app-status" aria-live="polite" hidden>
+    <div data-testid="app-loading" role="status" hidden><span data-loading-text>Загрузка данных…</span></div>
+    <div data-testid="app-error" role="alert" hidden><span data-error-text></span><button type="button" data-retry>Повторить</button></div>
+  </footer>
   <div id="value-select-popup" class="value-select-popup" data-value-select-popup data-testid="select-menu" hidden></div>
   <div id="sample-columns-menu" class="menu inspector-menu sample-columns-menu" role="menu" data-testid="sample-columns-menu" aria-label="Видимость столбцов значений сигнала" hidden></div>
   <script>window.SignalAnalyserUIDesign = window.SignalAnalyserUIDesign || { assetBase: "." };</script>
+  <script src="./integration/js/task-0143-bootstrap-loader.js"></script>
+  <script src="./integration/js/task-0144-synchronized-ranges.js"></script>
   <script src="./js/ui/loader.js"></script>
   <script src="./integration/js/task-0118-color-picker.js"></script>
   <script src="./integration/js/task-0119-context-and-samples-intent.js"></script>

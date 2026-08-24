@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140 / TASK-0141 / TASK-0142`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140 / TASK-0141 / TASK-0142 / TASK-0143 / TASK-0144`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `46`
+- Design version: `48`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V46 is the current integration-safe package for the accepted Signal Analyser
+V48 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -55,6 +55,12 @@ TASK-0130 graph-cursor extension:
 14. Every visible applicable Area/Screen range endpoint remains editable outside
     a true busy state. Min and Max validate independently with per-input red
     borders, one Min-first local Russian message and no raw internal error copy.
+15. One global bootstrap overlay blocks the application until accepted state-lite,
+    active-display settings and the first committed render are all ready; failures
+    become one sanitized Retry state. Pane outputs remain behind pane loaders.
+16. Plot relayout, in-plot sliders and Area/Screen `Диапазоны` controls share one
+    projected active-pane range, with linked-pane propagation, settled autosave
+    and double-click Auto reset.
 
 The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
 transaction implementation, Plotly payloads, sample API endpoint mechanics and
@@ -584,6 +590,39 @@ entry baseline or production transfer inputs.
 | Min fixed, Max still invalid | default | danger | Max reason | yes |
 | Current settings mutation busy | unchanged | unchanged | current validation message | no |
 | Truly inapplicable | not rendered | not rendered | none | not applicable |
+
+## Exact delta v46 → v48
+
+- Added one stable full-application bootstrap overlay over the existing shell.
+  It starts before the initial state request and closes only after: accepted
+  state-lite containing signals/displays/layout, accepted settings for the
+  active display, and a requestAnimationFrame-confirmed initial render.
+- Pane outputs, summaries, samples, measurements and extrema are excluded from
+  this global barrier and retain their existing local loading states.
+- Each 20-second attempt owns a token. Timeout or required-request failure shows
+  only `Не удалось загрузить данные анализатора. Проверьте соединение и повторите попытку.`
+  plus `Повторить`; retry creates a new token, so stale completions cannot close it.
+  The shell is inert and `aria-busy` while loading; the overlay is one continuous
+  node with polite status, assertive error and continuously rotating 64px spinner.
+- All Area/Screen limit controls for the current plot context are now children
+  of one expanded, user-collapsible `Диапазоны` group. Time and frequency unit
+  selectors live in `Параметры`; v46 per-endpoint validation is unchanged.
+- `plotly_relayouting` immediately projects the active/clicked pane viewport into
+  settings fields/handles without publication. `plotly_relayout`, settings
+  change/pointerup or keyboard commit starts one deduplicating 150ms settle; the
+  existing serialized autosave then publishes canonical seconds/Hz once.
+- Valid settings fields/sliders update the same plot at most once per animation
+  frame, then use the existing four link queues for eligible panes. Log-axis
+  Plotly exponents are decoded/encoded, never treated as linear values.
+- Double-click on a settings range row/slider or its in-plot slider clears both
+  explicit endpoint intents, applies Auto/full domain, synchronizes graph and
+  settings and publishes one settled Auto value. Invalid v46 boundaries do not
+  preview, link or publish.
+- Applied skills: `designer/designer-workflow` and
+  `designer/application-composition`. Existing range/settings/output patterns
+  were audited directly; visual-system, Figma, Engee Apps and page sizing were
+  skipped because no new tokens, component geometry, zone size or resize rule
+  was introduced. Figma reference status: `not_required`.
 
 ## Sources
 

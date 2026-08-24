@@ -91,7 +91,9 @@ function createPeaksHarness(responses) {
       updatePeaksSettings(payload) { calls.push(payload); return responses.shift().promise; },
       activePeaks() { return Promise.resolve({ state_revision:99, display_id:"display-1", pane_id:"pane-1", isready:true, success:true, data:{ signals:[], rows:[] } }); },
       activeOutput() { outputCalls.push(true); return Promise.resolve(); },
-      getState() { return Promise.resolve(snapshot(99)); }
+      // V48 starts bootstrap on module evaluation; this focused Peaks harness
+      // owns state through test.accept and must keep that independent chain idle.
+      getState() { return new Promise(() => {}); }
     },
     SignalAnalyserSettings: { setRevision() {}, setContext() {}, setView() {}, render() {}, state() { return { dirty:false, invalid:false, revision:1 }; }, load() { return Promise.resolve(); } },
     SignalAnalyserValueSelect: {

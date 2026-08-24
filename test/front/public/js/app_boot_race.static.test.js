@@ -13,9 +13,9 @@ module.exports = async function testAppBootRaceContracts(assert) {
   const accept = (app.match(/function accept\(snapshot\)[\s\S]*?\n  \}/) || [""])[0];
   assert(/settings\.setRevision\(r\)/.test(accept) && /activeDisplay\(\)/.test(accept) && /settings\.setContext\(display\.id, r\)/.test(accept), "accepted state-lite must establish the active Display settings context");
 
-  const boot = (app.match(/refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/) || [""])[0];
-  assert(/refreshSnapshot\(\)[\s\S]*?output\(true\);[\s\S]*?return settings\.load\(\)\.then[\s\S]*?\.catch\(showSettingsLoadError\)/.test(boot), "startup must request pane output before a settings-load failure is contained");
-  assert(!/settings\.load\(\)[\s\S]*?output\(true\)/.test(boot), "settings-load failure must not strand initial pane output");
+  const boot = (app.match(/function bootstrapAttempt\(token\)[\s\S]*?\n  \}/) || [""])[0];
+  assert(/api\.getState\(\)[\s\S]*?bootstrap\.acceptInitialState\(token\)[\s\S]*?return settings\.load\(\)[\s\S]*?bootstrap\.acceptActiveSettings\(token\)[\s\S]*?window\.requestAnimationFrame[\s\S]*?bootstrap\.commitInitialRender\(token\)[\s\S]*?output\(true\)/.test(boot), "bootstrap must retain one state-lite → active-settings → rAF-render barrier before requesting output");
+  assert(/function current\(\)[\s\S]*?state\.token === token && state\.phase === "loading"/.test(boot), "stale bootstrap completions must not mutate a newer attempt");
 
   assert(/function safeErrorText\(error, fallback\)/.test(app), "boot errors must be converted to typed display text");
   assert(/copy\.textContent\s*=\s*safeErrorText\(error, "Не удалось загрузить анализатор\."\)/.test(app), "bootstrap error copy must not stringify an error object");

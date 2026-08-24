@@ -7,10 +7,13 @@
   }
   function row(label, control, title) { return "<div class='settings-row'><label class='settings-label'" + (title ? " title='" + title + "'" : "") + ">" + label + "</label><div>" + control + "</div></div>"; }
   function check(id, label, checked) { return "<label class='checkbox-field'><input type='checkbox' data-setting-toggle='" + id + "' " + (checked ? "checked" : "") + "><span>" + label + "</span></label>"; }
+  function unitRow(kind) {
+    if (kind === "frequency") return row("Единицы частоты", "<select class='field'><option>auto</option><option>Гц</option><option selected>кГц</option><option>МГц</option></select>");
+    return row("Единицы времени", "<select class='field'><option>auto</option><option>с</option><option selected>мс</option><option>мкс</option><option>нс</option></select>");
+  }
   function limits(id, title, unit, min, max) {
-    var units = id.indexOf("frequency") >= 0 ? "<div class='range-unit-row'><span>Единицы</span><select class='field'><option>auto</option><option>Гц</option><option selected>кГц</option><option>МГц</option></select></div>" : id.indexOf("time") >= 0 ? "<div class='range-unit-row'><span>Единицы</span><select class='field'><option>auto</option><option>с</option><option selected>мс</option><option>мкс</option><option>нс</option></select></div>" : "";
     var canonical = id.indexOf("frequency") >= 0 ? "hertz" : id.indexOf("time") >= 0 ? "seconds" : "axis";
-    return group(id, title, "<div class='range-control' data-range-control='" + id + "' data-canonical-unit='" + canonical + "' data-projected-unit='" + unit + "'>" + units + "<div class='range-fields' data-range-boundary-validation><input class='field' type='text' inputmode='decimal' placeholder='Мин.' value='" + (min || "") + "' aria-label='Минимум' aria-invalid='false' data-range-part='min'" + noHistory + "><input class='field' type='text' inputmode='decimal' placeholder='Макс.' value='" + (max || "") + "' aria-label='Максимум' aria-invalid='false' data-range-part='max'" + noHistory + "></div><small class='range-boundary-message' role='alert' data-range-boundary-message hidden></small><div class='range-slider' role='group' aria-label='" + title + "'><i class='range-slider-track'></i><i class='range-slider-fill'></i><button class='range-slider-thumb min' type='button' role='slider' aria-label='Минимум'></button><button class='range-slider-thumb max' type='button' role='slider' aria-label='Максимум'></button></div><div class='range-caption'><span>полный диапазон</span><span>" + unit + "</span></div></div>");
+    return "<div class='range-control' data-range-control='" + id + "' data-range-reset='double-click' data-canonical-unit='" + canonical + "' data-projected-unit='" + unit + "'><div class='settings-row range-control-label'><span class='settings-label'>" + title + "</span></div><div class='range-fields' data-range-boundary-validation><input class='field' type='text' inputmode='decimal' placeholder='Мин.' value='" + (min || "") + "' aria-label='Минимум' aria-invalid='false' data-range-part='min'" + noHistory + "><input class='field' type='text' inputmode='decimal' placeholder='Макс.' value='" + (max || "") + "' aria-label='Максимум' aria-invalid='false' data-range-part='max'" + noHistory + "></div><small class='range-boundary-message' role='alert' data-range-boundary-message hidden></small><div class='range-slider' role='group' aria-label='" + title + "'><i class='range-slider-track'></i><i class='range-slider-fill'></i><button class='range-slider-thumb min' type='button' role='slider' aria-label='Минимум'></button><button class='range-slider-thumb max' type='button' role='slider' aria-label='Максимум'></button></div><div class='range-caption'><span>полный диапазон</span><span>" + unit + "</span></div></div>";
   }
   function signalPage(state) {
     var s = state.signal;
@@ -30,26 +33,32 @@
   function areaPage(state, pane) {
     var spectrum = pane.type === "spectrum";
     var main = row("Имя области", "<input class='field' data-dirty-input data-pane-name value='" + esc(pane.name) + "'" + noHistory + ">") + row("Тип графика", "<select class='field'><option>" + (spectrum ? "Спектр" : "Временная область") + "</option></select>");
-    var params = row("Показывать легенду", check("legend", "", true)) + (spectrum ? row("Слайдер частоты", check("frequencySlider", "", pane.frequencySlider)) + row("Слайдер магнитуды", check("magnitudeSlider", "", pane.magnitudeSlider)) : row("Слайдер диапазона", check("timeSlider", "", true)) + row("Слайдер амплитуды", check("amplitudeSlider", "", true)));
+    var params = row("Показывать легенду", check("legend", "", true)) + (spectrum ? unitRow("frequency") + row("Слайдер частоты", check("frequencySlider", "", pane.frequencySlider)) + row("Слайдер магнитуды", check("magnitudeSlider", "", pane.magnitudeSlider)) : unitRow("time") + row("Слайдер диапазона", check("timeSlider", "", true)) + row("Слайдер амплитуды", check("amplitudeSlider", "", true)));
     var result = group("area-main", "Основное", main) + group("area-params", "Параметры", params);
+    var rangeBody="";
     if (spectrum) {
-      if (!state.links.spectrumFrequency) result += limits("area-frequency", "Пределы частоты", "кГц", "", "");
-      if (!state.links.spectrumMagnitude) result += limits("area-magnitude", "Пределы магнитуды", "dB", "−120", "");
+      if (!state.links.spectrumFrequency) rangeBody += limits("area-frequency", "Пределы частоты", "кГц", "", "");
+      if (!state.links.spectrumMagnitude) rangeBody += limits("area-magnitude", "Пределы магнитуды", "dB", "−120", "");
+      if (rangeBody) result += group("area-ranges", "Диапазоны", rangeBody);
       result += group("spectrum-analysis", "Спектральный анализ", row("Шкала", "<select class='field'><option>Децибелы</option><option>Линейная</option></select>") + row("Частотная шкала", "<select class='field'><option>Линейная</option><option>Логарифмическая</option></select>") + row("Окно", "<select class='field'><option>Хэнна</option><option>Хэмминга</option><option>Блэкмана</option></select>") + row("Точки DFT", "<input class='field' type='number' value='4096'>") + row("Перекрытие", "<div class='unit-control'><input class='field' type='number' value='50'><span class='unit'>%</span></div>"), true);
     } else {
-      if (!state.links.time) result += limits("area-time", "Пределы времени", "мс", "", "");
-      if (!state.links.amplitude) result += limits("area-amplitude", "Пределы амплитуды", "", "−1", "1");
+      if (!state.links.time) rangeBody += limits("area-time", "Пределы времени", "мс", "", "");
+      if (!state.links.amplitude) rangeBody += limits("area-amplitude", "Пределы амплитуды", "", "−1", "1");
+      if (rangeBody) result += group("area-ranges", "Диапазоны", rangeBody);
     }
     return result;
   }
   function screenPage(state, display) {
     var main = row("Имя экрана", "<input class='field' data-dirty-input data-display-name value='" + esc(display.name) + "'" + noHistory + ">");
     var links = row("Связать время", check("time", "", state.links.time)) + row("Связать амплитуду", check("amplitude", "", state.links.amplitude)) + row("Связать частоты спектров", check("spectrumFrequency", "", state.links.spectrumFrequency), "Связать частоты спектров") + row("Связать магнитуды спектров", check("spectrumMagnitude", "", state.links.spectrumMagnitude), "Связать магнитуды спектров");
-    var result = group("screen-main", "Основное", main) + group("layout", "Макет", "<div class='settings-row'><span class='settings-label'>Строки × столбцы</span><button class='field' type='button'>1 × 2</button></div>", true) + group("screen-links", "Связь областей", links);
-    if (state.links.time) result += limits("screen-time", "Пределы времени", "мс", "", "");
-    if (state.links.amplitude) result += limits("screen-amplitude", "Пределы амплитуды", "", "−1", "1");
-    if (state.links.spectrumFrequency) result += limits("screen-frequency", "Пределы частоты", "кГц", "0", "800");
-    if (state.links.spectrumMagnitude) result += limits("screen-magnitude", "Пределы магнитуды", "dB", "−120", "");
+    var units=(state.links.time ? unitRow("time") : "") + (state.links.spectrumFrequency ? unitRow("frequency") : "");
+    var result = group("screen-main", "Основное", main) + group("layout", "Макет", "<div class='settings-row'><span class='settings-label'>Строки × столбцы</span><button class='field' type='button'>1 × 2</button></div>", true) + (units ? group("screen-params", "Параметры", units) : "") + group("screen-links", "Связь областей", links);
+    var rangeBody="";
+    if (state.links.time) rangeBody += limits("screen-time", "Пределы времени", "мс", "", "");
+    if (state.links.amplitude) rangeBody += limits("screen-amplitude", "Пределы амплитуды", "", "−1", "1");
+    if (state.links.spectrumFrequency) rangeBody += limits("screen-frequency", "Пределы частоты", "кГц", "0", "800");
+    if (state.links.spectrumMagnitude) rangeBody += limits("screen-magnitude", "Пределы магнитуды", "dB", "−120", "");
+    if (rangeBody) result += group("screen-ranges", "Диапазоны", rangeBody);
     return result;
   }
   function peaksPage() {

@@ -48,6 +48,9 @@
         ]
       });
     },
+    getActiveSettings: function (displayId) {
+      return Promise.resolve({ displayId:displayId, stateRevision:30, accepted:true });
+    },
     onApply: function () { return new Promise(function (resolve) { window.setTimeout(resolve, 260); }); },
     onOperation: function (payload) { return new Promise(function (resolve, reject) { window.setTimeout(function () { if (payload && /missing_variable/.test(payload.body || "")) reject(new Error("Engee: имя missing_variable не определено.")); else resolve(); }, 620); }); }
   };

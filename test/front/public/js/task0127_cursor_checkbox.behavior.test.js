@@ -9,7 +9,7 @@ function settle() {
 }
 
 function task0126Source(source) {
-  const split = source.indexOf("\n\n(function signalAnalyserApp");
+  const split = source.indexOf("\n\n(function registerSignalAnalyserBootstrapLoading");
   return source.slice(0, split);
 }
 

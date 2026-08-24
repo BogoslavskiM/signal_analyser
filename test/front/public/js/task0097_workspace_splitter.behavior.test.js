@@ -60,7 +60,7 @@ function createSplitterHarness() {
     head: { appendChild() {} }
   };
   const window = {
-    SignalAnalyserApi: new Proxy({}, { get(_target, property) { return function () { apiCalls.push(property); return Promise.resolve(); }; } }),
+    SignalAnalyserApi: new Proxy({}, { get(_target, property) { return property === "getState" ? function () { return new Promise(() => {}); } : function () { apiCalls.push(property); return Promise.resolve(); }; } }),
     SignalAnalyserSettings: { setRevision() {}, setContext() {}, setView() {}, render() {}, state() { return { dirty:false, invalid:false }; }, load() { return Promise.resolve(); } },
     Plotly: { relayout(host, update) { if (host.throwOnRelayout) throw new Error("relayout failed"); relayoutCalls.push({ host, update }); return host.rejectRelayout ? Promise.reject(new Error("relayout rejected")) : Promise.resolve(); } },
     getComputedStyle(host) { return host.style || { display:"block", visibility:"visible" }; },

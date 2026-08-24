@@ -17,6 +17,7 @@ function createHarness(useIdleCallback) {
   const root = path.resolve(__dirname, "../../../..");
   let source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
+  source = source.replace("bootstrapAttempt(bootstrapController.begin({ timeoutMs:bootstrapController.DEFAULT_TIMEOUT_MS }));", "");
   source = source.replace(
     "})(window, document);",
     "window.__plotlyIdleTest = { model:model, load:loadPlotly, schedule:schedulePlotlyIdlePreload, markup:outputMarkup }; })(window, document);"
@@ -75,10 +76,10 @@ module.exports = async function testTask0099PlotlyIdlePreload(assert) {
   const root = path.resolve(__dirname, "../../../..");
   const source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   const scheduler = (source.match(/function schedulePlotlyIdlePreload\(\)[\s\S]*?\n  \}/) || [""])[0];
-  const bootstrap = (source.match(/refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/) || [""])[0];
+  const bootstrap = (source.match(/function bootstrapAttempt\(token\)[\s\S]*?\n  \}/) || [""])[0];
   assert(/requestIdleCallback\(preload, \{ timeout:1500 \}\)/.test(scheduler), "idle preload must use requestIdleCallback with the exact 1500 ms timeout");
   assert(/else window\.setTimeout\(preload, 1000\)/.test(scheduler), "idle preload must retain the exact 1000 ms timer fallback");
-  assert(/settings\.load\(\)[\s\S]*?\.catch\(showSettingsLoadError\)\.then\(schedulePlotlyIdlePreload\)/.test(bootstrap), "preload scheduling must occur only after the bootstrap state and settings chain settles");
+  assert(/settings\.load\(\)[\s\S]*?bootstrap\.acceptActiveSettings\(token\)[\s\S]*?window\.requestAnimationFrame[\s\S]*?bootstrap\.commitInitialRender\(token\)[\s\S]*?schedulePlotlyIdlePreload\(\)/.test(bootstrap), "preload scheduling must occur only after accepted state/settings and the initial rAF render barrier");
   assert(!/Plotly\.(?:react|newPlot|relayout)|enqueuePlot|fetchPaneOutput|activeOutput|settings\.|api\./.test(scheduler), "the scheduler must only invoke the existing Plotly loader and must not render, fetch or mutate application settings");
 
   const idle = createHarness(true);

@@ -3715,3 +3715,92 @@ body {
   grid-column: 1 / -1;
   margin: -4px 0 8px;
 }
+/* TASK-0143: one blocking application bootstrap surface. The host is the
+   existing .app-status node; it remains mounted for loading, error and retry. */
+.app-status[data-bootstrap-active="true"] {
+  position: fixed;
+  inset: 0;
+  z-index: var(--layer-critical, var(--z-loader, 98000));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(248, 250, 251, 0.9);
+  pointer-events: all;
+  cursor: wait;
+}
+
+.app-status[data-bootstrap-phase="error"] {
+  cursor: default;
+}
+
+.app-status[data-bootstrap-active="true"] > [data-testid="app-loading"],
+.app-status[data-bootstrap-active="true"] > [data-testid="app-error"] {
+  min-width: 280px;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+  text-align: center;
+}
+
+.app-bootstrap-spinner {
+  box-sizing: border-box;
+  width: 64px;
+  height: 64px;
+  display: block;
+  border: 5px solid rgba(27, 132, 184, 0.22);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  transform-origin: 50% 50%;
+  animation: loader-rotate 800ms linear infinite;
+}
+
+.app-status [data-loading-text] {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.app-status [data-testid="app-error"] {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius, 8px);
+  background: var(--surface);
+  box-shadow: var(--shadow-dialog);
+}
+
+.app-status [data-error-text] {
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.app-status [data-retry] {
+  min-width: 96px;
+  height: 32px;
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--surface);
+  cursor: pointer;
+}
+
+.app-status [data-retry]:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+.app-status [data-retry]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-bootstrap-spinner {
+    animation: loader-rotate 1600ms linear infinite;
+  }
+}

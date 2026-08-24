@@ -68,6 +68,259 @@
   };
 }());
 
+(function registerSignalAnalyserBootstrapLoading(window, document) {
+  "use strict";
+
+  var DEFAULT_TIMEOUT_MS=20000;
+  var sequence=0;
+  var current=null;
+  var timer=null;
+  var retryBound=false;
+
+  function query(selector) { return document.querySelector(selector); }
+  function hostNodes() {
+    var host=query(".app-status"), shell=query("[data-testid='app-shell']"), loading=query("[data-testid='app-loading']"), error=query("[data-testid='app-error']"), retry=query("[data-retry]");
+    if (!host || !shell || !loading || !error || !retry) return null;
+    var spinner=loading.querySelector(".app-bootstrap-spinner");
+    if (!spinner) {
+      spinner=document.createElement("span");
+      spinner.className="app-bootstrap-spinner";
+      spinner.dataset.testid="app-bootstrap-spinner";
+      spinner.setAttribute("aria-hidden","true");
+      loading.insertBefore(spinner,loading.firstChild);
+    }
+    loading.setAttribute("aria-live","polite");
+    loading.setAttribute("aria-atomic","true");
+    error.setAttribute("aria-live","assertive");
+    error.setAttribute("aria-atomic","true");
+    return {host:host,shell:shell,loading:loading,error:error,retry:retry};
+  }
+  function matches(token) { return !!current && String(token || "") === current.token; }
+  function setShellBlocked(nodes,blocked,busy) {
+    nodes.shell.inert=!!blocked;
+    if (busy) nodes.shell.setAttribute("aria-busy","true");
+    else nodes.shell.removeAttribute("aria-busy");
+  }
+  function project(phase) {
+    var nodes=hostNodes();
+    if (!nodes) return false;
+    var active=phase === "loading" || phase === "error";
+    nodes.host.hidden=!active;
+    nodes.host.dataset.bootstrapActive=String(active);
+    nodes.host.dataset.bootstrapPhase=phase;
+    nodes.loading.hidden=phase !== "loading";
+    nodes.error.hidden=phase !== "error";
+    setShellBlocked(nodes,active,phase === "loading");
+    var loadingText=nodes.loading.querySelector("[data-loading-text]");
+    if (loadingText) loadingText.textContent="Загрузка данных…";
+    var errorText=nodes.error.querySelector("[data-error-text]");
+    if (errorText) errorText.textContent="Не удалось загрузить данные анализатора. Проверьте соединение и повторите попытку.";
+    if (phase === "error" && window.requestAnimationFrame) window.requestAnimationFrame(function () { if (!nodes.retry.hidden && nodes.retry.isConnected) nodes.retry.focus(); });
+    return true;
+  }
+  function clearTimer() { if (timer != null) window.clearTimeout(timer); timer=null; }
+  function finishIfReady(token) {
+    if (!matches(token) || !current.stateAccepted || !current.settingsAccepted || !current.renderCommitted) return false;
+    clearTimer();
+    current.phase="ready";
+    project("ready");
+    return true;
+  }
+  function milestone(token,name) {
+    if (!matches(token) || current.phase !== "loading") return false;
+    current[name]=true;
+    finishIfReady(token);
+    return true;
+  }
+  function fail(token,reason) {
+    if (!matches(token) || current.phase !== "loading") return false;
+    clearTimer();
+    current.phase="error";
+    current.failure=reason === "timeout" ? "timeout" : "request";
+    project("error");
+    return true;
+  }
+  function begin(options) {
+    clearTimer();
+    sequence+=1;
+    current={token:"bootstrap-"+String(sequence),phase:"loading",stateAccepted:false,settingsAccepted:false,renderCommitted:false,failure:""};
+    project("loading");
+    var timeout=Number(options && options.timeoutMs);
+    if (!Number.isFinite(timeout) || timeout <= 0) timeout=DEFAULT_TIMEOUT_MS;
+    var token=current.token;
+    timer=window.setTimeout(function () { fail(token,"timeout"); },timeout);
+    return token;
+  }
+  function retry() {
+    var token=begin();
+    var detail={token:token};
+    if (typeof window.CustomEvent === "function") window.dispatchEvent(new window.CustomEvent("signal-analyser:bootstrap-retry",{detail:detail}));
+    return token;
+  }
+  function bindRetry() {
+    if (retryBound) return;
+    var nodes=hostNodes();
+    if (!nodes) return;
+    nodes.retry.addEventListener("click",retry);
+    retryBound=true;
+  }
+  function state() {
+    return current ? {token:current.token,phase:current.phase,stateAccepted:current.stateAccepted,settingsAccepted:current.settingsAccepted,renderCommitted:current.renderCommitted,failure:current.failure} : null;
+  }
+
+  bindRetry();
+  window.SignalAnalyserBootstrapLoading={
+    begin:begin,
+    acceptInitialState:function (token) { return milestone(token,"stateAccepted"); },
+    acceptActiveSettings:function (token) { return milestone(token,"settingsAccepted"); },
+    commitInitialRender:function (token) { return milestone(token,"renderCommitted"); },
+    fail:fail,
+    retry:retry,
+    state:state,
+    DEFAULT_TIMEOUT_MS:DEFAULT_TIMEOUT_MS,
+    requiredMilestones:["accepted-state-lite-with-signals-displays-layout","accepted-active-display-settings","committed-initial-render"],
+    excludedFromBarrier:["pane-outputs","signal-summary","signal-samples","measurements","extrema"],
+    sanitizedError:"Не удалось загрузить данные анализатора. Проверьте соединение и повторите попытку."
+  };
+}(window,document));
+
+(function registerSignalAnalyserSynchronizedRanges(window) {
+  "use strict";
+
+  var UNIT_TO_CANONICAL={
+    seconds:1,milliseconds:1e-3,microseconds:1e-6,nanoseconds:1e-9,
+    hertz:1,kilohertz:1e3,megahertz:1e6,gigahertz:1e9,
+    db:1,linear:1,percent:1
+  };
+  var INVENTORY={
+    time:[
+      {fieldId:"time.x_limits",unitField:"time.units",axis:"xaxis",kind:"time",link:"time"},
+      {fieldId:"time.y_limits",axis:"yaxis",kind:"amplitude",link:"amplitude"}
+    ],
+    spectrum:[
+      {fieldId:"spectrum.frequency_limits",unitField:"spectrum.frequency_units",axis:"xaxis",kind:"frequency",link:"frequency",plotScaleField:"spectrum.frequency_scale"},
+      {fieldId:"spectrum.y_limits",axis:"yaxis",kind:"magnitude",link:"magnitude"}
+    ],
+    spectrogram:[
+      {fieldId:"time.x_limits",unitField:"spectrogram.time_units",axis:"xaxis",kind:"time",link:"time"},
+      {fieldId:"spectrogram.frequency_limits",unitField:"spectrogram.frequency_units",axis:"yaxis",kind:"frequency"},
+      {fieldId:"spectrogram.power_limits",axis:"zaxis",kind:"power"}
+    ],
+    persistence:[
+      {fieldId:"persistence.frequency_limits",unitField:"persistence.frequency_units",axis:"xaxis",kind:"frequency",link:"frequency",plotScaleField:"persistence.frequency_scale"},
+      {fieldId:"persistence.power_limits",axis:"yaxis",kind:"power",link:"magnitude"},
+      {fieldId:"persistence.density_limits",axis:"zaxis",kind:"density"}
+    ]
+  };
+
+  function cleanType(value) {
+    value=String(value || "").toLowerCase();
+    if (/spectrogram|спектрограмм/.test(value)) return "spectrogram";
+    if (/persistence|персистент/.test(value)) return "persistence";
+    if (/spectrum|спектр/.test(value)) return "spectrum";
+    if (/time|временн/.test(value)) return "time";
+    return value;
+  }
+  function descriptors(plotType) { return (INVENTORY[cleanType(plotType)] || []).map(function (item) { return Object.assign({},item); }); }
+  function unitFactor(unit) { return UNIT_TO_CANONICAL[String(unit || "linear").toLowerCase()] || 1; }
+  function finiteRange(values) {
+    if (!Array.isArray(values) || values.length !== 2) return null;
+    values=values.map(Number);
+    return Number.isFinite(values[0]) && Number.isFinite(values[1]) && values[0] !== values[1] ? values : null;
+  }
+  function relayoutRange(eventData,axis) {
+    eventData=eventData || {};
+    if (eventData[axis+".autorange"] === true) return {auto:true,range:null};
+    var direct=finiteRange(eventData[axis+".range"]);
+    var split=finiteRange([eventData[axis+".range[0]"],eventData[axis+".range[1]"]]);
+    var range=direct || split;
+    return range ? {auto:false,range:range} : null;
+  }
+  function plotlyToProjected(range,options) {
+    var result=finiteRange(range);
+    if (!result) return null;
+    var log=String(options && options.axisScale || "linear").toLowerCase() === "log";
+    var factor=unitFactor(options && options.unit);
+    return result.map(function (coordinate) { var displayed=log ? Math.pow(10,coordinate) : coordinate; return displayed; }).map(function (displayed) { return displayed; });
+  }
+  function projectedToPlotly(range,options) {
+    var result=finiteRange(range);
+    if (!result) return null;
+    var log=String(options && options.axisScale || "linear").toLowerCase() === "log";
+    if (log && result.some(function (value) { return !(value > 0); })) return null;
+    return result.map(function (displayed) { return log ? Math.log10(displayed) : displayed; });
+  }
+  function projectedToCanonical(range,unit) {
+    var result=finiteRange(range), factor=unitFactor(unit);
+    return result && result.map(function (value) { return value * factor; });
+  }
+  function canonicalToProjected(range,unit) {
+    var result=finiteRange(range), factor=unitFactor(unit);
+    return result && result.map(function (value) { return value / factor; });
+  }
+  function settingsProjection(eventData,descriptor,options) {
+    var selected=relayoutRange(eventData,descriptor.axis);
+    if (!selected) return null;
+    if (selected.auto) return {fieldId:descriptor.fieldId,mode:"auto",min:null,max:null,explicitIntent:false};
+    var projected=plotlyToProjected(selected.range,options);
+    return projected ? {fieldId:descriptor.fieldId,mode:"explicit",min:projected[0],max:projected[1],explicitIntent:true} : null;
+  }
+  function plotlyProjection(range,descriptor,options) {
+    if (!range || range.auto || range.min == null && range.max == null) {
+      var automatic={}; automatic[descriptor.axis+".autorange"]=true;
+      if (descriptor.axis === "xaxis") automatic["xaxis.rangeslider.autorange"]=true;
+      return automatic;
+    }
+    var projected=projectedToPlotly([range.min,range.max],options);
+    if (!projected) return null;
+    var update={};
+    update[descriptor.axis+".range[0]"]=projected[0];
+    update[descriptor.axis+".range[1]"]=projected[1];
+    update[descriptor.axis+".autorange"]=false;
+    if (descriptor.axis === "xaxis") {
+      update["xaxis.rangeslider.range"]=projected.slice();
+      update["xaxis.rangeslider.autorange"]=false;
+    }
+    return update;
+  }
+  function grouping(plotType) {
+    var items=descriptors(plotType), units=[];
+    items.forEach(function (item) { if (item.unitField && units.indexOf(item.unitField) < 0) units.push(item.unitField); });
+    return {parameters:{title:"Параметры",unitFields:units},ranges:{title:"Диапазоны",collapsible:true,initialExpanded:true,fields:items.map(function (item) { return item.fieldId; })}};
+  }
+  function createSettler(callback,delay) {
+    var timer=null,lastKey="";
+    return {
+      preview:function (payload) { if (callback && callback.preview) callback.preview(payload); },
+      settle:function (payload) {
+        if (timer != null) window.clearTimeout(timer);
+        var key=JSON.stringify(payload || null);
+        timer=window.setTimeout(function () { timer=null; if (key === lastKey) return; lastKey=key; if (callback && callback.publish) callback.publish(payload); },Number(delay) || 150);
+      },
+      cancel:function () { if (timer != null) window.clearTimeout(timer); timer=null; }
+    };
+  }
+
+  window.SignalAnalyserSynchronizedRanges={
+    descriptors:descriptors,
+    grouping:grouping,
+    relayoutRange:relayoutRange,
+    settingsProjection:settingsProjection,
+    plotlyProjection:plotlyProjection,
+    projectedToCanonical:projectedToCanonical,
+    canonicalToProjected:canonicalToProjected,
+    createSettler:createSettler,
+    settleDelayMs:150,
+    contract:{
+      liveProjection:"plotly_relayouting updates current Area fields and handles immediately without publication; slider input updates Plotly at most once per animation frame",
+      settleBoundary:"plotly_relayout and settings change/pointerup/keyboard commit start one 150ms deduplicating settle, then the existing serialized autosave publishes canonical values once",
+      linkedProjection:"after the source pane projection, existing time/amplitude/frequency/magnitude link queues apply the same canonical interval only to eligible panes",
+      reset:"double click any range row or its settings/in-plot slider clears both explicit endpoint intents, requests axis autorange/full domain, synchronizes graph/settings and publishes one settled Auto value",
+      validation:"v46 per-endpoint validation runs before graph preview or publication; an invalid endpoint changes neither plot nor linked panes"
+    }
+  };
+}(window));
+
 (function signalAnalyserApp(window, document) {
   "use strict";
 
@@ -95,7 +348,7 @@
     sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
     signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
-    signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{},
+    signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{}, synchronizedRangeSettlers:{}, synchronizedRangeFrame:null, synchronizedSettingsFrame:null, synchronizedRangePending:{}, synchronizedRangeSuppressByPane:{},
     signalSamples: { signalId:"", signalName:"", token:0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null, search:null }, error:"", searchValue:"", searchState:"", searchMessage:"" },
     sampleColumnsVisibility:null, sampleColumnsMenuTrigger:null,
     scopedLoadingSequence:0, scopedPaneLoads:{}, scopedLayoutLoad:null,
@@ -108,6 +361,7 @@
   function scopedLoadingController() { return window.SignalAnalyserScopedLoading || null; }
   function plotAutoscaleController() { return window.SignalAnalyserPlotAutoscale || null; }
   function task0141Controller() { return window.SignalAnalyserTask0141 || null; }
+  function synchronizedRangeController() { return window.SignalAnalyserSynchronizedRanges || null; }
   function plotOutputIdentity(pane, record) {
     return [pane && pane.plot_type || "", record && record.context_key || "", record && record.calculation_revision == null ? "" : record.calculation_revision].join("::");
   }
@@ -920,6 +1174,12 @@
     model.measurementsRecord = null; model.measurementsToken += 1;
     model.layoutDraft = null;
     model.rangeBoundaryIntents = {};
+    Object.keys(model.synchronizedRangeSettlers).forEach(function (key) { model.synchronizedRangeSettlers[key].cancel(); });
+    model.synchronizedRangeSettlers={}; model.synchronizedRangePending={}; model.synchronizedRangeSuppressByPane={};
+    if (model.synchronizedRangeFrame !== null) window.cancelAnimationFrame(model.synchronizedRangeFrame);
+    model.synchronizedRangeFrame=null;
+    if (model.synchronizedSettingsFrame !== null) window.cancelAnimationFrame(model.synchronizedSettingsFrame);
+    model.synchronizedSettingsFrame=null;
   }
   function refreshImportedSession() {
     clearSessionTransientState();
@@ -1512,6 +1772,95 @@
     return true;
   }
 
+  function synchronizedRangeOptions(descriptor) {
+    return {
+      unit:descriptor.unitField ? settings.value(descriptor.unitField) : descriptor.kind === "density" ? "percent" : "linear",
+      axisScale:descriptor.plotScaleField ? settings.value(descriptor.plotScaleField) : "linear"
+    };
+  }
+
+  function synchronizedRangeRaw(projection) {
+    return { min:projection && projection.min != null ? String(Number(Number(projection.min).toPrecision(12))) : "", max:projection && projection.max != null ? String(Number(Number(projection.max).toPrecision(12))) : "" };
+  }
+
+  function scheduleSynchronizedSettingsRender() {
+    if (model.synchronizedSettingsFrame !== null) return;
+    model.synchronizedSettingsFrame=window.requestAnimationFrame(function () {
+      model.synchronizedSettingsFrame=null;
+      if (activeDisplay()) renderSettings(activeDisplay());
+    });
+  }
+
+  function projectPlotRangeToSettings(displayId, paneId, eventData, terminal) {
+    var helper=synchronizedRangeController(), pane=paneById(paneId);
+    if (!helper || !pane || model.activePane !== paneId || !activeDisplay() || activeDisplay().id !== displayId) return;
+    helper.descriptors(pane.plot_type).forEach(function (descriptor) {
+      var projection=helper.settingsProjection(eventData, descriptor, synchronizedRangeOptions(descriptor));
+      if (!projection) return;
+      var key=paneRuntimeKey(displayId,paneId)+"::"+descriptor.fieldId;
+      var settler=model.synchronizedRangeSettlers[key];
+      if (!settler) settler=model.synchronizedRangeSettlers[key]=helper.createSettler({
+        preview:function (value) {
+          var raw=synchronizedRangeRaw(value);
+          rememberRangeBoundaryIntent(value.fieldId,"min",raw.min);
+          rememberRangeBoundaryIntent(value.fieldId,"max",raw.max);
+          if (typeof settings.previewRange === "function") settings.previewRange(value.fieldId,raw);
+          scheduleSynchronizedSettingsRender();
+        },
+        publish:function (value) {
+          var raw=synchronizedRangeRaw(value);
+          rememberRangeBoundaryIntent(value.fieldId,"min",raw.min);
+          rememberRangeBoundaryIntent(value.fieldId,"max",raw.max);
+          if (typeof settings.publishRange === "function") settings.publishRange(value.fieldId,raw).catch(function () {});
+        }
+      },helper.settleDelayMs);
+      settler.preview(projection);
+      if (terminal) settler.settle(projection);
+    });
+  }
+
+  function rangeAxisDomain(descriptor) {
+    var axis={time:"time",amplitude:"amplitude",frequency:"frequency",magnitude:"magnitude",power:"power",density:"density"}[descriptor.kind] || descriptor.kind;
+    return screenRangeDomain(axis,screenDraftFor(activeDisplay()));
+  }
+
+  function settleSettingsRange(detail,display) {
+    var helper=synchronizedRangeController(), value=detail && detail.value || {}, key="settings::"+display.id+"::"+detail.field_id;
+    var settler=model.synchronizedRangeSettlers[key];
+    if (!settler) settler=model.synchronizedRangeSettlers[key]=helper.createSettler({ publish:function (payload) { if (typeof settings.publishRange === "function") settings.publishRange(payload.fieldId,payload.raw).catch(function () {}); } },helper.settleDelayMs);
+    settler.settle({fieldId:detail.field_id,raw:{min:value.min == null ? "" : String(value.min),max:value.max == null ? "" : String(value.max)}});
+  }
+
+  function queueSettingsRangeToPlot(detail) {
+    if (!detail || detail.source === "plot") return;
+    var helper=synchronizedRangeController(), display=activeDisplay(), pane=paneById(model.activePane);
+    if (!helper || !display || !pane) return;
+    var descriptor=helper.descriptors(pane.plot_type).filter(function (item) { return item.fieldId === detail.field_id; })[0];
+    if (!descriptor) return;
+    var value=detail.value, domain=rangeAxisDomain(descriptor), range;
+    if (!value || value.min == null && value.max == null) range={auto:true,min:null,max:null};
+    else range={auto:false,min:value.min == null && domain ? domain[0] : value.min,max:value.max == null && domain ? domain[1] : value.max};
+    var update=helper.plotlyProjection(range,descriptor,synchronizedRangeOptions(descriptor));
+    if (!update) return;
+    settleSettingsRange(detail,display);
+    var runtimeKey=paneRuntimeKey(display.id,pane.id);
+    var liveHost=q("[data-pane-host='"+CSS.escape(runtimeKey)+"']"), livePlotly=window.Plotly;
+    if (!liveHost || liveHost.dataset.plotReady !== "true" || !livePlotly || typeof livePlotly.relayout !== "function") return;
+    model.synchronizedRangePending[runtimeKey]=Object.assign(model.synchronizedRangePending[runtimeKey] || {},update);
+    if (model.synchronizedRangeFrame !== null) return;
+    model.synchronizedRangeFrame=window.requestAnimationFrame(function () {
+      model.synchronizedRangeFrame=null;
+      var pending=model.synchronizedRangePending; model.synchronizedRangePending={};
+      Object.keys(pending).forEach(function (key) {
+        var host=q("[data-pane-host='"+CSS.escape(key)+"']"), Plotly=window.Plotly;
+        if (!host || !Plotly || typeof Plotly.relayout !== "function") return;
+        model.synchronizedRangeSuppressByPane[key]=true;
+        try { Promise.resolve(Plotly.relayout(host,pending[key])).catch(function () {}).finally(function () { delete model.synchronizedRangeSuppressByPane[key]; }); }
+        catch (_) { delete model.synchronizedRangeSuppressByPane[key]; }
+      });
+    });
+  }
+
   function bindLinkedTimeHost(host, displayId, paneId) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
     if (!host || typeof host.on !== "function" || host.dataset.axisLinkBound === runtimeKey) return;
@@ -1575,7 +1924,8 @@
       host.addEventListener("pointerup", finishZoomGesture, true);
       host.addEventListener("pointercancel", finishZoomGesture, true);
     }
-    var handler = function (eventData) {
+    var handler = function (eventData, terminal) {
+      if (!model.synchronizedRangeSuppressByPane[runtimeKey]) projectPlotRangeToSettings(displayId,paneId,eventData,terminal);
       if (!model.axisLinkSuppressByPane[runtimeKey]) {
         if (queueLinkedTimeRelayout(displayId, paneId, eventData) && zoomGesture) zoomGesture.propagated = true;
         if (queueLinkedSpectralRelayout(displayId, paneId, eventData) && zoomGesture) zoomGesture.propagated = true;
@@ -1596,8 +1946,8 @@
         Promise.resolve(Plotly.relayout(host, correction)).catch(function () { /* Keep one full-range adjustment pane-local. */ }).finally(function () { delete model.rangeSliderAdjustByPane[runtimeKey]; });
       } catch (_) { delete model.rangeSliderAdjustByPane[runtimeKey]; }
     };
-    host.on("plotly_relayouting", handler);
-    host.on("plotly_relayout", handler);
+    host.on("plotly_relayouting", function (eventData) { handler(eventData,false); });
+    host.on("plotly_relayout", function (eventData) { handler(eventData,true); });
     host.on("plotly_restyle", function () {
       window.requestAnimationFrame(function () {
         var cursors=paneGraphCursorController();
@@ -2648,11 +2998,13 @@
       "<div class='settings-field-row' data-testid='screen-link-amplitude-row'><label class='settings-label' for='screen-link-amplitude'>Связать амплитуду</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-amplitude' type='checkbox' data-screen-link-amplitude data-testid='screen-link-amplitude'" + (draft.linkAmplitude ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>" +
       "<div class='settings-field-row'><label class='settings-label' for='screen-link-frequency'>Связать частоты</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-frequency' type='checkbox' data-screen-link-frequency" + (draft.linkFrequency ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>" +
       "<div class='settings-field-row'><label class='settings-label' for='screen-link-magnitude'>Связать магнитуды</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-magnitude' type='checkbox' data-screen-link-magnitude" + (draft.linkMagnitude ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>";
-    var limitGroups = draft.linkTime ? screenSettingsGroup("time-limits", "Пределы времени", settings.renderRows(["time.units", "time.x_limits"]) + screenRangeSlider("time.x_limits", "x", draft)) : "";
-    if (draft.linkAmplitude) limitGroups += screenSettingsGroup("y-limits", "Пределы оси Y", settings.renderRows(["time.y_limits"]) + screenRangeSlider("time.y_limits", "y", draft));
-    if (draft.linkFrequency) limitGroups += screenSettingsGroup("frequency-limits", "Пределы частоты", settings.renderRows(["spectrum.frequency_units", "spectrum.frequency_limits"]) + screenRangeSlider("spectrum.frequency_limits", "frequency", draft));
-    if (draft.linkMagnitude) limitGroups += screenSettingsGroup("magnitude-limits", "Пределы магнитуды", settings.renderRows(["spectrum.y_limits"]) + screenRangeSlider("spectrum.y_limits", "magnitude", draft));
-    content.innerHTML = "<div class='screen-settings' data-testid='screen-settings'>" + screenSettingsGroup("screen-name", "Основное", settings.renderRows(["display.name"])) + screenSettingsGroup("layout", "Макет", layoutFields) + screenSettingsGroup("links", "Связь областей", linkFields) + limitGroups + "</div>";
+    var parameterRows=(draft.linkTime ? settings.renderRows(["time.units"]) : "") + (draft.linkFrequency ? settings.renderRows(["spectrum.frequency_units"]) : "");
+    var rangeRows=draft.linkTime ? settings.renderRows(["time.x_limits"]) + screenRangeSlider("time.x_limits", "x", draft) : "";
+    if (draft.linkAmplitude) rangeRows += settings.renderRows(["time.y_limits"]) + screenRangeSlider("time.y_limits", "y", draft);
+    if (draft.linkFrequency) rangeRows += settings.renderRows(["spectrum.frequency_limits"]) + screenRangeSlider("spectrum.frequency_limits", "frequency", draft);
+    if (draft.linkMagnitude) rangeRows += settings.renderRows(["spectrum.y_limits"]) + screenRangeSlider("spectrum.y_limits", "magnitude", draft);
+    var rangeGroups=(parameterRows ? screenSettingsGroup("parameters", "Параметры", parameterRows) : "") + (rangeRows ? screenSettingsGroup("ranges", "Диапазоны", rangeRows) : "");
+    content.innerHTML = "<div class='screen-settings' data-testid='screen-settings'>" + screenSettingsGroup("screen-name", "Основное", settings.renderRows(["display.name"])) + screenSettingsGroup("layout", "Макет", layoutFields) + screenSettingsGroup("links", "Связь областей", linkFields) + rangeGroups + "</div>";
     keepVisibleAutomaticRangeInputsEmpty(draft);
     valueSelect.reconcile();
     decorateNoHistory(content);
@@ -4357,10 +4709,12 @@
     settings.setValue(fieldId, { min:minimumText, max:maximumText });
   });
   document.addEventListener("dblclick", function (event) {
-    var slider=event.target.closest && event.target.closest("[data-screen-range-slider]");
-    if (!slider) return;
+    var slider=event.target.closest && event.target.closest("[data-screen-range-slider]"), row=event.target.closest && event.target.closest(".settings-field-row[data-range-boundary-validation]");
+    if (!slider && !row) return;
     event.preventDefault();
-    var fieldId=slider.dataset.screenRangeSlider, row=q("[data-testid='settings-field-" + CSS.escape(fieldId) + "']");
+    var fieldId=slider ? slider.dataset.screenRangeSlider : row.querySelector("[data-setting-id][data-range-part]") && row.querySelector("[data-setting-id][data-range-part]").dataset.settingId;
+    if (!fieldId) return;
+    row=q("[data-testid='settings-field-" + CSS.escape(fieldId) + "']");
     rememberRangeBoundaryIntent(fieldId, "min", "");
     rememberRangeBoundaryIntent(fieldId, "max", "");
     if (row) { var minimum=row.querySelector("[data-range-part='min']"), maximum=row.querySelector("[data-range-part='max']"); if (minimum) minimum.value=""; if (maximum) maximum.value=""; }
@@ -4373,6 +4727,7 @@
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-loaded", function (event) { var display = activeDisplay(), detail = event.detail || {}; if (model.settingsPage === "screen" && display && detail.displayId === display.id) renderSettings(display); });
   window.addEventListener("signal-settings-state", function () { if (activeDisplay()) renderSettings(activeDisplay()); });
+  window.addEventListener("signal-settings-range-preview", function (event) { queueSettingsRangeToPlot(event.detail || {}); });
   window.addEventListener("signal-settings-name-preview", function (event) { projectNamePreview(event.detail || {}); });
   window.addEventListener("signal-settings-save-failed", function (event) {
     var detail=event.detail || {}, displayId=detail.display_id || activeDisplay() && activeDisplay().id;
@@ -4459,11 +4814,33 @@
     }
   });
 
-  refreshSnapshot().then(function () {
-    render();
-    output(true);
-    return settings.load().then(function () { render(); }).catch(showSettingsLoadError).then(schedulePlotlyIdlePreload);
-  }).catch(showBootstrapError);
+  function bootstrapAttempt(token) {
+    var bootstrap=window.SignalAnalyserBootstrapLoading;
+    function current() { var state=bootstrap && bootstrap.state(); return !!state && state.token === token && state.phase === "loading"; }
+    return api.getState().then(function (snapshot) {
+      if (!current()) return null;
+      if (!accept(snapshot)) throw new Error("Получен устаревший снимок состояния.");
+      bootstrap.acceptInitialState(token);
+      render();
+      return settings.load();
+    }).then(function (documentValue) {
+      if (!documentValue || !current()) return null;
+      bootstrap.acceptActiveSettings(token);
+      render();
+      return new Promise(function (resolve) {
+        window.requestAnimationFrame(function () {
+          if (!current()) return resolve(null);
+          bootstrap.commitInitialRender(token);
+          output(true);
+          schedulePlotlyIdlePreload();
+          resolve(documentValue);
+        });
+      });
+    }).catch(function () { if (bootstrap) bootstrap.fail(token,"request"); return null; });
+  }
+  window.addEventListener("signal-analyser:bootstrap-retry", function (event) { var token=event.detail && event.detail.token; if (token) bootstrapAttempt(token); });
+  var bootstrapController=window.SignalAnalyserBootstrapLoading;
+  bootstrapAttempt(bootstrapController.begin({ timeoutMs:bootstrapController.DEFAULT_TIMEOUT_MS }));
 })(window, document);
 
 (function registerSignalColorPicker(window, document) {

@@ -1,0 +1,83 @@
+{
+  "design_version": 48,
+  "method": "bounded controller/contract regression; reused visual tokens; no browser or screenshot",
+  "passed": 6,
+  "failed": 0,
+  "results": [
+    {
+      "id": "86-bootstrap-barrier",
+      "passed": true,
+      "detail": [
+        "accepted-state-lite-with-signals-displays-layout",
+        "accepted-active-display-settings",
+        "committed-initial-render"
+      ]
+    },
+    {
+      "id": "87-stale-retry-guard",
+      "passed": true,
+      "detail": {
+        "token": "bootstrap-3",
+        "phase": "loading",
+        "stateAccepted": false,
+        "settingsAccepted": false,
+        "renderCommitted": false,
+        "failure": ""
+      }
+    },
+    {
+      "id": "88-bootstrap-error-contract",
+      "passed": true,
+      "detail": "Не удалось загрузить данные анализатора. Проверьте соединение и повторите попытку."
+    },
+    {
+      "id": "89-range-grouping",
+      "passed": true,
+      "detail": {
+        "parameters": {
+          "title": "Параметры",
+          "unitFields": [
+            "time.units"
+          ]
+        },
+        "ranges": {
+          "title": "Диапазоны",
+          "collapsible": true,
+          "initialExpanded": true,
+          "fields": [
+            "time.x_limits",
+            "time.y_limits"
+          ]
+        }
+      }
+    },
+    {
+      "id": "90-log-and-auto-projection",
+      "passed": true,
+      "detail": {
+        "p": {
+          "fieldId": "spectrum.frequency_limits",
+          "mode": "explicit",
+          "min": 100,
+          "max": 1000,
+          "explicitIntent": true
+        },
+        "reset": {
+          "xaxis.autorange": true,
+          "xaxis.rangeslider.autorange": true
+        }
+      }
+    },
+    {
+      "id": "91-settle-contract",
+      "passed": true,
+      "detail": {
+        "liveProjection": "plotly_relayouting updates current Area fields and handles immediately without publication; slider input updates Plotly at most once per animation frame",
+        "settleBoundary": "plotly_relayout and settings change/pointerup/keyboard commit start one 150ms deduplicating settle, then the existing serialized autosave publishes canonical values once",
+        "linkedProjection": "after the source pane projection, existing time/amplitude/frequency/magnitude link queues apply the same canonical interval only to eligible panes",
+        "reset": "double click any range row or its settings/in-plot slider clears both explicit endpoint intents, requests axis autorange/full domain, synchronizes graph/settings and publishes one settled Auto value",
+        "validation": "v46 per-endpoint validation runs before graph preview or publication; an invalid endpoint changes neither plot nor linked panes"
+      }
+    }
+  ]
+}

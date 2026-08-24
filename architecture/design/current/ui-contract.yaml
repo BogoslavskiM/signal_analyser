@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 46
+design_version: 48
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132, TASK-0134, TASK-0135, TASK-0138, TASK-0139, TASK-0140, TASK-0141, TASK-0142]
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132, TASK-0134, TASK-0135, TASK-0138, TASK-0139, TASK-0140, TASK-0141, TASK-0142, TASK-0143, TASK-0144]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -37,6 +37,9 @@ production_integration_contract:
     - frontend-source/integration/js/task-0141-linked-axes-area-sliders.js
     - frontend-source/integration/css/task-0142-range-boundary-validation.css
     - frontend-source/integration/js/task-0142-range-boundary-validation.js
+    - frontend-source/integration/css/task-0143-bootstrap-loader.css
+    - frontend-source/integration/js/task-0143-bootstrap-loader.js
+    - frontend-source/integration/js/task-0144-synchronized-ranges.js
     - frontend-source/integration/html/dialogs/signal-operation.fragment.html
   mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
 
@@ -59,7 +62,7 @@ prototype_contract:
     - public/js/native-session-io.js
     - public/js/app.js
   deterministic_provider: prototype/mock-fetch.js
-  interaction_bridges: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js, prototype/task-0130-graph-cursors-bridge.js, prototype/task-0138-values-columns-bridge.js, prototype/task-0139-loading-overlays-bridge.js]
+  interaction_bridges: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js, prototype/task-0130-graph-cursors-bridge.js, prototype/task-0138-values-columns-bridge.js, prototype/task-0139-loading-overlays-bridge.js, prototype/task-0143-bootstrap-loader-bridge.js]
   production_baseline_evidence: evidence/production-baseline-v32.json
   required_nonempty_zone_slots: [toolbar, workspace, settings, inspector]
   forbidden: [fetch_html_partials, http_server, network_api, cors_dependency, alternative_mock_shell]
@@ -70,6 +73,7 @@ prototype_contract:
   task_0140_source_result: {delta_checks: 6, passed: 6, failed: 0, method: bounded_source_contract, new_visual_component: false, new_screenshot: false}
   task_0141_source_result: {delta_checks: 9, passed: 9, failed: 0, method: bounded_source_contract, new_visual_component: false, new_screenshot: false}
   task_0142_source_result: {delta_checks: 5, passed: 5, failed: 0, method: bounded_source_contract, new_visual_component: false, new_screenshot: false}
+  task_0143_0144_source_result: {delta_checks: 6, passed: 6, failed: 0, method: bounded_source_contract, new_visual_component: false, new_screenshot: false}
 
 screens:
   - id: main

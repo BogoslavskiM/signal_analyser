@@ -205,21 +205,27 @@
     if (type === "spectrum") {
       return [
         graph,
-        group("frequency-axis", "Частотная ось", [actual("spectrum.frequency_units", true), actual("spectrum.frequency_scale", true)]),
-        group("spectrum-analysis", "Спектральный анализ", [actual("spectrum.scale", true), actual("spectrum.resolution_type", true), actual("spectrum.leakage"), actual("spectrum.rbw"), actual("spectrum.window_length"), actual("spectrum.window"), actual("spectrum.sidelobe_attenuation_db"), actual("spectrum.overlap_percent"), actual("spectrum.nfft"), actual("spectrum.frequency_resolution")])
+        group("parameters", "Параметры", [actual("spectrum.frequency_units", true)]),
+        group("frequency-axis", "Частотная ось", [actual("spectrum.frequency_scale", true)]),
+        group("spectrum-analysis", "Спектральный анализ", [actual("spectrum.scale", true), actual("spectrum.resolution_type", true), actual("spectrum.leakage"), actual("spectrum.rbw"), actual("spectrum.window_length"), actual("spectrum.window"), actual("spectrum.sidelobe_attenuation_db"), actual("spectrum.overlap_percent"), actual("spectrum.nfft"), actual("spectrum.frequency_resolution")]),
+        group("ranges", "Диапазоны", [linkFrequency ? null : actual("spectrum.frequency_limits", true), linkMagnitude ? null : actual("spectrum.y_limits", true)])
       ];
     }
     if (type === "spectrogram") {
       return [
         graph,
-        group("frequency-axis", "Частотная ось", [actual("spectrogram.time_units", true), actual("spectrogram.frequency_units", true), actual("spectrogram.frequency_limits", true), actual("spectrogram.frequency_scale", true)]),
-        group("power", "Мощность", [actual("spectrogram.power_limits", true), actual("spectrogram.scale", true), actual("spectrogram.leakage", true), actual("spectrogram.time_resolution", true), actual("spectrogram.overlap_percent", true), actual("spectrogram.reassign", true), actual("spectrogram.actual_rbw")])
+        group("parameters", "Параметры", [actual("spectrogram.time_units", true), actual("spectrogram.frequency_units", true)]),
+        group("frequency-axis", "Частотная ось", [actual("spectrogram.frequency_scale", true)]),
+        group("power", "Мощность", [actual("spectrogram.scale", true), actual("spectrogram.leakage", true), actual("spectrogram.time_resolution", true), actual("spectrogram.overlap_percent", true), actual("spectrogram.reassign", true), actual("spectrogram.actual_rbw")]),
+        group("ranges", "Диапазоны", [actual("spectrogram.frequency_limits", true), actual("spectrogram.power_limits", true)])
       ];
     }
     return [
       graph,
-      group("frequency-axis", "Частотная ось", [actual("persistence.time_units", true), actual("persistence.frequency_units", true), linkFrequency ? null : actual("persistence.frequency_limits", true), actual("persistence.frequency_scale", true)]),
-      group("density-power", "Плотность и мощность", [linkMagnitude ? null : actual("persistence.power_limits", true), actual("persistence.density_limits", true), actual("persistence.scale", true), actual("persistence.leakage", true), actual("persistence.time_resolution", true), actual("persistence.overlap_percent", true), actual("persistence.power_bins", true), actual("persistence.rbw")])
+      group("parameters", "Параметры", [actual("persistence.time_units", true), actual("persistence.frequency_units", true)]),
+      group("frequency-axis", "Частотная ось", [actual("persistence.frequency_scale", true)]),
+      group("density-power", "Плотность и мощность", [actual("persistence.scale", true), actual("persistence.leakage", true), actual("persistence.time_resolution", true), actual("persistence.overlap_percent", true), actual("persistence.power_bins", true), actual("persistence.rbw")]),
+      group("ranges", "Диапазоны", [linkFrequency ? null : actual("persistence.frequency_limits", true), linkMagnitude ? null : actual("persistence.power_limits", true), actual("persistence.density_limits", true)])
     ];
   }
 
@@ -228,18 +234,28 @@
     var linkAmplitude = context.linkPreview ? context.linkPreview.linkAmplitude : booleanValue("time.link_amplitude");
     if (type === "time") {
       return [
-        group("parameters", "Параметры", [actual("time.normalize_y"), actual("time.show_markers")]),
-        linkTime ? null : group("time-limits", "Пределы времени", [actual("time.units"), actual("time.x_limits")]),
-        linkAmplitude ? null : group("y-limits", "Пределы оси Y", [actual("time.y_limits")])
+        group("parameters", "Параметры", [actual("time.units"), actual("time.normalize_y"), actual("time.show_markers")]),
+        group("ranges", "Диапазоны", [linkTime ? null : actual("time.x_limits"), linkAmplitude ? null : actual("time.y_limits")])
       ].filter(Boolean);
     }
-    if (type === "spectrogram" && !linkTime) return [group("time-limits", "Пределы времени", [actual("time.x_limits")])];
+    if (type === "spectrogram" && !linkTime) return [group("ranges", "Диапазоны", [actual("time.x_limits")])];
     return [];
   }
 
   function inventory() {
     var type = context.plotType;
-    return displayInventory(type).concat(timeInventory(type));
+    var result=displayInventory(type).concat(timeInventory(type)).reduce(function (result, section) {
+      var existing=result.filter(function (candidate) { return candidate.key === section.key; })[0];
+      if (existing) existing.items=existing.items.concat(section.items);
+      else result.push(section);
+      return result;
+    }, []);
+    var helper=window.SignalAnalyserSynchronizedRanges, ranges=result.filter(function (section) { return section.key === "ranges"; })[0];
+    if (helper && ranges) {
+      var order=helper.descriptors(type).map(function (item) { return item.fieldId; });
+      ranges.items.sort(function (left,right) { return order.indexOf(left.id)-order.indexOf(right.id); });
+    }
+    return result;
   }
 
   function visibleItems() {
@@ -435,7 +451,8 @@
     }
   }
 
-  function update(item, raw) {
+  function update(item, raw, options) {
+    options=options || {};
     if (item.pseudo) { updatePseudo(item, raw); return Promise.resolve(); }
     var parsed = parse(item, raw), draft = context.drafts[item.id] || {}, validation=rangeItem(item) ? rangeValidation(item, raw) : null;
     if (validation && validation.hasError || parsed === null && !(item.kind === "optional_range" && raw.min === "" && raw.max === "")) {
@@ -445,9 +462,13 @@
       window.dispatchEvent(new CustomEvent("signal-apply-state")); return Promise.resolve();
     }
     draft.value = parsed; draft.rangeValidation=validation; draft.error = ""; draft.intent = ++context.intent; context.drafts[item.id] = draft;
+    if (rangeItem(item)) window.dispatchEvent(new CustomEvent("signal-settings-range-preview", { detail:{ field_id:item.id, value:parsed, source:options.source || "settings" } }));
     if (item.id === "display.name" || item.id === "pane.name") window.dispatchEvent(new CustomEvent("signal-settings-name-preview", { detail:{ field_id:item.id, value:parsed, display_id:context.displayId, intent:draft.intent } }));
     if (item.kind === "resolution" || item.kind === "power_bins") render();
     window.dispatchEvent(new CustomEvent("signal-apply-state"));
+    if (options.preview) return Promise.resolve(parsed);
+    if (options.immediate) return send(item);
+    if (rangeItem(item)) return Promise.resolve(parsed);
     if (isApply(item)) {
       clearTimeout(context.timers[item.id]);
       context.timers[item.id] = window.setTimeout(function () { send(item); }, 150);
@@ -574,6 +595,8 @@
     },
     setRangeDomains:function (domains) { context.rangeDomains=domains || {}; },
     setBusy:function (busy) { context.busy=!!busy; },
+    previewRange:function (id, raw) { var item=sourceItem(id); return item && rangeItem(item) ? update(item, raw, { preview:true, source:"plot" }) : Promise.resolve(); },
+    publishRange:function (id, raw) { var item=sourceItem(id); return item && rangeItem(item) ? update(item, raw, { immediate:true, source:"plot" }) : Promise.resolve(); },
     setExtraVisible:function (ids) { context.extraVisible={}; (ids || []).forEach(function (id) { context.extraVisible[id]=true; }); },
     setExtraItems:function (items) { context.extraItems={}; (items || []).forEach(function (item) { if (item && item.id) context.extraItems[item.id]=item; }); },
     setLinkPreview:function (linkTime, linkAmplitude, linkFrequency, linkMagnitude) {

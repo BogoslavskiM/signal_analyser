@@ -61,6 +61,7 @@ function createHarness(initialPanes) {
   const root = path.resolve(__dirname, "../../../..");
   let source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
+  source = source.replace("bootstrapAttempt(bootstrapController.begin({ timeoutMs:bootstrapController.DEFAULT_TIMEOUT_MS }));", "");
   source = source.replace(
     "})(window, document);",
     "window.__task0099 = { model:model, accept:accept, mutate:mutate, postLayout:postLayout, output:output, fetchPaneOutput:fetchPaneOutput, stopPaneOutput:stopPaneOutput, renderGrid:renderGrid }; })(window, document);"

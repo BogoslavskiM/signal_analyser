@@ -129,6 +129,10 @@ function createHarness(options) {
     "[data-testid='inspector-tab-peaks']": inspectorPeaksTab
   };
   const api = {
+    // V48 bootstrap begins a state-lite/settings/rAF barrier at module load.
+    // This Extrema harness deliberately has no bootstrap host, so supply only
+    // the state-lite seam and keep graph output disallowed for the test flow.
+    getState() { return Promise.resolve(snapshot(options.bindings === undefined ? ["Сигнал 1"] : options.bindings, options.plotType)); },
     activePeaks(displayId, paneId) {
       activeCalls.push({ displayId, paneId });
       const response = activeResponses.shift();
@@ -168,7 +172,7 @@ function createHarness(options) {
     },
     addEventListener() {},
     clearTimeout() {},
-    setTimeout(callback) { timers.push(callback); return timers.length; },
+    setTimeout(callback, delay) { if (delay === 20000) return -1; timers.push(callback); return timers.length; },
     requestAnimationFrame(callback) { if (callback) callback(); return 1; }
   };
   let settingsMarkup = "", metadataNameNode = null;
