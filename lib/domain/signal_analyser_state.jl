@@ -2695,6 +2695,15 @@ function signal_display_layout_select_pane(
     )
 end
 
+function signal_display_next_pane_number(
+    panes::AbstractVector{SignalDisplayPaneState},
+)::Int
+    maximum(
+        parse(Int, split(pane.id, '-')[2])
+        for pane in panes
+    ) + 1
+end
+
 """Resize preserves configured panes; every newly created pane starts empty."""
 function signal_display_layout_resize(
     layout::SignalDisplayLayoutState,
@@ -2706,7 +2715,12 @@ function signal_display_layout_resize(
     requested_count = rows * columns
     surviving_count = min(length(layout.panes), requested_count)
     panes = SignalDisplayPaneState[copy(layout.panes[index]) for index in 1:surviving_count]
-    next_pane_number = layout.next_pane_number
+    # `next_pane_number` used to be a monotonic high-water mark.  A transient
+    # large layout therefore made a later 1x4 -> 1x5 resize jump from pane-4
+    # straight to pane-17.  Derive allocation from the stable panes that still
+    # occupy this layout: removed/transient panes must not consume user-visible
+    # ids or default names, while every surviving pane keeps its exact id/name.
+    next_pane_number = signal_display_next_pane_number(panes)
     while length(panes) < requested_count
         pane_id = "pane-$next_pane_number"
         push!(panes, signal_display_pane_with_name(

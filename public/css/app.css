@@ -3667,7 +3667,7 @@ body {
   border: 5px solid rgba(27, 132, 184, 0.22);
   border-top-color: var(--accent);
   border-radius: 50%;
-  animation: ui-spinner-rotate 800ms linear infinite;
+  animation: loader-rotate 800ms linear infinite;
 }
 
 [data-layout-reconciling="true"] .pane-output-loading-overlay {
@@ -3677,6 +3677,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .pane-output-loading-overlay .ui-loader-spinner,
   .display-canvas-loading-overlay .ui-loader-spinner {
-    animation-duration: 1600ms;
+    animation: loader-rotate 1600ms linear infinite;
   }
 }

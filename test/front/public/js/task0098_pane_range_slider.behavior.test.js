@@ -204,6 +204,13 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   h.test.model.rangeSliderDataRangeByPane["display-a::pane-1"] = [0, 1];
   h.test.model.amplitudeDataRangeByPane["display-a::pane-1"] = [-2, 2];
   h.test.model.graphDefaultRangeByPane["display-a::pane-1"] = { x:[0, 1], y:[-2.2, 2.2] };
+  h.test.model.plotAutoscaleByPane["display-a::pane-1"] = {
+    plotType:"time", rangeSliderVisible:true,
+    axes:{
+      xaxis:{ semantic:"time", type:"linear", mode:"provider_default", range:[0,1] },
+      yaxis:{ semantic:"amplitude", type:"linear", mode:"provider_default", range:[-2.2,2.2] }
+    }
+  };
 
   const firstTrigger = trigger("pane-1");
   h.test.openMenu(firstTrigger);

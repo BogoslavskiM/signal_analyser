@@ -7,6 +7,54 @@ if !isdefined(ML_INTEGRATION, :SignalAnalyserSessionService)
     Base.include(ML_INTEGRATION, joinpath(ML_INTEGRATION.PROJECT_ROOT, "lib", "services", "signal_session_service.jl"))
 end
 
+function task0140_pane_identity_and_canonical_allocation!()
+    state = ML_INTEGRATION.default_signal_analyser_state()
+    grown = ML_INTEGRATION.apply_signal_analyser_layout!(state, task0031_resize_payload(0, 4, 4))
+    layout = task0031_layout_entry(grown)["layout"]
+    pane_four_name = layout["panes"][4]["name"]
+    updated = ML_INTEGRATION.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => grown["state_revision"], "operation" => "update_pane",
+        "display_id" => "display-1", "version" => 1, "pane_id" => "pane-4",
+        "plot_type" => "spectrum", "signal_bindings" => String[],
+    ))
+    updated_pane = task0031_layout_entry(updated)["layout"]["panes"][4]
+    @test updated_pane["id"] == "pane-4"
+    @test updated_pane["name"] == pane_four_name
+    @test updated_pane["plot_type"] == "spectrum"
+
+    shrunk = ML_INTEGRATION.apply_signal_analyser_layout!(
+        state, task0031_resize_payload(updated["state_revision"], 1, 4),
+    )
+    @test task0031_layout_entry(shrunk)["layout"]["next_pane_number"] == 5
+    regrown = ML_INTEGRATION.apply_signal_analyser_layout!(
+        state, task0031_resize_payload(shrunk["state_revision"], 1, 6),
+    )
+    @test [pane["id"] for pane in task0031_layout_entry(regrown)["layout"]["panes"]] ==
+        ["pane-$index" for index in 1:6]
+end
+
+function task0140_legacy_high_water_and_sparse_ids!()
+    state = ML_INTEGRATION.default_signal_analyser_state()
+    template = only(state.display_layouts["display-1"].panes)
+    legacy_panes = ML_INTEGRATION.SignalDisplayPaneState[
+        ML_INTEGRATION.signal_display_pane_with_id(template, "pane-$index") for index in 1:4
+    ]
+    legacy = ML_INTEGRATION.SignalDisplayLayoutState(1, "1x4", 1, 4, legacy_panes, "pane-1", 17)
+    legacy_grown = ML_INTEGRATION.signal_display_layout_resize(legacy, 1, 5, template)
+    @test [pane.id for pane in legacy_grown.panes] == ["pane-$index" for index in 1:5]
+    @test legacy_grown.next_pane_number == 6
+
+    sparse_ids = ["pane-1", "pane-3", "pane-9", "pane-11"]
+    sparse_panes = ML_INTEGRATION.SignalDisplayPaneState[
+        ML_INTEGRATION.signal_display_pane_with_id(template, pane_id) for pane_id in sparse_ids
+    ]
+    sparse = ML_INTEGRATION.SignalDisplayLayoutState(1, "1x4", 1, 4, sparse_panes, "pane-1", 17)
+    sparse_grown = ML_INTEGRATION.signal_display_layout_resize(sparse, 1, 6, template)
+    @test [pane.id for pane in sparse_grown.panes] == vcat(sparse_ids, ["pane-12", "pane-13"])
+    @test length(unique(pane.id for pane in sparse_grown.panes)) == 6
+    @test sparse_grown.next_pane_number == 14
+end
+
 function task0031_layout_entry(snapshot)
     only(snapshot["layouts"])
 end
@@ -259,7 +307,7 @@ end
     @test [pane["id"] for pane in shrunk_layout["panes"]] ==
         ["pane-1", "pane-2", "pane-3", "pane-4"]
     @test shrunk_layout["active_pane_id"] == "pane-1"
-    @test shrunk_layout["next_pane_number"] == 101
+    @test shrunk_layout["next_pane_number"] == 5
     @test shrunk_layout["panes"][4]["plot_type"] == "spectrum"
     @test shrunk_layout["panes"][4]["signal_bindings"] == reverse(names)
 
@@ -272,7 +320,7 @@ end
     @test [pane["id"] for pane in regrown_entry["layout"]["panes"]][1:4] ==
         ["pane-1", "pane-2", "pane-3", "pane-4"]
     @test [pane["id"] for pane in regrown_entry["layout"]["panes"]][5:end] ==
-        ["pane-$index" for index in 101:196]
+        ["pane-$index" for index in 5:100]
     @test only(regrown_entry["outputs"])["pane_id"] == "pane-1"
 
     service = ML_INTEGRATION.SignalAnalyserSessionService()
@@ -291,4 +339,12 @@ end
     @test only(task0031_layout_entry(restored)["outputs"])["pane_id"] == "pane-1"
     @test ML_INTEGRATION.export_signal_analyser_session(service, imported)["document"]["state"] ==
         document["state"]
+end
+
+@testset "TASK-0140 pane identity and canonical allocation survive resize" begin
+    task0140_pane_identity_and_canonical_allocation!()
+end
+
+@testset "TASK-0140 legacy high-water and non-contiguous pane ids never collide" begin
+    task0140_legacy_high_water_and_sparse_ids!()
 end

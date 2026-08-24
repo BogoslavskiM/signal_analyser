@@ -85,7 +85,7 @@
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
-    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, graphDefaultRangeByPane:{}, graphDefaultSignatureByPane:{}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
+    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, graphDefaultRangeByPane:{}, graphDefaultSignatureByPane:{}, plotAutoscaleByPane:{}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
     layoutDraft: null, screenDraft: null, screenApplying: false, screenApplyToken: 0, screenApplyTimer: null, settingsPublishTimer: null, settingsPublishing: false, settingsPublishWanted: -1, settingsPublishPublished: -1, settingsCommittedRevision: -1, screenCollapsed: { layout:true }, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
@@ -106,6 +106,10 @@
   function qa(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]; }); }
   function scopedLoadingController() { return window.SignalAnalyserScopedLoading || null; }
+  function plotAutoscaleController() { return window.SignalAnalyserPlotAutoscale || null; }
+  function plotOutputIdentity(pane, record) {
+    return [pane && pane.plot_type || "", record && record.context_key || "", record && record.calculation_revision == null ? "" : record.calculation_revision].join("::");
+  }
   function nextScopedLoadingToken(scope, displayId, paneId) {
     model.scopedLoadingSequence += 1;
     return [scope, displayId || "", paneId || "", model.scopedLoadingSequence].join("::");
@@ -341,7 +345,8 @@
       itemPanes.forEach(function (pane) {
         var key = paneRuntimeKey(item.display_id, pane.id);
         currentKeys[key] = true;
-        if (pane.plot_type !== "time" || !paneHasSignals(pane)) {
+        var sliderEligible=paneHasSignals(pane) && ["time", "spectrum"].indexOf(pane.plot_type) >= 0;
+        if (!sliderEligible) {
           delete model.rangeSliderByPane[key];
           delete model.rangeSliderDataRangeByPane[key];
           delete model.rangeSliderFullRangeByPane[key];
@@ -350,8 +355,11 @@
           delete model.amplitudeDataRangeByPane[key];
           delete model.amplitudeFullRangeByPane[key];
           delete model.amplitudeSelectedRangeByPane[key];
+        }
+        if (!paneHasSignals(pane)) {
           delete model.graphDefaultRangeByPane[key];
           delete model.graphDefaultSignatureByPane[key];
+          delete model.plotAutoscaleByPane[key];
         }
       });
       if (!owningDisplay) itemPanes.forEach(function (pane) {
@@ -366,6 +374,7 @@
         delete model.amplitudeSelectedRangeByPane[key];
         delete model.graphDefaultRangeByPane[key];
         delete model.graphDefaultSignatureByPane[key];
+        delete model.plotAutoscaleByPane[key];
       });
     });
     Object.keys(model.rangeSliderByPane).forEach(function (key) { if (!currentKeys[key]) delete model.rangeSliderByPane[key]; });
@@ -380,6 +389,7 @@
     Object.keys(model.amplitudePendingByPane).forEach(function (key) { if (!currentKeys[key]) delete model.amplitudePendingByPane[key]; });
     Object.keys(model.graphDefaultRangeByPane).forEach(function (key) { if (!currentKeys[key]) delete model.graphDefaultRangeByPane[key]; });
     Object.keys(model.graphDefaultSignatureByPane).forEach(function (key) { if (!currentKeys[key]) delete model.graphDefaultSignatureByPane[key]; });
+    Object.keys(model.plotAutoscaleByPane).forEach(function (key) { if (!currentKeys[key]) delete model.plotAutoscaleByPane[key]; });
   }
 
   function scheduleRender() {
@@ -1095,9 +1105,8 @@
       return true;
     }
     function resetGraphRange(event) {
-      var Plotly = window.Plotly, now = Date.now(), defaults = model.graphDefaultRangeByPane[runtimeKey];
-      var xRange = defaults && defaults.x || model.rangeSliderDataRangeByPane[runtimeKey];
-      if (!xRange || !Plotly || typeof Plotly.relayout !== "function") return false;
+      var Plotly = window.Plotly, now = Date.now(), autoscale=plotAutoscaleController(), snapshot=model.plotAutoscaleByPane[runtimeKey];
+      if (!autoscale || !snapshot || !Plotly || typeof Plotly.relayout !== "function") return false;
       if (host._graphRangeResetAt && now - host._graphRangeResetAt < 240) {
         if (event) {
           event.preventDefault();
@@ -1107,29 +1116,22 @@
         return true;
       }
       host._graphRangeResetAt = now;
-      var update = {
-        "xaxis.range[0]":xRange[0],
-        "xaxis.range[1]":xRange[1],
-        "xaxis.autorange":false
-      };
-      var yRange = defaults && defaults.y || model.amplitudeDataRangeByPane[runtimeKey];
+      var resetSnapshot=Object.assign({}, snapshot, { rangeSliderVisible:!!model.rangeSliderByPane[runtimeKey] });
+      var update=autoscale.relayout(resetSnapshot);
+      if (!update) return false;
+      var xRange=snapshot.axes && snapshot.axes.xaxis && snapshot.axes.xaxis.range;
+      var yRange=snapshot.axes && snapshot.axes.yaxis && snapshot.axes.yaxis.range;
       if (yRange) {
-        update["yaxis.range[0]"] = yRange[0];
-        update["yaxis.range[1]"] = yRange[1];
-        update["yaxis.autorange"] = false;
         model.amplitudeSelectedRangeByPane[runtimeKey] = yRange.slice();
-      }
-      if (model.rangeSliderByPane[runtimeKey]) {
+      } else delete model.amplitudeSelectedRangeByPane[runtimeKey];
+      if (model.rangeSliderByPane[runtimeKey] && xRange) {
         model.rangeSliderFullRangeByPane[runtimeKey] = xRange.slice();
-        update["xaxis.rangeslider.range"] = xRange.slice();
-        update["xaxis.rangeslider.autorange"] = false;
       }
       if (event) {
         event.preventDefault();
         event.stopPropagation();
         if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
       }
-      queueLinkedTimeRelayout(runtimeKey.split("::")[0], runtimeKey.split("::")[1], update);
       model.axisLinkSuppressByPane[runtimeKey] = true;
       try {
         Promise.resolve(Plotly.relayout(host, update)).catch(function () { /* Keep the current view if Plotly rejects reset. */ }).finally(function () {
@@ -1838,7 +1840,8 @@
         var dataRange = pane.plot_type === "time" ? traceXDataRange(traces) : pane.plot_type === "spectrum" ? traceAxisDataRange(traces, "x") : null;
         var amplitudeDataRange = pane.plot_type === "time" ? traceYDataRange(traces) : pane.plot_type === "spectrum" ? traceAxisDataRange(traces, "y") : null;
         var sourceLayout = payload.layout || {};
-        var defaultSignature = JSON.stringify({ xData:dataRange, yData:amplitudeDataRange, xaxis:sourceLayout.xaxis || null, yaxis:sourceLayout.yaxis || null });
+        var outputIdentity=plotOutputIdentity(pane, queued);
+        var defaultSignature = JSON.stringify({ outputIdentity:outputIdentity, xData:dataRange, yData:amplitudeDataRange, xaxis:sourceLayout.xaxis || null, yaxis:sourceLayout.yaxis || null });
         var defaultChanged = model.graphDefaultSignatureByPane[runtimeKey] !== defaultSignature;
         model.graphDefaultSignatureByPane[runtimeKey] = defaultSignature;
         if (defaultChanged) {
@@ -1851,12 +1854,14 @@
         if (amplitudeDataRange) model.amplitudeDataRangeByPane[runtimeKey] = amplitudeDataRange;
         else { delete model.amplitudeDataRangeByPane[runtimeKey]; delete model.amplitudeFullRangeByPane[runtimeKey]; delete model.amplitudeSelectedRangeByPane[runtimeKey]; }
         return Plotly.react(host, traces, plotLayoutWithRangeSlider(sourceLayout, runtimeKey, defaultChanged ? null : host), Object.assign({}, payload.config || {}, { displayModeBar:false, displaylogo:false, responsive:true, doubleClick:false })).then(function () {
-          if (defaultChanged || !model.graphDefaultRangeByPane[runtimeKey]) {
-            var fullLayout = host._fullLayout || {}, xaxis = fullLayout.xaxis, yaxis = fullLayout.yaxis;
+          var currentPane=paneById(pane.id), currentRecord=model.outputs[runtimeKey], currentOutputIdentity=plotOutputIdentity(currentPane, currentRecord);
+          if (currentPane && currentPane.plot_type === pane.plot_type && currentOutputIdentity === outputIdentity && (defaultChanged || !model.graphDefaultRangeByPane[runtimeKey] || !model.plotAutoscaleByPane[runtimeKey])) {
+            var fullLayout = host._fullLayout || {}, xaxis = fullLayout.xaxis, yaxis = fullLayout.yaxis, autoscale=plotAutoscaleController();
             model.graphDefaultRangeByPane[runtimeKey] = {
               x:xaxis && Array.isArray(xaxis.range) ? xaxis.range.slice() : dataRange && dataRange.slice(),
               y:yaxis && Array.isArray(yaxis.range) ? yaxis.range.slice() : amplitudeDataRange && amplitudeDataRange.slice()
             };
+            if (autoscale) model.plotAutoscaleByPane[runtimeKey]=autoscale.capture({ plotType:pane.plot_type, sourceLayout:sourceLayout, fullLayout:fullLayout, outputIdentity:outputIdentity });
           }
           host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); host.dataset.amplitudeSliderVisible = String(amplitudeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); bindRangeSliderDoubleClick(host, runtimeKey); syncAmplitudeSlider(host, runtimeKey); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]);
           var cursors=paneGraphCursorController();
@@ -5008,6 +5013,102 @@
     }
   };
 }(window,document));
+
+(function registerPlotAutoscaleContract(window) {
+  "use strict";
+
+  var PLOT_AXES={
+    time:{xaxis:"time",yaxis:"amplitude"},
+    spectrum:{xaxis:"frequency",yaxis:"magnitude"},
+    spectrogram:{xaxis:"time",yaxis:"frequency"},
+    persistence:{xaxis:"frequency",yaxis:"power"}
+  };
+
+  function cleanType(value) {
+    value=String(value == null ? "" : value).toLowerCase();
+    return PLOT_AXES[value] ? value : "";
+  }
+
+  function finiteRange(value) {
+    if (!Array.isArray(value) || value.length !== 2) return null;
+    var start=Number(value[0]),finish=Number(value[1]);
+    return Number.isFinite(start) && Number.isFinite(finish) && start !== finish ? [start,finish] : null;
+  }
+
+  function axisType(source,rendered) {
+    var value=String(source && source.type || rendered && rendered.type || "linear").toLowerCase();
+    return value === "log" ? "log" : "linear";
+  }
+
+  function captureAxis(semantic,source,rendered) {
+    source=source || {};
+    rendered=rendered || {};
+    var providerRange=finiteRange(source.range);
+    var automaticRange=finiteRange(rendered.range);
+    return {
+      semantic:semantic,
+      type:axisType(source,rendered),
+      mode:providerRange ? "provider_default" : automaticRange ? "automatic_full_domain" : "autorange",
+      range:providerRange || automaticRange
+    };
+  }
+
+  function capture(options) {
+    options=options || {};
+    var plotType=cleanType(options.plotType);
+    if (!plotType) return null;
+    var source=options.sourceLayout || {},rendered=options.fullLayout || {},axes={};
+    Object.keys(PLOT_AXES[plotType]).forEach(function (axisName) {
+      axes[axisName]=captureAxis(PLOT_AXES[plotType][axisName],source[axisName],rendered[axisName]);
+    });
+    var sourceSlider=source.xaxis && source.xaxis.rangeslider || {};
+    var renderedSlider=rendered.xaxis && rendered.xaxis.rangeslider || {};
+    return {
+      plotType:plotType,
+      outputIdentity:String(options.outputIdentity == null ? "" : options.outputIdentity),
+      axes:axes,
+      rangeSliderVisible:sourceSlider.visible === true || renderedSlider.visible === true
+    };
+  }
+
+  function axisUpdate(update,axisName,axis) {
+    if (axis.range) {
+      update[axisName+".range[0]"]=axis.range[0];
+      update[axisName+".range[1]"]=axis.range[1];
+      update[axisName+".autorange"]=false;
+    } else update[axisName+".autorange"]=true;
+  }
+
+  function relayout(snapshot) {
+    if (!snapshot || !PLOT_AXES[snapshot.plotType]) return null;
+    var update={autosize:true};
+    Object.keys(snapshot.axes || {}).forEach(function (axisName) {
+      axisUpdate(update,axisName,snapshot.axes[axisName]);
+    });
+    if (snapshot.rangeSliderVisible && snapshot.axes && snapshot.axes.xaxis) {
+      var xaxis=snapshot.axes.xaxis;
+      if (xaxis.range) {
+        update["xaxis.rangeslider.range"]=xaxis.range.slice();
+        update["xaxis.rangeslider.autorange"]=false;
+      } else update["xaxis.rangeslider.autorange"]=true;
+    }
+    return update;
+  }
+
+  window.SignalAnalyserPlotAutoscale={
+    plotTypes:Object.keys(PLOT_AXES),
+    axesByPlotType:PLOT_AXES,
+    capture:capture,
+    relayout:relayout,
+    contract:{
+      trigger:"double-click on the clicked ready Plotly graph surface",
+      baseline:"capture after each accepted current Plotly.react; provider explicit range wins, otherwise rendered automatic full-domain range",
+      logSemantics:"captured Plotly log-axis ranges remain Plotly coordinates; never linearly reproject, clamp or infer them from raw samples",
+      isolation:"relayout only the clicked pane; do not propagate linked axes, publish settings, change main signal or request backend/DSP",
+      heatmapColor:"spectrogram power and persistence density color ranges remain unchanged"
+    }
+  };
+}(window));
 
 (function registerSignalSamplesSearchMarkers(window) {
   "use strict";

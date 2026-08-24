@@ -1,0 +1,13 @@
+{
+  "design_version": 44,
+  "status": "pass",
+  "checks": [
+    {"id":"defined-loader-keyframes","passed":true,"detail":"Scoped pane/display spinners use production-defined loader-rotate at 800ms linear infinite."},
+    {"id":"reduced-motion-still-visible","passed":true,"detail":"Scoped spinner remains animated at 1600ms linear infinite under prefers-reduced-motion; geometry and colors are unchanged."},
+    {"id":"four-plot-autoscale","passed":true,"detail":"Time, Spectrum, Spectrogram and Persistence capture current-output provider/default or rendered full-domain X/Y baselines."},
+    {"id":"log-unit-semantics","passed":true,"detail":"Spectrum/Spectrogram/Persistence log-axis ranges remain Plotly coordinates with no raw linear reprojection; current projected units remain unchanged."},
+    {"id":"baseline-lifecycle","passed":true,"detail":"Default range/signature persists for every current signal-bearing plot type; only Time/Spectrum keep slider state."},
+    {"id":"pane-isolation","passed":true,"detail":"Reset relayouts only the clicked host and changes no linked pane, settings/revision, backend/DSP state, main_signal or heatmap color range."},
+    {"id":"transfer-boundary","passed":true,"detail":"Only the existing loader CSS fragment and new UI-only autoscale helper transfer into current public app seams; shell and Plotly host identities remain invariant."}
+  ]
+}

@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `43`
+- Design version: `44`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V43 is the current integration-safe package for the accepted Signal Analyser
+V44 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -48,6 +48,10 @@ TASK-0130 graph-cursor extension:
     the exact pane until its current output is ready, empty or error. Layout add/
     remove/rows/columns mutations instead cover the display canvas with one loader
     through accepted layout and all initial output terminal states.
+13. Those scoped loaders continuously rotate through the existing defined
+    `loader-rotate` keyframes. Double-click autoscale restores only the clicked
+    Time, Spectrum, Spectrogram or Persistence pane to the baseline of its
+    current accepted output, preserving current units and linear/log semantics.
 
 The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
 transaction implementation, Plotly payloads, sample API endpoint mechanics and
@@ -473,6 +477,30 @@ entry baseline or production transfer inputs.
   are reused unchanged; Figma reference status is `not_required`. Page sizing
   is unchanged because no zone geometry or resize behavior changed.
 
+## Exact delta v43 → v44
+
+- Corrected only the scoped-loader animation reference from the undefined
+  `ui-spinner-rotate` name to the production-defined `loader-rotate` keyframes.
+  Normal motion remains `800ms linear infinite`; reduced motion remains visibly
+  rotating at `1600ms linear infinite`. Geometry, color and overlay ownership do
+  not change.
+- Defined one authoritative double-click reset for every ready plot type. The
+  baseline is captured after each matching current `Plotly.react`: an explicit
+  provider range wins, otherwise the rendered automatic full-domain range is
+  retained. Log ranges remain Plotly coordinates and are never linearly
+  reprojected from raw frequency values.
+- `updateLayout` preserves default range/signature state for every still-current
+  signal-bearing Time/Spectrum/Spectrogram/Persistence pane. Slider state remains
+  eligible only for Time/Spectrum. Removed, cleared, stale or type-changed output
+  identities cannot supply a reset baseline.
+- Reset relayouts only the clicked pane. It does not propagate linked axes,
+  publish settings/revisions, call backend/DSP, change `main_signal`, or reset
+  Spectrogram/Persistence heatmap color ranges.
+- Applied skills: `designer/designer-workflow` and
+  `designer/output-and-visualization`. Skipped visual-system, Figma, Engee Apps,
+  composition and sizing skills: the accepted loader/plot visuals and all
+  geometry are unchanged. Figma reference status is `not_required`.
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -687,6 +715,8 @@ override the successful v32 node-specific read above.
 | Pane type dropdown | select option | Exact pane loader appears before authoritative mutation; right panel selects `Область`; loader ends only for matching ready/empty/error output | closed, open, selected, loading, empty, error | Same pane/Plotly host identity; stale output cannot dismiss current loader |
 | Valid Area setting | autosave commit that schedules output refresh | Exact active-pane loader appears before commit/output request and remains through current ready/empty/error | dirty, applying, loading, ready, empty, error | Invalid draft and settings without output refresh do not start a loader |
 | Screen layout mutation | add/remove pane or apply rows/columns | One active display-canvas loader covers all pane slots until accepted layout and every initial output terminal | layout-loading, ready, empty, error | Pane loaders are suppressed; workspace header/tabs, Settings and Inspector remain usable/uncovered |
+| Scoped loader spinner | pane/display loading state | Existing 64px spinner rotates continuously with defined `loader-rotate` keyframes | normal, reduced-motion | 800ms normal; 1600ms reduced-motion; static state forbidden |
+| Plot autoscale | double-click ready graph surface | Restore authoritative current-output X/Y baseline for clicked Time/Spectrum/Spectrogram/Persistence pane | zoomed, reset, linear, log | No other pane/settings/main/backend change; heatmap color range retained |
 | Display tab / Add display | click/keyboard | Active/new display updates and right panel selects `Экран` | default, selected, creating, error | tab row remains horizontal-only |
 | Automatic sample tab | main signal exists/changes | One tab named after `main_signal` exists and loads its first page without changing inspector focus | absent-without-main, loading, ready, error | table owns x/y scroll when selected |
 | Signal `Значения` | click | Ensure/select/focus populated main-signal tab, expand inspector and request missing first page | default, hover, focus, loading, ready, error | table owns x/y scroll |
@@ -819,6 +849,7 @@ screenshot because shell/menu geometry is inherited unchanged from v41.
 | `integration/js/task-0138-values-columns.js` | samples renderer/menu/event branches in `public/js/app.js` | integrate helper unchanged | UI projects provider fields only, fixed base/optional order, frontend visibility map, no API call or calculation |
 | `integration/js/task-0139-ui-inventory.js` | sample visibility initialization + signal-operation inventory in `public/js/app.js` | integrate helper unchanged | Three optional columns all hidden; no square_root UI; filter FFT only from operation selector |
 | `integration/css/task-0139-loading-overlays.css` | `public/css/app.css` | append once | Existing loader tokens; exact-pane and display-canvas anchors; layout overlay suppresses pane overlays |
+| `integration/js/task-0140-plot-autoscale.js` | existing plot default capture/cleanup/double-click branches in `public/js/app.js` | integrate helper unchanged | Preserve current baseline for all four signal-bearing plot types; relayout clicked host only |
 | `integration/js/task-0139-loading-overlays.js` | settings/layout/output lifecycles in `public/js/app.js` | integrate controller unchanged | Begin before mutation, settle current token only at ready/empty/error; sync after workspace render |
 | `integration/html/dialogs/signal-operation.fragment.html` | `public/js/app.js` runtime template → `document.body` | integrate unchanged singleton | Never edit `public/index.html` |
 | Mock shell/zones/renderers/providers/prototype | none | design-only | Never transfer |
@@ -846,6 +877,7 @@ Features extend those hosts; they do not replace their parents or bootstrap.
 | `sample-time-extrema-markers` | Exact active display/pane, successful TIME rows filtered by `signal_name` and `sample_index`; `row.signal_color`; lowest finite graph number; never Spectrum bins | v40 helper regression | existing extrema state → existing sample renderer |
 | `signal-sample-calculated-columns` | Three fixed base columns plus three provider-authored optional columns, all hidden initially; existing 244px eye menu; no square_root UI | v43 UI helper + bridge | `public/js/api.js` row fields → existing `public/js/app.js` sample renderer/menu events |
 | `scoped-output-loading` | Exact-pane loader for pane type/valid Area output refresh; single display-canvas loader for layout reconciliation with stale guards and layout priority | v43 controller + bridge | existing settings/layout/output branches in `public/js/app.js` |
+| `pane-plot-autoscale` | Current provider/default or rendered full-domain X/Y baseline; Plotly-native log coordinates; clicked-pane isolation | v44 helper + bounded regression | existing `Plotly.react`, updateLayout cleanup and graph double-click branches in `public/js/app.js` |
 | `signal-operation-provider` | UI sends operation metadata and user body only; provider executes via Engee and owns hidden envelope/binding/cleanup | mock | `public/js/api.js` → existing `public/js/app.js` body portal |
 | `signal-membership-main` | Checkbox owns pane membership; one explicit main signal owns row emphasis and Signal settings context | deterministic mock state/API | existing `public/js/app.js` + existing layout/view providers |
 | `settings-context-routing` | Pane selects Area page; display selection/creation selects Screen page | actual production UI in file harness | existing `public/js/app.js` event delegation |
@@ -1032,6 +1064,11 @@ font; package copies below remain visual-harness inputs only.
   ready/empty/error. Display layout loading blocks only the plot-grid canvas,
   outranks/suppresses pane loaders and settles after all initial outputs reach a
   terminal state. Neither loader is dismissed by stale mutation output.
+- Pane/display reconciliation spinners use the defined `loader-rotate` keyframes
+  and keep rotating under reduced motion at the slower accepted duration.
+- Double-click autoscale is available for all four ready plot types. Each pane's
+  baseline is keyed to its current output identity and reset is strictly local;
+  linked-axis state, settings, signals and heatmap color ranges remain unchanged.
 
 ## Acceptance
 
@@ -1077,6 +1114,9 @@ font; package copies below remain visual-harness inputs only.
 - V43 source/interaction evidence covers hidden defaults, UI inventory removal,
   stale-token pane loading and display-layout priority; the canonical package
   validator passes.
+- V44 bounded evidence covers defined continuous loader rotation plus Time,
+  Spectrum, Spectrogram and Persistence default/full-domain reset semantics,
+  log-coordinate preservation and pane-local isolation.
 
 ## Backend integration boundary
 
@@ -1145,3 +1185,7 @@ render or leak the wrapper mechanics.
   removes the `Корень` column and FFT operation option, and adds scoped existing-
   style loaders for pane output and display layout reconciliation. No unrelated
   visual, geometry or backend change.
+- `v44`: TASK-0140 fixes scoped-loader rotation through the existing keyframes
+  and makes double-click autoscale type-correct and pane-local for all four plot
+  types by preserving current-output baselines beyond non-Time layout cleanup.
+  No visual, geometry, settings, backend or identity behavior changes.
