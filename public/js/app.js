@@ -97,6 +97,7 @@
     signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
     signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{},
     signalSamples: { signalId:"", signalName:"", token:0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null, search:null }, error:"", searchValue:"", searchState:"", searchMessage:"" },
+    sampleColumnsVisibility:null, sampleColumnsMenuTrigger:null,
     signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }
   };
 
@@ -1976,6 +1977,18 @@
     return window.SignalSamplesSearchMarkers || null;
   }
 
+  function signalSamplesColumnsHelper() {
+    return window.SignalSamplesCalculatedColumns || null;
+  }
+
+  function signalSamplesColumnVisibility() {
+    var helper=signalSamplesColumnsHelper();
+    if (!helper) return {};
+    if (!model.sampleColumnsVisibility) model.sampleColumnsVisibility=helper.defaultVisibility();
+    model.sampleColumnsVisibility=helper.normalizeVisibility(model.sampleColumnsVisibility);
+    return model.sampleColumnsVisibility;
+  }
+
   function createSignalSamplesState(signalId, token, signalName) {
     var controller=signalSamplesController(), state=controller ? controller.create(signalId, token) : { signalId:String(signalId || ""), token:Number(token) || 0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null }, error:"" };
     state.signalName=String(signalName || "");
@@ -2118,22 +2131,34 @@
   }
 
   function renderSignalSamplesInspector(body) {
-    var state=model.signalSamples, controller=signalSamplesController(), helper=signalSamplesSearchHelper();
+    var state=model.signalSamples, controller=signalSamplesController(), helper=signalSamplesSearchHelper(), columnsHelper=signalSamplesColumnsHelper();
     if (!state.signalId) { body.innerHTML="<div class='table-empty' role='status'>Выберите основной сигнал.</div>"; return; }
     if (!state.rows.length && !signalSamplesLoading(state) && !state.error && !state.firstBatchLoaded) loadSignalSamples("down");
     var display=activeDisplay(), pane=paneById(model.activePane), signal=mainSignalForPane(pane), runtimeKey=display && pane ? paneRuntimeKey(display.id, pane.id) : "";
     var markers=helper ? helper.markerMap({ record:runtimeKey ? model.peaksRecords[runtimeKey] : null, signalId:stableSignalId(signal), signalName:signal && signal.name, plotType:pane && pane.plot_type, displayId:display && display.id, paneId:pane && pane.id, signalMatches:function (candidate, expected) { return !!signal && signalNameMatches(signal, candidate) && signalNameMatches(signal, expected); } }) : {};
     var loading=signalSamplesLoading(state), slidingLoading=!!(state.pending && (state.pending.up || state.pending.down)), searchLoading=!!(state.pending && state.pending.search), searchDisabled=searchLoading || !state.firstBatchLoaded, footer=controller ? controller.footer(state) : "0–0 из 0";
-    var searchMarkup=helper && helper.searchMarkup || { rowClass:"inspector-search-row samples-point-search-row", input:{ placeholder:"Введите номер точки", testid:"sample-point-search-input" }, action:{ testid:"sample-point-search-action", ariaLabel:"Перейти к номеру точки", tooltip:"Перейти к номеру точки" }, status:{ testid:"sample-point-search-status" } };
-    var searchRow="<div class='"+esc(searchMarkup.rowClass)+"'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='"+esc(searchMarkup.input.type || "search")+"' inputmode='"+esc(searchMarkup.input.inputmode || "numeric")+"' data-testid='"+esc(searchMarkup.input.testid)+"' aria-label='Номер точки' placeholder='"+esc(searchMarkup.input.placeholder)+"' autocomplete='"+esc(searchMarkup.input.autocomplete || "off")+"' spellcheck='false' autocapitalize='off' autocorrect='off' value='"+esc(state.searchValue || "")+"'"+(searchDisabled ? " disabled" : "")+"></div><button class='samples-point-search-action' type='button' data-testid='"+esc(searchMarkup.action.testid)+"' data-tooltip='"+esc(searchMarkup.action.tooltip)+"' aria-label='"+esc(searchMarkup.action.ariaLabel)+"'"+(searchDisabled ? " disabled" : "")+"><span class='search-icon' aria-hidden='true'></span></button><span class='samples-point-search-status' data-testid='"+esc(searchMarkup.status.testid)+"' role='"+esc(searchMarkup.status.role || "status")+"' aria-live='"+esc(searchMarkup.status.ariaLive || "polite")+"' data-state='"+esc(state.searchState || "")+"'>"+esc(state.searchMessage || "")+"</span></div>";
+    var searchMarkup=helper && helper.searchMarkup || { rowClass:"inspector-search-row samples-point-search-row", input:{ placeholder:"Введите номер точки", testid:"sample-point-search-input" }, status:{ testid:"sample-point-search-status", role:"alert", ariaLive:"assertive" } };
+    var trigger=columnsHelper && columnsHelper.trigger || { testid:"sample-columns-menu-trigger", className:"inspector-action samples-columns-menu-trigger", icon:"more-vertical.svg", ariaLabel:"Выбрать отображаемые столбцы", tooltip:"Видимость столбцов" };
+    var menu=ensureSampleColumnsMenu(), menuOpen=!!menu && !menu.hidden;
+    var errorStatus=state.searchState === "error" && state.searchMessage ? "<span class='samples-point-search-status' data-testid='"+esc(searchMarkup.status.testid)+"' role='"+esc(searchMarkup.status.role || "alert")+"' aria-live='"+esc(searchMarkup.status.ariaLive || "assertive")+"' data-state='error'>"+esc(state.searchMessage)+"</span>" : "";
+    var searchRow="<div class='"+esc(searchMarkup.rowClass)+"'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='"+esc(searchMarkup.input.type || "search")+"' inputmode='"+esc(searchMarkup.input.inputmode || "numeric")+"' data-testid='"+esc(searchMarkup.input.testid)+"' aria-label='Номер точки' placeholder='"+esc(searchMarkup.input.placeholder)+"' autocomplete='"+esc(searchMarkup.input.autocomplete || "off")+"' spellcheck='false' autocapitalize='off' autocorrect='off' value='"+esc(state.searchValue || "")+"'"+(searchDisabled ? " disabled" : "")+"></div>"+errorStatus+"<button class='"+esc(trigger.className)+"' type='button' data-testid='"+esc(trigger.testid)+"' data-tooltip='"+esc(trigger.tooltip)+"' aria-label='"+esc(trigger.ariaLabel)+"' aria-haspopup='menu' aria-expanded='"+String(menuOpen)+"'><img src='./icons/"+esc(trigger.icon)+"' alt=''></button></div>";
+    var visibility=signalSamplesColumnVisibility(), visibleColumns=columnsHelper ? columnsHelper.visibleColumns(visibility) : [];
+    var tableWidth=columnsHelper ? columnsHelper.minimumTableWidth(visibility) : 0;
+    var headMarkup=visibleColumns.map(function (column) { return "<th data-sample-column='"+esc(column.id)+"'>"+esc(column.label)+"</th>"; }).join("");
     var rowsMarkup=state.rows.map(function (row) {
       var sampleIndex=row.sample_index == null ? row.index : row.sample_index, marker=markers[sampleIndex], markerMarkup="";
       if (marker) { var typeLabel=marker.type === "minimum" ? "Минимум" : "Максимум"; markerMarkup="<span class='extrema-table-marker is-"+esc(marker.type)+"' style='--marker-color:"+esc(marker.color)+"' data-marker-symbol='"+(marker.type === "minimum" ? "triangle-down" : "triangle-up")+"' aria-label='"+typeLabel+", метка "+esc(marker.graphNumber)+"'><i aria-hidden='true'></i><b>"+esc(marker.graphNumber)+"</b></span>"; }
-      return "<tr data-sample-index='"+esc(sampleIndex)+"' tabindex='-1'><td><span class='sample-point-cell-content'><span class='sample-point-cell-number'>"+esc(sampleIndex)+"</span>"+markerMarkup+"</span></td><td>"+esc(row.time == null ? (row.time_s == null ? "—" : row.time_s) : row.time)+"</td><td>"+esc(row.value == null ? "—" : row.value)+"</td><td>"+esc(row.magnitude == null ? "—" : row.magnitude)+"</td><td>"+esc(row.square == null ? "—" : row.square)+"</td></tr>";
+      var projectedRow=Object.assign({}, row, { sample_index:sampleIndex, time:row.time == null ? row.time_s : row.time });
+      var cells=columnsHelper ? columnsHelper.rowProjection(projectedRow, visibility) : [];
+      return "<tr data-sample-index='"+esc(sampleIndex)+"' tabindex='-1'>"+cells.map(function (cell) {
+        if (cell.id === "sample_index") return "<td data-sample-column='sample_index'><span class='sample-point-cell-content'><span class='sample-point-cell-number'>"+esc(cell.value)+"</span>"+markerMarkup+"</span></td>";
+        return "<td data-sample-column='"+esc(cell.id)+"'>"+esc(cell.value)+"</td>";
+      }).join("")+"</tr>";
     }).join("");
-    body.innerHTML=searchRow+"<div class='signal-table-scroll' data-testid='samples-table-scroll'><table class='signal-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>"+rowsMarkup+"</tbody></table><div class='samples-footer'><span>"+esc(footer)+"</span></div>"+(slidingLoading ? "<div class='samples-loading' role='status'>Загрузка…</div>" : state.error ? "<div class='samples-loading' role='alert'>"+esc(state.error)+"</div>" : !state.rows.length && state.firstBatchLoaded && !loading ? "<div class='samples-loading' role='status'>У сигнала нет отсчётов.</div>" : "")+"</div>";
+    body.innerHTML=searchRow+"<div class='signal-table-scroll' data-testid='samples-table-scroll'><table class='signal-table sample-table' data-calculated-columns style='--sample-table-min-width:"+esc(tableWidth)+"px'><thead><tr>"+headMarkup+"</tr></thead><tbody>"+rowsMarkup+"</tbody></table><div class='samples-footer'><span>"+esc(footer)+"</span></div>"+(slidingLoading ? "<div class='samples-loading' role='status'>Загрузка…</div>" : state.error ? "<div class='samples-loading' role='alert'>"+esc(state.error)+"</div>" : !state.rows.length && state.firstBatchLoaded && !loading ? "<div class='samples-loading' role='status'>У сигнала нет отсчётов.</div>" : "")+"</div>";
     var scroll=body.querySelector("[data-testid='samples-table-scroll']");
     if (scroll) scroll.addEventListener("scroll", function () { prefetchSignalSamples(scroll, state); }, { passive:true });
+    if (menuOpen) { model.sampleColumnsMenuTrigger=body.querySelector("[data-testid='sample-columns-menu-trigger']"); renderSampleColumnsMenu(); positionMenu(menu, model.sampleColumnsMenuTrigger, 244); }
   }
 
   function screenDraftFor(display) {
@@ -2533,6 +2558,7 @@
     var body = q("[data-inspector-content]");
     if (!body) return;
     var pane = paneById(model.activePane);
+    if (model.inspectorPage !== "samples" && typeof closeSampleColumnsMenu === "function") closeSampleColumnsMenu(false);
     /* The samples tab follows main_signal, not the Values button and not the
        pane visibility checkbox. */
     if (typeof syncSignalSamplesWithMain === "function") syncSignalSamplesWithMain();
@@ -3340,6 +3366,69 @@
     }).join("");
   }
 
+  function ensureSampleColumnsMenu() {
+    var helper=signalSamplesColumnsHelper(), menu=q("[data-testid='sample-columns-menu']");
+    if (menu || !helper) return menu;
+    menu=document.createElement("div");
+    menu.className="menu inspector-menu sample-columns-menu";
+    menu.setAttribute("role", "menu");
+    menu.dataset.testid=helper.menu.testid;
+    menu.setAttribute("data-testid", helper.menu.testid);
+    menu.setAttribute("aria-label", helper.menu.title);
+    menu.hidden=true;
+    document.body.appendChild(menu);
+    return menu;
+  }
+
+  function renderSampleColumnsMenu() {
+    var helper=signalSamplesColumnsHelper(), menu=ensureSampleColumnsMenu();
+    if (!helper || !menu) return;
+    var visible=signalSamplesColumnVisibility();
+    menu.innerHTML="<div class='inspector-menu-title'>"+esc(helper.menu.title)+"</div>"+helper.optionalColumns.map(function (column) {
+      var checked=visible[column.id];
+      return "<button type='button' role='menuitemcheckbox' aria-pressed='"+checked+"' aria-checked='"+checked+"' data-sample-column-visible='"+esc(column.id)+"'><span>"+esc(column.label)+"</span><img src='"+(checked ? "./icons/eye.svg" : "./icons/eye-off.svg")+"' alt=''></button>";
+    }).join("");
+  }
+
+  function closeSampleColumnsMenu(restoreFocus) {
+    var menu=q("[data-testid='sample-columns-menu']"), trigger=q("[data-testid='sample-columns-menu-trigger']") || model.sampleColumnsMenuTrigger;
+    if (!menu || menu.hidden) return;
+    menu.hidden=true;
+    if (trigger) {
+      trigger.setAttribute("aria-expanded", "false");
+      if (restoreFocus && trigger.isConnected !== false) trigger.focus();
+    }
+    model.sampleColumnsMenuTrigger=null;
+  }
+
+  function openSampleColumnsMenu(trigger) {
+    var menu=ensureSampleColumnsMenu();
+    if (!menu || !trigger) return;
+    if (!menu.hidden) return closeSampleColumnsMenu(true);
+    model.sampleColumnsMenuTrigger=trigger;
+    renderSampleColumnsMenu();
+    menu.hidden=false;
+    trigger.setAttribute("aria-expanded", "true");
+    positionMenu(menu, trigger, 244);
+    var first=menu.querySelector("button:not(:disabled)");
+    if (first) first.focus();
+  }
+
+  function toggleSampleColumn(columnId) {
+    var helper=signalSamplesColumnsHelper(), menu=ensureSampleColumnsMenu(), scroll=q("[data-testid='samples-table-scroll']");
+    if (!helper || !menu || menu.hidden) return;
+    var scrollTop=scroll ? scroll.scrollTop : null;
+    model.sampleColumnsVisibility=helper.toggle(signalSamplesColumnVisibility(), columnId);
+    renderSignalSamplesInspector(q("[data-inspector-content]"));
+    scroll=q("[data-testid='samples-table-scroll']");
+    if (scroll && scrollTop != null) scroll.scrollTop=scrollTop;
+    renderSampleColumnsMenu();
+    var trigger=q("[data-testid='sample-columns-menu-trigger']");
+    if (trigger) { model.sampleColumnsMenuTrigger=trigger; trigger.setAttribute("aria-expanded", "true"); positionMenu(menu, trigger, 244); }
+    var restored=menu.querySelector("[data-sample-column-visible='"+CSS.escape(columnId)+"']");
+    if (restored) restored.focus();
+  }
+
   function updateMeasurementKinds(measurementKinds) {
     var display = activeDisplay(), targetDisplayId = display && display.id;
     if (!display) return Promise.reject(new Error("Активный экран не найден."));
@@ -3911,7 +4000,8 @@
     if (button.dataset.testid === "extrema-configure") return void configureActivePeaks();
     if (button.dataset.testid === "extrema-values") return void showActivePeaksValues();
     if (button.dataset.testid === "signal-values-action") return void showSignalSamples();
-    if (button.dataset.testid === "sample-point-search-action") { var sampleSearchInput=q("[data-testid='sample-point-search-input']"); return void submitSignalSamplesSearch(sampleSearchInput ? sampleSearchInput.value : model.signalSamples.searchValue); }
+    if (button.dataset.testid === "sample-columns-menu-trigger") return void openSampleColumnsMenu(button);
+    if (button.dataset.sampleColumnVisible !== undefined) return void toggleSampleColumn(button.dataset.sampleColumnVisible);
     if (button.dataset.testid === "signals-add-action") return void openSignalAddDialog(button);
     if (button.dataset.signalAddClose !== undefined || button.dataset.signalAddCancel !== undefined) return void closeSignalAddDialog(true);
     if (button.dataset.signalAddRetry !== undefined) return void loadSignalAddCatalog(true);
@@ -3950,7 +4040,7 @@
         if (restored) restored.focus();
       }).catch(function (error) { measurementMenu.classList.remove("is-stale"); showToast(safeErrorText(error, "Не удалось изменить измерения."), true); });
     }
-    if (button.dataset.bottomTab) { if (!contextTabAvailable(button.dataset.bottomTab, paneById(model.activePane))) return; closeColumnMenu(false); closeMeasurementMenu(false); model.inspectorPage = button.dataset.bottomTab; if (!peaksSurfaceActive()) stopPeaksPolling(""); if (model.inspectorPage === "samples") syncSignalSamplesWithMain({ retry:true }); renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); if (model.inspectorPage === "peaks") loadPeaks(); return; }
+    if (button.dataset.bottomTab) { if (!contextTabAvailable(button.dataset.bottomTab, paneById(model.activePane))) return; closeColumnMenu(false); closeMeasurementMenu(false); closeSampleColumnsMenu(false); model.inspectorPage = button.dataset.bottomTab; if (!peaksSurfaceActive()) stopPeaksPolling(""); if (model.inspectorPage === "samples") syncSignalSamplesWithMain({ retry:true }); renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); if (model.inspectorPage === "peaks") loadPeaks(); return; }
     if (button.dataset.toastClose !== undefined) q("[data-testid='layout-toast']").hidden = true;
   });
   document.addEventListener("click", function (event) {
@@ -3968,6 +4058,20 @@
   });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='signal-columns-menu']"),trigger=q("[data-testid='signal-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeColumnMenu(false); });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='measurement-columns-menu']"),trigger=q("[data-testid='measurement-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeMeasurementMenu(false); });
+  document.addEventListener("click", function (event) { var menu=q("[data-testid='sample-columns-menu']"),trigger=q("[data-testid='sample-columns-menu-trigger']") || model.sampleColumnsMenuTrigger;if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeSampleColumnsMenu(false); });
+  document.addEventListener("keydown", function (event) {
+    var trigger=event.target.closest && event.target.closest("[data-testid='sample-columns-menu-trigger']");
+    if (trigger && event.key === "ArrowDown") { event.preventDefault(); openSampleColumnsMenu(trigger); return; }
+    var menu=event.target.closest && event.target.closest("[data-testid='sample-columns-menu']");
+    if (!menu) return;
+    if (event.key === "Escape") { event.preventDefault(); event.stopImmediatePropagation(); closeSampleColumnsMenu(true); return; }
+    if (event.key === "Tab") { closeSampleColumnsMenu(false); return; }
+    if (["ArrowDown","ArrowUp","Home","End"].indexOf(event.key) < 0) return;
+    var items=Array.prototype.slice.call(menu.querySelectorAll("button:not(:disabled)")), current=items.indexOf(document.activeElement), next=current;
+    if (!items.length) return;
+    if (event.key === "Home") next=0; else if (event.key === "End") next=items.length-1; else if (event.key === "ArrowDown") next=(current+1+items.length)%items.length; else next=(current-1+items.length)%items.length;
+    event.preventDefault(); items[next].focus();
+  });
   document.addEventListener("keydown", function (event) { var clearLayer=q("[data-testid='pane-clear-confirm-layer']"), help=q("[data-testid='graph-help-overlay']"), paneMenu=q("[data-testid='display-overflow-menu']"), addLayer=signalAddLayer(); if (event.key === "Escape" && model.sessionImport.open && !model.sessionImport.busy) { event.preventDefault(); closeSessionImport(true); return; } if (event.key === "Escape" && clearLayer && !clearLayer.hidden) { event.preventDefault(); closePaneClearConfirm(true); return; } if (event.key === "Escape" && help && !help.hidden) { event.preventDefault(); closeGraphHelp(true); return; } if (event.key === "Escape" && paneMenu && !paneMenu.hidden) { event.preventDefault(); closePaneMenu(true); return; } if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); if (model.signalAddSearch) { model.signalAddSearch=""; renderSignalAddCatalog(); var search=q("[data-signal-add-search]"); if(search)search.focus(); } else closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape" && q("[data-testid='measurement-columns-menu']") && !q("[data-testid='measurement-columns-menu']").hidden) closeMeasurementMenu(true); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]").filter(function (item) { return !item.hidden; }), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0 ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
   document.addEventListener("keydown", function (event) { if (event.key !== "Enter" || !event.target || event.target.dataset.testid !== "sample-point-search-input") return; event.preventDefault(); submitSignalSamplesSearch(event.target.value); });
   document.addEventListener("keydown", function (event) { var menu=event.target.closest && event.target.closest("[data-testid='display-overflow-menu']"); if (!menu || ["ArrowDown","ArrowUp","Home","End"].indexOf(event.key)<0) return; var items=qa("[data-testid='display-overflow-menu'] button:not(:disabled)"), current=items.indexOf(document.activeElement), next=current; if(event.key==="ArrowDown") next=(current+1+items.length)%items.length; else if(event.key==="ArrowUp") next=(current-1+items.length)%items.length; else if(event.key==="Home") next=0; else next=items.length-1; event.preventDefault(); if(items[next]) items[next].focus(); });
@@ -4085,7 +4189,7 @@
   window.addEventListener("resize", function () { scheduleDisplayTabScrollUpdate(false); });
   window.addEventListener("resize", retainWorkspaceSplitOnResize);
   window.addEventListener("resize", repositionLayout);
-  window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='measurement-columns-menu']"), q("[data-testid='measurement-columns-menu-trigger']"), 244); positionPaneMenu(); if (q("[data-testid='graph-help-overlay']") && !q("[data-testid='graph-help-overlay']").hidden && model.graphHelpRestoreTarget) openGraphHelp(model.graphHelpRestoreTarget); });
+  window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='measurement-columns-menu']"), q("[data-testid='measurement-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='sample-columns-menu']"), q("[data-testid='sample-columns-menu-trigger']") || model.sampleColumnsMenuTrigger, 244); positionPaneMenu(); if (q("[data-testid='graph-help-overlay']") && !q("[data-testid='graph-help-overlay']").hidden && model.graphHelpRestoreTarget) openGraphHelp(model.graphHelpRestoreTarget); });
   if (window.ResizeObserver) {
     model.displayTabsObserver = new window.ResizeObserver(function () { scheduleDisplayTabScrollUpdate(false); });
     model.displayTabsObserver.observe(q("[data-testid='display-tabs-wrap']"));
@@ -4591,6 +4695,79 @@
   };
 }(window));
 
+(function registerSignalSamplesCalculatedColumns(window) {
+  "use strict";
+
+  var BASE_COLUMNS = [
+    { id:"sample_index", label:"№ точки", field:"sample_index", optional:false, minWidth:112 },
+    { id:"time", label:"Время", field:"time", optional:false, minWidth:170 },
+    { id:"value", label:"Значение", field:"value", optional:false, minWidth:165 }
+  ];
+  var OPTIONAL_COLUMNS = [
+    { id:"magnitude", label:"Модуль", field:"magnitude", optional:true, minWidth:165 },
+    { id:"square", label:"Квадрат", field:"square", optional:true, minWidth:165 },
+    { id:"square_root", label:"Корень", field:"square_root", optional:true, minWidth:165 },
+    { id:"signed_square_root_magnitude", label:"Корень из модуля × знак", field:"signed_square_root_magnitude", optional:true, minWidth:240 }
+  ];
+
+  function defaultVisibility() {
+    return OPTIONAL_COLUMNS.reduce(function (result, column) { result[column.id]=true; return result; }, {});
+  }
+
+  function normalizeVisibility(value) {
+    var next=defaultVisibility();
+    OPTIONAL_COLUMNS.forEach(function (column) {
+      if (value && typeof value[column.id] === "boolean") next[column.id]=value[column.id];
+    });
+    return next;
+  }
+
+  function visibleColumns(value) {
+    var visible=normalizeVisibility(value);
+    return BASE_COLUMNS.concat(OPTIONAL_COLUMNS.filter(function (column) { return visible[column.id]; }));
+  }
+
+  function toggle(value, id) {
+    var visible=normalizeVisibility(value);
+    if (!OPTIONAL_COLUMNS.some(function (column) { return column.id === id; })) return visible;
+    visible[id]=!visible[id];
+    return visible;
+  }
+
+  function minimumTableWidth(value) {
+    return visibleColumns(value).reduce(function (sum, column) { return sum + column.minWidth; }, 0);
+  }
+
+  function rowProjection(row, value) {
+    row=row || {};
+    return visibleColumns(value).map(function (column) {
+      var projected=row[column.field];
+      return { id:column.id, label:column.label, value:projected === null || projected === undefined || projected === "" ? "—" : projected };
+    });
+  }
+
+  window.SignalSamplesCalculatedColumns = {
+    baseColumns:BASE_COLUMNS,
+    optionalColumns:OPTIONAL_COLUMNS,
+    defaultVisibility:defaultVisibility,
+    normalizeVisibility:normalizeVisibility,
+    visibleColumns:visibleColumns,
+    toggle:toggle,
+    minimumTableWidth:minimumTableWidth,
+    rowProjection:rowProjection,
+    trigger:{ testid:"sample-columns-menu-trigger", className:"inspector-action samples-columns-menu-trigger", icon:"more-vertical.svg", ariaLabel:"Выбрать отображаемые столбцы", tooltip:"Видимость столбцов", placement:"final search-row slot" },
+    menu:{ testid:"sample-columns-menu", title:"Видимость столбцов", width:244, itemAttribute:"data-sample-column-visible" },
+    searchRowRevision:{ standaloneAction:false, submit:"Enter on sample-point-search-input", persistentStatus:false, compactErrorOnly:true },
+    visibilityScope:"one frontend-only preference shared by dynamic signal Values tabs for the current application lifetime",
+    providerRule:"UI projects provider-authored fields only; it never calculates derived values",
+    excluded:[
+      { id:"fft", reason:"explicitly excluded by the user" },
+      { id:"multiply", reason:"requires a product decision for multiplier input and lifecycle" },
+      { id:"custom", reason:"requires a product decision for operation body, naming and lifecycle" }
+    ]
+  };
+}(window));
+
 (function registerSignalSamplesSearchMarkers(window) {
   "use strict";
 
@@ -4645,7 +4822,7 @@
     request.key=[request.signalId, request.token, request.direction, request.startOffset].join(":");
     state.pending.search=request.key;
     state.error="";
-    return { accepted:true, request:request, state:"loading", message:parsed.kind === "reset" ? "Загрузка начала…" : "Загрузка точки " + String(parsed.target) + "…" };
+    return { accepted:true, request:request, state:"loading", message:"" };
   }
 
   function apply(state, request, page) {
@@ -4676,8 +4853,8 @@
       rowSelector:request.target == null ? null : "tr[data-sample-index=\"" + String(request.target) + "\"]",
       scroll:"focus-and-center",
       scrollTop:request.target == null ? 0 : null,
-      state:"success",
-      message:request.target == null ? "Показано начало сигнала." : "Точка " + String(request.target) + " загружена."
+      state:"ready",
+      message:""
     };
   }
 
@@ -4729,11 +4906,11 @@
     searchMarkup:{
       rowClass:"inspector-search-row samples-point-search-row",
       input:{ type:"search", inputmode:"numeric", placeholder:"Введите номер точки", testid:"sample-point-search-input", autocomplete:"off" },
-      action:{ testid:"sample-point-search-action", ariaLabel:"Перейти к номеру точки", tooltip:"Перейти к номеру точки" },
-      status:{ testid:"sample-point-search-status", role:"status", ariaLive:"polite" }
+      submit:{ event:"keydown", key:"Enter", emptyValue:"reset-first-page" },
+      status:{ testid:"sample-point-search-status", role:"alert", ariaLive:"assertive", errorOnly:true }
     },
     pointCellOrder:"point number first at left, then marker",
     markerRule:"TIME-only successful exact active display/pane record; filter row.signal_name through signalMatches or exact name fallback; lowest finite graph_number wins, then provider response order",
-    clearingRule:"Clearing input alone does not request; explicit Enter/search with empty value resets to the first 500-row page"
+    clearingRule:"Clearing input alone does not request; Enter with empty value resets to the first 500-row page"
   };
 }(window));

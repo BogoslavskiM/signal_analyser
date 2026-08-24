@@ -105,8 +105,34 @@ function signal_inventory_summary_payload(
     end
 end
 
-signal_inventory_sample_value(value::ComplexF64, is_complex::Bool) =
+function signal_inventory_sample_value(
+    value::ComplexF64,
+    is_complex::Bool,
+)::Union{Nothing,Float64,String}
+    isfinite(real(value)) && isfinite(imag(value)) || return nothing
     is_complex ? string(value) : real(value)
+end
+
+function signal_inventory_square_root_value(
+    value::ComplexF64,
+    is_complex::Bool,
+)::Union{Nothing,Float64,String}
+    if is_complex
+        return signal_inventory_sample_value(sqrt(value), true)
+    end
+    sample = real(value)
+    sample < 0 && return nothing
+    sqrt(sample)
+end
+
+function signal_inventory_signed_square_root_magnitude_value(
+    value::ComplexF64,
+    is_complex::Bool,
+)::Union{Nothing,Float64}
+    is_complex && return nothing
+    sample = real(value)
+    sqrt(abs(sample)) * sign(sample)
+end
 
 function signal_inventory_samples_payload(
     state::SignalAnalyserState,
@@ -142,6 +168,12 @@ function signal_inventory_samples_payload(
                 "value" => signal_inventory_sample_value(value, signal.is_complex),
                 "magnitude" => abs(value),
                 "square" => signal_inventory_sample_value(square, signal.is_complex),
+                "square_root" => signal_inventory_square_root_value(value, signal.is_complex),
+                "signed_square_root_magnitude" =>
+                    signal_inventory_signed_square_root_magnitude_value(
+                        value,
+                        signal.is_complex,
+                    ),
             ))
         end
         Dict{String,Any}(

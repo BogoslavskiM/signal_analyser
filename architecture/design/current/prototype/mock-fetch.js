@@ -152,14 +152,14 @@
   function samples(path) {
     var query=new URL(path, "https://prototype.invalid/").searchParams;
     var cursor=Math.max(0, Number(query.get("cursor") || 0));
-    var limit=Math.max(1, Math.min(24, Number(query.get("limit") || 24)));
+    var limit=Math.max(1, Math.min(500, Number(query.get("limit") || 500)));
     var fixtureTotal=72;
     var rows=[];
     for (var index=cursor; index<Math.min(cursor+limit, fixtureTotal); index++) {
-      var value=Math.sin(index*Math.PI/10), magnitude=Math.abs(value);
-      rows.push({ sample_index:index, time:index+" мкс", value:value.toFixed(6), magnitude:magnitude.toFixed(6), square:(value*value).toFixed(6) });
+      var value=Math.sin(index*Math.PI/10), magnitude=Math.abs(value), rootMagnitude=Math.sqrt(magnitude);
+      rows.push({ sample_index:index, time:index+" мкс", value:value.toFixed(6), magnitude:magnitude.toFixed(6), square:(value*value).toFixed(6), square_root:value < 0 ? "0 + "+rootMagnitude.toFixed(6)+"i" : rootMagnitude.toFixed(6), signed_square_root_magnitude:(value < 0 ? "−" : "")+rootMagnitude.toFixed(6) });
     }
-    return { signal:{ id:"signal-radar", name:"radarPulse" }, rows:rows, next_cursor:cursor+rows.length < fixtureTotal ? cursor+rows.length : null, total:fixtureTotal };
+    return { signal_id:"signal-radar", signal:{ id:"signal-radar", name:"radarPulse" }, start_offset:cursor, end_offset:cursor+rows.length, rows:rows, next_cursor:cursor+rows.length < fixtureTotal ? cursor+rows.length : null, total:fixtureTotal };
   }
   function fullState() {
     return Object.assign(state(), { measurement_rows:[{ signal_name:"radarPulse", time_limits:{ min_s:0, max_s:0.399999 }, items:[{ id:"minimum", value:-0.984, time_s:0.291503 }, { id:"maximum", value:1, time_s:0.386230 }, { id:"mean", value:0.008 }, { id:"median", value:0.006 }, { id:"peak_to_peak", value:1.984 }, { id:"rms", value:0.516 }] }] });

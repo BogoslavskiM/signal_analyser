@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `40`
+- Design version: `42`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V40 is the current integration-safe package for the accepted Signal Analyser
+V42 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -37,6 +37,12 @@ TASK-0130 graph-cursor extension:
    500-row provider batches, at most 1000 DOM rows and boundary prefetch at 100.
 8. The same table has an exact point-number server jump and TIME-only projection
    of a current same-signal extrema marker into the point-number cell.
+9. The Values table keeps `№ точки / Время / Значение` always visible and exposes
+   provider-authored `Модуль / Квадрат / Корень / Корень из модуля × знак` as
+   independent eye-menu columns from a new three-dot action in the same search row.
+10. The point-search row has no standalone search action: Enter submits the point
+    search, successful loads leave no persistent status, and the existing standard
+    vertical-three-dot action occupies the single final slot for column visibility.
 
 The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
 transaction implementation, Plotly payloads, sample API endpoint mechanics and
@@ -88,7 +94,7 @@ entry baseline or production transfer inputs.
 | # | Surface | Approval decision | Evidence |
 |---:|---|---|---|
 | 1 | First `Сигнал` tab | Metadata first, then compact two-column `Сводка`; one `Значения` action | `screenshots/v31--standalone-production-signal--1440x900.png` |
-| 2 | Dynamic samples tab | Tab label is current `main_signal.name`; five populated semantic columns; cursor fixture visibly appends page 2 | `screenshots/v31--standalone-production-samples--1440x900.png` |
+| 2 | Dynamic samples tab | Tab label is current `main_signal.name`; three fixed base columns plus four independently visible provider-authored calculated columns; 244px eye menu opens from the search-row three dots | `screenshots/v41--values-column-visibility-menu--1440x900.png` |
 | 3 | Spectrum extrema | Markers overlay the spectrum, lower table uses Magnitude + projected Frequency | `screenshots/v31--standalone-production-spectrum-extrema--1440x900.png` |
 | 4 | Spectrum Area settings | Frequency/magnitude slider checkboxes; independent local magnitude limits | `screenshots/v31--standalone-production-spectrum-area--1440x900.png` |
 | 5 | Screen spectrum links | Four independent checkboxes; linked frequency limits appear as a separate group | `screenshots/v31--standalone-production-screen-links--1440x900.png` |
@@ -217,6 +223,25 @@ entry baseline or production transfer inputs.
   Auto table layout gives it `width: 1%` and exact `min-width: 112px`, sufficient
   for one eight-digit 100m-scale number plus unchanged marker. Other columns and
   row styles remain unchanged.
+- The sample Values table has exactly three non-optional base columns in fixed
+  order: `№ точки`, `Время`, `Значение`. They never appear in the visibility menu.
+  Four deterministic provider-authored columns follow in fixed order:
+  `Модуль`, `Квадрат`, `Корень`, `Корень из модуля × знак`. All four are visible
+  by default and can be toggled independently without an API request, revision,
+  row-window reset, scroll reset or table selection change.
+- The visibility preference is one frontend-only application-lifetime map shared
+  by dynamic Values tabs. A main-signal rebind does not reset it; a full reload
+  may. The UI displays only provider fields and never calculates a derived value.
+- `Умножить` and `Пользовательское` are intentionally absent from the ready menu:
+  their multiplier/body, naming, scope and lifecycle are still product decisions.
+  `FFT` is excluded explicitly by the user. No placeholder parameter UI or fake
+  calculated column is introduced.
+- The three-dot trigger is the final fixed 32px action in the current point-search
+  row. Its body-portal popup copies the production Signal table pattern: 244px,
+  title `Видимость столбцов`, 28px `menuitemcheckbox` rows, `eye.svg` for visible
+  and `eye-off.svg` for hidden. A toggle keeps the menu open and restores focus
+  to the same row; Escape restores the trigger, outside click closes without
+  stealing focus, and Arrow/Home/End use roving focus.
 
 ## Exact delta v27 → v28
 
@@ -389,6 +414,38 @@ entry baseline or production transfer inputs.
   Shell, inspector dimensions, other columns, footer, Values action and existing
   loading/empty/error visuals are unchanged.
 
+## Exact delta v40 → v41
+
+- Added one 32px three-dot trigger to the existing sample point-search row and
+  one fixed body-portal menu using the already accepted production
+  `Видимость столбцов`/eye pattern. No shell, inspector, search-input, footer,
+  row-window, marker, graph, settings or dialog geometry changed.
+- `№ точки / Время / Значение` remain always visible. `Модуль / Квадрат /
+  Корень / Корень из модуля × знак` are provider-authored, initially visible,
+  independently toggleable and always render in that order.
+- Visibility toggles are frontend-only and immediately reflow the table while
+  preserving rows, current window offsets, footer and scroll. The table owns
+  horizontal overflow as its min-width changes from 612px to 1182px.
+- Recorded exact trigger/menu selectors, eye/eye-off state, keyboard, outside,
+  Escape/focus restoration, body-portal stacking and narrow viewport flip/clamp.
+- `Умножить` and `Пользовательское` remain unresolved product dependencies and
+  are not rendered. `FFT` is explicitly excluded.
+
+## Exact delta v41 → v42
+
+- Removed the standalone right-side point-search action from the dynamic Values
+  search row. Enter on `sample-point-search-input` is the only submit gesture;
+  explicit empty Enter still resets the first server page.
+- Removed persistent loading/success copy such as `Показано начало сигнала.`.
+  Successful replacement returns to `ready` with no message; only compact
+  validation/provider errors may render inline as an assertive alert.
+- Reused the existing `.inspector-action` control with `more-vertical.svg` as
+  the one final 32px row action. It opens the unchanged 244px
+  `Видимость столбцов` eye/eye-off menu from v41.
+- Mock/render contracts now use authoritative `start_offset`, `end_offset`,
+  `next_cursor` and `total` page fields; legacy camelCase cursor aliases are not
+  required. Multiply/Custom remain absent and FFT remains excluded.
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -414,6 +471,8 @@ entry baseline or production transfer inputs.
   bidirectional sliding row window.
 - Approved TASK-0135 request from 2026-08-24 for exact point jump, TIME extrema
   marker projection and compact point cell.
+- User TASK-0138 screenshots from 2026-08-24 for the calculated-column inventory
+  and the existing production Signal-table `Видимость столбцов` eye menu.
 - Read-only current selectors/geometry in `public/index.html`,
   `public/css/app.css`, `public/js/app.js`, `public/js/settings.js`.
 - Canonical local `designer/visual-system`, application composition, settings,
@@ -475,6 +534,30 @@ entry baseline or production transfer inputs.
   returned `You currently have nothing selected`; v40 therefore copies the
   accepted production search and marker patterns without inventing a style.
 
+### Skills for v41 revision
+
+- Applied: `designer/designer-workflow` for complete-current publication and
+  `designer/data-entry-and-inspection` for the table inventory, canonical
+  eye/eye-off semantics, roving focus, immediate reflow and scroll ownership.
+- Skipped: `designer/visual-system` because v41 copies the current production
+  Signal-table column menu and local exact assets without changing the visual
+  component; Figma reference status is `not_required`. Engee Apps research,
+  application composition, page sizing, output and dialog skills were skipped
+  because composition, zone minima, graphs and dialogs do not change.
+
+### Skills for v42 revision
+
+- Applied: `designer/designer-workflow` for complete-current publication and
+  `designer/data-entry-and-inspection` for Enter submission, compact error-only
+  feedback, standard action reuse and unchanged eye-menu semantics.
+- Applied narrowly: `designer/visual-system` to confirm that v42 introduces no
+  token, icon, size or menu variant: it reuses the already accepted local
+  `.inspector-action`, `more-vertical.svg`, 244px menu and eye assets exactly.
+  A Figma reload is not required for this exact current-component reuse;
+  `figma_reference_status: not_required`.
+- Skipped: Engee Apps research, application composition, page sizing, output
+  and dialog skills because no composition, geometry, graph or dialog changes.
+
 ### Skills for v32 revision
 
 - Applied: `designer/designer-workflow` for the complete-current revision,
@@ -491,6 +574,8 @@ entry baseline or production transfer inputs.
 | Screenshot/template | Extracted pattern or measurement | Explicitly ignored app-specific content |
 |---|---|---|
 | `/Users/makar/Desktop/Снимок экрана 2026-08-24 в 10.03.47.png` | Production defect evidence: selected halo is visibly uneven and the check glyph is off-center at enlarged/DPR rendering | Graph trace and background application content outside the picker |
+| `/Users/makar/Desktop/Снимок экрана 2026-08-24 в 12.43.38.png` | Exact requested calculated-column labels/order: `Модуль`, `Квадрат`, `Корень`, `Корень из модуля × знак`; FFT excluded | Multiply/Custom parameter semantics and the source menu's selected-operation state |
+| `/Users/makar/Desktop/Снимок экрана 2026-08-24 в 12.47.22.png` | Existing production `Видимость столбцов` title, compact rows and right-aligned eye icons | Signal-table-specific column labels |
 | `architecture/design/TASK-0080-explicit-apply-flow/screenshots/v25--tabs-and-measurements--1440x900.png` | 44px toolbar, 32px three-paint-stack tabs, 3px selected indicator, workspace/settings/inspector density | Old three-tab inventory and task-specific values |
 | `architecture/design/TASK-0080-explicit-apply-flow/screenshots/v25--values-ready--1024x768.png` | Full-width lower table, fixed settings footer, compact column rhythm | Time-only extrema semantics |
 | `architecture/design/TASK-0106-native-engee-session-io/screenshots/v26--import-parent-default--1024x768.png` | 12px modal radius, 48px titlebar, 56px actions, backdrop | Import fields and destructive copy |
@@ -577,7 +662,8 @@ override the successful v32 node-specific read above.
 | Automatic sample tab | main signal exists/changes | One tab named after `main_signal` exists and loads its first page without changing inspector focus | absent-without-main, loading, ready, error | table owns x/y scroll when selected |
 | Signal `Значения` | click | Ensure/select/focus populated main-signal tab, expand inspector and request missing first page | default, hover, focus, loading, ready, error | table owns x/y scroll |
 | Dynamic sample row window | scroll within 100 rows of top/bottom boundary | Fetch 500 upward/downward; retain at most 1000 rows; keep visible record fixed through measured-height compensation | loading-up, loading-down, ready, end-of-data, error, stale-ignored | existing table/scroll owner/footer geometry unchanged |
-| Sample point search | type, Enter or icon click | Validate exact `0..total-1`, replace with centered server page and focus target; empty explicit submit resets first page | pristine, typing, invalid, loading, success, error | 32px row; clearing alone sends no request |
+| Sample point search | type, Enter | Validate exact `0..total-1`, replace with centered server page and focus target; empty Enter resets first page; successful loads leave no persistent copy | pristine, typing, invalid, loading, ready, error-only | 32px row; clearing alone sends no request; no standalone action |
+| Sample column menu | three-dot click/Enter/Space/ArrowDown; item click/Enter/Space; Arrow/Home/End; Escape/Tab/outside | 244px `Видимость столбцов`; eye/eye-off toggles one optional provider column immediately and stays open; Escape restores trigger | closed, trigger-hover/focus/expanded, row-hover/focus, visible-eye, hidden-eye | fixed body portal at dropdown layer; table remains x/y owner, popup owns only its own y overflow; clamps to 8px viewport gap and flips above |
 | TIME extrema in point cell | render current samples | Keep number first, then canonical marker when exact active display/pane successful same-signal TIME extrema has `sample_index` | absent, marker-ready, duplicate-resolved | auto 1%/min 112px left-aligned first column; Spectrum never maps |
 | Signal color trigger | click/keyboard | 284px anchored non-modal popover opens with HEX and the restored eight swatches | closed, open, hover, selected-draft, invalid, busy | fixed overlay; flips/clamps to viewport, no settings scroll ownership change |
 | Color popover Apply/Cancel | click/Escape/outside | Apply writes Signal color draft; Cancel paths restore opening color | draft, busy, committed-to-page-draft, cancelled | focus returns to color trigger |
@@ -665,6 +751,18 @@ V40 adds no screenshots. Its deterministic regression is
 failed`; it covers centered server jump/validation/reset/focus, resumed v39
 sliding, token guards, active TIME marker eligibility, duplicate resolution,
 Spectrum exclusion and exact first-column CSS.
+V41 regression is `evidence/interaction-regression-v41-values-columns.json`,
+`3 passed / 0 failed`, with zero runtime/network errors. It click-tests the
+seven-column default, exact four-row eye menu, immediate hide/reflow while the
+menu remains open, Escape focus restoration and the production-faithful
+`file://` harness. The menu-open state is captured in
+`screenshots/v41--values-column-visibility-menu--1440x900.png`.
+V42 bounded source/controller regression is
+`evidence/interaction-regression-v42-sample-search-row.json`, `4 passed / 0
+failed`. It verifies Enter-only submission, absence of the standalone button and
+success copy, reuse of the standard final three-dot action, unchanged 244px menu
+contract and authoritative mock page offsets. V42 intentionally adds no browser
+screenshot because shell/menu geometry is inherited unchanged from v41.
 
 ## Transfer contract
 
@@ -685,9 +783,11 @@ Spectrum exclusion and exact first-column CSS.
 | `integration/js/task-0126-summary-units-continuity.js` | existing settings/summary/extrema/catalog renderers | integrate named inventories/helpers | Preserve existing DOM/queues; do not install prototype bridge |
 | `integration/css/task-0130-graph-cursors.css` | `public/css/app.css` | append once | Exact existing-menu/check and Plotly-sibling overlay styles |
 | `integration/js/task-0130-graph-cursors.js` | pane menu + plot lifecycle branches in `public/js/app.js` | integrate controller unchanged | Frontend-only map; install rows, attach after react, update after relayout, clear with pane; never install prototype bridge |
-| `integration/js/task-0134-sample-row-window.js` | existing sample state/loader/renderer/scroll branches in `public/js/app.js` | integrate controller unchanged | Keep the existing five-column table and provider transport; apply returned compensation using measured rendered row height |
+| `integration/js/task-0134-sample-row-window.js` | existing sample state/loader/renderer/scroll branches in `public/js/app.js` | integrate controller unchanged | Keep the existing visible-column table and provider transport; apply returned compensation using measured rendered row height |
 | `integration/css/task-0135-sample-search-markers.css` | `public/css/app.css` | append once | Existing 32px search pattern plus auto 1%/min 112px left point cell; other columns unchanged |
 | `integration/js/task-0135-sample-search-markers.js` | samples render/search/provider branches in `public/js/app.js` | integrate helper unchanged | Server-only centered jump, token replacement, center focus and exact active TIME marker projection |
+| `integration/css/task-0138-values-columns.css` | `public/css/app.css` | append once after TASK-0135 sample rules | Exact final search-row action, 244px eye menu and dynamic table min-width; preserve all existing row/window states |
+| `integration/js/task-0138-values-columns.js` | samples renderer/menu/event branches in `public/js/app.js` | integrate helper unchanged | UI projects provider fields only, fixed base/optional order, frontend visibility map, no API call or calculation |
 | `integration/html/dialogs/signal-operation.fragment.html` | `public/js/app.js` runtime template → `document.body` | integrate unchanged singleton | Never edit `public/index.html` |
 | Mock shell/zones/renderers/providers/prototype | none | design-only | Never transfer |
 
@@ -712,6 +812,7 @@ Features extend those hosts; they do not replace their parents or bootstrap.
 | `signal-summary-provider` | Backend-authored summary view model | mock | `public/js/api.js` → existing `public/js/app.js` |
 | `signal-samples-pagination` | 500-row bidirectional batches plus exact centered point jump, 1000-row DOM window, footer/compensation; never full vector | v39/v40 controller regressions | `public/js/api.js` → existing `public/js/app.js` inspector renderer |
 | `sample-time-extrema-markers` | Exact active display/pane, successful TIME rows filtered by `signal_name` and `sample_index`; `row.signal_color`; lowest finite graph number; never Spectrum bins | v40 helper regression | existing extrema state → existing sample renderer |
+| `signal-sample-calculated-columns` | Three fixed base columns plus four provider-authored optional columns; existing 244px eye menu pattern; immediate reflow without row/window/scroll reset | v41 UI helper + bridge | `public/js/api.js` row fields → existing `public/js/app.js` sample renderer/menu events |
 | `signal-operation-provider` | UI sends operation metadata and user body only; provider executes via Engee and owns hidden envelope/binding/cleanup | mock | `public/js/api.js` → existing `public/js/app.js` body portal |
 | `signal-membership-main` | Checkbox owns pane membership; one explicit main signal owns row emphasis and Signal settings context | deterministic mock state/API | existing `public/js/app.js` + existing layout/view providers |
 | `settings-context-routing` | Pane selects Area page; display selection/creation selects Screen page | actual production UI in file harness | existing `public/js/app.js` event delegation |
@@ -821,6 +922,9 @@ and the document owns both scroll axes. Verified screenshots cover 920×680,
   colors. The 24px square includes its border and sits at uniform 4px insets;
   the proportional tick is centered without changing target geometry. No
   palette selector, line, marker, fill or interpolation appears.
+- The sample-column popup reuses the production `.menu.inspector-menu`:
+  244px wide, 4px padding, 1px line, 6px radius, existing dialog shadow,
+  32px title, 28px rows and exact 16px `eye/eye-off` at the right edge.
 
 ### Proportion contract
 
@@ -830,7 +934,7 @@ and the document owns both scroll axes. Verified screenshots cover 920×680,
 | Settings | analytical-dense | 40px rows, 140-ish label/control split, 32px fields | four tabs and new groups | label column is 132px at 300px panel minimum |
 | Tabs | v25/current | 32px row, 3px indicator | add Signal and dynamic sample tab | horizontal scroll, never vertical |
 | Plot | current | white canvas, local controls, overlay legend | two independent spectrum sliders, markers and pane-local cursor layer | cursor readout overlays upper-left without changing plot margins |
-| Tables | analytical-dense | 32px rows, sticky header, left name/color | add five-column lazy samples table | samples table local min-width 760px |
+| Tables | analytical-dense | 32px rows, sticky header, left point/name/color, fixed optional order | lazy samples table with three base and zero-to-four optional columns | dynamic min-width 612–1182px; existing inspector owns horizontal scroll |
 | Dialog | analytical modal | 48px title, 56px actions, 12px radius | code editor and seven operations | width 660px; menu-open height 500px |
 | Signal color popover | Figma `1779:11344` | 284px, radius 8px, 16px padding, 32px targets with exact 24px inner squares, uniform 4px halo, centered tick, equal footer buttons | Original eight swatches only | Palette content follows the explicit restored-color requirement |
 
@@ -842,6 +946,7 @@ and the document owns both scroll axes. Verified screenshots cover 920×680,
 | Application + operation dialog | app → backdrop → dialog | dialog | first form control | originating row operation button |
 | Dialog + operation menu | app → backdrop → dialog → menu | menu | active option | operation selector |
 | Settings + Signal color popover | app → settings → color popover | popover | HEX then swatches/actions | Signal color trigger |
+| Inspector + sample column menu | app → inspector/table sticky header → body-portal column menu | menu inside; table/search outside | roving menu row; trigger after Escape | trigger on Escape; outside click keeps clicked target focus |
 | Dialog busy | app → backdrop → dialog → busy state | none until completion | dialog status | submit on error or success acknowledgement |
 
 Backdrop clicks do not close. Escape/close/Cancel close only a non-busy dialog.
@@ -862,6 +967,7 @@ font; package copies below remain visual-harness inputs only.
 | Copy/function/trash | `public/icons/{copy,function,trash}.svg` | corresponding mock icons | signal row actions |
 | Search/chevron/spinner | `public/icons/{search,chevron-down-fill-16,Spinner}.svg` | corresponding mock icons | inspector/select/busy |
 | Tick | `public/icons/tick-figma.svg` | `frontend-source/icons/tick-figma.svg` | selected palette swatch and existing checked states |
+| Eye/eye-off | `public/icons/{eye,eye-off}.svg` | `frontend-source/icons/{eye,eye-off}.svg` | sample optional-column visible/hidden state |
 
 ## States and validation
 
@@ -896,7 +1002,9 @@ font; package copies below remain visual-harness inputs only.
 - Prototype remains the accepted visual harness and is wholly design-only.
 - Inherited 35/35 walkthrough checks plus TASK-0130 delta 8/8, v37 zero-snap
   regression 1/1, v38 selected-swatch geometry 1/1, v39 row-window regression
-  1/1 and the current transfer audit; zero runtime/network errors.
+  1/1, v40 search/marker regression 2/2, v41 calculated-column/menu regression
+  3/3, v42 bounded search-row source/controller regression 4/4 and the current
+  transfer audit; zero reported regression failures.
 - Transfer audit confirms icon-only direct copy plus exact additive fragments,
   immutable
   production document/shell/module/Plotly-host identities and zero mock paths

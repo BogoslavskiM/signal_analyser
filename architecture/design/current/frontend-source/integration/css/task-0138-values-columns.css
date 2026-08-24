@@ -1,0 +1,56 @@
+/* TASK-0138: optional provider-authored calculated columns in the existing
+   dynamic signal Values table. The shell, search field and table states stay
+   unchanged. */
+.samples-columns-menu-trigger {
+  flex: 0 0 32px;
+}
+
+.samples-columns-menu-trigger:active { background: var(--button-active); }
+.samples-columns-menu-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.sample-columns-menu {
+  width: 244px;
+  max-height: min(360px, calc(100vh - 16px));
+}
+
+.sample-columns-menu button[role="menuitemcheckbox"] {
+  min-height: 28px;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 12px;
+}
+
+.sample-columns-menu button[role="menuitemcheckbox"] span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sample-columns-menu button[role="menuitemcheckbox"] img {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.sample-table[data-calculated-columns] {
+  width: max(100%, var(--sample-table-min-width, 612px));
+}
+
+.sample-table[data-calculated-columns] th,
+.sample-table[data-calculated-columns] td {
+  width: auto;
+}
+
+.sample-table[data-calculated-columns] [data-sample-column="sample_index"] { min-width: 112px; }
+.sample-table[data-calculated-columns] [data-sample-column="time"] { min-width: 170px; }
+.sample-table[data-calculated-columns] [data-sample-column="value"],
+.sample-table[data-calculated-columns] [data-sample-column="magnitude"],
+.sample-table[data-calculated-columns] [data-sample-column="square"],
+.sample-table[data-calculated-columns] [data-sample-column="square_root"] { min-width: 165px; }
+.sample-table[data-calculated-columns] [data-sample-column="signed_square_root_magnitude"] { min-width: 240px; }
+
+@media (max-width: 919px) {
+  .samples-point-search-status { max-width: 180px; }
+  .sample-columns-menu { max-width: calc(100vw - 16px); }
+}

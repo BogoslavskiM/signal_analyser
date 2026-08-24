@@ -30,20 +30,21 @@
           { n: 2, signal: "radarPulse", color: "#2563eb", type: "Максимум", value: "−18,42 dB", position: "368,4 кГц", marker: "▲ 2" },
           { n: 3, signal: "echoComplex", color: "#dc2626", type: "Максимум", value: "−24,10 dB", position: "552,7 кГц", marker: "▲ 3" }
         ],
-        samplePage: { cursor:0, limit:12, nextCursor:12, total:400000 },
+        samplePage: { start_offset:0, end_offset:12, next_cursor:12, total:400000 },
+        sampleColumnVisibility: { magnitude:true, square:true, square_root:true, signed_square_root_magnitude:true },
         sampleRows: [
-          ["0", "0 нс", "0", "0", "0"],
-          ["1", "1 000 нс", "0,309017", "0,309017", "0,095492"],
-          ["2", "2 000 нс", "0,587785", "0,587785", "0,345492"],
-          ["3", "3 000 нс", "0,809017", "0,809017", "0,654508"],
-          ["4", "4 000 нс", "0,951057", "0,951057", "0,904508"],
-          ["5", "5 000 нс", "1", "1", "1"],
-          ["6", "6 000 нс", "0,951057", "0,951057", "0,904508"],
-          ["7", "7 000 нс", "0,809017", "0,809017", "0,654508"],
-          ["8", "8 000 нс", "0,587785", "0,587785", "0,345492"],
-          ["9", "9 000 нс", "0,309017", "0,309017", "0,095492"],
-          ["10", "10 000 нс", "0", "0", "0"],
-          ["11", "11 000 нс", "−0,309017", "0,309017", "0,095492"]
+          {sample_index:"0",time:"0 нс",value:"0",magnitude:"0",square:"0",square_root:"0",signed_square_root_magnitude:"0"},
+          {sample_index:"1",time:"1 000 нс",value:"0,309017",magnitude:"0,309017",square:"0,095492",square_root:"0,555893",signed_square_root_magnitude:"0,555893"},
+          {sample_index:"2",time:"2 000 нс",value:"0,587785",magnitude:"0,587785",square:"0,345492",square_root:"0,766671",signed_square_root_magnitude:"0,766671"},
+          {sample_index:"3",time:"3 000 нс",value:"0,809017",magnitude:"0,809017",square:"0,654508",square_root:"0,899454",signed_square_root_magnitude:"0,899454"},
+          {sample_index:"4",time:"4 000 нс",value:"0,951057",magnitude:"0,951057",square:"0,904508",square_root:"0,975221",signed_square_root_magnitude:"0,975221"},
+          {sample_index:"5",time:"5 000 нс",value:"1",magnitude:"1",square:"1",square_root:"1",signed_square_root_magnitude:"1"},
+          {sample_index:"6",time:"6 000 нс",value:"0,951057",magnitude:"0,951057",square:"0,904508",square_root:"0,975221",signed_square_root_magnitude:"0,975221"},
+          {sample_index:"7",time:"7 000 нс",value:"0,809017",magnitude:"0,809017",square:"0,654508",square_root:"0,899454",signed_square_root_magnitude:"0,899454"},
+          {sample_index:"8",time:"8 000 нс",value:"0,587785",magnitude:"0,587785",square:"0,345492",square_root:"0,766671",signed_square_root_magnitude:"0,766671"},
+          {sample_index:"9",time:"9 000 нс",value:"0,309017",magnitude:"0,309017",square:"0,095492",square_root:"0,555893",signed_square_root_magnitude:"0,555893"},
+          {sample_index:"10",time:"10 000 нс",value:"0",magnitude:"0",square:"0",square_root:"0",signed_square_root_magnitude:"0"},
+          {sample_index:"11",time:"11 000 нс",value:"−0,309017",magnitude:"0,309017",square:"0,095492",square_root:"0 + 0,555893i",signed_square_root_magnitude:"−0,555893"}
         ]
       });
     },

@@ -52,7 +52,7 @@
     request.key=[request.signalId, request.token, request.direction, request.startOffset].join(":");
     state.pending.search=request.key;
     state.error="";
-    return { accepted:true, request:request, state:"loading", message:parsed.kind === "reset" ? "Загрузка начала…" : "Загрузка точки " + String(parsed.target) + "…" };
+    return { accepted:true, request:request, state:"loading", message:"" };
   }
 
   function apply(state, request, page) {
@@ -83,8 +83,8 @@
       rowSelector:request.target == null ? null : "tr[data-sample-index=\"" + String(request.target) + "\"]",
       scroll:"focus-and-center",
       scrollTop:request.target == null ? 0 : null,
-      state:"success",
-      message:request.target == null ? "Показано начало сигнала." : "Точка " + String(request.target) + " загружена."
+      state:"ready",
+      message:""
     };
   }
 
@@ -136,11 +136,11 @@
     searchMarkup:{
       rowClass:"inspector-search-row samples-point-search-row",
       input:{ type:"search", inputmode:"numeric", placeholder:"Введите номер точки", testid:"sample-point-search-input", autocomplete:"off" },
-      action:{ testid:"sample-point-search-action", ariaLabel:"Перейти к номеру точки", tooltip:"Перейти к номеру точки" },
-      status:{ testid:"sample-point-search-status", role:"status", ariaLive:"polite" }
+      submit:{ event:"keydown", key:"Enter", emptyValue:"reset-first-page" },
+      status:{ testid:"sample-point-search-status", role:"alert", ariaLive:"assertive", errorOnly:true }
     },
     pointCellOrder:"point number first at left, then marker",
     markerRule:"TIME-only successful exact active display/pane record; filter row.signal_name through signalMatches or exact name fallback; lowest finite graph_number wins, then provider response order",
-    clearingRule:"Clearing input alone does not request; explicit Enter/search with empty value resets to the first 500-row page"
+    clearingRule:"Clearing input alone does not request; Enter with empty value resets to the first 500-row page"
   };
 }(window));

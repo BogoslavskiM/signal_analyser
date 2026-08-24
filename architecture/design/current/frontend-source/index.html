@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Анализатор сигналов — design v40</title>
+  <title>Анализатор сигналов — design v42</title>
   <link rel="stylesheet" href="./css/theme.css">
   <link rel="stylesheet" href="./css/app-shell.css">
   <link rel="stylesheet" href="./css/components/value-select.css">
@@ -15,6 +15,7 @@
   <link rel="stylesheet" href="./integration/css/task-0118-color-picker.css">
   <link rel="stylesheet" href="./integration/css/task-0130-graph-cursors.css">
   <link rel="stylesheet" href="./integration/css/task-0135-sample-search-markers.css">
+  <link rel="stylesheet" href="./integration/css/task-0138-values-columns.css">
 </head>
 <body>
   <main id="app" class="app-shell" data-testid="app-shell" aria-label="Анализатор сигналов">
@@ -30,6 +31,7 @@
     <div data-dialog-slot="signal-operation"></div>
   </main>
   <div id="value-select-popup" class="value-select-popup" data-value-select-popup data-testid="select-menu" hidden></div>
+  <div id="sample-columns-menu" class="menu inspector-menu sample-columns-menu" role="menu" data-testid="sample-columns-menu" aria-label="Видимость столбцов значений сигнала" hidden></div>
   <script>window.SignalAnalyserUIDesign = window.SignalAnalyserUIDesign || { assetBase: "." };</script>
   <script src="./js/ui/loader.js"></script>
   <script src="./integration/js/task-0118-color-picker.js"></script>
@@ -38,5 +40,6 @@
   <script src="./integration/js/task-0130-graph-cursors.js"></script>
   <script src="./integration/js/task-0134-sample-row-window.js"></script>
   <script src="./integration/js/task-0135-sample-search-markers.js"></script>
+  <script src="./integration/js/task-0138-values-columns.js"></script>
 </body>
 </html>

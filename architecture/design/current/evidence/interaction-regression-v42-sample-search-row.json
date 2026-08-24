@@ -1,0 +1,45 @@
+{
+  "design_version": 42,
+  "method": "bounded source/controller regression; no browser",
+  "passed": 4,
+  "failed": 0,
+  "results": [
+    {
+      "id": "60-enter-only-search",
+      "passed": true,
+      "detail": {
+        "submit": "Enter",
+        "standalone_action": false
+      }
+    },
+    {
+      "id": "61-error-only-feedback",
+      "passed": true,
+      "detail": {
+        "success_copy": false,
+        "compact_error_only": true
+      }
+    },
+    {
+      "id": "62-standard-final-three-dot-trigger",
+      "passed": true,
+      "detail": {
+        "trigger": "more-vertical",
+        "menu_width": 244,
+        "standard_action_reused": true
+      }
+    },
+    {
+      "id": "63-authoritative-page-offsets",
+      "passed": true,
+      "detail": {
+        "page": {
+          "start_offset": 0,
+          "end_offset": 12,
+          "next_cursor": 12,
+          "total": 400000
+        }
+      }
+    }
+  ]
+}

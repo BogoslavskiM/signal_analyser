@@ -53,12 +53,12 @@ module.exports = async function task0135SamplesSearchMarkers(assert) {
   const wrongStart = search.begin(wrong, "2");
   assert(search.apply(wrong, wrongStart.request, page("other", 0, 500, 1000)).reason === "signal-mismatch", "wrong stable-id search response must not replace the signal window");
 
-  // The real UI uses both Enter and the compact action; editing/clearing alone
+  // v42 uses Enter only; editing/clearing alone
   // preserves DOM input state without rerender or request.
-  assert(/button\.dataset\.testid === "sample-point-search-action"[\s\S]*?submitSignalSamplesSearch\(/.test(app) && /event\.key !== "Enter"[\s\S]*?sample-point-search-input[\s\S]*?submitSignalSamplesSearch\(event\.target\.value\)/.test(app), "point search must be callable from both the action and Enter");
-  assert(/searchDisabled=searchLoading \|\| !state\.firstBatchLoaded[\s\S]*?\(searchDisabled \? " disabled" : ""\)[\s\S]*?\(searchDisabled \? " disabled" : ""\)/.test(app), "point input and action must remain disabled before authoritative first page/total, then stay enabled during ordinary window pagination");
+  assert(/event\.key !== "Enter"[\s\S]*?sample-point-search-input[\s\S]*?submitSignalSamplesSearch\(event\.target\.value\)/.test(app) && !/sample-point-search-action/.test(app), "point search must be Enter-only with no standalone action");
+  assert(/searchDisabled=searchLoading \|\| !state\.firstBatchLoaded[\s\S]*?\(searchDisabled \? " disabled" : ""\)/.test(app), "point input must remain disabled before authoritative first page/total, then stay enabled during ordinary window pagination");
   const inputHandler = (app.match(/document\.addEventListener\("input", function \(event\) \{ if \(!event\.target \|\| event\.target\.dataset\.testid !== "sample-point-search-input"\)[\s\S]*?\n  \}\);/) || [""])[0];
-  assert(/state\.searchValue=event\.target\.value[\s\S]*?status\.textContent=""/.test(inputHandler) && !/renderInspector\(/.test(inputHandler) && !/api\.signalSamples/.test(inputHandler), "typing or clearing search must preserve the input node and make no request until explicit Enter/action");
+  assert(/state\.searchValue=event\.target\.value[\s\S]*?status\.textContent=""/.test(inputHandler) && !/renderInspector\(/.test(inputHandler) && !/api\.signalSamples/.test(inputHandler), "typing or clearing search must preserve the input node and make no request until explicit Enter");
   assert(/if \(!started\.accepted\)[\s\S]*?renderInspector\(\)[\s\S]*?input\.focus\(\)/.test(app), "invalid/out-of-range search must visibly report its error and restore input focus without API work");
 
   // Existing v39 window pagination remains intact after a search replacement.
@@ -78,5 +78,5 @@ module.exports = async function task0135SamplesSearchMarkers(assert) {
   assert(/body\.classList\.toggle\("is-table-only", model\.inspectorPage === "peaks"\)/.test(app), "Samples must not collapse into the Peaks-only table layout");
   assert(/\.inspector-body\[data-testid="inspector-pane-samples"\][\s\S]*?grid-template-rows:\s*32px minmax\(0,\s*1fr\)/.test(css) && /\.samples-point-search-row[\s\S]*?min-height:\s*32px/.test(css), "Samples needs a 32px search row followed by the scroll table");
   assert(/\.sample-table \{ table-layout: auto; \}/.test(css) && /min-width:\s*112px[\s\S]*?text-align:\s*left/.test(css), "point column must be compact auto-layout, left-aligned, and retain a 112px minimum");
-  assert(/<th>№ точки<\/th><th>Время<\/th><th>Значение<\/th><th>Модуль<\/th><th>Квадрат<\/th>/.test(app) && /sample-point-cell-number[\s\S]*?markerMarkup/.test(app), "the established five-column table must put point number first, left of its marker");
+  assert(/SignalSamplesCalculatedColumns[\s\S]*?square_root[\s\S]*?signed_square_root_magnitude/.test(app) && /sample-point-cell-number[\s\S]*?markerMarkup/.test(app), "dynamic base and provider-calculated columns must put point number first, left of its marker");
 };

@@ -19,7 +19,7 @@ module.exports = async function task0119SignalFlowStatic(assert) {
   assert(/function syncSignalSamplesWithMain\(\)[\s\S]*?if \(!signal \|\| !signalId\) \{[\s\S]*?tab\.remove\(\)[\s\S]*?model\.inspectorPage === "samples"[\s\S]*?model\.inspectorPage="signals"/.test(app), "sample tab must disappear when there is no valid stable main signal");
   assert(/if \(!tab\) \{ tab=document\.createElement\("button"\)[\s\S]*?tab\.dataset\.bottomTab="samples"[\s\S]*?tab\.textContent=signal\.name/.test(app), "a main signal must create and name the stable sample tab automatically");
   assert(/renderInspector\(\)[\s\S]*?syncSignalSamplesWithMain\(\)/.test(app), "ordinary inspector renders must keep the sample tab synchronized without Values");
-  assert(/data-testid='samples-table-scroll'[\s\S]*?<th>№ точки<\/th><th>Время<\/th><th>Значение<\/th><th>Модуль<\/th><th>Квадрат<\/th>[\s\S]*?rowsMarkup/.test(app) && /var rowsMarkup=state\.rows\.map/.test(app), "selected sample tab must visibly render all five columns and received rows");
+  assert(/data-testid='samples-table-scroll'[\s\S]*?\+headMarkup[\s\S]*?\+rowsMarkup/.test(app) && /var visibility=signalSamplesColumnVisibility\(\), visibleColumns=columnsHelper \? columnsHelper\.visibleColumns/.test(app) && /var rowsMarkup=state\.rows\.map/.test(app), "selected sample tab must visibly render dynamic sample columns and received rows");
   assert(/if \(!state\.rows\.length && !signalSamplesLoading\(state\) && !state\.error && !state\.firstBatchLoaded\) loadSignalSamples\("down"\)/.test(app), "an unloaded first batch must request once, while a typed error or legitimate loaded empty batch remains visible without refetch churn");
 
   // Metadata editing is strict and local until the shared Apply action. Bad
