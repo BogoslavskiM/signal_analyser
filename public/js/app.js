@@ -1958,12 +1958,24 @@
   function loadSignalSamples() {
     var state=model.signalSamples;
     if (!state.signalId || state.loading || (state.firstPageLoaded && state.nextCursor === false)) return;
-    var requestCursor=state.nextCursor, token=++state.token; state.loading=true; renderInspector();
+    var requestCursor=state.nextCursor, token=++state.token, scrollTop=signalSamplesScrollTop(); state.loading=true; renderInspector(); restoreSignalSamplesScrollTop(scrollTop);
     boundedRequest(api.signalSamples(state.signalId, state.nextCursor, 200), 10000).then(function (page) {
       if (state !== model.signalSamples || token !== state.token) return;
       if (!page || !page.signal || String(page.signal.id) !== state.signalId || !Array.isArray(page.rows)) throw new Error("Сервер вернул некорректную страницу значений сигнала.");
-      state.rows=state.rows.concat(page.rows); state.nextCursor=page.next_cursor == null ? false : page.next_cursor; state.total=Number(page.total || state.rows.length); state.firstPageLoaded=state.firstPageLoaded || requestCursor == null || Number(requestCursor) === 0; state.loading=false; renderInspector();
-    }).catch(function (error) { if (state === model.signalSamples && token === state.token) { state.loading=false; state.error=safeErrorText(error, "Не удалось загрузить значения."); renderInspector(); } });
+      scrollTop=signalSamplesScrollTop(); state.rows=state.rows.concat(page.rows); state.nextCursor=page.next_cursor == null ? false : page.next_cursor; state.total=Number(page.total || state.rows.length); state.firstPageLoaded=state.firstPageLoaded || requestCursor == null || Number(requestCursor) === 0; state.loading=false; renderInspector(); restoreSignalSamplesScrollTop(scrollTop);
+    }).catch(function (error) { if (state === model.signalSamples && token === state.token) { scrollTop=signalSamplesScrollTop(); state.loading=false; state.error=safeErrorText(error, "Не удалось загрузить значения."); renderInspector(); restoreSignalSamplesScrollTop(scrollTop); } });
+  }
+
+  function signalSamplesScrollTop() {
+    if (model.inspectorPage !== "samples") return null;
+    var scroll=q("[data-testid='samples-table-scroll']");
+    return scroll ? scroll.scrollTop : null;
+  }
+
+  function restoreSignalSamplesScrollTop(scrollTop) {
+    if (scrollTop == null || model.inspectorPage !== "samples") return;
+    var scroll=q("[data-testid='samples-table-scroll']");
+    if (scroll) scroll.scrollTop=scrollTop;
   }
 
   function renderSignalSamplesInspector(body) {

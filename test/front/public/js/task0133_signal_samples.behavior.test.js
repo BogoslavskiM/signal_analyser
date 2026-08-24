@@ -37,7 +37,7 @@ function sampleHarness(source) {
   const body = {
     markup:"", dataset:{}, classList:classList(), attributes:{},
     setAttribute(name, value) { this.attributes[name] = String(value); },
-    set innerHTML(value) { this.markup = value; }, get innerHTML() { return this.markup; },
+    set innerHTML(value) { this.markup = value; scroll.scrollTop = 0; }, get innerHTML() { return this.markup; },
     querySelector(selector) { return selector === "[data-testid='samples-table-scroll']" ? scroll : null; },
   };
   const scroll = {
@@ -60,6 +60,7 @@ function sampleHarness(source) {
       if (selector === ".inspector-tabs") return tabs;
       if (selector === "[data-bottom-tab='samples']") return sampleTab;
       if (selector === "[data-inspector-content]") return body;
+      if (selector === "[data-testid='samples-table-scroll']") return scroll;
       return null;
     },
     qa() { return []; },
@@ -103,11 +104,14 @@ module.exports = async function task0133SignalSamplesBehavior(assert) {
   assert(harness.body.markup.includes("<tbody><tr><td>0</td><td>0</td><td>1</td><td>1</td><td>1</td></tr></tbody>"), "correct stable-id page with rows must render tbody data in all five columns");
   assert(harness.requests.length === 1, "accepted first page must not trigger a duplicate/full-payload request");
 
+  harness.scroll.scrollTop = 20;
   harness.scroll.listener();
   assert(harness.requests.length === 2 && JSON.stringify(harness.requests[1]) === JSON.stringify({ id:"sig-harmonic", cursor:200, limit:200 }), "near-bottom scroll must append only the next bounded page");
+  assert(harness.scroll.scrollTop === 20, "starting next-page loading must preserve the current samples scroll position");
   harness.pending.shift().resolve({ signal:{ id:"sig-harmonic" }, rows:[{ sample_index:1, time:1, value:2, magnitude:2, square:4 }], next_cursor:null, total:2 });
   await flush();
   assert(harness.model.signalSamples.rows.length === 2 && harness.body.markup.includes("<td>4</td>"), "next page must append to existing rows rather than replacing them");
+  assert(harness.scroll.scrollTop === 20, "appending an accepted page must not jump the samples table back to the beginning");
 
   // A typed failure remains actionable. Values/sync retry may retry this first
   // page, while a legitimate empty page is terminal and never refetched.
