@@ -1,0 +1,13 @@
+{
+  "design_version": 38,
+  "status": "passed",
+  "checks": [
+    {"id":"color-picker-css-only-delta","passed":true,"detail":"Only task-0118-color-picker.css changes production-visible behavior; JavaScript delta is none."},
+    {"id":"exact-square-geometry","passed":true,"detail":"Selected target is 32x32; ::before is absolute border-box 24x24 with 4px insets on every side."},
+    {"id":"uniform-selected-halo","passed":true,"detail":"Persistent selected background keeps the unchanged 32x32 target and exposes an equal 4px halo around the 24x24 square."},
+    {"id":"centered-proportional-tick","passed":true,"detail":"Existing local tick asset keeps its 10:8 proportion in a 15x12 box anchored at 50%/50% with measured optical compensation."},
+    {"id":"popover-inventory-preserved","passed":true,"detail":"284px popover, eight colors, grid columns/gaps, HEX control and footer buttons are unchanged."},
+    {"id":"integration-seam-preserved","passed":true,"detail":"Signal color draft provider and task-0118 UI module remain unchanged."},
+    {"id":"immutable-production-document","passed":true,"detail":"public/index.html, application shell, modules, settings zones and Plotly hosts remain immutable."}
+  ]
+}

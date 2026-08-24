@@ -20,7 +20,7 @@ module.exports = async function task0119SignalFlowStatic(assert) {
   assert(/if \(!tab\) \{ tab=document\.createElement\("button"\)[\s\S]*?tab\.dataset\.bottomTab="samples"[\s\S]*?tab\.textContent=signal\.name/.test(app), "a main signal must create and name the stable sample tab automatically");
   assert(/renderInspector\(\)[\s\S]*?syncSignalSamplesWithMain\(\)/.test(app), "ordinary inspector renders must keep the sample tab synchronized without Values");
   assert(/data-testid='samples-table-scroll'[\s\S]*?<th>№ точки<\/th><th>Время<\/th><th>Значение<\/th><th>Модуль<\/th><th>Квадрат<\/th>[\s\S]*?state\.rows\.map/.test(app), "selected sample tab must visibly render all five columns and received rows");
-  assert(/if \(!state\.rows\.length && !state\.loading\) loadSignalSamples\(\)/.test(app), "an empty main-signal page must request its first page rather than remain blank");
+  assert(/if \(!state\.rows\.length && !state\.loading && !state\.error && !state\.firstPageLoaded\) loadSignalSamples\(\)/.test(app), "an unloaded first page must request once, while a typed error or legitimate loaded empty page remains visible without refetch churn");
 
   // Metadata editing is strict and local until the shared Apply action. Bad
   // decimal text must disable Apply and cannot reach the metadata API.

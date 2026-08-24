@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 37
+design_version: 38
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130]
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -51,7 +51,7 @@ prototype_contract:
   production_baseline_evidence: evidence/production-baseline-v32.json
   required_nonempty_zone_slots: [toolbar, workspace, settings, inspector]
   forbidden: [fetch_html_partials, http_server, network_api, cors_dependency, alternative_mock_shell]
-  browser_result: {inherited_checks: 35, delta_checks: 8, passed: 43, failed: 0, runtime_errors: 0, http_resources: 0}
+  browser_result: {inherited_checks: 52, delta_checks: 1, passed: 53, failed: 0, runtime_errors: 0, http_resources: 0}
 
 screens:
   - id: main
@@ -138,6 +138,7 @@ screens:
         scroll: {owner: none, axes: none, sticky: []}
         collapse: {allowed: false, initial: closed, direction: null, reason: null}
         states: [closed, open, hover, selected_draft, invalid_hex, busy]
+        selected_swatch_geometry: {target: 32, color_square: 24, color_square_box_sizing: border_box, halo_inset_all_sides: 4, tick_render: proportional_optically_centered}
       - id: graph-cursor-overlay
         type: graph_overlay
         purpose: "Pane-local snapped X cursors and trace values for ready Time/Spectrum plots"
@@ -428,6 +429,7 @@ dialogs:
     actions: [cancel, apply_to_signal_page_draft]
     states: [closed, open, hover, selected_draft, invalid_hex, busy]
     figma_deviation: "Palette contents use the restored original eight Signal Analyser colors by explicit user request."
+    selected_swatch_geometry: {target: 32, color_square: 24, color_square_box_sizing: border_box, halo_inset_all_sides: 4, tick_box: [15, 12], tick_optical_offset: [0.5, 0.8]}
   - id: signal-operation
     trigger: "row operation button adjacent to duplicate"
     testid: signal-operation-dialog
@@ -833,6 +835,7 @@ evidence:
     - 50-time-spectrum-cursors-pane-local
     - 51-cursor-file-prototype-no-network-errors
     - 52-zero-remains-nearest-across-heterogeneous-traces
+    - 53-selected-color-swatch-uniform-halo-centered-tick
   screenshots:
     - screenshots/v31--standalone-production-signal--1440x900.png
     - screenshots/v31--standalone-production-samples--1440x900.png
@@ -861,6 +864,7 @@ evidence:
     - screenshots/v36--spectrum-dual-cursor--1440x900.png
     - screenshots/v36--time-single-cursor--1440x900.png
     - screenshots/v36--pane-menu-cursor-options--1440x900.png
-  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json]
+    - screenshots/v38--selected-color-swatch-detail--284x278@2x.png
+  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json]
   production_baseline: evidence/production-baseline-v32.json
-  transfer_audit: evidence/transfer-audit-v37.json
+  transfer_audit: evidence/transfer-audit-v38.json

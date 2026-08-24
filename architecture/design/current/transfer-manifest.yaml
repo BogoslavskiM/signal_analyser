@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 37
+design_version: 38
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -18,9 +18,9 @@ prototype_baseline:
   interaction_fixture_scope: "design-only adapters proving inherited flows plus pane-local single/dual graph cursors against actual production DOM/API modules"
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
   pinned_hashes: evidence/production-baseline-v32.json
-  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json]
-  transfer_audit: evidence/transfer-audit-v37.json
-  result: "Inherited contracts plus TASK-0130 graph cursor walkthrough 8/8 and zero-snap regression 1/1; runtime errors 0, HTTP resources 0"
+  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json]
+  transfer_audit: evidence/transfer-audit-v38.json
+  result: "Inherited contracts plus TASK-0130 graph cursor walkthrough 8/8, zero-snap regression 1/1 and selected-swatch geometry regression 1/1; runtime errors 0, HTTP resources 0"
 
 # Production already owns the document, boot sequence, UI modules and Plotly
 # hosts. Only the already-identical local icon inventory is copied directly;
@@ -95,7 +95,7 @@ additive_fragments:
     mode: append_once
     content_changes_allowed: false
     marker: "TASK-0118 compact Signal color picker with restored original palette"
-    scope: [anchored_popover, hex, fifteen_jet_swatches, selected_tick, draft_footer]
+    scope: [anchored_popover, hex, eight_palette_swatches, exact_24px_border_box_square, uniform_4px_selection_halo, centered_proportional_tick, draft_footer]
   - id: task-0118-signal-color-picker-ui
     source: integration/js/task-0118-color-picker.js
     target: public/js/app.js
@@ -142,7 +142,7 @@ existing_assets_reused:
   - {path: public/icons/Spinner.svg, use: signal-operation-busy}
   - {path: public/icons/chevron-down-fill-16.svg, use: SignalAnalyserValueSelect}
   - {path: public/icons/tick-figma.svg, use: pane-menu-checked-state}
-  - {path: public/icons/tick-figma.svg, use: selected-Jet-swatch}
+  - {path: public/icons/tick-figma.svg, use: selected-palette-swatch}
 
 integration_hosts:
   settings_tabs:
@@ -348,7 +348,7 @@ invariants:
   mock_shell_transfer_forbidden: true
   mock_provider_transfer_forbidden: true
   copied_fragment_content_changes_allowed: false
-  visual_baseline_unchanged: true
+  visual_baseline_unchanged: false
   mock_owns_ui_behavior: false
   mock_scope_is_data_provider_only: true
   prototype_task0117_bridge_transfer_forbidden: true

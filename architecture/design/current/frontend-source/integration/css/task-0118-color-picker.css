@@ -96,6 +96,7 @@
 
 .signal-color-picker-swatch {
   position: relative;
+  box-sizing: border-box;
   width: 32px;
   height: 32px;
   display: grid;
@@ -103,13 +104,15 @@
   padding: 4px;
   border: 0;
   border-radius: 4px;
+  appearance: none;
   background: transparent;
   cursor: pointer;
 }
 
 .signal-color-picker-swatch::before {
-  width: 24px;
-  height: 24px;
+  position: absolute;
+  inset: 4px;
+  box-sizing: border-box;
   border: 1.5px solid var(--line, #e1e1e1);
   border-radius: 3px;
   background: var(--palette-color);
@@ -122,12 +125,16 @@
 
 .signal-color-picker-swatch img {
   position: absolute;
-  inset: 8px;
-  width: 16px;
-  height: 16px;
+  top: 50%;
+  left: 50%;
+  width: 15px;
+  height: 12px;
   display: none;
   filter: brightness(0) invert(1);
+  object-fit: contain;
+  object-position: center;
   pointer-events: none;
+  transform: translate(calc(-50% + 0.5px), calc(-50% + 0.8px));
 }
 
 .signal-color-picker-swatch.is-selected img { display: block; }

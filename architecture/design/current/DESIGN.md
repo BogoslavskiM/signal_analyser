@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `37`
+- Design version: `38`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V37 is the current integration-safe package for the accepted Signal Analyser
+V38 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -30,6 +30,9 @@ TASK-0130 graph-cursor extension:
    `init_signal` available as its input binding.
 5. Two existing-style pane-menu choices, `Курсор` and `Два курсора`, controlling
    mutually exclusive pane-local draggable X cursors for ready Time/Spectrum plots.
+6. Corrected selected palette-swatch geometry: an exact 24×24 border-box color
+   square inside the unchanged 32×32 target, uniform 4px selection halo and an
+   optically centered proportional tick.
 
 The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
 transaction implementation, Plotly payloads, pagination implementation and
@@ -153,6 +156,11 @@ entry baseline or production transfer inputs.
   only `HEX`, the restored eight-swatch application palette and `Отмена / Применить`.
   Palette scheme, line,
   marker, fill and interpolation controls are intentionally absent.
+- The selected palette target remains exactly 32×32. Its color square is an
+  exact 24×24 border-box at 4px from every target edge; the selected background
+  is therefore a uniform 4px halo on all four sides. The existing local tick
+  keeps its intrinsic 10:8 proportion and is optically centered over the color
+  square; selected, hover and focus do not change geometry.
 - `Дискретизация, Гц` is editable Signal metadata, not summary output. Comma
   decimals, non-finite values, zero and negatives are invalid; dot-decimal and
   exponent notation are accepted only when finite and strictly positive.
@@ -351,6 +359,8 @@ entry baseline or production transfer inputs.
   zoom-scoped extrema, deterministic Values and checkbox continuity.
 - User TASK-0130 request from chat on 2026-08-20 for one- or two-cursor graph
   modes in the existing pane menu.
+- User TASK-0132 screenshot and correction from chat on 2026-08-24 for the
+  selected palette swatch halo and tick alignment.
 - Read-only current selectors/geometry in `public/index.html`,
   `public/css/app.css`, `public/js/app.js`, `public/js/settings.js`.
 - Canonical local `designer/visual-system`, application composition, settings,
@@ -376,6 +386,18 @@ entry baseline or production transfer inputs.
   changes only finite candidate semantics inside the accepted cursor controller;
   Figma reference status is `not_required`.
 
+### Skills for v38 revision
+
+- Applied: `designer/designer-workflow` for complete-current publication,
+  `designer/visual-system` for the selected-state discrepancy audit and
+  `figma-design-to-code` for read-only verification of exact ColorPicker node
+  `1779:11344`.
+- Skipped: Engee Apps research, application composition, page sizing,
+  data-entry, output and dialog skills because the popover inventory,
+  dimensions, layout, provider seam and all unrelated zones remain unchanged.
+- Figma reference status for v38: `available`; the exact node was read
+  successfully on 2026-08-24.
+
 ### Skills for v32 revision
 
 - Applied: `designer/designer-workflow` for the complete-current revision,
@@ -391,6 +413,7 @@ entry baseline or production transfer inputs.
 
 | Screenshot/template | Extracted pattern or measurement | Explicitly ignored app-specific content |
 |---|---|---|
+| `/Users/makar/Desktop/Снимок экрана 2026-08-24 в 10.03.47.png` | Production defect evidence: selected halo is visibly uneven and the check glyph is off-center at enlarged/DPR rendering | Graph trace and background application content outside the picker |
 | `architecture/design/TASK-0080-explicit-apply-flow/screenshots/v25--tabs-and-measurements--1440x900.png` | 44px toolbar, 32px three-paint-stack tabs, 3px selected indicator, workspace/settings/inspector density | Old three-tab inventory and task-specific values |
 | `architecture/design/TASK-0080-explicit-apply-flow/screenshots/v25--values-ready--1024x768.png` | Full-width lower table, fixed settings footer, compact column rhythm | Time-only extrema semantics |
 | `architecture/design/TASK-0106-native-engee-session-io/screenshots/v26--import-parent-default--1024x768.png` | 12px modal radius, 48px titlebar, 56px actions, backdrop | Import fields and destructive copy |
@@ -402,11 +425,11 @@ entry baseline or production transfer inputs.
 
 ### Engee Component Library access
 
-The exact required Signal ColorPicker node was read successfully on 2026-08-19:
+The exact required Signal ColorPicker node was re-read successfully on 2026-08-24:
 
 | Category | Exact Figma URL / node ID | Status | Extracted decision | User override |
 |---|---|---|---|---|
-| Signal ColorPicker | https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=1779-11344&p=f&m=dev / `1779:11344` | available | 284px surface, radius 8px, `0 2px 8px #2121211A`, Roboto 14, 16px padding, 32px targets with 24px swatches, persistent selected tick, two equal 32px footer buttons | Palette contents are the restored original eight application colors. Scheme dropdown plus line/marker/fill/interpolation are omitted. |
+| Signal ColorPicker | https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=1779-11344&p=f&m=dev / `1779:11344` | available | 284px surface, radius 8px, `0 2px 8px #2121211A`, Roboto 14, 16px padding, exact 32px target with a 24px swatch at 4px on every side, separate centered persistent tick layer, two equal 32px footer buttons | Palette contents are the restored original eight application colors. Scheme dropdown plus line/marker/fill/interpolation are omitted. |
 
 The broader v31 audit below records the earlier 2026-08-18 reader limitation
 and remains provenance for inherited, unchanged components. Those rows do not
@@ -702,7 +725,9 @@ and the document owns both scroll axes. Verified screenshots cover 920×680,
 - Hover/pressed/selected/focus never changes component geometry.
 - Signal color popover is 284px, 8px radius and `0 2px 8px #2121211A`;
   palette grid uses 32px targets/24px swatches and exactly the restored eight
-  colors. No palette selector, line, marker, fill or interpolation appears.
+  colors. The 24px square includes its border and sits at uniform 4px insets;
+  the proportional tick is centered without changing target geometry. No
+  palette selector, line, marker, fill or interpolation appears.
 
 ### Proportion contract
 
@@ -714,7 +739,7 @@ and the document owns both scroll axes. Verified screenshots cover 920×680,
 | Plot | current | white canvas, local controls, overlay legend | two independent spectrum sliders, markers and pane-local cursor layer | cursor readout overlays upper-left without changing plot margins |
 | Tables | analytical-dense | 32px rows, sticky header, left name/color | add five-column lazy samples table | samples table local min-width 760px |
 | Dialog | analytical modal | 48px title, 56px actions, 12px radius | code editor and seven operations | width 660px; menu-open height 500px |
-| Signal color popover | Figma `1779:11344` | 284px, radius 8px, 16px padding, 32px targets, equal footer buttons | Original eight swatches only | Palette content follows the explicit restored-color requirement |
+| Signal color popover | Figma `1779:11344` | 284px, radius 8px, 16px padding, 32px targets with exact 24px inner squares, uniform 4px halo, centered tick, equal footer buttons | Original eight swatches only | Palette content follows the explicit restored-color requirement |
 
 ### Overlay priority
 
@@ -775,7 +800,8 @@ font; package copies below remain visual-harness inputs only.
 - Complete current package paths exist and are local.
 - Prototype remains the accepted visual harness and is wholly design-only.
 - Inherited 35/35 walkthrough checks plus TASK-0130 delta 8/8, v37 zero-snap
-  regression 1/1 and the current transfer audit; zero runtime/network errors.
+  regression 1/1, v38 selected-swatch geometry 1/1 and the current transfer
+  audit; zero runtime/network errors.
 - Transfer audit confirms icon-only direct copy plus exact additive fragments,
   immutable
   production document/shell/module/Plotly-host identities and zero mock paths
@@ -794,6 +820,8 @@ font; package copies below remain visual-harness inputs only.
   click-tested against the production-faithful file harness.
 - Exact Figma ColorPicker node access and the palette override are both
   recorded; inherited unavailable-reference rows remain historical provenance.
+- Selected palette evidence confirms 32×32 target, 24×24 border-box square,
+  equal 4px insets on all sides and a centered proportional tick at 2× DPR.
 - Complete Summary inventory, deterministic Values table focus/loading,
   same-frame names, history-free inputs, selected-unit bounds, restored color default
   identity, zoom-scoped extrema and stable busy checkboxes are explicit seams.
@@ -856,3 +884,8 @@ render or leak the wrapper mechanics.
 - `v37`: corrected the cursor nearest-X comparator so finite zero is not treated
   as an absent best candidate. The heterogeneous-trace zero-snap regression
   passed 1/1 with no runtime errors; all visual evidence remains unchanged.
+- `v38`: corrected only the selected palette-swatch CSS. The inner square now
+  includes its border in the exact 24×24 geometry at uniform 4px insets, and
+  the unchanged local tick asset is rendered proportionally with optical
+  centering. Popover, palette, buttons and all unrelated UI remain unchanged;
+  the 2× DPR geometry regression passed 1/1.

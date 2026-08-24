@@ -3329,11 +3329,11 @@ body {
 .signal-color-picker-hex { width: 100%; min-width: 0; height: 30px; padding: 5px 8px 5px 0; border: 0; outline: 0; background: transparent; color: inherit; text-transform: lowercase; }
 .signal-color-picker-error { min-height: 17px; margin: -8px 0 0 44px; color: var(--danger, #b3261e); font-size: 12px; }
 .signal-color-picker-palette { display: grid; grid-template-columns: repeat(6, 32px); gap: 4px 12px; padding: 0; }
-.signal-color-picker-swatch { position: relative; width: 32px; height: 32px; display: grid; place-items: center; padding: 4px; border: 0; border-radius: 4px; background: transparent; cursor: pointer; }
-.signal-color-picker-swatch::before { width: 24px; height: 24px; border: 1.5px solid var(--line, #e1e1e1); border-radius: 3px; background: var(--palette-color); content: ""; }
+.signal-color-picker-swatch { position: relative; box-sizing: border-box; width: 32px; height: 32px; display: grid; place-items: center; padding: 4px; border: 0; border-radius: 4px; appearance: none; background: transparent; cursor: pointer; }
+.signal-color-picker-swatch::before { position: absolute; inset: 4px; box-sizing: border-box; border: 1.5px solid var(--line, #e1e1e1); border-radius: 3px; background: var(--palette-color); content: ""; }
 .signal-color-picker-swatch:hover, .signal-color-picker-swatch.is-selected { background: var(--button-active, #f2f2f2); }
 .signal-color-picker-swatch:focus-visible { outline: 2px solid var(--accent, #1b84b8); outline-offset: 0; }
-.signal-color-picker-swatch img { position: absolute; inset: 8px; width: 16px; height: 16px; display: none; filter: brightness(0) invert(1); pointer-events: none; }
+.signal-color-picker-swatch img { position: absolute; top: 50%; left: 50%; width: 15px; height: 12px; display: none; filter: brightness(0) invert(1); object-fit: contain; object-position: center; pointer-events: none; transform: translate(calc(-50% + 0.5px), calc(-50% + 0.8px)); }
 .signal-color-picker-swatch.is-selected img { display: block; }
 .signal-color-picker-swatch[data-light="true"].is-selected img { filter: brightness(0); }
 .signal-color-picker-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 8px 16px 16px; }

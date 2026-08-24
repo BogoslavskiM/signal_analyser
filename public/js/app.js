@@ -96,7 +96,7 @@
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
     signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
     signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{},
-    signalSamples: { signalId:"", signalName:"", rows:[], nextCursor:null, total:0, loading:false, error:"", token:0 },
+    signalSamples: { signalId:"", signalName:"", rows:[], nextCursor:null, total:0, firstPageLoaded:false, loading:false, error:"", token:0 },
     signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }
   };
 
@@ -1913,7 +1913,7 @@
   }
 
   function showSignalSamples() {
-    if (!syncSignalSamplesWithMain()) return;
+    if (!syncSignalSamplesWithMain({ retry:true })) return;
     model.inspectorPage="samples";
     renderInspector();
     var tab=q("[data-bottom-tab='samples']");
@@ -1937,40 +1937,40 @@
   }
 
   function syncSignalSamplesWithMain() {
-    var signal=mainSignalForPane(paneById(model.activePane)), tabs=q(".inspector-tabs"), tab=q("[data-bottom-tab='samples']");
+    var options=arguments[0], signal=mainSignalForPane(paneById(model.activePane)), tabs=q(".inspector-tabs"), tab=q("[data-bottom-tab='samples']");
     var signalId=stableSignalId(signal);
     if (!signal || !signalId) {
       if (tab) tab.remove();
       if (model.inspectorPage === "samples") model.inspectorPage="signals";
-      model.signalSamples={ signalId:"", signalName:"", rows:[], nextCursor:null, total:0, loading:false, error:"", token:(model.signalSamples.token || 0) + 1 };
+      model.signalSamples={ signalId:"", signalName:"", rows:[], nextCursor:null, total:0, firstPageLoaded:false, loading:false, error:"", token:(model.signalSamples.token || 0) + 1 };
       return false;
     }
     if (!tabs) return false;
     var state=model.signalSamples;
-    if (state.signalId !== signalId) state=model.signalSamples={ signalId:signalId, signalName:signal.name, rows:[], nextCursor:null, total:0, loading:false, error:"", token:0 };
+    if (state.signalId !== signalId) state=model.signalSamples={ signalId:signalId, signalName:signal.name, rows:[], nextCursor:null, total:0, firstPageLoaded:false, loading:false, error:"", token:0 };
     if (!tab) { tab=document.createElement("button"); tab.type="button"; tab.setAttribute("role", "tab"); tab.dataset.bottomTab="samples"; tab.dataset.testid="inspector-tab-samples"; tab.setAttribute("data-testid", "inspector-tab-samples"); tabs.appendChild(tab); }
     tab.textContent=signal.name;
-    if (state.error) return true;
-    if (!state.rows.length && !state.loading) loadSignalSamples();
+    if (options && options.retry && !state.rows.length && state.error) { state.error=""; state.nextCursor=null; state.firstPageLoaded=false; }
+    if (!state.rows.length && !state.loading && !state.error && !state.firstPageLoaded) loadSignalSamples();
     return true;
   }
 
   function loadSignalSamples() {
     var state=model.signalSamples;
-    if (!state.signalId || state.loading || (state.nextCursor === false)) return;
-    var token=++state.token; state.loading=true; renderInspector();
+    if (!state.signalId || state.loading || (state.firstPageLoaded && state.nextCursor === false)) return;
+    var requestCursor=state.nextCursor, token=++state.token; state.loading=true; renderInspector();
     boundedRequest(api.signalSamples(state.signalId, state.nextCursor, 200), 10000).then(function (page) {
       if (state !== model.signalSamples || token !== state.token) return;
       if (!page || !page.signal || String(page.signal.id) !== state.signalId || !Array.isArray(page.rows)) throw new Error("Сервер вернул некорректную страницу значений сигнала.");
-      state.rows=state.rows.concat(page.rows); state.nextCursor=page.next_cursor == null ? false : page.next_cursor; state.total=Number(page.total || state.rows.length); state.loading=false; renderInspector();
+      state.rows=state.rows.concat(page.rows); state.nextCursor=page.next_cursor == null ? false : page.next_cursor; state.total=Number(page.total || state.rows.length); state.firstPageLoaded=state.firstPageLoaded || requestCursor == null || Number(requestCursor) === 0; state.loading=false; renderInspector();
     }).catch(function (error) { if (state === model.signalSamples && token === state.token) { state.loading=false; state.error=safeErrorText(error, "Не удалось загрузить значения."); renderInspector(); } });
   }
 
   function renderSignalSamplesInspector(body) {
     var state=model.signalSamples;
     if (!state.signalId) { body.innerHTML="<div class='table-empty' role='status'>Выберите основной сигнал.</div>"; return; }
-    if (!state.rows.length && !state.loading && !state.error) { loadSignalSamples(); return; }
-    body.innerHTML="<div class='signal-table-scroll' data-testid='samples-table-scroll'><table class='signal-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>"+state.rows.map(function (row) { return "<tr><td>"+esc(row.sample_index == null ? row.index : row.sample_index)+"</td><td>"+esc(row.time == null ? (row.time_s == null ? "—" : row.time_s) : row.time)+"</td><td>"+esc(row.value == null ? "—" : row.value)+"</td><td>"+esc(row.magnitude == null ? "—" : row.magnitude)+"</td><td>"+esc(row.square == null ? "—" : row.square)+"</td></tr>"; }).join("")+"</tbody></table><div class='samples-footer'><span>Показаны строки 1–"+esc(state.rows.length)+"</span><span>"+esc(state.total || state.rows.length)+" отсчётов · подгрузка при прокрутке</span></div>"+(state.loading ? "<div class='samples-loading' role='status'>Загрузка…</div>" : state.error ? "<div class='samples-loading' role='alert'>"+esc(state.error)+"</div>" : "")+"</div>";
+    if (!state.rows.length && !state.loading && !state.error && !state.firstPageLoaded) loadSignalSamples();
+    body.innerHTML="<div class='signal-table-scroll' data-testid='samples-table-scroll'><table class='signal-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>"+state.rows.map(function (row) { return "<tr><td>"+esc(row.sample_index == null ? row.index : row.sample_index)+"</td><td>"+esc(row.time == null ? (row.time_s == null ? "—" : row.time_s) : row.time)+"</td><td>"+esc(row.value == null ? "—" : row.value)+"</td><td>"+esc(row.magnitude == null ? "—" : row.magnitude)+"</td><td>"+esc(row.square == null ? "—" : row.square)+"</td></tr>"; }).join("")+"</tbody></table><div class='samples-footer'><span>Показаны строки 1–"+esc(state.rows.length)+"</span><span>"+esc(state.total || state.rows.length)+" отсчётов · подгрузка при прокрутке</span></div>"+(state.loading ? "<div class='samples-loading' role='status'>Загрузка…</div>" : state.error ? "<div class='samples-loading' role='alert'>"+esc(state.error)+"</div>" : !state.rows.length && state.firstPageLoaded ? "<div class='samples-loading' role='status'>У сигнала нет отсчётов.</div>" : "")+"</div>";
     var scroll=body.querySelector("[data-testid='samples-table-scroll']");
     if (scroll) scroll.addEventListener("scroll", function () { if (!state.loading && state.nextCursor && scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 48) loadSignalSamples(); }, { passive:true });
   }
@@ -2375,7 +2375,7 @@
     qa("[data-bottom-tab]").forEach(function (tab) { var available = contextTabAvailable(tab.dataset.bottomTab, pane), active = available && tab.dataset.bottomTab === model.inspectorPage; tab.hidden = !available; tab.setAttribute("aria-hidden", String(!available)); tab.setAttribute("aria-selected", String(active)); tab.tabIndex = active ? 0 : -1; });
     body.setAttribute("aria-labelledby", model.inspectorPage === "signals" ? "signals-tab" : model.inspectorPage === "measurements" ? "measurements-tab" : model.inspectorPage === "samples" ? "inspector-tab-samples" : "peaks-tab");
     body.dataset.testid = "inspector-pane-" + model.inspectorPage;
-    body.classList.toggle("is-table-only", model.inspectorPage === "peaks");
+    body.classList.toggle("is-table-only", model.inspectorPage === "peaks" || model.inspectorPage === "samples");
     if (model.inspectorPage === "samples") return void renderSignalSamplesInspector(body);
     if (model.inspectorPage === "measurements") return void renderMeasurementsInspector(body);
     if (model.inspectorPage === "peaks") return void renderPeaksInspector(body);
@@ -3755,7 +3755,7 @@
         if (restored) restored.focus();
       }).catch(function (error) { measurementMenu.classList.remove("is-stale"); showToast(safeErrorText(error, "Не удалось изменить измерения."), true); });
     }
-    if (button.dataset.bottomTab) { if (!contextTabAvailable(button.dataset.bottomTab, paneById(model.activePane))) return; closeColumnMenu(false); closeMeasurementMenu(false); model.inspectorPage = button.dataset.bottomTab; if (!peaksSurfaceActive()) stopPeaksPolling(""); renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); if (model.inspectorPage === "peaks") loadPeaks(); return; }
+    if (button.dataset.bottomTab) { if (!contextTabAvailable(button.dataset.bottomTab, paneById(model.activePane))) return; closeColumnMenu(false); closeMeasurementMenu(false); model.inspectorPage = button.dataset.bottomTab; if (!peaksSurfaceActive()) stopPeaksPolling(""); if (model.inspectorPage === "samples") syncSignalSamplesWithMain({ retry:true }); renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); if (model.inspectorPage === "peaks") loadPeaks(); return; }
     if (button.dataset.toastClose !== undefined) q("[data-testid='layout-toast']").hidden = true;
   });
   document.addEventListener("click", function (event) {
