@@ -2893,20 +2893,39 @@
     });
   }
 
-  function peaksResponseIsCurrent(response, displayId, paneId, token) {
+  function peaksResponseContextIsCurrent(response, displayId, paneId, token) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
     if (token !== model.peaksTokens[runtimeKey] || !peaksSurfaceActive() || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return false;
-    if ((stateRevision(response) !== null && stateRevision(response) < model.revision) || response.display_id !== displayId || response.pane_id !== paneId) return false;
+    if (!response || response.display_id !== displayId || response.pane_id !== paneId) return false;
     var prior = model.peaksRecords[runtimeKey];
     if (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision <= prior.calculation_revision) return false;
     return !(prior && typeof prior.calculation_revision === "number" && typeof response.calculation_revision === "number" && response.calculation_revision < prior.calculation_revision);
   }
 
+  function peaksResponseIsCurrent(response, displayId, paneId, token) {
+    var revision=stateRevision(response);
+    return peaksResponseContextIsCurrent(response, displayId, paneId, token) && (revision === null || revision >= model.revision);
+  }
+
+  function schedulePeaksPoll(displayId, paneId) {
+    var runtimeKey=paneRuntimeKey(displayId, paneId);
+    window.clearTimeout(model.peaksPollByPane[runtimeKey]);
+    model.peaksPollByPane[runtimeKey]=window.setTimeout(function () {
+      delete model.peaksPollByPane[runtimeKey];
+      if (!peaksSurfaceActive() || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
+      fetchActivePeaks(displayId, paneId, true, true);
+    }, 350);
+  }
+
   function acceptPeaksPayload(response, displayId, paneId, token, calculationRequested, poll) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
-    if (!peaksResponseIsCurrent(response, displayId, paneId, token)) return null;
     var prior = model.peaksRecords[runtimeKey];
     var requested = !!calculationRequested || !!(prior && prior.calculationRequested);
+    if (!peaksResponseIsCurrent(response, displayId, paneId, token)) {
+      var revision=stateRevision(response);
+      if (poll && requested && revision !== null && revision < model.revision && peaksResponseContextIsCurrent(response, displayId, paneId, token)) schedulePeaksPoll(displayId, paneId);
+      return null;
+    }
     var pending = !response.isready && requested;
     model.revision = Math.max(model.revision, stateRevision(response) || model.revision);
     var record = {
@@ -2929,7 +2948,7 @@
     if (model.settingsPage === "peaks") renderSettings(activeDisplay());
     if (response.isready && response.success !== false) updatePeaksMarkers(displayId, paneId, record);
     if (!response.isready && !requested) clearPeaksMarkersForPane(displayId, paneId);
-    if (!response.isready && requested && poll) model.peaksPollByPane[runtimeKey] = window.setTimeout(function () { fetchActivePeaks(displayId, paneId, true, true); }, 350);
+    if (!response.isready && requested && poll) schedulePeaksPoll(displayId, paneId);
     return record;
   }
 

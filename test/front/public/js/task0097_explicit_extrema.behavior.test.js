@@ -103,6 +103,7 @@ function createHarness(options) {
   const inspectorMeasurementsTab = element({ dataset:{ bottomTab:"measurements" } });
   const inspectorPeaksTab = element({ dataset:{ bottomTab:"peaks" } });
   const timers = [];
+  const listeners = {};
   const activeCalls = [];
   const calculateCalls = [];
   const activeResponses = (options.activeResponses || []).slice();
@@ -161,7 +162,7 @@ function createHarness(options) {
       if (selector === "[data-pane-id]") return [];
       return [];
     },
-    addEventListener() {},
+    addEventListener(type, listener) { if (type === "click" && !listeners.click) listeners.click = listener; },
     createElement() { return element(); },
     head: { appendChild() {} }
   };
@@ -174,25 +175,42 @@ function createHarness(options) {
   vm.runInNewContext(source, runtime, { filename: "public/js/app.js" });
   const test = window.__explicitExtrema;
   test.accept(snapshot(options.bindings === undefined ? ["Сигнал 1"] : options.bindings, options.plotType));
-  return { test, body, peaksHost, settingsContent, footer, apply, status, values, timers, activeCalls, calculateCalls, settingsDisplayTab, settingsPeaksTab, inspectorSignalsTab, inspectorMeasurementsTab, inspectorPeaksTab };
+  return {
+    test, body, peaksHost, settingsContent, footer, apply, status, values, timers, activeCalls, calculateCalls,
+    settingsDisplayTab, settingsPeaksTab, inspectorSignalsTab, inspectorMeasurementsTab, inspectorPeaksTab,
+    click(button) {
+      if (typeof listeners.click !== "function") throw new Error("production click delegation was not registered");
+      listeners.click({ target: { closest(selector) { return selector === "button" ? button : null; } } });
+    }
+  };
 }
 
 module.exports = async function testExplicitExtremaBehavior(assert) {
   const pendingPost = deferred();
+  const pendingResponse = (revision) => peaksResponse({
+    state_revision: 3,
+    calculation_revision: revision,
+    context_key: "display-1::pane-1::peaks::r" + revision,
+    isready: false,
+    success: false,
+    data: { settings: {}, signals: [], rows: [] }
+  });
+  const readyResponse = peaksResponse({
+    state_revision: 3,
+    calculation_revision: 41,
+    context_key: "display-1::pane-1::peaks::r41",
+    isready: true,
+    success: true,
+    data: {
+      settings: { mode: "maxima", number_of_peaks: 5, maximum_cutoff: null, minimum_cutoff: null, minimum_distance_samples: 1, threshold: 0 },
+      signals: [{ signal_name: "Сигнал 1", signal_color: "#2563eb", peak_count: 1 }],
+      rows: [{ row_number: 1, signal_name: "Сигнал 1", signal_color: "#2563eb", type: "maximum", value: 1, time_s: 0.25, graph_number: 1 }]
+    }
+  });
   const flow = createHarness({
     activeResponses: [
       peaksResponse(),
-      peaksResponse({
-        state_revision: 4,
-        calculation_revision: 0,
-        isready: true,
-        success: true,
-        data: {
-          settings: { mode: "maxima", number_of_peaks: 5, maximum_cutoff: null, minimum_cutoff: null, minimum_distance_samples: 1, threshold: 0 },
-          signals: [{ signal_name: "Сигнал 1", signal_color: "#2563eb", peak_count: 1 }],
-          rows: [{ row_number: 1, signal_name: "Сигнал 1", signal_color: "#2563eb", type: "maximum", value: 1, time_s: 0.25, graph_number: 1 }]
-        }
-      })
+      pendingResponse(41), pendingResponse(41), readyResponse
     ],
     calculateResponses: [pendingPost]
   });
@@ -201,18 +219,84 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   assert(flow.activeCalls.length === 1 && flow.calculateCalls.length === 0, "opening Extrema must make one passive GET and no calculation POST");
   assert(/Рассчитать экстремумы для области (?:Область|Область 1)/.test(flow.peaksHost.innerHTML) && flow.peaksHost.innerHTML.includes("extrema-calculate") && flow.peaksHost.innerHTML.includes("extrema-configure"), "passive first-open must use the persisted area label and show both actions");
 
-  flow.test.calculatePeaks();
+  flow.click(element({ dataset: { testid: "extrema-calculate" } }));
   await settle();
-  assert(flow.calculateCalls.length === 1, "Calculate must issue exactly one explicit POST");
+  assert(flow.calculateCalls.length === 1, "delegated click on Calculate must issue exactly one explicit POST");
   assert(JSON.stringify(flow.calculateCalls[0]) === JSON.stringify({ state_revision: 3, display_id: "display-1", pane_id: "pane-1" }), "Calculate POST must contain only the current revision, Display and pane identifiers");
   assert(flow.peaksHost.innerHTML.includes("peaks-loader"), "Calculate must replace the start state with a loading state immediately");
-  pendingPost.resolve(peaksResponse());
+  pendingPost.resolve(pendingResponse(41));
   await settle();
   assert(flow.timers.length === 1, "a pending explicit calculation must schedule passive GET polling");
   flow.timers.shift()();
   await settle();
-  assert(flow.activeCalls.length === 2, "polling after Calculate must use the passive GET endpoint");
-  assert(flow.peaksHost.innerHTML.includes("data-testid='peaks-table'") && flow.peaksHost.innerHTML.includes("Сигнал 1"), "ready passive polling must render the authoritative Extrema table");
+  assert(flow.activeCalls.length === 2 && flow.peaksHost.innerHTML.includes("peaks-loader"), "first pending POST poll must use passive GET and retain loading");
+  assert(flow.timers.length === 1, "first pending GET must schedule the next passive GET");
+  flow.timers.shift()();
+  await settle();
+  assert(flow.activeCalls.length === 3 && flow.peaksHost.innerHTML.includes("peaks-loader"), "second pending GET must remain pending and schedule no POST");
+  assert(flow.timers.length === 1, "second pending GET must schedule a third passive GET");
+  flow.timers.shift()();
+  await settle();
+  assert(flow.activeCalls.length === 4 && flow.calculateCalls.length === 1, "ready response must follow two pending passive GETs without a duplicate POST");
+  assert(flow.test.model.peaksRecords["display-1::pane-1"].context_key === "display-1::pane-1::peaks::r41" && flow.test.model.peaksRecords["display-1::pane-1"].calculation_revision === 41 && flow.test.model.peaksRecords["display-1::pane-1"].revision === 3, "polling must preserve server context, calculation revision, and state revision fields");
+  assert(flow.peaksHost.innerHTML.includes("data-testid='peaks-table'") && flow.peaksHost.innerHTML.includes("Сигнал 1"), "ready passive polling must render the authoritative nonempty Extrema table");
+
+  // An unrelated accepted snapshot may advance the global state revision while
+  // the same extrema calculation is still pending. Its context/calculation
+  // identity is authoritative, so a delayed older-revision GET must continue
+  // polling rather than silently leave the lower panel on its loader forever.
+  const racePost = deferred();
+  const racePending = (revision, ready) => peaksResponse({
+    state_revision: revision,
+    display_id: "display-1",
+    pane_id: "pane-1",
+    context_key: "display-1::pane-1::peaks::race-9",
+    calculation_revision: 9,
+    isready: !!ready,
+    success: !!ready,
+    data: ready ? {
+      settings: {},
+      signals: [{ signal_name: "Сигнал 1", signal_color: "#2563eb", peak_count: 1 }],
+      rows: [{ row_number: 1, signal_name: "Сигнал 1", signal_color: "#2563eb", type: "maximum", value: 1, time_s: 0.1, graph_number: 1 }]
+    } : { settings: {}, signals: [], rows: [] }
+  });
+  const race = createHarness({
+    activeResponses: [peaksResponse(), racePending(3, false), racePending(4, true)],
+    calculateResponses: [racePost]
+  });
+  race.test.model.inspectorPage = "peaks";
+  await race.test.loadPeaks();
+  race.click(element({ dataset: { testid: "extrema-calculate" } }));
+  await settle();
+  racePost.resolve(racePending(3, false));
+  await settle();
+  assert(race.timers.length === 1, "explicit pending POST must begin polling before the unrelated revision race");
+  race.test.model.revision = 4;
+  race.timers.shift()();
+  await settle();
+  assert(race.timers.length === 1 && race.test.model.peaksRecords["display-1::pane-1"].pending, "older-revision GET for the same active context/calculation must remain pending and schedule its next poll");
+  race.timers.shift()();
+  await settle();
+  assert(race.peaksHost.innerHTML.includes("data-testid='peaks-table'") && race.test.model.peaksRecords["display-1::pane-1"].calculation_revision === 9, "fresh ready GET after the revision race must render the table for the same calculation");
+
+  // The stale-revision recovery must be narrow: one guarded follow-up timer,
+  // never a duplicate timer and never a retry for a mismatched calculation
+  // context.
+  const mismatchPost = deferred();
+  const mismatch = createHarness({
+    activeResponses: [peaksResponse(), peaksResponse({ state_revision: 3, display_id: "display-1", pane_id: "pane-1", context_key: "other-context", calculation_revision: 9, isready: false, data: { settings: {}, signals: [], rows: [] } })],
+    calculateResponses: [mismatchPost]
+  });
+  mismatch.test.model.inspectorPage = "peaks";
+  await mismatch.test.loadPeaks();
+  mismatch.click(element({ dataset: { testid: "extrema-calculate" } }));
+  await settle();
+  mismatchPost.resolve(racePending(3, false));
+  await settle();
+  assert(mismatch.timers.length === 1, "the initial same-context pending POST must schedule exactly one poll");
+  mismatch.timers.shift()();
+  await settle();
+  assert(mismatch.timers.length === 0 && mismatch.calculateCalls.length === 1, "context-mismatched polling response must not schedule a recovery timer or duplicate the calculation POST");
 
   const pendingConfigureGet = deferred();
   const configure = createHarness({ activeResponses: [pendingConfigureGet] });
