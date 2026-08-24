@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `39`
+- Design version: `40`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V39 is the current integration-safe package for the accepted Signal Analyser
+V40 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -35,6 +35,8 @@ TASK-0130 graph-cursor extension:
    optically centered proportional tick.
 7. Existing dynamic sample table now uses a bidirectional sliding row window:
    500-row provider batches, at most 1000 DOM rows and boundary prefetch at 100.
+8. The same table has an exact point-number server jump and TIME-only projection
+   of a current same-signal extrema marker into the point-number cell.
 
 The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
 transaction implementation, Plotly payloads, sample API endpoint mechanics and
@@ -199,6 +201,22 @@ entry baseline or production transfer inputs.
   and no-visible-trace panes disable both menu actions. Axis linking can change
   a pane's visible domain and therefore clamp its own cursor, but never copies
   cursor mode or positions to another pane.
+- Sample point search accepts only an exact nonnegative integer in
+  `0..total-1`. Enter or the icon action requests one 500-row page at
+  `clamp(target - 250, 0, total - 500)`, replaces the current DOM window, then
+  focuses and scrolls the target row into view. Clearing alone does nothing;
+  explicit Enter/icon action on empty resets to the first 500 rows and top.
+- A point cell receives a marker only from the exact active display/pane's
+  successful, calculated TIME extrema record whose row `signal_name` matches
+  the selected signal through existing `signalNameMatches` (exact fallback) and
+  has provider `sample_index`. Color comes from `row.signal_color`. Spectrum
+  bins are never mapped to raw samples.
+  For multiple matches the lowest finite `graph_number` wins, with provider
+  response order breaking ties.
+- The point cell stays left aligned with point number first and marker after.
+  Auto table layout gives it `width: 1%` and exact `min-width: 112px`, sufficient
+  for one eight-digit 100m-scale number plus unchanged marker. Other columns and
+  row styles remain unchanged.
 
 ## Exact delta v27 → v28
 
@@ -358,6 +376,19 @@ entry baseline or production transfer inputs.
 - Stable signal/token guards ignore stale responses, same-direction requests
   deduplicate and totals above 100 million never allocate a full array.
 
+## Exact delta v39 → v40
+
+- Added the existing-style 32px search row with placeholder
+  `Введите номер точки`, inline typed status and Enter/icon activation.
+- Added a token-guarded 500-row replacement request centered around the target;
+  v39 bidirectional 500/1000/100 sliding resumes from replacement offsets.
+- Added only TIME same-signal `sample_index` marker projection using the existing
+  `.extrema-table-marker`; Spectrum extrema never project into raw samples.
+- Changed only the first sample-table column to auto `1%`, exact `112px`
+  minimum, left alignment and number-before-marker order.
+  Shell, inspector dimensions, other columns, footer, Values action and existing
+  loading/empty/error visuals are unchanged.
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -381,6 +412,8 @@ entry baseline or production transfer inputs.
   selected palette swatch halo and tick alignment.
 - Approved TASK-0134 contract from 2026-08-24 for the existing samples table
   bidirectional sliding row window.
+- Approved TASK-0135 request from 2026-08-24 for exact point jump, TIME extrema
+  marker projection and compact point cell.
 - Read-only current selectors/geometry in `public/index.html`,
   `public/css/app.css`, `public/js/app.js`, `public/js/settings.js`.
 - Canonical local `designer/visual-system`, application composition, settings,
@@ -427,6 +460,20 @@ entry baseline or production transfer inputs.
   composition, page sizing, output and dialog skills because v39 changes no
   visual geometry, composition, sizing, graphs or overlays.
 - Figma reference status for v39: `not_required`.
+
+### Skills for v40 revision
+
+- Applied: `designer/designer-workflow`, `designer/data-entry-and-inspection`
+  and `designer/visual-system` for changed search/first-cell geometry and reuse
+  of the canonical extrema marker.
+- Skipped: Engee Apps research, application composition, page sizing, output
+  and dialog skills because shell, zone proportions, graphs and overlays do not
+  change.
+- Figma reference status: `unavailable`. Exact nodes
+  [Search Bar 1175:50910](https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=1175-50910&p=f)
+  and [Table 317:778](https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=317-778&p=f)
+  returned `You currently have nothing selected`; v40 therefore copies the
+  accepted production search and marker patterns without inventing a style.
 
 ### Skills for v32 revision
 
@@ -530,6 +577,8 @@ override the successful v32 node-specific read above.
 | Automatic sample tab | main signal exists/changes | One tab named after `main_signal` exists and loads its first page without changing inspector focus | absent-without-main, loading, ready, error | table owns x/y scroll when selected |
 | Signal `Значения` | click | Ensure/select/focus populated main-signal tab, expand inspector and request missing first page | default, hover, focus, loading, ready, error | table owns x/y scroll |
 | Dynamic sample row window | scroll within 100 rows of top/bottom boundary | Fetch 500 upward/downward; retain at most 1000 rows; keep visible record fixed through measured-height compensation | loading-up, loading-down, ready, end-of-data, error, stale-ignored | existing table/scroll owner/footer geometry unchanged |
+| Sample point search | type, Enter or icon click | Validate exact `0..total-1`, replace with centered server page and focus target; empty explicit submit resets first page | pristine, typing, invalid, loading, success, error | 32px row; clearing alone sends no request |
+| TIME extrema in point cell | render current samples | Keep number first, then canonical marker when exact active display/pane successful same-signal TIME extrema has `sample_index` | absent, marker-ready, duplicate-resolved | auto 1%/min 112px left-aligned first column; Spectrum never maps |
 | Signal color trigger | click/keyboard | 284px anchored non-modal popover opens with HEX and the restored eight swatches | closed, open, hover, selected-draft, invalid, busy | fixed overlay; flips/clamps to viewport, no settings scroll ownership change |
 | Color popover Apply/Cancel | click/Escape/outside | Apply writes Signal color draft; Cancel paths restore opening color | draft, busy, committed-to-page-draft, cancelled | focus returns to color trigger |
 | Signal sample rate | type | Editable dot-decimal metadata autosaves after validation | pristine, focus, dirty, invalid, applying | inline error does not shift adjacent controls |
@@ -611,6 +660,11 @@ V39 adds no visual geometry and carries all screenshots forward. Its determinist
 controller regression is `evidence/interaction-regression-v39-sample-row-window.json`,
 `1 passed / 0 failed`; it covers exact constants, both shift directions,
 authoritative offsets/footer, scroll compensation, guards and total `100000001`.
+V40 adds no screenshots. Its deterministic regression is
+`evidence/interaction-regression-v40-sample-search-markers.json`, `2 passed / 0
+failed`; it covers centered server jump/validation/reset/focus, resumed v39
+sliding, token guards, active TIME marker eligibility, duplicate resolution,
+Spectrum exclusion and exact first-column CSS.
 
 ## Transfer contract
 
@@ -632,6 +686,8 @@ authoritative offsets/footer, scroll compensation, guards and total `100000001`.
 | `integration/css/task-0130-graph-cursors.css` | `public/css/app.css` | append once | Exact existing-menu/check and Plotly-sibling overlay styles |
 | `integration/js/task-0130-graph-cursors.js` | pane menu + plot lifecycle branches in `public/js/app.js` | integrate controller unchanged | Frontend-only map; install rows, attach after react, update after relayout, clear with pane; never install prototype bridge |
 | `integration/js/task-0134-sample-row-window.js` | existing sample state/loader/renderer/scroll branches in `public/js/app.js` | integrate controller unchanged | Keep the existing five-column table and provider transport; apply returned compensation using measured rendered row height |
+| `integration/css/task-0135-sample-search-markers.css` | `public/css/app.css` | append once | Existing 32px search pattern plus auto 1%/min 112px left point cell; other columns unchanged |
+| `integration/js/task-0135-sample-search-markers.js` | samples render/search/provider branches in `public/js/app.js` | integrate helper unchanged | Server-only centered jump, token replacement, center focus and exact active TIME marker projection |
 | `integration/html/dialogs/signal-operation.fragment.html` | `public/js/app.js` runtime template → `document.body` | integrate unchanged singleton | Never edit `public/index.html` |
 | Mock shell/zones/renderers/providers/prototype | none | design-only | Never transfer |
 
@@ -654,7 +710,8 @@ Features extend those hosts; they do not replace their parents or bootstrap.
 | `linked-axis-draft` | Immediate scope relocation, values retained | UI mock | existing `public/js/app.js` + `public/js/settings.js` |
 | `projected-spectrum-extrema` | Ready/loading/error rows and marker coordinates already projected into selected units; UI does no DSP | mock | `public/js/api.js` → existing `public/js/app.js` Plotly queue |
 | `signal-summary-provider` | Backend-authored summary view model | mock | `public/js/api.js` → existing `public/js/app.js` |
-| `signal-samples-pagination` | 500-row bidirectional offset batches, 1000-row DOM window, exact footer and measured-height scroll compensation; never full vector | v39 controller regression | `public/js/api.js` → existing `public/js/app.js` inspector renderer |
+| `signal-samples-pagination` | 500-row bidirectional batches plus exact centered point jump, 1000-row DOM window, footer/compensation; never full vector | v39/v40 controller regressions | `public/js/api.js` → existing `public/js/app.js` inspector renderer |
+| `sample-time-extrema-markers` | Exact active display/pane, successful TIME rows filtered by `signal_name` and `sample_index`; `row.signal_color`; lowest finite graph number; never Spectrum bins | v40 helper regression | existing extrema state → existing sample renderer |
 | `signal-operation-provider` | UI sends operation metadata and user body only; provider executes via Engee and owns hidden envelope/binding/cleanup | mock | `public/js/api.js` → existing `public/js/app.js` body portal |
 | `signal-membership-main` | Checkbox owns pane membership; one explicit main signal owns row emphasis and Signal settings context | deterministic mock state/API | existing `public/js/app.js` + existing layout/view providers |
 | `settings-context-routing` | Pane selects Area page; display selection/creation selects Screen page | actual production UI in file harness | existing `public/js/app.js` event delegation |

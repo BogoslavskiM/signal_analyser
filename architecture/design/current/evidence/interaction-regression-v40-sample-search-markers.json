@@ -1,0 +1,41 @@
+{
+  "design_version": 40,
+  "source": [
+    "frontend-source/integration/js/task-0135-sample-search-markers.js",
+    "frontend-source/integration/css/task-0135-sample-search-markers.css"
+  ],
+  "passed": 2,
+  "failed": 0,
+  "results": [
+    {
+      "id": "55-exact-server-point-search",
+      "passed": true,
+      "detail": {
+        "formula": "clamp(target-250, 0, total-500)",
+        "request": {
+          "start_offset": 750,
+          "limit": 500
+        },
+        "replaced_range": "751–1250",
+        "target": 1000,
+        "clear": "no request until explicit Enter/action; empty submit resets 1–500"
+      }
+    },
+    {
+      "id": "56-time-extrema-marker-projection",
+      "passed": true,
+      "detail": {
+        "eligibility": "successful calculated TIME record + exact active display/pane + row signal_name match + sample_index",
+        "signal_match": "optional production signalNameMatches callback; exact-name fallback",
+        "color": "row.signal_color",
+        "multiple": "lowest finite graph_number; provider response order breaks ties",
+        "spectrum_bins": "never projected",
+        "point_cell_order": "number then marker",
+        "first_column": {
+          "preferred": "1%",
+          "min_px": 112
+        }
+      }
+    }
+  ]
+}

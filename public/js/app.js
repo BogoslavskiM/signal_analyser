@@ -96,7 +96,7 @@
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
     signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
     signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{},
-    signalSamples: { signalId:"", signalName:"", token:0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null }, error:"" },
+    signalSamples: { signalId:"", signalName:"", token:0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null, search:null }, error:"", searchValue:"", searchState:"", searchMessage:"" },
     signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }
   };
 
@@ -1959,14 +1959,23 @@
     return window.SignalSamplesRowWindow || null;
   }
 
+  function signalSamplesSearchHelper() {
+    return window.SignalSamplesSearchMarkers || null;
+  }
+
   function createSignalSamplesState(signalId, token, signalName) {
     var controller=signalSamplesController(), state=controller ? controller.create(signalId, token) : { signalId:String(signalId || ""), token:Number(token) || 0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null }, error:"" };
     state.signalName=String(signalName || "");
+    state.pending=state.pending || { up:null, down:null };
+    state.pending.search=null;
+    state.searchValue="";
+    state.searchState="";
+    state.searchMessage="";
     return state;
   }
 
   function signalSamplesLoading(state) {
-    return !!(state && state.pending && (state.pending.up || state.pending.down));
+    return !!(state && state.pending && (state.pending.up || state.pending.down || state.pending.search));
   }
 
   function normalizeSignalSamplesPage(page) {
@@ -1985,7 +1994,7 @@
 
   function loadSignalSamples(direction) {
     var controller=signalSamplesController(), state=model.signalSamples;
-    if (!controller || !state.signalId || state.firstBatchLoaded && !state.rows.length) return;
+    if (!controller || !state.signalId || state.pending && state.pending.search || state.firstBatchLoaded && !state.rows.length) return;
     var request=controller.begin(state, direction || "down");
     if (!request) return;
     var requestLimit=request.direction === "up" ? Math.min(request.limit, state.startOffset - request.startOffset) : request.limit;
@@ -2005,6 +2014,63 @@
       if (state !== model.signalSamples || request.token !== state.token) return;
       scrollTop=signalSamplesScrollTop();
       if (controller.reject(state, request, safeErrorText(error, "Не удалось загрузить значения."))) { renderInspector(); restoreSignalSamplesScrollTop(scrollTop); }
+    });
+  }
+
+  function focusSignalSampleSearchResult(result) {
+    if (!result || !result.accepted || model.inspectorPage !== "samples") return;
+    window.requestAnimationFrame(function () {
+      if (model.inspectorPage !== "samples") return;
+      var scroll=q("[data-testid='samples-table-scroll']");
+      if (!scroll) return;
+      if (result.scrollTop != null) scroll.scrollTop=result.scrollTop;
+      if (!result.rowSelector) return;
+      var row=scroll.querySelector(result.rowSelector);
+      if (!row) return;
+      try { row.focus({ preventScroll:true }); } catch (_) { row.focus(); }
+      if (typeof row.scrollIntoView === "function") row.scrollIntoView({ block:"center", inline:"nearest" });
+    });
+  }
+
+  function submitSignalSamplesSearch(rawValue) {
+    var helper=signalSamplesSearchHelper(), state=model.signalSamples;
+    if (!helper || !state || !state.signalId) return;
+    state.searchValue=String(rawValue == null ? "" : rawValue);
+    var started=helper.begin(state, state.searchValue);
+    if (!started.accepted) {
+      state.searchState=started.state || "error";
+      state.searchMessage=started.message || "Не удалось перейти к точке.";
+      renderInspector();
+      window.requestAnimationFrame(function () { var input=q("[data-testid='sample-point-search-input']"); if (input) input.focus(); });
+      return;
+    }
+    var request=started.request;
+    state.searchState=started.state || "loading";
+    state.searchMessage=started.message || "";
+    renderInspector();
+    boundedRequest(api.signalSamples(request.signalId, request.startOffset, request.limit), 10000).then(function (page) {
+      if (state !== model.signalSamples || request.token !== state.token) return;
+      var result=helper.apply(state, request, normalizeSignalSamplesPage(page));
+      if (!result.accepted) {
+        if (result.reason === "stale-token" || result.reason === "stale-request") return;
+        helper.reject(state, request);
+        state.searchState="error";
+        state.searchMessage=state.error || "Сервер вернул некорректную страницу значений сигнала.";
+        state.error="";
+        renderInspector();
+        return;
+      }
+      state.searchState=result.state || "success";
+      state.searchMessage=result.message || "";
+      renderInspector();
+      focusSignalSampleSearchResult(result);
+    }).catch(function (error) {
+      if (state !== model.signalSamples || request.token !== state.token) return;
+      if (!helper.reject(state, request)) return;
+      state.searchState="error";
+      state.searchMessage=safeErrorText(error, state.error || "Не удалось загрузить точку.");
+      state.error="";
+      renderInspector();
     });
   }
 
@@ -2029,7 +2095,7 @@
 
   function prefetchSignalSamples(scroll, state) {
     var controller=signalSamplesController();
-    if (!controller || !scroll || !state.rows.length || state.error) return;
+    if (!controller || !scroll || !state.rows.length || state.error || signalSamplesLoading(state)) return;
     var firstRow=scroll.querySelector("tbody tr"), rowHeight=signalSamplesRenderedRowHeight();
     if (!firstRow || rowHeight <= 0) return;
     var rowsTop=Number(firstRow.offsetTop) || 0;
@@ -2039,11 +2105,20 @@
   }
 
   function renderSignalSamplesInspector(body) {
-    var state=model.signalSamples, controller=signalSamplesController();
+    var state=model.signalSamples, controller=signalSamplesController(), helper=signalSamplesSearchHelper();
     if (!state.signalId) { body.innerHTML="<div class='table-empty' role='status'>Выберите основной сигнал.</div>"; return; }
     if (!state.rows.length && !signalSamplesLoading(state) && !state.error && !state.firstBatchLoaded) loadSignalSamples("down");
-    var loading=signalSamplesLoading(state), footer=controller ? controller.footer(state) : "0–0 из 0";
-    body.innerHTML="<div class='signal-table-scroll' data-testid='samples-table-scroll'><table class='signal-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>"+state.rows.map(function (row) { return "<tr><td>"+esc(row.sample_index == null ? row.index : row.sample_index)+"</td><td>"+esc(row.time == null ? (row.time_s == null ? "—" : row.time_s) : row.time)+"</td><td>"+esc(row.value == null ? "—" : row.value)+"</td><td>"+esc(row.magnitude == null ? "—" : row.magnitude)+"</td><td>"+esc(row.square == null ? "—" : row.square)+"</td></tr>"; }).join("")+"</tbody></table><div class='samples-footer'><span>"+esc(footer)+"</span></div>"+(loading ? "<div class='samples-loading' role='status'>Загрузка…</div>" : state.error ? "<div class='samples-loading' role='alert'>"+esc(state.error)+"</div>" : !state.rows.length && state.firstBatchLoaded ? "<div class='samples-loading' role='status'>У сигнала нет отсчётов.</div>" : "")+"</div>";
+    var display=activeDisplay(), pane=paneById(model.activePane), signal=mainSignalForPane(pane), runtimeKey=display && pane ? paneRuntimeKey(display.id, pane.id) : "";
+    var markers=helper ? helper.markerMap({ record:runtimeKey ? model.peaksRecords[runtimeKey] : null, signalId:stableSignalId(signal), signalName:signal && signal.name, plotType:pane && pane.plot_type, displayId:display && display.id, paneId:pane && pane.id, signalMatches:function (candidate, expected) { return !!signal && signalNameMatches(signal, candidate) && signalNameMatches(signal, expected); } }) : {};
+    var loading=signalSamplesLoading(state), slidingLoading=!!(state.pending && (state.pending.up || state.pending.down)), searchLoading=!!(state.pending && state.pending.search), searchDisabled=searchLoading || !state.firstBatchLoaded, footer=controller ? controller.footer(state) : "0–0 из 0";
+    var searchMarkup=helper && helper.searchMarkup || { rowClass:"inspector-search-row samples-point-search-row", input:{ placeholder:"Введите номер точки", testid:"sample-point-search-input" }, action:{ testid:"sample-point-search-action", ariaLabel:"Перейти к номеру точки", tooltip:"Перейти к номеру точки" }, status:{ testid:"sample-point-search-status" } };
+    var searchRow="<div class='"+esc(searchMarkup.rowClass)+"'><div class='inspector-search-field'><span class='search-icon' aria-hidden='true'></span><input type='"+esc(searchMarkup.input.type || "search")+"' inputmode='"+esc(searchMarkup.input.inputmode || "numeric")+"' data-testid='"+esc(searchMarkup.input.testid)+"' aria-label='Номер точки' placeholder='"+esc(searchMarkup.input.placeholder)+"' autocomplete='"+esc(searchMarkup.input.autocomplete || "off")+"' spellcheck='false' autocapitalize='off' autocorrect='off' value='"+esc(state.searchValue || "")+"'"+(searchDisabled ? " disabled" : "")+"></div><button class='samples-point-search-action' type='button' data-testid='"+esc(searchMarkup.action.testid)+"' data-tooltip='"+esc(searchMarkup.action.tooltip)+"' aria-label='"+esc(searchMarkup.action.ariaLabel)+"'"+(searchDisabled ? " disabled" : "")+"><span class='search-icon' aria-hidden='true'></span></button><span class='samples-point-search-status' data-testid='"+esc(searchMarkup.status.testid)+"' role='"+esc(searchMarkup.status.role || "status")+"' aria-live='"+esc(searchMarkup.status.ariaLive || "polite")+"' data-state='"+esc(state.searchState || "")+"'>"+esc(state.searchMessage || "")+"</span></div>";
+    var rowsMarkup=state.rows.map(function (row) {
+      var sampleIndex=row.sample_index == null ? row.index : row.sample_index, marker=markers[sampleIndex], markerMarkup="";
+      if (marker) { var typeLabel=marker.type === "minimum" ? "Минимум" : "Максимум"; markerMarkup="<span class='extrema-table-marker is-"+esc(marker.type)+"' style='--marker-color:"+esc(marker.color)+"' data-marker-symbol='"+(marker.type === "minimum" ? "triangle-down" : "triangle-up")+"' aria-label='"+typeLabel+", метка "+esc(marker.graphNumber)+"'><i aria-hidden='true'></i><b>"+esc(marker.graphNumber)+"</b></span>"; }
+      return "<tr data-sample-index='"+esc(sampleIndex)+"' tabindex='-1'><td><span class='sample-point-cell-content'><span class='sample-point-cell-number'>"+esc(sampleIndex)+"</span>"+markerMarkup+"</span></td><td>"+esc(row.time == null ? (row.time_s == null ? "—" : row.time_s) : row.time)+"</td><td>"+esc(row.value == null ? "—" : row.value)+"</td><td>"+esc(row.magnitude == null ? "—" : row.magnitude)+"</td><td>"+esc(row.square == null ? "—" : row.square)+"</td></tr>";
+    }).join("");
+    body.innerHTML=searchRow+"<div class='signal-table-scroll' data-testid='samples-table-scroll'><table class='signal-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>"+rowsMarkup+"</tbody></table><div class='samples-footer'><span>"+esc(footer)+"</span></div>"+(slidingLoading ? "<div class='samples-loading' role='status'>Загрузка…</div>" : state.error ? "<div class='samples-loading' role='alert'>"+esc(state.error)+"</div>" : !state.rows.length && state.firstBatchLoaded && !loading ? "<div class='samples-loading' role='status'>У сигнала нет отсчётов.</div>" : "")+"</div>";
     var scroll=body.querySelector("[data-testid='samples-table-scroll']");
     if (scroll) scroll.addEventListener("scroll", function () { prefetchSignalSamples(scroll, state); }, { passive:true });
   }
@@ -2448,7 +2523,7 @@
     qa("[data-bottom-tab]").forEach(function (tab) { var available = contextTabAvailable(tab.dataset.bottomTab, pane), active = available && tab.dataset.bottomTab === model.inspectorPage; tab.hidden = !available; tab.setAttribute("aria-hidden", String(!available)); tab.setAttribute("aria-selected", String(active)); tab.tabIndex = active ? 0 : -1; });
     body.setAttribute("aria-labelledby", model.inspectorPage === "signals" ? "signals-tab" : model.inspectorPage === "measurements" ? "measurements-tab" : model.inspectorPage === "samples" ? "inspector-tab-samples" : "peaks-tab");
     body.dataset.testid = "inspector-pane-" + model.inspectorPage;
-    body.classList.toggle("is-table-only", model.inspectorPage === "peaks" || model.inspectorPage === "samples");
+    body.classList.toggle("is-table-only", model.inspectorPage === "peaks");
     if (model.inspectorPage === "samples") return void renderSignalSamplesInspector(body);
     if (model.inspectorPage === "measurements") return void renderMeasurementsInspector(body);
     if (model.inspectorPage === "peaks") return void renderPeaksInspector(body);
@@ -3790,6 +3865,7 @@
     if (button.dataset.testid === "extrema-configure") return void configureActivePeaks();
     if (button.dataset.testid === "extrema-values") return void showActivePeaksValues();
     if (button.dataset.testid === "signal-values-action") return void showSignalSamples();
+    if (button.dataset.testid === "sample-point-search-action") { var sampleSearchInput=q("[data-testid='sample-point-search-input']"); return void submitSignalSamplesSearch(sampleSearchInput ? sampleSearchInput.value : model.signalSamples.searchValue); }
     if (button.dataset.testid === "signals-add-action") return void openSignalAddDialog(button);
     if (button.dataset.signalAddClose !== undefined || button.dataset.signalAddCancel !== undefined) return void closeSignalAddDialog(true);
     if (button.dataset.signalAddRetry !== undefined) return void loadSignalAddCatalog(true);
@@ -3847,6 +3923,7 @@
   document.addEventListener("click", function (event) { var menu=q("[data-testid='signal-columns-menu']"),trigger=q("[data-testid='signal-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeColumnMenu(false); });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='measurement-columns-menu']"),trigger=q("[data-testid='measurement-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeMeasurementMenu(false); });
   document.addEventListener("keydown", function (event) { var clearLayer=q("[data-testid='pane-clear-confirm-layer']"), help=q("[data-testid='graph-help-overlay']"), paneMenu=q("[data-testid='display-overflow-menu']"), addLayer=signalAddLayer(); if (event.key === "Escape" && model.sessionImport.open && !model.sessionImport.busy) { event.preventDefault(); closeSessionImport(true); return; } if (event.key === "Escape" && clearLayer && !clearLayer.hidden) { event.preventDefault(); closePaneClearConfirm(true); return; } if (event.key === "Escape" && help && !help.hidden) { event.preventDefault(); closeGraphHelp(true); return; } if (event.key === "Escape" && paneMenu && !paneMenu.hidden) { event.preventDefault(); closePaneMenu(true); return; } if (event.key === "Escape" && addLayer && !addLayer.hidden) { event.preventDefault(); if (model.signalAddSearch) { model.signalAddSearch=""; renderSignalAddCatalog(); var search=q("[data-signal-add-search]"); if(search)search.focus(); } else closeSignalAddDialog(true); return; } if (event.key === "Escape" && model.layoutDraft) closeLayout(); else if (event.key === "Escape" && q("[data-testid='measurement-columns-menu']") && !q("[data-testid='measurement-columns-menu']").hidden) closeMeasurementMenu(true); else if (event.key === "Escape") closeColumnMenu(true); var tab = event.target.closest && event.target.closest("[data-bottom-tab]"); if (tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key) >= 0) { var tabs=qa("[data-bottom-tab]").filter(function (item) { return !item.hidden; }), index=tabs.indexOf(tab); if(event.key === "Home") index=0; else if(event.key === "End") index=tabs.length-1; else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0 ? 1 : -1)+tabs.length)%tabs.length; event.preventDefault(); tabs[index].click(); tabs[index].focus(); } });
+  document.addEventListener("keydown", function (event) { if (event.key !== "Enter" || !event.target || event.target.dataset.testid !== "sample-point-search-input") return; event.preventDefault(); submitSignalSamplesSearch(event.target.value); });
   document.addEventListener("keydown", function (event) { var menu=event.target.closest && event.target.closest("[data-testid='display-overflow-menu']"); if (!menu || ["ArrowDown","ArrowUp","Home","End"].indexOf(event.key)<0) return; var items=qa("[data-testid='display-overflow-menu'] button:not(:disabled)"), current=items.indexOf(document.activeElement), next=current; if(event.key==="ArrowDown") next=(current+1+items.length)%items.length; else if(event.key==="ArrowUp") next=(current-1+items.length)%items.length; else if(event.key==="Home") next=0; else next=items.length-1; event.preventDefault(); if(items[next]) items[next].focus(); });
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]").filter(function (item) { return !item.hidden; }),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
@@ -3881,6 +3958,7 @@
     if (pane) focusAreaSettings(pane.dataset.paneId);
   });
   document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft && !model.signalEditor.applying) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; scheduleSignalMetadataSave(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
+  document.addEventListener("input", function (event) { if (!event.target || event.target.dataset.testid !== "sample-point-search-input") return; var state=model.signalSamples; state.searchValue=event.target.value; state.searchState=""; state.searchMessage=""; var status=q("[data-testid='sample-point-search-status']"); if (status) { status.dataset.state=""; status.textContent=""; } });
   document.addEventListener("input", function (event) {
     var input=event.target;
     if (!input || !input.dataset || input.dataset.rangePart === undefined || !input.dataset.settingId || typeof input.closest === "function" && input.closest("[data-screen-range-slider]")) return;
@@ -4464,5 +4542,152 @@
     reject:reject,
     footer:footer,
     scrollCompensation:scrollCompensation
+  };
+}(window));
+
+(function registerSignalSamplesSearchMarkers(window) {
+  "use strict";
+
+  var PAGE_SIZE = 500;
+  var CENTER_BEFORE = 250;
+
+  function safeOffset(value, fallback) {
+    var number=Number(value);
+    return Number.isSafeInteger(number) && number >= 0 ? number : fallback;
+  }
+
+  function signalIdFrom(page) {
+    return String(page && (page.signal_id || (page.signal && page.signal.id)) || "");
+  }
+
+  function centeredStart(target, total) {
+    var lastStart=Math.max(0, total - PAGE_SIZE);
+    return Math.min(Math.max(0, target - CENTER_BEFORE), lastStart);
+  }
+
+  function intent(rawValue, totalValue) {
+    var raw=String(rawValue == null ? "" : rawValue).trim();
+    var total=safeOffset(totalValue, -1);
+    if (total < 0) return { valid:false, state:"error", message:"Не удалось определить диапазон точек." };
+    if (!raw) return { valid:true, kind:"reset", target:null, startOffset:0, limit:PAGE_SIZE };
+    if (!/^\d+$/.test(raw)) return { valid:false, state:"error", message:"Введите целое неотрицательное число." };
+    var target=Number(raw);
+    if (!Number.isSafeInteger(target)) return { valid:false, state:"error", message:"Введите целое неотрицательное число." };
+    if (target >= total) {
+      return { valid:false, state:"error", message:total ? "Доступны номера от 0 до " + String(total - 1) + "." : "В сигнале нет точек." };
+    }
+    return { valid:true, kind:"target", target:target, startOffset:centeredStart(target, total), limit:PAGE_SIZE };
+  }
+
+  function begin(state, rawValue) {
+    if (!state || !state.signalId) return { accepted:false, state:"error", message:"Сигнал не выбран." };
+    var parsed=intent(rawValue, state.total);
+    if (!parsed.valid) return parsed;
+    state.token=safeOffset(state.token, 0) + 1;
+    state.pending=state.pending || {};
+    state.pending.up=null;
+    state.pending.down=null;
+    var request={
+      signalId:state.signalId,
+      token:state.token,
+      direction:"replace",
+      kind:parsed.kind,
+      target:parsed.target,
+      startOffset:parsed.startOffset,
+      limit:PAGE_SIZE
+    };
+    request.key=[request.signalId, request.token, request.direction, request.startOffset].join(":");
+    state.pending.search=request.key;
+    state.error="";
+    return { accepted:true, request:request, state:"loading", message:parsed.kind === "reset" ? "Загрузка начала…" : "Загрузка точки " + String(parsed.target) + "…" };
+  }
+
+  function apply(state, request, page) {
+    if (!state || !request || !page) return { accepted:false, reason:"missing" };
+    if (request.signalId !== state.signalId || request.token !== state.token) return { accepted:false, reason:"stale-token" };
+    if (!state.pending || state.pending.search !== request.key) return { accepted:false, reason:"stale-request" };
+    state.pending.search=null;
+    if (signalIdFrom(page) !== state.signalId || !Array.isArray(page.rows)) return { accepted:false, reason:"signal-mismatch" };
+    var start=safeOffset(page.start_offset, -1);
+    var end=safeOffset(page.end_offset, -1);
+    var total=safeOffset(page.total, -1);
+    if (start !== request.startOffset || start < 0 || end < start || total < end || page.rows.length !== end - start || page.rows.length > PAGE_SIZE) {
+      return { accepted:false, reason:"invalid-offsets" };
+    }
+    if (request.target != null && (request.target < start || request.target >= end || request.target >= total)) return { accepted:false, reason:"target-missing" };
+    state.rows=page.rows.slice();
+    state.startOffset=start;
+    state.endOffset=end;
+    state.total=total;
+    state.firstBatchLoaded=true;
+    state.error="";
+    return {
+      accepted:true,
+      startOffset:start,
+      endOffset:end,
+      total:total,
+      target:request.target,
+      rowSelector:request.target == null ? null : "tr[data-sample-index=\"" + String(request.target) + "\"]",
+      scroll:"focus-and-center",
+      scrollTop:request.target == null ? 0 : null,
+      state:"success",
+      message:request.target == null ? "Показано начало сигнала." : "Точка " + String(request.target) + " загружена."
+    };
+  }
+
+  function reject(state, request) {
+    if (!state || !request || request.signalId !== state.signalId || request.token !== state.token || !state.pending || state.pending.search !== request.key) return false;
+    state.pending.search=null;
+    state.error=request.target == null ? "Не удалось загрузить начало сигнала." : "Не удалось загрузить точку " + String(request.target) + ".";
+    return true;
+  }
+
+  function normalizeType(value) {
+    var type=String(value || "").toLowerCase();
+    if (type === "maximum" || type === "max" || type === "максимум") return "maximum";
+    if (type === "minimum" || type === "min" || type === "минимум") return "minimum";
+    return "";
+  }
+
+  function markerMap(options) {
+    var result={};
+    var record=options && options.record;
+    var signalId=String(options && options.signalId || "");
+    var signalName=String(options && options.signalName || "");
+    var matches=options && typeof options.signalMatches === "function" ? options.signalMatches : function (candidate, expected) { return String(candidate || "") === String(expected || ""); };
+    if (!options || String(options.plotType || "").toLowerCase() !== "time" || !signalId || !record || record.calculated !== true || record.pending || record.error) return result;
+    if (String(record.displayId || "") !== String(options.displayId || "") || String(record.paneId || "") !== String(options.paneId || "")) return result;
+    var rows=record.data && Array.isArray(record.data.rows) ? record.data.rows : [];
+    rows.forEach(function (row, responseIndex) {
+      if (!matches(row && row.signal_name, signalName)) return;
+      var sampleIndex=safeOffset(row && row.sample_index, -1);
+      var type=normalizeType(row && row.type);
+      var graphNumber=Number(row && row.graph_number);
+      if (sampleIndex < 0 || !type || !Number.isFinite(graphNumber)) return;
+      var candidate={ sampleIndex:sampleIndex, type:type, graphNumber:graphNumber, color:String(row.signal_color || ""), responseIndex:responseIndex };
+      var current=result[sampleIndex];
+      if (!current || candidate.graphNumber < current.graphNumber || (candidate.graphNumber === current.graphNumber && candidate.responseIndex < current.responseIndex)) result[sampleIndex]=candidate;
+    });
+    return result;
+  }
+
+  window.SignalSamplesSearchMarkers = {
+    PAGE_SIZE:PAGE_SIZE,
+    CENTER_BEFORE:CENTER_BEFORE,
+    centeredStart:centeredStart,
+    intent:intent,
+    begin:begin,
+    apply:apply,
+    reject:reject,
+    markerMap:markerMap,
+    searchMarkup:{
+      rowClass:"inspector-search-row samples-point-search-row",
+      input:{ type:"search", inputmode:"numeric", placeholder:"Введите номер точки", testid:"sample-point-search-input", autocomplete:"off" },
+      action:{ testid:"sample-point-search-action", ariaLabel:"Перейти к номеру точки", tooltip:"Перейти к номеру точки" },
+      status:{ testid:"sample-point-search-status", role:"status", ariaLive:"polite" }
+    },
+    pointCellOrder:"point number first at left, then marker",
+    markerRule:"TIME-only successful exact active display/pane record; filter row.signal_name through signalMatches or exact name fallback; lowest finite graph_number wins, then provider response order",
+    clearingRule:"Clearing input alone does not request; explicit Enter/search with empty value resets to the first 500-row page"
   };
 }(window));

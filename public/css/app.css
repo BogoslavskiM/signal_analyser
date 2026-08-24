@@ -3515,3 +3515,80 @@ body {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* TASK-0135: compact server point search and TIME extrema marker projection. */
+.inspector-body[data-testid="inspector-pane-samples"] {
+  grid-template-rows: 32px minmax(0, 1fr);
+}
+
+.samples-point-search-row {
+  min-width: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.samples-point-search-row .inspector-search-field {
+  min-width: 220px;
+  flex: 1 1 auto;
+}
+
+.samples-point-search-action {
+  width: 32px;
+  height: 31px;
+  display: grid;
+  flex: 0 0 32px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.samples-point-search-action .search-icon { margin-left: 0; }
+.samples-point-search-action:hover { background: var(--button-hover); }
+.samples-point-search-action:active { background: var(--button-active); }
+.samples-point-search-action:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.samples-point-search-action:disabled { cursor: default; opacity: 0.56; }
+
+.samples-point-search-status {
+  max-width: 280px;
+  flex: 0 1 auto;
+  overflow: hidden;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.samples-point-search-status[data-state="error"] { color: var(--danger); }
+.samples-point-search-status[data-state="success"] { color: var(--success); }
+
+/* Auto layout plus a 1% preferred width keeps this column at its content
+   minimum. 112px fits the full eight-digit 100m-scale point number first,
+   followed by one canonical marker, at the inherited metrics/padding. */
+.sample-table { table-layout: auto; }
+.sample-table th:first-child,
+.sample-table td:first-child {
+  width: 1%;
+  min-width: 112px;
+  text-align: left;
+}
+
+.sample-point-cell-content {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sample-point-cell-content .extrema-table-marker { flex: 0 0 auto; }
+.sample-point-cell-number { flex: 0 0 auto; }
