@@ -85,7 +85,7 @@
   var model = {
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
-    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, graphDefaultRangeByPane:{}, graphDefaultSignatureByPane:{}, plotAutoscaleByPane:{}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
+    plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, graphDefaultRangeByPane:{}, graphDefaultSignatureByPane:{}, plotAutoscaleByPane:{}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, spectralLinkFrame:null, spectralLinkPending:null, spectralLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
     layoutDraft: null, screenDraft: null, screenApplying: false, screenApplyToken: 0, screenApplyTimer: null, settingsPublishTimer: null, settingsPublishing: false, settingsPublishWanted: -1, settingsPublishPublished: -1, settingsCommittedRevision: -1, screenCollapsed: { layout:true }, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
@@ -107,6 +107,7 @@
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]; }); }
   function scopedLoadingController() { return window.SignalAnalyserScopedLoading || null; }
   function plotAutoscaleController() { return window.SignalAnalyserPlotAutoscale || null; }
+  function task0141Controller() { return window.SignalAnalyserTask0141 || null; }
   function plotOutputIdentity(pane, record) {
     return [pane && pane.plot_type || "", record && record.context_key || "", record && record.calculation_revision == null ? "" : record.calculation_revision].join("::");
   }
@@ -1400,17 +1401,69 @@
         return Array.isArray(current) && Array.isArray(prior) && current.length === prior.length && current.every(function (value, index) { return Number(value) === Number(prior[index]); });
       });
       if (unchanged) return;
-      if (payload) queueLinkedTimeRelayout(displayId, paneId, payload);
+      if (payload) {
+        queueLinkedTimeRelayout(displayId, paneId, payload);
+        queueLinkedSpectralRelayout(displayId, paneId, payload);
+      }
     });
   }
 
   function currentScreenLinkFlags() {
     var display = activeDisplay(), draft = model.screenDraft;
-    if (display && draft && draft.displayId === display.id) return { time:!!draft.linkTime, amplitude:!!draft.linkAmplitude };
+    if (display && draft && draft.displayId === display.id) return { time:!!draft.linkTime, amplitude:!!draft.linkAmplitude, frequency:!!draft.linkFrequency, magnitude:!!draft.linkMagnitude };
     return {
       time:!!(settings.screenValue ? settings.screenValue("time.link_time") : settings.value ? settings.value("time.link_time") : false),
-      amplitude:!!(settings.screenValue ? settings.screenValue("time.link_amplitude") : settings.value ? settings.value("time.link_amplitude") : false)
+      amplitude:!!(settings.screenValue ? settings.screenValue("time.link_amplitude") : settings.value ? settings.value("time.link_amplitude") : false),
+      frequency:!!(settings.screenValue ? settings.screenValue("spectrum.link_frequency") : settings.value ? settings.value("spectrum.link_frequency") : false),
+      magnitude:!!(settings.screenValue ? settings.screenValue("spectrum.link_magnitude") : settings.value ? settings.value("spectrum.link_magnitude") : false)
     };
+  }
+
+  function spectralPaneDescriptor(pane, group) {
+    var host=pane && activeDisplay() ? q("[data-pane-host='" + CSS.escape(paneRuntimeKey(activeDisplay().id, pane.id)) + "']") : null;
+    var axis=host && host._fullLayout && host._fullLayout.xaxis;
+    var unit=settings.screenValue ? settings.screenValue("spectrum.frequency_units") : settings.value("spectrum.frequency_units");
+    var frequencyScale=settings.screenValue ? settings.screenValue("spectrum.frequency_scale") : settings.value("spectrum.frequency_scale");
+    return Object.assign({}, pane || {}, {
+      frequencyUnit:unit || "hertz",
+      frequencyScale:axis && axis.type || frequencyScale || "linear",
+      valueScale:group === "magnitude" ? "db" : undefined
+    });
+  }
+
+  function queueLinkedSpectralRelayout(displayId, sourcePaneId, eventData) {
+    var helper=task0141Controller(), sourcePane=paneById(sourcePaneId), links=currentScreenLinkFlags();
+    if (!helper || !sourcePane || ["spectrum", "persistence"].indexOf(sourcePane.plot_type) < 0 || !links.frequency && !links.magnitude) return false;
+    var previous=model.spectralLinkPending;
+    var update=previous && previous.displayId === displayId && previous.sourcePaneId === sourcePaneId ? Object.assign({}, previous.update, eventData || {}) : Object.assign({}, eventData || {});
+    var sourceFrequency=spectralPaneDescriptor(sourcePane, "frequency"), sourceMagnitude=spectralPaneDescriptor(sourcePane, "magnitude");
+    var canFrequency=links.frequency && helper.linkedTargets("frequency", sourceFrequency, panes().map(function (pane) { return spectralPaneDescriptor(pane, "frequency"); })).some(function (target) { return !!helper.projectLinkedRelayout("frequency", sourceFrequency, target, update); });
+    var canMagnitude=links.magnitude && helper.linkedTargets("magnitude", sourceMagnitude, panes().map(function (pane) { return spectralPaneDescriptor(pane, "magnitude"); })).some(function (target) { return !!helper.projectLinkedRelayout("magnitude", sourceMagnitude, target, update); });
+    if (!canFrequency && !canMagnitude) return false;
+    var token=++model.spectralLinkToken;
+    model.spectralLinkPending={ displayId:displayId, sourcePaneId:sourcePaneId, update:update, token:token };
+    if (model.spectralLinkFrame !== null) return true;
+    model.spectralLinkFrame=window.requestAnimationFrame(function () {
+      model.spectralLinkFrame=null;
+      var pending=model.spectralLinkPending;
+      model.spectralLinkPending=null;
+      var display=activeDisplay(), currentLinks=currentScreenLinkFlags(), Plotly=window.Plotly;
+      if (!pending || pending.token !== model.spectralLinkToken || !display || display.id !== pending.displayId || !Plotly || typeof Plotly.relayout !== "function") return;
+      var currentSource=paneById(pending.sourcePaneId);
+      if (!currentSource) return;
+      panes().filter(function (pane) { return pane.id !== pending.sourcePaneId; }).forEach(function (pane) {
+        var paneUpdate={};
+        if (currentLinks.frequency) Object.assign(paneUpdate, helper.projectLinkedRelayout("frequency", spectralPaneDescriptor(currentSource, "frequency"), spectralPaneDescriptor(pane, "frequency"), pending.update) || {});
+        if (currentLinks.magnitude) Object.assign(paneUpdate, helper.projectLinkedRelayout("magnitude", spectralPaneDescriptor(currentSource, "magnitude"), spectralPaneDescriptor(pane, "magnitude"), pending.update) || {});
+        if (!Object.keys(paneUpdate).length) return;
+        var runtimeKey=paneRuntimeKey(pending.displayId, pane.id), host=q("[data-pane-host='" + CSS.escape(runtimeKey) + "']");
+        if (!host || host.dataset.plotReady !== "true") return;
+        model.axisLinkSuppressByPane[runtimeKey]=true;
+        try { Promise.resolve(Plotly.relayout(host, paneUpdate)).catch(function () { /* Keep one failed pane isolated. */ }).finally(function () { delete model.axisLinkSuppressByPane[runtimeKey]; }); }
+        catch (_) { delete model.axisLinkSuppressByPane[runtimeKey]; }
+      });
+    });
+    return true;
   }
 
   function queueLinkedTimeRelayout(displayId, sourcePaneId, eventData) {
@@ -1494,6 +1547,7 @@
       if (!cancelled) return;
       cancelPendingGesture();
       queueLinkedTimeRelayout(displayId, paneId, initial);
+      queueLinkedSpectralRelayout(displayId, paneId, initial);
       reconcileCancelledZoom(host, displayId, paneId, true, true, initial);
     }
     function removeGlobalZoomFinish() {
@@ -1524,6 +1578,7 @@
     var handler = function (eventData) {
       if (!model.axisLinkSuppressByPane[runtimeKey]) {
         if (queueLinkedTimeRelayout(displayId, paneId, eventData) && zoomGesture) zoomGesture.propagated = true;
+        if (queueLinkedSpectralRelayout(displayId, paneId, eventData) && zoomGesture) zoomGesture.propagated = true;
         var links = currentScreenLinkFlags();
         var collapsedX = links.time && collapsedAxisRange(eventData, "xaxis");
         var collapsedY = links.amplitude && collapsedAxisRange(eventData, "yaxis");
@@ -1611,11 +1666,18 @@
   function positionPaneMenu() {
     var menu = q("[data-testid='display-overflow-menu']"), trigger = model.paneMenuTrigger;
     if (!menu || menu.hidden || !trigger || !trigger.isConnected) return;
-    var rect = trigger.getBoundingClientRect(), width = 224, height = menu.offsetHeight;
-    menu.style.width = width + "px";
-    menu.style.left = Math.min(window.innerWidth - width - 8, Math.max(8, rect.right - width)) + "px";
-    var below = rect.bottom + 4;
-    menu.style.top = (below + height <= window.innerHeight - 8 ? below : Math.max(8, rect.top - height - 4)) + "px";
+    var helper=task0141Controller(), shell=q("[data-testid='app-shell']");
+    if (!helper || !shell) return;
+    menu.style.maxHeight="";
+    menu.style.overflowY="";
+    var result=helper.anchoredMenuPosition(trigger.getBoundingClientRect(), { width:menu.offsetWidth || 224, height:menu.scrollHeight || menu.offsetHeight }, shell.getBoundingClientRect(), { width:window.innerWidth, height:window.innerHeight });
+    if (result.close) return closePaneMenu(true);
+    menu.style.position=result.position;
+    menu.style.width=result.width + "px";
+    menu.style.left=result.left + "px";
+    menu.style.top=result.top + "px";
+    menu.style.maxHeight=result.maxHeight + "px";
+    menu.style.overflowY=result.overflowY;
   }
 
   function closeGraphHelp(restoreFocus) {
@@ -1768,18 +1830,27 @@
     loadPlotly().then(function (Plotly) { return Plotly.relayout(host, axis === "x" ? rangeSliderRelayout(host, visible) : amplitudeSliderRelayout(host, visible)); }).then(function () { host.dataset[axis === "x" ? "rangeSliderVisible" : "amplitudeSliderVisible"]=String(visible); if (axis === "y") syncAmplitudeSlider(host, runtimeKey); syncPaneMenuState(); }).catch(function () { if (visible) delete map[runtimeKey]; else map[runtimeKey]=true; });
   }
 
-  function injectSpectrumSliderSettings(display, pane) {
-    if (!pane || pane.plot_type !== "spectrum") return;
-    var host=q("[data-testid='settings-content']"), draft=screenDraftFor(display);
+  function injectAreaRangeSliderSettings(display, pane) {
+    if (!pane) return;
+    var host=q("[data-testid='settings-content']"), draft=screenDraftFor(display), helper=task0141Controller();
     if (!host) return;
-    if (typeof settings.setExtraVisible === "function") settings.setExtraVisible(["spectrum.frequency_limits", "spectrum.y_limits"]);
-    var group=document.createElement("section"); group.className="settings-group"; group.dataset.spectrumSliderControls="true";
-    group.innerHTML="<button class='settings-group-title' type='button' aria-expanded='true' disabled><span>Параметры</span></button><div class='settings-group-fields'><label class='settings-field-row'><span class='settings-label'>Слайдер частоты</span><span class='settings-control-wrap checkbox-control'><input type='checkbox' data-spectrum-slider-axis='x'"+(rangeSliderEnabled(display.id, pane.id) ? " checked" : "")+"></span></label><label class='settings-field-row'><span class='settings-label'>Слайдер магнитуды</span><span class='settings-control-wrap checkbox-control'><input type='checkbox' data-spectrum-slider-axis='y'"+(amplitudeSliderEnabled(display.id, pane.id) ? " checked" : "")+"></span></label></div>";
-    host.insertBefore(group, host.firstChild);
-    if (!draft.linkFrequency) host.insertAdjacentHTML("beforeend", screenSettingsGroup("local-frequency-limits", "Пределы частоты", settings.renderRows(["spectrum.frequency_limits"]) + screenRangeSlider("spectrum.frequency_limits", "frequency", draft)));
-    if (!draft.linkMagnitude) host.insertAdjacentHTML("beforeend", screenSettingsGroup("local-magnitude-limits", "Пределы магнитуды", settings.renderRows(["spectrum.y_limits"]) + screenRangeSlider("spectrum.y_limits", "magnitude", draft)));
-    keepAutomaticRangeInputsEmpty("spectrum.frequency_limits", "frequency", draft);
-    keepAutomaticRangeInputsEmpty("spectrum.y_limits", "magnitude", draft);
+    if (pane.plot_type === "spectrum") {
+      var group=document.createElement("section"); group.className="settings-group"; group.dataset.spectrumSliderControls="true";
+      group.innerHTML="<button class='settings-group-title' type='button' aria-expanded='true' disabled><span>Параметры</span></button><div class='settings-group-fields'><label class='settings-field-row'><span class='settings-label'>Слайдер частоты</span><span class='settings-control-wrap checkbox-control'><input type='checkbox' data-spectrum-slider-axis='x'"+(rangeSliderEnabled(display.id, pane.id) ? " checked" : "")+"></span></label><label class='settings-field-row'><span class='settings-label'>Слайдер магнитуды</span><span class='settings-control-wrap checkbox-control'><input type='checkbox' data-spectrum-slider-axis='y'"+(amplitudeSliderEnabled(display.id, pane.id) ? " checked" : "")+"></span></label></div>";
+      host.insertBefore(group, host.firstChild);
+    }
+    var links=currentScreenLinkFlags(), scale=pane.plot_type === "spectrum" ? settings.value("spectrum.scale") : pane.plot_type === "persistence" ? settings.value("persistence.scale") : "";
+    var descriptors=helper ? helper.areaRanges(pane.plot_type, links, scale) : [];
+    if (typeof settings.setExtraVisible === "function") settings.setExtraVisible(descriptors.map(function (item) { return item.fieldId; }));
+    descriptors.forEach(function (item) {
+      var selector="[data-testid='settings-field-" + CSS.escape(item.fieldId) + "']", row=host.querySelector(selector);
+      if (!row) {
+        host.insertAdjacentHTML("beforeend", screenSettingsGroup("local-" + item.fieldId.replace(/[^a-zA-Z0-9_-]/g, "-"), item.label, settings.renderRows([item.fieldId])));
+        row=host.querySelector(selector);
+      }
+      if (row) row.insertAdjacentHTML("afterend", screenRangeSlider(item.fieldId, item.axis, draft));
+      keepAutomaticRangeInputsEmpty(item.fieldId, item.axis, draft);
+    });
   }
 
   function openPaneClearConfirm() {
@@ -2308,7 +2379,7 @@
   }
 
   function previewScreenLinks(draft) {
-    if (typeof settings.setLinkPreview === "function") settings.setLinkPreview(draft && draft.linkTime, draft && draft.linkAmplitude);
+    if (typeof settings.setLinkPreview === "function") settings.setLinkPreview(draft && draft.linkTime, draft && draft.linkAmplitude, draft && draft.linkFrequency, draft && draft.linkMagnitude);
   }
 
   function areaScreenApplyState(draft) {
@@ -2429,24 +2500,43 @@
   function screenRangePanes(axis, draft) {
     var eligible = panes().filter(function (pane) {
       if (!paneHasSignals(pane)) return false;
-      if (axis === "x") return ["time", "spectrogram"].indexOf(pane.plot_type) >= 0;
-      if (axis === "y") return pane.plot_type === "time";
-      return pane.plot_type === "spectrum";
+      if (axis === "x" || axis === "time") return ["time", "spectrogram"].indexOf(pane.plot_type) >= 0;
+      if (axis === "y" || axis === "amplitude") return pane.plot_type === "time";
+      if (axis === "frequency") return ["spectrum", "spectrogram", "persistence"].indexOf(pane.plot_type) >= 0;
+      if (axis === "magnitude") return ["spectrum", "persistence"].indexOf(pane.plot_type) >= 0;
+      if (axis === "power") return ["spectrogram", "persistence"].indexOf(pane.plot_type) >= 0;
+      return axis === "density" && pane.plot_type === "persistence";
     });
-    var linked = axis === "x" ? draft.linkTime : axis === "y" ? draft.linkAmplitude : axis === "frequency" ? draft.linkFrequency : draft.linkMagnitude;
+    var linked = axis === "x" || axis === "time" ? draft.linkTime : axis === "y" || axis === "amplitude" ? draft.linkAmplitude : axis === "frequency" ? draft.linkFrequency : axis === "magnitude" ? draft.linkMagnitude : false;
+    if (axis === "frequency" && linked) eligible=eligible.filter(function (pane) { return ["spectrum", "persistence"].indexOf(pane.plot_type) >= 0; });
     return linked ? eligible : eligible.filter(function (pane) { return pane.id === model.activePane; });
+  }
+
+  function traceZDataRange(traces) {
+    var domain=null;
+    (traces || []).forEach(function (trace) {
+      (Array.isArray(trace && trace.z) ? trace.z : []).forEach(function (row) {
+        (Array.isArray(row) ? row : [row]).forEach(function (value) {
+          value=Number(value);
+          if (!Number.isFinite(value)) return;
+          domain=domain ? [Math.min(domain[0], value), Math.max(domain[1], value)] : [value, value];
+        });
+      });
+    });
+    return domain;
   }
 
   function screenRangeDomain(axis, draft) {
     var targetPanes = screenRangePanes(axis, draft);
-    if (axis === "x") {
+    if (axis === "x" || axis === "time") {
       var names = {};
       targetPanes.forEach(function (pane) { (pane.signal_bindings || []).forEach(function (name) { names[name] = true; }); });
       var maximumSeconds = (model.state.signals || []).reduce(function (maximum, signal) {
         return names[signal.name] ? Math.max(maximum, Number(signal.duration_s) || 0) : maximum;
       }, 0);
       if (!(maximumSeconds > 0)) return [0, 1];
-      var unit = settings.screenValue("time.units") || "seconds";
+      var activePane=paneById(model.activePane);
+      var unit = activePane && activePane.plot_type === "spectrogram" && model.settingsPage !== "screen" ? settings.value("spectrogram.time_units") : settings.screenValue("time.units") || "seconds";
       var factor = screenTimeUnitFactor(unit, maximumSeconds);
       return [0, maximumSeconds / factor];
     }
@@ -2455,7 +2545,10 @@
       var record = model.outputs[paneRuntimeKey(activeDisplay().id, pane.id)];
       var payload = record && record.output && plotEnvelope(record.output.data);
       var traces = Array.isArray(payload) ? payload : payload && payload.data;
-      var range = axis === "frequency" ? traceXDataRange(traces || []) : traceYDataRange(traces || []);
+      var range;
+      if (axis === "frequency") range=pane.plot_type === "spectrogram" ? traceYDataRange(traces || []) : traceXDataRange(traces || []);
+      else if (axis === "density" || axis === "power" && pane.plot_type === "spectrogram") range=traceZDataRange(traces || []);
+      else range=traceYDataRange(traces || []);
       if (range) domain = domain ? [Math.min(domain[0], range[0]), Math.max(domain[1], range[1])] : range;
     });
     return domain || [-1, 1];
@@ -2536,8 +2629,8 @@
     "</div>";
     var linkFields = "<div class='settings-field-row' data-testid='screen-link-time-row'><label class='settings-label' for='screen-link-time'>Связать время</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-time' type='checkbox' data-screen-link-time data-testid='screen-link-time'" + (draft.linkTime ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>" +
       "<div class='settings-field-row' data-testid='screen-link-amplitude-row'><label class='settings-label' for='screen-link-amplitude'>Связать амплитуду</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-amplitude' type='checkbox' data-screen-link-amplitude data-testid='screen-link-amplitude'" + (draft.linkAmplitude ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>" +
-      "<div class='settings-field-row'><label class='settings-label' for='screen-link-frequency'>Связать частоты спектров</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-frequency' type='checkbox' data-screen-link-frequency" + (draft.linkFrequency ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>" +
-      "<div class='settings-field-row'><label class='settings-label' for='screen-link-magnitude'>Связать магнитуды спектров</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-magnitude' type='checkbox' data-screen-link-magnitude" + (draft.linkMagnitude ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>";
+      "<div class='settings-field-row'><label class='settings-label' for='screen-link-frequency'>Связать частоты</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-frequency' type='checkbox' data-screen-link-frequency" + (draft.linkFrequency ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>" +
+      "<div class='settings-field-row'><label class='settings-label' for='screen-link-magnitude'>Связать магнитуды</label><div class='settings-control-wrap'><span class='checkbox-control'><input id='screen-link-magnitude' type='checkbox' data-screen-link-magnitude" + (draft.linkMagnitude ? " checked" : "") + (draft.linksReady ? "" : " disabled") + "></span></div></div>";
     var limitGroups = draft.linkTime ? screenSettingsGroup("time-limits", "Пределы времени", settings.renderRows(["time.units", "time.x_limits"]) + screenRangeSlider("time.x_limits", "x", draft)) : "";
     if (draft.linkAmplitude) limitGroups += screenSettingsGroup("y-limits", "Пределы оси Y", settings.renderRows(["time.y_limits"]) + screenRangeSlider("time.y_limits", "y", draft));
     if (draft.linkFrequency) limitGroups += screenSettingsGroup("frequency-limits", "Пределы частоты", settings.renderRows(["spectrum.frequency_units", "spectrum.frequency_limits"]) + screenRangeSlider("spectrum.frequency_limits", "frequency", draft));
@@ -2596,7 +2689,7 @@
     }
     settings.setView(model.settingsPage, (pane && pane.plot_type) || "time");
     settings.render();
-    if (model.settingsPage === "display") injectSpectrumSliderSettings(display, pane);
+    if (model.settingsPage === "display") injectAreaRangeSliderSettings(display, pane);
     keepVisibleAutomaticRangeInputsEmpty(screenDraftFor(display));
     renderApply();
   }
@@ -4254,6 +4347,7 @@
     if (row) { var minimum=row.querySelector("[data-range-part='min']"), maximum=row.querySelector("[data-range-part='max']"); if (minimum) minimum.value=""; if (maximum) maximum.value=""; }
     settings.setValue(fieldId, { min:"", max:"" });
     if (model.settingsPage === "screen" && activeDisplay()) renderScreenSettings(activeDisplay());
+    else if (model.settingsPage === "display" && activeDisplay()) renderSettings(activeDisplay());
   });
   document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) { model.signalAddSelection[event.target.value]=event.target.checked; updateSignalAddControls(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName === "SELECT") { var select=event.target; model.peaksDraft.values[select.dataset.peaksSetting]=select.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:select.dataset.peaksSetting }); renderApply(); } });
   document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); if (event.target.dataset.signalAddSearch !== undefined) { model.signalAddSearch=event.target.value; model.signalAddResetScroll=true; renderSignalAddCatalog(); var search=q("[data-signal-add-search]"); if(search){search.focus();search.setSelectionRange(model.signalAddSearch.length,model.signalAddSearch.length);} } });
@@ -4300,6 +4394,7 @@
   window.addEventListener("resize", retainWorkspaceSplitOnResize);
   window.addEventListener("resize", repositionLayout);
   window.addEventListener("resize", function () { positionMenu(q("[data-testid='signal-columns-menu']"), q("[data-testid='signal-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='measurement-columns-menu']"), q("[data-testid='measurement-columns-menu-trigger']"), 244); positionMenu(q("[data-testid='sample-columns-menu']"), q("[data-testid='sample-columns-menu-trigger']") || model.sampleColumnsMenuTrigger, 244); positionPaneMenu(); if (q("[data-testid='graph-help-overlay']") && !q("[data-testid='graph-help-overlay']").hidden && model.graphHelpRestoreTarget) openGraphHelp(model.graphHelpRestoreTarget); });
+  document.addEventListener("scroll", positionPaneMenu, true);
   if (window.ResizeObserver) {
     model.displayTabsObserver = new window.ResizeObserver(function () { scheduleDisplayTabScrollUpdate(false); });
     model.displayTabsObserver.observe(q("[data-testid='display-tabs-wrap']"));
@@ -4802,6 +4897,217 @@
     reject:reject,
     footer:footer,
     scrollCompensation:scrollCompensation
+  };
+}(window));
+
+(function registerSignalAnalyserTask0141(window) {
+  "use strict";
+
+  var FREQUENCY_UNITS_HZ = {
+    millihertz: 1e-3,
+    hertz: 1,
+    kilohertz: 1e3,
+    megahertz: 1e6,
+    gigahertz: 1e9,
+    terahertz: 1e12
+  };
+
+  var AREA_RANGES = {
+    time: [
+      { fieldId:"time.x_limits", axis:"time", link:"time", label:"Пределы времени", unitField:"time.units" },
+      { fieldId:"time.y_limits", axis:"amplitude", link:"amplitude", label:"Пределы оси Y" }
+    ],
+    spectrum: [
+      { fieldId:"spectrum.frequency_limits", axis:"frequency", link:"frequency", label:"Пределы частоты", unitField:"spectrum.frequency_units" },
+      { fieldId:"spectrum.y_limits", axis:"magnitude", link:"magnitude", label:"Пределы магнитуды", dbOnlyLink:true }
+    ],
+    spectrogram: [
+      { fieldId:"time.x_limits", axis:"time", link:"time", label:"Пределы времени", unitField:"spectrogram.time_units" },
+      { fieldId:"spectrogram.frequency_limits", axis:"frequency", label:"Пределы частоты", unitField:"spectrogram.frequency_units" },
+      { fieldId:"spectrogram.power_limits", axis:"power", label:"Пределы мощности" }
+    ],
+    persistence: [
+      { fieldId:"persistence.frequency_limits", axis:"frequency", link:"frequency", label:"Пределы частоты", unitField:"persistence.frequency_units" },
+      { fieldId:"persistence.power_limits", axis:"power", link:"magnitude", label:"Пределы мощности", dbOnlyLink:true },
+      { fieldId:"persistence.density_limits", axis:"density", label:"Пределы плотности" }
+    ]
+  };
+
+  var SCREEN_LINKS = {
+    time: { label:"Связать время", settingId:"time.link_time", paneTypes:["time", "spectrogram"] },
+    amplitude: { label:"Связать амплитуду", settingId:"time.link_amplitude", paneTypes:["time"] },
+    frequency: { label:"Связать частоты", settingId:"spectrum.link_frequency", paneTypes:["spectrum", "persistence"] },
+    magnitude: { label:"Связать магнитуды", settingId:"spectrum.link_magnitude", paneTypes:["spectrum", "persistence"], requiredScale:"db" }
+  };
+
+  function cleanType(value) {
+    value = String(value == null ? "" : value).toLowerCase();
+    if (/spectrogram|спектрограмм/.test(value)) return "spectrogram";
+    if (/persistence|персистент/.test(value)) return "persistence";
+    if (/spectrum|спектр/.test(value)) return "spectrum";
+    if (/time|временн/.test(value)) return "time";
+    return value;
+  }
+
+  function scaleIsDb(value) {
+    return value === true || String(value == null ? "" : value).toLowerCase() === "db" || String(value).toLowerCase() === "децибелы";
+  }
+
+  function areaRanges(paneType, links, scale) {
+    links = links || {};
+    var type = cleanType(paneType);
+    return (AREA_RANGES[type] || []).filter(function (item) {
+      if (!item.link || !links[item.link]) return true;
+      return item.dbOnlyLink && !scaleIsDb(scale);
+    }).map(function (item) {
+      return Object.assign({}, item, {
+        scope:"area",
+        paneType:type,
+        sliderComponent:"screen-range-slider",
+        emptyEndpoints:"independent_auto_until_that_endpoint_is_touched"
+      });
+    });
+  }
+
+  function linkDescriptor(group, pane) {
+    pane = pane || {};
+    var type = cleanType(pane.plotType || pane.plot_type || pane.type);
+    if (group === "frequency" && (type === "spectrum" || type === "persistence")) {
+      return {
+        group:group,
+        paneType:type,
+        axisName:"xaxis",
+        settingId:type === "spectrum" ? "spectrum.frequency_limits" : "persistence.frequency_limits",
+        unitField:type === "spectrum" ? "spectrum.frequency_units" : "persistence.frequency_units",
+        unit:pane.frequencyUnit || pane.frequency_unit || "hertz",
+        axisScale:pane.frequencyScale || pane.frequency_scale || "linear",
+        canonicalUnit:"hertz"
+      };
+    }
+    if (group === "magnitude" && (type === "spectrum" || type === "persistence") && scaleIsDb(pane.valueScale || pane.value_scale || pane.scale)) {
+      return {
+        group:group,
+        paneType:type,
+        axisName:"yaxis",
+        settingId:type === "spectrum" ? "spectrum.y_limits" : "persistence.power_limits",
+        unit:"dB",
+        axisScale:"linear",
+        canonicalUnit:"dB"
+      };
+    }
+    return null;
+  }
+
+  function finiteRange(range) {
+    if (!Array.isArray(range) || range.length < 2) return null;
+    var result = [Number(range[0]), Number(range[1])];
+    return Number.isFinite(result[0]) && Number.isFinite(result[1]) ? result : null;
+  }
+
+  function readRelayoutRange(eventData, axisName) {
+    eventData = eventData || {};
+    if (eventData[axisName + ".autorange"] === true) return { autorange:true };
+    var direct = finiteRange(eventData[axisName + ".range"]);
+    if (direct) return { autorange:false, range:direct };
+    var split = finiteRange([eventData[axisName + ".range[0]"], eventData[axisName + ".range[1]"]]);
+    return split ? { autorange:false, range:split } : null;
+  }
+
+  function unitScale(unit) { return FREQUENCY_UNITS_HZ[String(unit || "hertz").toLowerCase()] || 1; }
+
+  function frequencyCoordinateToHz(value, descriptor) {
+    var visible = descriptor.axisScale === "log" ? Math.pow(10, Number(value)) : Number(value);
+    return visible * unitScale(descriptor.unit);
+  }
+
+  function hzToFrequencyCoordinate(value, descriptor) {
+    var visible = Number(value) / unitScale(descriptor.unit);
+    return descriptor.axisScale === "log" ? Math.log10(visible) : visible;
+  }
+
+  function projectLinkedRelayout(group, sourcePane, targetPane, eventData) {
+    var source = linkDescriptor(group, sourcePane), target = linkDescriptor(group, targetPane);
+    if (!source || !target) return null;
+    var incoming = readRelayoutRange(eventData, source.axisName);
+    if (!incoming) return null;
+    var result = {};
+    if (incoming.autorange) {
+      result[target.axisName + ".autorange"] = true;
+      return result;
+    }
+    var range = incoming.range;
+    if (group === "frequency") {
+      range = range.map(function (value) { return frequencyCoordinateToHz(value, source); })
+        .map(function (value) { return hzToFrequencyCoordinate(value, target); });
+      if (!finiteRange(range) || target.axisScale === "log" && range.some(function (value) { return !Number.isFinite(value); })) return null;
+    }
+    result[target.axisName + ".range[0]"] = range[0];
+    result[target.axisName + ".range[1]"] = range[1];
+    result[target.axisName + ".autorange"] = false;
+    return result;
+  }
+
+  function linkedTargets(group, sourcePane, panes) {
+    var source = linkDescriptor(group, sourcePane);
+    if (!source) return [];
+    return (panes || []).filter(function (pane) {
+      var paneId = pane.id || pane.paneId || pane.pane_id;
+      var sourceId = sourcePane && (sourcePane.id || sourcePane.paneId || sourcePane.pane_id);
+      return paneId !== sourceId && !!linkDescriptor(group, pane);
+    });
+  }
+
+  function intersection(a, b) {
+    var result = { left:Math.max(a.left, b.left), top:Math.max(a.top, b.top), right:Math.min(a.right, b.right), bottom:Math.min(a.bottom, b.bottom) };
+    result.width = Math.max(0, result.right - result.left);
+    result.height = Math.max(0, result.bottom - result.top);
+    return result;
+  }
+
+  function triggerVisible(rect, boundary) {
+    return !!rect && rect.right > boundary.left && rect.left < boundary.right && rect.bottom > boundary.top && rect.top < boundary.bottom;
+  }
+
+  function anchoredMenuPosition(triggerRect, menuSize, shellRect, viewport) {
+    var viewportRect = { left:0, top:0, right:viewport.width, bottom:viewport.height };
+    var boundary = intersection(shellRect || viewportRect, viewportRect);
+    var inset = 8, gap = 4;
+    if (!triggerVisible(triggerRect, boundary) || boundary.width <= inset * 2 || boundary.height <= inset * 2) return { close:true, reason:"anchor_outside_boundary" };
+    var width = Math.min(Number(menuSize.width) || 224, boundary.width - inset * 2);
+    var naturalHeight = Number(menuSize.height) || 0;
+    var maxHeight = boundary.height - inset * 2;
+    var height = Math.min(naturalHeight, maxHeight);
+    var minLeft = boundary.left + inset, maxLeft = boundary.right - inset - width;
+    var left = triggerRect.right - width, horizontal = "right";
+    if (left < minLeft) {
+      left = triggerRect.left;
+      horizontal = "left";
+    }
+    left = Math.max(minLeft, Math.min(left, maxLeft));
+    var below = triggerRect.bottom + gap, above = triggerRect.top - height - gap;
+    var top, vertical;
+    if (below + height <= boundary.bottom - inset) { top = below; vertical = "below"; }
+    else if (above >= boundary.top + inset) { top = above; vertical = "above"; }
+    else { top = Math.max(boundary.top + inset, Math.min(below, boundary.bottom - inset - height)); vertical = "clamped"; }
+    return { close:false, position:"fixed", left:left, top:top, width:width, maxHeight:maxHeight, overflowY:naturalHeight > maxHeight ? "auto" : "visible", horizontal:horizontal, vertical:vertical };
+  }
+
+  window.SignalAnalyserTask0141 = {
+    labels: { frequency:"Связать частоты", magnitude:"Связать магнитуды" },
+    screenLinks: SCREEN_LINKS,
+    areaRanges: areaRanges,
+    linkDescriptor: linkDescriptor,
+    linkedTargets: linkedTargets,
+    projectLinkedRelayout: projectLinkedRelayout,
+    anchoredMenuPosition: anchoredMenuPosition,
+    contract: {
+      frequency:"Spectrum frequency and Persistence frequency share one canonical-Hz interval inside the active display; Spectrogram frequency is excluded.",
+      magnitude:"Spectrum magnitude and Persistence power share one dB interval only while each pane is in dB; linear panes and hidden/noneligible fields are ignored.",
+      areaSliders:"Every visible Area range field reuses the exact Screen dual-handle slider; scope is the active pane only, and each empty endpoint remains auto until that endpoint is typed or its thumb is moved.",
+      heatmaps:"Backend/provider authors Jet for Spectrogram and Persistence output; Frontend passes the accepted Plotly colorscale through unchanged and adds no palette control.",
+      freshDisplay:"Backend/provider authors a new display as 2x2 with four empty named panes and pane 1 active; Frontend renders accepted layout/ids only, while existing/imported layouts are never migrated.",
+      menu:"The unchanged body-portal pane menu anchors to the clicked [data-pane-menu], stays within the application-shell/viewport intersection with 8px inset, flips, repositions on resize/scroll, and closes when its anchor leaves that boundary."
+    }
   };
 }(window));
 

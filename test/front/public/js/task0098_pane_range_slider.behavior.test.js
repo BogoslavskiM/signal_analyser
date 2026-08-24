@@ -65,7 +65,7 @@ function createHarness() {
   const relayoutCalls = [];
   const reactCalls = [];
   const frames = [];
-  const shell = element();
+  const shell = element({ getBoundingClientRect() { return { left:0, top:0, right:1280, bottom:800, width:1280, height:800 }; } });
   // The menu labels change between Time and Spectrum. Keep the action's
   // authored trailing label node in this lightweight DOM double.
   const rangeAction = element({ querySelector(selector) { return selector === "span:last-of-type" ? element({ textContent:"" }) : null; } });

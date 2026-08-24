@@ -51,5 +51,5 @@ module.exports = async function testTask0098PaneRangeSliderStatic(assert) {
   assert(/data-plot-clear/.test(app) && /data-plot-help/.test(app), "the retained Clear and Graph Help actions must have runtime handlers");
   assert(/data-graph-help-close/.test(app) && /Escape/.test(app), "Graph Help must retain close-button and Escape handling");
   assert(/operation\s*:\s*["']update_pane["'][\s\S]*signal_bindings\s*:\s*\[\]/.test(app), "Clear must use update_pane with an empty binding list");
-  assert(/function positionPaneMenu\(\)[\s\S]*window\.innerWidth[\s\S]*window\.innerHeight[\s\S]*rect\.top - height - 4/.test(app), "the pane menu must retain viewport-clamped below-or-above placement");
+  assert(/function positionPaneMenu\(\)[\s\S]*anchoredMenuPosition[\s\S]*shell\.getBoundingClientRect\(\)[\s\S]*window\.innerWidth[\s\S]*window\.innerHeight/.test(app), "the pane menu must retain shell-and-viewport clamped below-or-above placement");
 };

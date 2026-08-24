@@ -687,7 +687,7 @@ function signal_analyser_plotly_heatmap_trace(
         "y" => y,
         "z" => get(source, "z", Vector{Vector{Float64}}()),
         "name" => String(get(source, "name", "")),
-        "colorscale" => "Viridis",
+        "colorscale" => "Jet",
         "colorbar" => Dict{String,Any}(
             "title" => Dict{String,Any}(
                 "text" => String(get(source, "color_label", "")),
@@ -700,13 +700,43 @@ function signal_analyser_plotly_heatmap_trace(
     if limits isa AbstractDict
         rendered = get(limits, "rendered", nothing)
         if rendered isa AbstractDict
-            minimum = get(rendered, "min", nothing)
-            maximum = get(rendered, "max", nothing)
-            minimum isa Real && (trace["zmin"] = Float64(minimum))
-            maximum isa Real && (trace["zmax"] = Float64(maximum))
+            rendered_minimum = get(rendered, "min", nothing)
+            rendered_maximum = get(rendered, "max", nothing)
+            rendered_minimum isa Real && (trace["zmin"] = Float64(rendered_minimum))
+            rendered_maximum isa Real && (trace["zmax"] = Float64(rendered_maximum))
         end
     end
     trace
+end
+
+function signal_analyser_plotly_frequency_range(
+    limits::Union{Nothing,SignalSettingRange},
+    unit::SignalFrequencyUnitPreference,
+    scale::SignalSpectrumFrequencyScale,
+)::Union{Nothing,Vector{Float64}}
+    limits === nothing && return nothing
+    factor = signal_hertz_per_frequency_unit(unit)
+    minimum = (limits::SignalSettingRange).minimum / factor
+    maximum = limits.maximum / factor
+    if scale == LOG_SPECTRUM_FREQUENCY_SCALE
+        minimum > 0.0 || return nothing
+        return Float64[log10(minimum), log10(maximum)]
+    end
+    Float64[minimum, maximum]
+end
+
+function signal_analyser_plotly_frequency_range(
+    limits::AbstractSignalSpectrumFrequencyLimits,
+    unit::SignalFrequencyUnitPreference,
+    scale::SignalSpectrumFrequencyScale,
+)::Union{Nothing,Vector{Float64}}
+    limits isa AutomaticSignalSpectrumFrequencyLimits && return nothing
+    typed = limits::ExplicitSignalSpectrumFrequencyLimits
+    signal_analyser_plotly_frequency_range(
+        SignalSettingRange(typed.min_hz, typed.max_hz),
+        unit,
+        scale,
+    )
 end
 
 
@@ -749,7 +779,11 @@ function signal_analyser_plotly_axis_metadata(
             x_type = pane.spectrum_settings.frequency_scale == LOG_SPECTRUM_FREQUENCY_SCALE ?
                 "log" : "linear",
             y_type = "linear",
-            x_range = nothing,
+            x_range = signal_analyser_plotly_frequency_range(
+                pane.spectrum_settings.frequency_limits,
+                pane.stored_settings.spectrum.frequency_units,
+                pane.spectrum_settings.frequency_scale,
+            ),
             y_range = y_range,
         )
     elseif pane.plot_type == SPECTROGRAM_PLOT
@@ -788,7 +822,11 @@ function signal_analyser_plotly_axis_metadata(
         x_type = pane.stored_settings.persistence.frequency_scale == LOG_SPECTRUM_FREQUENCY_SCALE ?
             "log" : "linear",
         y_type = "linear",
-        x_range = nothing,
+        x_range = signal_analyser_plotly_frequency_range(
+            pane.stored_settings.persistence.frequency_limits,
+            pane.stored_settings.persistence.frequency_units,
+            pane.stored_settings.persistence.frequency_scale,
+        ),
         y_range = power_limits === nothing ? nothing :
             Float64[power_limits.minimum, power_limits.maximum],
     )

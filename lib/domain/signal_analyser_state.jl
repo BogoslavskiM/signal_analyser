@@ -2436,8 +2436,13 @@ struct SignalDisplayLayoutState
                 for pane in pane_values
             ]
         end
-        spectrum_link_source_index = pane_values[active_index].plot_type == SPECTRUM_PLOT ?
-            active_index : findfirst(pane -> pane.plot_type == SPECTRUM_PLOT, pane_values)
+        spectrum_link_source_index = pane_values[active_index].plot_type in (
+            SPECTRUM_PLOT,
+            PERSISTENCE_PLOT,
+        ) ? active_index : findfirst(
+            pane -> pane.plot_type in (SPECTRUM_PLOT, PERSISTENCE_PLOT),
+            pane_values,
+        )
         if spectrum_link_source_index !== nothing
             source = pane_values[spectrum_link_source_index::Int]
             link_frequency = source.stored_settings.spectrum.link_frequency
@@ -2489,7 +2494,7 @@ Base.copy(layout::SignalDisplayLayoutState) = SignalDisplayLayoutState(
     layout.next_pane_number,
 )
 
-function signal_display_default_layout(
+function signal_display_legacy_single_pane_layout(
     pane::SignalDisplayPaneState,
 )::SignalDisplayLayoutState
     SignalDisplayLayoutState(
@@ -2500,6 +2505,28 @@ function signal_display_default_layout(
         SignalDisplayPaneState[pane],
         pane.id,
         2,
+    )
+end
+
+function signal_display_default_layout(
+    pane::SignalDisplayPaneState,
+)::SignalDisplayLayoutState
+    pane.id == "pane-1" || throw(ArgumentError(
+        "Fresh layout должен начинаться с pane-1",
+    ))
+    SignalDisplayLayoutState(
+        SIGNAL_DISPLAY_LAYOUT_VERSION,
+        "2x2",
+        2,
+        2,
+        SignalDisplayPaneState[
+            pane,
+            signal_display_empty_pane("pane-2"),
+            signal_display_empty_pane("pane-3"),
+            signal_display_empty_pane("pane-4"),
+        ],
+        "pane-1",
+        5,
     )
 end
 
@@ -2591,7 +2618,8 @@ function signal_display_layout_replace_pane(
     link_frequency = any(pane -> pane.stored_settings.spectrum.link_frequency, layout.panes)
     link_magnitude = any(pane -> pane.stored_settings.spectrum.link_magnitude, layout.panes)
     spectrum_source_index = findfirst(
-        pane -> pane.id != replacement.id && pane.plot_type == SPECTRUM_PLOT &&
+        pane -> pane.id != replacement.id &&
+            pane.plot_type in (SPECTRUM_PLOT, PERSISTENCE_PLOT) &&
             signal_display_pane_analysis_name(pane) !== nothing,
         layout.panes,
     )
@@ -2601,9 +2629,23 @@ function signal_display_layout_replace_pane(
         current = replacement.stored_settings.spectrum
         source_preferences = spectrum_source === nothing ? current :
             (spectrum_source::SignalDisplayPaneState).stored_settings.spectrum
+        source_frequency_units = if spectrum_source === nothing ||
+            (spectrum_source::SignalDisplayPaneState).plot_type == SPECTRUM_PLOT
+            source_preferences.frequency_units
+        else
+            (spectrum_source::SignalDisplayPaneState).stored_settings.persistence.frequency_units
+        end
+        source_magnitude_limits = if spectrum_source === nothing ||
+            (spectrum_source::SignalDisplayPaneState).plot_type == SPECTRUM_PLOT
+            source_preferences.y_limits
+        else
+            (spectrum_source::SignalDisplayPaneState).stored_settings.persistence.power_limits
+        end
         spectrum_preferences = SignalSpectrumPreferences(
-            link_frequency ? source_preferences.frequency_units : current.frequency_units,
-            link_magnitude ? source_preferences.y_limits : current.y_limits,
+            link_frequency && replacement.plot_type == SPECTRUM_PLOT ?
+                source_frequency_units : current.frequency_units,
+            link_magnitude && replacement.plot_type == SPECTRUM_PLOT ?
+                source_magnitude_limits : current.y_limits,
             current.resolution_type,
             current.rbw,
             current.window_length,
@@ -2614,21 +2656,55 @@ function signal_display_layout_replace_pane(
             link_frequency,
             link_magnitude,
         )
+        current_persistence = replacement.stored_settings.persistence
+        source_frequency_limits = if spectrum_source === nothing
+            replacement.spectrum_settings.frequency_limits
+        elseif (spectrum_source::SignalDisplayPaneState).plot_type == SPECTRUM_PLOT
+            (spectrum_source::SignalDisplayPaneState).spectrum_settings.frequency_limits
+        else
+            limits = (spectrum_source::SignalDisplayPaneState).stored_settings.persistence.frequency_limits
+            limits === nothing ? AutomaticSignalSpectrumFrequencyLimits() :
+                ExplicitSignalSpectrumFrequencyLimits(limits.minimum, limits.maximum)
+        end
+        source_frequency_scale = if spectrum_source === nothing ||
+            (spectrum_source::SignalDisplayPaneState).plot_type == SPECTRUM_PLOT
+            spectrum_source === nothing ? replacement.spectrum_settings.frequency_scale :
+                (spectrum_source::SignalDisplayPaneState).spectrum_settings.frequency_scale
+        else
+            (spectrum_source::SignalDisplayPaneState).stored_settings.persistence.frequency_scale
+        end
+        persistence_frequency_limits = source_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits ?
+            SignalSettingRange(
+                (source_frequency_limits::ExplicitSignalSpectrumFrequencyLimits).min_hz,
+                (source_frequency_limits::ExplicitSignalSpectrumFrequencyLimits).max_hz,
+            ) : nothing
+        persistence_preferences = replacement.plot_type == PERSISTENCE_PLOT ?
+            SignalPersistencePreferences(
+                current_persistence.time_units,
+                link_frequency ? source_frequency_units : current_persistence.frequency_units,
+                link_frequency ? persistence_frequency_limits : current_persistence.frequency_limits,
+                link_magnitude ? source_magnitude_limits : current_persistence.power_limits,
+                current_persistence.density_limits,
+                link_frequency ? source_frequency_scale : current_persistence.frequency_scale,
+                current_persistence.scale,
+                current_persistence.time_resolution,
+                current_persistence.overlap_percent,
+                current_persistence.power_bins,
+            ) : current_persistence
         stored = SignalDisplayStoredSettings(
             replacement.stored_settings.display,
             replacement.stored_settings.time,
             spectrum_preferences,
             replacement.stored_settings.spectrogram,
-            replacement.stored_settings.persistence,
+            persistence_preferences,
         )
         spectrum_settings = if link_frequency && replacement.plot_type == SPECTRUM_PLOT &&
             spectrum_source !== nothing
-            source_settings = (spectrum_source::SignalDisplayPaneState).spectrum_settings
             SignalSpectrumSettings(
                 replacement.spectrum_settings.scale,
-                replacement.spectrum_settings.frequency_scale,
+                source_frequency_scale,
                 replacement.spectrum_settings.leakage,
-                source_settings.frequency_limits,
+                source_frequency_limits,
             )
         else
             replacement.spectrum_settings
@@ -3139,6 +3215,12 @@ signal_display_default_layout(
     signal_display_pane_from_display("pane-1", display),
 )
 
+signal_display_legacy_single_pane_layout(
+    display::SignalAnalyserDisplayState,
+)::SignalDisplayLayoutState = signal_display_legacy_single_pane_layout(
+    signal_display_pane_from_display("pane-1", display),
+)
+
 function signal_analyser_publish_display_state!(
     display::SignalAnalyserDisplayState,
     prospective::SignalAnalyserDisplayState,
@@ -3529,7 +3611,9 @@ function SignalAnalyserState(
         SignalSpectrumService(spectrum_provider),
         SignalSpectrogramService(spectrogram_provider),
         SignalPersistenceService(persistence_provider),
-        SignalAnalyserCalculationManager(["$(display.id)::pane-1"]),
+        SignalAnalyserCalculationManager([
+            "$(display.id)::pane-$pane_number" for pane_number in 1:4
+        ]),
         lock,
     )
 end

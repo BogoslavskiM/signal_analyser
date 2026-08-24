@@ -94,6 +94,8 @@ function createHarness(options) {
   peaksHost.parentElement = body;
   body.querySelector = function (selector) { return selector === "[data-testid='peaks-table-scroll']" ? peaksHost : null; };
   const settingsContent = element();
+  settingsContent.insertAdjacentHTML = function () {};
+  settingsContent.insertBefore = function () {};
   const footer = element();
   const apply = element();
   const status = element();
@@ -161,6 +163,7 @@ function createHarness(options) {
     },
     SignalAnalyserSettings: {
       setRevision() {}, setContext() {}, setView() {}, render() {}, load() { return Promise.resolve(); },
+      setExtraVisible() {}, renderRows() { return ""; }, value() { return ""; },
       state() { return { dirty: false, invalid: false, revision: 3 }; }
     },
     addEventListener() {},

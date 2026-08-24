@@ -52,6 +52,21 @@ function signal_settings_time_unit_label(
     "г"
 end
 
+function signal_settings_frequency_unit_label(
+    unit::SignalFrequencyUnitPreference,
+)::String
+    unit == CYCLES_PER_YEAR_FREQUENCY_UNIT && return "циклов/год"
+    unit == CYCLES_PER_DAY_FREQUENCY_UNIT && return "циклов/день"
+    unit == CYCLES_PER_HOUR_FREQUENCY_UNIT && return "циклов/час"
+    unit == CYCLES_PER_MINUTE_FREQUENCY_UNIT && return "циклов/мин"
+    unit == MILLIHERTZ_FREQUENCY_UNIT && return "мГц"
+    unit == HERTZ_FREQUENCY_UNIT && return "Гц"
+    unit == KILOHERTZ_FREQUENCY_UNIT && return "кГц"
+    unit == MEGAHERTZ_FREQUENCY_UNIT && return "МГц"
+    unit == GIGAHERTZ_FREQUENCY_UNIT && return "ГГц"
+    "ТГц"
+end
+
 const SIGNAL_FREQUENCY_UNIT_NAMES = Dict(
     CYCLES_PER_YEAR_FREQUENCY_UNIT => "cycles_per_year",
     CYCLES_PER_DAY_FREQUENCY_UNIT => "cycles_per_day",
@@ -725,9 +740,63 @@ function signal_analyser_compatible_spectrum_panes(
     layout = signal_analyser_layout_by_display_id(state, display.id)
     SignalDisplayPaneState[
         pane for pane in layout.panes
-        if pane.plot_type == SPECTRUM_PLOT &&
+        if pane.plot_type in (SPECTRUM_PLOT, PERSISTENCE_PLOT) &&
             signal_display_pane_analysis_name(pane) !== nothing
     ]
+end
+
+signal_settings_pane_frequency_units(pane::SignalDisplayPaneState)::SignalFrequencyUnitPreference =
+    pane.plot_type == PERSISTENCE_PLOT ?
+        pane.stored_settings.persistence.frequency_units :
+        pane.stored_settings.spectrum.frequency_units
+
+function signal_settings_pane_frequency_limits(
+    pane::SignalDisplayPaneState,
+)::AbstractSignalSpectrumFrequencyLimits
+    pane.plot_type != PERSISTENCE_PLOT && return pane.spectrum_settings.frequency_limits
+    limits = pane.stored_settings.persistence.frequency_limits
+    limits === nothing ? AutomaticSignalSpectrumFrequencyLimits() :
+        ExplicitSignalSpectrumFrequencyLimits(limits.minimum, limits.maximum)
+end
+
+signal_settings_pane_frequency_scale(pane::SignalDisplayPaneState)::SignalSpectrumFrequencyScale =
+    pane.plot_type == PERSISTENCE_PLOT ?
+        pane.stored_settings.persistence.frequency_scale :
+        pane.spectrum_settings.frequency_scale
+
+signal_settings_pane_magnitude_limits(
+    pane::SignalDisplayPaneState,
+)::Union{Nothing,SignalSettingRange} = pane.plot_type == PERSISTENCE_PLOT ?
+    pane.stored_settings.persistence.power_limits : pane.stored_settings.spectrum.y_limits
+
+function signal_settings_frequency_limits_range(
+    limits::AbstractSignalSpectrumFrequencyLimits,
+)::Union{Nothing,SignalSettingRange}
+    limits isa AutomaticSignalSpectrumFrequencyLimits && return nothing
+    typed = limits::ExplicitSignalSpectrumFrequencyLimits
+    SignalSettingRange(typed.min_hz, typed.max_hz)
+end
+
+signal_settings_spectral_magnitude_is_db(pane::SignalDisplayPaneState)::Bool =
+    pane.plot_type == SPECTRUM_PLOT ?
+        pane.spectrum_settings.scale == DB_SPECTRUM_SCALE :
+        pane.plot_type == PERSISTENCE_PLOT &&
+            pane.stored_settings.persistence.scale == DB_SPECTRUM_SCALE
+
+function signal_settings_linked_magnitudes_are_db(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::Bool
+    panes = signal_analyser_compatible_spectrum_panes(state, display)
+    layout = signal_analyser_layout_by_display_id(state, display.id)
+    !isempty(panes) && all(panes) do pane
+        pane.id == layout.active_pane_id ?
+            (display.active_plot == SPECTRUM_PLOT ?
+                display.spectrum_settings.scale == DB_SPECTRUM_SCALE :
+                display.active_plot == PERSISTENCE_PLOT &&
+                    display.stored_settings.persistence.scale == DB_SPECTRUM_SCALE) :
+            signal_settings_spectral_magnitude_is_db(pane)
+    end
 end
 
 function signal_settings_field_visible(
@@ -744,7 +813,10 @@ function signal_settings_field_visible(
     policy == :persistence && return display.active_plot == PERSISTENCE_PLOT
     policy == :multiple_time_panes && return display.active_plot == TIME_PLOT &&
         length(signal_settings_time_panes(state, display)) >= 2
-    policy == :multiple_spectrum_panes && return display.active_plot == SPECTRUM_PLOT &&
+    policy == :multiple_spectrum_panes && return display.active_plot in (
+        SPECTRUM_PLOT,
+        PERSISTENCE_PLOT,
+    ) &&
         length(signal_analyser_compatible_spectrum_panes(state, display)) >= 2
     resolution_type = display.stored_settings.spectrum.resolution_type
     policy == :spectrum_rbw && return display.active_plot == SPECTRUM_PLOT &&
@@ -767,7 +839,10 @@ function signal_settings_field_enabled(
     policy == :compatible_time_panes && return display.active_plot == TIME_PLOT &&
         signal_analyser_display_analysis_name(display) !== nothing &&
         length(signal_analyser_compatible_time_panes(state, display)) >= 2
-    policy == :compatible_spectrum_panes && return display.active_plot == SPECTRUM_PLOT &&
+    policy == :compatible_spectrum_panes && return display.active_plot in (
+        SPECTRUM_PLOT,
+        PERSISTENCE_PLOT,
+    ) &&
         signal_analyser_display_analysis_name(display) !== nothing &&
         length(signal_analyser_compatible_spectrum_panes(state, display)) >= 2
     policy == :spectrum_frequency_scale && return true
@@ -922,8 +997,15 @@ function signal_settings_field_value(
         return SIGNAL_TIME_UNIT_NAMES[stored.persistence.time_units]
     field_id == "persistence.frequency_units" &&
         return SIGNAL_FREQUENCY_UNIT_NAMES[stored.persistence.frequency_units]
-    field_id == "persistence.frequency_limits" &&
-        return signal_settings_range_payload(stored.persistence.frequency_limits)
+    if field_id == "persistence.frequency_limits"
+        limits = stored.persistence.frequency_limits
+        limits === nothing && return nothing
+        factor = signal_hertz_per_frequency_unit(stored.persistence.frequency_units)
+        return Dict{String,Any}(
+            "min" => limits.minimum / factor,
+            "max" => limits.maximum / factor,
+        )
+    end
     field_id == "persistence.power_limits" &&
         return signal_settings_range_payload(stored.persistence.power_limits)
     field_id == "persistence.density_limits" &&
@@ -992,7 +1074,12 @@ function signal_settings_field_payload(
         "units" => definition.id == "time.x_limits" ? signal_settings_time_unit_label(
             display.stored_settings.time.units,
             display.time_limits === nothing ? 1.0 : display.time_limits.max_s,
-        ) : definition.units,
+        ) : definition.id == "spectrum.frequency_limits" ?
+            signal_settings_frequency_unit_label(display.stored_settings.spectrum.frequency_units) :
+            definition.id == "persistence.frequency_limits" ?
+                signal_settings_frequency_unit_label(
+                    display.stored_settings.persistence.frequency_units,
+                ) : definition.units,
         "min" => definition.minimum,
         "max" => definition.maximum,
         "step" => definition.step,
@@ -1076,11 +1163,13 @@ function signal_settings_document_unlocked(
     )
     amplitude_source = amplitude_index === nothing ? time_source : layout.panes[amplitude_index]
     spectrum_index = findfirst(
-        pane -> pane.plot_type == SPECTRUM_PLOT &&
+        pane -> pane.plot_type in (SPECTRUM_PLOT, PERSISTENCE_PLOT) &&
             signal_display_pane_analysis_name(pane) !== nothing,
         layout.panes,
     )
-    spectrum_source = spectrum_index === nothing ? active_pane : layout.panes[spectrum_index]
+    spectrum_source = active_pane.plot_type in (SPECTRUM_PLOT, PERSISTENCE_PLOT) &&
+        signal_display_pane_analysis_name(active_pane) !== nothing ? active_pane :
+        spectrum_index === nothing ? active_pane : layout.panes[spectrum_index]
     screen_time_unit = time_source.plot_type == SPECTROGRAM_PLOT ?
         time_source.stored_settings.spectrogram.time_units :
         time_source.stored_settings.time.units
@@ -1102,14 +1191,14 @@ function signal_settings_document_unlocked(
         screen_full_time_limits,
         screen_time_unit,
     )
-    screen_frequency_unit = spectrum_source.stored_settings.spectrum.frequency_units
+    screen_frequency_unit = signal_settings_pane_frequency_units(spectrum_source)
     if draft !== nothing
         entry = get((draft::SignalSettingsDisplayDraft).entries, "spectrum.frequency_units", nothing)
         entry === nothing || (entry.value isa SignalFrequencyUnitPreference &&
             (screen_frequency_unit = entry.value))
     end
     screen_frequency_factor = signal_hertz_per_frequency_unit(screen_frequency_unit)
-    screen_frequency_limits = spectrum_source.spectrum_settings.frequency_limits
+    screen_frequency_limits = signal_settings_pane_frequency_limits(spectrum_source)
     projected_frequency_limits = screen_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits ?
         Dict{String,Any}(
             "min" => (screen_frequency_limits::ExplicitSignalSpectrumFrequencyLimits).min_hz /
@@ -1127,8 +1216,11 @@ function signal_settings_document_unlocked(
         "spectrum.link_magnitude" => projected_display.stored_settings.spectrum.link_magnitude,
         "spectrum.frequency_units" => SIGNAL_FREQUENCY_UNIT_NAMES[screen_frequency_unit],
         "spectrum.frequency_limits" => projected_frequency_limits,
+        "spectrum.frequency_scale" => SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[
+            signal_settings_pane_frequency_scale(spectrum_source)
+        ],
         "spectrum.y_limits" => signal_settings_range_payload(
-            spectrum_source.stored_settings.spectrum.y_limits,
+            signal_settings_pane_magnitude_limits(spectrum_source),
         ),
     )
     if draft !== nothing
@@ -1831,11 +1923,41 @@ function signal_settings_validate_typed_value!(
     elseif field_id == "spectrum.link_frequency" && value &&
         length(signal_analyser_compatible_spectrum_panes(state, display)) < 2
         throw(signal_setting_validation_error(display.id, field_id,
-            "Связь частот требует как минимум два спектра в одном экране"))
+            "Связь частот требует как минимум две совместимые спектральные области в одном экране"))
+    elseif field_id == "spectrum.link_frequency" && value
+        limits = if display.active_plot == PERSISTENCE_PLOT
+            stored_limits = display.stored_settings.persistence.frequency_limits
+            stored_limits === nothing ? AutomaticSignalSpectrumFrequencyLimits() :
+                ExplicitSignalSpectrumFrequencyLimits(
+                    stored_limits.minimum,
+                    stored_limits.maximum,
+                )
+        else
+            display.spectrum_settings.frequency_limits
+        end
+        if limits isa ExplicitSignalSpectrumFrequencyLimits
+            domain = signal_settings_full_frequency_range(state, display; linked = true)
+            typed = limits::ExplicitSignalSpectrumFrequencyLimits
+            typed.min_hz >= domain.minimum && typed.max_hz <= domain.maximum || throw(
+                signal_setting_validation_error(
+                    display.id,
+                    field_id,
+                    "Текущий интервал должен лежать в общем домене [$(domain.minimum), $(domain.maximum)] Hz",
+                ),
+            )
+        end
     elseif field_id == "spectrum.link_magnitude" && value &&
         length(signal_analyser_compatible_spectrum_panes(state, display)) < 2
         throw(signal_setting_validation_error(display.id, field_id,
-            "Связь магнитуд требует как минимум два спектра в одном экране"))
+            "Связь магнитуд требует как минимум две совместимые спектральные области в одном экране"))
+    elseif field_id == "spectrum.link_magnitude" && value &&
+        !signal_settings_linked_magnitudes_are_db(state, display)
+        throw(signal_setting_validation_error(display.id, field_id,
+            "Связь магнитуд доступна только для областей с мощностью в dB"))
+    elseif field_id in ("spectrum.scale", "persistence.scale") &&
+        display.stored_settings.spectrum.link_magnitude && value != DB_SPECTRUM_SCALE
+        throw(signal_setting_validation_error(display.id, field_id,
+            "При связанной магнитуде мощность должна отображаться в dB"))
     elseif field_id in ("spectrum.frequency_limits", "spectrogram.frequency_limits")
         if value !== nothing
             signal === nothing && throw(signal_setting_validation_error(
@@ -1868,6 +1990,17 @@ function signal_settings_validate_typed_value!(
             display.id, field_id, "Явный интервал требует analysis source",
         ))
         limits = ExplicitSignalSpectrumFrequencyLimits(value.minimum, value.maximum)
+        if display.stored_settings.spectrum.link_frequency
+            domain = signal_settings_full_frequency_range(state, display)
+            limits.min_hz >= domain.minimum && limits.max_hz <= domain.maximum || throw(
+                signal_setting_validation_error(
+                    display.id,
+                    field_id,
+                    "Интервал должен лежать в общем домене [$(domain.minimum), $(domain.maximum)] Hz",
+                ),
+            )
+            return nothing
+        end
         signal_spectrum_frequency_limits_valid_for_signal(limits, signal) || begin
             domain = signal_spectrum_topology_limits(signal)
             throw(signal_setting_validation_error(
@@ -2463,6 +2596,7 @@ function signal_settings_draft_domain_command(
     wire_value = signal_settings_draft_wire_value(entry.value)
     if entry.value isa SignalSettingDraftRange && entry.field_id in (
         "time.x_limits", "time.y_limits", "spectrum.frequency_limits",
+        "persistence.frequency_limits",
     )
         draft_range = entry.value::SignalSettingDraftRange
         if entry.field_id == "time.x_limits"
@@ -2493,7 +2627,9 @@ function signal_settings_draft_domain_command(
             )
         else
             factor = signal_hertz_per_frequency_unit(
-                display.stored_settings.spectrum.frequency_units,
+                entry.field_id == "persistence.frequency_limits" ?
+                    display.stored_settings.persistence.frequency_units :
+                    display.stored_settings.spectrum.frequency_units,
             )
             full = signal_settings_full_frequency_range(state, display)
             wire_value = Dict{String,Any}(
@@ -2637,12 +2773,14 @@ end
 function signal_settings_full_frequency_range(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
+    ;
+    linked::Bool = display.stored_settings.spectrum.link_frequency,
 )::SignalSettingRange
     panes = signal_settings_axis_panes(
         state,
         display,
-        (SPECTRUM_PLOT,),
-        display.stored_settings.spectrum.link_frequency,
+        (SPECTRUM_PLOT, PERSISTENCE_PLOT),
+        linked,
     )
     domains = [
         signal_spectrum_topology_limits(signal_by_name(state, name))
@@ -3191,6 +3329,7 @@ function signal_settings_pane_with_screen_spectrum_axes(
     link_magnitude::Bool,
     frequency_units::SignalFrequencyUnitPreference,
     frequency_limits::AbstractSignalSpectrumFrequencyLimits,
+    frequency_scale::SignalSpectrumFrequencyScale,
     magnitude_limits::Union{Nothing,SignalSettingRange},
 )::SignalDisplayPaneState
     spectrum_preferences = signal_settings_replace(
@@ -3202,15 +3341,28 @@ function signal_settings_pane_with_screen_spectrum_axes(
         link_frequency = link_frequency,
         link_magnitude = link_magnitude,
     )
+    persistence_preferences = signal_settings_replace(
+        pane.stored_settings.persistence,
+        frequency_units = link_frequency && pane.plot_type == PERSISTENCE_PLOT ?
+            frequency_units : pane.stored_settings.persistence.frequency_units,
+        frequency_limits = link_frequency && pane.plot_type == PERSISTENCE_PLOT ?
+            signal_settings_frequency_limits_range(frequency_limits) :
+            pane.stored_settings.persistence.frequency_limits,
+        power_limits = link_magnitude && pane.plot_type == PERSISTENCE_PLOT ?
+            magnitude_limits : pane.stored_settings.persistence.power_limits,
+        frequency_scale = link_frequency && pane.plot_type == PERSISTENCE_PLOT ?
+            frequency_scale : pane.stored_settings.persistence.frequency_scale,
+    )
     stored = signal_settings_replace(
         pane.stored_settings,
         spectrum = spectrum_preferences,
+        persistence = persistence_preferences,
     )
     spectrum_settings = if link_frequency && pane.plot_type == SPECTRUM_PLOT
         current = pane.spectrum_settings
         SignalSpectrumSettings(
             current.scale,
-            current.frequency_scale,
+            frequency_scale,
             current.leakage,
             frequency_limits,
         )
@@ -3243,7 +3395,10 @@ function signal_settings_apply_screen_axes_unlocked!(
     layout = signal_analyser_layout_by_display_id(state, display_id)
     time_source = signal_settings_screen_source_pane(layout, (TIME_PLOT, SPECTROGRAM_PLOT))
     amplitude_source = signal_settings_screen_source_pane(layout, (TIME_PLOT,))
-    spectrum_source = signal_settings_screen_source_pane(layout, (SPECTRUM_PLOT,))
+    spectrum_source = signal_settings_screen_source_pane(
+        layout,
+        (SPECTRUM_PLOT, PERSISTENCE_PLOT),
+    )
     entries = draft === nothing ? Dict{String,SignalSettingDraftEntry}() : draft.entries
     link_time = prospective.stored_settings.time.link_time
     link_amplitude = prospective.stored_settings.time.link_amplitude
@@ -3274,15 +3429,19 @@ function signal_settings_apply_screen_axes_unlocked!(
     frequency_units = haskey(entries, "spectrum.frequency_units") ?
         prospective.stored_settings.spectrum.frequency_units :
         spectrum_source === nothing ? prospective.stored_settings.spectrum.frequency_units :
-        (spectrum_source::SignalDisplayPaneState).stored_settings.spectrum.frequency_units
+        signal_settings_pane_frequency_units(spectrum_source::SignalDisplayPaneState)
     frequency_limits = haskey(entries, "spectrum.frequency_limits") ?
         prospective.spectrum_settings.frequency_limits :
         spectrum_source === nothing ? prospective.spectrum_settings.frequency_limits :
-        (spectrum_source::SignalDisplayPaneState).spectrum_settings.frequency_limits
+        signal_settings_pane_frequency_limits(spectrum_source::SignalDisplayPaneState)
+    frequency_scale = haskey(entries, "spectrum.frequency_scale") ?
+        prospective.spectrum_settings.frequency_scale :
+        spectrum_source === nothing ? prospective.spectrum_settings.frequency_scale :
+        signal_settings_pane_frequency_scale(spectrum_source::SignalDisplayPaneState)
     magnitude_limits = haskey(entries, "spectrum.y_limits") ?
         prospective.stored_settings.spectrum.y_limits :
         spectrum_source === nothing ? prospective.stored_settings.spectrum.y_limits :
-        (spectrum_source::SignalDisplayPaneState).stored_settings.spectrum.y_limits
+        signal_settings_pane_magnitude_limits(spectrum_source::SignalDisplayPaneState)
 
     changed = String[]
     panes = SignalDisplayPaneState[]
@@ -3296,6 +3455,7 @@ function signal_settings_apply_screen_axes_unlocked!(
             link_magnitude,
             frequency_units,
             frequency_limits,
+            frequency_scale,
             magnitude_limits,
         )
         push!(panes, next_pane)
@@ -3517,7 +3677,8 @@ function apply_signal_settings!(
         screen_field_ids = Set((
             "time.units", "time.x_limits", "time.y_limits",
             "time.link_time", "time.link_amplitude",
-            "spectrum.frequency_units", "spectrum.frequency_limits", "spectrum.y_limits",
+            "spectrum.frequency_units", "spectrum.frequency_limits",
+            "spectrum.frequency_scale", "spectrum.y_limits",
             "spectrum.link_frequency", "spectrum.link_magnitude",
         ))
         applies_screen_axes = draft !== nothing && any(

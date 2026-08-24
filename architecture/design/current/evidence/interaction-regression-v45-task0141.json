@@ -1,0 +1,77 @@
+{
+  "design_version": 45,
+  "method": "bounded source/contract regression; accepted components reused; no browser or new screenshot",
+  "passed": 9,
+  "failed": 0,
+  "results": [
+    {
+      "id": "72-short-labels",
+      "passed": true,
+      "detail": {
+        "frequency": "Связать частоты",
+        "magnitude": "Связать магнитуды"
+      }
+    },
+    {
+      "id": "73-frequency-spectrum-persistence",
+      "passed": true,
+      "detail": {
+        "xaxis.range[0]": 3,
+        "xaxis.range[1]": 6,
+        "xaxis.autorange": false
+      }
+    },
+    {
+      "id": "74-spectrogram-excluded",
+      "passed": true,
+      "detail": "excluded"
+    },
+    {
+      "id": "75-db-only-magnitude-power",
+      "passed": true,
+      "detail": "dB only"
+    },
+    {
+      "id": "76-area-slider-map",
+      "passed": true,
+      "detail": [
+        "persistence.frequency_limits",
+        "persistence.power_limits",
+        "persistence.density_limits"
+      ]
+    },
+    {
+      "id": "77-jet-provider-ownership",
+      "passed": true,
+      "detail": "Backend/provider authors Jet for Spectrogram and Persistence output; Frontend passes the accepted Plotly colorscale through unchanged and adds no palette control."
+    },
+    {
+      "id": "78-menu-anchor",
+      "passed": true,
+      "detail": {
+        "close": false,
+        "position": "fixed",
+        "left": 688,
+        "top": 286,
+        "width": 224,
+        "maxHeight": 644,
+        "overflowY": "visible",
+        "horizontal": "right",
+        "vertical": "above"
+      }
+    },
+    {
+      "id": "79-menu-offscreen-close",
+      "passed": true,
+      "detail": {
+        "close": true,
+        "reason": "anchor_outside_boundary"
+      }
+    },
+    {
+      "id": "80-new-display-provider-ownership",
+      "passed": true,
+      "detail": "Backend/provider authors a new display as 2x2 with four empty named panes and pane 1 active; Frontend renders accepted layout/ids only, while existing/imported layouts are never migrated."
+    }
+  ]
+}

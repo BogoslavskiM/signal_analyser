@@ -45,7 +45,9 @@ task0097_members(pane) = TASK0097_EMPTY_PANES.signal_display_pane_members(pane)
     state = TASK0097_EMPTY_PANES.default_signal_analyser_state()
     display = only(state.displays)
     layout = state.display_layouts[display.id]
-    pane = only(layout.panes)
+    @test [candidate.id for candidate in layout.panes] == ["pane-$index" for index in 1:4]
+    @test all(candidate -> task0097_members(candidate) == String[], layout.panes)
+    pane = first(filter(candidate -> candidate.id == "pane-1", layout.panes))
     page_id = "$(display.id)::$(pane.id)"
 
     @test task0097_members(pane) == String[]
@@ -87,10 +89,14 @@ task0097_members(pane) = TASK0097_EMPTY_PANES.signal_display_pane_members(pane)
         "operation" => "create",
     ); lightweight = true)
     created_display = only(filter(display -> display.id == "display-2", state.displays))
-    created_pane = only(state.display_layouts[created_display.id].panes)
+    created_panes = state.display_layouts[created_display.id].panes
     @test created["active_display_id"] == created_display.id
-    @test task0097_members(created_pane) == String[]
-    @test TASK0097_EMPTY_PANES.signal_display_pane_analysis_name(created_pane) === nothing
+    @test [pane.id for pane in created_panes] == ["pane-$index" for index in 1:4]
+    @test [pane.name for pane in created_panes] == ["Область $index" for index in 1:4]
+    @test state.display_layouts[created_display.id].active_pane_id == "pane-1"
+    @test state.display_layouts[created_display.id].next_pane_number == 5
+    @test all(pane -> task0097_members(pane) == String[], created_panes)
+    @test all(pane -> TASK0097_EMPTY_PANES.signal_display_pane_analysis_name(pane) === nothing, created_panes)
     @test TASK0097_EMPTY_PANES.signal_analyser_display_members(created_display) == String[]
 end
 
@@ -103,7 +109,7 @@ end
 
     @test response["state_revision"] == state.view.state_revision
     @test task0097_members(layout.panes[1]) == [signal_name]
-    @test TASK0097_EMPTY_PANES.signal_display_pane_analysis_name(layout.panes[1]) == signal_name
+    @test TASK0097_EMPTY_PANES.signal_display_pane_analysis_name(layout.panes[1]) === nothing
     @test task0097_members(layout.panes[2]) == String[]
     @test TASK0097_EMPTY_PANES.signal_display_pane_analysis_name(layout.panes[2]) === nothing
     @test only(state.signals).visible
@@ -129,5 +135,5 @@ end
     restored = imported.display_layouts["display-1"].panes
     @test task0097_members(restored[1]) == [signal_name]
     @test all(pane -> task0097_members(pane) == String[], restored[2:end])
-    @test TASK0097_EMPTY_PANES.signal_display_pane_analysis_name(restored[1]) == signal_name
+    @test TASK0097_EMPTY_PANES.signal_display_pane_analysis_name(restored[1]) === nothing
 end

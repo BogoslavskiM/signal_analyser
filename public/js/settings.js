@@ -17,7 +17,7 @@
   var ru = {
     "display.plot_type": "Тип графика", "display.show_legend": "Показывать легенду", "display.name":"Имя экрана", "pane.name":"Имя области",
     "time.normalize_y": "Нормировать Y", "time.show_markers": "Показывать маркеры", "time.units": "Единицы времени", "time.x_limits": "Пределы X", "time.y_limits": "Пределы Y", "time.link_time": "Связать время", "time.link_amplitude": "Связать амплитуду",
-    "spectrum.frequency_units": "Единицы частоты", "spectrum.frequency_limits": "Пределы частоты", "spectrum.y_limits": "Пределы магнитуды", "spectrum.link_frequency":"Связать частоты спектров", "spectrum.link_magnitude":"Связать магнитуды спектров", "spectrum.frequency_scale": "Шкала частоты", "spectrum.scale": "Спектр в dB", "spectrum.resolution_type": "Тип разрешения", "spectrum.leakage": "Утечка", "spectrum.rbw": "Полоса разрешения", "spectrum.window_length": "Длина окна", "spectrum.window": "Окно", "spectrum.sidelobe_attenuation_db": "Подавление боковых лепестков", "spectrum.overlap_percent": "Перекрытие", "spectrum.nfft": "Точки DFT", "spectrum.frequency_resolution": "Частотное разрешение",
+    "spectrum.frequency_units": "Единицы частоты", "spectrum.frequency_limits": "Пределы частоты", "spectrum.y_limits": "Пределы магнитуды", "spectrum.link_frequency":"Связать частоты", "spectrum.link_magnitude":"Связать магнитуды", "spectrum.frequency_scale": "Шкала частоты", "spectrum.scale": "Спектр в dB", "spectrum.resolution_type": "Тип разрешения", "spectrum.leakage": "Утечка", "spectrum.rbw": "Полоса разрешения", "spectrum.window_length": "Длина окна", "spectrum.window": "Окно", "spectrum.sidelobe_attenuation_db": "Подавление боковых лепестков", "spectrum.overlap_percent": "Перекрытие", "spectrum.nfft": "Точки DFT", "spectrum.frequency_resolution": "Частотное разрешение",
     "spectrogram.time_units": "Единицы времени", "spectrogram.frequency_units": "Единицы частоты", "spectrogram.frequency_limits": "Пределы частоты", "spectrogram.power_limits": "Пределы мощности", "spectrogram.frequency_scale": "Шкала частоты", "spectrogram.scale": "Спектр в dB", "spectrogram.leakage": "Утечка", "spectrogram.time_resolution": "Разрешение по времени", "spectrogram.overlap_percent": "Перекрытие", "spectrogram.reassign": "Переназначение", "spectrogram.actual_rbw": "Фактическая RBW",
     "persistence.time_units": "Единицы времени", "persistence.frequency_units": "Единицы частоты", "persistence.frequency_limits": "Пределы частоты", "persistence.power_limits": "Пределы мощности", "persistence.density_limits": "Пределы плотности", "persistence.frequency_scale": "Шкала частоты", "persistence.scale": "Спектр в dB", "persistence.leakage": "Утечка", "persistence.time_resolution": "Разрешение по времени", "persistence.overlap_percent": "Перекрытие", "persistence.power_bins": "Интервалы мощности", "persistence.rbw": "RBW"
   };
@@ -112,6 +112,8 @@
   }
   function group(key, title, items) { return { key:key, title:title, items:items.filter(Boolean) }; }
   function displayInventory(type) {
+    var linkFrequency = context.linkPreview ? context.linkPreview.linkFrequency : booleanValue("spectrum.link_frequency");
+    var linkMagnitude = context.linkPreview ? context.linkPreview.linkMagnitude : booleanValue("spectrum.link_magnitude");
     var graph = group("graph", "График", [
       actual("pane.name"), pseudo("display.plot_type", "enum", type, { action:"plot-type", options:plotOptions }),
       actual("display.show_legend", true)
@@ -133,8 +135,8 @@
     }
     return [
       graph,
-      group("frequency-axis", "Частотная ось", [actual("persistence.time_units", true), actual("persistence.frequency_units", true), actual("persistence.frequency_limits", true), actual("persistence.frequency_scale", true)]),
-      group("density-power", "Плотность и мощность", [actual("persistence.power_limits", true), actual("persistence.density_limits", true), actual("persistence.scale", true), actual("persistence.leakage", true), actual("persistence.time_resolution", true), actual("persistence.overlap_percent", true), actual("persistence.power_bins", true), actual("persistence.rbw")])
+      group("frequency-axis", "Частотная ось", [actual("persistence.time_units", true), actual("persistence.frequency_units", true), linkFrequency ? null : actual("persistence.frequency_limits", true), actual("persistence.frequency_scale", true)]),
+      group("density-power", "Плотность и мощность", [linkMagnitude ? null : actual("persistence.power_limits", true), actual("persistence.density_limits", true), actual("persistence.scale", true), actual("persistence.leakage", true), actual("persistence.time_resolution", true), actual("persistence.overlap_percent", true), actual("persistence.power_bins", true), actual("persistence.rbw")])
     ];
   }
 
@@ -458,8 +460,8 @@
     },
     setExtraVisible:function (ids) { context.extraVisible={}; (ids || []).forEach(function (id) { context.extraVisible[id]=true; }); },
     setExtraItems:function (items) { context.extraItems={}; (items || []).forEach(function (item) { if (item && item.id) context.extraItems[item.id]=item; }); },
-    setLinkPreview:function (linkTime, linkAmplitude) {
-      context.linkPreview = typeof linkTime === "boolean" && typeof linkAmplitude === "boolean" ? { linkTime:linkTime, linkAmplitude:linkAmplitude } : null;
+    setLinkPreview:function (linkTime, linkAmplitude, linkFrequency, linkMagnitude) {
+      context.linkPreview = typeof linkTime === "boolean" && typeof linkAmplitude === "boolean" ? { linkTime:linkTime, linkAmplitude:linkAmplitude, linkFrequency:!!linkFrequency, linkMagnitude:!!linkMagnitude } : null;
     },
     beginCustomRender:function () { context.renderedFields={}; },
     renderRows:function (ids) {

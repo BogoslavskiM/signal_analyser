@@ -31,7 +31,7 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
     titles.forEach((title) => assert(inventorySource.includes(`"${title}"`), `${type} inventory must include group ${title}`));
     ids.forEach((id) => assert(inventorySource.includes(`"${id}"`), `${type} inventory must include ${id}`));
   });
-  assert(/function injectSpectrumSliderSettings[\s\S]*?setExtraVisible\(\["spectrum.frequency_limits", "spectrum.y_limits"\]\)[\s\S]*?local-frequency-limits[\s\S]*?local-magnitude-limits/.test(app), "Spectrum limits must be injected as independent local Area groups beside their shared sliders");
+  assert(/SignalAnalyserTask0141[\s\S]*?areaRanges[\s\S]*?screen-range-slider[\s\S]*?spectrum\.frequency_limits[\s\S]*?spectrum\.y_limits/.test(app), "Spectrum limits must use the shared active-Area dual-handle range inventory");
   assert(!/context\.page === "measurements"|measurementItem\(|action:"peaks"|action:"measurement"/.test(settings), "measurement and Peaks controls must be absent from the right settings inventory");
   assert(/function timeInventory\(type\)[\s\S]*?type === "spectrogram"[\s\S]*?"Пределы времени"[\s\S]*?return \[\];/.test(settings), "non-applicable time branches must render nothing instead of a placeholder section");
 

@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140 / TASK-0141`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `44`
+- Design version: `45`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V44 is the current integration-safe package for the accepted Signal Analyser
+V45 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -500,6 +500,46 @@ entry baseline or production transfer inputs.
   `designer/output-and-visualization`. Skipped visual-system, Figma, Engee Apps,
   composition and sizing skills: the accepted loader/plot visuals and all
   geometry are unchanged. Figma reference status is `not_required`.
+
+## Exact delta v44 → v45
+
+- Screen labels are exactly `Связать частоты` and `Связать магнитуды`.
+- Frequency linking applies only to ready Spectrum and Persistence panes in the
+  active display. Their displayed linear/log coordinates and selected units are
+  converted through canonical Hz before projection. Spectrogram frequency is
+  intentionally excluded; its existing Time link remains unchanged.
+- Magnitude linking applies Spectrum magnitude ↔ Persistence power only while
+  each participating pane is in dB. Linear panes, hidden fields, Spectrogram
+  power and Persistence density are ignored. A linked screen draft therefore
+  never overwrites a noneligible local field.
+- Every visible range field on `Область` reuses the exact existing Screen
+  dual-handle component and interaction: Time X/Y; Spectrum frequency/magnitude;
+  Spectrogram time/frequency/power; Persistence frequency/power/density. The
+  component is active-pane scoped. Each empty endpoint stays empty/auto until
+  that endpoint's field or thumb is changed; unit projection remains seconds/Hz
+  at the provider boundary and double-click clears both endpoints.
+- Spectrogram and Persistence heatmaps receive the Plotly `Jet` colorscale from
+  Backend/provider output. Frontend passes it through unchanged; it adds no
+  palette UI, override or signal-color change.
+- The unchanged 224px pane menu remains a body portal, anchored to the clicked
+  `[data-pane-menu]`. Its fixed position is clamped to the intersection of the
+  application shell and viewport with 8px inset, flips above/left as needed,
+  repositions on capture scroll/resize, and closes with focus restoration when
+  the anchor disconnects or leaves that boundary. Escape/outside-click and
+  arrow-key behavior are preserved.
+- Backend/provider authors only a newly created display as 2×2 with four empty
+  named panes and the first pane active. Frontend renders the accepted layout
+  and stable IDs without creating follow-up panes. Existing/imported displays
+  are never migrated.
+- Transfer helper: `frontend-source/integration/js/task-0141-linked-axes-area-sliders.js`.
+- Evidence: `evidence/interaction-regression-v45-task0141.json` and
+  `evidence/transfer-audit-v45.json`. No new screenshot is required because all
+  visible components, Jet and menu geometry are exact accepted reuse.
+- Applied skills: `designer/designer-workflow`,
+  `designer/data-entry-and-inspection`, `designer/output-and-visualization` and
+  `designer/application-composition`. Skipped `designer/visual-system`, Figma,
+  Engee Apps research and page sizing: no new component/style, composition or
+  zone geometry is introduced. Figma reference status is `not_required`.
 
 ## Sources
 

@@ -1,0 +1,14 @@
+{
+  "design_version": 45,
+  "status": "pass",
+  "checks": [
+    {"id":"labels","passed":true,"detail":"Screen labels are exactly Связать частоты and Связать магнитуды."},
+    {"id":"frequency-eligibility","passed":true,"detail":"Only Spectrum and Persistence frequency participate; canonical Hz bridges selected units and linear/log axes; Spectrogram is excluded."},
+    {"id":"db-eligibility","passed":true,"detail":"Only Spectrum magnitude dB and Persistence power dB participate; linear/hidden/noneligible fields are ignored."},
+    {"id":"area-slider-parity","passed":true,"detail":"Every applicable Area range reuses the existing Screen dual-handle component with active-pane scope and independent empty-auto endpoints."},
+    {"id":"jet","passed":true,"detail":"Backend/provider authors Spectrogram and Persistence Jet output; Frontend pass-through does not override colorscale, add palette UI or change signal colors."},
+    {"id":"pane-menu-anchor","passed":true,"detail":"Existing body-portal menu anchors to clicked trigger, clamps/flips in app-shell/viewport at 8px, repositions on scroll/resize and restores focus on close."},
+    {"id":"new-display","passed":true,"detail":"Backend/provider authors only a new display as 2x2 with four empty named panes and first-pane focus; Frontend renders accepted layout/ids and existing/imported layouts remain unchanged."},
+    {"id":"transfer-boundary","passed":true,"detail":"One UI-only helper transfers into existing app/settings/Plotly/menu seams; no shell, Plotly host or accepted component geometry is replaced."}
+  ]
+}

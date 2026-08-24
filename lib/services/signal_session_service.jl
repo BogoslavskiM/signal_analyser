@@ -770,7 +770,7 @@ function signal_analyser_session_parse_layout(
     display_index::Int,
     session_version::Int,
 )::SignalDisplayLayoutState
-    value === nothing && return signal_display_default_layout(display)
+    value === nothing && return signal_display_legacy_single_pane_layout(display)
     path = "document.state.displays[$display_index].layout"
     data = signal_analyser_session_exact_object(
         value,
