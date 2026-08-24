@@ -109,7 +109,7 @@
       settle:function (payload) {
         if (timer != null) window.clearTimeout(timer);
         var key=JSON.stringify(payload || null);
-        timer=window.setTimeout(function () { timer=null; if (key === lastKey) return; lastKey=key; if (callback && callback.publish) callback.publish(payload); },Number(delay) || 150);
+        timer=window.setTimeout(function () { timer=null; if (key === lastKey) return; lastKey=key; if (callback && callback.commitViewport) callback.commitViewport(payload); },Number(delay) || 150);
       },
       cancel:function () { if (timer != null) window.clearTimeout(timer); timer=null; }
     };
@@ -126,11 +126,12 @@
     createSettler:createSettler,
     settleDelayMs:150,
     contract:{
-      liveProjection:"plotly_relayouting updates current Area fields and handles immediately without publication; slider input updates Plotly at most once per animation frame",
-      settleBoundary:"plotly_relayout and settings change/pointerup/keyboard commit start one 150ms deduplicating settle, then the existing serialized autosave publishes canonical values once",
+      liveProjection:"plotly_relayouting updates current Area fields and handles immediately; slider/input updates Plotly at most once per animation frame",
+      settleBoundary:"plotly_relayout and viewport input change/pointerup/keyboard commit start one 150ms deduplicating frontend-only viewport commit; no settings/API publication occurs",
       linkedProjection:"after the source pane projection, existing time/amplitude/frequency/magnitude link queues apply the same canonical interval only to eligible panes",
-      reset:"double click any range row or its settings/in-plot slider clears both explicit endpoint intents, requests axis autorange/full domain, synchronizes graph/settings and publishes one settled Auto value",
-      validation:"v46 per-endpoint validation runs before graph preview or publication; an invalid endpoint changes neither plot nor linked panes"
+      reset:"double click any range row or its settings/in-plot slider ignores current numeric mirrors, requests true Plotly autorange/full domain and reprojects blank Auto inputs/full-domain handles",
+      validation:"v46 per-endpoint validation runs before graph preview; an invalid endpoint changes neither plot nor linked panes",
+      persistence:"Viewport mirrors never call settings.publishRange, /api/settings, output refresh, DSP, state_revision or session persistence; link flags remain ordinary persisted settings."
     }
   };
 }(window));

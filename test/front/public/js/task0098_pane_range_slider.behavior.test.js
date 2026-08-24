@@ -160,7 +160,7 @@ function createHarness() {
     }),
     SignalAnalyserSettings: {
       setRevision() {}, setContext() {}, setView() {}, render() {}, markApplied() {},
-      state() { return { dirty: false, invalid: false, revision: 7 }; },
+      state() { return { dirty: false, invalid: false, revision: 7 }; }, value(id) { return id === "time.units" ? "seconds" : false; },
       load() { return Promise.resolve(); }
     },
     Plotly: {
@@ -238,9 +238,10 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   });
   h.hosts["display-a::pane-1"].dispatch("pointerdown", sliderPointerEvent());
   h.hosts["display-a::pane-1"].dispatch("pointerdown", sliderPointerEvent());
+  h.flushFrame();
   await h.settle();
   const horizontalReset = h.relayoutCalls[1].update;
-  assert(horizontalReset["xaxis.range[0]"] === 0 && horizontalReset["xaxis.range[1]"] === 1 && horizontalReset["xaxis.autorange"] === false && horizontalReset["xaxis.rangeslider.range"][0] === 0 && horizontalReset["xaxis.rangeslider.range"][1] === 1 && horizontalReset["xaxis.rangeslider.autorange"] === false, "double-clicking the horizontal slider must restore its already projected signal range without a transient Plotly autorange");
+  assert(horizontalReset["xaxis.autorange"] === true && horizontalReset["xaxis.rangeslider.autorange"] === true, "double-clicking the horizontal slider must now perform the shared atomic Auto reset");
   assert(!Object.keys(horizontalReset).some((key) => key.indexOf("yaxis.") === 0) && prevented === 1 && stopped === 1, "horizontal slider reset must not alter Y and must consume the slider double-click");
 
   let immediateStopped = 0;
@@ -251,10 +252,11 @@ module.exports = async function testTask0098PaneRangeSliderBehavior(assert) {
   });
   h.hosts["display-a::pane-1"].dispatch("pointerdown", graphPointerEvent());
   h.hosts["display-a::pane-1"].dispatch("pointerdown", graphPointerEvent());
+  h.flushFrame();
   await h.settle();
   const graphReset = h.relayoutCalls[2].update;
-  assert(graphReset["xaxis.range[0]"] === 0 && graphReset["xaxis.range[1]"] === 1 && graphReset["yaxis.range[0]"] === -2.2 && graphReset["yaxis.range[1]"] === 2.2, "the first graph double-click must restore the exact rendered default X and padded Y ranges in one relayout");
-  assert(graphReset["xaxis.autorange"] === false && graphReset["yaxis.autorange"] === false && immediateStopped === 1, "graph reset must suppress Plotly's later competing autorange pass");
+  assert(graphReset["xaxis.autorange"] === true && graphReset["xaxis.rangeslider.autorange"] === true && graphReset["yaxis.autorange"] === true && immediateStopped === 1, "graph double-click must atomically reset X/Y to Auto and suppress the competing native pass");
+  assert(!Object.keys(graphReset).some((key) => /^(zaxis|density)/.test(key)), "graph Auto reset must not touch heatmap Z or density limits");
   h.hosts["display-a::pane-1"].dispatch("dblclick", graphPointerEvent());
   await h.settle();
   assert(h.relayoutCalls.length === 3, "the native dblclick fallback must be absorbed after the pointer pair instead of issuing a second reset");

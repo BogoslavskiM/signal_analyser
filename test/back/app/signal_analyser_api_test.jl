@@ -2,6 +2,30 @@ using Test
 
 const SA_API = Main.AppTestContext
 
+@testset "TASK-0147 derived-operation parser owns text and rejects blank custom body" begin
+    base = Dict{String,Any}(
+        "state_revision" => 7,
+        "source_signal_id" => SubString("  source-α  ", 1, lastindex("  source-α  ")),
+        "operation" => "custom",
+        "target_name" => SubString("  результат_Ж  ", 1, lastindex("  результат_Ж  ")),
+        "overwrite" => false,
+        "multiplier" => nothing,
+        "body" => SubString("  x = init_signal\n  x .* 2\n", 1, lastindex("  x = init_signal\n  x .* 2\n")),
+    )
+    command = SA_API.parse_derive_signal_command(base)
+    @test command.source_signal_id isa String && command.target_name isa String && command.body isa String
+    @test command.source_signal_id == "source-α" && command.target_name == "результат_Ж"
+    @test command.body == "  x = init_signal\n  x .* 2\n" && command.overwrite === false
+    overwrite = copy(base); overwrite["overwrite"] = true
+    @test SA_API.parse_derive_signal_command(overwrite).overwrite === true
+    for body in ("", " \n\t ", SubString(" \n", 1, 2))
+        invalid = copy(base); invalid["body"] = body
+        error = try SA_API.parse_derive_signal_command(invalid); nothing catch caught; caught end
+        @test error isa SA_API.SignalAnalyserValidationError
+        @test !(error isa MethodError) && !occursin("SubString", sprint(showerror, error))
+    end
+end
+
 @testset "Settings API retains the narrow settings route boundary" begin
     routes_source = SA_API.source("app", "routes.jl")
 

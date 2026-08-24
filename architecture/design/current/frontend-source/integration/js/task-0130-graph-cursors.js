@@ -139,14 +139,17 @@
   }
 
   function createController() {
-    var records={};
+    var records={},listeners=[];
     function record(key) { return records[key] || (records[key]={mode:MODE_OFF,values:[],host:null,overlay:null}); }
+    function snapshot(key) { var entry=record(key); return {key:key,mode:entry.mode,values:entry.values.slice(),host:entry.host,eligible:entry.mode !== MODE_OFF && !!entry.host && visibleTraces(entry.host).length > 0}; }
+    function notify(key) { var value=snapshot(key); listeners.slice().forEach(function (listener) { listener(value); }); }
+    function subscribe(listener) { if (typeof listener !== "function") return function () {}; listeners.push(listener); return function () { listeners=listeners.filter(function (candidate) { return candidate !== listener; }); }; }
     function removeOverlay(entry) { if (entry.overlay && entry.overlay.isConnected) entry.overlay.remove(); entry.overlay=null; entry.host=null; }
     function update(key) {
       var entry=record(key), host=entry.host;
-      if (!host || !host.isConnected || entry.mode === MODE_OFF || !visibleTraces(host).length) { removeOverlay(entry); return; }
+      if (!host || !host.isConnected || entry.mode === MODE_OFF || !visibleTraces(host).length) { removeOverlay(entry); notify(key); return; }
       var domain=visibleDomain(host);
-      if (!domain) { removeOverlay(entry); return; }
+      if (!domain) { removeOverlay(entry); notify(key); return; }
       entry.values=initialValues(host,entry.mode,entry.values);
       var box=geometry(host), overlay=entry.overlay;
       if (!overlay || !overlay.isConnected) {
@@ -177,17 +180,18 @@
       readout.style.left=(box.left+8)+"px";
       readout.style.top=(box.top+8)+"px";
       readout.innerHTML=readoutMarkup(host,entry.values);
+      notify(key);
     }
     function setMode(key, host, mode) {
       var entry=record(key), next=mode === entry.mode ? MODE_OFF : mode;
       entry.mode=next;
       entry.host=host || entry.host;
-      if (next === MODE_OFF) { entry.values=[]; removeOverlay(entry); }
+      if (next === MODE_OFF) { entry.values=[]; removeOverlay(entry); notify(key); }
       else { entry.values=initialValues(entry.host,next,entry.values); update(key); }
       return next;
     }
     function attach(key,host) { var entry=record(key); entry.host=host; if (entry.mode !== MODE_OFF) update(key); }
-    function clear(key) { var entry=record(key); entry.mode=MODE_OFF; entry.values=[]; removeOverlay(entry); }
+    function clear(key) { var entry=record(key); entry.mode=MODE_OFF; entry.values=[]; removeOverlay(entry); notify(key); }
     function mode(key) { return record(key).mode; }
     function syncMenu(menu,key,eligible) {
       if (!menu) return;
@@ -242,7 +246,7 @@
       step(key,index,event.key === "ArrowLeft" ? -1 : 1,event.key === "Home" ? "start" : event.key === "End" ? "end" : "");
       window.requestAnimationFrame(function () { var restored=document.querySelector("[data-graph-cursor-overlay='"+CSS.escape(key)+"'] [data-cursor-index='"+index+"']"); if (restored) restored.focus(); });
     },true);
-    return { setMode:setMode, mode:mode, attach:attach, update:update, clear:clear, syncMenu:syncMenu };
+    return { setMode:setMode, mode:mode, attach:attach, update:update, clear:clear, syncMenu:syncMenu, snapshot:snapshot, subscribe:subscribe };
   }
 
   function ensureMenuItems(menu) {

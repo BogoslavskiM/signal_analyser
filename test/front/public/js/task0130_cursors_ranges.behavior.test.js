@@ -34,7 +34,10 @@ function rangeInputHandler(source, row, settingCalls) {
       const entry=context.model.rangeBoundaryIntents[field] || (context.model.rangeBoundaryIntents[field]={});
       if (value === "") delete entry[boundary]; else entry[boundary]=String(value);
       if (!Object.keys(entry).length) delete context.model.rangeBoundaryIntents[field];
-    }
+    },
+    activeSettingsRangeLifecycle() { return null; },
+    rangeLifecycleController() { return null; },
+    restoreRangeLifecycleScroll() {}
   };
   vm.runInNewContext(source.slice(begin, end), context, { filename:"public/js/app.js:range-input" });
   return { listener:listeners.input, slider };
@@ -45,7 +48,7 @@ function automaticRangeRenderer(source, row) {
   const end=source.indexOf('\n  function renderScreenSettings(display) {', begin);
   if (begin < 0 || end < 0) throw new Error("automatic range intent helpers are missing");
   const context={
-    model:{ settingsPage:"area", activePane:"pane-1", rangeBoundaryIntents:{} },
+    model:{ settingsPage:"area", activePane:"pane-1", rangeBoundaryIntents:{}, viewportRanges:{} },
     CSS:{ escape(value) { return value; } }, Object, Number, String, Math,
     activeDisplay() { return {id:"display-1"}; },
     q() { return row; },
@@ -130,11 +133,11 @@ module.exports = async function task0130CursorsAndAutomaticRanges(assert) {
 
   minHandle.value="0"; range.listener({ target:minHandle });
   assert(minText.value === "0" && maxText.value === "", "moving the minimum handle, even exactly to the full-domain endpoint, must materialize only minimum and retain blank automatic maximum");
-  assert(calls[0].field === "time.x_limits" && calls[0].value.min === "0" && calls[0].value.max === "", "endpoint movement must publish one explicit bound and the untouched automatic bound as an empty value");
+  assert(calls.length === 0, "viewport handle preview must stay frontend-only and publish zero settings/API work before terminal settle");
 
   minText.value=""; maxText.value=""; calls.length=0; maxHandle.value="10"; range.listener({ target:maxHandle });
   assert(minText.value === "" && maxText.value === "10", "moving the maximum handle, including to the full-domain endpoint, must materialize only maximum and retain blank automatic minimum");
-  assert(calls[0].value.min === "" && calls[0].value.max === "10", "maximum-only interaction must not silently materialize a minimum value");
+  assert(calls.length === 0, "maximum-only viewport preview must remain frontend-only");
 
   const automatic=automaticRangeRenderer(source,row);
   const automaticMin=attributesNode({value:"stale"}), automaticMax=attributesNode({value:"stale"});
@@ -148,7 +151,7 @@ module.exports = async function task0130CursorsAndAutomaticRanges(assert) {
   automatic.keepAutomaticRangeInputsEmpty("time.x_limits","x",{});
   assert(automaticMin.value === "" && automaticMax.value === "", "clearing a direct input must discard its endpoint intent and restore the automatic placeholder");
   assert(/input\.dataset\.rangePart === undefined[\s\S]*?rememberRangeBoundaryIntent\(input\.dataset\.settingId, input\.dataset\.rangePart, input\.value\)/.test(source), "direct range text input must establish and clear only its own explicit-boundary intent");
-  assert(/document\.addEventListener\("dblclick"[\s\S]*?minimum\.value=""; if \(maximum\) maximum\.value="";[\s\S]*?settings\.setValue\(fieldId, \{ min:"", max:"" \}\)/.test(source), "double-clicking a Screen/Area range slider must reset both values to automatic blank bounds");
+  assert(/document\.addEventListener\("dblclick"[\s\S]*?rangeLifecycleDescriptor\(fieldId\)[\s\S]*?resetRangeLifecycle\(display\.id,target\.paneId,\[target\.descriptor\]\)/.test(source), "double-clicking a Screen/Area range slider must reset through the true autorange lifecycle, which reprojects blank automatic bounds");
 
   const cursor=cursorController(source);
   const menu={ markup:"", querySelector(selector) { return selector === "[data-plot-help]" ? help : null; }, insertAdjacentHTML(position, markup) { this.position=position; this.markup=markup; } };

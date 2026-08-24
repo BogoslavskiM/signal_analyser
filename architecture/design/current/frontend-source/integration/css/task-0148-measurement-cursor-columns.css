@@ -1,0 +1,16 @@
+/* TASK-0148 cursor-coordinate columns extend the existing Measurements table
+   and its standard body-portal eye menu without changing their geometry. */
+[data-testid="measurement-columns-menu"] [data-measurement-cursor-column]:disabled {
+  color: var(--muted);
+  cursor: default;
+  opacity: .5;
+}
+
+[data-testid="measurement-columns-menu"] [data-measurement-cursor-column]:disabled img {
+  opacity: .72;
+}
+
+.measurement-table [data-measurement-cursor-value] {
+  min-width: 92px;
+  font-variant-numeric: tabular-nums;
+}

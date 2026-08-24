@@ -622,7 +622,7 @@ function signal_analyser_plotly_line_trace(
     color = String(get(source, "color", "#2563eb"))
     source_x = Float64.(get(source, "x", Float64[]))
     source_y = Float64.(get(source, "y", Float64[]))
-    x, y, mode, hovertemplate = if plot_type == TIME_PLOT
+    x, y, mode = if plot_type == TIME_PLOT
         maximum_seconds = projected_maximum_seconds === nothing ?
             (pane.time_limits === nothing ? maximum(abs, source_x; init = 1.0) :
                 (pane.time_limits::SignalTimeLimits).max_s) : projected_maximum_seconds
@@ -635,7 +635,6 @@ function signal_analyser_plotly_line_trace(
             source_x ./ seconds_per_unit,
             values,
             pane.stored_settings.time.show_markers ? "lines+markers" : "lines",
-            "%{x:.6g} $(unit_label)<br>%{y:.6g}<extra>%{fullData.name}</extra>",
         )
     else
         hertz_per_unit, unit_label = signal_analyser_frequency_unit_projection(
@@ -645,7 +644,6 @@ function signal_analyser_plotly_line_trace(
             source_x ./ hertz_per_unit,
             source_y,
             "lines",
-            "%{x:.6g} $(unit_label)<br>%{y:.6g}<extra>%{fullData.name}</extra>",
         )
     end
     Dict{String,Any}(
@@ -656,7 +654,8 @@ function signal_analyser_plotly_line_trace(
         "name" => name,
         "legendgroup" => String(get(source, "signal", name)),
         "line" => Dict{String,Any}("color" => color, "width" => 1.5),
-        "hovertemplate" => hovertemplate,
+        "hoverinfo" => "skip",
+        "hovertemplate" => nothing,
     )
 end
 
@@ -688,23 +687,15 @@ function signal_analyser_plotly_heatmap_trace(
         "z" => get(source, "z", Vector{Vector{Float64}}()),
         "name" => String(get(source, "name", "")),
         "colorscale" => "Jet",
-        "colorbar" => Dict{String,Any}(
-            "title" => Dict{String,Any}(
-                "text" => String(get(source, "color_label", "")),
-            ),
-        ),
+        "colorbar" => Dict{String,Any}(),
         "hoverongaps" => false,
+        "hoverinfo" => "skip",
+        "hovertemplate" => nothing,
     )
-    limits_key = pane.plot_type == SPECTROGRAM_PLOT ? "power_limits" : "density_limits"
-    limits = get(source, limits_key, nothing)
-    if limits isa AbstractDict
-        rendered = get(limits, "rendered", nothing)
-        if rendered isa AbstractDict
-            rendered_minimum = get(rendered, "min", nothing)
-            rendered_maximum = get(rendered, "max", nothing)
-            rendered_minimum isa Real && (trace["zmin"] = Float64(rendered_minimum))
-            rendered_maximum isa Real && (trace["zmax"] = Float64(rendered_maximum))
-        end
+    if pane.stored_settings.display.show_axis_labels
+        color_label = pane.plot_type == PERSISTENCE_PLOT ?
+            "Вероятность, %" : String(get(source, "color_label", ""))
+        trace["colorbar"]["title"] = Dict{String,Any}("text" => color_label)
     end
     trace
 end
@@ -859,23 +850,25 @@ function signal_analyser_plotly_payload(
     first_source = isempty(source_items) ? Dict{String,Any}() : first(source_items)
     axes = signal_analyser_plotly_axis_metadata(pane, first_source, projected_maximum_seconds)
     xaxis = Dict{String,Any}(
-        "title" => Dict{String,Any}("text" => axes.x_label),
         "type" => axes.x_type,
         "fixedrange" => false,
+        "autorange" => true,
         "automargin" => true,
     )
     yaxis = Dict{String,Any}(
-        "title" => Dict{String,Any}("text" => axes.y_label),
         "type" => axes.y_type,
         "fixedrange" => false,
+        "autorange" => true,
         "automargin" => true,
     )
-    axes.x_range === nothing || (xaxis["range"] = axes.x_range)
-    axes.y_range === nothing || (yaxis["range"] = axes.y_range)
+    if pane.stored_settings.display.show_axis_labels
+        xaxis["title"] = Dict{String,Any}("text" => axes.x_label)
+        yaxis["title"] = Dict{String,Any}("text" => axes.y_label)
+    end
     layout = Dict{String,Any}(
         "autosize" => true,
         "showlegend" => pane.stored_settings.display.show_legend && length(traces) > 1,
-        "hovermode" => "closest",
+        "hovermode" => false,
         "dragmode" => "zoom",
         "margin" => Dict{String,Int}("l" => 56, "r" => 20, "t" => 18, "b" => 46),
         "xaxis" => xaxis,

@@ -698,7 +698,7 @@ function parse_derive_signal_command(data)::DeriveSignalCommand
     revision = signal_inventory_request_revision!(errors, data)
     source_value = signal_analyser_payload_value(data, "source_signal_id")
     source_id = source_value isa AbstractString && !isempty(strip(String(source_value))) ?
-        String(source_value) : nothing
+        String(strip(String(source_value))) : nothing
     source_id === nothing && (errors["source_signal_id"] = "Требуется непустая строка")
     operation_value = signal_analyser_payload_value(data, "operation")
     operation = operation_value isa AbstractString &&
@@ -707,7 +707,7 @@ function parse_derive_signal_command(data)::DeriveSignalCommand
         "Допустимо: abs, square, sqrt, signed_sqrt_abs, multiply, fft, custom")
     target_value = signal_analyser_payload_value(data, "target_name")
     target_name = target_value isa AbstractString && !isempty(strip(String(target_value))) ?
-        strip(String(target_value)) : nothing
+        String(strip(String(target_value))) : nothing
     target_name === nothing && (errors["target_name"] = "Требуется непустая строка")
     overwrite_value = signal_analyser_payload_value(data, "overwrite")
     overwrite = overwrite_value isa Bool ? overwrite_value : nothing
@@ -751,6 +751,77 @@ function parse_derive_signal_command(data)::DeriveSignalCommand
         err isa ArgumentError || rethrow()
         throw(signal_inventory_validation_error("operation", sprint(showerror, err)))
     end
+end
+
+function parse_crop_signal_command(data)::CropSignalCommand
+    data isa AbstractDict || throw(signal_inventory_validation_error(
+        "body",
+        "Ожидался JSON-объект",
+    ))
+    expected = Set([
+        "state_revision",
+        "source_signal_id",
+        "min_s",
+        "max_s",
+        "target_name",
+        "overwrite",
+    ])
+    errors = Dict{String,String}()
+    signal_inventory_request_exact_fields!(errors, data, expected)
+    revision = signal_inventory_request_revision!(errors, data)
+    source_value = signal_analyser_payload_value(data, "source_signal_id")
+    source_id = source_value isa AbstractString && !isempty(strip(String(source_value))) ?
+        String(strip(String(source_value))) : nothing
+    source_id === nothing && (errors["source_signal_id"] = "Требуется непустая строка")
+
+    parse_boundary = function (field_id::String)
+        value = signal_analyser_payload_value(data, field_id)
+        if !(value isa Real) || value isa Bool
+            errors[field_id] = "Требуется конечное число в секундах"
+            return nothing
+        end
+        converted = try
+            Float64(value)
+        catch err
+            (err isa InexactError || err isa OverflowError) || rethrow()
+            NaN
+        end
+        if !isfinite(converted)
+            errors[field_id] = "Требуется конечное число в секундах"
+            return nothing
+        end
+        converted == 0.0 ? 0.0 : converted
+    end
+    minimum_time = parse_boundary("min_s")
+    maximum_time = parse_boundary("max_s")
+    minimum_time !== nothing && maximum_time !== nothing &&
+        minimum_time >= maximum_time &&
+        (errors["min_s"] = "min_s должен быть строго меньше max_s")
+
+    target_value = signal_analyser_payload_value(data, "target_name")
+    target_name = target_value isa AbstractString && !isempty(strip(String(target_value))) ?
+        String(strip(String(target_value))) : nothing
+    if target_name === nothing
+        errors["target_name"] = "Требуется непустая строка"
+    elseif ncodeunits(target_name) > 128
+        errors["target_name"] = "Имя не может быть длиннее 128 байт"
+    end
+    overwrite_value = signal_analyser_payload_value(data, "overwrite")
+    overwrite = overwrite_value isa Bool ? overwrite_value : nothing
+    overwrite === nothing && (errors["overwrite"] = "Требуется boolean")
+
+    isempty(errors) || throw(SignalAnalyserValidationError(
+        "Некорректный запрос обрезки сигнала",
+        errors,
+    ))
+    CropSignalCommand(
+        revision::Int,
+        source_id::String,
+        minimum_time::Float64,
+        maximum_time::Float64,
+        target_name::String,
+        overwrite::Bool,
+    )
 end
 
 function signal_operation_error_response(err::SignalOperationProviderError)

@@ -882,18 +882,29 @@ function signal_inventory_replace_operation_target!(
     inventory_service::SignalInventoryService,
     state::SignalAnalyserState,
     source::AnalysedSignal,
-    command::DeriveSignalCommand,
-    result::SignalOperationProviderResult,
+    command::Union{DeriveSignalCommand,CropSignalCommand},
+    result::Union{SignalOperationProviderResult,CroppedSignalResult},
 )::AnalysedSignal
     target_index = findfirst(signal -> signal.name == command.target_name, state.signals)
     if target_index === nothing
+        series = result isa CroppedSignalResult ?
+            WorkspaceSignalSeries(
+                result.values,
+                source.sample_rate_hz,
+                result.is_complex,
+                true,
+            ) : WorkspaceSignalSeries(
+                result.values,
+                source.sample_rate_hz,
+                result.is_complex,
+            )
         added_names = signal_inventory_add_candidates!(
             inventory_service,
             state,
             WorkspaceSignalCandidate[
                 WorkspaceSignalCandidate(
                     command.target_name,
-                    WorkspaceSignalSeries(result.values, source.sample_rate_hz, result.is_complex),
+                    series,
                     source.color,
                 ),
             ],
@@ -932,6 +943,69 @@ function signal_inventory_replace_operation_target!(
     filter!(pair -> first(pair).signal_name != target.name, state.persistence_cache)
     signal_analyser_sync_active_display!(state, signal_analyser_active_display(state))
     replacement
+end
+
+function signal_inventory_crop_result(
+    state::SignalAnalyserState,
+    command::CropSignalCommand,
+)::Tuple{AnalysedSignal,CroppedSignalResult}
+    source = try
+        signal_inventory_signal_by_id(state, command.source_signal_id)
+    catch err
+        err isa SignalAnalyserValidationError || rethrow()
+        throw(signal_inventory_validation_error(
+            "source_signal_id",
+            "Неизвестный идентификатор исходного сигнала",
+        ))
+    end
+    source.name == command.target_name && throw(signal_inventory_validation_error(
+        "target_name",
+        "Исходный сигнал нельзя перезаписывать результатом crop",
+    ))
+    collision = findfirst(signal -> signal.name == command.target_name, state.signals)
+    collision === nothing || command.overwrite || throw(signal_inventory_validation_error(
+        "target_name",
+        "Сигнал с таким именем уже существует",
+    ))
+
+    domain_min_s = 0.0
+    domain_max_s = signal_duration_s(source)
+    effective_min_s = max(command.min_s, domain_min_s)
+    effective_max_s = min(command.max_s, domain_max_s)
+    effective_min_s <= effective_max_s || throw(signal_inventory_validation_error(
+        "min_s",
+        "Диапазон crop не пересекает временной домен исходного сигнала",
+    ))
+    first_index = findfirst(eachindex(source.values)) do index
+        time_s = (index - 1) / source.sample_rate_hz
+        effective_min_s <= time_s <= effective_max_s
+    end
+    last_index = findlast(eachindex(source.values)) do index
+        time_s = (index - 1) / source.sample_rate_hz
+        effective_min_s <= time_s <= effective_max_s
+    end
+    (first_index === nothing || last_index === nothing) && throw(
+        signal_inventory_validation_error(
+            "min_s",
+            "Диапазон crop не содержит ни одного отсчёта исходного сигнала",
+        ),
+    )
+    values = copy(source.values[(first_index::Int):(last_index::Int)])
+    source, CroppedSignalResult(values, source.is_complex)
+end
+
+function signal_inventory_execute!(
+    service::SignalInventoryService,
+    state::SignalAnalyserState,
+    command::CropSignalCommand,
+)
+    source, result = signal_inventory_crop_result(state, command)
+    signal_inventory_replace_operation_target!(service, state, source, command, result)
+    signal_analyser_recover_time_limits_unlocked!(
+        state;
+        invalidate_outputs = false,
+        increment_state_revision = false,
+    )
 end
 
 function apply_derived_signal!(
@@ -974,6 +1048,32 @@ function apply_derived_signal!(
         snapshot["ok"] = true
         snapshot["derived_signal"] = signal_analyser_signal_payload(target)
         snapshot
+    end
+end
+
+"""Atomically publish a local, zero-origin crop through the inventory mutation seam."""
+function apply_cropped_signal!(
+    inventory_service::SignalInventoryService,
+    state::SignalAnalyserState,
+    command::CropSignalCommand;
+    lightweight::Bool = true,
+)::Dict{String,Any}
+    lock(state.lock) do
+        command.revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
+            command.revision,
+            state.view.state_revision,
+        ))
+        prepared = prepare_signal_inventory_mutation(
+            inventory_service,
+            state,
+            command;
+            lightweight = lightweight,
+        )
+        target = signal_by_name(prepared.state, command.target_name)
+        publish_signal_inventory_mutation!(state, prepared)
+        prepared.snapshot["ok"] = true
+        prepared.snapshot["derived_signal"] = signal_analyser_signal_payload(target)
+        prepared.snapshot
     end
 end
 

@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140 / TASK-0141 / TASK-0142 / TASK-0143 / TASK-0144`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140 / TASK-0141 / TASK-0142 / TASK-0143 / TASK-0144 / TASK-0145 / TASK-0146 / TASK-0148 / TASK-0150 / TASK-0151 / TASK-0152`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `48`
+- Design version: `54`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V48 is the current integration-safe package for the accepted Signal Analyser
+V54 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -59,12 +59,25 @@ TASK-0130 graph-cursor extension:
     active-display settings and the first committed render are all ready; failures
     become one sanitized Retry state. Pane outputs remain behind pane loaders.
 16. Plot relayout, in-plot sliders and Area/Screen `Диапазоны` controls share one
-    projected active-pane range, with linked-pane propagation, settled autosave
-    and double-click Auto reset.
+    frontend-only active-pane viewport mirror with linked Plotly propagation and
+    true double-click autorange; viewport numbers never publish settings.
+17. The existing Measurements eye menu adds initially hidden cursor-coordinate
+    columns `X1 / Y1 / X2 / Y2 / ΔX / ΔY`, enabled strictly by the active
+    Time/Spectrum pane's off/single/dual cursor mode and updated live per row.
+18. The existing Graph section adds per-pane persisted `Подписывать оси`
+    immediately after `Показывать легенду`; it toggles only semantic X/Y and
+    applicable colorbar title text, defaulting on.
+19. Native Plotly hover tooltip/popover is suppressed for every trace and plot
+    type while zoom, drag, cursor overlays/readouts and Measurements cursor
+    columns remain interactive.
+20. A dual-cursor Time pane exposes one compact header action before the plot
+    type/overflow controls. It opens the existing-style trim dialog and creates
+    a rebased signal from the inclusive cursor interval without changing source.
 
-The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
-transaction implementation, Plotly payloads, sample API endpoint mechanics and
-session serialization remain outside Designer ownership.
+The exact DSP math, Engee/EngeeDSP call selection, revision transaction
+implementation, Plotly payload construction, sample API mechanics and session
+serialization remain outside Designer ownership. TASK-0152 defines only the
+required `/api/signals/crop` transport boundary and result semantics.
 
 V32 preserves the production-faithful shell and all accepted v31 surfaces. It
 adds the approved compact signal-color popover and corrects two missing
@@ -624,6 +637,178 @@ entry baseline or production transfer inputs.
   skipped because no new tokens, component geometry, zone size or resize rule
   was introduced. Figma reference status: `not_required`.
 
+## Exact delta v48 → v49
+
+- Every busy/loading surface keeps the standard arrow cursor. The Signal color
+  picker busy state, exact-pane loader, display-canvas loader and global
+  bootstrap overlay now declare the standard cursor; transferable current
+  sources contain no wait/progress cursor declarations.
+- Spinner geometry, color, continuous rotation and reduced-motion duration are
+  unchanged. Pointer blocking, inert application state, disabled controls,
+  `aria-busy`, overlay priority, lifecycle tokens, loading/error copy and all
+  request behavior are unchanged.
+- Exact modified transfer sources are
+  `frontend-source/integration/css/task-0118-color-picker.css`,
+  `frontend-source/integration/css/task-0139-loading-overlays.css` and
+  `frontend-source/integration/css/task-0143-bootstrap-loader.css`.
+- Applied skill: `designer/designer-workflow`. Visual-system, Figma, Engee Apps,
+  composition and sizing were skipped because this revision changes no visual
+  component, geometry, overlay composition or viewport rule. Figma reference
+  status: `not_required`.
+
+## Exact delta v49 → v50
+
+- Frontend transfer audit found one additional legacy production selector not
+  previously represented in current: `.settings-apply.is-applying:disabled,
+  .settings-apply.is-pending:disabled` still declared a wait cursor.
+- `frontend-source/integration/css/task-0145-standard-busy-cursor.css` is the
+  exact transfer source for replacing only that selector's cursor declaration
+  with the standard cursor. It is a replacement instruction, not an appended
+  duplicate override.
+- Autosave state colors, opacity, disabled state, spinner/pseudo-element,
+  serialized publication behavior and every other V49 surface remain unchanged.
+
+## Exact delta v50 → v51
+
+- The exact legacy settings-autosave busy selector remains mapped to
+  `cursor: default`; every transferable busy/loading source therefore uses the
+  standard cursor and contains no `wait` or `progress` declaration.
+- A settings `Пределы X` drag updates the existing Plotly host only through
+  in-place `Plotly.relayout`. It cannot rebuild/replace the host, resize the
+  pane, write pane/plot width, height or overflow, or create a transient pane
+  scrollbar.
+- The exact range row, both numeric inputs, slider, handles and Plotly host are
+  captured at generation start and retain node identity, visibility and geometry
+  through drag preview, 150ms settled publication, accepted settings, output
+  pending and ready. State is patched in place; settings rerender/remount is
+  forbidden during this lifecycle.
+- Settings gestures and graph relayouts use one monotonic per-range generation.
+  Double-click creates the newest generation atomically, clears explicit draft
+  and accepted intent, blanks both numeric inputs to Auto, restores handles to
+  the full domain, applies autorange and publishes exactly one Auto payload.
+  Provider/settings/output accepts must echo the generation; older accepts and
+  explicit values arriving after the Auto generation are ignored.
+- Manual graph zoom/pan stays an immediate selected-unit projection into the
+  same settings nodes. It remains a viewport projection, not an explicit hard
+  range after Auto reset; the reset's programmatic relayout cannot repin the
+  previous interval. V46 endpoint validation, link scopes and Plotly log
+  coordinate conversion are unchanged.
+- Exact transferable controller:
+  `frontend-source/integration/js/task-0146-range-lifecycle.js`. Deterministic
+  regression covers DOM identity, no-overflow relayout, latest-reset-wins and
+  live-zoom-after-Auto guards in
+  `evidence/interaction-regression-v51-task0143-0146.json`.
+- Applied skill: `designer/designer-workflow`. Visual-system, Figma, Engee Apps,
+  composition and sizing were skipped because this is a lifecycle correction
+  with unchanged components, tokens and geometry. Figma reference status:
+  `not_required`.
+
+## Exact delta v51 → v52
+
+- Area/Screen numeric range fields and sliders are now only frontend mirrors of
+  the active Plotly viewport. Input/drag changes use in-place Plotly relayout;
+  Plotly zoom/pan projects back into the same nodes. They never call
+  `settings.publishRange`, `/api/settings`, output invalidation/recalculation,
+  DSP, `state_revision` or session persistence. Axis-link flags remain ordinary
+  persisted settings, while linked viewport movement remains frontend relayout.
+- The shared range generation and exact DOM identity contracts remain. A
+  double-click ignores mirrored numbers, cancels older preview/settle work,
+  requests true Plotly autorange/full domain and reprojects blank Auto inputs
+  plus full-domain handles. With no backend range publication, an accepted
+  settings/output response cannot restore the old viewport.
+- The existing Measurements three-dot eye menu adds `X1`, `Y1`, `X2`, `Y2`,
+  `ΔX`, `ΔY`; all six start hidden. Cursor off or an ineligible pane disables
+  and hides all six. Single cursor enables only X1/Y1. Dual cursors enable all.
+  When mode drops, newly ineligible visible columns disappear immediately while
+  their pane-local frontend visibility intent is retained and restored if that
+  pane returns to an eligible mode.
+- Cursor columns update from the active pane controller on every cursor move.
+  Each measurement row resolves its `legendgroup` group key and uses the first
+  visible non-overlay trace with the exact same `legendgroup` in Plotly data
+  order. Y1/Y2 use that trace's nearest sample to cursor X;
+  `ΔX = X2 - X1` and `ΔY = Y2 - Y1`. Headers/cells use the current X/Y axis
+  units and the existing seven-significant-digit/scientific numeric convention.
+  No API, DSP, settings, session or revision state is involved.
+- Disabled menu rows use the existing 28px eye-menu geometry, `eye-off.svg`,
+  muted disabled state, native `disabled` plus `aria-disabled`; enabled rows
+  retain the existing click/Enter/Space toggle, roving focus, Escape restoration
+  and outside-close behavior. The table retains its current horizontal scroll.
+- Exact sources are
+  `frontend-source/integration/js/task-0148-measurement-cursor-columns.js`,
+  `frontend-source/integration/css/task-0148-measurement-cursor-columns.css`,
+  updated cursor subscription source
+  `frontend-source/integration/js/task-0130-graph-cursors.js`, and the revised
+  frontend-only viewport helpers for TASK-0144/0146.
+- `Подписывать оси` is the exact per-pane persisted boolean field
+  `display.show_axis_labels`, default `true` to preserve current behavior. It is
+  the next checkbox after `display.show_legend` in the same `График` group.
+  Checked restores provider-authored semantic titles: Time uses Time/Amplitude,
+  Spectrum uses Frequency and the current magnitude/power contract, Spectrogram
+  uses Time/Frequency plus its power colorbar, and Persistence uses
+  Frequency/Power plus probability colorbar. Unchecked clears only
+  `xaxis.title.text`, `yaxis.title.text` and applicable
+  `colorbar.title.text`; axes, ticks, grid, colorbar, margins and data remain.
+  The title change is relayout/restyle-only and persists without output/DSP
+  invalidation.
+- All accepted Plotly payloads and subsequently added overlay traces enforce
+  `layout.hovermode=false`, `hoverinfo='skip'` and `hovertemplate=null`.
+  Standard unified-X/closest hover labels therefore never appear on Time,
+  Spectrum, Spectrogram or Persistence. This does not change dragmode, zoom,
+  pointer capture, pane cursors, cursor readout or Measurements projections.
+- Exact shared source and regression are
+  `frontend-source/integration/js/task-0150-0151-axis-labels-hover.js` and
+  `evidence/interaction-regression-v52-task0150-0151.json`.
+- Applied skills: `designer/designer-workflow`,
+  `designer/data-entry-and-inspection` and
+  `designer/output-and-visualization`. Visual-system, Figma, Engee Apps,
+  composition and sizing were skipped because the existing table, menu, icons,
+  proportions, zones and viewports are unchanged. Figma reference status:
+  `not_required`.
+
+## Exact delta v52 → v53
+
+- A pane header gains one existing compact icon-button immediately before the
+  plot-type selector/overflow controls only when the active pane is Time, its
+  cursor mode is dual, its main signal is valid and both snapped cursor X values
+  are finite. Every ineligible state hides the action with no reserved width.
+- The action reuses `function.svg` and the existing signal-operation dialog
+  geometry. It opens `Обрезать сигнал по курсорам` with read-only source and
+  sorted inclusive cursor interval, required empty `Имя нового сигнала`, the
+  standard `Затирать сигнал с таким именем` checkbox, `Отмена` and `Создать`.
+- Submit converts the sorted cursor interval from current Time-axis units to
+  canonical seconds and sends the exact payload `{state_revision,
+  source_signal_id, min_s, max_s, target_name, overwrite}` to
+  `POST /api/signals/crop` through the revision-safe signal mutation queue.
+  Sample-index resolution, validation/clamping, inclusive selection, retained
+  sampling rate/data type and zero-based output time are backend-owned.
+- Busy state keeps the same modal controls and values mounted, disables them in
+  place and blocks close. Sanitized typed 400/404/409/422/provider failures stay
+  recoverable in the dialog. Success closes only after the returned signal or
+  authoritative inventory is accepted into `Сигналы`.
+- Stable selectors and cleanup hooks are enumerated in `ui-contract.yaml` for
+  fully visible E2E execution. Pane removal/type/main/mode invalidation hides the
+  action, cancels/detaches pane state and rejects stale UI completion.
+- Exact sources are
+  `frontend-source/integration/js/task-0152-cursor-trim-signal.js`,
+  `frontend-source/integration/html/dialogs/signal-trim.fragment.html` and
+  `evidence/interaction-regression-v54-task0152.json`.
+- Existing modal/button/icon patterns are reused; no new tokens, geometry or
+  Figma decision is introduced. Figma reference status: `not_required`.
+
+## Exact delta v53 → v54
+
+- Corrected only the TASK-0152 provider seam to the accepted endpoint
+  `POST /api/signals/crop`.
+- The frontend request now contains exactly `state_revision`,
+  `source_signal_id`, sorted canonical-second `min_s`/`max_s`, `target_name`
+  and `overwrite`. Display/pane ids, selected-unit interval objects, sample
+  indices and `time_origin` are absent.
+- The backend owns range validation/clamping, inclusive sample resolution,
+  metadata retention and time rebasing. UI wording, action eligibility, modal,
+  busy continuity, typed errors, focus and cleanup remain unchanged.
+- Corrected bounded evidence:
+  `evidence/interaction-regression-v54-task0152.json`.
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -828,11 +1013,16 @@ override the successful v32 node-specific read above.
 |---|---|---|---|---|
 | Settings tab | click/keyboard | One page selected; footer remains shared | default, hover, pressed, selected, focus-visible, hidden-inapplicable | fixed 32px row, horizontal overflow only |
 | Link checkbox | change | Corresponding limits group moves Area ↔ Screen immediately | unchecked, hover, checked, focus-visible, disabled | settings body owns vertical scroll |
-| Limits fields/slider | type/select unit/drag/double-click | Visible numbers use selected units; canonical seconds/Hz persist; empty means auto; double-click clears both bounds | default, hover, focus, drag, dirty, invalid | no geometry change between scopes |
+| Limits fields/slider | type/select unit/drag/double-click | Visible numbers mirror the active Plotly viewport in selected units; nothing persists; double-click performs true Auto/full-domain | default, hover, focus, drag, viewport-preview, invalid | stable nodes and geometry; no API/output lifecycle |
 | Plot slider pane-menu item or Area checkbox | change | Both controls synchronize immediately and the slider preview changes without remount; autosave persists the same pane draft | unchecked, checked, focus | pane-local, both sliders may coexist |
 | `Курсор` / `Два курсора` menu row | click/keyboard | Selects one mutually exclusive pane-local mode; clicking the active row turns it off | default, hover, focus-visible, checked, disabled | menu closes; no API, autosave or cross-pane state |
 | Graph cursor line | pointer drag / Arrow / Home / End | Snaps to nearest visible X sample/bin and updates the overlaid X/ΔX/trace readout | default, hover, focus-visible, dragging, clamped | constrained to current Plotly plot rectangle; consumes only its own gesture |
 | Graph relayout/refresh with cursors | zoom/pan/linked-axis relayout | Existing cursor is retained or clamped to nearest sample inside the new visible X range | ready, clamped, unavailable | no cursor position/mode propagation to linked panes |
+| Measurements cursor columns | three-dot eye menu / cursor update | Off hides/disables all; single enables X1/Y1; dual enables all six; cells update from first exact-legendgroup visible trace | hidden, disabled, visible, live | pane-local intent; table remains horizontal scroll owner |
+| `Подписывать оси` | change | Clear/restore semantic X/Y and applicable colorbar title text only | checked, unchecked, applying-disabled | per-pane persisted; no output/DSP invalidation |
+| Plot graph surface | pointer hover | Native Plotly unified/closest tooltip remains absent for every plot type | ready, zoom, pan, cursor | cursor overlay/readout remains available |
+| Dual-cursor Time trim action | click/keyboard | Open operation-style trim modal with source/interval read-only and required target name | hidden-ineligible, default, focus, modal-open | inserted before plot type/overflow only while eligible; no reserved width otherwise |
+| Cursor trim submit | click | Busy keeps nodes/values; typed errors stay open; success closes after returned signal appears | invalid, busy, typed-error, success | body portal singleton; idle close restores header trigger |
 | Display/pane name | input | Draft appears in tab/header/context in the same frame; autosave persists it; stable id unchanged | pristine, dirty, invalid, applying, applied | ellipsis in tabs/header |
 | Signal row | plain LMB outside controls/actions | Makes row `main_signal`; ensures checkbox ON; never toggles it OFF | white, grey-hover, main-blue, checkbox-checked/unchecked, busy | fixed 32px row; no geometry shift |
 | Signal checkbox | direct click/change | Adds/removes only that graph trace; never changes `main_signal`; pending keeps the same visible node and checked state, disabled in place | unchecked, checked, disabled, busy; row blue remains independent | fixed 16px control; no row geometry shift |
@@ -975,8 +1165,12 @@ screenshot because shell/menu geometry is inherited unchanged from v41.
 | `integration/js/task-0138-values-columns.js` | samples renderer/menu/event branches in `public/js/app.js` | integrate helper unchanged | UI projects provider fields only, fixed base/optional order, frontend visibility map, no API call or calculation |
 | `integration/js/task-0139-ui-inventory.js` | sample visibility initialization + signal-operation inventory in `public/js/app.js` | integrate helper unchanged | Three optional columns all hidden; no square_root UI; filter FFT only from operation selector |
 | `integration/css/task-0139-loading-overlays.css` | `public/css/app.css` | append once | Existing loader tokens; exact-pane and display-canvas anchors; layout overlay suppresses pane overlays |
-| `integration/js/task-0140-plot-autoscale.js` | existing plot default capture/cleanup/double-click branches in `public/js/app.js` | integrate helper unchanged | Preserve current baseline for all four signal-bearing plot types; relayout clicked host only |
+| `integration/js/task-0140-plot-autoscale.js` | existing plot identity/cleanup/double-click branches in `public/js/app.js` | integrate helper unchanged | True Plotly autorange for both spatial axes; clear frontend mirrors; only enabled frontend link propagation; preserve heatmap color range |
 | `integration/js/task-0139-loading-overlays.js` | settings/layout/output lifecycles in `public/js/app.js` | integrate controller unchanged | Begin before mutation, settle current token only at ready/empty/error; sync after workspace render |
+| `integration/js/task-0144-synchronized-ranges.js` + `task-0146-range-lifecycle.js` | Plotly relayout and existing Area/Screen range renderers | integrate helpers unchanged | Frontend viewport only; stable nodes/generation; no settings/API/output/DSP/revision/session publication |
+| `integration/css/task-0148-measurement-cursor-columns.css` + `integration/js/task-0148-measurement-cursor-columns.js` | existing Measurements table and three-dot eye menu | append/integrate unchanged | Six hidden pane-local intents; cursor mode eligibility; exact legendgroup first visible trace |
+| `integration/js/task-0150-0151-axis-labels-hover.js` | Graph settings inventory and every Plotly payload/overlay-trace path | integrate unchanged | Per-pane title checkbox, title-text-only updates, hovermode false and trace hover disabled |
+| `integration/html/dialogs/signal-trim.fragment.html` + `integration/js/task-0152-cursor-trim-signal.js` | pane header, cursor subscription, body modal portal, signal mutation queue | integrate unchanged singleton/helper | Time dual-cursor eligibility; inclusive sorted interval; busy continuity; typed errors; accepted inventory |
 | `integration/html/dialogs/signal-operation.fragment.html` | `public/js/app.js` runtime template → `document.body` | integrate unchanged singleton | Never edit `public/index.html` |
 | Mock shell/zones/renderers/providers/prototype | none | design-only | Never transfer |
 
@@ -985,7 +1179,8 @@ Production selectors are fixed: `[data-testid=settings-tabs]`,
 `[data-inspector-content]`, `[data-signal-rows]`, `.signal-row-actions`,
 `[data-testid=display-overflow-menu]`, `[data-plot-range-slider]`,
 `[data-plot-amplitude-slider]`, `[data-plot-cursor-mode]`,
-`[data-pane-host]`, `.plot-canvas` and `document.body`.
+`[data-pane-host]`, `.plot-canvas`, `[data-testid=pane-trim-signal]`,
+`[data-testid=signal-trim-layer]` and `document.body`.
 Features extend those hosts; they do not replace their parents or bootstrap.
 
 ### Integration seams
@@ -996,6 +1191,9 @@ Features extend those hosts; they do not replace their parents or bootstrap.
 | `settings-autosave-provider` | Serialized autosave for Signal, Area and Screen; Extrema calculation remains explicit | same | existing `public/js/settings.js` + `public/js/app.js` |
 | `pane-slider-visibility` | One active-pane draft projected into pane menu and Area checkboxes; both synchronize immediately | UI mock | existing `public/js/app.js` + inventory in `public/js/settings.js` |
 | `pane-graph-cursors` | Existing menu gains single/dual check rows; pane-local off/single/dual controller snaps and clamps overlay cursors, preserving finite `X = 0` as a valid nearest candidate | v37 UI fragment + bridge | existing `public/js/app.js` menu sync/click + Plotly react/relayout/clear lifecycle |
+| `measurement-cursor-columns` | Existing Measurements eye menu gains six mode-gated frontend-only columns with signed deltas | v52 bounded regression | existing `public/js/app.js` cursor subscription + Measurements renderer/menu |
+| `pane-axis-labels-and-hover-policy` | Persist per-pane title visibility; change title text only; never render native Plotly hover labels | v52 bounded regression | existing `public/js/settings.js` inventory + `public/js/app.js` Plotly queue |
+| `cursor-trim-signal` | Eligible dual-cursor Time action creates a rebased inclusive signal segment | v53 bounded regression | `public/js/api.js` trim provider + existing `public/js/app.js` signal mutation/modal lifecycle |
 | `linked-axis-draft` | Immediate scope relocation, values retained | UI mock | existing `public/js/app.js` + `public/js/settings.js` |
 | `projected-spectrum-extrema` | Ready/loading/error rows and marker coordinates already projected into selected units; UI does no DSP | mock | `public/js/api.js` → existing `public/js/app.js` Plotly queue |
 | `signal-summary-provider` | Backend-authored summary view model | mock | `public/js/api.js` → existing `public/js/app.js` |
@@ -1011,8 +1209,9 @@ Features extend those hosts; they do not replace their parents or bootstrap.
 | `signal-color-draft` | HEX/Jet draft preview; popover Apply updates Signal draft and triggers metadata autosave | v32 UI fragment | existing Signal editor autosave |
 | `legacy-import-export-provider` | Preserve existing v26 actions/dialogs | none | `public/js/native-session-io.js` |
 
-No integration fragment contains endpoint paths, DSP math, polling,
-authoritative revision state or Engee function names. `public/index.html`,
+Only TASK-0152 declares its exact `/api/signals/crop` provider handoff; no
+integration fragment implements DSP math, polling, authoritative revision state
+or Engee function names. `public/index.html`,
 existing JS module identities, shell geometry and Plotly host identity are
 invariants. `[data-pane-host]` may be updated only through existing Plotly
 react/relayout and the existing amplitude-slider overlay path; host DOM

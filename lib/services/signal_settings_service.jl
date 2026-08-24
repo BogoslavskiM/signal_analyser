@@ -183,6 +183,7 @@ const SIGNAL_SETTINGS_FIELD_SECTIONS = Dict(
     "display.name" => "display.view",
     "pane.name" => "display.view",
     "display.show_legend" => "display.view",
+    "display.show_axis_labels" => "display.view",
     "time.normalize_y" => "time.options",
     "time.show_markers" => "time.options",
     "time.units" => "time.time_limits",
@@ -328,6 +329,10 @@ const SIGNAL_SETTINGS_FIELDS = (
     ),
     signal_settings_field_definition(
         "display.show_legend", "display", "Show legend", "boolean", true;
+        effect_status = "effective_presentation", effect_reason = "", visibility_policy = :always,
+    ),
+    signal_settings_field_definition(
+        "display.show_axis_labels", "display", "Show axis labels", "boolean", true;
         effect_status = "effective_presentation", effect_reason = "", visibility_policy = :always,
     ),
     signal_settings_field_definition(
@@ -934,8 +939,10 @@ function signal_settings_field_value(
     field_id::AbstractString,
 )
     stored = display.stored_settings
+    field_id in SIGNAL_SETTINGS_VIEWPORT_FIELD_IDS && return nothing
     field_id == "display.name" && return display.name
     field_id == "display.show_legend" && return stored.display.show_legend
+    field_id == "display.show_axis_labels" && return stored.display.show_axis_labels
     field_id == "time.normalize_y" && return stored.time.normalize_y
     field_id == "time.show_markers" && return stored.time.show_markers
     field_id == "time.units" && return SIGNAL_TIME_UNIT_NAMES[stored.time.units]
@@ -1028,7 +1035,9 @@ function signal_settings_field_value(
     display::SignalAnalyserDisplayState,
     field_id::AbstractString,
 )
-    if field_id == "pane.name"
+    if field_id in SIGNAL_SETTINGS_VIEWPORT_FIELD_IDS
+        return nothing
+    elseif field_id == "pane.name"
         layout = signal_analyser_layout_by_display_id(state, display.id)
         return signal_display_active_pane(layout).name
     elseif field_id == "time.x_limits"
@@ -1138,7 +1147,8 @@ function signal_settings_document_unlocked(
         for field in fields
             field_id = String(field["id"])
             entry = get((draft::SignalSettingsDisplayDraft).entries, field_id, nothing)
-            entry === nothing || (field["value"] = signal_settings_draft_wire_value(
+            entry === nothing || field_id in SIGNAL_SETTINGS_VIEWPORT_FIELD_IDS ||
+                (field["value"] = signal_settings_draft_wire_value(
                 (entry::SignalSettingDraftEntry).value,
             ))
             field["error"] = get(field_errors, field_id, "")
@@ -1178,55 +1188,32 @@ function signal_settings_document_unlocked(
         unit_entry === nothing || (unit_entry.value isa SignalTimeUnitPreference &&
             (screen_time_unit = unit_entry.value))
     end
-    screen_runtime_time_limits = signal_settings_screen_time_limits(
-        state,
-        projected_display,
-        time_source,
-    )
-    screen_full_time_limits = projected_display.stored_settings.time.link_time ?
-        signal_settings_full_time_range(state, projected_display) :
-        signal_settings_full_time_range(state, SignalDisplayPaneState[time_source])
-    screen_time_limits = signal_settings_time_limits_wire_value(
-        screen_runtime_time_limits,
-        screen_full_time_limits,
-        screen_time_unit,
-    )
     screen_frequency_unit = signal_settings_pane_frequency_units(spectrum_source)
     if draft !== nothing
         entry = get((draft::SignalSettingsDisplayDraft).entries, "spectrum.frequency_units", nothing)
         entry === nothing || (entry.value isa SignalFrequencyUnitPreference &&
             (screen_frequency_unit = entry.value))
     end
-    screen_frequency_factor = signal_hertz_per_frequency_unit(screen_frequency_unit)
-    screen_frequency_limits = signal_settings_pane_frequency_limits(spectrum_source)
-    projected_frequency_limits = screen_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits ?
-        Dict{String,Any}(
-            "min" => (screen_frequency_limits::ExplicitSignalSpectrumFrequencyLimits).min_hz /
-                screen_frequency_factor,
-            "max" => (screen_frequency_limits::ExplicitSignalSpectrumFrequencyLimits).max_hz /
-                screen_frequency_factor,
-        ) : nothing
     screen_values = Dict{String,Any}(
         "time.link_time" => projected_display.stored_settings.time.link_time,
         "time.link_amplitude" => projected_display.stored_settings.time.link_amplitude,
         "time.units" => SIGNAL_TIME_UNIT_NAMES[screen_time_unit],
-        "time.x_limits" => screen_time_limits,
-        "time.y_limits" => signal_settings_range_payload(amplitude_source.stored_settings.time.y_limits),
+        "time.x_limits" => nothing,
+        "time.y_limits" => nothing,
         "spectrum.link_frequency" => projected_display.stored_settings.spectrum.link_frequency,
         "spectrum.link_magnitude" => projected_display.stored_settings.spectrum.link_magnitude,
         "spectrum.frequency_units" => SIGNAL_FREQUENCY_UNIT_NAMES[screen_frequency_unit],
-        "spectrum.frequency_limits" => projected_frequency_limits,
+        "spectrum.frequency_limits" => nothing,
         "spectrum.frequency_scale" => SIGNAL_SPECTRUM_FREQUENCY_SCALE_NAMES[
             signal_settings_pane_frequency_scale(spectrum_source)
         ],
-        "spectrum.y_limits" => signal_settings_range_payload(
-            signal_settings_pane_magnitude_limits(spectrum_source),
-        ),
+        "spectrum.y_limits" => nothing,
     )
     if draft !== nothing
         for field_id in keys(screen_values)
             entry = get((draft::SignalSettingsDisplayDraft).entries, field_id, nothing)
-            entry === nothing || (screen_values[field_id] = signal_settings_draft_wire_value(
+            entry === nothing || field_id in SIGNAL_SETTINGS_VIEWPORT_FIELD_IDS ||
+                (screen_values[field_id] = signal_settings_draft_wire_value(
                 (entry::SignalSettingDraftEntry).value,
             ))
         end
@@ -2255,7 +2242,11 @@ function signal_settings_apply_stored_value(
     value = command.value
     id == "display.show_legend" && return signal_settings_replace(
         stored,
-        display = SignalDisplayPreferences(value),
+        display = SignalDisplayPreferences(value, stored.display.show_axis_labels),
+    )
+    id == "display.show_axis_labels" && return signal_settings_replace(
+        stored,
+        display = SignalDisplayPreferences(stored.display.show_legend, value),
     )
     id == "time.normalize_y" && return signal_settings_replace(
         stored,
@@ -2388,14 +2379,23 @@ function signal_settings_apply_stored_value(
     stored
 end
 
-const SIGNAL_SETTINGS_EFFECTIVE_FIELD_IDS = Set([
+"""Legacy settings IDs retained on the wire as browser-owned Plotly mirrors."""
+const SIGNAL_SETTINGS_VIEWPORT_FIELD_IDS = Set([
     "time.x_limits",
+    "time.y_limits",
     "spectrum.frequency_limits",
+    "spectrum.y_limits",
+    "spectrogram.frequency_limits",
+    "spectrogram.power_limits",
+    "persistence.frequency_limits",
+    "persistence.power_limits",
+    "persistence.density_limits",
+])
+
+const SIGNAL_SETTINGS_EFFECTIVE_FIELD_IDS = Set([
     "spectrum.frequency_scale",
     "spectrum.scale",
     "spectrum.leakage",
-    "spectrogram.frequency_limits",
-    "spectrogram.power_limits",
     "spectrogram.frequency_scale",
     "spectrogram.scale",
     "spectrogram.leakage",
@@ -2403,27 +2403,20 @@ const SIGNAL_SETTINGS_EFFECTIVE_FIELD_IDS = Set([
     "persistence.leakage",
 ])
 
-const SIGNAL_SETTINGS_BACKEND_PRESENTATION_FIELD_IDS = Set([
-    "persistence.density_limits",
-])
+const SIGNAL_SETTINGS_BACKEND_PRESENTATION_FIELD_IDS = Set{String}()
 
 """Only these product-effective settings participate in explicit calculation Apply."""
 const SIGNAL_SETTINGS_EXPLICIT_APPLY_FIELD_IDS = Set([
     "display.name",
     "pane.name",
     "time.units",
-    "time.x_limits",
-    "time.y_limits",
     "time.link_time",
     "time.link_amplitude",
-    "spectrum.frequency_limits",
     "spectrum.frequency_units",
-    "spectrum.y_limits",
     "spectrum.link_frequency",
     "spectrum.link_magnitude",
     "spectrum.scale",
     "spectrum.leakage",
-    "spectrogram.frequency_limits",
     "spectrogram.scale",
     "spectrogram.leakage",
     "spectrogram.overlap_percent",
@@ -2433,6 +2426,7 @@ const SIGNAL_SETTINGS_EXPLICIT_APPLY_FIELD_IDS = Set([
 """These controls publish immediately and never make calculation Apply dirty."""
 const SIGNAL_SETTINGS_IMMEDIATE_PRESENTATION_FIELD_IDS = Set([
     "display.show_legend",
+    "display.show_axis_labels",
     "time.normalize_y",
     "time.show_markers",
 ])
@@ -2444,6 +2438,7 @@ function signal_settings_apply_command(
 )::SignalAnalyserDisplayState
     id = command.field_id
     value = command.value
+    id in SIGNAL_SETTINGS_VIEWPORT_FIELD_IDS && return display
     try
         if id == "display.name"
             return signal_settings_replace(display, name = value)
@@ -2806,6 +2801,7 @@ function signal_settings_draft_projection_unlocked(
     draft === nothing && return prospective, errors
 
     for definition in service.catalog.fields
+        definition.id in SIGNAL_SETTINGS_VIEWPORT_FIELD_IDS && continue
         entry = get((draft::SignalSettingsDisplayDraft).entries, definition.id, nothing)
         entry === nothing && continue
         visible = signal_settings_field_visible(definition, state, prospective)
@@ -2833,6 +2829,7 @@ function signal_settings_draft_projection_unlocked(
     end
 
     for definition in service.catalog.fields
+        definition.id in SIGNAL_SETTINGS_VIEWPORT_FIELD_IDS && continue
         haskey(errors, definition.id) && continue
         entry = get((draft::SignalSettingsDisplayDraft).entries, definition.id, nothing)
         entry === nothing && continue
@@ -3617,6 +3614,32 @@ function apply_signal_setting!(
         definition = signal_settings_field(service.catalog, draft_command.field_id)::SignalSettingsFieldDefinition
         display = signal_analyser_display_by_id(state, draft_command.display_id)
 
+        if draft_command.field_id in SIGNAL_SETTINGS_VIEWPORT_FIELD_IDS
+            existing_draft = signal_settings_display_draft_unlocked(
+                service,
+                state,
+                display.id;
+                create = false,
+            )
+            if existing_draft !== nothing
+                delete!(
+                    (existing_draft::SignalSettingsDisplayDraft).entries,
+                    draft_command.field_id,
+                )
+                isempty(existing_draft.entries) &&
+                    signal_settings_clear_display_draft_unlocked!(
+                        service,
+                        state,
+                        display.id,
+                    )
+            end
+            return signal_settings_update_response_unlocked(
+                service,
+                state,
+                display.id,
+            )
+        end
+
         if !(draft_command.field_id in SIGNAL_SETTINGS_EXPLICIT_APPLY_FIELD_IDS)
             command = try
                 parse_signal_setting_command(service, state, data)
@@ -3739,6 +3762,24 @@ function apply_signal_settings!(
             display.id;
             create = false,
         )
+        if draft !== nothing
+            for field_id in SIGNAL_SETTINGS_VIEWPORT_FIELD_IDS
+                delete!((draft::SignalSettingsDisplayDraft).entries, field_id)
+            end
+            if isempty(draft.entries)
+                signal_settings_clear_display_draft_unlocked!(service, state, display.id)
+                authoritative_settings = signal_settings_document_unlocked(
+                    service,
+                    state,
+                    display,
+                )
+                return Dict{String,Any}(
+                    "success" => true,
+                    "state_revision" => state.view.state_revision,
+                    "settings" => authoritative_settings,
+                )
+            end
+        end
         draft_field_ids = draft === nothing ? Set{String}() :
             Set(keys((draft::SignalSettingsDisplayDraft).entries))
         affects_output = any(

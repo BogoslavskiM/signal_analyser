@@ -111,11 +111,12 @@ module.exports = async function testLowerInspectorSearchContinuity(assert) {
   const pane = { id:"pane-1" };
   const measurementModel = {
     activePane:"pane-1", measurementSearch:"", state:{ signals:[{ name:"Гармонический сигнал", color:"#1686c3" }, { name:"Белый шум", color:"#999999" }] },
+    measurementCursorSnapshotByPane:{},
     measurementsRecord:{ displayId:"display-1", paneId:"pane-1", measurementRows:[{ signal_name:"Гармонический сигнал", items:[] }, { signal_name:"Белый шум", items:[] }] }
   };
   const renderMeasurements = compile(measurementSource, "renderMeasurementsInspector",
-    ["activeDisplay", "paneById", "model", "q", "document", "esc", "measurementValue", "signalColor"],
-    [() => display, () => pane, measurementModel, () => null, document, esc, (item, key) => item && item[key] != null ? String(item[key]) : "—", (signal) => signal.color]);
+    ["activeDisplay", "paneById", "model", "q", "document", "esc", "measurementValue", "signalColor", "paneRuntimeKey", "measurementCursorColumnsController", "measurementCursorColumnsHelper"],
+    [() => display, () => pane, measurementModel, () => null, document, esc, (item, key) => item && item[key] != null ? String(item[key]) : "—", (signal) => signal.color, (displayId, paneId) => displayId + "::" + paneId, () => null, () => null]);
   renderMeasurements(measurementBody);
   document.activeElement = measurementInput;
   const measurementIdentity = measurementInput;

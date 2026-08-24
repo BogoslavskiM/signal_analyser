@@ -120,6 +120,13 @@
         body: JSON.stringify(payload),
       });
     },
+    cropSignal: function (payload) {
+      return request("./api/signals/crop", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    },
     settings: function (displayId) {
       return request("./api/settings?display_id=" + encodeURIComponent(displayId));
     },

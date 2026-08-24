@@ -311,11 +311,14 @@ Base.:(==)(left::SignalPowerBinsPreference, right::SignalPowerBinsPreference) =
 
 struct SignalDisplayPreferences
     show_legend::Bool
+    show_axis_labels::Bool
 end
 
-SignalDisplayPreferences() = SignalDisplayPreferences(true)
+SignalDisplayPreferences(show_legend::Bool) = SignalDisplayPreferences(show_legend, true)
+SignalDisplayPreferences() = SignalDisplayPreferences(true, true)
 Base.:(==)(left::SignalDisplayPreferences, right::SignalDisplayPreferences) =
-    left.show_legend == right.show_legend
+    left.show_legend == right.show_legend &&
+    left.show_axis_labels == right.show_axis_labels
 
 struct SignalTimePreferences
     normalize_y::Bool

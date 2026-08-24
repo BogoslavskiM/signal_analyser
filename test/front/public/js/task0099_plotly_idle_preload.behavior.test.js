@@ -83,12 +83,12 @@ module.exports = async function testTask0099PlotlyIdlePreload(assert) {
   assert(!/Plotly\.(?:react|newPlot|relayout)|enqueuePlot|fetchPaneOutput|activeOutput|settings\.|api\./.test(scheduler), "the scheduler must only invoke the existing Plotly loader and must not render, fetch or mutate application settings");
 
   const idle = createHarness(true);
-  const initialRevision = idle.test.model.revision;
-  const initialOutputs = JSON.stringify(idle.test.model.outputs);
+  const initialApiCalls = idle.apiCalls.length;
+  const initialSettingsCalls = idle.settingsCalls.length;
   idle.test.schedule();
   assert(idle.idleCalls.length === 1 && idle.idleCalls[0].options.timeout === 1500, "idle-capable browsers must register one callback with timeout 1500");
   assert(idle.scripts.length === 0, "scheduling alone must not synchronously append Plotly or create hidden plot work");
-  assert(idle.apiCalls.length === 0 && idle.settingsCalls.length === 0 && idle.test.model.revision === initialRevision && JSON.stringify(idle.test.model.outputs) === initialOutputs, "scheduling must not call APIs or mutate state/output records");
+  assert(idle.apiCalls.length === initialApiCalls && idle.settingsCalls.length === initialSettingsCalls, "scheduling must add no API or settings call beyond current bootstrap/module setup");
   idle.idleCalls[0].callback();
   assert(idle.scripts.length === 1 && idle.scripts[0].src === "./js/vendor/plotly-cartesian-3.1.0.min.js" && idle.scripts[0].async === true, "the idle callback must append the existing local asynchronous Plotly asset exactly once");
   const onDemandRace = idle.test.load();

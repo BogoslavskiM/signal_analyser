@@ -182,13 +182,13 @@ struct DeriveSignalCommand <: AbstractSignalInventoryCommand
         body::Union{Nothing,AbstractString},
     )
         revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
-        source_id = strip(String(source_signal_id))
+        source_id = String(strip(String(source_signal_id)))
         isempty(source_id) && throw(ArgumentError("Source signal id не может быть пустым"))
         operation_name = String(operation)
         operation_name in SIGNAL_DERIVED_OPERATION_NAMES || throw(ArgumentError(
             "Неподдерживаемая операция над сигналом",
         ))
-        name = strip(String(target_name))
+        name = String(strip(String(target_name)))
         isempty(name) && throw(ArgumentError("Имя производного сигнала не может быть пустым"))
         ncodeunits(name) <= 128 || throw(ArgumentError(
             "Имя производного сигнала не может быть длиннее 128 байт",
@@ -233,6 +233,52 @@ struct DeriveSignalCommand <: AbstractSignalInventoryCommand
     end
 end
 
+"""Create a new zero-origin signal from an inclusive source-time interval."""
+struct CropSignalCommand <: AbstractSignalInventoryCommand
+    revision::Int
+    source_signal_id::String
+    min_s::Float64
+    max_s::Float64
+    target_name::String
+    overwrite::Bool
+
+    function CropSignalCommand(
+        revision::Int,
+        source_signal_id::AbstractString,
+        min_s::Real,
+        max_s::Real,
+        target_name::AbstractString,
+        overwrite::Bool,
+    )
+        revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
+        source_id = String(strip(String(source_signal_id)))
+        isempty(source_id) && throw(ArgumentError("Source signal id не может быть пустым"))
+        min_s isa Bool && throw(ArgumentError("min_s должен быть числом, но не Bool"))
+        max_s isa Bool && throw(ArgumentError("max_s должен быть числом, но не Bool"))
+        minimum_time = Float64(min_s)
+        maximum_time = Float64(max_s)
+        isfinite(minimum_time) && isfinite(maximum_time) || throw(ArgumentError(
+            "Границы crop должны быть конечными числами",
+        ))
+        minimum_time < maximum_time || throw(ArgumentError(
+            "min_s должен быть строго меньше max_s",
+        ))
+        name = String(strip(String(target_name)))
+        isempty(name) && throw(ArgumentError("Имя производного сигнала не может быть пустым"))
+        ncodeunits(name) <= 128 || throw(ArgumentError(
+            "Имя производного сигнала не может быть длиннее 128 байт",
+        ))
+        new(
+            revision,
+            source_id,
+            minimum_time == 0.0 ? 0.0 : minimum_time,
+            maximum_time == 0.0 ? 0.0 : maximum_time,
+            name,
+            overwrite,
+        )
+    end
+end
+
 abstract type AbstractSignalOperationProvider end
 
 struct SignalOperationProviderResult
@@ -249,6 +295,26 @@ struct SignalOperationProviderResult
         )
         !is_complex && any(value -> !iszero(imag(value)), samples) && throw(ArgumentError(
             "Вещественный результат содержит комплексные отсчёты",
+        ))
+        new(samples, is_complex)
+    end
+end
+
+"""Local crop result; unlike Engee operations, a single sample is valid."""
+struct CroppedSignalResult
+    values::Vector{ComplexF64}
+    is_complex::Bool
+
+    function CroppedSignalResult(values::AbstractVector, is_complex::Bool)
+        samples = ComplexF64.(values)
+        !isempty(samples) || throw(ArgumentError(
+            "Выбранный диапазон должен содержать хотя бы один отсчёт",
+        ))
+        all(value -> isfinite(real(value)) && isfinite(imag(value)), samples) || throw(
+            ArgumentError("Результат crop содержит неконечные значения"),
+        )
+        !is_complex && any(value -> !iszero(imag(value)), samples) && throw(ArgumentError(
+            "Вещественный результат crop содержит комплексные отсчёты",
         ))
         new(samples, is_complex)
     end
@@ -330,9 +396,13 @@ struct WorkspaceSignalSeries
         values::AbstractVector,
         sample_rate_hz::Real,
         is_complex::Bool,
+        allow_single_sample::Bool,
     )
-        length(values) >= 2 || throw(ArgumentError(
-            "Сигнал должен содержать не менее двух отсчётов",
+        minimum_samples = allow_single_sample ? 1 : 2
+        length(values) >= minimum_samples || throw(ArgumentError(
+            allow_single_sample ?
+                "Сигнал должен содержать хотя бы один отсчёт" :
+                "Сигнал должен содержать не менее двух отсчётов",
         ))
         all(value -> value isa Number && !(value isa Bool), values) || throw(ArgumentError(
             "Отсчёты сигнала должны быть числами, но не Bool",
@@ -353,6 +423,12 @@ struct WorkspaceSignalSeries
         new(samples, rate, is_complex)
     end
 end
+
+WorkspaceSignalSeries(
+    values::AbstractVector,
+    sample_rate_hz::Real,
+    is_complex::Bool,
+) = WorkspaceSignalSeries(values, sample_rate_hz, is_complex, false)
 
 WorkspaceSignalSeries(values::AbstractVector, sample_rate_hz::Real) =
     WorkspaceSignalSeries(

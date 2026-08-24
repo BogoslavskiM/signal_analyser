@@ -18,7 +18,7 @@
   justify-content: center;
   background: rgba(248, 250, 251, 0.86);
   pointer-events: all;
-  cursor: wait;
+  cursor: default;
 }
 
 .pane-output-loading-overlay {

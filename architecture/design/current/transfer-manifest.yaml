@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 48
+design_version: 54
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -18,9 +18,9 @@ prototype_baseline:
   interaction_fixture_scope: "design-only adapters proving inherited flows, pane-local graph cursors, sample-column eye-menu reflow and the V48 bootstrap barrier against actual production DOM/API modules"
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
   pinned_hashes: evidence/production-baseline-v32.json
-  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json, evidence/interaction-regression-v46-task0142.json, evidence/interaction-regression-v48-task0143-0144.json]
+  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json, evidence/interaction-regression-v46-task0142.json, evidence/interaction-regression-v48-task0143-0144.json, evidence/interaction-regression-v51-task0143-0146.json, evidence/interaction-regression-v52-task0143-0146.json, evidence/interaction-regression-v52-task0148.json, evidence/interaction-regression-v52-task0150-0151.json, evidence/interaction-regression-v54-task0152.json]
   transfer_audit: evidence/transfer-audit-v46.json
-  result: "V48 bounded source/contract regression verifies the three-milestone bootstrap barrier, stale retry guard, sanitized error, unified range grouping, log/Auto projection and settled publication boundary."
+  result: "V54 keeps the V53 UI and corrects TASK-0152 to the accepted /api/signals/crop contract with an exact canonical-seconds payload."
 
 # Production already owns the document, boot sequence, UI modules and Plotly
 # hosts. Only the already-identical local icon inventory is copied directly;
@@ -95,7 +95,7 @@ additive_fragments:
     mode: append_once
     content_changes_allowed: false
     marker: "TASK-0118 compact Signal color picker with restored original palette"
-    scope: [anchored_popover, hex, eight_palette_swatches, exact_24px_border_box_square, uniform_4px_selection_halo, centered_proportional_tick, draft_footer]
+    scope: [anchored_popover, hex, eight_palette_swatches, exact_24px_border_box_square, uniform_4px_selection_halo, centered_proportional_tick, draft_footer, standard_busy_cursor]
   - id: task-0118-signal-color-picker-ui
     source: integration/js/task-0118-color-picker.js
     target: public/js/app.js
@@ -132,7 +132,7 @@ additive_fragments:
     mode: integrate_controller_unchanged_into_existing_pane_menu_plot_queue_and_relayout_handlers
     content_changes_allowed: false
     marker: "TASK-0130 off/single/dual snapped cursor controller"
-    scope: [install_menu_rows, pane_local_mode, snap_and_clamp, finite_zero_candidate, pointer_keyboard_drag, readout]
+    scope: [install_menu_rows, pane_local_mode, snap_and_clamp, finite_zero_candidate, pointer_keyboard_drag, readout, pane_snapshot_subscription]
     integration_points: [syncPaneMenuState, pane-menu-click-delegation, enqueuePlot-after-Plotly-react, plotly_relayouting, plotly_relayout, confirmPaneClear]
     prototype_bridge_not_transferable: prototype/task-0130-graph-cursors-bridge.js
   - id: task-0134-sample-row-window-ui
@@ -191,7 +191,7 @@ additive_fragments:
     mode: append_once_after_existing_loader_and_plot_rules
     content_changes_allowed: false
     marker: "TASK-0139 pane and display-canvas reconciliation overlays"
-    scope: [exact_pane_overlay, display_canvas_overlay, layout_priority_suppresses_pane_overlay, existing_spinner_tokens]
+    scope: [exact_pane_overlay, display_canvas_overlay, layout_priority_suppresses_pane_overlay, existing_spinner_tokens, standard_busy_cursor]
   - id: task-0139-loading-overlay-ui
     source: integration/js/task-0139-loading-overlays.js
     target: public/js/app.js
@@ -204,12 +204,12 @@ additive_fragments:
   - id: task-0140-plot-autoscale-ui
     source: integration/js/task-0140-plot-autoscale.js
     target: public/js/app.js
-    mode: integrate_helper_unchanged_into_existing_plot_default_capture_cleanup_and_double_click_relayout
+    mode: integrate_helper_unchanged_into_existing_plot_identity_cleanup_and_double_click_relayout
     content_changes_allowed: false
     marker: "TASK-0140 type-correct pane-local Plotly autoscale"
-    scope: [time_default_reset, spectrum_linear_log_reset, spectrogram_time_frequency_reset, persistence_frequency_power_reset, clicked_pane_isolation]
-    integration_points: [enqueuePlot_after_matching_current_Plotly_react, updateLayout_runtime_cleanup, bindRangeSliderDoubleClick_resetGraphRange]
-    lifecycle_invariant: "preserve graph default range/signature for every signal-bearing Time/Spectrum/Spectrogram/Persistence pane; range/amplitude slider state remains eligible only for Time/Spectrum"
+    scope: [true_plotly_autorange, time_reset, spectrum_linear_log_reset, spectrogram_time_frequency_reset, persistence_frequency_power_reset, clicked_pane_and_frontend_link_scope, viewport_mirror_clear]
+    integration_points: [enqueuePlot_after_matching_current_Plotly_react, updateLayout_runtime_cleanup, graph_double_click, bindRangeSliderDoubleClick_resetGraphRange, task_0146_resetMany]
+    lifecycle_invariant: "ignore mirrored/provider numeric limits; true autorange owns both spatial axes, clears frontend viewport mirrors, preserves heatmap color range, and may use only existing enabled frontend link flags"
     prototype_regression_not_transferable: prototype/task-0140-autoscale-regression.cjs
   - id: task-0141-linked-axes-area-sliders-ui
     source: integration/js/task-0141-linked-axes-area-sliders.js
@@ -244,7 +244,7 @@ additive_fragments:
     mode: append_once_after_existing_app_status_and_loader_rules
     content_changes_allowed: false
     marker: "TASK-0143 global application bootstrap overlay"
-    scope: [existing_app_status_singleton, whole_application_pointer_block, existing_64px_spinner_tokens, rotating_reduced_motion, centered_sanitized_retry]
+    scope: [existing_app_status_singleton, whole_application_pointer_block, existing_64px_spinner_tokens, rotating_reduced_motion, centered_sanitized_retry, standard_busy_cursor]
   - id: task-0143-bootstrap-loader-ui
     source: integration/js/task-0143-bootstrap-loader.js
     target: public/js/app.js
@@ -260,9 +260,74 @@ additive_fragments:
     mode: integrate_helper_definition_unchanged_once_then_wire_existing_app_and_settings_consumers
     content_changes_allowed: false
     marker: "TASK-0144 synchronized pane and settings ranges"
-    scope: [area_screen_single_ranges_group, units_in_parameters, relayouting_live_projection, relayout_settle, settings_to_plot, linked_projection, log_coordinates, double_click_auto_reset, v46_validation_gate]
-    integration_points: [renderSettings, renderScreenSettings, public_js_settings_range_renderer, plotly_relayouting, plotly_relayout, screenRangeSlider, amplitude_slider, range_slider_double_click, serialized_settings_autosave]
+    scope: [area_screen_single_ranges_group, units_in_parameters, relayouting_live_projection, frontend_viewport_settle, settings_to_plot, linked_frontend_relayout, log_coordinates, true_double_click_auto_reset, v46_validation_gate, no_range_persistence]
+    integration_points: [renderSettings, renderScreenSettings, public_js_settings_range_renderer, plotly_relayouting, plotly_relayout, screenRangeSlider, amplitude_slider, range_slider_double_click, frontend_viewport_commit]
     prototype_regression_not_transferable: prototype/task-0143-0144-regression.cjs
+  - id: task-0145-standard-autosave-busy-cursor
+    source: integration/css/task-0145-standard-busy-cursor.css
+    target: public/css/app.css
+    mode: replace_cursor_declaration_in_exact_existing_selector_body
+    content_changes_allowed: false
+    marker: "TASK-0145 standard autosave busy cursor"
+    selector: ".settings-apply.is-applying:disabled, .settings-apply.is-pending:disabled"
+    replacement: {property: cursor, value: default}
+    append_duplicate_selector_forbidden: true
+    preserve_properties: [border-color, background, color, opacity]
+  - id: task-0146-range-dom-generation-lifecycle
+    source: integration/js/task-0146-range-lifecycle.js
+    target: public/js/app.js
+    mode: integrate_controller_definition_unchanged_once_and_wire_existing_graph_settings_lifecycles
+    content_changes_allowed: false
+    marker: "TASK-0146 stable range DOM and latest-generation lifecycle"
+    scope: [stable_range_dom_identity, pointer_preview_without_request, raf_plotly_relayout_only, no_overflow_or_resize, terminal_150ms_frontend_commit, graph_settings_shared_generation, atomic_true_auto_reset, stale_frontend_projection_rejection, no_backend_range_lifecycle]
+    integration_points: [settings_range_pointerdown, settings_range_input, settings_range_pointerup, settings_range_change, keyboard_range_commit, plotly_relayouting, plotly_relayout, graph_double_click, settings_range_double_click, frontend_viewport_commit]
+    selectors: {range_row: "[data-setting-id$='limits']", range_slider: "[data-screen-range-slider]", pane: "[data-pane-id]", plot: "[data-pane-host]"}
+    e2e_hooks: [data-range-generation, data-range-sync-state, data-range-preview-active]
+    provider_generation_echo_required: false
+    prototype_regression_not_transferable: prototype/task-0143-0144-regression.cjs
+  - id: task-0148-measurement-cursor-column-styles
+    source: integration/css/task-0148-measurement-cursor-columns.css
+    target: public/css/app.css
+    mode: append_once_after_existing_measurement_table_and_eye_menu_rules
+    content_changes_allowed: false
+    marker: "TASK-0148 cursor-coordinate Measurements columns"
+    scope: [disabled_eye_rows, compact_cursor_cells, tabular_numeric_values]
+  - id: task-0148-measurement-cursor-column-ui
+    source: integration/js/task-0148-measurement-cursor-columns.js
+    target: public/js/app.js
+    mode: integrate_helper_unchanged_into_existing_measurements_renderer_eye_menu_and_cursor_subscription
+    content_changes_allowed: false
+    marker: "TASK-0148 mode-gated frontend-only cursor Measurements columns"
+    scope: [six_hidden_intents, off_single_dual_eligibility, exact_legendgroup_first_visible_trace, signed_deltas, current_units, disabled_menu_rows]
+    integration_points: [renderMeasurementsInspector, measurement_columns_menu_markup, measurement_columns_menu_delegation, graph_cursor_subscribe, active_pane_change]
+    prototype_regression_not_transferable: prototype/task-0148-measurement-cursor-columns-regression.cjs
+  - id: task-0150-0151-axis-labels-hover-ui
+    source: integration/js/task-0150-0151-axis-labels-hover.js
+    target: public/js/app.js
+    secondary_target: public/js/settings.js
+    mode: integrate_helper_unchanged_into_existing_graph_settings_inventory_and_plotly_payload_queue
+    content_changes_allowed: false
+    marker: "TASK-0150 axis title checkbox and TASK-0151 universal hover suppression"
+    scope: [axis_label_field_after_legend, per_pane_default_true, title_text_only_projection, semantic_colorbar_title, hovermode_false, hoverinfo_skip, hovertemplate_null]
+    integration_points: [settings_displayInventory, renderSettings, enqueuePlot_before_Plotly_react, overlay_trace_addition, per_pane_settings_autosave]
+    prototype_regression_not_transferable: prototype/task-0150-0151-axis-labels-hover-regression.cjs
+  - id: task-0152-cursor-trim-dialog-template
+    source: integration/html/dialogs/signal-trim.fragment.html
+    target: public/js/app.js
+    mode: integrate_markup_unchanged_as_runtime_singleton
+    portal: document.body
+    singleton_selector: "[data-testid='signal-trim-layer']"
+    content_changes_allowed: false
+  - id: task-0152-cursor-trim-ui
+    source: integration/js/task-0152-cursor-trim-signal.js
+    target: public/js/app.js
+    secondary_target: public/js/api.js
+    mode: integrate_helper_unchanged_into_existing_pane_header_cursor_subscription_modal_and_signal_mutation_queue
+    content_changes_allowed: false
+    marker: "TASK-0152 dual-cursor Time trim action"
+    scope: [eligible_header_action, sorted_inclusive_interval, operation_style_modal, required_name, overwrite, busy_node_continuity, typed_errors, accepted_signal_inventory]
+    integration_points: [renderPaneHeader_before_plot_type_and_overflow, graph_cursor_subscribe, active_pane_main_signal, document_body_modal_portal, signal_mutation_accept]
+    prototype_regression_not_transferable: prototype/task-0152-cursor-trim-signal-regression.cjs
 
 existing_assets_reused:
   - {path: public/icons/function.svg, use: signal-row-operation-action}
@@ -273,16 +338,29 @@ existing_assets_reused:
   - {path: public/icons/tick-figma.svg, use: selected-palette-swatch}
   - {path: public/icons/eye.svg, use: visible-sample-calculated-column}
   - {path: public/icons/eye-off.svg, use: hidden-sample-calculated-column}
+  - {path: public/icons/eye.svg, use: visible-measurement-cursor-column}
+  - {path: public/icons/eye-off.svg, use: hidden-or-ineligible-measurement-cursor-column}
+  - {path: public/icons/function.svg, use: dual-cursor-time-trim-action}
+  - {path: public/icons/close.svg, use: cursor-trim-dialog-close}
 
 integration_hosts:
   application_bootstrap:
     overlay_selector: ".app-status"
     shell_selector: "[data-testid='app-shell']"
-    integration: "Keep one mounted status host. Begin before initial state-lite; accept only current-token state-lite with signals/displays/layout and current active-display settings; close after the matching first render commits. Required failure/20s timeout stays blocking with sanitized Retry. Pane outputs and secondary data are excluded."
+    integration: "Keep one mounted status host. Begin before initial state-lite; accept only current-token state-lite with signals/displays/layout and current active-display settings; close after the matching first render commits. Required failure/20s timeout stays blocking with sanitized Retry. Pane outputs and secondary data are excluded. Cursor remains standard."
   synchronized_ranges:
     settings_selector: "[data-settings-content] [data-settings-group$='ranges'], [data-settings-content] [data-screen-settings-group='ranges']"
     plot_selector: "[data-pane-host]"
-    integration: "One active/clicked pane range projects between Plotly, in-plot sliders and Area/Screen fields/handles. relayouting is preview-only; relayout or settings commit settles once after 150ms through existing serialized autosave and eligible link queues."
+    integration: "One active/clicked pane viewport projects between Plotly, in-plot sliders and Area/Screen fields/handles. pointerdown/keyboard begin captures stable nodes; input/relayouting previews in place; pointerup/change/keyboard commit or relayout settles once after 150ms in frontend state only. No settings/API/output/DSP/revision/session lifecycle exists for these values; enabled persisted link flags propagate frontend relayout only."
+  measurement_cursor_columns:
+    selector: "[data-testid='measurement-table'], [data-testid='measurement-columns-menu']"
+    integration: "Append six cursor rows to the existing vertical-three-dot eye menu and eligible columns to the existing table; subscribe to the active pane cursor snapshot. Effective visibility is latent pane intent AND current off/single/dual eligibility."
+  axis_labels_and_hover:
+    selector: "[data-setting-id='display.show_axis_labels'], [data-pane-host]"
+    integration: "Insert the persisted per-pane checkbox immediately after the legend checkbox; relayout/restyle only title text. Normalize every accepted Plotly payload and overlay trace to hovermode=false, hoverinfo=skip and hovertemplate=null."
+  cursor_trim_signal:
+    selector: "[data-testid='pane-trim-signal'], [data-testid='signal-trim-layer']"
+    integration: "Subscribe to the current Time pane dual-cursor/main-signal context, insert the existing compact icon-button before plot type/overflow only while eligible, and use one body-portal modal through the revision-safe signal mutation queue."
   settings_tabs:
     selector: "[data-testid='settings-tabs']"
     integration: "public/js/app.js ensures one Signal tab immediately before [data-settings-page='display']; do not replace tablist."
@@ -349,7 +427,7 @@ integration_hosts:
     integration: "Projected extrema and slider layout keep existing Plotly paths; graph cursor controller reads data/fullLayout and appends only a sibling layer inside .plot-canvas, never children in the host."
   modal_portal:
     selector: body
-    integration: "Append the signal-operation singleton on first use; reuse existing [data-value-select-popup] and modal stacking."
+    integration: "Append the signal-operation or cursor-trim singleton on first use; reuse existing modal stacking and [data-value-select-popup] only for the operation selector."
 
 integration_seams:
   - id: application-bootstrap-readiness
@@ -363,16 +441,32 @@ integration_seams:
     excluded_from_barrier: [pane_outputs, signal_summary, signal_samples, measurements, extrema]
     retry: "new token and full required bootstrap chain; stale completion ignored"
     sanitized_error: "Не удалось загрузить данные анализатора. Проверьте соединение и повторите попытку."
+    pointer_cursor: standard
   - id: synchronized-pane-ranges
-    action_interface: "current pane Plotly/in-plot slider relayout => immediate selected-unit Area/Screen field and handle projection; valid settings edit => rAF-coalesced Plotly update; settled edge => one deduplicated serialized publish; links reuse existing eligible queues"
+    action_interface: "current pane Plotly/in-plot slider relayout => immediate selected-unit Area/Screen field and handle projection; valid settings edit => rAF-coalesced Plotly update; settled edge => one deduplicated frontend viewport commit; links reuse existing eligible frontend relayout queues"
     production_consumers: [public/js/app.js, public/js/settings.js]
     helper: frontend-source/integration/js/task-0144-synchronized-ranges.js
     hosts: ["[data-pane-host]", "[data-settings-content]"]
     plot_types: [time, spectrum, spectrogram, persistence]
     settings_groups: {parameters: axis_unit_fields, ranges: "single expanded user-collapsible Диапазоны group"}
-    settle_boundary: {preview_event: plotly_relayouting, terminal_event: plotly_relayout, debounce_ms: 150, serialized_autosave: true}
-    reset: "double-click settings range row/slider or matching in-plot slider clears both explicit intents and publishes one Auto/full-domain result"
-    validation: "TASK-0142 per-boundary validation gates preview/link/publish; invalid endpoints remain local only"
+    settle_boundary: {preview_event: plotly_relayouting, terminal_event: plotly_relayout, debounce_ms: 150, frontend_only: true}
+    reset: "double-click settings range row/slider or graph ignores mirrored values, cancels older work, requests true Plotly autorange/full-domain and reprojects Auto/blank"
+    validation: "TASK-0142 per-boundary validation gates preview/link/commit; invalid endpoints remain local only"
+    persistence_forbidden: [settings.publishRange, api_settings, output_invalidation, dsp_recalculation, state_revision, session_persistence]
+  - id: range-dom-generation-lifecycle
+    action_interface: "Capture one exact range DOM set per display+pane+field generation; preview with Plotly.relayout only; terminal frontend commit patches those nodes without rerender/remount."
+    production_consumers: [public/js/app.js]
+    helper: frontend-source/integration/js/task-0146-range-lifecycle.js
+    hosts: ["[data-setting-id$='limits']", "[data-screen-range-slider]", "[data-pane-id]", "[data-pane-host]"]
+    e2e_hooks: [data-range-generation, data-range-sync-state, data-range-preview-active]
+    begin: [settings_pointerdown, keyboard_first_edit, graph_relayout_begin]
+    preview: "input or plotly_relayouting patches values/handles and calls Plotly.relayout with resize:false/rebuild:false; no width/height/overflow write, plot rebuild or settings render"
+    terminal: "pointerup/change/keyboard commit or plotly_relayout; deduplicated 150ms frontend viewport commit"
+    reset: "new shared generation cancels older settler/rAF, clears frontend viewport draft, patches blank Auto inputs/full-domain handles and requests true Plotly autorange"
+    reset_axes: {time: [x, y], spectrum: [x, y], spectrogram: [x, y], persistence: [x, y], heatmap_z_color_range: preserve}
+    stale_guard: "reject older frontend graph/input generations and any stale explicit projection after current Auto generation; no provider accept exists"
+    persistence_forbidden: [settings.publishRange, api_settings, output_invalidation, dsp_recalculation, state_revision, session_persistence]
+    preserves: [task_0142_boundary_validation, link_queues, selected_units, plotly_log_coordinates]
   - id: signal-membership-main
     action_interface: "row click => ensure active-pane membership ON then select that signal as main; direct checkbox => set active-pane membership only and never change main"
     production_consumers: [public/js/app.js]
@@ -396,7 +490,19 @@ integration_seams:
     production_consumers: [public/js/app.js]
     host: "document.body + [data-settings-content]"
     direct_api_call_forbidden: true
+    busy_pointer_cursor: standard
     replacement_forbidden: true
+  - id: busy-loading-standard-cursor
+    action_interface: "retain normal arrow cursor for every busy/loading state while preserving existing pointer blocking, disabled controls, inert shell, aria-busy and spinner animation"
+    production_consumers: [public/css/app.css]
+    sources:
+      - frontend-source/integration/css/task-0118-color-picker.css
+      - frontend-source/integration/css/task-0139-loading-overlays.css
+      - frontend-source/integration/css/task-0143-bootstrap-loader.css
+      - frontend-source/integration/css/task-0145-standard-busy-cursor.css
+    required_cursor: default
+    forbidden_cursors: [wait, progress]
+    behavior_changes_forbidden: [spinner_visuals, spinner_animation, pointer_blocking, aria_busy, inertness, geometry, request_lifecycle]
   - id: settings-context-routing
     action_interface: "pane click or accepted pane-type mutation -> Area settings; display-tab/add-display click -> Screen settings"
     production_consumers: [public/js/app.js]
@@ -419,9 +525,10 @@ integration_seams:
     production_consumers: [public/js/app.js, public/js/settings.js]
     replacement_forbidden: true
   - id: selected-unit-axis-limits
-    action_interface: "display/edit nonempty time/frequency bounds in selected units, preserve physical interval on unit changes, serialize canonical seconds/Hz, preserve empty bounds"
-    production_consumers: [public/js/app.js, public/js/settings.js]
+    action_interface: "display/edit current Plotly viewport mirrors in selected units, preserve the physical interval on unit changes, use seconds/Hz only for frontend projection and links, preserve empty Auto bounds"
+    production_consumers: [public/js/app.js]
     host: "[data-setting-id$='limits'][data-range-part]"
+    persistence_forbidden: true
     replacement_forbidden: true
   - id: original-default-colors
     provider_interface: "automatic signal colors cycle only through the restored eight values exposed by SignalColorPickerUI.palette"
@@ -465,7 +572,38 @@ integration_seams:
     finite_zero_is_valid_nearest_candidate: true
     plotly_host_dom_mutation_forbidden: true
     eligible_plot_types: [time, spectrum]
+    subscription_interface: "snapshot(paneRuntimeKey) + subscribe(listener), emitted after mode, pointer, keyboard and relayout reconciliation; pane cleanup clears state and notifies"
     replacement_forbidden: true
+  - id: measurement-cursor-columns
+    action_interface: "existing Measurements three-dot menu toggles six pane-local latent intents; current cursor snapshot gates effective columns and updates cells live"
+    production_consumers: [public/js/app.js]
+    helper: frontend-source/integration/js/task-0148-measurement-cursor-columns.js
+    styles: frontend-source/integration/css/task-0148-measurement-cursor-columns.css
+    hosts: ["[data-testid='measurement-columns-menu-trigger']", "[data-testid='measurement-columns-menu']", "[data-testid='measurement-table']"]
+    stable_selectors: ["[data-measurement-cursor-column]", "[data-measurement-cursor-value]"]
+    eligibility: {off: [], single: [x1, y1], dual: [x1, y1, x2, y2, delta_x, delta_y], non_time_spectrum: []}
+    trace_mapping: exact_legendgroup_then_first_visible_non_overlay_plotly_trace
+    cleanup: "pane removal deletes its latent intent/subscription; active pane/type/mode drop immediately removes ineligible columns without disturbing existing measurement columns"
+    backend_calls_forbidden: true
+  - id: pane-axis-labels-and-hover-policy
+    action_interface: "persist display.show_axis_labels per pane and apply title-text-only relayout/restyle; normalize every Plotly payload/overlay trace to no native hover"
+    production_consumers: [public/js/app.js, public/js/settings.js]
+    helper: frontend-source/integration/js/task-0150-0151-axis-labels-hover.js
+    hosts: ["[data-setting-id='display.show_axis_labels']", "[data-pane-host]"]
+    stable_selectors: ["[data-testid='settings-show-axis-labels']", "[data-pane-host]"]
+    output_invalidation_forbidden: true
+    cleanup: "pane removal drops cached semantic-title/visibility record; new accepted plot payload recaptures provider titles before projection"
+  - id: cursor-trim-signal
+    action_interface: "eligible dual-cursor Time context shows one header action, opens one operation-style modal and submits an inclusive sorted sample interval through the revision-safe signal mutation queue"
+    production_consumers: [public/js/app.js]
+    production_provider: public/js/api.js
+    helper: frontend-source/integration/js/task-0152-cursor-trim-signal.js
+    markup: frontend-source/integration/html/dialogs/signal-trim.fragment.html
+    hosts: ["[data-pane-id] .pane-header", "body > [data-testid='signal-trim-layer']", "[data-signal-rows]"]
+    stable_selectors: ["[data-testid='pane-trim-signal']", "[data-testid='signal-trim-dialog']", "[data-signal-trim-name]", "[data-signal-trim-overwrite]", "[data-signal-trim-submit]", "[data-signal-trim-status]"]
+    api: {method: POST, path: /api/signals/crop, exact_request: [state_revision, source_signal_id, min_s, max_s, target_name, overwrite], extra_fields: forbidden, accept: returned_signal_or_authoritative_inventory}
+    projection: "sort cursor X values and convert selected Time-axis units to canonical seconds; sample indices remain backend-owned and absent from payload"
+    cleanup: "pane/type/main-signal/mode/cursor invalidation hides/removes the action; modal close removes busy/error state; pane removal invalidates pending UI token and detaches cursor subscription; stale response cannot reopen or focus a removed pane"
   - id: projected-spectrum-extrema
     provider_interface: "read projected spectrum extrema for active display/pane/signal and expose ready/loading/error rows plus marker coordinates"
     production_provider: public/js/api.js
@@ -526,15 +664,15 @@ integration_seams:
     invalid_area_draft_policy: no_loader
     spinner_animation: {keyframes: loader-rotate, normal: "800ms linear infinite", reduced_motion: "1600ms linear infinite", static_forbidden: true}
   - id: pane-plot-autoscale
-    action_interface: "capture current provider/default or rendered full-domain axis baseline after accepted matching Plotly.react; double-click relayout only the clicked host"
+    action_interface: "double-click ignores numeric mirrors and requests true Plotly autorange/full-domain for both spatial axes, then atomically clears/reprojects frontend range nodes for the clicked pane and eligible linked panes"
     production_consumer: public/js/app.js
     helper: frontend-source/integration/js/task-0140-plot-autoscale.js
     host: "[data-pane-host]"
     eligible_plot_types: [time, spectrum, spectrogram, persistence]
-    baseline_lifecycle: "graph default range/signature survives updateLayout for every still-current signal-bearing plot; stale/removed/type-changed output baseline is replaced or discarded by identity"
+    baseline_lifecycle: "retain pane/output identity and slider visibility only; numeric ranges are never captured as a reset baseline"
     slider_state_eligibility: [time, spectrum]
     log_range_semantics: preserve_plotly_coordinates
-    isolation: [clicked_pane_only, no_linked_axis_propagation, no_settings_or_revision, no_backend_or_dsp, no_main_signal_change, no_heatmap_color_range_change]
+    isolation: [clicked_pane_plus_enabled_frontend_links_only, no_range_settings_or_revision, no_backend_or_dsp, no_main_signal_change, no_heatmap_color_range_change]
   - id: linked-spectrum-persistence-axes
     action_interface: "when enabled, ready Spectrum/Persistence frequency relayouts project canonical Hz to every other eligible pane; ready dB Spectrum magnitude/Persistence power relayouts project the same dB range"
     production_consumer: public/js/app.js

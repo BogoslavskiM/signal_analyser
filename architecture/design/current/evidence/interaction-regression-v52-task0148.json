@@ -1,0 +1,231 @@
+{
+  "design_version": 52,
+  "method": "bounded cursor-column eligibility/intent/trace-projection/menu regression; no browser/Figma",
+  "passed": 6,
+  "failed": 0,
+  "results": [
+    {
+      "id": "102-off-default-hidden-disabled",
+      "passed": true,
+      "detail": {
+        "intent": {
+          "x1": false,
+          "y1": false,
+          "x2": false,
+          "y2": false,
+          "delta_x": false,
+          "delta_y": false
+        },
+        "enabled": {
+          "x1": false,
+          "y1": false,
+          "x2": false,
+          "y2": false,
+          "delta_x": false,
+          "delta_y": false
+        },
+        "visible": {
+          "x1": false,
+          "y1": false,
+          "x2": false,
+          "y2": false,
+          "delta_x": false,
+          "delta_y": false
+        }
+      }
+    },
+    {
+      "id": "103-single-eligibility-and-latent-intent",
+      "passed": true,
+      "detail": {
+        "intent": {
+          "x1": true,
+          "y1": true,
+          "x2": false,
+          "y2": false,
+          "delta_x": false,
+          "delta_y": false
+        },
+        "enabled": {
+          "x1": true,
+          "y1": true,
+          "x2": false,
+          "y2": false,
+          "delta_x": false,
+          "delta_y": false
+        },
+        "visible": {
+          "x1": true,
+          "y1": true,
+          "x2": false,
+          "y2": false,
+          "delta_x": false,
+          "delta_y": false
+        }
+      }
+    },
+    {
+      "id": "104-dual-all-six-available",
+      "passed": true,
+      "detail": {
+        "intent": {
+          "x1": true,
+          "y1": true,
+          "x2": true,
+          "y2": true,
+          "delta_x": true,
+          "delta_y": true
+        },
+        "enabled": {
+          "x1": true,
+          "y1": true,
+          "x2": true,
+          "y2": true,
+          "delta_x": true,
+          "delta_y": true
+        },
+        "visible": {
+          "x1": true,
+          "y1": true,
+          "x2": true,
+          "y2": true,
+          "delta_x": true,
+          "delta_y": true
+        }
+      }
+    },
+    {
+      "id": "105-row-legendgroup-first-trace-formulas-and-units",
+      "passed": true,
+      "detail": {
+        "groupA": {
+          "x1": {
+            "raw": 1,
+            "text": "1 ms",
+            "available": true
+          },
+          "y1": {
+            "raw": 20,
+            "text": "20 V",
+            "available": true
+          },
+          "x2": {
+            "raw": 3,
+            "text": "3 ms",
+            "available": true
+          },
+          "y2": {
+            "raw": 80,
+            "text": "80 V",
+            "available": true
+          },
+          "delta_x": {
+            "raw": 2,
+            "text": "2 ms",
+            "available": true
+          },
+          "delta_y": {
+            "raw": 60,
+            "text": "60 V",
+            "available": true
+          }
+        },
+        "groupB": {
+          "x1": {
+            "raw": 1,
+            "text": "1 ms",
+            "available": true
+          },
+          "y1": {
+            "raw": 8,
+            "text": "8 V",
+            "available": true
+          },
+          "x2": {
+            "raw": 3,
+            "text": "3 ms",
+            "available": true
+          },
+          "y2": {
+            "raw": 21,
+            "text": "21 V",
+            "available": true
+          },
+          "delta_x": {
+            "raw": 2,
+            "text": "2 ms",
+            "available": true
+          },
+          "delta_y": {
+            "raw": 13,
+            "text": "13 V",
+            "available": true
+          }
+        }
+      }
+    },
+    {
+      "id": "106-noneligible-plot-hides-intent",
+      "passed": true,
+      "detail": {
+        "intent": {
+          "x1": true,
+          "y1": true,
+          "x2": true,
+          "y2": true,
+          "delta_x": true,
+          "delta_y": true
+        },
+        "enabled": {
+          "x1": false,
+          "y1": false,
+          "x2": false,
+          "y2": false,
+          "delta_x": false,
+          "delta_y": false
+        },
+        "visible": {
+          "x1": false,
+          "y1": false,
+          "x2": false,
+          "y2": false,
+          "delta_x": false,
+          "delta_y": false
+        }
+      }
+    },
+    {
+      "id": "107-menu-eye-disabled-keyboard-semantics",
+      "passed": true,
+      "detail": {
+        "items": [
+          {
+            "id": "x1",
+            "enabled": true
+          },
+          {
+            "id": "y1",
+            "enabled": true
+          },
+          {
+            "id": "x2",
+            "enabled": false
+          },
+          {
+            "id": "y2",
+            "enabled": false
+          },
+          {
+            "id": "delta_x",
+            "enabled": false
+          },
+          {
+            "id": "delta_y",
+            "enabled": false
+          }
+        ],
+        "contract": "No API, DSP, settings, session or state_revision mutation."
+      }
+    }
+  ]
+}

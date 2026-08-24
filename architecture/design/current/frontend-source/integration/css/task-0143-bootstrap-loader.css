@@ -10,7 +10,7 @@
   padding: 24px;
   background: rgba(248, 250, 251, 0.9);
   pointer-events: all;
-  cursor: wait;
+  cursor: default;
 }
 
 .app-status[data-bootstrap-phase="error"] {

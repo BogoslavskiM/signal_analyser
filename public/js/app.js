@@ -295,7 +295,7 @@
       settle:function (payload) {
         if (timer != null) window.clearTimeout(timer);
         var key=JSON.stringify(payload || null);
-        timer=window.setTimeout(function () { timer=null; if (key === lastKey) return; lastKey=key; if (callback && callback.publish) callback.publish(payload); },Number(delay) || 150);
+        timer=window.setTimeout(function () { timer=null; if (key === lastKey) return; lastKey=key; if (callback && callback.commitViewport) callback.commitViewport(payload); },Number(delay) || 150);
       },
       cancel:function () { if (timer != null) window.clearTimeout(timer); timer=null; }
     };
@@ -312,11 +312,586 @@
     createSettler:createSettler,
     settleDelayMs:150,
     contract:{
-      liveProjection:"plotly_relayouting updates current Area fields and handles immediately without publication; slider input updates Plotly at most once per animation frame",
-      settleBoundary:"plotly_relayout and settings change/pointerup/keyboard commit start one 150ms deduplicating settle, then the existing serialized autosave publishes canonical values once",
+      liveProjection:"plotly_relayouting updates current Area fields and handles immediately; slider/input updates Plotly at most once per animation frame",
+      settleBoundary:"plotly_relayout and viewport input change/pointerup/keyboard commit start one 150ms deduplicating frontend-only viewport commit; no settings/API publication occurs",
       linkedProjection:"after the source pane projection, existing time/amplitude/frequency/magnitude link queues apply the same canonical interval only to eligible panes",
-      reset:"double click any range row or its settings/in-plot slider clears both explicit endpoint intents, requests axis autorange/full domain, synchronizes graph/settings and publishes one settled Auto value",
-      validation:"v46 per-endpoint validation runs before graph preview or publication; an invalid endpoint changes neither plot nor linked panes"
+      reset:"double click any range row or its settings/in-plot slider ignores current numeric mirrors, requests true Plotly autorange/full domain and reprojects blank Auto inputs/full-domain handles",
+      validation:"v46 per-endpoint validation runs before graph preview; an invalid endpoint changes neither plot nor linked panes",
+      persistence:"Viewport mirrors never call settings.publishRange, /api/settings, output refresh, DSP, state_revision or session persistence; link flags remain ordinary persisted settings."
+    }
+  };
+}(window));
+
+(function registerMeasurementCursorColumns(window) {
+  "use strict";
+
+  var CURSOR_COLUMNS=[
+    {id:"x1",label:"X1",axis:"x",mode:"single",width:92},
+    {id:"y1",label:"Y1",axis:"y",mode:"single",width:92},
+    {id:"x2",label:"X2",axis:"x",mode:"dual",width:92},
+    {id:"y2",label:"Y2",axis:"y",mode:"dual",width:92},
+    {id:"delta_x",label:"ΔX",axis:"x",mode:"dual",width:92},
+    {id:"delta_y",label:"ΔY",axis:"y",mode:"dual",width:92}
+  ];
+
+  function finite(value) { return Number.isFinite(Number(value)); }
+  function escapeHtml(value) { return String(value).replace(/[&<>"']/g,function (character) { return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[character]; }); }
+  function formatNumber(value) {
+    if (!finite(value)) return "—";
+    var number=Number(value),absolute=Math.abs(number);
+    if (absolute !== 0 && (absolute >= 1e6 || absolute < 1e-4)) return number.toExponential(4);
+    return String(Number(number.toPrecision(7)));
+  }
+  function titleText(axis) { var title=axis && axis.title; return typeof title === "string" ? title : title && title.text || ""; }
+  function axisUnit(axis) { var parts=titleText(axis).split(","); return parts.length > 1 ? parts.slice(1).join(",").trim() : ""; }
+  function fullAxis(host,name) { return host && host._fullLayout && host._fullLayout[name] || host && host.layout && host.layout[name] || {}; }
+  function traceAxis(host,trace,kind) {
+    var reference=String(trace && trace[kind+"axis"] || kind),name=reference === kind ? kind+"axis" : kind+"axis"+reference.slice(1);
+    return fullAxis(host,name);
+  }
+  function withUnit(value,unit) { var formatted=formatNumber(value); return formatted === "—" || !unit ? formatted : formatted+" "+unit; }
+  function visibleTraces(host) {
+    return (host && Array.isArray(host.data) ? host.data : []).filter(function (trace) {
+      return trace && trace.visible !== false && trace.visible !== "legendonly" &&
+        !(trace.meta && trace.meta.signal_analyser_peaks_overlay) &&
+        Array.isArray(trace.x) && Array.isArray(trace.y) && trace.x.length && trace.y.length;
+    });
+  }
+  function closestIndex(values,target) {
+    var low=0,high=values.length-1;
+    if (!values.length) return -1;
+    if (Number(values[low]) >= target) return low;
+    if (Number(values[high]) <= target) return high;
+    while (high-low > 1) { var middle=(low+high)>>1; if (Number(values[middle]) < target) low=middle; else high=middle; }
+    return Math.abs(Number(values[low])-target) <= Math.abs(Number(values[high])-target) ? low : high;
+  }
+  function nearestPoint(trace,target) { var index=closestIndex(trace && trace.x || [],target); return index < 0 ? null : {x:Number(trace.x[index]),y:trace.y[index],index:index}; }
+  function traceForRow(host,row) {
+    var traces=visibleTraces(host),legendgroup=row && (row.legendgroup || row.signal_id || row.signalId || row.signal_name || row.signalName);
+    return traces.find(function (trace) { return legendgroup != null && String(trace.legendgroup || "") === String(legendgroup); }) || null;
+  }
+  function eligiblePlot(plotType,snapshot) { return (plotType === "time" || plotType === "spectrum") && !!snapshot && snapshot.eligible !== false; }
+  function eligibility(mode,plotType,snapshot) {
+    var active=eligiblePlot(plotType,snapshot),single=active && (mode === "single" || mode === "dual"),dual=active && mode === "dual";
+    return {x1:single,y1:single,x2:dual,y2:dual,delta_x:dual,delta_y:dual};
+  }
+  function defaultIntent() { return CURSOR_COLUMNS.reduce(function (result,column) { result[column.id]=false; return result; },{}); }
+  function normalizeIntent(value) { var result=defaultIntent(); CURSOR_COLUMNS.forEach(function (column) { if (value && typeof value[column.id] === "boolean") result[column.id]=value[column.id]; }); return result; }
+  function projection(intent,mode,plotType,snapshot) {
+    var requested=normalizeIntent(intent),enabled=eligibility(mode,plotType,snapshot),visible={};
+    CURSOR_COLUMNS.forEach(function (column) { visible[column.id]=enabled[column.id] && requested[column.id]; });
+    return {intent:requested,enabled:enabled,visible:visible};
+  }
+
+  function createController(options) {
+    options=options || {};
+    var intentByPane=Object.create(null);
+    function paneIntent(key) { return intentByPane[key] || (intentByPane[key]=defaultIntent()); }
+    function reconcile(key,snapshot,plotType) { return projection(paneIntent(key),snapshot && snapshot.mode || "off",plotType,snapshot); }
+    function toggle(key,columnId,snapshot,plotType) {
+      var state=reconcile(key,snapshot,plotType);
+      if (!state.enabled[columnId]) return state;
+      paneIntent(key)[columnId]=!paneIntent(key)[columnId];
+      state=reconcile(key,snapshot,plotType);
+      if (typeof options.onVisibilityChange === "function") options.onVisibilityChange(key,state,{frontendOnly:true});
+      return state;
+    }
+    function setIntent(key,value,snapshot,plotType) { intentByPane[key]=normalizeIntent(value); return reconcile(key,snapshot,plotType); }
+    function menuItems(key,snapshot,plotType) {
+      var state=reconcile(key,snapshot,plotType);
+      return CURSOR_COLUMNS.map(function (column) { return Object.assign({},column,{enabled:state.enabled[column.id],visible:state.visible[column.id],intent:state.intent[column.id]}); });
+    }
+    function clear(key) { var existed=Object.prototype.hasOwnProperty.call(intentByPane,key); delete intentByPane[key]; return existed; }
+    return {reconcile:reconcile,toggle:toggle,setIntent:setIntent,menuItems:menuItems,intent:function (key) { return normalizeIntent(paneIntent(key)); },clear:clear};
+  }
+
+  function headerColumns(snapshot,plotType,visible) {
+    var host=snapshot && snapshot.host,xUnit=axisUnit(fullAxis(host,"xaxis")),yUnit=axisUnit(fullAxis(host,"yaxis"));
+    return CURSOR_COLUMNS.filter(function (column) { return visible && visible[column.id]; }).map(function (column) {
+      var unit=column.axis === "x" ? xUnit : yUnit;
+      return Object.assign({},column,{unit:unit,headerLabel:column.label+(unit ? ", "+unit : "")});
+    });
+  }
+  function rowProjection(row,snapshot,plotType,visible) {
+    var host=snapshot && snapshot.host,values=snapshot && Array.isArray(snapshot.values) ? snapshot.values : [],trace=traceForRow(host,row);
+    var point1=trace && finite(values[0]) ? nearestPoint(trace,Number(values[0])) : null;
+    var point2=trace && finite(values[1]) ? nearestPoint(trace,Number(values[1])) : null;
+    var xUnit=axisUnit(fullAxis(host,"xaxis")),yUnit=axisUnit(traceAxis(host,trace,"y"));
+    var raw={x1:finite(values[0]) ? Number(values[0]) : null,y1:point1 && point1.y,x2:finite(values[1]) ? Number(values[1]) : null,y2:point2 && point2.y};
+    raw.delta_x=finite(raw.x1) && finite(raw.x2) ? raw.x2-raw.x1 : null;
+    raw.delta_y=finite(raw.y1) && finite(raw.y2) ? Number(raw.y2)-Number(raw.y1) : null;
+    var result={};
+    CURSOR_COLUMNS.forEach(function (column) {
+      if (!visible || !visible[column.id]) return;
+      result[column.id]={raw:raw[column.id],text:withUnit(raw[column.id],column.axis === "x" ? xUnit : yUnit),available:finite(raw[column.id])};
+    });
+    return result;
+  }
+  function menuMarkup(items,assetBase) {
+    assetBase=assetBase || ".";
+    return "<div class='inspector-menu-title'>Видимость столбцов</div>"+items.map(function (item) {
+      return "<button type='button' role='menuitemcheckbox' data-measurement-cursor-column='"+item.id+"' aria-checked='"+item.visible+"' aria-disabled='"+(!item.enabled)+"'"+(item.enabled ? "" : " disabled")+"><span>"+escapeHtml(item.label)+"</span><img src='"+assetBase+"/icons/"+(item.visible ? "eye.svg" : "eye-off.svg")+"' alt=''></button>";
+    }).join("");
+  }
+
+  window.SignalAnalyserMeasurementCursorColumns={
+    columns:CURSOR_COLUMNS,
+    defaultIntent:defaultIntent,
+    normalizeIntent:normalizeIntent,
+    eligibility:eligibility,
+    projection:projection,
+    createController:createController,
+    headerColumns:headerColumns,
+    rowProjection:rowProjection,
+    traceForRow:traceForRow,
+    menuMarkup:menuMarkup,
+    hooks:{trigger:"[data-testid='measurement-columns-menu-trigger']",menu:"[data-testid='measurement-columns-menu']",item:"[data-measurement-cursor-column]",cell:"[data-measurement-cursor-value]"},
+    contract:{
+      eligibility:"off/non-Time/non-Spectrum disables all; single enables X1/Y1; dual enables all six",
+      intent:"Per-pane frontend-only visibility intent starts all false; ineligible columns hide immediately but retain latent intent for restoration when that pane returns to an eligible cursor mode.",
+      mapping:"Resolve the row legendgroup (explicit row.legendgroup, otherwise its stable signal id/name group key), then use the first visible non-overlay trace with that exact legendgroup in Plotly data order; use its sample nearest each pane cursor X.",
+      formulas:"delta_x=x2-x1; delta_y=y2-y1",
+      isolation:"No API, DSP, settings, session or state_revision mutation.",
+      cleanup:"On pane removal, unsubscribe the cursor listener and clear(paneRuntimeKey); on active pane/type/mode changes reconcile immediately."
+    }
+  };
+}(window));
+(function registerAxisLabelsAndHoverPolicy(window) {
+  "use strict";
+
+  var FIELD={id:"display.show_axis_labels",label:"Подписывать оси",kind:"boolean",defaultValue:true,testid:"settings-show-axis-labels"};
+  var FALLBACK={
+    time:{x:"Время",y:"Амплитуда",colorbar:""},
+    spectrum:{x:"Частота",y:"Магнитуда",colorbar:""},
+    spectrogram:{x:"Время",y:"Частота",colorbar:"Мощность, дБ"},
+    persistence:{x:"Частота",y:"Мощность, дБ",colorbar:"Вероятность, %"}
+  };
+  function cleanType(value) {
+    value=String(value || "").toLowerCase();
+    if (/spectrogram|спектрограмм/.test(value)) return "spectrogram";
+    if (/persistence|персистент/.test(value)) return "persistence";
+    if (/spectrum|спектр/.test(value)) return "spectrum";
+    return "time";
+  }
+  function titleText(value) { return typeof value === "string" ? value : value && value.text || ""; }
+  function clone(value) { return value == null ? value : JSON.parse(JSON.stringify(value)); }
+  function insertAfterLegend(items) {
+    items=Array.isArray(items) ? items.slice() : [];
+    if (items.some(function (item) { return item && item.id === FIELD.id; })) return items;
+    var index=items.findIndex(function (item) { return item && item.id === "display.show_legend"; });
+    items.splice(index < 0 ? items.length : index+1,0,Object.assign({},FIELD));
+    return items;
+  }
+  function semanticRecord(plotType,layout,data) {
+    var type=cleanType(plotType),fallback=FALLBACK[type],traces=Array.isArray(data) ? data : [];
+    return {
+      plotType:type,
+      x:titleText(layout && layout.xaxis && layout.xaxis.title) || fallback.x,
+      y:titleText(layout && layout.yaxis && layout.yaxis.title) || fallback.y,
+      colorbars:traces.map(function (trace) { return titleText(trace && trace.colorbar && trace.colorbar.title) || (trace && trace.type === "heatmap" ? fallback.colorbar : ""); })
+    };
+  }
+  function titleProjection(record,visible) {
+    record=record || semanticRecord("time",{},[]);
+    return {
+      layout:{"xaxis.title.text":visible ? record.x : "","yaxis.title.text":visible ? record.y : ""},
+      traces:(record.colorbars || []).map(function (title,index) { return {index:index,update:{"colorbar.title.text":visible ? title : ""}}; }).filter(function (item) { return !!record.colorbars[item.index]; })
+    };
+  }
+  function suppressHover(payload) {
+    payload=clone(payload || {}) || {};
+    payload.layout=Object.assign({},payload.layout || {},{hovermode:false});
+    payload.data=(Array.isArray(payload.data) ? payload.data : []).map(function (trace) {
+      return Object.assign({},trace,{hoverinfo:"skip",hovertemplate:null});
+    });
+    return payload;
+  }
+  function createController(options) {
+    options=options || {};
+    var records=Object.create(null),visibleByPane=Object.create(null);
+    function capture(key,plotType,layout,data,storedValue) {
+      records[key]=semanticRecord(plotType,layout,data);
+      if (typeof visibleByPane[key] !== "boolean") visibleByPane[key]=storedValue === undefined ? true : !!storedValue;
+      return projection(key);
+    }
+    function projection(key) { return titleProjection(records[key],visibleByPane[key] !== false); }
+    function setVisible(key,value) {
+      visibleByPane[key]=!!value;
+      var projected=projection(key);
+      if (typeof options.relayout === "function") options.relayout(key,projected.layout,{titleTextOnly:true,preserveMargins:true});
+      if (typeof options.restyle === "function") projected.traces.forEach(function (item) { options.restyle(key,item.update,[item.index],{titleTextOnly:true}); });
+      if (typeof options.persist === "function") options.persist(key,FIELD.id,visibleByPane[key],{perPane:true,noOutputInvalidation:true});
+      return projected;
+    }
+    function clear(key) { delete records[key]; delete visibleByPane[key]; }
+    return {capture:capture,projection:projection,setVisible:setVisible,value:function (key) { return visibleByPane[key] !== false; },clear:clear};
+  }
+
+  window.SignalAnalyserAxisLabelsAndHover={
+    field:FIELD,
+    fallback:FALLBACK,
+    insertAfterLegend:insertAfterLegend,
+    semanticRecord:semanticRecord,
+    titleProjection:titleProjection,
+    suppressHover:suppressHover,
+    createController:createController,
+    selectors:{field:"[data-setting-id='display.show_axis_labels']",input:"[data-testid='settings-show-axis-labels']",plot:"[data-pane-host]"},
+    contract:{
+      defaultValue:"true, matching the current plots that already show semantic axis/colorbar titles",
+      unchecked:"Clear only xaxis.title.text, yaxis.title.text and applicable trace colorbar.title.text; retain axes, ticks, grid, colorbar, margins and plot interaction.",
+      hover:"Before every Plotly.react and overlay-trace addition, force layout.hovermode=false and every trace hoverinfo=skip/hovertemplate=null for all plot types.",
+      persistence:"display.show_axis_labels is a per-pane persisted display setting; changing it relayouts/restyles titles only and does not invalidate output or run DSP.",
+      cleanup:"On pane removal call clear(paneRuntimeKey); recapture provider semantic titles before projecting every new accepted Plotly payload."
+    }
+  };
+}(window));
+(function registerCursorTrimSignal(window) {
+  "use strict";
+
+  var SELECTORS={
+    action:"[data-testid='pane-trim-signal']",
+    layer:"[data-testid='signal-trim-layer']",
+    dialog:"[data-testid='signal-trim-dialog']",
+    form:"[data-signal-trim-form]",
+    name:"[data-signal-trim-name]",
+    overwrite:"[data-signal-trim-overwrite]",
+    submit:"[data-signal-trim-submit]",
+    cancel:"[data-signal-trim-cancel]",
+    close:"[data-signal-trim-close]",
+    status:"[data-signal-trim-status]"
+  };
+  function finite(value) { return Number.isFinite(Number(value)); }
+  function clean(value) { return String(value == null ? "" : value).trim(); }
+  function escapeHtml(value) { return String(value).replace(/[&<>"']/g,function (character) { return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[character]; }); }
+  function normalizeType(value) { value=String(value || "").toLowerCase(); return /^(time|time-domain|врем)/.test(value) ? "time" : value; }
+  function interval(snapshot) {
+    var values=snapshot && Array.isArray(snapshot.values) ? snapshot.values : [];
+    if (values.length !== 2 || !finite(values[0]) || !finite(values[1])) return null;
+    return {start:Number(Math.min(values[0],values[1])),end:Number(Math.max(values[0],values[1])),inclusive:true};
+  }
+  function secondsScale(unit) {
+    var value=clean(unit).toLowerCase().replace(/μ/g,"µ");
+    if (value === "s" || value === "sec" || value === "с") return 1;
+    if (value === "ms" || value === "мс") return 1e-3;
+    if (value === "us" || value === "µs" || value === "мкс") return 1e-6;
+    if (value === "ns" || value === "нс") return 1e-9;
+    return null;
+  }
+  function canonicalSeconds(context) {
+    var range=interval(context && context.cursorSnapshot),convert=context && context.toCanonicalSeconds;
+    if (!range) return null;
+    var start,end;
+    if (typeof convert === "function") { start=Number(convert(range.start)); end=Number(convert(range.end)); }
+    else { var scale=secondsScale(context && context.xUnit); if (scale == null || !finite(scale)) return null; start=range.start*scale; end=range.end*scale; }
+    if (!finite(start) || !finite(end)) return null;
+    return {min_s:Math.min(start,end),max_s:Math.max(start,end)};
+  }
+  function eligibility(context) {
+    var range=canonicalSeconds(context),signal=context && context.mainSignal;
+    return !!context && normalizeType(context.plotType) === "time" && context.cursorSnapshot && context.cursorSnapshot.mode === "dual" &&
+      !!signal && clean(signal.id || signal.signal_id) !== "" && !!range;
+  }
+  function actionMarkup() {
+    return "<button class='pane-action icon-button' type='button' data-testid='pane-trim-signal' data-pane-trim-signal data-pane-trim-eligible='true' aria-label='Обрезать сигнал по курсорам' title='Обрезать сигнал по курсорам'><img src='./icons/function.svg' alt=''></button>";
+  }
+  function projectAction(button,context) {
+    var visible=eligibility(context);
+    if (!button) return visible;
+    button.hidden=!visible;
+    button.disabled=false;
+    button.setAttribute("aria-hidden",String(!visible));
+    button.dataset.paneTrimEligible=String(visible);
+    return visible;
+  }
+  function validateName(value) {
+    var name=clean(value);
+    if (!name) return {valid:false,reason:"required",message:"Введите имя нового сигнала."};
+    if (name.length > 128) return {valid:false,reason:"too_long",message:"Имя сигнала не должно превышать 128 символов."};
+    return {valid:true,value:name};
+  }
+  function fieldMarkup(context) {
+    var signal=context.mainSignal,range=interval(context.cursorSnapshot),unit=clean(context.xUnit),source=clean(signal.name || signal.signal_name || signal.id || signal.signal_id);
+    var intervalText=String(range.start)+" – "+String(range.end)+(unit ? " "+unit : "");
+    return "<div class='settings-field-row'><label class='settings-label'>Исходный сигнал</label><input type='text' readonly autocomplete='off' value='"+escapeHtml(source)+"'></div>"+
+      "<div class='settings-field-row'><label class='settings-label'>Интервал курсоров</label><input type='text' readonly autocomplete='off' value='"+escapeHtml(intervalText)+"'></div>"+
+      "<div class='settings-field-row'><label class='settings-label' for='signal-trim-name'>Имя нового сигнала</label><input id='signal-trim-name' type='text' autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off' data-signal-trim-name aria-required='true'></div>"+
+      "<label class='operation-overwrite-row'><input type='checkbox' data-signal-trim-overwrite><span>Затирать сигнал с таким именем</span></label>"+
+      "<div class='operation-status' role='alert' aria-live='assertive' data-signal-trim-status hidden></div>";
+  }
+  function payload(context,name,overwrite) {
+    var range=canonicalSeconds(context),signal=context && context.mainSignal || {},revision=Number(context && (context.stateRevision != null ? context.stateRevision : context.state_revision));
+    var validName=validateName(name);
+    if (!eligibility(context) || !range) throw new Error("ineligible");
+    if (!validName.valid) throw new Error(validName.reason);
+    if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("state_revision");
+    return {
+      state_revision:revision,
+      source_signal_id:signal.id || signal.signal_id,
+      min_s:range.min_s,
+      max_s:range.max_s,
+      target_name:validName.value,
+      overwrite:!!overwrite
+    };
+  }
+  function typedError(error) {
+    var status=Number(error && (error.status || error.statusCode));
+    if (status === 409) return "Сигнал с таким именем уже существует или данные изменились. Обновите имя и повторите.";
+    if (status === 404) return "Исходный сигнал больше недоступен.";
+    if (status === 422) return "В выбранном интервале нет доступных отсчётов.";
+    if (status === 400) return "Проверьте имя и интервал курсоров.";
+    return "Не удалось создать обрезанный сигнал. Повторите попытку.";
+  }
+  function createController(options) {
+    options=options || {};
+    var attempt=0,busy=false,context=null,opener=null;
+    function open(nextContext,button) {
+      if (!eligibility(nextContext)) return false;
+      context=nextContext; opener=button || null;
+      if (typeof options.mount === "function") options.mount(fieldMarkup(context),{selectors:SELECTORS,initialFocus:SELECTORS.name,returnFocus:opener});
+      return true;
+    }
+    function close() { if (busy) return false; if (typeof options.close === "function") options.close({restoreFocus:opener}); context=null; return true; }
+    function submit(name,overwrite) {
+      var valid=validateName(name);
+      if (!valid.valid) { if (typeof options.error === "function") options.error(valid.message,{field:SELECTORS.name}); return Promise.resolve({ok:false,validation:valid}); }
+      var token=++attempt; busy=true;
+      if (typeof options.setBusy === "function") options.setBusy(true,{stableControls:true,ariaBusy:true,blockClose:true});
+      return Promise.resolve(options.createSignal(payload(context,valid.value,overwrite))).then(function (created) {
+        if (token !== attempt) return {ok:false,stale:true};
+        busy=false; if (typeof options.acceptSignal === "function") options.acceptSignal(created,{appendOrRefreshSignals:true});
+        if (typeof options.setBusy === "function") options.setBusy(false,{stableControls:true});
+        if (typeof options.close === "function") options.close({restoreFocus:null,success:true}); context=null;
+        return {ok:true,signal:created};
+      },function (error) {
+        if (token !== attempt) return {ok:false,stale:true};
+        busy=false; if (typeof options.setBusy === "function") options.setBusy(false,{stableControls:true});
+        var message=typedError(error); if (typeof options.error === "function") options.error(message,{field:null});
+        return {ok:false,error:message};
+      });
+    }
+    function destroy() {
+      attempt+=1; busy=false; context=null;
+      if (typeof options.setBusy === "function") options.setBusy(false,{stableControls:true,cleanup:true});
+      if (typeof options.close === "function") options.close({restoreFocus:null,cleanup:true});
+      opener=null;
+    }
+    return {open:open,close:close,submit:submit,isBusy:function () { return busy; },invalidate:function () { attempt+=1; },destroy:destroy};
+  }
+
+  window.SignalAnalyserCursorTrimSignal={
+    selectors:SELECTORS,
+    eligibility:eligibility,
+    interval:interval,
+    canonicalSeconds:canonicalSeconds,
+    validateName:validateName,
+    actionMarkup:actionMarkup,
+    projectAction:projectAction,
+    fieldMarkup:fieldMarkup,
+    payload:payload,
+    typedError:typedError,
+    createController:createController,
+    contract:{
+      placement:"Existing compact pane-header action immediately before the plot-type selector/overflow; hidden rather than reserved whenever ineligible.",
+      eligibility:"Time pane only, cursor mode dual, valid active-pane main signal and exactly two finite snapped cursor X values.",
+      semantics:"Frontend sends sorted cursor bounds converted to canonical seconds. Backend validates/clamps the interval, takes inclusive samples, retains source sample rate/data type, rebases returned signal time origin to zero and never mutates the source.",
+      modal:"Reuse the Signal operation dialog geometry, overwrite checkbox and busy continuity; focus new-name on open, trap focus, Escape/Cancel/close only while idle, restore opener on cancel/error close.",
+      provider:"POST /api/signals/crop exact payload {state_revision,source_signal_id,min_s,max_s,target_name,overwrite} through the existing revision-safe signal mutation queue; accept the returned signal/inventory before closing success.",
+      cleanup:"On pane removal/type change/main-signal loss/mode drop, hide the action; on owner removal call destroy() to invalidate stale submit, clear busy UI and detach the cursor subscription."
+    }
+  };
+}(window));
+
+(function registerSignalAnalyserRangeLifecycle(window) {
+  "use strict";
+
+  function text(value) { return value == null ? "" : String(value); }
+  function finiteRange(range) {
+    if (!range || range.min == null || range.max == null) return null;
+    var result=[Number(range.min),Number(range.max)];
+    return Number.isFinite(result[0]) && Number.isFinite(result[1]) && result[0] < result[1] ? result : null;
+  }
+  function nodeSet(context) {
+    var nodes=context && context.nodes || {};
+    return {
+      row:nodes.row || null,
+      slider:nodes.slider || null,
+      pane:nodes.pane || null,
+      plot:nodes.plot || null,
+      minInput:nodes.minInput || null,
+      maxInput:nodes.maxInput || null,
+      minHandle:nodes.minHandle || null,
+      maxHandle:nodes.maxHandle || null
+    };
+  }
+  function sameNodes(a,b) {
+    return !!a && !!b && Object.keys(a).every(function (key) { return a[key] === b[key]; });
+  }
+  function setData(node,key,value) { if (node && node.dataset) node.dataset[key]=text(value); }
+  function patch(nodes,projection,fullDomain,generation,state) {
+    var automatic=!projection || projection.auto || projection.min == null && projection.max == null;
+    if (nodes.minInput) nodes.minInput.value=automatic ? "" : text(projection.min);
+    if (nodes.maxInput) nodes.maxInput.value=automatic ? "" : text(projection.max);
+    if (nodes.minHandle && fullDomain) nodes.minHandle.value=text(automatic ? fullDomain[0] : projection.min);
+    if (nodes.maxHandle && fullDomain) nodes.maxHandle.value=text(automatic ? fullDomain[1] : projection.max);
+    setData(nodes.row,"rangeGeneration",generation);
+    setData(nodes.row,"rangeSyncState",state);
+    setData(nodes.slider,"rangeGeneration",generation);
+    setData(nodes.pane,"rangePreviewActive",state === "preview");
+  }
+
+  function create(options) {
+    options=options || {};
+    var sync=options.synchronizedRanges || window.SignalAnalyserSynchronizedRanges;
+    var records=Object.create(null), sequence=0;
+    var settleDelay=Number(options.settleDelayMs);
+    if (!Number.isFinite(settleDelay) || settleDelay < 0) settleDelay=150;
+
+    function key(context) { return [context.displayId || "",context.paneId || "",context.fieldId || ""].join("::"); }
+    function current(token) { var record=token && records[token.key]; return record && record.generation === token.generation ? record : null; }
+    function begin(context,source,mode) {
+      var recordKey=key(context), prior=records[recordKey];
+      if (prior && prior.timer != null) window.clearTimeout(prior.timer);
+      if (prior && typeof options.cancelPreview === "function") options.cancelPreview(context,{generation:prior.generation});
+      sequence+=1;
+      var record={key:recordKey,generation:sequence,source:source,mode:mode || "explicit",nodes:nodeSet(context),context:context,timer:null,projection:null};
+      records[recordKey]=record;
+      setData(record.nodes.row,"rangeGeneration",record.generation);
+      setData(record.nodes.row,"rangeSyncState","preview");
+      setData(record.nodes.slider,"rangeGeneration",record.generation);
+      setData(record.nodes.pane,"rangePreviewActive",true);
+      return {key:recordKey,generation:record.generation};
+    }
+    function stable(record) { return sameNodes(record.nodes,nodeSet(record.context)); }
+    function guarded(token,callback) {
+      var record=current(token);
+      if (!record || !stable(record)) return false;
+      callback(record);
+      return true;
+    }
+    function commit(record,payload) {
+      if (record.timer != null) window.clearTimeout(record.timer);
+      var generation=record.generation,keyValue=record.key;
+      record.timer=window.setTimeout(function () {
+        var active=records[keyValue];
+        if (!active || active.generation !== generation || !stable(active)) return;
+        active.timer=null;
+        patch(active.nodes,active.projection,active.context.fullDomain,generation,"committed");
+        if (typeof options.commitViewport === "function") options.commitViewport(payload,{key:keyValue,generation:generation,mode:active.mode,frontendOnly:true});
+      },settleDelay);
+    }
+    function previewSettings(token,range,projectionOptions) {
+      return guarded(token,function (record) {
+        var selected=finiteRange(range);
+        if (!selected || typeof options.validate === "function" && !options.validate(record.context,range)) return;
+        record.mode="explicit";
+        record.projection={auto:false,min:selected[0],max:selected[1]};
+        patch(record.nodes,record.projection,record.context.fullDomain,record.generation,"preview");
+        var update=sync && sync.plotlyProjection ? sync.plotlyProjection(record.projection,record.context.descriptor,projectionOptions || record.context.projectionOptions) : null;
+        if (update && typeof options.relayout === "function") options.relayout(record.nodes.plot,update,{generation:record.generation,resize:false,rebuild:false});
+      });
+    }
+    function settleSettings(token) {
+      return guarded(token,function (record) {
+        if (!record.projection) return;
+        patch(record.nodes,record.projection,record.context.fullDomain,record.generation,"settling");
+        commit(record,{fieldId:record.context.fieldId,min:record.projection.min,max:record.projection.max,auto:false,generation:record.generation});
+      });
+    }
+    function beginGraph(context) { return begin(context,"graph","explicit"); }
+    function projectGraph(token,eventData,terminal,projectionOptions) {
+      return guarded(token,function (record) {
+        var projected=sync && sync.settingsProjection ? sync.settingsProjection(eventData,record.context.descriptor,projectionOptions || record.context.projectionOptions) : null;
+        if (!projected) return;
+        record.mode=projected.mode;
+        record.projection=projected.mode === "auto" ? {auto:true,min:null,max:null} : {auto:false,min:projected.min,max:projected.max};
+        patch(record.nodes,record.projection,record.context.fullDomain,record.generation,terminal ? "settling" : "preview");
+        if (terminal) commit(record,{fieldId:record.context.fieldId,min:record.projection.min,max:record.projection.max,auto:record.projection.auto,generation:record.generation});
+      });
+    }
+    function resetMany(contexts) {
+      contexts=(contexts || []).filter(Boolean);
+      if (!contexts.length) return {generation:sequence,tokens:[]};
+      sequence+=1;
+      var generation=sequence,created=[],combinedUpdate={},primaryPlot=null;
+      contexts.forEach(function (context) {
+        var recordKey=key(context),prior=records[recordKey];
+        if (prior && prior.timer != null) window.clearTimeout(prior.timer);
+        if (prior && typeof options.cancelPreview === "function") options.cancelPreview(context,{generation:prior.generation});
+        var record={key:recordKey,generation:generation,source:"reset",mode:"auto",nodes:nodeSet(context),context:context,timer:null,projection:{auto:true,min:null,max:null}};
+        records[recordKey]=record;
+        if (!primaryPlot) primaryPlot=record.nodes.plot;
+        if (typeof options.clearViewportDraft === "function") options.clearViewportDraft(context,{generation:generation,frontendOnly:true});
+        patch(record.nodes,record.projection,context.fullDomain,generation,"settling");
+        var update=sync && sync.plotlyProjection ? sync.plotlyProjection(record.projection,context.descriptor,context.projectionOptions) : null;
+        if (update) Object.keys(update).forEach(function (name) { combinedUpdate[name]=update[name]; });
+        if (typeof options.projectLinked === "function") options.projectLinked(context,record.projection,{generation:generation,source:"reset"});
+        created.push(record);
+      });
+      if (primaryPlot && Object.keys(combinedUpdate).length && typeof options.relayout === "function") options.relayout(primaryPlot,combinedUpdate,{generation:generation,source:"reset",resize:false,rebuild:false});
+      var timer=window.setTimeout(function () {
+        var stableRecords=created.filter(function (record) { return records[record.key] === record && stable(record); });
+        if (stableRecords.length !== created.length) return;
+        stableRecords.forEach(function (record) { record.timer=null; patch(record.nodes,record.projection,record.context.fullDomain,generation,"committed"); });
+        if (typeof options.commitViewport === "function") options.commitViewport({ranges:created.map(function (record) { return {fieldId:record.context.fieldId,min:null,max:null,auto:true}; }),auto:true,generation:generation},{generation:generation,mode:"auto",atomic:true,frontendOnly:true});
+      },settleDelay);
+      created.forEach(function (record) { record.timer=timer; });
+      return {generation:generation,tokens:created.map(function (record) { return {key:record.key,generation:generation}; })};
+    }
+    function reset(context) {
+      var result=resetMany([context]);
+      return result.tokens[0] || {key:key(context),generation:result.generation};
+    }
+    function acceptViewport(context,generation,projection,state) {
+      var record=records[key(context)];
+      if (!record || record.generation !== Number(generation) || !stable(record)) return false;
+      if (record.mode === "auto" && projection && !projection.auto) return false;
+      record.projection=record.mode === "auto" ? {auto:true,min:null,max:null} : projection || record.projection;
+      patch(record.nodes,record.projection,context.fullDomain,record.generation,state || "ready");
+      return true;
+    }
+    function syncState(context,state) {
+      var record=records[key(context)];
+      if (!record || !stable(record)) return false;
+      patch(record.nodes,record.projection,context.fullDomain,record.generation,state || "ready");
+      return true;
+    }
+    function inspect(context) {
+      var record=records[key(context)];
+      return record ? {generation:record.generation,source:record.source,mode:record.mode,identityStable:stable(record),projection:record.projection} : null;
+    }
+    function clear(context) {
+      var recordKey=key(context),record=records[recordKey];
+      if (!record) return false;
+      if (record.timer != null) window.clearTimeout(record.timer);
+      if (typeof options.cancelPreview === "function") options.cancelPreview(record.context,{generation:record.generation,cleanup:true});
+      delete records[recordKey];
+      return true;
+    }
+    function clearPane(displayId,paneId) {
+      var prefix=[displayId || "",paneId || ""].join("::")+"::";
+      Object.keys(records).filter(function (recordKey) { return recordKey.indexOf(prefix) === 0; }).forEach(function (recordKey) {
+        var record=records[recordKey];
+        if (record.timer != null) window.clearTimeout(record.timer);
+        if (typeof options.cancelPreview === "function") options.cancelPreview(record.context,{generation:record.generation,cleanup:true});
+        delete records[recordKey];
+      });
+    }
+
+    return {beginSettingsDrag:function (context) { return begin(context,"settings","explicit"); },previewSettings:previewSettings,settleSettings:settleSettings,beginGraph:beginGraph,projectGraph:projectGraph,reset:reset,resetMany:resetMany,acceptViewport:acceptViewport,syncState:syncState,inspect:inspect,clear:clear,clearPane:clearPane};
+  }
+
+  window.SignalAnalyserRangeLifecycle={
+    create:create,
+    selectors:{rangeRow:"[data-setting-id$='limits']",rangeSlider:"[data-screen-range-slider]",pane:"[data-pane-id]",plot:"[data-pane-host]"},
+    e2eHooks:["data-range-generation","data-range-sync-state","data-range-preview-active"],
+    contract:{
+      domIdentity:"Range row, numeric inputs, slider and Plotly host are captured once per generation and must remain the same nodes through preview, frontend viewport commit and ready projection.",
+      geometry:"Preview calls Plotly.relayout with resize:false/rebuild:false and never writes pane/plot width, height or overflow; host replacement and settings rerender are forbidden.",
+      reset:"Graph/settings double-click creates the latest shared generation, clears the frontend viewport draft, patches blank Auto inputs/full-domain handles in place, relayouts true autorange and commits one frontend-only Auto projection.",
+      stale:"Frontend viewport accepts must echo the generation; older generations and an explicit projection after an Auto generation are ignored.",
+      zoom:"Manual graph relayouting remains a live selected-unit projection; the programmatic autorange event of reset remains Auto and cannot repin its prior interval.",
+      persistence:"Viewport range controls never call settings.publishRange, /api/settings, output refresh, DSP, state_revision or session persistence.",
+      cleanup:"On pane or field removal call clearPane/clear to cancel pending timers and preview work before deleting captured node references."
     }
   };
 }(window));
@@ -348,11 +923,11 @@
     sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
     signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
-    signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{}, synchronizedRangeSettlers:{}, synchronizedRangeFrame:null, synchronizedSettingsFrame:null, synchronizedRangePending:{}, synchronizedRangeSuppressByPane:{},
+    signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{}, viewportRanges:{}, synchronizedRangeSettlers:{}, synchronizedRangeFrame:null, synchronizedSettingsFrame:null, synchronizedRangePending:{}, synchronizedRangeSuppressByPane:{}, rangeLifecycle:null, rangeLifecycleTokens:{}, rangeLifecycleActive:{}, rangeLifecycleFrame:null, rangeLifecycleRelayoutPending:{}, rangeLifecycleScrollTop:null,
     signalSamples: { signalId:"", signalName:"", token:0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null, search:null }, error:"", searchValue:"", searchState:"", searchMessage:"" },
-    sampleColumnsVisibility:null, sampleColumnsMenuTrigger:null,
+    sampleColumnsVisibility:null, sampleColumnsMenuTrigger:null, measurementCursorController:null, measurementCursorSnapshotByPane:{}, measurementCursorUnsubscribe:null, measurementCursorFrame:null,
     scopedLoadingSequence:0, scopedPaneLoads:{}, scopedLayoutLoad:null,
-    signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }
+    signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }, axisLabelsController:null, signalTrimController:null, signalTrimCursorUnsubscribe:null
   };
 
   function q(selector) { return document.querySelector(selector); }
@@ -362,6 +937,146 @@
   function plotAutoscaleController() { return window.SignalAnalyserPlotAutoscale || null; }
   function task0141Controller() { return window.SignalAnalyserTask0141 || null; }
   function synchronizedRangeController() { return window.SignalAnalyserSynchronizedRanges || null; }
+  function rangeLifecycleKey(displayId, paneId, fieldId) { return [displayId || "", paneId || "", fieldId || ""].join("::"); }
+  function rangeLifecycleRecordLive(record) {
+    var nodes=record && record.context && record.context.nodes || {};
+    return (!nodes.plot || nodes.plot.isConnected !== false) && (!nodes.row || nodes.row.isConnected !== false) && (!nodes.slider || nodes.slider.isConnected !== false);
+  }
+  function rangeLifecycleCurrentActive() {
+    var display=activeDisplay(), prefix=display ? model.settingsPage === "screen" ? String(display.id)+"::" : model.activePane ? rangeLifecycleKey(display.id,model.activePane,"") : "" : "";
+    return !!prefix && Object.keys(model.rangeLifecycleActive).some(function (key) { return key.indexOf(prefix) === 0 && rangeLifecycleRecordLive(model.rangeLifecycleActive[key]); });
+  }
+  function rangeLifecycleContext(displayId,paneId,descriptor) {
+    var runtimeKey=paneRuntimeKey(displayId,paneId), row=q("[data-testid='settings-field-"+CSS.escape(descriptor.fieldId)+"']"), slider=q("[data-screen-range-slider='"+CSS.escape(descriptor.fieldId)+"']"), paneNode=q("[data-display-id='"+CSS.escape(displayId)+"'][data-pane-id='"+CSS.escape(paneId)+"']"), plot=q("[data-pane-host='"+CSS.escape(runtimeKey)+"']"), fullDomain=slider ? [Number(slider.dataset.fullMin),Number(slider.dataset.fullMax)] : rangeAxisDomain(descriptor);
+    if (!fullDomain || !Number.isFinite(fullDomain[0]) || !Number.isFinite(fullDomain[1]) || !(fullDomain[0] < fullDomain[1])) fullDomain=null;
+    return {displayId:displayId,paneId:paneId,fieldId:descriptor.fieldId,viewportKey:viewportRangeKey(displayId,paneId,descriptor.fieldId),descriptor:descriptor,projectionOptions:synchronizedRangeOptions(descriptor),fullDomain:fullDomain,nodes:{row:row,slider:slider,pane:paneNode,plot:plot,minInput:row && row.querySelector("[data-range-part='min']"),maxInput:row && row.querySelector("[data-range-part='max']"),minHandle:slider && slider.querySelector("[data-screen-range-input='min']"),maxHandle:slider && slider.querySelector("[data-screen-range-input='max']")}};
+  }
+  function rememberRangeLifecycle(context,token) {
+    if (!context || !token) return;
+    var key=rangeLifecycleKey(context.displayId,context.paneId,context.fieldId), content=q("[data-testid='settings-content']");
+    model.rangeLifecycleTokens[key]=token;
+    model.rangeLifecycleActive[key]={generation:token.generation,context:context};
+    if (content && model.rangeLifecycleScrollTop === null) model.rangeLifecycleScrollTop=content.scrollTop;
+  }
+  function restoreRangeLifecycleScroll() {
+    var content=q("[data-testid='settings-content']");
+    if (content && model.rangeLifecycleScrollTop !== null && content.scrollTop !== model.rangeLifecycleScrollTop) content.scrollTop=model.rangeLifecycleScrollTop;
+  }
+  function syncRangeLifecycleSelection(context) {
+    var slider=context && context.nodes && context.nodes.slider, selection=slider && slider.querySelector(".screen-range-selection"), minimum=context && context.nodes.minHandle, maximum=context && context.nodes.maxHandle;
+    if (!selection || !minimum || !maximum || !context.fullDomain) return;
+    var span=context.fullDomain[1]-context.fullDomain[0];
+    if (!(span > 0)) return;
+    selection.style.left=((Number(minimum.value)-context.fullDomain[0])/span*100)+"%";
+    selection.style.right=((context.fullDomain[1]-Number(maximum.value))/span*100)+"%";
+  }
+  function releaseRangeLifecycle(displayId,paneId,state) {
+    var prefix=rangeLifecycleKey(displayId,paneId,""), controller=rangeLifecycleController();
+    Object.keys(model.rangeLifecycleActive).forEach(function (key) {
+      if (key.indexOf(prefix) !== 0) return;
+      var active=model.rangeLifecycleActive[key];
+      if (controller) controller.syncState(active.context,state || "ready");
+      delete model.rangeLifecycleActive[key];
+      delete model.rangeLifecycleTokens[key];
+    });
+    restoreRangeLifecycleScroll();
+    if (!Object.keys(model.rangeLifecycleActive).length) model.rangeLifecycleScrollTop=null;
+  }
+  function rangeLifecycleRelayout(plot,update) {
+    if (!plot || !update) return;
+    var runtimeKey=plot.dataset.paneHost || "";
+    model.rangeLifecycleRelayoutPending[runtimeKey]=Object.assign(model.rangeLifecycleRelayoutPending[runtimeKey] || {},update);
+    if (model.rangeLifecycleFrame !== null) return;
+    model.rangeLifecycleFrame=window.requestAnimationFrame(function () {
+      model.rangeLifecycleFrame=null;
+      var pending=model.rangeLifecycleRelayoutPending; model.rangeLifecycleRelayoutPending={};
+      Object.keys(pending).forEach(function (key) {
+        var host=q("[data-pane-host='"+CSS.escape(key)+"']"), Plotly=window.Plotly, ids=key.split("::");
+        if (!host || !Plotly || typeof Plotly.relayout !== "function") return;
+        model.synchronizedRangeSuppressByPane[key]=true;
+        model.axisLinkSuppressByPane[key]=true;
+        queueLinkedTimeRelayout(ids[0],ids[1],pending[key]);
+        queueLinkedSpectralRelayout(ids[0],ids[1],pending[key]);
+        try { Promise.resolve(Plotly.relayout(host,pending[key])).catch(function () {}).finally(function () { delete model.synchronizedRangeSuppressByPane[key]; delete model.axisLinkSuppressByPane[key]; }); }
+        catch (_) { delete model.synchronizedRangeSuppressByPane[key]; delete model.axisLinkSuppressByPane[key]; }
+      });
+      restoreRangeLifecycleScroll();
+    });
+  }
+  function clearRangeLifecycleExplicit(context) {
+    delete model.viewportRanges[context.viewportKey || viewportRangeKey(context.displayId,context.paneId,context.fieldId)];
+    rememberRangeBoundaryIntent(context.fieldId,"min","");
+    rememberRangeBoundaryIntent(context.fieldId,"max","");
+    Object.keys(model.synchronizedRangeSettlers).forEach(function (key) {
+      if (key.slice(-context.fieldId.length-2) !== "::"+context.fieldId) return;
+      model.synchronizedRangeSettlers[key].cancel();
+      delete model.synchronizedRangeSettlers[key];
+    });
+    delete model.synchronizedRangePending[paneRuntimeKey(context.displayId,context.paneId)];
+    if (typeof settings.clearRangeDraft === "function") settings.clearRangeDraft(context.fieldId);
+  }
+  function commitRangeLifecycle(payload,metadata) {
+    var ranges=payload && Array.isArray(payload.ranges) ? payload.ranges : [payload];
+    ranges.filter(Boolean).forEach(function (range) {
+      var key=metadata && metadata.key || Object.keys(model.rangeLifecycleActive).filter(function (candidate) { var record=model.rangeLifecycleActive[candidate]; return candidate.slice(-range.fieldId.length-2) === "::"+range.fieldId && (!metadata || record.generation === metadata.generation); })[0], active=model.rangeLifecycleActive[key];
+      if (!active || !rangeLifecycleRecordLive(active) || metadata && active.generation !== metadata.generation) return;
+      var raw={min:range.auto || range.min == null ? "" : String(range.min),max:range.auto || range.max == null ? "" : String(range.max)};
+      var viewportKey=active.context.viewportKey || viewportRangeKey(active.context.displayId,active.context.paneId,range.fieldId);
+      if (range.auto) delete model.viewportRanges[viewportKey];
+      else model.viewportRanges[viewportKey]={min:range.min,max:range.max,generation:metadata && metadata.generation || range.generation || 0};
+      rememberRangeBoundaryIntent(range.fieldId,"min",raw.min);
+      rememberRangeBoundaryIntent(range.fieldId,"max",raw.max);
+    });
+  }
+  function rangeLifecycleController() {
+    if (!model.rangeLifecycle && window.SignalAnalyserRangeLifecycle) model.rangeLifecycle=window.SignalAnalyserRangeLifecycle.create({synchronizedRanges:synchronizedRangeController(),settleDelayMs:150,validate:function () { return true; },relayout:rangeLifecycleRelayout,commitViewport:commitRangeLifecycle,clearViewportDraft:clearRangeLifecycleExplicit,cancelPreview:function (context) { var key=rangeLifecycleKey(context.displayId,context.paneId,context.fieldId), settler=model.synchronizedRangeSettlers[key]; if (settler) settler.cancel(); delete model.synchronizedRangeSettlers[key]; }});
+    return model.rangeLifecycle;
+  }
+  function rangeLifecycleDescriptor(fieldId) {
+    var pane=paneById(model.activePane), helper=synchronizedRangeController();
+    if (!helper) return null;
+    var descriptor=pane && helper.descriptors(pane.plot_type).filter(function (item) { return item.fieldId === fieldId; })[0];
+    if (descriptor) return {descriptor:descriptor,paneId:pane.id};
+    var target=null;
+    panes().some(function (candidate) {
+      var item=helper.descriptors(candidate.plot_type).filter(function (entry) { return entry.fieldId === fieldId; })[0];
+      if (!item) return false;
+      target={descriptor:item,paneId:candidate.id};
+      return true;
+    });
+    return target;
+  }
+  function beginSettingsRangeLifecycle(slider) {
+    var display=activeDisplay(), target=slider && rangeLifecycleDescriptor(slider.dataset.screenRangeSlider), lifecycle=rangeLifecycleController();
+    if (!display || !target || !lifecycle) return null;
+    var context=rangeLifecycleContext(display.id,target.paneId,target.descriptor), token=lifecycle.beginSettingsDrag(context);
+    rememberRangeLifecycle(context,token);
+    return {key:rangeLifecycleKey(display.id,target.paneId,target.descriptor.fieldId),context:context,token:token};
+  }
+  function activeSettingsRangeLifecycle(slider) {
+    var display=activeDisplay(), fieldId=slider && slider.dataset.screenRangeSlider, target=rangeLifecycleDescriptor(fieldId), key=rangeLifecycleKey(display && display.id,target && target.paneId,fieldId), active=model.rangeLifecycleActive[key], token=model.rangeLifecycleTokens[key];
+    if (!active || !token) return beginSettingsRangeLifecycle(slider);
+    return {key:key,context:active.context,token:token};
+  }
+  function settleSettingsRangeLifecycle(slider) {
+    var active=activeSettingsRangeLifecycle(slider), lifecycle=rangeLifecycleController();
+    if (!active || !lifecycle) return;
+    lifecycle.settleSettings(active.token);
+  }
+  function resetRangeLifecycle(displayId,paneId,descriptors) {
+    var lifecycle=rangeLifecycleController();
+    if (!lifecycle) return false;
+    var contexts=(descriptors || []).map(function (descriptor) { return rangeLifecycleContext(displayId,paneId,descriptor); });
+    if (!contexts.length) return false;
+    var result=lifecycle.resetMany(contexts);
+    contexts.forEach(function (context) {
+      syncRangeLifecycleSelection(context);
+      var token=(result.tokens || []).filter(function (candidate) { return candidate.key === rangeLifecycleKey(context.displayId,context.paneId,context.fieldId); })[0];
+      if (token) rememberRangeLifecycle(context,token);
+    });
+    return true;
+  }
+  if (typeof settings.setRenderGuard === "function") settings.setRenderGuard(rangeLifecycleCurrentActive);
   function plotOutputIdentity(pane, record) {
     return [pane && pane.plot_type || "", record && record.context_key || "", record && record.calculation_revision == null ? "" : record.calculation_revision].join("::");
   }
@@ -420,6 +1135,7 @@
     if (!Object.keys(current.pending).length) settleLayoutLoading(displayId, "empty", token);
   }
   function markOutputTerminal(displayId, paneId, terminal) {
+    releaseRangeLifecycle(displayId,paneId,terminal);
     var paneLoad=model.scopedPaneLoads[paneRuntimeKey(displayId, paneId)];
     if (paneLoad && paneLoad.armed) settlePaneLoading(displayId, paneId, terminal, paneLoad.token);
     var current=model.scopedLayoutLoad, runtimeKey=paneRuntimeKey(displayId, paneId);
@@ -1030,6 +1746,7 @@
       menu.setAttribute("aria-haspopup", "menu");
       if (!menu.hasAttribute("aria-expanded")) menu.setAttribute("aria-expanded", "false");
     }
+    reconcilePaneTrimAction(node,displayId,pane);
     var canvas = node.querySelector(".plot-canvas");
     if (canvas) {
       canvas.setAttribute("aria-label", "График области " + paneName);
@@ -1060,6 +1777,14 @@
       if (!retained[runtimeKey]) {
         var cursors=paneGraphCursorController();
         if (cursors) cursors.clear(runtimeKey);
+        var cursorColumns=measurementCursorColumnsController();
+        if (cursorColumns) cursorColumns.clear(runtimeKey);
+        delete model.measurementCursorSnapshotByPane[runtimeKey];
+        var labels=axisLabelsController();
+        if (labels) labels.clear(runtimeKey);
+        Object.keys(model.viewportRanges).forEach(function (key) { if (key.indexOf(runtimeKey+"::") === 0) delete model.viewportRanges[key]; });
+        if (model.rangeLifecycleController && typeof model.rangeLifecycleController.clearPane === "function") model.rangeLifecycleController.clearPane(runtimeKey);
+        if (model.signalTrimController) model.signalTrimController.destroy();
         node.remove();
       }
     });
@@ -1166,6 +1891,16 @@
   function clearSessionTransientState() {
     var cursors=paneGraphCursorController();
     if (cursors) Object.keys(model.outputs).forEach(function (key) { cursors.clear(key); });
+    if (typeof model.measurementCursorUnsubscribe === "function") model.measurementCursorUnsubscribe();
+    model.measurementCursorUnsubscribe=null;
+    if (model.measurementCursorController) Object.keys(model.measurementCursorSnapshotByPane).forEach(function (key) { model.measurementCursorController.clear(key); });
+    model.measurementCursorSnapshotByPane={};
+    if (model.measurementCursorFrame !== null) window.cancelAnimationFrame(model.measurementCursorFrame);
+    model.measurementCursorFrame=null;
+    if (model.axisLabelsController) Object.keys(model.outputs).forEach(function (key) { model.axisLabelsController.clear(key); });
+    if (model.signalTrimController) model.signalTrimController.destroy();
+    model.viewportRanges={};
+    if (model.rangeLifecycleController && typeof model.rangeLifecycleController.clearPane === "function") Object.keys(model.outputs).forEach(function (key) { model.rangeLifecycleController.clearPane(key); });
     Object.keys(model.pollByPane).forEach(function (key) { window.clearTimeout(model.pollByPane[key]); });
     Object.keys(model.peaksPollByPane).forEach(function (key) { window.clearTimeout(model.peaksPollByPane[key]); });
     model.outputs = {}; model.outputTokens = {}; model.pollByPane = {}; model.plotQueue = {};
@@ -1341,33 +2076,21 @@
       return slider && host.contains(slider) ? slider : null;
     }
     function resetHorizontalRange(event) {
-      var Plotly = window.Plotly, now = Date.now(), xRange = model.rangeSliderDataRangeByPane[runtimeKey];
-      if (!model.rangeSliderByPane[runtimeKey] || !xRange || !Plotly || typeof Plotly.relayout !== "function") return false;
+      var now = Date.now(), ids=runtimeKey.split("::"), pane=paneById(ids[1]), helper=synchronizedRangeController();
+      if (!model.rangeSliderByPane[runtimeKey] || !pane || !helper) return false;
       if (host._rangeSliderResetAt && now - host._rangeSliderResetAt < 240) return true;
       host._rangeSliderResetAt = now;
-      model.rangeSliderFullRangeByPane[runtimeKey] = xRange.slice();
       if (event) {
         event.preventDefault();
         event.stopPropagation();
         if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
       }
-      var update = {
-        "xaxis.range[0]":xRange[0],
-        "xaxis.range[1]":xRange[1],
-        "xaxis.autorange":false,
-        "xaxis.rangeslider.range":xRange.slice(),
-        "xaxis.rangeslider.autorange":false
-      };
-      queueLinkedTimeRelayout(runtimeKey.split("::")[0], runtimeKey.split("::")[1], update);
-      model.axisLinkSuppressByPane[runtimeKey] = true;
-      try {
-        Promise.resolve(Plotly.relayout(host, update)).catch(function () { /* Keep the existing graph state when Plotly rejects reset. */ }).finally(function () { delete model.axisLinkSuppressByPane[runtimeKey]; });
-      } catch (_) { delete model.axisLinkSuppressByPane[runtimeKey]; }
-      return true;
+      var descriptors=helper.descriptors(pane.plot_type).filter(function (descriptor) { return descriptor.axis === "xaxis"; });
+      return resetRangeLifecycle(ids[0],ids[1],descriptors);
     }
     function resetGraphRange(event) {
-      var Plotly = window.Plotly, now = Date.now(), autoscale=plotAutoscaleController(), snapshot=model.plotAutoscaleByPane[runtimeKey];
-      if (!autoscale || !snapshot || !Plotly || typeof Plotly.relayout !== "function") return false;
+      var now = Date.now(), ids=runtimeKey.split("::"), pane=paneById(ids[1]), helper=synchronizedRangeController();
+      if (!pane || !helper) return false;
       if (host._graphRangeResetAt && now - host._graphRangeResetAt < 240) {
         if (event) {
           event.preventDefault();
@@ -1377,30 +2100,14 @@
         return true;
       }
       host._graphRangeResetAt = now;
-      var resetSnapshot=Object.assign({}, snapshot, { rangeSliderVisible:!!model.rangeSliderByPane[runtimeKey] });
-      var update=autoscale.relayout(resetSnapshot);
-      if (!update) return false;
-      var xRange=snapshot.axes && snapshot.axes.xaxis && snapshot.axes.xaxis.range;
-      var yRange=snapshot.axes && snapshot.axes.yaxis && snapshot.axes.yaxis.range;
-      if (yRange) {
-        model.amplitudeSelectedRangeByPane[runtimeKey] = yRange.slice();
-      } else delete model.amplitudeSelectedRangeByPane[runtimeKey];
-      if (model.rangeSliderByPane[runtimeKey] && xRange) {
-        model.rangeSliderFullRangeByPane[runtimeKey] = xRange.slice();
-      }
       if (event) {
         event.preventDefault();
         event.stopPropagation();
         if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
       }
-      model.axisLinkSuppressByPane[runtimeKey] = true;
-      try {
-        Promise.resolve(Plotly.relayout(host, update)).catch(function () { /* Keep the current view if Plotly rejects reset. */ }).finally(function () {
-          delete model.axisLinkSuppressByPane[runtimeKey];
-          syncAmplitudeSlider(host, runtimeKey);
-        });
-      } catch (_) { delete model.axisLinkSuppressByPane[runtimeKey]; }
-      return true;
+      delete model.amplitudeSelectedRangeByPane[runtimeKey];
+      var descriptors=helper.descriptors(pane.plot_type).filter(function (descriptor) { return descriptor.axis === "xaxis" || descriptor.axis === "yaxis"; });
+      return resetRangeLifecycle(ids[0],ids[1],descriptors);
     }
     host.addEventListener("pointerdown", function (event) {
       if (event.button !== undefined && event.button !== 0) return;
@@ -1792,43 +2499,23 @@
   }
 
   function projectPlotRangeToSettings(displayId, paneId, eventData, terminal) {
-    var helper=synchronizedRangeController(), pane=paneById(paneId);
-    if (!helper || !pane || model.activePane !== paneId || !activeDisplay() || activeDisplay().id !== displayId) return;
+    var helper=synchronizedRangeController(), lifecycle=rangeLifecycleController(), pane=paneById(paneId);
+    if (!helper || !lifecycle || !pane || model.activePane !== paneId || !activeDisplay() || activeDisplay().id !== displayId) return;
     helper.descriptors(pane.plot_type).forEach(function (descriptor) {
       var projection=helper.settingsProjection(eventData, descriptor, synchronizedRangeOptions(descriptor));
       if (!projection) return;
       var key=paneRuntimeKey(displayId,paneId)+"::"+descriptor.fieldId;
-      var settler=model.synchronizedRangeSettlers[key];
-      if (!settler) settler=model.synchronizedRangeSettlers[key]=helper.createSettler({
-        preview:function (value) {
-          var raw=synchronizedRangeRaw(value);
-          rememberRangeBoundaryIntent(value.fieldId,"min",raw.min);
-          rememberRangeBoundaryIntent(value.fieldId,"max",raw.max);
-          if (typeof settings.previewRange === "function") settings.previewRange(value.fieldId,raw);
-          scheduleSynchronizedSettingsRender();
-        },
-        publish:function (value) {
-          var raw=synchronizedRangeRaw(value);
-          rememberRangeBoundaryIntent(value.fieldId,"min",raw.min);
-          rememberRangeBoundaryIntent(value.fieldId,"max",raw.max);
-          if (typeof settings.publishRange === "function") settings.publishRange(value.fieldId,raw).catch(function () {});
-        }
-      },helper.settleDelayMs);
-      settler.preview(projection);
-      if (terminal) settler.settle(projection);
+      var context=rangeLifecycleContext(displayId,paneId,descriptor), token=model.rangeLifecycleTokens[key];
+      if (!token) { token=lifecycle.beginGraph(context); rememberRangeLifecycle(context,token); }
+      lifecycle.projectGraph(token,eventData,terminal,synchronizedRangeOptions(descriptor));
+      syncRangeLifecycleSelection(context);
+      if (terminal) delete model.rangeLifecycleTokens[key];
     });
   }
 
   function rangeAxisDomain(descriptor) {
     var axis={time:"time",amplitude:"amplitude",frequency:"frequency",magnitude:"magnitude",power:"power",density:"density"}[descriptor.kind] || descriptor.kind;
     return screenRangeDomain(axis,screenDraftFor(activeDisplay()));
-  }
-
-  function settleSettingsRange(detail,display) {
-    var helper=synchronizedRangeController(), value=detail && detail.value || {}, key="settings::"+display.id+"::"+detail.field_id;
-    var settler=model.synchronizedRangeSettlers[key];
-    if (!settler) settler=model.synchronizedRangeSettlers[key]=helper.createSettler({ publish:function (payload) { if (typeof settings.publishRange === "function") settings.publishRange(payload.fieldId,payload.raw).catch(function () {}); } },helper.settleDelayMs);
-    settler.settle({fieldId:detail.field_id,raw:{min:value.min == null ? "" : String(value.min),max:value.max == null ? "" : String(value.max)}});
   }
 
   function queueSettingsRangeToPlot(detail) {
@@ -1842,7 +2529,11 @@
     else range={auto:false,min:value.min == null && domain ? domain[0] : value.min,max:value.max == null && domain ? domain[1] : value.max};
     var update=helper.plotlyProjection(range,descriptor,synchronizedRangeOptions(descriptor));
     if (!update) return;
-    settleSettingsRange(detail,display);
+    var viewportKey=viewportRangeKey(display.id,pane.id,detail.field_id);
+    if (range.auto) delete model.viewportRanges[viewportKey];
+    else model.viewportRanges[viewportKey]={min:range.min,max:range.max,generation:0};
+    rememberRangeBoundaryIntent(detail.field_id,"min",range.auto ? "" : range.min);
+    rememberRangeBoundaryIntent(detail.field_id,"max",range.auto ? "" : range.max);
     var runtimeKey=paneRuntimeKey(display.id,pane.id);
     var liveHost=q("[data-pane-host='"+CSS.escape(runtimeKey)+"']"), livePlotly=window.Plotly;
     if (!liveHost || liveHost.dataset.plotReady !== "true" || !livePlotly || typeof livePlotly.relayout !== "function") return;
@@ -1967,10 +2658,96 @@
   }
 
   var graphCursorController = null;
+  function axisLabelsPolicy() { return window.SignalAnalyserAxisLabelsAndHover || null; }
+  function axisLabelsController() {
+    var helper=axisLabelsPolicy();
+    if (!model.axisLabelsController && helper) model.axisLabelsController=helper.createController({
+      relayout:function (key,update) { var host=q("[data-pane-host='"+CSS.escape(key)+"']"), Plotly=window.Plotly; if (host && Plotly && typeof Plotly.relayout === "function") Promise.resolve(Plotly.relayout(host,update)).catch(function () {}); },
+      restyle:function (key,update,indexes) { var host=q("[data-pane-host='"+CSS.escape(key)+"']"), Plotly=window.Plotly; if (host && Plotly && typeof Plotly.restyle === "function") Promise.resolve(Plotly.restyle(host,update,indexes)).catch(function () {}); }
+    });
+    return model.axisLabelsController;
+  }
+  function showAxisLabelsValue(runtimeKey,paneId,controller) { if (paneId !== model.activePane) return controller ? controller.value(runtimeKey) : true; var value=settings.value("display.show_axis_labels"); return value === undefined || value === null ? true : !!value; }
+  function applyAxisLabelsProjection(layout,traces,projection) {
+    layout=layout || {};
+    layout.xaxis=Object.assign({},layout.xaxis || {},{title:Object.assign({},layout.xaxis && layout.xaxis.title || {},{text:projection.layout["xaxis.title.text"]})});
+    layout.yaxis=Object.assign({},layout.yaxis || {},{title:Object.assign({},layout.yaxis && layout.yaxis.title || {},{text:projection.layout["yaxis.title.text"]})});
+    projection.traces.forEach(function (item) { var trace=traces[item.index]; if (!trace) return; trace.colorbar=Object.assign({},trace.colorbar || {},{title:Object.assign({},trace.colorbar && trace.colorbar.title || {},{text:item.update["colorbar.title.text"]})}); });
+    return layout;
+  }
+  function measurementCursorColumnsHelper() { return window.SignalAnalyserMeasurementCursorColumns || null; }
+  function measurementCursorColumnsController() {
+    var helper=measurementCursorColumnsHelper();
+    if (!model.measurementCursorController && helper) model.measurementCursorController=helper.createController({onVisibilityChange:function (key) { scheduleMeasurementCursorProjection(key); }});
+    return model.measurementCursorController;
+  }
+  function scheduleMeasurementCursorProjection(key) {
+    var display=activeDisplay(), activeKey=display && model.activePane ? paneRuntimeKey(display.id,model.activePane) : "";
+    if (key !== activeKey || model.measurementCursorFrame !== null) return;
+    model.measurementCursorFrame=window.requestAnimationFrame(function () {
+      model.measurementCursorFrame=null;
+      if (model.inspectorPage === "measurements") renderInspector();
+      var menu=q("[data-testid='measurement-columns-menu']");
+      if (menu && !menu.hidden) renderMeasurementMenu();
+      projectSignalTrimActions();
+    });
+  }
+  function acceptGraphCursorSnapshot(snapshot) {
+    if (!snapshot || !snapshot.key) return;
+    model.measurementCursorSnapshotByPane[snapshot.key]=snapshot;
+    scheduleMeasurementCursorProjection(snapshot.key);
+  }
   function paneGraphCursorController() {
-    if (!graphCursorController && window.SignalAnalyserGraphCursorUI) graphCursorController = window.SignalAnalyserGraphCursorUI.createController();
+    if (!graphCursorController && window.SignalAnalyserGraphCursorUI) {
+      graphCursorController = window.SignalAnalyserGraphCursorUI.createController();
+    }
+    if (graphCursorController && !model.measurementCursorUnsubscribe && typeof graphCursorController.subscribe === "function") model.measurementCursorUnsubscribe=graphCursorController.subscribe(acceptGraphCursorSnapshot);
     return graphCursorController;
   }
+
+  var signalTrimMarkup=`<div class="modal-layer native-modal-layer" data-testid="signal-trim-layer" hidden>
+  <section class="dialog-card signal-operation-dialog signal-trim-dialog" role="dialog" aria-modal="true" aria-labelledby="signal-trim-title" data-testid="signal-trim-dialog">
+    <header class="dialog-titlebar">
+      <h2 id="signal-trim-title" tabindex="-1">Обрезать сигнал по курсорам</h2>
+      <button class="icon-button dialog-close" type="button" data-signal-trim-close aria-label="Закрыть обрезку сигнала"><img src="./icons/close.svg" alt=""></button>
+    </header>
+    <div class="dialog-body" data-signal-trim-form></div>
+    <footer class="dialog-footer">
+      <button class="button" type="button" data-signal-trim-cancel>Отмена</button>
+      <button class="button button-primary" type="button" data-signal-trim-submit>Создать</button>
+    </footer>
+  </section>
+</div>`;
+  function ensureSignalTrimLayer() { var helper=signalTrimHelper(), layer=helper && q(helper.selectors.layer); if (!layer && helper) { document.body.insertAdjacentHTML("beforeend",signalTrimMarkup); layer=q(helper.selectors.layer); } return layer; }
+  function signalTrimHelper() { return window.SignalAnalyserCursorTrimSignal || null; }
+  function signalTrimContext(displayId,pane) {
+    var helper=signalTrimHelper(), key=paneRuntimeKey(displayId,pane.id), snapshot=model.measurementCursorSnapshotByPane[key] || null;
+    var host=snapshot && snapshot.host || q("[data-pane-host='"+CSS.escape(key)+"']"), title=host && host._fullLayout && host._fullLayout.xaxis && host._fullLayout.xaxis.title;
+    var titleText=typeof title === "string" ? title : title && title.text || "", parts=String(titleText).split(",");
+    return {displayId:displayId,paneId:pane.id,plotType:pane.plot_type,cursorSnapshot:snapshot,mainSignal:mainSignalForPane(pane),xUnit:parts.length>1 ? parts.slice(1).join(",").trim() : "s",stateRevision:model.revision,helper:helper};
+  }
+  function signalTrimController() {
+    var helper=signalTrimHelper();
+    if (!model.signalTrimController && helper) model.signalTrimController=helper.createController({
+      mount:function (markup,meta) { var layer=ensureSignalTrimLayer(), form=layer && layer.querySelector(helper.selectors.form); if (!layer || !form) return; form.innerHTML=markup; layer.hidden=false; q("[data-testid='app-shell']").inert=true; layer.setAttribute("aria-busy","false"); window.requestAnimationFrame(function () { var focus=layer.querySelector(meta.initialFocus); if (focus) focus.focus(); }); },
+      close:function (meta) { var layer=q(helper.selectors.layer); if (layer) { layer.hidden=true; layer.setAttribute("aria-busy","false"); } q("[data-testid='app-shell']").inert=false; if (meta && meta.restoreFocus && meta.restoreFocus.isConnected) meta.restoreFocus.focus(); },
+      setBusy:function (busy) { var layer=q(helper.selectors.layer); if (!layer) return; layer.setAttribute("aria-busy",String(!!busy)); Array.prototype.slice.call(layer.querySelectorAll("input,button")).forEach(function (node) { node.disabled=!!busy; }); },
+      error:function (message,meta) { var layer=q(helper.selectors.layer), status=layer && layer.querySelector(helper.selectors.status), field=meta && meta.field && layer.querySelector(meta.field); if (status) { status.hidden=false; status.textContent=message; } if (field) { field.setAttribute("aria-invalid","true"); field.focus(); } },
+      createSignal:function (payload) { return mutate(function () { return api.cropSignal(Object.assign({},payload,{state_revision:model.revision})); },{preservePlots:true,skipSettings:true,skipOutput:true}); },
+      acceptSignal:function () { renderActivePaneContext(); }
+    });
+    return model.signalTrimController;
+  }
+  function reconcilePaneTrimAction(node,displayId,pane) {
+    var helper=signalTrimHelper();
+    if (!helper) return;
+    var cluster=node.querySelector(".plot-control-cluster"), select=cluster && cluster.querySelector(".pane-select"), button=cluster && cluster.querySelector(helper.selectors.action);
+    if (!button && cluster && select) { select.insertAdjacentHTML("beforebegin",helper.actionMarkup()); button=cluster.querySelector(helper.selectors.action); }
+    if (button) { button.dataset.displayId=displayId; button.dataset.paneId=pane.id; helper.projectAction(button,signalTrimContext(displayId,pane)); }
+  }
+  function projectSignalTrimActions() { qa("[data-display-id][data-pane-id]").forEach(function (node) { var pane=paneById(node.dataset.paneId), display=activeDisplay(); if (pane && display && display.id === node.dataset.displayId) reconcilePaneTrimAction(node,display.id,pane); }); }
+  function openSignalTrim(button) { var pane=paneById(button.dataset.paneId), display=activeDisplay(), controller=signalTrimController(); if (display && pane && display.id === button.dataset.displayId && controller) controller.open(signalTrimContext(display.id,pane),button); }
+  function submitSignalTrim() { var helper=signalTrimHelper(), controller=signalTrimController(), layer=helper && q(helper.selectors.layer); if (!helper || !controller || !layer) return; var name=layer.querySelector(helper.selectors.name), overwrite=layer.querySelector(helper.selectors.overwrite); controller.submit(name && name.value,!!(overwrite && overwrite.checked)); }
 
   function graphCursorEligible(displayId, paneId) {
     if (!rangeSliderEligible(displayId, paneId)) return false;
@@ -2258,9 +3035,13 @@
         if (!host || !queued || !hasPlotData(queued.output.data)) return;
         var payload = plotEnvelope(queued.output.data);
         var traces = Array.isArray(payload) ? payload : (Array.isArray(payload.data) ? payload.data : [{ type: "heatmap", x: payload.x, y: payload.y, z: payload.z, colorscale: payload.colorscale }]);
+        var sourceLayout = payload.layout || {};
+        var labelsPolicy=axisLabelsPolicy();
+        if (labelsPolicy) { var hoverSafe=labelsPolicy.suppressHover({data:traces,layout:sourceLayout}); traces=hoverSafe.data; sourceLayout=hoverSafe.layout; }
+        var labelsController=axisLabelsController();
+        if (labelsController) { var labelsVisible=showAxisLabelsValue(runtimeKey,pane.id,labelsController), labelsProjection=labelsController.capture(runtimeKey,pane.plot_type,sourceLayout,traces,labelsVisible); if (pane.id === model.activePane && labelsController.value(runtimeKey) !== labelsVisible) labelsProjection=labelsController.setVisible(runtimeKey,labelsVisible); sourceLayout=applyAxisLabelsProjection(sourceLayout,traces,labelsProjection); }
         var dataRange = pane.plot_type === "time" ? traceXDataRange(traces) : pane.plot_type === "spectrum" ? traceAxisDataRange(traces, "x") : null;
         var amplitudeDataRange = pane.plot_type === "time" ? traceYDataRange(traces) : pane.plot_type === "spectrum" ? traceAxisDataRange(traces, "y") : null;
-        var sourceLayout = payload.layout || {};
         var outputIdentity=plotOutputIdentity(pane, queued);
         var defaultSignature = JSON.stringify({ outputIdentity:outputIdentity, xData:dataRange, yData:amplitudeDataRange, xaxis:sourceLayout.xaxis || null, yaxis:sourceLayout.yaxis || null });
         var defaultChanged = model.graphDefaultSignatureByPane[runtimeKey] !== defaultSignature;
@@ -2721,10 +3502,8 @@
 
   function screenLimitFieldIds(draft) {
     var ids = [];
-    if (draft && draft.linkTime) ids.push("time.units", "time.x_limits");
-    if (draft && draft.linkAmplitude) ids.push("time.y_limits");
-    if (draft && draft.linkFrequency) ids.push("spectrum.frequency_units", "spectrum.frequency_limits");
-    if (draft && draft.linkMagnitude) ids.push("spectrum.y_limits");
+    if (draft && draft.linkTime) ids.push("time.units");
+    if (draft && draft.linkFrequency) ids.push("spectrum.frequency_units");
     return ids;
   }
 
@@ -2787,7 +3566,7 @@
       if (model.settingsPublishing || model.screenApplying || model.settingsPublishWanted <= model.settingsPublishPublished) return;
       var targetRevision=model.settingsPublishWanted;
       var batch=publicationBatch(targetRevision);
-      var namesOnly=batch.length > 0 && batch.every(function (event) { return event.fieldId === "display.name" || event.fieldId === "pane.name"; });
+      var noOutputOnly=batch.length > 0 && batch.every(function (event) { return event.fieldId === "display.name" || event.fieldId === "pane.name" || event.fieldId === "display.show_axis_labels"; });
       model.settingsPublishing=true;
       var areaLoads=[];
       batch.forEach(function (publication) {
@@ -2805,11 +3584,12 @@
         consumePublicationBatch(targetRevision);
         return refreshSnapshot(render).catch(function () { render(); return null; }).then(function () {
           areaLoads.forEach(function (entry) { if (entry.token) armPaneLoading(entry.displayId, entry.paneId, entry.token); });
-          if (!namesOnly) output(true);
+          if (!noOutputOnly) output(true);
           return response;
         });
       }).catch(function (error) {
         areaLoads.forEach(function (entry) { if (entry.token) settlePaneLoading(entry.displayId, entry.paneId, "error", entry.token); });
+        batch.forEach(function (publication) { if (publication.fieldId && /limits$/.test(publication.fieldId)) releaseRangeLifecycle(publication.displayId,publication.paneId || model.activePane,"error"); });
         revertPublicationNamePreviews(batch);
         showToast(safeErrorText(error, "Не удалось применить настройки."), true);
       }).finally(function () {
@@ -2924,6 +3704,18 @@
     return String(display && display.id || "") + "::" + scope + "::" + String(fieldId);
   }
 
+  function viewportRangeKey(displayId, paneId, fieldId) {
+    var scope=model.settingsPage === "screen" ? "screen" : "pane::" + String(paneId || "");
+    return String(displayId || "") + "::" + scope + "::" + String(fieldId || "");
+  }
+
+  function viewportRangeValue(fieldId) {
+    var display=activeDisplay(), key=viewportRangeKey(display && display.id,model.activePane,fieldId), stored=model.viewportRanges[key];
+    if (stored) return {min:stored.min,max:stored.max};
+    var minimum=rangeBoundaryIntent(fieldId,"min"),maximum=rangeBoundaryIntent(fieldId,"max");
+    return minimum == null && maximum == null ? null : {min:minimum == null ? null : Number(minimum),max:maximum == null ? null : Number(maximum)};
+  }
+
   function rangeBoundaryIntent(fieldId, boundary) {
     var entry=model.rangeBoundaryIntents[rangeBoundaryIntentKey(fieldId)];
     return entry && Object.prototype.hasOwnProperty.call(entry, boundary) ? entry[boundary] : null;
@@ -2937,8 +3729,7 @@
   }
 
   function screenRangeSlider(fieldId, axis, draft) {
-    var reader = model.settingsPage === "screen" && typeof settings.screenValue === "function" ? settings.screenValue : settings.value;
-    var domain = screenRangeDomain(axis, draft), current = reader(fieldId) || {};
+    var domain = screenRangeDomain(axis, draft), current = viewportRangeValue(fieldId) || {};
     var minimumIntent=rangeBoundaryIntent(fieldId, "min"), maximumIntent=rangeBoundaryIntent(fieldId, "max");
     var minimum = current.min == null ? minimumIntent == null ? domain[0] : Number(minimumIntent) : Number(current.min);
     var maximum = current.max == null ? maximumIntent == null ? domain[1] : Number(maximumIntent) : Number(current.max);
@@ -2957,16 +3748,12 @@
 
   function keepAutomaticRangeInputsEmpty(fieldId, axis, draft) {
     var row = q("[data-testid='settings-field-" + CSS.escape(fieldId) + "']");
-    var reader = model.settingsPage === "screen" && typeof settings.screenValue === "function" ? settings.screenValue : settings.value;
-    if (typeof reader !== "function") return;
-    var current = reader(fieldId);
-    if (!row || !current) return;
+    var current = viewportRangeValue(fieldId) || {};
+    if (!row) return;
     var minimum = row.querySelector("[data-range-part='min']"), maximum = row.querySelector("[data-range-part='max']");
     var minimumIntent=rangeBoundaryIntent(fieldId, "min"), maximumIntent=rangeBoundaryIntent(fieldId, "max");
-    if (minimum && current.min == null) minimum.value = "";
-    if (maximum && current.max == null) maximum.value = "";
-    if (minimum && current.min == null && minimumIntent != null) minimum.value = minimumIntent;
-    if (maximum && current.max == null && maximumIntent != null) maximum.value = maximumIntent;
+    if (minimum) minimum.value=current.min == null ? minimumIntent == null ? "" : minimumIntent : String(current.min);
+    if (maximum) maximum.value=current.max == null ? maximumIntent == null ? "" : maximumIntent : String(current.max);
   }
 
   function keepVisibleAutomaticRangeInputsEmpty(draft) {
@@ -3021,6 +3808,11 @@
   }
 
   function renderSettings(display) {
+    if (rangeLifecycleCurrentActive()) {
+      restoreRangeLifecycleScroll();
+      renderApply();
+      return;
+    }
     if (activeSignalNameEditor()) {
       renderApply();
       return;
@@ -3217,6 +4009,12 @@
     ["minimum", "maximum", "mean", "median", "peak_to_peak", "rms"].forEach(function (kind) {
       if (selectedKinds.indexOf(kind) >= 0) columns = columns.concat(measurementColumns[kind]);
     });
+    var runtimeKey=paneRuntimeKey(display.id,pane.id), cursorSnapshot=model.measurementCursorSnapshotByPane[runtimeKey] || null;
+    var cursorColumnsController=measurementCursorColumnsController(), cursorColumnsHelper=measurementCursorColumnsHelper();
+    var cursorColumnState=cursorColumnsController && cursorColumnsHelper ? cursorColumnsController.reconcile(runtimeKey,cursorSnapshot,pane.plot_type) : null;
+    if (cursorColumnState) columns=columns.concat(cursorColumnsHelper.headerColumns(cursorSnapshot,pane.plot_type,cursorColumnState.visible).map(function (column) {
+      return {id:column.id,label:column.headerLabel,width:column.width,className:"measurement-cursor-cell",cursor:true};
+    }));
     var tableWidth = columns.reduce(function (total, column) { return total + column.width; }, 0);
     var colgroup = "<colgroup>" + columns.map(function (column) { return "<col style='width:" + column.width + "px'>"; }).join("") + "</colgroup>";
     var headers = columns.map(function (column) { return "<th" + (column.className ? " class='" + column.className + "'" : "") + ">" + column.label + "</th>"; }).join("");
@@ -3226,12 +4024,14 @@
       (measurements.items || []).forEach(function (item) { items[item.id] = item; });
       var signal = (model.state.signals || []).filter(function (candidate) { return candidate.name === signalName; })[0] || {};
       var limits = measurements.time_limits || display.time_limits || {};
+      var cursorValues=cursorColumnState ? cursorColumnsHelper.rowProjection(measurements,cursorSnapshot,pane.plot_type,cursorColumnState.visible) : {};
       var cells = columns.map(function (column) {
         var value = "—";
         if (column.id === "name") value = "<span class='signal-cell-value'>" + esc(signalName) + "</span>";
         else if (column.id === "line") value = "<span class='color-swatch measurement-color-swatch' style='--swatch:" + esc(signalColor(signal)) + "' aria-label='Цвет " + esc(signalName) + "'></span>";
         else if (column.id === "roi_min") value = esc(measurementValue({ value:limits.min_s }, "value"));
         else if (column.id === "roi_max") value = esc(measurementValue({ value:limits.max_s }, "value"));
+        else if (column.cursor) value = "<span data-measurement-cursor-value='" + esc(column.id) + "'>" + esc(cursorValues[column.id] && cursorValues[column.id].text || "—") + "</span>";
         else value = esc(measurementValue(items[column.kind], column.itemKey));
         return "<td" + (column.className ? " class='" + column.className + "'" : "") + ">" + value + "</td>";
       }).join("");
@@ -3477,7 +4277,7 @@
     if (!host || !host.data) return;
     var grouped = {};
     record.data.rows.forEach(function (row) { var key=row.signal_name || ""; if (!key) return; (grouped[key] || (grouped[key]=[])).push(row); });
-    var traces = Object.keys(grouped).map(function (name) { var rows=grouped[name], signal=(model.state.signals || []).filter(function (candidate) { return signalNameMatches(candidate, name); })[0], color=rows[0].signal_color || signalColor(signal); return { type:"scatter", mode:"markers+text", x:rows.map(function(row){return pane.plot_type === "spectrum" ? (row.frequency == null ? row.frequency_hz : row.frequency) : (row.time == null ? row.time_s : row.time);}), y:rows.map(function(row){return row.value;}), text:rows.map(function(row){return row.graph_number == null ? "" : String(row.graph_number);}), textposition:"top center", marker:{color:color,size:8,symbol:rows.map(function(row){ return row.type === "minimum" ? "triangle-down" : "triangle-up"; })}, hoverinfo:"skip", showlegend:false, meta:{signal_analyser_peaks_overlay:true} }; });
+    var traces = Object.keys(grouped).map(function (name) { var rows=grouped[name], signal=(model.state.signals || []).filter(function (candidate) { return signalNameMatches(candidate, name); })[0], color=rows[0].signal_color || signalColor(signal); return { type:"scatter", mode:"markers+text", x:rows.map(function(row){return pane.plot_type === "spectrum" ? (row.frequency == null ? row.frequency_hz : row.frequency) : (row.time == null ? row.time_s : row.time);}), y:rows.map(function(row){return row.value;}), text:rows.map(function(row){return row.graph_number == null ? "" : String(row.graph_number);}), textposition:"top center", marker:{color:color,size:8,symbol:rows.map(function(row){ return row.type === "minimum" ? "triangle-down" : "triangle-up"; })}, hoverinfo:"skip", hovertemplate:null, showlegend:false, meta:{signal_analyser_peaks_overlay:true} }; });
     var existing = ownedPeakTraceIndexes(host), remove = existing.length ? window.Plotly.deleteTraces(host, existing) : Promise.resolve();
     Promise.resolve(remove).then(function () { if (traces.length && activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId) return window.Plotly.addTraces(host, traces); }).catch(function () {});
   }
@@ -3912,10 +4712,16 @@
     var menu = q("[data-testid='measurement-columns-menu']"), display = activeDisplay();
     if (!menu) return;
     var selected = display && Array.isArray(display.measurement_kinds) ? display.measurement_kinds : [];
-    menu.innerHTML = "<div class='inspector-menu-title'>Видимость измерений</div>" + measurementOptions.map(function (measurement) {
+    var markup = "<div class='inspector-menu-title'>Видимость измерений</div>" + measurementOptions.map(function (measurement) {
       var visible = selected.indexOf(measurement.id) >= 0;
       return "<button type='button' role='menuitemcheckbox' aria-pressed='" + visible + "' aria-checked='" + visible + "' data-measurement-visible='" + measurement.id + "'><span>" + measurement.label + "</span><img src='" + (visible ? "./icons/eye.svg" : "./icons/eye-off.svg") + "' alt=''></button>";
     }).join("");
+    var pane=paneById(model.activePane), helper=measurementCursorColumnsHelper(), controller=measurementCursorColumnsController();
+    if (display && pane && helper && controller) {
+      var key=paneRuntimeKey(display.id,pane.id), snapshot=model.measurementCursorSnapshotByPane[key] || null;
+      markup+=helper.menuMarkup(controller.menuItems(key,snapshot,pane.plot_type),".");
+    }
+    menu.innerHTML=markup;
   }
 
   function ensureSampleColumnsMenu() {
@@ -4531,6 +5337,9 @@
   document.addEventListener("click", function (event) {
     var button = event.target.closest("button");
     if (!button) return;
+    if (button.dataset.paneTrimSignal !== undefined) return void openSignalTrim(button);
+    if (button.dataset.signalTrimSubmit !== undefined) return void submitSignalTrim();
+    if (button.dataset.signalTrimCancel !== undefined || button.dataset.signalTrimClose !== undefined) { var trimController=signalTrimController(); if (trimController) trimController.close(); return; }
     if (button.dataset.testid === "toolbar-import") return void openSessionFilePicker(button);
     if (button.dataset.testid === "toolbar-save") return void openSessionSave(button);
     if (button.dataset.inspectorStateAction) return void changeWorkspaceInspectorState(button);
@@ -4595,6 +5404,17 @@
     if (button.dataset.testid === "signal-columns-menu-trigger") { var columns = q("[data-testid='signal-columns-menu']"); if (!columns.hidden) return void closeColumnMenu(true); renderColumnMenu(); columns.hidden = false; button.setAttribute("aria-expanded", "true"); positionMenu(columns, button, 244); var firstColumn = columns.querySelector("button"); if (firstColumn) firstColumn.focus(); return; }
     if (button.dataset.columnVisible !== undefined) { var key = button.dataset.columnVisible; model.visibleColumns[key] = !model.visibleColumns[key]; renderInspector(); renderColumnMenu(); var menuTrigger = q("[data-testid='signal-columns-menu-trigger']"); if (menuTrigger) menuTrigger.setAttribute("aria-expanded", "true"); positionMenu(q("[data-testid='signal-columns-menu']"), menuTrigger, 244); return; }
     if (button.dataset.testid === "measurement-columns-menu-trigger") { var measurementsMenu = q("[data-testid='measurement-columns-menu']"); if (!measurementsMenu.hidden) return void closeMeasurementMenu(true); renderMeasurementMenu(); measurementsMenu.hidden = false; button.setAttribute("aria-expanded", "true"); positionMenu(measurementsMenu, button, 244); var firstMeasurement = measurementsMenu.querySelector("button"); if (firstMeasurement) firstMeasurement.focus(); return; }
+    if (button.dataset.measurementCursorColumn !== undefined) {
+      var cursorDisplay=activeDisplay(), cursorPane=paneById(model.activePane), cursorController=measurementCursorColumnsController();
+      if (!cursorDisplay || !cursorPane || !cursorController) return;
+      var cursorKey=paneRuntimeKey(cursorDisplay.id,cursorPane.id), cursorSnapshot=model.measurementCursorSnapshotByPane[cursorKey] || null;
+      cursorController.toggle(cursorKey,button.dataset.measurementCursorColumn,cursorSnapshot,cursorPane.plot_type);
+      renderMeasurementMenu();
+      renderInspector();
+      var cursorMenu=q("[data-testid='measurement-columns-menu']"), cursorTrigger=q("[data-testid='measurement-columns-menu-trigger']");
+      if (cursorMenu && cursorTrigger) { cursorMenu.hidden=false; cursorTrigger.setAttribute("aria-expanded","true"); positionMenu(cursorMenu,cursorTrigger,244); var restoredCursor=cursorMenu.querySelector("[data-measurement-cursor-column='"+CSS.escape(button.dataset.measurementCursorColumn)+"']"); if (restoredCursor) restoredCursor.focus(); }
+      return;
+    }
     if (button.dataset.measurementVisible !== undefined) {
       var display = activeDisplay(), selected = display && Array.isArray(display.measurement_kinds) ? display.measurement_kinds.slice() : [], measurementKey = button.dataset.measurementVisible, measurementIndex = selected.indexOf(measurementKey);
       if (measurementIndex >= 0) selected.splice(measurementIndex, 1); else selected.push(measurementKey);
@@ -4631,6 +5451,17 @@
   document.addEventListener("click", function (event) { var menu=q("[data-testid='measurement-columns-menu']"),trigger=q("[data-testid='measurement-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeMeasurementMenu(false); });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='sample-columns-menu']"),trigger=q("[data-testid='sample-columns-menu-trigger']") || model.sampleColumnsMenuTrigger;if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeSampleColumnsMenu(false); });
   document.addEventListener("keydown", function (event) {
+    var helper=signalTrimHelper(), layer=helper && q(helper.selectors.layer), controller=model.signalTrimController;
+    if (!layer || layer.hidden || !controller) return;
+    if (event.key === "Escape") { if (!controller.isBusy()) { event.preventDefault(); event.stopImmediatePropagation(); controller.close(); } return; }
+    if (event.key !== "Tab") return;
+    var focusable=Array.prototype.slice.call(layer.querySelectorAll("button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex='-1'])"));
+    if (!focusable.length) return;
+    var first=focusable[0], last=focusable[focusable.length-1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
+  document.addEventListener("keydown", function (event) {
     var trigger=event.target.closest && event.target.closest("[data-testid='sample-columns-menu-trigger']");
     if (trigger && event.key === "ArrowDown") { event.preventDefault(); openSampleColumnsMenu(trigger); return; }
     var menu=event.target.closest && event.target.closest("[data-testid='sample-columns-menu']");
@@ -4649,6 +5480,7 @@
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]").filter(function (item) { return !item.hidden; }),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
+    if (node.dataset.settingId === "display.show_axis_labels") { var labelsDisplay=activeDisplay(), labelsPane=paneById(model.activePane), labelsController=axisLabelsController(); if (labelsDisplay && labelsPane && labelsController) labelsController.setVisible(paneRuntimeKey(labelsDisplay.id,labelsPane.id),node.checked); }
     if (node.dataset.spectrumSliderAxis) { var currentDisplay=activeDisplay(), currentPane=paneById(model.activePane); if (currentDisplay && currentPane) setPaneSliderVisibility(currentDisplay.id, currentPane.id, node.dataset.spectrumSliderAxis, node.checked); return; }
     if (node.dataset.screenLinkTime !== undefined && model.screenDraft) { model.screenDraft.linkTime = node.checked; model.screenDraft.error = ""; previewScreenLinks(model.screenDraft); renderScreenSettings(activeDisplay()); scheduleScreenSettingsApply(); window.requestAnimationFrame(function () { var restored=q("[data-testid='screen-link-time']"); if(restored)restored.focus(); }); return; }
     if (node.dataset.screenLinkAmplitude !== undefined && model.screenDraft) { model.screenDraft.linkAmplitude = node.checked; model.screenDraft.error = ""; previewScreenLinks(model.screenDraft); renderScreenSettings(activeDisplay()); scheduleScreenSettingsApply(); window.requestAnimationFrame(function () { var restored=q("[data-testid='screen-link-amplitude']"); if(restored)restored.focus(); }); return; }
@@ -4685,6 +5517,16 @@
     if (!input || !input.dataset || input.dataset.rangePart === undefined || !input.dataset.settingId || typeof input.closest === "function" && input.closest("[data-screen-range-slider]")) return;
     rememberRangeBoundaryIntent(input.dataset.settingId, input.dataset.rangePart, input.value);
   }, true);
+  document.addEventListener("pointerdown", function (event) {
+    var input=event.target, slider=input && input.closest && input.closest("[data-screen-range-slider]");
+    if (!slider || input.dataset.screenRangeInput === undefined) return;
+    beginSettingsRangeLifecycle(slider);
+  }, true);
+  document.addEventListener("keydown", function (event) {
+    var input=event.target, slider=input && input.closest && input.closest("[data-screen-range-slider]");
+    if (!slider || input.dataset.screenRangeInput === undefined || ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown"].indexOf(event.key) < 0) return;
+    activeSettingsRangeLifecycle(slider);
+  }, true);
   document.addEventListener("input", function (event) {
     var input = event.target, slider = input.closest && input.closest("[data-screen-range-slider]");
     if (!slider || input.dataset.screenRangeInput === undefined) return;
@@ -4706,21 +5548,29 @@
       if (minimumNode) minimumNode.value = minimumText;
       if (maximumNode) maximumNode.value = maximumText;
     }
-    settings.setValue(fieldId, { min:minimumText, max:maximumText });
+    var active=activeSettingsRangeLifecycle(slider), raw={min:minimumText,max:maximumText};
+    if (active && rangeLifecycleController()) rangeLifecycleController().previewSettings(active.token,{min:minimum,max:maximum},active.context.projectionOptions);
+    restoreRangeLifecycleScroll();
   });
+  function finishSettingsRangeEvent(event) {
+    var input=event.target, slider=input && input.closest && input.closest("[data-screen-range-slider]");
+    if (!slider || input.dataset.screenRangeInput === undefined) return;
+    settleSettingsRangeLifecycle(slider);
+  }
+  document.addEventListener("pointerup", finishSettingsRangeEvent, true);
+  document.addEventListener("pointercancel", finishSettingsRangeEvent, true);
+  document.addEventListener("change", finishSettingsRangeEvent, true);
+  document.addEventListener("keyup", function (event) {
+    if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End","PageUp","PageDown"].indexOf(event.key) >= 0) finishSettingsRangeEvent(event);
+  }, true);
   document.addEventListener("dblclick", function (event) {
     var slider=event.target.closest && event.target.closest("[data-screen-range-slider]"), row=event.target.closest && event.target.closest(".settings-field-row[data-range-boundary-validation]");
     if (!slider && !row) return;
     event.preventDefault();
     var fieldId=slider ? slider.dataset.screenRangeSlider : row.querySelector("[data-setting-id][data-range-part]") && row.querySelector("[data-setting-id][data-range-part]").dataset.settingId;
     if (!fieldId) return;
-    row=q("[data-testid='settings-field-" + CSS.escape(fieldId) + "']");
-    rememberRangeBoundaryIntent(fieldId, "min", "");
-    rememberRangeBoundaryIntent(fieldId, "max", "");
-    if (row) { var minimum=row.querySelector("[data-range-part='min']"), maximum=row.querySelector("[data-range-part='max']"); if (minimum) minimum.value=""; if (maximum) maximum.value=""; }
-    settings.setValue(fieldId, { min:"", max:"" });
-    if (model.settingsPage === "screen" && activeDisplay()) renderScreenSettings(activeDisplay());
-    else if (model.settingsPage === "display" && activeDisplay()) renderSettings(activeDisplay());
+    var display=activeDisplay(), target=rangeLifecycleDescriptor(fieldId);
+    if (display && target) resetRangeLifecycle(display.id,target.paneId,[target.descriptor]);
   });
   document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) { model.signalAddSelection[event.target.value]=event.target.checked; updateSignalAddControls(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName === "SELECT") { var select=event.target; model.peaksDraft.values[select.dataset.peaksSetting]=select.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:select.dataset.peaksSetting }); renderApply(); } });
   document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); if (event.target.dataset.signalAddSearch !== undefined) { model.signalAddSearch=event.target.value; model.signalAddResetScroll=true; renderSignalAddCatalog(); var search=q("[data-signal-add-search]"); if(search){search.focus();search.setSelectionRange(model.signalAddSearch.length,model.signalAddSearch.length);} } });
@@ -4731,6 +5581,7 @@
   window.addEventListener("signal-settings-name-preview", function (event) { projectNamePreview(event.detail || {}); });
   window.addEventListener("signal-settings-save-failed", function (event) {
     var detail=event.detail || {}, displayId=detail.display_id || activeDisplay() && activeDisplay().id;
+    releaseRangeLifecycle(displayId,model.activePane,"error");
     var paneId=model.namePreviewIntents[displayId + "::pane.name::" + String(detail.intent || 0)] || model.activePane;
     if (typeof settings.releaseActiveNameEditor === "function") settings.releaseActiveNameEditor();
     clearNamePreview(detail.field_id, displayId, paneId);
@@ -4744,7 +5595,7 @@
       var displayId=detail.display_id || activeDisplay() && activeDisplay().id;
       var paneId=detail.field_id === "pane.name" ? model.namePreviewIntents[displayId + "::pane.name::" + String(detail.intent || 0)] || model.activePane : "";
       var fieldId=detail.field_id || "";
-      var areaOutput=model.settingsPage === "display" && fieldId !== "display.name" && fieldId !== "pane.name";
+      var areaOutput=model.settingsPage === "display" && fieldId !== "display.name" && fieldId !== "pane.name" && fieldId !== "display.show_axis_labels";
       if (areaOutput) paneId=model.activePane;
       model.settingsPublishEvents.push({ revision:revision, fieldId:fieldId, displayId:displayId, paneId:paneId, areaOutput:areaOutput });
       model.revision=Math.max(model.revision, revision);
@@ -5008,14 +5859,17 @@
   }
 
   function createController() {
-    var records={};
+    var records={},listeners=[];
     function record(key) { return records[key] || (records[key]={mode:MODE_OFF,values:[],host:null,overlay:null}); }
+    function snapshot(key) { var entry=record(key); return {key:key,mode:entry.mode,values:entry.values.slice(),host:entry.host,eligible:entry.mode !== MODE_OFF && !!entry.host && visibleTraces(entry.host).length > 0}; }
+    function notify(key) { var value=snapshot(key); listeners.slice().forEach(function (listener) { listener(value); }); }
+    function subscribe(listener) { if (typeof listener !== "function") return function () {}; listeners.push(listener); return function () { listeners=listeners.filter(function (candidate) { return candidate !== listener; }); }; }
     function removeOverlay(entry) { if (entry.overlay && entry.overlay.isConnected) entry.overlay.remove(); entry.overlay=null; entry.host=null; }
     function update(key) {
       var entry=record(key), host=entry.host;
-      if (!host || !host.isConnected || entry.mode === MODE_OFF || !visibleTraces(host).length) { removeOverlay(entry); return; }
+      if (!host || !host.isConnected || entry.mode === MODE_OFF || !visibleTraces(host).length) { removeOverlay(entry); notify(key); return; }
       var domain=visibleDomain(host);
-      if (!domain) { removeOverlay(entry); return; }
+      if (!domain) { removeOverlay(entry); notify(key); return; }
       entry.values=initialValues(host,entry.mode,entry.values);
       var box=geometry(host), overlay=entry.overlay;
       if (!overlay || !overlay.isConnected) {
@@ -5046,17 +5900,18 @@
       readout.style.left=(box.left+8)+"px";
       readout.style.top=(box.top+8)+"px";
       readout.innerHTML=readoutMarkup(host,entry.values);
+      notify(key);
     }
     function setMode(key, host, mode) {
       var entry=record(key), next=mode === entry.mode ? MODE_OFF : mode;
       entry.mode=next;
       entry.host=host || entry.host;
-      if (next === MODE_OFF) { entry.values=[]; removeOverlay(entry); }
+      if (next === MODE_OFF) { entry.values=[]; removeOverlay(entry); notify(key); }
       else { entry.values=initialValues(entry.host,next,entry.values); update(key); }
       return next;
     }
     function attach(key,host) { var entry=record(key); entry.host=host; if (entry.mode !== MODE_OFF) update(key); }
-    function clear(key) { var entry=record(key); entry.mode=MODE_OFF; entry.values=[]; removeOverlay(entry); }
+    function clear(key) { var entry=record(key); entry.mode=MODE_OFF; entry.values=[]; removeOverlay(entry); notify(key); }
     function mode(key) { return record(key).mode; }
     function syncMenu(menu,key,eligible) {
       if (!menu) return;
@@ -5111,7 +5966,7 @@
       step(key,index,event.key === "ArrowLeft" ? -1 : 1,event.key === "Home" ? "start" : event.key === "End" ? "end" : "");
       window.requestAnimationFrame(function () { var restored=document.querySelector("[data-graph-cursor-overlay='"+CSS.escape(key)+"'] [data-cursor-index='"+index+"']"); if (restored) restored.focus(); });
     },true);
-    return { setMode:setMode, mode:mode, attach:attach, update:update, clear:clear, syncMenu:syncMenu };
+    return { setMode:setMode, mode:mode, attach:attach, update:update, clear:clear, syncMenu:syncMenu, snapshot:snapshot, subscribe:subscribe };
   }
 
   function ensureMenuItems(menu) {
@@ -5732,38 +6587,12 @@
     return PLOT_AXES[value] ? value : "";
   }
 
-  function finiteRange(value) {
-    if (!Array.isArray(value) || value.length !== 2) return null;
-    var start=Number(value[0]),finish=Number(value[1]);
-    return Number.isFinite(start) && Number.isFinite(finish) && start !== finish ? [start,finish] : null;
-  }
-
-  function axisType(source,rendered) {
-    var value=String(source && source.type || rendered && rendered.type || "linear").toLowerCase();
-    return value === "log" ? "log" : "linear";
-  }
-
-  function captureAxis(semantic,source,rendered) {
-    source=source || {};
-    rendered=rendered || {};
-    var providerRange=finiteRange(source.range);
-    var automaticRange=finiteRange(rendered.range);
-    return {
-      semantic:semantic,
-      type:axisType(source,rendered),
-      mode:providerRange ? "provider_default" : automaticRange ? "automatic_full_domain" : "autorange",
-      range:providerRange || automaticRange
-    };
-  }
-
   function capture(options) {
     options=options || {};
     var plotType=cleanType(options.plotType);
     if (!plotType) return null;
     var source=options.sourceLayout || {},rendered=options.fullLayout || {},axes={};
-    Object.keys(PLOT_AXES[plotType]).forEach(function (axisName) {
-      axes[axisName]=captureAxis(PLOT_AXES[plotType][axisName],source[axisName],rendered[axisName]);
-    });
+    Object.keys(PLOT_AXES[plotType]).forEach(function (axisName) { axes[axisName]={semantic:PLOT_AXES[plotType][axisName]}; });
     var sourceSlider=source.xaxis && source.xaxis.rangeslider || {};
     var renderedSlider=rendered.xaxis && rendered.xaxis.rangeslider || {};
     return {
@@ -5774,27 +6603,11 @@
     };
   }
 
-  function axisUpdate(update,axisName,axis) {
-    if (axis.range) {
-      update[axisName+".range[0]"]=axis.range[0];
-      update[axisName+".range[1]"]=axis.range[1];
-      update[axisName+".autorange"]=false;
-    } else update[axisName+".autorange"]=true;
-  }
-
   function relayout(snapshot) {
     if (!snapshot || !PLOT_AXES[snapshot.plotType]) return null;
     var update={autosize:true};
-    Object.keys(snapshot.axes || {}).forEach(function (axisName) {
-      axisUpdate(update,axisName,snapshot.axes[axisName]);
-    });
-    if (snapshot.rangeSliderVisible && snapshot.axes && snapshot.axes.xaxis) {
-      var xaxis=snapshot.axes.xaxis;
-      if (xaxis.range) {
-        update["xaxis.rangeslider.range"]=xaxis.range.slice();
-        update["xaxis.rangeslider.autorange"]=false;
-      } else update["xaxis.rangeslider.autorange"]=true;
-    }
+    Object.keys(snapshot.axes || {}).forEach(function (axisName) { update[axisName+".autorange"]=true; });
+    if (snapshot.rangeSliderVisible && snapshot.axes && snapshot.axes.xaxis) update["xaxis.rangeslider.autorange"]=true;
     return update;
   }
 
@@ -5805,9 +6618,9 @@
     relayout:relayout,
     contract:{
       trigger:"double-click on the clicked ready Plotly graph surface",
-      baseline:"capture after each accepted current Plotly.react; provider explicit range wins, otherwise rendered automatic full-domain range",
-      logSemantics:"captured Plotly log-axis ranges remain Plotly coordinates; never linearly reproject, clamp or infer them from raw samples",
-      isolation:"relayout only the clicked pane; do not propagate linked axes, publish settings, change main signal or request backend/DSP",
+      baseline:"ignore every mirrored/provider numeric range and request true Plotly autorange/full domain for both spatial axes",
+      logSemantics:"Plotly owns autorange for current linear/log axes; never linearly infer the reset range from numeric mirrors or raw samples",
+      isolation:"autorange the clicked pane then reuse existing enabled frontend link propagation for eligible axes; clear/reproject viewport mirrors; do not publish settings, change main signal or request backend/DSP",
       heatmapColor:"spectrogram power and persistence density color ranges remain unchanged"
     }
   };

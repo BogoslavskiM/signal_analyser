@@ -760,6 +760,25 @@ route("/api/signals/derive", method = POST) do
     end
 end
 
+route("/api/signals/crop", method = POST) do
+    try
+        api_json(apply_cropped_signal!(
+            SIGNAL_INVENTORY_SERVICE,
+            SIGNAL_ANALYSER_STATE,
+            parse_crop_signal_command(jsonpayload());
+            lightweight = true,
+        ))
+    catch err
+        if err isa SignalAnalyserValidationError
+            signal_analyser_validation_response(err)
+        elseif err isa SignalAnalyserStaleStateError
+            signal_analyser_stale_response(SIGNAL_ANALYSER_STATE, err)
+        else
+            api_error_response("Не удалось обрезать сигнал", err; status = 500)
+        end
+    end
+end
+
 route("/api/signals/:signal_id/summary", method = GET) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try

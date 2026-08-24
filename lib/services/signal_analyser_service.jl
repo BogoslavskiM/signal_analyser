@@ -9,6 +9,12 @@ const SIGNAL_ANALYSER_VIEW_FIELDS = Set([
     "visible_signals",
     "measurement_kinds",
     "peaks_enabled",
+    # Legacy clients may still publish provider/settings envelopes. Viewport
+    # subfields are normalized to automatic/full-domain state below.
+    "time_limits",
+    "spectrum_settings",
+    "spectrogram_settings",
+    "persistence_settings",
 ])
 const SIGNAL_ANALYSER_DISPLAY_OPERATIONS = Set(["create", "select", "close", "reorder"])
 const SIGNAL_ANALYSER_DISPLAY_REQUEST_FIELDS = Dict(
@@ -1921,7 +1927,9 @@ function signal_full_time_limits(
     signal::AnalysedSignal,
 )::SignalTimeLimits
     signal_measurement_ordinates(service, signal)
-    duration_s = signal_duration_s(signal)
+    # A one-sample crop is a valid inventory signal. Its plotted sample is at
+    # t=0; one sample period provides a non-degenerate internal DSP interval.
+    duration_s = length(signal.values) == 1 ? inv(signal.sample_rate_hz) : signal_duration_s(signal)
     isfinite(duration_s) && duration_s > 0 || throw(ArgumentError(
         "Полный диапазон сигнала должен иметь положительную конечную длительность",
     ))
@@ -2147,29 +2155,82 @@ function signal_analyser_rebase_automatic_time_limits(
     SignalTimeLimits(minimum, maximum)
 end
 
+"""Remove persisted viewport mirrors while retaining calculation settings.
+
+Viewport state belongs to Plotly in the browser. This migration keeps the
+wire/session schema readable, but prevents legacy axis ranges from becoming
+provider inputs, cache keys or hard Plotly limits after a restart/import.
+"""
+function signal_analyser_stored_settings_without_viewport_ranges(
+    stored::SignalDisplayStoredSettings,
+)::SignalDisplayStoredSettings
+    time = stored.time
+    spectrum = stored.spectrum
+    persistence = stored.persistence
+    SignalDisplayStoredSettings(
+        stored.display,
+        SignalTimePreferences(
+            time.normalize_y,
+            time.show_markers,
+            time.units,
+            nothing,
+            time.link_time,
+            time.link_amplitude,
+        ),
+        SignalSpectrumPreferences(
+            spectrum.frequency_units,
+            nothing,
+            spectrum.resolution_type,
+            spectrum.rbw,
+            spectrum.window_length,
+            spectrum.window,
+            spectrum.sidelobe_attenuation_db,
+            spectrum.overlap_percent,
+            spectrum.nfft,
+            spectrum.link_frequency,
+            spectrum.link_magnitude,
+        ),
+        stored.spectrogram,
+        SignalPersistencePreferences(
+            persistence.time_units,
+            persistence.frequency_units,
+            nothing,
+            nothing,
+            nothing,
+            persistence.frequency_scale,
+            persistence.scale,
+            persistence.time_resolution,
+            persistence.overlap_percent,
+            persistence.power_bins,
+        ),
+    )
+end
+
 function signal_analyser_pane_with_recovered_time_limits(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
-    layout::SignalDisplayLayoutState,
+    ::SignalDisplayLayoutState,
     pane::SignalDisplayPaneState,
 )::SignalDisplayPaneState
-    pane.plot_type in SIGNAL_ANALYSER_TIME_LIMIT_PLOTS || return pane
-    isempty(signal_display_pane_members(pane)) && return pane
-    pane.time_limits !== nothing && return pane
-
-    # The mutable legacy Display may still carry an explicit interval which
-    # predates the authoritative pane layout. Preserve it for the active pane.
-    carries_display_limits = pane.id == layout.active_pane_id &&
-        display.time_limits !== nothing &&
-        pane.plot_type == display.active_plot &&
-        Set(signal_display_pane_members(pane)) == Set(signal_analyser_display_members(display)) &&
-        isequal(
-            signal_display_pane_analysis_name(pane),
-            signal_analyser_display_analysis_name(display),
-        )
-    limits = carries_display_limits ?
-        display.time_limits::SignalTimeLimits :
-        signal_analyser_full_bound_time_limits(state, display.id, pane)
+    members = signal_display_pane_members(pane)
+    limits = pane.plot_type in SIGNAL_ANALYSER_TIME_LIMIT_PLOTS && !isempty(members) ?
+        signal_analyser_full_bound_time_limits(state, display.id, pane) : nothing
+    spectrum_settings = SignalSpectrumSettings(
+        pane.spectrum_settings.scale,
+        pane.spectrum_settings.frequency_scale,
+        pane.spectrum_settings.leakage,
+        AutomaticSignalSpectrumFrequencyLimits(),
+    )
+    spectrogram_settings = SignalSpectrogramSettings(
+        pane.spectrogram_settings.overlap_percent,
+        pane.spectrogram_settings.leakage,
+        AutomaticSignalSpectrumFrequencyLimits(),
+        pane.spectrogram_settings.frequency_scale,
+        AutomaticSignalSpectrogramPowerLimits(),
+    )
+    stored_settings = signal_analyser_stored_settings_without_viewport_ranges(
+        pane.stored_settings,
+    )
     SignalDisplayPaneState(
         pane.id,
         pane.name,
@@ -2178,16 +2239,16 @@ function signal_analyser_pane_with_recovered_time_limits(
         pane.analysis_source,
         limits,
         pane.measurement_selection,
-        pane.spectrum_settings,
-        pane.spectrogram_settings,
+        spectrum_settings,
+        spectrogram_settings,
         pane.persistence_settings,
-        pane.stored_settings,
+        stored_settings,
         pane.peaks_enabled,
         pane.peaks_settings,
     )
 end
 
-"""Idempotent migration of legacy/current layouts; explicit limits are immutable here."""
+"""Recover full DSP domains and discard legacy persisted Plotly viewports."""
 function signal_analyser_recover_time_limits_unlocked!(
     state::SignalAnalyserState;
     display_ids::AbstractVector{<:AbstractString} = String[display.id for display in state.displays],
@@ -2212,7 +2273,7 @@ function signal_analyser_recover_time_limits_unlocked!(
                 "$(display.id)::$(pane.id)",
             )
         end
-        recovered_layout = isempty(changed_page_ids) || panes == layout.panes ? layout :
+        recovered_layout = panes == layout.panes ? layout :
             SignalDisplayLayoutState(
                 layout.version,
                 layout.variant,
@@ -2232,7 +2293,10 @@ function signal_analyser_recover_time_limits_unlocked!(
                 signal_analyser_display_analysis_name(display),
                 signal_analyser_display_analysis_name(projected),
             ) &&
-            isequal(display.time_limits, projected.time_limits)
+            isequal(display.time_limits, projected.time_limits) &&
+            display.spectrum_settings == projected.spectrum_settings &&
+            display.spectrogram_settings == projected.spectrogram_settings &&
+            display.stored_settings == projected.stored_settings
         )
         if projection_changed
             state.displays[display_index] = projected
@@ -2500,32 +2564,8 @@ function signal_display_pane_reconfigured(
         prospective_members,
         analysis_signal,
     )
-    rebased_time_limits = signal_analyser_rebase_automatic_time_limits(
-        state,
-        "",
-        pane.id,
-        pane.time_limits,
-        signal_display_pane_members(pane),
-        members,
-    )
-    time_limits = if analysis_signal === nothing
-        isempty(members) || !(plot_type in SIGNAL_ANALYSER_TIME_LIMIT_PLOTS) ? nothing :
-            signal_analyser_full_bound_time_limits(state, "", pane.id, members)
-    elseif !isequal(rebased_time_limits, pane.time_limits)
-        rebased_time_limits
-    elseif pane.stored_settings.time.link_time && rebased_time_limits !== nothing
-        rebased_time_limits
-    elseif current_analysis == analysis_name && rebased_time_limits !== nothing &&
-        (rebased_time_limits::SignalTimeLimits).max_s <= signal_duration_s(analysis_signal) &&
-        signal_time_limits_are_valid(
-            state.measurements_service,
-            analysis_signal,
-            rebased_time_limits,
-        )
-        rebased_time_limits
-    else
-        signal_full_time_limits(state.measurements_service, analysis_signal)
-    end
+    time_limits = isempty(members) || !(plot_type in SIGNAL_ANALYSER_TIME_LIMIT_PLOTS) ? nothing :
+        signal_analyser_full_bound_time_limits(state, "", pane.id, members)
     SignalDisplayPaneState(
         pane.id,
         pane.name,
@@ -5151,7 +5191,6 @@ function validate_signal_analyser_view_payload(
     ))
 
     display = signal_analyser_active_display(state)
-    source_reconciler = SignalAnalysisSourceReconciler()
     field_errors = Dict{String,String}()
     unknown_fields = setdiff(signal_analyser_payload_keys(data), SIGNAL_ANALYSER_VIEW_FIELDS)
     isempty(unknown_fields) || (field_errors["body"] = "Неизвестные поля: $(join(sort!(collect(unknown_fields)), ", "))")
@@ -5232,82 +5271,15 @@ function validate_signal_analyser_view_payload(
 
     has_time_limits = signal_analyser_payload_contains(data, "time_limits")
     time_limits_value = signal_analyser_payload_value(data, "time_limits")
-    validated_time_limits = has_time_limits ?
-        signal_analyser_validate_time_limits!(field_errors, time_limits_value) : nothing
-    source_changed = current_analysis_name != requested_analysis_name
-    carried_time_limits = has_time_limits && if time_limits_value === nothing
-        display.time_limits === nothing
-    else
-        validated_time_limits !== nothing && validated_time_limits == display.time_limits
-    end
-    previous_members = signal_analyser_display_members(display)
-    membership_changed = Set(previous_members) != Set(visible_names)
-    active_pane_id = signal_analyser_layout_by_display_id(
-        state,
-        display.id,
-    ).active_pane_id
-    rebased_carried_time_limits = signal_analyser_rebase_automatic_time_limits(
-        state,
-        display.id,
-        active_pane_id,
-        display.time_limits,
-        previous_members,
-        visible_names,
-    )
+    # Keep accepting the legacy wire field for schema compatibility, but it is
+    # only a viewport mirror now. Structural errors still fail the request;
+    # valid values (including explicit pairs) never become calculation ROI.
+    has_time_limits && signal_analyser_validate_time_limits!(field_errors, time_limits_value)
     requested_time_limits = if requested_analysis_name === nothing
-        if has_time_limits && time_limits_value !== nothing && !(source_changed && carried_time_limits) &&
-            !haskey(field_errors, "time_limits")
-            field_errors["time_limits"] = "Пустой Display должен иметь time_limits=null"
-        end
         nothing
     else
         prospective_signal = signal_by_name(state, requested_analysis_name)
-        if has_time_limits && membership_changed && carried_time_limits
-            rebased_carried_time_limits
-        elseif has_time_limits && source_changed && carried_time_limits
-            if rebased_carried_time_limits !== nothing && signal_time_limits_are_valid(
-                state.measurements_service,
-                prospective_signal,
-                rebased_carried_time_limits,
-            )
-                rebased_carried_time_limits
-            else
-                signal_full_time_limits(state.measurements_service, prospective_signal)
-            end
-        elseif has_time_limits
-            if time_limits_value === nothing
-                field_errors["time_limits"] = "Непустой Display должен иметь Time Limits"
-                nothing
-            elseif validated_time_limits === nothing
-                nothing
-            else
-                try
-                    signal_ordinate_roi(
-                        state.measurements_service,
-                        prospective_signal,
-                        validated_time_limits,
-                    )
-                    validated_time_limits
-                catch err
-                    if err isa ArgumentError
-                        field_errors["time_limits"] = sprint(showerror, err)
-                        nothing
-                    else
-                        rethrow()
-                    end
-                end
-            end
-        elseif current_analysis_name == requested_analysis_name && rebased_carried_time_limits !== nothing
-            rebased_carried_time_limits
-        elseif rebased_carried_time_limits !== nothing && signal_time_limits_are_valid(
-            state.measurements_service,
-            prospective_signal,
-            rebased_carried_time_limits,
-        )
-            rebased_carried_time_limits
-        else
-            signal_full_time_limits(state.measurements_service, prospective_signal)
-        end
+        signal_full_time_limits(state.measurements_service, prospective_signal)
     end
 
     has_measurement_kinds = signal_analyser_payload_contains(data, "measurement_kinds")
@@ -5328,41 +5300,22 @@ function validate_signal_analyser_view_payload(
             field_errors,
             signal_analyser_payload_value(data, "spectrum_settings"),
         )
-        validated_spectrum_settings === nothing ||
-            (requested_spectrum_settings = validated_spectrum_settings)
-    end
-    if !haskey(field_errors, "spectrum_settings")
-        requested_frequency_limits = requested_spectrum_settings.frequency_limits
-        current_frequency_limits = display.spectrum_settings.frequency_limits
-        if requested_analysis_name === nothing
-            if requested_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits &&
-                requested_frequency_limits != current_frequency_limits
-                field_errors["spectrum_settings"] =
-                    "frequency_limits: явный интервал требует analysis source"
-            end
-        else
-            analysis_signal = signal_by_name(state, requested_analysis_name)
-            if requested_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits &&
-                !signal_spectrum_frequency_limits_valid_for_signal(
-                    requested_frequency_limits,
-                    analysis_signal,
-                )
-                frequency_limits_carried = requested_frequency_limits == current_frequency_limits
-                if source_changed && frequency_limits_carried
-                    requested_spectrum_settings = signal_analyser_reconcile_carried_frequency_limits(
-                        source_reconciler,
-                        requested_spectrum_settings,
-                        analysis_signal,
-                    )
-                else
-                    domain = signal_spectrum_topology_limits(analysis_signal)
-                    field_errors["spectrum_settings"] =
-                        "frequency_limits: интервал должен целиком лежать в " *
-                        "[$(domain.min_hz), $(domain.max_hz)] Hz analysis source"
-                end
-            end
+        if validated_spectrum_settings !== nothing
+            typed = validated_spectrum_settings::SignalSpectrumSettings
+            requested_spectrum_settings = SignalSpectrumSettings(
+                typed.scale,
+                typed.frequency_scale,
+                typed.leakage,
+                AutomaticSignalSpectrumFrequencyLimits(),
+            )
         end
     end
+    requested_spectrum_settings = SignalSpectrumSettings(
+        requested_spectrum_settings.scale,
+        requested_spectrum_settings.frequency_scale,
+        requested_spectrum_settings.leakage,
+        AutomaticSignalSpectrumFrequencyLimits(),
+    )
     if requested_spectrum_settings.frequency_scale == LOG_SPECTRUM_FREQUENCY_SCALE &&
         any(signal -> signal.is_complex && signal.name in visible_names, state.signals)
         field_errors["spectrum_settings"] =
@@ -5376,53 +5329,24 @@ function validate_signal_analyser_view_payload(
             field_errors,
             signal_analyser_payload_value(data, "spectrogram_settings"),
         )
-        validated_spectrogram_settings === nothing ||
-            (requested_spectrogram_settings = validated_spectrogram_settings)
-    end
-    if !haskey(field_errors, "spectrogram_settings")
-        requested_frequency_limits = requested_spectrogram_settings.frequency_limits
-        current_frequency_limits = display.spectrogram_settings.frequency_limits
-        if requested_analysis_name === nothing
-            if requested_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits &&
-                requested_frequency_limits != current_frequency_limits
-                field_errors["spectrogram_settings"] =
-                    "frequency_limits: явный интервал требует analysis source"
-            end
-        else
-            analysis_signal = signal_by_name(state, requested_analysis_name)
-            if requested_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits &&
-                !signal_spectrum_frequency_limits_valid_for_signal(
-                    requested_frequency_limits,
-                    analysis_signal,
-                )
-                frequency_limits_carried = requested_frequency_limits == current_frequency_limits
-                if source_changed && frequency_limits_carried
-                    requested_spectrogram_settings = signal_analyser_reconcile_carried_frequency_limits(
-                        source_reconciler,
-                        requested_spectrogram_settings,
-                        analysis_signal,
-                    )
-                else
-                    domain = signal_spectrum_topology_limits(analysis_signal)
-                    field_errors["spectrogram_settings"] =
-                        "frequency_limits: интервал должен целиком лежать в " *
-                        "[$(domain.min_hz), $(domain.max_hz)] Hz analysis source"
-                end
-            end
-        end
-    end
-    if !haskey(field_errors, "spectrogram_settings")
-        try
-            SignalSpectrogramPresentationSettings(
-                display.stored_settings.spectrogram.scale,
-                requested_spectrogram_settings.power_limits,
+        if validated_spectrogram_settings !== nothing
+            typed = validated_spectrogram_settings::SignalSpectrogramSettings
+            requested_spectrogram_settings = SignalSpectrogramSettings(
+                typed.overlap_percent,
+                typed.leakage,
+                AutomaticSignalSpectrumFrequencyLimits(),
+                typed.frequency_scale,
+                AutomaticSignalSpectrogramPowerLimits(),
             )
-        catch err
-            err isa ArgumentError || rethrow()
-            field_errors["spectrogram_settings"] =
-                "power_limits: $(sprint(showerror, err))"
         end
     end
+    requested_spectrogram_settings = SignalSpectrogramSettings(
+        requested_spectrogram_settings.overlap_percent,
+        requested_spectrogram_settings.leakage,
+        AutomaticSignalSpectrumFrequencyLimits(),
+        requested_spectrogram_settings.frequency_scale,
+        AutomaticSignalSpectrogramPowerLimits(),
+    )
 
     has_persistence_settings = signal_analyser_payload_contains(data, "persistence_settings")
     requested_persistence_settings = display.persistence_settings
@@ -5461,6 +5385,9 @@ function validate_signal_analyser_view_payload(
     requested_stored_settings = signal_settings_reconcile_stored_for_source(
         display.stored_settings,
         prospective_source_signal,
+    )
+    requested_stored_settings = signal_analyser_stored_settings_without_viewport_ranges(
+        requested_stored_settings,
     )
     prospective_display = SignalAnalyserDisplayState(
         display.id,

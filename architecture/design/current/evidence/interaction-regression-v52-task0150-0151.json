@@ -1,0 +1,139 @@
+{
+  "design_version": 52,
+  "method": "bounded axis-label persistence/title-only and universal hover-suppression regression; no browser/Figma",
+  "passed": 6,
+  "failed": 0,
+  "results": [
+    {
+      "id": "108-axis-label-setting-adjacent-default",
+      "passed": true,
+      "detail": [
+        {
+          "id": "pane.name"
+        },
+        {
+          "id": "display.show_legend"
+        },
+        {
+          "id": "display.show_axis_labels",
+          "label": "Подписывать оси",
+          "kind": "boolean",
+          "defaultValue": true,
+          "testid": "settings-show-axis-labels"
+        },
+        {
+          "id": "display.plot_type"
+        }
+      ]
+    },
+    {
+      "id": "109-unchecked-clears-title-text-only",
+      "passed": true,
+      "detail": {
+        "layout": {
+          "xaxis.title.text": "",
+          "yaxis.title.text": ""
+        },
+        "traces": []
+      }
+    },
+    {
+      "id": "110-checked-restores-provider-semantics",
+      "passed": true,
+      "detail": {
+        "layout": {
+          "xaxis.title.text": "Частота, kHz",
+          "yaxis.title.text": "Мощность, дБ"
+        },
+        "traces": []
+      }
+    },
+    {
+      "id": "111-heatmap-colorbar-title-only",
+      "passed": true,
+      "detail": {
+        "off": {
+          "layout": {
+            "xaxis.title.text": "",
+            "yaxis.title.text": ""
+          },
+          "traces": [
+            {
+              "index": 0,
+              "update": {
+                "colorbar.title.text": ""
+              }
+            }
+          ]
+        },
+        "on": {
+          "layout": {
+            "xaxis.title.text": "Частота, MHz",
+            "yaxis.title.text": "Мощность, дБ"
+          },
+          "traces": [
+            {
+              "index": 0,
+              "update": {
+                "colorbar.title.text": "Вероятность, %"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "112-hover-suppressed-all-traces",
+      "passed": true,
+      "detail": {
+        "layout": {
+          "hovermode": false,
+          "dragmode": "zoom"
+        },
+        "data": [
+          {
+            "type": "scatter",
+            "hovertemplate": null,
+            "hoverinfo": "skip"
+          },
+          {
+            "type": "heatmap",
+            "hoverongaps": false,
+            "hoverinfo": "skip",
+            "hovertemplate": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "113-per-pane-persist-title-only",
+      "passed": true,
+      "detail": {
+        "persisted": [
+          [
+            "pane-a",
+            "display.show_axis_labels",
+            false,
+            {
+              "perPane": true,
+              "noOutputInvalidation": true
+            }
+          ]
+        ],
+        "relayouts": [
+          [
+            "pane-a",
+            {
+              "xaxis.title.text": "",
+              "yaxis.title.text": ""
+            },
+            {
+              "titleTextOnly": true,
+              "preserveMargins": true
+            }
+          ]
+        ]
+      }
+    }
+  ]
+}

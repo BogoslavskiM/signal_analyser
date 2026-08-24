@@ -1469,7 +1469,7 @@ body.is-resizing-workspace * {
   border-color: var(--accent);
   background: var(--accent);
   color: var(--surface);
-  cursor: wait;
+  cursor: default;
   opacity: 1;
 }
 
@@ -3343,7 +3343,7 @@ body {
 .signal-color-picker-action.is-primary { border-color: var(--accent-hover, #166a93); background: var(--accent, #1b84b8); color: #fff; }
 .signal-color-picker-action.is-primary:hover:not(:disabled) { background: var(--accent-hover, #166a93); }
 .signal-color-picker-action:disabled { opacity: 0.52; cursor: default; }
-.signal-color-picker[data-busy="true"] { cursor: wait; }
+.signal-color-picker[data-busy="true"] { cursor: default; }
 .signal-color-picker[data-busy="true"] .signal-color-picker-swatch, .signal-color-picker[data-busy="true"] .signal-color-picker-hex { pointer-events: none; }
 
 @media (max-height: 430px) {
@@ -3649,7 +3649,7 @@ body {
   justify-content: center;
   background: rgba(248, 250, 251, 0.86);
   pointer-events: all;
-  cursor: wait;
+  cursor: default;
 }
 
 .pane-output-loading-overlay {
@@ -3727,7 +3727,7 @@ body {
   padding: 24px;
   background: rgba(248, 250, 251, 0.9);
   pointer-events: all;
-  cursor: wait;
+  cursor: default;
 }
 
 .app-status[data-bootstrap-phase="error"] {
@@ -3803,4 +3803,20 @@ body {
   .app-bootstrap-spinner {
     animation: loader-rotate 1600ms linear infinite;
   }
+}
+/* TASK-0148 cursor-coordinate columns extend the existing Measurements table
+   and its standard body-portal eye menu without changing their geometry. */
+[data-testid="measurement-columns-menu"] [data-measurement-cursor-column]:disabled {
+  color: var(--muted);
+  cursor: default;
+  opacity: .5;
+}
+
+[data-testid="measurement-columns-menu"] [data-measurement-cursor-column]:disabled img {
+  opacity: .72;
+}
+
+.measurement-table [data-measurement-cursor-value] {
+  min-width: 92px;
+  font-variant-numeric: tabular-nums;
 }

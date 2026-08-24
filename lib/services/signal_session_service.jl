@@ -55,9 +55,14 @@ const SIGNAL_ANALYSER_SESSION_PANE_FIELDS = Set([
     "signal_bindings",
     "analysis_signal",
     "peaks_settings",
+    "show_axis_labels",
 ])
-const SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY =
-    setdiff(SIGNAL_ANALYSER_SESSION_PANE_FIELDS, Set(["analysis_signal"]))
+const SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_WITHOUT_AXIS_LABELS =
+    setdiff(SIGNAL_ANALYSER_SESSION_PANE_FIELDS, Set(["show_axis_labels"]))
+const SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY = setdiff(
+    SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_WITHOUT_AXIS_LABELS,
+    Set(["analysis_signal"]),
+)
 const SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V3 =
     setdiff(SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY, Set(["name"]))
 const SIGNAL_ANALYSER_SESSION_LEGACY_PANE_FIELDS = Set([
@@ -84,6 +89,7 @@ const SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS = Set([
 const SIGNAL_ANALYSER_SESSION_REQUEST_FIELDS = Set(["state_revision", "document"])
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
     "display.show_legend",
+    "display.show_axis_labels",
     "time.normalize_y",
     "time.show_markers",
     "time.units",
@@ -119,8 +125,12 @@ const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
 )
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS =
     Set(SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS)
-const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V3 = setdiff(
+const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V4_LEGACY = setdiff(
     SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS,
+    Set(["display.show_axis_labels"]),
+)
+const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V3 = setdiff(
+    SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V4_LEGACY,
     Set(["spectrum.link_frequency", "spectrum.link_magnitude"]),
 )
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_LEGACY =
@@ -253,7 +263,11 @@ function signal_analyser_session_display_payload(
         "stored_settings" => signal_analyser_session_settings_payload(display),
         "peaks_enabled" => display.peaks_enabled,
     )
-    payload["layout"] = signal_display_layout_payload(layout)
+    layout_payload = signal_display_layout_payload(layout)
+    for (pane_payload, pane) in zip(layout_payload["panes"], layout.panes)
+        pane_payload["show_axis_labels"] = pane.stored_settings.display.show_axis_labels
+    end
+    payload["layout"] = layout_payload
     payload
 end
 
@@ -358,9 +372,9 @@ function signal_analyser_session_parse_signal(
         "$path.values",
         "Массивы real и imag должны иметь одинаковую длину",
     ))
-    length(real_values) >= 2 || throw(signal_analyser_session_error(
+    !isempty(real_values) || throw(signal_analyser_session_error(
         "$path.values",
-        "Сигнал должен содержать не менее двух отсчётов",
+        "Сигнал должен содержать хотя бы один отсчёт",
     ))
     length(real_values) <= maximum_samples || throw(signal_analyser_session_error(
         "$path.values",
@@ -402,6 +416,7 @@ function signal_analyser_session_parse_stored_settings(
     actual_fields = signal_analyser_payload_keys(value)
     actual_fields in (
         SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS,
+        SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V4_LEGACY,
         SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V3,
         SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_LEGACY,
     ) || signal_analyser_session_exact_object(
@@ -418,8 +433,9 @@ function signal_analyser_session_parse_stored_settings(
                 definition,
                 display.id,
                 field_id,
-                field_id in ("time.link_amplitude", "spectrum.link_frequency", "spectrum.link_magnitude") &&
-                    !(field_id in actual_fields) ? false :
+                field_id == "display.show_axis_labels" && !(field_id in actual_fields) ? true :
+                    field_id in ("time.link_amplitude", "spectrum.link_frequency", "spectrum.link_magnitude") &&
+                        !(field_id in actual_fields) ? false :
                     signal_analyser_payload_value(data, field_id),
             )
         catch err
@@ -561,8 +577,11 @@ function signal_analyser_session_parse_layout_pane(
     )
     is_v4_without_main = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
         pane_fields == SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY
+    is_v4_without_axis_labels = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
+        pane_fields == SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_WITHOUT_AXIS_LABELS
     expected_pane_fields = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
         (is_v4_without_main ? SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY :
+            is_v4_without_axis_labels ? SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_WITHOUT_AXIS_LABELS :
             SIGNAL_ANALYSER_SESSION_PANE_FIELDS) : SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V3
     data = is_legacy_pane ? value :
         signal_analyser_session_exact_object(value, expected_pane_fields, path)
@@ -607,7 +626,7 @@ function signal_analyser_session_parse_layout_pane(
         "Pane ссылается на неизвестный сигнал",
     ))
     has_explicit_main = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
-        !is_v4_without_main
+        "analysis_signal" in pane_fields
     explicit_main = if has_explicit_main
         value = signal_analyser_payload_value(data, "analysis_signal")
         value === nothing ? nothing :
@@ -619,6 +638,25 @@ function signal_analyser_session_parse_layout_pane(
         signal_analyser_session_error(
             "$path.analysis_signal",
             "Main signal pane отсутствует в inventory",
+        ),
+    )
+    show_axis_labels = if "show_axis_labels" in pane_fields
+        value = signal_analyser_payload_value(data, "show_axis_labels")
+        value isa Bool || throw(signal_analyser_session_error(
+            "$path.show_axis_labels",
+            "Требуется boolean",
+        ))
+        value
+    elseif pane_id == active_pane_id
+        display.stored_settings.display.show_axis_labels
+    else
+        true
+    end
+    pane_stored_settings = signal_settings_replace(
+        display.stored_settings;
+        display = SignalDisplayPreferences(
+            display.stored_settings.display.show_legend,
+            show_axis_labels,
         ),
     )
     plot_type = SIGNAL_ANALYSER_PLOTS_BY_NAME[String(plot_value)]
@@ -726,7 +764,7 @@ function signal_analyser_session_parse_layout_pane(
                 display.spectrum_settings,
                 display.spectrogram_settings,
                 display.persistence_settings,
-                display.stored_settings,
+                pane_stored_settings,
                 display.peaks_enabled,
                 peaks_settings,
             )
@@ -753,7 +791,10 @@ function signal_analyser_session_parse_layout_pane(
             SignalSpectrumSettings(),
             SignalSpectrogramSettings(),
             SignalPersistenceSettings(),
-            SignalDisplayStoredSettings(),
+            signal_settings_replace(
+                SignalDisplayStoredSettings();
+                display = SignalDisplayPreferences(true, show_axis_labels),
+            ),
             false,
             peaks_settings,
         )
@@ -953,15 +994,22 @@ function signal_analyser_session_validate_candidate!(
             ),
         )
         analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
-        if analysis_signal !== nothing
-            signal_time_limits_are_valid(
-                state.measurements_service,
-                analysis_signal,
-                display.time_limits::SignalTimeLimits,
-            ) || throw(signal_analyser_session_error(
+        if analysis_signal !== nothing && display.active_plot in SIGNAL_ANALYSER_TIME_LIMIT_PLOTS
+            display.time_limits isa SignalTimeLimits || throw(signal_analyser_session_error(
                 "$path.time_limits",
-                "Интервал должен содержать отсчёт и лежать в домене analysis source",
+                "Для этого типа графика требуется полный временной домен analysis source",
             ))
+            expected_time_limits = signal_analyser_full_bound_time_limits(
+                state,
+                display.id,
+                active_pane,
+            )
+            display.time_limits == expected_time_limits || throw(signal_analyser_session_error(
+                "$path.time_limits",
+                "Требуется полный временной домен всех bindings pane",
+            ))
+        end
+        if analysis_signal !== nothing
             for (settings_path, limits) in (
                 ("spectrum_settings.frequency_limits", display.spectrum_settings.frequency_limits),
                 ("spectrogram_settings.frequency_limits", display.spectrogram_settings.frequency_limits),
@@ -1222,9 +1270,8 @@ function signal_analyser_session_candidate(
     candidate.active_display_id = document.active_display_id
     candidate.next_display_number = document.next_display_number
     # Session import restores authoritative bindings, then migrates legacy
-    # ordering and the one state that cannot be calculated: an occupied pane
-    # without a time domain. Membership sets, main signals and explicit limits
-    # are preserved verbatim.
+    # ordering and runtime calculation domains. Legacy persisted viewport
+    # mirrors are intentionally discarded by the same recovery pass.
     signal_analyser_recover_membership_order_unlocked!(
         candidate;
         invalidate_outputs = false,

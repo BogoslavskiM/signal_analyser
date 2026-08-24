@@ -162,7 +162,7 @@
 .signal-color-picker-action.is-primary { border-color: var(--accent-hover, #166a93); background: var(--accent, #1b84b8); color: #fff; }
 .signal-color-picker-action.is-primary:hover:not(:disabled) { background: var(--accent-hover, #166a93); }
 .signal-color-picker-action:disabled { opacity: 0.52; cursor: default; }
-.signal-color-picker[data-busy="true"] { cursor: wait; }
+.signal-color-picker[data-busy="true"] { cursor: default; }
 .signal-color-picker[data-busy="true"] .signal-color-picker-swatch,
 .signal-color-picker[data-busy="true"] .signal-color-picker-hex { pointer-events: none; }
 

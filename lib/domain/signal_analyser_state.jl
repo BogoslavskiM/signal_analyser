@@ -45,7 +45,7 @@ struct AnalysedSignal
             "Частота дискретизации должна быть положительной и конечной",
         ))
         samples = ComplexF64.(values)
-        length(samples) >= 2 || throw(ArgumentError("Сигнал должен содержать не менее двух отсчётов"))
+        !isempty(samples) || throw(ArgumentError("Сигнал должен содержать хотя бы один отсчёт"))
         all(value -> isfinite(real(value)) && isfinite(imag(value)), samples) || throw(
             ArgumentError("Отсчёты сигнала должны быть конечными"),
         )

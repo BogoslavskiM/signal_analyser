@@ -87,7 +87,7 @@
   var numeric = window.SignalAnalyserNumeric;
   var context = {
     displayId: "", revision: 0, document: null, drafts: {}, pending: {}, timers: {}, requestQueue: Promise.resolve(), intent: 0, contextToken: 0, loadToken: 0,
-    page: "display", plotType: "time", collapsed: {}, renderedFields: {}, linkPreview: null, extraVisible: {}, extraItems: {}, rangeDomains: {}, busy: false
+    page: "display", plotType: "time", collapsed: {}, renderedFields: {}, linkPreview: null, extraVisible: {}, extraItems: {}, rangeDomains: {}, busy: false, renderGuard: null
   };
   var plotOptions = [
     { value: "time", label: "Временная область" },
@@ -96,7 +96,7 @@
     { value: "persistence", label: "Спектр персистентности" }
   ];
   var ru = {
-    "display.plot_type": "Тип графика", "display.show_legend": "Показывать легенду", "display.name":"Имя экрана", "pane.name":"Имя области",
+    "display.plot_type": "Тип графика", "display.show_legend": "Показывать легенду", "display.show_axis_labels":"Подписывать оси", "display.name":"Имя экрана", "pane.name":"Имя области",
     "time.normalize_y": "Нормировать Y", "time.show_markers": "Показывать маркеры", "time.units": "Единицы времени", "time.x_limits": "Пределы X", "time.y_limits": "Пределы Y", "time.link_time": "Связать время", "time.link_amplitude": "Связать амплитуду",
     "spectrum.frequency_units": "Единицы частоты", "spectrum.frequency_limits": "Пределы частоты", "spectrum.y_limits": "Пределы магнитуды", "spectrum.link_frequency":"Связать частоты", "spectrum.link_magnitude":"Связать магнитуды", "spectrum.frequency_scale": "Шкала частоты", "spectrum.scale": "Спектр в dB", "spectrum.resolution_type": "Тип разрешения", "spectrum.leakage": "Утечка", "spectrum.rbw": "Полоса разрешения", "spectrum.window_length": "Длина окна", "spectrum.window": "Окно", "spectrum.sidelobe_attenuation_db": "Подавление боковых лепестков", "spectrum.overlap_percent": "Перекрытие", "spectrum.nfft": "Точки DFT", "spectrum.frequency_resolution": "Частотное разрешение",
     "spectrogram.time_units": "Единицы времени", "spectrogram.frequency_units": "Единицы частоты", "spectrogram.frequency_limits": "Пределы частоты", "spectrogram.power_limits": "Пределы мощности", "spectrogram.frequency_scale": "Шкала частоты", "spectrogram.scale": "Спектр в dB", "spectrogram.leakage": "Утечка", "spectrogram.time_resolution": "Разрешение по времени", "spectrogram.overlap_percent": "Перекрытие", "spectrogram.reassign": "Переназначение", "spectrogram.actual_rbw": "Фактическая RBW",
@@ -197,10 +197,13 @@
   function displayInventory(type) {
     var linkFrequency = context.linkPreview ? context.linkPreview.linkFrequency : booleanValue("spectrum.link_frequency");
     var linkMagnitude = context.linkPreview ? context.linkPreview.linkMagnitude : booleanValue("spectrum.link_magnitude");
-    var graph = group("graph", "График", [
+    var graphItems = [
       actual("pane.name"), pseudo("display.plot_type", "enum", type, { action:"plot-type", options:plotOptions }),
-      actual("display.show_legend", true)
-    ]);
+      actual("display.show_legend", true), actual("display.show_axis_labels", true)
+    ];
+    var axisLabels=window.SignalAnalyserAxisLabelsAndHover;
+    if (axisLabels) graphItems=axisLabels.insertAfterLegend(graphItems);
+    var graph = group("graph", "График", graphItems);
     if (type === "time") return [graph];
     if (type === "spectrum") {
       return [
@@ -409,6 +412,7 @@
   }
 
   function render(force) {
+    if (typeof context.renderGuard === "function" && context.renderGuard()) return;
     if (!force && activeNameEditor()) return;
     if (context.page === "screen") return;
     var host = document.querySelector("[data-testid='settings-content']") || document.querySelector("[data-settings-content]");
@@ -507,7 +511,7 @@
   function validVisibleDraftItems() {
     return visibleItems().filter(function (item) {
       var draft = context.drafts[item.id];
-      return !!draft && !draft.error;
+      return !!draft && !draft.error && !rangeItem(item);
     });
   }
 
@@ -524,7 +528,7 @@
   }
 
   function send(item) {
-    if (!item || item.pseudo || item.visible === false || !context.displayId || !context.drafts[item.id] || context.drafts[item.id].error) return Promise.resolve();
+    if (!item || item.pseudo || rangeItem(item) || item.visible === false || !context.displayId || !context.drafts[item.id] || context.drafts[item.id].error) return Promise.resolve();
     clearTimeout(context.timers[item.id]);
     delete context.timers[item.id];
     if (context.pending[item.id]) return context.pending[item.id];
@@ -538,7 +542,7 @@
         adoptAuthoritative(response, token, displayId);
         var latest = context.drafts[item.id];
         if (latest && !latest.error && (latest.intent || 0) > intent) return persistLatest(0);
-        render();
+        if (!rangeItem(item)) render();
         window.dispatchEvent(new CustomEvent("signal-settings-saved", { detail:Object.assign({}, response || {}, { field_id:item.id, value:value, display_id:displayId, intent:intent }) }));
         return response;
       }).catch(function (error) {
@@ -557,8 +561,7 @@
     }
     var pending = enqueue(function () { return persistLatest(0); });
     context.pending[item.id] = pending;
-    if (rangeItem(item)) { if (context.page === "screen") window.dispatchEvent(new CustomEvent("signal-settings-state")); else render(true); }
-    return pending.finally(function () { if (context.pending[item.id] === pending) delete context.pending[item.id]; if (rangeItem(item)) { if (context.page === "screen") window.dispatchEvent(new CustomEvent("signal-settings-state")); else render(true); } });
+    return pending.finally(function () { if (context.pending[item.id] === pending) delete context.pending[item.id]; });
   }
 
   document.addEventListener("click", function (event) {
@@ -595,8 +598,10 @@
     },
     setRangeDomains:function (domains) { context.rangeDomains=domains || {}; },
     setBusy:function (busy) { context.busy=!!busy; },
+    setRenderGuard:function (guard) { context.renderGuard=typeof guard === "function" ? guard : null; },
+    clearRangeDraft:function (id) { clearTimeout(context.timers[id]); delete context.timers[id]; delete context.drafts[id]; },
     previewRange:function (id, raw) { var item=sourceItem(id); return item && rangeItem(item) ? update(item, raw, { preview:true, source:"plot" }) : Promise.resolve(); },
-    publishRange:function (id, raw) { var item=sourceItem(id); return item && rangeItem(item) ? update(item, raw, { immediate:true, source:"plot" }) : Promise.resolve(); },
+    publishRange:function () { return Promise.resolve(); },
     setExtraVisible:function (ids) { context.extraVisible={}; (ids || []).forEach(function (id) { context.extraVisible[id]=true; }); },
     setExtraItems:function (items) { context.extraItems={}; (items || []).forEach(function (item) { if (item && item.id) context.extraItems[item.id]=item; }); },
     setLinkPreview:function (linkTime, linkAmplitude, linkFrequency, linkMagnitude) {
@@ -607,11 +612,11 @@
       return (ids || []).map(function (id) { var item=sourceItem(id); return item ? Object.assign({}, item, { visible:true }) : null; }).filter(function (item) { return !!item && rangeApplicable(item); }).map(renderField).join("");
     },
     stateFor:function (ids) {
-      var drafts=(ids || []).map(function (id) { return context.drafts[id]; }).filter(Boolean);
+      var drafts=(ids || []).map(function (id) { var item=sourceItem(id); return item && rangeItem(item) ? null : context.drafts[id]; }).filter(Boolean);
       return { dirty:drafts.some(function (draft) { return !draft.error; }), invalid:drafts.some(function (draft) { return !!draft.error; }), revision:context.revision };
     },
     flushFields:function (ids) {
-      return Promise.all((ids || []).map(function (id) { var item=sourceItem(id); return item ? Object.assign({}, item, { visible:true }) : null; }).filter(isApply).map(send));
+      return Promise.all((ids || []).map(function (id) { var item=sourceItem(id); return item ? Object.assign({}, item, { visible:true }) : null; }).filter(function (item) { return !rangeItem(item) && isApply(item); }).map(send));
     },
     load:function () {
       var id=context.displayId, token=++context.loadToken;
@@ -661,7 +666,7 @@
       });
     },
     markApplied:function () { context.drafts={}; render(); },
-    state:function () { var visible=visibleItems().reduce(function(ids,item){ids[item.id]=true;return ids;},{}), all=Object.keys(context.drafts).filter(function(key){return visible[key];}).map(function (key) { return context.drafts[key]; }); return { dirty:all.some(function (draft) { return !draft.error; }), invalid:all.some(function (draft) { return draft.error; }), displayId:context.displayId, revision:context.revision }; },
+    state:function () { var visible=visibleItems().reduce(function(ids,item){if(!rangeItem(item))ids[item.id]=true;return ids;},{}), all=Object.keys(context.drafts).filter(function(key){return visible[key];}).map(function (key) { return context.drafts[key]; }); return { dirty:all.some(function (draft) { return !draft.error; }), invalid:all.some(function (draft) { return draft.error; }), displayId:context.displayId, revision:context.revision }; },
     value:function (id) { var item=sourceItem(id); return item ? value(item) : undefined; },
     screenValue:function (id) { var item=sourceItem(id); return item ? screenValue(item) : undefined; },
     setValue:function (id, raw) { var item=sourceItem(id); return item ? update(Object.assign({}, item, { visible:true }), raw) : Promise.reject(new Error("Настройка недоступна: " + id)); },
