@@ -46,8 +46,7 @@
 .sample-table[data-calculated-columns] [data-sample-column="time"] { min-width: 170px; }
 .sample-table[data-calculated-columns] [data-sample-column="value"],
 .sample-table[data-calculated-columns] [data-sample-column="magnitude"],
-.sample-table[data-calculated-columns] [data-sample-column="square"],
-.sample-table[data-calculated-columns] [data-sample-column="square_root"] { min-width: 165px; }
+.sample-table[data-calculated-columns] [data-sample-column="square"] { min-width: 165px; }
 .sample-table[data-calculated-columns] [data-sample-column="signed_square_root_magnitude"] { min-width: 240px; }
 
 @media (max-width: 919px) {

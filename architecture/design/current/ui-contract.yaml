@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 42
+design_version: 43
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132, TASK-0134, TASK-0135, TASK-0138]
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132, TASK-0134, TASK-0135, TASK-0138, TASK-0139]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -30,6 +30,9 @@ production_integration_contract:
     - frontend-source/integration/js/task-0135-sample-search-markers.js
     - frontend-source/integration/css/task-0138-values-columns.css
     - frontend-source/integration/js/task-0138-values-columns.js
+    - frontend-source/integration/js/task-0139-ui-inventory.js
+    - frontend-source/integration/css/task-0139-loading-overlays.css
+    - frontend-source/integration/js/task-0139-loading-overlays.js
     - frontend-source/integration/html/dialogs/signal-operation.fragment.html
   mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
 
@@ -52,14 +55,14 @@ prototype_contract:
     - public/js/native-session-io.js
     - public/js/app.js
   deterministic_provider: prototype/mock-fetch.js
-  interaction_bridges: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js, prototype/task-0130-graph-cursors-bridge.js, prototype/task-0138-values-columns-bridge.js]
+  interaction_bridges: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js, prototype/task-0130-graph-cursors-bridge.js, prototype/task-0138-values-columns-bridge.js, prototype/task-0139-loading-overlays-bridge.js]
   production_baseline_evidence: evidence/production-baseline-v32.json
   required_nonempty_zone_slots: [toolbar, workspace, settings, inspector]
   forbidden: [fetch_html_partials, http_server, network_api, cors_dependency, alternative_mock_shell]
   browser_result: {inherited_checks: 52, delta_checks: 1, passed: 53, failed: 0, runtime_errors: 0, http_resources: 0}
   sample_window_result: {inherited_checks: 53, delta_checks: 1, passed: 54, failed: 0}
   sample_search_marker_result: {inherited_checks: 54, delta_checks: 2, passed: 56, failed: 0}
-  sample_calculated_columns_result: {inherited_checks: 56, delta_checks: 3, passed: 59, failed: 0, runtime_errors: 0, http_resources: 0}
+  task_0139_source_result: {delta_checks: 5, passed: 5, failed: 0, method: bounded_source_controller, browser_launch: unavailable_in_sandbox}
 
 screens:
   - id: main
@@ -92,7 +95,7 @@ screens:
         sizing: {min_width: 612, min_height: 440, width_growth_ratio: 3, height_growth_ratio: 4}
         scroll: {owner: display-tablist, axes: x, sticky: [workspace-titlebar, display-tabs]}
         collapse: {allowed: false, initial: expanded, direction: null, reason: null}
-        states: [ready, empty, loading, error, active_pane, linked_zoom, cursor_off, cursor_single, cursor_dual, cursor_dragging]
+        states: [ready, empty, pane_loading, display_layout_loading, error, active_pane, linked_zoom, cursor_off, cursor_single, cursor_dual, cursor_dragging]
       - id: display-settings
         type: settings
         purpose: "Signal, Area and Screen automatic settings plus explicit Extrema calculation"
@@ -386,19 +389,18 @@ tables:
       - {id: sample-index, label: "№ точки", alignment: left, width: "auto 1%", min_width_px: 112, cell_order: [point_number, optional_time_extrema_marker]}
       - {id: time, label: "Время"}
       - {id: value, label: "Значение"}
-      - {id: magnitude, label: "Модуль", optional: true, default_visible: true, provider_field: magnitude}
-      - {id: square, label: "Квадрат", optional: true, default_visible: true, provider_field: square}
-      - {id: square-root, label: "Корень", optional: true, default_visible: true, provider_field: square_root}
-      - {id: signed-square-root-magnitude, label: "Корень из модуля × знак", optional: true, default_visible: true, provider_field: signed_square_root_magnitude}
+      - {id: magnitude, label: "Модуль", optional: true, default_visible: false, provider_field: magnitude}
+      - {id: square, label: "Квадрат", optional: true, default_visible: false, provider_field: square}
+      - {id: signed-square-root-magnitude, label: "Корень из модуля × знак", optional: true, default_visible: false, provider_field: signed_square_root_magnitude}
     base_columns:
       ids: [sample-index, time, value]
       visibility: always_visible_not_listed_in_menu
     calculated_columns:
-      ids: [magnitude, square, square-root, signed-square-root-magnitude]
+      ids: [magnitude, square, signed-square-root-magnitude]
       order_fixed: true
       source: provider_authored_only
       ui_calculation_forbidden: true
-      default_visibility: all_visible
+      default_visibility: all_hidden
     visibility_menu:
       trigger: {testid: sample-columns-menu-trigger, selector: "[data-testid='sample-columns-menu-trigger']", class: inspector-action, icon: more-vertical.svg, row: samples-point-search-row, placement: final_end_slot, aria_haspopup: menu, aria_controls: sample-columns-menu}
       popup: {testid: sample-columns-menu, selector: "[data-testid='sample-columns-menu']", title: "Видимость столбцов", role: menu, width_px: 244, portal: body, position: anchored_to_trigger_end, viewport_gap_px: 8, flips_above_when_needed: true}
@@ -411,6 +413,7 @@ tables:
     product_dependencies:
       multiply: "unresolved multiplier input/default/scope and result-column identity; absent from ready menu"
       custom: "unresolved operation body/naming/lifecycle and result-column identity; absent from ready menu"
+      square_root: "removed from the Values UI and menu; a backend field may remain unused"
       fft: "explicitly excluded"
     loading: sliding_bidirectional_row_window
     lifecycle: "tab exists/rebinds and first page loads automatically whenever valid main_signal exists; Values always selects/focuses it, expands the inspector from collapsed state, and starts page 1 when rows are missing"
@@ -495,7 +498,7 @@ dialogs:
     title: "Операция над сигналом"
     fields:
       - {id: source, label: "Исходный сигнал", type: readonly_text}
-      - {id: operation, label: "Операция", type: shared_value_select, implementation: SignalAnalyserValueSelect, options: [abs, square, sqrt, signed_sqrt_abs, multiply, fft, custom]}
+      - {id: operation, label: "Операция", type: shared_value_select, implementation: SignalAnalyserValueSelect, options: [abs, square, sqrt, signed_sqrt_abs, multiply, custom], removed_options: [fft]}
       - {id: multiplier, label: "Множитель", type: numeric, visible_when: "operation=multiply"}
       - {id: custom-operation-body, label: "Тело операции", type: code_editor, visible_when: "operation=custom", input_name: init_signal}
       - {id: target-name, label: "Имя нового сигнала", type: text}
@@ -714,6 +717,27 @@ overlays:
       focus_owner: focused_cursor_or_plot
       inert_layers: []
       restore_target: pane-menu-trigger
+    - id: pane-output-reconciliation
+      bottom_to_top: [pane_header_and_plot, pane_output_loading_overlay]
+      anchor: "exact [data-pane-id] pane, never [data-pane-host] descendants"
+      trigger: "accepted pane-type mutation or valid Area settings commit that starts output refresh"
+      terminal: "matching current output reaches ready, empty or error"
+      pointer_owner: pane_output_loading_overlay
+      focus_owner: unchanged_outside_pane
+      inert_layers: [pane_header, plotly_graph, plot_controls, graph_cursor_layer]
+      stale_completion: ignored
+      restore_target: unchanged
+    - id: display-layout-reconciliation
+      bottom_to_top: [display_plot_canvas, display_canvas_loading_overlay]
+      anchor: "active display plot-grid canvas only; titlebar, display tabs/actions, settings and inspector remain outside"
+      trigger: "layout add/remove pane or rows/columns mutation begins"
+      terminal: "matching accepted layout plus every initial pane output reaches ready, empty or error"
+      pointer_owner: display_canvas_loading_overlay
+      focus_owner: unchanged_outside_canvas
+      inert_layers: [all_panes_and_plot_controls]
+      suppressed_layers: [pane_output_loading_overlay]
+      stale_completion: ignored
+      restore_target: unchanged
     - id: settings-with-color-picker
       bottom_to_top: [application, settings_panel, signal_color_picker]
       pointer_owner: signal_color_picker
@@ -820,18 +844,38 @@ integration_seams:
     guards: {stale_signal_response: ignore, stale_token_response: ignore, duplicate_same_direction: suppress}
     dom_row_cap: 1000
   - id: signal-sample-calculated-columns
-    ui_contract: "base № точки/Время/Значение always visible; provider-authored Модуль/Квадрат/Корень/Корень из модуля × знак independently visible through the existing eye menu pattern"
+    ui_contract: "base № точки/Время/Значение always visible; provider-authored Модуль/Квадрат/Корень из модуля × знак start hidden and are independently visible through the existing eye menu pattern; Корень is absent"
     helper: frontend-source/integration/js/task-0138-values-columns.js
     styles: frontend-source/integration/css/task-0138-values-columns.css
     mock_provider: "prototype/mock-fetch.js plus prototype/task-0138-values-columns-bridge.js"
     production_consumer: public/js/app.js
-    provider_fields: [magnitude, square, square_root, signed_square_root_magnitude]
+    provider_fields: [magnitude, square, signed_square_root_magnitude]
     provider_change_required: true
-    frontend_state: "{magnitude:boolean,square:boolean,square_root:boolean,signed_square_root_magnitude:boolean}; frontend-only application-lifetime preference"
+    frontend_state: "{magnitude:boolean,square:boolean,signed_square_root_magnitude:boolean}, initially all false; frontend-only application-lifetime preference"
     ui_derived_math_forbidden: true
     api_call_on_visibility_toggle_forbidden: true
     hosts: ["[data-testid='inspector-pane-samples']", ".samples-point-search-row", ".sample-table", body]
     unresolved: [multiply_parameter_semantics, custom_body_name_lifecycle]
+  - id: operation-ui-inventory
+    ui_contract: "signal operation ValueSelect omits FFT; all remaining accepted operations retain existing order and behavior"
+    helper: frontend-source/integration/js/task-0139-ui-inventory.js
+    production_consumer: public/js/app.js
+    host: "[data-testid='signal-operation-dialog'] [data-testid='signal-operation-select']"
+    backend_fft_removal_required: false
+  - id: scoped-output-loading
+    ui_contract: "pane type/Area output refresh uses one immediate exact-pane overlay; display layout mutation uses one canvas overlay and suppresses pane overlays until accepted layout plus initial output reconciliation reaches terminal state"
+    controller: frontend-source/integration/js/task-0139-loading-overlays.js
+    styles: frontend-source/integration/css/task-0139-loading-overlays.css
+    production_consumer: public/js/app.js
+    hosts: ["[data-testid='display-workspace']", "[data-testid='plot-grid']", "[data-pane-id]"]
+    pane_begin: [accepted_pane_type_change, valid_area_settings_commit_before_output_request]
+    pane_terminal: [ready, empty, error]
+    layout_begin: [add_pane, remove_pane, rows_change, columns_change, layout_apply]
+    layout_terminal: "accepted matching layout and every initial pane output is ready|empty|error"
+    priority: "display_layout_loading > pane_output_loading > plot overlays"
+    stale_tokens: ignored
+    invalid_draft_loader_forbidden: true
+    settings_inspector_and_workspace_header_coverage_forbidden: true
   - id: sample-time-extrema-markers
     ui_contract: "reuse active record.displayId/paneId calculated TIME rows; filter row.signal_name with existing signalNameMatches (exact fallback), use row.sample_index and row.signal_color, render number then one canonical marker; lowest finite graph_number wins; never Spectrum bins"
     helper: frontend-source/integration/js/task-0135-sample-search-markers.js

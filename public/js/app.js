@@ -98,12 +98,85 @@
     signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{},
     signalSamples: { signalId:"", signalName:"", token:0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null, search:null }, error:"", searchValue:"", searchState:"", searchMessage:"" },
     sampleColumnsVisibility:null, sampleColumnsMenuTrigger:null,
+    scopedLoadingSequence:0, scopedPaneLoads:{}, scopedLayoutLoad:null,
     signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }
   };
 
   function q(selector) { return document.querySelector(selector); }
   function qa(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]; }); }
+  function scopedLoadingController() { return window.SignalAnalyserScopedLoading || null; }
+  function nextScopedLoadingToken(scope, displayId, paneId) {
+    model.scopedLoadingSequence += 1;
+    return [scope, displayId || "", paneId || "", model.scopedLoadingSequence].join("::");
+  }
+  function beginPaneLoading(displayId, paneId, reason) {
+    var controller=scopedLoadingController(), runtimeKey=paneRuntimeKey(displayId, paneId);
+    if (!controller || !displayId || !paneId) return null;
+    var token=nextScopedLoadingToken(reason || "pane", displayId, paneId);
+    model.scopedPaneLoads[runtimeKey]={displayId:displayId, paneId:paneId, token:token, armed:false};
+    controller.beginPane(paneId, token);
+    return token;
+  }
+  function armPaneLoading(displayId, paneId, token) {
+    var runtimeKey=paneRuntimeKey(displayId, paneId), current=model.scopedPaneLoads[runtimeKey], display=activeDisplay();
+    if (!current || current.token !== token) return false;
+    if (!display || display.id !== displayId || !paneById(paneId)) return settlePaneLoading(displayId, paneId, "empty", token);
+    current.armed=true;
+    if (!paneHasSignals(paneById(paneId))) settlePaneLoading(displayId, paneId, "empty", token);
+    return true;
+  }
+  function settlePaneLoading(displayId, paneId, terminal, token) {
+    var controller=scopedLoadingController(), runtimeKey=paneRuntimeKey(displayId, paneId), current=model.scopedPaneLoads[runtimeKey];
+    if (!controller || !current || token && current.token !== token) return false;
+    if (!controller.settlePane(paneId, current.token, terminal)) return false;
+    delete model.scopedPaneLoads[runtimeKey];
+    return true;
+  }
+  function beginLayoutLoading(displayId) {
+    var controller=scopedLoadingController();
+    if (!controller || !displayId) return null;
+    var token=nextScopedLoadingToken("layout", displayId, "");
+    model.scopedLayoutLoad={displayId:displayId, token:token, accepted:false, pending:{}, hasReady:false, hasError:false};
+    controller.beginLayout(displayId, token);
+    return token;
+  }
+  function settleLayoutLoading(displayId, terminal, token) {
+    var controller=scopedLoadingController(), current=model.scopedLayoutLoad;
+    if (!controller || !current || current.displayId !== displayId || token && current.token !== token) return false;
+    if (!controller.settleLayout(displayId, current.token, terminal)) return false;
+    model.scopedLayoutLoad=null;
+    return true;
+  }
+  function acceptLayoutLoading(displayId, token) {
+    var current=model.scopedLayoutLoad;
+    if (!current || current.displayId !== displayId || current.token !== token) return;
+    current.accepted=true;
+    current.pending={};
+    panes().forEach(function (pane) {
+      if (paneHasSignals(pane)) current.pending[paneRuntimeKey(displayId, pane.id)]=true;
+    });
+    var controller=scopedLoadingController();
+    if (controller) controller.sync();
+    if (!Object.keys(current.pending).length) settleLayoutLoading(displayId, "empty", token);
+  }
+  function markOutputTerminal(displayId, paneId, terminal) {
+    var paneLoad=model.scopedPaneLoads[paneRuntimeKey(displayId, paneId)];
+    if (paneLoad && paneLoad.armed) settlePaneLoading(displayId, paneId, terminal, paneLoad.token);
+    var current=model.scopedLayoutLoad, runtimeKey=paneRuntimeKey(displayId, paneId);
+    if (!current || !current.accepted || current.displayId !== displayId || !current.pending[runtimeKey]) return;
+    delete current.pending[runtimeKey];
+    if (terminal === "error") current.hasError=true;
+    if (terminal === "ready") current.hasReady=true;
+    if (!Object.keys(current.pending).length) settleLayoutLoading(displayId, current.hasError ? "error" : current.hasReady ? "ready" : "empty", current.token);
+  }
+  function projectOutputTerminalAfterRender(displayId, paneId, terminal, outputToken) {
+    window.requestAnimationFrame(function () {
+      var runtimeKey=paneRuntimeKey(displayId, paneId);
+      if (model.outputTokens[runtimeKey] !== outputToken) return;
+      markOutputTerminal(displayId, paneId, terminal);
+    });
+  }
   function decorateNoHistory(root) { var target=root || document; if (target && typeof target.querySelectorAll === "function" && task0126 && typeof task0126.decorateNoHistory === "function") task0126.decorateNoHistory(target); }
   function setCheckboxRegionBusy(root, busy) {
     if (!root || !task0126 || typeof task0126.setBusyPreservingCheckboxes !== "function") return;
@@ -730,6 +803,8 @@
       if (record && record.output && record.output.isready && record.output.success && hasPlotData(record.output.data)) enqueuePlot(display.id, pane, record);
     });
     valueSelect.reconcile();
+    var loading=scopedLoadingController();
+    if (loading) loading.sync();
   }
 
   function renderActivePaneContext() {
@@ -2288,6 +2363,12 @@
       var batch=publicationBatch(targetRevision);
       var namesOnly=batch.length > 0 && batch.every(function (event) { return event.fieldId === "display.name" || event.fieldId === "pane.name"; });
       model.settingsPublishing=true;
+      var areaLoads=[];
+      batch.forEach(function (publication) {
+        if (!publication.areaOutput || !publication.displayId || !publication.paneId) return;
+        if (areaLoads.some(function (entry) { return entry.displayId === publication.displayId && entry.paneId === publication.paneId; })) return;
+        areaLoads.push({ displayId:publication.displayId, paneId:publication.paneId, token:beginPaneLoading(publication.displayId, publication.paneId, "area-settings") });
+      });
       boundedApply(settings.commit(), 10000).then(function (response) {
         if (response && response.success === false) throw new Error(response.error || "Сервер отклонил настройки.");
         model.revision=Math.max(model.revision, response && response.state_revision || model.revision);
@@ -2297,10 +2378,12 @@
         if (response && response.settings && typeof settings.accept === "function") settings.accept(response.settings);
         consumePublicationBatch(targetRevision);
         return refreshSnapshot(render).catch(function () { render(); return null; }).then(function () {
+          areaLoads.forEach(function (entry) { if (entry.token) armPaneLoading(entry.displayId, entry.paneId, entry.token); });
           if (!namesOnly) output(true);
           return response;
         });
       }).catch(function (error) {
+        areaLoads.forEach(function (entry) { if (entry.token) settlePaneLoading(entry.displayId, entry.paneId, "error", entry.token); });
         revertPublicationNamePreviews(batch);
         showToast(safeErrorText(error, "Не удалось применить настройки."), true);
       }).finally(function () {
@@ -3496,6 +3579,7 @@
     delete model.pollByPane[runtimeKey];
     delete model.plotQueue[runtimeKey];
     delete model.outputs[runtimeKey];
+    markOutputTerminal(displayId, paneId, "empty");
   }
   function output(poll) {
     var display = activeDisplay();
@@ -3537,12 +3621,14 @@
       }
       model.outputs[runtimeKey] = { context_key: response.context_key, calculation_revision: response.calculation_revision, output: { isready: response.isready, success: response.success, error: response.error, data: response.data } };
       scheduleRender();
+      if (response.isready) projectOutputTerminalAfterRender(displayId, paneId, response.success ? (hasPlotData(response.data) ? "ready" : "empty") : "error", token);
       if (!response.isready && poll) schedulePaneOutputPoll(displayId, paneId, pollDelay);
       if (response.isready && response.success) completePendingApply();
     }).catch(function (error) {
       if (activeDisplay() && activeDisplay().id === displayId && token === model.outputTokens[runtimeKey] && paneHasSignals(paneById(paneId))) {
         model.outputs[runtimeKey] = { output: { isready: true, success:false, error:"Не удалось построить график. Проверьте настройки области и повторите действие." } };
         scheduleRender();
+        projectOutputTerminalAfterRender(displayId, paneId, "error", token);
       }
     });
   }
@@ -3604,6 +3690,8 @@
          has been accepted. */
       mutationOptions.focusAreaAfterPlotTypeChange = plotTypeChanged;
     }
+    var paneLoadingToken=mutationOptions.focusAreaAfterPlotTypeChange ? beginPaneLoading(targetDisplayId, payload.pane_id, "plot-type") : null;
+    var layoutLoadingToken=payload.operation === "resize" ? beginLayoutLoading(targetDisplayId) : null;
     var request = Object.assign({ display_id:targetDisplayId, version:1 }, payload);
     return mutate(function () {
       if (!targetDisplayId || !activeDisplay() || activeDisplay().id !== targetDisplayId) {
@@ -3615,6 +3703,8 @@
       if (outgoing.operation === "update_pane") outgoing.signal_bindings=signalNamesInInventoryOrder(outgoing.signal_bindings);
       return api.layouts(outgoing);
     }, mutationOptions).then(function (snapshot) {
+      if (layoutLoadingToken) acceptLayoutLoading(targetDisplayId, layoutLoadingToken);
+      if (paneLoadingToken) armPaneLoading(targetDisplayId, payload.pane_id, paneLoadingToken);
       if (mutationOptions.focusAreaAfterPlotTypeChange) {
         var currentDisplay = activeDisplay(), currentPane = paneById(payload.pane_id);
         if (currentDisplay && currentPane && currentPane.plot_type === payload.plot_type) {
@@ -3624,6 +3714,10 @@
       }
       if (peaksSurfaceActive()) loadPeaks();
       return snapshot;
+    }).catch(function (error) {
+      if (paneLoadingToken) settlePaneLoading(targetDisplayId, payload.pane_id, "error", paneLoadingToken);
+      if (layoutLoadingToken) settleLayoutLoading(targetDisplayId, "error", layoutLoadingToken);
+      throw error;
     });
   }
 
@@ -3882,7 +3976,15 @@
 
   function renderSignalOperation() {
     var state=model.signalOperation, layer=ensureSignalOperationDialog(), form=layer.querySelector("[data-signal-operation-form]"), source=state.source || {}, operation=state.operation, custom=operation === "custom", multiply=operation === "multiply";
+    var operationInventory=window.SignalAnalyserTask0139Inventory;
     var options=["abs", "square", "sqrt", "signed_sqrt_abs", "multiply", "fft", "custom"].map(function (value) { return { value:value, label:signalOperationLabel(value) }; });
+    if (operationInventory && typeof operationInventory.withoutFft === "function") options=operationInventory.withoutFft(options);
+    if (!options.some(function (option) { return option.value === operation; })) {
+      operation="abs";
+      state.operation=operation;
+      custom=false;
+      multiply=false;
+    }
     var select=valueSelect.markup({ key:"signal-operation-type", value:operation, label:signalOperationLabel(operation), options:options, testId:"signal-operation-select", ariaLabel:"Операция", disabled:state.busy, className:"settings-value-select", onSelect:function (value) { state.operation=value; state.error=""; state.success=false; renderSignalOperation(); } });
     var status=state.busy ? "<div class='operation-status status-note info operation-progress' role='status'><img src='./icons/Spinner.svg' alt=''><span>Выполняется преобразование…</span></div>" : state.error ? "<div class='operation-status status-note error' role='alert'><strong>Операция не выполнена.</strong><br>" + esc(state.error) + "</div>" : state.success ? "<div class='operation-status status-note success' role='status'><strong>Сигнал создан.</strong></div>" : "";
     form.innerHTML="<div class='operation-form'><div class='operation-form-row'><span class='operation-form-label'>Исходный сигнал</span><input class='control' value='" + esc(source.name || "") + "' readonly></div><div class='operation-form-row'><label>Операция</label><div>" + select + "</div></div>" + (multiply ? "<div class='operation-form-row'><label for='signal-operation-multiplier'>Множитель</label><input id='signal-operation-multiplier' class='control' type='text' inputmode='decimal' value='2'></div>" : "") + (custom ? "<div class='operation-form-row operation-code-row'><label for='signal-operation-body'>Тело операции</label><textarea id='signal-operation-body' class='operation-code-editor' spellcheck='false'></textarea></div><p class='operation-body-help'>Код выполняется в Engee. Входной сигнал доступен как <code>init_signal</code>; результатом должно быть выражение, возвращающее новый вектор.</p>" : "") + "<div class='operation-form-row'><label for='signal-operation-name'>Имя нового сигнала</label><input id='signal-operation-name' class='control' value='" + esc((source.name || "signal") + "_" + operation.replace(/[^a-z0-9]+/gi, "_")) + "'></div><div class='operation-form-row'><span class='operation-form-label'></span><label class='operation-overwrite-control'><span class='checkbox-control'><input type='checkbox' data-signal-operation-overwrite" + (state.busy ? " disabled" : "") + "></span><span>Затирать сигнал с таким именем</span></label></div>" + status + "</div>";
@@ -4167,7 +4269,10 @@
     if (typeof revision === "number") {
       var displayId=detail.display_id || activeDisplay() && activeDisplay().id;
       var paneId=detail.field_id === "pane.name" ? model.namePreviewIntents[displayId + "::pane.name::" + String(detail.intent || 0)] || model.activePane : "";
-      model.settingsPublishEvents.push({ revision:revision, fieldId:detail.field_id || "", displayId:displayId, paneId:paneId });
+      var fieldId=detail.field_id || "";
+      var areaOutput=model.settingsPage === "display" && fieldId !== "display.name" && fieldId !== "pane.name";
+      if (areaOutput) paneId=model.activePane;
+      model.settingsPublishEvents.push({ revision:revision, fieldId:fieldId, displayId:displayId, paneId:paneId, areaOutput:areaOutput });
       model.revision=Math.max(model.revision, revision);
       scheduleSettingsPublication(revision);
     }
@@ -4706,12 +4811,11 @@
   var OPTIONAL_COLUMNS = [
     { id:"magnitude", label:"Модуль", field:"magnitude", optional:true, minWidth:165 },
     { id:"square", label:"Квадрат", field:"square", optional:true, minWidth:165 },
-    { id:"square_root", label:"Корень", field:"square_root", optional:true, minWidth:165 },
     { id:"signed_square_root_magnitude", label:"Корень из модуля × знак", field:"signed_square_root_magnitude", optional:true, minWidth:240 }
   ];
 
   function defaultVisibility() {
-    return OPTIONAL_COLUMNS.reduce(function (result, column) { result[column.id]=true; return result; }, {});
+    return OPTIONAL_COLUMNS.reduce(function (result, column) { result[column.id]=false; return result; }, {});
   }
 
   function normalizeVisibility(value) {
@@ -4761,12 +4865,149 @@
     visibilityScope:"one frontend-only preference shared by dynamic signal Values tabs for the current application lifetime",
     providerRule:"UI projects provider-authored fields only; it never calculates derived values",
     excluded:[
+      { id:"square_root", reason:"removed from the Values UI and visibility menu by the user" },
       { id:"fft", reason:"explicitly excluded by the user" },
       { id:"multiply", reason:"requires a product decision for multiplier input and lifecycle" },
       { id:"custom", reason:"requires a product decision for operation body, naming and lifecycle" }
     ]
   };
 }(window));
+
+(function registerTask0139Inventory(window) {
+  "use strict";
+
+  function operationId(option) {
+    if (typeof option === "string") return option;
+    return option && (option.id || option.value || option.key || option.operation) || "";
+  }
+  function withoutFft(options) {
+    return (options || []).filter(function (option) {
+      return String(operationId(option)).trim().toLowerCase() !== "fft";
+    });
+  }
+
+  window.SignalAnalyserTask0139Inventory={
+    sampleOptionalColumns:["magnitude","square","signed_square_root_magnitude"],
+    sampleOptionalDefaultVisibility:"all_hidden",
+    sampleColumnRemoved:"square_root",
+    withoutFft:withoutFft,
+    signalOperationRemoved:"fft"
+  };
+}(window));
+
+(function registerScopedOutputLoading(window, document) {
+  "use strict";
+
+  var paneRequests=Object.create(null);
+  var layoutRequest=null;
+
+  function clean(value) { return String(value == null ? "" : value); }
+  function paneSelector(id) {
+    if (window.CSS && typeof window.CSS.escape === "function") return "[data-pane-id='"+window.CSS.escape(clean(id))+"']";
+    return "[data-pane-id='"+clean(id).replace(/[\\']/g,"\\$&")+"']";
+  }
+  function spinner(testid,label,className) {
+    var overlay=document.createElement("div");
+    overlay.className=className;
+    overlay.dataset.testid=testid;
+    overlay.setAttribute("role","status");
+    overlay.setAttribute("aria-live","polite");
+    overlay.setAttribute("aria-label",label);
+    overlay.innerHTML="<span class='ui-loader-spinner' aria-hidden='true'></span>";
+    return overlay;
+  }
+  function workspace(root) { return (root || document).querySelector("[data-testid='display-workspace']"); }
+  function grid(root) {
+    var owner=workspace(root);
+    return owner && owner.querySelector("[data-testid='plot-grid'], .plot-grid");
+  }
+  function sync(root) {
+    root=root || document;
+    var owner=workspace(root), canvas=grid(root);
+    if (!owner || !canvas) return;
+    if (layoutRequest) {
+      owner.dataset.layoutReconciling="true";
+      owner.setAttribute("aria-busy","true");
+      owner.querySelectorAll(".pane-output-loading-overlay").forEach(function (node) { node.remove(); });
+      var layoutOverlay=canvas.querySelector(":scope > .display-canvas-loading-overlay");
+      if (!layoutOverlay) {
+        layoutOverlay=spinner("display-canvas-loading-overlay","Обновление макета экрана","display-canvas-loading-overlay");
+        canvas.appendChild(layoutOverlay);
+      }
+      layoutOverlay.dataset.displayId=clean(layoutRequest.displayId);
+      return;
+    }
+    delete owner.dataset.layoutReconciling;
+    owner.removeAttribute("aria-busy");
+    owner.querySelectorAll(".display-canvas-loading-overlay").forEach(function (node) { node.remove(); });
+    Object.keys(paneRequests).forEach(function (id) {
+      var pane=owner.querySelector(paneSelector(id));
+      if (!pane) return;
+      pane.setAttribute("aria-busy","true");
+      var overlay=Array.prototype.find.call(pane.children,function (child) { return child.classList && child.classList.contains("pane-output-loading-overlay"); });
+      if (!overlay) {
+        overlay=spinner("pane-output-loading-overlay-"+id,"Обновление области","pane-output-loading-overlay");
+        pane.appendChild(overlay);
+      }
+      overlay.dataset.paneId=id;
+    });
+    owner.querySelectorAll(".pane-output-loading-overlay").forEach(function (overlay) {
+      if (!paneRequests[overlay.dataset.paneId]) overlay.remove();
+    });
+    owner.querySelectorAll("[data-pane-id][aria-busy='true']").forEach(function (pane) {
+      if (!paneRequests[pane.dataset.paneId]) pane.removeAttribute("aria-busy");
+    });
+  }
+  function beginPane(paneId,token) {
+    paneId=clean(paneId);
+    if (!paneId) return null;
+    paneRequests[paneId]={token:clean(token || ("pane-"+Date.now())),terminal:null};
+    sync();
+    return paneRequests[paneId].token;
+  }
+  function settlePane(paneId,token,terminal) {
+    paneId=clean(paneId);
+    var current=paneRequests[paneId];
+    if (!current || clean(token) !== current.token) return false;
+    if (["ready","empty","error"].indexOf(terminal) < 0) return false;
+    delete paneRequests[paneId];
+    sync();
+    return true;
+  }
+  function beginLayout(displayId,token) {
+    layoutRequest={displayId:clean(displayId),token:clean(token || ("layout-"+Date.now()))};
+    sync();
+    return layoutRequest.token;
+  }
+  function settleLayout(displayId,token,terminal) {
+    if (!layoutRequest || clean(displayId) !== layoutRequest.displayId || clean(token) !== layoutRequest.token) return false;
+    if (["ready","empty","error"].indexOf(terminal) < 0) return false;
+    layoutRequest=null;
+    sync();
+    return true;
+  }
+  function state() {
+    return {layout:layoutRequest && {displayId:layoutRequest.displayId,token:layoutRequest.token},panes:Object.keys(paneRequests)};
+  }
+
+  window.SignalAnalyserScopedLoading={
+    beginPane:beginPane,
+    settlePane:settlePane,
+    beginLayout:beginLayout,
+    settleLayout:settleLayout,
+    sync:sync,
+    state:state,
+    paneTerminalStates:["ready","empty","error"],
+    layoutTerminalStates:["ready","empty","error"],
+    lifecycle:{
+      paneBegin:"accepted pane type change or valid Area settings commit immediately before mutation/output request",
+      paneEnd:"matching current output reaches ready, empty or error; stale completions do not dismiss",
+      layoutBegin:"display layout add/remove/rows/columns mutation start before pane DOM reconciliation",
+      layoutEnd:"matching accepted layout and every initial pane output reach ready, empty or error",
+      priority:"layout overlay suppresses every pane overlay beneath it"
+    }
+  };
+}(window,document));
 
 (function registerSignalSamplesSearchMarkers(window) {
   "use strict";

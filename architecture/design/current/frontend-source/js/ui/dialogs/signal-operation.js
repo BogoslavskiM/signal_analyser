@@ -7,7 +7,6 @@
     ["sqrt", "Корень"],
     ["signed-sqrt", "Корень из модуля × знак"],
     ["multiply", "Умножить"],
-    ["fft", "FFT"],
     ["custom", "Пользовательское"]
   ];
   function label() { return (operations.find(function (item) { return item[0] === dialogState.operation; }) || operations[0])[1]; }

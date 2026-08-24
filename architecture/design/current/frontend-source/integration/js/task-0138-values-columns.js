@@ -9,12 +9,11 @@
   var OPTIONAL_COLUMNS = [
     { id:"magnitude", label:"Модуль", field:"magnitude", optional:true, minWidth:165 },
     { id:"square", label:"Квадрат", field:"square", optional:true, minWidth:165 },
-    { id:"square_root", label:"Корень", field:"square_root", optional:true, minWidth:165 },
     { id:"signed_square_root_magnitude", label:"Корень из модуля × знак", field:"signed_square_root_magnitude", optional:true, minWidth:240 }
   ];
 
   function defaultVisibility() {
-    return OPTIONAL_COLUMNS.reduce(function (result, column) { result[column.id]=true; return result; }, {});
+    return OPTIONAL_COLUMNS.reduce(function (result, column) { result[column.id]=false; return result; }, {});
   }
 
   function normalizeVisibility(value) {
@@ -64,6 +63,7 @@
     visibilityScope:"one frontend-only preference shared by dynamic signal Values tabs for the current application lifetime",
     providerRule:"UI projects provider-authored fields only; it never calculates derived values",
     excluded:[
+      { id:"square_root", reason:"removed from the Values UI and visibility menu by the user" },
       { id:"fft", reason:"explicitly excluded by the user" },
       { id:"multiply", reason:"requires a product decision for multiplier input and lifecycle" },
       { id:"custom", reason:"requires a product decision for operation body, naming and lifecycle" }

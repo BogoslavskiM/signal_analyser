@@ -4,8 +4,7 @@ const os = require("os");
 const path = require("path");
 
 const root=path.resolve(__dirname,"..");
-const evidence=path.join(root,"evidence","interaction-regression-v41-values-columns.json");
-const screenshotPath=path.join(root,"screenshots","v41--values-column-visibility-menu--1440x900.png");
+const evidence=path.join(root,"evidence","interaction-regression-v43-task0139.json");
 
 function assert(condition,message) { if (!condition) throw new Error(message); }
 
@@ -28,29 +27,60 @@ function assert(condition,message) { if (!condition) throw new Error(message); }
     catch (error) { results.push({id,passed:false,error:error.message}); }
   }
 
-  await check("57-base-and-deterministic-optional-columns",async () => {
+  await check("64-base-only-default-and-three-optional-columns",async () => {
     const labels=await page.locator(".sample-table thead th").allTextContents();
-    assert(JSON.stringify(labels) === JSON.stringify(["№ точки","Время","Значение","Модуль","Квадрат","Корень","Корень из модуля × знак"]),JSON.stringify(labels));
-    assert(await page.locator(".sample-table tbody tr:first-child td").count() === 7,"first row not populated across seven columns");
-    return {labels,base_always_visible:labels.slice(0,3),optional_default_visible:labels.slice(3)};
+    assert(JSON.stringify(labels) === JSON.stringify(["№ точки","Время","Значение"]),JSON.stringify(labels));
+    assert(await page.locator(".sample-table tbody tr:first-child td").count() === 3,"first row must start with three base columns only");
+    return {labels,base_always_visible:labels,optional_default_visible:[]};
   });
 
   await page.getByTestId("sample-columns-menu-trigger").click();
   await page.waitForSelector("[data-testid='sample-columns-menu']:not([hidden])");
-  await page.screenshot({path:screenshotPath,fullPage:true});
-  await check("58-menu-eye-toggle-and-reflow",async () => {
+  await check("65-three-hidden-eyes-toggle-and-reflow",async () => {
     const menu=page.getByTestId("sample-columns-menu");
-    assert((await menu.locator("[data-sample-column-visible]").allTextContents()).join("|") === "Модуль|Квадрат|Корень|Корень из модуля × знак","menu inventory");
-    assert(await menu.locator("img[src='./icons/eye.svg']").count() === 4,"visible eyes");
-    await menu.locator("[data-sample-column-visible='square_root']").click();
+    assert((await menu.locator("[data-sample-column-visible]").allTextContents()).join("|") === "Модуль|Квадрат|Корень из модуля × знак","menu inventory");
+    assert(await menu.locator("img[src='./icons/eye-off.svg']").count() === 3,"all optional columns must start hidden");
+    assert(await menu.locator("[data-sample-column-visible='square_root']").count() === 0,"removed square_root remains in menu");
+    await menu.locator("[data-sample-column-visible='magnitude']").click();
     const labels=await page.locator(".sample-table thead th").allTextContents();
-    assert(labels.indexOf("Корень") < 0 && labels.indexOf("№ точки") === 0 && labels.indexOf("Значение") === 2,"table reflow/base columns");
-    assert(await menu.locator("[data-sample-column-visible='square_root'] img").getAttribute("src") === "./icons/eye-off.svg","eye-off state");
+    assert(JSON.stringify(labels) === JSON.stringify(["№ точки","Время","Значение","Модуль"]),"table reflow/base columns");
+    assert(await menu.locator("[data-sample-column-visible='magnitude'] img").getAttribute("src") === "./icons/eye.svg","eye state");
     assert(await menu.getAttribute("hidden") === null,"menu closed after toggle");
-    return {hidden:"square_root",visible_headers:labels,menu_remains_open:true};
+    return {shown:"magnitude",visible_headers:labels,menu_remains_open:true};
   });
 
-  await check("59-keyboard-escape-focus-and-no-network",async () => {
+  await check("66-fft-removed-from-operation-ui-inventory",async () => {
+    const projected=await page.evaluate(() => window.SignalAnalyserTask0139Inventory.withoutFft([
+      {value:"abs",label:"Модуль"},{value:"sqrt",label:"Корень"},{value:"fft",label:"FFT"},{value:"custom",label:"Пользовательское"}
+    ]));
+    assert(projected.map(item => item.value).join("|") === "abs|sqrt|custom",JSON.stringify(projected));
+    return {removed:"fft",remaining:projected.map(item => item.value)};
+  });
+
+  await check("67-pane-and-display-loader-lifecycle",async () => {
+    const result=await page.evaluate(() => {
+      const pane=document.querySelector("[data-pane-id]");
+      const paneId=pane.dataset.paneId;
+      const paneToken=window.Task0139LoadingPrototype.beginPane(paneId);
+      const paneImmediate=!!pane.querySelector(":scope > .pane-output-loading-overlay");
+      const staleIgnored=window.Task0139LoadingPrototype.settlePane(paneId,"stale","ready") === false && !!pane.querySelector(":scope > .pane-output-loading-overlay");
+      const displayId="display-1";
+      const layoutToken=window.Task0139LoadingPrototype.beginLayout(displayId);
+      const canvas=document.querySelector("[data-testid='plot-grid'],.plot-grid");
+      const displayImmediate=!!canvas.querySelector(":scope > .display-canvas-loading-overlay");
+      const paneSuppressed=document.querySelectorAll(".pane-output-loading-overlay").length === 0;
+      const settingsUncovered=!document.querySelector("[data-testid='settings-panel'] .display-canvas-loading-overlay");
+      const layoutStaleIgnored=window.Task0139LoadingPrototype.settleLayout(displayId,"stale","ready") === false && !!canvas.querySelector(":scope > .display-canvas-loading-overlay");
+      const layoutSettled=window.Task0139LoadingPrototype.settleLayout(displayId,layoutToken,"empty") === true && !canvas.querySelector(":scope > .display-canvas-loading-overlay");
+      const paneRestored=!!pane.querySelector(":scope > .pane-output-loading-overlay");
+      const paneSettled=window.Task0139LoadingPrototype.settlePane(paneId,paneToken,"error") === true && !pane.querySelector(":scope > .pane-output-loading-overlay");
+      return {paneImmediate,staleIgnored,displayImmediate,paneSuppressed,settingsUncovered,layoutStaleIgnored,layoutSettled,paneRestored,paneSettled};
+    });
+    assert(Object.values(result).every(Boolean),JSON.stringify(result));
+    return result;
+  });
+
+  await check("68-keyboard-escape-focus-and-no-network",async () => {
     await page.keyboard.press("Escape");
     assert(await page.getByTestId("sample-columns-menu").getAttribute("hidden") !== null,"Escape did not close");
     assert(await page.evaluate(() => document.activeElement && document.activeElement.dataset.testid) === "sample-columns-menu-trigger","focus not restored");
@@ -60,7 +90,7 @@ function assert(condition,message) { if (!condition) throw new Error(message); }
     return {escape:"closed and trigger focused",outside:"contracted without forced focus",network_requests:network.length,runtime_errors:runtimeErrors.length};
   });
 
-  const output={design_version:41,prototype_entry:"prototype/index.html",protocol:"file://",passed:results.filter(item=>item.passed).length,failed:results.filter(item=>!item.passed).length,runtime_errors:runtimeErrors,screenshot:path.relative(root,screenshotPath),results};
+  const output={design_version:43,prototype_entry:"prototype/index.html",protocol:"file://",passed:results.filter(item=>item.passed).length,failed:results.filter(item=>!item.passed).length,runtime_errors:runtimeErrors,results};
   fs.writeFileSync(evidence,JSON.stringify(output,null,2)+"\n");
   await browser.close();
   process.stdout.write(JSON.stringify(output,null,2));

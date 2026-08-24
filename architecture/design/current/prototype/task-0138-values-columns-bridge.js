@@ -27,7 +27,6 @@
       value:cells[2] ? cells[2].textContent : "—",
       magnitude:cells[3] ? cells[3].textContent : "—",
       square:cells[4] ? cells[4].textContent : "—",
-      square_root:rootMagnitude == null ? "—" : raw < 0 ? "0 + "+rootMagnitude.toFixed(6)+"i" : rootMagnitude.toFixed(6),
       signed_square_root_magnitude:rootMagnitude == null ? "—" : (raw < 0 ? "−" : "")+rootMagnitude.toFixed(6)
     };
     row.dataset.task0138Values=JSON.stringify(values);

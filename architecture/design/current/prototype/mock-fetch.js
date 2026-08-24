@@ -157,7 +157,7 @@
     var rows=[];
     for (var index=cursor; index<Math.min(cursor+limit, fixtureTotal); index++) {
       var value=Math.sin(index*Math.PI/10), magnitude=Math.abs(value), rootMagnitude=Math.sqrt(magnitude);
-      rows.push({ sample_index:index, time:index+" мкс", value:value.toFixed(6), magnitude:magnitude.toFixed(6), square:(value*value).toFixed(6), square_root:value < 0 ? "0 + "+rootMagnitude.toFixed(6)+"i" : rootMagnitude.toFixed(6), signed_square_root_magnitude:(value < 0 ? "−" : "")+rootMagnitude.toFixed(6) });
+      rows.push({ sample_index:index, time:index+" мкс", value:value.toFixed(6), magnitude:magnitude.toFixed(6), square:(value*value).toFixed(6), signed_square_root_magnitude:(value < 0 ? "−" : "")+rootMagnitude.toFixed(6) });
     }
     return { signal_id:"signal-radar", signal:{ id:"signal-radar", name:"radarPulse" }, start_offset:cursor, end_offset:cursor+rows.length, rows:rows, next_cursor:cursor+rows.length < fixtureTotal ? cursor+rows.length : null, total:fixtureTotal };
   }

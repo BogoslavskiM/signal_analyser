@@ -1,0 +1,13 @@
+{
+  "design_version": 43,
+  "status": "pass",
+  "checks": [
+    {"id":"values-default-hidden","passed":true,"detail":"Only № точки, Время and Значение render initially; magnitude, square and signed_square_root_magnitude start false."},
+    {"id":"removed-values-root","passed":true,"detail":"square_root/Корень is absent from the current UI helper, renderer fallback, menu inventory and mock rows."},
+    {"id":"removed-operation-fft","passed":true,"detail":"FFT is filtered from the signal-operation UI inventory only; no backend removal is required."},
+    {"id":"pane-loader-lifecycle","passed":true,"detail":"Accepted pane type or valid Area output mutation begins an exact-pane overlay before mutation and only matching ready/empty/error settles it."},
+    {"id":"layout-loader-lifecycle","passed":true,"detail":"Add/remove/rows/columns begins one display plot-grid overlay through accepted layout and all initial output terminals; stale completions are ignored."},
+    {"id":"overlay-priority","passed":true,"detail":"Display layout overlay suppresses pane overlays; workspace header/tabs, Settings and Inspector are not covered."},
+    {"id":"transfer-boundary","passed":true,"detail":"Only additive CSS/JS sources are transferred; production document, module identities and Plotly hosts remain invariant."}
+  ]
+}

@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `42`
+- Design version: `43`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V42 is the current integration-safe package for the accepted Signal Analyser
+V43 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -38,11 +38,16 @@ TASK-0130 graph-cursor extension:
 8. The same table has an exact point-number server jump and TIME-only projection
    of a current same-signal extrema marker into the point-number cell.
 9. The Values table keeps `№ точки / Время / Значение` always visible and exposes
-   provider-authored `Модуль / Квадрат / Корень / Корень из модуля × знак` as
-   independent eye-menu columns from a new three-dot action in the same search row.
+   provider-authored `Модуль / Квадрат / Корень из модуля × знак` as independent,
+   initially hidden eye-menu columns. The `Корень` calculated column is absent.
 10. The point-search row has no standalone search action: Enter submits the point
     search, successful loads leave no persistent status, and the existing standard
     vertical-three-dot action occupies the single final slot for column visibility.
+11. `FFT` is absent from the signal-operation selector; backend support may remain.
+12. Accepted pane-type and valid Area-settings output mutations immediately cover
+    the exact pane until its current output is ready, empty or error. Layout add/
+    remove/rows/columns mutations instead cover the display canvas with one loader
+    through accepted layout and all initial output terminal states.
 
 The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
 transaction implementation, Plotly payloads, sample API endpoint mechanics and
@@ -446,6 +451,28 @@ entry baseline or production transfer inputs.
   `next_cursor` and `total` page fields; legacy camelCase cursor aliases are not
   required. Multiply/Custom remain absent and FFT remains excluded.
 
+## Exact delta v42 → v43
+
+- All optional Values columns now start hidden. The menu contains only
+  `Модуль`, `Квадрат` and `Корень из модуля × знак`; `Корень` is absent from
+  headers, cells, menu, mock state and the transferable UI inventory.
+- `Операция над сигналом` omits only `FFT`; backend capability is unchanged.
+- Reused the existing loader surface, accent and 64px spinner without new visual
+  tokens. Pane type or valid Area settings that starts output refresh mounts one
+  pointer-blocking overlay on the exact `[data-pane-id]` before the mutation.
+  Only the matching current `ready | empty | error` terminal removes it.
+- Layout add/remove/rows/columns starts one overlay on the active display
+  `plot-grid` canvas before mutation. It stays through accepted layout and every
+  initial pane output terminal, suppressing pane overlays beneath it. Workspace
+  title/tabs/actions, Settings and Inspector are never covered. Stale completions
+  cannot dismiss either overlay.
+- Applied skills: `designer/designer-workflow`,
+  `designer/data-entry-and-inspection`, `designer/output-and-visualization` and
+  `designer/application-composition`. Skipped `designer/visual-system` and
+  Engee Apps research because the accepted loader/menu styles and composition
+  are reused unchanged; Figma reference status is `not_required`. Page sizing
+  is unchanged because no zone geometry or resize behavior changed.
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -657,13 +684,15 @@ override the successful v32 node-specific read above.
 | Signal checkbox | direct click/change | Adds/removes only that graph trace; never changes `main_signal`; pending keeps the same visible node and checked state, disabled in place | unchecked, checked, disabled, busy; row blue remains independent | fixed 16px control; no row geometry shift |
 | Signal settings group | click title/keyboard | `Основное` or `Сводка` body independently hides/shows using standard disclosure arrow | expanded, hover, pressed, focus-visible, collapsed | settings body remains y-scroll owner |
 | Plot pane | plain LMB outside controls/modebar | Active pane updates and right panel selects `Область` | inactive, hover, active, loading | Plotly host identity unchanged |
-| Pane type dropdown | select option | Authoritative pane type updates, then right panel selects `Область` even if `Сигнал` was open | closed, open, selected, loading, error | Same pane/Plotly host identity; no Signal markup may remain in Area content |
+| Pane type dropdown | select option | Exact pane loader appears before authoritative mutation; right panel selects `Область`; loader ends only for matching ready/empty/error output | closed, open, selected, loading, empty, error | Same pane/Plotly host identity; stale output cannot dismiss current loader |
+| Valid Area setting | autosave commit that schedules output refresh | Exact active-pane loader appears before commit/output request and remains through current ready/empty/error | dirty, applying, loading, ready, empty, error | Invalid draft and settings without output refresh do not start a loader |
+| Screen layout mutation | add/remove pane or apply rows/columns | One active display-canvas loader covers all pane slots until accepted layout and every initial output terminal | layout-loading, ready, empty, error | Pane loaders are suppressed; workspace header/tabs, Settings and Inspector remain usable/uncovered |
 | Display tab / Add display | click/keyboard | Active/new display updates and right panel selects `Экран` | default, selected, creating, error | tab row remains horizontal-only |
 | Automatic sample tab | main signal exists/changes | One tab named after `main_signal` exists and loads its first page without changing inspector focus | absent-without-main, loading, ready, error | table owns x/y scroll when selected |
 | Signal `Значения` | click | Ensure/select/focus populated main-signal tab, expand inspector and request missing first page | default, hover, focus, loading, ready, error | table owns x/y scroll |
 | Dynamic sample row window | scroll within 100 rows of top/bottom boundary | Fetch 500 upward/downward; retain at most 1000 rows; keep visible record fixed through measured-height compensation | loading-up, loading-down, ready, end-of-data, error, stale-ignored | existing table/scroll owner/footer geometry unchanged |
 | Sample point search | type, Enter | Validate exact `0..total-1`, replace with centered server page and focus target; empty Enter resets first page; successful loads leave no persistent copy | pristine, typing, invalid, loading, ready, error-only | 32px row; clearing alone sends no request; no standalone action |
-| Sample column menu | three-dot click/Enter/Space/ArrowDown; item click/Enter/Space; Arrow/Home/End; Escape/Tab/outside | 244px `Видимость столбцов`; eye/eye-off toggles one optional provider column immediately and stays open; Escape restores trigger | closed, trigger-hover/focus/expanded, row-hover/focus, visible-eye, hidden-eye | fixed body portal at dropdown layer; table remains x/y owner, popup owns only its own y overflow; clamps to 8px viewport gap and flips above |
+| Sample column menu | three-dot click/Enter/Space/ArrowDown; item click/Enter/Space; Arrow/Home/End; Escape/Tab/outside | 244px `Видимость столбцов`; all three items start eye-off; eye toggle shows one optional provider column immediately and stays open; Escape restores trigger | closed, trigger-hover/focus/expanded, row-hover/focus, visible-eye, hidden-eye | `Корень` absent; fixed body portal at dropdown layer; table remains x/y owner |
 | TIME extrema in point cell | render current samples | Keep number first, then canonical marker when exact active display/pane successful same-signal TIME extrema has `sample_index` | absent, marker-ready, duplicate-resolved | auto 1%/min 112px left-aligned first column; Spectrum never maps |
 | Signal color trigger | click/keyboard | 284px anchored non-modal popover opens with HEX and the restored eight swatches | closed, open, hover, selected-draft, invalid, busy | fixed overlay; flips/clamps to viewport, no settings scroll ownership change |
 | Color popover Apply/Cancel | click/Escape/outside | Apply writes Signal color draft; Cancel paths restore opening color | draft, busy, committed-to-page-draft, cancelled | focus returns to color trigger |
@@ -788,6 +817,9 @@ screenshot because shell/menu geometry is inherited unchanged from v41.
 | `integration/js/task-0135-sample-search-markers.js` | samples render/search/provider branches in `public/js/app.js` | integrate helper unchanged | Server-only centered jump, token replacement, center focus and exact active TIME marker projection |
 | `integration/css/task-0138-values-columns.css` | `public/css/app.css` | append once after TASK-0135 sample rules | Exact final search-row action, 244px eye menu and dynamic table min-width; preserve all existing row/window states |
 | `integration/js/task-0138-values-columns.js` | samples renderer/menu/event branches in `public/js/app.js` | integrate helper unchanged | UI projects provider fields only, fixed base/optional order, frontend visibility map, no API call or calculation |
+| `integration/js/task-0139-ui-inventory.js` | sample visibility initialization + signal-operation inventory in `public/js/app.js` | integrate helper unchanged | Three optional columns all hidden; no square_root UI; filter FFT only from operation selector |
+| `integration/css/task-0139-loading-overlays.css` | `public/css/app.css` | append once | Existing loader tokens; exact-pane and display-canvas anchors; layout overlay suppresses pane overlays |
+| `integration/js/task-0139-loading-overlays.js` | settings/layout/output lifecycles in `public/js/app.js` | integrate controller unchanged | Begin before mutation, settle current token only at ready/empty/error; sync after workspace render |
 | `integration/html/dialogs/signal-operation.fragment.html` | `public/js/app.js` runtime template → `document.body` | integrate unchanged singleton | Never edit `public/index.html` |
 | Mock shell/zones/renderers/providers/prototype | none | design-only | Never transfer |
 
@@ -812,7 +844,8 @@ Features extend those hosts; they do not replace their parents or bootstrap.
 | `signal-summary-provider` | Backend-authored summary view model | mock | `public/js/api.js` → existing `public/js/app.js` |
 | `signal-samples-pagination` | 500-row bidirectional batches plus exact centered point jump, 1000-row DOM window, footer/compensation; never full vector | v39/v40 controller regressions | `public/js/api.js` → existing `public/js/app.js` inspector renderer |
 | `sample-time-extrema-markers` | Exact active display/pane, successful TIME rows filtered by `signal_name` and `sample_index`; `row.signal_color`; lowest finite graph number; never Spectrum bins | v40 helper regression | existing extrema state → existing sample renderer |
-| `signal-sample-calculated-columns` | Three fixed base columns plus four provider-authored optional columns; existing 244px eye menu pattern; immediate reflow without row/window/scroll reset | v41 UI helper + bridge | `public/js/api.js` row fields → existing `public/js/app.js` sample renderer/menu events |
+| `signal-sample-calculated-columns` | Three fixed base columns plus three provider-authored optional columns, all hidden initially; existing 244px eye menu; no square_root UI | v43 UI helper + bridge | `public/js/api.js` row fields → existing `public/js/app.js` sample renderer/menu events |
+| `scoped-output-loading` | Exact-pane loader for pane type/valid Area output refresh; single display-canvas loader for layout reconciliation with stale guards and layout priority | v43 controller + bridge | existing settings/layout/output branches in `public/js/app.js` |
 | `signal-operation-provider` | UI sends operation metadata and user body only; provider executes via Engee and owns hidden envelope/binding/cleanup | mock | `public/js/api.js` → existing `public/js/app.js` body portal |
 | `signal-membership-main` | Checkbox owns pane membership; one explicit main signal owns row emphasis and Signal settings context | deterministic mock state/API | existing `public/js/app.js` + existing layout/view providers |
 | `settings-context-routing` | Pane selects Area page; display selection/creation selects Screen page | actual production UI in file harness | existing `public/js/app.js` event delegation |
@@ -995,6 +1028,10 @@ font; package copies below remain visual-harness inputs only.
   trace states. A ready Time/Spectrum plot supports off, single, dual, hover,
   focus-visible, dragging and clamped-after-relayout states. Cursor state is
   discarded when its pane is cleared/removed and is not session-persisted.
+- Pane output loading blocks only the matching pane and settles at current
+  ready/empty/error. Display layout loading blocks only the plot-grid canvas,
+  outranks/suppresses pane loaders and settles after all initial outputs reach a
+  terminal state. Neither loader is dismissed by stale mutation output.
 
 ## Acceptance
 
@@ -1035,6 +1072,11 @@ font; package copies below remain visual-harness inputs only.
   are mutually exclusive and repeat-toggle off. Time/Spectrum lines snap inside
   visible X, dual readout includes ΔX and per-trace values, and no API/DSP,
   state revision or cross-pane cursor link occurs.
+- Values opens with only the three base columns; its menu has exactly three
+  eye-off optional calculations and no `Корень`. Signal operation UI has no FFT.
+- V43 source/interaction evidence covers hidden defaults, UI inventory removal,
+  stale-token pane loading and display-layout priority; the canonical package
+  validator passes.
 
 ## Backend integration boundary
 
@@ -1099,3 +1141,7 @@ render or leak the wrapper mechanics.
   dynamic samples table: batches 500, DOM cap 1000, prefetch threshold 100,
   authoritative offsets, exact real range footer, scroll anchoring and stale/
   duplicate guards. Deterministic controller regression passed 1/1.
+- `v43`: TASK-0139 hides all remaining optional Values columns by default,
+  removes the `Корень` column and FFT operation option, and adds scoped existing-
+  style loaders for pane output and display layout reconciliation. No unrelated
+  visual, geometry or backend change.
