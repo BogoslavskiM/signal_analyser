@@ -96,7 +96,7 @@
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
     signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
     signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{},
-    signalSamples: { signalId:"", signalName:"", rows:[], nextCursor:null, total:0, firstPageLoaded:false, loading:false, error:"", token:0 },
+    signalSamples: { signalId:"", signalName:"", token:0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null }, error:"" },
     signalEditor: { signalId:"", summary:null, loading:false, error:"", draft:null }
   };
 
@@ -1942,28 +1942,70 @@
     if (!signal || !signalId) {
       if (tab) tab.remove();
       if (model.inspectorPage === "samples") model.inspectorPage="signals";
-      model.signalSamples={ signalId:"", signalName:"", rows:[], nextCursor:null, total:0, firstPageLoaded:false, loading:false, error:"", token:(model.signalSamples.token || 0) + 1 };
+      model.signalSamples=createSignalSamplesState("", (model.signalSamples.token || 0) + 1, "");
       return false;
     }
     if (!tabs) return false;
     var state=model.signalSamples;
-    if (state.signalId !== signalId) state=model.signalSamples={ signalId:signalId, signalName:signal.name, rows:[], nextCursor:null, total:0, firstPageLoaded:false, loading:false, error:"", token:0 };
+    if (state.signalId !== signalId) state=model.signalSamples=createSignalSamplesState(signalId, (state.token || 0) + 1, signal.name);
     if (!tab) { tab=document.createElement("button"); tab.type="button"; tab.setAttribute("role", "tab"); tab.dataset.bottomTab="samples"; tab.dataset.testid="inspector-tab-samples"; tab.setAttribute("data-testid", "inspector-tab-samples"); tabs.appendChild(tab); }
     tab.textContent=signal.name;
-    if (options && options.retry && !state.rows.length && state.error) { state.error=""; state.nextCursor=null; state.firstPageLoaded=false; }
-    if (!state.rows.length && !state.loading && !state.error && !state.firstPageLoaded) loadSignalSamples();
+    if (options && options.retry && !state.rows.length && state.error) state.error="";
+    if (!state.rows.length && !signalSamplesLoading(state) && !state.error && !state.firstBatchLoaded) loadSignalSamples("down");
     return true;
   }
 
-  function loadSignalSamples() {
-    var state=model.signalSamples;
-    if (!state.signalId || state.loading || (state.firstPageLoaded && state.nextCursor === false)) return;
-    var requestCursor=state.nextCursor, token=++state.token, scrollTop=signalSamplesScrollTop(); state.loading=true; renderInspector(); restoreSignalSamplesScrollTop(scrollTop);
-    boundedRequest(api.signalSamples(state.signalId, state.nextCursor, 200), 10000).then(function (page) {
-      if (state !== model.signalSamples || token !== state.token) return;
-      if (!page || !page.signal || String(page.signal.id) !== state.signalId || !Array.isArray(page.rows)) throw new Error("Сервер вернул некорректную страницу значений сигнала.");
-      scrollTop=signalSamplesScrollTop(); state.rows=state.rows.concat(page.rows); state.nextCursor=page.next_cursor == null ? false : page.next_cursor; state.total=Number(page.total || state.rows.length); state.firstPageLoaded=state.firstPageLoaded || requestCursor == null || Number(requestCursor) === 0; state.loading=false; renderInspector(); restoreSignalSamplesScrollTop(scrollTop);
-    }).catch(function (error) { if (state === model.signalSamples && token === state.token) { scrollTop=signalSamplesScrollTop(); state.loading=false; state.error=safeErrorText(error, "Не удалось загрузить значения."); renderInspector(); restoreSignalSamplesScrollTop(scrollTop); } });
+  function signalSamplesController() {
+    return window.SignalSamplesRowWindow || null;
+  }
+
+  function createSignalSamplesState(signalId, token, signalName) {
+    var controller=signalSamplesController(), state=controller ? controller.create(signalId, token) : { signalId:String(signalId || ""), token:Number(token) || 0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null }, error:"" };
+    state.signalName=String(signalName || "");
+    return state;
+  }
+
+  function signalSamplesLoading(state) {
+    return !!(state && state.pending && (state.pending.up || state.pending.down));
+  }
+
+  function normalizeSignalSamplesPage(page) {
+    if (!page || !Array.isArray(page.rows)) return page;
+    var startOffset=page.start_offset == null ? page.cursor : page.start_offset;
+    var numericStart=Number(startOffset);
+    return {
+      signal_id:page.signal_id || page.signal && page.signal.id,
+      signal:page.signal,
+      start_offset:startOffset,
+      end_offset:page.end_offset == null && Number.isSafeInteger(numericStart) ? numericStart + page.rows.length : page.end_offset,
+      rows:page.rows,
+      total:page.total
+    };
+  }
+
+  function loadSignalSamples(direction) {
+    var controller=signalSamplesController(), state=model.signalSamples;
+    if (!controller || !state.signalId || state.firstBatchLoaded && !state.rows.length) return;
+    var request=controller.begin(state, direction || "down");
+    if (!request) return;
+    var requestLimit=request.direction === "up" ? Math.min(request.limit, state.startOffset - request.startOffset) : request.limit;
+    var scrollTop=signalSamplesScrollTop(), rowHeight=signalSamplesRenderedRowHeight();
+    renderInspector(); restoreSignalSamplesScrollTop(scrollTop);
+    boundedRequest(api.signalSamples(request.signalId, request.startOffset, requestLimit), 10000).then(function (page) {
+      if (state !== model.signalSamples || request.token !== state.token) return;
+      scrollTop=signalSamplesScrollTop(); rowHeight=signalSamplesRenderedRowHeight();
+      var result=controller.apply(state, request, normalizeSignalSamplesPage(page));
+      if (!result.accepted) {
+        if (result.reason === "stale-token" || result.reason === "stale-request") return;
+        var invalidPageMessage="Сервер вернул некорректную страницу значений сигнала.";
+        if (!controller.reject(state, request, invalidPageMessage)) state.error=invalidPageMessage;
+      }
+      renderInspector(); restoreSignalSamplesScrollTop(scrollTop, result, rowHeight);
+    }).catch(function (error) {
+      if (state !== model.signalSamples || request.token !== state.token) return;
+      scrollTop=signalSamplesScrollTop();
+      if (controller.reject(state, request, safeErrorText(error, "Не удалось загрузить значения."))) { renderInspector(); restoreSignalSamplesScrollTop(scrollTop); }
+    });
   }
 
   function signalSamplesScrollTop() {
@@ -1972,19 +2014,38 @@
     return scroll ? scroll.scrollTop : null;
   }
 
-  function restoreSignalSamplesScrollTop(scrollTop) {
+  function signalSamplesRenderedRowHeight() {
+    var scroll=q("[data-testid='samples-table-scroll']"), row=scroll && scroll.querySelector("tbody tr");
+    if (!row) return 0;
+    var rect=typeof row.getBoundingClientRect === "function" ? row.getBoundingClientRect() : null;
+    return rect && Number(rect.height) > 0 ? Number(rect.height) : Number(row.offsetHeight) || 0;
+  }
+
+  function restoreSignalSamplesScrollTop(scrollTop, result, rowHeight) {
     if (scrollTop == null || model.inspectorPage !== "samples") return;
-    var scroll=q("[data-testid='samples-table-scroll']");
-    if (scroll) scroll.scrollTop=scrollTop;
+    var scroll=q("[data-testid='samples-table-scroll']"), controller=signalSamplesController();
+    if (scroll) scroll.scrollTop=scrollTop + (controller ? controller.scrollCompensation(result, rowHeight) : 0);
+  }
+
+  function prefetchSignalSamples(scroll, state) {
+    var controller=signalSamplesController();
+    if (!controller || !scroll || !state.rows.length || state.error) return;
+    var firstRow=scroll.querySelector("tbody tr"), rowHeight=signalSamplesRenderedRowHeight();
+    if (!firstRow || rowHeight <= 0) return;
+    var rowsTop=Number(firstRow.offsetTop) || 0;
+    var firstVisible=Math.max(0, Math.floor((scroll.scrollTop - rowsTop) / rowHeight));
+    var lastVisible=Math.min(state.rows.length - 1, Math.max(firstVisible, Math.ceil((scroll.scrollTop + scroll.clientHeight - rowsTop) / rowHeight) - 1));
+    controller.prefetchDirections(state, firstVisible, lastVisible).forEach(loadSignalSamples);
   }
 
   function renderSignalSamplesInspector(body) {
-    var state=model.signalSamples;
+    var state=model.signalSamples, controller=signalSamplesController();
     if (!state.signalId) { body.innerHTML="<div class='table-empty' role='status'>Выберите основной сигнал.</div>"; return; }
-    if (!state.rows.length && !state.loading && !state.error && !state.firstPageLoaded) loadSignalSamples();
-    body.innerHTML="<div class='signal-table-scroll' data-testid='samples-table-scroll'><table class='signal-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>"+state.rows.map(function (row) { return "<tr><td>"+esc(row.sample_index == null ? row.index : row.sample_index)+"</td><td>"+esc(row.time == null ? (row.time_s == null ? "—" : row.time_s) : row.time)+"</td><td>"+esc(row.value == null ? "—" : row.value)+"</td><td>"+esc(row.magnitude == null ? "—" : row.magnitude)+"</td><td>"+esc(row.square == null ? "—" : row.square)+"</td></tr>"; }).join("")+"</tbody></table><div class='samples-footer'><span>Показаны строки 1–"+esc(state.rows.length)+"</span><span>"+esc(state.total || state.rows.length)+" отсчётов · подгрузка при прокрутке</span></div>"+(state.loading ? "<div class='samples-loading' role='status'>Загрузка…</div>" : state.error ? "<div class='samples-loading' role='alert'>"+esc(state.error)+"</div>" : !state.rows.length && state.firstPageLoaded ? "<div class='samples-loading' role='status'>У сигнала нет отсчётов.</div>" : "")+"</div>";
+    if (!state.rows.length && !signalSamplesLoading(state) && !state.error && !state.firstBatchLoaded) loadSignalSamples("down");
+    var loading=signalSamplesLoading(state), footer=controller ? controller.footer(state) : "0–0 из 0";
+    body.innerHTML="<div class='signal-table-scroll' data-testid='samples-table-scroll'><table class='signal-table sample-table'><thead><tr><th>№ точки</th><th>Время</th><th>Значение</th><th>Модуль</th><th>Квадрат</th></tr></thead><tbody>"+state.rows.map(function (row) { return "<tr><td>"+esc(row.sample_index == null ? row.index : row.sample_index)+"</td><td>"+esc(row.time == null ? (row.time_s == null ? "—" : row.time_s) : row.time)+"</td><td>"+esc(row.value == null ? "—" : row.value)+"</td><td>"+esc(row.magnitude == null ? "—" : row.magnitude)+"</td><td>"+esc(row.square == null ? "—" : row.square)+"</td></tr>"; }).join("")+"</tbody></table><div class='samples-footer'><span>"+esc(footer)+"</span></div>"+(loading ? "<div class='samples-loading' role='status'>Загрузка…</div>" : state.error ? "<div class='samples-loading' role='alert'>"+esc(state.error)+"</div>" : !state.rows.length && state.firstBatchLoaded ? "<div class='samples-loading' role='status'>У сигнала нет отсчётов.</div>" : "")+"</div>";
     var scroll=body.querySelector("[data-testid='samples-table-scroll']");
-    if (scroll) scroll.addEventListener("scroll", function () { if (!state.loading && state.nextCursor && scroll.scrollTop + scroll.clientHeight >= scroll.scrollHeight - 48) loadSignalSamples(); }, { passive:true });
+    if (scroll) scroll.addEventListener("scroll", function () { prefetchSignalSamples(scroll, state); }, { passive:true });
   }
 
   function screenDraftFor(display) {
@@ -4237,3 +4298,171 @@
     createController:createController
   };
 }(window,document));
+
+(function registerSignalSamplesRowWindow(window) {
+  "use strict";
+
+  var API_BATCH_SIZE = 500;
+  var MAX_DOM_ROWS = 1000;
+  var PREFETCH_THRESHOLD_ROWS = 100;
+
+  function offset(value, fallback) {
+    var number = Number(value);
+    return Number.isSafeInteger(number) && number >= 0 ? number : fallback;
+  }
+
+  function signalIdFrom(page) {
+    return String(page && (page.signal_id || (page.signal && page.signal.id)) || "");
+  }
+
+  function create(signalId, token) {
+    return {
+      signalId:String(signalId || ""),
+      token:offset(token, 0),
+      rows:[],
+      startOffset:0,
+      endOffset:0,
+      total:0,
+      firstBatchLoaded:false,
+      pending:{ up:null, down:null },
+      error:""
+    };
+  }
+
+  function requestKey(state, direction, startOffset) {
+    return [state.signalId, state.token, direction, startOffset].join(":");
+  }
+
+  function begin(state, direction) {
+    if (!state || !state.signalId || (direction !== "up" && direction !== "down")) return null;
+    if (state.pending[direction]) return null;
+    var startOffset;
+    if (direction === "up") {
+      if (!state.rows.length || state.startOffset === 0) return null;
+      startOffset=Math.max(0, state.startOffset - API_BATCH_SIZE);
+    } else {
+      if (state.rows.length && state.endOffset >= state.total) return null;
+      startOffset=state.rows.length ? state.endOffset : 0;
+    }
+    var request={
+      signalId:state.signalId,
+      token:state.token,
+      direction:direction,
+      startOffset:startOffset,
+      limit:API_BATCH_SIZE
+    };
+    request.key=requestKey(state, direction, startOffset);
+    state.pending[direction]=request.key;
+    state.error="";
+    return request;
+  }
+
+  function prefetchDirections(state, firstVisibleIndex, lastVisibleIndex) {
+    if (!state || !state.signalId) return [];
+    if (!state.rows.length) return state.pending.down ? [] : ["down"];
+    var first=Math.max(0, offset(firstVisibleIndex, 0));
+    var last=Math.max(first, offset(lastVisibleIndex, first));
+    var result=[];
+    if (state.startOffset > 0 && first <= PREFETCH_THRESHOLD_ROWS && !state.pending.up) result.push("up");
+    if (state.endOffset < state.total && last >= Math.max(0, state.rows.length - 1 - PREFETCH_THRESHOLD_ROWS) && !state.pending.down) result.push("down");
+    return result;
+  }
+
+  function clearPending(state, request) {
+    if (state && request && state.pending[request.direction] === request.key) state.pending[request.direction]=null;
+  }
+
+  function apply(state, request, page) {
+    if (!state || !request || !page) return { accepted:false, reason:"missing" };
+    if (request.signalId !== state.signalId || request.token !== state.token) return { accepted:false, reason:"stale-token" };
+    if (state.pending[request.direction] !== request.key) return { accepted:false, reason:"stale-request" };
+    clearPending(state, request);
+    if (signalIdFrom(page) !== state.signalId || !Array.isArray(page.rows)) return { accepted:false, reason:"signal-mismatch" };
+
+    var pageStart=offset(page.start_offset, -1);
+    var pageEnd=offset(page.end_offset, -1);
+    var total=offset(page.total, -1);
+    if (pageStart < 0 || pageEnd < pageStart || total < pageEnd || page.rows.length !== pageEnd - pageStart) {
+      return { accepted:false, reason:"invalid-offsets" };
+    }
+    if (request.startOffset !== pageStart) return { accepted:false, reason:"unexpected-start" };
+
+    var rows, startOffset, endOffset, scrollDeltaRows=0;
+    if (!state.rows.length) {
+      if (pageStart !== 0 || request.direction !== "down") return { accepted:false, reason:"invalid-initial-window" };
+      rows=page.rows.slice();
+      startOffset=pageStart;
+      endOffset=pageEnd;
+    } else if (request.direction === "down") {
+      if (pageStart !== state.endOffset) return { accepted:false, reason:"nonadjacent-down" };
+      rows=state.rows.concat(page.rows);
+      startOffset=state.startOffset;
+      endOffset=pageEnd;
+      if (rows.length > MAX_DOM_ROWS) {
+        var dropFromStart=rows.length - MAX_DOM_ROWS;
+        rows=rows.slice(dropFromStart);
+        startOffset+=dropFromStart;
+        scrollDeltaRows=-dropFromStart;
+      }
+    } else {
+      if (pageEnd !== state.startOffset) return { accepted:false, reason:"nonadjacent-up" };
+      rows=page.rows.concat(state.rows);
+      startOffset=pageStart;
+      endOffset=state.endOffset;
+      scrollDeltaRows=page.rows.length;
+      if (rows.length > MAX_DOM_ROWS) {
+        var dropFromEnd=rows.length - MAX_DOM_ROWS;
+        rows=rows.slice(0, rows.length - dropFromEnd);
+        endOffset-=dropFromEnd;
+      }
+    }
+
+    state.rows=rows;
+    state.startOffset=startOffset;
+    state.endOffset=endOffset;
+    state.total=total;
+    state.firstBatchLoaded=true;
+    state.error="";
+    return {
+      accepted:true,
+      direction:request.direction,
+      startOffset:startOffset,
+      endOffset:endOffset,
+      total:total,
+      scrollDeltaRows:scrollDeltaRows,
+      footer:footer(state)
+    };
+  }
+
+  function reject(state, request, message) {
+    if (!state || !request || request.signalId !== state.signalId || request.token !== state.token) return false;
+    if (state.pending[request.direction] !== request.key) return false;
+    clearPending(state, request);
+    state.error=String(message || "Не удалось загрузить значения.");
+    return true;
+  }
+
+  function footer(state) {
+    if (!state || !state.rows.length) return "0–0 из " + offset(state && state.total, 0);
+    return String(state.startOffset + 1) + "–" + String(state.endOffset) + " из " + String(state.total);
+  }
+
+  function scrollCompensation(result, measuredRowHeight) {
+    var rowHeight=Number(measuredRowHeight);
+    if (!result || !result.accepted || !Number.isFinite(rowHeight) || rowHeight <= 0) return 0;
+    return result.scrollDeltaRows * rowHeight;
+  }
+
+  window.SignalSamplesRowWindow = {
+    API_BATCH_SIZE:API_BATCH_SIZE,
+    MAX_DOM_ROWS:MAX_DOM_ROWS,
+    PREFETCH_THRESHOLD_ROWS:PREFETCH_THRESHOLD_ROWS,
+    create:create,
+    begin:begin,
+    prefetchDirections:prefetchDirections,
+    apply:apply,
+    reject:reject,
+    footer:footer,
+    scrollCompensation:scrollCompensation
+  };
+}(window));

@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 38
+design_version: 39
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -18,9 +18,9 @@ prototype_baseline:
   interaction_fixture_scope: "design-only adapters proving inherited flows plus pane-local single/dual graph cursors against actual production DOM/API modules"
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
   pinned_hashes: evidence/production-baseline-v32.json
-  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json]
-  transfer_audit: evidence/transfer-audit-v38.json
-  result: "Inherited contracts plus TASK-0130 graph cursor walkthrough 8/8, zero-snap regression 1/1 and selected-swatch geometry regression 1/1; runtime errors 0, HTTP resources 0"
+  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json]
+  transfer_audit: evidence/transfer-audit-v39.json
+  result: "Inherited contracts plus graph cursor 8/8, zero-snap 1/1, selected-swatch geometry 1/1 and bidirectional sample-row window 1/1; runtime errors 0, HTTP resources 0"
 
 # Production already owns the document, boot sequence, UI modules and Plotly
 # hosts. Only the already-identical local icon inventory is copied directly;
@@ -135,6 +135,15 @@ additive_fragments:
     scope: [install_menu_rows, pane_local_mode, snap_and_clamp, finite_zero_candidate, pointer_keyboard_drag, readout]
     integration_points: [syncPaneMenuState, pane-menu-click-delegation, enqueuePlot-after-Plotly-react, plotly_relayouting, plotly_relayout, confirmPaneClear]
     prototype_bridge_not_transferable: prototype/task-0130-graph-cursors-bridge.js
+  - id: task-0134-sample-row-window-ui
+    source: integration/js/task-0134-sample-row-window.js
+    target: public/js/app.js
+    mode: integrate_controller_unchanged_into_existing_signal_samples_state_loader_renderer_and_scroll_handler
+    content_changes_allowed: false
+    marker: "TASK-0134 bidirectional sliding signal sample row window"
+    scope: [api_batch_500, dom_cap_1000, boundary_prefetch_100, authoritative_offsets, upward_and_downward_shift, measured_row_height_scroll_compensation, exact_footer_range, stable_signal_and_token_guards, same_direction_request_dedupe]
+    integration_points: [signalSamples_state, loadSignalSamples, renderSignalSamplesInspector, samples_table_scroll_listener]
+    prototype_regression_not_transferable: prototype/task-0134-sample-row-window-regression.cjs
 
 existing_assets_reused:
   - {path: public/icons/function.svg, use: signal-row-operation-action}
@@ -297,10 +306,17 @@ integration_seams:
     production_consumer: public/js/app.js
     host: "[data-settings-content]"
   - id: signal-samples-pagination
-    provider_interface: "get page by stable signal id, cursor and limit; return rows, next cursor and total"
+    provider_interface: "get at most 500 rows by stable signal id plus authoritative zero-based start offset; return stable signal id, authoritative start_offset/end_offset, rows and total"
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
     hosts: [".inspector-tabs", "[data-inspector-content]"]
+    window_controller: frontend-source/integration/js/task-0134-sample-row-window.js
+    api_batch_rows: 500
+    max_dom_rows: 1000
+    prefetch_threshold_rows: 100
+    footer_format: "{start}–{end} из {total}"
+    scroll_compensation: "scrollTop += controller.scrollCompensation(result, measuredRenderedRowHeight); downward trim returns -500 rows, upward prepend returns +500 rows"
+    guards: [stable_signal_id, stable_window_token, duplicate_same_direction_suppressed]
     full_array_in_dom_or_app_state_forbidden: true
   - id: signal-operation-provider
     provider_interface: "submit {operation, source, body, target_name, overwrite, multiplier}; backend owns Engee recv envelope/temp binding/cleanup"

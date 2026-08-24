@@ -51,13 +51,13 @@ module.exports = async function task0116SignalFocusStatic(assert) {
   // Values table: a stable id replaces the dynamic-tab state; the first page
   // is requested, response identity is guarded, rendered rows are visible and
   // scroll pagination remains reusable on every page.
-  assert(/function syncSignalSamplesWithMain\(\)[\s\S]*?var signalId=stableSignalId\(signal\);/.test(app) && /state\.signalId !== signalId/.test(app) && /signalName:signal\.name, rows:\[\]/.test(app), "sample state must reset by stable id when main signal changes");
-  assert(/tab\.textContent=signal\.name;[\s\S]*?if \(!state\.rows\.length && !state\.loading && !state\.error && !state\.firstPageLoaded\) loadSignalSamples\(\);/.test(app) && /function showSignalSamples\(\)[\s\S]*?syncSignalSamplesWithMain\(\{ retry:true \}\)[\s\S]*?model\.inspectorPage="samples"[\s\S]*?tab\.focus\(\)/.test(app), "Values action/re-entry must target the dynamic tab, retry a failed missing page, and avoid refetching an already loaded empty page");
-  assert(/api\.signalSamples\(state\.signalId, state\.nextCursor, 200\)/.test(app), "values must use the paged GET samples API for the stable id");
-  assert(/String\(page\.signal\.id\) !== state\.signalId \|\| !Array\.isArray\(page\.rows\)/.test(app), "wrong-signal or malformed sample responses must be rejected instead of displayed as empty data");
-  assert(/state\.rows=state\.rows\.concat\(page\.rows\)[\s\S]*?state\.loading=false; renderInspector\(\);/.test(app), "accepted pages must append rows and rerender visible data");
-  assert(/state\.error=safeErrorText\(error, "Не удалось загрузить значения\."\); renderInspector\(\);/.test(app), "a real samples error must remain visible rather than silently look empty");
+  assert(/function syncSignalSamplesWithMain\(\)[\s\S]*?var signalId=stableSignalId\(signal\);/.test(app) && /state\.signalId !== signalId/.test(app) && /createSignalSamplesState\(signalId, \(state\.token \|\| 0\) \+ 1, signal\.name\)/.test(app), "sample state must reset its bounded window by stable id when main signal changes");
+  assert(/tab\.textContent=signal\.name;[\s\S]*?firstBatchLoaded\) loadSignalSamples\("down"\);/.test(app) && /function showSignalSamples\(\)[\s\S]*?syncSignalSamplesWithMain\(\{ retry:true \}\)[\s\S]*?model\.inspectorPage="samples"[\s\S]*?tab\.focus\(\)/.test(app), "Values action/re-entry must target the dynamic tab, retry a failed missing batch, and avoid refetching an already loaded empty batch");
+  assert(/api\.signalSamples\(request\.signalId, request\.startOffset, requestLimit\)/.test(app), "values must use the bounded cursor GET samples API for the stable id");
+  assert(/controller\.apply\(state, request, normalizeSignalSamplesPage\(page\)\)[\s\S]*?result\.reason === "stale-token"/.test(app) && /signalIdFrom\(page\) !== state\.signalId/.test(app), "wrong-signal, malformed and stale sample responses must be rejected instead of displayed");
+  assert(/rows=state\.rows\.concat\(page\.rows\)[\s\S]*?MAX_DOM_ROWS/.test(app), "accepted pages must append into the bounded retained window");
+  assert(/controller\.reject\(state, request, safeErrorText\(error, "Не удалось загрузить значения\."\)\)/.test(app), "a real samples error must remain visible rather than silently look empty");
   assert(/data-testid='samples-table-scroll'[\s\S]*?state\.rows\.map\(function \(row\)/.test(app), "sample table must render received rows in its visible scroll container");
   const scrollListener = (app.match(/scroll\.addEventListener\("scroll",[\s\S]*?\{ passive:true \}\);/) || [""])[0];
-  assert(/loadSignalSamples\(\)/.test(scrollListener) && !/once\s*:/.test(scrollListener), "scroll pagination must remain reusable across multiple page events");
+  assert(/prefetchSignalSamples\(scroll, state\)/.test(scrollListener) && /prefetchDirections\(state, firstVisible, lastVisible\)\.forEach\(loadSignalSamples\)/.test(app) && !/once\s*:/.test(scrollListener), "scroll pagination must remain reusable across multiple bidirectional window events");
 };

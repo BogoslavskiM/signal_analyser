@@ -25,7 +25,7 @@ module.exports = async function task01120115ContractStatic(assert) {
   assert(/data-testid='settings-tab-signal'/.test(app) && /signal-values-action/.test(app), "main signal settings and Values action must be registered");
   assert(/setAttribute\("data-testid", "inspector-tab-samples"\)/.test(app) && /sample-table/.test(app), "dynamic sample inspector tab must be registered");
   assert(/sample_index[\s\S]*time_s[\s\S]*magnitude[\s\S]*square/.test(app), "sample table must render all five authored values");
-  assert(/api\.signalSamples\(state\.signalId, state\.nextCursor, 200\)/.test(app), "samples must be paged instead of loading a full vector");
+  assert(/api\.signalSamples\(request\.signalId, request\.startOffset, requestLimit\)/.test(app) && /API_BATCH_SIZE = 500/.test(app), "samples must use bounded 500-row cursor pages instead of loading a full vector");
 
   assert(/data-signal-operation/.test(app) && /signal-operation-select/.test(app), "signal operation must be available next to duplicate and use the shared ValueSelect control");
   assert(/body:state\.operation === "custom" && body \? body\.value : null/.test(app), "custom operation UI must submit only the authored body");

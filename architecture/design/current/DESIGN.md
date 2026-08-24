@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `38`
+- Design version: `39`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V38 is the current integration-safe package for the accepted Signal Analyser
+V39 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -33,9 +33,11 @@ TASK-0130 graph-cursor extension:
 6. Corrected selected palette-swatch geometry: an exact 24×24 border-box color
    square inside the unchanged 32×32 target, uniform 4px selection halo and an
    optically centered proportional tick.
+7. Existing dynamic sample table now uses a bidirectional sliding row window:
+   500-row provider batches, at most 1000 DOM rows and boundary prefetch at 100.
 
 The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
-transaction implementation, Plotly payloads, pagination implementation and
+transaction implementation, Plotly payloads, sample API endpoint mechanics and
 session serialization remain outside Designer ownership.
 
 V32 preserves the production-faithful shell and all accepted v31 surfaces. It
@@ -340,6 +342,22 @@ entry baseline or production transfer inputs.
 - Added a deterministic local regression with candidates `0` and `0.7` for a
   target of `0`; the controller returns `0` with zero runtime errors.
 
+## Exact delta v38 → v39
+
+- Added only the UI row-window controller for the existing dynamic main-signal
+  samples table; no CSS, markup, column, footer placement, Values behavior,
+  empty/error/loading visual or other application surface changes.
+- Fixed constants are batch `500`, DOM cap `1000` and bidirectional prefetch
+  within `100` rows. Provider `start_offset/end_offset` are authoritative
+  zero-based half-open offsets; the footer is exactly `{start}–{end} из {total}`
+  in real one-based inclusive row numbers.
+- Downward third batch produces `501–1500` and returns `-500` compensation rows;
+  upward prepend returns `1–1000` and `+500` rows. Frontend multiplies by the
+  measured rendered row height before restoring `scrollTop`, keeping the same
+  visible record fixed.
+- Stable signal/token guards ignore stale responses, same-direction requests
+  deduplicate and totals above 100 million never allocate a full array.
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -361,6 +379,8 @@ entry baseline or production transfer inputs.
   modes in the existing pane menu.
 - User TASK-0132 screenshot and correction from chat on 2026-08-24 for the
   selected palette swatch halo and tick alignment.
+- Approved TASK-0134 contract from 2026-08-24 for the existing samples table
+  bidirectional sliding row window.
 - Read-only current selectors/geometry in `public/index.html`,
   `public/css/app.css`, `public/js/app.js`, `public/js/settings.js`.
 - Canonical local `designer/visual-system`, application composition, settings,
@@ -397,6 +417,16 @@ entry baseline or production transfer inputs.
   dimensions, layout, provider seam and all unrelated zones remain unchanged.
 - Figma reference status for v38: `available`; the exact node was read
   successfully on 2026-08-24.
+
+### Skills for v39 revision
+
+- Applied: `designer/designer-workflow` for complete-current publication and
+  `designer/data-entry-and-inspection` for the existing table window/state and
+  footer contract.
+- Skipped: `designer/visual-system`, Engee Apps research, application
+  composition, page sizing, output and dialog skills because v39 changes no
+  visual geometry, composition, sizing, graphs or overlays.
+- Figma reference status for v39: `not_required`.
 
 ### Skills for v32 revision
 
@@ -499,6 +529,7 @@ override the successful v32 node-specific read above.
 | Display tab / Add display | click/keyboard | Active/new display updates and right panel selects `Экран` | default, selected, creating, error | tab row remains horizontal-only |
 | Automatic sample tab | main signal exists/changes | One tab named after `main_signal` exists and loads its first page without changing inspector focus | absent-without-main, loading, ready, error | table owns x/y scroll when selected |
 | Signal `Значения` | click | Ensure/select/focus populated main-signal tab, expand inspector and request missing first page | default, hover, focus, loading, ready, error | table owns x/y scroll |
+| Dynamic sample row window | scroll within 100 rows of top/bottom boundary | Fetch 500 upward/downward; retain at most 1000 rows; keep visible record fixed through measured-height compensation | loading-up, loading-down, ready, end-of-data, error, stale-ignored | existing table/scroll owner/footer geometry unchanged |
 | Signal color trigger | click/keyboard | 284px anchored non-modal popover opens with HEX and the restored eight swatches | closed, open, hover, selected-draft, invalid, busy | fixed overlay; flips/clamps to viewport, no settings scroll ownership change |
 | Color popover Apply/Cancel | click/Escape/outside | Apply writes Signal color draft; Cancel paths restore opening color | draft, busy, committed-to-page-draft, cancelled | focus returns to color trigger |
 | Signal sample rate | type | Editable dot-decimal metadata autosaves after validation | pristine, focus, dirty, invalid, applying | inline error does not shift adjacent controls |
@@ -576,6 +607,10 @@ V37 zero-snap regression is
 `evidence/interaction-regression-v37-zero-snap.json`, `1 passed / 0 failed`,
 `runtime_errors: []`; across heterogeneous traces, a valid nearest `X = 0`
 remains selected over the farther candidate `0.7`.
+V39 adds no visual geometry and carries all screenshots forward. Its deterministic
+controller regression is `evidence/interaction-regression-v39-sample-row-window.json`,
+`1 passed / 0 failed`; it covers exact constants, both shift directions,
+authoritative offsets/footer, scroll compensation, guards and total `100000001`.
 
 ## Transfer contract
 
@@ -596,6 +631,7 @@ remains selected over the farther candidate `0.7`.
 | `integration/js/task-0126-summary-units-continuity.js` | existing settings/summary/extrema/catalog renderers | integrate named inventories/helpers | Preserve existing DOM/queues; do not install prototype bridge |
 | `integration/css/task-0130-graph-cursors.css` | `public/css/app.css` | append once | Exact existing-menu/check and Plotly-sibling overlay styles |
 | `integration/js/task-0130-graph-cursors.js` | pane menu + plot lifecycle branches in `public/js/app.js` | integrate controller unchanged | Frontend-only map; install rows, attach after react, update after relayout, clear with pane; never install prototype bridge |
+| `integration/js/task-0134-sample-row-window.js` | existing sample state/loader/renderer/scroll branches in `public/js/app.js` | integrate controller unchanged | Keep the existing five-column table and provider transport; apply returned compensation using measured rendered row height |
 | `integration/html/dialogs/signal-operation.fragment.html` | `public/js/app.js` runtime template → `document.body` | integrate unchanged singleton | Never edit `public/index.html` |
 | Mock shell/zones/renderers/providers/prototype | none | design-only | Never transfer |
 
@@ -618,7 +654,7 @@ Features extend those hosts; they do not replace their parents or bootstrap.
 | `linked-axis-draft` | Immediate scope relocation, values retained | UI mock | existing `public/js/app.js` + `public/js/settings.js` |
 | `projected-spectrum-extrema` | Ready/loading/error rows and marker coordinates already projected into selected units; UI does no DSP | mock | `public/js/api.js` → existing `public/js/app.js` Plotly queue |
 | `signal-summary-provider` | Backend-authored summary view model | mock | `public/js/api.js` → existing `public/js/app.js` |
-| `signal-samples-pagination` | Cursor/limit rows and total by stable signal id, never full vector | mock | `public/js/api.js` → existing `public/js/app.js` inspector renderer |
+| `signal-samples-pagination` | 500-row bidirectional offset batches, 1000-row DOM window, exact footer and measured-height scroll compensation; never full vector | v39 controller regression | `public/js/api.js` → existing `public/js/app.js` inspector renderer |
 | `signal-operation-provider` | UI sends operation metadata and user body only; provider executes via Engee and owns hidden envelope/binding/cleanup | mock | `public/js/api.js` → existing `public/js/app.js` body portal |
 | `signal-membership-main` | Checkbox owns pane membership; one explicit main signal owns row emphasis and Signal settings context | deterministic mock state/API | existing `public/js/app.js` + existing layout/view providers |
 | `settings-context-routing` | Pane selects Area page; display selection/creation selects Screen page | actual production UI in file harness | existing `public/js/app.js` event delegation |
@@ -777,8 +813,10 @@ font; package copies below remain visual-harness inputs only.
 - Empty Min/Max is not replaced by a concrete number. Full range is represented
   by placeholders and the slider's full domain.
 - Signal summary supports ready/loading/empty/error through its provider seam.
-- Sample table supports loading-page, ready, end-of-data and recoverable error;
-  the full vector is never placed in UI state or DOM.
+- Sample table supports loading-up/down, ready, end-of-data and recoverable
+  error. It prefetches within 100 rows, retains at most 1000 rows, suppresses
+  duplicate directional requests and ignores stale signal/token responses; the
+  full vector is never placed in UI state or DOM.
 - Sample tab is automatically present/loading/ready for a valid main signal;
   `Значения` only changes focus. No main signal is the only absent state.
 - Signal color is a nested draft. Invalid HEX disables popover Apply; Cancel,
@@ -800,8 +838,8 @@ font; package copies below remain visual-harness inputs only.
 - Complete current package paths exist and are local.
 - Prototype remains the accepted visual harness and is wholly design-only.
 - Inherited 35/35 walkthrough checks plus TASK-0130 delta 8/8, v37 zero-snap
-  regression 1/1, v38 selected-swatch geometry 1/1 and the current transfer
-  audit; zero runtime/network errors.
+  regression 1/1, v38 selected-swatch geometry 1/1, v39 row-window regression
+  1/1 and the current transfer audit; zero runtime/network errors.
 - Transfer audit confirms icon-only direct copy plus exact additive fragments,
   immutable
   production document/shell/module/Plotly-host identities and zero mock paths
@@ -822,6 +860,9 @@ font; package copies below remain visual-harness inputs only.
   recorded; inherited unavailable-reference rows remain historical provenance.
 - Selected palette evidence confirms 32×32 target, 24×24 border-box square,
   equal 4px insets on all sides and a centered proportional tick at 2× DPR.
+- Sample-window evidence confirms `1–500 → 1–1000 → 501–1500 → 1–1000`,
+  strict 1000-row cap, ±500-row compensation, stable guards and totals above
+  100 million without a full-array allocation.
 - Complete Summary inventory, deterministic Values table focus/loading,
   same-frame names, history-free inputs, selected-unit bounds, restored color default
   identity, zoom-scoped extrema and stable busy checkboxes are explicit seams.
@@ -889,3 +930,7 @@ render or leak the wrapper mechanics.
   the unchanged local tick asset is rendered proportionally with optical
   centering. Popover, palette, buttons and all unrelated UI remain unchanged;
   the 2× DPR geometry regression passed 1/1.
+- `v39`: added the no-redesign bidirectional sliding controller for the existing
+  dynamic samples table: batches 500, DOM cap 1000, prefetch threshold 100,
+  authoritative offsets, exact real range footer, scroll anchoring and stale/
+  duplicate guards. Deterministic controller regression passed 1/1.

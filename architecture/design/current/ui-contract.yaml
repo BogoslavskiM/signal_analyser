@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 38
+design_version: 39
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132]
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132, TASK-0134]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -25,6 +25,7 @@ production_integration_contract:
     - frontend-source/integration/js/task-0126-summary-units-continuity.js
     - frontend-source/integration/css/task-0130-graph-cursors.css
     - frontend-source/integration/js/task-0130-graph-cursors.js
+    - frontend-source/integration/js/task-0134-sample-row-window.js
     - frontend-source/integration/html/dialogs/signal-operation.fragment.html
   mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
 
@@ -52,6 +53,7 @@ prototype_contract:
   required_nonempty_zone_slots: [toolbar, workspace, settings, inspector]
   forbidden: [fetch_html_partials, http_server, network_api, cors_dependency, alternative_mock_shell]
   browser_result: {inherited_checks: 52, delta_checks: 1, passed: 53, failed: 0, runtime_errors: 0, http_resources: 0}
+  sample_window_result: {inherited_checks: 53, delta_checks: 1, passed: 54, failed: 0}
 
 screens:
   - id: main
@@ -112,7 +114,7 @@ screens:
         sizing: {min_width: 920, min_height: 180, width_growth_ratio: 1, height_growth_ratio: 1}
         scroll: {owner: inspector-body, axes: both, sticky: [inspector-header, table-header, samples-footer]}
         collapse: {allowed: true, initial: split, direction: vertical, reason: "Existing explicit user-controlled lower-panel states"}
-        states: [split, expanded, collapsed, ready, loading_page, empty, error]
+        states: [split, expanded, collapsed, ready, loading_page, loading_up, loading_down, window_shift_up, window_shift_down, end_of_data, empty, error]
       - id: signal-operation-dialog
         type: dialog
         purpose: "Create one derived signal using a built-in operation or a user operation body executed by Engee"
@@ -380,12 +382,22 @@ tables:
       - {id: value, label: "Значение"}
       - {id: magnitude, label: "Модуль"}
       - {id: square, label: "Квадрат"}
-    loading: paged_or_virtualized
+    loading: sliding_bidirectional_row_window
     lifecycle: "tab exists/rebinds and first page loads automatically whenever valid main_signal exists; Values always selects/focuses it, expands the inspector from collapsed state, and starts page 1 when rows are missing"
     absent_when: no_main_signal
-    prototype_fixture: {page_size: 24, pages: 3, total: 72, second_page_appends_visible_rows: true}
+    row_window:
+      api_batch_rows: 500
+      max_dom_rows: 1000
+      prefetch_threshold_rows: 100
+      offset_convention: "provider start_offset/end_offset are authoritative zero-based half-open offsets; visible footer projects start_offset + 1 through end_offset"
+      initial_sequence: ["1–500", "1–1000"]
+      downward_shift: "append [1000,1500), drop the oldest 500, retain [500,1500), then subtract the measured removed-row height from scrollTop"
+      upward_shift: "prepend [0,500), drop the newest 500, retain [0,1000), then add the measured prepended-row height to scrollTop"
+      request_guards: [stable_signal_id, stable_window_token, one_in_flight_request_per_direction]
+      total_scale: "100000000+; never allocate by total"
+    prototype_fixture: {page_size: 500, pages_exercised: 4, total: 100000001, ranges: ["1–500", "1–1000", "501–1500", "1–1000"]}
     full_array_in_state_or_dom: false
-    footer: [visible_range, total_count, lazy_loading_note]
+    footer: {exact_text: "{start}–{end} из {total}", range: real_one_based_inclusive, source: authoritative_window_offsets}
 
   - id: engee-add-signal-catalog
     dialog: signal-add
@@ -508,6 +520,10 @@ interactions:
   - id: automatic-main-signal-samples
     trigger: {element: main-signal-state, action: available_or_changed}
     visible_result: "one named sample tab exists/rebinds and its first populated five-column page loads without stealing inspector focus"
+    seam: signal-samples-provider
+  - id: bidirectional-main-signal-sample-window
+    trigger: {element: samples-table-scroll, action: scroll_within_100_rows_of_window_boundary}
+    visible_result: "existing five-column rows extend to 1000, then slide by 500 in either direction without moving the currently visible record; footer shows the exact real one-based range"
     seam: signal-samples-provider
   - id: signal-color-draft
     trigger: {element: signal-color-trigger, action: click}
@@ -717,11 +733,16 @@ integration_seams:
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
   - id: signal-samples-provider
-    ui_contract: "valid main signal automatically ensures/rebinds tab and first cursor page; Values expands inspector, guarantees and focuses the same tab, and retries missing page 1; no full-array DOM/app state"
-    mock_provider: mock/mock-provider.js
+    ui_contract: "valid main signal automatically ensures/rebinds the tab and requests 500 rows; a bidirectional 1000-row DOM window prefetches within 100 rows of either boundary, shifts by 500 with measured scroll compensation, and projects exact footer {start}–{end} из {total}; Values behavior and existing table visuals remain"
+    window_controller: frontend-source/integration/js/task-0134-sample-row-window.js
+    mock_provider: "mock/mock-provider.js plus prototype/task-0134-sample-row-window-regression.cjs"
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
     hosts: [".inspector-tabs", "[data-inspector-content]"]
+    request: {signal_id: stable, start_offset: authoritative, limit: 500, window_token: stable}
+    response: {signal_id: stable, start_offset: authoritative_zero_based_inclusive, end_offset: authoritative_zero_based_exclusive, rows: batch_at_most_500, total: safe_integer_100m_plus}
+    guards: {stale_signal_response: ignore, stale_token_response: ignore, duplicate_same_direction: suppress}
+    dom_row_cap: 1000
   - id: optimistic-name-preview
     ui_contract: "display.name input -> selected tab/context in the same frame; pane.name input -> active pane title/context in the same frame; autosave remains authoritative"
     mock_provider: frontend-source/js/ui/app.js
@@ -836,6 +857,7 @@ evidence:
     - 51-cursor-file-prototype-no-network-errors
     - 52-zero-remains-nearest-across-heterogeneous-traces
     - 53-selected-color-swatch-uniform-halo-centered-tick
+    - 54-sample-window-constants-and-bidirectional-sliding
   screenshots:
     - screenshots/v31--standalone-production-signal--1440x900.png
     - screenshots/v31--standalone-production-samples--1440x900.png
@@ -865,6 +887,6 @@ evidence:
     - screenshots/v36--time-single-cursor--1440x900.png
     - screenshots/v36--pane-menu-cursor-options--1440x900.png
     - screenshots/v38--selected-color-swatch-detail--284x278@2x.png
-  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json]
+  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json]
   production_baseline: evidence/production-baseline-v32.json
-  transfer_audit: evidence/transfer-audit-v38.json
+  transfer_audit: evidence/transfer-audit-v39.json
