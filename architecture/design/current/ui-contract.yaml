@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 45
+design_version: 46
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132, TASK-0134, TASK-0135, TASK-0138, TASK-0139, TASK-0140, TASK-0141]
+design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132, TASK-0134, TASK-0135, TASK-0138, TASK-0139, TASK-0140, TASK-0141, TASK-0142]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -35,6 +35,8 @@ production_integration_contract:
     - frontend-source/integration/js/task-0139-loading-overlays.js
     - frontend-source/integration/js/task-0140-plot-autoscale.js
     - frontend-source/integration/js/task-0141-linked-axes-area-sliders.js
+    - frontend-source/integration/css/task-0142-range-boundary-validation.css
+    - frontend-source/integration/js/task-0142-range-boundary-validation.js
     - frontend-source/integration/html/dialogs/signal-operation.fragment.html
   mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
 
@@ -67,6 +69,7 @@ prototype_contract:
   task_0139_source_result: {delta_checks: 5, passed: 5, failed: 0, method: bounded_source_controller, browser_launch: unavailable_in_sandbox}
   task_0140_source_result: {delta_checks: 6, passed: 6, failed: 0, method: bounded_source_contract, new_visual_component: false, new_screenshot: false}
   task_0141_source_result: {delta_checks: 9, passed: 9, failed: 0, method: bounded_source_contract, new_visual_component: false, new_screenshot: false}
+  task_0142_source_result: {delta_checks: 5, passed: 5, failed: 0, method: bounded_source_contract, new_visual_component: false, new_screenshot: false}
 
 screens:
   - id: main
@@ -113,7 +116,7 @@ screens:
         sizing: {min_width: 300, min_height: 440, width_growth_ratio: 1, height_growth_ratio: 4}
         scroll: {owner: settings-scroll, axes: y, sticky: [settings-heading, settings-tabs, settings-footer]}
         collapse: {allowed: false, initial: expanded, direction: null, reason: null}
-        states: [pristine, dirty, applying, applied, invalid, error, empty_context]
+        states: [pristine, dirty, applying, applied, range_min_invalid, range_max_invalid, range_both_invalid, error, empty_context]
       - id: lower-inspector
         type: table
         purpose: "Signals, measurements, extrema and dynamic samples"
@@ -324,8 +327,17 @@ components:
       - {id: minimum, type: text_numeric, autocomplete: off, empty_semantics: auto_full_minimum, placeholder: "Мин.", display_unit: selected_axis_unit}
       - {id: maximum, type: text_numeric, autocomplete: off, empty_semantics: auto_full_maximum, placeholder: "Макс.", display_unit: selected_axis_unit}
       - {id: double-slider, type: dual_thumb_horizontal_slider, reset: double_click_to_auto}
-    states: [default, hover, drag_min, drag_max, keyboard_focus, dirty, invalid, disabled]
-    validation: "only while visible"
+    states: [default, hover, drag_min, drag_max, keyboard_focus, dirty, min_invalid, max_invalid, both_invalid, busy_disabled, inapplicable_hidden]
+    enablement: "A visible applicable Min/Max remains editable in automatic mode and regardless of plot-slider or link state. Disable only while the owning settings mutation is busy; a truly inapplicable range is hidden, not shown disabled."
+    validation:
+      scope: "each visible endpoint has an independent validator and aria-invalid state"
+      reasons: [number, finite, domain, order, unit]
+      border: "2px danger border on each invalid input only; pair wrapper, row and group never receive an error border"
+      message_priority: "render exactly one local message; minimum error first, otherwise maximum"
+      copy:
+        min: {number: "Введите число для минимума.", finite: "Минимум должен быть конечным.", domain: "Минимум вне допустимого диапазона.", order: "Минимум должен быть меньше максимума.", unit: "Минимум нельзя представить в выбранных единицах."}
+        max: {number: "Введите число для максимума.", finite: "Максимум должен быть конечным.", domain: "Максимум вне допустимого диапазона.", order: "Максимум должен быть больше минимума.", unit: "Максимум нельзя представить в выбранных единицах."}
+      raw_backend_or_internal_exception_copy: forbidden
     projection: "On unit selection, nonempty numeric drafts are immediately reprojected without changing their physical canonical interval. Saving converts time to seconds and frequency to hertz. Empty auto Min/Max stay empty and keep placeholders."
     valid_projection_message: "No seconds/Hz mismatch warning is shown when a displayed number is valid in the selected unit."
   plot-slider:
@@ -647,6 +659,11 @@ interactions:
     trigger: {element: signal-sample-rate, action: input_then_autosave}
     visible_result: "valid positive finite dot-decimal draft persists; comma/nonfinite/zero/negative stays invalid"
     seam: settings-autosave-provider
+  - id: validate-range-boundaries
+    trigger: {element: applicable-area-or-screen-range-input, action: input_or_unit_projection}
+    visible_result: "Min and Max are validated independently and each invalid input receives only its own red border; one inline message shows the Min error first, then the Max error after Min is fixed"
+    seam: range-boundary-validation
+    valid_result: "blank auto or valid projected value remains enabled and publishes through the existing autosave queue"
   - id: toggle-spectrum-frequency-link
     trigger: {element: link-spectrum-frequency, action: change}
     visible_result: "same frequency limits component moves Area <-> Screen immediately without value loss"
@@ -904,6 +921,14 @@ integration_seams:
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
     frontend_pane_or_id_generation_forbidden: true
+  - id: range-boundary-validation
+    ui_contract: "Min and Max retain independent validity/red borders; exactly one local Russian error uses Min-first priority; visible applicable endpoints stay enabled outside true settings busy state"
+    helper: frontend-source/integration/js/task-0142-range-boundary-validation.js
+    styles: frontend-source/integration/css/task-0142-range-boundary-validation.css
+    production_consumers: [public/js/settings.js, public/js/app.js]
+    reasons: [number, finite, domain, order, unit]
+    pair_or_row_error_border: forbidden
+    raw_backend_or_internal_error_as_field_copy: forbidden
   - id: spectrum-extrema-provider
     ui_contract: "projected spectrum extrema ready/loading/error rows and Plotly marker coordinates within the active plot's current visible frequency interval; UI projects that interval to canonical Hz but performs no DSP"
     mock_provider: mock/mock-provider.js
@@ -1151,6 +1176,6 @@ evidence:
     - screenshots/v36--pane-menu-cursor-options--1440x900.png
     - screenshots/v38--selected-color-swatch-detail--284x278@2x.png
     - screenshots/v41--values-column-visibility-menu--1440x900.png
-  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json]
+  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json, evidence/interaction-regression-v46-task0142.json]
   production_baseline: evidence/production-baseline-v32.json
-  transfer_audit: evidence/transfer-audit-v45.json
+  transfer_audit: evidence/transfer-audit-v46.json

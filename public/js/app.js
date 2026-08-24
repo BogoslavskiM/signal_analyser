@@ -2526,7 +2526,7 @@
     return domain;
   }
 
-  function screenRangeDomain(axis, draft) {
+  function screenRangeDomain(axis, draft, fallback, intersection) {
     var targetPanes = screenRangePanes(axis, draft);
     if (axis === "x" || axis === "time") {
       var names = {};
@@ -2534,9 +2534,9 @@
       var maximumSeconds = (model.state.signals || []).reduce(function (maximum, signal) {
         return names[signal.name] ? Math.max(maximum, Number(signal.duration_s) || 0) : maximum;
       }, 0);
-      if (!(maximumSeconds > 0)) return [0, 1];
+      if (!(maximumSeconds > 0)) return fallback === false ? null : [0, 1];
       var activePane=paneById(model.activePane);
-      var unit = activePane && activePane.plot_type === "spectrogram" && model.settingsPage !== "screen" ? settings.value("spectrogram.time_units") : settings.screenValue("time.units") || "seconds";
+      var unit = model.settingsPage === "screen" ? settings.screenValue("time.units") : activePane && activePane.plot_type === "spectrogram" ? settings.value("spectrogram.time_units") : settings.value("time.units") || "seconds";
       var factor = screenTimeUnitFactor(unit, maximumSeconds);
       return [0, maximumSeconds / factor];
     }
@@ -2549,9 +2549,24 @@
       if (axis === "frequency") range=pane.plot_type === "spectrogram" ? traceYDataRange(traces || []) : traceXDataRange(traces || []);
       else if (axis === "density" || axis === "power" && pane.plot_type === "spectrogram") range=traceZDataRange(traces || []);
       else range=traceYDataRange(traces || []);
-      if (range) domain = domain ? [Math.min(domain[0], range[0]), Math.max(domain[1], range[1])] : range;
+      if (range) domain = domain ? intersection ? [Math.max(domain[0], range[0]), Math.min(domain[1], range[1])] : [Math.min(domain[0], range[0]), Math.max(domain[1], range[1])] : range;
     });
-    return domain || [-1, 1];
+    return domain || (fallback === false ? null : [-1, 1]);
+  }
+
+  function settingsRangeDomains(draft) {
+    var domains={}, axes={
+      "time.x_limits":"x",
+      "spectrum.frequency_limits":"frequency",
+      "spectrogram.frequency_limits":"frequency",
+      "persistence.frequency_limits":"frequency"
+    };
+    Object.keys(axes).forEach(function (fieldId) {
+      var domain=screenRangeDomain(axes[fieldId], draft, false, axes[fieldId] === "frequency" && !!draft.linkFrequency);
+      if (domain) domains[fieldId]=domain;
+    });
+    domains["persistence.density_limits"]=[0, 100];
+    return domains;
   }
 
   function rangeBoundaryIntentKey(fieldId) {
@@ -2616,6 +2631,8 @@
     var content = q("[data-testid='settings-content']");
     if (!content) return;
     var draft = screenDraftFor(display);
+    if (typeof settings.setRangeDomains === "function") settings.setRangeDomains(settingsRangeDomains(draft));
+    if (typeof settings.setBusy === "function") settings.setBusy(model.settingsPublishing || model.screenApplying);
     previewScreenLinks(draft);
     settings.beginCustomRender();
     if (typeof settings.setExtraVisible === "function") settings.setExtraVisible(["display.name"]);
@@ -2688,6 +2705,8 @@
       return;
     }
     settings.setView(model.settingsPage, (pane && pane.plot_type) || "time");
+    if (typeof settings.setRangeDomains === "function") settings.setRangeDomains(settingsRangeDomains(screenDraftFor(display)));
+    if (typeof settings.setBusy === "function") settings.setBusy(model.settingsPublishing || model.screenApplying);
     settings.render();
     if (model.settingsPage === "display") injectAreaRangeSliderSettings(display, pane);
     keepVisibleAutomaticRangeInputsEmpty(screenDraftFor(display));
@@ -4353,6 +4372,7 @@
   document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); if (event.target.dataset.signalAddSearch !== undefined) { model.signalAddSearch=event.target.value; model.signalAddResetScroll=true; renderSignalAddCatalog(); var search=q("[data-signal-add-search]"); if(search){search.focus();search.setSelectionRange(model.signalAddSearch.length,model.signalAddSearch.length);} } });
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-loaded", function (event) { var display = activeDisplay(), detail = event.detail || {}; if (model.settingsPage === "screen" && display && detail.displayId === display.id) renderSettings(display); });
+  window.addEventListener("signal-settings-state", function () { if (activeDisplay()) renderSettings(activeDisplay()); });
   window.addEventListener("signal-settings-name-preview", function (event) { projectNamePreview(event.detail || {}); });
   window.addEventListener("signal-settings-save-failed", function (event) {
     var detail=event.detail || {}, displayId=detail.display_id || activeDisplay() && activeDisplay().id;

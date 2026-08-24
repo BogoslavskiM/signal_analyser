@@ -513,3 +513,55 @@ end
     closed = SS.apply_signal_analyser_display!(state, Dict("state_revision" => cleared["state_revision"], "operation" => "close", "display_id" => "display-1"))
     @test closed["active_display_id"] == "display-2"
 end
+
+@testset "TASK-0142 hidden analysis source never replaces the visible cache binding" begin
+    service = SS.SignalSettingsService()
+    state = SS.test_state_with_complex_signal()
+    hidden_main, visible_binding = [signal.name for signal in state.signals]
+
+    # An analysis source and a pane membership are deliberately independent:
+    # changing a presentation-only Persistence setting must render from the
+    # visible binding even while the selected main signal is hidden.
+    selected = SS.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => state.view.state_revision,
+        "active_plot" => "persistence",
+        "visible_signals" => [visible_binding],
+        "analysis_signal" => hidden_main,
+    ))
+    @test selected["analysis_signal"] == hidden_main
+    @test selected["visible_signals"] == [visible_binding]
+    @test !(hidden_main in selected["visible_signals"])
+
+    pane_id = state.display_layouts["display-1"].active_pane_id
+    SS.signal_analyser_active_output(state, "display-1", pane_id)
+    task = state.output_manager.active_task
+    task === nothing || wait(task)
+    output = SS.signal_analyser_active_output(state, "display-1", pane_id)
+    @test output["isready"] === true && output["success"] === true
+    status = SS.signal_analyser_output_status_payload_unlocked(state, "display-1", state.display_layouts["display-1"].panes[1])
+    @test status["analysis_signal"] == hidden_main
+    @test status["signal_bindings"] == [visible_binding]
+
+    page_id = SS.signal_analyser_output_page_id("display-1", pane_id)
+    cache_before = state.output_manager.plot_cache[page_id]
+    @test cache_before.context == SS.signal_analyser_output_context_unlocked(state, "display-1", pane_id)
+    changed = SS.apply_signal_setting!(service, state, Dict(
+        "state_revision" => state.view.state_revision,
+        "display_id" => "display-1",
+        "field_id" => "persistence.density_limits",
+        "value" => Dict("min" => 10.0, "max" => 80.0),
+    ))
+    @test changed["state"]["analysis_signal"] == hidden_main
+    @test changed["state"]["visible_signals"] == [visible_binding]
+    cache_after = state.output_manager.plot_cache[page_id]
+    @test cache_after.context == SS.signal_analyser_output_context_unlocked(state, "display-1", pane_id)
+    @test cache_after.plots == cache_before.plots || !isempty(cache_after.plots)
+
+    # The normal visible-main case remains valid as a control regression.
+    visible_main = SS.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => state.view.state_revision,
+        "analysis_signal" => visible_binding,
+    ))
+    @test visible_main["analysis_signal"] == visible_binding
+    @test visible_main["visible_signals"] == [visible_binding]
+end

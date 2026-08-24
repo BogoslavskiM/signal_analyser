@@ -1,0 +1,46 @@
+{
+  "design_version": 46,
+  "status": "pass",
+  "checks": [
+    {
+      "id": "applicable-enablement",
+      "passed": true,
+      "detail": "Visible applicable Area/Screen Min and Max stay enabled in automatic mode and regardless of slider/link state; only true inapplicability or current settings busy state disables them."
+    },
+    {
+      "id": "independent-validity",
+      "passed": true,
+      "detail": "Min and Max own separate validation results and aria-invalid values; simultaneous failures are retained independently."
+    },
+    {
+      "id": "independent-borders",
+      "passed": true,
+      "detail": "Only each invalid input receives the existing 2px danger border; pair wrapper, settings row and group error borders are forbidden."
+    },
+    {
+      "id": "left-first-message",
+      "passed": true,
+      "detail": "Exactly one message is visible: Min first, otherwise Max after Min is valid. Both invalid endpoints may remain red while only Min copy is shown."
+    },
+    {
+      "id": "localized-reasons",
+      "passed": true,
+      "detail": "Number, finite, domain, order and unit reasons have concise boundary-specific Russian copy."
+    },
+    {
+      "id": "internal-error-suppression",
+      "passed": true,
+      "detail": "Raw backend/provider/internal exceptions are not accepted as range field messages; publication errors retain the existing sanitized non-field projection."
+    },
+    {
+      "id": "preserved-interactions",
+      "passed": true,
+      "detail": "Blank auto endpoints, selected-unit projection, double-thumb sliders, double-click reset and serialized autosave are unchanged."
+    },
+    {
+      "id": "transfer-boundary",
+      "passed": true,
+      "detail": "One UI-only presenter integrates into public/js/settings.js and one exact CSS fragment appends to public/css/app.css; shell, settings geometry, API and backend remain untouched."
+    }
+  ]
+}

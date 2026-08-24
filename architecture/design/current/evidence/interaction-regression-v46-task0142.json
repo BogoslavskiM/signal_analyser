@@ -1,0 +1,130 @@
+{
+  "design_version": 46,
+  "method": "bounded source/contract regression; existing field/error tokens reused; no new screenshot",
+  "passed": 5,
+  "failed": 0,
+  "results": [
+    {
+      "id": "81-applicable-auto-fields-enabled",
+      "passed": true,
+      "detail": {
+        "automatic": {
+          "minDisabled": false,
+          "maxDisabled": false,
+          "ignoredDisableReasons": [
+            "automatic",
+            "slider",
+            "linked"
+          ]
+        },
+        "busy": {
+          "minDisabled": true,
+          "maxDisabled": true,
+          "ignoredDisableReasons": [
+            "automatic",
+            "slider",
+            "linked"
+          ]
+        }
+      }
+    },
+    {
+      "id": "82-independent-boundary-borders",
+      "passed": true,
+      "detail": {
+        "min": {
+          "boundary": "min",
+          "invalid": true,
+          "ariaInvalid": "true",
+          "reason": "number",
+          "message": "Введите число для минимума."
+        },
+        "max": {
+          "boundary": "max",
+          "invalid": true,
+          "ariaInvalid": "true",
+          "reason": "finite",
+          "message": "Максимум должен быть конечным."
+        },
+        "message": "Введите число для минимума.",
+        "messageBoundary": "min",
+        "hasError": true,
+        "pairBorder": false,
+        "rowBorder": false
+      }
+    },
+    {
+      "id": "83-left-message-priority",
+      "passed": true,
+      "detail": {
+        "both": {
+          "min": {
+            "boundary": "min",
+            "invalid": true,
+            "ariaInvalid": "true",
+            "reason": "domain",
+            "message": "Минимум вне допустимого диапазона."
+          },
+          "max": {
+            "boundary": "max",
+            "invalid": true,
+            "ariaInvalid": "true",
+            "reason": "unit",
+            "message": "Максимум нельзя представить в выбранных единицах."
+          },
+          "message": "Минимум вне допустимого диапазона.",
+          "messageBoundary": "min",
+          "hasError": true,
+          "pairBorder": false,
+          "rowBorder": false
+        },
+        "right": {
+          "min": {
+            "boundary": "min",
+            "invalid": false,
+            "ariaInvalid": "false",
+            "reason": "",
+            "message": ""
+          },
+          "max": {
+            "boundary": "max",
+            "invalid": true,
+            "ariaInvalid": "true",
+            "reason": "unit",
+            "message": "Максимум нельзя представить в выбранных единицах."
+          },
+          "message": "Максимум нельзя представить в выбранных единицах.",
+          "messageBoundary": "max",
+          "hasError": true,
+          "pairBorder": false,
+          "rowBorder": false
+        }
+      }
+    },
+    {
+      "id": "84-local-reason-copy",
+      "passed": true,
+      "detail": {
+        "min": {
+          "number": "Введите число для минимума.",
+          "finite": "Минимум должен быть конечным.",
+          "domain": "Минимум вне допустимого диапазона.",
+          "order": "Минимум должен быть меньше максимума.",
+          "unit": "Минимум нельзя представить в выбранных единицах."
+        },
+        "max": {
+          "number": "Введите число для максимума.",
+          "finite": "Максимум должен быть конечным.",
+          "domain": "Максимум вне допустимого диапазона.",
+          "order": "Максимум должен быть больше минимума.",
+          "unit": "Максимум нельзя представить в выбранных единицах."
+        }
+      }
+    },
+    {
+      "id": "85-blank-auto-contract",
+      "passed": true,
+      "detail": "An untouched blank endpoint remains valid automatic state and retains its placeholder."
+    }
+  ]
+}

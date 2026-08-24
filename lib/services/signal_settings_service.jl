@@ -3041,6 +3041,21 @@ function signal_settings_peaks_settings_unlocked(
     signal_display_active_pane(layout).peaks_settings
 end
 
+"""Resolve the signal that is actually rendered from pane membership.
+
+The persisted analysis source belongs to inspector/measurement state and is
+allowed to be hidden.  Plot preparation must therefore use the first visible
+binding, exactly like the active-pane output path, instead of implicitly
+re-binding a hidden main signal to the graph.
+"""
+function signal_settings_render_signal(
+    state::SignalAnalyserState,
+    display::SignalAnalyserDisplayState,
+)::Union{Nothing,AnalysedSignal}
+    members = signal_analyser_display_members(display)
+    isempty(members) ? nothing : signal_by_name(state, first(members))
+end
+
 function signal_settings_prepare_passive_snapshot_unlocked(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
@@ -3065,7 +3080,7 @@ function signal_settings_prepare_passive_snapshot_unlocked(
     prepared = signal_analyser_prepare_display_plots(
         state,
         display,
-        signal,
+        signal_settings_render_signal(state, display),
         signal_analyser_display_members(display),
         materialize_missing_spectra = false,
         materialize_missing_spectrogram = false,
@@ -3168,11 +3183,12 @@ function signal_settings_apply_active_effective_unlocked!(
     preparation = SignalSettingsEffectPreparationPlan(state, display, prospective, field_id)
     analysis_name = signal_analyser_display_analysis_name(prospective)
     signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
+    render_signal = signal_settings_render_signal(state, prospective)
     next_revision = state.view.state_revision + 1
     prepared_plots = signal_analyser_prepare_display_plots(
         state,
         prospective,
-        signal,
+        render_signal,
         signal_analyser_display_members(prospective),
         materialize_missing_spectra = preparation.materialize_spectra,
         materialize_missing_spectrogram = preparation.materialize_spectrogram,
@@ -3486,34 +3502,58 @@ function signal_settings_update_response_unlocked(
     )
 end
 
-"""Refresh an already-ready presentation cache without invalidation or provider work."""
-function signal_settings_refresh_cached_presentation_unlocked!(
+"""Off-state cache refresh prepared before an immediate settings mutation commits."""
+struct SignalSettingsPreparedPresentationRefresh
+    page_id::String
+    context::SignalAnalyserOutputContextKey
+    prepared::SignalAnalyserPreparedDisplayPlots
+    plots::Vector{Dict{String,Any}}
+end
+
+"""Prepare an already-ready presentation cache without mutating domain state."""
+function signal_settings_prepare_cached_presentation_unlocked(
     state::SignalAnalyserState,
     display::SignalAnalyserDisplayState,
     field_id::AbstractString,
-)::Nothing
+)::Union{Nothing,SignalSettingsPreparedPresentationRefresh}
     display.id == state.active_display_id || return nothing
     signal_analyser_sync_output_pages_unlocked!(state)
     layout = signal_analyser_layout_by_display_id(state, display.id)
-    pane = signal_display_active_pane(layout)
-    page_id = signal_analyser_output_page_id(display.id, pane.id)
+    current_pane = signal_display_active_pane(layout)
+    page_id = signal_analyser_output_page_id(display.id, current_pane.id)
     manager = state.output_manager
     cache = get(manager.plot_cache, page_id, nothing)
     cache === nothing && return nothing
-    context = signal_analyser_output_context_unlocked(state, display.id, pane.id)
+    context = signal_analyser_output_context_unlocked(state, display.id, current_pane.id)
     (cache::SignalAnalyserPlotCacheEntry).context == context || return nothing
 
-    active_group = signal_analyser_plot_name(pane.plot_type)
+    active_group = signal_analyser_plot_name(display.active_plot)
     (field_id == "display.show_legend" || startswith(String(field_id), "$(active_group).")) ||
         return nothing
+    pane = SignalDisplayPaneState(
+        current_pane.id,
+        current_pane.name,
+        display.active_plot,
+        display.membership,
+        display.analysis_source,
+        display.time_limits,
+        display.measurement_selection,
+        display.spectrum_settings,
+        display.spectrogram_settings,
+        display.persistence_settings,
+        display.stored_settings,
+        display.peaks_enabled,
+        current_pane.peaks_settings,
+    )
     analysis_name = signal_display_pane_analysis_name(pane)
-    analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
     signal_bindings = signal_display_pane_members(pane)
+    render_signal = isempty(signal_bindings) ? nothing :
+        signal_by_name(state, first(signal_bindings))
     pane_display = signal_analyser_display_for_pane(display, pane)
     prepared = signal_analyser_prepare_display_plots(
         state,
         pane_display,
-        analysis_signal,
+        render_signal,
         signal_bindings,
         materialize_missing_spectra = false,
         materialize_missing_spectrogram = false,
@@ -3531,13 +3571,27 @@ function signal_settings_refresh_cached_presentation_unlocked!(
         signal_analyser_pane_renderer_data(prepared, pane, signal_bindings),
     )
     plots = signal_analyser_plotly_payload(output, pane)
-    signal_analyser_publish_display_plots!(state, prepared)
-    manager.plot_cache[page_id] = SignalAnalyserPlotCacheEntry(context, plots)
-    manager.output_statuses[page_id] = SignalAnalyserOutputStatus(
+    SignalSettingsPreparedPresentationRefresh(
+        page_id,
         context,
-        true,
-        true,
-        "",
+        prepared,
+        plots,
+    )
+end
+
+"""Commit a successfully prepared presentation refresh after domain publication."""
+function signal_settings_publish_cached_presentation_unlocked!(
+    state::SignalAnalyserState,
+    refresh::SignalSettingsPreparedPresentationRefresh,
+)::Nothing
+    signal_analyser_publish_display_plots!(state, refresh.prepared)
+    manager = state.output_manager
+    manager.plot_cache[refresh.page_id] = SignalAnalyserPlotCacheEntry(
+        refresh.context,
+        refresh.plots,
+    )
+    manager.output_statuses[refresh.page_id] = SignalAnalyserOutputStatus(
+        refresh.context, true, true, "",
     )
     nothing
 end
@@ -3584,13 +3638,30 @@ function apply_signal_setting!(
                     state,
                     command.display_id,
                 )
+            prepared_refresh = if definition.effect_status == "effective_presentation"
+                try
+                    signal_settings_prepare_cached_presentation_unlocked(
+                        state,
+                        prospective,
+                        command.field_id,
+                    )
+                catch err
+                    err isa ArgumentError || rethrow()
+                    throw(signal_setting_validation_error(
+                        command.display_id,
+                        command.field_id,
+                        "Настройку нельзя применить к текущему состоянию области",
+                    ))
+                end
+            else
+                nothing
+            end
             signal_settings_publish_display_unlocked!(state, prospective)
             state.view.state_revision += 1
-            definition.effect_status == "effective_presentation" &&
-                signal_settings_refresh_cached_presentation_unlocked!(
+            prepared_refresh === nothing ||
+                signal_settings_publish_cached_presentation_unlocked!(
                     state,
-                    prospective,
-                    command.field_id,
+                    prepared_refresh::SignalSettingsPreparedPresentationRefresh,
                 )
             return signal_settings_update_response_unlocked(
                 service,

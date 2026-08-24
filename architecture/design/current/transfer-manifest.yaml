@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 45
+design_version: 46
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -18,9 +18,9 @@ prototype_baseline:
   interaction_fixture_scope: "design-only adapters proving inherited flows, pane-local graph cursors and sample-column eye-menu reflow against actual production DOM/API modules"
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
   pinned_hashes: evidence/production-baseline-v32.json
-  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json]
-  transfer_audit: evidence/transfer-audit-v45.json
-  result: "V45 bounded source/contract regression verifies Spectrum↔Persistence links, Area slider parity, Jet heatmaps, anchored pane menu and new-display 2x2 defaults."
+  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json, evidence/interaction-regression-v46-task0142.json]
+  transfer_audit: evidence/transfer-audit-v46.json
+  result: "V46 bounded source/contract regression verifies enabled applicable endpoints, independent boundary borders, left-first message priority and local Russian error copy."
 
 # Production already owns the document, boot sequence, UI modules and Plotly
 # hosts. Only the already-identical local icon inventory is copied directly;
@@ -221,6 +221,23 @@ additive_fragments:
     integration_points: [settings_ru_labels, renderScreenSettings, settings_displayInventory, settings_timeInventory, renderSettings, plotly_relayout_handler, positionPaneMenu, capture_scroll_and_resize]
     invariants: [spectrogram_frequency_excluded, linear_magnitude_power_ignored, empty_endpoint_independent_auto, existing_imported_layouts_unchanged, pane_menu_geometry_unchanged]
     prototype_regression_not_transferable: prototype/task-0141-linked-axes-regression.cjs
+  - id: task-0142-range-boundary-validation-styles
+    source: integration/css/task-0142-range-boundary-validation.css
+    target: public/css/app.css
+    mode: append_once_after_existing_range_control_rules
+    content_changes_allowed: false
+    marker: "TASK-0142 independent range-boundary validation"
+    scope: [per_endpoint_red_border, no_pair_or_row_error_border, existing_field_message_tokens]
+  - id: task-0142-range-boundary-validation-ui
+    source: integration/js/task-0142-range-boundary-validation.js
+    target: public/js/settings.js
+    mode: integrate_presenter_unchanged_into_existing_range_renderer_and_validation_lifecycle
+    content_changes_allowed: false
+    marker: "TASK-0142 enabled range endpoints and left-first error projection"
+    scope: [applicable_endpoint_enablement, independent_min_max_validity, left_first_message, local_reason_copy, raw_internal_error_suppression]
+    integration_points: [control_range_markup, renderField_range_state, numeric_and_unit_projection_results, settings_busy_state]
+    invariants: [blank_auto_preserved, slider_state_does_not_disable, link_state_does_not_disable, pair_border_forbidden, row_border_forbidden]
+    prototype_regression_not_transferable: prototype/task-0142-range-boundary-validation-regression.cjs
 
 existing_assets_reused:
   - {path: public/icons/function.svg, use: signal-row-operation-action}
@@ -493,6 +510,15 @@ integration_seams:
     provider_interface: "persist display/pane names by stable ids and allocate monotonic default ordinals"
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
+  - id: range-boundary-validation
+    action_interface: "project existing numeric/finite/domain/order/unit validation independently to Min and Max; both invalid inputs keep red borders while exactly one message uses Min-first priority"
+    production_consumers: [public/js/settings.js, public/js/app.js]
+    helper: frontend-source/integration/js/task-0142-range-boundary-validation.js
+    styles: frontend-source/integration/css/task-0142-range-boundary-validation.css
+    host: "[data-setting-id$='limits'][data-range-part]"
+    enablement: "disable only when the visible control is truly inapplicable or current settings mutation is busy; automatic, slider and link state never disable an applicable endpoint"
+    raw_backend_error_as_field_copy_forbidden: true
+    message_priority: [min, max]
 
 design_only:
   - frontend-source/index.html

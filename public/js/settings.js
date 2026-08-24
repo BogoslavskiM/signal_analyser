@@ -1,3 +1,84 @@
+(function registerSignalAnalyserTask0142(window) {
+  "use strict";
+
+  var MESSAGES = {
+    min: {
+      number:"Введите число для минимума.",
+      finite:"Минимум должен быть конечным.",
+      domain:"Минимум вне допустимого диапазона.",
+      order:"Минимум должен быть меньше максимума.",
+      unit:"Минимум нельзя представить в выбранных единицах."
+    },
+    max: {
+      number:"Введите число для максимума.",
+      finite:"Максимум должен быть конечным.",
+      domain:"Максимум вне допустимого диапазона.",
+      order:"Максимум должен быть больше минимума.",
+      unit:"Максимум нельзя представить в выбранных единицах."
+    }
+  };
+
+  function boundaryName(value) { return value === "max" ? "max" : "min"; }
+
+  function boundaryResult(boundary, result) {
+    boundary=boundaryName(boundary);
+    result=result || { valid:true };
+    var invalid=result.valid === false;
+    var reason=invalid && MESSAGES[boundary][result.reason] ? result.reason : invalid ? "number" : "";
+    return {
+      boundary:boundary,
+      invalid:invalid,
+      ariaInvalid:String(invalid),
+      reason:reason,
+      message:invalid ? MESSAGES[boundary][reason] : ""
+    };
+  }
+
+  function projectPair(results) {
+    results=results || {};
+    var minimum=boundaryResult("min", results.min);
+    var maximum=boundaryResult("max", results.max);
+    var first=minimum.invalid ? minimum : maximum.invalid ? maximum : null;
+    return {
+      min:minimum,
+      max:maximum,
+      message:first ? first.message : "",
+      messageBoundary:first ? first.boundary : "",
+      hasError:!!first,
+      pairBorder:false,
+      rowBorder:false
+    };
+  }
+
+  function endpointDisabled(state) {
+    state=state || {};
+    return state.applicable === false || state.busy === true;
+  }
+
+  function enabledContract(state) {
+    state=state || {};
+    return {
+      minDisabled:endpointDisabled(state),
+      maxDisabled:endpointDisabled(state),
+      ignoredDisableReasons:["automatic", "slider", "linked"]
+    };
+  }
+
+  window.SignalAnalyserTask0142 = {
+    messages:MESSAGES,
+    boundaryResult:boundaryResult,
+    projectPair:projectPair,
+    endpointDisabled:endpointDisabled,
+    enabledContract:enabledContract,
+    contract: {
+      validationInput:"Existing production numeric/unit/domain/order validators return only {valid, reason}; raw provider/backend exception text is never accepted as a field message.",
+      priority:"Both boundaries keep independent invalid state and red borders. One message is rendered: minimum first, otherwise maximum.",
+      enabled:"Visible applicable range inputs stay editable in automatic mode and regardless of slider/link state; only true inapplicability or current settings busy state disables them.",
+      blank:"An untouched blank endpoint remains valid automatic state and retains its placeholder."
+    }
+  };
+}(window));
+
 (function registerSignalAnalyserSettings(window, document) {
   "use strict";
 
@@ -6,7 +87,7 @@
   var numeric = window.SignalAnalyserNumeric;
   var context = {
     displayId: "", revision: 0, document: null, drafts: {}, pending: {}, timers: {}, requestQueue: Promise.resolve(), intent: 0, contextToken: 0, loadToken: 0,
-    page: "display", plotType: "time", collapsed: {}, renderedFields: {}, linkPreview: null, extraVisible: {}, extraItems: {}
+    page: "display", plotType: "time", collapsed: {}, renderedFields: {}, linkPreview: null, extraVisible: {}, extraItems: {}, rangeDomains: {}, busy: false
   };
   var plotOptions = [
     { value: "time", label: "Временная область" },
@@ -45,6 +126,8 @@
     var readout = readouts().filter(function (item) { return item.id === id; })[0];
     return readout ? Object.assign({}, readout, { kind:"readout", readonly:true, enabled:false }) : null;
   }
+  function rangeItem(item) { return !!item && (item.kind === "range" || item.kind === "optional_range"); }
+  function rangeApplicable(item) { return !rangeItem(item) || item.enabled !== false; }
   function screenValue(item) {
     if (context.drafts[item.id] && context.drafts[item.id].value !== undefined) return context.drafts[item.id].value;
     var screen = context.document && context.document.screen;
@@ -107,7 +190,7 @@
   function pseudo(id, kind, current, extra) { return Object.assign({ id:id, kind:kind, value:current, enabled:true, visible:true, pseudo:true }, extra || {}); }
   function actual(id) {
     var item = sourceItem(id);
-    if (!item || item.visible === false) return null;
+    if (!item || item.visible === false || !rangeApplicable(item)) return null;
     return item;
   }
   function group(key, title, items) { return { key:key, title:title, items:items.filter(Boolean) }; }
@@ -163,7 +246,7 @@
     var items=inventory().reduce(function (items, section) {
       return items.concat(section.items.filter(function (item) { return item && !item.pseudo && item.visible !== false; }));
     }, []);
-    Object.keys(context.extraVisible).forEach(function (id) { var item=sourceItem(id); if (item && item.visible !== false && !items.some(function (candidate) { return candidate.id === id; })) items.push(item); });
+    Object.keys(context.extraVisible).forEach(function (id) { var item=sourceItem(id); if (item && item.visible !== false && rangeApplicable(item) && !items.some(function (candidate) { return candidate.id === id; })) items.push(item); });
     return items;
   }
 
@@ -171,6 +254,29 @@
     return item.kind === "integer" || item.kind === "power_bins" || ["count", "nfft", "samples"].indexOf(key) >= 0 ? "integer" : "decimal";
   }
   function numericResult(item, raw, key) { return numeric.parse(raw, numericKind(item, key)); }
+  function rangeBoundaryValidation(item, boundary, raw) {
+    var automatic=item.kind === "optional_range" && (raw === "" || raw == null);
+    if (automatic) return { valid:true, value:null };
+    var parsed=numericResult(item, raw);
+    if (!parsed.valid) return { valid:false, reason:/конеч|Специальн/i.test(parsed.error || "") ? "finite" : "number", value:null };
+    var unitField=item.id === "time.x_limits" ? "time.units" : /frequency_limits$/.test(item.id) ? item.id.replace(/frequency_limits$/, "frequency_units") : "";
+    var unitItem=unitField && sourceItem(unitField), unit=unitItem && value(unitItem);
+    if (unit && unit !== "auto" && !Number.isFinite(canonicalFromVisible(parsed.value, unit))) return { valid:false, reason:"unit", value:parsed.value };
+    var domain=context.rangeDomains[item.id], lower=domain && Number(domain[0]), upper=domain && Number(domain[1]);
+    var definitionMinimum=Number(item.min), definitionMaximum=Number(item.max);
+    if (item.min != null && Number.isFinite(definitionMinimum) && parsed.value < definitionMinimum || item.max != null && Number.isFinite(definitionMaximum) && parsed.value > definitionMaximum) return { valid:false, reason:"domain", value:parsed.value };
+    if (domain && Number.isFinite(lower) && Number.isFinite(upper) && (parsed.value < lower || parsed.value > upper)) return { valid:false, reason:"domain", value:parsed.value };
+    return { valid:true, value:parsed.value };
+  }
+  function rangeValidation(item, raw) {
+    var helper=window.SignalAnalyserTask0142;
+    var minimum=rangeBoundaryValidation(item, "min", raw && raw.min), maximum=rangeBoundaryValidation(item, "max", raw && raw.max);
+    if (minimum.valid && maximum.valid && minimum.value !== null && maximum.value !== null && minimum.value >= maximum.value) {
+      minimum={ valid:false, reason:"order", value:minimum.value };
+      maximum={ valid:false, reason:"order", value:maximum.value };
+    }
+    return helper.projectPair({ min:minimum, max:maximum });
+  }
   function numericError(item, raw) {
     var values = item.kind === "range" || item.kind === "optional_range" ? [raw && raw.min, raw && raw.max] :
       item.kind === "resolution" || item.kind === "power_bins" ? [raw && raw.value] : [raw];
@@ -212,7 +318,7 @@
     return item.id === "spectrum.rbw" ? "hz" : item.id === "spectrum.window_length" ? "samples" : item.id === "spectrum.nfft" ? "nfft" : item.id === "persistence.power_bins" ? "count" : "seconds";
   }
 
-  function control(item, current, id) {
+  function control(item, current, id, rangeState) {
     var disabled = item.enabled === false ? " disabled" : "";
     var checkbox = item.kind === "boolean" || item.control_kind === "checkbox";
     if (checkbox) {
@@ -243,7 +349,9 @@
     }
     if (item.kind === "range" || item.kind === "optional_range") {
       var range = current && typeof current === "object" ? current : {};
-      return "<span class='range-control'><input class='control' type='text' inputmode='decimal'"+noHistory()+" step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='min' placeholder='Мин.' aria-label='"+esc(label(item))+": минимум' value='"+esc(range.min == null ? "" : range.min)+"'"+disabled+"><input class='control' type='text' inputmode='decimal'"+noHistory()+" step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='max' placeholder='Макс.' aria-label='"+esc(label(item))+": максимум' value='"+esc(range.max == null ? "" : range.max)+"'"+disabled+"></span>";
+      var enablement=window.SignalAnalyserTask0142.enabledContract({ applicable:item.enabled !== false, busy:context.busy || !!context.pending[item.id] });
+      var projected=rangeState || window.SignalAnalyserTask0142.projectPair();
+      return "<span class='range-control' data-range-boundary-validation><input class='control' type='text' inputmode='decimal'"+noHistory()+" step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='min' placeholder='Мин.' aria-label='"+esc(label(item))+": минимум' aria-invalid='"+projected.min.ariaInvalid+"' value='"+esc(range.min == null ? "" : range.min)+"'"+(enablement.minDisabled ? " disabled" : "")+"><input class='control' type='text' inputmode='decimal'"+noHistory()+" step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='max' placeholder='Макс.' aria-label='"+esc(label(item))+": максимум' aria-invalid='"+projected.max.ariaInvalid+"' value='"+esc(range.max == null ? "" : range.max)+"'"+(enablement.maxDisabled ? " disabled" : "")+"></span>";
     }
     if (item.kind === "resolution" || item.kind === "power_bins") {
       var resolution = current && typeof current === "object" ? current : { mode:"auto" };
@@ -276,12 +384,12 @@
   }
 
   function renderField(item) {
-    var draft = context.drafts[item.id], invalid = draft && draft.error;
+    var draft = context.drafts[item.id], isRange=rangeItem(item), rangeState=isRange && draft && draft.rangeValidation || isRange && window.SignalAnalyserTask0142.projectPair(), invalid = draft && draft.error;
     var warning = item.warning || item.message || "";
     var id = "setting-" + item.id.replace(/[^a-zA-Z0-9_-]/g, "-");
     var current = value(item);
     context.renderedFields[item.id] = item;
-    return "<label class='settings-field-row"+(invalid ? " has-error" : "")+(warning ? " has-warning" : "")+"' data-testid='settings-field-"+esc(item.id)+"'><span class='settings-label'><span>"+esc(label(item))+"</span>"+(item.units ? "<span class='unit'>"+esc(item.units)+"</span>" : "")+"</span><span class='settings-control-wrap'>"+control(item, current, id)+"</span>"+(invalid ? "<small class='field-message is-error' role='alert'>"+esc(draft.error)+"</small>" : warning ? "<small class='field-message is-warning'>"+esc(warning)+"</small>" : "")+"</label>";
+    return "<label class='settings-field-row"+(invalid ? isRange ? " has-range-error" : " has-error" : "")+(warning ? " has-warning" : "")+"'"+(isRange ? " data-range-boundary-validation" : "")+" data-testid='settings-field-"+esc(item.id)+"'><span class='settings-label'><span>"+esc(label(item))+"</span>"+(item.units ? "<span class='unit'>"+esc(item.units)+"</span>" : "")+"</span><span class='settings-control-wrap'>"+control(item, current, id, rangeState)+"</span>"+(invalid ? "<small class='"+(isRange ? "range-boundary-message" : "field-message is-error")+"' role='alert'>"+esc(draft.error)+"</small>" : warning ? "<small class='field-message is-warning'>"+esc(warning)+"</small>" : "")+"</label>";
   }
 
   function render(force) {
@@ -329,12 +437,14 @@
 
   function update(item, raw) {
     if (item.pseudo) { updatePseudo(item, raw); return Promise.resolve(); }
-    var parsed = parse(item, raw), draft = context.drafts[item.id] || {};
-    if (parsed === null && !(item.kind === "optional_range" && raw.min === "" && raw.max === "")) {
-      draft.value = raw; draft.error = numericError(item, raw); context.drafts[item.id] = draft;
-      render(); window.dispatchEvent(new CustomEvent("signal-apply-state")); return Promise.resolve();
+    var parsed = parse(item, raw), draft = context.drafts[item.id] || {}, validation=rangeItem(item) ? rangeValidation(item, raw) : null;
+    if (validation && validation.hasError || parsed === null && !(item.kind === "optional_range" && raw.min === "" && raw.max === "")) {
+      clearTimeout(context.timers[item.id]); delete context.timers[item.id];
+      draft.value = raw; draft.rangeValidation=validation; draft.error = validation && validation.message || numericError(item, raw); context.drafts[item.id] = draft;
+      if (context.page === "screen") window.dispatchEvent(new CustomEvent("signal-settings-state")); else render();
+      window.dispatchEvent(new CustomEvent("signal-apply-state")); return Promise.resolve();
     }
-    draft.value = parsed; draft.error = ""; draft.intent = ++context.intent; context.drafts[item.id] = draft;
+    draft.value = parsed; draft.rangeValidation=validation; draft.error = ""; draft.intent = ++context.intent; context.drafts[item.id] = draft;
     if (item.id === "display.name" || item.id === "pane.name") window.dispatchEvent(new CustomEvent("signal-settings-name-preview", { detail:{ field_id:item.id, value:parsed, display_id:context.displayId, intent:draft.intent } }));
     if (item.kind === "resolution" || item.kind === "power_bins") render();
     window.dispatchEvent(new CustomEvent("signal-apply-state"));
@@ -415,7 +525,10 @@
         var latest = context.drafts[item.id];
         if (error && error.status === 409 && retries < 1 && rebaseConflict(error, token, displayId)) return persistLatest(retries + 1);
         if (latest && !latest.error && (latest.intent || 0) > intent) return persistLatest(0);
-        if (latest) latest.error = (error.payload && (error.payload.message || error.payload.error && error.payload.error.message)) || error.message || "Не удалось сохранить черновик.";
+        if (latest && !rangeItem(item)) {
+          var providerMessage=(error.payload && (error.payload.message || error.payload.error && error.payload.error.message)) || error.message || "";
+          latest.error=/ArgumentError|TypeError|MethodError|Stacktrace|Settings Signal Analyser|\bat\s+\S+\s*\(/i.test(String(providerMessage)) ? "Не удалось сохранить черновик." : providerMessage || "Не удалось сохранить черновик.";
+        }
         render(true);
         window.dispatchEvent(new CustomEvent("signal-settings-save-failed", { detail:{ field_id:item.id, display_id:displayId, intent:intent, error:error } }));
         throw error;
@@ -423,7 +536,8 @@
     }
     var pending = enqueue(function () { return persistLatest(0); });
     context.pending[item.id] = pending;
-    return pending.finally(function () { if (context.pending[item.id] === pending) delete context.pending[item.id]; });
+    if (rangeItem(item)) { if (context.page === "screen") window.dispatchEvent(new CustomEvent("signal-settings-state")); else render(true); }
+    return pending.finally(function () { if (context.pending[item.id] === pending) delete context.pending[item.id]; if (rangeItem(item)) { if (context.page === "screen") window.dispatchEvent(new CustomEvent("signal-settings-state")); else render(true); } });
   }
 
   document.addEventListener("click", function (event) {
@@ -458,6 +572,8 @@
     setView:function (page, plotType) {
       context.page=page || "display"; context.plotType=plotType || "time";
     },
+    setRangeDomains:function (domains) { context.rangeDomains=domains || {}; },
+    setBusy:function (busy) { context.busy=!!busy; },
     setExtraVisible:function (ids) { context.extraVisible={}; (ids || []).forEach(function (id) { context.extraVisible[id]=true; }); },
     setExtraItems:function (items) { context.extraItems={}; (items || []).forEach(function (item) { if (item && item.id) context.extraItems[item.id]=item; }); },
     setLinkPreview:function (linkTime, linkAmplitude, linkFrequency, linkMagnitude) {
@@ -465,7 +581,7 @@
     },
     beginCustomRender:function () { context.renderedFields={}; },
     renderRows:function (ids) {
-      return (ids || []).map(function (id) { var item=sourceItem(id); return item ? Object.assign({}, item, { visible:true }) : null; }).filter(Boolean).map(renderField).join("");
+      return (ids || []).map(function (id) { var item=sourceItem(id); return item ? Object.assign({}, item, { visible:true }) : null; }).filter(function (item) { return !!item && rangeApplicable(item); }).map(renderField).join("");
     },
     stateFor:function (ids) {
       var drafts=(ids || []).map(function (id) { return context.drafts[id]; }).filter(Boolean);

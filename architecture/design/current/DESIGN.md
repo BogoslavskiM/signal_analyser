@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140 / TASK-0141`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140 / TASK-0141 / TASK-0142`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `45`
+- Design version: `46`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V45 is the current integration-safe package for the accepted Signal Analyser
+V46 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -52,6 +52,9 @@ TASK-0130 graph-cursor extension:
     `loader-rotate` keyframes. Double-click autoscale restores only the clicked
     Time, Spectrum, Spectrogram or Persistence pane to the baseline of its
     current accepted output, preserving current units and linear/log semantics.
+14. Every visible applicable Area/Screen range endpoint remains editable outside
+    a true busy state. Min and Max validate independently with per-input red
+    borders, one Min-first local Russian message and no raw internal error copy.
 
 The exact DSP math, Engee/EngeeDSP call selection, API endpoints, revision
 transaction implementation, Plotly payloads, sample API endpoint mechanics and
@@ -103,11 +106,11 @@ entry baseline or production transfer inputs.
 | # | Surface | Approval decision | Evidence |
 |---:|---|---|---|
 | 1 | First `Сигнал` tab | Metadata first, then compact two-column `Сводка`; one `Значения` action | `screenshots/v31--standalone-production-signal--1440x900.png` |
-| 2 | Dynamic samples tab | Tab label is current `main_signal.name`; three fixed base columns plus four independently visible provider-authored calculated columns; 244px eye menu opens from the search-row three dots | `screenshots/v41--values-column-visibility-menu--1440x900.png` |
+| 2 | Dynamic samples tab | Tab label is current `main_signal.name`; three fixed base columns plus three independently visible provider-authored calculated columns; 244px eye menu opens from the search-row three dots | `screenshots/v41--values-column-visibility-menu--1440x900.png` |
 | 3 | Spectrum extrema | Markers overlay the spectrum, lower table uses Magnitude + projected Frequency | `screenshots/v31--standalone-production-spectrum-extrema--1440x900.png` |
 | 4 | Spectrum Area settings | Frequency/magnitude slider checkboxes; independent local magnitude limits | `screenshots/v31--standalone-production-spectrum-area--1440x900.png` |
 | 5 | Screen spectrum links | Four independent checkboxes; linked frequency limits appear as a separate group | `screenshots/v31--standalone-production-screen-links--1440x900.png` |
-| 6 | Operation selector | Seven operations use the existing shared `SignalAnalyserValueSelect`, including inline search and modal-owned options popup | `screenshots/v31--standalone-production-operation-menu--1440x900.png` |
+| 6 | Operation selector | Six operations use the existing shared `SignalAnalyserValueSelect`, including inline search and modal-owned options popup; FFT is absent | `screenshots/v31--standalone-production-operation-menu--1440x900.png` |
 | 7 | User operation body | Editor shows only the body written by the user and a neutral Engee/`init_signal` hint | `screenshots/v31--standalone-production-operation-custom--1440x900.png` |
 | 8 | Engee operation states | Backend execution error, busy and success remain inside the same dialog context | `screenshots/v31--standalone-production-operation-{error,progress}--1440x900.png` |
 | 9 | Signal table emphasis | Exactly one `main_signal` row is blue; other checked rows stay white and ordinary hover is grey | `screenshots/v31--main-signal-only-and-hover--1440x900.png` |
@@ -121,11 +124,12 @@ entry baseline or production transfer inputs.
 | 17 | Operation overwrite row | Standard visible 16px checkbox followed by the full label `Затирать сигнал с таким именем` | `screenshots/v32--operation-overwrite-checkbox--1440x900.png` |
 | 18 | Graph cursor modes | Existing menu rows select one or two snapped vertical X cursors; readout overlays the graph and never calls backend/DSP | `screenshots/v36--spectrum-{single,dual}-cursor--1440x900.png` |
 | 19 | Cursor menu inventory | `Курсор` and `Два курсора` appear before `Управление графиком` with the existing icon/check columns | `screenshots/v36--pane-menu-cursor-options--1440x900.png` |
+| 20 | Area/Screen bounds | Applicable endpoints stay enabled; each invalid endpoint has only its own red border and one Min-first local message | `evidence/interaction-regression-v46-task0142.json` |
 
 ## Autonomous decisions
 
-- The user-facing labels are `Связать частоты спектров` and
-  `Связать магнитуды спектров`; they are independent from time/amplitude links.
+- The user-facing labels are `Связать частоты` and `Связать магнитуды`; they
+  are independent from time/amplitude links.
 - Time/amplitude/frequency/magnitude limits use one identical component:
   units where applicable, empty Min/Max fields, and a horizontal dual-thumb
   slider. Only the owning scope (`Область` or `Экран`) changes.
@@ -541,6 +545,46 @@ entry baseline or production transfer inputs.
   Engee Apps research and page sizing: no new component/style, composition or
   zone geometry is introduced. Figma reference status is `not_required`.
 
+## Exact delta v45 → v46
+
+- Applicable visible Min/Max inputs on both `Область` and `Экран` stay enabled
+  in automatic mode and regardless of plot-slider/link state. A range is hidden
+  when truly inapplicable and disabled only during its current settings mutation.
+- Each endpoint owns its validator and `aria-invalid`. Invalid Min and Max each
+  receive their own 2px danger border; the pair wrapper, settings row and group
+  never receive a shared red border. Existing 32px geometry and error tokens are
+  reused, so border changes do not move adjacent controls.
+- Exactly one inline message is shown below the pair. If both endpoints are
+  invalid, the Min message is shown while both inputs remain red. After Min is
+  fixed, the Max message becomes visible if Max is still invalid.
+- Local Russian messages are explicit for number, finite, domain, order and unit
+  reasons. Raw Backend/provider/internal exception text is never used as a field
+  error; a publication failure remains the existing sanitized non-field status.
+- Empty untouched endpoints remain valid automatic placeholders. Unit projection,
+  double-thumb sliders, double-click reset and autosave ownership are unchanged.
+- Transfer files:
+  `frontend-source/integration/js/task-0142-range-boundary-validation.js` and
+  `frontend-source/integration/css/task-0142-range-boundary-validation.css`.
+- Evidence: `evidence/interaction-regression-v46-task0142.json` and
+  `evidence/transfer-audit-v46.json`. No screenshot/Figma read is required: this
+  revision reuses the accepted field/error visuals and changes only state projection.
+- Applied skills: `designer/designer-workflow` and
+  `designer/data-entry-and-inspection`. Skipped visual-system, Figma, Engee Apps,
+  composition, output and sizing skills because no new style, layout, graph or
+  viewport decision is introduced. Figma reference status is `not_required`.
+
+### V46 field/state matrix
+
+| Endpoint state | Min border | Max border | One visible message | Enabled |
+|---|---|---|---|---|
+| Both valid/blank auto | default | default | none | yes |
+| Min invalid | danger | default | Min reason | yes |
+| Max invalid | default | danger | Max reason | yes |
+| Both invalid | danger | danger | Min reason only | yes |
+| Min fixed, Max still invalid | default | danger | Max reason | yes |
+| Current settings mutation busy | unchanged | unchanged | current validation message | no |
+| Truly inapplicable | not rendered | not rendered | none | not applicable |
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -558,6 +602,9 @@ entry baseline or production transfer inputs.
 - User TASK-0126 corrections from chat on 2026-08-20 for complete summary,
   immediate names, input-history opt-out, restored color identity, unit-aware limits,
   zoom-scoped extrema, deterministic Values and checkbox continuity.
+- User TASK-0142 corrections from chat on 2026-08-24 for enabled applicable
+  Area/Screen bounds, independent endpoint validators/borders, Min-first message
+  priority and local error copy without raw internal exceptions.
 - User TASK-0130 request from chat on 2026-08-20 for one- or two-cursor graph
   modes in the existing pane menu.
 - User TASK-0132 screenshot and correction from chat on 2026-08-24 for the
@@ -1078,6 +1125,13 @@ font; package copies below remain visual-harness inputs only.
 
 - Visible parameters alone participate in validation. Hidden inapplicable
   spectrum/time settings are absent from the page and ignored.
+- Visible applicable Area/Screen range endpoints are enabled in automatic mode
+  and irrespective of slider/link state; only the current settings busy state
+  disables them. Each endpoint owns an independent invalid flag and 2px danger
+  border. The pair/row/group never receives an error border. One inline message
+  follows Min-first priority, then Max after Min is fixed. The only allowed
+  reasons are number, finite, domain, order and unit, rendered through the local
+  Russian copy in `ui-contract.yaml`; raw internal exceptions are forbidden.
 - Empty Min/Max is not replaced by a concrete number. Full range is represented
   by placeholders and the slider's full domain.
 - Signal summary supports ready/loading/empty/error through its provider seam.
@@ -1157,6 +1211,11 @@ font; package copies below remain visual-harness inputs only.
 - V44 bounded evidence covers defined continuous loader rotation plus Time,
   Spectrum, Spectrogram and Persistence default/full-domain reset semantics,
   log-coordinate preservation and pane-local isolation.
+- V45 bounded evidence covers Spectrum/Persistence axis links, Area slider
+  parity, Jet provider ownership, pane-menu anchoring and new-display 2×2.
+- V46 bounded evidence covers enabled applicable endpoints, independent Min/Max
+  borders, Min-first single-message priority, all five local reason messages,
+  preserved blank auto semantics and zero raw internal field-error copy.
 
 ## Backend integration boundary
 
@@ -1229,3 +1288,9 @@ render or leak the wrapper mechanics.
   and makes double-click autoscale type-correct and pane-local for all four plot
   types by preserving current-output baselines beyond non-Time layout cleanup.
   No visual, geometry, settings, backend or identity behavior changes.
+- `v45`: TASK-0141 shortens link labels, links Spectrum/Persistence frequency
+  and dB magnitude/power, reuses Screen range sliders in Area, passes through
+  provider Jet, anchors the pane menu and defines provider-owned new-display 2×2.
+- `v46`: TASK-0142 keeps applicable Area/Screen bounds editable, gives Min/Max
+  independent validation and red borders, shows only the first left-to-right
+  local message and forbids pair borders and raw internal field-error text.

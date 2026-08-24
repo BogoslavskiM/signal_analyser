@@ -36,7 +36,7 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
   assert(/function timeInventory\(type\)[\s\S]*?type === "spectrogram"[\s\S]*?"Пределы времени"[\s\S]*?return \[\];/.test(settings), "non-applicable time branches must render nothing instead of a placeholder section");
 
   assert(/function sourceItem\(id\)[\s\S]*?fields\(\)[\s\S]*?readouts\(\)/.test(settings), "inventory must include backend fields and readouts");
-  assert(/function actual\(id\)[\s\S]*?item\.visible === false\) return null/.test(settings), "backend-hidden fields and readouts must be omitted from inventory");
+  assert(/function actual\(id\)[\s\S]*?item\.visible === false \|\| !rangeApplicable\(item\)\) return null/.test(settings), "backend-hidden and truly inapplicable fields/readouts must be omitted from inventory while applicable ranges stay available");
   assert(/function validVisibleDraftItems\(\)[\s\S]*?visibleItems\(\)[\s\S]*?!draft\.error/.test(settings) && /Object\.keys\(context\.drafts\)\.filter\(function\(key\)\{return visible\[key\];\}\)/.test(settings), "hidden drafts must not flush or participate in client validation state");
   assert(/item\.kind === "range" \|\| item\.kind === "optional_range"/.test(settings) && /item\.kind === "resolution" \|\| item\.kind === "power_bins"/.test(settings), "backend range and resolution controls must remain supported");
   assert(/function isApply\(item\)[\s\S]*?effect_status === "requires_apply"/.test(settings) && /window\.setTimeout\(function \(\) \{ send\(item\); \}, 150\)/.test(settings), "backend Apply fields must retain the exact 150ms save behavior");

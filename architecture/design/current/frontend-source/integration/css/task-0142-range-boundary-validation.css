@@ -1,0 +1,35 @@
+/* TASK-0142 independent range-boundary validation. Existing colors, dimensions
+   and field-message typography are reused without changing range geometry. */
+
+.settings-field-row[data-range-boundary-validation] .range-control,
+.settings-field-row[data-range-boundary-validation].has-range-error .range-control {
+  border-color: transparent;
+}
+
+.settings-field-row[data-range-boundary-validation] .range-control .control[aria-invalid="true"],
+.range-control[data-range-boundary-validation] .control[aria-invalid="true"],
+.range-fields[data-range-boundary-validation] .field[aria-invalid="true"] {
+  border: 2px solid var(--danger);
+  box-sizing: border-box;
+}
+
+.settings-field-row[data-range-boundary-validation] .range-control .control[aria-invalid="false"],
+.range-control[data-range-boundary-validation] .control[aria-invalid="false"],
+.range-fields[data-range-boundary-validation] .field[aria-invalid="false"] {
+  border: 1px solid var(--line);
+  box-sizing: border-box;
+}
+
+.range-boundary-message {
+  grid-column: 2;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 14px;
+}
+
+.range-fields + .range-boundary-message {
+  grid-column: 1 / -1;
+  margin: -4px 0 8px;
+}
