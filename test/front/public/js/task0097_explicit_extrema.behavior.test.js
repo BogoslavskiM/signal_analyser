@@ -38,6 +38,7 @@ function element(extra) {
     setAttribute() {},
     removeAttribute() {},
     hasAttribute() { return false; },
+    matches() { return false; },
     addEventListener() {},
     querySelector() { return null; },
     focus() {}
@@ -48,8 +49,9 @@ function snapshot(bindings, plotType) {
   return {
     state_revision: 3,
     active_display_id: "display-1",
+    selected_signal: "Сигнал 1",
     displays: [{ id: "display-1", peaks_enabled: true, measurement_kinds: [] }],
-    signals: [{ name: "Сигнал 1", color: "#2563eb" }],
+    signals: [{ id: "sig-1", name: "Сигнал 1", color: "#2563eb", sample_rate_hz: 2048 }],
     layouts: [{
       display_id: "display-1",
       layout: {
@@ -85,7 +87,7 @@ function createHarness(options) {
   let source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
   const numericSource = fs.readFileSync(path.join(root, "public/js/numeric.js"), "utf8");
   source = source.replace(/\n  refreshSnapshot\(\)\.then\([\s\S]*?\n  \}\)\.catch\(showBootstrapError\);/, "");
-  source = source.replace("})(window, document);", "window.__explicitExtrema = { model:model, accept:accept, loadPeaks:loadPeaks, calculatePeaks:calculatePeaks, configureActivePeaks:configureActivePeaks, showActivePeaksValues:showActivePeaksValues, renderPeaksInspector:renderPeaksInspector, renderPeaksApply:renderPeaksApply, renderContext:renderActivePaneContext, extremaTabsAvailable:extremaTabsAvailable }; })(window, document);");
+  source = source.replace("})(window, document);", "window.__explicitExtrema = { model:model, accept:accept, loadPeaks:loadPeaks, calculatePeaks:calculatePeaks, configureActivePeaks:configureActivePeaks, showActivePeaksValues:showActivePeaksValues, renderPeaksInspector:renderPeaksInspector, renderPeaksApply:renderPeaksApply, renderContext:renderActivePaneContext, renderSettings:renderSettings, extremaTabsAvailable:extremaTabsAvailable }; })(window, document);");
 
   const body = element();
   const peaksHost = element();
@@ -106,9 +108,12 @@ function createHarness(options) {
   const listeners = {};
   const activeCalls = [];
   const calculateCalls = [];
+  const metadataCalls = [];
   const activeResponses = (options.activeResponses || []).slice();
   const calculateResponses = (options.calculateResponses || []).slice();
+  const metadataResponses = (options.metadataResponses || []).slice();
   const nodes = {
+    "[data-testid='app-shell']": element(),
     "[data-inspector-content]": body,
     "[data-testid='peaks-table-scroll']": peaksHost,
     "[data-testid='settings-content']": settingsContent,
@@ -132,7 +137,16 @@ function createHarness(options) {
       const response = calculateResponses.shift();
       return response && response.promise ? response.promise : Promise.resolve(response || peaksResponse());
     },
-    activeOutput() { throw new Error("Extrema flow must not request graph output"); },
+    updateSignalMetadata(payload) {
+      metadataCalls.push(payload);
+      const response = metadataResponses.shift();
+      return response && response.promise ? response.promise : response instanceof Error ? Promise.reject(response) : Promise.resolve(response || snapshot(["Сигнал 1"]));
+    },
+    signalSummary() { return Promise.resolve({}); },
+    activeOutput() {
+      if (!options.allowMetadataOutput) throw new Error("Extrema flow must not request graph output");
+      return Promise.resolve({ state_revision: 3, display_id: "display-1", pane_id: "pane-1", context_key: "metadata", calculation_revision: 0, isready: true, success: true, data: { data: [] } });
+    },
     view() { throw new Error("fixture is already Extrema-enabled"); }
   };
   const window = {
@@ -154,18 +168,34 @@ function createHarness(options) {
     setTimeout(callback) { timers.push(callback); return timers.length; },
     requestAnimationFrame(callback) { if (callback) callback(); return 1; }
   };
+  let settingsMarkup = "", metadataNameNode = null;
   const document = {
-    querySelector(selector) { return nodes[selector] || null; },
+    activeElement: null,
+    querySelector(selector) { return selector === "[data-signal-metadata='name']" ? metadataNameNode : nodes[selector] || null; },
     querySelectorAll(selector) {
       if (selector === "[data-settings-page]") return [settingsDisplayTab, settingsPeaksTab];
       if (selector === "[data-bottom-tab]") return [inspectorSignalsTab, inspectorMeasurementsTab, inspectorPeaksTab];
       if (selector === "[data-pane-id]") return [];
       return [];
     },
-    addEventListener(type, listener) { if (type === "click" && !listeners.click) listeners.click = listener; },
+    addEventListener(type, listener) { (listeners[type] || (listeners[type] = [])).push(listener); },
     createElement() { return element(); },
     head: { appendChild() {} }
   };
+  Object.defineProperty(settingsContent, "innerHTML", {
+    configurable: true,
+    get() { return settingsMarkup; },
+    set(value) {
+      settingsMarkup = String(value);
+      const match = /data-signal-metadata='name'[^>]* value='([^']*)'/.exec(settingsMarkup);
+      if (!match) return;
+      if (!metadataNameNode || document.activeElement !== metadataNameNode) {
+        metadataNameNode = element({ dataset:{ signalMetadata:"name" }, value:match[1], selectionStart:match[1].length, selectionEnd:match[1].length });
+        metadataNameNode.focus = function () { document.activeElement = metadataNameNode; };
+        metadataNameNode.blur = function () { if (document.activeElement === metadataNameNode) document.activeElement = null; };
+      } else metadataNameNode.value = match[1];
+    }
+  });
   const runtime = {
     window, document, Promise, Error, Array, Object, String, Number, Boolean, Math,
     CSS: { escape(value) { return value; } },
@@ -176,12 +206,17 @@ function createHarness(options) {
   const test = window.__explicitExtrema;
   test.accept(snapshot(options.bindings === undefined ? ["Сигнал 1"] : options.bindings, options.plotType));
   return {
-    test, body, peaksHost, settingsContent, footer, apply, status, values, timers, activeCalls, calculateCalls,
+    test, body, peaksHost, settingsContent, footer, apply, status, values, timers, activeCalls, calculateCalls, metadataCalls, document,
     settingsDisplayTab, settingsPeaksTab, inspectorSignalsTab, inspectorMeasurementsTab, inspectorPeaksTab,
     click(button) {
-      if (typeof listeners.click !== "function") throw new Error("production click delegation was not registered");
-      listeners.click({ target: { closest(selector) { return selector === "button" ? button : null; } } });
-    }
+      if (!listeners.click || !listeners.click.length) throw new Error("production click delegation was not registered");
+      listeners.click[0]({ target: { closest(selector) { return selector === "button" ? button : null; } } });
+    },
+    input(node) {
+      if (!listeners.input || !listeners.input.length) throw new Error("production input delegation was not registered");
+      listeners.input.forEach((listener) => listener({ target: node }));
+    },
+    metadataName() { return metadataNameNode; }
   };
 }
 
@@ -297,6 +332,46 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   mismatch.timers.shift()();
   await settle();
   assert(mismatch.timers.length === 0 && mismatch.calculateCalls.length === 1, "context-mismatched polling response must not schedule a recovery timer or duplicate the calculation POST");
+
+  // TASK-0137: the production input delegation and 150ms autosave must keep
+  // the actual focused name node alive across applying, accepted and final
+  // renders; a character typed during the request queues a newer save.
+  const nameFirst = deferred(), nameSecond = deferred();
+  const metadata = createHarness({ allowMetadataOutput:true, metadataResponses: [nameFirst, nameSecond] });
+  metadata.test.model.settingsPage = "signal";
+  metadata.test.renderSettings({ id: "display-1" });
+  const nameNode = metadata.metadataName();
+  assert(nameNode && nameNode.dataset.signalMetadata === "name", "Signal settings must render an actual name metadata input");
+  nameNode.focus();
+  const identity = nameNode;
+  nameNode.value = "Сигнал 1A"; nameNode.selectionStart = nameNode.selectionEnd = nameNode.value.length;
+  metadata.input(nameNode);
+  metadata.timers.pop()();
+  await settle();
+  assert(metadata.metadataCalls.length === 1 && metadata.metadataCalls[0].name === "Сигнал 1A", "first typed name intent must start the debounced metadata save");
+  assert(metadata.document.activeElement === identity && metadata.metadataName() === identity && identity.value === "Сигнал 1A" && identity.selectionStart === identity.value.length && identity.selectionEnd === identity.value.length, "applying render must preserve exact focused name node, value and caret");
+  nameNode.value = "Сигнал 1AB"; nameNode.selectionStart = nameNode.selectionEnd = nameNode.value.length;
+  metadata.input(nameNode);
+  nameFirst.resolve(snapshot(["Сигнал 1"]));
+  await settle();
+  assert(metadata.document.activeElement === identity && metadata.metadataName() === identity && identity.value === "Сигнал 1AB", "accepted render must preserve the exact focused node and newer in-flight value: " + JSON.stringify({ active:metadata.document.activeElement === identity, same:metadata.metadataName() === identity, value:identity.value, draft:metadata.test.model.signalEditor && metadata.test.model.signalEditor.draft && metadata.test.model.signalEditor.draft.name, applying:metadata.test.model.signalEditor && metadata.test.model.signalEditor.applying }));
+  metadata.timers.pop()();
+  await settle();
+  assert(metadata.metadataCalls.length === 2 && metadata.metadataCalls[1].name === "Сигнал 1AB", "newer queued input must issue its own subsequent save after the accepted first intent");
+  nameSecond.resolve(snapshot(["Сигнал 1"]));
+  await settle();
+  assert(metadata.document.activeElement === identity && metadata.metadataName() === identity && identity.value === "Сигнал 1AB" && identity.selectionStart === identity.value.length, "final accepted render must retain focus, exact node identity, value and caret");
+
+  const failedName = deferred();
+  const metadataFailure = createHarness({ allowMetadataOutput:true, metadataResponses: [failedName] });
+  metadataFailure.test.model.settingsPage = "signal";
+  metadataFailure.test.renderSettings({ id: "display-1" });
+  const failedNode = metadataFailure.metadataName();
+  failedNode.focus(); failedNode.value = "Ошибка"; failedNode.selectionStart = failedNode.selectionEnd = failedNode.value.length;
+  metadataFailure.input(failedNode); metadataFailure.timers.pop()(); await settle();
+  failedName.reject(new Error("server rejected name")); await settle();
+  assert(metadataFailure.document.activeElement !== failedNode && metadataFailure.test.model.signalEditor.applying === false && metadataFailure.test.model.signalEditor.dirty === true, "server failure must release focused-name preservation so rerender is permitted and retry remains dirty");
+  assert(metadataFailure.test.model.signalEditor && metadataFailure.test.model.signalEditor.draft.color === "#2563eb" && metadataFailure.test.model.signalEditor.draft.sample_rate_hz === "2048", "name continuity must not alter the established color/sample-rate draft paths");
 
   const pendingConfigureGet = deferred();
   const configure = createHarness({ activeResponses: [pendingConfigureGet] });

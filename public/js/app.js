@@ -1832,6 +1832,19 @@
     return "<section class='settings-group" + (collapsed ? " is-collapsed" : "") + "' data-signal-settings-group='" + esc(key) + "'><button class='settings-group-title' type='button' data-signal-settings-group-toggle='" + esc(key) + "' aria-expanded='" + String(!collapsed) + "' aria-controls='" + esc(bodyId) + "'><span>" + esc(title) + "</span></button><div class='settings-group-fields' id='" + esc(bodyId) + "'" + (collapsed ? " hidden" : "") + ">" + body + "</div></section>";
   }
 
+  function activeSignalNameEditor() {
+    var node=document.activeElement, editor=model.signalEditor;
+    if (model.settingsPage !== "signal" || !node || !node.dataset || node.dataset.signalMetadata !== "name" || !editor || !editor.signalId || !editor.draft) return null;
+    var pane=paneById(model.activePane), signal=mainSignalForPane(pane);
+    if (!signal || stableSignalId(signal) !== editor.signalId) return null;
+    return { node:node, signalId:editor.signalId, intent:editor.intent || 0 };
+  }
+
+  function releaseActiveSignalNameEditor() {
+    var active=activeSignalNameEditor();
+    if (active && active.node && typeof active.node.blur === "function") active.node.blur();
+  }
+
   function ensureSignalSettingsTab() {
     var tabs=q("[data-testid='settings-tabs']");
     if (!tabs || q("[data-testid='settings-tab-signal']")) return;
@@ -1894,7 +1907,7 @@
     var editor=model.signalEditor;
     if (!editor.collapsed) editor.collapsed={ main:false, summary:false };
     if (editor.signalId !== signalId) {
-      editor={ signalId:signalId, summary:null, loading:true, error:"", collapsed:{ main:false, summary:false }, applying:false, draft:{ name:signal.name, color:signalColor(signal), sample_rate_hz:String(signal.sample_rate_hz == null ? "" : signal.sample_rate_hz) } };
+      editor={ signalId:signalId, summary:null, loading:true, error:"", collapsed:{ main:false, summary:false }, applying:false, dirty:false, intent:0, saveQueued:false, draft:{ name:signal.name, color:signalColor(signal), sample_rate_hz:String(signal.sample_rate_hz == null ? "" : signal.sample_rate_hz) } };
       model.signalEditor=editor;
       boundedRequest(api.signalSummary(signalId), 10000).then(function (summary) {
         if (model.signalEditor !== editor) return;
@@ -2433,6 +2446,10 @@
   }
 
   function renderSettings(display) {
+    if (activeSignalNameEditor()) {
+      renderApply();
+      return;
+    }
     if (typeof settings.activeNameEditor === "function" && settings.activeNameEditor()) {
       renderApply();
       return;
@@ -3813,21 +3830,31 @@
     if (!editor || !editor.signalId || !editor.draft || editor.applying || !editor.dirty) return;
     var sampleRate=signalSampleRateValidation(editor.draft.sample_rate_hz);
     if (!sampleRate.valid) { showToast(sampleRate.error, true); return; }
-    var draft=editor.draft;
+    var draft={ name:editor.draft.name, color:editor.draft.color, sample_rate_hz:editor.draft.sample_rate_hz };
+    var submittedIntent=editor.intent || 0;
+    editor.saveQueued=false;
     editor.applying=true; renderSettings(activeDisplay()); renderApply();
     mutate(function () {
       return api.updateSignalMetadata({ state_revision:model.revision, operation:"update_metadata", signal_id:editor.signalId, name:draft.name, color:draft.color, sample_rate_hz:sampleRate.value });
     }, { preservePlots:true, skipSettings:true }).then(function () {
       if (model.signalEditor !== editor) return;
-      editor.dirty=false;
+      var newer=(editor.intent || 0) > submittedIntent || editor.saveQueued;
+      editor.dirty=newer;
       editor.applying=false;
-      render();
+      editor.saveQueued=false;
+      if (activeSignalNameEditor()) renderApply(); else render();
+      if (newer) scheduleSignalMetadataSave();
     }).catch(function (error) {
       if (model.signalEditor !== editor) return;
+      var newer=(editor.intent || 0) > submittedIntent || editor.saveQueued;
       editor.applying=false;
+      editor.saveQueued=false;
+      editor.dirty=true;
+      releaseActiveSignalNameEditor();
       showToast(safeErrorText(error, "Не удалось обновить сигнал."), true);
       renderSettings(activeDisplay());
       renderApply();
+      if (newer) scheduleSignalMetadataSave();
     });
   }
 
@@ -3976,7 +4003,7 @@
     var pane = target.closest("[data-pane-id]");
     if (pane) focusAreaSettings(pane.dataset.paneId);
   });
-  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft && !model.signalEditor.applying) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; scheduleSignalMetadataSave(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
+  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; model.signalEditor.intent=(model.signalEditor.intent || 0) + 1; if (model.signalEditor.applying) model.signalEditor.saveQueued=true; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; scheduleSignalMetadataSave(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
   document.addEventListener("input", function (event) { if (!event.target || event.target.dataset.testid !== "sample-point-search-input") return; var state=model.signalSamples; state.searchValue=event.target.value; state.searchState=""; state.searchMessage=""; var status=q("[data-testid='sample-point-search-status']"); if (status) { status.dataset.state=""; status.textContent=""; } });
   document.addEventListener("input", function (event) {
     var input=event.target;
