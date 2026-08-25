@@ -1,0 +1,45 @@
+{
+  "design_version": 56,
+  "method": "bounded TASK-0153 Measurements flat eye-menu source/contract regression; no browser/Figma",
+  "passed": 3,
+  "failed": 0,
+  "results": [
+    {
+      "id": "126-one-menu-title-no-redundant-subgroup",
+      "passed": true,
+      "detail": {
+        "title": "Видимость измерений",
+        "redundantTitle": false
+      }
+    },
+    {
+      "id": "127-flat-order-measurements-then-cursors",
+      "passed": true,
+      "detail": {
+        "flatOrder": [
+          "existing_measurements",
+          "x1",
+          "y1",
+          "x2",
+          "y2",
+          "delta_x",
+          "delta_y"
+        ],
+        "divider": "absent"
+      }
+    },
+    {
+      "id": "128-eye-eligibility-focus-contract-preserved",
+      "passed": true,
+      "detail": {
+        "width_px": 244,
+        "eyes": "preserved",
+        "single_enabled": [
+          "x1",
+          "y1"
+        ],
+        "focus": "existing roving menu focus unchanged"
+      }
+    }
+  ]
+}

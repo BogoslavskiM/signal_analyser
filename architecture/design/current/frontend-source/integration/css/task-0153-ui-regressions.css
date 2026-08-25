@@ -1,0 +1,26 @@
+/* TASK-0153: canonical Primary MD styling for the two contextual footer actions. */
+.settings-apply-block [data-testid="signal-values-action"],
+.settings-apply-block [data-testid="extrema-values"] {
+  border-color: var(--accent-hover);
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.settings-apply-block [data-testid="signal-values-action"]:not(:disabled):hover,
+.settings-apply-block [data-testid="extrema-values"]:not(:disabled):hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+}
+
+.settings-apply-block [data-testid="signal-values-action"]:not(:disabled):active,
+.settings-apply-block [data-testid="extrema-values"]:not(:disabled):active {
+  border-color: var(--accent-active);
+  background: var(--accent-active);
+}
+
+.settings-apply-block [data-testid="signal-values-action"]:disabled,
+.settings-apply-block [data-testid="extrema-values"]:disabled {
+  border-color: var(--primary-disabled);
+  background: var(--primary-disabled);
+  color: var(--surface);
+}

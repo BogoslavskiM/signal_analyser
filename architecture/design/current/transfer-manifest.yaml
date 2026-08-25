@@ -1,5 +1,5 @@
 schema_version: 2
-design_version: 54
+design_version: 56
 visual_baseline_version: 28
 source_root: frontend-source
 target_root: public
@@ -18,9 +18,9 @@ prototype_baseline:
   interaction_fixture_scope: "design-only adapters proving inherited flows, pane-local graph cursors, sample-column eye-menu reflow and the V48 bootstrap barrier against actual production DOM/API modules"
   production_sources_rendered_in_place: [public/css/theme.css, public/css/app.css, public/js/api.js, public/js/value-select.js, public/js/numeric.js, public/js/settings.js, public/js/layouts.js, public/vendor/vue/3.5.41/vue.global.prod.js, public/js/components/explicit-apply.js, public/js/native-session-io.js, public/js/app.js]
   pinned_hashes: evidence/production-baseline-v32.json
-  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json, evidence/interaction-regression-v46-task0142.json, evidence/interaction-regression-v48-task0143-0144.json, evidence/interaction-regression-v51-task0143-0146.json, evidence/interaction-regression-v52-task0143-0146.json, evidence/interaction-regression-v52-task0148.json, evidence/interaction-regression-v52-task0150-0151.json, evidence/interaction-regression-v54-task0152.json]
+  walkthrough: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json, evidence/interaction-regression-v46-task0142.json, evidence/interaction-regression-v48-task0143-0144.json, evidence/interaction-regression-v51-task0143-0146.json, evidence/interaction-regression-v52-task0143-0146.json, evidence/interaction-regression-v52-task0148.json, evidence/interaction-regression-v52-task0150-0151.json, evidence/interaction-regression-v54-task0152.json, evidence/interaction-regression-v55-task0153.json, evidence/interaction-regression-v56-task0153-measurements-menu.json]
   transfer_audit: evidence/transfer-audit-v46.json
-  result: "V54 keeps the V53 UI and corrects TASK-0152 to the accepted /api/signals/crop contract with an exact canonical-seconds payload."
+  result: "V56 preserves V55 and flattens the existing Видимость измерений menu: existing measurement rows first, cursor rows second, with no redundant subgroup heading."
 
 # Production already owns the document, boot sequence, UI modules and Plotly
 # hosts. Only the already-identical local icon inventory is copied directly;
@@ -298,9 +298,9 @@ additive_fragments:
     mode: integrate_helper_unchanged_into_existing_measurements_renderer_eye_menu_and_cursor_subscription
     content_changes_allowed: false
     marker: "TASK-0148 mode-gated frontend-only cursor Measurements columns"
-    scope: [six_hidden_intents, off_single_dual_eligibility, exact_legendgroup_first_visible_trace, signed_deltas, current_units, disabled_menu_rows]
+    scope: [one_flat_measurements_menu, existing_measurements_first, cursor_rows_second, no_redundant_subgroup_heading, six_hidden_intents, off_single_dual_eligibility, exact_legendgroup_first_visible_trace, signed_deltas, current_units, disabled_menu_rows]
     integration_points: [renderMeasurementsInspector, measurement_columns_menu_markup, measurement_columns_menu_delegation, graph_cursor_subscribe, active_pane_change]
-    prototype_regression_not_transferable: prototype/task-0148-measurement-cursor-columns-regression.cjs
+    prototype_regression_not_transferable: [prototype/task-0148-measurement-cursor-columns-regression.cjs, prototype/task-0153-measurements-flat-menu-regression.cjs]
   - id: task-0150-0151-axis-labels-hover-ui
     source: integration/js/task-0150-0151-axis-labels-hover.js
     target: public/js/app.js
@@ -328,6 +328,22 @@ additive_fragments:
     scope: [eligible_header_action, sorted_inclusive_interval, operation_style_modal, required_name, overwrite, busy_node_continuity, typed_errors, accepted_signal_inventory]
     integration_points: [renderPaneHeader_before_plot_type_and_overflow, graph_cursor_subscribe, active_pane_main_signal, document_body_modal_portal, signal_mutation_accept]
     prototype_regression_not_transferable: prototype/task-0152-cursor-trim-signal-regression.cjs
+  - id: task-0153-ui-regression-styles
+    source: integration/css/task-0153-ui-regressions.css
+    target: public/css/app.css
+    mode: append_once_after_existing_settings_footer_button_rules
+    content_changes_allowed: false
+    marker: "TASK-0153 Primary MD contextual settings actions"
+    scope: [signal_values_primary, extrema_calculate_primary, standard_primary_states]
+  - id: task-0153-ui-regression-contract
+    source: integration/js/task-0153-ui-regressions.js
+    target: public/js/app.js
+    mode: integrate_helper_unchanged_into_existing_plot_doubleclick_settings_tab_area_range_and_footer_lifecycles
+    content_changes_allowed: false
+    marker: "TASK-0153 autoscale/tab/Area-slider/footer regressions"
+    scope: [graph_doubleclick_autoscale_only, screen_tab_background_apply_continuity, all_applicable_area_range_sliders, primary_footer_actions]
+    integration_points: [bindRangeSliderDoubleClick, settings_page_click_delegation, renderSettings, injectAreaRangeSliderSettings, renderApply]
+    prototype_regression_not_transferable: prototype/task-0153-ui-regressions.cjs
 
 existing_assets_reused:
   - {path: public/icons/function.svg, use: signal-row-operation-action}
@@ -430,6 +446,15 @@ integration_hosts:
     integration: "Append the signal-operation or cursor-trim singleton on first use; reuse existing modal stacking and [data-value-select-popup] only for the operation selector."
 
 integration_seams:
+  - id: task-0153-ui-regression-continuity
+    action_interface: "graph-surface double-click => autoscale only; visible Settings tab => synchronous page activation independent of background autosave; every applicable Area range => one mounted dual-thumb slider; contextual footer actions => Primary MD"
+    production_consumers: [public/js/app.js, public/js/settings.js]
+    helper: frontend-source/integration/js/task-0153-ui-regressions.js
+    styles: frontend-source/integration/css/task-0153-ui-regressions.css
+    hosts: ["[data-pane-host]", "[data-testid='settings-tabs']", "[data-settings-content]", "[data-testid='settings-footer']"]
+    event_isolation: [plot_autoscale, in_plot_slider_local_reset, settings_range_local_reset]
+    linked_axis_visibility_independent: true
+    background_apply_tab_block_forbidden: true
   - id: application-bootstrap-readiness
     action_interface: "begin one token before state-lite; accept current-token state-lite containing signal/display/layout inventory; accept active-display settings; after initial DOM render call commitInitialRender in requestAnimationFrame; only all three milestones dismiss"
     production_consumers: [public/js/app.js]
@@ -504,9 +529,10 @@ integration_seams:
     forbidden_cursors: [wait, progress]
     behavior_changes_forbidden: [spinner_visuals, spinner_animation, pointer_blocking, aria_busy, inertness, geometry, request_lifecycle]
   - id: settings-context-routing
-    action_interface: "pane click or accepted pane-type mutation -> Area settings; display-tab/add-display click -> Screen settings"
+    action_interface: "pane click or accepted pane-type mutation -> Area settings; display-tab/add-display click -> Screen settings synchronously even during a prior background apply; completion of the prior apply cannot replace the new page"
     production_consumers: [public/js/app.js]
     hosts: ["[data-pane-id]", "[data-display-select]", "[data-testid='add-display']", "[data-settings-page]"]
+    apply_busy_disables_visible_tabs_forbidden: true
     replacement_forbidden: true
   - id: automatic-main-signal-samples
     action_interface: "valid main signal => ensure/rebind named sample tab and request first page without focus; Values => expand inspector, guarantee/select/focus tab and request missing page 1"
@@ -575,12 +601,13 @@ integration_seams:
     subscription_interface: "snapshot(paneRuntimeKey) + subscribe(listener), emitted after mode, pointer, keyboard and relayout reconciliation; pane cleanup clears state and notifies"
     replacement_forbidden: true
   - id: measurement-cursor-columns
-    action_interface: "existing Measurements three-dot menu toggles six pane-local latent intents; current cursor snapshot gates effective columns and updates cells live"
+    action_interface: "the existing Видимость измерений three-dot menu remains one flat list: existing measurement items first, then six cursor items with no Видимость столбцов subgroup heading; current cursor snapshot gates effective columns and updates cells live"
     production_consumers: [public/js/app.js]
     helper: frontend-source/integration/js/task-0148-measurement-cursor-columns.js
     styles: frontend-source/integration/css/task-0148-measurement-cursor-columns.css
     hosts: ["[data-testid='measurement-columns-menu-trigger']", "[data-testid='measurement-columns-menu']", "[data-testid='measurement-table']"]
     stable_selectors: ["[data-measurement-cursor-column]", "[data-measurement-cursor-value]"]
+    menu_structure: {single_header: "Видимость измерений", flat_order: [existing_measurements, x1, y1, x2, y2, delta_x, delta_y], cursor_subgroup_heading_forbidden: true, divider: absent}
     eligibility: {off: [], single: [x1, y1], dual: [x1, y1, x2, y2, delta_x, delta_y], non_time_spectrum: []}
     trace_mapping: exact_legendgroup_then_first_visible_non_overlay_plotly_trace
     cleanup: "pane removal deletes its latent intent/subscription; active pane/type/mode drop immediately removes ineligible columns without disturbing existing measurement columns"
@@ -664,15 +691,16 @@ integration_seams:
     invalid_area_draft_policy: no_loader
     spinner_animation: {keyframes: loader-rotate, normal: "800ms linear infinite", reduced_motion: "1600ms linear infinite", static_forbidden: true}
   - id: pane-plot-autoscale
-    action_interface: "double-click ignores numeric mirrors and requests true Plotly autorange/full-domain for both spatial axes, then atomically clears/reprojects frontend range nodes for the clicked pane and eligible linked panes"
+    action_interface: "double-click on the graph surface ignores numeric mirrors and requests true Plotly autorange/full-domain for both spatial axes, then atomically clears/reprojects frontend range nodes for the clicked pane and eligible linked panes; it never opens or changes a slider"
     production_consumer: public/js/app.js
-    helper: frontend-source/integration/js/task-0140-plot-autoscale.js
+    helper: [frontend-source/integration/js/task-0140-plot-autoscale.js, frontend-source/integration/js/task-0153-ui-regressions.js]
     host: "[data-pane-host]"
     eligible_plot_types: [time, spectrum, spectrogram, persistence]
     baseline_lifecycle: "retain pane/output identity and slider visibility only; numeric ranges are never captured as a reset baseline"
     slider_state_eligibility: [time, spectrum]
     log_range_semantics: preserve_plotly_coordinates
-    isolation: [clicked_pane_plus_enabled_frontend_links_only, no_range_settings_or_revision, no_backend_or_dsp, no_main_signal_change, no_heatmap_color_range_change]
+    event_isolation: {graph_surface: plot_autoscale_only, visible_in_plot_slider: local_slider_reset, settings_range: local_field_auto_reset}
+    isolation: [clicked_pane_plus_enabled_frontend_links_only, no_range_settings_or_revision, no_backend_or_dsp, no_main_signal_change, no_heatmap_color_range_change, no_slider_visibility_change, no_pane_menu_open, no_settings_page_change]
   - id: linked-spectrum-persistence-axes
     action_interface: "when enabled, ready Spectrum/Persistence frequency relayouts project canonical Hz to every other eligible pane; ready dB Spectrum magnitude/Persistence power relayouts project the same dB range"
     production_consumer: public/js/app.js
@@ -681,9 +709,9 @@ integration_seams:
     eligible_magnitude: [spectrum_db, persistence_db]
     ignored: [spectrogram_frequency, spectrogram_power, persistence_density, linear_value_axes, hidden_fields]
   - id: area-range-slider-parity
-    action_interface: "render the exact Screen dual-handle slider for each visible applicable active-pane range field; preserve independent empty auto endpoints until their own interaction"
+    action_interface: "render the exact Screen dual-handle slider for each applicable active-pane range field; link flags affect propagation only and never row/slider visibility; preserve independent empty auto endpoints until their own interaction"
     production_consumers: [public/js/app.js, public/js/settings.js]
-    helper: frontend-source/integration/js/task-0141-linked-axes-area-sliders.js
+    helper: [frontend-source/integration/js/task-0141-linked-axes-area-sliders.js, frontend-source/integration/js/task-0153-ui-regressions.js]
   - id: heatmap-jet
     provider_interface: "Backend output supplies colorscale Jet for Spectrogram and Persistence; Frontend passes accepted Plotly payload through unchanged"
     production_provider: public/js/api.js

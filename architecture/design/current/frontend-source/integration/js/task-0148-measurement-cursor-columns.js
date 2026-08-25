@@ -105,7 +105,7 @@
   }
   function menuMarkup(items,assetBase) {
     assetBase=assetBase || ".";
-    return "<div class='inspector-menu-title'>Видимость столбцов</div>"+items.map(function (item) {
+    return items.map(function (item) {
       return "<button type='button' role='menuitemcheckbox' data-measurement-cursor-column='"+item.id+"' aria-checked='"+item.visible+"' aria-disabled='"+(!item.enabled)+"'"+(item.enabled ? "" : " disabled")+"><span>"+escapeHtml(item.label)+"</span><img src='"+assetBase+"/icons/"+(item.visible ? "eye.svg" : "eye-off.svg")+"' alt=''></button>";
     }).join("");
   }
@@ -127,6 +127,7 @@
       intent:"Per-pane frontend-only visibility intent starts all false; ineligible columns hide immediately but retain latent intent for restoration when that pane returns to an eligible cursor mode.",
       mapping:"Resolve the row legendgroup (explicit row.legendgroup, otherwise its stable signal id/name group key), then use the first visible non-overlay trace with that exact legendgroup in Plotly data order; use its sample nearest each pane cursor X.",
       formulas:"delta_x=x2-x1; delta_y=y2-y1",
+      menu:"Append cursor item markup directly after the existing measurement items inside the one Видимость измерений menu. No cursor subgroup title, nested list or second Видимость столбцов heading.",
       isolation:"No API, DSP, settings, session or state_revision mutation.",
       cleanup:"On pane removal, unsubscribe the cursor listener and clear(paneRuntimeKey); on active pane/type/mode changes reconcile immediately."
     }

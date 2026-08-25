@@ -777,7 +777,11 @@ struct SignalAnalyserPersistencePreparationPlan
         display::SignalAnalyserDisplayState,
         signal::Union{Nothing,AnalysedSignal},
     )
-        required = display.active_plot == PERSISTENCE_PLOT &&
+        # Current pane projection marks Persistence by its plot type.  Legacy
+        # combined-plot preparation can retain an older active_plot mirror,
+        # while the authoritative no-time-ROI state already identifies that
+        # Spectrum must be skipped and Persistence must be materialized.
+        required = (display.active_plot == PERSISTENCE_PLOT || display.time_limits === nothing) &&
             signal !== nothing && length(signal.values) >= 2
         new(required ? REQUIRE_PERSISTENCE_PREPARATION : DEFER_PERSISTENCE_PREPARATION)
     end
@@ -875,13 +879,17 @@ function signal_analyser_prepare_display_plots(
         "Analysis source должен входить в состав видимых сигналов Display",
     ))
     prepared_plots = signal_analyser_prepared_plots(state, visible_names)
-    prepared_spectra = signal_analyser_prepared_spectra(
+    # Persistence does not use a time ROI.  Its pane intentionally owns no
+    # SignalTimeLimits, so do not route that valid state through Spectrum
+    # preparation merely to build the legacy combined plots envelope.
+    has_spectrum_time_domain = display.time_limits !== nothing
+    prepared_spectra = has_spectrum_time_domain ? signal_analyser_prepared_spectra(
         state,
         display,
         visible_names,
         materialize_missing = materialize_missing_spectra,
         materialize_signal_names = materialize_spectrum_signal_names,
-    )
+    ) : Dict{SignalSpectrumCacheKey,SignalSpectrumData}()
     prepared_spectrograms = signal_analyser_prepared_spectrograms(
         state,
         display,
@@ -897,12 +905,13 @@ function signal_analyser_prepare_display_plots(
     )
 
     selected_plots = copy(prepared_plots[signal.name])
-    selected_spectrum = signal_analyser_prepared_spectrum_data(
-        state,
-        display,
-        signal,
-        prepared_spectra,
-    )
+    selected_spectrum = has_spectrum_time_domain ?
+        signal_analyser_prepared_spectrum_data(
+            state,
+            display,
+            signal,
+            prepared_spectra,
+        ) : SignalSpectrumData(signal_spectrum_topology(signal))
     spectrogram_key = signal_spectrogram_cache_key(signal, display.spectrogram_settings)
     selected_spectrogram = get(
         prepared_spectrograms,
@@ -934,12 +943,13 @@ function signal_analyser_prepare_display_plots(
     spectrum_traces = Dict{String,Any}[]
     for visible_signal in state.signals
         visible_signal.name in visible_names || continue
-        spectrum_data = signal_analyser_prepared_spectrum_data(
-            state,
-            display,
-            visible_signal,
-            prepared_spectra,
-        )
+        spectrum_data = has_spectrum_time_domain ?
+            signal_analyser_prepared_spectrum_data(
+                state,
+                display,
+                visible_signal,
+                prepared_spectra,
+            ) : SignalSpectrumData(signal_spectrum_topology(visible_signal))
         spectrum_plot = signal_analyser_spectrum_plot(
             spectrum_data,
             display.spectrum_settings,
@@ -3893,7 +3903,11 @@ function signal_analyser_measurement_rows_payload(
     pane = signal_display_active_pane(layout)
     names = signal_analyser_inventory_ordered_names(state, signal_display_pane_members(pane))
     isempty(names) && return Dict{String,Any}[]
-    requested_limits = pane.time_limits::SignalTimeLimits
+    # Persistence has no time viewport. Measurements are still meaningful for
+    # its bound signals and use their full calculation domain in that case.
+    requested_limits = pane.time_limits === nothing ?
+        signal_analyser_full_bound_time_limits(state, display.id, pane) :
+        pane.time_limits::SignalTimeLimits
     rows = Dict{String,Any}[]
     for name in names
         signal = signal_by_name(state, name)

@@ -1,9 +1,9 @@
 # Current application design
 
-- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140 / TASK-0141 / TASK-0142 / TASK-0143 / TASK-0144 / TASK-0145 / TASK-0146 / TASK-0148 / TASK-0150 / TASK-0151 / TASK-0152`
+- Task: `TASK-0111 / TASK-0112 / TASK-0113 / TASK-0114 / TASK-0115 / TASK-0116 / TASK-0117 / TASK-0118 / TASK-0119 / TASK-0124 / TASK-0126 / TASK-0130 / TASK-0132 / TASK-0134 / TASK-0135 / TASK-0138 / TASK-0139 / TASK-0140 / TASK-0141 / TASK-0142 / TASK-0143 / TASK-0144 / TASK-0145 / TASK-0146 / TASK-0148 / TASK-0150 / TASK-0151 / TASK-0152 / TASK-0153`
 - Design mode: `autonomous`
 - Design status: `ready`
-- Design version: `54`
+- Design version: `56`
 - Canonical UI profile: `analytical-dense`
 - Prototype entry: `prototype/index.html`
 - Frontend source root: `frontend-source/`
@@ -12,7 +12,7 @@
 
 ## Scope
 
-V54 is the current integration-safe package for the accepted Signal Analyser
+V56 is the current integration-safe package for the accepted Signal Analyser
 visual baseline v28. It preserves the
 analytical workspace, right settings panel,
 lower multi-tab inspector, automatic settings persistence and existing import/save toolbar seams.
@@ -61,9 +61,11 @@ TASK-0130 graph-cursor extension:
 16. Plot relayout, in-plot sliders and Area/Screen `Диапазоны` controls share one
     frontend-only active-pane viewport mirror with linked Plotly propagation and
     true double-click autorange; viewport numbers never publish settings.
-17. The existing Measurements eye menu adds initially hidden cursor-coordinate
-    columns `X1 / Y1 / X2 / Y2 / ΔX / ΔY`, enabled strictly by the active
-    Time/Spectrum pane's off/single/dual cursor mode and updated live per row.
+17. The existing `Видимость измерений` eye menu is one flat list: existing
+    measurement rows first, followed by initially hidden cursor-coordinate
+    columns `X1 / Y1 / X2 / Y2 / ΔX / ΔY`. There is no redundant
+    `Видимость столбцов` subgroup heading; eligibility remains bound strictly to
+    the active Time/Spectrum pane's off/single/dual cursor mode.
 18. The existing Graph section adds per-pane persisted `Подписывать оси`
     immediately after `Показывать легенду`; it toggles only semantic X/Y and
     applicable colorbar title text, defaulting on.
@@ -73,6 +75,10 @@ TASK-0130 graph-cursor extension:
 20. A dual-cursor Time pane exposes one compact header action before the plot
     type/overflow controls. It opens the existing-style trim dialog and creates
     a rebased signal from the inclusive cursor interval without changing source.
+21. Graph-surface double-click is isolated to true autoscale, Settings `Экран`
+    navigation remains available during background autosave, every applicable
+    Area range owns a mounted dual-thumb slider, and contextual `Значения` /
+    `Рассчитать` actions use the canonical blue Primary MD state.
 
 The exact DSP math, Engee/EngeeDSP call selection, revision transaction
 implementation, Plotly payload construction, sample API mechanics and session
@@ -809,6 +815,54 @@ entry baseline or production transfer inputs.
 - Corrected bounded evidence:
   `evidence/interaction-regression-v54-task0152.json`.
 
+## Exact delta v54 → v55
+
+- Double-click on a ready graph surface has one intent: true X/Y autoscale. It
+  preserves the current time/frequency and amplitude slider visibility, does
+  not open a slider or pane menu, and does not change the Settings page. A
+  double-click on an already visible in-plot slider remains that slider's local
+  reset; a Settings range-row/slider double-click remains field-local Auto.
+- Visible Settings tabs are navigation, not mutation controls. `Экран`
+  activates synchronously by pointer or keyboard even while a prior settings
+  autosave is pending. The request finishes in the background; any late render
+  is accepted only when its captured page activation token is still current.
+- `Область → Диапазоны` always renders one mounted dual-thumb slider immediately
+  after every applicable Time/Frequency/Magnitude/Power/Density range row.
+  Axis-link flags control propagation only; they never hide a local Area range
+  or its slider. Auto endpoints, selected units and stable-node lifecycle remain.
+- `Значения` and `Рассчитать` are canonical Primary MD actions: 32px height,
+  6px radius, accent background, white text and standard primary hover/pressed/
+  disabled states. Their footer placement and action semantics are unchanged.
+- Exact sources are
+  `frontend-source/integration/js/task-0153-ui-regressions.js`,
+  `frontend-source/integration/css/task-0153-ui-regressions.css`; bounded
+  evidence is `evidence/interaction-regression-v55-task0153.json` (6/6).
+- Applied skills: `designer/designer-workflow`, `designer/visual-system`,
+  `designer/data-entry-and-inspection`, `designer/output-and-visualization` and
+  mandatory `figma-design-to-code` for node context. Engee Apps research,
+  composition and page sizing were skipped: no new zone, overlay or resize rule.
+  Figma reference status: `available` for the exact component variants below.
+
+## Exact delta v55 → v56
+
+- Removed only the redundant `Видимость столбцов` subgroup title from the
+  existing Measurements visibility popup. The sole menu title remains
+  `Видимость измерений`.
+- The popup is one flat list in exact order: all existing measurement rows,
+  then `X1`, `Y1`, `X2`, `Y2`, `ΔX`, `ΔY`. No nested list or divider is needed.
+- Existing 244px width, body portal, vertical overflow owner, eye/eye-off icons,
+  cursor eligibility/disabled rules, toggle-without-close, roving focus and
+  Escape/outside restoration are unchanged.
+- Exact transferable source is
+  `frontend-source/integration/js/task-0148-measurement-cursor-columns.js`;
+  bounded evidence is
+  `evidence/interaction-regression-v56-task0153-measurements-menu.json`.
+- Applied skills: `designer/designer-workflow` and
+  `designer/data-entry-and-inspection`. Visual-system, Engee Apps research,
+  composition and page sizing were skipped because the accepted menu geometry,
+  tokens, states and layout are preserved. Figma reference status:
+  `not_required`.
+
 ## Sources
 
 - `architecture/application-spec.yaml`.
@@ -829,6 +883,8 @@ entry baseline or production transfer inputs.
 - User TASK-0142 corrections from chat on 2026-08-24 for enabled applicable
   Area/Screen bounds, independent endpoint validators/borders, Min-first message
   priority and local error copy without raw internal exceptions.
+- User TASK-0153 regressions from chat on 2026-08-25 for autoscale event
+  isolation, Screen-tab continuity, complete Area sliders and blue footer actions.
 - User TASK-0130 request from chat on 2026-08-20 for one- or two-cursor graph
   modes in the existing pane menu.
 - User TASK-0132 screenshot and correction from chat on 2026-08-24 for the
@@ -958,6 +1014,9 @@ The exact required Signal ColorPicker node was re-read successfully on 2026-08-2
 | Category | Exact Figma URL / node ID | Status | Extracted decision | User override |
 |---|---|---|---|---|
 | Signal ColorPicker | https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=1779-11344&p=f&m=dev / `1779:11344` | available | 284px surface, radius 8px, `0 2px 8px #2121211A`, Roboto 14, 16px padding, exact 32px target with a 24px swatch at 4px on every side, separate centered persistent tick layer, two equal 32px footer buttons | Palette contents are the restored original eight application colors. Scheme dropdown plus line/marker/fill/interpolation are omitted. |
+| Settings Tab | https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=301-7286&p=f / `301:7286` | available | Second-level Primary: 32px row, 8px horizontal/4px vertical padding, accent-soft selected fill, 3px accent bottom indicator, Roboto Regular 14 | Current dense settings-tab geometry is retained; only activation lifecycle is corrected. |
+| Area Slider | https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=321-7209&p=f / `321:7209`; https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=321-7221&p=f / `321:7221` | available | 4px full-width track and stable Default/Hover-area states; control presence does not change geometry | Existing dual-thumb Screen slider is reused exactly in Area; no new slider visual. |
+| Footer Primary Button | https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=316-9885&p=f / `316:9885` | available | Primary MD: 32px height, 12px horizontal/6px vertical padding, 6px radius, `#1b84b8` fill, `#166a93` 1px border, white Roboto Regular 14 | Applied to `Значения` and `Рассчитать`; existing footer layout remains. |
 
 The broader v31 audit below records the earlier 2026-08-18 reader limitation
 and remains provenance for inherited, unchanged components. Those rows do not
@@ -1018,7 +1077,7 @@ override the successful v32 node-specific read above.
 | `Курсор` / `Два курсора` menu row | click/keyboard | Selects one mutually exclusive pane-local mode; clicking the active row turns it off | default, hover, focus-visible, checked, disabled | menu closes; no API, autosave or cross-pane state |
 | Graph cursor line | pointer drag / Arrow / Home / End | Snaps to nearest visible X sample/bin and updates the overlaid X/ΔX/trace readout | default, hover, focus-visible, dragging, clamped | constrained to current Plotly plot rectangle; consumes only its own gesture |
 | Graph relayout/refresh with cursors | zoom/pan/linked-axis relayout | Existing cursor is retained or clamped to nearest sample inside the new visible X range | ready, clamped, unavailable | no cursor position/mode propagation to linked panes |
-| Measurements cursor columns | three-dot eye menu / cursor update | Off hides/disables all; single enables X1/Y1; dual enables all six; cells update from first exact-legendgroup visible trace | hidden, disabled, visible, live | pane-local intent; table remains horizontal scroll owner |
+| Measurements cursor columns | three-dot eye menu / cursor update | One `Видимость измерений` flat list shows existing measurements first and cursor rows second; off hides/disables all cursor rows, single enables X1/Y1, dual enables all six | hidden, disabled, visible, live | 244px body portal retains its existing vertical overflow/focus owner; table remains horizontal scroll owner |
 | `Подписывать оси` | change | Clear/restore semantic X/Y and applicable colorbar title text only | checked, unchecked, applying-disabled | per-pane persisted; no output/DSP invalidation |
 | Plot graph surface | pointer hover | Native Plotly unified/closest tooltip remains absent for every plot type | ready, zoom, pan, cursor | cursor overlay/readout remains available |
 | Dual-cursor Time trim action | click/keyboard | Open operation-style trim modal with source/interval read-only and required target name | hidden-ineligible, default, focus, modal-open | inserted before plot type/overflow only while eligible; no reserved width otherwise |
@@ -1168,7 +1227,7 @@ screenshot because shell/menu geometry is inherited unchanged from v41.
 | `integration/js/task-0140-plot-autoscale.js` | existing plot identity/cleanup/double-click branches in `public/js/app.js` | integrate helper unchanged | True Plotly autorange for both spatial axes; clear frontend mirrors; only enabled frontend link propagation; preserve heatmap color range |
 | `integration/js/task-0139-loading-overlays.js` | settings/layout/output lifecycles in `public/js/app.js` | integrate controller unchanged | Begin before mutation, settle current token only at ready/empty/error; sync after workspace render |
 | `integration/js/task-0144-synchronized-ranges.js` + `task-0146-range-lifecycle.js` | Plotly relayout and existing Area/Screen range renderers | integrate helpers unchanged | Frontend viewport only; stable nodes/generation; no settings/API/output/DSP/revision/session publication |
-| `integration/css/task-0148-measurement-cursor-columns.css` + `integration/js/task-0148-measurement-cursor-columns.js` | existing Measurements table and three-dot eye menu | append/integrate unchanged | Six hidden pane-local intents; cursor mode eligibility; exact legendgroup first visible trace |
+| `integration/css/task-0148-measurement-cursor-columns.css` + `integration/js/task-0148-measurement-cursor-columns.js` | existing Measurements table and three-dot eye menu | append/integrate unchanged | One flat menu with existing measurements then six cursor rows; no cursor subgroup title; hidden pane-local intents and eligibility unchanged |
 | `integration/js/task-0150-0151-axis-labels-hover.js` | Graph settings inventory and every Plotly payload/overlay-trace path | integrate unchanged | Per-pane title checkbox, title-text-only updates, hovermode false and trace hover disabled |
 | `integration/html/dialogs/signal-trim.fragment.html` + `integration/js/task-0152-cursor-trim-signal.js` | pane header, cursor subscription, body modal portal, signal mutation queue | integrate unchanged singleton/helper | Time dual-cursor eligibility; inclusive sorted interval; busy continuity; typed errors; accepted inventory |
 | `integration/html/dialogs/signal-operation.fragment.html` | `public/js/app.js` runtime template → `document.body` | integrate unchanged singleton | Never edit `public/index.html` |
@@ -1191,7 +1250,7 @@ Features extend those hosts; they do not replace their parents or bootstrap.
 | `settings-autosave-provider` | Serialized autosave for Signal, Area and Screen; Extrema calculation remains explicit | same | existing `public/js/settings.js` + `public/js/app.js` |
 | `pane-slider-visibility` | One active-pane draft projected into pane menu and Area checkboxes; both synchronize immediately | UI mock | existing `public/js/app.js` + inventory in `public/js/settings.js` |
 | `pane-graph-cursors` | Existing menu gains single/dual check rows; pane-local off/single/dual controller snaps and clamps overlay cursors, preserving finite `X = 0` as a valid nearest candidate | v37 UI fragment + bridge | existing `public/js/app.js` menu sync/click + Plotly react/relayout/clear lifecycle |
-| `measurement-cursor-columns` | Existing Measurements eye menu gains six mode-gated frontend-only columns with signed deltas | v52 bounded regression | existing `public/js/app.js` cursor subscription + Measurements renderer/menu |
+| `measurement-cursor-columns` | Existing `Видимость измерений` eye menu stays one flat list and gains six mode-gated frontend-only columns with signed deltas after existing items | v52 + v56 bounded regressions | existing `public/js/app.js` cursor subscription + Measurements renderer/menu |
 | `pane-axis-labels-and-hover-policy` | Persist per-pane title visibility; change title text only; never render native Plotly hover labels | v52 bounded regression | existing `public/js/settings.js` inventory + `public/js/app.js` Plotly queue |
 | `cursor-trim-signal` | Eligible dual-cursor Time action creates a rebased inclusive signal segment | v53 bounded regression | `public/js/api.js` trim provider + existing `public/js/app.js` signal mutation/modal lifecycle |
 | `linked-axis-draft` | Immediate scope relocation, values retained | UI mock | existing `public/js/app.js` + `public/js/settings.js` |
@@ -1201,10 +1260,10 @@ Features extend those hosts; they do not replace their parents or bootstrap.
 | `sample-time-extrema-markers` | Exact active display/pane, successful TIME rows filtered by `signal_name` and `sample_index`; `row.signal_color`; lowest finite graph number; never Spectrum bins | v40 helper regression | existing extrema state → existing sample renderer |
 | `signal-sample-calculated-columns` | Three fixed base columns plus three provider-authored optional columns, all hidden initially; existing 244px eye menu; no square_root UI | v43 UI helper + bridge | `public/js/api.js` row fields → existing `public/js/app.js` sample renderer/menu events |
 | `scoped-output-loading` | Exact-pane loader for pane type/valid Area output refresh; single display-canvas loader for layout reconciliation with stale guards and layout priority | v43 controller + bridge | existing settings/layout/output branches in `public/js/app.js` |
-| `pane-plot-autoscale` | Current provider/default or rendered full-domain X/Y baseline; Plotly-native log coordinates; clicked-pane isolation | v44 helper + bounded regression | existing `Plotly.react`, updateLayout cleanup and graph double-click branches in `public/js/app.js` |
+| `pane-plot-autoscale` | Graph-surface double click means true full-domain X/Y autoscale only; Plotly-native log coordinates; slider visibility/menu/settings remain unchanged | v44 + v55 helper bounded regressions | existing `Plotly.react`, updateLayout cleanup and isolated graph double-click branch in `public/js/app.js` |
 | `signal-operation-provider` | UI sends operation metadata and user body only; provider executes via Engee and owns hidden envelope/binding/cleanup | mock | `public/js/api.js` → existing `public/js/app.js` body portal |
 | `signal-membership-main` | Checkbox owns pane membership; one explicit main signal owns row emphasis and Signal settings context | deterministic mock state/API | existing `public/js/app.js` + existing layout/view providers |
-| `settings-context-routing` | Pane selects Area page; display selection/creation selects Screen page | actual production UI in file harness | existing `public/js/app.js` event delegation |
+| `settings-context-routing` | Pane selects Area; display selection/creation selects Screen synchronously, including while a prior settings apply continues in background | actual production UI audit + v55 bounded regression | existing `public/js/app.js` event delegation with late-completion guard |
 | `pane-type-context-routing` | Accepted plot-type mutation selects Area and rerenders only Area content | v32 prototype | existing `public/js/app.js` pane ValueSelect/postLayout path |
 | `signal-color-draft` | HEX/Jet draft preview; popover Apply updates Signal draft and triggers metadata autosave | v32 UI fragment | existing Signal editor autosave |
 | `legacy-import-export-provider` | Preserve existing v26 actions/dialogs | none | `public/js/native-session-io.js` |
@@ -1532,3 +1591,9 @@ render or leak the wrapper mechanics.
 - `v46`: TASK-0142 keeps applicable Area/Screen bounds editable, gives Min/Max
   independent validation and red borders, shows only the first left-to-right
   local message and forbids pair borders and raw internal field-error text.
+- `v55`: TASK-0153 isolates graph double-click to autoscale, makes `Экран`
+  navigation independent of background autosave, restores one slider for every
+  applicable Area range and promotes `Значения`/`Рассчитать` to Primary MD.
+- `v56`: TASK-0153 removes the redundant `Видимость столбцов` cursor subgroup
+  title and keeps one flat `Видимость измерений` menu ordered as existing
+  measurement rows followed by X1/Y1/X2/Y2/ΔX/ΔY.

@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0143-bootstrap-loader.css">
   <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0145-standard-busy-cursor.css">
   <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0148-measurement-cursor-columns.css">
+  <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0153-ui-regressions.css">
 </head>
 <body>
   <main class="app-shell" data-testid="app-shell" aria-label="Анализатор сигналов">
@@ -100,8 +101,8 @@
         <div id="settings-content" class="settings-scroll" role="tabpanel" aria-labelledby="settings-tab-display" data-settings-content data-testid="settings-content"></div>
         <footer class="settings-apply-block" data-testid="settings-footer" data-apply-root="true">
           <span class="settings-status visually-hidden" role="status" aria-live="polite" data-settings-status></span>
-          <button class="button" type="button" data-testid="signal-values-action" hidden>Значения</button>
-          <button class="button" type="button" data-testid="extrema-values" hidden>Рассчитать</button>
+          <button class="button button-primary" type="button" data-testid="signal-values-action" hidden>Значения</button>
+          <button class="button button-primary" type="button" data-testid="extrema-values" hidden>Рассчитать</button>
           <span id="settings-apply-status" class="visually-hidden" data-apply-announcement aria-live="assertive"></span>
         </footer>
       </aside>
@@ -279,6 +280,7 @@
   <script src="../architecture/design/current/frontend-source/integration/js/task-0148-measurement-cursor-columns.js"></script>
   <script src="../architecture/design/current/frontend-source/integration/js/task-0150-0151-axis-labels-hover.js"></script>
   <script src="../architecture/design/current/frontend-source/integration/js/task-0152-cursor-trim-signal.js"></script>
+  <script src="../architecture/design/current/frontend-source/integration/js/task-0153-ui-regressions.js"></script>
   <script src="./js/api.js"></script>
   <script src="./js/value-select.js"></script>
   <script src="./js/numeric.js"></script>

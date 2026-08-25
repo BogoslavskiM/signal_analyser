@@ -322,6 +322,115 @@
   };
 }(window));
 
+(function registerSignalAnalyserTask0153(window) {
+  "use strict";
+
+  var AREA_RANGES = {
+    time: [
+      { fieldId:"time.x_limits", axis:"time", label:"Пределы времени", unitField:"time.units" },
+      { fieldId:"time.y_limits", axis:"amplitude", label:"Пределы амплитуды" }
+    ],
+    spectrum: [
+      { fieldId:"spectrum.frequency_limits", axis:"frequency", label:"Пределы частоты", unitField:"spectrum.frequency_units" },
+      { fieldId:"spectrum.y_limits", axis:"magnitude", label:"Пределы магнитуды" }
+    ],
+    spectrogram: [
+      { fieldId:"time.x_limits", axis:"time", label:"Пределы времени", unitField:"spectrogram.time_units" },
+      { fieldId:"spectrogram.frequency_limits", axis:"frequency", label:"Пределы частоты", unitField:"spectrogram.frequency_units" },
+      { fieldId:"spectrogram.power_limits", axis:"power", label:"Пределы мощности" }
+    ],
+    persistence: [
+      { fieldId:"persistence.frequency_limits", axis:"frequency", label:"Пределы частоты", unitField:"persistence.frequency_units" },
+      { fieldId:"persistence.power_limits", axis:"power", label:"Пределы мощности" },
+      { fieldId:"persistence.density_limits", axis:"density", label:"Пределы плотности" }
+    ]
+  };
+
+  function cleanType(value) {
+    value=String(value == null ? "" : value).toLowerCase();
+    if (/spectrogram|спектрограмм/.test(value)) return "spectrogram";
+    if (/persistence|персистент/.test(value)) return "persistence";
+    if (/spectrum|спектр/.test(value)) return "spectrum";
+    if (/time|временн/.test(value)) return "time";
+    return "";
+  }
+
+  function areaRanges(plotType) {
+    return (AREA_RANGES[cleanType(plotType)] || []).map(function (item) {
+      return Object.assign({}, item, {
+        scope:"area",
+        sliderComponent:"screen-range-slider",
+        sliderRequired:true,
+        linkedVisibilityIndependent:true,
+        emptyEndpoints:"independent_auto_until_that_endpoint_is_touched"
+      });
+    });
+  }
+
+  function closest(target, selector) {
+    return target && typeof target.closest === "function" ? target.closest(selector) : null;
+  }
+
+  function doubleClickIntent(target, plotHost) {
+    if (closest(target, "[data-screen-range-slider], .settings-field-row[data-range-boundary-validation]")) return "settings_range_reset";
+    var inPlotSlider=closest(target, ".rangeslider-container, [data-amplitude-slider]");
+    if (inPlotSlider && (!plotHost || typeof plotHost.contains !== "function" || plotHost.contains(inPlotSlider))) return "in_plot_slider_reset";
+    var plotSurface=closest(target, ".nsewdrag, .plotly, .plot-container, .svg-container");
+    if (plotHost && (target === plotHost || plotSurface && plotHost.contains(plotSurface))) return "plot_autoscale";
+    return "ignore";
+  }
+
+  function plotDoubleClickProjection(state) {
+    state=state || {};
+    return {
+      action:"plot_autoscale",
+      trueAutorange:true,
+      xRangeSliderVisible:!!state.xRangeSliderVisible,
+      yRangeSliderVisible:!!state.yRangeSliderVisible,
+      sliderVisibilityMutation:false,
+      paneMenuMutation:false,
+      settingsPageMutation:false,
+      backendMutation:false
+    };
+  }
+
+  function settingsTabIntent(page, state) {
+    state=state || {};
+    var available=state.available !== false;
+    return {
+      accepted:available,
+      page:available ? String(page || "") : String(state.currentPage || ""),
+      backgroundApplyContinues:!!state.applying,
+      blockedByApply:false,
+      activationToken:Number(state.activationToken || 0) + (available ? 1 : 0)
+    };
+  }
+
+  function decorateFooter(root) {
+    if (!root || typeof root.querySelectorAll !== "function") return 0;
+    var nodes=root.querySelectorAll("[data-testid='signal-values-action'], [data-testid='extrema-values']");
+    Array.prototype.forEach.call(nodes,function (node) {
+      node.classList.add("button-primary");
+      node.dataset.footerActionStyle="primary";
+    });
+    return nodes.length;
+  }
+
+  window.SignalAnalyserTask0153={
+    areaRanges:areaRanges,
+    doubleClickIntent:doubleClickIntent,
+    plotDoubleClickProjection:plotDoubleClickProjection,
+    settingsTabIntent:settingsTabIntent,
+    decorateFooter:decorateFooter,
+    contract:{
+      doubleClick:"A double-click on the ready graph surface performs true X/Y autoscale only. It never enables, opens or hides the in-plot time/frequency/amplitude slider, never opens the pane menu and never changes Settings page. Double-click on an already visible in-plot slider remains that slider's local reset; settings range-row double-click remains that field's local Auto reset.",
+      tab:"Every visible Settings tab, including Экран, activates synchronously by pointer or keyboard even while a prior settings autosave/apply is pending. The prior request may finish in the background, but its late render must be ignored unless its page activation token is still current.",
+      areaRanges:"Every applicable range row in Область → Диапазоны is followed by exactly one mounted dual-thumb slider. Linked-axis state changes propagation only and never hides Time/Frequency/Magnitude/Power/Density controls or their sliders.",
+      footer:"Значения and Рассчитать are canonical Primary MD blue actions in the shared settings footer, with the existing 32px geometry and normal disabled state."
+    }
+  };
+}(window));
+
 (function registerMeasurementCursorColumns(window) {
   "use strict";
 
@@ -429,7 +538,7 @@
   }
   function menuMarkup(items,assetBase) {
     assetBase=assetBase || ".";
-    return "<div class='inspector-menu-title'>Видимость столбцов</div>"+items.map(function (item) {
+    return items.map(function (item) {
       return "<button type='button' role='menuitemcheckbox' data-measurement-cursor-column='"+item.id+"' aria-checked='"+item.visible+"' aria-disabled='"+(!item.enabled)+"'"+(item.enabled ? "" : " disabled")+"><span>"+escapeHtml(item.label)+"</span><img src='"+assetBase+"/icons/"+(item.visible ? "eye.svg" : "eye-off.svg")+"' alt=''></button>";
     }).join("");
   }
@@ -451,6 +560,7 @@
       intent:"Per-pane frontend-only visibility intent starts all false; ineligible columns hide immediately but retain latent intent for restoration when that pane returns to an eligible cursor mode.",
       mapping:"Resolve the row legendgroup (explicit row.legendgroup, otherwise its stable signal id/name group key), then use the first visible non-overlay trace with that exact legendgroup in Plotly data order; use its sample nearest each pane cursor X.",
       formulas:"delta_x=x2-x1; delta_y=y2-y1",
+      menu:"Append cursor item markup directly after the existing measurement items inside the one Видимость измерений menu. No cursor subgroup title, nested list or second Видимость столбцов heading.",
       isolation:"No API, DSP, settings, session or state_revision mutation.",
       cleanup:"On pane removal, unsubscribe the cursor listener and clear(paneRuntimeKey); on active pane/type/mode changes reconcile immediately."
     }
@@ -914,7 +1024,7 @@
     state: null, revision: -1, layout: null, activePane: null,
     settingsPage: "display", inspectorPage: "signals", inspectorSearch:"", visibleColumns: { color:true, sample_rate:true, sample_count:true, duration:true, data_type:true }, outputs: {}, outputTokens: {}, pollByPane: {},
     plotQueue: {}, plotInFlight: {}, plotResizeFrames: {}, graphDefaultRangeByPane:{}, graphDefaultSignatureByPane:{}, plotAutoscaleByPane:{}, rangeSliderByPane: {}, rangeSliderDataRangeByPane:{}, rangeSliderFullRangeByPane:{}, rangeSliderAdjustByPane:{}, amplitudeSliderByPane:{}, amplitudeDataRangeByPane:{}, amplitudeFullRangeByPane:{}, amplitudeSelectedRangeByPane:{}, amplitudeDrag:null, amplitudeFrameByPane:{}, amplitudePendingByPane:{}, axisLinkFrame:null, axisLinkPending:null, axisLinkToken:0, spectralLinkFrame:null, spectralLinkPending:null, spectralLinkToken:0, axisLinkSuppressByPane:{}, toastTimer: null,
-    layoutDraft: null, screenDraft: null, screenApplying: false, screenApplyToken: 0, screenApplyTimer: null, settingsPublishTimer: null, settingsPublishing: false, settingsPublishWanted: -1, settingsPublishPublished: -1, settingsCommittedRevision: -1, screenCollapsed: { layout:true }, renderFrame: null, plotlyPromise: null,
+    layoutDraft: null, screenDraft: null, screenApplying: false, screenApplyToken: 0, screenApplyTimer: null, settingsPageActivationToken: 0, settingsPublishTimer: null, settingsPublishing: false, settingsPublishWanted: -1, settingsPublishPublished: -1, settingsCommittedRevision: -1, screenCollapsed: { layout:true }, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
     measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
@@ -936,6 +1046,7 @@
   function scopedLoadingController() { return window.SignalAnalyserScopedLoading || null; }
   function plotAutoscaleController() { return window.SignalAnalyserPlotAutoscale || null; }
   function task0141Controller() { return window.SignalAnalyserTask0141 || null; }
+  function task0153Controller() { return window.SignalAnalyserTask0153 || null; }
   function synchronizedRangeController() { return window.SignalAnalyserSynchronizedRanges || null; }
   function rangeLifecycleKey(displayId, paneId, fieldId) { return [displayId || "", paneId || "", fieldId || ""].join("::"); }
   function rangeLifecycleRecordLive(record) {
@@ -2070,6 +2181,11 @@
   function bindRangeSliderDoubleClick(host, runtimeKey) {
     if (!host || typeof host.addEventListener !== "function" || host.dataset.rangeSliderDoubleClickBound === runtimeKey) return;
     var previousPointerDown = null;
+    function doubleClickIntent(event) {
+      var helper=task0153Controller();
+      if (helper && typeof helper.doubleClickIntent === "function") return helper.doubleClickIntent(event && event.target,host);
+      return rangeSliderTarget(event) ? "in_plot_slider_reset" : "plot_autoscale";
+    }
     function rangeSliderTarget(event) {
       var target = event && event.target;
       var slider = target && typeof target.closest === "function" ? target.closest(".rangeslider-container") : null;
@@ -2106,6 +2222,12 @@
         if (typeof event.stopImmediatePropagation === "function") event.stopImmediatePropagation();
       }
       delete model.amplitudeSelectedRangeByPane[runtimeKey];
+      var regression=task0153Controller();
+      if (regression && typeof regression.plotDoubleClickProjection === "function") {
+        var projection=regression.plotDoubleClickProjection({xRangeSliderVisible:!!model.rangeSliderByPane[runtimeKey],yRangeSliderVisible:!!model.amplitudeSliderByPane[runtimeKey]});
+        host.dataset.rangeSliderVisible=String(projection.xRangeSliderVisible);
+        host.dataset.amplitudeSliderVisible=String(projection.yRangeSliderVisible);
+      }
       var descriptors=helper.descriptors(pane.plot_type).filter(function (descriptor) { return descriptor.axis === "xaxis" || descriptor.axis === "yaxis"; });
       return resetRangeLifecycle(ids[0],ids[1],descriptors);
     }
@@ -2122,8 +2244,12 @@
       } else previousPointerDown = pointerDown;
     }, true);
     host.addEventListener("dblclick", function (event) {
-      if (rangeSliderTarget(event)) resetHorizontalRange(event);
-      else resetGraphRange(event);
+      var intent=doubleClickIntent(event);
+      if (intent === "in_plot_slider_reset") {
+        if (rangeSliderTarget(event)) resetHorizontalRange(event);
+        return;
+      }
+      if (intent === "plot_autoscale") resetGraphRange(event);
     }, true);
     host.dataset.rangeSliderDoubleClickBound = runtimeKey;
   }
@@ -2959,7 +3085,7 @@
 
   function injectAreaRangeSliderSettings(display, pane) {
     if (!pane) return;
-    var host=q("[data-testid='settings-content']"), draft=screenDraftFor(display), helper=task0141Controller();
+    var host=q("[data-testid='settings-content']"), draft=screenDraftFor(display), helper=task0153Controller() || task0141Controller();
     if (!host) return;
     if (pane.plot_type === "spectrum") {
       var group=document.createElement("section"); group.className="settings-group"; group.dataset.spectrumSliderControls="true";
@@ -3863,6 +3989,8 @@
     var values = q("[data-testid='extrema-values']");
     var signalValues = q("[data-testid='signal-values-action']");
     if (!footer || !status || !values) return;
+    var regression=task0153Controller();
+    if (regression && typeof regression.decorateFooter === "function") regression.decorateFooter(footer);
     footer.hidden = model.settingsPage !== "peaks" && model.settingsPage !== "signal";
     if (model.settingsPage === "signal") {
       values.hidden = true;
@@ -5092,6 +5220,7 @@
     var linksDirty = draft.linkTime !== draft.initialLinkTime || draft.linkAmplitude !== draft.initialLinkAmplitude || draft.linkFrequency !== draft.initialLinkFrequency || draft.linkMagnitude !== draft.initialLinkMagnitude;
     var needsSettingsApply = state.areaDirty || state.screenFieldsDirty || linksDirty;
     var applyToken = ++model.screenApplyToken;
+    var pageActivationToken = model.settingsPageActivationToken;
     model.screenApplying = true;
     draft.error = "";
     footer.dataset.phase = "applying";
@@ -5146,7 +5275,8 @@
       footer.dataset.phase = "pristine";
       footer.dataset.message = "";
       settings.markApplied();
-      renderSettings(activeDisplay());
+      if (pageActivationToken === model.settingsPageActivationToken) renderSettings(activeDisplay());
+      else renderApply();
       showToast("Настройки применены", false);
       refreshSnapshot(render).catch(function () {});
       output(true);
@@ -5157,7 +5287,8 @@
       if (model.screenDraft && model.screenDraft.displayId === displayId) model.screenDraft.error = error.message || "Не удалось применить настройки.";
       footer.dataset.phase = error.status === 409 ? "stale" : "error";
       footer.dataset.message = error.message || "Не удалось применить настройки.";
-      renderSettings(activeDisplay());
+      if (pageActivationToken === model.settingsPageActivationToken) renderSettings(activeDisplay());
+      else renderApply();
       showToast(footer.dataset.message, true);
       if (model.settingsPublishWanted > model.settingsPublishPublished) scheduleSettingsPublication(model.settingsPublishWanted);
     });
@@ -5391,7 +5522,17 @@
     if (button.dataset.signalOperation) return void openSignalOperation(button.dataset.signalOperation);
     if (button.dataset.signalOperationClose !== undefined || button.dataset.signalOperationCancel !== undefined) return void closeSignalOperation();
     if (button.dataset.signalOperationSubmit !== undefined) return void submitSignalOperation();
-    if (button.dataset.settingsPage) { if (!contextTabAvailable(button.dataset.settingsPage, paneById(model.activePane)) || model.screenApplying) return; model.settingsPage = button.dataset.settingsPage; if (!peaksSurfaceActive()) stopPeaksPolling(""); renderSettings(activeDisplay()); if (model.settingsPage === "peaks") loadPeaks(); return; }
+    if (button.dataset.settingsPage) {
+      var requestedPage=button.dataset.settingsPage, available=contextTabAvailable(requestedPage,paneById(model.activePane)), regression=task0153Controller();
+      var intent=regression && typeof regression.settingsTabIntent === "function" ? regression.settingsTabIntent(requestedPage,{available:available,applying:model.screenApplying,currentPage:model.settingsPage,activationToken:model.settingsPageActivationToken}) : {accepted:available,page:requestedPage,activationToken:model.settingsPageActivationToken + (available ? 1 : 0)};
+      if (!intent.accepted) return;
+      model.settingsPage=intent.page;
+      model.settingsPageActivationToken=intent.activationToken;
+      if (!peaksSurfaceActive()) stopPeaksPolling("");
+      renderSettings(activeDisplay());
+      if (model.settingsPage === "peaks") loadPeaks();
+      return;
+    }
     if (button.dataset.paneMenu) return void openPaneMenu(button);
     if (button.matches("[data-plot-clear]")) return void openPaneClearConfirm();
     if (button.dataset.plotRangeSlider !== undefined) return void togglePaneRangeSlider();
