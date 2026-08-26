@@ -1749,10 +1749,13 @@ end
 function signal_analyser_time_component_payload(
     signal::AnalysedSignal,
     component::AbstractString,
-    values::Vector{Float64},
+    indices::Vector{Int},
 )::Dict{String,Any}
-    x, y = signal_analyser_bounded_line(signal_time_values(signal), values)
     component_name = String(component)
+    x = Float64[(index - 1) / signal.sample_rate_hz for index in indices]
+    y = component_name == "imaginary" ?
+        Float64[imag(signal.values[index]) for index in indices] :
+        Float64[real(signal.values[index]) for index in indices]
     Dict{String,Any}(
         "type" => "line",
         "x" => x,
@@ -1771,17 +1774,21 @@ end
 function signal_analyser_time_traces_for_payload(
     signal::AnalysedSignal,
 )::Vector{Dict{String,Any}}
+    indices = signal_analyser_bounded_indices(
+        length(signal.values),
+        SIGNAL_ANALYSER_MAX_LINE_POINTS,
+    )
     if signal.is_complex
         return Dict{String,Any}[
             signal_analyser_time_component_payload(
                 signal,
                 "real",
-                Float64.(real.(signal.values)),
+                indices,
             ),
             signal_analyser_time_component_payload(
                 signal,
                 "imaginary",
-                Float64.(imag.(signal.values)),
+                indices,
             ),
         ]
     end
@@ -1789,7 +1796,7 @@ function signal_analyser_time_traces_for_payload(
         signal_analyser_time_component_payload(
             signal,
             "",
-            Float64.(real.(signal.values)),
+            indices,
         ),
     ]
 end
