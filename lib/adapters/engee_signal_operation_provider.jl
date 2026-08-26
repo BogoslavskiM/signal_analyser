@@ -21,19 +21,34 @@ function signal_operation_genie_functions()
             "Операции над сигналами недоступны: engee.genie.recv не найден",
         ))
     end
-    send_value, receive
+    eval_fn = try
+        getproperty(genie_api, :eval)
+    catch
+        throw(WorkspaceUnavailableError(
+            "Операции над сигналами недоступны: engee.genie.eval не найден",
+        ))
+    end
+    send_value, receive, eval_fn
 end
 
 function signal_operation_recv(
     receive,
-    code::AbstractString;
+    name::AbstractString;
     retry_safe::Bool = false,
 )
     attempts = retry_safe ? 2 : 1
     for attempt in 1:attempts
         result = try
-            Base.invokelatest(receive, String(code); context = Main)
+            Base.invokelatest(receive, String(name); context = Main)
         catch err
+            if attempt < attempts
+                @warn "Engee read-only signal operation receive failed; retrying once" attempt exception = (
+                    err,
+                    catch_backtrace(),
+                )
+                yield()
+                continue
+            end
             @error "Engee signal operation receive failed" exception = (err, catch_backtrace())
             throw(SignalOperationProviderError(
                 "engee_transport_error",
@@ -47,6 +62,51 @@ function signal_operation_recv(
             continue
         elseif result isa Exception
             @error "Engee signal operation returned an exception" returned_error =
+                sprint(showerror, result)
+            throw(SignalOperationProviderError(
+                "engee_transport_error",
+                "Вычислительное окружение Engee не выполнило операцию",
+            ))
+        end
+        return result
+    end
+    throw(SignalOperationProviderError(
+        "engee_transport_error",
+        "Вычислительное окружение Engee не выполнило операцию",
+    ))
+end
+
+function signal_operation_eval(
+    eval_fn,
+    code::AbstractString;
+    retry_safe::Bool = false,
+)
+    attempts = retry_safe ? 2 : 1
+    for attempt in 1:attempts
+        result = try
+            Base.invokelatest(eval_fn, String(code))
+        catch err
+            if attempt < attempts
+                @warn "Engee read-only signal operation evaluation failed; retrying once" attempt exception = (
+                    err,
+                    catch_backtrace(),
+                )
+                yield()
+                continue
+            end
+            @error "Engee signal operation evaluation failed" exception = (err, catch_backtrace())
+            throw(SignalOperationProviderError(
+                "engee_transport_error",
+                "Не удалось связаться с вычислительным окружением Engee",
+            ))
+        end
+        if result isa Exception && attempt < attempts
+            @warn "Engee read-only signal operation evaluation returned an exception; retrying once" attempt returned_error =
+                sprint(showerror, result)
+            yield()
+            continue
+        elseif result isa Exception
+            @error "Engee signal operation evaluation returned an exception" returned_error =
                 sprint(showerror, result)
             throw(SignalOperationProviderError(
                 "engee_transport_error",
@@ -89,7 +149,7 @@ function signal_operation_send_checked(send_value, receive, name::String, value)
     )
     remote = signal_operation_recv(
         receive,
-        "getfield(Main, Symbol($(signal_operation_quoted(name))))",
+        name,
         retry_safe = true,
     )
     typeof(remote) == typeof(value) && remote == value || throw(
@@ -347,9 +407,9 @@ function signal_operation_resample_body(
     """
 end
 
-function signal_operation_remote_defined(receive, name::String)::Bool
-    value = signal_operation_recv(
-        receive,
+function signal_operation_remote_defined(eval_fn, name::String)::Bool
+    value = signal_operation_eval(
+        eval_fn,
         "isdefined(Main, Symbol($(signal_operation_quoted(name))))",
         retry_safe = true,
     )
@@ -360,14 +420,14 @@ function signal_operation_remote_defined(receive, name::String)::Bool
     value
 end
 
-function signal_operation_unique_names(receive)::NTuple{3,String}
+function signal_operation_unique_names(eval_fn)::NTuple{3,String}
     suffix = replace(string(UUIDs.uuid4()), "-" => "")
     names = (
         "__signal_analyser_operation_input_$(suffix)__",
         "__signal_analyser_operation_stage_$(suffix)__",
         "__signal_analyser_operation_output_$(suffix)__",
     )
-    any(name -> signal_operation_remote_defined(receive, name), names) && throw(
+    any(name -> signal_operation_remote_defined(eval_fn, name), names) && throw(
         SignalOperationProviderError(
             "engee_scratch_collision",
             "Engee уже содержит одно из временных имён операции",
@@ -379,6 +439,7 @@ end
 function signal_operation_send_chunked!(
     send_value,
     receive,
+    eval_fn,
     input_name::String,
     stage_name::String,
     values::AbstractVector,
@@ -406,16 +467,16 @@ function signal_operation_send_chunked!(
             end
             """
         end
-        signal_operation_recv(receive, assignment) == last_index || throw(
+        signal_operation_eval(eval_fn, assignment) == last_index || throw(
             SignalOperationProviderError(
                 "engee_transport_error",
                 "Engee не подтвердил сборку входного сигнала",
             ),
         )
-        Base.invokelatest(send_value, stage_name, nothing)
+        signal_operation_send_checked(send_value, receive, stage_name, nothing)
     end
-    signal_operation_recv(
-        receive,
+    signal_operation_eval(
+        eval_fn,
         "length(getfield(Main, Symbol($(signal_operation_quoted(input_name)))))",
         retry_safe = true,
     ) == total || throw(SignalOperationProviderError(
@@ -583,30 +644,32 @@ function signal_operation_wrapper(
 )::String
     import_statement = import_engee_dsp ? "import EngeeDSP" : ""
     """
-    $(import_statement)
-    let init_signal = getfield(Main, Symbol($(signal_operation_quoted(input_name)))),
-        __signal_sample_rate_hz__ = $(repr(Float64(sample_rate_hz)))
-        try
-            value = begin
-                $(operation_body)
+    begin
+        $(import_statement)
+        let init_signal = getfield(Main, Symbol($(signal_operation_quoted(input_name)))),
+            __signal_sample_rate_hz__ = $(repr(Float64(sample_rate_hz)))
+            try
+                value = begin
+                    $(operation_body)
+                end
+                value isa AbstractVector || throw(ArgumentError("operation must return a vector"))
+                2 <= length(value) <= $(SIGNAL_DERIVED_MAX_SAMPLES) || throw(ArgumentError(
+                    "operation result length must be between 2 and $(SIGNAL_DERIVED_MAX_SAMPLES)"
+                ))
+                all(item -> item isa Number && !(item isa Bool), value) || throw(ArgumentError(
+                    "operation result must contain numeric values"
+                ))
+                operation_is_complex = !all(item -> item isa Real, value)
+                normalized = operation_is_complex ? ComplexF64.(value) : Float64.(value)
+                all(item -> isfinite(real(item)) && isfinite(imag(item)), normalized) || throw(
+                    ArgumentError("operation result must contain finite values")
+                )
+                global $(output_name) = normalized
+                Int64[1, Int64(length(normalized)), operation_is_complex ? 1 : 0]
+            catch err
+                global $(output_name) = sprint(showerror, err)
+                Int64[0, 0, 0]
             end
-            value isa AbstractVector || throw(ArgumentError("operation must return a vector"))
-            2 <= length(value) <= $(SIGNAL_DERIVED_MAX_SAMPLES) || throw(ArgumentError(
-                "operation result length must be between 2 and $(SIGNAL_DERIVED_MAX_SAMPLES)"
-            ))
-            all(item -> item isa Number && !(item isa Bool), value) || throw(ArgumentError(
-                "operation result must contain numeric values"
-            ))
-            operation_is_complex = !all(item -> item isa Real, value)
-            normalized = operation_is_complex ? ComplexF64.(value) : Float64.(value)
-            all(item -> isfinite(real(item)) && isfinite(imag(item)), normalized) || throw(
-                ArgumentError("operation result must contain finite values")
-            )
-            global $(output_name) = normalized
-            Int[1, length(normalized), operation_is_complex ? 1 : 0]
-        catch err
-            global $(output_name) = sprint(showerror, err)
-            Int[0, 0, 0]
         end
     end
     """
@@ -638,7 +701,7 @@ function signal_operation_preflight_wrapper(code::String)::Nothing
 end
 
 function signal_operation_receive_chunked(
-    receive,
+    eval_fn,
     output_name::String,
     total::Int,
     is_complex::Bool,
@@ -647,8 +710,8 @@ function signal_operation_receive_chunked(
     values = Vector{ComplexF64}(undef, total)
     for first_index in 1:ENGEE_SIGNAL_OPERATION_CHUNK_SAMPLES:total
         last_index = min(total, first_index + ENGEE_SIGNAL_OPERATION_CHUNK_SAMPLES - 1)
-        chunk = signal_operation_recv(
-            receive,
+        chunk = signal_operation_eval(
+            eval_fn,
             "getfield(Main, Symbol($(signal_operation_quoted(output_name))))" *
                 "[$(first_index):$(last_index)]",
             retry_safe = true,
@@ -690,9 +753,9 @@ function signal_operation_cleanup!(send_value, receive, names)::Nothing
                 error("cleanup send was not acknowledged")
             signal_operation_recv(
                 receive,
-                "getfield(Main, Symbol($(signal_operation_quoted(name)))) === nothing",
+                name,
                 retry_safe = true,
-            ) === true || error("cleanup value was not released")
+            ) === nothing || error("cleanup value was not released")
         catch err
             @error "Engee signal operation scratch cleanup failed" scratch_name = name exception = (
                 err,
@@ -710,8 +773,8 @@ function signal_operation_execute(
 )::SignalOperationProviderResult
     signal_operation_validate_source(source, command)
     operation_body = signal_operation_body(source, command)
-    send_value, receive = signal_operation_genie_functions()
-    names = signal_operation_unique_names(receive)
+    send_value, receive, eval_fn = signal_operation_genie_functions()
+    names = signal_operation_unique_names(eval_fn)
     input_name, stage_name, output_name = names
     transport_values = source.is_complex ? copy(source.values) : Float64[real(value) for value in source.values]
     try
@@ -726,19 +789,17 @@ function signal_operation_execute(
         signal_operation_send_chunked!(
             send_value,
             receive,
+            eval_fn,
             input_name,
             stage_name,
             transport_values,
         )
-        metadata = signal_operation_recv(receive, wrapper)
-        metadata isa AbstractVector && length(metadata) == 3 && all(
-            value -> value isa Integer && !(value isa Bool),
-            metadata,
-        ) || throw(SignalOperationProviderError(
+        metadata = signal_operation_eval(eval_fn, wrapper)
+        metadata isa Vector{Int64} && length(metadata) == 3 || throw(SignalOperationProviderError(
             "engee_transport_error",
             "Engee вернул некорректный статус операции",
         ))
-        status_flag, result_length, complex_flag = Int.(metadata)
+        status_flag, result_length, complex_flag = metadata
         status_flag in (0, 1) && complex_flag in (0, 1) || throw(
             SignalOperationProviderError(
                 "engee_transport_error",
@@ -749,7 +810,7 @@ function signal_operation_execute(
             remote_error = try
                 value = signal_operation_recv(
                     receive,
-                    "getfield(Main, Symbol($(signal_operation_quoted(output_name))))",
+                    output_name,
                     retry_safe = true,
                 )
                 value isa AbstractString ? String(value) : "Некорректный тип текста ошибки"
@@ -773,7 +834,7 @@ function signal_operation_execute(
         ))
         result_is_complex = complex_flag == 1
         result = signal_operation_receive_chunked(
-            receive,
+            eval_fn,
             output_name,
             total,
             result_is_complex,
