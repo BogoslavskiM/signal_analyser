@@ -3178,6 +3178,11 @@
   function acceptGraphCursorSnapshot(snapshot) {
     if (!snapshot || !snapshot.key) return;
     model.measurementCursorSnapshotByPane[snapshot.key]=snapshot;
+    /* The trim action belongs to the pane that emitted this snapshot.  Do not
+       gate its toolbar projection by the currently selected inspector pane:
+       cursor mode can be changed from any pane menu before that pane becomes
+       the active settings/Measurements context. */
+    projectSignalTrimActions();
     scheduleMeasurementCursorProjection(snapshot.key);
   }
   function paneGraphCursorController() {
@@ -3593,6 +3598,7 @@
        source is authoritative even when it is currently unbound/hidden. */
     var hasPaneMain=!!pane && Object.prototype.hasOwnProperty.call(pane, "analysis_signal");
     var selected=hasPaneMain ? pane.analysis_signal : model.state && (model.state.selected_signal || model.state.analysis_signal || model.state.row_selected_signal);
+    if (!String(selected == null ? "" : selected).trim()) selected=model.state && (model.state.selected_signal || model.state.analysis_signal || model.state.row_selected_signal);
     return signals.filter(function (signal) {
       return selected && (signal.name === selected || stableSignalId(signal) === selected);
     })[0] || null;

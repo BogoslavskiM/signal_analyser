@@ -8,8 +8,9 @@ module.exports = async function task0120PaneMainStatic(assert) {
   const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
 
   const mainResolver = (app.match(/function mainSignalForPane\(pane\)[\s\S]*?\n  \}/) || [""])[0];
-  assert(/Object\.prototype\.hasOwnProperty\.call\(pane, "analysis_signal"\)/.test(mainResolver), "pane-local main must distinguish an explicit null from an absent legacy field");
-  assert(/var selected=hasPaneMain \? pane\.analysis_signal : model\.state && \(model\.state\.selected_signal \|\| model\.state\.analysis_signal \|\| model\.state\.row_selected_signal\)/.test(mainResolver), "pane analysis_signal must take priority; legacy display selection is fallback only");
+  assert(/Object\.prototype\.hasOwnProperty\.call\(pane, "analysis_signal"\)/.test(mainResolver), "pane-local main must distinguish a populated main from an absent legacy field");
+  assert(/var selected=hasPaneMain \? pane\.analysis_signal : model\.state && \(model\.state\.selected_signal \|\| model\.state\.analysis_signal \|\| model\.state\.row_selected_signal\)/.test(mainResolver), "a non-empty pane analysis_signal must remain authoritative");
+  assert(/if \(!String\(selected == null \? "" : selected\)\.trim\(\)\) selected=model\.state && \(model\.state\.selected_signal \|\| model\.state\.analysis_signal \|\| model\.state\.row_selected_signal\);/.test(mainResolver), "a null or blank pane analysis_signal must fall back to the accepted selected, analysis, or row-selected signal");
   assert(/return selected && \(signal\.name === selected \|\| stableSignalId\(signal\) === selected\)/.test(mainResolver), "pane-local main must resolve through both persisted signal name and stable id");
 
   const inspector = (app.match(/function renderInspector\(\)[\s\S]*?\n  \}\n\n  function measurementValue/) || [""])[0];

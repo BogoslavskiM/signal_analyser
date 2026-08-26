@@ -18,7 +18,10 @@ function createAssert(file) {
 }
 
 (async function run() {
-  const tests = findTests(__dirname).sort();
+  const filter = String(process.env.TEST_FILTER || "").trim();
+  const allTests = findTests(__dirname).sort();
+  const tests = filter ? allTests.filter((file) => path.relative(__dirname, file).includes(filter)) : allTests;
+  if (filter && tests.length === 0) throw new Error(`no frontend tests match TEST_FILTER=${filter}`);
   for (const file of tests) {
     await require(file)(createAssert(file));
     console.log(`ok - ${path.relative(__dirname, file)}`);
