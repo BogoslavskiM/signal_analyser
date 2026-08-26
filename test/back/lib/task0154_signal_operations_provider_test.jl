@@ -86,3 +86,27 @@ end
     @test occursin("metadata = signal_operation_recv(receive, wrapper)", source)
     @test occursin("retry_safe = true", source)
 end
+
+@testset "TASK-0154 wrapper metadata is Serde-safe and external errors are sanitized" begin
+    source = TASK0154_PROVIDER.source("lib", "adapters", "engee_signal_operation_provider.jl")
+    wrapper_start = first(findfirst("function signal_operation_wrapper", source))
+    wrapper_end = first(findfirst("function signal_operation_parse_has_error", source))
+    wrapper = source[wrapper_start:wrapper_end]
+    execute_start = first(findfirst("function signal_operation_execute", source))
+    execute = source[execute_start:end]
+
+    @test occursin("Int[1, length(normalized), operation_is_complex ? 1 : 0]", wrapper)
+    @test occursin("global \$(output_name) = normalized", wrapper)
+    @test occursin("global \$(output_name) = sprint(showerror, err)", wrapper)
+    @test occursin("Int[0, 0, 0]", wrapper)
+    @test !occursin("NamedTuple", wrapper) && !occursin("Dict", wrapper)
+
+    @test occursin("metadata isa AbstractVector && length(metadata) == 3", execute)
+    @test occursin("value isa Integer && !(value isa Bool)", execute)
+    @test occursin("status_flag in (0, 1) && complex_flag in (0, 1)", execute)
+    @test occursin("metadata = signal_operation_recv(receive, wrapper)", execute)
+    @test !occursin("metadata = signal_operation_recv(receive, wrapper, retry_safe = true)", execute)
+    @test occursin("value isa AbstractString ? String(value)", execute)
+    @test occursin("SignalOperationProviderError(\n                \"operation_failed\",\n                \"Операция не выполнена в Engee\"", execute)
+    @test !occursin("remote_error,\n            )", execute)
+end

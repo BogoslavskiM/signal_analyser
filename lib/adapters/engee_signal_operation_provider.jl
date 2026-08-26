@@ -603,21 +603,10 @@ function signal_operation_wrapper(
                 ArgumentError("operation result must contain finite values")
             )
             global $(output_name) = normalized
-            (
-                ok=true,
-                length=length(normalized),
-                is_complex=operation_is_complex,
-                error_type="",
-                error_message="",
-            )
+            Int[1, length(normalized), operation_is_complex ? 1 : 0]
         catch err
-            (
-                ok=false,
-                length=0,
-                is_complex=false,
-                error_type=string(typeof(err)),
-                error_message=sprint(showerror, err),
-            )
+            global $(output_name) = sprint(showerror, err)
+            Int[0, 0, 0]
         end
     end
     """
@@ -742,35 +731,52 @@ function signal_operation_execute(
             transport_values,
         )
         metadata = signal_operation_recv(receive, wrapper)
-        metadata isa NamedTuple && all(
-            property -> hasproperty(metadata, property),
-            (:ok, :length, :is_complex, :error_type, :error_message),
+        metadata isa AbstractVector && length(metadata) == 3 && all(
+            value -> value isa Integer && !(value isa Bool),
+            metadata,
         ) || throw(SignalOperationProviderError(
             "engee_transport_error",
             "Engee вернул некорректный статус операции",
         ))
-        if metadata.ok !== true
-            @error "Engee signal operation failed" operation = command.operation error_type =
-                String(metadata.error_type) error_message = String(metadata.error_message)
+        status_flag, result_length, complex_flag = Int.(metadata)
+        status_flag in (0, 1) && complex_flag in (0, 1) || throw(
+            SignalOperationProviderError(
+                "engee_transport_error",
+                "Engee вернул некорректные флаги статуса операции",
+            ),
+        )
+        if status_flag == 0
+            remote_error = try
+                value = signal_operation_recv(
+                    receive,
+                    "getfield(Main, Symbol($(signal_operation_quoted(output_name))))",
+                    retry_safe = true,
+                )
+                value isa AbstractString ? String(value) : "Некорректный тип текста ошибки"
+            catch err
+                @error "Failed to read sanitized Engee signal operation error" exception = (
+                    err,
+                    catch_backtrace(),
+                )
+                "Текст ошибки недоступен"
+            end
+            @error "Engee signal operation failed" operation = command.operation remote_error
             throw(SignalOperationProviderError(
                 "operation_failed",
                 "Операция не выполнена в Engee",
             ))
         end
-        total = metadata.length isa Integer ? Int(metadata.length) : 0
+        total = result_length
         2 <= total <= SIGNAL_DERIVED_MAX_SAMPLES || throw(SignalOperationProviderError(
             "invalid_operation_result",
             "Engee вернул результат недопустимой длины",
         ))
-        metadata.is_complex isa Bool || throw(SignalOperationProviderError(
-            "invalid_operation_result",
-            "Engee вернул некорректный тип результата",
-        ))
+        result_is_complex = complex_flag == 1
         result = signal_operation_receive_chunked(
             receive,
             output_name,
             total,
-            metadata.is_complex,
+            result_is_complex,
             signal_operation_result_sample_rate(source, command),
         )
         if command.operation == "custom-preprocess" &&
