@@ -1098,6 +1098,10 @@ function signal_analyser_run_output_worker!(
             job = lock(state.lock) do
                 state.output_manager === manager || return nothing
                 signal_analyser_sync_output_pages_unlocked!(state)
+                # Peaks are queued only by an explicit user action.  Finish the
+                # current finite output job, then yield the single worker lane
+                # before draining any more background output contexts.
+                isempty(manager.queued_peaks_contexts) || return nothing
                 while !isempty(manager.queued_contexts)
                     context = popfirst!(manager.queued_contexts)
                     page_id = signal_analyser_output_page_id(
@@ -1679,10 +1683,6 @@ function signal_analyser_start_peaks_worker_unlocked!(
     manager::SignalAnalyserCalculationManager,
 )::Bool
     manager.active_task === nothing || return false
-    isempty(manager.queued_contexts) || begin
-        signal_analyser_start_output_worker_unlocked!(state, manager)
-        return false
-    end
     while !isempty(manager.queued_peaks_contexts)
         context = popfirst!(manager.queued_peaks_contexts)
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
@@ -1703,6 +1703,10 @@ function signal_analyser_start_peaks_worker_unlocked!(
         manager.active_task_is_worker = true
         return true
     end
+    isempty(manager.queued_contexts) || return signal_analyser_start_output_worker_unlocked!(
+        state,
+        manager,
+    )
     false
 end
 

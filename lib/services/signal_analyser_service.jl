@@ -2680,7 +2680,6 @@ function signal_spectrum_calculate(
 )::SignalSpectrumData
     samples = query.topology == ONE_SIDED_SPECTRUM ?
         Float64.(real.(query.values)) : copy(query.values)
-    times = collect(0:(length(samples) - 1)) ./ query.sample_rate_hz
     options = Any[
         "Leakage",
         query.leakage,
@@ -2690,7 +2689,7 @@ function signal_spectrum_calculate(
     append!(options, signal_spectrum_frequency_limits_options(query.frequency_limits))
     power, frequencies, _ = signal_analyser_pspectrum(
         samples,
-        times,
+        query.sample_rate_hz,
         "power",
         options...,
     )
@@ -2811,7 +2810,6 @@ function signal_spectrogram_calculate(
 )::SignalSpectrogramData
     samples = query.topology == ONE_SIDED_SPECTRUM ?
         Float64.(real.(query.values)) : copy(query.values)
-    times = collect(0:(length(samples) - 1)) ./ query.sample_rate_hz
     options = Any[
         "Leakage",
         query.leakage,
@@ -2823,7 +2821,7 @@ function signal_spectrogram_calculate(
     append!(options, signal_spectrum_frequency_limits_options(query.frequency_limits))
     power, frequencies, segment_centers = signal_analyser_pspectrum(
         samples,
-        times,
+        query.sample_rate_hz,
         "spectrogram",
         options...,
     )
@@ -2991,10 +2989,9 @@ function signal_persistence_calculate(
 )::SignalPersistenceData
     samples = query.topology == ONE_SIDED_SPECTRUM ?
         Float64.(real.(query.values)) : copy(query.values)
-    times = collect(0:(length(samples) - 1)) ./ query.sample_rate_hz
     occurrence, frequencies, power_levels = signal_analyser_pspectrum(
         samples,
-        times,
+        query.sample_rate_hz,
         "persistence",
         "Leakage",
         query.leakage,
