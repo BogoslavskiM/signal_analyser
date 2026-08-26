@@ -161,7 +161,10 @@ module.exports = async function testTask0101UnifiedValueSelect(assert) {
 
   assert(/<script src="\.\/js\/value-select\.js"><\/script>[\s\S]*?<script src="\.\/js\/settings\.js"><\/script>/.test(html), "the shared selector component must load before every settings/app consumer");
   assert((html.match(/data-value-select-popup/g) || []).length === 1, "production HTML must own exactly one shared selector popup");
-  assert(!/<select\b/i.test(html + app + settings) && !/createElement\(["']select/i.test(app + settings), "non-vendor production source must create no native select element");
+  const nativeSelects = app.match(/<select\b/gi) || [];
+  assert(!/<select\b/i.test(html + settings) && !/createElement\(["']select/i.test(app + settings), "shared settings surfaces must not create native select elements");
+  assert(nativeSelects.length === 2 && /<select id='signal-trim-source' data-signal-trim-source/.test(app) && /<select class='signal-operation-control' data-signal-operation-parameter=/.test(app), "the only native selects must be the trim source dropdown and V58 operation parameter controls");
+  assert(/<select id='signal-trim-source' data-signal-trim-source/.test(app), "the trim dialog owns its source-signal dropdown as an explicit native form control");
   assert(!/data-pane-type|data-resolution-mode/.test(app + settings), "removed native pane/resolution selector hooks must not survive");
 
   const enumIds = [
@@ -179,7 +182,7 @@ module.exports = async function testTask0101UnifiedValueSelect(assert) {
   assert(/valueSelect\.configure\(select,[\s\S]*?testId:"pane-type-"/.test(app), "every pane plot-type trigger must use the shared selector");
   assert(/testId:"extrema-mode-trigger"[\s\S]*?onSelect:chooseExtremaMode/.test(app), "Extrema mode must use the same selector and existing draft callback");
   const untilNextFunction = (name) => { const start = app.indexOf("function " + name + "("); const end = start < 0 ? -1 : app.indexOf("\n  function ", start + 1); return start < 0 ? "" : app.slice(start, end < 0 ? app.length : end); };
-  assert(/data-testid="display-overflow-menu"/.test(html) && /data-testid="signal-columns-menu"/.test(html) && !/valueSelect\.(?:markup|configure)/.test(untilNextFunction("renderColumnMenu")) && !/valueSelect\.(?:markup|configure)/.test(untilNextFunction("renderLayoutDraft")) && /signal-operation-select/.test(app) && /valueSelect\.markup\(\{ key:"signal-operation-type"/.test(app), "action, popover-layout and eye-state menus must remain excluded while the approved signal-operation dialog uses the shared selector");
+  assert(/data-testid="display-overflow-menu"/.test(html) && /data-testid="signal-columns-menu"/.test(html) && !/valueSelect\.(?:markup|configure)/.test(untilNextFunction("renderColumnMenu")) && !/valueSelect\.(?:markup|configure)/.test(untilNextFunction("renderLayoutDraft")) && /signal-operation-select/.test(app) && /valueSelect\.markup\(\{\s*key:"signal-operation-type"/.test(app), "action, popover-layout and eye-state menus must remain excluded while the approved signal-operation dialog uses the shared selector");
 
   const triggerRule = (css.match(/\.control,\s*\n\.select-trigger\s*\{[^}]*\}/) || [""])[0];
   const paneRule = (css.match(/\.plot-control-cluster \.pane-select\s*\{[^}]*\}/) || [""])[0];

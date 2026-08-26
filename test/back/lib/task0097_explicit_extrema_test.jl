@@ -53,7 +53,8 @@ end
 
 @testset "HND-0581 Extrema defaults and explicit calculation request validation" begin
     state = TASK0097_EXPLICIT_EXTREMA.default_signal_analyser_state()
-    pane = only(state.display_layouts["display-1"].panes)
+    layout = state.display_layouts["display-1"]
+    pane = only(filter(item -> item.id == layout.active_pane_id, layout.panes))
     @test pane.peaks_settings == TASK0097_EXPLICIT_EXTREMA.SignalPeaksSettings()
     @test pane.peaks_settings.number_of_peaks == 5
     fields = TASK0097_EXPLICIT_EXTREMA.signal_peaks_settings_fields_payload(

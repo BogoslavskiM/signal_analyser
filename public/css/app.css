@@ -3473,49 +3473,6 @@ body {
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
-.plot-cursor-readout {
-  position: absolute;
-  min-width: 180px;
-  max-width: min(320px, calc(100% - 16px));
-  display: grid;
-  gap: 4px;
-  padding: 7px 9px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: rgba(255,255,255,.92);
-  box-shadow: var(--shadow-menu);
-  color: var(--text);
-  font-size: 11px;
-  line-height: 1.35;
-  pointer-events: none;
-}
-
-.plot-cursor-readout-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px 10px;
-  font-weight: 500;
-}
-
-.plot-cursor-readout-row {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(72px, 1fr) auto;
-  gap: 10px;
-}
-
-.plot-cursor-readout-row span:first-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.plot-cursor-readout-values {
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
 /* TASK-0135: compact server point search and TIME extrema marker projection. */
 .inspector-body[data-testid="inspector-pane-samples"] {
   grid-template-rows: 32px minmax(0, 1fr);
@@ -3846,4 +3803,329 @@ body {
   border-color: var(--primary-disabled);
   background: var(--primary-disabled);
   color: var(--surface);
+}
+
+/* TASK-0154 canonical trim form and stacked operation failure alertdialog. */
+.pane-trim-action {
+  width: auto;
+  min-width: 0;
+  height: 32px;
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.pane-trim-action:hover:not(:disabled) { background: var(--surface-muted); }
+.pane-trim-action:active:not(:disabled) { background: var(--button-active, #f2f2f2); }
+.pane-trim-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pane-trim-action:disabled { color: var(--muted); cursor: default; opacity: .62; }
+
+.signal-trim-dialog,
+.signal-operation-error-dialog {
+  z-index: var(--layer-modal);
+  width: min(480px, calc(100vw - 32px));
+  min-width: 0;
+  max-height: calc(100vh - 32px);
+  display: grid;
+  grid-template-rows: 48px minmax(0, 1fr) 56px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-dialog);
+}
+
+.signal-trim-dialog .dialog-titlebar h2,
+.signal-operation-error-dialog .dialog-titlebar h2 {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.signal-trim-body { padding: 16px; }
+.signal-trim-form { display: grid; gap: 12px; }
+
+.signal-trim-row,
+.signal-trim-overwrite-row {
+  min-height: 32px;
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.signal-trim-row > label,
+.signal-trim-label { color: var(--text); }
+
+.signal-trim-row input,
+.signal-trim-row select,
+.signal-trim-readonly {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  outline: 0;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.signal-trim-select { position: relative; min-width: 0; }
+.signal-trim-row select {
+  appearance: none;
+  padding-right: 28px;
+}
+.signal-trim-select.select-trigger-arrow::after { pointer-events: none; }
+
+.signal-trim-row input:hover:not(:disabled),
+.signal-trim-row select:hover:not(:disabled) { border-color: var(--muted); }
+.signal-trim-row input:focus-visible,
+.signal-trim-row select:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.signal-trim-row input[aria-invalid="true"] { border: 2px solid var(--danger); padding: 5px 7px; }
+.signal-trim-row input:disabled,
+.signal-trim-row select:disabled { background-color: var(--surface-muted); color: var(--muted); cursor: default; }
+
+.signal-trim-readonly {
+  display: flex;
+  align-items: center;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.signal-trim-row-with-message { align-items: start; }
+.signal-trim-row-with-message > label { padding-top: 6px; }
+.signal-trim-field-message {
+  margin: 4px 0 0;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.signal-trim-overwrite-row .checkbox-control {
+  width: auto;
+  min-width: 0;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.signal-trim-overwrite-row .checkbox-control input { width: 16px; height: 16px; margin: 0; }
+
+.signal-operation-error-layer { z-index: calc(var(--layer-modal-backdrop) + 20); }
+.signal-operation-error-dialog { z-index: calc(var(--layer-modal) + 20); }
+.signal-operation-error-message {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+[data-testid="signal-operation-dialog"] .operation-status.error { display: none !important; }
+
+/* V58: preprocessing inside the existing signal-operation dialog. */
+.signal-operation-dialog {
+  width: min(740px, calc(100vw - 32px));
+  min-width: 0;
+}
+
+.signal-operation-dialog .dialog-titlebar h2 {
+  font-size: 20px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.signal-operation-form,
+.signal-operation-fields,
+.signal-operation-parameter-list {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.signal-operation-row {
+  display: grid;
+  min-height: 40px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+}
+
+.signal-operation-row > label,
+.signal-operation-row > .signal-operation-label {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.signal-operation-control-wrap {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.signal-operation-control,
+.signal-operation-row .value-select-trigger,
+.signal-operation-row select,
+.signal-operation-row input,
+.signal-operation-row textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  box-sizing: border-box;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.signal-operation-row input,
+.signal-operation-row select {
+  height: 40px;
+  padding: 10px 16px;
+}
+
+.signal-operation-row select {
+  padding-right: 32px;
+}
+
+.signal-operation-row textarea {
+  min-height: 142px;
+  resize: vertical;
+  padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.signal-operation-row input:focus-visible,
+.signal-operation-row select:focus-visible,
+.signal-operation-row textarea:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  outline-offset: 1px;
+}
+
+.signal-operation-row input:disabled,
+.signal-operation-row select:disabled,
+.signal-operation-row textarea:disabled {
+  background: var(--surface-muted);
+  color: var(--muted);
+  cursor: default;
+}
+
+.signal-operation-row.has-error input,
+.signal-operation-row.has-error select,
+.signal-operation-row.has-error textarea {
+  border: 2px solid var(--danger);
+}
+
+.signal-operation-row.has-error input,
+.signal-operation-row.has-error select {
+  padding: 9px 15px;
+}
+
+.signal-operation-unit {
+  min-width: 52px;
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.signal-operation-field-message,
+.signal-operation-field-hint {
+  grid-column: 2;
+  margin: -8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.signal-operation-field-message {
+  color: var(--danger);
+}
+
+.signal-operation-field-hint {
+  color: var(--muted);
+}
+
+.signal-operation-parameters-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.signal-operation-parameters-title::after {
+  height: 1px;
+  flex: 1 1 auto;
+  background: var(--line);
+  content: "";
+}
+
+.signal-operation-availability {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-left: 236px;
+  padding: 8px;
+  border: 1px solid var(--warning);
+  border-radius: 6px;
+  background: var(--warning-soft);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.signal-operation-auto-note {
+  margin: -4px 0 0 236px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.signal-operation-overwrite-row {
+  align-items: start;
+}
+
+.signal-operation-overwrite-row .checkbox-field {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+.signal-operation-overwrite-row input[type="checkbox"] {
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+  margin: 0;
+  border-radius: 2px;
+}
+
+@media (max-width: 691px) {
+  .signal-operation-dialog {
+    width: calc(100vw - 32px);
+  }
 }

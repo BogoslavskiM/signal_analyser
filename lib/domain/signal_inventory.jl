@@ -160,13 +160,142 @@ const SIGNAL_DERIVED_OPERATION_NAMES = Set([
     "multiply",
     "fft",
     "custom",
+    "bandpass",
+    "bandstop",
+    "highpass",
+    "lowpass",
+    "detrend",
+    "fill-missing",
+    "smooth",
+    "envelope",
+    "denoise",
+    "resample",
+    "custom-preprocess",
 ])
 const SIGNAL_DERIVED_MAX_SAMPLES = 5_000_000
+
+abstract type AbstractSignalOperationParameters end
+
+struct NoSignalOperationParameters <: AbstractSignalOperationParameters end
+
+struct MultiplySignalOperationParameters <: AbstractSignalOperationParameters
+    multiplier::Float64
+end
+
+struct CustomSignalOperationParameters <: AbstractSignalOperationParameters
+    body::String
+end
+
+struct FilterSignalOperationParameters <: AbstractSignalOperationParameters
+    frequency_units::String
+    lower_passband::Union{Nothing,Float64}
+    upper_passband::Union{Nothing,Float64}
+    passband::Union{Nothing,Float64}
+    steepness::Float64
+    stopband_attenuation_db::Float64
+end
+
+struct DetrendSignalOperationParameters <: AbstractSignalOperationParameters
+    method::String
+    breakpoints::Vector{Int}
+end
+
+struct FillMissingSignalOperationParameters <: AbstractSignalOperationParameters
+    method::String
+    end_method::String
+    constant_value::Union{Nothing,Float64}
+    end_constant_value::Union{Nothing,Float64}
+    window_length::Union{Nothing,Int}
+    neighbors::Union{Nothing,Int}
+    ar_order::Union{Nothing,Int}
+end
+
+struct SmoothSignalOperationParameters <: AbstractSignalOperationParameters
+    method::String
+    window_type::String
+    duration_units::Union{Nothing,String}
+    window_duration::Union{Nothing,Float64}
+    smoothing_factor::Union{Nothing,Float64}
+    polynomial_degree::Union{Nothing,Int}
+end
+
+struct EnvelopeSignalOperationParameters <: AbstractSignalOperationParameters
+    side::String
+    method::String
+    filter_order::Union{Nothing,Int}
+    length_units::Union{Nothing,String}
+    window_length::Union{Nothing,Float64}
+    separation_units::Union{Nothing,String}
+    maxima_separation::Union{Nothing,Float64}
+end
+
+struct DenoiseSignalOperationParameters <: AbstractSignalOperationParameters
+    wavelet_family::String
+    wavelet_number::Int
+    method::String
+    levels::Union{Nothing,Int}
+    rule::Union{Nothing,String}
+    noise_estimate::Union{Nothing,String}
+    fdr_q::Union{Nothing,Float64}
+end
+
+struct ResampleSignalOperationParameters <: AbstractSignalOperationParameters
+    mode::String
+    target_sample_rate_hz::Union{Nothing,Float64}
+    upsample_factor::Union{Nothing,Int}
+    downsample_factor::Union{Nothing,Int}
+    interpolation::Union{Nothing,String}
+end
+
+const SignalOperationParameters = Union{
+    NoSignalOperationParameters,
+    MultiplySignalOperationParameters,
+    CustomSignalOperationParameters,
+    FilterSignalOperationParameters,
+    DetrendSignalOperationParameters,
+    FillMissingSignalOperationParameters,
+    SmoothSignalOperationParameters,
+    EnvelopeSignalOperationParameters,
+    DenoiseSignalOperationParameters,
+    ResampleSignalOperationParameters,
+}
+
+const SIGNAL_MATH_OPERATION_NAMES = Set([
+    "abs",
+    "square",
+    "sqrt",
+    "signed_sqrt_abs",
+    "multiply",
+    "fft",
+    "custom",
+])
+
+function signal_operation_parameters_match(
+    operation::String,
+    parameters::SignalOperationParameters,
+)::Bool
+    operation in ("abs", "square", "sqrt", "signed_sqrt_abs", "fft") &&
+        return parameters isa NoSignalOperationParameters
+    operation == "multiply" && return parameters isa MultiplySignalOperationParameters
+    operation in ("custom", "custom-preprocess") &&
+        return parameters isa CustomSignalOperationParameters
+    operation in ("bandpass", "bandstop", "highpass", "lowpass") &&
+        return parameters isa FilterSignalOperationParameters
+    operation == "detrend" && return parameters isa DetrendSignalOperationParameters
+    operation == "fill-missing" && return parameters isa FillMissingSignalOperationParameters
+    operation == "smooth" && return parameters isa SmoothSignalOperationParameters
+    operation == "envelope" && return parameters isa EnvelopeSignalOperationParameters
+    operation == "denoise" && return parameters isa DenoiseSignalOperationParameters
+    operation == "resample" && return parameters isa ResampleSignalOperationParameters
+    false
+end
 
 struct DeriveSignalCommand <: AbstractSignalInventoryCommand
     revision::Int
     source_signal_id::String
+    operation_kind::String
     operation::String
+    parameters::SignalOperationParameters
     target_name::String
     overwrite::Bool
     multiplier::Union{Nothing,Float64}
@@ -175,62 +304,103 @@ struct DeriveSignalCommand <: AbstractSignalInventoryCommand
     function DeriveSignalCommand(
         revision::Int,
         source_signal_id::AbstractString,
+        operation_kind::AbstractString,
         operation::AbstractString,
+        parameters::SignalOperationParameters,
         target_name::AbstractString,
         overwrite::Bool,
-        multiplier::Union{Nothing,Real},
-        body::Union{Nothing,AbstractString},
     )
         revision >= 0 || throw(ArgumentError("Ревизия Signals command не может быть отрицательной"))
         source_id = String(strip(String(source_signal_id)))
         isempty(source_id) && throw(ArgumentError("Source signal id не может быть пустым"))
-        operation_name = String(operation)
+        kind = String(operation_kind)
+        kind in ("math", "preprocess") || throw(ArgumentError(
+            "Раздел операции должен быть math или preprocess",
+        ))
+        operation_name = String(operation) == "signed-sqrt" ?
+            "signed_sqrt_abs" : String(operation)
         operation_name in SIGNAL_DERIVED_OPERATION_NAMES || throw(ArgumentError(
             "Неподдерживаемая операция над сигналом",
         ))
+        (operation_name in SIGNAL_MATH_OPERATION_NAMES) == (kind == "math") || throw(
+            ArgumentError("Операция не входит в выбранный раздел"),
+        )
+        signal_operation_parameters_match(operation_name, parameters) || throw(
+            ArgumentError("Параметры не соответствуют выбранной операции"),
+        )
         name = String(strip(String(target_name)))
         isempty(name) && throw(ArgumentError("Имя производного сигнала не может быть пустым"))
         ncodeunits(name) <= 128 || throw(ArgumentError(
             "Имя производного сигнала не может быть длиннее 128 байт",
         ))
-        typed_multiplier = if multiplier === nothing
-            nothing
-        else
-            multiplier isa Bool && throw(ArgumentError("Множитель должен быть числом, но не Bool"))
-            value = Float64(multiplier)
-            isfinite(value) || throw(ArgumentError("Множитель должен быть конечным числом"))
-            value
-        end
-        operation_name == "multiply" && typed_multiplier === nothing && throw(ArgumentError(
-            "Для операции multiply требуется множитель",
-        ))
-        operation_name != "multiply" && typed_multiplier !== nothing && throw(ArgumentError(
-            "Множитель допустим только для операции multiply",
-        ))
-        operation_body = body === nothing ? nothing : String(body)
-        if operation_name == "custom"
-            operation_body === nothing || !isempty(strip(operation_body)) || throw(ArgumentError(
-                "Тело пользовательской операции не может быть пустым",
-            ))
-            operation_body === nothing && throw(ArgumentError(
-                "Для пользовательской операции требуется тело",
-            ))
-            ncodeunits(operation_body) <= 16_384 || throw(ArgumentError(
-                "Тело пользовательской операции не может быть длиннее 16384 байт",
-            ))
-        elseif operation_body !== nothing
-            throw(ArgumentError("Тело допустимо только для пользовательской операции"))
-        end
+        typed_multiplier = parameters isa MultiplySignalOperationParameters ?
+            parameters.multiplier : nothing
+        operation_body = parameters isa CustomSignalOperationParameters ?
+            parameters.body : nothing
         new(
             revision,
             source_id,
+            kind,
             operation_name,
+            parameters,
             name,
             overwrite,
             typed_multiplier,
             operation_body,
         )
     end
+end
+
+"""Legacy constructor retained for the existing mathematical-operation clients."""
+function DeriveSignalCommand(
+    revision::Int,
+    source_signal_id::AbstractString,
+    operation::AbstractString,
+    target_name::AbstractString,
+    overwrite::Bool,
+    multiplier::Union{Nothing,Real},
+    body::Union{Nothing,AbstractString},
+)
+    operation_name = String(operation)
+    parameters = if operation_name == "multiply"
+        multiplier === nothing && throw(ArgumentError("Для операции multiply требуется множитель"))
+        multiplier isa Bool && throw(ArgumentError("Множитель должен быть числом, но не Bool"))
+        value = Float64(multiplier)
+        isfinite(value) || throw(ArgumentError("Множитель должен быть конечным числом"))
+        body === nothing || throw(ArgumentError(
+            "Тело допустимо только для пользовательской операции",
+        ))
+        MultiplySignalOperationParameters(value)
+    elseif operation_name == "custom"
+        multiplier === nothing || throw(ArgumentError(
+            "Множитель допустим только для операции multiply",
+        ))
+        operation_body = body === nothing ? "" : String(body)
+        isempty(strip(operation_body)) && throw(ArgumentError(
+            "Для пользовательской операции требуется непустое тело",
+        ))
+        ncodeunits(operation_body) <= 16_384 || throw(ArgumentError(
+            "Тело пользовательской операции не может быть длиннее 16384 байт",
+        ))
+        CustomSignalOperationParameters(operation_body)
+    else
+        multiplier === nothing || throw(ArgumentError(
+            "Множитель допустим только для операции multiply",
+        ))
+        body === nothing || throw(ArgumentError(
+            "Тело допустимо только для пользовательской операции",
+        ))
+        NoSignalOperationParameters()
+    end
+    DeriveSignalCommand(
+        revision,
+        source_signal_id,
+        "math",
+        operation_name,
+        parameters,
+        target_name,
+        overwrite,
+    )
 end
 
 """Create a new zero-origin signal from an inclusive source-time interval."""
@@ -284,8 +454,13 @@ abstract type AbstractSignalOperationProvider end
 struct SignalOperationProviderResult
     values::Vector{ComplexF64}
     is_complex::Bool
+    sample_rate_hz::Union{Nothing,Float64}
 
-    function SignalOperationProviderResult(values::AbstractVector, is_complex::Bool)
+    function SignalOperationProviderResult(
+        values::AbstractVector,
+        is_complex::Bool,
+        sample_rate_hz::Union{Nothing,Real} = nothing,
+    )
         samples = ComplexF64.(values)
         2 <= length(samples) <= SIGNAL_DERIVED_MAX_SAMPLES || throw(ArgumentError(
             "Результат операции должен содержать от 2 до $(SIGNAL_DERIVED_MAX_SAMPLES) отсчётов",
@@ -296,7 +471,19 @@ struct SignalOperationProviderResult
         !is_complex && any(value -> !iszero(imag(value)), samples) && throw(ArgumentError(
             "Вещественный результат содержит комплексные отсчёты",
         ))
-        new(samples, is_complex)
+        rate = if sample_rate_hz === nothing
+            nothing
+        else
+            sample_rate_hz isa Bool && throw(ArgumentError(
+                "Частота дискретизации результата должна быть числом",
+            ))
+            value = Float64(sample_rate_hz)
+            isfinite(value) && value > 0 || throw(ArgumentError(
+                "Частота дискретизации результата должна быть положительной и конечной",
+            ))
+            value
+        end
+        new(samples, is_complex, rate)
     end
 end
 
@@ -323,7 +510,17 @@ end
 struct SignalOperationProviderError <: Exception
     code::String
     message::String
+    field::Union{Nothing,String}
 end
+
+SignalOperationProviderError(code::AbstractString, message::AbstractString) =
+    SignalOperationProviderError(String(code), String(message), nothing)
+
+SignalOperationProviderError(
+    code::AbstractString,
+    message::AbstractString,
+    field::AbstractString,
+) = SignalOperationProviderError(String(code), String(message), String(field))
 
 Base.showerror(io::IO, err::SignalOperationProviderError) = print(io, err.message)
 
@@ -408,8 +605,8 @@ struct WorkspaceSignalSeries
             "Отсчёты сигнала должны быть числами, но не Bool",
         ))
         samples = ComplexF64.(values)
-        all(value -> isfinite(real(value)) && isfinite(imag(value)), samples) ||
-            throw(ArgumentError("Отсчёты сигнала должны быть конечными"))
+        all(value -> !isinf(real(value)) && !isinf(imag(value)), samples) ||
+            throw(ArgumentError("Отсчёты сигнала не должны содержать бесконечные значения"))
         sample_rate_hz isa Bool && throw(ArgumentError(
             "Частота дискретизации должна быть числом, но не Bool",
         ))

@@ -28,14 +28,19 @@ function signal_operation_recv(receive, code::AbstractString)
     result = try
         Base.invokelatest(receive, String(code); context = Main)
     catch err
+        @error "Engee signal operation receive failed" exception = (err, catch_backtrace())
         throw(SignalOperationProviderError(
             "engee_transport_error",
-            "Engee не выполнил операцию: $(sprint(showerror, err))",
+            "Не удалось связаться с вычислительным окружением Engee",
         ))
+    end
+    if result isa Exception
+        @error "Engee signal operation returned an exception" returned_error =
+            sprint(showerror, result)
     end
     result isa Exception && throw(SignalOperationProviderError(
         "engee_transport_error",
-        "Engee не выполнил операцию: $(sprint(showerror, result))",
+        "Вычислительное окружение Engee не выполнило операцию",
     ))
     result
 end
@@ -44,9 +49,10 @@ function signal_operation_send_checked(send_value, receive, name::String, value)
     result = try
         Base.invokelatest(send_value, name, value)
     catch err
+        @error "Engee signal operation send failed" exception = (err, catch_backtrace())
         throw(SignalOperationProviderError(
             "engee_transport_error",
-            "Engee не принял данные операции: $(sprint(showerror, err))",
+            "Не удалось передать данные операции в Engee",
         ))
     end
     status = try
@@ -76,6 +82,263 @@ function signal_operation_send_checked(send_value, receive, name::String, value)
         ),
     )
     nothing
+end
+
+signal_operation_julia_string(value::AbstractString)::String = repr(String(value))
+
+function signal_operation_filter_body(command::DeriveSignalCommand)::String
+    parameters = command.parameters::FilterSignalOperationParameters
+    function_name = command.operation
+    frequency_argument = if command.operation in ("bandpass", "bandstop")
+        "[$(repr(parameters.lower_passband::Float64)), " *
+            "$(repr(parameters.upper_passband::Float64))]"
+    else
+        repr(parameters.passband::Float64)
+    end
+    frequency_call = parameters.frequency_units == "hertz" ?
+        "$(frequency_argument), __signal_sample_rate_hz__" : frequency_argument
+    steepness = command.operation in ("bandpass", "bandstop") ?
+        "[$(repr(parameters.steepness)), $(repr(parameters.steepness))]" :
+        repr(parameters.steepness)
+    "vec(EngeeDSP.Functions.$(function_name)(" *
+        "init_signal, $(frequency_call), " *
+        "\"ImpulseResponse\", \"auto\", " *
+        "\"Steepness\", $(steepness), " *
+        "\"StopbandAttenuation\", $(repr(parameters.stopband_attenuation_db))))"
+end
+
+function signal_operation_detrend_body(command::DeriveSignalCommand)::String
+    parameters = command.parameters::DetrendSignalOperationParameters
+    degree = parameters.method == "constant" ? 0 : 1
+    isempty(parameters.breakpoints) &&
+        return "vec(EngeeDSP.Functions.detrend(init_signal, $(degree)))"
+    "vec(EngeeDSP.Functions.detrend(init_signal, $(degree), " *
+        "$(repr(parameters.breakpoints))))"
+end
+
+function signal_operation_fill_missing_body(command::DeriveSignalCommand)::String
+    parameters = command.parameters::FillMissingSignalOperationParameters
+    method = parameters.method
+    primary = if method == "constant"
+        "filled[missing_indices] .= $(repr(parameters.constant_value::Float64))"
+    elseif method in ("previous", "next", "nearest", "linear", "spline", "pchip", "makima")
+        "filled[missing_indices] = EngeeDSP.Functions.interp1(" *
+            "Float64.(finite_indices), filled[finite_indices], " *
+            "Float64.(missing_indices), $(signal_operation_julia_string(method)), \"extrap\")"
+    elseif method in ("moving_mean", "moving_median")
+        function_name = method == "moving_mean" ? "movmean" : "movmedian"
+        "replacement = EngeeDSP.Functions.$(function_name)(filled, " *
+            "$(parameters.window_length::Int), \"omitnan\"); " *
+            "filled[missing_indices] = replacement[missing_indices]"
+    elseif method == "knn"
+        "for missing_index in missing_indices; " *
+            "ordered = sort(finite_indices; by = index -> abs(index - missing_index)); " *
+            "chosen = ordered[1:$(parameters.neighbors::Int)]; " *
+            "filled[missing_index] = sum(filled[chosen]) / length(chosen); end"
+    elseif method == "autoregressive"
+        "filled = vec(EngeeDSP.Functions.fillgaps(" *
+            "filled, length(filled), $(parameters.ar_order::Int)))"
+    else
+        throw(SignalOperationProviderError(
+            "invalid_operation",
+            "Неподдерживаемый метод заполнения пропусков",
+        ))
+    end
+    edge_method = parameters.end_method
+    edge_override = if edge_method == "same" || method == "autoregressive"
+        "nothing"
+    elseif edge_method == "constant"
+        "filled[edge_indices] .= $(repr(parameters.end_constant_value::Float64))"
+    else
+        "isempty(edge_indices) || (filled[edge_indices] = EngeeDSP.Functions.interp1(" *
+            "Float64.(finite_indices), filled[finite_indices], Float64.(edge_indices), " *
+            "$(signal_operation_julia_string(edge_method)), \"extrap\"))"
+    end
+    minimum_finite = if method == "constant"
+        0
+    elseif method in ("previous", "next", "nearest", "linear", "spline", "pchip", "makima")
+        2
+    else
+        1
+    end
+    edge_method in ("previous", "next", "nearest") &&
+        (minimum_finite = max(minimum_finite, 2))
+    edge_setup = if edge_method == "same" || method == "autoregressive"
+        "edge_indices = Int[]"
+    elseif edge_method == "constant"
+        "edge_indices = isempty(finite_indices) ? copy(missing_indices) : " *
+            "filter(index -> index < first(finite_indices) || " *
+            "index > last(finite_indices), missing_indices)"
+    else
+        "edge_indices = filter(index -> index < first(finite_indices) || " *
+            "index > last(finite_indices), missing_indices)"
+    end
+    """
+    let
+        filled = copy(init_signal)
+        missing_indices = findall(index ->
+            isnan(real(filled[index])) || isnan(imag(filled[index])),
+            eachindex(filled),
+        )
+        if !isempty(missing_indices)
+            finite_indices = setdiff(collect(eachindex(filled)), missing_indices)
+            length(finite_indices) >= $(minimum_finite) || throw(ArgumentError(
+                "not enough finite samples for the selected fill method"
+            ))
+            $(edge_setup)
+            $(primary)
+            $(edge_override)
+        end
+        filled
+    end
+    """
+end
+
+function signal_operation_smooth_window_samples(
+    source::AnalysedSignal,
+    parameters::SmoothSignalOperationParameters,
+)::Union{Nothing,Int}
+    parameters.window_type == "duration" || return nothing
+    parameters.window_duration === nothing && return nothing
+    raw = parameters.duration_units == "seconds" ?
+        parameters.window_duration * source.sample_rate_hz : parameters.window_duration
+    raw <= SIGNAL_DERIVED_MAX_SAMPLES || throw(SignalOperationProviderError(
+        "invalid_operation_parameters",
+        "Длительность окна не должна превышать $(SIGNAL_DERIVED_MAX_SAMPLES) отсчётов",
+        "window_duration",
+    ))
+    rounded = round(Int, raw)
+    rounded >= 1 || throw(SignalOperationProviderError(
+        "invalid_operation_parameters",
+        "Длительность окна должна соответствовать хотя бы одному отсчёту",
+        "window_duration",
+    ))
+    rounded
+end
+
+function signal_operation_smooth_body(
+    source::AnalysedSignal,
+    command::DeriveSignalCommand,
+)::String
+    parameters = command.parameters::SmoothSignalOperationParameters
+    method = Dict(
+        "moving_mean" => "movmean",
+        "moving_median" => "movmedian",
+        "gaussian" => "gaussian",
+        "linear_regression" => "lowess",
+        "quadratic_regression" => "loess",
+        "robust_linear" => "rlowess",
+        "robust_quadratic" => "rloess",
+        "savitzky_golay" => "sgolay",
+    )[parameters.method]
+    arguments = String["init_signal", signal_operation_julia_string(method)]
+    if parameters.window_type == "duration"
+        window = signal_operation_smooth_window_samples(source, parameters)
+        window === nothing || push!(arguments, string(window))
+    else
+        factor = parameters.smoothing_factor::Float64
+        factor in (0.0, 1.0) && throw(SignalOperationProviderError(
+            "provider_parameter_unavailable",
+            "EngeeDSP пока не поддерживает крайнее значение коэффициента сглаживания; выберите значение строго между 0 и 1",
+            "smoothing_factor",
+        ))
+        append!(arguments, ["\"SmoothingFactor\"", repr(factor)])
+    end
+    if parameters.polynomial_degree !== nothing
+        append!(arguments, ["\"Degree\"", string(parameters.polynomial_degree::Int)])
+    end
+    "vec(first(EngeeDSP.Functions.smoothdata($(join(arguments, ", ")))))"
+end
+
+function signal_operation_envelope_count(
+    source::AnalysedSignal,
+    value::Union{Nothing,Float64},
+    units::Union{Nothing,String},
+    field_label::String,
+)::Int
+    value === nothing && throw(SignalOperationProviderError(
+        "invalid_operation_parameters",
+        "Укажите значение поля «$(field_label)»: автоматический выбор для этого метода EngeeDSP недоступен",
+        field_label == "Длина окна" ? "window_length" : "maxima_separation",
+    ))
+    raw = units == "seconds" ? value * source.sample_rate_hz : value
+    field = field_label == "Длина окна" ? "window_length" : "maxima_separation"
+    raw <= SIGNAL_DERIVED_MAX_SAMPLES || throw(SignalOperationProviderError(
+        "invalid_operation_parameters",
+        "Поле «$(field_label)» не должно превышать $(SIGNAL_DERIVED_MAX_SAMPLES) отсчётов",
+        field,
+    ))
+    rounded = round(Int, raw)
+    rounded >= 1 || throw(SignalOperationProviderError(
+        "invalid_operation_parameters",
+        "Поле «$(field_label)» должно соответствовать хотя бы одному отсчёту",
+        field,
+    ))
+    rounded
+end
+
+function signal_operation_envelope_body(
+    source::AnalysedSignal,
+    command::DeriveSignalCommand,
+)::String
+    parameters = command.parameters::EnvelopeSignalOperationParameters
+    call = if parameters.method == "hilbert"
+        "EngeeDSP.Functions.envelope(init_signal; out = :data)"
+    elseif parameters.method == "fir"
+        parameters.filter_order === nothing && throw(SignalOperationProviderError(
+            "invalid_operation_parameters",
+            "Укажите порядок фильтра: автоматический выбор КИХ-порядка EngeeDSP недоступен",
+            "filter_order",
+        ))
+        "EngeeDSP.Functions.envelope(init_signal, $(parameters.filter_order::Int), " *
+            "\"analytic\"; out = :data)"
+    elseif parameters.method == "rms"
+        count = signal_operation_envelope_count(
+            source,
+            parameters.window_length,
+            parameters.length_units,
+            "Длина окна",
+        )
+        "EngeeDSP.Functions.envelope(init_signal, $(count), \"rms\"; out = :data)"
+    else
+        count = signal_operation_envelope_count(
+            source,
+            parameters.maxima_separation,
+            parameters.separation_units,
+            "Расстояние между максимумами",
+        )
+        "EngeeDSP.Functions.envelope(init_signal, $(count), \"peak\"; out = :data)"
+    end
+    property = parameters.side == "upper" ? "yupper" : "ylower"
+    "let result = $(call); vec(result.$(property)); end"
+end
+
+function signal_operation_resample_body(
+    source::AnalysedSignal,
+    command::DeriveSignalCommand,
+)::String
+    parameters = command.parameters::ResampleSignalOperationParameters
+    if parameters.mode == "factor"
+        return "vec(EngeeDSP.Functions.resample(init_signal, " *
+            "$(parameters.upsample_factor::Int), " *
+            "$(parameters.downsample_factor::Int)).y)"
+    end
+    target_rate = parameters.target_sample_rate_hz::Float64
+    interpolation = something(parameters.interpolation, "linear")
+    """
+    let
+        source_time = collect(0:(length(init_signal) - 1)) ./ __signal_sample_rate_hz__
+        result = EngeeDSP.Functions.resample(
+            init_signal,
+            source_time,
+            $(repr(target_rate)),
+            $(signal_operation_julia_string(interpolation)),
+        )
+        keep = findall(time -> time <= last(source_time), result.ty)
+        isempty(keep) && throw(ArgumentError("resample result is outside source time domain"))
+        vec(result.y[keep])
+    end
+    """
 end
 
 function signal_operation_remote_defined(receive, name::String)::Bool
@@ -166,18 +429,193 @@ function signal_operation_builtin_body(command::DeriveSignalCommand)::String
         return "init_signal .* $(repr(command.multiplier::Float64))"
     command.operation == "fft" &&
         return "ComplexF64.(EngeeDSP.Functions.fft(init_signal))"
-    command.operation == "custom" && return command.body::String
+    command.operation in ("custom", "custom-preprocess") && return command.body::String
     throw(SignalOperationProviderError("invalid_operation", "Неподдерживаемая операция"))
+end
+
+function signal_operation_body(
+    source::AnalysedSignal,
+    command::DeriveSignalCommand,
+)::String
+    command.operation_kind == "math" && return signal_operation_builtin_body(command)
+    command.operation in ("bandpass", "bandstop", "highpass", "lowpass") &&
+        return signal_operation_filter_body(command)
+    command.operation == "detrend" && return signal_operation_detrend_body(command)
+    command.operation == "fill-missing" && return signal_operation_fill_missing_body(command)
+    command.operation == "smooth" && return signal_operation_smooth_body(source, command)
+    command.operation == "envelope" && return signal_operation_envelope_body(source, command)
+    command.operation == "resample" && return signal_operation_resample_body(source, command)
+    command.operation == "custom-preprocess" && return signal_operation_builtin_body(command)
+    command.operation == "denoise" && throw(SignalOperationProviderError(
+        "operation_unavailable",
+        "Подавление шума недоступно: в EngeeDSP нет необходимой функции",
+    ))
+    throw(SignalOperationProviderError("invalid_operation", "Неподдерживаемая операция"))
+end
+
+signal_operation_value_is_finite(value)::Bool =
+    isfinite(real(value)) && isfinite(imag(value))
+
+signal_operation_value_is_infinite(value)::Bool =
+    isinf(real(value)) || isinf(imag(value))
+
+function signal_operation_validate_source(
+    source::AnalysedSignal,
+    command::DeriveSignalCommand,
+)::Nothing
+    if command.operation == "signed_sqrt_abs" && source.is_complex
+        throw(SignalOperationProviderError(
+            "incompatible_signal_type",
+            "Операция signed_sqrt_abs доступна только для вещественного сигнала",
+        ))
+    end
+    if command.operation == "sqrt" && !source.is_complex &&
+        any(value -> real(value) < 0.0, source.values)
+        throw(SignalOperationProviderError(
+            "incompatible_signal_values",
+            "Обычный корень требует неотрицательных значений вещественного сигнала",
+        ))
+    end
+    command.operation_kind == "preprocess" || return nothing
+    command.operation == "denoise" && throw(SignalOperationProviderError(
+        "operation_unavailable",
+        "Подавление шума недоступно: в EngeeDSP нет необходимой функции",
+    ))
+    if command.operation in ("envelope", "detrend") && source.is_complex
+        throw(SignalOperationProviderError(
+            "incompatible_signal_type",
+            command.operation == "envelope" ?
+                "Огибающая доступна только для вещественного сигнала" :
+                "Удаление тренда доступно только для вещественного сигнала",
+        ))
+    end
+    if command.operation == "fill-missing"
+        any(signal_operation_value_is_infinite, source.values) && throw(
+            SignalOperationProviderError(
+                "incompatible_signal_values",
+                "Сначала удалите бесконечные значения из исходного сигнала",
+            ),
+        )
+        parameters = command.parameters::FillMissingSignalOperationParameters
+        missing_count = count(value -> !signal_operation_value_is_finite(value), source.values)
+        finite_count = length(source.values) - missing_count
+        if source.is_complex && parameters.method == "moving_median"
+            throw(SignalOperationProviderError(
+                "incompatible_signal_type",
+                "Скользящая медиана не поддерживает комплексный сигнал",
+            ))
+        end
+        if parameters.method in ("moving_mean", "moving_median") &&
+            (parameters.window_length::Int) > length(source.values)
+            throw(SignalOperationProviderError(
+                "invalid_operation_parameters",
+                "Длина окна не должна превышать длину сигнала",
+                "window_length",
+            ))
+        elseif parameters.method == "knn" &&
+            (parameters.neighbors::Int) > finite_count
+            throw(SignalOperationProviderError(
+                "invalid_operation_parameters",
+                "Количество соседей не должно превышать число конечных отсчётов",
+                "neighbors",
+            ))
+        elseif parameters.method == "autoregressive" &&
+            (parameters.ar_order::Int) >= finite_count
+            throw(SignalOperationProviderError(
+                "invalid_operation_parameters",
+                "Порядок модели должен быть меньше числа конечных отсчётов",
+                "ar_order",
+            ))
+        end
+    elseif !all(signal_operation_value_is_finite, source.values)
+        throw(SignalOperationProviderError(
+            "incompatible_signal_values",
+            "Операция требует конечных значений исходного сигнала",
+        ))
+    end
+    if command.operation in ("bandpass", "bandstop", "highpass", "lowpass")
+        parameters = command.parameters::FilterSignalOperationParameters
+        nyquist = parameters.frequency_units == "hertz" ? source.sample_rate_hz / 2 : 1.0
+        frequencies = command.operation in ("bandpass", "bandstop") ?
+            [parameters.lower_passband::Float64, parameters.upper_passband::Float64] :
+            [parameters.passband::Float64]
+        all(value -> 0.0 < value < nyquist, frequencies) || throw(
+            SignalOperationProviderError(
+                "invalid_operation_parameters",
+                "Частоты должны быть больше нуля и меньше частоты Найквиста",
+                command.operation in ("bandpass", "bandstop") ?
+                    "upper_passband" : "passband",
+            ),
+        )
+    elseif command.operation == "detrend"
+        parameters = command.parameters::DetrendSignalOperationParameters
+        all(index -> 1 <= index <= length(source.values), parameters.breakpoints) || throw(
+            SignalOperationProviderError(
+                "invalid_operation_parameters",
+                "Точки разбиения должны входить в диапазон отсчётов сигнала",
+                "breakpoints",
+            ),
+        )
+    elseif command.operation == "smooth"
+        parameters = command.parameters::SmoothSignalOperationParameters
+        window = signal_operation_smooth_window_samples(source, parameters)
+        if window !== nothing && parameters.polynomial_degree !== nothing &&
+            parameters.polynomial_degree >= window
+            throw(SignalOperationProviderError(
+                "invalid_operation_parameters",
+                "Степень полинома должна быть меньше длины окна",
+                "polynomial_degree",
+            ))
+        end
+    elseif command.operation == "resample"
+        parameters = command.parameters::ResampleSignalOperationParameters
+        output_length_estimate = if parameters.mode == "factor"
+            Float64(length(source.values)) *
+                Float64(parameters.upsample_factor::Int) /
+                Float64(parameters.downsample_factor::Int)
+        else
+            signal_duration_s(source) * (parameters.target_sample_rate_hz::Float64) + 1.0
+        end
+        field = parameters.mode == "factor" ? "upsample_factor" :
+            "target_sample_rate_hz"
+        output_length = ceil(output_length_estimate)
+        isfinite(output_length) &&
+            2.0 <= output_length <= SIGNAL_DERIVED_MAX_SAMPLES || throw(
+            SignalOperationProviderError(
+                "invalid_operation_parameters",
+                "Передискретизация должна дать от 2 до $(SIGNAL_DERIVED_MAX_SAMPLES) отсчётов",
+                field,
+            ),
+        )
+        result_rate = parameters.mode == "factor" ?
+            source.sample_rate_hz *
+                (Float64(parameters.upsample_factor::Int) /
+                    Float64(parameters.downsample_factor::Int)) :
+            parameters.target_sample_rate_hz::Float64
+        isfinite(result_rate) && result_rate > 0.0 || throw(
+            SignalOperationProviderError(
+                "invalid_operation_parameters",
+                "Результирующая частота дискретизации должна быть положительной и конечной",
+                field,
+            ),
+        )
+    end
+    nothing
 end
 
 function signal_operation_wrapper(
     input_name::String,
     output_name::String,
     operation_body::String,
+    ;
+    import_engee_dsp::Bool = false,
+    sample_rate_hz::Real = 1.0,
 )::String
+    import_statement = import_engee_dsp ? "import EngeeDSP" : ""
     """
-    import EngeeDSP
-    let init_signal = getfield(Main, Symbol($(signal_operation_quoted(input_name))))
+    $(import_statement)
+    let init_signal = getfield(Main, Symbol($(signal_operation_quoted(input_name)))),
+        __signal_sample_rate_hz__ = $(repr(Float64(sample_rate_hz)))
         try
             value = begin
                 $(operation_body)
@@ -225,14 +663,17 @@ function signal_operation_preflight_wrapper(code::String)::Nothing
     parsed = try
         Meta.parseall(code)
     catch err
+        @error "Signal operation wrapper syntax error" exception = (err, catch_backtrace())
         throw(SignalOperationProviderError(
             "invalid_operation_body",
-            "Тело операции содержит синтаксическую ошибку: $(sprint(showerror, err))",
+            "Тело операции содержит синтаксическую ошибку",
+            "body",
         ))
     end
     signal_operation_parse_has_error(parsed) && throw(SignalOperationProviderError(
         "invalid_operation_body",
         "Тело операции содержит синтаксическую ошибку",
+        "body",
     ))
     nothing
 end
@@ -242,6 +683,7 @@ function signal_operation_receive_chunked(
     output_name::String,
     total::Int,
     is_complex::Bool,
+    sample_rate_hz::Union{Nothing,Float64} = nothing,
 )::SignalOperationProviderResult
     values = Vector{ComplexF64}(undef, total)
     for first_index in 1:ENGEE_SIGNAL_OPERATION_CHUNK_SAMPLES:total
@@ -263,7 +705,20 @@ function signal_operation_receive_chunked(
         )
         values[first_index:last_index] = ComplexF64.(chunk)
     end
-    SignalOperationProviderResult(values, is_complex)
+    SignalOperationProviderResult(values, is_complex, sample_rate_hz)
+end
+
+function signal_operation_result_sample_rate(
+    source::AnalysedSignal,
+    command::DeriveSignalCommand,
+)::Union{Nothing,Float64}
+    command.operation == "resample" || return nothing
+    parameters = command.parameters::ResampleSignalOperationParameters
+    parameters.mode == "factor" ?
+        source.sample_rate_hz *
+            (Float64(parameters.upsample_factor::Int) /
+                Float64(parameters.downsample_factor::Int)) :
+        parameters.target_sample_rate_hz::Float64
 end
 
 function signal_operation_cleanup!(send_value, receive, names)::Nothing
@@ -292,13 +747,21 @@ function signal_operation_execute(
     source::AnalysedSignal,
     command::DeriveSignalCommand,
 )::SignalOperationProviderResult
+    signal_operation_validate_source(source, command)
+    operation_body = signal_operation_body(source, command)
     send_value, receive = signal_operation_genie_functions()
     names = signal_operation_unique_names(receive)
     input_name, stage_name, output_name = names
     transport_values = source.is_complex ? copy(source.values) : Float64[real(value) for value in source.values]
     try
-        operation_body = signal_operation_builtin_body(command)
-        wrapper = signal_operation_wrapper(input_name, output_name, operation_body)
+        wrapper = signal_operation_wrapper(
+            input_name,
+            output_name,
+            operation_body;
+            import_engee_dsp = command.operation == "fft" ||
+                command.operation_kind == "preprocess" && command.operation != "custom-preprocess",
+            sample_rate_hz = source.sample_rate_hz,
+        )
         signal_operation_preflight_wrapper(wrapper)
         signal_operation_send_chunked!(
             send_value,
@@ -315,11 +778,14 @@ function signal_operation_execute(
             "engee_transport_error",
             "Engee вернул некорректный статус операции",
         ))
-        metadata.ok === true || throw(SignalOperationProviderError(
-            "operation_failed",
-            isempty(String(metadata.error_message)) ?
-                "Операция Engee завершилась ошибкой" : String(metadata.error_message),
-        ))
+        if metadata.ok !== true
+            @error "Engee signal operation failed" operation = command.operation error_type =
+                String(metadata.error_type) error_message = String(metadata.error_message)
+            throw(SignalOperationProviderError(
+                "operation_failed",
+                "Операция не выполнена в Engee",
+            ))
+        end
         total = metadata.length isa Integer ? Int(metadata.length) : 0
         2 <= total <= SIGNAL_DERIVED_MAX_SAMPLES || throw(SignalOperationProviderError(
             "invalid_operation_result",
@@ -329,7 +795,21 @@ function signal_operation_execute(
             "invalid_operation_result",
             "Engee вернул некорректный тип результата",
         ))
-        signal_operation_receive_chunked(receive, output_name, total, metadata.is_complex)
+        result = signal_operation_receive_chunked(
+            receive,
+            output_name,
+            total,
+            metadata.is_complex,
+            signal_operation_result_sample_rate(source, command),
+        )
+        if command.operation in ("custom", "custom-preprocess") &&
+            result.is_complex != source.is_complex
+            throw(SignalOperationProviderError(
+                "invalid_operation_result",
+                "Пользовательская операция не должна менять вещественный или комплексный тип сигнала",
+            ))
+        end
+        result
     finally
         signal_operation_cleanup!(send_value, receive, names)
     end

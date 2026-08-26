@@ -79,6 +79,228 @@
   };
 }(window));
 
+(function registerSignalAnalyserRussianLocalization(window) {
+  "use strict";
+
+  var SETTINGS_LABELS=Object.freeze({
+    "display.name":"Имя экрана",
+    "display.plot_type":"Тип графика",
+    "pane.name":"Имя области",
+    "display.show_legend":"Показывать легенду",
+    "display.show_axis_labels":"Подписывать оси",
+    "time.normalize_y":"Нормировать Y",
+    "time.show_markers":"Показывать маркеры",
+    "time.units":"Единицы времени",
+    "time.x_limits":"Пределы X",
+    "time.y_limits":"Пределы Y",
+    "time.link_time":"Связать время",
+    "time.link_amplitude":"Связать амплитуду",
+    "spectrum.frequency_units":"Единицы частоты",
+    "spectrum.frequency_limits":"Пределы частоты",
+    "spectrum.y_limits":"Пределы магнитуды",
+    "spectrum.frequency_scale":"Шкала частоты",
+    "spectrum.scale":"Спектр в дБ",
+    "spectrum.resolution_type":"Тип разрешения",
+    "spectrum.leakage":"Утечка",
+    "spectrum.rbw":"Полоса разрешения",
+    "spectrum.window_length":"Длина окна",
+    "spectrum.window":"Окно",
+    "spectrum.sidelobe_attenuation_db":"Подавление боковых лепестков",
+    "spectrum.overlap_percent":"Перекрытие",
+    "spectrum.nfft":"Точки ДПФ",
+    "spectrum.link_frequency":"Связать частоты",
+    "spectrum.link_magnitude":"Связать магнитуды",
+    "spectrum.frequency_resolution":"Частотное разрешение",
+    "spectrogram.time_units":"Единицы времени",
+    "spectrogram.frequency_units":"Единицы частоты",
+    "spectrogram.frequency_limits":"Пределы частоты",
+    "spectrogram.power_limits":"Пределы мощности",
+    "spectrogram.frequency_scale":"Шкала частоты",
+    "spectrogram.frequency_scale":"Шкала частоты",
+    "spectrogram.scale":"Спектр в дБ",
+    "spectrogram.leakage":"Утечка",
+    "spectrogram.time_resolution":"Разрешение по времени",
+    "spectrogram.overlap_percent":"Перекрытие",
+    "spectrogram.reassign":"Переназначение",
+    "spectrogram.actual_rbw":"Фактическая полоса разрешения",
+    "spectrogram.frequency_resolution":"Частотное разрешение",
+    "persistence.time_units":"Единицы времени",
+    "persistence.frequency_units":"Единицы частоты",
+    "persistence.frequency_limits":"Пределы частоты",
+    "persistence.power_limits":"Пределы мощности",
+    "persistence.density_limits":"Пределы плотности",
+    "persistence.frequency_scale":"Шкала частоты",
+    "persistence.scale":"Спектр в дБ",
+    "persistence.leakage":"Утечка",
+    "persistence.time_resolution":"Разрешение по времени",
+    "persistence.overlap_percent":"Перекрытие",
+    "persistence.power_bins":"Интервалы мощности",
+    "persistence.rbw":"Полоса разрешения"
+    ,"persistence.frequency_resolution":"Частотное разрешение"
+  });
+
+  var GROUP_LABELS=Object.freeze({
+    display:"Отображение",time:"Время",spectrum:"Спектр",
+    spectrogram:"Спектрограмма",persistence:"Спектр персистентности"
+  });
+  var SECTION_LABELS=Object.freeze({
+    "display.view":"График",
+    "time.options":"Параметры",
+    "time.time_limits":"Диапазоны",
+    "time.y_axis_limits":"Диапазоны",
+    "time.linking":"Связь областей",
+    "spectrum.frequency_limits":"Диапазоны",
+    "spectrum.y_axis_limits":"Диапазоны",
+    "spectrum.scale":"Шкала",
+    "spectrum.resolution_type":"Тип разрешения",
+    "spectrum.leakage":"Утечка",
+    "spectrum.rbw":"Полоса разрешения",
+    "spectrum.window_options":"Параметры окна",
+    "spectrum.frequency_resolution":"Частотное разрешение",
+    "spectrum.linking":"Связь спектров",
+    "spectrogram.time_limits":"Диапазоны",
+    "spectrogram.frequency_limits":"Диапазоны",
+    "spectrogram.power_limits":"Диапазоны",
+    "spectrogram.scale":"Шкала",
+    "spectrogram.leakage":"Утечка",
+    "spectrogram.time_resolution":"Разрешение по времени",
+    "spectrogram.frequency_resolution":"Частотное разрешение",
+    "spectrogram.options":"Параметры",
+    "persistence.frequency_limits":"Диапазоны",
+    "persistence.power_limits":"Диапазоны",
+    "persistence.density_limits":"Диапазоны",
+    "persistence.scale":"Шкала",
+    "persistence.leakage":"Утечка",
+    "persistence.time_resolution":"Разрешение по времени",
+    "persistence.power_bins":"Интервалы мощности",
+    "persistence.frequency_resolution":"Частотное разрешение"
+  });
+
+  var UNIT_LABELS=Object.freeze({
+    auto:"Авто",Auto:"Авто",
+    ps:"пс",picoseconds:"пс",
+    ns:"нс",nanoseconds:"нс",
+    "μs":"мкс","µs":"мкс",us:"мкс",microseconds:"мкс",
+    ms:"мс",milliseconds:"мс",
+    s:"с",sec:"с",seconds:"с",
+    minutes:"мин",hours:"ч",days:"дн",years:"г",
+    "cycles/year":"циклов/год","cycles/day":"циклов/день",
+    "cycles/hour":"циклов/час","cycles/minute":"циклов/мин",
+    cycles_per_year:"циклов/год",cycles_per_day:"циклов/день",
+    cycles_per_hour:"циклов/час",cycles_per_minute:"циклов/мин",
+    mHz:"мГц",Hz:"Гц",kHz:"кГц",MHz:"МГц",GHz:"ГГц",THz:"ТГц",
+    hertz:"Гц",kilohertz:"кГц",megahertz:"МГц",gigahertz:"ГГц",terahertz:"ТГц",millihertz:"мГц",
+    dB:"дБ",db:"дБ",percent:"%",samples:"отсчёты",sample:"отсчёт",
+    "rad/sample":"рад/отсчёт","radians/sample":"рад/отсчёт","x pi radians/sample":"× π рад/отсчёт",normalized_pi:"× π рад/отсчёт",
+    power:"отн. ед."
+  });
+
+  var VALUE_LABELS=Object.freeze({
+    auto:"Авто",
+    leakage:"По утечке",rbw:"По полосе разрешения",window_length:"По длине окна",
+    blackman_harris:"Блэкмана — Харриса",chebyshev:"Чебышёва",flat_top:"Плосковершинное",
+    hamming:"Хэмминга",hann:"Ханна",kaiser:"Кайзера",rectangular:"Прямоугольное",
+    db:"дБ",linear:"Линейная",log:"Логарифмическая",
+    time:"Временная область",spectrum:"Спектр",spectrogram:"Спектрограмма",persistence:"Спектр персистентности"
+  });
+
+  var EXACT_VISIBLE_TEXT=Object.freeze({
+    "Auto":"Авто","auto":"Авто","ps":"пс","ns":"нс","μs":"мкс","µs":"мкс","us":"мкс","ms":"мс","s":"с",
+    "minutes":"мин","hours":"ч","days":"дн","years":"г",
+    "cycles/year":"циклов/год","cycles/day":"циклов/день","cycles/hour":"циклов/час","cycles/minute":"циклов/мин",
+    "cycles_per_year":"циклов/год","cycles_per_day":"циклов/день","cycles_per_hour":"циклов/час","cycles_per_minute":"циклов/мин",
+    "mHz":"мГц","Hz":"Гц","kHz":"кГц","MHz":"МГц","GHz":"ГГц","THz":"ТГц","dB":"дБ","db":"дБ","samples":"отсчёты","sample":"отсчёт","percent":"%",
+    "Leakage":"Утечка","RBW":"Полоса разрешения","Window Length":"Длина окна",
+    "Blackman-Harris":"Блэкмана — Харриса","Chebyshev":"Чебышёва","Flat-top":"Плосковершинное",
+    "Hamming":"Хэмминга","Hann":"Ханна","Kaiser":"Кайзера","Rectangular":"Прямоугольное",
+    "Linear":"Линейная","Log":"Логарифмическая",
+    "Display":"Отображение","Time":"Время","Spectrum":"Спектр","Spectrogram":"Спектрограмма","Persistence":"Спектр персистентности",
+    "View":"График","Options":"Параметры","Time Limits":"Диапазоны","Y-axis Limits":"Диапазоны",
+    "Frequency Limits":"Диапазоны","Power Limits":"Диапазоны","Density Limits":"Диапазоны","Link Time":"Связь областей","Spectrum links":"Связь спектров",
+    "Scale":"Шкала","Resolution Type":"Тип разрешения","Window Options":"Параметры окна",
+    "Frequency Resolution":"Частотное разрешение","Actual RBW":"Фактическая полоса разрешения","Фактическая RBW":"Фактическая полоса разрешения",
+    "Screen name":"Имя экрана","Area name":"Имя области","Show legend":"Показывать легенду",
+    "Show axis labels":"Подписывать оси","Normalize Y":"Нормировать Y","Show markers":"Показывать маркеры",
+    "Time units":"Единицы времени","Frequency units":"Единицы частоты","X limits":"Пределы X","Y limits":"Пределы Y",
+    "Link time":"Связать время","Link amplitude":"Связать амплитуду","Frequency scale":"Шкала частоты",
+    "Spectrum in dB":"Спектр в дБ","Спектр в dB":"Спектр в дБ","Resolution type":"Тип разрешения","Window length":"Длина окна","По RBW":"По полосе разрешения",
+    "Sidelobe attenuation":"Подавление боковых лепестков","Overlap":"Перекрытие","DFT Points":"Точки ДПФ","Точки DFT":"Точки ДПФ",
+    "Link spectrum frequencies":"Связать частоты","Link spectrum magnitudes":"Связать магнитуды",
+    "Time resolution":"Разрешение по времени","Reassign":"Переназначение","Power bins":"Интервалы мощности",
+    "Amplitude":"Амплитуда","Frequency":"Частота","Magnitude":"Магнитуда","Power":"Мощность",
+    "Probability":"Вероятность","Occurrence":"Встречаемость",
+    "Magnitude, dB":"Магнитуда, дБ","Power, dB":"Мощность, дБ",
+    "Frequency, Hz":"Частота, Гц","Time, s":"Время, с"
+  });
+
+  function own(map,key) { return Object.prototype.hasOwnProperty.call(map,key); }
+  function text(value) { return String(value == null ? "" : value).trim(); }
+  function unitLabel(value) { var key=text(value); return own(UNIT_LABELS,key) ? UNIT_LABELS[key] : key; }
+  function settingLabel(fieldId,fallback) { return own(SETTINGS_LABELS,fieldId) ? SETTINGS_LABELS[fieldId] : knownText(fallback); }
+  function groupLabel(groupId,fallback) { return own(GROUP_LABELS,groupId) ? GROUP_LABELS[groupId] : knownText(fallback); }
+  function sectionLabel(sectionId,fallback) { return own(SECTION_LABELS,sectionId) ? SECTION_LABELS[sectionId] : knownText(fallback); }
+  function optionLabel(fieldId,value,fallback) {
+    var key=text(value);
+    if (/units$/.test(fieldId || "")) return unitLabel(key || fallback);
+    if (own(VALUE_LABELS,key)) return VALUE_LABELS[key];
+    return knownText(fallback || key);
+  }
+  function knownText(value) { var key=text(value); return own(EXACT_VISIBLE_TEXT,key) ? EXACT_VISIBLE_TEXT[key] : key; }
+  function axisTitle(label,unit) {
+    var localizedLabel=knownText(label),localizedUnit=unitLabel(unit);
+    return localizedUnit ? localizedLabel+", "+localizedUnit : localizedLabel;
+  }
+  function colorbarTitle(label) { return knownText(label); }
+  function localizeItem(item) {
+    var result=Object.assign({},item),id=text(item && item.id);
+    result.label=settingLabel(id,item && item.label);
+    if (item && item.units != null) result.units=unitLabel(item.units);
+    if (Array.isArray(item && item.options)) result.options=item.options.map(function (option) {
+      return Object.assign({},option,{label:optionLabel(id,option.value,option.label)});
+    });
+    return result;
+  }
+  function localizeSettingsDocument(source) {
+    var result=Object.assign({},source);
+    result.groups=(source && source.groups || []).map(function (group) {
+      var groupResult=Object.assign({},group,{label:groupLabel(group.id,group.label)});
+      groupResult.sections=(group.sections || []).map(function (section) {
+        var sectionResult=Object.assign({},section,{label:sectionLabel(section.id,section.label)});
+        sectionResult.items=(section.items || []).map(localizeItem);
+        return sectionResult;
+      });
+      return groupResult;
+    });
+    if (Array.isArray(source && source.readouts)) result.readouts=source.readouts.map(localizeItem);
+    return result;
+  }
+
+  window.SignalAnalyserRussianLocalization={
+    settingsLabels:SETTINGS_LABELS,
+    groupLabels:GROUP_LABELS,
+    sectionLabels:SECTION_LABELS,
+    unitLabels:UNIT_LABELS,
+    valueLabels:VALUE_LABELS,
+    exactVisibleText:EXACT_VISIBLE_TEXT,
+    settingLabel:settingLabel,
+    groupLabel:groupLabel,
+    sectionLabel:sectionLabel,
+    optionLabel:optionLabel,
+    unitLabel:unitLabel,
+    knownText:knownText,
+    axisTitle:axisTitle,
+    colorbarTitle:colorbarTitle,
+    localizeItem:localizeItem,
+    localizeSettingsDocument:localizeSettingsDocument,
+    contract:Object.freeze({
+      wireValues:"All API ids and values remain unchanged; localization is applied only while producing visible UI text.",
+      userValues:"Signal names, custom code and other user-authored values are never translated.",
+      auto:"Every visible Auto/auto is rendered exactly as Авто; internal value remains auto or null.",
+      fallback:"Unknown provider labels are not machine-translated and must not be shown on production surfaces until an explicit mapping exists."
+    })
+  };
+}(window));
+
 (function registerSignalAnalyserSettings(window, document) {
   "use strict";
 
@@ -135,11 +357,25 @@
   }
   function value(item) { return context.page === "screen" ? screenValue(item) : context.drafts[item.id] && context.drafts[item.id].value !== undefined ? context.drafts[item.id].value : item.value; }
   function booleanValue(id) { var item = sourceItem(id); return !!(item && value(item)); }
-  function label(item) { return ru[item.id] || item.label || item.id; }
+  function russianPresenter() { return window.SignalAnalyserRussianLocalization || null; }
+  function label(item) {
+    var presenter=russianPresenter(),fallback=ru[item.id] || item.label || item.id;
+    return presenter && typeof presenter.settingLabel === "function" ? presenter.settingLabel(item.id,fallback) : fallback;
+  }
+  function unitLabel(unit) {
+    var presenter=russianPresenter();
+    return presenter && typeof presenter.unitLabel === "function" ? presenter.unitLabel(unit) : unit;
+  }
+  function visibleGroupTitle(item) {
+    var presenter=russianPresenter();
+    return presenter && typeof presenter.knownText === "function" ? presenter.knownText(item.title) : item.title;
+  }
   function isApply(item) { return item && !item.pseudo && item.effect_status === "requires_apply"; }
-  function optionLabel(option) {
+  function optionLabel(option,fieldId) {
     var raw = typeof option === "object" ? option.value : option;
-    return { auto:"Авто", seconds:"s", milliseconds:"ms", microseconds:"μs", nanoseconds:"ns", picoseconds:"ps", minutes:"мин", hours:"ч", days:"дн", years:"г", hertz:"Hz", kilohertz:"kHz", megahertz:"MHz", gigahertz:"GHz", terahertz:"THz", linear:"Линейная", log:"Логарифмическая", db:"dB", leakage:"По утечке", rbw:"По RBW", window_length:"По длине окна" }[raw] || (typeof option === "object" && option.label) || raw;
+    var fallback={ auto:"Авто", seconds:"с", milliseconds:"мс", microseconds:"мкс", nanoseconds:"нс", picoseconds:"пс", minutes:"мин", hours:"ч", days:"дн", years:"г", hertz:"Гц", kilohertz:"кГц", megahertz:"МГц", gigahertz:"ГГц", terahertz:"ТГц", linear:"Линейная", log:"Логарифмическая", db:"дБ", leakage:"По утечке", rbw:"По полосе разрешения", window_length:"По длине окна" }[raw] || (typeof option === "object" && option.label) || raw;
+    var presenter=russianPresenter();
+    return presenter && typeof presenter.optionLabel === "function" ? presenter.optionLabel(fieldId,raw,fallback) : fallback;
   }
   function rangeForUnitField(id) {
     return { "time.units":"time.x_limits", "spectrum.frequency_units":"spectrum.frequency_limits", "spectrogram.frequency_units":"spectrogram.frequency_limits", "persistence.frequency_units":"persistence.frequency_limits" }[id] || "";
@@ -345,14 +581,14 @@
       return "<span class='checkbox-control'><input id='"+id+"' data-setting-id='"+esc(item.id)+"' type='checkbox'"+(checked ? " checked" : "")+disabled+"></span>";
     }
     if (item.kind === "enum") {
-      var enumOptions=(item.options || []).map(function (option) { return { value:typeof option === "object" ? option.value : option, label:optionLabel(option), disabled:typeof option === "object" && option.disabled }; });
+      var enumOptions=(item.options || []).map(function (option) { return { value:typeof option === "object" ? option.value : option, label:optionLabel(option,item.id), disabled:typeof option === "object" && option.disabled }; });
       var enumCurrent=String(current == null ? "" : current);
       var enumSelected=enumOptions.filter(function (option) { return String(option.value) === enumCurrent; })[0];
       var enumKey="setting::" + context.displayId + "::" + item.id;
       return valueSelect.markup({
         key:enumKey,
         value:enumCurrent,
-        label:enumSelected ? enumSelected.label : optionLabel(current),
+        label:enumSelected ? enumSelected.label : optionLabel(current,item.id),
         options:enumOptions,
         disabled:item.enabled === false,
         className:"settings-value-select",
@@ -397,7 +633,7 @@
       var resolutionNumericKind=numericKind(item, key);
       return "<span class='resolution-control' data-resolution-current-mode='"+esc(normalizedMode)+"'>"+resolutionMarkup+"<input class='control' type='text' inputmode='"+(resolutionNumericKind === "integer" ? "numeric" : "decimal")+"'"+noHistory()+" step='"+(resolutionNumericKind === "integer" ? "1" : esc(item.step == null ? "any" : item.step))+"' data-setting-id='"+esc(item.id)+"' data-resolution-value data-resolution-key='"+esc(key)+"' value='"+esc(amount == null ? "" : amount)+"'"+(disabled || normalizedMode === "auto" ? " disabled" : "")+"></span>";
     }
-    if (item.kind === "readout" || item.readonly) return "<span class='readonly-control'>"+esc(current == null || current === "" ? "—" : current)+(item.units ? " "+esc(item.units) : "")+"</span>";
+    if (item.kind === "readout" || item.readonly) return "<span class='readonly-control'>"+esc(current == null || current === "" ? "—" : current)+(item.units ? " "+esc(unitLabel(item.units)) : "")+"</span>";
     var scalarKind=numericKind(item);
     return "<input class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"' type='text' inputmode='"+(scalarKind === "integer" ? "numeric" : "decimal")+"'"+noHistory()+" step='"+(scalarKind === "integer" ? "1" : esc(item.step == null ? "any" : item.step))+"' value='"+esc(current == null ? "" : current)+"'"+disabled+">";
   }
@@ -408,7 +644,7 @@
     var id = "setting-" + item.id.replace(/[^a-zA-Z0-9_-]/g, "-");
     var current = value(item);
     context.renderedFields[item.id] = item;
-    return "<label class='settings-field-row"+(invalid ? isRange ? " has-range-error" : " has-error" : "")+(warning ? " has-warning" : "")+"'"+(isRange ? " data-range-boundary-validation" : "")+" data-testid='settings-field-"+esc(item.id)+"'><span class='settings-label'><span>"+esc(label(item))+"</span>"+(item.units ? "<span class='unit'>"+esc(item.units)+"</span>" : "")+"</span><span class='settings-control-wrap'>"+control(item, current, id, rangeState)+"</span>"+(invalid ? "<small class='"+(isRange ? "range-boundary-message" : "field-message is-error")+"' role='alert'>"+esc(draft.error)+"</small>" : warning ? "<small class='field-message is-warning'>"+esc(warning)+"</small>" : "")+"</label>";
+    return "<label class='settings-field-row"+(invalid ? isRange ? " has-range-error" : " has-error" : "")+(warning ? " has-warning" : "")+"'"+(isRange ? " data-range-boundary-validation" : "")+" data-testid='settings-field-"+esc(item.id)+"'><span class='settings-label'><span>"+esc(label(item))+"</span>"+(item.units ? "<span class='unit'>"+esc(unitLabel(item.units))+"</span>" : "")+"</span><span class='settings-control-wrap'>"+control(item, current, id, rangeState)+"</span>"+(invalid ? "<small class='"+(isRange ? "range-boundary-message" : "field-message is-error")+"' role='alert'>"+esc(draft.error)+"</small>" : warning ? "<small class='field-message is-warning'>"+esc(warning)+"</small>" : "")+"</label>";
   }
 
   function render(force) {
@@ -426,7 +662,7 @@
       var collapseKey = context.page + "|" + context.plotType + "|" + item.key;
       var collapsed = !!context.collapsed[collapseKey];
       var bodyId = "settings-group-" + collapseKey.replace(/[^a-zA-Z0-9_-]/g, "-");
-      return "<section class='settings-group"+(collapsed ? " is-collapsed" : "")+"' data-settings-group='"+esc(item.key)+"'><button class='settings-group-title' type='button' data-settings-group-toggle='"+esc(collapseKey)+"' aria-expanded='"+String(!collapsed)+"' aria-controls='"+esc(bodyId)+"'><span>"+esc(item.title)+"</span></button><div class='settings-group-fields' id='"+esc(bodyId)+"'"+(collapsed ? " hidden" : "")+">"+item.items.map(renderField).join("")+"</div></section>";
+      return "<section class='settings-group"+(collapsed ? " is-collapsed" : "")+"' data-settings-group='"+esc(item.key)+"'><button class='settings-group-title' type='button' data-settings-group-toggle='"+esc(collapseKey)+"' aria-expanded='"+String(!collapsed)+"' aria-controls='"+esc(bodyId)+"'><span>"+esc(visibleGroupTitle(item))+"</span></button><div class='settings-group-fields' id='"+esc(bodyId)+"'"+(collapsed ? " hidden" : "")+">"+item.items.map(renderField).join("")+"</div></section>";
     }).join("");
     valueSelect.reconcile();
     decorateNoHistory(host);

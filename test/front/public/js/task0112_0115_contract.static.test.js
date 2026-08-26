@@ -28,7 +28,7 @@ module.exports = async function task01120115ContractStatic(assert) {
   assert(/api\.signalSamples\(request\.signalId, request\.startOffset, requestLimit\)/.test(app) && /API_BATCH_SIZE = 500/.test(app), "samples must use bounded 500-row cursor pages instead of loading a full vector");
 
   assert(/data-signal-operation/.test(app) && /signal-operation-select/.test(app), "signal operation must be available next to duplicate and use the shared ValueSelect control");
-  assert(/body:state\.operation === "custom" && body \? body\.value : null/.test(app), "custom operation UI must submit only the authored body");
+  assert(/if \(operation === "custom"\) return \{body:"init_signal"\}/.test(app) && /if \(op === "custom"\) fields\.push\(field\("body","Тело операции","textarea"/.test(app) && /Object\.keys\(state\.parameters \|\| \{\}\)\.forEach[\s\S]*?if \(!visible\[key\]\) return;/.test(app), "custom operation UI must retain the authored body and submit it only while that body field is visible");
   assert(!/__signal_analyser_operation_(?:input|stage|output)/.test(app), "frontend must not reveal Engee scratch binding names");
   assert(/\/api\/signals\/derive/.test(api) && /route\("\/api\/signals\/derive", method = POST\)/.test(routes), "derived-signal UI must use the normal typed API route");
   assert(/let init_signal = getfield\(Main/.test(provider) && /Base\.invokelatest\(receive, String\(code\); context = Main\)/.test(provider), "the Engee provider must own the recv wrapper and Main context");

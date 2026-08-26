@@ -80,18 +80,18 @@ end
     @test isempty(PANE_OUTPUTS.PERSISTENCE_CALLS)
 
     time_output = only(outputs)
-    @test time_output["signal_bindings"] == [second_name, first_name]
+    @test time_output["signal_bindings"] == [first_name, second_name]
     @test [(trace["signal"], trace["component"]) for trace in time_output["output"]["data"]] == [
-        (second_name, "real"), (second_name, "imaginary"),
         (first_name, ""),
+        (second_name, "real"), (second_name, "imaginary"),
     ]
     @test state.view.state_revision == revision
     @test state.display_layouts["display-1"].active_pane_id == active_pane_id
 
     for (pane_id, expected_calls) in (
-        ("pane-2", (1, 0, 0)),
-        ("pane-3", (1, 1, 0)),
-        ("pane-4", (1, 1, 1)),
+        ("pane-2", (2, 0, 0)),
+        ("pane-3", (2, 1, 0)),
+        ("pane-4", (2, 1, 1)),
     )
         response = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
             "state_revision" => state.view.state_revision,

@@ -129,10 +129,16 @@ end
         "state_lite" => true,
         "active_output" => true,
         "background_calculation" => true,
+        "signal_preprocess_denoise" => false,
+        "signal_preprocess_resample" => true,
+        "signal_preprocess_custom" => true,
     )
     @test isempty(active_output_graph_axes(lite))
     @test isempty(active_output_graph_axes(layouts))
-    @test only(lite["layouts"])["outputs"] |> only |>(entry -> entry["output"]["data"]) == Dict{String,Any}[]
+    lite_display = only(lite["layouts"])
+    active_pane_id = lite_display["layout"]["active_pane_id"]
+    active_output = only(filter(entry -> entry["pane_id"] == active_pane_id, lite_display["outputs"]))
+    @test active_output["output"]["data"] == Dict{String,Any}[]
     @test layouts["state"]["state_revision"] == lite["state_revision"]
     @test layouts["state"]["active_output"]["output"]["data"] == Dict{String,Any}[]
     @test haskey(legacy, "plots") && haskey(legacy, "plot_payload")

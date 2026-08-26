@@ -121,6 +121,7 @@ function signal_inventory_square_root_value(
         return signal_inventory_sample_value(sqrt(value), true)
     end
     sample = real(value)
+    isfinite(sample) || return nothing
     sample < 0 && return nothing
     sqrt(sample)
 end
@@ -131,6 +132,7 @@ function signal_inventory_signed_square_root_magnitude_value(
 )::Union{Nothing,Float64}
     is_complex && return nothing
     sample = real(value)
+    isfinite(sample) || return nothing
     sqrt(abs(sample)) * sign(sample)
 end
 
@@ -166,7 +168,7 @@ function signal_inventory_samples_payload(
                 "sample_index" => zero_index,
                 "time_s" => zero_index / signal.sample_rate_hz,
                 "value" => signal_inventory_sample_value(value, signal.is_complex),
-                "magnitude" => abs(value),
+                "magnitude" => isfinite(abs(value)) ? abs(value) : nothing,
                 "square" => signal_inventory_sample_value(square, signal.is_complex),
                 "square_root" => signal_inventory_square_root_value(value, signal.is_complex),
                 "signed_square_root_magnitude" =>
@@ -861,7 +863,19 @@ function signal_inventory_operation_source_copy(
     state::SignalAnalyserState,
     command::DeriveSignalCommand,
 )::AnalysedSignal
-    source = signal_inventory_signal_by_id(state, command.source_signal_id)
+    source = try
+        signal_inventory_signal_by_id(state, command.source_signal_id)
+    catch err
+        err isa SignalAnalyserValidationError || rethrow()
+        throw(signal_inventory_validation_error(
+            "source_signal_id",
+            "Неизвестный идентификатор исходного сигнала",
+        ))
+    end
+    source.name == command.target_name && throw(signal_inventory_validation_error(
+        "target_name",
+        "Исходный сигнал нельзя перезаписывать результатом операции",
+    ))
     collision = findfirst(signal -> signal.name == command.target_name, state.signals)
     collision === nothing || command.overwrite || throw(signal_inventory_validation_error(
         "target_name",
@@ -885,17 +899,19 @@ function signal_inventory_replace_operation_target!(
     command::Union{DeriveSignalCommand,CropSignalCommand},
     result::Union{SignalOperationProviderResult,CroppedSignalResult},
 )::AnalysedSignal
+    result_sample_rate_hz = result isa SignalOperationProviderResult &&
+        result.sample_rate_hz !== nothing ? result.sample_rate_hz::Float64 : source.sample_rate_hz
     target_index = findfirst(signal -> signal.name == command.target_name, state.signals)
     if target_index === nothing
         series = result isa CroppedSignalResult ?
             WorkspaceSignalSeries(
                 result.values,
-                source.sample_rate_hz,
+                result_sample_rate_hz,
                 result.is_complex,
                 true,
             ) : WorkspaceSignalSeries(
                 result.values,
-                source.sample_rate_hz,
+                result_sample_rate_hz,
                 result.is_complex,
             )
         added_names = signal_inventory_add_candidates!(
@@ -920,7 +936,7 @@ function signal_inventory_replace_operation_target!(
         target.id,
         target.name,
         target.color,
-        source.sample_rate_hz,
+        result_sample_rate_hz,
         result.values,
         result.is_complex,
         target.visible,

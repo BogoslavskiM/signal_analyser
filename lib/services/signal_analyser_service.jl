@@ -3187,12 +3187,39 @@ function signal_measurements_snapshot(
     service::SignalMeasurementsService,
     state_revision::Int,
     signal::AnalysedSignal,
+    ::Nothing,
+    selection::SignalMeasurementSelection,
+)::SignalMeasurementsSnapshot
+    # Persistence owns no time viewport. Its measurements therefore use the
+    # same full-signal domain as a measurement request without explicit limits.
+    signal_measurements_snapshot(service, state_revision, signal, selection)
+end
+
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
+    state_revision::Int,
+    signal::AnalysedSignal,
 )::SignalMeasurementsSnapshot
     signal_measurements_snapshot(
         service,
         state_revision,
         signal,
         signal_full_time_limits(service, signal),
+    )
+end
+
+function signal_measurements_snapshot(
+    service::SignalMeasurementsService,
+    state_revision::Int,
+    signal::AnalysedSignal,
+    limits::Nothing,
+)::SignalMeasurementsSnapshot
+    signal_measurements_snapshot(
+        service,
+        state_revision,
+        signal,
+        limits,
+        SignalMeasurementSelection(),
     )
 end
 
@@ -4570,8 +4597,13 @@ function signal_analyser_snapshot_unlocked(
     analysis_name = signal_analyser_display_analysis_name(active_display)
     signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
     visible_names = signal_analyser_visible_signal_names(state)
-    render_signal = isempty(visible_names) ? nothing :
+    render_signal = if isempty(visible_names)
+        nothing
+    elseif signal !== nothing && signal.name in visible_names
+        signal
+    else
         signal_by_name(state, first(visible_names))
+    end
     prepared_display_plots = signal_analyser_prepare_display_plots(
         state,
         active_display,
@@ -5289,11 +5321,18 @@ function validate_signal_analyser_view_payload(
     # only a viewport mirror now. Structural errors still fail the request;
     # valid values (including explicit pairs) never become calculation ROI.
     has_time_limits && signal_analyser_validate_time_limits!(field_errors, time_limits_value)
-    requested_time_limits = if requested_analysis_name === nothing
+    active_layout = signal_analyser_layout_by_display_id(state, display.id)
+    active_pane = signal_display_active_pane(active_layout)
+    requested_time_limits = if isempty(visible_names) ||
+        !(requested_plot in SIGNAL_ANALYSER_TIME_LIMIT_PLOTS)
         nothing
     else
-        prospective_signal = signal_by_name(state, requested_analysis_name)
-        signal_full_time_limits(state.measurements_service, prospective_signal)
+        signal_analyser_full_bound_time_limits(
+            state,
+            display.id,
+            active_pane.id,
+            visible_names,
+        )
     end
 
     has_measurement_kinds = signal_analyser_payload_contains(data, "measurement_kinds")
@@ -5434,8 +5473,13 @@ function signal_analyser_prepare_view_snapshot_unlocked(
     prospective_analysis_name = signal_analyser_display_analysis_name(prospective_display)
     prospective_signal = prospective_analysis_name === nothing ? nothing :
         signal_by_name(state, prospective_analysis_name)
-    render_signal = isempty(prospective_members) ? nothing :
+    render_signal = if isempty(prospective_members)
+        nothing
+    elseif prospective_signal !== nothing && prospective_signal.name in prospective_members
+        prospective_signal
+    else
         signal_by_name(state, first(prospective_members))
+    end
     prepared_display_plots = signal_analyser_prepare_display_plots(
         state,
         prospective_display,

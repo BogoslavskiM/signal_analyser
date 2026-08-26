@@ -32,8 +32,8 @@ module.exports = async function task0119SignalFlowStatic(assert) {
 
   // The overwrite option must be a complete standard checkbox row, never a
   // clipped label embedded in the 32px checkbox target.
-  assert(/label class='operation-overwrite-control'[\s\S]*?<span class='checkbox-control'><input type='checkbox' data-signal-operation-overwrite/.test(app), "operation overwrite must expose a standalone checkbox control");
-  assert(/\.operation-overwrite-control \{[^}]*min-height:\s*32px[^}]*display:\s*inline-flex[^}]*align-items:\s*center/.test(css), "operation overwrite must retain a full aligned control row");
+  assert(/signal-operation-overwrite-row[\s\S]*?<label class='checkbox-field'><input type='checkbox' data-signal-operation-overwrite/.test(app), "operation overwrite must expose a standalone checkbox control");
+  assert(/\.signal-operation-overwrite-row \.checkbox-field \{[^}]*min-height:\s*40px[^}]*display:\s*flex[^}]*align-items:\s*center/.test(css) && /\.signal-operation-overwrite-row input\[type="checkbox"\] \{[^}]*width:\s*16px[^}]*height:\s*16px/.test(css), "operation overwrite must retain the V58 full aligned checkbox row");
 
   // The compact picker is deliberately a Signal-draft editor: original
   // palette, no extra chart controls, and no metadata API until normal Apply.

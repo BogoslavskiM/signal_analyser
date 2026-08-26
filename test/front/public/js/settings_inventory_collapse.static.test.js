@@ -20,7 +20,8 @@ module.exports = async function testSettingsInventoryAndCollapseContracts(assert
   const inventoryEnd = settings.indexOf("function parse(", inventoryStart);
   const inventorySource = settings.slice(inventoryStart, inventoryEnd);
   assert(/function inventory\(\)[\s\S]*?displayInventory\(type\)\.concat\(timeInventory\(type\)\)\.reduce[\s\S]*?candidate\.key === section\.key/.test(settings), "Display inventory must merge former Time fields into the same ordered composition groups");
-  assert(!/group\("area-link"|"Связь областей"|time\.not_applicable|Не применяется/.test(settings), "right settings must contain neither time-link nor not-applicable placeholder rows");
+  assert(!/group\("area-link"|time\.not_applicable|Не применяется/.test(inventorySource), "Area settings inventory must contain neither the retired area-link group nor not-applicable placeholder rows");
+  assert(/"time\.linking":"Связь областей"/.test(settings), "the Russian localization presenter must retain the legitimate screen-level link-section label");
   const exactInventories = [
     ["time", ["Параметры", "Диапазоны"], ["time.normalize_y", "time.show_markers", "time.units", "time.x_limits", "time.y_limits"]],
     ["spectrum", ["График", "Параметры", "Частотная ось", "Спектральный анализ", "Диапазоны"], ["display.plot_type", "display.show_legend", "spectrum.frequency_units", "spectrum.frequency_scale", "spectrum.scale", "spectrum.resolution_type", "spectrum.leakage", "spectrum.rbw", "spectrum.window_length", "spectrum.window", "spectrum.sidelobe_attenuation_db", "spectrum.overlap_percent", "spectrum.nfft", "spectrum.frequency_resolution", "spectrum.frequency_limits", "spectrum.y_limits"]],

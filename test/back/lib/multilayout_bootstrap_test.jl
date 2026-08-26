@@ -8,7 +8,7 @@ if !isdefined(ML_BOOTSTRAP, :SignalAnalyserSessionService)
     Base.include(ML_BOOTSTRAP, joinpath(ML_BOOTSTRAP.PROJECT_ROOT, "lib", "services", "signal_session_service.jl"))
 end
 
-@testset "TASK-0037 default state builds a complete typed 1x1 pane" begin
+@testset "TASK-0037 default state builds a complete typed 2x2 pane layout" begin
     state = ML_BOOTSTRAP.default_signal_analyser_state()
     display = only(state.displays)
     layout = state.display_layouts[display.id]
@@ -18,8 +18,8 @@ end
     @test [signal.name for signal in state.signals] == ["Гармонический сигнал"]
     @test !only(state.signals).is_complex && all(iszero, imag.(only(state.signals).values))
     @test layout.version == ML_BOOTSTRAP.SIGNAL_DISPLAY_LAYOUT_VERSION
-    @test (layout.variant, layout.rows, layout.columns, layout.active_pane_id, layout.next_pane_number) == ("1x1", 1, 1, "pane-1", 2)
-    @test length(layout.panes) == 1
+    @test (layout.variant, layout.rows, layout.columns, layout.active_pane_id, layout.next_pane_number) == ("2x2", 2, 2, "pane-1", 5)
+    @test length(layout.panes) == 4
     @test pane.plot_type == display.active_plot == ML_BOOTSTRAP.TIME_PLOT
     @test ML_BOOTSTRAP.signal_display_pane_members(pane) == ML_BOOTSTRAP.signal_analyser_display_members(display)
     @test ML_BOOTSTRAP.signal_display_pane_analysis_name(pane) == ML_BOOTSTRAP.signal_analyser_display_analysis_name(display)
@@ -89,6 +89,8 @@ end
         "name" => "Область 2",
         "plot_type" => "spectrogram",
         "signal_bindings" => [names[2]],
+        "analysis_signal" => nothing,
+        "show_axis_labels" => true,
         "peaks_settings" => Dict(
             "mode" => "maxima",
             "number_of_peaks" => 5,

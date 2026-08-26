@@ -46,8 +46,8 @@ struct AnalysedSignal
         ))
         samples = ComplexF64.(values)
         !isempty(samples) || throw(ArgumentError("Сигнал должен содержать хотя бы один отсчёт"))
-        all(value -> isfinite(real(value)) && isfinite(imag(value)), samples) || throw(
-            ArgumentError("Отсчёты сигнала должны быть конечными"),
+        all(value -> !isinf(real(value)) && !isinf(imag(value)), samples) || throw(
+            ArgumentError("Отсчёты сигнала не должны содержать бесконечные значения"),
         )
         !is_complex && any(value -> !iszero(imag(value)), samples) && throw(ArgumentError(
             "Вещественный сигнал не может содержать комплексные отсчёты",

@@ -322,6 +322,273 @@
   };
 }(window));
 
+(function registerSignalAnalyserPreprocessOperation(window) {
+  "use strict";
+
+  var SECTIONS=Object.freeze([
+    {value:"math",label:"Математическое преобразование"},
+    {value:"preprocess",label:"Предобработка"}
+  ]);
+  var HOST_COMMAND=Object.freeze({
+    eventName:"signal-analyser:host-command",
+    command:"preprocess",
+    accepts:function (event) { return !!event && !!event.detail && event.detail.command === "preprocess"; },
+    sourcePolicy:"Resolve the current accepted main_signal by stable id when the event is handled; ignore any source id/name supplied by event.detail."
+  });
+  var MATH_OPERATIONS=Object.freeze([
+    {value:"abs",label:"Модуль"},
+    {value:"square",label:"Квадрат"},
+    {value:"sqrt",label:"Квадратный корень"},
+    {value:"signed-sqrt",label:"Корень из модуля × знак"},
+    {value:"multiply",label:"Умножение"},
+    {value:"custom",label:"Пользовательская операция",backendOnly:true}
+  ]);
+  var PREPROCESS_OPERATIONS=Object.freeze([
+    {value:"bandpass",label:"Полосовой фильтр",phase:"A"},
+    {value:"bandstop",label:"Полосно-заграждающий фильтр",phase:"A"},
+    {value:"highpass",label:"Фильтр верхних частот",phase:"A"},
+    {value:"lowpass",label:"Фильтр нижних частот",phase:"A"},
+    {value:"detrend",label:"Удаление тренда",phase:"A"},
+    {value:"fill-missing",label:"Заполнение пропусков",phase:"A"},
+    {value:"smooth",label:"Сглаживание",phase:"A"},
+    {value:"envelope",label:"Огибающая",phase:"A"},
+    {value:"denoise",label:"Подавление шума",capability:"denoise"},
+    {value:"resample",label:"Передискретизация",capability:"resample"},
+    {value:"custom-preprocess",label:"Пользовательская предобработка",backendOnly:true,capability:"customPreprocess"}
+  ]);
+
+  var OPTIONS=Object.freeze({
+    frequencyUnits:[{value:"hertz",label:"Гц"},{value:"normalized_pi",label:"× π рад/отсчёт"}],
+    detrendMethod:[{value:"constant",label:"Постоянный"},{value:"linear",label:"Линейный"},{value:"piecewise_linear",label:"Кусочно-линейный"}],
+    fillMethod:[
+      {value:"constant",label:"Постоянное значение"},{value:"previous",label:"Предыдущее значение"},
+      {value:"next",label:"Следующее значение"},{value:"nearest",label:"Ближайшее значение"},
+      {value:"linear",label:"Линейная интерполяция"},{value:"spline",label:"Сплайн-интерполяция"},
+      {value:"pchip",label:"Кубическая интерполяция с сохранением формы"},{value:"makima",label:"Модифицированная кубическая интерполяция Акимы"},
+      {value:"moving_mean",label:"Скользящее среднее"},{value:"moving_median",label:"Скользящая медиана"},
+      {value:"knn",label:"K ближайших соседей"},{value:"autoregressive",label:"Авторегрессионная модель"}
+    ],
+    fillEndMethod:[
+      {value:"same",label:"Как основной метод"},{value:"previous",label:"Предыдущее значение"},
+      {value:"next",label:"Следующее значение"},{value:"nearest",label:"Ближайшее значение"},
+      {value:"constant",label:"Постоянное значение"}
+    ],
+    smoothMethod:[
+      {value:"moving_mean",label:"Скользящее среднее"},{value:"moving_median",label:"Скользящая медиана"},
+      {value:"gaussian",label:"Гауссово сглаживание"},{value:"linear_regression",label:"Линейная регрессия"},
+      {value:"quadratic_regression",label:"Квадратичная регрессия"},{value:"robust_linear",label:"Робастная линейная регрессия"},
+      {value:"robust_quadratic",label:"Робастная квадратичная регрессия"},{value:"savitzky_golay",label:"Фильтр Савицкого — Голея"}
+    ],
+    windowType:[{value:"duration",label:"Длительность"},{value:"factor",label:"Коэффициент сглаживания"}],
+    envelopeSide:[{value:"upper",label:"Верхняя"},{value:"lower",label:"Нижняя"}],
+    envelopeMethod:[
+      {value:"hilbert",label:"Преобразование Гильберта"},{value:"fir",label:"КИХ-фильтр"},
+      {value:"rms",label:"СКЗ"},{value:"peak",label:"По пикам"}
+    ],
+    resampleMode:[{value:"rate",label:"Целевая частота дискретизации"},{value:"factor",label:"Коэффициенты интерполяции и децимации"}],
+    interpolation:[
+      {value:"linear",label:"Линейная интерполяция"},
+      {value:"pchip",label:"Кусочно-кубическая интерполяция с сохранением формы"},
+      {value:"spline",label:"Кубический сплайн с условием «не узел»"}
+    ],
+    denoiseMethod:[
+      {value:"bayes",label:"Байесовский"},{value:"blockjs",label:"Блочное правило Джеймса — Стейна (BlockJS)"},
+      {value:"fdr",label:"Контроль доли ложных обнаружений (FDR)"},{value:"minimax",label:"Минимакс"},
+      {value:"sure",label:"Несмещённая оценка риска Стейна (SURE)"},{value:"universal",label:"Универсальный порог"}
+    ],
+    denoiseRule:[{value:"median",label:"Медиана"},{value:"mean",label:"Среднее"},{value:"soft",label:"Мягкое"},{value:"hard",label:"Жёсткое"}],
+    noiseEstimate:[{value:"level_independent",label:"Единая для всех уровней"},{value:"level_dependent",label:"Отдельная для каждого уровня"}]
+  });
+
+  var SUFFIXES=Object.freeze({
+    abs:"abs",square:"square",sqrt:"sqrt","signed-sqrt":"signed_sqrt",
+    multiply:"multiply",custom:"custom",
+    bandpass:"bandpass",bandstop:"bandstop",highpass:"highpass",lowpass:"lowpass",
+    detrend:"detrend","fill-missing":"filled",smooth:"smooth",envelope:"envelope",
+    denoise:"denoise",resample:"resample","custom-preprocess":"preprocess"
+  });
+
+  function copy(value) { return JSON.parse(JSON.stringify(value)); }
+  function finite(value) { return Number.isFinite(Number(value)); }
+  function blank(value) { return value == null || String(value).trim() === ""; }
+  function integer(value) { return finite(value) && Number.isSafeInteger(Number(value)); }
+  function sourceName(source) { return String(source && source.name || ""); }
+  function sampleRate(source) { var value=Number(source && (source.sampleRateHz == null ? source.sample_rate_hz : source.sampleRateHz)); return Number.isFinite(value) && value > 0 ? value : null; }
+  function samplingKind(source) { return String(source && (source.samplingKind || source.sampling_kind) || "samples"); }
+  function hasTime(source) { return samplingKind(source) !== "samples" || sampleRate(source) != null; }
+  function frequencyDefault(source,fraction) { var rate=sampleRate(source); return rate == null ? fraction : rate * 0.5 * fraction; }
+  function frequencyUnit(source) { return sampleRate(source) == null ? "normalized_pi" : "hertz"; }
+  function defaultName(source,operation) { return sourceName(source) + "_" + (SUFFIXES[operation] || String(operation).replace(/-/g,"_")); }
+  function option(value,options) { return (options || []).filter(function (item) { return item.value === value; })[0] || options[0]; }
+  function operationFor(section,value) { return option(value,section === "preprocess" ? PREPROCESS_OPERATIONS : MATH_OPERATIONS); }
+  function capabilities(raw) { return Object.assign({denoise:false,resample:true,customPreprocess:true},raw || {}); }
+  function operationOptions(section,rawCapabilities) {
+    var caps=capabilities(rawCapabilities);
+    return (section === "preprocess" ? PREPROCESS_OPERATIONS : MATH_OPERATIONS).map(function (item) {
+      var enabled=!item.capability || caps[item.capability] === true;
+      return Object.assign({},item,{disabled:!enabled,label:item.label + (enabled ? "" : " — недоступно")});
+    });
+  }
+  function initialParameters(operation,source) {
+    if (operation === "multiply") return {multiplier:1};
+    if (operation === "custom") return {body:"init_signal"};
+    if (operation === "bandpass" || operation === "bandstop") return {frequency_units:frequencyUnit(source),lower_passband:frequencyDefault(source,0.25),upper_passband:frequencyDefault(source,0.75),steepness:0.85,stopband_attenuation_db:60};
+    if (operation === "highpass" || operation === "lowpass") return {frequency_units:frequencyUnit(source),passband:frequencyDefault(source,0.5),steepness:0.85,stopband_attenuation_db:60};
+    if (operation === "detrend") return {method:"linear",breakpoints:""};
+    if (operation === "fill-missing") return {method:"constant",constant_value:0,end_method:"same",end_constant_value:0,window_length:"",neighbors:1,ar_order:""};
+    if (operation === "smooth") return {method:"moving_mean",window_type:"duration",duration_units:samplingKind(source) === "samples" ? "samples" : "seconds",window_duration:null,smoothing_factor:null,polynomial_degree:null};
+    if (operation === "envelope") return {side:"upper",method:"hilbert",filter_order:null,window_length:null,maxima_separation:null,length_units:samplingKind(source) === "samples" ? "samples" : "seconds",separation_units:samplingKind(source) === "samples" ? "samples" : "seconds"};
+    if (operation === "denoise") return {wavelet_family:"sym",wavelet_number:4,method:"bayes",levels:null,rule:"median",noise_estimate:"level_independent",fdr_q:0.05};
+    if (operation === "resample") return {mode:"rate",target_sample_rate_hz:null,upsample_factor:null,downsample_factor:null,interpolation:"linear"};
+    if (operation === "custom-preprocess") return {body:"init_signal"};
+    return {};
+  }
+  function createState(source,rawCapabilities,initialSection) {
+    var section=initialSection === "preprocess" ? "preprocess" : "math",operation=section === "preprocess" ? "bandpass" : "abs";
+    return {section:section,operation:operation,source:copy(source || {}),capabilities:capabilities(rawCapabilities),parameters:initialParameters(operation,source || {}),targetName:defaultName(source || {},operation),nameDirty:false,overwrite:false};
+  }
+  function switchSection(state,section) {
+    var next=copy(state),first=section === "preprocess" ? "bandpass" : "abs";
+    next.section=section; next.operation=first; next.parameters=initialParameters(first,next.source);
+    if (!next.nameDirty) next.targetName=defaultName(next.source,first);
+    return next;
+  }
+  function switchOperation(state,operation) {
+    var next=copy(state); next.operation=operation; next.parameters=initialParameters(operation,next.source);
+    if (!next.nameDirty) next.targetName=defaultName(next.source,operation);
+    return next;
+  }
+  function updateParameter(state,id,value) {
+    var next=copy(state); next.parameters=next.parameters || {}; next.parameters[id]=value;
+    if (next.operation === "denoise" && id === "method") {
+      if (value === "blockjs") next.parameters.rule="";
+      else if (value === "fdr") next.parameters.rule="";
+      else if (value === "bayes" && ["median","mean","soft","hard"].indexOf(next.parameters.rule) < 0) next.parameters.rule="median";
+      else if (["bayes","blockjs","fdr"].indexOf(value) < 0 && ["soft","hard"].indexOf(next.parameters.rule) < 0) next.parameters.rule="soft";
+    }
+    return next;
+  }
+  function field(id,label,type,value,extra) { return Object.assign({id:id,label:label,type:type,value:value,testid:"signal-operation-parameter-"+id.replace(/_/g,"-"),visible:true,disabled:false,required:false,unit:""},extra || {}); }
+  function schema(state) {
+    var p=state.parameters || {},source=state.source || {},op=state.operation,fields=[];
+    if (op === "multiply") fields.push(field("multiplier","Множитель","number",p.multiplier,{required:true}));
+    if (op === "custom") fields.push(field("body","Тело операции","textarea",p.body,{required:true,hint:"Код выполняется только в Engee; входной сигнал доступен как init_signal."}));
+    if (op === "bandpass" || op === "bandstop" || op === "highpass" || op === "lowpass") {
+      fields.push(field("frequency_units","Единицы частоты","select",p.frequency_units,{options:OPTIONS.frequencyUnits,disabled:true}));
+      if (op === "bandpass" || op === "bandstop") {
+        fields.push(field("lower_passband","Нижняя граница полосы пропускания","number",p.lower_passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
+        fields.push(field("upper_passband","Верхняя граница полосы пропускания","number",p.upper_passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
+      } else fields.push(field("passband","Граница полосы пропускания","number",p.passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
+      fields.push(field("steepness","Крутизна","number",p.steepness,{required:true,hint:"От 0,5 включительно до 1,0 исключительно"}));
+      fields.push(field("stopband_attenuation_db","Подавление в полосе задерживания","number",p.stopband_attenuation_db,{required:true,unit:"дБ"}));
+    }
+    if (op === "detrend") {
+      fields.push(field("method","Метод удаления тренда","select",p.method,{options:OPTIONS.detrendMethod,required:true}));
+      fields.push(field("breakpoints","Точки разбиения","text",p.breakpoints,{visible:p.method === "piecewise_linear",required:p.method === "piecewise_linear",hint:"Номера отсчётов через запятую"}));
+    }
+    if (op === "fill-missing") {
+      fields.push(field("method","Метод заполнения","select",p.method,{options:OPTIONS.fillMethod,required:true}));
+      fields.push(field("constant_value","Постоянное значение","number",p.constant_value,{visible:p.method === "constant",required:p.method === "constant"}));
+      fields.push(field("window_length","Длина окна","number",p.window_length,{visible:p.method === "moving_mean" || p.method === "moving_median",required:true,unit:"отсчёты"}));
+      fields.push(field("neighbors","Количество соседей K","number",p.neighbors,{visible:p.method === "knn",required:true,integer:true}));
+      fields.push(field("ar_order","Порядок модели","number",p.ar_order,{visible:p.method === "autoregressive",required:true,integer:true}));
+      fields.push(field("end_method","Заполнение на границах","select",p.end_method,{options:OPTIONS.fillEndMethod,required:true}));
+      fields.push(field("end_constant_value","Постоянное значение на границах","number",p.end_constant_value,{visible:p.end_method === "constant",required:true}));
+    }
+    if (op === "smooth") {
+      fields.push(field("method","Метод сглаживания","select",p.method,{options:OPTIONS.smoothMethod,required:true}));
+      fields.push(field("window_type","Способ задания окна","select",p.window_type,{options:OPTIONS.windowType,required:true}));
+      fields.push(field("duration_units","Единицы длительности","select",p.duration_units,{visible:p.window_type === "duration",options:samplingKind(source) === "samples" ? [{value:"samples",label:"отсчёты"}] : [{value:"seconds",label:"с"},{value:"samples",label:"отсчёты"}],required:true}));
+      fields.push(field("window_duration","Длительность окна","number",p.window_duration,{visible:p.window_type === "duration",unit:p.duration_units === "samples" ? "отсчёты" : "с",placeholder:"Авто",nullableAuto:true}));
+      fields.push(field("smoothing_factor","Коэффициент сглаживания","number",p.smoothing_factor,{visible:p.window_type === "factor",required:true,hint:"От 0 до 1"}));
+      fields.push(field("polynomial_degree","Степень полинома","number",p.polynomial_degree,{visible:p.method === "savitzky_golay",placeholder:"Авто",nullableAuto:true,integer:true}));
+    }
+    if (op === "envelope") {
+      fields.push(field("side","Сторона огибающей","select",p.side,{options:OPTIONS.envelopeSide,required:true}));
+      fields.push(field("method","Метод","select",p.method,{options:OPTIONS.envelopeMethod,required:true}));
+      fields.push(field("filter_order","Порядок фильтра","number",p.filter_order,{visible:p.method === "fir",placeholder:"Авто",nullableAuto:true,integer:true}));
+      fields.push(field("length_units","Единицы длины","select",p.length_units,{visible:p.method === "rms",options:samplingKind(source) === "samples" ? [{value:"samples",label:"отсчёты"}] : [{value:"seconds",label:"с"},{value:"samples",label:"отсчёты"}],required:true}));
+      fields.push(field("window_length","Длина окна","number",p.window_length,{visible:p.method === "rms",placeholder:"Авто",nullableAuto:true,integer:p.length_units === "samples",unit:p.length_units === "samples" ? "отсчёты" : "с"}));
+      fields.push(field("separation_units","Единицы расстояния","select",p.separation_units,{visible:p.method === "peak",options:samplingKind(source) === "samples" ? [{value:"samples",label:"отсчёты"}] : [{value:"seconds",label:"с"},{value:"samples",label:"отсчёты"}],required:true}));
+      fields.push(field("maxima_separation","Расстояние между максимумами","number",p.maxima_separation,{visible:p.method === "peak",placeholder:"Авто",nullableAuto:true,integer:p.separation_units === "samples",unit:p.separation_units === "samples" ? "отсчёты" : "с"}));
+    }
+    if (op === "denoise") {
+      fields.push(field("wavelet_family","Семейство вейвлета","text",p.wavelet_family,{required:true}));
+      fields.push(field("wavelet_number","Номер вейвлета","number",p.wavelet_number,{required:true,integer:true}));
+      fields.push(field("method","Метод","select",p.method,{options:OPTIONS.denoiseMethod,required:true}));
+      fields.push(field("levels","Количество уровней","number",p.levels,{placeholder:"Авто",nullableAuto:true,integer:true}));
+      fields.push(field("rule","Правило","select",p.rule,{options:OPTIONS.denoiseRule.filter(function (item) { return p.method === "bayes" ? true : p.method === "blockjs" ? false : item.value === "soft" || item.value === "hard"; }),visible:p.method !== "blockjs" && p.method !== "fdr",required:true}));
+      fields.push(field("noise_estimate","Оценка шума","select",p.noise_estimate,{options:OPTIONS.noiseEstimate,visible:p.method !== "blockjs",required:true}));
+      fields.push(field("fdr_q","Уровень Q","number",p.fdr_q,{visible:p.method === "fdr",required:true,hint:"Больше 0 и не больше 0,5"}));
+    }
+    if (op === "resample") {
+      var kind=samplingKind(source),uniform=kind === "uniform" || kind === "samples" && sampleRate(source) != null;
+      fields.push(field("mode","Способ передискретизации","select",p.mode,{options:OPTIONS.resampleMode,visible:uniform,required:uniform}));
+      fields.push(field("target_sample_rate_hz","Целевая частота дискретизации","number",p.target_sample_rate_hz,{visible:!uniform || p.mode === "rate",required:true,unit:"Гц"}));
+      fields.push(field("upsample_factor","Коэффициент интерполяции","number",p.upsample_factor,{visible:uniform && p.mode === "factor",required:true,integer:true}));
+      fields.push(field("downsample_factor","Коэффициент децимации","number",p.downsample_factor,{visible:uniform && p.mode === "factor",required:true,integer:true}));
+      fields.push(field("interpolation","Метод интерполяции","select",p.interpolation,{options:OPTIONS.interpolation,visible:kind === "nonuniform",required:kind === "nonuniform"}));
+    }
+    if (op === "custom-preprocess") fields.push(field("body","Тело операции","textarea",p.body,{required:true,hint:"Код выполняется только в Engee; входной сигнал доступен как init_signal."}));
+    return fields.filter(function (item) { return item.visible; });
+  }
+  function availability(state) {
+    var op=operationFor(state.section,state.operation),caps=capabilities(state.capabilities);
+    if (op.capability && caps[op.capability] !== true) return {available:false,code:op.capability === "denoise" ? "denoise_unavailable" : "provider_unavailable",message:op.capability === "denoise" ? "Подавление шума недоступно: в Engee не подключена необходимая поддержка вейвлетов." : "Эта операция пока недоступна в Engee."};
+    if (state.operation === "resample" && !hasTime(state.source)) return {available:false,code:"time_required",message:"Для передискретизации задайте частоту дискретизации или временные координаты исходного сигнала."};
+    if (state.operation === "envelope" && state.source && state.source.complex) return {available:false,code:"real_required",message:"Огибающая доступна только для вещественного сигнала."};
+    return {available:true,code:"",message:""};
+  }
+  function validate(state) {
+    var fields=schema(state),errors={},p=state.parameters || {},op=state.operation,available=availability(state);
+    if (blank(state.targetName)) errors.target_name="Введите имя нового сигнала.";
+    fields.forEach(function (item) {
+      var value=p[item.id];
+      if (item.required && blank(value)) errors[item.id]="Заполните поле.";
+      else if (!blank(value) && item.type === "number" && !finite(value)) errors[item.id]="Введите число.";
+      else if (!blank(value) && item.integer && (!integer(value) || Number(value) <= 0)) errors[item.id]="Введите целое число больше нуля.";
+    });
+    var nyquist=sampleRate(state.source) == null ? 1 : sampleRate(state.source)/2;
+    function frequency(id) { var value=Number(p[id]); if (finite(value) && (value <= 0 || value >= nyquist)) errors[id]="Значение должно быть больше нуля и меньше частоты Найквиста."; }
+    if (/^(bandpass|bandstop)$/.test(op)) { frequency("lower_passband"); frequency("upper_passband"); if (!errors.lower_passband && !errors.upper_passband && Number(p.lower_passband) >= Number(p.upper_passband)) errors.lower_passband="Нижняя граница должна быть меньше верхней."; }
+    if (/^(highpass|lowpass)$/.test(op)) frequency("passband");
+    if (/pass|stop/.test(op)) {
+      if (finite(p.steepness) && (Number(p.steepness) < 0.5 || Number(p.steepness) >= 1)) errors.steepness="Введите значение от 0,5 включительно до 1,0 исключительно.";
+      if (finite(p.stopband_attenuation_db) && Number(p.stopband_attenuation_db) <= 0) errors.stopband_attenuation_db="Введите значение больше нуля.";
+    }
+    if (op === "detrend" && p.method === "piecewise_linear" && !/^\s*\d+(?:\s*,\s*\d+)*\s*$/.test(String(p.breakpoints || ""))) errors.breakpoints="Введите возрастающие номера отсчётов через запятую.";
+    if (op === "smooth" && p.window_type === "factor" && finite(p.smoothing_factor) && (Number(p.smoothing_factor) < 0 || Number(p.smoothing_factor) > 1)) errors.smoothing_factor="Введите значение от 0 до 1.";
+    if (op === "denoise" && p.method === "fdr" && finite(p.fdr_q) && (Number(p.fdr_q) <= 0 || Number(p.fdr_q) > 0.5)) errors.fdr_q="Введите значение больше 0 и не больше 0,5.";
+    return {valid:available.available && Object.keys(errors).length === 0,errors:errors,availability:available};
+  }
+  function payload(state) {
+    var visible={}; schema(state).forEach(function (item) { visible[item.id]=item; });
+    var parameters={}; Object.keys(state.parameters || {}).forEach(function (key) {
+      if (!visible[key]) return;
+      var value=state.parameters[key];
+      parameters[key]=blank(value) ? null : visible[key].type === "number" ? Number(value) : value;
+    });
+    return {source_signal_id:state.source && state.source.id,operation_kind:state.section,operation:state.operation,parameters:parameters,target_name:state.targetName,overwrite:!!state.overwrite};
+  }
+
+  window.SignalAnalyserPreprocessOperation={
+    sections:SECTIONS,mathOperations:MATH_OPERATIONS,preprocessOperations:PREPROCESS_OPERATIONS,options:OPTIONS,hostCommand:HOST_COMMAND,
+    createState:createState,switchSection:switchSection,switchOperation:switchOperation,updateParameter:updateParameter,operationOptions:operationOptions,
+    schema:schema,availability:availability,validate:validate,payload:payload,defaultName:defaultName,
+    contract:Object.freeze({
+      entry:"The existing Операция над сигналом action always uses the signal selected by plain LMB as its source; checkbox-only visibility does not change the source.",
+      externalEntry:"The external Analyser menu dispatches window event signal-analyser:host-command with detail.command=preprocess. The application adds no visible in-app button and resolves the current main_signal itself.",
+      phaseA:["bandpass","bandstop","highpass","lowpass","detrend","fill-missing","smooth","envelope"],
+      denoise:"Visible in the selector but disabled with a Russian reason until the backend reports denoise=true; when enabled, the dependent schema is fixed by this module.",
+      resample:"No time metadata blocks submit with an operation-level compatibility message; uniform and nonuniform sources expose different field branches.",
+      custom:"Custom bodies are sent unchanged to the backend and are never evaluated, parsed or wrapped by frontend code.",
+      output:"The product keeps its existing derived-signal transaction: source is unchanged; target name and overwrite remain explicit even though MATLAB preprocessing itself overwrites selected data.",
+      auto:"Every nullable automatic parameter renders an empty numeric value with placeholder Авто; null and numeric zero are distinct.",
+      errors:"Typed constraints are field-local. Compatibility, license and runtime failures use the standard sanitized alertdialog and never show raw Engee or Julia text."
+    })
+  };
+}(window));
+
 (function registerSignalAnalyserTask0153(window) {
   "use strict";
 
@@ -663,7 +930,10 @@
     layer:"[data-testid='signal-trim-layer']",
     dialog:"[data-testid='signal-trim-dialog']",
     form:"[data-signal-trim-form]",
+    source:"[data-signal-trim-source]",
+    interval:"[data-signal-trim-interval]",
     name:"[data-signal-trim-name]",
+    overwriteRow:"[data-signal-trim-overwrite-row]",
     overwrite:"[data-signal-trim-overwrite]",
     submit:"[data-signal-trim-submit]",
     cancel:"[data-signal-trim-cancel]",
@@ -672,8 +942,11 @@
   };
   function finite(value) { return Number.isFinite(Number(value)); }
   function clean(value) { return String(value == null ? "" : value).trim(); }
+  function normalized(value) { var text=clean(value); return typeof text.normalize === "function" ? text.normalize("NFC") : text; }
   function escapeHtml(value) { return String(value).replace(/[&<>"']/g,function (character) { return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[character]; }); }
   function normalizeType(value) { value=String(value || "").toLowerCase(); return /^(time|time-domain|врем)/.test(value) ? "time" : value; }
+  function signalId(signal) { return clean(signal && (signal.id || signal.signal_id)); }
+  function signalName(signal) { return clean(signal && (signal.name || signal.signal_name || signalId(signal))); }
   function interval(snapshot) {
     var values=snapshot && Array.isArray(snapshot.values) ? snapshot.values : [];
     if (values.length !== 2 || !finite(values[0]) || !finite(values[1])) return null;
@@ -696,104 +969,158 @@
     if (!finite(start) || !finite(end)) return null;
     return {min_s:Math.min(start,end),max_s:Math.max(start,end)};
   }
+  function eligibleSignals(context) {
+    var supplied=context && (context.eligibleSignals || context.visibleSignals || context.paneSignals),main=context && context.mainSignal;
+    var list=Array.isArray(supplied) ? supplied.slice() : main ? [main] : [];
+    var seen=Object.create(null);
+    return list.filter(function (signal) {
+      var id=signalId(signal);
+      if (!id || seen[id] || signal && signal.trimEligible === false) return false;
+      seen[id]=true;
+      return true;
+    });
+  }
+  function inventorySignals(context) {
+    var supplied=context && (context.signalInventory || context.allSignals);
+    return Array.isArray(supplied) ? supplied : eligibleSignals(context);
+  }
+  function sourceById(context,id) { return eligibleSignals(context).find(function (signal) { return signalId(signal) === clean(id); }) || null; }
   function eligibility(context) {
-    var range=canonicalSeconds(context),signal=context && context.mainSignal;
+    var mainId=signalId(context && context.mainSignal),sources=eligibleSignals(context);
     return !!context && normalizeType(context.plotType) === "time" && context.cursorSnapshot && context.cursorSnapshot.mode === "dual" &&
-      !!signal && clean(signal.id || signal.signal_id) !== "" && !!range;
+      !!mainId && sources.some(function (signal) { return signalId(signal) === mainId; }) && !!canonicalSeconds(context);
   }
   function actionMarkup() {
-    return "<button class='pane-action icon-button' type='button' data-testid='pane-trim-signal' data-pane-trim-signal data-pane-trim-eligible='true' aria-label='Обрезать сигнал по курсорам' title='Обрезать сигнал по курсорам'><img src='./icons/function.svg' alt=''></button>";
+    return "<button class='pane-action button pane-trim-action' type='button' data-testid='pane-trim-signal' data-pane-trim-signal data-pane-trim-eligible='true' aria-label='Обрезать сигнал по курсорам'>Обрезать</button>";
   }
   function projectAction(button,context) {
     var visible=eligibility(context);
     if (!button) return visible;
     button.hidden=!visible;
-    button.disabled=false;
+    button.disabled=!!(context && context.trimBusy);
     button.setAttribute("aria-hidden",String(!visible));
     button.dataset.paneTrimEligible=String(visible);
     return visible;
   }
+  function nameTaken(context,value,sourceId) {
+    var wanted=normalized(value);
+    if (!wanted) return false;
+    return inventorySignals(context).some(function (signal) { return normalized(signalName(signal)) === wanted && signalId(signal) !== clean(sourceId); });
+  }
+  function suggestedName(context,source) {
+    var base=signalName(source)+"_фрагмент",candidate=base,index=2;
+    while (nameTaken(context,candidate,signalId(source))) { candidate=base+"_"+index; index+=1; }
+    return candidate;
+  }
   function validateName(value) {
     var name=clean(value);
     if (!name) return {valid:false,reason:"required",message:"Введите имя нового сигнала."};
-    if (name.length > 128) return {valid:false,reason:"too_long",message:"Имя сигнала не должно превышать 128 символов."};
+    if (Array.from(name).length > 128) return {valid:false,reason:"too_long",message:"Имя сигнала не должно превышать 128 символов."};
     return {valid:true,value:name};
   }
-  function fieldMarkup(context) {
-    var signal=context.mainSignal,range=interval(context.cursorSnapshot),unit=clean(context.xUnit),source=clean(signal.name || signal.signal_name || signal.id || signal.signal_id);
-    var intervalText=String(range.start)+" – "+String(range.end)+(unit ? " "+unit : "");
-    return "<div class='settings-field-row'><label class='settings-label'>Исходный сигнал</label><input type='text' readonly autocomplete='off' value='"+escapeHtml(source)+"'></div>"+
-      "<div class='settings-field-row'><label class='settings-label'>Интервал курсоров</label><input type='text' readonly autocomplete='off' value='"+escapeHtml(intervalText)+"'></div>"+
-      "<div class='settings-field-row'><label class='settings-label' for='signal-trim-name'>Имя нового сигнала</label><input id='signal-trim-name' type='text' autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off' data-signal-trim-name aria-required='true'></div>"+
-      "<label class='operation-overwrite-row'><input type='checkbox' data-signal-trim-overwrite><span>Затирать сигнал с таким именем</span></label>"+
-      "<div class='operation-status' role='alert' aria-live='assertive' data-signal-trim-status hidden></div>";
+  function initialDraft(context) {
+    var sources=eligibleSignals(context),mainId=signalId(context && context.mainSignal);
+    var source=sources.find(function (item) { return signalId(item) === mainId; }) || sources[0] || null;
+    return {sourceId:signalId(source),name:source ? suggestedName(context,source) : "",nameDirty:false,overwrite:false};
   }
-  function payload(context,name,overwrite) {
-    var range=canonicalSeconds(context),signal=context && context.mainSignal || {},revision=Number(context && (context.stateRevision != null ? context.stateRevision : context.state_revision));
-    var validName=validateName(name);
-    if (!eligibility(context) || !range) throw new Error("ineligible");
-    if (!validName.valid) throw new Error(validName.reason);
+  function validateDraft(context,draft,busy) {
+    var source=sourceById(context,draft && draft.sourceId),name=validateName(draft && draft.name),range=canonicalSeconds(context);
+    var conflict=!!source && name.valid && nameTaken(context,name.value,signalId(source));
+    var reason=!source ? "source" : !range ? "interval" : !name.valid ? name.reason : conflict && !(draft && draft.overwrite) ? "conflict" : busy ? "busy" : "";
+    var message=reason === "source" ? "Выберите доступный исходный сигнал." : reason === "interval" ? "Интервал курсоров недоступен." : reason === "conflict" ? "Сигнал с таким именем уже существует. Разрешите замену или измените имя." : !name.valid ? name.message : "";
+    return {valid:!reason,reason:reason,message:message,source:source,name:name.valid ? name.value : "",range:range,conflict:conflict};
+  }
+  function intervalText(context) {
+    var range=interval(context && context.cursorSnapshot),unit=clean(context && context.xUnit);
+    return range ? String(range.start)+" – "+String(range.end)+(unit ? " "+unit : "") : "Недоступно";
+  }
+  function fieldMarkup(context,draft,busy) {
+    draft=draft || initialDraft(context);
+    var validation=validateDraft(context,draft,!!busy),sources=eligibleSignals(context);
+    var options=sources.map(function (signal) { var id=signalId(signal); return "<option value='"+escapeHtml(id)+"'"+(id === draft.sourceId ? " selected" : "")+">"+escapeHtml(signalName(signal))+"</option>"; }).join("");
+    return "<div class='signal-trim-form'>"+
+      "<div class='signal-trim-row'><label for='signal-trim-source'>Исходный сигнал</label><span class='signal-trim-select select-trigger-arrow'><select id='signal-trim-source' data-signal-trim-source"+(busy ? " disabled" : "")+">"+options+"</select></span></div>"+
+      "<div class='signal-trim-row'><span class='signal-trim-label'>Интервал курсоров</span><output class='signal-trim-readonly' data-signal-trim-interval>"+escapeHtml(intervalText(context))+"</output></div>"+
+      "<div class='signal-trim-row signal-trim-row-with-message'><label for='signal-trim-name'>Имя нового сигнала</label><div><input id='signal-trim-name' type='text' value='"+escapeHtml(draft.name)+"' autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off' data-signal-trim-name aria-required='true' aria-invalid='"+String(validation.reason === "required" || validation.reason === "too_long" || validation.reason === "conflict")+"'"+(busy ? " disabled" : "")+"><p class='signal-trim-field-message' data-signal-trim-name-message"+(validation.message && validation.reason !== "source" && validation.reason !== "interval" ? "" : " hidden")+">"+escapeHtml(validation.message)+"</p></div></div>"+
+      "<div class='signal-trim-overwrite-row' data-signal-trim-overwrite-row"+(validation.conflict ? "" : " hidden")+"><span></span><label class='checkbox-control'><input type='checkbox' data-signal-trim-overwrite"+(draft.overwrite ? " checked" : "")+(busy ? " disabled" : "")+"><span>Заменить сигнал с таким именем</span></label></div>"+
+      "<div class='operation-status' role='alert' aria-live='assertive' data-signal-trim-status hidden></div>"+
+      "</div>";
+  }
+  function payload(context,draft) {
+    var validation=validateDraft(context,draft,false),revision=Number(context && (context.stateRevision != null ? context.stateRevision : context.state_revision));
+    if (!validation.valid) throw new Error(validation.reason);
     if (!Number.isSafeInteger(revision) || revision < 0) throw new Error("state_revision");
-    return {
-      state_revision:revision,
-      source_signal_id:signal.id || signal.signal_id,
-      min_s:range.min_s,
-      max_s:range.max_s,
-      target_name:validName.value,
-      overwrite:!!overwrite
-    };
+    return {state_revision:revision,source_signal_id:signalId(validation.source),min_s:validation.range.min_s,max_s:validation.range.max_s,target_name:validation.name,overwrite:!!draft.overwrite};
   }
   function typedError(error) {
     var status=Number(error && (error.status || error.statusCode));
-    if (status === 409) return "Сигнал с таким именем уже существует или данные изменились. Обновите имя и повторите.";
-    if (status === 404) return "Исходный сигнал больше недоступен.";
-    if (status === 422) return "В выбранном интервале нет доступных отсчётов.";
-    if (status === 400) return "Проверьте имя и интервал курсоров.";
-    return "Не удалось создать обрезанный сигнал. Повторите попытку.";
+    if (status === 409) return "Сигнал с таким именем уже существует или данные изменились. Проверьте имя и повторите.";
+    if (status === 404) return "Выбранный исходный сигнал больше недоступен.";
+    if (status === 422) return "В интервале между курсорами нет доступных отсчётов.";
+    if (status === 400) return "Проверьте исходный сигнал, имя и интервал курсоров.";
+    return "Не удалось создать фрагмент сигнала. Повторите попытку.";
   }
   function createController(options) {
     options=options || {};
-    var attempt=0,busy=false,context=null,opener=null;
+    var attempt=0,busy=false,context=null,opener=null,draft=null;
+    function sync(meta) {
+      var validation=validateDraft(context,draft,busy);
+      if (typeof options.sync === "function") options.sync({draft:Object.assign({},draft),validation:validation,markup:fieldMarkup(context,draft,busy),submitDisabled:!validation.valid},{selectors:SELECTORS,meta:meta || {}});
+      return validation;
+    }
     function open(nextContext,button) {
       if (!eligibility(nextContext)) return false;
-      context=nextContext; opener=button || null;
-      if (typeof options.mount === "function") options.mount(fieldMarkup(context),{selectors:SELECTORS,initialFocus:SELECTORS.name,returnFocus:opener});
+      context=nextContext; opener=button || null; draft=initialDraft(context);
+      if (typeof options.mount === "function") options.mount(fieldMarkup(context,draft,false),{selectors:SELECTORS,initialFocus:SELECTORS.name,returnFocus:opener,submitDisabled:!validateDraft(context,draft,false).valid});
       return true;
     }
-    function close() { if (busy) return false; if (typeof options.close === "function") options.close({restoreFocus:opener}); context=null; return true; }
-    function submit(name,overwrite) {
-      var valid=validateName(name);
-      if (!valid.valid) { if (typeof options.error === "function") options.error(valid.message,{field:SELECTORS.name}); return Promise.resolve({ok:false,validation:valid}); }
-      var token=++attempt; busy=true;
+    function close() { if (busy) return false; if (typeof options.close === "function") options.close({restoreFocus:opener}); context=null; draft=null; return true; }
+    function selectSource(id) {
+      if (busy || !sourceById(context,id)) return sync({rejected:true});
+      draft.sourceId=clean(id); draft.overwrite=false;
+      if (!draft.nameDirty) draft.name=suggestedName(context,sourceById(context,id));
+      return sync({sourceChanged:true,preserveTypedName:draft.nameDirty});
+    }
+    function editName(value) { if (!busy) { draft.name=String(value == null ? "" : value); draft.nameDirty=true; draft.overwrite=false; } return sync({nameEdited:true}); }
+    function setOverwrite(value) { if (!busy) draft.overwrite=!!value; return sync({overwriteChanged:true}); }
+    function submit() {
+      var validation=validateDraft(context,draft,busy);
+      if (!validation.valid) { if (typeof options.error === "function") options.error(validation.message,{field:validation.reason === "source" ? SELECTORS.source : validation.reason === "interval" ? SELECTORS.interval : SELECTORS.name}); return Promise.resolve({ok:false,validation:validation}); }
+      var token=++attempt; busy=true; sync({busyStarted:true});
       if (typeof options.setBusy === "function") options.setBusy(true,{stableControls:true,ariaBusy:true,blockClose:true});
-      return Promise.resolve(options.createSignal(payload(context,valid.value,overwrite))).then(function (created) {
+      return Promise.resolve(options.createSignal(payload(context,draft))).then(function (created) {
         if (token !== attempt) return {ok:false,stale:true};
         busy=false; if (typeof options.acceptSignal === "function") options.acceptSignal(created,{appendOrRefreshSignals:true});
         if (typeof options.setBusy === "function") options.setBusy(false,{stableControls:true});
-        if (typeof options.close === "function") options.close({restoreFocus:null,success:true}); context=null;
+        if (typeof options.close === "function") options.close({restoreFocus:null,success:true}); context=null; draft=null;
         return {ok:true,signal:created};
       },function (error) {
         if (token !== attempt) return {ok:false,stale:true};
         busy=false; if (typeof options.setBusy === "function") options.setBusy(false,{stableControls:true});
+        sync({busyEnded:true});
         var message=typedError(error); if (typeof options.error === "function") options.error(message,{field:null});
         return {ok:false,error:message};
       });
     }
     function destroy() {
-      attempt+=1; busy=false; context=null;
+      attempt+=1; busy=false; context=null; draft=null;
       if (typeof options.setBusy === "function") options.setBusy(false,{stableControls:true,cleanup:true});
       if (typeof options.close === "function") options.close({restoreFocus:null,cleanup:true});
       opener=null;
     }
-    return {open:open,close:close,submit:submit,isBusy:function () { return busy; },invalidate:function () { attempt+=1; },destroy:destroy};
+    return {open:open,close:close,selectSource:selectSource,editName:editName,setOverwrite:setOverwrite,submit:submit,snapshot:function () { return {busy:busy,draft:draft && Object.assign({},draft),validation:draft && validateDraft(context,draft,busy)}; },isBusy:function () { return busy; },invalidate:function () { attempt+=1; },destroy:destroy};
   }
 
   window.SignalAnalyserCursorTrimSignal={
     selectors:SELECTORS,
     eligibility:eligibility,
+    eligibleSignals:eligibleSignals,
     interval:interval,
     canonicalSeconds:canonicalSeconds,
+    suggestedName:suggestedName,
     validateName:validateName,
+    validateDraft:validateDraft,
+    initialDraft:initialDraft,
     actionMarkup:actionMarkup,
     projectAction:projectAction,
     fieldMarkup:fieldMarkup,
@@ -801,10 +1128,13 @@
     typedError:typedError,
     createController:createController,
     contract:{
-      placement:"Existing compact pane-header action immediately before the plot-type selector/overflow; hidden rather than reserved whenever ineligible.",
-      eligibility:"Time pane only, cursor mode dual, valid active-pane main signal and exactly two finite snapped cursor X values.",
-      semantics:"Frontend sends sorted cursor bounds converted to canonical seconds. Backend validates/clamps the interval, takes inclusive samples, retains source sample rate/data type, rebases returned signal time origin to zero and never mutates the source.",
-      modal:"Reuse the Signal operation dialog geometry, overwrite checkbox and busy continuity; focus new-name on open, trap focus, Escape/Cancel/close only while idle, restore opener on cancel/error close.",
+      placement:"Canonical text-only Secondary MD pane-header button Обрезать immediately before the plot-type selector/overflow; no unrelated function icon and no tooltip required.",
+      eligibility:"Time pane only, cursor mode dual, current main signal included in eligible active-pane sources and exactly two finite snapped cursor X values.",
+      source:"Standard 32px dropdown contains only eligible active-Time-pane signals and initially selects current main_signal; payload source_signal_id always comes from the current selection.",
+      name:"Unicode is preserved. Initial suggestion is <source>_фрагмент with the lowest available _N suffix; source changes update it only while nameDirty is false.",
+      interval:"One read-only contextual output shows sorted cursor bounds in current units; no manual range fields.",
+      overwrite:"Conditional canonical checkbox appears only on an inventory name conflict; unchecked conflict disables submit.",
+      modal:"Canonical 480px Engee modal; focus suggested new-name on open, trap focus, dropdown uses native keyboard semantics, Escape closes dropdown before idle modal, backdrop never closes, busy blocks Close/Escape/Cancel.",
       provider:"POST /api/signals/crop exact payload {state_revision,source_signal_id,min_s,max_s,target_name,overwrite} through the existing revision-safe signal mutation queue; accept the returned signal/inventory before closing success.",
       cleanup:"On pane removal/type change/main-signal loss/mode drop, hide the action; on owner removal call destroy() to invalidate stale submit, clear busy UI and detach the cursor subscription."
     }
@@ -1032,7 +1362,7 @@
     paneMenuTrigger: null, graphHelpRestoreTarget: null, paneClearContext: null,
     sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
     sessionSave: { open:false, busy:false, phase:"summary", error:"", package:null, trigger:null },
-    signalOperation: { open:false, source:null, operation:"abs", busy:false, error:"", success:false },
+    signalOperation: { open:false, source:null, operationState:null, busy:false, success:false, validation:null, trigger:null },
     signalMembershipBusy: false, pendingMainSignal: "", namePreview: { displays:{}, panes:{} }, namePreviewIntents:{}, settingsPublishEvents: [], rangeBoundaryIntents:{}, viewportRanges:{}, synchronizedRangeSettlers:{}, synchronizedRangeFrame:null, synchronizedSettingsFrame:null, synchronizedRangePending:{}, synchronizedRangeSuppressByPane:{}, rangeLifecycle:null, rangeLifecycleTokens:{}, rangeLifecycleActive:{}, rangeLifecycleFrame:null, rangeLifecycleRelayoutPending:{}, rangeLifecycleScrollTop:null,
     signalSamples: { signalId:"", signalName:"", token:0, rows:[], startOffset:0, endOffset:0, total:0, firstBatchLoaded:false, pending:{ up:null, down:null, search:null }, error:"", searchValue:"", searchState:"", searchMessage:"" },
     sampleColumnsVisibility:null, sampleColumnsMenuTrigger:null, measurementCursorController:null, measurementCursorSnapshotByPane:{}, measurementCursorUnsubscribe:null, measurementCursorFrame:null,
@@ -2785,6 +3115,33 @@
 
   var graphCursorController = null;
   function axisLabelsPolicy() { return window.SignalAnalyserAxisLabelsAndHover || null; }
+  function russianPresenter() { return window.SignalAnalyserRussianLocalization || null; }
+  function localizedPlotTitle(value) {
+    var presenter=russianPresenter(),source=String(value == null ? "" : value).trim();
+    if (!presenter || !source) return source;
+    var exact=presenter.knownText(source);
+    if (exact !== source) return exact;
+    var parts=source.split(","),label=presenter.knownText(parts.shift().trim()),unit=parts.length ? presenter.unitLabel(parts.join(",").trim()) : "";
+    return unit ? label+", "+unit : label;
+  }
+  function localizePlotPresentation(layout,traces) {
+    var nextLayout=Object.assign({},layout || {});
+    Object.keys(nextLayout).forEach(function (key) {
+      if (!/^[xy]axis\d*$/.test(key) || !nextLayout[key]) return;
+      var axis=Object.assign({},nextLayout[key]),title=axis.title;
+      if (typeof title === "string") axis.title=localizedPlotTitle(title);
+      else if (title && typeof title === "object") axis.title=Object.assign({},title,{text:localizedPlotTitle(title.text)});
+      nextLayout[key]=axis;
+    });
+    var nextTraces=(traces || []).map(function (trace) {
+      if (!trace || !trace.colorbar || !trace.colorbar.title) return trace;
+      var next=Object.assign({},trace),colorbar=Object.assign({},trace.colorbar),title=colorbar.title;
+      colorbar.title=typeof title === "string" ? localizedPlotTitle(title) : Object.assign({},title,{text:localizedPlotTitle(title.text)});
+      next.colorbar=colorbar;
+      return next;
+    });
+    return {layout:nextLayout,traces:nextTraces};
+  }
   function axisLabelsController() {
     var helper=axisLabelsPolicy();
     if (!model.axisLabelsController && helper) model.axisLabelsController=helper.createController({
@@ -2832,15 +3189,15 @@
   }
 
   var signalTrimMarkup=`<div class="modal-layer native-modal-layer" data-testid="signal-trim-layer" hidden>
-  <section class="dialog-card signal-operation-dialog signal-trim-dialog" role="dialog" aria-modal="true" aria-labelledby="signal-trim-title" data-testid="signal-trim-dialog">
+  <section class="dialog-card signal-trim-dialog" role="dialog" aria-modal="true" aria-labelledby="signal-trim-title" data-testid="signal-trim-dialog">
     <header class="dialog-titlebar">
-      <h2 id="signal-trim-title" tabindex="-1">Обрезать сигнал по курсорам</h2>
+      <h2 id="signal-trim-title" tabindex="-1">Обрезать сигнал</h2>
       <button class="icon-button dialog-close" type="button" data-signal-trim-close aria-label="Закрыть обрезку сигнала"><img src="./icons/close.svg" alt=""></button>
     </header>
-    <div class="dialog-body" data-signal-trim-form></div>
+    <div class="dialog-body signal-trim-body" data-signal-trim-form></div>
     <footer class="dialog-footer">
       <button class="button" type="button" data-signal-trim-cancel>Отмена</button>
-      <button class="button button-primary" type="button" data-signal-trim-submit>Создать</button>
+      <button class="button button-primary" type="button" data-signal-trim-submit disabled>Создать сигнал</button>
     </footer>
   </section>
 </div>`;
@@ -2850,16 +3207,30 @@
     var helper=signalTrimHelper(), key=paneRuntimeKey(displayId,pane.id), snapshot=model.measurementCursorSnapshotByPane[key] || null;
     var host=snapshot && snapshot.host || q("[data-pane-host='"+CSS.escape(key)+"']"), title=host && host._fullLayout && host._fullLayout.xaxis && host._fullLayout.xaxis.title;
     var titleText=typeof title === "string" ? title : title && title.text || "", parts=String(titleText).split(",");
-    return {displayId:displayId,paneId:pane.id,plotType:pane.plot_type,cursorSnapshot:snapshot,mainSignal:mainSignalForPane(pane),xUnit:parts.length>1 ? parts.slice(1).join(",").trim() : "s",stateRevision:model.revision,helper:helper};
+    var inventory=model.state && Array.isArray(model.state.signals) ? model.state.signals : [], bindings=Array.isArray(pane.signal_bindings) ? pane.signal_bindings : [];
+    var eligibleSignals=inventory.filter(function (signal) { return bindings.some(function (binding) { return signalNameMatches(signal,binding); }); });
+    return {displayId:displayId,paneId:pane.id,plotType:pane.plot_type,cursorSnapshot:snapshot,mainSignal:mainSignalForPane(pane),eligibleSignals:eligibleSignals,signalInventory:inventory,xUnit:parts.length>1 ? parts.slice(1).join(",").trim() : "с",stateRevision:model.revision,trimBusy:!!(model.signalTrimController && model.signalTrimController.isBusy()),helper:helper};
   }
   function signalTrimController() {
     var helper=signalTrimHelper();
     if (!model.signalTrimController && helper) model.signalTrimController=helper.createController({
-      mount:function (markup,meta) { var layer=ensureSignalTrimLayer(), form=layer && layer.querySelector(helper.selectors.form); if (!layer || !form) return; form.innerHTML=markup; layer.hidden=false; q("[data-testid='app-shell']").inert=true; layer.setAttribute("aria-busy","false"); window.requestAnimationFrame(function () { var focus=layer.querySelector(meta.initialFocus); if (focus) focus.focus(); }); },
+      mount:function (markup,meta) { var layer=ensureSignalTrimLayer(), form=layer && layer.querySelector(helper.selectors.form), submit=layer && layer.querySelector(helper.selectors.submit); if (!layer || !form) return; form.innerHTML=markup; if (submit) submit.disabled=!!meta.submitDisabled; layer.hidden=false; q("[data-testid='app-shell']").inert=true; layer.setAttribute("aria-busy","false"); window.requestAnimationFrame(function () { var focus=layer.querySelector(meta.initialFocus); if (focus) focus.focus(); }); },
+      sync:function (state) {
+        var layer=q(helper.selectors.layer), form=layer && layer.querySelector(helper.selectors.form);
+        if (!layer || !form) return;
+        var source=form.querySelector(helper.selectors.source), name=form.querySelector(helper.selectors.name), overwriteRow=form.querySelector(helper.selectors.overwriteRow), overwrite=form.querySelector(helper.selectors.overwrite), message=form.querySelector("[data-signal-trim-name-message]"), submit=layer.querySelector(helper.selectors.submit);
+        if (source && source.value !== state.draft.sourceId) source.value=state.draft.sourceId;
+        if (name && document.activeElement !== name && name.value !== state.draft.name) name.value=state.draft.name;
+        if (name) name.setAttribute("aria-invalid",String(["required","too_long","conflict"].indexOf(state.validation.reason) >= 0));
+        if (message) { message.textContent=state.validation.reason === "source" || state.validation.reason === "interval" ? "" : state.validation.message; message.hidden=!message.textContent; }
+        if (overwriteRow) overwriteRow.hidden=!state.validation.conflict;
+        if (overwrite) overwrite.checked=!!state.draft.overwrite;
+        if (submit) submit.disabled=!!state.submitDisabled;
+      },
       close:function (meta) { var layer=q(helper.selectors.layer); if (layer) { layer.hidden=true; layer.setAttribute("aria-busy","false"); } q("[data-testid='app-shell']").inert=false; if (meta && meta.restoreFocus && meta.restoreFocus.isConnected) meta.restoreFocus.focus(); },
-      setBusy:function (busy) { var layer=q(helper.selectors.layer); if (!layer) return; layer.setAttribute("aria-busy",String(!!busy)); Array.prototype.slice.call(layer.querySelectorAll("input,button")).forEach(function (node) { node.disabled=!!busy; }); },
-      error:function (message,meta) { var layer=q(helper.selectors.layer), status=layer && layer.querySelector(helper.selectors.status), field=meta && meta.field && layer.querySelector(meta.field); if (status) { status.hidden=false; status.textContent=message; } if (field) { field.setAttribute("aria-invalid","true"); field.focus(); } },
-      createSignal:function (payload) { return mutate(function () { return api.cropSignal(Object.assign({},payload,{state_revision:model.revision})); },{preservePlots:true,skipSettings:true,skipOutput:true}); },
+      setBusy:function (busy) { var layer=q(helper.selectors.layer); if (!layer) return; layer.setAttribute("aria-busy",String(!!busy)); Array.prototype.slice.call(layer.querySelectorAll("input,select,button")).forEach(function (node) { node.disabled=!!busy; }); if (!busy) { var snapshot=model.signalTrimController && model.signalTrimController.snapshot(); var submit=layer.querySelector(helper.selectors.submit); if (submit) submit.disabled=!!(snapshot && snapshot.validation && !snapshot.validation.valid); } },
+      error:function (message,meta) { var layer=q(helper.selectors.layer), status=layer && layer.querySelector(helper.selectors.status), field=meta && meta.field && layer.querySelector(meta.field); if (!field && model.signalTrimLastError) { var typedFields=model.signalTrimLastError.payload && model.signalTrimLastError.payload.error && model.signalTrimLastError.payload.error.fields || {}; field=typedFields.target_name ? layer.querySelector(helper.selectors.name) : typedFields.source_signal_id ? layer.querySelector(helper.selectors.source) : null; } if (status) { status.hidden=false; status.textContent=message; } if (field) { field.setAttribute("aria-invalid","true"); field.focus(); } },
+      createSignal:function (payload) { model.signalTrimLastError=null; return mutate(function () { return api.cropSignal(payload); },{preservePlots:true,skipSettings:true,skipOutput:true}).catch(function (error) { model.signalTrimLastError=error; throw error; }); },
       acceptSignal:function () { renderActivePaneContext(); }
     });
     return model.signalTrimController;
@@ -2873,7 +3244,7 @@
   }
   function projectSignalTrimActions() { qa("[data-display-id][data-pane-id]").forEach(function (node) { var pane=paneById(node.dataset.paneId), display=activeDisplay(); if (pane && display && display.id === node.dataset.displayId) reconcilePaneTrimAction(node,display.id,pane); }); }
   function openSignalTrim(button) { var pane=paneById(button.dataset.paneId), display=activeDisplay(), controller=signalTrimController(); if (display && pane && display.id === button.dataset.displayId && controller) controller.open(signalTrimContext(display.id,pane),button); }
-  function submitSignalTrim() { var helper=signalTrimHelper(), controller=signalTrimController(), layer=helper && q(helper.selectors.layer); if (!helper || !controller || !layer) return; var name=layer.querySelector(helper.selectors.name), overwrite=layer.querySelector(helper.selectors.overwrite); controller.submit(name && name.value,!!(overwrite && overwrite.checked)); }
+  function submitSignalTrim() { var controller=signalTrimController(); if (controller) controller.submit(); }
 
   function graphCursorEligible(displayId, paneId) {
     if (!rangeSliderEligible(displayId, paneId)) return false;
@@ -3162,6 +3533,7 @@
         var payload = plotEnvelope(queued.output.data);
         var traces = Array.isArray(payload) ? payload : (Array.isArray(payload.data) ? payload.data : [{ type: "heatmap", x: payload.x, y: payload.y, z: payload.z, colorscale: payload.colorscale }]);
         var sourceLayout = payload.layout || {};
+        var localizedPlot=localizePlotPresentation(sourceLayout,traces); sourceLayout=localizedPlot.layout; traces=localizedPlot.traces;
         var labelsPolicy=axisLabelsPolicy();
         if (labelsPolicy) { var hoverSafe=labelsPolicy.suppressHover({data:traces,layout:sourceLayout}); traces=hoverSafe.data; sourceLayout=hoverSafe.layout; }
         var labelsController=axisLabelsController();
@@ -3267,13 +3639,13 @@
     var unit=(typeof settings.value === "function" && settings.value(fieldId)) || "seconds";
     var maximumSeconds=Math.max(Math.abs(Number(summary && summary.region_end_s) || 0), Math.abs(Number(summary && summary.duration_s) || 0));
     var secondsPerUnit=screenTimeUnitFactor(unit, maximumSeconds || 1);
-    var labels={ picoseconds:"ps", nanoseconds:"ns", microseconds:"μs", milliseconds:"ms", seconds:"s", minutes:"мин", hours:"ч", days:"дн", years:"г" };
     var resolved=unit;
     if (unit === "auto") {
       var factors={ "1e-12":"picoseconds", "1e-9":"nanoseconds", "0.000001":"microseconds", "0.001":"milliseconds", "1":"seconds", "60":"minutes", "3600":"hours", "86400":"days", "31557600":"years" };
       resolved=factors[String(secondsPerUnit)] || "seconds";
     }
-    return { secondsPerUnit:secondsPerUnit, label:labels[resolved] || "s" };
+    var presenter=russianPresenter(),projected=presenter && typeof presenter.unitLabel === "function" ? presenter.unitLabel(resolved) : ({picoseconds:"пс",nanoseconds:"нс",microseconds:"мкс",milliseconds:"мс",seconds:"с",minutes:"мин",hours:"ч",days:"дн",years:"г"})[resolved];
+    return { secondsPerUnit:secondsPerUnit, label:projected || "с" };
   }
 
   function summaryNumber(value) {
@@ -4568,7 +4940,7 @@
     };
     renderInspector();
     ensurePeaksEnabled(displayId, paneId).then(function () {
-      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId || model.inspectorPage !== "peaks") return null;
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId || !peaksSurfaceActive()) return null;
       token = (model.peaksTokens[runtimeKey] || 0) + 1;
       model.peaksTokens[runtimeKey] = token;
       function requestCalculation(retries) {
@@ -4589,7 +4961,7 @@
         return acceptPeaksPayload(response, displayId, paneId, token, true, true);
       });
     }).catch(function (error) {
-      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId || model.inspectorPage !== "peaks") return;
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId || !peaksSurfaceActive()) return;
       model.peaksRecords[runtimeKey] = { displayId:displayId, paneId:paneId, calculationRequested:true, calculated:false, pending:false, error:safeErrorText(error, "Не удалось рассчитать экстремумы."), data:prior && prior.data || null };
       renderInspector();
     });
@@ -4776,6 +5148,8 @@
     trigger.setAttribute("aria-expanded", "true");
     var rate = layer.querySelector("[data-signal-add-sample-rate]");
     if (rate) rate.value = "2048";
+    var rateUnit=layer.querySelector("label[for='signal-add-sample-rate'] span"),presenter=russianPresenter();
+    if (rateUnit && presenter) rateUnit.textContent=presenter.unitLabel("Hz");
     layer.querySelector("[data-signal-add-submit]").textContent = "Добавить";
     loadSignalAddCatalog();
     layer.querySelector("#signal-add-title").focus();
@@ -5371,56 +5745,171 @@
     showToast("График обновлён", false);
   }
 
+  var signalOperationMarkup=`<div class="modal-layer native-modal-layer" data-testid="signal-operation-layer" hidden>
+  <section class="dialog-card signal-operation-dialog" role="dialog" aria-modal="true" aria-labelledby="signal-operation-title" data-testid="signal-operation-dialog">
+    <header class="dialog-titlebar">
+      <h2 id="signal-operation-title" tabindex="-1">Операция над сигналом</h2>
+      <button class="icon-button dialog-close" type="button" data-signal-operation-close aria-label="Закрыть операцию над сигналом"><img src="./icons/close.svg" alt=""></button>
+    </header>
+    <div class="dialog-body" data-signal-operation-form></div>
+    <footer class="dialog-footer">
+      <button class="button" type="button" data-signal-operation-cancel>Отмена</button>
+      <button class="button button-primary" type="button" data-signal-operation-submit>Создать сигнал</button>
+    </footer>
+  </section>
+</div>
+<div class="modal-layer native-modal-layer signal-operation-error-layer" data-testid="signal-operation-error-layer" hidden>
+  <section class="dialog-card signal-operation-error-dialog" role="alertdialog" aria-modal="true" aria-labelledby="signal-operation-error-title" aria-describedby="signal-operation-error-message" data-testid="signal-operation-error-dialog">
+    <header class="dialog-titlebar">
+      <h2 id="signal-operation-error-title" tabindex="-1">Операция не выполнена</h2>
+      <button class="icon-button dialog-close" type="button" data-signal-operation-error-close aria-label="Закрыть сообщение об ошибке"><img src="./icons/close.svg" alt=""></button>
+    </header>
+    <div class="dialog-body">
+      <p id="signal-operation-error-message" class="signal-operation-error-message" data-signal-operation-error-message></p>
+    </div>
+    <footer class="dialog-footer">
+      <button class="button button-primary" type="button" data-signal-operation-error-confirm>Понятно</button>
+    </footer>
+  </section>
+</div>`;
   function ensureSignalOperationDialog() {
     var layer = q("[data-testid='signal-operation-layer']");
     if (layer) return layer;
-    document.body.insertAdjacentHTML("beforeend", "<div class=\"modal-layer native-modal-layer\" data-testid=\"signal-operation-layer\" hidden><section class=\"dialog-card signal-operation-dialog\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"signal-operation-title\" data-testid=\"signal-operation-dialog\"><header class=\"dialog-titlebar\"><h2 id=\"signal-operation-title\" tabindex=\"-1\">Операция над сигналом</h2><button class=\"icon-button dialog-close\" type=\"button\" data-signal-operation-close aria-label=\"Закрыть операцию над сигналом\"><img src=\"./icons/close.svg\" alt=\"\"></button></header><div class=\"dialog-body\" data-signal-operation-form></div><footer class=\"dialog-footer\"><button class=\"button\" type=\"button\" data-signal-operation-cancel>Отмена</button><button class=\"button button-primary\" type=\"button\" data-signal-operation-submit>Создать сигнал</button></footer></section></div>");
+    document.body.insertAdjacentHTML("beforeend", signalOperationMarkup);
     return q("[data-testid='signal-operation-layer']");
   }
 
-  function signalOperationLabel(value) { return ({ abs:"Модуль", square:"Квадрат", sqrt:"Корень", signed_sqrt_abs:"Корень из модуля × знак", multiply:"Умножить", fft:"FFT", custom:"Пользовательское" })[value] || "Модуль"; }
+  function preprocessOperation() { return window.SignalAnalyserPreprocessOperation || null; }
+  function selectedOperationLabel(options,value) {
+    var selected=(options || []).filter(function (option) { return option.value === value; })[0];
+    return selected ? selected.label.replace(/ — недоступно$/,"") : "";
+  }
+  function signalOperationStatusMarkup(state) {
+    if (state.busy) return "<div class='operation-status status-note info operation-progress' role='status'><img src='./icons/Spinner.svg' alt=''><span>Выполняется преобразование и проверка результата…</span></div>";
+    if (state.success) return "<div class='operation-status status-note success' role='status'><strong>Сигнал создан.</strong> Результат прошёл проверку и добавлен одной операцией.</div>";
+    return "";
+  }
+  function signalOperationFieldMarkup(field,error,busy) {
+    var value=field.value == null ? "" : field.value,disabled=busy || field.disabled,control;
+    if (field.type === "select") {
+      control="<select class='signal-operation-control' data-signal-operation-parameter='"+esc(field.id)+"' data-testid='"+esc(field.testid)+"' aria-invalid='"+String(!!error)+"'"+(disabled ? " disabled" : "")+">"+(field.options || []).map(function (option) { return "<option value='"+esc(option.value)+"'"+(option.value === value ? " selected" : "")+">"+esc(option.label)+"</option>"; }).join("")+"</select>";
+    } else if (field.type === "textarea") {
+      control="<textarea class='signal-operation-control' data-signal-operation-parameter='"+esc(field.id)+"' data-testid='"+esc(field.testid)+"' aria-invalid='"+String(!!error)+"' placeholder='Введите выражение' spellcheck='false'"+(disabled ? " disabled" : "")+">"+esc(value)+"</textarea>";
+    } else {
+      control="<input class='signal-operation-control' type='text' inputmode='"+(field.type === "number" ? "decimal" : "text")+"' value='"+esc(value)+"' data-signal-operation-parameter='"+esc(field.id)+"' data-testid='"+esc(field.testid)+"' aria-invalid='"+String(!!error)+"'"+(field.placeholder ? " placeholder='"+esc(field.placeholder)+"'" : "")+(disabled ? " disabled" : "")+" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'>";
+    }
+    return "<div class='signal-operation-row"+(error ? " has-error" : "")+"' data-signal-operation-field='"+esc(field.id)+"'><label>"+esc(field.label)+"</label><div class='signal-operation-control-wrap'>"+control+(field.unit ? "<span class='signal-operation-unit'>"+esc(field.unit)+"</span>" : "")+"</div>"+(error ? "<p class='signal-operation-field-message' role='alert'>"+esc(error)+"</p>" : field.hint ? "<p class='signal-operation-field-hint'>"+esc(field.hint)+"</p>" : "")+"</div>";
+  }
 
   function renderSignalOperation() {
-    var state=model.signalOperation, layer=ensureSignalOperationDialog(), form=layer.querySelector("[data-signal-operation-form]"), source=state.source || {}, operation=state.operation, custom=operation === "custom", multiply=operation === "multiply";
-    var operationInventory=window.SignalAnalyserTask0139Inventory;
-    var options=["abs", "square", "sqrt", "signed_sqrt_abs", "multiply", "fft", "custom"].map(function (value) { return { value:value, label:signalOperationLabel(value) }; });
-    if (operationInventory && typeof operationInventory.withoutFft === "function") options=operationInventory.withoutFft(options);
-    if (!options.some(function (option) { return option.value === operation; })) {
-      operation="abs";
-      state.operation=operation;
-      custom=false;
-      multiply=false;
-    }
-    var select=valueSelect.markup({ key:"signal-operation-type", value:operation, label:signalOperationLabel(operation), options:options, testId:"signal-operation-select", ariaLabel:"Операция", disabled:state.busy, className:"settings-value-select", onSelect:function (value) { state.operation=value; state.error=""; state.success=false; renderSignalOperation(); } });
-    var status=state.busy ? "<div class='operation-status status-note info operation-progress' role='status'><img src='./icons/Spinner.svg' alt=''><span>Выполняется преобразование…</span></div>" : state.error ? "<div class='operation-status status-note error' role='alert'><strong>Операция не выполнена.</strong><br>" + esc(state.error) + "</div>" : state.success ? "<div class='operation-status status-note success' role='status'><strong>Сигнал создан.</strong></div>" : "";
-    form.innerHTML="<div class='operation-form'><div class='operation-form-row'><span class='operation-form-label'>Исходный сигнал</span><input class='control' value='" + esc(source.name || "") + "' readonly></div><div class='operation-form-row'><label>Операция</label><div>" + select + "</div></div>" + (multiply ? "<div class='operation-form-row'><label for='signal-operation-multiplier'>Множитель</label><input id='signal-operation-multiplier' class='control' type='text' inputmode='decimal' value='2'></div>" : "") + (custom ? "<div class='operation-form-row operation-code-row'><label for='signal-operation-body'>Тело операции</label><textarea id='signal-operation-body' class='operation-code-editor' spellcheck='false'></textarea></div><p class='operation-body-help'>Код выполняется в Engee. Входной сигнал доступен как <code>init_signal</code>; результатом должно быть выражение, возвращающее новый вектор.</p>" : "") + "<div class='operation-form-row'><label for='signal-operation-name'>Имя нового сигнала</label><input id='signal-operation-name' class='control' value='" + esc((source.name || "signal") + "_" + operation.replace(/[^a-z0-9]+/gi, "_")) + "'></div><div class='operation-form-row'><span class='operation-form-label'></span><label class='operation-overwrite-control'><span class='checkbox-control'><input type='checkbox' data-signal-operation-overwrite" + (state.busy ? " disabled" : "") + "></span><span>Затирать сигнал с таким именем</span></label></div>" + status + "</div>";
+    var state=model.signalOperation, layer=ensureSignalOperationDialog(), form=layer.querySelector("[data-signal-operation-form]"), helper=preprocessOperation(), operationState=state.operationState;
+    if (!helper || !operationState) { layer.hidden=!state.open; return; }
+    var busy=state.busy,sectionOptions=helper.sections,operationOptions=helper.operationOptions(operationState.section,operationState.capabilities);
+    var sectionSelect=valueSelect.markup({
+      key:"signal-operation-section",value:operationState.section,label:selectedOperationLabel(sectionOptions,operationState.section),options:sectionOptions,
+      testId:"signal-operation-section-select",ariaLabel:"Раздел операции",disabled:busy,className:"settings-value-select",
+      onSelect:function (value) { state.operationState=helper.switchSection(operationState,value); state.success=false; state.validation=null; renderSignalOperation(); }
+    });
+    var operationSelect=valueSelect.markup({
+      key:"signal-operation-type",value:operationState.operation,label:selectedOperationLabel(operationOptions,operationState.operation),options:operationOptions,
+      testId:"signal-operation-select",ariaLabel:"Операция",disabled:busy,className:"settings-value-select",
+      onSelect:function (value) { state.operationState=helper.switchOperation(operationState,value); state.success=false; state.validation=null; renderSignalOperation(); }
+    });
+    var validation=state.validation || {errors:{},availability:helper.availability(operationState)},fields=helper.schema(operationState);
+    form.innerHTML="<div class='signal-operation-form' data-operation-section='"+esc(operationState.section)+"'><div class='signal-operation-row'><span class='signal-operation-label'>Исходный сигнал</span><input class='signal-operation-control' value='"+esc(operationState.source && operationState.source.name)+"' readonly></div><div class='signal-operation-row'><span class='signal-operation-label'>Раздел</span><div>"+sectionSelect+"</div></div><div class='signal-operation-row'><span class='signal-operation-label'>Операция</span><div>"+operationSelect+"</div></div>"+(operationState.section === "preprocess" ? "<h3 class='signal-operation-parameters-title'>Параметры предобработки</h3>" : "")+"<div class='signal-operation-parameter-list'>"+fields.map(function (field) { return signalOperationFieldMarkup(field,validation.errors[field.id],busy); }).join("")+"</div>"+(!validation.availability.available ? "<div class='signal-operation-availability' role='status'>"+esc(validation.availability.message)+"</div>" : "")+(fields.some(function (field) { return field.nullableAuto; }) ? "<p class='signal-operation-auto-note'>Пустое поле со значением «Авто» передаётся как автоматический параметр, а не как ноль.</p>" : "")+"<div class='signal-operation-row"+(validation.errors.target_name ? " has-error" : "")+"'><label for='signal-operation-name'>Имя нового сигнала</label><input id='signal-operation-name' class='signal-operation-control' data-signal-operation-name value='"+esc(operationState.targetName)+"' aria-invalid='"+String(!!validation.errors.target_name)+"'"+(busy ? " disabled" : "")+" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'>"+(validation.errors.target_name ? "<p class='signal-operation-field-message' role='alert'>"+esc(validation.errors.target_name)+"</p>" : "")+"</div><div class='signal-operation-row signal-operation-overwrite-row'><span class='signal-operation-label'></span><label class='checkbox-field'><input type='checkbox' data-signal-operation-overwrite"+(operationState.overwrite ? " checked" : "")+(busy ? " disabled" : "")+"><span>Затирать сигнал с таким именем</span></label></div>"+signalOperationStatusMarkup(state)+"</div>";
     decorateNoHistory(form);
-    layer.hidden=!state.open; q("[data-testid='app-shell']").inert=state.open;
-    layer.querySelector("[data-signal-operation-submit]").disabled=state.busy || state.success;
-    layer.querySelector("[data-signal-operation-cancel]").disabled=state.busy;
-    layer.querySelector("[data-signal-operation-close]").disabled=state.busy;
+    layer.hidden=!state.open;
+    var shell=q("[data-testid='app-shell']"); if (shell) shell.inert=state.open;
+    layer.querySelector("[data-signal-operation-submit]").disabled=busy || state.success || !validation.availability.available;
+    layer.querySelector("[data-signal-operation-cancel]").disabled=busy;
+    layer.querySelector("[data-signal-operation-close]").disabled=busy;
     valueSelect.reconcile();
   }
 
-  function openSignalOperation(signalId) {
-    var source=(model.state && model.state.signals || []).filter(function (signal) { return stableSignalId(signal) === String(signalId); })[0];
-    if (!source) return;
-    model.signalOperation={ open:true, source:source, operation:"abs", busy:false, error:"", success:false };
+  function signalOperationCapabilities() {
+    var raw=model.state && model.state.capabilities || {};
+    return {denoise:raw.signal_preprocess_denoise === true,resample:raw.signal_preprocess_resample !== false,customPreprocess:raw.signal_preprocess_custom !== false};
+  }
+  function openSignalOperation(signalId,section,trigger) {
+    var helper=preprocessOperation(),source=(model.state && model.state.signals || []).filter(function (signal) { return stableSignalId(signal) === String(signalId); })[0];
+    if (!helper || !source) return false;
+    if (window.SignalAnalyserOperationErrorDialog) window.SignalAnalyserOperationErrorDialog.close();
+    var restore=trigger && trigger.isConnected ? trigger : document.activeElement && document.activeElement.isConnected ? document.activeElement : q("[data-testid='app-shell']");
+    var operationSource=Object.assign({},source,{sampling_kind:"uniform",complex:/комплекс|complex/i.test(String(source.data_type || ""))});
+    model.signalOperation={open:true,source:source,operationState:helper.createState(operationSource,signalOperationCapabilities(),section === "preprocess" ? "preprocess" : "math"),busy:false,success:false,validation:null,trigger:restore};
     renderSignalOperation();
-    window.requestAnimationFrame(function () { var input=q("[data-testid='signal-operation-select-input']"); if (input) input.focus(); });
+    window.requestAnimationFrame(function () { var input=q("[data-testid='signal-operation-section-select-input']"); if (input) input.focus(); });
+    return true;
   }
 
-  function closeSignalOperation() { if (!model.signalOperation.busy) { model.signalOperation.open=false; valueSelect.close({ restoreFocus:false }); renderSignalOperation(); } }
+  function closeSignalOperation() {
+    var state=model.signalOperation;
+    if (state.busy) return false;
+    if (window.SignalAnalyserOperationErrorDialog) window.SignalAnalyserOperationErrorDialog.close();
+    state.open=false;
+    valueSelect.close(false);
+    renderSignalOperation();
+    var restore=state.trigger; state.trigger=null;
+    window.requestAnimationFrame(function () { if (restore && restore.isConnected && typeof restore.focus === "function") restore.focus(); });
+    return true;
+  }
 
   function submitSignalOperation() {
-    var state=model.signalOperation, layer=q("[data-testid='signal-operation-layer']");
-    if (!state.open || state.busy || !layer) return;
-    var name=layer.querySelector("#signal-operation-name"), body=layer.querySelector("#signal-operation-body"), multiplier=layer.querySelector("#signal-operation-multiplier"), overwrite=layer.querySelector("[data-signal-operation-overwrite]"), multiplierValue=multiplier ? Number(multiplier.value) : null;
-    if (!name || !name.value.trim()) { state.error="Введите имя нового сигнала."; renderSignalOperation(); return; }
-    if (state.operation === "multiply" && !Number.isFinite(multiplierValue)) { state.error="Введите корректный множитель."; renderSignalOperation(); return; }
-    state.busy=true; state.error=""; renderSignalOperation();
-    api.deriveSignal({ state_revision:model.revision, source_signal_id:state.source.id, operation:state.operation, target_name:name.value.trim(), overwrite:!!(overwrite && overwrite.checked), multiplier:state.operation === "multiply" ? multiplierValue : null, body:state.operation === "custom" && body ? body.value : null }).then(function (response) { var snapshot=response && (response.state || response); if (snapshot && snapshot.displays) accept(snapshot); state.busy=false; state.success=true; renderSignalOperation(); render(); }).catch(function (error) { state.busy=false; state.error=safeErrorText(error, "Engee вернул ошибку выполнения."); renderSignalOperation(); });
+    var state=model.signalOperation,layer=q("[data-testid='signal-operation-layer']"),helper=preprocessOperation();
+    if (!state.open || state.busy || !layer || !helper || !state.operationState) return;
+    var validation=helper.validate(state.operationState);
+    state.validation=validation;
+    if (!validation.valid) {
+      renderSignalOperation();
+      var invalid=layer.querySelector(".signal-operation-row.has-error input, .signal-operation-row.has-error select, .signal-operation-row.has-error textarea");
+      if (invalid) invalid.focus();
+      return;
+    }
+    var payload=Object.assign({state_revision:model.revision},helper.payload(state.operationState));
+    state.busy=true; state.success=false; state.validation=null; renderSignalOperation();
+    api.deriveSignal(payload).then(function (response) {
+      var snapshot=response && (response.state || response); if (snapshot && snapshot.displays) accept(snapshot);
+      state.busy=false; state.success=true; renderSignalOperation(); render();
+    }).catch(function (error) {
+      state.busy=false;
+      var payloadError=error && error.payload && error.payload.error || {},fieldErrors=payloadError && payloadError.fields,visibleFields={target_name:true},localErrors={};
+      helper.schema(state.operationState).forEach(function (field) { visibleFields[field.id]=true; });
+      if (fieldErrors && typeof fieldErrors === "object") Object.keys(fieldErrors).forEach(function (key) { if (visibleFields[key]) localErrors[key]=fieldErrors[key]; });
+      if (Object.keys(localErrors).length) {
+        state.validation={errors:localErrors,availability:helper.availability(state.operationState)};
+        renderSignalOperation();
+        var invalid=layer.querySelector(".signal-operation-row.has-error input, .signal-operation-row.has-error select, .signal-operation-row.has-error textarea");
+        if (invalid) invalid.focus();
+        return;
+      }
+      renderSignalOperation();
+      var errorDialog=window.SignalAnalyserOperationErrorDialog;
+      if (errorDialog) errorDialog.open({status:error && error.status,code:payloadError.code},{submit:q("[data-signal-operation-submit]")});
+    });
   }
+
+  function openPreprocessFromHost(event) {
+    var helper=preprocessOperation(),command=helper && helper.hostCommand;
+    if (!command || !command.accepts(event)) return;
+    var source=mainSignalForPane(paneById(model.activePane));
+    if (!source || !stableSignalId(source)) {
+      if (!model.signalOperation.open) showToast("Предобработка недоступна: выберите сигнал в таблице.",true);
+      return;
+    }
+    openSignalOperation(stableSignalId(source),"preprocess",document.activeElement);
+  }
+  window.addEventListener("signal-analyser:host-command",openPreprocessFromHost);
+  document.addEventListener("keydown",function (event) {
+    var state=model.signalOperation,layer=q("[data-testid='signal-operation-layer']"),errorLayer=q("[data-testid='signal-operation-error-layer']");
+    if (!state.open || !layer || layer.hidden || errorLayer && !errorLayer.hidden || event.defaultPrevented) return;
+    if (event.key === "Escape" && !state.busy) { event.preventDefault(); closeSignalOperation(); return; }
+    if (event.key !== "Tab") return;
+    var dialog=layer.querySelector("[data-testid='signal-operation-dialog']"),items=dialog ? qa("[data-testid='signal-operation-dialog'] button:not(:disabled), [data-testid='signal-operation-dialog'] input:not(:disabled), [data-testid='signal-operation-dialog'] select:not(:disabled), [data-testid='signal-operation-dialog'] textarea:not(:disabled), [data-testid='signal-operation-dialog'] [tabindex]:not([tabindex='-1'])") : [];
+    if (!items.length) { event.preventDefault(); return; }
+    var first=items[0],last=items[items.length-1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
 
   function applySignalMetadata() {
     var editor=model.signalEditor;
@@ -5509,7 +5998,7 @@
     }
     if (button.dataset.testid === "extrema-calculate") return void calculatePeaks();
     if (button.dataset.testid === "extrema-configure") return void configureActivePeaks();
-    if (button.dataset.testid === "extrema-values") return void showActivePeaksValues();
+    if (button.dataset.testid === "extrema-values") return void calculatePeaks();
     if (button.dataset.testid === "signal-values-action") return void showSignalSamples();
     if (button.dataset.testid === "sample-columns-menu-trigger") return void openSampleColumnsMenu(button);
     if (button.dataset.sampleColumnVisible !== undefined) return void toggleSampleColumn(button.dataset.sampleColumnVisible);
@@ -5519,7 +6008,7 @@
     if (button.dataset.signalAddSubmit !== undefined) return void submitSignalAddDialog();
     if (button.dataset.signalDelete) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "delete", signal_name: button.dataset.signalDelete }); });
     if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });
-    if (button.dataset.signalOperation) return void openSignalOperation(button.dataset.signalOperation);
+    if (button.dataset.signalOperation) return void openSignalOperation(button.dataset.signalOperation,"math",button);
     if (button.dataset.signalOperationClose !== undefined || button.dataset.signalOperationCancel !== undefined) return void closeSignalOperation();
     if (button.dataset.signalOperationSubmit !== undefined) return void submitSignalOperation();
     if (button.dataset.settingsPage) {
@@ -5621,6 +6110,10 @@
   document.addEventListener("keydown", function (event) { var tab=event.target.closest && event.target.closest("[data-settings-page]"); if(tab && ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"].indexOf(event.key)>=0){var tabs=qa("[data-settings-page]").filter(function (item) { return !item.hidden; }),index=tabs.indexOf(tab);if(event.key==="Home")index=0;else if(event.key==="End")index=tabs.length-1;else index=(index+(["ArrowRight","ArrowDown"].indexOf(event.key)>=0?1:-1)+tabs.length)%tabs.length;event.preventDefault();tabs[index].click();tabs[index].focus();} });
   document.addEventListener("change", function (event) {
     var node = event.target;
+    if (node.dataset.signalTrimSource !== undefined) { var trimSourceController=signalTrimController(); if (trimSourceController) trimSourceController.selectSource(node.value); return; }
+    if (node.dataset.signalTrimOverwrite !== undefined) { var trimOverwriteController=signalTrimController(); if (trimOverwriteController) trimOverwriteController.setOverwrite(node.checked); return; }
+    if (node.dataset.signalOperationOverwrite !== undefined && model.signalOperation.operationState) { model.signalOperation.operationState.overwrite=node.checked; model.signalOperation.validation=null; return; }
+    if (node.dataset.signalOperationParameter !== undefined && model.signalOperation.operationState) { var operationHelper=preprocessOperation(); if (operationHelper) { model.signalOperation.operationState=operationHelper.updateParameter(model.signalOperation.operationState,node.dataset.signalOperationParameter,node.value); model.signalOperation.validation=null; model.signalOperation.success=false; renderSignalOperation(); } return; }
     if (node.dataset.settingId === "display.show_axis_labels") { var labelsDisplay=activeDisplay(), labelsPane=paneById(model.activePane), labelsController=axisLabelsController(); if (labelsDisplay && labelsPane && labelsController) labelsController.setVisible(paneRuntimeKey(labelsDisplay.id,labelsPane.id),node.checked); }
     if (node.dataset.spectrumSliderAxis) { var currentDisplay=activeDisplay(), currentPane=paneById(model.activePane); if (currentDisplay && currentPane) setPaneSliderVisibility(currentDisplay.id, currentPane.id, node.dataset.spectrumSliderAxis, node.checked); return; }
     if (node.dataset.screenLinkTime !== undefined && model.screenDraft) { model.screenDraft.linkTime = node.checked; model.screenDraft.error = ""; previewScreenLinks(model.screenDraft); renderScreenSettings(activeDisplay()); scheduleScreenSettingsApply(); window.requestAnimationFrame(function () { var restored=q("[data-testid='screen-link-time']"); if(restored)restored.focus(); }); return; }
@@ -5651,7 +6144,7 @@
     var pane = target.closest("[data-pane-id]");
     if (pane) focusAreaSettings(pane.dataset.paneId);
   });
-  document.addEventListener("input", function (event) { if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; model.signalEditor.intent=(model.signalEditor.intent || 0) + 1; if (model.signalEditor.applying) model.signalEditor.saveQueued=true; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; scheduleSignalMetadataSave(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
+  document.addEventListener("input", function (event) { if (event.target.dataset.signalTrimName !== undefined) { var trimNameController=signalTrimController(); if (trimNameController) trimNameController.editName(event.target.value); return; } if (model.signalOperation.operationState && event.target.dataset.signalOperationName !== undefined) { model.signalOperation.operationState.targetName=event.target.value; model.signalOperation.operationState.nameDirty=true; model.signalOperation.validation=null; model.signalOperation.success=false; return; } if (model.signalOperation.operationState && event.target.dataset.signalOperationParameter !== undefined && event.target.tagName !== "SELECT") { var operationHelper=preprocessOperation(); if (operationHelper) { model.signalOperation.operationState=operationHelper.updateParameter(model.signalOperation.operationState,event.target.dataset.signalOperationParameter,event.target.value); model.signalOperation.validation=null; model.signalOperation.success=false; } return; } if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; model.signalEditor.intent=(model.signalEditor.intent || 0) + 1; if (model.signalEditor.applying) model.signalEditor.saveQueued=true; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; scheduleSignalMetadataSave(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
   document.addEventListener("input", function (event) { if (!event.target || event.target.dataset.testid !== "sample-point-search-input") return; var state=model.signalSamples; state.searchValue=event.target.value; state.searchState=""; state.searchMessage=""; var status=q("[data-testid='sample-point-search-status']"); if (status) { status.dataset.state=""; status.textContent=""; } });
   document.addEventListener("input", function (event) {
     var input=event.target;
@@ -5859,6 +6352,80 @@
   window.SignalColorPickerUI = { open:open, close:close, palette:palette.slice() };
 }(window, document));
 
+(function registerOperationErrorDialog(window,document) {
+  "use strict";
+  var SELECTORS={
+    layer:"[data-testid='signal-operation-error-layer']",
+    dialog:"[data-testid='signal-operation-error-dialog']",
+    message:"[data-signal-operation-error-message]",
+    close:"[data-signal-operation-error-close]",
+    confirm:"[data-signal-operation-error-confirm]",
+    submit:"[data-signal-operation-submit]"
+  };
+  var returnTarget=null;
+  function sanitizedMessage(error) {
+    var status=Number(error && (error.status || error.statusCode)),code=String(error && (error.code || error.kind) || "").toLowerCase();
+    if (status === 400 || code === "invalid_operation") return "Проверьте параметры операции и повторите попытку.";
+    if (status === 404 || code === "source_unavailable") return "Исходный сигнал больше недоступен. Закройте сообщение и выберите сигнал заново.";
+    if (status === 409 || code === "conflict") return "Сигнал с таким именем уже существует или данные изменились. Проверьте имя и повторите попытку.";
+    if (status === 422 || code === "invalid_result") return "Операция не вернула корректный сигнал. Проверьте параметры или тело операции.";
+    if (status === 503 || code === "unavailable") return "Сервис вычислений временно недоступен. Повторите попытку позже.";
+    return "Не удалось выполнить операцию над сигналом. Проверьте параметры и повторите попытку.";
+  }
+  function focusable(dialog) { return Array.prototype.slice.call(dialog.querySelectorAll("button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex='-1'])")); }
+  function open(error,options) {
+    options=options || {};
+    var layer=document.querySelector(SELECTORS.layer),message=document.querySelector(SELECTORS.message),dialog=document.querySelector(SELECTORS.dialog);
+    if (!layer || !message || !dialog) return sanitizedMessage(error);
+    if (typeof options.endBusy === "function") options.endBusy({beforeAlert:true,preserveOperationForm:true});
+    returnTarget=options.invalidField && options.invalidField.isConnected ? options.invalidField : options.submit && options.submit.isConnected ? options.submit : document.querySelector(SELECTORS.submit);
+    message.textContent=sanitizedMessage(error);
+    layer.hidden=false;
+    dialog.setAttribute("aria-busy","false");
+    var target=dialog.querySelector(SELECTORS.confirm) || dialog.querySelector(SELECTORS.close);
+    if (target) target.focus();
+    return message.textContent;
+  }
+  function close() {
+    var layer=document.querySelector(SELECTORS.layer);
+    if (!layer || layer.hidden) return false;
+    layer.hidden=true;
+    var target=returnTarget;
+    returnTarget=null;
+    if (target && target.isConnected && !target.disabled) target.focus();
+    return true;
+  }
+  function keydown(event) {
+    var layer=document.querySelector(SELECTORS.layer),dialog=layer && layer.querySelector(SELECTORS.dialog);
+    if (!layer || layer.hidden || !dialog) return false;
+    if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); close(); return true; }
+    if (event.key !== "Tab") return false;
+    var items=focusable(dialog),first=items[0],last=items[items.length-1];
+    if (!items.length) { event.preventDefault(); return true; }
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); return true; }
+    if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); return true; }
+    return false;
+  }
+  function click(event) {
+    if (!event.target.closest) return;
+    if (event.target.closest(SELECTORS.close+","+SELECTORS.confirm)) { event.preventDefault(); close(); }
+  }
+  document.addEventListener("click",click,true);
+  document.addEventListener("keydown",keydown,true);
+  window.SignalAnalyserOperationErrorDialog={
+    selectors:SELECTORS,
+    sanitizedMessage:sanitizedMessage,
+    open:open,
+    close:close,
+    contract:{
+      presentation:"Provider/runtime failure opens one standard aria-modal alertdialog above the still-mounted operation dialog; no inline terminal error block.",
+      privacy:"Never render error.message, Julia/Engee/TypeError text, stack, binding names or raw provider payload.",
+      lifecycle:"End busy first, preserve every operation form value, trap focus in the alertdialog, Escape/close/Понятно dismiss, then restore invalid field or operation submit.",
+      stacking:"error layer is the topmost blocking owner; operation dialog remains mounted below and receives neither pointer nor focus until the error closes."
+    }
+  };
+}(window,document));
+
 (function task0130GraphCursors(window, document) {
   "use strict";
 
@@ -5988,17 +6555,6 @@
     var second=previous && finite(previous[1]) ? snapWithin(host,previous[1]) : snapWithin(host,domain[0]+(domain[1]-domain[0])*2/3);
     return [first,second];
   }
-  function readoutMarkup(host, values) {
-    var axis=fullAxis(host), unit=axisUnit(axis), x=function (value) { return formatNumber(value)+(unit ? " "+unit : ""); };
-    var header=values.length === 1 ? "<span>X: "+x(values[0])+"</span>" : "<span>X1: "+x(values[0])+"</span><span>X2: "+x(values[1])+"</span><span>ΔX: "+x(Math.abs(values[1]-values[0]))+"</span>";
-    var rows=visibleTraces(host).map(function (trace) {
-      var points=values.map(function (value) { return nearestPoint(trace,value); });
-      var valueText=points.map(function (point,index) { return (values.length > 1 ? "Y"+(index+1)+": " : "")+formatNumber(point && point.y); }).join(" · ");
-      return "<div class='plot-cursor-readout-row'><span>"+String(trace.name || "Сигнал").replace(/[&<>\"]/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[c];})+"</span><span class='plot-cursor-readout-values'>"+valueText+"</span></div>";
-    }).join("");
-    return "<div class='plot-cursor-readout-header'>"+header+"</div>"+rows;
-  }
-
   function createController() {
     var records={},listeners=[];
     function record(key) { return records[key] || (records[key]={mode:MODE_OFF,values:[],host:null,overlay:null}); }
@@ -6022,10 +6578,10 @@
         entry.overlay=overlay;
       }
       overlay.dataset.cursorMode=entry.mode;
-      if (overlay.querySelectorAll(".plot-cursor-line").length !== entry.values.length || !overlay.querySelector(".plot-cursor-readout")) {
+      if (overlay.querySelectorAll(".plot-cursor-line").length !== entry.values.length) {
         overlay.innerHTML=entry.values.map(function (_,index) {
           return "<button class='plot-cursor-line' type='button' role='slider' data-cursor-index='"+index+"' data-cursor-label='"+(index+1)+"' aria-label='Курсор "+(index+1)+"'></button>";
-        }).join("")+"<div class='plot-cursor-readout' role='status' aria-live='polite'></div>";
+        }).join("");
       }
       entry.values.forEach(function (value,index) {
         var line=overlay.querySelector("[data-cursor-index='"+index+"']");
@@ -6037,10 +6593,6 @@
         line.setAttribute("aria-valuenow",String(value));
         line.setAttribute("aria-valuetext",formatNumber(value)+(axisUnit(fullAxis(host)) ? " "+axisUnit(fullAxis(host)) : ""));
       });
-      var readout=overlay.querySelector(".plot-cursor-readout");
-      readout.style.left=(box.left+8)+"px";
-      readout.style.top=(box.top+8)+"px";
-      readout.innerHTML=readoutMarkup(host,entry.values);
       notify(key);
     }
     function setMode(key, host, mode) {

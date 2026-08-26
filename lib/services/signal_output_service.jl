@@ -548,6 +548,9 @@ function signal_analyser_state_lite_unlocked(state::SignalAnalyserState)::Dict{S
             "state_lite" => true,
             "active_output" => true,
             "background_calculation" => true,
+            "signal_preprocess_denoise" => false,
+            "signal_preprocess_resample" => true,
+            "signal_preprocess_custom" => true,
         ),
         "output_scheduling" => Dict{String,Any}(
             "scope" => "active_display",
@@ -1111,8 +1114,6 @@ function signal_analyser_run_output_worker!(
                     snapshot = signal_analyser_clone_state_for_layout(state)
                     return (context = context, token = token, snapshot = snapshot)
                 end
-                manager.active_task = nothing
-                manager.active_task_is_worker = false
                 nothing
             end
             job === nothing && return nothing
@@ -1133,6 +1134,7 @@ function signal_analyser_run_output_worker!(
                 manager.active_task_is_worker = false
                 manager.active_poll_count = 0
                 manager.cancellation_token = nothing
+                signal_analyser_start_peaks_worker_unlocked!(state, manager)
             end
         end
     end
@@ -1666,7 +1668,7 @@ function signal_analyser_run_peaks_worker!(
                 manager.active_task_is_worker = false
                 manager.active_poll_count = 0
                 manager.cancellation_token = nothing
-                signal_analyser_start_output_worker_unlocked!(state, manager)
+                signal_analyser_start_peaks_worker_unlocked!(state, manager)
             end
         end
     end

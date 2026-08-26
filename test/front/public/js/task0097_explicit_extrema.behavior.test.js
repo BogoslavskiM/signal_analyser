@@ -283,6 +283,26 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   assert(flow.test.model.peaksRecords["display-1::pane-1"].context_key === "display-1::pane-1::peaks::r41" && flow.test.model.peaksRecords["display-1::pane-1"].calculation_revision === 41 && flow.test.model.peaksRecords["display-1::pane-1"].revision === 3, "polling must preserve server context, calculation revision, and state revision fields");
   assert(flow.peaksHost.innerHTML.includes("data-testid='peaks-table'") && flow.peaksHost.innerHTML.includes("Сигнал 1"), "ready passive polling must render the authoritative nonempty Extrema table");
 
+  // The footer action shares the explicit Calculate semantics.  It must not
+  // merely open the old read-only Values state: a click starts exactly one
+  // POST and then the existing guarded pending→ready polling path.
+  const footerPost = deferred();
+  const footerFlow = createHarness({
+    activeResponses: [peaksResponse(), pendingResponse(51), readyResponse],
+    calculateResponses: [footerPost]
+  });
+  footerFlow.test.model.inspectorPage = "peaks";
+  await footerFlow.test.loadPeaks();
+  footerFlow.click(element({ dataset: { testid: "extrema-values" } }));
+  await settle();
+  assert(footerFlow.calculateCalls.length === 1, "footer Values action must issue one explicit extrema calculation POST");
+  footerPost.resolve(pendingResponse(51));
+  await settle();
+  assert(footerFlow.timers.length === 1, "footer calculation pending response must schedule guarded polling");
+  footerFlow.timers.shift()();
+  await settle();
+  assert(footerFlow.calculateCalls.length === 1 && footerFlow.activeCalls.length === 2, "footer polling uses passive GET and never submits a duplicate calculation");
+
   // An unrelated accepted snapshot may advance the global state revision while
   // the same extrema calculation is still pending. Its context/calculation
   // identity is authoritative, so a delayed older-revision GET must continue

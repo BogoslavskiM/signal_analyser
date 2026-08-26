@@ -35,7 +35,8 @@ end
 
 function task0140_legacy_high_water_and_sparse_ids!()
     state = ML_INTEGRATION.default_signal_analyser_state()
-    template = only(state.display_layouts["display-1"].panes)
+    layout = state.display_layouts["display-1"]
+    template = only(filter(pane -> pane.id == layout.active_pane_id, layout.panes))
     legacy_panes = ML_INTEGRATION.SignalDisplayPaneState[
         ML_INTEGRATION.signal_display_pane_with_id(template, "pane-$index") for index in 1:4
     ]
@@ -59,37 +60,47 @@ function task0031_layout_entry(snapshot)
     only(snapshot["layouts"])
 end
 
-@testset "HND-0280 ordered pane bindings keep canonical selection projection" begin
+@testset "HND-0280 pane bindings canonicalize inventory order and preserve independent main signal" begin
     state = ML_INTEGRATION.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
-    pane_order = reverse(names)
-    response = ML_INTEGRATION.apply_signal_analyser_layout!(state, Dict(
+    requested_order = reverse(names)
+    resized = ML_INTEGRATION.apply_signal_analyser_layout!(state, Dict(
         "state_revision" => 0,
+        "operation" => "resize",
+        "display_id" => "display-1",
+        "version" => 1,
+        "variant" => "1x1",
+        "rows" => 1,
+        "columns" => 1,
+    ))
+    response = ML_INTEGRATION.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => resized["state_revision"],
         "operation" => "update_pane",
         "display_id" => "display-1",
         "version" => 1,
         "pane_id" => "pane-1",
         "plot_type" => "time",
-        "signal_bindings" => pane_order,
+        "signal_bindings" => requested_order,
     ))
     entry = task0031_layout_entry(response)
     snapshot = response["state"]
     display = only(snapshot["displays"])
     output = only(entry["outputs"])
 
-    @test response["ok"] === true && response["state_revision"] == 1
-    @test only(entry["layout"]["panes"])["signal_bindings"] == pane_order
-    @test output["signal_bindings"] == pane_order
+    @test response["ok"] === true && response["state_revision"] == 2
+    @test only(entry["layout"]["panes"])["signal_bindings"] == names
+    @test output["signal_bindings"] == names
+    @test output["analysis_signal"] === nothing
     # Complex Time is intentionally represented as ordered real/imaginary
     # components, not the legacy single magnitude trace.  The pane binding
-    # order therefore expands deterministically per signal.
+    # order therefore expands in canonical inventory order per signal.
     @test [(trace["signal"], trace["component"]) for trace in output["output"]["data"]] == [
-        (pane_order[1], "real"), (pane_order[1], "imaginary"),
-        (pane_order[2], ""),
+        (names[1], ""),
+        (names[2], "real"), (names[2], "imaginary"),
     ]
     @test display["visible_signals"] == names == snapshot["visible_signals"]
-    @test display["analysis_signal"] == display["selected_signal"] in names
-    @test display["analysis_signal"] in display["visible_signals"]
+    @test display["analysis_signal"] === nothing
+    @test display["selected_signal"] === nothing
     @test snapshot["row_selected_signal"] in names
     @test all(
         signal["visible"] == (signal["name"] in display["visible_signals"])
@@ -104,8 +115,7 @@ end
         "document" => document,
     ))
     restored = ML_INTEGRATION.signal_analyser_layouts_snapshot(restored_state)
-    @test only(task0031_layout_entry(restored)["layout"]["panes"])["signal_bindings"] ==
-        pane_order
+    @test only(task0031_layout_entry(restored)["layout"]["panes"])["signal_bindings"] == names
     @test only(restored["state"]["displays"])["visible_signals"] == names
     @test ML_INTEGRATION.export_signal_analyser_session(service, restored_state)["document"]["state"] ==
         document["state"]
@@ -114,9 +124,9 @@ end
 @testset "HND-0280 corrupt old projection is rejected and explicitly recoverable" begin
     state = ML_INTEGRATION.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
-    # Start from a valid explicit binding.  Fresh Displays are empty, so only
-    # this setup supplies the time limits and analysis source needed by the
-    # historical ordering-corruption regression below.
+    # Start from a valid explicit binding. Fresh Displays are empty, so this
+    # setup supplies the time limits and bindings needed by the historical
+    # ordering-corruption regression below; update_pane must not promote main.
     ML_INTEGRATION.apply_signal_analyser_layout!(state, Dict(
         "state_revision" => 0,
         "operation" => "update_pane",
@@ -151,7 +161,7 @@ end
     ))
     @test recovered["ok"] === true && recovered["state_revision"] == before_revision + 1
     @test only(recovered["state"]["displays"])["visible_signals"] == names
-    @test recovered["state"]["analysis_signal"] in names
+    @test recovered["state"]["analysis_signal"] === nothing
 end
 
 function task0031_resize_payload(revision::Int, rows::Int, columns::Int)
@@ -207,7 +217,7 @@ end
         @test Set(keys(only(entry["outputs"])["output"])) == Set([
             "isready", "success", "error", "data",
         ])
-        @test state.view.state_revision == (pane_count == 1 ? 0 : 1)
+        @test state.view.state_revision == (rows == 2 && columns == 2 ? 0 : 1)
     end
 end
 
@@ -226,7 +236,7 @@ end
     post_snapshot = task0031_assert_envelope(
         ML_INTEGRATION.apply_signal_analyser_layout!(
             state,
-            task0031_resize_payload(0, 2, 2),
+            task0031_resize_payload(0, 1, 2),
         ),
     )
     revision = post_snapshot["state_revision"]
@@ -275,7 +285,7 @@ end
     end
 end
 
-@testset "TASK-0031 ordered preservation active fallback and session round trip" begin
+@testset "TASK-0031 canonical binding preservation active fallback and session round trip" begin
     state = ML_INTEGRATION.test_state_with_complex_signal()
     names = [signal.name for signal in state.signals]
     grown = ML_INTEGRATION.apply_signal_analyser_layout!(
@@ -309,7 +319,7 @@ end
     @test shrunk_layout["active_pane_id"] == "pane-1"
     @test shrunk_layout["next_pane_number"] == 5
     @test shrunk_layout["panes"][4]["plot_type"] == "spectrum"
-    @test shrunk_layout["panes"][4]["signal_bindings"] == reverse(names)
+    @test shrunk_layout["panes"][4]["signal_bindings"] == names
 
     regrown = ML_INTEGRATION.apply_signal_analyser_layout!(
         state,

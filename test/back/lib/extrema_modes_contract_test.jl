@@ -56,8 +56,13 @@ end
     for pane in v1["state"]["displays"][1]["layout"]["panes"]
         # v1 had neither pane names nor a peaks-settings object; its legacy
         # pane schema is exactly id/plot_type/signal_bindings.
-        delete!(pane, "name")
-        delete!(pane, "peaks_settings")
+        legacy_pane = Dict{String,Any}(
+            "id" => pane["id"],
+            "plot_type" => pane["plot_type"],
+            "signal_bindings" => pane["signal_bindings"],
+        )
+        empty!(pane)
+        merge!(pane, legacy_pane)
     end
     target = EXTREMA.default_signal_analyser_state()
     imported = EXTREMA.import_signal_analyser_session!(service, target, Dict("state_revision" => 0, "document" => v1))

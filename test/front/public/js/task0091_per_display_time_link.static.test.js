@@ -25,7 +25,8 @@ module.exports = async function testTask0091PerDisplayAndTimeLinkContracts(asser
   assert(/data-visible-signal[\s\S]*?pane\.signal_bindings/.test(app), "active-pane signal checkbox state must derive from pane bindings");
   assert(/node\.dataset\.visibleSignal[\s\S]*?postLayout\(\{ operation:"update_pane"[\s\S]*?signal_bindings:/.test(app), "active-pane signal checkbox changes must use update_pane only");
 
-  assert(!/group\("area-link"|"Связь областей"/.test(settings), "axis links must remain outside the pane-specific settings inventory");
+  assert(!/group\("area-link"/.test(settings), "axis links must remain outside the pane-specific settings inventory");
+  assert(/"time\.linking":"Связь областей"/.test(settings), "the localized screen-level links section must remain available without reintroducing a pane-local link group");
   assert(/data-settings-page="screen"[^>]*data-testid="settings-tab-screen">Экран</.test(html), "right settings must expose the dedicated Screen tab");
   assert(/data-screen-link-time[\s\S]*?Связать амплитуду[\s\S]*?data-screen-link-amplitude/.test(app), "Screen settings must own both independent axis-link checkboxes");
   assert(!html.includes("data-layout-link-time") && !html.includes("data-layout-link-amplitude"), "layout popover must not duplicate axis-link checkboxes");

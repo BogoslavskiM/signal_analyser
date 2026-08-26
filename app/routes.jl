@@ -755,7 +755,7 @@ route("/api/signals/derive", method = POST) do
         elseif err isa WorkspaceProviderError
             workspace_api_error_response("workspace_provider_error", err; status = 502)
         else
-            api_error_response("Не удалось выполнить операцию над сигналом", err; status = 500)
+            signal_operation_internal_error_response(err)
         end
     end
 end
