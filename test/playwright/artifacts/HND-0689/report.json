@@ -1,0 +1,68 @@
+{
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "d52913aa1e635c5b6f1c5bbcd83d3008b5800705",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "exact revision",
+      "status": "passed",
+      "evidence": {
+        "runtime_revision": "d52913aa1e635c5b6f1c5bbcd83d3008b5800705",
+        "project": "example_project",
+        "ready": true,
+        "ok": true
+      }
+    },
+    {
+      "name": "two sources/no API",
+      "status": "passed",
+      "evidence": [
+        "{\"action\":\"open\",\"file_browser_target\":\"native-import-file\",\"mode\":\"file\",\"allowed_extensions\":[\".jld2\"],\"root_path\":\"/user\",\"current_path\":\"/user\",\"selected_path\":\"\",\"sort_ascending\":true,\"expanded_paths\":[],\"initial_path\":\"/user/signal-analyser-session.jld2\"}",
+        "{\"action\":\"toggle\",\"file_browser_target\":\"native-import-file\",\"mode\":\"file\",\"allowed_extensions\":[\".jld2\"],\"root_path\":\"/user\",\"current_path\":\"/user\",\"selected_path\":\"\",\"sort_ascending\":true,\"expanded_paths\":[],\"toggle_path\":\"/user/_signal_analyser_e2e_tree_d52913aa_7c4e91\"}",
+        "{\"action\":\"path\",\"file_browser_target\":\"native-import-file\",\"mode\":\"file\",\"allowed_extensions\":[\".jld2\"],\"root_path\":\"/user\",\"current_path\":\"/user/_signal_analyser_e2e_tree_d52913aa_7c4e91\",\"selected_path\":\"\",\"sort_ascending\":true,\"expanded_paths\":[\"/user/_signal_analyser_e2e_tree_d52913aa_7c4e91\"]}",
+        "{\"action\":\"cancel\",\"file_browser_target\":\"native-import-file\",\"mode\":\"file\",\"allowed_extensions\":[\".jld2\"],\"root_path\":\"/user\",\"current_path\":\"/user/_signal_analyser_e2e_tree_d52913aa_7c4e91\",\"selected_path\":\"\",\"sort_ascending\":true,\"expanded_paths\":[]}"
+      ]
+    },
+    {
+      "name": "default/no browser",
+      "status": "passed",
+      "evidence": "/user/signal-analyser-session.jld2"
+    },
+    {
+      "name": "caret inline/no path change",
+      "status": "passed",
+      "evidence": "/user"
+    },
+    {
+      "name": "directory navigation",
+      "status": "passed",
+      "evidence": "/user/_signal_analyser_e2e_tree_d52913aa_7c4e91"
+    },
+    {
+      "name": "Cancel keeps path",
+      "status": "passed",
+      "evidence": "/user/signal-analyser-session.jld2"
+    },
+    {
+      "name": "Local sazip picker/no browser",
+      "status": "passed",
+      "evidence": [
+        "{\"action\":\"open\",\"file_browser_target\":\"native-import-file\",\"mode\":\"file\",\"allowed_extensions\":[\".jld2\"],\"root_path\":\"/user\",\"current_path\":\"/user\",\"selected_path\":\"\",\"sort_ascending\":true,\"expanded_paths\":[],\"initial_path\":\"/user/signal-analyser-session.jld2\"}",
+        "{\"action\":\"toggle\",\"file_browser_target\":\"native-import-file\",\"mode\":\"file\",\"allowed_extensions\":[\".jld2\"],\"root_path\":\"/user\",\"current_path\":\"/user\",\"selected_path\":\"\",\"sort_ascending\":true,\"expanded_paths\":[],\"toggle_path\":\"/user/_signal_analyser_e2e_tree_d52913aa_7c4e91\"}",
+        "{\"action\":\"path\",\"file_browser_target\":\"native-import-file\",\"mode\":\"file\",\"allowed_extensions\":[\".jld2\"],\"root_path\":\"/user\",\"current_path\":\"/user/_signal_analyser_e2e_tree_d52913aa_7c4e91\",\"selected_path\":\"\",\"sort_ascending\":true,\"expanded_paths\":[\"/user/_signal_analyser_e2e_tree_d52913aa_7c4e91\"]}",
+        "{\"action\":\"cancel\",\"file_browser_target\":\"native-import-file\",\"mode\":\"file\",\"allowed_extensions\":[\".jld2\"],\"root_path\":\"/user\",\"current_path\":\"/user/_signal_analyser_e2e_tree_d52913aa_7c4e91\",\"selected_path\":\"\",\"sort_ascending\":true,\"expanded_paths\":[]}"
+      ]
+    },
+    {
+      "name": "mock target_exists/no backend",
+      "status": "passed",
+      "evidence": "Переменная уже существует\n\nУкажите другое имя переменной или включите перезапись и повторите сохранение.\n\nПонятно"
+    }
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "passed"
+}

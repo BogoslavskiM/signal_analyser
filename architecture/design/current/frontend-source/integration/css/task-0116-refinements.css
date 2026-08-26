@@ -1,0 +1,20 @@
+/* V30 TASK-0116 final selector replacements for public/css/app.css.
+   Existing table geometry and tokens stay production-owned. Visibility is the
+   checkbox state; only main_signal owns the persistent blue row treatment. */
+
+.signal-table tbody tr.is-main-signal .color-cell {
+  background: var(--accent-soft);
+}
+
+.signal-table tbody tr {
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.signal-table tbody tr:hover {
+  background: var(--row-hover);
+}
+
+.signal-table tbody tr.is-main-signal {
+  background: var(--row-selected-analytical);
+}

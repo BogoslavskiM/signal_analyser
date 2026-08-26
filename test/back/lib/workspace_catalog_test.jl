@@ -161,14 +161,14 @@ end
     revision = "wc_00000000-0000-4000-8000-000000000000"
     catalog = WC.load_workspace_catalog!(service; now = now, catalog_revision = revision)
     payload = WC.workspace_catalog_payload(catalog)
-    @test Set(keys(payload)) == Set(["catalog_revision", "expires_at", "truncated", "total", "variables"])
+    @test Set(keys(payload)) == Set(["catalog_revision", "expires_at", "truncated", "filtered", "total", "variables"])
     @test payload["catalog_revision"] == revision && payload["expires_at"] == "2026-08-01T00:05:00.000Z"
-    @test [entry["name"] for entry in payload["variables"]] == ["a timed", "rank bad", "z raw"]
+    @test [entry["name"] for entry in payload["variables"]] == ["a timed", "z raw"]
+    @test payload["filtered"] == 1
     @test all(entry -> Set(keys(entry)) == Set(["variable_id", "name", "type", "shape", "sample_count", "source_kind", "compatibility", "reason", "sample_rate_requirement", "selectable"]), payload["variables"])
-    timed, malformed, raw = payload["variables"]
+    timed, raw = payload["variables"]
     @test timed["compatibility"] == "compatible" && timed["sample_rate_requirement"] == "not_needed" && timed["reason"] === nothing && timed["selectable"]
     @test raw["compatibility"] == "requires_sample_rate" && raw["sample_rate_requirement"] == "required" && raw["selectable"]
-    @test malformed["compatibility"] == "incompatible" && malformed["sample_rate_requirement"] == "unsupported" && !malformed["selectable"] && malformed["reason"] isa String
     @test all(entry -> !haskey(entry, "value") && !haskey(entry, "values") && !haskey(entry, "preview"), payload["variables"])
     @test WC.lookup_workspace_catalog!(service, revision; now = now + WC.Dates.Minute(4)) === catalog
     @test_throws WC.StaleWorkspaceCatalogError WC.lookup_workspace_catalog!(service, revision; now = now + WC.Dates.Minute(5))
@@ -177,6 +177,39 @@ end
     @test_throws WC.WorkspaceProviderError WC.load_workspace_catalog!(service; now = now, catalog_revision = "wc_123e4567-e89b-42d3-a456-426614174000")
     provider.failure = WC.WorkspaceUnavailableError("capability absent")
     @test_throws WC.WorkspaceUnavailableError WC.load_workspace_catalog!(service; now = now, catalog_revision = "wc_123e4567-e89b-42d3-a456-426614174000")
+end
+
+@testset "TASK-0121 workspace catalog is fresh on every dialog read and retains snapshots for import" begin
+    provider = ScriptedWorkspaceCatalogProvider(
+        Any[
+            (entries = [
+                (name = "raw", type = "Vector{Float64}", shape = [3], source_kind = "raw_vector"),
+                (name = "unsupported", type = "Any", shape = [3], source_kind = "unsupported"),
+            ], truncated = false, total = 2),
+            (entries = [
+                (name = "changed", type = "Vector{Float64}", shape = [4], source_kind = "raw_vector"),
+            ], truncated = false, total = 1),
+        ],
+        Dict("raw" => [1.0, 2.0, 3.0], "changed" => [1.0, 2.0, 3.0, 4.0]), 0, String[], nothing,
+    )
+    service = WC.WorkspaceCatalogService(provider)
+    now = WC.Dates.DateTime(2026, 8, 13, 0, 0, 0)
+    first = WC.load_workspace_catalog!(service; now = now, catalog_revision = "wc_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
+    @test provider.catalog_calls == 1
+    @test [entry.name for entry in first.variables] == ["raw"]
+    @test first.filtered == 1 && first.total == 2
+    @test WC.workspace_catalog_payload(first)["filtered"] == 1
+
+    reopened = WC.load_workspace_catalog!(service; now = now + WC.Dates.Minute(1), catalog_revision = "wc_bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
+    @test reopened !== first && provider.catalog_calls == 2
+    @test reopened.catalog_revision != first.catalog_revision
+    @test [entry.name for entry in reopened.variables] == ["changed"]
+
+    # Fresh reads replace the displayed catalog, while the exact snapshot that
+    # backed a user's previous selection remains available for import's
+    # identity and commit-time revalidation gates.
+    @test WC.lookup_workspace_catalog!(service, first.catalog_revision; now = now + WC.Dates.Minute(1)) === first
+    @test WC.lookup_workspace_catalog!(service, reopened.catalog_revision; now = now + WC.Dates.Minute(1)) === reopened
 end
 
 @testset "DEC-039 catalog metadata parser rejects structural limits" begin
@@ -195,7 +228,7 @@ end
     for shape in (fill(1, 17), [2, -1])
         provider = FakeWorkspaceCatalogProvider((entries = [(name = "structural", type = "Array", shape = shape, source_kind = "raw_vector")], truncated = false, total = 1), nothing, Dict{String,Any}())
         snapshot = WC.load_workspace_catalog!(WC.WorkspaceCatalogService(provider); catalog_revision = "wc_aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa")
-        @test !only(snapshot.variables).selectable && only(snapshot.variables).compatibility == WC.INCOMPATIBLE_WORKSPACE_COMPATIBILITY
+        @test isempty(snapshot.variables) && snapshot.filtered == 1
     end
     # Rank and output-count violations are safely represented, not permitted to
     # reach value import as selectable variables.
@@ -205,7 +238,7 @@ end
         (name = "short", type = "V", shape = [1], source_kind = "timed_vector"),
     ], truncated = false, total = 3), nothing, Dict{String,Any}())
     snapshot = WC.load_workspace_catalog!(WC.WorkspaceCatalogService(provider); catalog_revision = "wc_00000000-0000-4000-8000-000000000000")
-    @test all(!entry.selectable && entry.compatibility == WC.INCOMPATIBLE_WORKSPACE_COMPATIBILITY for entry in snapshot.variables)
+    @test isempty(snapshot.variables) && snapshot.filtered == 3
 
     # The service must fail closed even when a provider incorrectly labels an
     # invalid shape as one of the supported raw/timed source kinds.
@@ -217,19 +250,11 @@ end
     ]
     provider = FakeWorkspaceCatalogProvider((entries = invalid_by_declared_source, truncated = false, total = 4), nothing, Dict{String,Any}())
     snapshot = WC.load_workspace_catalog!(WC.WorkspaceCatalogService(provider); catalog_revision = "wc_bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb")
-    entries = Dict(entry.name => entry for entry in snapshot.variables)
-    for item in invalid_by_declared_source
-        entry = entries[item.name]
-        @test entry.shape == ()
-        @test entry.source_kind == WC.UNSUPPORTED_WORKSPACE_SOURCE
-        @test entry.sample_rate_requirement == WC.UNSUPPORTED_WORKSPACE_SAMPLE_RATE
-        @test !entry.selectable && entry.compatibility == WC.INCOMPATIBLE_WORKSPACE_COMPATIBILITY
-        @test !isempty(entry.reason) && ncodeunits(entry.reason) <= WC.WORKSPACE_CATALOG_MAX_REASON_LENGTH
-    end
+    @test isempty(snapshot.variables) && snapshot.filtered == length(invalid_by_declared_source)
     @test valid.name == "x" # protects the exact fixture shape from accidental drift
 end
 
-@testset "DEC-039 oversized structural metadata stays catalog-visible but incompatible" begin
+@testset "DEC-039 oversized structural metadata is filtered before catalog display" begin
     # Execute the immutable adapter program in a clean Main-like module: a
     # malformed sibling must not abort enumeration or leak oversized shape.
     workspace = Module(:WorkspaceCatalogBoundsProbe)
@@ -240,19 +265,14 @@ end
     Core.eval(workspace, :(export good, rank17, unsafe_dimension))
     raw = Core.eval(workspace, Meta.parse(WC.ENGEE_WORKSPACE_CATALOG_INTROSPECTION))
     entries_by_name = Dict(item.name => item for item in raw.entries)
-    @test raw.total == 3 && !raw.truncated && Set(keys(entries_by_name)) == Set(["good", "rank17", "unsafe_dimension"])
+    @test raw.total == 3 && !raw.truncated && Set(keys(entries_by_name)) == Set(["good"])
+    @test raw.filtered == 2
     @test entries_by_name["good"].shape == [3] && entries_by_name["good"].source_kind == "raw_vector"
-    @test all(entries_by_name[name].shape == Int[] && entries_by_name[name].source_kind == "unsupported" for name in ("rank17", "unsafe_dimension"))
     provider = FakeWorkspaceCatalogProvider(raw, nothing, Dict{String,Any}())
     snapshot = WC.load_workspace_catalog!(WC.WorkspaceCatalogService(provider); catalog_revision = "wc_123e4567-e89b-42d3-a456-426614174000")
     entries = Dict(entry.name => entry for entry in snapshot.variables)
     @test entries["good"].selectable && entries["good"].source_kind == WC.RAW_VECTOR_WORKSPACE_SOURCE
-    for name in ("rank17", "unsafe_dimension")
-        entry = entries[name]
-        @test entry.shape == () && entry.source_kind == WC.UNSUPPORTED_WORKSPACE_SOURCE
-        @test !entry.selectable && entry.compatibility == WC.INCOMPATIBLE_WORKSPACE_COMPATIBILITY
-        @test entry.reason isa String && ncodeunits(entry.reason) <= WC.WORKSPACE_CATALOG_MAX_REASON_LENGTH
-    end
+    @test snapshot.filtered == 2 && length(entries) == 1
 end
 
 @testset "DEC-039 literal catalog introspection excludes non-public and imported bindings" begin
@@ -371,7 +391,7 @@ end
     )
     catalog_service = WC.WorkspaceCatalogService(provider)
     service = WC.WorkspaceBatchImportService(catalog_service, WC.SignalInventoryService(WC.EngeeWorkspaceSignalSource(provider)))
-    state = WC.default_signal_analyser_state()
+    state = WC.test_state_with_complex_signal()
     # Configure Display 2 explicitly, then make it inactive before import.
     first_name, second_name = [signal.name for signal in state.signals]
     WC.apply_signal_analyser_display!(state, Dict("state_revision" => 0, "operation" => "create"))

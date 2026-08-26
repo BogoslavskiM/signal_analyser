@@ -1,0 +1,7 @@
+/* TASK-0145: exact replacement for the legacy production autosave-busy rule.
+   Transfer by replacing only the cursor declaration in the matching selector
+   body; do not append a duplicate selector. */
+.settings-apply.is-applying:disabled,
+.settings-apply.is-pending:disabled {
+  cursor: default;
+}

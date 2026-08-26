@@ -1,0 +1,231 @@
+{
+  "id": "HND-0521",
+  "mode": "mutate",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "revision": "a69c632728a72afc338bd41379fdb3de59c8505c",
+  "channel": "chrome",
+  "headless": false,
+  "visibility": "foreground",
+  "workers": 1,
+  "checks": [
+    {
+      "name": "availability and exact production revision",
+      "status": "passed",
+      "detail": {
+        "code": 200,
+        "body": {
+          "runtime_revision": "a69c632728a72afc338bd41379fdb3de59c8505c",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "right Peaks has four controls and shared disabled Apply",
+      "status": "failed",
+      "detail": {
+        "initial": [],
+        "applyCount": 1
+      }
+    },
+    {
+      "name": "negative count blocks Apply with Russian validation",
+      "status": "passed",
+      "detail": "Расчёт пиков\nКоличество пиков\nВведите целое число от 1 до 1000.\nМинимальная высота\nМинимальное расстояние, отсчёты\nПорог"
+    }
+  ],
+  "network": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/css/app.css",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/css/theme.css",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/import.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/engee-logo.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/save.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/help-circle.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/api.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/chevron-down-fill-16.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/layouts.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/close.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/plus.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/app.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/components/explicit-apply.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/vendor/vue/3.5.41/vue.global.prod.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-latin-medium.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/more-vertical.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-cyrillic-medium.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-latin-regular.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/fonts/roboto-v51-cyrillic-regular.ttf",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/api/v1/touch",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/trash.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/tick-figma.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/copy.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/eye-off.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/icons/eye.svg",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/vendor/plotly-cartesian-3.1.0.min.js",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/settings",
+      "status": 200,
+      "method": "POST"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "opened": 1,
+  "closed": 1,
+  "errors": [
+    "page.waitForFunction: Timeout 30000ms exceeded.\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0094_v6_production_short.js:9:1033"
+  ],
+  "cleanup": "passed"
+}

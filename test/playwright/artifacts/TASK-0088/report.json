@@ -1,0 +1,572 @@
+{
+  "id": "HND-TASK-0088-E2E-REPORT",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "title": "TASK-0088 foreground production regression",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "568a29f48edbfb2bb5f8ad3eaeea089c34a910ea",
+  "design_ref": "architecture/design/TASK-0080-explicit-apply-flow/DESIGN.md",
+  "design_version": 5,
+  "prototype_entry": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "started_at": "2026-08-10T09:20:09.553Z",
+  "checks": [
+    {
+      "name": "prototype v5 dialog geometry 1024x768",
+      "status": "passed",
+      "detail": {
+        "w": 372,
+        "x": 343,
+        "y": 133,
+        "position": "fixed",
+        "radius": "8px",
+        "inViewport": true
+      }
+    },
+    {
+      "name": "prototype Escape restores layout trigger 1024x768",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "prototype v5 dialog geometry 1280x720",
+      "status": "passed",
+      "detail": {
+        "w": 372,
+        "x": 581,
+        "y": 133,
+        "position": "fixed",
+        "radius": "8px",
+        "inViewport": true
+      }
+    },
+    {
+      "name": "prototype Escape restores layout trigger 1280x720",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "prototype v5 dialog geometry 1440x900",
+      "status": "passed",
+      "detail": {
+        "w": 372,
+        "x": 701,
+        "y": 133,
+        "position": "fixed",
+        "radius": "8px",
+        "inViewport": true
+      }
+    },
+    {
+      "name": "prototype Escape restores layout trigger 1440x900",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "availability and exact runtime revision",
+      "status": "passed",
+      "detail": {
+        "main_document": {
+          "status": 200,
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+          "timestamp": "2026-08-10T09:20:14.417Z"
+        },
+        "status": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "568a29f48edbfb2bb5f8ad3eaeea089c34a910ea",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      }
+    },
+    {
+      "name": "layout dialog repeat: close, focus restore, no draft leak",
+      "status": "passed",
+      "detail": {
+        "geometry": {
+          "w": 372,
+          "x": 701,
+          "y": 133,
+          "position": "fixed",
+          "radius": "8px",
+          "clamp": true
+        },
+        "focus": true
+      }
+    },
+    {
+      "name": "layout dialog cancel: close, focus restore, no draft leak",
+      "status": "passed",
+      "detail": {
+        "geometry": {
+          "w": 372,
+          "x": 701,
+          "y": 133,
+          "position": "fixed",
+          "radius": "8px",
+          "clamp": true
+        },
+        "focus": true
+      }
+    },
+    {
+      "name": "layout dialog escape: close, focus restore, no draft leak",
+      "status": "passed",
+      "detail": {
+        "geometry": {
+          "w": 372,
+          "x": 701,
+          "y": 133,
+          "position": "fixed",
+          "radius": "8px",
+          "clamp": true
+        },
+        "focus": true
+      }
+    },
+    {
+      "name": "layout dialog outside: close, focus restore, no draft leak",
+      "status": "passed",
+      "detail": {
+        "geometry": {
+          "w": 372,
+          "x": 701,
+          "y": 133,
+          "position": "fixed",
+          "radius": "8px",
+          "clamp": true
+        },
+        "focus": true
+      }
+    },
+    {
+      "name": "second Display created",
+      "status": "passed",
+      "detail": {
+        "displays": [
+          {
+            "peaks_enabled": false,
+            "active_plot": "time",
+            "name": "Display 1",
+            "spectrum_settings": {
+              "frequency_scale": "linear",
+              "leakage": 0.5,
+              "frequency_limits": null,
+              "scale": "db"
+            },
+            "id": "display-1",
+            "analysis_signal": "Гармонический сигнал",
+            "visible_signals": [
+              "Гармонический сигнал"
+            ],
+            "spectrogram_settings": {
+              "leakage": 0.5,
+              "overlap_percent": 50,
+              "frequency_limits": null,
+              "frequency_scale": "linear",
+              "power_limits": null
+            },
+            "selected_signal": "Гармонический сигнал",
+            "persistence_settings": {
+              "leakage": 0.5
+            },
+            "time_limits": {
+              "units": "s",
+              "min_s": 0,
+              "max_s": 0.24951171875
+            },
+            "measurement_kinds": [
+              "minimum",
+              "maximum",
+              "mean"
+            ]
+          },
+          {
+            "peaks_enabled": false,
+            "active_plot": "time",
+            "name": "Display 3",
+            "spectrum_settings": {
+              "frequency_scale": "linear",
+              "leakage": 0.5,
+              "frequency_limits": null,
+              "scale": "db"
+            },
+            "id": "display-3",
+            "analysis_signal": "Гармонический сигнал",
+            "visible_signals": [
+              "Гармонический сигнал"
+            ],
+            "spectrogram_settings": {
+              "leakage": 0.5,
+              "overlap_percent": 50,
+              "frequency_limits": null,
+              "frequency_scale": "linear",
+              "power_limits": null
+            },
+            "selected_signal": "Гармонический сигнал",
+            "persistence_settings": {
+              "leakage": 0.5
+            },
+            "time_limits": {
+              "units": "s",
+              "min_s": 0,
+              "max_s": 0.24951171875
+            },
+            "measurement_kinds": [
+              "minimum",
+              "maximum",
+              "mean"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "layout 1x2 API response",
+      "status": "failed",
+      "detail": {
+        "status": 409,
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts"
+      }
+    },
+    {
+      "name": "unhandled workflow error",
+      "status": "failed",
+      "detail": {
+        "error": "Error: Plotly ready panes: page.waitForFunction: Timeout 60000ms exceeded.\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0088_production_foreground.js:27:645\n    at runNextTicks (node:internal/process/task_queues:65:5)\n    at process.processImmediate (node:internal/timers:473:9)\n    at async waitReady (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0088_production_foreground.js:27:43)\n    at async main (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0088_production_foreground.js:55:265)"
+      }
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "prototype-layout-open-1024x768.png",
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "state": "prototype open 1024x768",
+      "timestamp": "2026-08-10T09:20:12.386Z"
+    },
+    {
+      "file": "prototype-layout-open-1280x720.png",
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "state": "prototype open 1280x720",
+      "timestamp": "2026-08-10T09:20:12.959Z"
+    },
+    {
+      "file": "prototype-layout-open-1440x900.png",
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "prototype open 1440x900",
+      "timestamp": "2026-08-10T09:20:13.492Z"
+    },
+    {
+      "file": "production-ready-1440x900.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "ready initial",
+      "timestamp": "2026-08-10T09:20:21.432Z"
+    },
+    {
+      "file": "production-layout-dialog.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "layout dialog open",
+      "timestamp": "2026-08-10T09:20:23.425Z"
+    }
+  ],
+  "network": [
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "main_document": true
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "main_document": true
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-2",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-3",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    },
+    {
+      "status": 409,
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-3",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "main_document": false
+    },
+    {
+      "status": 200,
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "main_document": false
+    }
+  ],
+  "console_errors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 ()",
+      "url": "https://engee.com/favicon.ico",
+      "line": 0
+    },
+    {
+      "text": "Failed to load resource: the server responded with a status of 409 ()",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "line": 0
+    }
+  ],
+  "page_errors": [],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "tab_cleanup_status": "passed",
+  "remaining_mutations": [],
+  "preexisting_pages": [],
+  "preexisting_page_count": 0,
+  "chrome_activation": "ok",
+  "main_document": {
+    "status": 200,
+    "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+    "timestamp": "2026-08-10T09:20:14.417Z"
+  },
+  "runtime_status": {
+    "status": 200,
+    "body": {
+      "runtime_revision": "568a29f48edbfb2bb5f8ad3eaeea089c34a910ea",
+      "project": "example_project",
+      "ready": true,
+      "ok": true
+    }
+  },
+  "initial_state": {
+    "active_display_id": "display-1",
+    "displays": [
+      {
+        "peaks_enabled": false,
+        "active_plot": "time",
+        "name": "Display 1",
+        "spectrum_settings": {
+          "frequency_scale": "linear",
+          "leakage": 0.5,
+          "frequency_limits": null,
+          "scale": "db"
+        },
+        "id": "display-1",
+        "analysis_signal": "Гармонический сигнал",
+        "visible_signals": [
+          "Гармонический сигнал"
+        ],
+        "spectrogram_settings": {
+          "leakage": 0.5,
+          "overlap_percent": 50,
+          "frequency_limits": null,
+          "frequency_scale": "linear",
+          "power_limits": null
+        },
+        "selected_signal": "Гармонический сигнал",
+        "persistence_settings": {
+          "leakage": 0.5
+        },
+        "time_limits": {
+          "units": "s",
+          "min_s": 0,
+          "max_s": 0.24951171875
+        },
+        "measurement_kinds": [
+          "minimum",
+          "maximum",
+          "mean"
+        ]
+      }
+    ],
+    "layouts": [
+      {
+        "display_id": "display-1",
+        "outputs": [
+          {
+            "pane_id": "pane-1",
+            "signal_bindings": [
+              "Гармонический сигнал"
+            ],
+            "output": {
+              "isready": true,
+              "error": "",
+              "success": true,
+              "data": []
+            },
+            "need_update": false,
+            "isready": true,
+            "analysis_signal": "Гармонический сигнал",
+            "context_key": "display-1::pane-1::time::r4",
+            "error": "",
+            "success": true,
+            "calculation_revision": 4,
+            "page_id": "display-1::pane-1",
+            "display_id": "display-1",
+            "plot_type": "time"
+          }
+        ],
+        "layout": {
+          "variant": "1x1",
+          "rows": 1,
+          "next_pane_number": 3,
+          "panes": [
+            {
+              "signal_bindings": [
+                "Гармонический сигнал"
+              ],
+              "id": "pane-1",
+              "plot_type": "time"
+            }
+          ],
+          "version": 1,
+          "columns": 1,
+          "active_pane_id": "pane-1"
+        }
+      }
+    ]
+  },
+  "run_error": "Error: Plotly ready panes: page.waitForFunction: Timeout 60000ms exceeded.\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0088_production_foreground.js:27:645\n    at runNextTicks (node:internal/process/task_queues:65:5)\n    at process.processImmediate (node:internal/timers:473:9)\n    at async waitReady (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0088_production_foreground.js:27:43)\n    at async main (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0088_production_foreground.js:55:265)",
+  "restoration_attempt": "partial: original active layout restored when still active; added Display and changed pane settings may remain",
+  "summary": {
+    "planned": 14,
+    "passed": 12,
+    "failed": 2,
+    "not_run": 0,
+    "success_rate": 85.7,
+    "availability": "passed",
+    "operational": false
+  },
+  "finished_at": "2026-08-10T09:21:54.440Z"
+}

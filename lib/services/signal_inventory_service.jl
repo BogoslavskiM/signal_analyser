@@ -25,6 +25,9 @@ struct PreparedSignalInventoryMutation{S<:SignalAnalyserState}
     snapshot::Dict{String,Any}
 end
 
+const SIGNAL_INVENTORY_SAMPLES_DEFAULT_LIMIT = 200
+const SIGNAL_INVENTORY_SAMPLES_MAX_LIMIT = 500
+
 function signal_inventory_validation_error(
     field::AbstractString,
     message::AbstractString,
@@ -33,6 +36,164 @@ function signal_inventory_validation_error(
         "Некорректный запрос Signals",
         Dict(String(field) => String(message)),
     )
+end
+
+function signal_inventory_signal_by_id(
+    state::SignalAnalyserState,
+    signal_id::AbstractString,
+)::AnalysedSignal
+    try
+        signal_by_id(state, signal_id)
+    catch err
+        err isa ArgumentError || rethrow()
+        throw(signal_inventory_validation_error("signal_id", "Неизвестный идентификатор сигнала"))
+    end
+end
+
+function signal_inventory_summary_payload(
+    state::SignalAnalyserState,
+    signal_id::AbstractString,
+)::Dict{String,Any}
+    lock(state.lock) do
+        signal = signal_inventory_signal_by_id(state, signal_id)
+        selection = SignalMeasurementSelection(SignalMeasurementKind[
+            SIGNAL_MEASUREMENT_CANONICAL_KINDS...,
+        ])
+        measurements = signal_measurements_snapshot(
+            state.measurements_service,
+            state.view.state_revision,
+            signal,
+            selection,
+        )
+        items = Dict(
+            signal_measurement_metadata(measurement.kind).id => measurement
+            for measurement in measurements.items
+        )
+        minimum_item = items["minimum"]::SignalMeasurementItem
+        maximum_item = items["maximum"]::SignalMeasurementItem
+        minimum_position = minimum_item.position::SignalMeasurementPosition
+        maximum_position = maximum_item.position::SignalMeasurementPosition
+        full_limits = signal_full_time_limits(state.measurements_service, signal)
+        Dict{String,Any}(
+            "ok" => true,
+            "state_revision" => state.view.state_revision,
+            "signal" => signal_analyser_signal_payload(signal),
+            "summary" => Dict{String,Any}(
+                "sample_count" => length(signal.values),
+                "duration_s" => signal_duration_s(signal),
+                "data_type" => signal_data_type(signal),
+                "ordinate" => signal_measurement_ordinate_name(measurements.ordinate),
+                "region_start_s" => full_limits.min_s,
+                "region_end_s" => full_limits.max_s,
+                "minimum" => minimum_item.value,
+                "minimum_time_s" => minimum_position.time_s,
+                "minimum_sample_index" => minimum_position.sample_index,
+                "maximum" => maximum_item.value,
+                "maximum_time_s" => maximum_position.time_s,
+                "maximum_sample_index" => maximum_position.sample_index,
+                "mean" => items["mean"].value,
+                "median" => items["median"].value,
+                "range" => items["peak_to_peak"].value,
+                "peak_to_peak" => items["peak_to_peak"].value,
+                "rms" => items["rms"].value,
+                "units" => Dict{String,Any}(
+                    "value" => measurements.units.value,
+                    "time" => measurements.units.time,
+                ),
+            ),
+        )
+    end
+end
+
+function signal_inventory_sample_value(
+    value::ComplexF64,
+    is_complex::Bool,
+)::Union{Nothing,Float64,String}
+    isfinite(real(value)) && isfinite(imag(value)) || return nothing
+    is_complex ? string(value) : real(value)
+end
+
+function signal_inventory_square_root_value(
+    value::ComplexF64,
+    is_complex::Bool,
+)::Union{Nothing,Float64,String}
+    if is_complex
+        return signal_inventory_sample_value(sqrt(value), true)
+    end
+    sample = real(value)
+    isfinite(sample) || return nothing
+    sample < 0 && return nothing
+    sqrt(sample)
+end
+
+function signal_inventory_signed_square_root_magnitude_value(
+    value::ComplexF64,
+    is_complex::Bool,
+)::Union{Nothing,Float64}
+    is_complex && return nothing
+    sample = real(value)
+    isfinite(sample) || return nothing
+    sqrt(abs(sample)) * sign(sample)
+end
+
+function signal_inventory_samples_payload(
+    state::SignalAnalyserState,
+    signal_id::AbstractString,
+    cursor::Int,
+    limit::Int,
+)::Dict{String,Any}
+    cursor >= 0 || throw(signal_inventory_validation_error(
+        "cursor",
+        "Cursor должен быть неотрицательным целым числом",
+    ))
+    1 <= limit <= SIGNAL_INVENTORY_SAMPLES_MAX_LIMIT || throw(
+        signal_inventory_validation_error(
+            "limit",
+            "Limit должен быть целым числом от 1 до $(SIGNAL_INVENTORY_SAMPLES_MAX_LIMIT)",
+        ),
+    )
+    lock(state.lock) do
+        signal = signal_inventory_signal_by_id(state, signal_id)
+        total = length(signal.values)
+        cursor <= total || throw(signal_inventory_validation_error(
+            "cursor",
+            "Cursor не может превышать число отсчётов",
+        ))
+        last_offset = min(total, cursor + limit)
+        rows = Dict{String,Any}[]
+        for zero_index in cursor:(last_offset - 1)
+            value = signal.values[zero_index + 1]
+            square = value * value
+            push!(rows, Dict{String,Any}(
+                "sample_index" => zero_index,
+                "time_s" => zero_index / signal.sample_rate_hz,
+                "value" => signal_inventory_sample_value(value, signal.is_complex),
+                "magnitude" => isfinite(abs(value)) ? abs(value) : nothing,
+                "square" => signal_inventory_sample_value(square, signal.is_complex),
+                "square_root" => signal_inventory_square_root_value(value, signal.is_complex),
+                "signed_square_root_magnitude" =>
+                    signal_inventory_signed_square_root_magnitude_value(
+                        value,
+                        signal.is_complex,
+                    ),
+            ))
+        end
+        Dict{String,Any}(
+            "ok" => true,
+            "state_revision" => state.view.state_revision,
+            "signal" => Dict{String,Any}(
+                "id" => signal.id,
+                "name" => signal.name,
+                "sample_rate_hz" => signal.sample_rate_hz,
+                "data_type" => signal_data_type(signal),
+            ),
+            "cursor" => cursor,
+            "limit" => limit,
+            "rows" => rows,
+            "next_cursor" => last_offset < total ? last_offset : nothing,
+            "total" => total,
+        )
+    end
 end
 
 function signal_inventory_timed_fields(value)
@@ -228,6 +389,7 @@ function signal_inventory_clone_state(state::SignalAnalyserState)
         state.spectrum_service,
         state.spectrogram_service,
         state.persistence_service,
+        signal_analyser_clone_calculation_manager(state.output_manager),
         ReentrantLock(),
     )
 end
@@ -310,7 +472,7 @@ function signal_inventory_add_candidates!(
     )
     state.display_layouts[active_display.id] = signal_display_layout_replace_active_pane(
         signal_analyser_layout_by_display_id(state, active_display.id),
-        signal_display_pane_from_display(active_pane.id, prospective_display),
+        signal_display_pane_from_display(active_pane.id, prospective_display, active_pane.name),
     )
     state.row_selection = GlobalSignalSelection(first_added)
     signal_analyser_sync_active_display!(state, prospective_display)
@@ -415,13 +577,9 @@ function signal_inventory_reconciled_display(
 )::SignalAnalyserDisplayState
     members = [name for name in signal_analyser_display_members(display) if name != deleted_name]
     current_analysis = signal_analyser_display_analysis_name(display)
-    analysis_name = if isempty(members)
-        nothing
-    elseif current_analysis === nothing || current_analysis == deleted_name
-        first(members)
-    else
-        current_analysis
-    end
+    # Deleting a binding does not select another main implicitly.  Only
+    # deleting the main signal itself clears the persisted inspector focus.
+    analysis_name = current_analysis == deleted_name ? nothing : current_analysis
     limits = if analysis_name === nothing
         nothing
     else
@@ -451,7 +609,7 @@ function signal_inventory_reconciled_display(
             display.stored_settings,
             analysis_name === nothing ? nothing : signal_by_name(state, analysis_name),
         ),
-        analysis_name === nothing ? false : display.peaks_enabled,
+        analysis_name === nothing || isempty(members) ? false : display.peaks_enabled,
     )
 end
 
@@ -487,10 +645,135 @@ function signal_inventory_execute!(
     nothing
 end
 
+function signal_inventory_renamed_name(
+    value::AbstractString,
+    old_name::String,
+    new_name::String,
+)::String
+    String(value) == old_name ? new_name : String(value)
+end
+
+function signal_inventory_rebind_pane(
+    state::SignalAnalyserState,
+    pane::SignalDisplayPaneState,
+    old_name::String,
+    new_name::String,
+)::SignalDisplayPaneState
+    members = String[
+        signal_inventory_renamed_name(name, old_name, new_name)
+        for name in signal_display_pane_members(pane)
+    ]
+    analysis_name = signal_display_pane_analysis_name(pane)
+    rebound = SignalDisplayPaneState(
+        pane.id,
+        pane.name,
+        pane.plot_type,
+        SignalDisplayMembership(members),
+        signal_analysis_source(
+            analysis_name === nothing ? nothing :
+                signal_inventory_renamed_name(analysis_name, old_name, new_name),
+        ),
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+        pane.peaks_settings,
+    )
+    signal_display_pane_reconfigured(state, rebound, rebound.plot_type, members)
+end
+
+function signal_inventory_rebind_layout(
+    state::SignalAnalyserState,
+    layout::SignalDisplayLayoutState,
+    old_name::String,
+    new_name::String,
+)::SignalDisplayLayoutState
+    SignalDisplayLayoutState(
+        layout.version,
+        layout.variant,
+        layout.rows,
+        layout.columns,
+        SignalDisplayPaneState[
+            signal_inventory_rebind_pane(state, pane, old_name, new_name)
+            for pane in layout.panes
+        ],
+        layout.active_pane_id,
+        layout.next_pane_number,
+    )
+end
+
+function signal_inventory_execute!(
+    ::SignalInventoryService,
+    state::SignalAnalyserState,
+    command::UpdateSignalMetadataCommand,
+)
+    signal_index = findfirst(signal -> signal.id == command.signal_id, state.signals)
+    signal_index === nothing && throw(signal_inventory_validation_error(
+        "signal_id",
+        "Неизвестный идентификатор сигнала",
+    ))
+    source = state.signals[signal_index]
+    any(
+        signal -> signal.id != source.id && signal.name == command.name,
+        state.signals,
+    ) && throw(signal_inventory_validation_error(
+        "name",
+        "Сигнал с таким именем уже существует",
+    ))
+    updated = try
+        AnalysedSignal(
+            source.id,
+            command.name,
+            command.color,
+            command.sample_rate_hz,
+            copy(source.values),
+            source.is_complex,
+            source.visible,
+        )
+    catch err
+        err isa ArgumentError || rethrow()
+        throw(signal_inventory_validation_error("signal", sprint(showerror, err)))
+    end
+    state.signals[signal_index] = updated
+    old_name = source.name
+    new_name = updated.name
+    state.display_layouts = Dict(
+        display_id => signal_inventory_rebind_layout(state, layout, old_name, new_name)
+        for (display_id, layout) in state.display_layouts
+    )
+    state.displays = SignalAnalyserDisplayState[
+        signal_analyser_display_for_pane(
+            display,
+            signal_display_active_pane(state.display_layouts[display.id]),
+        )
+        for display in state.displays
+    ]
+    if state.row_selection.signal_name == old_name
+        state.row_selection = GlobalSignalSelection(new_name)
+    end
+    state.view.selected_signal = state.view.selected_signal === nothing ? nothing :
+        signal_inventory_renamed_name(state.view.selected_signal, old_name, new_name)
+    delete!(state.plot_cache, old_name)
+    filter!(pair -> first(pair).signal_name != old_name, state.spectrum_cache)
+    filter!(pair -> first(pair).signal_name != old_name, state.spectrogram_cache)
+    filter!(pair -> first(pair).signal_name != old_name, state.persistence_cache)
+    filter!(
+        pair -> last(pair).context.signal_name != old_name,
+        state.output_manager.peaks_cache,
+    )
+    signal_analyser_sync_active_display!(state, signal_analyser_active_display(state))
+    nothing
+end
+
 function prepare_signal_inventory_mutation(
     service::SignalInventoryService,
     state::SignalAnalyserState,
     command::AbstractSignalInventoryCommand,
+    ;
+    lightweight::Bool = false,
 )
     prospective = signal_inventory_clone_state(state)
     try
@@ -503,7 +786,10 @@ function prepare_signal_inventory_mutation(
         ))
     end
     prospective.view.state_revision += 1
-    snapshot = signal_analyser_snapshot_unlocked(prospective)
+    signal_analyser_invalidate_all_outputs_unlocked!(prospective)
+    snapshot = lightweight ?
+        signal_analyser_state_lite_unlocked(prospective) :
+        signal_analyser_snapshot_unlocked(prospective)
     PreparedSignalInventoryMutation(prospective, snapshot)
 end
 
@@ -511,6 +797,8 @@ function prepare_signal_inventory_batch_mutation(
     service::SignalInventoryService,
     state::SignalAnalyserState,
     candidates::AbstractVector{WorkspaceSignalCandidate},
+    ;
+    lightweight::Bool = false,
 )::PreparedSignalInventoryMutation
     prospective = signal_inventory_clone_state(state)
     try
@@ -520,7 +808,10 @@ function prepare_signal_inventory_batch_mutation(
         throw(signal_inventory_validation_error(err.field, sprint(showerror, err)))
     end
     prospective.view.state_revision += 1
-    snapshot = signal_analyser_snapshot_unlocked(prospective)
+    signal_analyser_invalidate_all_outputs_unlocked!(prospective)
+    snapshot = lightweight ?
+        signal_analyser_state_lite_unlocked(prospective) :
+        signal_analyser_snapshot_unlocked(prospective)
     PreparedSignalInventoryMutation(prospective, snapshot)
 end
 
@@ -529,6 +820,7 @@ function publish_signal_inventory_mutation!(
     prepared::PreparedSignalInventoryMutation,
 )
     prospective = prepared.state
+    signal_analyser_cancel_active_output_unlocked!(state)
     state.signals = prospective.signals
     state.view = prospective.view
     state.row_selection = prospective.row_selection
@@ -540,13 +832,15 @@ function publish_signal_inventory_mutation!(
     state.spectrum_cache = prospective.spectrum_cache
     state.spectrogram_cache = prospective.spectrogram_cache
     state.persistence_cache = prospective.persistence_cache
+    state.output_manager = prospective.output_manager
     nothing
 end
 
 function apply_signal_inventory!(
     service::SignalInventoryService,
     state::SignalAnalyserState,
-    command::AbstractSignalInventoryCommand,
+    command::AbstractSignalInventoryCommand;
+    lightweight::Bool = false,
 )::Dict{String,Any}
     lock(state.lock) do
         requested_revision = signal_inventory_command_revision(command)
@@ -554,8 +848,247 @@ function apply_signal_inventory!(
             requested_revision,
             state.view.state_revision,
         ))
-        prepared = prepare_signal_inventory_mutation(service, state, command)
+        prepared = prepare_signal_inventory_mutation(
+            service,
+            state,
+            command;
+            lightweight = lightweight,
+        )
         publish_signal_inventory_mutation!(state, prepared)
+        prepared.snapshot
+    end
+end
+
+function signal_inventory_operation_source_copy(
+    state::SignalAnalyserState,
+    command::DeriveSignalCommand,
+)::AnalysedSignal
+    source = try
+        signal_inventory_signal_by_id(state, command.source_signal_id)
+    catch err
+        err isa SignalAnalyserValidationError || rethrow()
+        throw(signal_inventory_validation_error(
+            "source_signal_id",
+            "Неизвестный идентификатор исходного сигнала",
+        ))
+    end
+    source.name == command.target_name && throw(signal_inventory_validation_error(
+        "target_name",
+        "Исходный сигнал нельзя перезаписывать результатом операции",
+    ))
+    collision = findfirst(signal -> signal.name == command.target_name, state.signals)
+    collision === nothing || command.overwrite || throw(signal_inventory_validation_error(
+        "target_name",
+        "Сигнал с таким именем уже существует",
+    ))
+    AnalysedSignal(
+        source.id,
+        source.name,
+        source.color,
+        source.sample_rate_hz,
+        copy(source.values),
+        source.is_complex,
+        source.visible,
+    )
+end
+
+function signal_inventory_replace_operation_target!(
+    inventory_service::SignalInventoryService,
+    state::SignalAnalyserState,
+    source::AnalysedSignal,
+    command::Union{DeriveSignalCommand,CropSignalCommand},
+    result::Union{SignalOperationProviderResult,CroppedSignalResult},
+)::AnalysedSignal
+    result_sample_rate_hz = result isa SignalOperationProviderResult &&
+        result.sample_rate_hz !== nothing ? result.sample_rate_hz::Float64 : source.sample_rate_hz
+    target_index = findfirst(signal -> signal.name == command.target_name, state.signals)
+    if target_index === nothing
+        series = result isa CroppedSignalResult ?
+            WorkspaceSignalSeries(
+                result.values,
+                result_sample_rate_hz,
+                result.is_complex,
+                true,
+            ) : WorkspaceSignalSeries(
+                result.values,
+                result_sample_rate_hz,
+                result.is_complex,
+            )
+        added_names = signal_inventory_add_candidates!(
+            inventory_service,
+            state,
+            WorkspaceSignalCandidate[
+                WorkspaceSignalCandidate(
+                    command.target_name,
+                    series,
+                    source.color,
+                ),
+            ],
+        )
+        return signal_by_name(state, only(added_names))
+    end
+    command.overwrite || throw(signal_inventory_validation_error(
+        "target_name",
+        "Сигнал с таким именем уже существует",
+    ))
+    target = state.signals[target_index]
+    replacement = AnalysedSignal(
+        target.id,
+        target.name,
+        target.color,
+        result_sample_rate_hz,
+        result.values,
+        result.is_complex,
+        target.visible,
+    )
+    state.signals[target_index] = replacement
+    state.display_layouts = Dict(
+        display_id => signal_inventory_rebind_layout(state, layout, target.name, target.name)
+        for (display_id, layout) in state.display_layouts
+    )
+    state.displays = SignalAnalyserDisplayState[
+        signal_analyser_display_for_pane(
+            display,
+            signal_display_active_pane(state.display_layouts[display.id]),
+        )
+        for display in state.displays
+    ]
+    delete!(state.plot_cache, target.name)
+    filter!(pair -> first(pair).signal_name != target.name, state.spectrum_cache)
+    filter!(pair -> first(pair).signal_name != target.name, state.spectrogram_cache)
+    filter!(pair -> first(pair).signal_name != target.name, state.persistence_cache)
+    signal_analyser_sync_active_display!(state, signal_analyser_active_display(state))
+    replacement
+end
+
+function signal_inventory_crop_result(
+    state::SignalAnalyserState,
+    command::CropSignalCommand,
+)::Tuple{AnalysedSignal,CroppedSignalResult}
+    source = try
+        signal_inventory_signal_by_id(state, command.source_signal_id)
+    catch err
+        err isa SignalAnalyserValidationError || rethrow()
+        throw(signal_inventory_validation_error(
+            "source_signal_id",
+            "Неизвестный идентификатор исходного сигнала",
+        ))
+    end
+    source.name == command.target_name && throw(signal_inventory_validation_error(
+        "target_name",
+        "Исходный сигнал нельзя перезаписывать результатом crop",
+    ))
+    collision = findfirst(signal -> signal.name == command.target_name, state.signals)
+    collision === nothing || command.overwrite || throw(signal_inventory_validation_error(
+        "target_name",
+        "Сигнал с таким именем уже существует",
+    ))
+
+    domain_min_s = 0.0
+    domain_max_s = signal_duration_s(source)
+    effective_min_s = max(command.min_s, domain_min_s)
+    effective_max_s = min(command.max_s, domain_max_s)
+    effective_min_s <= effective_max_s || throw(signal_inventory_validation_error(
+        "min_s",
+        "Диапазон crop не пересекает временной домен исходного сигнала",
+    ))
+    first_index = findfirst(eachindex(source.values)) do index
+        time_s = (index - 1) / source.sample_rate_hz
+        effective_min_s <= time_s <= effective_max_s
+    end
+    last_index = findlast(eachindex(source.values)) do index
+        time_s = (index - 1) / source.sample_rate_hz
+        effective_min_s <= time_s <= effective_max_s
+    end
+    (first_index === nothing || last_index === nothing) && throw(
+        signal_inventory_validation_error(
+            "min_s",
+            "Диапазон crop не содержит ни одного отсчёта исходного сигнала",
+        ),
+    )
+    values = copy(source.values[(first_index::Int):(last_index::Int)])
+    source, CroppedSignalResult(values, source.is_complex)
+end
+
+function signal_inventory_execute!(
+    service::SignalInventoryService,
+    state::SignalAnalyserState,
+    command::CropSignalCommand,
+)
+    source, result = signal_inventory_crop_result(state, command)
+    signal_inventory_replace_operation_target!(service, state, source, command, result)
+    signal_analyser_recover_time_limits_unlocked!(
+        state;
+        invalidate_outputs = false,
+        increment_state_revision = false,
+    )
+end
+
+function apply_derived_signal!(
+    provider::AbstractSignalOperationProvider,
+    inventory_service::SignalInventoryService,
+    state::SignalAnalyserState,
+    command::DeriveSignalCommand;
+    lightweight::Bool = true,
+)::Dict{String,Any}
+    source = lock(state.lock) do
+        command.revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
+            command.revision,
+            state.view.state_revision,
+        ))
+        signal_inventory_operation_source_copy(state, command)
+    end
+    result = signal_operation_execute(provider, source, command)
+    lock(state.lock) do
+        command.revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
+            command.revision,
+            state.view.state_revision,
+        ))
+        prospective = signal_inventory_clone_state(state)
+        target = signal_inventory_replace_operation_target!(
+            inventory_service,
+            prospective,
+            source,
+            command,
+            result,
+        )
+        prospective.view.state_revision += 1
+        signal_analyser_invalidate_all_outputs_unlocked!(prospective)
+        snapshot = lightweight ?
+            signal_analyser_state_lite_unlocked(prospective) :
+            signal_analyser_snapshot_unlocked(prospective)
+        publish_signal_inventory_mutation!(
+            state,
+            PreparedSignalInventoryMutation(prospective, snapshot),
+        )
+        snapshot["ok"] = true
+        snapshot["derived_signal"] = signal_analyser_signal_payload(target)
+        snapshot
+    end
+end
+
+"""Atomically publish a local, zero-origin crop through the inventory mutation seam."""
+function apply_cropped_signal!(
+    inventory_service::SignalInventoryService,
+    state::SignalAnalyserState,
+    command::CropSignalCommand;
+    lightweight::Bool = true,
+)::Dict{String,Any}
+    lock(state.lock) do
+        command.revision == state.view.state_revision || throw(SignalAnalyserStaleStateError(
+            command.revision,
+            state.view.state_revision,
+        ))
+        prepared = prepare_signal_inventory_mutation(
+            inventory_service,
+            state,
+            command;
+            lightweight = lightweight,
+        )
+        target = signal_by_name(prepared.state, command.target_name)
+        publish_signal_inventory_mutation!(state, prepared)
+        prepared.snapshot["ok"] = true
+        prepared.snapshot["derived_signal"] = signal_analyser_signal_payload(target)
         prepared.snapshot
     end
 end
@@ -563,7 +1096,13 @@ end
 function apply_signal_inventory!(
     service::SignalInventoryService,
     state::SignalAnalyserState,
-    data,
+    data;
+    lightweight::Bool = false,
 )::Dict{String,Any}
-    apply_signal_inventory!(service, state, parse_signal_inventory_command(data))
+    apply_signal_inventory!(
+        service,
+        state,
+        parse_signal_inventory_command(data);
+        lightweight = lightweight,
+    )
 end

@@ -1,0 +1,56 @@
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+
+module.exports = async function testSettingsInventoryAndCollapseContracts(assert) {
+  const root = path.resolve(__dirname, "../../../..");
+  const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
+  const html = read("public/index.html");
+  const css = read("public/css/app.css");
+  const settings = read("public/js/settings.js");
+  const app = read("public/js/app.js");
+
+  ["display", "peaks"].forEach((page) => assert(html.includes(`data-settings-page="${page}"`), `settings page ${page} must remain authored`));
+  assert(!html.includes('data-settings-page="time"'), "v8 must not retain a separate right-side Time trigger");
+  assert(!html.includes('data-settings-page="measurements"') && !html.includes('data-testid="statistics-settings-tab"'), "Measurements must not remain a right-side settings page");
+  assert(/data-settings-page[\s\S]*?ArrowLeft[\s\S]*?ArrowRight[\s\S]*?Home[\s\S]*?End[\s\S]*?tabs\[index\]\.click\(\)[\s\S]*?tabs\[index\]\.focus\(\)/.test(app), "settings pages must support roving keyboard activation");
+
+  const inventoryStart = settings.indexOf("function displayInventory(type)");
+  const inventoryEnd = settings.indexOf("function parse(", inventoryStart);
+  const inventorySource = settings.slice(inventoryStart, inventoryEnd);
+  assert(/function inventory\(\)[\s\S]*?displayInventory\(type\)\.concat\(timeInventory\(type\)\)\.reduce[\s\S]*?candidate\.key === section\.key/.test(settings), "Display inventory must merge former Time fields into the same ordered composition groups");
+  assert(!/group\("area-link"|time\.not_applicable|Не применяется/.test(inventorySource), "Area settings inventory must contain neither the retired area-link group nor not-applicable placeholder rows");
+  assert(/"time\.linking":"Связь областей"/.test(settings), "the Russian localization presenter must retain the legitimate screen-level link-section label");
+  const exactInventories = [
+    ["time", ["Параметры", "Диапазоны"], ["time.normalize_y", "time.show_markers", "time.units", "time.x_limits", "time.y_limits"]],
+    ["spectrum", ["График", "Параметры", "Частотная ось", "Спектральный анализ", "Диапазоны"], ["display.plot_type", "display.show_legend", "spectrum.frequency_units", "spectrum.frequency_scale", "spectrum.scale", "spectrum.resolution_type", "spectrum.leakage", "spectrum.rbw", "spectrum.window_length", "spectrum.window", "spectrum.sidelobe_attenuation_db", "spectrum.overlap_percent", "spectrum.nfft", "spectrum.frequency_resolution", "spectrum.frequency_limits", "spectrum.y_limits"]],
+    ["spectrogram", ["График", "Параметры", "Частотная ось", "Мощность", "Диапазоны"], ["display.plot_type", "display.show_legend", "spectrogram.time_units", "spectrogram.frequency_units", "spectrogram.frequency_limits", "spectrogram.frequency_scale", "spectrogram.power_limits", "spectrogram.scale", "spectrogram.leakage", "spectrogram.time_resolution", "spectrogram.overlap_percent", "spectrogram.reassign", "spectrogram.actual_rbw"]],
+    ["persistence", ["График", "Параметры", "Частотная ось", "Плотность и мощность", "Диапазоны"], ["display.plot_type", "display.show_legend", "persistence.time_units", "persistence.frequency_units", "persistence.frequency_limits", "persistence.frequency_scale", "persistence.power_limits", "persistence.density_limits", "persistence.scale", "persistence.leakage", "persistence.time_resolution", "persistence.overlap_percent", "persistence.power_bins", "persistence.rbw"]]
+  ];
+  exactInventories.forEach(([type, titles, ids]) => {
+    titles.forEach((title) => assert(inventorySource.includes(`"${title}"`), `${type} inventory must include group ${title}`));
+    ids.forEach((id) => assert(inventorySource.includes(`"${id}"`), `${type} inventory must include ${id}`));
+  });
+  assert(/SignalAnalyserTask0141[\s\S]*?areaRanges[\s\S]*?screen-range-slider[\s\S]*?spectrum\.frequency_limits[\s\S]*?spectrum\.y_limits/.test(app), "Spectrum limits must use the shared active-Area dual-handle range inventory");
+  assert(!/context\.page === "measurements"|measurementItem\(|action:"peaks"|action:"measurement"/.test(settings), "measurement and Peaks controls must be absent from the right settings inventory");
+  assert(/function timeInventory\(type\)[\s\S]*?type === "spectrogram"[\s\S]*?"Диапазоны"[\s\S]*?return \[\];/.test(settings), "non-applicable time branches must render nothing instead of a placeholder section");
+
+  assert(/function sourceItem\(id\)[\s\S]*?fields\(\)[\s\S]*?readouts\(\)/.test(settings), "inventory must include backend fields and readouts");
+  assert(/function actual\(id\)[\s\S]*?item\.visible === false \|\| !rangeApplicable\(item\)\) return null/.test(settings), "backend-hidden and truly inapplicable fields/readouts must be omitted from inventory while applicable ranges stay available");
+  assert(/function validVisibleDraftItems\(\)[\s\S]*?visibleItems\(\)[\s\S]*?!draft\.error/.test(settings) && /Object\.keys\(context\.drafts\)\.filter\(function\(key\)\{return visible\[key\];\}\)/.test(settings), "hidden drafts must not flush or participate in client validation state");
+  assert(/item\.kind === "range" \|\| item\.kind === "optional_range"/.test(settings) && /item\.kind === "resolution" \|\| item\.kind === "power_bins"/.test(settings), "backend range and resolution controls must remain supported");
+  assert(/function isApply\(item\)[\s\S]*?effect_status === "requires_apply"/.test(settings) && /window\.setTimeout\(function \(\) \{ send\(item\); \}, 150\)/.test(settings), "backend Apply fields must retain the exact 150ms save behavior");
+  assert(/var raw = typeof option === "object" \? option\.value : option/.test(settings) && /linear:"Линейная"/.test(settings) && /leakage:"По утечке"/.test(settings), "enum labels must localize by authoritative option value before backend label fallback");
+
+  assert(/item\.action === "plot-type"[\s\S]*?signal-settings-plot-type/.test(settings) && /signal-settings-plot-type[\s\S]*?postLayout\(\{ operation:"update_pane"/.test(app), "display.plot_type pseudo field must update the existing layout API path");
+  assert(!/signal-settings-measurement/.test(app), "the removed settings page must not retain a hidden measurement event path");
+
+  assert(/var collapseKey = context\.page \+ "\\|" \+ context\.plotType \+ "\\|" \+ item\.key/.test(settings), "collapse state must be independent per page, plot type, and group");
+  assert(/<button class='settings-group-title' type='button' data-settings-group-toggle=[\s\S]*?aria-expanded=[\s\S]*?aria-controls=/.test(settings), "each group title must be an accessible collapse button");
+  assert(/class='settings-group-fields'[\s\S]*?\(collapsed \? " hidden" : ""\)/.test(settings), "collapsed groups must hide their field wrapper");
+  assert(/data-settings-group-toggle[\s\S]*?context\.collapsed\[key\] = toggle\.getAttribute\("aria-expanded"\) === "true"[\s\S]*?render\(\)/.test(settings), "group toggle must persist collapse state and rerender");
+  assert(/requestAnimationFrame\(function \(\)[\s\S]*?data-settings-group-toggle[\s\S]*?restored\.focus\(\)/.test(settings), "collapse rerender must restore keyboard focus to the same group toggle");
+  assert(/\.settings-group-fields\[hidden\]\s*\{\s*display:\s*none;\s*\}/.test(css), "collapsed settings wrapper must not occupy layout space");
+  assert(/\.settings-group-title\[aria-expanded="false"\]::before\s*\{\s*transform:\s*rotate\(-90deg\)/.test(css), "collapsed group chevron must rotate");
+};

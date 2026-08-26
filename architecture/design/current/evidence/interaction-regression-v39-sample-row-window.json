@@ -1,0 +1,40 @@
+{
+  "design_version": 39,
+  "source": "frontend-source/integration/js/task-0134-sample-row-window.js",
+  "passed": 1,
+  "failed": 0,
+  "results": [
+    {
+      "id": "54-sample-window-constants-and-bidirectional-sliding",
+      "passed": true,
+      "detail": {
+        "constants": {
+          "api_batch": 500,
+          "max_dom_rows": 1000,
+          "prefetch_threshold_rows": 100
+        },
+        "ranges": [
+          "1–500 из 100000001",
+          "1–1000 из 100000001",
+          "501–1500 из 100000001",
+          "1–1000 из 100000001"
+        ],
+        "scroll_compensation_px_at_32px_row": [
+          -16000,
+          16000
+        ],
+        "authoritative_offsets": {
+          "start": 0,
+          "end": 1000,
+          "convention": "zero-based half-open; footer is one-based inclusive"
+        },
+        "total": 100000001,
+        "guards": [
+          "stable signal",
+          "stable token",
+          "duplicate direction"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+/* TASK-0139: scoped output reconciliation overlays. Reuse the current loader
+   color/spinner; do not change workspace, pane or Plotly geometry. */
+.plot-grid,
+[data-testid="plot-grid"] {
+  position: relative;
+}
+
+[data-pane-id] {
+  position: relative;
+}
+
+.pane-output-loading-overlay,
+.display-canvas-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(248, 250, 251, 0.86);
+  pointer-events: all;
+  cursor: default;
+}
+
+.pane-output-loading-overlay {
+  z-index: 20;
+}
+
+.display-canvas-loading-overlay {
+  z-index: 30;
+}
+
+.pane-output-loading-overlay .ui-loader-spinner,
+.display-canvas-loading-overlay .ui-loader-spinner {
+  width: 64px;
+  height: 64px;
+  border: 5px solid rgba(27, 132, 184, 0.22);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: loader-rotate 800ms linear infinite;
+}
+
+[data-layout-reconciling="true"] .pane-output-loading-overlay {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pane-output-loading-overlay .ui-loader-spinner,
+  .display-canvas-loading-overlay .ui-loader-spinner {
+    animation: loader-rotate 1600ms linear infinite;
+  }
+}

@@ -17,7 +17,7 @@ session_cache_families(state) = (
 )
 
 @testset "TASK-0020 session export is an exact typed document" begin
-    state = SS.default_signal_analyser_state()
+    state = SS.test_state_with_complex_signal()
     state.signals[2] = SS.AnalysedSignal(
         state.signals[2].name,
         state.signals[2].color,
@@ -39,18 +39,23 @@ session_cache_families(state) = (
     @test all(Set(keys(signal)) == SS.SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS for signal in payload["signals"])
     @test all(Set(keys(signal["values"])) == SS.SIGNAL_ANALYSER_SESSION_VALUES_FIELDS for signal in payload["signals"])
     @test payload["signals"][2]["values"] == Dict("real" => [1.0, 3.0, 5.0], "imag" => [2.0, 4.0, 6.0])
-    @test all(Set(keys(display)) == SS.SIGNAL_ANALYSER_SESSION_DISPLAY_FIELDS for display in payload["displays"])
+    @test all(Set(keys(display)) == SS.SIGNAL_ANALYSER_SESSION_DISPLAY_WITH_LAYOUT_FIELDS for display in payload["displays"])
+    @test all(
+        Set(keys(pane)) == SS.SIGNAL_ANALYSER_SESSION_PANE_FIELDS
+        for display in payload["displays"]
+        for pane in display["layout"]["panes"]
+    )
     @test all(Set(keys(display["stored_settings"])) == SS.SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS for display in payload["displays"])
 end
 
 @testset "TASK-0020 session round trip, stale gate, and atomic rollback" begin
     service = SS.SignalAnalyserSessionService()
-    source = SS.default_signal_analyser_state()
+    source = SS.test_state_with_complex_signal()
     document = SS.export_signal_analyser_session(service, source)["document"]
     target = SS.default_signal_analyser_state()
     imported = SS.import_signal_analyser_session!(service, target, Dict("state_revision" => 0, "document" => document))
 
-    @test imported == Dict("ok" => true, "schema" => SS.SIGNAL_ANALYSER_SESSION_SCHEMA, "version" => 1, "imported_source_revision" => 0, "state_revision" => 1)
+    @test imported == Dict("ok" => true, "schema" => SS.SIGNAL_ANALYSER_SESSION_SCHEMA, "version" => SS.SIGNAL_ANALYSER_SESSION_VERSION, "imported_source_revision" => 0, "state_revision" => 1)
     @test SS.export_signal_analyser_session(service, target)["document"]["state"] == document["state"]
     @test target.view.state_revision == 1
     @test isempty(target.plot_cache) && isempty(target.spectrum_cache) && isempty(target.spectrogram_cache) && isempty(target.persistence_cache)
@@ -78,6 +83,57 @@ end
     @test invalid isa SS.SignalAnalyserSessionValidationError
     @test haskey(invalid.fields, "document.state.signals[1].values.imag[1]")
     @test SS.export_signal_analyser_session(service, target)["document"]["state"] == before && session_cache_families(target) == caches
+
+    invalid_selection = deepcopy(document)
+    invalid_selection["state"]["displays"][1]["visible_signals"] = reverse(
+        invalid_selection["state"]["displays"][1]["visible_signals"],
+    )
+    selection_error = try
+        SS.import_signal_analyser_session!(service, target, Dict(
+            "state_revision" => 1,
+            "document" => invalid_selection,
+        ))
+        nothing
+    catch caught
+        caught
+    end
+    @test selection_error isa SS.SignalAnalyserSessionValidationError
+    @test haskey(selection_error.fields, "document.state.displays.display-1.visible_signals")
+    @test target.view.state_revision == 1
+    @test SS.export_signal_analyser_session(service, target)["document"]["state"] == before &&
+        session_cache_families(target) == caches
+end
+
+@testset "TASK-0111 legacy v3 sessions default amplitude linking off" begin
+    service = SS.SignalAnalyserSessionService()
+    document = SS.export_signal_analyser_session(
+        service,
+        SS.test_state_with_complex_signal(),
+    )["document"]
+    document["version"] = SS.SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION
+    for signal in document["state"]["signals"]
+        delete!(signal, "id")
+    end
+    for display in document["state"]["displays"]
+        for pane in display["layout"]["panes"]
+            delete!(pane, "name")
+        end
+        delete!(display["stored_settings"], "time.link_amplitude")
+        delete!(display["stored_settings"], "spectrum.link_frequency")
+        delete!(display["stored_settings"], "spectrum.link_magnitude")
+    end
+    target = SS.default_signal_analyser_state()
+    imported = SS.import_signal_analyser_session!(
+        service,
+        target,
+        Dict("state_revision" => 0, "document" => document),
+    )
+    @test imported["ok"] === true
+    @test all(
+        !pane.stored_settings.time.link_amplitude
+        for layout in values(target.display_layouts)
+        for pane in layout.panes
+    )
 end
 
 @testset "TASK-0020 session parser and API error envelopes are exact" begin
@@ -87,7 +143,7 @@ end
 
     for (mutate, code) in (
         (value -> (value["schema"] = "unknown"), "unsupported_session_schema"),
-        (value -> (value["version"] = 2), "unsupported_session_version"),
+        (value -> (value["version"] = 4), "unsupported_session_version"),
         (value -> (value["unexpected"] = true), "invalid_session"),
         (value -> delete!(value["state"], "next_display_number"), "invalid_session"),
     )

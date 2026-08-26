@@ -290,9 +290,16 @@ function signal_analyser_bounded_heatmap(
 end
 
 function signal_analyser_time_plot(signal::AnalysedSignal)::Dict{String,Any}
-    x = signal_time_values(signal)
-    y = signal.is_complex ? Float64.(abs.(signal.values)) : Float64.(real.(signal.values))
-    x, y = signal_analyser_bounded_line(x, y)
+    indices = signal_analyser_bounded_indices(
+        length(signal.values),
+        SIGNAL_ANALYSER_MAX_LINE_POINTS,
+    )
+    x = Float64[(index - 1) / signal.sample_rate_hz for index in indices]
+    y = if signal.is_complex
+        Float64[abs(signal.values[index]) for index in indices]
+    else
+        Float64[real(signal.values[index]) for index in indices]
+    end
     Dict{String,Any}(
         "type" => "line",
         "x" => x,

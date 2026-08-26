@@ -1,0 +1,3595 @@
+{
+  "browser": "Chrome/151.0.7922.76",
+  "prototype": [
+    {
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/index.html",
+      "title": "Анализатор сигналов — TASK-0057 design prototype",
+      "viewport": [
+        1024,
+        768
+      ],
+      "text": "Анализатор сигналов\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n5\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал\nОбласть 2\nСпектр\n0\n200\n400\n−80\n−60\n−40\n−20\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал\nНастройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить\nСигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nreferenceWave\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nnoiseFloor\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд с очень длинным описанием для проверки крайней ячейки",
+      "ids": [],
+      "plots": [
+        {
+          "testid": null,
+          "cls": "plot-chart plotly-host js-plotly-plot",
+          "rect": {
+            "x": 14,
+            "y": 170,
+            "width": 341,
+            "height": 319.5234375
+          },
+          "fullLayout": true,
+          "fullData": true,
+          "svg": true,
+          "traces": 2,
+          "img": false
+        },
+        {
+          "testid": null,
+          "cls": "plot-container plotly",
+          "rect": {
+            "x": 14,
+            "y": 170,
+            "width": 341,
+            "height": 319.5234375
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": true,
+          "traces": 2,
+          "img": false
+        },
+        {
+          "testid": null,
+          "cls": "plot-chart plotly-host js-plotly-plot",
+          "rect": {
+            "x": 363,
+            "y": 170,
+            "width": 341,
+            "height": 319.5234375
+          },
+          "fullLayout": true,
+          "fullData": true,
+          "svg": true,
+          "traces": 1,
+          "img": false
+        },
+        {
+          "testid": null,
+          "cls": "plot-container plotly",
+          "rect": {
+            "x": 363,
+            "y": 170,
+            "width": 341,
+            "height": 319.5234375
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": true,
+          "traces": 1,
+          "img": false
+        }
+      ],
+      "elements": [
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "app-shell",
+          "testid": null,
+          "rect": {
+            "x": 6,
+            "y": 6,
+            "width": 1012,
+            "height": 756
+          },
+          "text": "Анализатор сигналов\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n5\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигн"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "application-toolbar ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 6,
+            "y": 6,
+            "width": 1012,
+            "height": 44
+          },
+          "text": "Анализатор сигналов"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "main-stage",
+          "testid": null,
+          "rect": {
+            "x": 6,
+            "y": 56,
+            "width": 1012,
+            "height": 441.5234375
+          },
+          "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n5\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опо"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "workspace ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 6,
+            "y": 56,
+            "width": 706,
+            "height": 441.5234375
+          },
+          "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n5\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опо"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "workspace-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 7,
+            "y": 57,
+            "width": 704,
+            "height": 42
+          },
+          "text": "Отображение сигналов"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "plot-pane is-active",
+          "testid": null,
+          "rect": {
+            "x": 13,
+            "y": 137,
+            "width": 343,
+            "height": 353.5234375
+          },
+          "text": "Область 1\nВременная область\n0\n5\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "plot-pane-header",
+          "testid": null,
+          "rect": {
+            "x": 14,
+            "y": 138,
+            "width": 341,
+            "height": 32
+          },
+          "text": "Область 1\nВременная область"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "plot-pane",
+          "testid": null,
+          "rect": {
+            "x": 362,
+            "y": 137,
+            "width": 343,
+            "height": 353.5234375
+          },
+          "text": "Область 2\nСпектр\n0\n200\n400\n−80\n−60\n−40\n−20\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "plot-pane-header",
+          "testid": null,
+          "rect": {
+            "x": 363,
+            "y": 138,
+            "width": 341,
+            "height": 32
+          },
+          "text": "Область 2\nСпектр"
+        },
+        {
+          "tag": "ASIDE",
+          "id": "",
+          "cls": "settings-panel ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 718,
+            "y": 56,
+            "width": 300,
+            "height": 441.5234375
+          },
+          "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "settings-heading",
+          "testid": null,
+          "rect": {
+            "x": 719,
+            "y": 57,
+            "width": 298,
+            "height": 42
+          },
+          "text": "Настройки отображения"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-group",
+          "testid": null,
+          "rect": {
+            "x": 719,
+            "y": 141,
+            "width": 292,
+            "height": 188
+          },
+          "text": "График\nТип графика\nВременная область\nПоказывать легенду"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "inspector ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 6,
+            "y": 503.5234375,
+            "width": 1012,
+            "height": 258.4765625
+          },
+          "text": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nК"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "inspector-header",
+          "testid": null,
+          "rect": {
+            "x": 7,
+            "y": 504.5234375,
+            "width": 1010,
+            "height": 32
+          },
+          "text": "Сигналы\nИзмерения\nПики"
+        },
+        {
+          "tag": "TABLE",
+          "id": "",
+          "cls": "signal-table",
+          "testid": null,
+          "rect": {
+            "x": 16,
+            "y": 568.5234375,
+            "width": 992,
+            "height": 162.5
+          },
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nref"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "graph-help",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Перетаскивать график: Shift + ЛКМ\n      Автомасштабирование: двойной клик\n      Зум: зажать ЛКМ и выделить область"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "layout-popover",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет экранаНастройка областей без потери контекста\n      \n    \n    \n      Строки12345678910\n      Столбцы12345678910\n      \n      \n        Макет не рекомендуется\n        Для читае"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет экранаНастройка областей без потери контекста"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "dialog-card add-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Добавление сигналов\n        \n      \n      \n        Выберите поддерживаемые переменные из рабочей области.\n        \n          radarPulseВременной ряд · 12 000 отсчётов\n          ech"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "dialog-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Добавление сигналов"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "dialog-card message-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?\n      Выбранные сигналы не будут добавлены.\n      \n        Остаться\n        Закрыть"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "dialog-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "dialog-card message-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить экран?\n        \n      \n      Экран и его текущий макет будут удалены.\n      \n        Отмена\n        Удалить"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "dialog-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить экран?"
+        }
+      ],
+      "bodyClass": "",
+      "expectedSha": false,
+      "scripts": [
+        "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js",
+        "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/demo.js"
+      ]
+    },
+    {
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/index.html",
+      "title": "Анализатор сигналов — TASK-0057 design prototype",
+      "viewport": [
+        1280,
+        720
+      ],
+      "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n0\n0.5\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал\nОбласть 2\nСпектр\n0\n100\n200\n300\n400\n500\n−80\n−60\n−40\n−20\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал\nНастройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить\nСигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nreferenceWave\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nnoiseFloor\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд с очень длинным описанием для проверки крайней ячейки",
+      "ids": [],
+      "plots": [
+        {
+          "testid": null,
+          "cls": "plot-chart plotly-host js-plotly-plot",
+          "rect": {
+            "x": 16,
+            "y": 174,
+            "width": 446,
+            "height": 270
+          },
+          "fullLayout": true,
+          "fullData": true,
+          "svg": true,
+          "traces": 2,
+          "img": false
+        },
+        {
+          "testid": null,
+          "cls": "plot-container plotly",
+          "rect": {
+            "x": 16,
+            "y": 174,
+            "width": 446,
+            "height": 270
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": true,
+          "traces": 2,
+          "img": false
+        },
+        {
+          "testid": null,
+          "cls": "plot-chart plotly-host js-plotly-plot",
+          "rect": {
+            "x": 470,
+            "y": 174,
+            "width": 446,
+            "height": 270
+          },
+          "fullLayout": true,
+          "fullData": true,
+          "svg": true,
+          "traces": 1,
+          "img": false
+        },
+        {
+          "testid": null,
+          "cls": "plot-container plotly",
+          "rect": {
+            "x": 470,
+            "y": 174,
+            "width": 446,
+            "height": 270
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": true,
+          "traces": 1,
+          "img": false
+        }
+      ],
+      "elements": [
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "app-shell",
+          "testid": null,
+          "rect": {
+            "x": 8,
+            "y": 8,
+            "width": 1264,
+            "height": 704
+          },
+          "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n0\n0.5\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\n"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "application-toolbar ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 8,
+            "y": 8,
+            "width": 1264,
+            "height": 44
+          },
+          "text": "Анализатор сигналов\nВерсия 0.1.0"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "main-stage",
+          "testid": null,
+          "rect": {
+            "x": 8,
+            "y": 60,
+            "width": 1264,
+            "height": 392
+          },
+          "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n0\n0.5\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "workspace ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 8,
+            "y": 60,
+            "width": 916,
+            "height": 392
+          },
+          "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n0\n0.5\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "workspace-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 9,
+            "y": 61,
+            "width": 914,
+            "height": 42
+          },
+          "text": "Отображение сигналов"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "plot-pane is-active",
+          "testid": null,
+          "rect": {
+            "x": 15,
+            "y": 141,
+            "width": 448,
+            "height": 304
+          },
+          "text": "Область 1\nВременная область\n0\n2\n4\n6\n8\n10\n0\n0.5\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "plot-pane-header",
+          "testid": null,
+          "rect": {
+            "x": 16,
+            "y": 142,
+            "width": 446,
+            "height": 32
+          },
+          "text": "Область 1\nВременная область"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "plot-pane",
+          "testid": null,
+          "rect": {
+            "x": 469,
+            "y": 141,
+            "width": 448,
+            "height": 304
+          },
+          "text": "Область 2\nСпектр\n0\n100\n200\n300\n400\n500\n−80\n−60\n−40\n−20\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "plot-pane-header",
+          "testid": null,
+          "rect": {
+            "x": 470,
+            "y": 142,
+            "width": 446,
+            "height": 32
+          },
+          "text": "Область 2\nСпектр"
+        },
+        {
+          "tag": "ASIDE",
+          "id": "",
+          "cls": "settings-panel ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 932,
+            "y": 60,
+            "width": 340,
+            "height": 392
+          },
+          "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "settings-heading",
+          "testid": null,
+          "rect": {
+            "x": 933,
+            "y": 61,
+            "width": 338,
+            "height": 42
+          },
+          "text": "Настройки отображения"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-group",
+          "testid": null,
+          "rect": {
+            "x": 933,
+            "y": 141,
+            "width": 332,
+            "height": 132
+          },
+          "text": "График\nТип графика\nВременная область\nПоказывать легенду"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "inspector ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 8,
+            "y": 460,
+            "width": 1264,
+            "height": 252
+          },
+          "text": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nК"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "inspector-header",
+          "testid": null,
+          "rect": {
+            "x": 9,
+            "y": 461,
+            "width": 1262,
+            "height": 32
+          },
+          "text": "Сигналы\nИзмерения\nПики"
+        },
+        {
+          "tag": "TABLE",
+          "id": "",
+          "cls": "signal-table",
+          "testid": null,
+          "rect": {
+            "x": 18,
+            "y": 525,
+            "width": 1244,
+            "height": 162.5
+          },
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nref"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "graph-help",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Перетаскивать график: Shift + ЛКМ\n      Автомасштабирование: двойной клик\n      Зум: зажать ЛКМ и выделить область"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "layout-popover",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет экранаНастройка областей без потери контекста\n      \n    \n    \n      Строки12345678910\n      Столбцы12345678910\n      \n      \n        Макет не рекомендуется\n        Для читае"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет экранаНастройка областей без потери контекста"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "dialog-card add-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Добавление сигналов\n        \n      \n      \n        Выберите поддерживаемые переменные из рабочей области.\n        \n          radarPulseВременной ряд · 12 000 отсчётов\n          ech"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "dialog-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Добавление сигналов"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "dialog-card message-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?\n      Выбранные сигналы не будут добавлены.\n      \n        Остаться\n        Закрыть"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "dialog-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "dialog-card message-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить экран?\n        \n      \n      Экран и его текущий макет будут удалены.\n      \n        Отмена\n        Удалить"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "dialog-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить экран?"
+        }
+      ],
+      "bodyClass": "",
+      "expectedSha": false,
+      "scripts": [
+        "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js",
+        "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/demo.js"
+      ]
+    },
+    {
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/index.html",
+      "title": "Анализатор сигналов — TASK-0057 design prototype",
+      "viewport": [
+        1440,
+        900
+      ],
+      "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал\nОбласть 2\nСпектр\n0\n100\n200\n300\n400\n500\n−80\n−70\n−60\n−50\n−40\n−30\n−20\n−10\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал\nНастройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить\nСигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nreferenceWave\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nnoiseFloor\n\t\t\n500 kHz\n\t\n6 000\n\t\n12 ms\n\t\nВременной ряд с очень длинным описанием для проверки крайней ячейки",
+      "ids": [],
+      "plots": [
+        {
+          "testid": null,
+          "cls": "plot-chart plotly-host js-plotly-plot",
+          "rect": {
+            "x": 18,
+            "y": 176,
+            "width": 508,
+            "height": 392
+          },
+          "fullLayout": true,
+          "fullData": true,
+          "svg": true,
+          "traces": 2,
+          "img": false
+        },
+        {
+          "testid": null,
+          "cls": "plot-container plotly",
+          "rect": {
+            "x": 18,
+            "y": 176,
+            "width": 508,
+            "height": 392
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": true,
+          "traces": 2,
+          "img": false
+        },
+        {
+          "testid": null,
+          "cls": "plot-chart plotly-host js-plotly-plot",
+          "rect": {
+            "x": 536,
+            "y": 176,
+            "width": 508,
+            "height": 392
+          },
+          "fullLayout": true,
+          "fullData": true,
+          "svg": true,
+          "traces": 1,
+          "img": false
+        },
+        {
+          "testid": null,
+          "cls": "plot-container plotly",
+          "rect": {
+            "x": 536,
+            "y": 176,
+            "width": 508,
+            "height": 392
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": true,
+          "traces": 1,
+          "img": false
+        }
+      ],
+      "elements": [
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "app-shell",
+          "testid": null,
+          "rect": {
+            "x": 8,
+            "y": 8,
+            "width": 1424,
+            "height": 884
+          },
+          "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной "
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "application-toolbar ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 8,
+            "y": 8,
+            "width": 1424,
+            "height": 44
+          },
+          "text": "Анализатор сигналов\nВерсия 0.1.0"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "main-stage",
+          "testid": null,
+          "rect": {
+            "x": 8,
+            "y": 60,
+            "width": 1424,
+            "height": 518
+          },
+          "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "workspace ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 8,
+            "y": 60,
+            "width": 1046,
+            "height": 518
+          },
+          "text": "Отображение сигналов\nЭкран 1\n1 × 2\nОбласть 1\nВременная область\n0\n2\n4\n6\n8\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "workspace-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 9,
+            "y": 61,
+            "width": 1044,
+            "height": 42
+          },
+          "text": "Отображение сигналов"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "plot-pane is-active",
+          "testid": null,
+          "rect": {
+            "x": 17,
+            "y": 143,
+            "width": 510,
+            "height": 426
+          },
+          "text": "Область 1\nВременная область\n0\n2\n4\n6\n8\n10\n−0.4\n−0.2\n0\n0.2\n0.4\n0.6\n0.8\n1\nВремя, s\nАмплитуда\nradarPulse — основной широкополосный сигнал\nechoComplex — опорный комплексный сигнал"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "plot-pane-header",
+          "testid": null,
+          "rect": {
+            "x": 18,
+            "y": 144,
+            "width": 508,
+            "height": 32
+          },
+          "text": "Область 1\nВременная область"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "plot-pane",
+          "testid": null,
+          "rect": {
+            "x": 535,
+            "y": 143,
+            "width": 510,
+            "height": 426
+          },
+          "text": "Область 2\nСпектр\n0\n100\n200\n300\n400\n500\n−80\n−70\n−60\n−50\n−40\n−30\n−20\n−10\n0\nЧастота, kHz\nМощность, dB\nradarPulse — основной широкополосный сигнал"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "plot-pane-header",
+          "testid": null,
+          "rect": {
+            "x": 536,
+            "y": 144,
+            "width": 508,
+            "height": 32
+          },
+          "text": "Область 2\nСпектр"
+        },
+        {
+          "tag": "ASIDE",
+          "id": "",
+          "cls": "settings-panel ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 1062,
+            "y": 60,
+            "width": 370,
+            "height": 518
+          },
+          "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nПоказывать легенду\nПрименить"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "settings-heading",
+          "testid": null,
+          "rect": {
+            "x": 1063,
+            "y": 61,
+            "width": 368,
+            "height": 42
+          },
+          "text": "Настройки отображения"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-group",
+          "testid": null,
+          "rect": {
+            "x": 1063,
+            "y": 145,
+            "width": 362,
+            "height": 132
+          },
+          "text": "График\nТип графика\nВременная область\nПоказывать легенду"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "inspector ui-panel",
+          "testid": null,
+          "rect": {
+            "x": 8,
+            "y": 586,
+            "width": 1424,
+            "height": 306
+          },
+          "text": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nК"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "inspector-header",
+          "testid": null,
+          "rect": {
+            "x": 9,
+            "y": 587,
+            "width": 1422,
+            "height": 32
+          },
+          "text": "Сигналы\nИзмерения\nПики"
+        },
+        {
+          "tag": "TABLE",
+          "id": "",
+          "cls": "signal-table",
+          "testid": null,
+          "rect": {
+            "x": 18,
+            "y": 651,
+            "width": 1404,
+            "height": 162.5
+          },
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\t\nradarPulse\n\t\t\n1 MHz\n\t\n12 000\n\t\n12 ms\n\t\nВременной ряд\n\n\t\nechoComplex\n\t\t\n1 MHz\n\t\n8 192\n\t\n8,19 ms\n\t\nКомплексный массив\n\n\t\nref"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "graph-help",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Перетаскивать график: Shift + ЛКМ\n      Автомасштабирование: двойной клик\n      Зум: зажать ЛКМ и выделить область"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "layout-popover",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет экранаНастройка областей без потери контекста\n      \n    \n    \n      Строки12345678910\n      Столбцы12345678910\n      \n      \n        Макет не рекомендуется\n        Для читае"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет экранаНастройка областей без потери контекста"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "dialog-card add-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Добавление сигналов\n        \n      \n      \n        Выберите поддерживаемые переменные из рабочей области.\n        \n          radarPulseВременной ряд · 12 000 отсчётов\n          ech"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "dialog-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Добавление сигналов"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "dialog-card message-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?\n      Выбранные сигналы не будут добавлены.\n      \n        Остаться\n        Закрыть"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "dialog-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "dialog-card message-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить экран?\n        \n      \n      Экран и его текущий макет будут удалены.\n      \n        Отмена\n        Удалить"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "dialog-titlebar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить экран?"
+        }
+      ],
+      "bodyClass": "",
+      "expectedSha": false,
+      "scripts": [
+        "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/assets/vendor/plotly-cartesian-3.1.0.min.js",
+        "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0057-ui-overlay-refinement/prototype/demo.js"
+      ]
+    }
+  ],
+  "production": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "title": "Анализатор сигналов",
+      "viewport": [
+        1024,
+        768
+      ],
+      "text": "Engee\nАнализатор сигналов\nВерсия 0.1.0\nЭкран 1\n×\nИзменить макет\nОбласть 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графика…\nНастройки отображения\n\nЗагрузка области…\n\nОтображение\nВремя\nИзмерения\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nDisplay\nView\nShow legend\nTime\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)\nY-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пока не применяется: milestone_3_contract\n\nАнализ\n⌁ Статистики сигнала\n⌁ Искать пики\nСигналы\nИзмерения\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tКомплексный",
+      "ids": [
+        "app-shell",
+        "import-session-action",
+        "export-action",
+        "help-action",
+        "session-action-status",
+        "display-tabs",
+        "display-scroll-left",
+        "display-tab-scroll",
+        "display-tab-display-1",
+        "close-display-display-1",
+        "display-scroll-right",
+        "add-display",
+        "layout-trigger",
+        "display-canvas",
+        "pane-grid",
+        "plot-pane-pane-1",
+        "plot-type-select",
+        "display-overflow-trigger",
+        "display-overflow-menu",
+        "clear-display-action",
+        "graph-help-action",
+        "pane-output-pane-1",
+        "active-pane-runtime",
+        "display-plot-title",
+        "display-settings",
+        "pane-settings-context",
+        "display-settings-tab",
+        "time-settings-tab",
+        "statistics-settings-tab",
+        "settings-view-select",
+        "show-legend-checkbox",
+        "spectrum-settings",
+        "spectrum-scale-select",
+        "spectrum-frequency-scale-select",
+        "spectrum-leakage-input",
+        "spectrum-leakage-value",
+        "spectrum-frequency-min-input",
+        "spectrum-frequency-max-input",
+        "spectrum-frequency-limits-error",
+        "spectrum-settings-error",
+        "spectrogram-settings",
+        "spectrogram-overlap-percent-input",
+        "spectrogram-overlap-percent-error",
+        "spectrogram-leakage-input",
+        "spectrogram-leakage-value",
+        "spectrogram-leakage-error",
+        "spectrogram-frequency-limits-controls",
+        "spectrogram-frequency-min-input",
+        "spectrogram-frequency-max-input",
+        "spectrogram-frequency-limits-error",
+        "spectrogram-frequency-scale-select",
+        "spectrogram-frequency-scale-effective",
+        "spectrogram-frequency-scale-error",
+        "spectrogram-power-limits-controls",
+        "spectrogram-power-min-input",
+        "spectrogram-power-max-input",
+        "spectrogram-power-limits-effective",
+        "spectrogram-power-limits-error",
+        "settings-catalog-panel",
+        "settings-group-display",
+        "settings-section-display-view",
+        "setting-display-show_legend-field",
+        "setting-display-show_legend",
+        "setting-display-show_legend-effect-status",
+        "setting-display-show_legend-error",
+        "settings-group-time",
+        "settings-section-time-options",
+        "setting-time-normalize_y-field",
+        "setting-time-normalize_y",
+        "setting-time-normalize_y-effect-status",
+        "setting-time-normalize_y-error",
+        "setting-time-show_markers-field",
+        "setting-time-show_markers",
+        "setting-time-show_markers-effect-status",
+        "setting-time-show_markers-error",
+        "settings-section-time-time_limits",
+        "setting-time-units-field",
+        "setting-time-units",
+        "setting-time-units-effect-status",
+        "setting-time-units-error",
+        "setting-time-x_limits-field",
+        "setting-time-x_limits-min",
+        "setting-time-x_limits-max",
+        "setting-time-x_limits-effect-status",
+        "setting-time-x_limits-error",
+        "settings-section-time-y_axis_limits",
+        "setting-time-y_limits-field",
+        "setting-time-y_limits-min",
+        "setting-time-y_limits-max",
+        "setting-time-y_limits-effect-status",
+        "setting-time-y_limits-error",
+        "signal-statistics-action",
+        "find-peaks-action",
+        "normalize-y-checkbox",
+        "show-markers-checkbox",
+        "time-min-input",
+        "time-max-input",
+        "time-limits-error",
+        "statistics-controls",
+        "statistics-option-minimum",
+        "statistics-option-maximum",
+        "statistics-option-mean",
+        "statistics-option-median",
+        "statistics-option-peak_to_peak",
+        "statistics-option-rms",
+        "statistics-selection-error",
+        "persistence-settings",
+        "persistence-leakage-input",
+        "persistence-leakage-value",
+        "persistence-leakage-error",
+        "signal-panel-tab-signals",
+        "signal-panel-tab-measurements",
+        "peaks-panel-tab",
+        "signals-add-action",
+        "signal-columns-menu-trigger",
+        "signal-columns-menu",
+        "signal-column-toggle-color",
+        "signal-column-toggle-sample-rate",
+        "signal-column-toggle-samples",
+        "signal-column-toggle-duration",
+        "signal-column-toggle-type",
+        "bottom-panel-signals",
+        "signal-table",
+        "toggle-all-signals",
+        "signal-row-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-checkbox-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-duplicate-action-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-delete-action-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-row-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-checkbox-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-duplicate-action-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-delete-action-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "measurements-panel",
+        "measurements-loading-state",
+        "peaks-panel",
+        "app-loading",
+        "app-error",
+        "layout-popover",
+        "layout-current-copy",
+        "layout-draft-copy",
+        "layout-cancel-close",
+        "layout-conflict",
+        "layout-conflict-copy",
+        "layout-row-options",
+        "layout-column-options",
+        "layout-preview",
+        "layout-topology",
+        "layout-pane-count",
+        "layout-preserve",
+        "layout-preserve-copy",
+        "layout-warning",
+        "layout-warning-copy",
+        "layout-error",
+        "layout-error-copy",
+        "layout-cancel",
+        "layout-apply",
+        "layout-toast",
+        "layout-toast-icon",
+        "layout-toast-copy",
+        "layout-toast-close",
+        "signals-toolbar-error",
+        "signals-toolbar-error-text",
+        "signals-toolbar-error-close",
+        "session-import-dialog",
+        "session-import-close",
+        "session-file-input",
+        "session-file-name",
+        "session-import-error",
+        "session-import-success",
+        "session-import-cancel",
+        "session-import-submit",
+        "signals-workspace-dialog",
+        "signals-workspace-close",
+        "signals-workspace-form",
+        "signals-workspace-selection-count",
+        "signals-workspace-refresh",
+        "signals-workspace-loading",
+        "signals-workspace-empty",
+        "signals-workspace-list",
+        "signals-workspace-sample-rate-group",
+        "signals-workspace-sample-rate-input",
+        "signals-workspace-sample-rate-hint",
+        "signals-workspace-sample-rate-error",
+        "signals-workspace-batch-error",
+        "signals-workspace-retry",
+        "signals-workspace-cancel",
+        "signals-workspace-submit",
+        "signals-workspace-success",
+        "signals-workspace-success-count",
+        "signals-workspace-done",
+        "signals-delete-dialog",
+        "signals-delete-close",
+        "signals-delete-name",
+        "signals-delete-success",
+        "signals-delete-success-name",
+        "signals-delete-cancel",
+        "signals-delete-confirm",
+        "signals-delete-done",
+        "nested-confirmation-dialog",
+        "nested-confirmation-stay",
+        "nested-confirmation-leave",
+        "overlay-tooltip",
+        "spectrogram-settings-contract-error"
+      ],
+      "plots": [
+        {
+          "testid": "plot-pane-pane-1",
+          "cls": "plot-pane is-active",
+          "rect": {
+            "x": 11,
+            "y": 123,
+            "width": 696,
+            "height": 357.5234375
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": false,
+          "traces": 0,
+          "img": true
+        },
+        {
+          "testid": "plot-type-select",
+          "cls": "",
+          "rect": {
+            "x": 452,
+            "y": 126.5,
+            "width": 212,
+            "height": 28
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": false,
+          "traces": 0,
+          "img": false
+        },
+        {
+          "testid": "display-plot-title",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": false,
+          "traces": 0,
+          "img": false
+        }
+      ],
+      "elements": [
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "signal-analyser",
+          "testid": "app-shell",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 768
+          },
+          "text": "Engee\nАнализатор сигналов\nВерсия 0.1.0\nЭкран 1\n×\nИзменить макет\nОбласть 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графи"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "app-toolbar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 64
+          },
+          "text": "Engee\nАнализатор сигналов\nВерсия 0.1.0"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "display-workspace",
+          "testid": null,
+          "rect": {
+            "x": 4,
+            "y": 68,
+            "width": 710,
+            "height": 419.5234375
+          },
+          "text": "Экран 1\n×\nИзменить макет\nОбласть 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графика…"
+        },
+        {
+          "tag": "NAV",
+          "id": "",
+          "cls": "display-tabs",
+          "testid": "display-tabs",
+          "rect": {
+            "x": 5,
+            "y": 69,
+            "width": 708,
+            "height": 48
+          },
+          "text": "Экран 1\n×\nИзменить макет"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "layout-stage",
+          "testid": "display-canvas",
+          "rect": {
+            "x": 5,
+            "y": 117,
+            "width": 708,
+            "height": 369.5234375
+          },
+          "text": "Область 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графика…"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "pane-header",
+          "testid": null,
+          "rect": {
+            "x": 13,
+            "y": 125,
+            "width": 692,
+            "height": 32
+          },
+          "text": "Область 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "plot-header",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Временная область"
+        },
+        {
+          "tag": "ASIDE",
+          "id": "",
+          "cls": "display-settings",
+          "testid": "display-settings",
+          "rect": {
+            "x": 720,
+            "y": 68,
+            "width": 300,
+            "height": 419.5234375
+          },
+          "text": "Настройки отображения\n\nЗагрузка области…\n\nОтображение\nВремя\nИзмерения\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nDisplay\nView\nShow"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "panel-heading",
+          "testid": null,
+          "rect": {
+            "x": 721,
+            "y": 68,
+            "width": 299,
+            "height": 44
+          },
+          "text": "Настройки отображения\n\nЗагрузка области…"
+        },
+        {
+          "tag": "SECTION",
+          "id": "display-settings-panel",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 739,
+            "y": 159,
+            "width": 263,
+            "height": 1187.7890625
+          },
+          "text": "Тип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nDisplay\nView\nShow legend\nTime\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX"
+        },
+        {
+          "tag": "SECTION",
+          "id": "spectrum-settings",
+          "cls": "spectrum-settings",
+          "testid": "spectrum-settings",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Шкала dBЛинейнаяШкала частоты ЛинейнаяЛогарифмическаяУтечка 0.5Пределы частоты (Гц)F мин. F макс."
+        },
+        {
+          "tag": "SECTION",
+          "id": "spectrogram-settings",
+          "cls": "spectrogram-settings",
+          "testid": "spectrogram-settings",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Перекрытие (%) Утечка Пределы частоты (Гц)F мин. F макс. Шкала частоты ЛинейнаяЛогарифмическаяПределы мощности (dB)P мин. P макс."
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-catalog-panel",
+          "testid": "settings-catalog-panel",
+          "rect": {
+            "x": 739,
+            "y": 324.34375,
+            "width": 263,
+            "height": 843.1953125
+          },
+          "text": "Display\nView\nShow legend\nTime\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)\nY-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пок"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-group",
+          "testid": "settings-group-display",
+          "rect": {
+            "x": 739,
+            "y": 324.34375,
+            "width": 263,
+            "height": 142.34375
+          },
+          "text": "Display\nView\nShow legend"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-display-view",
+          "rect": {
+            "x": 739,
+            "y": 363.59375,
+            "width": 263,
+            "height": 103.09375
+          },
+          "text": "View\nShow legend"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-group",
+          "testid": "settings-group-time",
+          "rect": {
+            "x": 739,
+            "y": 476.6875,
+            "width": 263,
+            "height": 690.8515625
+          },
+          "text": "Time\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)\nY-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пока не применяется: milesto"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-time-options",
+          "rect": {
+            "x": 739,
+            "y": 515.9375,
+            "width": 263,
+            "height": 185.9921875
+          },
+          "text": "Options\nNormalize Y\nShow markers"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-time-time_limits",
+          "rect": {
+            "x": 739,
+            "y": 709.9296875,
+            "width": 263,
+            "height": 237.3828125
+          },
+          "text": "Time Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-time-y_axis_limits",
+          "rect": {
+            "x": 739,
+            "y": 955.3125,
+            "width": 263,
+            "height": 212.2265625
+          },
+          "text": "Y-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пока не применяется: milestone_3_contract"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 739,
+            "y": 1187.5390625,
+            "width": 263,
+            "height": 159.25
+          },
+          "text": "Анализ\n⌁ Статистики сигнала\n⌁ Искать пики"
+        },
+        {
+          "tag": "SECTION",
+          "id": "time-settings-panel",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Нормировать ось YПоказывать маркерыПределы времени (с)Мин. Макс."
+        },
+        {
+          "tag": "SECTION",
+          "id": "measurements-settings-panel",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "СтатистикиМинимумМаксимумСреднееМедианаРазмахRMS"
+        },
+        {
+          "tag": "SECTION",
+          "id": "statistics-controls",
+          "cls": "statistics-controls",
+          "testid": "statistics-controls",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "СтатистикиМинимумМаксимумСреднееМедианаРазмахRMS"
+        },
+        {
+          "tag": "SECTION",
+          "id": "persistence-settings",
+          "cls": "persistence-settings",
+          "testid": "persistence-settings",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Утечка 0.5"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "bottom-zone",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 491.5234375,
+            "width": 1024,
+            "height": 258.4765625
+          },
+          "text": "Сигналы\nИзмерения\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0"
+        },
+        {
+          "tag": "SECTION",
+          "id": "bottom-panel-signals",
+          "cls": "bottom-panel signals-panel",
+          "testid": "bottom-panel-signals",
+          "rect": {
+            "x": 0,
+            "y": 534.5234375,
+            "width": 1024,
+            "height": 214.4765625
+          },
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tКомп"
+        },
+        {
+          "tag": "TABLE",
+          "id": "",
+          "cls": "signal-table",
+          "testid": "signal-table",
+          "rect": {
+            "x": 0,
+            "y": 534.5234375,
+            "width": 1024,
+            "height": 108.2890625
+          },
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tКомп"
+        },
+        {
+          "tag": "SECTION",
+          "id": "measurements-panel",
+          "cls": "bottom-panel measurements-panel",
+          "testid": "measurements-panel",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Загрузка измерений…"
+        },
+        {
+          "tag": "SECTION",
+          "id": "peaks-panel",
+          "cls": "bottom-panel peaks-panel",
+          "testid": "peaks-panel",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": ""
+        },
+        {
+          "tag": "SECTION",
+          "id": "layout-popover",
+          "cls": "layout-popover",
+          "testid": "layout-popover",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет отображения•×\n      \n        Макет изменён в другой сессии\n        Строки\n        Столбцы\n        Вариант строк × столбцов\n        Сохранение порядка областей\n        Части м"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет отображения•×"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog session-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт сессииВыберите ранее сохранённый JSON-документ. Текущая сессия будет заменена только после проверки на сервере.Файл сессииФайл не выбран.Сессия импортирована и загружена.Отм"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт сессии"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog signals-workspace-browser",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт из рабочей областиВыбрано: 0ОбновитьЗагрузка каталога…В рабочей области нет поддерживаемых переменных.Частота дискретизации (Гц)Нужна для выбранных массивов без временной шк"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт из рабочей области"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Сигналы импортированыДобавлено: 0Готово"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Сигналы импортированы"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить сигнал?Сигнал  будет удалён из текущей сессии.Сигнал  удалён.ОтменаУдалитьГотово"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить сигнал?"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog nested-confirmation",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?Выбранные переменные и введённая частота дискретизации не будут сохранены.ОстатьсяЗакрыть"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?"
+        }
+      ],
+      "bodyClass": "",
+      "expectedSha": false,
+      "scripts": [
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/api.js",
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js",
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/layouts.js",
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/app.js"
+      ]
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "title": "Анализатор сигналов",
+      "viewport": [
+        1280,
+        720
+      ],
+      "text": "Engee\nАнализатор сигналов\nВерсия 0.1.0\nЭкран 1\n×\nИзменить макет\nОбласть 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графика…\nНастройки отображения\n\nЗагрузка области…\n\nОтображение\nВремя\nИзмерения\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nDisplay\nView\nShow legend\nTime\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)\nY-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пока не применяется: milestone_3_contract\n\nАнализ\n⌁ Статистики сигнала\n⌁ Искать пики\nСигналы\nИзмерения\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tКомплексный",
+      "ids": [
+        "app-shell",
+        "import-session-action",
+        "export-action",
+        "help-action",
+        "session-action-status",
+        "display-tabs",
+        "display-scroll-left",
+        "display-tab-scroll",
+        "display-tab-display-1",
+        "close-display-display-1",
+        "display-scroll-right",
+        "add-display",
+        "layout-trigger",
+        "display-canvas",
+        "pane-grid",
+        "plot-pane-pane-1",
+        "plot-type-select",
+        "display-overflow-trigger",
+        "display-overflow-menu",
+        "clear-display-action",
+        "graph-help-action",
+        "pane-output-pane-1",
+        "active-pane-runtime",
+        "display-plot-title",
+        "display-settings",
+        "pane-settings-context",
+        "display-settings-tab",
+        "time-settings-tab",
+        "statistics-settings-tab",
+        "settings-view-select",
+        "show-legend-checkbox",
+        "spectrum-settings",
+        "spectrum-scale-select",
+        "spectrum-frequency-scale-select",
+        "spectrum-leakage-input",
+        "spectrum-leakage-value",
+        "spectrum-frequency-min-input",
+        "spectrum-frequency-max-input",
+        "spectrum-frequency-limits-error",
+        "spectrum-settings-error",
+        "spectrogram-settings",
+        "spectrogram-overlap-percent-input",
+        "spectrogram-overlap-percent-error",
+        "spectrogram-leakage-input",
+        "spectrogram-leakage-value",
+        "spectrogram-leakage-error",
+        "spectrogram-frequency-limits-controls",
+        "spectrogram-frequency-min-input",
+        "spectrogram-frequency-max-input",
+        "spectrogram-frequency-limits-error",
+        "spectrogram-frequency-scale-select",
+        "spectrogram-frequency-scale-effective",
+        "spectrogram-frequency-scale-error",
+        "spectrogram-power-limits-controls",
+        "spectrogram-power-min-input",
+        "spectrogram-power-max-input",
+        "spectrogram-power-limits-effective",
+        "spectrogram-power-limits-error",
+        "settings-catalog-panel",
+        "settings-group-display",
+        "settings-section-display-view",
+        "setting-display-show_legend-field",
+        "setting-display-show_legend",
+        "setting-display-show_legend-effect-status",
+        "setting-display-show_legend-error",
+        "settings-group-time",
+        "settings-section-time-options",
+        "setting-time-normalize_y-field",
+        "setting-time-normalize_y",
+        "setting-time-normalize_y-effect-status",
+        "setting-time-normalize_y-error",
+        "setting-time-show_markers-field",
+        "setting-time-show_markers",
+        "setting-time-show_markers-effect-status",
+        "setting-time-show_markers-error",
+        "settings-section-time-time_limits",
+        "setting-time-units-field",
+        "setting-time-units",
+        "setting-time-units-effect-status",
+        "setting-time-units-error",
+        "setting-time-x_limits-field",
+        "setting-time-x_limits-min",
+        "setting-time-x_limits-max",
+        "setting-time-x_limits-effect-status",
+        "setting-time-x_limits-error",
+        "settings-section-time-y_axis_limits",
+        "setting-time-y_limits-field",
+        "setting-time-y_limits-min",
+        "setting-time-y_limits-max",
+        "setting-time-y_limits-effect-status",
+        "setting-time-y_limits-error",
+        "signal-statistics-action",
+        "find-peaks-action",
+        "normalize-y-checkbox",
+        "show-markers-checkbox",
+        "time-min-input",
+        "time-max-input",
+        "time-limits-error",
+        "statistics-controls",
+        "statistics-option-minimum",
+        "statistics-option-maximum",
+        "statistics-option-mean",
+        "statistics-option-median",
+        "statistics-option-peak_to_peak",
+        "statistics-option-rms",
+        "statistics-selection-error",
+        "persistence-settings",
+        "persistence-leakage-input",
+        "persistence-leakage-value",
+        "persistence-leakage-error",
+        "signal-panel-tab-signals",
+        "signal-panel-tab-measurements",
+        "peaks-panel-tab",
+        "signals-add-action",
+        "signal-columns-menu-trigger",
+        "signal-columns-menu",
+        "signal-column-toggle-color",
+        "signal-column-toggle-sample-rate",
+        "signal-column-toggle-samples",
+        "signal-column-toggle-duration",
+        "signal-column-toggle-type",
+        "bottom-panel-signals",
+        "signal-table",
+        "toggle-all-signals",
+        "signal-row-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-checkbox-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-duplicate-action-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-delete-action-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-row-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-checkbox-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-duplicate-action-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-delete-action-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "measurements-panel",
+        "measurements-loading-state",
+        "peaks-panel",
+        "app-loading",
+        "app-error",
+        "layout-popover",
+        "layout-current-copy",
+        "layout-draft-copy",
+        "layout-cancel-close",
+        "layout-conflict",
+        "layout-conflict-copy",
+        "layout-row-options",
+        "layout-column-options",
+        "layout-preview",
+        "layout-topology",
+        "layout-pane-count",
+        "layout-preserve",
+        "layout-preserve-copy",
+        "layout-warning",
+        "layout-warning-copy",
+        "layout-error",
+        "layout-error-copy",
+        "layout-cancel",
+        "layout-apply",
+        "layout-toast",
+        "layout-toast-icon",
+        "layout-toast-copy",
+        "layout-toast-close",
+        "signals-toolbar-error",
+        "signals-toolbar-error-text",
+        "signals-toolbar-error-close",
+        "session-import-dialog",
+        "session-import-close",
+        "session-file-input",
+        "session-file-name",
+        "session-import-error",
+        "session-import-success",
+        "session-import-cancel",
+        "session-import-submit",
+        "signals-workspace-dialog",
+        "signals-workspace-close",
+        "signals-workspace-form",
+        "signals-workspace-selection-count",
+        "signals-workspace-refresh",
+        "signals-workspace-loading",
+        "signals-workspace-empty",
+        "signals-workspace-list",
+        "signals-workspace-sample-rate-group",
+        "signals-workspace-sample-rate-input",
+        "signals-workspace-sample-rate-hint",
+        "signals-workspace-sample-rate-error",
+        "signals-workspace-batch-error",
+        "signals-workspace-retry",
+        "signals-workspace-cancel",
+        "signals-workspace-submit",
+        "signals-workspace-success",
+        "signals-workspace-success-count",
+        "signals-workspace-done",
+        "signals-delete-dialog",
+        "signals-delete-close",
+        "signals-delete-name",
+        "signals-delete-success",
+        "signals-delete-success-name",
+        "signals-delete-cancel",
+        "signals-delete-confirm",
+        "signals-delete-done",
+        "nested-confirmation-dialog",
+        "nested-confirmation-stay",
+        "nested-confirmation-leave",
+        "overlay-tooltip",
+        "spectrogram-settings-contract-error"
+      ],
+      "plots": [
+        {
+          "testid": "plot-pane-pane-1",
+          "cls": "plot-pane is-active",
+          "rect": {
+            "x": 15,
+            "y": 127,
+            "width": 902,
+            "height": 308
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": false,
+          "traces": 0,
+          "img": true
+        },
+        {
+          "testid": "plot-type-select",
+          "cls": "",
+          "rect": {
+            "x": 662,
+            "y": 130.5,
+            "width": 212,
+            "height": 28
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": false,
+          "traces": 0,
+          "img": false
+        },
+        {
+          "testid": "display-plot-title",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": false,
+          "traces": 0,
+          "img": false
+        }
+      ],
+      "elements": [
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "signal-analyser",
+          "testid": "app-shell",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 720
+          },
+          "text": "Engee\nАнализатор сигналов\nВерсия 0.1.0\nЭкран 1\n×\nИзменить макет\nОбласть 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графи"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "app-toolbar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1280,
+            "height": 64
+          },
+          "text": "Engee\nАнализатор сигналов\nВерсия 0.1.0"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "display-workspace",
+          "testid": null,
+          "rect": {
+            "x": 6,
+            "y": 70,
+            "width": 920,
+            "height": 374
+          },
+          "text": "Экран 1\n×\nИзменить макет\nОбласть 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графика…"
+        },
+        {
+          "tag": "NAV",
+          "id": "",
+          "cls": "display-tabs",
+          "testid": "display-tabs",
+          "rect": {
+            "x": 7,
+            "y": 71,
+            "width": 918,
+            "height": 48
+          },
+          "text": "Экран 1\n×\nИзменить макет"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "layout-stage",
+          "testid": "display-canvas",
+          "rect": {
+            "x": 7,
+            "y": 119,
+            "width": 918,
+            "height": 324
+          },
+          "text": "Область 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графика…"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "pane-header",
+          "testid": null,
+          "rect": {
+            "x": 17,
+            "y": 129,
+            "width": 898,
+            "height": 32
+          },
+          "text": "Область 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "plot-header",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Временная область"
+        },
+        {
+          "tag": "ASIDE",
+          "id": "",
+          "cls": "display-settings",
+          "testid": "display-settings",
+          "rect": {
+            "x": 934,
+            "y": 70,
+            "width": 340,
+            "height": 374
+          },
+          "text": "Настройки отображения\n\nЗагрузка области…\n\nОтображение\nВремя\nИзмерения\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nDisplay\nView\nShow"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "panel-heading",
+          "testid": null,
+          "rect": {
+            "x": 935,
+            "y": 70,
+            "width": 339,
+            "height": 44
+          },
+          "text": "Настройки отображения\n\nЗагрузка области…"
+        },
+        {
+          "tag": "SECTION",
+          "id": "display-settings-panel",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 953,
+            "y": 161,
+            "width": 303,
+            "height": 1071.34375
+          },
+          "text": "Тип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nDisplay\nView\nShow legend\nTime\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX"
+        },
+        {
+          "tag": "SECTION",
+          "id": "spectrum-settings",
+          "cls": "spectrum-settings",
+          "testid": "spectrum-settings",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Шкала dBЛинейнаяШкала частоты ЛинейнаяЛогарифмическаяУтечка 0.5Пределы частоты (Гц)F мин. F макс."
+        },
+        {
+          "tag": "SECTION",
+          "id": "spectrogram-settings",
+          "cls": "spectrogram-settings",
+          "testid": "spectrogram-settings",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Перекрытие (%) Утечка Пределы частоты (Гц)F мин. F макс. Шкала частоты ЛинейнаяЛогарифмическаяПределы мощности (dB)P мин. P макс."
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-catalog-panel",
+          "testid": "settings-catalog-panel",
+          "rect": {
+            "x": 953,
+            "y": 326.34375,
+            "width": 303,
+            "height": 726.75
+          },
+          "text": "Display\nView\nShow legend\nTime\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)\nY-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пок"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-group",
+          "testid": "settings-group-display",
+          "rect": {
+            "x": 953,
+            "y": 326.34375,
+            "width": 303,
+            "height": 142.34375
+          },
+          "text": "Display\nView\nShow legend"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-display-view",
+          "rect": {
+            "x": 953,
+            "y": 365.59375,
+            "width": 303,
+            "height": 103.09375
+          },
+          "text": "View\nShow legend"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-group",
+          "testid": "settings-group-time",
+          "rect": {
+            "x": 953,
+            "y": 478.6875,
+            "width": 303,
+            "height": 574.40625
+          },
+          "text": "Time\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)\nY-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пока не применяется: milesto"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-time-options",
+          "rect": {
+            "x": 953,
+            "y": 517.9375,
+            "width": 303,
+            "height": 185.9921875
+          },
+          "text": "Options\nNormalize Y\nShow markers"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-time-time_limits",
+          "rect": {
+            "x": 953,
+            "y": 711.9296875,
+            "width": 303,
+            "height": 160.2890625
+          },
+          "text": "Time Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-time-y_axis_limits",
+          "rect": {
+            "x": 953,
+            "y": 880.21875,
+            "width": 303,
+            "height": 172.875
+          },
+          "text": "Y-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пока не применяется: milestone_3_contract"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 953,
+            "y": 1073.09375,
+            "width": 303,
+            "height": 159.25
+          },
+          "text": "Анализ\n⌁ Статистики сигнала\n⌁ Искать пики"
+        },
+        {
+          "tag": "SECTION",
+          "id": "time-settings-panel",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Нормировать ось YПоказывать маркерыПределы времени (с)Мин. Макс."
+        },
+        {
+          "tag": "SECTION",
+          "id": "measurements-settings-panel",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "СтатистикиМинимумМаксимумСреднееМедианаРазмахRMS"
+        },
+        {
+          "tag": "SECTION",
+          "id": "statistics-controls",
+          "cls": "statistics-controls",
+          "testid": "statistics-controls",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "СтатистикиМинимумМаксимумСреднееМедианаРазмахRMS"
+        },
+        {
+          "tag": "SECTION",
+          "id": "persistence-settings",
+          "cls": "persistence-settings",
+          "testid": "persistence-settings",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Утечка 0.5"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "bottom-zone",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 450,
+            "width": 1280,
+            "height": 252
+          },
+          "text": "Сигналы\nИзмерения\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0"
+        },
+        {
+          "tag": "SECTION",
+          "id": "bottom-panel-signals",
+          "cls": "bottom-panel signals-panel",
+          "testid": "bottom-panel-signals",
+          "rect": {
+            "x": 0,
+            "y": 493,
+            "width": 1280,
+            "height": 208
+          },
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tКомп"
+        },
+        {
+          "tag": "TABLE",
+          "id": "",
+          "cls": "signal-table",
+          "testid": "signal-table",
+          "rect": {
+            "x": 0,
+            "y": 493,
+            "width": 1280,
+            "height": 108.2890625
+          },
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tКомп"
+        },
+        {
+          "tag": "SECTION",
+          "id": "measurements-panel",
+          "cls": "bottom-panel measurements-panel",
+          "testid": "measurements-panel",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Загрузка измерений…"
+        },
+        {
+          "tag": "SECTION",
+          "id": "peaks-panel",
+          "cls": "bottom-panel peaks-panel",
+          "testid": "peaks-panel",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": ""
+        },
+        {
+          "tag": "SECTION",
+          "id": "layout-popover",
+          "cls": "layout-popover",
+          "testid": "layout-popover",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет отображения•×\n      \n        Макет изменён в другой сессии\n        Строки\n        Столбцы\n        Вариант строк × столбцов\n        Сохранение порядка областей\n        Части м"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет отображения•×"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog session-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт сессииВыберите ранее сохранённый JSON-документ. Текущая сессия будет заменена только после проверки на сервере.Файл сессииФайл не выбран.Сессия импортирована и загружена.Отм"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт сессии"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog signals-workspace-browser",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт из рабочей областиВыбрано: 0ОбновитьЗагрузка каталога…В рабочей области нет поддерживаемых переменных.Частота дискретизации (Гц)Нужна для выбранных массивов без временной шк"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт из рабочей области"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Сигналы импортированыДобавлено: 0Готово"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Сигналы импортированы"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить сигнал?Сигнал  будет удалён из текущей сессии.Сигнал  удалён.ОтменаУдалитьГотово"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить сигнал?"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog nested-confirmation",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?Выбранные переменные и введённая частота дискретизации не будут сохранены.ОстатьсяЗакрыть"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?"
+        }
+      ],
+      "bodyClass": "",
+      "expectedSha": false,
+      "scripts": [
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/api.js",
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js",
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/layouts.js",
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/app.js"
+      ]
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "title": "Анализатор сигналов",
+      "viewport": [
+        1440,
+        900
+      ],
+      "text": "Engee\nАнализатор сигналов\nВерсия 0.1.0\nЭкран 1\n×\nИзменить макет\nОбласть 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графика…\nНастройки отображения\n\nЗагрузка области…\n\nОтображение\nВремя\nИзмерения\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nDisplay\nView\nShow legend\nTime\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)\nY-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пока не применяется: milestone_3_contract\n\nАнализ\n⌁ Статистики сигнала\n⌁ Искать пики\nСигналы\nИзмерения\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tКомплексный",
+      "ids": [
+        "app-shell",
+        "import-session-action",
+        "export-action",
+        "help-action",
+        "session-action-status",
+        "display-tabs",
+        "display-scroll-left",
+        "display-tab-scroll",
+        "display-tab-display-1",
+        "close-display-display-1",
+        "display-scroll-right",
+        "add-display",
+        "layout-trigger",
+        "display-canvas",
+        "pane-grid",
+        "plot-pane-pane-1",
+        "plot-type-select",
+        "display-overflow-trigger",
+        "display-overflow-menu",
+        "clear-display-action",
+        "graph-help-action",
+        "pane-output-pane-1",
+        "active-pane-runtime",
+        "display-plot-title",
+        "display-settings",
+        "pane-settings-context",
+        "display-settings-tab",
+        "time-settings-tab",
+        "statistics-settings-tab",
+        "settings-view-select",
+        "show-legend-checkbox",
+        "spectrum-settings",
+        "spectrum-scale-select",
+        "spectrum-frequency-scale-select",
+        "spectrum-leakage-input",
+        "spectrum-leakage-value",
+        "spectrum-frequency-min-input",
+        "spectrum-frequency-max-input",
+        "spectrum-frequency-limits-error",
+        "spectrum-settings-error",
+        "spectrogram-settings",
+        "spectrogram-overlap-percent-input",
+        "spectrogram-overlap-percent-error",
+        "spectrogram-leakage-input",
+        "spectrogram-leakage-value",
+        "spectrogram-leakage-error",
+        "spectrogram-frequency-limits-controls",
+        "spectrogram-frequency-min-input",
+        "spectrogram-frequency-max-input",
+        "spectrogram-frequency-limits-error",
+        "spectrogram-frequency-scale-select",
+        "spectrogram-frequency-scale-effective",
+        "spectrogram-frequency-scale-error",
+        "spectrogram-power-limits-controls",
+        "spectrogram-power-min-input",
+        "spectrogram-power-max-input",
+        "spectrogram-power-limits-effective",
+        "spectrogram-power-limits-error",
+        "settings-catalog-panel",
+        "settings-group-display",
+        "settings-section-display-view",
+        "setting-display-show_legend-field",
+        "setting-display-show_legend",
+        "setting-display-show_legend-effect-status",
+        "setting-display-show_legend-error",
+        "settings-group-time",
+        "settings-section-time-options",
+        "setting-time-normalize_y-field",
+        "setting-time-normalize_y",
+        "setting-time-normalize_y-effect-status",
+        "setting-time-normalize_y-error",
+        "setting-time-show_markers-field",
+        "setting-time-show_markers",
+        "setting-time-show_markers-effect-status",
+        "setting-time-show_markers-error",
+        "settings-section-time-time_limits",
+        "setting-time-units-field",
+        "setting-time-units",
+        "setting-time-units-effect-status",
+        "setting-time-units-error",
+        "setting-time-x_limits-field",
+        "setting-time-x_limits-min",
+        "setting-time-x_limits-max",
+        "setting-time-x_limits-effect-status",
+        "setting-time-x_limits-error",
+        "settings-section-time-y_axis_limits",
+        "setting-time-y_limits-field",
+        "setting-time-y_limits-min",
+        "setting-time-y_limits-max",
+        "setting-time-y_limits-effect-status",
+        "setting-time-y_limits-error",
+        "signal-statistics-action",
+        "find-peaks-action",
+        "normalize-y-checkbox",
+        "show-markers-checkbox",
+        "time-min-input",
+        "time-max-input",
+        "time-limits-error",
+        "statistics-controls",
+        "statistics-option-minimum",
+        "statistics-option-maximum",
+        "statistics-option-mean",
+        "statistics-option-median",
+        "statistics-option-peak_to_peak",
+        "statistics-option-rms",
+        "statistics-selection-error",
+        "persistence-settings",
+        "persistence-leakage-input",
+        "persistence-leakage-value",
+        "persistence-leakage-error",
+        "signal-panel-tab-signals",
+        "signal-panel-tab-measurements",
+        "peaks-panel-tab",
+        "signals-add-action",
+        "signal-columns-menu-trigger",
+        "signal-columns-menu",
+        "signal-column-toggle-color",
+        "signal-column-toggle-sample-rate",
+        "signal-column-toggle-samples",
+        "signal-column-toggle-duration",
+        "signal-column-toggle-type",
+        "bottom-panel-signals",
+        "signal-table",
+        "toggle-all-signals",
+        "signal-row-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-checkbox-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-duplicate-action-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-delete-action-signal-_D0_93_D0_B0_D1_80_D0_BC_D0_BE_D0_BD_D0_B8_D1_87_D0_B5_D1_81_D0_BA_D0_B8_D0_B9_20_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-row-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-checkbox-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-duplicate-action-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "signal-delete-action-signal-_D0_9A_D0_BE_D0_BC_D0_BF_D0_BB_D0_B5_D0_BA_D1_81_D0_BD_D1_8B_D0_B9_20_D0_9B_D0_A7_D0_9C-_D1_81_D0_B8_D0_B3_D0_BD_D0_B0_D0_BB",
+        "measurements-panel",
+        "measurements-loading-state",
+        "peaks-panel",
+        "app-loading",
+        "app-error",
+        "layout-popover",
+        "layout-current-copy",
+        "layout-draft-copy",
+        "layout-cancel-close",
+        "layout-conflict",
+        "layout-conflict-copy",
+        "layout-row-options",
+        "layout-column-options",
+        "layout-preview",
+        "layout-topology",
+        "layout-pane-count",
+        "layout-preserve",
+        "layout-preserve-copy",
+        "layout-warning",
+        "layout-warning-copy",
+        "layout-error",
+        "layout-error-copy",
+        "layout-cancel",
+        "layout-apply",
+        "layout-toast",
+        "layout-toast-icon",
+        "layout-toast-copy",
+        "layout-toast-close",
+        "signals-toolbar-error",
+        "signals-toolbar-error-text",
+        "signals-toolbar-error-close",
+        "session-import-dialog",
+        "session-import-close",
+        "session-file-input",
+        "session-file-name",
+        "session-import-error",
+        "session-import-success",
+        "session-import-cancel",
+        "session-import-submit",
+        "signals-workspace-dialog",
+        "signals-workspace-close",
+        "signals-workspace-form",
+        "signals-workspace-selection-count",
+        "signals-workspace-refresh",
+        "signals-workspace-loading",
+        "signals-workspace-empty",
+        "signals-workspace-list",
+        "signals-workspace-sample-rate-group",
+        "signals-workspace-sample-rate-input",
+        "signals-workspace-sample-rate-hint",
+        "signals-workspace-sample-rate-error",
+        "signals-workspace-batch-error",
+        "signals-workspace-retry",
+        "signals-workspace-cancel",
+        "signals-workspace-submit",
+        "signals-workspace-success",
+        "signals-workspace-success-count",
+        "signals-workspace-done",
+        "signals-delete-dialog",
+        "signals-delete-close",
+        "signals-delete-name",
+        "signals-delete-success",
+        "signals-delete-success-name",
+        "signals-delete-cancel",
+        "signals-delete-confirm",
+        "signals-delete-done",
+        "nested-confirmation-dialog",
+        "nested-confirmation-stay",
+        "nested-confirmation-leave",
+        "overlay-tooltip",
+        "spectrogram-settings-contract-error"
+      ],
+      "plots": [
+        {
+          "testid": "plot-pane-pane-1",
+          "cls": "plot-pane is-active",
+          "rect": {
+            "x": 15,
+            "y": 127,
+            "width": 1032,
+            "height": 434
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": false,
+          "traces": 0,
+          "img": true
+        },
+        {
+          "testid": "plot-type-select",
+          "cls": "",
+          "rect": {
+            "x": 792,
+            "y": 130.5,
+            "width": 212,
+            "height": 28
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": false,
+          "traces": 0,
+          "img": false
+        },
+        {
+          "testid": "display-plot-title",
+          "cls": "",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "fullLayout": false,
+          "fullData": false,
+          "svg": false,
+          "traces": 0,
+          "img": false
+        }
+      ],
+      "elements": [
+        {
+          "tag": "MAIN",
+          "id": "",
+          "cls": "signal-analyser",
+          "testid": "app-shell",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 900
+          },
+          "text": "Engee\nАнализатор сигналов\nВерсия 0.1.0\nЭкран 1\n×\nИзменить макет\nОбласть 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графи"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "app-toolbar",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1440,
+            "height": 64
+          },
+          "text": "Engee\nАнализатор сигналов\nВерсия 0.1.0"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "display-workspace",
+          "testid": null,
+          "rect": {
+            "x": 6,
+            "y": 70,
+            "width": 1050,
+            "height": 500
+          },
+          "text": "Экран 1\n×\nИзменить макет\nОбласть 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графика…"
+        },
+        {
+          "tag": "NAV",
+          "id": "",
+          "cls": "display-tabs",
+          "testid": "display-tabs",
+          "rect": {
+            "x": 7,
+            "y": 71,
+            "width": 1048,
+            "height": 48
+          },
+          "text": "Экран 1\n×\nИзменить макет"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "layout-stage",
+          "testid": "display-canvas",
+          "rect": {
+            "x": 7,
+            "y": 119,
+            "width": 1048,
+            "height": 450
+          },
+          "text": "Область 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nОбновление графика…"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "pane-header",
+          "testid": null,
+          "rect": {
+            "x": 17,
+            "y": 129,
+            "width": 1028,
+            "height": 32
+          },
+          "text": "Область 1\npane-1\nАКТИВНАЯ\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "plot-header",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Временная область"
+        },
+        {
+          "tag": "ASIDE",
+          "id": "",
+          "cls": "display-settings",
+          "testid": "display-settings",
+          "rect": {
+            "x": 1064,
+            "y": 70,
+            "width": 370,
+            "height": 500
+          },
+          "text": "Настройки отображения\n\nЗагрузка области…\n\nОтображение\nВремя\nИзмерения\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nDisplay\nView\nShow"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "panel-heading",
+          "testid": null,
+          "rect": {
+            "x": 1065,
+            "y": 70,
+            "width": 369,
+            "height": 44
+          },
+          "text": "Настройки отображения\n\nЗагрузка области…"
+        },
+        {
+          "tag": "SECTION",
+          "id": "display-settings-panel",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 1083,
+            "y": 161,
+            "width": 333,
+            "height": 1023.34375
+          },
+          "text": "Тип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nDisplay\nView\nShow legend\nTime\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX"
+        },
+        {
+          "tag": "SECTION",
+          "id": "spectrum-settings",
+          "cls": "spectrum-settings",
+          "testid": "spectrum-settings",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Шкала dBЛинейнаяШкала частоты ЛинейнаяЛогарифмическаяУтечка 0.5Пределы частоты (Гц)F мин. F макс."
+        },
+        {
+          "tag": "SECTION",
+          "id": "spectrogram-settings",
+          "cls": "spectrogram-settings",
+          "testid": "spectrogram-settings",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Перекрытие (%) Утечка Пределы частоты (Гц)F мин. F макс. Шкала частоты ЛинейнаяЛогарифмическаяПределы мощности (dB)P мин. P макс."
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-catalog-panel",
+          "testid": "settings-catalog-panel",
+          "rect": {
+            "x": 1083,
+            "y": 326.34375,
+            "width": 333,
+            "height": 726.75
+          },
+          "text": "Display\nView\nShow legend\nTime\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)\nY-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пок"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-group",
+          "testid": "settings-group-display",
+          "rect": {
+            "x": 1083,
+            "y": 326.34375,
+            "width": 333,
+            "height": 142.34375
+          },
+          "text": "Display\nView\nShow legend"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-display-view",
+          "rect": {
+            "x": 1083,
+            "y": 365.59375,
+            "width": 333,
+            "height": 103.09375
+          },
+          "text": "View\nShow legend"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-group",
+          "testid": "settings-group-time",
+          "rect": {
+            "x": 1083,
+            "y": 478.6875,
+            "width": 333,
+            "height": 574.40625
+          },
+          "text": "Time\nOptions\nNormalize Y\nShow markers\nTime Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)\nY-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пока не применяется: milesto"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-time-options",
+          "rect": {
+            "x": 1083,
+            "y": 517.9375,
+            "width": 333,
+            "height": 185.9921875
+          },
+          "text": "Options\nNormalize Y\nShow markers"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-time-time_limits",
+          "rect": {
+            "x": 1083,
+            "y": 711.9296875,
+            "width": 333,
+            "height": 160.2890625
+          },
+          "text": "Time Limits\nTime units\nX limits (s)\nМинимум (s)\nМаксимум (s)"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "settings-section",
+          "testid": "settings-section-time-y_axis_limits",
+          "rect": {
+            "x": 1083,
+            "y": 880.21875,
+            "width": 333,
+            "height": 172.875
+          },
+          "text": "Y-axis Limits\nY limits\nМинимум\nМаксимум\n\nСохранено — пока не применяется: milestone_3_contract"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 1083,
+            "y": 1073.09375,
+            "width": 333,
+            "height": 111.25
+          },
+          "text": "Анализ\n⌁ Статистики сигнала\n⌁ Искать пики"
+        },
+        {
+          "tag": "SECTION",
+          "id": "time-settings-panel",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Нормировать ось YПоказывать маркерыПределы времени (с)Мин. Макс."
+        },
+        {
+          "tag": "SECTION",
+          "id": "measurements-settings-panel",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "СтатистикиМинимумМаксимумСреднееМедианаРазмахRMS"
+        },
+        {
+          "tag": "SECTION",
+          "id": "statistics-controls",
+          "cls": "statistics-controls",
+          "testid": "statistics-controls",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "СтатистикиМинимумМаксимумСреднееМедианаРазмахRMS"
+        },
+        {
+          "tag": "SECTION",
+          "id": "persistence-settings",
+          "cls": "persistence-settings",
+          "testid": "persistence-settings",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Утечка 0.5"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "bottom-zone",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 576,
+            "width": 1440,
+            "height": 306
+          },
+          "text": "Сигналы\nИзмерения\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0"
+        },
+        {
+          "tag": "SECTION",
+          "id": "bottom-panel-signals",
+          "cls": "bottom-panel signals-panel",
+          "testid": "bottom-panel-signals",
+          "rect": {
+            "x": 0,
+            "y": 619,
+            "width": 1440,
+            "height": 262
+          },
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tКомп"
+        },
+        {
+          "tag": "TABLE",
+          "id": "",
+          "cls": "signal-table",
+          "testid": "signal-table",
+          "rect": {
+            "x": 0,
+            "y": 619,
+            "width": 1440,
+            "height": 108.2890625
+          },
+          "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tВещественный\n\n\tКомплексный ЛЧМ-сигнал\t\n\t2048 Hz\t512\t0.24951171875 s\tКомп"
+        },
+        {
+          "tag": "SECTION",
+          "id": "measurements-panel",
+          "cls": "bottom-panel measurements-panel",
+          "testid": "measurements-panel",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Загрузка измерений…"
+        },
+        {
+          "tag": "SECTION",
+          "id": "peaks-panel",
+          "cls": "bottom-panel peaks-panel",
+          "testid": "peaks-panel",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": ""
+        },
+        {
+          "tag": "SECTION",
+          "id": "layout-popover",
+          "cls": "layout-popover",
+          "testid": "layout-popover",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет отображения•×\n      \n        Макет изменён в другой сессии\n        Строки\n        Столбцы\n        Вариант строк × столбцов\n        Сохранение порядка областей\n        Части м"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Макет отображения•×"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog session-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт сессииВыберите ранее сохранённый JSON-документ. Текущая сессия будет заменена только после проверки на сервере.Файл сессииФайл не выбран.Сессия импортирована и загружена.Отм"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт сессии"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog signals-workspace-browser",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт из рабочей областиВыбрано: 0ОбновитьЗагрузка каталога…В рабочей области нет поддерживаемых переменных.Частота дискретизации (Гц)Нужна для выбранных массивов без временной шк"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Импорт из рабочей области"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Сигналы импортированыДобавлено: 0Готово"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Сигналы импортированы"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить сигнал?Сигнал  будет удалён из текущей сессии.Сигнал  удалён.ОтменаУдалитьГотово"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Удалить сигнал?"
+        },
+        {
+          "tag": "SECTION",
+          "id": "",
+          "cls": "signals-dialog nested-confirmation",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?Выбранные переменные и введённая частота дискретизации не будут сохранены.ОстатьсяЗакрыть"
+        },
+        {
+          "tag": "HEADER",
+          "id": "",
+          "cls": "",
+          "testid": null,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 0,
+            "height": 0
+          },
+          "text": "Закрыть без добавления?"
+        }
+      ],
+      "bodyClass": "",
+      "expectedSha": false,
+      "scripts": [
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/api.js",
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js",
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/layouts.js",
+        "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/app.js"
+      ]
+    }
+  ]
+}

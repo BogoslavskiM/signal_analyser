@@ -1,0 +1,243 @@
+{
+  "id": "HND-TASK-0101-A",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "5bf4f95e4ca2db2da7bb0ce4f76f2858b54c9e02",
+  "mode": "new_functionality_regression",
+  "scope": "read-only current pane/right settings/extrema selectors",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "exact production readiness",
+      "status": "passed",
+      "data": {
+        "code": 200,
+        "body": {
+          "runtime_revision": "5bf4f95e4ca2db2da7bb0ce4f76f2858b54c9e02",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    }
+  ],
+  "network": [
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1"
+    },
+    {
+      "method": "GET",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite"
+    },
+    {
+      "method": "POST",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/api/v1/touch"
+    }
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "errors": [
+    "locator.scrollIntoViewIfNeeded: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('pane-plot-type-trigger').first()\u001b[22m\n\n    at audit (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0101_production_a.js:5:64)\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0101_production_a.js:6:979"
+  ],
+  "preexisting_pages": [],
+  "baseline": {
+    "app_version": "5bf4f95e4ca2db2da7bb0ce4f76f2858b54c9e02",
+    "peaks_enabled": false,
+    "active_plot": "time",
+    "displays": [
+      {
+        "peaks_enabled": false,
+        "active_plot": "time",
+        "name": "Display 1",
+        "spectrum_settings": {
+          "frequency_scale": "linear",
+          "leakage": 0.5,
+          "frequency_limits": null,
+          "scale": "db"
+        },
+        "id": "display-1",
+        "analysis_signal": null,
+        "visible_signals": [],
+        "spectrogram_settings": {
+          "leakage": 0.5,
+          "overlap_percent": 50,
+          "frequency_limits": null,
+          "frequency_scale": "linear",
+          "power_limits": null
+        },
+        "selected_signal": null,
+        "persistence_settings": {
+          "leakage": 0.5
+        },
+        "time_limits": null,
+        "measurement_kinds": [
+          "minimum",
+          "maximum",
+          "mean"
+        ]
+      }
+    ],
+    "spectrum_settings": {
+      "frequency_scale": "linear",
+      "leakage": 0.5,
+      "frequency_limits": null,
+      "scale": "db"
+    },
+    "output_scheduling": {
+      "max_concurrent_calculations": 1,
+      "scope": "active_display",
+      "max_queued_outputs": 100
+    },
+    "active_output": {
+      "pane_id": "pane-1",
+      "signal_bindings": [],
+      "output": {
+        "isready": true,
+        "error": "",
+        "success": true,
+        "data": []
+      },
+      "need_update": false,
+      "isready": true,
+      "analysis_signal": null,
+      "context_key": "display-1::pane-1::time::r0",
+      "error": "",
+      "success": true,
+      "calculation_revision": 0,
+      "page_id": "display-1::pane-1",
+      "display_id": "display-1",
+      "plot_type": "time"
+    },
+    "state_revision": 2,
+    "row_selected_signal": "Гармонический сигнал",
+    "analysis_signal": null,
+    "visible_signals": [],
+    "spectrogram_settings": {
+      "leakage": 0.5,
+      "overlap_percent": 50,
+      "frequency_limits": null,
+      "frequency_scale": "linear",
+      "power_limits": null
+    },
+    "selected_signal": null,
+    "capabilities": {
+      "background_calculation": true,
+      "active_output": true,
+      "state_lite": true
+    },
+    "persistence_settings": {
+      "leakage": 0.5
+    },
+    "signals": [
+      {
+        "visible": false,
+        "name": "Гармонический сигнал",
+        "data_type": "Вещественный",
+        "duration_s": 0.24951171875,
+        "color": "#2563eb",
+        "sample_rate_hz": 2048,
+        "sample_count": 512
+      }
+    ],
+    "active_display_id": "display-1",
+    "layouts": [
+      {
+        "display_id": "display-1",
+        "outputs": [
+          {
+            "pane_id": "pane-1",
+            "signal_bindings": [],
+            "output": {
+              "isready": true,
+              "error": "",
+              "success": true,
+              "data": []
+            },
+            "need_update": false,
+            "isready": true,
+            "analysis_signal": null,
+            "context_key": "display-1::pane-1::time::r0",
+            "error": "",
+            "success": true,
+            "calculation_revision": 0,
+            "page_id": "display-1::pane-1",
+            "display_id": "display-1",
+            "plot_type": "time"
+          }
+        ],
+        "layout": {
+          "variant": "1x1",
+          "rows": 1,
+          "next_pane_number": 2,
+          "panes": [
+            {
+              "signal_bindings": [],
+              "id": "pane-1",
+              "plot_type": "time",
+              "peaks_settings": {
+                "minimum_distance_samples": 1,
+                "threshold": 0,
+                "mode": "maxima",
+                "maximum_cutoff": null,
+                "minimum_cutoff": null,
+                "number_of_peaks": 5
+              }
+            }
+          ],
+          "version": 1,
+          "columns": 1,
+          "active_pane_id": "pane-1"
+        }
+      }
+    ],
+    "time_limits": null,
+    "calculation_revision": 0,
+    "toolbar": {
+      "export": {
+        "visible": true,
+        "operations": [
+          "session"
+        ],
+        "icon": "download",
+        "disabled": false,
+        "default_operation": "session"
+      },
+      "other": {
+        "visible": false,
+        "icon": "more-vertical",
+        "disabled": true
+      },
+      "help": {
+        "visible": false,
+        "icon": "help-circle",
+        "href": "",
+        "disabled": true
+      },
+      "import": {
+        "visible": true,
+        "icon": "import",
+        "disabled": false
+      }
+    },
+    "measurement_kinds": [
+      "minimum",
+      "maximum",
+      "mean"
+    ],
+    "need_update_pages": {
+      "display-1::pane-1": false
+    }
+  },
+  "tab_cleanup_status": "passed"
+}

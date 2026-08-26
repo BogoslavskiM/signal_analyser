@@ -7,14 +7,18 @@ let
     )
     catalog_entries = NamedTuple[]
     catalog_total = 0
+    catalog_filtered = 0
     for catalog_symbol in catalog_symbols
         isdefined(catalog_module, catalog_symbol) || continue
         catalog_value = getfield(catalog_module, catalog_symbol)
         catalog_value isa Module && continue
+        catalog_total += 1
+        if catalog_value isa Function || catalog_value isa DataType || catalog_value isa UnionAll
+            catalog_filtered += 1
+            continue
+        end
         catalog_name = String(catalog_symbol)
         1 <= ncodeunits(catalog_name) <= 256 || error("workspace catalog name bound")
-        catalog_type = string(typeof(catalog_value))
-        length(catalog_type) <= 200 || error("workspace catalog type bound")
         catalog_payload = catalog_value
         catalog_time = nothing
         catalog_is_timed = false
@@ -60,8 +64,11 @@ let
         else
             "unsupported"
         end
-        catalog_total += 1
-        if catalog_total <= 1000
+        if catalog_source_kind == "unsupported"
+            catalog_filtered += 1
+        elseif length(catalog_entries) < 1000
+            catalog_type = string(typeof(catalog_value))
+            length(catalog_type) <= 200 || error("workspace catalog type bound")
             push!(catalog_entries, (
                 name = catalog_name,
                 type = catalog_type,
@@ -72,7 +79,8 @@ let
     end
     (
         entries = catalog_entries,
-        truncated = catalog_total > length(catalog_entries),
+        truncated = catalog_total > length(catalog_entries) + catalog_filtered,
+        filtered = catalog_filtered,
         total = catalog_total,
     )
 end

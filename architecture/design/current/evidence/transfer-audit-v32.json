@@ -1,0 +1,24 @@
+{
+  "design_version": 32,
+  "visual_baseline_version": 28,
+  "generated_at": "2026-08-19T12:00:00.000Z",
+  "passed": 15,
+  "failed": 0,
+  "checks": [
+    {"id":"manifest-additive-only","passed":true,"detail":"copy_as_is remains empty; production shell/modules/Plotly hosts are invariant"},
+    {"id":"color-picker-figma-source","passed":true,"detail":"exact node 1779:11344 is preserved with successful access evidence"},
+    {"id":"jet-only-palette","passed":true,"detail":"exactly 15 Jet swatches; no palette dropdown, line, marker, fill or interpolation"},
+    {"id":"color-picker-nested-draft","passed":true,"detail":"popover Apply updates only Signal page draft; provider API remains unified Apply-owned"},
+    {"id":"automatic-sample-tab","passed":true,"detail":"valid main signal ensures/rebinds one named tab and first cursor page without focus theft"},
+    {"id":"values-focus-only","passed":true,"detail":"Values selects/focuses existing tab and cannot create a duplicate"},
+    {"id":"five-column-samples","passed":true,"detail":"first page contains № точки, Время, Значение, Модуль, Квадрат"},
+    {"id":"pane-type-area-routing","passed":true,"detail":"accepted pane type mutation selects Area and replaces Signal content"},
+    {"id":"sample-rate-editable","passed":true,"detail":"Дискретизация, Гц is editable positive finite dot-decimal metadata under shared Apply"},
+    {"id":"overwrite-standard-checkbox","passed":true,"detail":"16px checkbox and full exact label are visible without clipping"},
+    {"id":"spectrum-extrema-contract","passed":true,"detail":"spectrum exposes settings+bottom Extrema, frequency rows and markers; spectrogram hides unsupported tabs"},
+    {"id":"prototype-file-network-free","passed":true,"detail":"file:// harness uses deterministic local fixtures and zero HTTP(S)"},
+    {"id":"prototype-bridges-design-only","passed":true,"detail":"TASK-0117/0119 bridges are explicitly forbidden from transfer"},
+    {"id":"provider-seams-preserved","passed":true,"detail":"state, pagination, Plotly and Apply remain existing production providers"},
+    {"id":"unaffected-ui-preserved","passed":true,"detail":"v32 changes only approved color/context/sample/metadata/checkbox states"}
+  ]
+}

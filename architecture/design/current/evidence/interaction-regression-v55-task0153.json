@@ -1,0 +1,129 @@
+{
+  "design_version": 55,
+  "method": "bounded TASK-0153 UI event/tab/range-slider/primary-action contract regression",
+  "passed": 6,
+  "failed": 0,
+  "results": [
+    {
+      "id": "120-graph-doubleclick-is-autoscale-only",
+      "passed": true,
+      "detail": {
+        "action": "plot_autoscale",
+        "trueAutorange": true,
+        "xRangeSliderVisible": false,
+        "yRangeSliderVisible": true,
+        "sliderVisibilityMutation": false,
+        "paneMenuMutation": false,
+        "settingsPageMutation": false,
+        "backendMutation": false
+      }
+    },
+    {
+      "id": "121-doubleclick-target-isolation",
+      "passed": true,
+      "detail": "A double-click on the ready graph surface performs true X/Y autoscale only. It never enables, opens or hides the in-plot time/frequency/amplitude slider, never opens the pane menu and never changes Settings page. Double-click on an already visible in-plot slider remains that slider's local reset; settings range-row double-click remains that field's local Auto reset."
+    },
+    {
+      "id": "122-screen-tab-never-blocked-by-autosave",
+      "passed": true,
+      "detail": {
+        "accepted": true,
+        "page": "screen",
+        "backgroundApplyContinues": true,
+        "blockedByApply": false,
+        "activationToken": 9
+      }
+    },
+    {
+      "id": "123-all-area-ranges-own-sliders",
+      "passed": true,
+      "detail": {
+        "time": [
+          "time.x_limits",
+          "time.y_limits"
+        ],
+        "spectrum": [
+          "spectrum.frequency_limits",
+          "spectrum.y_limits"
+        ],
+        "spectrogram": [
+          "time.x_limits",
+          "spectrogram.frequency_limits",
+          "spectrogram.power_limits"
+        ],
+        "persistence": [
+          "persistence.frequency_limits",
+          "persistence.power_limits",
+          "persistence.density_limits"
+        ]
+      }
+    },
+    {
+      "id": "124-linked-state-does-not-hide-area-slider",
+      "passed": true,
+      "detail": {
+        "spectrum": [
+          {
+            "fieldId": "spectrum.frequency_limits",
+            "axis": "frequency",
+            "label": "Пределы частоты",
+            "unitField": "spectrum.frequency_units",
+            "scope": "area",
+            "sliderComponent": "screen-range-slider",
+            "sliderRequired": true,
+            "linkedVisibilityIndependent": true,
+            "emptyEndpoints": "independent_auto_until_that_endpoint_is_touched"
+          },
+          {
+            "fieldId": "spectrum.y_limits",
+            "axis": "magnitude",
+            "label": "Пределы магнитуды",
+            "scope": "area",
+            "sliderComponent": "screen-range-slider",
+            "sliderRequired": true,
+            "linkedVisibilityIndependent": true,
+            "emptyEndpoints": "independent_auto_until_that_endpoint_is_touched"
+          }
+        ],
+        "persistence": [
+          {
+            "fieldId": "persistence.frequency_limits",
+            "axis": "frequency",
+            "label": "Пределы частоты",
+            "unitField": "persistence.frequency_units",
+            "scope": "area",
+            "sliderComponent": "screen-range-slider",
+            "sliderRequired": true,
+            "linkedVisibilityIndependent": true,
+            "emptyEndpoints": "independent_auto_until_that_endpoint_is_touched"
+          },
+          {
+            "fieldId": "persistence.power_limits",
+            "axis": "power",
+            "label": "Пределы мощности",
+            "scope": "area",
+            "sliderComponent": "screen-range-slider",
+            "sliderRequired": true,
+            "linkedVisibilityIndependent": true,
+            "emptyEndpoints": "independent_auto_until_that_endpoint_is_touched"
+          },
+          {
+            "fieldId": "persistence.density_limits",
+            "axis": "density",
+            "label": "Пределы плотности",
+            "scope": "area",
+            "sliderComponent": "screen-range-slider",
+            "sliderRequired": true,
+            "linkedVisibilityIndependent": true,
+            "emptyEndpoints": "independent_auto_until_that_endpoint_is_touched"
+          }
+        ]
+      }
+    },
+    {
+      "id": "125-footer-actions-primary",
+      "passed": true,
+      "detail": "Значения and Рассчитать are canonical Primary MD blue actions in the shared settings footer, with the existing 32px geometry and normal disabled state."
+    }
+  ]
+}

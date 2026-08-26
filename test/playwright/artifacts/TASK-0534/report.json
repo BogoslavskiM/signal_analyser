@@ -1,0 +1,127 @@
+{
+  "id": "HND-0534",
+  "checks": [
+    {
+      "name": "exact v7 status",
+      "status": "passed",
+      "detail": {
+        "c": 200,
+        "b": {
+          "runtime_revision": "e78b402649ff0869c0b6cfcf4f5ec2da66ba66be",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "right Peaks -Inf/shared pristine Apply",
+      "status": "passed",
+      "detail": {
+        "value": "-Inf"
+      }
+    },
+    {
+      "name": "full width Peaks 1024x768",
+      "status": "passed",
+      "detail": {
+        "t": {
+          "l": 9,
+          "r": 1015,
+          "b": 751
+        },
+        "tabs": {
+          "l": 10,
+          "r": 1014,
+          "b": 628
+        },
+        "root": {
+          "l": 9,
+          "r": 1015,
+          "b": 759
+        },
+        "headers": [
+          "№",
+          "Сигнал",
+          "Цвет",
+          "Значение",
+          "Время, с",
+          "Метка на графике"
+        ],
+        "split": 0
+      }
+    },
+    {
+      "name": "full width Peaks 1440x900",
+      "status": "passed",
+      "detail": {
+        "t": {
+          "l": 9,
+          "r": 1431,
+          "b": 883
+        },
+        "tabs": {
+          "l": 10,
+          "r": 1430,
+          "b": 760
+        },
+        "root": {
+          "l": 9,
+          "r": 1431,
+          "b": 891
+        },
+        "headers": [
+          "№",
+          "Сигнал",
+          "Цвет",
+          "Значение",
+          "Время, с",
+          "Метка на графике"
+        ],
+        "split": 0
+      }
+    },
+    {
+      "name": "no output refetch",
+      "status": "passed",
+      "detail": {
+        "o0": 6,
+        "o1": 6
+      }
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200
+    }
+  ],
+  "opened": 1,
+  "closed": 1,
+  "errors": [],
+  "cleanup": "passed"
+}

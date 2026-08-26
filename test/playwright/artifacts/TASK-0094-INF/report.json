@@ -1,0 +1,44 @@
+{
+  "id": "HND-0528",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "revision": "11f97c35652b549828b4d61b38c8354cb1652ea9",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "status exact revision",
+      "status": "passed",
+      "detail": {
+        "code": 200,
+        "body": {
+          "runtime_revision": "11f97c35652b549828b4d61b38c8354cb1652ea9",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200,
+      "method": "GET"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET"
+    }
+  ],
+  "errors": [
+    "page.evaluate: TypeError: Cannot read properties of null (reading 'getBoundingClientRect')\n    at b (eval at evaluate (:311:30), <anonymous>:1:28)\n    at eval (eval at evaluate (:311:30), <anonymous>:1:325)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0094_inf_readonly.js:5:1378"
+  ],
+  "opened": 1,
+  "closed": 1,
+  "preexisting_pages": [],
+  "leaked_tab_positive_identity": "unavailable: launched Chrome context exposes no retained prior HND-0521 page identity",
+  "cleanup": "passed"
+}

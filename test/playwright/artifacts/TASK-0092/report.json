@@ -1,0 +1,317 @@
+{
+  "id": "HND-TASK-0092-E2E",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "cb5a884f1dfeefd22b3413ab08d2f9af560484cf",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "production availability and exact revision",
+      "status": "passed",
+      "detail": {
+        "main": 200,
+        "status": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "cb5a884f1dfeefd22b3413ab08d2f9af560484cf",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      }
+    },
+    {
+      "name": "32px inspector header aligns with search/table and has separators",
+      "status": "passed",
+      "detail": {
+        "h": {
+          "x": 9,
+          "y": 677,
+          "width": 1422,
+          "height": 32,
+          "top": 677,
+          "right": 1431,
+          "bottom": 709,
+          "left": 9
+        },
+        "body": {
+          "x": 1,
+          "y": 709,
+          "width": 1438,
+          "height": 190,
+          "top": 709,
+          "right": 1439,
+          "bottom": 899,
+          "left": 1
+        },
+        "search": {
+          "x": 9,
+          "y": 709,
+          "width": 1422,
+          "height": 32,
+          "top": 709,
+          "right": 1431,
+          "bottom": 741,
+          "left": 9
+        },
+        "table": {
+          "x": 10,
+          "y": 741,
+          "width": 1420,
+          "height": 65,
+          "top": 741,
+          "right": 1430,
+          "bottom": 806,
+          "left": 10
+        },
+        "tabsScroll": false,
+        "actionsRight": 1431,
+        "headerRight": 1431,
+        "borders": [
+          "1px",
+          "1px"
+        ],
+        "th": [
+          {
+            "text": "",
+            "w": 42
+          },
+          {
+            "text": "Имя",
+            "w": 397.59375
+          },
+          {
+            "text": "Цвет",
+            "w": 196.078125
+          },
+          {
+            "text": "Частота дискретизации",
+            "w": 196.078125
+          },
+          {
+            "text": "Отсчёты",
+            "w": 196.078125
+          },
+          {
+            "text": "Длительность",
+            "w": 196.078125
+          },
+          {
+            "text": "Тип",
+            "w": 196.09375
+          }
+        ],
+        "actionTh": false,
+        "actionsInLast": true
+      }
+    },
+    {
+      "name": "table has 42px checkbox, Name ~28%, no Actions header, actions in last data cell",
+      "status": "passed",
+      "detail": {
+        "h": {
+          "x": 9,
+          "y": 677,
+          "width": 1422,
+          "height": 32,
+          "top": 677,
+          "right": 1431,
+          "bottom": 709,
+          "left": 9
+        },
+        "body": {
+          "x": 1,
+          "y": 709,
+          "width": 1438,
+          "height": 190,
+          "top": 709,
+          "right": 1439,
+          "bottom": 899,
+          "left": 1
+        },
+        "search": {
+          "x": 9,
+          "y": 709,
+          "width": 1422,
+          "height": 32,
+          "top": 709,
+          "right": 1431,
+          "bottom": 741,
+          "left": 9
+        },
+        "table": {
+          "x": 10,
+          "y": 741,
+          "width": 1420,
+          "height": 65,
+          "top": 741,
+          "right": 1430,
+          "bottom": 806,
+          "left": 10
+        },
+        "tabsScroll": false,
+        "actionsRight": 1431,
+        "headerRight": 1431,
+        "borders": [
+          "1px",
+          "1px"
+        ],
+        "th": [
+          {
+            "text": "",
+            "w": 42
+          },
+          {
+            "text": "Имя",
+            "w": 397.59375
+          },
+          {
+            "text": "Цвет",
+            "w": 196.078125
+          },
+          {
+            "text": "Частота дискретизации",
+            "w": 196.078125
+          },
+          {
+            "text": "Отсчёты",
+            "w": 196.078125
+          },
+          {
+            "text": "Длительность",
+            "w": 196.078125
+          },
+          {
+            "text": "Тип",
+            "w": 196.09375
+          }
+        ],
+        "actionTh": false,
+        "actionsInLast": true
+      }
+    },
+    {
+      "name": "column menu stays reachable in the viewport",
+      "status": "failed",
+      "detail": {
+        "menuBox": {
+          "x": 0,
+          "y": 900,
+          "width": 244,
+          "height": 182
+        },
+        "menuPosition": {
+          "trigger": {
+            "x": 1399,
+            "y": 678,
+            "width": 32,
+            "height": 31,
+            "top": 678,
+            "right": 1431,
+            "bottom": 709,
+            "left": 1399
+          },
+          "computed": {
+            "position": "fixed",
+            "top": "900px",
+            "left": "0px",
+            "right": "1196px",
+            "bottom": "-182px"
+          }
+        }
+      }
+    },
+    {
+      "name": "temporary 1x2 Apply",
+      "status": "passed",
+      "detail": {
+        "code": 200
+      }
+    },
+    {
+      "name": "two ready panes have non-empty Plotly traces",
+      "status": "passed",
+      "detail": [
+        {
+          "id": "pane-1",
+          "node": "ref: <Node>",
+          "traceCount": 1
+        },
+        {
+          "id": "pane-3",
+          "node": "ref: <Node>",
+          "traceCount": 1
+        }
+      ]
+    },
+    {
+      "name": "pane switch is local: no active-output request, no loader, same Plotly nodes/traces",
+      "status": "passed",
+      "detail": {
+        "activeRequests": 0,
+        "old": [
+          {
+            "id": "pane-1",
+            "node": "ref: <Node>",
+            "traces": 1,
+            "loader": false
+          },
+          {
+            "id": "pane-3",
+            "node": "ref: <Node>",
+            "traces": 1,
+            "loader": false
+          }
+        ],
+        "after": [
+          {
+            "id": "pane-1",
+            "node": "ref: <Node>",
+            "traces": 1,
+            "loader": false
+          },
+          {
+            "id": "pane-3",
+            "node": "ref: <Node>",
+            "traces": 1,
+            "loader": false
+          }
+        ]
+      }
+    }
+  ],
+  "shots": [
+    "inspector-wide.png",
+    "two-panes-before-switch.png",
+    "two-panes-after-switch.png"
+  ],
+  "api": [
+    {
+      "path": "/api/layouts",
+      "status": 200,
+      "body": "{\"peaks_enabled\":false,\"active_plot\":\"time\",\"state\":{\"peaks_enabled\":false,\"active_plot\":\"time\",\"displays\":[{\"peaks_enabled\":false,\"active_plot\":\"time\",\"name\":\"Display 1\",\"spectrum_settings\":{\"frequency_scale\":\"linear\",\"leakage\":0.5,\"frequency_limits\":null,\"scale\":\"db\"},\"id\":\"display-1\",\"analysis_signal\":\"Гармонический сигнал\",\"visible_signals\":[\"Гармонический сигнал\"],\"spectrogram_settings\":{\"leakage\":0.5,\"overlap_percent\":50.0,\"frequency_limits\":null,\"frequency_scale\":\"linear\",\"power_limits\":null},\"selected_signal\":\"Гармонический сигнал\",\"persistence_settings\":{\"leakage\":0.5},\"time_limits\":{\"units\":\"s\",\"min_s\":0.0,\"max_s\":0.24951171875},\"measurement_kinds\":[\"minimum\",\"maximum\",\"mean\"]}],\"spectrum_settings\":{\"frequency_scale\":\"linear\",\"leakage\":0.5,\"frequency_limits\":null,\"scale\":\"db\"},\"output_scheduling\":{\"max_concurrent_calculations\":1,\"scope\":\"active_display\",\"max_queued_outputs\":100},\"active_output\":{\"pane_id\":\"pane-1\",\"signal_bindings\":[\"Гармонический сигнал\"],\"output\":{\"isready\":true,\"error\":\"\",\"success\":true,\"data\":[]},\"need_update\":false,\"isready\":true,\"analysis_signal\":\"Гармонический сигнал\",\"context_key\":\"display-1::pane-1::time::r0\",\"error\":\"\",\"success\":true,\"calculation_revision\":0,\"page_id\":\"display-1::pane-1\",\"display_id\":\"display-1\",\"plot_type\":\"time\"},\"state_revision\":6,\"row_selected_signal\":\"Гармонический сигнал\",\"analysis_signal\":\"Гармонический сигнал\",\"visible_signals\":[\"Гармонический сигнал\"],\"spectrogram_settings\":{\"leakage\":0.5,\"overlap_percent\":50.0,\"frequency_limits\":null,\"frequency_scale\":\"linear\",\"power_limits\":null},\"selected_signal\":\"Гармонический сигнал\",\"capabilities\":{\"background_calculation\":true,\"active_output\":true,\"state_lite\":true},\"persistence_settings\":{\"leakage\":0.5},\"active_display_id\":\"display-1\",\"signals\":[{\"visible\":true,\"name\":\"Гармонический сигнал\",\"data_type\":\"Вещественный\",\"duration_s\":0.24951171875,\"color\":\"#2563eb\",\"sample_rate_hz\":2048.0,\"sample_count\":512}],\"layouts\":[{\"display_id\":\"display-1\",\"outputs\":[{\"pane_id\":\"pane-1\",\"signal_bindings\":[\"Гармонический сигнал\"],\"output\":{\"isready\":true,\"error\":\"\",\"success\":true,\"data\":[]},\"need_update\":false,\"isready\":true,\"analysis_signal\":\"Гармонический сигнал\",\"context_key\":\"display-1::pane-1::time::r0\",\"error\":\"\",\"success\":true,\"calculation_revision\":0,\"page_id\":\"display-1::pane-1\",\"display_id\":\"display-1\",\"plot_type\":\"time\"},{\"pane_id\":\"pane-3\",\"signal_bindings\":[\"Гармонический сигнал\"],\"output\":{\"isready\":false,\"error\":\"\",\"success\":false,\"data\":[]},\"need_update\":true,\"isready\":false,\"analysis_signal\":\"Гармонический сигнал\",\"context_key\":\"display-1::pane-3::time::r2\",\"error\":\"\",\"success\":false,\"calculation_revision\":2,\"page_id\":\"display-1::pane-3\",\"display_id\":\"display-1\",\"plot_type\":\"time\"}],\"layout\":{\"variant\":\"1x2\",\"rows\":1,\"next_pane_number\":4,\"panes\":[{\"signal_bindings\":[\"Гармонический сигнал\"],\"id\":\"pane-1\",\"plot_type\":\"time\"},{\"signal_bindings\":[\"Гармонический сигнал\"],\"id\":\"pane-3\",\"plot_type\":\"time\"}],\"version\":1,\"columns\":2,\"active_pane_id\":\"pane-1\"}}],\"time_limits\":{\"units\":\"s\",\"min_s\":0.0,\"max_s\":0.24951171875},\"calculation_revision\":2,\"measurement_kinds\":[\"minimum\",\"maximum\",\"mean\"],\"need_update_pages\":{\"display-1::pane-3\":true,\"display-1::pane-1\":false}},\"displays\":[{\"peaks_enabled\":false,\"active_plot\":\"time\",\"name\":\"Display 1\",\"spectrum_settings\":{\"frequency_scale\":\"linear\",\"leakage\":0.5,\"frequency_limits\":null,\"scale\":\"db\"},\"id\":\"display-1\",\"analysis_signal\":\"Гармонический сигнал\",\"visible_signals\":[\"Гармонический сигнал\"],\"spectrogram_settings\":{\"leakage\":0.5,\"overlap_percent\":50.0,\"frequency_limits\":null,\"frequency_scale\":\"linear\",\"power_limits\":null},\"selected_signal\":\"Гармонический сигнал\",\"persistence_settings\":{\"leakage\":0.5},\"time_limits\":{\"units\":\"s\",\"min_s\":0.0,\"max_s\":0.24951171875},\"measurement_kinds\":[\"minimum\",\"maximum\",\"mean\"]}],\"spectrum_settings\":{\"frequency_scale\":\"linear\",\"leakage\":0.5,\"frequency_limits\":null,\"scale\":\"db\"},\"output_scheduling\":{\"max_concurrent_calculations\":1,\"scope\":\"active_display\",\"max_queued_outputs\":100},\"active_output\":{\"pane_id\":\"pane-1\",\"signal_bindings\":[\"Гармонический сигнал\"],\"output\":{\"isready\":true,\"error\":\"\",\"success\":true,\"data\":[]},\"need_update\":false,\"isready\":true,\"analysis_signal\":\"Гармонический сигнал\",\"context_key\":\"display-1::pane-1::time::r0\",\"error\":\"\",\"success\":true,\"calculation_revision\":0,\"page_id\":\"display-1::pane-1\",\"display_id\":\"display-1\",\"plot_type\":\"time\"},\"state_revision\":6,\"row_selected_signal\":\"Гармонический сигнал\",\"analysis_signal\":\"Гармонический сигнал\",\"visible_signals\":[\"Гармонический сигнал\"],\"spectrogram_settings\":{\"leakage\":0.5,\"overlap_percent\":50.0,\"frequency_limits\":null,\"frequency_scale\":\"linear\",\"power_limits\":null},\"selected_signal\":\"Гармонический сигнал\",\"capabilities\":{\"background_calculation\":true,\"active_output\":true,\"state_lite\":true},\"persistence_settings\":{\"leakage\":0.5},\"active_display_id\":\"display-1\",\"signals\":[{\"visible\":true,\"name\":\"Гармонический сигнал\",\"data_type\":\"Вещественный\",\"duration_s\":0.24951171875,\"color\":\"#2563eb\",\"sample_rate_hz\":2048.0,\"sample_count\":512}],\"layouts\":[{\"display_id\":\"display-1\",\"outputs\":[{\"pane_id\":\"pane-1\",\"signal_bindings\":[\"Гармонический сигнал\"],\"output\":{\"isready\":true,\"error\":\"\",\"success\":true,\"data\":[]},\"need_update\":false,\"isready\":true,\"analysis_signal\":\"Гармонический сигнал\",\"context_key\":\"display-1::pane-1::time::r0\",\"error\":\"\",\"success\":true,\"calculation_revision\":0,\"page_id\":\"display-1::pane-1\",\"display_id\":\"display-1\",\"plot_type\":\"time\"},{\"pane_id\":\"pane-3\",\"signal_bindings\":[\"Гармонический сигнал\"],\"output\":{\"isready\":false,\"error\":\"\",\"success\":false,\"data\":[]},\"need_update\":true,\"isready\":false,\"analysis_signal\":\"Гармонический сигнал\",\"context_key\":\"display-1::pane-3::time::r2\",\"error\":\"\",\"success\":false,\"calculation_revision\":2,\"page_id\":\"display-1::pane-3\",\"display_id\":\"display-1\",\"plot_type\":\"time\"}],\"layout\":{\"variant\":\"1x2\",\"rows\":1,\"next_pane_number\":4,\"panes\":[{\"signal_bindings\":[\"Гармонический сигнал\"],\"id\":\"pane-1\",\"plot_type\":\"time\"},{\"signal_bindings\":[\"Гармонический сигнал\"],\"id\":\"pane-3\",\"plot_type\":\"time\"}],\"version\":1,\"columns\":2,\"active_pane_id\":\"pane-1\"}}],\"time_limits\":{\"units\":\"s\",\"min_s\":0.0,\"max_s\":0.24951171875},\"calculation_revision\":2,\"ok\":true,\"measurement_kinds\":[\"minimum\",\"maximum\",\"mean\"],\"need_update_pages\":{\"display-1::pane-3\":true,\"display-1::pane-1\":false}}"
+    },
+    {
+      "path": "/api/layouts",
+      "status": 200,
+      "body": "{\"peaks_enabled\":false,\"active_plot\":\"time\",\"state\":{\"peaks_enabled\":false,\"active_plot\":\"time\",\"displays\":[{\"peaks_enabled\":false,\"active_plot\":\"time\",\"name\":\"Display 1\",\"spectrum_settings\":{\"frequency_scale\":\"linear\",\"leakage\":0.5,\"frequency_limits\":null,\"scale\":\"db\"},\"id\":\"display-1\",\"analysis_signal\":\"Гармонический сигнал\",\"visible_signals\":[\"Гармонический сигнал\"],\"spectrogram_settings\":{\"leakage\":0.5,\"overlap_percent\":50.0,\"frequency_limits\":null,\"frequency_scale\":\"linear\",\"power_limits\":null},\"selected_signal\":\"Гармонический сигнал\",\"persistence_settings\":{\"leakage\":0.5},\"time_limits\":{\"units\":\"s\",\"min_s\":0.0,\"max_s\":0.24951171875},\"measurement_kinds\":[\"minimum\",\"maximum\",\"mean\"]}],\"spectrum_settings\":{\"frequency_scale\":\"linear\",\"leakage\":0.5,\"frequency_limits\":null,\"scale\":\"db\"},\"output_scheduling\":{\"max_concurrent_calculations\":1,\"scope\":\"active_display\",\"max_queued_outputs\":100},\"active_output\":{\"pane_id\":\"pane-1\",\"signal_bindings\":[\"Гармонический сигнал\"],\"output\":{\"isready\":true,\"error\":\"\",\"success\":true,\"data\":[]},\"need_update\":false,\"isready\":true,\"analysis_signal\":\"Гармонический сигнал\",\"context_key\":\"display-1::pane-1::time::r0\",\"error\":\"\",\"success\":true,\"calculation_revision\":0,\"page_id\":\"display-1::pane-1\",\"display_id\":\"display-1\",\"plot_type\":\"time\"},\"state_revision\":9,\"row_selected_signal\":\"Гармонический сигнал\",\"analysis_signal\":\"Гармонический сигнал\",\"visible_signals\":[\"Гармонический сигнал\"],\"spectrogram_settings\":{\"leakage\":0.5,\"overlap_percent\":50.0,\"frequency_limits\":null,\"frequency_scale\":\"linear\",\"power_limits\":null},\"selected_signal\":\"Гармонический сигнал\",\"capabilities\":{\"background_calculation\":true,\"active_output\":true,\"state_lite\":true},\"persistence_settings\":{\"leakage\":0.5},\"active_display_id\":\"display-1\",\"signals\":[{\"visible\":true,\"name\":\"Гармонический сигнал\",\"data_type\":\"Вещественный\",\"duration_s\":0.24951171875,\"color\":\"#2563eb\",\"sample_rate_hz\":2048.0,\"sample_count\":512}],\"layouts\":[{\"display_id\":\"display-1\",\"outputs\":[{\"pane_id\":\"pane-1\",\"signal_bindings\":[\"Гармонический сигнал\"],\"output\":{\"isready\":true,\"error\":\"\",\"success\":true,\"data\":[]},\"need_update\":false,\"isready\":true,\"analysis_signal\":\"Гармонический сигнал\",\"context_key\":\"display-1::pane-1::time::r0\",\"error\":\"\",\"success\":true,\"calculation_revision\":0,\"page_id\":\"display-1::pane-1\",\"display_id\":\"display-1\",\"plot_type\":\"time\"}],\"layout\":{\"variant\":\"1x1\",\"rows\":1,\"next_pane_number\":4,\"panes\":[{\"signal_bindings\":[\"Гармонический сигнал\"],\"id\":\"pane-1\",\"plot_type\":\"time\"}],\"version\":1,\"columns\":1,\"active_pane_id\":\"pane-1\"}}],\"time_limits\":{\"units\":\"s\",\"min_s\":0.0,\"max_s\":0.24951171875},\"calculation_revision\":2,\"measurement_kinds\":[\"minimum\",\"maximum\",\"mean\"],\"need_update_pages\":{\"display-1::pane-1\":false}},\"displays\":[{\"peaks_enabled\":false,\"active_plot\":\"time\",\"name\":\"Display 1\",\"spectrum_settings\":{\"frequency_scale\":\"linear\",\"leakage\":0.5,\"frequency_limits\":null,\"scale\":\"db\"},\"id\":\"display-1\",\"analysis_signal\":\"Гармонический сигнал\",\"visible_signals\":[\"Гармонический сигнал\"],\"spectrogram_settings\":{\"leakage\":0.5,\"overlap_percent\":50.0,\"frequency_limits\":null,\"frequency_scale\":\"linear\",\"power_limits\":null},\"selected_signal\":\"Гармонический сигнал\",\"persistence_settings\":{\"leakage\":0.5},\"time_limits\":{\"units\":\"s\",\"min_s\":0.0,\"max_s\":0.24951171875},\"measurement_kinds\":[\"minimum\",\"maximum\",\"mean\"]}],\"spectrum_settings\":{\"frequency_scale\":\"linear\",\"leakage\":0.5,\"frequency_limits\":null,\"scale\":\"db\"},\"output_scheduling\":{\"max_concurrent_calculations\":1,\"scope\":\"active_display\",\"max_queued_outputs\":100},\"active_output\":{\"pane_id\":\"pane-1\",\"signal_bindings\":[\"Гармонический сигнал\"],\"output\":{\"isready\":true,\"error\":\"\",\"success\":true,\"data\":[]},\"need_update\":false,\"isready\":true,\"analysis_signal\":\"Гармонический сигнал\",\"context_key\":\"display-1::pane-1::time::r0\",\"error\":\"\",\"success\":true,\"calculation_revision\":0,\"page_id\":\"display-1::pane-1\",\"display_id\":\"display-1\",\"plot_type\":\"time\"},\"state_revision\":9,\"row_selected_signal\":\"Гармонический сигнал\",\"analysis_signal\":\"Гармонический сигнал\",\"visible_signals\":[\"Гармонический сигнал\"],\"spectrogram_settings\":{\"leakage\":0.5,\"overlap_percent\":50.0,\"frequency_limits\":null,\"frequency_scale\":\"linear\",\"power_limits\":null},\"selected_signal\":\"Гармонический сигнал\",\"capabilities\":{\"background_calculation\":true,\"active_output\":true,\"state_lite\":true},\"persistence_settings\":{\"leakage\":0.5},\"active_display_id\":\"display-1\",\"signals\":[{\"visible\":true,\"name\":\"Гармонический сигнал\",\"data_type\":\"Вещественный\",\"duration_s\":0.24951171875,\"color\":\"#2563eb\",\"sample_rate_hz\":2048.0,\"sample_count\":512}],\"layouts\":[{\"display_id\":\"display-1\",\"outputs\":[{\"pane_id\":\"pane-1\",\"signal_bindings\":[\"Гармонический сигнал\"],\"output\":{\"isready\":true,\"error\":\"\",\"success\":true,\"data\":[]},\"need_update\":false,\"isready\":true,\"analysis_signal\":\"Гармонический сигнал\",\"context_key\":\"display-1::pane-1::time::r0\",\"error\":\"\",\"success\":true,\"calculation_revision\":0,\"page_id\":\"display-1::pane-1\",\"display_id\":\"display-1\",\"plot_type\":\"time\"}],\"layout\":{\"variant\":\"1x1\",\"rows\":1,\"next_pane_number\":4,\"panes\":[{\"signal_bindings\":[\"Гармонический сигнал\"],\"id\":\"pane-1\",\"plot_type\":\"time\"}],\"version\":1,\"columns\":1,\"active_pane_id\":\"pane-1\"}}],\"time_limits\":{\"units\":\"s\",\"min_s\":0.0,\"max_s\":0.24951171875},\"calculation_revision\":2,\"ok\":true,\"measurement_kinds\":[\"minimum\",\"maximum\",\"mean\"],\"need_update_pages\":{\"display-1::pane-1\":false}}"
+    }
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "residual_mutations": [],
+  "preexisting_page_count": 0,
+  "cleanup_layout_status": 200,
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 7,
+    "passed": 6,
+    "failed": 1
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "id": "HND-0521",
+  "stage": "prototype",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "a69c632728a72afc338bd41379fdb3de59c8505c",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "v6 prototype structure and roving",
+      "status": "passed",
+      "detail": {
+        "right": [
+          "Отображение",
+          "Время",
+          "Пики"
+        ],
+        "bottom": [
+          "Сигналы",
+          "Измерения",
+          "Пики"
+        ],
+        "split": 0,
+        "fields": [
+          "Количество пиков",
+          "Минимальная высота",
+          "Минимальное расстояние, отсчёты",
+          "Порог"
+        ],
+        "table": [
+          "№",
+          "Сигнал",
+          "Цвет",
+          "Значение",
+          "Время, с",
+          "Метка на графике"
+        ]
+      }
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0094-PEAKS-SIDEBAR/prototype-v6-1024x768.png",
+      "state": "right/bottom peaks",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html"
+    }
+  ],
+  "network": [],
+  "errors": [],
+  "opened": 1,
+  "closed": 1,
+  "preexisting": [],
+  "cleanup": "passed"
+}

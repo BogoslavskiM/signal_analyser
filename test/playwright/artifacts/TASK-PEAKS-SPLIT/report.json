@@ -1,0 +1,698 @@
+{
+  "id": "HND-PEAKS-SPLIT-E2E",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "5be0f035c6f6816c21b3df099d955a09816532bd",
+  "design_ref": "architecture/design/TASK-0080-explicit-apply-flow/DESIGN.md",
+  "design_version": 5,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "prototype closest v5 inspector/settings tokens",
+      "status": "failed",
+      "detail": {
+        "shell": true,
+        "settings": true,
+        "footer": 54,
+        "field": 16,
+        "inspector": false
+      }
+    },
+    {
+      "name": "availability/status exact revision",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "5be0f035c6f6816c21b3df099d955a09816532bd",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "Peaks split semantic structure/default fields",
+      "status": "failed",
+      "detail": {
+        "split": {
+          "x": 9,
+          "y": 611.390625,
+          "w": 1006,
+          "h": 147.59375,
+          "display": "flex",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderLeftWidth": "0px",
+          "paddingLeft": "0px",
+          "backgroundColor": "rgb(246, 248, 250)",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "table": {
+          "x": 9,
+          "y": 619.390625,
+          "w": 698,
+          "h": 139.59375,
+          "display": "block",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderLeftWidth": "0px",
+          "paddingLeft": "8px",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "scroll": {
+          "x": 17,
+          "y": 619.390625,
+          "w": 690,
+          "h": 257,
+          "display": "block",
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "borderLeftWidth": "1px",
+          "paddingLeft": "0px",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 715,
+          "y": 619.390625,
+          "w": 300,
+          "h": 139.59375,
+          "display": "grid",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderLeftWidth": "1px",
+          "paddingLeft": "0px",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "headers": [
+          "№",
+          "Сигнал",
+          "Цвет",
+          "Значение",
+          "Время, с",
+          "Метка на графике"
+        ],
+        "rows": [
+          [
+            "1",
+            "Гармонический сигнал",
+            "",
+            "0.99631261",
+            "0.0014648438",
+            "1"
+          ],
+          [
+            "2",
+            "Гармонический сигнал",
+            "",
+            "0.99247953",
+            "0.0068359375",
+            "2"
+          ],
+          [
+            "3",
+            "Гармонический сигнал",
+            "",
+            "0.97570213",
+            "0.012695313",
+            "3"
+          ],
+          [
+            "4",
+            "Гармонический сигнал",
+            "",
+            "0.9999247",
+            "0.018066406",
+            "4"
+          ],
+          [
+            "5",
+            "Гармонический сигнал",
+            "",
+            "0.98078528",
+            "0.0234375",
+            "5"
+          ],
+          [
+            "6",
+            "Гармонический сигнал",
+            "",
+            "0.98917651",
+            "0.029296875",
+            "6"
+          ],
+          [
+            "7",
+            "Гармонический сигнал",
+            "",
+            "0.99811811",
+            "0.034667969",
+            "7"
+          ]
+        ],
+        "colors": [
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)"
+        ],
+        "fields": [
+          {
+            "id": "number_of_peaks",
+            "label": "Количество пиков",
+            "value": "7",
+            "box": {
+              "x": 880,
+              "y": 673.390625,
+              "w": 119,
+              "h": 32,
+              "display": "inline-block",
+              "overflowX": "clip",
+              "overflowY": "clip",
+              "borderLeftWidth": "1px",
+              "paddingLeft": "8px",
+              "backgroundColor": "rgb(255, 255, 255)",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "minimum_height",
+            "label": "Минимальная высота",
+            "value": "−∞",
+            "box": {
+              "x": 880,
+              "y": 717.390625,
+              "w": 119,
+              "h": 32,
+              "display": "inline-block",
+              "overflowX": "clip",
+              "overflowY": "clip",
+              "borderLeftWidth": "1px",
+              "paddingLeft": "8px",
+              "backgroundColor": "rgb(255, 255, 255)",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "minimum_distance_samples",
+            "label": "Минимальное расстояние, отсчёты",
+            "value": "1",
+            "box": {
+              "x": 880,
+              "y": 761.390625,
+              "w": 119,
+              "h": 32,
+              "display": "inline-block",
+              "overflowX": "clip",
+              "overflowY": "clip",
+              "borderLeftWidth": "1px",
+              "paddingLeft": "8px",
+              "backgroundColor": "rgb(255, 255, 255)",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "threshold",
+            "label": "Порог",
+            "value": "0",
+            "box": {
+              "x": 880,
+              "y": 805.390625,
+              "w": 119,
+              "h": 32,
+              "display": "inline-block",
+              "overflowX": "clip",
+              "overflowY": "clip",
+              "borderLeftWidth": "1px",
+              "paddingLeft": "8px",
+              "backgroundColor": "rgb(255, 255, 255)",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          }
+        ],
+        "apply": {
+          "x": 902.515625,
+          "y": 716.03125,
+          "w": 100.484375,
+          "h": 32.890625,
+          "display": "flex",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderLeftWidth": "1px",
+          "paddingLeft": "12px",
+          "backgroundColor": "rgb(248, 248, 248)",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "title": "Настройки расчёта пиков",
+        "scrollable": {
+          "scrollWidth": 880,
+          "clientWidth": 688,
+          "scrollHeight": 256,
+          "clientHeight": 256
+        },
+        "pane": "№\tСигнал\tЦвет\tЗначение\tВремя, с\tМетка на графике\n1\tГармонический сигнал\t\t0.99631261\t0.0014648438\t1\n2\tГармонический сигнал\t\t0.99247953\t0.0068359375\t2\n3\tГармонический сигнал\t\t0.97570213\t0.012695313\t3\n4\tГармонический сигнал\t\t0.9999247\t0.018066406\t4\n5\tГармонический сигнал\t\t0.98078528\t0.0234375\t5\n6\tГармонический сигнал\t\t0.98917651\t0.029296875\t6\n7\tГармонический сигнал\t\t0.99811811\t0.034667969\t7\nНастройки расчёта пиков\nКоличество пиков\nМинимальная высота\nМинимальное расстояние, отсчёты\nПорог\nПрименить"
+      }
+    },
+    {
+      "name": "Peaks active-pane table rows/color/value/time/marker",
+      "status": "passed",
+      "detail": {
+        "rows": [
+          [
+            "1",
+            "Гармонический сигнал",
+            "",
+            "0.99631261",
+            "0.0014648438",
+            "1"
+          ],
+          [
+            "2",
+            "Гармонический сигнал",
+            "",
+            "0.99247953",
+            "0.0068359375",
+            "2"
+          ],
+          [
+            "3",
+            "Гармонический сигнал",
+            "",
+            "0.97570213",
+            "0.012695313",
+            "3"
+          ],
+          [
+            "4",
+            "Гармонический сигнал",
+            "",
+            "0.9999247",
+            "0.018066406",
+            "4"
+          ],
+          [
+            "5",
+            "Гармонический сигнал",
+            "",
+            "0.98078528",
+            "0.0234375",
+            "5"
+          ],
+          [
+            "6",
+            "Гармонический сигнал",
+            "",
+            "0.98917651",
+            "0.029296875",
+            "6"
+          ],
+          [
+            "7",
+            "Гармонический сигнал",
+            "",
+            "0.99811811",
+            "0.034667969",
+            "7"
+          ]
+        ],
+        "colors": [
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)"
+        ],
+        "pane": "№\tСигнал\tЦвет\tЗначение\tВремя, с\tМетка на графике\n1\tГармонический сигнал\t\t0.99631261\t0.0014648438\t1\n2\tГармонический сигнал\t\t0.99247953\t0.0068359375\t2\n3\tГармонический сигнал\t\t0.97570213\t0.012695313\t3\n4\tГармонический сигнал\t\t0.9999247\t0.018066406\t4\n5\tГармонический сигнал\t\t0.98078528\t0.0234375\t5\n6\tГармонический сигнал\t\t0.98917651\t0.029296875\t6\n7\tГармонический сигнал\t\t0.99811811\t0.034667969\t7\nНастройки расчёта пиков\nКоличество пиков\nМинимальная высота\nМинимальное расстояние, отсчёты\nПорог\nПрименить"
+      }
+    },
+    {
+      "name": "Peaks split geometry 1024x768",
+      "status": "passed",
+      "detail": {
+        "split": {
+          "x": 9,
+          "y": 611.390625,
+          "w": 1006,
+          "h": 147.59375,
+          "display": "flex",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderLeftWidth": "0px",
+          "paddingLeft": "0px",
+          "backgroundColor": "rgb(246, 248, 250)",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "table": {
+          "x": 9,
+          "y": 619.390625,
+          "w": 698,
+          "h": 139.59375,
+          "display": "block",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderLeftWidth": "0px",
+          "paddingLeft": "8px",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "scroll": {
+          "x": 17,
+          "y": 619.390625,
+          "w": 690,
+          "h": 257,
+          "display": "block",
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "borderLeftWidth": "1px",
+          "paddingLeft": "0px",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 715,
+          "y": 619.390625,
+          "w": 300,
+          "h": 139.59375,
+          "display": "grid",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderLeftWidth": "1px",
+          "paddingLeft": "0px",
+          "backgroundColor": "rgb(255, 255, 255)",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "headers": [
+          "№",
+          "Сигнал",
+          "Цвет",
+          "Значение",
+          "Время, с",
+          "Метка на графике"
+        ],
+        "rows": [
+          [
+            "1",
+            "Гармонический сигнал",
+            "",
+            "0.99631261",
+            "0.0014648438",
+            "1"
+          ],
+          [
+            "2",
+            "Гармонический сигнал",
+            "",
+            "0.99247953",
+            "0.0068359375",
+            "2"
+          ],
+          [
+            "3",
+            "Гармонический сигнал",
+            "",
+            "0.97570213",
+            "0.012695313",
+            "3"
+          ],
+          [
+            "4",
+            "Гармонический сигнал",
+            "",
+            "0.9999247",
+            "0.018066406",
+            "4"
+          ],
+          [
+            "5",
+            "Гармонический сигнал",
+            "",
+            "0.98078528",
+            "0.0234375",
+            "5"
+          ],
+          [
+            "6",
+            "Гармонический сигнал",
+            "",
+            "0.98917651",
+            "0.029296875",
+            "6"
+          ],
+          [
+            "7",
+            "Гармонический сигнал",
+            "",
+            "0.99811811",
+            "0.034667969",
+            "7"
+          ]
+        ],
+        "colors": [
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)",
+          "rgb(37, 99, 235)"
+        ],
+        "fields": [
+          {
+            "id": "number_of_peaks",
+            "label": "Количество пиков",
+            "value": "7",
+            "box": {
+              "x": 880,
+              "y": 673.390625,
+              "w": 119,
+              "h": 32,
+              "display": "inline-block",
+              "overflowX": "clip",
+              "overflowY": "clip",
+              "borderLeftWidth": "1px",
+              "paddingLeft": "8px",
+              "backgroundColor": "rgb(255, 255, 255)",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "minimum_height",
+            "label": "Минимальная высота",
+            "value": "−∞",
+            "box": {
+              "x": 880,
+              "y": 717.390625,
+              "w": 119,
+              "h": 32,
+              "display": "inline-block",
+              "overflowX": "clip",
+              "overflowY": "clip",
+              "borderLeftWidth": "1px",
+              "paddingLeft": "8px",
+              "backgroundColor": "rgb(255, 255, 255)",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "minimum_distance_samples",
+            "label": "Минимальное расстояние, отсчёты",
+            "value": "1",
+            "box": {
+              "x": 880,
+              "y": 761.390625,
+              "w": 119,
+              "h": 32,
+              "display": "inline-block",
+              "overflowX": "clip",
+              "overflowY": "clip",
+              "borderLeftWidth": "1px",
+              "paddingLeft": "8px",
+              "backgroundColor": "rgb(255, 255, 255)",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "threshold",
+            "label": "Порог",
+            "value": "0",
+            "box": {
+              "x": 880,
+              "y": 805.390625,
+              "w": 119,
+              "h": 32,
+              "display": "inline-block",
+              "overflowX": "clip",
+              "overflowY": "clip",
+              "borderLeftWidth": "1px",
+              "paddingLeft": "8px",
+              "backgroundColor": "rgb(255, 255, 255)",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          }
+        ],
+        "apply": {
+          "x": 902.515625,
+          "y": 716.03125,
+          "w": 100.484375,
+          "h": 32.890625,
+          "display": "flex",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderLeftWidth": "1px",
+          "paddingLeft": "12px",
+          "backgroundColor": "rgb(248, 248, 248)",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "title": "Настройки расчёта пиков",
+        "scrollable": {
+          "scrollWidth": 880,
+          "clientWidth": 688,
+          "scrollHeight": 256,
+          "clientHeight": 256
+        },
+        "pane": "№\tСигнал\tЦвет\tЗначение\tВремя, с\tМетка на графике\n1\tГармонический сигнал\t\t0.99631261\t0.0014648438\t1\n2\tГармонический сигнал\t\t0.99247953\t0.0068359375\t2\n3\tГармонический сигнал\t\t0.97570213\t0.012695313\t3\n4\tГармонический сигнал\t\t0.9999247\t0.018066406\t4\n5\tГармонический сигнал\t\t0.98078528\t0.0234375\t5\n6\tГармонический сигнал\t\t0.98917651\t0.029296875\t6\n7\tГармонический сигнал\t\t0.99811811\t0.034667969\t7\nНастройки расчёта пиков\nКоличество пиков\nМинимальная высота\nМинимальное расстояние, отсчёты\nПорог\nПрименить"
+      }
+    },
+    {
+      "name": "Peaks owned Plotly marker/text overlays without output refetch",
+      "status": "passed",
+      "detail": {
+        "baseBefore": {
+          "traceCount": 1,
+          "base": [
+            {
+              "i": 0,
+              "name": "Гармонический сигнал",
+              "overlay": false,
+              "mode": "lines",
+              "color": "#2563eb"
+            }
+          ],
+          "hostId": null
+        },
+        "baseAfter": {
+          "traceCount": 2,
+          "base": [
+            {
+              "i": 0,
+              "name": "Гармонический сигнал",
+              "overlay": false,
+              "mode": "lines",
+              "color": "#2563eb"
+            },
+            {
+              "i": 1,
+              "overlay": true,
+              "mode": "markers+text",
+              "color": "#2563eb"
+            }
+          ],
+          "hostId": null
+        },
+        "outputsBefore": 1,
+        "outputAfterOpen": 1
+      }
+    },
+    {
+      "name": "negative threshold locally blocks Apply with Russian message",
+      "status": "passed",
+      "detail": {
+        "invalid": true,
+        "invalidText": "Количество пиков\nМинимальная высота\nМинимальное расстояние, отсчёты\nПорог\nВведите число не меньше 0."
+      }
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-PEAKS-SPLIT/prototype-nearest-settings-layout-1024x768.png",
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "state": "closest v5 settings/inspector tokens + layout popover",
+      "selector": "[data-design-id=app-shell]",
+      "timestamp": "2026-08-11T07:27:50.569Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-PEAKS-SPLIT/production-peaks-split-1024x768.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "state": "peaks ready 1024x768",
+      "selector": "[data-testid=peaks-split]",
+      "timestamp": "2026-08-11T07:28:04.824Z"
+    }
+  ],
+  "console_errors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 ()",
+      "url": "https://engee.com/favicon.ico",
+      "line": 0
+    }
+  ],
+  "network": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200,
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET",
+      "type": "fetch"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "status": 200,
+      "method": "GET",
+      "type": "fetch"
+    }
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 0,
+  "preexisting_pages": [],
+  "chrome_activation": "ok",
+  "prototype": {
+    "dedicated_peaks_split": false,
+    "note": "User-directed split state is covered revision; it is not authored as a dedicated prototype screen.",
+    "closest_tokens": {
+      "shell": true,
+      "settings": true,
+      "footer": 54,
+      "field": 16,
+      "inspector": false
+    }
+  },
+  "status": {
+    "status": 200,
+    "body": {
+      "runtime_revision": "5be0f035c6f6816c21b3df099d955a09816532bd",
+      "project": "example_project",
+      "ready": true,
+      "ok": true
+    }
+  },
+  "baseline_state": {
+    "active_plot": "time"
+  }
+}

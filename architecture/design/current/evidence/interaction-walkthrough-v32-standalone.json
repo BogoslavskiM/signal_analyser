@@ -1,0 +1,64 @@
+{
+  "design_version": 32,
+  "prototype_entry": "prototype/index.html",
+  "protocol": "file://",
+  "passed": 9,
+  "failed": 0,
+  "runtime_errors": [],
+  "results": [
+    {
+      "id": "01-automatic-main-signal-sample-tab",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v32--automatic-main-signal-samples--1440x900.png"
+    },
+    {
+      "id": "02-values-only-focuses-existing-tab",
+      "passed": true,
+      "detail": null,
+      "screenshot": null
+    },
+    {
+      "id": "03-sample-rate-editable-dot-decimal",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v32--editable-sample-rate--1440x900.png"
+    },
+    {
+      "id": "04-jet-color-picker-draft-and-apply",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v32--jet-color-picker--1440x900.png"
+    },
+    {
+      "id": "05-overwrite-checkbox-visible-standard-row",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v32--operation-overwrite-checkbox--1440x900.png"
+    },
+    {
+      "id": "06-pane-type-change-focuses-area",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v32--pane-type-change-focuses-area--1440x900.png"
+    },
+    {
+      "id": "07-spectrum-extrema-settings-values-markers",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v32--spectrum-extrema-settings-values--1440x900.png"
+    },
+    {
+      "id": "08-spectrogram-hides-unsupported-extrema-tabs",
+      "passed": true,
+      "detail": null,
+      "screenshot": "screenshots/v32--spectrogram-hides-extrema-tabs--1440x900.png"
+    },
+    {
+      "id": "09-file-prototype-no-network-or-errors",
+      "passed": true,
+      "detail": null,
+      "screenshot": null
+    }
+  ]
+}

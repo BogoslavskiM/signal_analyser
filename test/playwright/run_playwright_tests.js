@@ -47,7 +47,7 @@ function relativeSpec(file) {
 
 function appUrlFromArgs() {
   const arg = process.argv.slice(2).find(function (item) {
-    return !["--help", "-h", "--current"].includes(item);
+    return !["--help", "-h", "--current"].includes(item) && !item.startsWith("--flag=");
   });
   return arg || process.env.PLAYWRIGHT_APP_URL || "";
 }
@@ -84,6 +84,18 @@ function enabledFeatures() {
 function requiredFeatures(test) {
   if (!Array.isArray(test.requiredFeatures)) return [];
   return test.requiredFeatures.map(String);
+}
+
+function requestedFlags() {
+  return String(process.env.E2E_FLAGS || "").split(",").map(function (flag) {
+    return flag.trim();
+  }).filter(Boolean);
+}
+
+function matchesRequestedFlags(test, flags) {
+  if (!flags.length) return true;
+  const declared = Array.isArray(test.scenarioFlags) ? test.scenarioFlags.map(String) : [];
+  return flags.some(function (flag) { return declared.includes(flag); });
 }
 
 function acquireRunnerLock(cdpUrl) {
@@ -174,11 +186,16 @@ async function currentPage(browser, urlMatch) {
   runnerLog.log(`Using page: ${page.url() || "(blank)"}`);
 
   const specFilter = process.env.PLAYWRIGHT_SPEC || "";
+  const flags = requestedFlags();
   const testFiles = findTests(specsDir).sort().filter(function (file) {
     return !specFilter || relativeSpec(file).includes(specFilter);
+  }).filter(function (file) {
+    if (!flags.length) return true;
+    const test = require(file);
+    return matchesRequestedFlags(test, flags);
   });
   if (!testFiles.length) {
-    throw new Error(`No Playwright specs matched PLAYWRIGHT_SPEC=${specFilter}`);
+    throw new Error(`No Playwright specs matched PLAYWRIGHT_SPEC=${specFilter} E2E_FLAGS=${flags.join(",")}`);
   }
 
   const features = enabledFeatures();
@@ -190,7 +207,7 @@ async function currentPage(browser, urlMatch) {
     throw new Error(`Unknown enabled features: ${unknownEnabled.join(", ")}`);
   }
   runnerLog.log(`Enabled features: ${Array.from(features).sort().join(", ") || "(core only)"}`);
-  runnerLog.log(`Discovered ${testFiles.length} spec file(s)`);
+  runnerLog.log(`Discovered ${testFiles.length} spec file(s); flags=${flags.join(",") || "(none)"}`);
 
   let passedCount = 0;
   let skippedCount = 0;

@@ -1,0 +1,22 @@
+{
+  "id": "latest-signal-measurements",
+  "checks": [
+    {
+      "n": "revision",
+      "p": true,
+      "d": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "4221a2008f678e7a3363ffaf43a39139c6dc1cd9",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    }
+  ],
+  "opened": 1,
+  "closed": 1,
+  "error": "TimeoutError: locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('signal-add-submit')\u001b[22m\n",
+  "cleanup": true
+}

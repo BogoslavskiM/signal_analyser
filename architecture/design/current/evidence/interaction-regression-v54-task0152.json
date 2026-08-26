@@ -1,0 +1,85 @@
+{
+  "design_version": 54,
+  "method": "bounded dual-cursor Time crop action/modal/exact canonical-seconds provider regression; no browser/Figma",
+  "passed": 6,
+  "failed": 0,
+  "results": [
+    {
+      "id": "114-header-action-eligibility",
+      "passed": true,
+      "detail": "<button class='pane-action icon-button' type='button' data-testid='pane-trim-signal' data-pane-trim-signal data-pane-trim-eligible='true' aria-label='Обрезать сигнал по курсорам' title='Обрезать сигнал по курсорам'><img src='./icons/function.svg' alt=''></button>"
+    },
+    {
+      "id": "115-exact-crop-payload-canonical-seconds",
+      "passed": true,
+      "detail": {
+        "state_revision": 17,
+        "source_signal_id": "signal-1",
+        "min_s": 1,
+        "max_s": 3,
+        "target_name": "Фрагмент",
+        "overwrite": true
+      }
+    },
+    {
+      "id": "116-modal-required-name-and-overwrite",
+      "passed": true,
+      "detail": "<div class='settings-field-row'><label class='settings-label'>Исходный сигнал</label><input type='text' readonly autocomplete='off' value='Исходный'></div><div class='settings-field-row'><label class='settings-label'>Интервал курсоров</label><input type='text' readonly autocomplete='off' value='1000 – 3000 ms'></div><div class='settings-field-row'><label class='settings-label' for='signal-trim-name'>Имя нового сигнала</label><input id='signal-trim-name' type='text' autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off' data-signal-trim-name aria-required='true'></div><label class='operation-overwrite-row'><input type='checkbox' data-signal-trim-overwrite><span>Затирать сигнал с таким именем</span></label><div class='operation-status' role='alert' aria-live='assertive' data-signal-trim-status hidden></div>"
+    },
+    {
+      "id": "119-modal-focus-source-and-cleanup-contract",
+      "passed": true,
+      "detail": {
+        "placement": "Existing compact pane-header action immediately before the plot-type selector/overflow; hidden rather than reserved whenever ineligible.",
+        "eligibility": "Time pane only, cursor mode dual, valid active-pane main signal and exactly two finite snapped cursor X values.",
+        "semantics": "Frontend sends sorted cursor bounds converted to canonical seconds. Backend validates/clamps the interval, takes inclusive samples, retains source sample rate/data type, rebases returned signal time origin to zero and never mutates the source.",
+        "modal": "Reuse the Signal operation dialog geometry, overwrite checkbox and busy continuity; focus new-name on open, trap focus, Escape/Cancel/close only while idle, restore opener on cancel/error close.",
+        "provider": "POST /api/signals/crop exact payload {state_revision,source_signal_id,min_s,max_s,target_name,overwrite} through the existing revision-safe signal mutation queue; accept the returned signal/inventory before closing success.",
+        "cleanup": "On pane removal/type change/main-signal loss/mode drop, hide the action; on owner removal call destroy() to invalidate stale submit, clear busy UI and detach the cursor subscription."
+      }
+    },
+    {
+      "id": "117-busy-stable-controls-and-success-inventory",
+      "passed": true,
+      "detail": [
+        "mount",
+        [
+          "busy",
+          true,
+          true
+        ],
+        [
+          "accept",
+          "signal-2"
+        ],
+        [
+          "busy",
+          false,
+          true
+        ],
+        [
+          "close",
+          true
+        ]
+      ]
+    },
+    {
+      "id": "118-typed-recoverable-error-keeps-dialog",
+      "passed": true,
+      "detail": [
+        [
+          "busy",
+          true
+        ],
+        [
+          "busy",
+          false
+        ],
+        [
+          "error",
+          "Сигнал с таким именем уже существует или данные изменились. Обновите имя и повторите."
+        ]
+      ]
+    }
+  ]
+}

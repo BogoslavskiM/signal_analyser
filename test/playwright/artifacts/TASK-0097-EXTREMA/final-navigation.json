@@ -1,0 +1,15 @@
+{
+  "mode": "maxima",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "preexisting": [],
+  "errors": [
+    "page.goto: Timeout 15000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\", waiting until \"commit\"\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0097_final_navigation.js:10:11"
+  ],
+  "tab_cleanup_status": "passed"
+}

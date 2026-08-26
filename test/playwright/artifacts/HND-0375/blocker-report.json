@@ -1,0 +1,31 @@
+{
+  "handoff_id": "HND-0375",
+  "mode": "new_functionality_regression",
+  "status": "blocked",
+  "timestamp_utc": "2026-08-06T10:37:22Z",
+  "production_url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "545bef2d6f5fbf76f32f6afb4bfe88f6a962e48c",
+  "browser": {
+    "channel": "chrome",
+    "headless": false,
+    "visibility": "foreground_requested",
+    "worker_count": 1,
+    "cdp_url": "http://127.0.0.1:9222"
+  },
+  "evidence": {
+    "chrome_activation": "completed",
+    "cdp_connect": "ECONNREFUSED 127.0.0.1:9222",
+    "listener_check": "no TCP LISTEN socket on port 9222",
+    "json_version": "connection refused"
+  },
+  "not_run": [
+    "prototype interaction map",
+    "production SHA/status verification",
+    "live Plotly readiness and gestures",
+    "five-zone visual comparison at required viewports",
+    "settings/Russian-label verification",
+    "popup-overlay priority, focus, hit-testing, restoration and plot-geometry matrix",
+    "quick regression"
+  ],
+  "requested_action": "Restore the already-visible Google Chrome CDP listener at 127.0.0.1:9222, then provide an Orchestrator continuation handoff."
+}

@@ -1,0 +1,90 @@
+{
+  "id": "HND-0662",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "5a7807635aafd2051dc6381c5c34d0d9d14dcc4e",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "exact ready revision",
+      "status": "passed",
+      "evidence": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "5a7807635aafd2051dc6381c5c34d0d9d14dcc4e",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "four Save choices visible in popup",
+      "status": "failed",
+      "evidence": {
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+        },
+        "z": "1100",
+        "opts": [],
+        "hit": false
+      }
+    }
+  ],
+  "network": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "status": 200,
+      "method": "GET",
+      "request": null,
+      "body": "{\"app_version\":\"5a7807635aafd2051dc6381c5c34d0d9d14dcc4e\",\"peaks_enabled\":false,\"active_plot\":\"time\",\"displays\":[{\"peaks_enabled\":false,\"active_plot\":\"time\",\"name\":\"Display 1\",\"spectrum_settings\":{\"frequency_scale\":\"linear\",\"leakage\":0.5,\"frequency_limits\":null,\"scale\":\"db\"},\"id\":\"display-1\",\"analysis_signal\":null,\"visible_signals\":[],\"spectrogram_settings\":{\"leakage\":0.5,\"overlap_percent\":50.0,\"frequency_limits\":null,\"frequency_scale\":\"linear\",\"power_limits\":null},\"selected_signal\":null,\"persistence_settings\":{\"leakage\":0.5},\"time_limits\":null,\"measurement_kinds\":[\"minimum\",\"maximum\",\"mean\"]}],\"spectrum_settings\":{\"frequency_scale\":\"linear\",\"leakage\":0.5,\"frequency_limits\":null,\"scale\":\"db\"},\"output_scheduling\":{\"max_concurrent_calculations\":1,\"scope\":\"active_display\",\"max_queued_outputs\":100},\"active_output\":{\"pane_id\":\"pane-1\",\"signal_bindings\":[],\"output\":{\"isready\":true,\"error\":\"\",\"success\":true,\"data\":[]},\"need_update\":false,\"isready\":true,\"analysis_signal\":null,\"context_key\":\"di"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200,
+      "method": "GET",
+      "request": null,
+      "body": "{\"runtime_revision\":\"5a7807635aafd2051dc6381c5c34d0d9d14dcc4e\",\"project\":\"example_project\",\"ready\":true,\"ok\":true}"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/settings?display_id=display-1",
+      "status": 200,
+      "method": "GET",
+      "request": null,
+      "body": "{\"groups\":[{\"label\":\"Display\",\"visible\":true,\"id\":\"display\"},{\"label\":\"Time\",\"visible\":true,\"id\":\"time\"},{\"label\":\"Spectrum\",\"visible\":false,\"id\":\"spectrum\"},{\"label\":\"Spectrogram\",\"visible\":false,\"id\":\"spectrogram\"},{\"label\":\"Persistence\",\"visible\":false,\"id\":\"persistence\"}],\"display_id\":\"display-1\",\"fields\":[{\"label\":\"Show legend\",\"effect_status\":\"effective_presentation\",\"step\":null,\"min\":null,\"control_kind\":\"checkbox\",\"id\":\"display.show_legend\",\"warning\":\"\",\"value\":true,\"visible\":true,\"default\":true,\"max\":null,\"error\":\"\",\"group\":\"display\",\"units\":\"\",\"kind\":\"boolean\",\"options\":[],\"checked_value\":null,\"section\":\"display.view\",\"unchecked_value\":null,\"enabled\":true,\"effect_reason\":\"\"},{\"label\":\"Normalize Y\",\"effect_status\":\"effective_presentation\",\"step\":null,\"min\":null,\"control_kind\":\"checkbox\",\"id\":\"time.normalize_y\",\"warning\":\"\",\"value\":false,\"visible\":true,\"default\":false,\"max\":null,\"error\":\"\",\"group\":\"time\",\"units\":\"\",\"kind\":\"boolean\",\"options\":[],\"checked_value\":null,\"section\":\"ti"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/save/options",
+      "status": 200,
+      "method": "GET",
+      "request": null,
+      "body": "{\"operations\":[{\"label\":\"Workspace\",\"file_extension\":null,\"id\":\"workspace\"},{\"label\":\"Julia Script\",\"file_extension\":\".jl\",\"id\":\"script\"},{\"label\":\"JLD2\",\"file_extension\":\".jld2\",\"id\":\"jld2\"},{\"label\":\"Session JLD2\",\"file_extension\":\".jld2\",\"id\":\"session\"}],\"root\":\"/user\",\"selected_signal\":\"Гармонический сигнал\",\"signal_names\":[\"Гармонический сигнал\"],\"ok\":true,\"state_revision\":0,\"scopes\":[\"signal\",\"library\",\"session\"],\"default_operation\":\"workspace\",\"defaults\":{\"overwrite\":false,\"workspace_library_prefix\":\"signal_\",\"session_target\":\"/user/signal-analyser-session.jld2\",\"script_library_target\":\"/user/signal_library.jl\",\"script_signal_target\":\"/user/signal.jl\",\"replace\":true,\"workspace_signal_target\":\"signal_signal\",\"jld2_signal_target\":\"/user/signal.jld2\",\"jld2_library_target\":\"/user/signal_library.jld2\"}}"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/api/v1/touch",
+      "status": 200,
+      "method": "POST",
+      "request": "{\"appid\":\"signal_analyser\"}",
+      "body": "{\"status\":\"found\"}"
+    }
+  ],
+  "screenshots": [],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "preexisting_page_count": 0,
+  "error": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('option', { name: 'Полная сессия JLD2 .jld2' })\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/hnd0662_short.cjs:4:1485",
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 2,
+    "passed": 1,
+    "failed": 1
+  }
+}

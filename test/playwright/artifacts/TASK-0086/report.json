@@ -1,0 +1,5841 @@
+{
+  "id": "HND-TASK-0086-E2E",
+  "e2e_mode": "new_functionality_regression + quick_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "0f8373d6d19357cd35b391094f6b77653f6acac0",
+  "revision_evidence": "DevOps exact-checkout deployment precondition (not a rendered-DOM assertion)",
+  "prototype": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+  "design_version": "5",
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "checks": [
+    {
+      "name": "prototype 1024x768 shell/settings/layout",
+      "status": "passed",
+      "detail": {
+        "shell": {
+          "x": 0,
+          "y": 0,
+          "w": 1024,
+          "h": 768,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "grid": {
+          "x": 1,
+          "y": 127,
+          "w": 714,
+          "h": 434.390625,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 724,
+          "y": 52,
+          "w": 300,
+          "h": 510.390625,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "x": 0,
+          "y": 570.390625,
+          "w": 1024,
+          "h": 197.59375,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 0,
+          "w": 1024,
+          "h": 44,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "layout": {
+          "x": 624.84375,
+          "y": 95,
+          "w": 90.15625,
+          "h": 32,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "apply": {
+          "x": 904.515625,
+          "y": 516.953125,
+          "w": 108.484375,
+          "h": 34.890625,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "body": {
+          "sw": 1024,
+          "sh": 768,
+          "cw": 1024,
+          "ch": 768
+        },
+        "texts": [
+          "Анализатор сигналов",
+          "Версия 0.1.0",
+          "Отображение сигналов",
+          "Экран 1",
+          "1 × 1",
+          "Область 1",
+          "Временная область",
+          "0",
+          "2",
+          "4",
+          "6",
+          "8",
+          "10",
+          "−1",
+          "−0.5",
+          "0",
+          "0.5",
+          "1",
+          "Гармонический сигнал",
+          "Время, s",
+          "Амплитуда",
+          "Настройки отображения",
+          "Область 1 · Временная область",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Параметры",
+          "Нормировать Y",
+          "Показывать маркеры",
+          "Пределы времени",
+          "Единицы времени",
+          "s",
+          "Пределы X",
+          "s",
+          "Пределы оси Y",
+          "Пределы Y",
+          "Связь экранов",
+          "Связать время",
+          "Доступно при нескольких экранах.",
+          "Применить",
+          "Сигналы",
+          "Измерения",
+          "Пики",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Гармонический сигнал",
+          "2 048 Hz",
+          "512",
+          "250 ms",
+          "Вещественный",
+          "Сигналы не найдены",
+          "Очистить область",
+          "Управление графиком",
+          "Перетаскивать график: Shift + ЛКМ",
+          "Автомасштабирование: двойной клик",
+          "Зум: зажать ЛКМ и выделить область",
+          "Макет экрана",
+          
+          "Строки",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "Столбцы",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "Макет не рекомендуется",
+          "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+          "Отмена",
+          "Применить",
+          "Настройки применены",
+          "×",
+          "Изменить макет",
+          "Добавление сигналов",
+          "Выберите поддерживаемые переменные из рабочей области.",
+          "radarPulse",
+          "Временной ряд · 12 000 отсчётов",
+          "echoComplex",
+          "Комплексный массив · 8 192 отсчёта",
+          "comment",
+          "Строка · неподдерживаемый тип",
+          "Hz",
+          "Требуется для raw-массивов без временной шкалы.",
+          "Отмена",
+          "Добавить",
+          "Закрыть без добавления?",
+          "Выбранные сигналы не будут добавлены.",
+          "Остаться",
+          "Закрыть",
+          "Удалить экран?",
+          "Экран и его текущий макет будут удалены.",
+          "Отмена",
+          "Удалить"
+        ],
+        "font": "Roboto, Arial, sans-serif",
+        "displays": [
+          "Экран 1",
+          "Экран 1",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Сигналы",
+          "Измерения",
+          "Пики"
+        ],
+        "signals": [
+          "Гармонический сигнал2 048 Hz512250 msВещественный"
+        ],
+        "plots": [
+          {
+            "text": "Область 1Временная область0246810−1−0.500.51Гармонический сигналВремя, sАмплитуда",
+            "box": {
+              "w": 698,
+              "h": 418.390625
+            }
+          }
+        ],
+        "plotly": 1,
+        "modebar": 0
+      }
+    },
+    {
+      "name": "prototype 1280x720 shell/settings/layout",
+      "status": "passed",
+      "detail": {
+        "shell": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 720,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "grid": {
+          "x": 1,
+          "y": 127,
+          "w": 952,
+          "h": 396,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 962,
+          "y": 52,
+          "w": 318,
+          "h": 472,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "x": 0,
+          "y": 532,
+          "w": 1280,
+          "h": 188,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 44,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "layout": {
+          "x": 862.84375,
+          "y": 95,
+          "w": 90.15625,
+          "h": 32,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "apply": {
+          "x": 1160.515625,
+          "y": 478.5625,
+          "w": 108.484375,
+          "h": 34.890625,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "body": {
+          "sw": 1280,
+          "sh": 720,
+          "cw": 1280,
+          "ch": 720
+        },
+        "texts": [
+          "Анализатор сигналов",
+          "Версия 0.1.0",
+          "Отображение сигналов",
+          "Экран 1",
+          "1 × 1",
+          "Область 1",
+          "Временная область",
+          "0",
+          "2",
+          "4",
+          "6",
+          "8",
+          "10",
+          "−1",
+          "−0.5",
+          "0",
+          "0.5",
+          "1",
+          "Гармонический сигнал",
+          "Время, s",
+          "Амплитуда",
+          "Настройки отображения",
+          "Область 1 · Временная область",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Параметры",
+          "Нормировать Y",
+          "Показывать маркеры",
+          "Пределы времени",
+          "Единицы времени",
+          "s",
+          "Пределы X",
+          "s",
+          "Пределы оси Y",
+          "Пределы Y",
+          "Связь экранов",
+          "Связать время",
+          "Доступно при нескольких экранах.",
+          "Применить",
+          "Сигналы",
+          "Измерения",
+          "Пики",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Гармонический сигнал",
+          "2 048 Hz",
+          "512",
+          "250 ms",
+          "Вещественный",
+          "Сигналы не найдены",
+          "Очистить область",
+          "Управление графиком",
+          "Перетаскивать график: Shift + ЛКМ",
+          "Автомасштабирование: двойной клик",
+          "Зум: зажать ЛКМ и выделить область",
+          "Макет экрана",
+          
+          "Строки",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "Столбцы",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "Макет не рекомендуется",
+          "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+          "Отмена",
+          "Применить",
+          "Настройки применены",
+          "×",
+          "Изменить макет",
+          "Добавление сигналов",
+          "Выберите поддерживаемые переменные из рабочей области.",
+          "radarPulse",
+          "Временной ряд · 12 000 отсчётов",
+          "echoComplex",
+          "Комплексный массив · 8 192 отсчёта",
+          "comment",
+          "Строка · неподдерживаемый тип",
+          "Hz",
+          "Требуется для raw-массивов без временной шкалы.",
+          "Отмена",
+          "Добавить",
+          "Закрыть без добавления?",
+          "Выбранные сигналы не будут добавлены.",
+          "Остаться",
+          "Закрыть",
+          "Удалить экран?",
+          "Экран и его текущий макет будут удалены.",
+          "Отмена",
+          "Удалить"
+        ],
+        "font": "Roboto, Arial, sans-serif",
+        "displays": [
+          "Экран 1",
+          "Экран 1",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Сигналы",
+          "Измерения",
+          "Пики"
+        ],
+        "signals": [
+          "Гармонический сигнал2 048 Hz512250 msВещественный"
+        ],
+        "plots": [
+          {
+            "text": "Область 1Временная область0246810−1−0.500.51Гармонический сигналВремя, sАмплитуда",
+            "box": {
+              "w": 936,
+              "h": 380
+            }
+          }
+        ],
+        "plotly": 1,
+        "modebar": 0
+      }
+    },
+    {
+      "name": "prototype 1440x900 shell/settings/layout",
+      "status": "passed",
+      "detail": {
+        "shell": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "grid": {
+          "x": 1,
+          "y": 127,
+          "w": 1072,
+          "h": 540,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 1082,
+          "y": 52,
+          "w": 358,
+          "h": 616,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "x": 0,
+          "y": 676,
+          "w": 1440,
+          "h": 224,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 44,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "layout": {
+          "x": 982.84375,
+          "y": 95,
+          "w": 90.15625,
+          "h": 32,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "apply": {
+          "x": 1320.515625,
+          "y": 622.5625,
+          "w": 108.484375,
+          "h": 34.890625,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "body": {
+          "sw": 1440,
+          "sh": 900,
+          "cw": 1440,
+          "ch": 900
+        },
+        "texts": [
+          "Анализатор сигналов",
+          "Версия 0.1.0",
+          "Отображение сигналов",
+          "Экран 1",
+          "1 × 1",
+          "Область 1",
+          "Временная область",
+          "0",
+          "2",
+          "4",
+          "6",
+          "8",
+          "10",
+          "−1",
+          "−0.5",
+          "0",
+          "0.5",
+          "1",
+          "Гармонический сигнал",
+          "Время, s",
+          "Амплитуда",
+          "Настройки отображения",
+          "Область 1 · Временная область",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Параметры",
+          "Нормировать Y",
+          "Показывать маркеры",
+          "Пределы времени",
+          "Единицы времени",
+          "s",
+          "Пределы X",
+          "s",
+          "Пределы оси Y",
+          "Пределы Y",
+          "Связь экранов",
+          "Связать время",
+          "Доступно при нескольких экранах.",
+          "Применить",
+          "Сигналы",
+          "Измерения",
+          "Пики",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Гармонический сигнал",
+          "2 048 Hz",
+          "512",
+          "250 ms",
+          "Вещественный",
+          "Сигналы не найдены",
+          "Очистить область",
+          "Управление графиком",
+          "Перетаскивать график: Shift + ЛКМ",
+          "Автомасштабирование: двойной клик",
+          "Зум: зажать ЛКМ и выделить область",
+          "Макет экрана",
+          
+          "Строки",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "Столбцы",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7",
+          "8",
+          "9",
+          "10",
+          "Макет не рекомендуется",
+          "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+          "Отмена",
+          "Применить",
+          "Настройки применены",
+          "×",
+          "Изменить макет",
+          "Добавление сигналов",
+          "Выберите поддерживаемые переменные из рабочей области.",
+          "radarPulse",
+          "Временной ряд · 12 000 отсчётов",
+          "echoComplex",
+          "Комплексный массив · 8 192 отсчёта",
+          "comment",
+          "Строка · неподдерживаемый тип",
+          "Hz",
+          "Требуется для raw-массивов без временной шкалы.",
+          "Отмена",
+          "Добавить",
+          "Закрыть без добавления?",
+          "Выбранные сигналы не будут добавлены.",
+          "Остаться",
+          "Закрыть",
+          "Удалить экран?",
+          "Экран и его текущий макет будут удалены.",
+          "Отмена",
+          "Удалить"
+        ],
+        "font": "Roboto, Arial, sans-serif",
+        "displays": [
+          "Экран 1",
+          "Экран 1",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Сигналы",
+          "Измерения",
+          "Пики"
+        ],
+        "signals": [
+          "Гармонический сигнал2 048 Hz512250 msВещественный"
+        ],
+        "plots": [
+          {
+            "text": "Область 1Временная область0246810−1−0.500.51Гармонический сигналВремя, sАмплитуда",
+            "box": {
+              "w": 1056,
+              "h": 524
+            }
+          }
+        ],
+        "plotly": 1,
+        "modebar": 0
+      }
+    },
+    {
+      "name": "prototype sizing 920x680",
+      "status": "passed",
+      "detail": {
+        "sw": 920,
+        "sh": 680,
+        "cw": 920,
+        "ch": 680
+      }
+    },
+    {
+      "name": "prototype sizing 840x620",
+      "status": "passed",
+      "detail": {
+        "sw": 920,
+        "sh": 680,
+        "cw": 840,
+        "ch": 620
+      }
+    },
+    {
+      "name": "availability",
+      "status": "passed",
+      "detail": {
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+        "bootstrap_terminal": {
+          "loader_present": true,
+          "plotly_hosts": 0,
+          "plot_grid_present": true
+        }
+      }
+    },
+    {
+      "name": "expected revision deployment precondition",
+      "status": "passed",
+      "detail": {
+        "expected_revision": "0f8373d6d19357cd35b391094f6b77653f6acac0",
+        "authority": "DevOps exact-checkout deployment precondition (not a rendered-DOM assertion)"
+      }
+    },
+    {
+      "name": "production sizing 1024x768",
+      "status": "passed",
+      "detail": {
+        "shell": {
+          "x": 0,
+          "y": 0,
+          "w": 1024,
+          "h": 768,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "grid": {
+          "x": 1,
+          "y": 127,
+          "w": 714,
+          "h": 434.390625,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 724,
+          "y": 52,
+          "w": 300,
+          "h": 510.390625,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "x": 0,
+          "y": 570.390625,
+          "w": 1024,
+          "h": 197.59375,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 0,
+          "w": 1024,
+          "h": 44,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "layout": {
+          "x": 624.84375,
+          "y": 95,
+          "w": 90.15625,
+          "h": 32,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "apply": {
+          "x": 904.515625,
+          "y": 516.953125,
+          "w": 108.484375,
+          "h": 34.890625,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "body": {
+          "sw": 1024,
+          "sh": 768,
+          "cw": 1024,
+          "ch": 768
+        },
+        "texts": [
+          "Анализатор сигналов",
+          "Версия 0.1.0",
+          "Отображение сигналов",
+          "Экран 1",
+          "1 × 1",
+          "Область 1",
+          "Временная область",
+          "Спектр",
+          "Спектрограмма",
+          "Спектр персистентности",
+          "Настройки отображения",
+          "Область 1 · Временная область",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Отображение",
+          "Показывать легенду",
+          "Время",
+          "Нормировать Y",
+          "Показывать маркеры",
+          "Единицы времени",
+          "ps",
+          "ns",
+          "μs",
+          "ms",
+          "s",
+          "мин",
+          "ч",
+          "дни",
+          "годы",
+          "Пределы X",
+          "s",
+          "Пределы Y",
+          "Применить",
+          "Сигналы",
+          "Измерения",
+          "Пики",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Гармонический сигнал",
+          "2048",
+          "512",
+          "0.24951171875",
+          "Вещественный",
+          "Сигналы не найдены",
+          "Очистить область",
+          "Управление графиком",
+          "Перетаскивать график: Shift + ЛКМ",
+          "Автомасштабирование: двойной клик",
+          "Зум: зажать ЛКМ и выделить область",
+          "Видимость столбцов",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Макет экрана",
+          
+          "Строки",
+          "Столбцы",
+          "Макет не рекомендуется",
+          "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+          "Отмена",
+          "Применить",
+          "Настройки применены",
+          "×",
+          "Загрузка…",
+          "Повторить"
+        ],
+        "font": "Roboto, Arial, sans-serif",
+        "displays": [
+          "Экран 1",
+          "Экран 1",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Сигналы",
+          "Измерения",
+          "Пики"
+        ],
+        "signals": [
+          "Гармонический сигнал20485120.24951171875Вещественный"
+        ],
+        "plots": [
+          {
+            "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности",
+            "box": {
+              "w": 698,
+              "h": 418.390625
+            }
+          }
+        ],
+        "plotly": 0,
+        "modebar": 0
+      }
+    },
+    {
+      "name": "production sizing 1280x720",
+      "status": "passed",
+      "detail": {
+        "shell": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 720,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "grid": {
+          "x": 1,
+          "y": 127,
+          "w": 952,
+          "h": 396,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 962,
+          "y": 52,
+          "w": 318,
+          "h": 472,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "x": 0,
+          "y": 532,
+          "w": 1280,
+          "h": 188,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 0,
+          "w": 1280,
+          "h": 44,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "layout": {
+          "x": 862.84375,
+          "y": 95,
+          "w": 90.15625,
+          "h": 32,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "apply": {
+          "x": 1160.515625,
+          "y": 478.5625,
+          "w": 108.484375,
+          "h": 34.890625,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "body": {
+          "sw": 1280,
+          "sh": 720,
+          "cw": 1280,
+          "ch": 720
+        },
+        "texts": [
+          "Анализатор сигналов",
+          "Версия 0.1.0",
+          "Отображение сигналов",
+          "Экран 1",
+          "1 × 1",
+          "Область 1",
+          "Временная область",
+          "Спектр",
+          "Спектрограмма",
+          "Спектр персистентности",
+          "Настройки отображения",
+          "Область 1 · Временная область",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Отображение",
+          "Показывать легенду",
+          "Время",
+          "Нормировать Y",
+          "Показывать маркеры",
+          "Единицы времени",
+          "ps",
+          "ns",
+          "μs",
+          "ms",
+          "s",
+          "мин",
+          "ч",
+          "дни",
+          "годы",
+          "Пределы X",
+          "s",
+          "Пределы Y",
+          "Применить",
+          "Сигналы",
+          "Измерения",
+          "Пики",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Гармонический сигнал",
+          "2048",
+          "512",
+          "0.24951171875",
+          "Вещественный",
+          "Сигналы не найдены",
+          "Очистить область",
+          "Управление графиком",
+          "Перетаскивать график: Shift + ЛКМ",
+          "Автомасштабирование: двойной клик",
+          "Зум: зажать ЛКМ и выделить область",
+          "Видимость столбцов",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Макет экрана",
+          
+          "Строки",
+          "Столбцы",
+          "Макет не рекомендуется",
+          "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+          "Отмена",
+          "Применить",
+          "Настройки применены",
+          "×",
+          "Загрузка…",
+          "Повторить"
+        ],
+        "font": "Roboto, Arial, sans-serif",
+        "displays": [
+          "Экран 1",
+          "Экран 1",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Сигналы",
+          "Измерения",
+          "Пики"
+        ],
+        "signals": [
+          "Гармонический сигнал20485120.24951171875Вещественный"
+        ],
+        "plots": [
+          {
+            "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности",
+            "box": {
+              "w": 936,
+              "h": 380
+            }
+          }
+        ],
+        "plotly": 0,
+        "modebar": 0
+      }
+    },
+    {
+      "name": "production sizing 1440x900",
+      "status": "passed",
+      "detail": {
+        "shell": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "grid": {
+          "x": 1,
+          "y": 127,
+          "w": 1072,
+          "h": 540,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 1082,
+          "y": 52,
+          "w": 358,
+          "h": 616,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "x": 0,
+          "y": 676,
+          "w": 1440,
+          "h": 224,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 44,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "layout": {
+          "x": 982.84375,
+          "y": 95,
+          "w": 90.15625,
+          "h": 32,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "apply": {
+          "x": 1320.515625,
+          "y": 622.5625,
+          "w": 108.484375,
+          "h": 34.890625,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "body": {
+          "sw": 1440,
+          "sh": 900,
+          "cw": 1440,
+          "ch": 900
+        },
+        "texts": [
+          "Анализатор сигналов",
+          "Версия 0.1.0",
+          "Отображение сигналов",
+          "Экран 1",
+          "1 × 1",
+          "Область 1",
+          "Временная область",
+          "Спектр",
+          "Спектрограмма",
+          "Спектр персистентности",
+          "0",
+          "0.05",
+          "0.1",
+          "0.15",
+          "0.2",
+          "−1",
+          "−0.5",
+          "0",
+          "0.5",
+          "1",
+          "Время, с",
+          "Амплитуда",
+          "Настройки отображения",
+          "Область 1 · Временная область",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Отображение",
+          "Показывать легенду",
+          "Время",
+          "Нормировать Y",
+          "Показывать маркеры",
+          "Единицы времени",
+          "ps",
+          "ns",
+          "μs",
+          "ms",
+          "s",
+          "мин",
+          "ч",
+          "дни",
+          "годы",
+          "Пределы X",
+          "s",
+          "Пределы Y",
+          "Применить",
+          "Сигналы",
+          "Измерения",
+          "Пики",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Гармонический сигнал",
+          "2048",
+          "512",
+          "0.24951171875",
+          "Вещественный",
+          "Сигналы не найдены",
+          "Очистить область",
+          "Управление графиком",
+          "Перетаскивать график: Shift + ЛКМ",
+          "Автомасштабирование: двойной клик",
+          "Зум: зажать ЛКМ и выделить область",
+          "Видимость столбцов",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Макет экрана",
+          
+          "Строки",
+          "Столбцы",
+          "Макет не рекомендуется",
+          "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+          "Отмена",
+          "Применить",
+          "Настройки применены",
+          "×",
+          "Загрузка…",
+          "Повторить"
+        ],
+        "font": "Roboto, Arial, sans-serif",
+        "displays": [
+          "Экран 1",
+          "Экран 1",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Сигналы",
+          "Измерения",
+          "Пики"
+        ],
+        "signals": [
+          "Гармонический сигнал20485120.24951171875Вещественный"
+        ],
+        "plots": [
+          {
+            "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности00.050.10.150.2−1−0.500.51Время, сАмплитуда",
+            "box": {
+              "w": 1056,
+              "h": 524
+            }
+          }
+        ],
+        "plotly": 1,
+        "modebar": 0
+      }
+    },
+    {
+      "name": "production sizing 920x680",
+      "status": "passed",
+      "detail": {
+        "shell": {
+          "x": 0,
+          "y": 0,
+          "w": 920,
+          "h": 680,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "grid": {
+          "x": 1,
+          "y": 127,
+          "w": 610,
+          "h": 364,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 620,
+          "y": 52,
+          "w": 300,
+          "h": 440,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "x": 0,
+          "y": 500,
+          "w": 920,
+          "h": 180,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 0,
+          "w": 920,
+          "h": 44,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "layout": {
+          "x": 520.84375,
+          "y": 95,
+          "w": 90.15625,
+          "h": 32,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "apply": {
+          "x": 800.515625,
+          "y": 446.5625,
+          "w": 108.484375,
+          "h": 34.890625,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "body": {
+          "sw": 920,
+          "sh": 680,
+          "cw": 920,
+          "ch": 680
+        },
+        "texts": [
+          "Анализатор сигналов",
+          "Версия 0.1.0",
+          "Отображение сигналов",
+          "Экран 1",
+          "1 × 1",
+          "Область 1",
+          "Временная область",
+          "Спектр",
+          "Спектрограмма",
+          "Спектр персистентности",
+          "0",
+          "0.05",
+          "0.1",
+          "0.15",
+          "0.2",
+          "−1",
+          "−0.5",
+          "0",
+          "0.5",
+          "1",
+          "Время, с",
+          "Амплитуда",
+          "Настройки отображения",
+          "Область 1 · Временная область",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Отображение",
+          "Показывать легенду",
+          "Время",
+          "Нормировать Y",
+          "Показывать маркеры",
+          "Единицы времени",
+          "ps",
+          "ns",
+          "μs",
+          "ms",
+          "s",
+          "мин",
+          "ч",
+          "дни",
+          "годы",
+          "Пределы X",
+          "s",
+          "Пределы Y",
+          "Применить",
+          "Сигналы",
+          "Измерения",
+          "Пики",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Гармонический сигнал",
+          "2048",
+          "512",
+          "0.24951171875",
+          "Вещественный",
+          "Сигналы не найдены",
+          "Очистить область",
+          "Управление графиком",
+          "Перетаскивать график: Shift + ЛКМ",
+          "Автомасштабирование: двойной клик",
+          "Зум: зажать ЛКМ и выделить область",
+          "Видимость столбцов",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Макет экрана",
+          
+          "Строки",
+          "Столбцы",
+          "Макет не рекомендуется",
+          "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+          "Отмена",
+          "Применить",
+          "Настройки применены",
+          "×",
+          "Загрузка…",
+          "Повторить"
+        ],
+        "font": "Roboto, Arial, sans-serif",
+        "displays": [
+          "Экран 1",
+          "Экран 1",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Сигналы",
+          "Измерения",
+          "Пики"
+        ],
+        "signals": [
+          "Гармонический сигнал20485120.24951171875Вещественный"
+        ],
+        "plots": [
+          {
+            "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности00.050.10.150.2−1−0.500.51Время, сАмплитуда",
+            "box": {
+              "w": 594,
+              "h": 348
+            }
+          }
+        ],
+        "plotly": 1,
+        "modebar": 0
+      }
+    },
+    {
+      "name": "production sizing 840x620",
+      "status": "passed",
+      "detail": {
+        "shell": {
+          "x": 0,
+          "y": 0,
+          "w": 920,
+          "h": 680,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "grid": {
+          "x": 1,
+          "y": 127,
+          "w": 610,
+          "h": 364,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 620,
+          "y": 52,
+          "w": 300,
+          "h": 440,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "x": 0,
+          "y": 500,
+          "w": 920,
+          "h": 180,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 0,
+          "w": 920,
+          "h": 44,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "layout": {
+          "x": 520.84375,
+          "y": 95,
+          "w": 90.15625,
+          "h": 32,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "apply": {
+          "x": 800.515625,
+          "y": 446.5625,
+          "w": 108.484375,
+          "h": 34.890625,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "body": {
+          "sw": 920,
+          "sh": 680,
+          "cw": 840,
+          "ch": 620
+        },
+        "texts": [
+          "Анализатор сигналов",
+          "Версия 0.1.0",
+          "Отображение сигналов",
+          "Экран 1",
+          "1 × 1",
+          "Область 1",
+          "Временная область",
+          "Спектр",
+          "Спектрограмма",
+          "Спектр персистентности",
+          "0",
+          "0.05",
+          "0.1",
+          "0.15",
+          "0.2",
+          "−1",
+          "−0.5",
+          "0",
+          "0.5",
+          "1",
+          "Время, с",
+          "Амплитуда",
+          "Настройки отображения",
+          "Область 1 · Временная область",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Отображение",
+          "Показывать легенду",
+          "Время",
+          "Нормировать Y",
+          "Показывать маркеры",
+          "Единицы времени",
+          "ps",
+          "ns",
+          "μs",
+          "ms",
+          "s",
+          "мин",
+          "ч",
+          "дни",
+          "годы",
+          "Пределы X",
+          "s",
+          "Пределы Y",
+          "Применить",
+          "Сигналы",
+          "Измерения",
+          "Пики",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Гармонический сигнал",
+          "2048",
+          "512",
+          "0.24951171875",
+          "Вещественный",
+          "Сигналы не найдены",
+          "Очистить область",
+          "Управление графиком",
+          "Перетаскивать график: Shift + ЛКМ",
+          "Автомасштабирование: двойной клик",
+          "Зум: зажать ЛКМ и выделить область",
+          "Видимость столбцов",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Макет экрана",
+          
+          "Строки",
+          "Столбцы",
+          "Макет не рекомендуется",
+          "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+          "Отмена",
+          "Применить",
+          "Настройки применены",
+          "×",
+          "Загрузка…",
+          "Повторить"
+        ],
+        "font": "Roboto, Arial, sans-serif",
+        "displays": [
+          "Экран 1",
+          "Экран 1",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Сигналы",
+          "Измерения",
+          "Пики"
+        ],
+        "signals": [
+          "Гармонический сигнал20485120.24951171875Вещественный"
+        ],
+        "plots": [
+          {
+            "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности00.050.10.150.2−1−0.500.51Время, сАмплитуда",
+            "box": {
+              "w": 594,
+              "h": 348
+            }
+          }
+        ],
+        "plotly": 1,
+        "modebar": 0
+      }
+    },
+    {
+      "name": "v5 shell has settings and single default harmonic signal",
+      "status": "passed",
+      "detail": {
+        "shell": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 900,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "grid": {
+          "x": 1,
+          "y": 127,
+          "w": 1072,
+          "h": 540,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settings": {
+          "x": 1082,
+          "y": 52,
+          "w": 358,
+          "h": 616,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "x": 0,
+          "y": 676,
+          "w": 1440,
+          "h": 224,
+          "display": "grid",
+          "position": "static",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "toolbar": {
+          "x": 0,
+          "y": 0,
+          "w": 1440,
+          "h": 44,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "layout": {
+          "x": 982.84375,
+          "y": 95,
+          "w": 90.15625,
+          "h": 32,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "apply": {
+          "x": 1320.515625,
+          "y": 622.5625,
+          "w": 108.484375,
+          "h": 34.890625,
+          "display": "flex",
+          "position": "static",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "body": {
+          "sw": 1440,
+          "sh": 900,
+          "cw": 1440,
+          "ch": 900
+        },
+        "texts": [
+          "Анализатор сигналов",
+          "Версия 0.1.0",
+          "Отображение сигналов",
+          "Экран 1",
+          "1 × 1",
+          "Область 1",
+          "Временная область",
+          "Спектр",
+          "Спектрограмма",
+          "Спектр персистентности",
+          "0",
+          "0.05",
+          "0.1",
+          "0.15",
+          "0.2",
+          "−1",
+          "−0.5",
+          "0",
+          "0.5",
+          "1",
+          "Время, с",
+          "Амплитуда",
+          "Настройки отображения",
+          "Область 1 · Временная область",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Отображение",
+          "Показывать легенду",
+          "Время",
+          "Нормировать Y",
+          "Показывать маркеры",
+          "Единицы времени",
+          "ps",
+          "ns",
+          "μs",
+          "ms",
+          "s",
+          "мин",
+          "ч",
+          "дни",
+          "годы",
+          "Пределы X",
+          "s",
+          "Пределы Y",
+          "Применить",
+          "Сигналы",
+          "Измерения",
+          "Пики",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Гармонический сигнал",
+          "2048",
+          "512",
+          "0.24951171875",
+          "Вещественный",
+          "Сигналы не найдены",
+          "Очистить область",
+          "Управление графиком",
+          "Перетаскивать график: Shift + ЛКМ",
+          "Автомасштабирование: двойной клик",
+          "Зум: зажать ЛКМ и выделить область",
+          "Видимость столбцов",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          "Макет экрана",
+          
+          "Строки",
+          "Столбцы",
+          "Макет не рекомендуется",
+          "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+          "Отмена",
+          "Применить",
+          "Настройки применены",
+          "×",
+          "Загрузка…",
+          "Повторить"
+        ],
+        "font": "Roboto, Arial, sans-serif",
+        "displays": [
+          "Экран 1",
+          "Экран 1",
+          "Отображение",
+          "Время",
+          "Измерения",
+          "Сигналы",
+          "Измерения",
+          "Пики"
+        ],
+        "signals": [
+          "Гармонический сигнал20485120.24951171875Вещественный"
+        ],
+        "plots": [
+          {
+            "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности00.050.10.150.2−1−0.500.51Время, сАмплитуда",
+            "box": {
+              "w": 1056,
+              "h": 524
+            }
+          }
+        ],
+        "plotly": 1,
+        "modebar": 0
+      }
+    },
+    {
+      "name": "layout trigger is live 1×1",
+      "status": "passed",
+      "detail": {
+        "x": 982.84375,
+        "y": 95,
+        "w": 90.15625,
+        "h": 32,
+        "display": "flex",
+        "position": "static",
+        "overflowX": "visible",
+        "overflowY": "visible",
+        "borderRadius": "0px",
+        "fontFamily": "Roboto, Arial, sans-serif"
+      }
+    },
+    {
+      "name": "native Plotly/no modebar",
+      "status": "passed",
+      "detail": {
+        "plotly": 1,
+        "modebar": 0
+      }
+    },
+    {
+      "name": "layout overlay focus/hit",
+      "status": "passed",
+      "detail": {
+        "focus": "<button class=\"layout-trigger\" type=\"button\" data-testid=\"layout-trigger\" aria-haspopup=\"dialog\" aria-controls=\"layout-popover\" aria-expanded=\"true\" aria-label=\"Изменить макет, текущий макет 1 на 1\" d",
+        "hit": "<span class=\"layout-current\">1 × 1</span>",
+        "dialog": [
+          0,
+          372
+        ],
+        "layout_apply_actions": 1
+      }
+    },
+    {
+      "name": "layout popover has its separate Apply action",
+      "status": "passed",
+      "detail": {
+        "focus": "<button class=\"layout-trigger\" type=\"button\" data-testid=\"layout-trigger\" aria-haspopup=\"dialog\" aria-controls=\"layout-popover\" aria-expanded=\"true\" aria-label=\"Изменить макет, текущий макет 1 на 1\" d",
+        "hit": "<span class=\"layout-current\">1 × 1</span>",
+        "dialog": [
+          0,
+          372
+        ],
+        "layout_apply_actions": 1
+      }
+    },
+    {
+      "name": "single settings Apply control",
+      "status": "passed",
+      "detail": {
+        "count": 1,
+        "disabled": true
+      }
+    },
+    {
+      "name": "v5 settings is one complete localized menu without object serialization",
+      "status": "passed",
+      "detail": {
+        "settings": {
+          "w": 358,
+          "h": 616,
+          "x": 1082,
+          "y": 52,
+          "display": "grid",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "w": 1440,
+          "h": 224,
+          "x": 0,
+          "y": 676,
+          "display": "grid",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settingsParts": [
+          {
+            "id": "settings-heading",
+            "count": 1,
+            "box": {
+              "w": 356,
+              "h": 42,
+              "x": 1083,
+              "y": 53,
+              "display": "flex",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "settings-tabs",
+            "count": 1,
+            "box": {
+              "w": 356,
+              "h": 32,
+              "x": 1083,
+              "y": 95,
+              "display": "flex",
+              "overflowY": "auto",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "settings-content",
+            "count": 1,
+            "box": {
+              "w": 356,
+              "h": 486,
+              "x": 1083,
+              "y": 127,
+              "display": "block",
+              "overflowY": "auto",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "settings-footer",
+            "count": 1,
+            "box": {
+              "w": 356,
+              "h": 54,
+              "x": 1083,
+              "y": 613,
+              "display": "flex",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          }
+        ],
+        "settingTabs": [
+          {
+            "label": "Отображение",
+            "count": 1,
+            "nodes": [
+              {
+                "w": 113.765625,
+                "h": 32,
+                "x": 1083,
+                "y": 95,
+                "display": "block",
+                "overflowY": "visible",
+                "borderRadius": "0px",
+                "fontFamily": "Roboto, Arial, sans-serif"
+              }
+            ]
+          },
+          {
+            "label": "Время",
+            "count": 1,
+            "nodes": [
+              {
+                "w": 112,
+                "h": 32,
+                "x": 1196.765625,
+                "y": 95,
+                "display": "block",
+                "overflowY": "visible",
+                "borderRadius": "0px",
+                "fontFamily": "Roboto, Arial, sans-serif"
+              }
+            ]
+          },
+          {
+            "label": "Измерения",
+            "count": 1,
+            "nodes": [
+              {
+                "w": 112,
+                "h": 32,
+                "x": 1308.765625,
+                "y": 95,
+                "display": "block",
+                "overflowY": "visible",
+                "borderRadius": "0px",
+                "fontFamily": "Roboto, Arial, sans-serif"
+              }
+            ]
+          }
+        ],
+        "controls": [
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Отображение",
+            "value": null,
+            "box": {
+              "w": 113.765625,
+              "h": 32,
+              "x": 1083,
+              "y": 95,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Время",
+            "value": null,
+            "box": {
+              "w": 112,
+              "h": 32,
+              "x": 1196.765625,
+              "y": 95,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Измерения",
+            "value": null,
+            "box": {
+              "w": 112,
+              "h": 32,
+              "x": 1308.765625,
+              "y": 95,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "text": "",
+            "value": "on",
+            "box": {
+              "w": 16,
+              "h": 16,
+              "x": 1287,
+              "y": 189,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "2px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "text": "",
+            "value": "on",
+            "box": {
+              "w": 16,
+              "h": 16,
+              "x": 1287,
+              "y": 277,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "2px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "text": "",
+            "value": "on",
+            "box": {
+              "w": 16,
+              "h": 16,
+              "x": 1287,
+              "y": 321,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "2px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "SELECT",
+            "type": "select-one",
+            "text": "psnsμsmssминчднигоды",
+            "value": "seconds",
+            "box": {
+              "w": 146,
+              "h": 32,
+              "x": 1279,
+              "y": 357,
+              "display": "inline-block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": "0",
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1280,
+              "y": 402,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": "0.24951171875",
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1354,
+              "y": 402,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": null,
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1280,
+              "y": 446,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": null,
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1354,
+              "y": 446,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Применить",
+            "value": null,
+            "box": {
+              "w": 108.484375,
+              "h": 34.890625,
+              "x": 1320.515625,
+              "y": 622.5625,
+              "display": "flex",
+              "overflowY": "visible",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          }
+        ],
+        "rows": [
+          {
+            "text": "Гармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный",
+            "box": {
+              "w": 1420,
+              "h": 32,
+              "x": 10,
+              "y": 783,
+              "display": "table-row",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            },
+            "html": "<tr data-testid=\"signal-row-Гармонический сигнал\" class=\"is-selected\"><td><input class=\"ui-checkbox\" type=\"checkbox\" data-visible-signal=\"Гармонический сигнал\" aria-label=\"Показывать Гармонический сигнал\" checked=\"\" style=\"\"></td><td><span class=\"signal-cell-value\">Гармонический сигнал</span></td><td class=\"color-cell\"><span class=\"signal-cell-value\"><span class=\"color-swatch\" data-testid=\"signal-color-Гармонический сигнал\" style=\"--swatch:#2563eb\" aria-label=\"Цвет Гармонический сигнал\"></span></span></td><td class=\"\"><span class=\"signal-cell-value\">2048</span></td><td class=\"\"><span class=\"signal-cell-value\">512</span></td><td class=\"\"><span class=\"signal-cell-value\">0.24951171875</span></td><td class=\"\"><span class=\"signal-cell-value\">Вещественный</span></td><td class=\"is-actions-host\"><span class=\"signal-row-actions\"><button type=\"button\" class=\"signal-row-action\" data-signal-duplicate=\"Гармонический сигнал\" data-testid=\"signal-duplicate-Гармонический сигнал\" aria-label=\"Копировать Гармонический сигнал\"><img src=\"./icons/copy.svg\" alt=\"\"></button><button type=\"button\" class=\"signal-row-action is-danger\" data-signal-delete=\"Гармонический сигнал\" data-testid=\"signal-delete-Гармони"
+          }
+        ],
+        "headers": [
+          "",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          ""
+        ],
+        "swatches": [
+          {
+            "w": 16,
+            "h": 16,
+            "x": 522.78125,
+            "y": 791.140625,
+            "display": "inline-block",
+            "overflowY": "visible",
+            "borderRadius": "2px",
+            "fontFamily": "Roboto, Arial, sans-serif"
+          }
+        ],
+        "rowActions": 2,
+        "hasObjectObject": false,
+        "rawSettingsText": "Настройки отображения\n\nОбласть 1 · Временная область\n\nОтображение\nВремя\nИзмерения\nОтображение\nПоказывать легенду\nВремя\nНормировать Y\nПоказывать маркеры\nЕдиницы времени\nps\nns\nμs\nms\ns\nмин\nч\nдни\nгоды\nПределы X\ns\nПределы Y\nПрименить",
+        "rawInspectorText": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\t\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный\n\t"
+      }
+    },
+    {
+      "name": "v5 settings controls use canonical 32px fields and 40px row rhythm",
+      "status": "passed",
+      "detail": {
+        "controls": [
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Отображение",
+            "value": null,
+            "box": {
+              "w": 113.765625,
+              "h": 32,
+              "x": 1083,
+              "y": 95,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Время",
+            "value": null,
+            "box": {
+              "w": 112,
+              "h": 32,
+              "x": 1196.765625,
+              "y": 95,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Измерения",
+            "value": null,
+            "box": {
+              "w": 112,
+              "h": 32,
+              "x": 1308.765625,
+              "y": 95,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "text": "",
+            "value": "on",
+            "box": {
+              "w": 16,
+              "h": 16,
+              "x": 1287,
+              "y": 189,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "2px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "text": "",
+            "value": "on",
+            "box": {
+              "w": 16,
+              "h": 16,
+              "x": 1287,
+              "y": 277,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "2px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "text": "",
+            "value": "on",
+            "box": {
+              "w": 16,
+              "h": 16,
+              "x": 1287,
+              "y": 321,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "2px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "SELECT",
+            "type": "select-one",
+            "text": "psnsμsmssминчднигоды",
+            "value": "seconds",
+            "box": {
+              "w": 146,
+              "h": 32,
+              "x": 1279,
+              "y": 357,
+              "display": "inline-block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": "0",
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1280,
+              "y": 402,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": "0.24951171875",
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1354,
+              "y": 402,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": null,
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1280,
+              "y": 446,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": null,
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1354,
+              "y": 446,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Применить",
+            "value": null,
+            "box": {
+              "w": 108.484375,
+              "h": 34.890625,
+              "x": 1320.515625,
+              "y": 622.5625,
+              "display": "flex",
+              "overflowY": "visible",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          }
+        ],
+        "rows": [
+          {
+            "text": "Гармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный",
+            "box": {
+              "w": 1420,
+              "h": 32,
+              "x": 10,
+              "y": 783,
+              "display": "table-row",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            },
+            "html": "<tr data-testid=\"signal-row-Гармонический сигнал\" class=\"is-selected\"><td><input class=\"ui-checkbox\" type=\"checkbox\" data-visible-signal=\"Гармонический сигнал\" aria-label=\"Показывать Гармонический сигнал\" checked=\"\" style=\"\"></td><td><span class=\"signal-cell-value\">Гармонический сигнал</span></td><td class=\"color-cell\"><span class=\"signal-cell-value\"><span class=\"color-swatch\" data-testid=\"signal-color-Гармонический сигнал\" style=\"--swatch:#2563eb\" aria-label=\"Цвет Гармонический сигнал\"></span></span></td><td class=\"\"><span class=\"signal-cell-value\">2048</span></td><td class=\"\"><span class=\"signal-cell-value\">512</span></td><td class=\"\"><span class=\"signal-cell-value\">0.24951171875</span></td><td class=\"\"><span class=\"signal-cell-value\">Вещественный</span></td><td class=\"is-actions-host\"><span class=\"signal-row-actions\"><button type=\"button\" class=\"signal-row-action\" data-signal-duplicate=\"Гармонический сигнал\" data-testid=\"signal-duplicate-Гармонический сигнал\" aria-label=\"Копировать Гармонический сигнал\"><img src=\"./icons/copy.svg\" alt=\"\"></button><button type=\"button\" class=\"signal-row-action is-danger\" data-signal-delete=\"Гармонический сигнал\" data-testid=\"signal-delete-Гармони"
+          }
+        ]
+      }
+    },
+    {
+      "name": "v5 inspector table exposes canonical signal columns and row affordances",
+      "status": "passed",
+      "detail": {
+        "settings": {
+          "w": 358,
+          "h": 616,
+          "x": 1082,
+          "y": 52,
+          "display": "grid",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "inspector": {
+          "w": 1440,
+          "h": 224,
+          "x": 0,
+          "y": 676,
+          "display": "grid",
+          "overflowY": "hidden",
+          "borderRadius": "8px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "settingsParts": [
+          {
+            "id": "settings-heading",
+            "count": 1,
+            "box": {
+              "w": 356,
+              "h": 42,
+              "x": 1083,
+              "y": 53,
+              "display": "flex",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "settings-tabs",
+            "count": 1,
+            "box": {
+              "w": 356,
+              "h": 32,
+              "x": 1083,
+              "y": 95,
+              "display": "flex",
+              "overflowY": "auto",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "settings-content",
+            "count": 1,
+            "box": {
+              "w": 356,
+              "h": 486,
+              "x": 1083,
+              "y": 127,
+              "display": "block",
+              "overflowY": "auto",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "id": "settings-footer",
+            "count": 1,
+            "box": {
+              "w": 356,
+              "h": 54,
+              "x": 1083,
+              "y": 613,
+              "display": "flex",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          }
+        ],
+        "settingTabs": [
+          {
+            "label": "Отображение",
+            "count": 1,
+            "nodes": [
+              {
+                "w": 113.765625,
+                "h": 32,
+                "x": 1083,
+                "y": 95,
+                "display": "block",
+                "overflowY": "visible",
+                "borderRadius": "0px",
+                "fontFamily": "Roboto, Arial, sans-serif"
+              }
+            ]
+          },
+          {
+            "label": "Время",
+            "count": 1,
+            "nodes": [
+              {
+                "w": 112,
+                "h": 32,
+                "x": 1196.765625,
+                "y": 95,
+                "display": "block",
+                "overflowY": "visible",
+                "borderRadius": "0px",
+                "fontFamily": "Roboto, Arial, sans-serif"
+              }
+            ]
+          },
+          {
+            "label": "Измерения",
+            "count": 1,
+            "nodes": [
+              {
+                "w": 112,
+                "h": 32,
+                "x": 1308.765625,
+                "y": 95,
+                "display": "block",
+                "overflowY": "visible",
+                "borderRadius": "0px",
+                "fontFamily": "Roboto, Arial, sans-serif"
+              }
+            ]
+          }
+        ],
+        "controls": [
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Отображение",
+            "value": null,
+            "box": {
+              "w": 113.765625,
+              "h": 32,
+              "x": 1083,
+              "y": 95,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Время",
+            "value": null,
+            "box": {
+              "w": 112,
+              "h": 32,
+              "x": 1196.765625,
+              "y": 95,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Измерения",
+            "value": null,
+            "box": {
+              "w": 112,
+              "h": 32,
+              "x": 1308.765625,
+              "y": 95,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "text": "",
+            "value": "on",
+            "box": {
+              "w": 16,
+              "h": 16,
+              "x": 1287,
+              "y": 189,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "2px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "text": "",
+            "value": "on",
+            "box": {
+              "w": 16,
+              "h": 16,
+              "x": 1287,
+              "y": 277,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "2px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "checkbox",
+            "text": "",
+            "value": "on",
+            "box": {
+              "w": 16,
+              "h": 16,
+              "x": 1287,
+              "y": 321,
+              "display": "block",
+              "overflowY": "visible",
+              "borderRadius": "2px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "SELECT",
+            "type": "select-one",
+            "text": "psnsμsmssминчднигоды",
+            "value": "seconds",
+            "box": {
+              "w": 146,
+              "h": 32,
+              "x": 1279,
+              "y": 357,
+              "display": "inline-block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": "0",
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1280,
+              "y": 402,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": "0.24951171875",
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1354,
+              "y": 402,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": null,
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1280,
+              "y": 446,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "INPUT",
+            "type": "text",
+            "text": "",
+            "value": null,
+            "box": {
+              "w": 70,
+              "h": 32,
+              "x": 1354,
+              "y": 446,
+              "display": "block",
+              "overflowY": "clip",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          },
+          {
+            "tag": "BUTTON",
+            "type": "button",
+            "text": "Применить",
+            "value": null,
+            "box": {
+              "w": 108.484375,
+              "h": 34.890625,
+              "x": 1320.515625,
+              "y": 622.5625,
+              "display": "flex",
+              "overflowY": "visible",
+              "borderRadius": "6px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            }
+          }
+        ],
+        "rows": [
+          {
+            "text": "Гармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный",
+            "box": {
+              "w": 1420,
+              "h": 32,
+              "x": 10,
+              "y": 783,
+              "display": "table-row",
+              "overflowY": "visible",
+              "borderRadius": "0px",
+              "fontFamily": "Roboto, Arial, sans-serif"
+            },
+            "html": "<tr data-testid=\"signal-row-Гармонический сигнал\" class=\"is-selected\"><td><input class=\"ui-checkbox\" type=\"checkbox\" data-visible-signal=\"Гармонический сигнал\" aria-label=\"Показывать Гармонический сигнал\" checked=\"\" style=\"\"></td><td><span class=\"signal-cell-value\">Гармонический сигнал</span></td><td class=\"color-cell\"><span class=\"signal-cell-value\"><span class=\"color-swatch\" data-testid=\"signal-color-Гармонический сигнал\" style=\"--swatch:#2563eb\" aria-label=\"Цвет Гармонический сигнал\"></span></span></td><td class=\"\"><span class=\"signal-cell-value\">2048</span></td><td class=\"\"><span class=\"signal-cell-value\">512</span></td><td class=\"\"><span class=\"signal-cell-value\">0.24951171875</span></td><td class=\"\"><span class=\"signal-cell-value\">Вещественный</span></td><td class=\"is-actions-host\"><span class=\"signal-row-actions\"><button type=\"button\" class=\"signal-row-action\" data-signal-duplicate=\"Гармонический сигнал\" data-testid=\"signal-duplicate-Гармонический сигнал\" aria-label=\"Копировать Гармонический сигнал\"><img src=\"./icons/copy.svg\" alt=\"\"></button><button type=\"button\" class=\"signal-row-action is-danger\" data-signal-delete=\"Гармонический сигнал\" data-testid=\"signal-delete-Гармони"
+          }
+        ],
+        "headers": [
+          "",
+          "Имя",
+          "Цвет",
+          "Частота дискретизации",
+          "Отсчёты",
+          "Длительность",
+          "Тип",
+          ""
+        ],
+        "swatches": [
+          {
+            "w": 16,
+            "h": 16,
+            "x": 522.78125,
+            "y": 791.140625,
+            "display": "inline-block",
+            "overflowY": "visible",
+            "borderRadius": "2px",
+            "fontFamily": "Roboto, Arial, sans-serif"
+          }
+        ],
+        "rowActions": 2,
+        "hasObjectObject": false,
+        "rawSettingsText": "Настройки отображения\n\nОбласть 1 · Временная область\n\nОтображение\nВремя\nИзмерения\nОтображение\nПоказывать легенду\nВремя\nНормировать Y\nПоказывать маркеры\nЕдиницы времени\nps\nns\nμs\nms\ns\nмин\nч\nдни\nгоды\nПределы X\ns\nПределы Y\nПрименить",
+        "rawInspectorText": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\t\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный\n\t"
+      }
+    },
+    {
+      "name": "inspector Измерения tab click selects it and changes active pane",
+      "status": "passed",
+      "detail": {
+        "label": "Измерения",
+        "found": true,
+        "before": null,
+        "after": "true",
+        "active": false,
+        "panels": [
+          {
+            "id": "",
+            "testid": "inspector-pane-measurements",
+            "text": "Измерения для активной области пока не рассчитаны"
+          },
+          {
+            "id": "",
+            "testid": "inspector-pane-measurements",
+            "text": "Измерения для активной области пока не рассчитаны"
+          }
+        ],
+        "beforeContext": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\t\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный\n\t",
+        "context": "Сигналы\nИзмерения\nПики\nИзмерения для активной области пока не рассчитаны",
+        "contentChanged": true
+      }
+    },
+    {
+      "name": "inspector Пики tab click selects it and changes active pane",
+      "status": "passed",
+      "detail": {
+        "label": "Пики",
+        "found": true,
+        "before": null,
+        "after": "true",
+        "active": false,
+        "panels": [
+          {
+            "id": "",
+            "testid": "inspector-pane-peaks",
+            "text": "Пики для активной области пока не рассчитаны"
+          },
+          {
+            "id": "",
+            "testid": "inspector-pane-peaks",
+            "text": "Пики для активной области пока не рассчитаны"
+          }
+        ],
+        "beforeContext": "Сигналы\nИзмерения\nПики\nИзмерения для активной области пока не рассчитаны",
+        "context": "Сигналы\nИзмерения\nПики\nПики для активной области пока не рассчитаны",
+        "contentChanged": true
+      }
+    },
+    {
+      "name": "inspector Signals tab restores active pane",
+      "status": "passed",
+      "detail": {
+        "label": "Сигналы",
+        "found": true,
+        "before": null,
+        "after": "true",
+        "active": false,
+        "panels": [
+          {
+            "id": "",
+            "testid": "inspector-pane-signals",
+            "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\t\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный"
+          }
+        ],
+        "beforeContext": "Сигналы\nИзмерения\nПики\nПики для активной области пока не рассчитаны",
+        "context": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\t\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный",
+        "contentChanged": true
+      }
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/prototype-layout-1024x768.png",
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "state": "layout-popover",
+      "timestamp": "2026-08-08T17:58:24.073Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/prototype-1024x768.png",
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "state": "walkthrough",
+      "timestamp": "2026-08-08T17:58:24.358Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/prototype-1280x720.png",
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "state": "walkthrough",
+      "timestamp": "2026-08-08T17:58:24.876Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/prototype-1440x900.png",
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "walkthrough",
+      "timestamp": "2026-08-08T17:58:25.496Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/prototype-sizing-920x680.png",
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 920,
+        "height": 680
+      },
+      "state": "sizing-920x680",
+      "timestamp": "2026-08-08T17:58:26.270Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/prototype-sizing-840x620.png",
+      "target": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 840,
+        "height": 620
+      },
+      "state": "sizing-840x620",
+      "timestamp": "2026-08-08T17:58:26.763Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/production-1024x768.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "state": "default-1024x768",
+      "timestamp": "2026-08-08T17:58:30.090Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/production-1280x720.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "state": "default-1280x720",
+      "timestamp": "2026-08-08T17:58:30.674Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/production-1440x900.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "default-1440x900",
+      "timestamp": "2026-08-08T17:58:31.738Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/production-920x680.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 920,
+        "height": 680
+      },
+      "state": "default-920x680",
+      "timestamp": "2026-08-08T17:58:32.306Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/production-840x620.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 840,
+        "height": 620
+      },
+      "state": "default-840x620",
+      "timestamp": "2026-08-08T17:58:33.157Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/production-layout-popover.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "layout-open",
+      "timestamp": "2026-08-08T17:58:33.844Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/production-inspector-Измерения.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "inspector-Измерения-active",
+      "timestamp": "2026-08-08T17:58:34.465Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/production-inspector-Пики.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "inspector-Пики-active",
+      "timestamp": "2026-08-08T17:58:35.419Z"
+    },
+    {
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0086/production-final-1440x900.png",
+      "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "state": "final",
+      "timestamp": "2026-08-08T17:58:36.065Z"
+    }
+  ],
+  "console_errors": [
+    {
+      "text": "Failed to load resource: the server responded with a status of 404 ()",
+      "url": "https://engee.com/favicon.ico",
+      "line": 0
+    }
+  ],
+  "network": [
+    {
+      "status": 200,
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "method": "GET",
+      "resource": "document",
+      "is_main_document": true
+    },
+    {
+      "status": 200,
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "method": "GET",
+      "resource": "document",
+      "is_main_document": true
+    }
+  ],
+  "preexisting_pages": [],
+  "preexisting_page_count": 0,
+  "chrome_activation": "ok",
+  "prototype_1024x768": {
+    "shell": {
+      "x": 0,
+      "y": 0,
+      "w": 1024,
+      "h": 768,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "grid": {
+      "x": 1,
+      "y": 127,
+      "w": 714,
+      "h": 434.390625,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settings": {
+      "x": 724,
+      "y": 52,
+      "w": 300,
+      "h": 510.390625,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "x": 0,
+      "y": 570.390625,
+      "w": 1024,
+      "h": 197.59375,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "toolbar": {
+      "x": 0,
+      "y": 0,
+      "w": 1024,
+      "h": 44,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "layout": {
+      "x": 624.84375,
+      "y": 95,
+      "w": 90.15625,
+      "h": 32,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "apply": {
+      "x": 904.515625,
+      "y": 516.953125,
+      "w": 108.484375,
+      "h": 34.890625,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "6px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "sw": 1024,
+      "sh": 768,
+      "cw": 1024,
+      "ch": 768
+    },
+    "texts": [
+      "Анализатор сигналов",
+      "Версия 0.1.0",
+      "Отображение сигналов",
+      "Экран 1",
+      "1 × 1",
+      "Область 1",
+      "Временная область",
+      "0",
+      "2",
+      "4",
+      "6",
+      "8",
+      "10",
+      "−1",
+      "−0.5",
+      "0",
+      "0.5",
+      "1",
+      "Гармонический сигнал",
+      "Время, s",
+      "Амплитуда",
+      "Настройки отображения",
+      "Область 1 · Временная область",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Параметры",
+      "Нормировать Y",
+      "Показывать маркеры",
+      "Пределы времени",
+      "Единицы времени",
+      "s",
+      "Пределы X",
+      "s",
+      "Пределы оси Y",
+      "Пределы Y",
+      "Связь экранов",
+      "Связать время",
+      "Доступно при нескольких экранах.",
+      "Применить",
+      "Сигналы",
+      "Измерения",
+      "Пики",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Гармонический сигнал",
+      "2 048 Hz",
+      "512",
+      "250 ms",
+      "Вещественный",
+      "Сигналы не найдены",
+      "Очистить область",
+      "Управление графиком",
+      "Перетаскивать график: Shift + ЛКМ",
+      "Автомасштабирование: двойной клик",
+      "Зум: зажать ЛКМ и выделить область",
+      "Макет экрана",
+      
+      "Строки",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Столбцы",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Макет не рекомендуется",
+      "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+      "Отмена",
+      "Применить",
+      "Настройки применены",
+      "×",
+      "Изменить макет",
+      "Добавление сигналов",
+      "Выберите поддерживаемые переменные из рабочей области.",
+      "radarPulse",
+      "Временной ряд · 12 000 отсчётов",
+      "echoComplex",
+      "Комплексный массив · 8 192 отсчёта",
+      "comment",
+      "Строка · неподдерживаемый тип",
+      "Hz",
+      "Требуется для raw-массивов без временной шкалы.",
+      "Отмена",
+      "Добавить",
+      "Закрыть без добавления?",
+      "Выбранные сигналы не будут добавлены.",
+      "Остаться",
+      "Закрыть",
+      "Удалить экран?",
+      "Экран и его текущий макет будут удалены.",
+      "Отмена",
+      "Удалить"
+    ],
+    "font": "Roboto, Arial, sans-serif",
+    "displays": [
+      "Экран 1",
+      "Экран 1",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Сигналы",
+      "Измерения",
+      "Пики"
+    ],
+    "signals": [
+      "Гармонический сигнал2 048 Hz512250 msВещественный"
+    ],
+    "plots": [
+      {
+        "text": "Область 1Временная область0246810−1−0.500.51Гармонический сигналВремя, sАмплитуда",
+        "box": {
+          "w": 698,
+          "h": 418.390625
+        }
+      }
+    ],
+    "plotly": 1,
+    "modebar": 0
+  },
+  "prototype_1280x720": {
+    "shell": {
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 720,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "grid": {
+      "x": 1,
+      "y": 127,
+      "w": 952,
+      "h": 396,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settings": {
+      "x": 962,
+      "y": 52,
+      "w": 318,
+      "h": 472,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "x": 0,
+      "y": 532,
+      "w": 1280,
+      "h": 188,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "toolbar": {
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 44,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "layout": {
+      "x": 862.84375,
+      "y": 95,
+      "w": 90.15625,
+      "h": 32,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "apply": {
+      "x": 1160.515625,
+      "y": 478.5625,
+      "w": 108.484375,
+      "h": 34.890625,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "6px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "sw": 1280,
+      "sh": 720,
+      "cw": 1280,
+      "ch": 720
+    },
+    "texts": [
+      "Анализатор сигналов",
+      "Версия 0.1.0",
+      "Отображение сигналов",
+      "Экран 1",
+      "1 × 1",
+      "Область 1",
+      "Временная область",
+      "0",
+      "2",
+      "4",
+      "6",
+      "8",
+      "10",
+      "−1",
+      "−0.5",
+      "0",
+      "0.5",
+      "1",
+      "Гармонический сигнал",
+      "Время, s",
+      "Амплитуда",
+      "Настройки отображения",
+      "Область 1 · Временная область",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Параметры",
+      "Нормировать Y",
+      "Показывать маркеры",
+      "Пределы времени",
+      "Единицы времени",
+      "s",
+      "Пределы X",
+      "s",
+      "Пределы оси Y",
+      "Пределы Y",
+      "Связь экранов",
+      "Связать время",
+      "Доступно при нескольких экранах.",
+      "Применить",
+      "Сигналы",
+      "Измерения",
+      "Пики",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Гармонический сигнал",
+      "2 048 Hz",
+      "512",
+      "250 ms",
+      "Вещественный",
+      "Сигналы не найдены",
+      "Очистить область",
+      "Управление графиком",
+      "Перетаскивать график: Shift + ЛКМ",
+      "Автомасштабирование: двойной клик",
+      "Зум: зажать ЛКМ и выделить область",
+      "Макет экрана",
+      
+      "Строки",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Столбцы",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Макет не рекомендуется",
+      "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+      "Отмена",
+      "Применить",
+      "Настройки применены",
+      "×",
+      "Изменить макет",
+      "Добавление сигналов",
+      "Выберите поддерживаемые переменные из рабочей области.",
+      "radarPulse",
+      "Временной ряд · 12 000 отсчётов",
+      "echoComplex",
+      "Комплексный массив · 8 192 отсчёта",
+      "comment",
+      "Строка · неподдерживаемый тип",
+      "Hz",
+      "Требуется для raw-массивов без временной шкалы.",
+      "Отмена",
+      "Добавить",
+      "Закрыть без добавления?",
+      "Выбранные сигналы не будут добавлены.",
+      "Остаться",
+      "Закрыть",
+      "Удалить экран?",
+      "Экран и его текущий макет будут удалены.",
+      "Отмена",
+      "Удалить"
+    ],
+    "font": "Roboto, Arial, sans-serif",
+    "displays": [
+      "Экран 1",
+      "Экран 1",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Сигналы",
+      "Измерения",
+      "Пики"
+    ],
+    "signals": [
+      "Гармонический сигнал2 048 Hz512250 msВещественный"
+    ],
+    "plots": [
+      {
+        "text": "Область 1Временная область0246810−1−0.500.51Гармонический сигналВремя, sАмплитуда",
+        "box": {
+          "w": 936,
+          "h": 380
+        }
+      }
+    ],
+    "plotly": 1,
+    "modebar": 0
+  },
+  "prototype_1440x900": {
+    "shell": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "grid": {
+      "x": 1,
+      "y": 127,
+      "w": 1072,
+      "h": 540,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settings": {
+      "x": 1082,
+      "y": 52,
+      "w": 358,
+      "h": 616,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "x": 0,
+      "y": 676,
+      "w": 1440,
+      "h": 224,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "toolbar": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 44,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "layout": {
+      "x": 982.84375,
+      "y": 95,
+      "w": 90.15625,
+      "h": 32,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "apply": {
+      "x": 1320.515625,
+      "y": 622.5625,
+      "w": 108.484375,
+      "h": 34.890625,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "6px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "sw": 1440,
+      "sh": 900,
+      "cw": 1440,
+      "ch": 900
+    },
+    "texts": [
+      "Анализатор сигналов",
+      "Версия 0.1.0",
+      "Отображение сигналов",
+      "Экран 1",
+      "1 × 1",
+      "Область 1",
+      "Временная область",
+      "0",
+      "2",
+      "4",
+      "6",
+      "8",
+      "10",
+      "−1",
+      "−0.5",
+      "0",
+      "0.5",
+      "1",
+      "Гармонический сигнал",
+      "Время, s",
+      "Амплитуда",
+      "Настройки отображения",
+      "Область 1 · Временная область",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Параметры",
+      "Нормировать Y",
+      "Показывать маркеры",
+      "Пределы времени",
+      "Единицы времени",
+      "s",
+      "Пределы X",
+      "s",
+      "Пределы оси Y",
+      "Пределы Y",
+      "Связь экранов",
+      "Связать время",
+      "Доступно при нескольких экранах.",
+      "Применить",
+      "Сигналы",
+      "Измерения",
+      "Пики",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Гармонический сигнал",
+      "2 048 Hz",
+      "512",
+      "250 ms",
+      "Вещественный",
+      "Сигналы не найдены",
+      "Очистить область",
+      "Управление графиком",
+      "Перетаскивать график: Shift + ЛКМ",
+      "Автомасштабирование: двойной клик",
+      "Зум: зажать ЛКМ и выделить область",
+      "Макет экрана",
+      
+      "Строки",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Столбцы",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Макет не рекомендуется",
+      "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+      "Отмена",
+      "Применить",
+      "Настройки применены",
+      "×",
+      "Изменить макет",
+      "Добавление сигналов",
+      "Выберите поддерживаемые переменные из рабочей области.",
+      "radarPulse",
+      "Временной ряд · 12 000 отсчётов",
+      "echoComplex",
+      "Комплексный массив · 8 192 отсчёта",
+      "comment",
+      "Строка · неподдерживаемый тип",
+      "Hz",
+      "Требуется для raw-массивов без временной шкалы.",
+      "Отмена",
+      "Добавить",
+      "Закрыть без добавления?",
+      "Выбранные сигналы не будут добавлены.",
+      "Остаться",
+      "Закрыть",
+      "Удалить экран?",
+      "Экран и его текущий макет будут удалены.",
+      "Отмена",
+      "Удалить"
+    ],
+    "font": "Roboto, Arial, sans-serif",
+    "displays": [
+      "Экран 1",
+      "Экран 1",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Сигналы",
+      "Измерения",
+      "Пики"
+    ],
+    "signals": [
+      "Гармонический сигнал2 048 Hz512250 msВещественный"
+    ],
+    "plots": [
+      {
+        "text": "Область 1Временная область0246810−1−0.500.51Гармонический сигналВремя, sАмплитуда",
+        "box": {
+          "w": 1056,
+          "h": 524
+        }
+      }
+    ],
+    "plotly": 1,
+    "modebar": 0
+  },
+  "prototype_920x680": {
+    "shell": {
+      "x": 0,
+      "y": 0,
+      "w": 920,
+      "h": 680,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "grid": {
+      "x": 1,
+      "y": 127,
+      "w": 610,
+      "h": 364,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settings": {
+      "x": 620,
+      "y": 52,
+      "w": 300,
+      "h": 440,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "x": 0,
+      "y": 500,
+      "w": 920,
+      "h": 180,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "toolbar": {
+      "x": 0,
+      "y": 0,
+      "w": 920,
+      "h": 44,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "layout": {
+      "x": 520.84375,
+      "y": 95,
+      "w": 90.15625,
+      "h": 32,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "apply": {
+      "x": 800.515625,
+      "y": 446.5625,
+      "w": 108.484375,
+      "h": 34.890625,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "6px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "sw": 920,
+      "sh": 680,
+      "cw": 920,
+      "ch": 680
+    },
+    "texts": [
+      "Анализатор сигналов",
+      "Версия 0.1.0",
+      "Отображение сигналов",
+      "Экран 1",
+      "1 × 1",
+      "Область 1",
+      "Временная область",
+      "0",
+      "2",
+      "4",
+      "6",
+      "8",
+      "10",
+      "−1",
+      "−0.5",
+      "0",
+      "0.5",
+      "1",
+      "Гармонический сигнал",
+      "Время, s",
+      "Амплитуда",
+      "Настройки отображения",
+      "Область 1 · Временная область",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Параметры",
+      "Нормировать Y",
+      "Показывать маркеры",
+      "Пределы времени",
+      "Единицы времени",
+      "s",
+      "Пределы X",
+      "s",
+      "Пределы оси Y",
+      "Пределы Y",
+      "Связь экранов",
+      "Связать время",
+      "Доступно при нескольких экранах.",
+      "Применить",
+      "Сигналы",
+      "Измерения",
+      "Пики",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Гармонический сигнал",
+      "2 048 Hz",
+      "512",
+      "250 ms",
+      "Вещественный",
+      "Сигналы не найдены",
+      "Очистить область",
+      "Управление графиком",
+      "Перетаскивать график: Shift + ЛКМ",
+      "Автомасштабирование: двойной клик",
+      "Зум: зажать ЛКМ и выделить область",
+      "Макет экрана",
+      
+      "Строки",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Столбцы",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Макет не рекомендуется",
+      "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+      "Отмена",
+      "Применить",
+      "Настройки применены",
+      "×",
+      "Изменить макет",
+      "Добавление сигналов",
+      "Выберите поддерживаемые переменные из рабочей области.",
+      "radarPulse",
+      "Временной ряд · 12 000 отсчётов",
+      "echoComplex",
+      "Комплексный массив · 8 192 отсчёта",
+      "comment",
+      "Строка · неподдерживаемый тип",
+      "Hz",
+      "Требуется для raw-массивов без временной шкалы.",
+      "Отмена",
+      "Добавить",
+      "Закрыть без добавления?",
+      "Выбранные сигналы не будут добавлены.",
+      "Остаться",
+      "Закрыть",
+      "Удалить экран?",
+      "Экран и его текущий макет будут удалены.",
+      "Отмена",
+      "Удалить"
+    ],
+    "font": "Roboto, Arial, sans-serif",
+    "displays": [
+      "Экран 1",
+      "Экран 1",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Сигналы",
+      "Измерения",
+      "Пики"
+    ],
+    "signals": [
+      "Гармонический сигнал2 048 Hz512250 msВещественный"
+    ],
+    "plots": [
+      {
+        "text": "Область 1Временная область0246810−1−0.500.51Гармонический сигналВремя, sАмплитуда",
+        "box": {
+          "w": 594,
+          "h": 348
+        }
+      }
+    ],
+    "plotly": 1,
+    "modebar": 0
+  },
+  "prototype_840x620": {
+    "shell": {
+      "x": 0,
+      "y": 0,
+      "w": 920,
+      "h": 680,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "grid": {
+      "x": 1,
+      "y": 127,
+      "w": 610,
+      "h": 364,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settings": {
+      "x": 620,
+      "y": 52,
+      "w": 300,
+      "h": 440,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "x": 0,
+      "y": 500,
+      "w": 920,
+      "h": 180,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "toolbar": {
+      "x": 0,
+      "y": 0,
+      "w": 920,
+      "h": 44,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "layout": {
+      "x": 520.84375,
+      "y": 95,
+      "w": 90.15625,
+      "h": 32,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "apply": {
+      "x": 800.515625,
+      "y": 446.5625,
+      "w": 108.484375,
+      "h": 34.890625,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "6px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "sw": 920,
+      "sh": 680,
+      "cw": 840,
+      "ch": 620
+    },
+    "texts": [
+      "Анализатор сигналов",
+      "Версия 0.1.0",
+      "Отображение сигналов",
+      "Экран 1",
+      "1 × 1",
+      "Область 1",
+      "Временная область",
+      "0",
+      "2",
+      "4",
+      "6",
+      "8",
+      "10",
+      "−1",
+      "−0.5",
+      "0",
+      "0.5",
+      "1",
+      "Гармонический сигнал",
+      "Время, s",
+      "Амплитуда",
+      "Настройки отображения",
+      "Область 1 · Временная область",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Параметры",
+      "Нормировать Y",
+      "Показывать маркеры",
+      "Пределы времени",
+      "Единицы времени",
+      "s",
+      "Пределы X",
+      "s",
+      "Пределы оси Y",
+      "Пределы Y",
+      "Связь экранов",
+      "Связать время",
+      "Доступно при нескольких экранах.",
+      "Применить",
+      "Сигналы",
+      "Измерения",
+      "Пики",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Гармонический сигнал",
+      "2 048 Hz",
+      "512",
+      "250 ms",
+      "Вещественный",
+      "Сигналы не найдены",
+      "Очистить область",
+      "Управление графиком",
+      "Перетаскивать график: Shift + ЛКМ",
+      "Автомасштабирование: двойной клик",
+      "Зум: зажать ЛКМ и выделить область",
+      "Макет экрана",
+      
+      "Строки",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Столбцы",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "Макет не рекомендуется",
+      "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+      "Отмена",
+      "Применить",
+      "Настройки применены",
+      "×",
+      "Изменить макет",
+      "Добавление сигналов",
+      "Выберите поддерживаемые переменные из рабочей области.",
+      "radarPulse",
+      "Временной ряд · 12 000 отсчётов",
+      "echoComplex",
+      "Комплексный массив · 8 192 отсчёта",
+      "comment",
+      "Строка · неподдерживаемый тип",
+      "Hz",
+      "Требуется для raw-массивов без временной шкалы.",
+      "Отмена",
+      "Добавить",
+      "Закрыть без добавления?",
+      "Выбранные сигналы не будут добавлены.",
+      "Остаться",
+      "Закрыть",
+      "Удалить экран?",
+      "Экран и его текущий макет будут удалены.",
+      "Отмена",
+      "Удалить"
+    ],
+    "font": "Roboto, Arial, sans-serif",
+    "displays": [
+      "Экран 1",
+      "Экран 1",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Сигналы",
+      "Измерения",
+      "Пики"
+    ],
+    "signals": [
+      "Гармонический сигнал2 048 Hz512250 msВещественный"
+    ],
+    "plots": [
+      {
+        "text": "Область 1Временная область0246810−1−0.500.51Гармонический сигналВремя, sАмплитуда",
+        "box": {
+          "w": 594,
+          "h": 348
+        }
+      }
+    ],
+    "plotly": 1,
+    "modebar": 0
+  },
+  "production_document": {
+    "title": "Анализатор сигналов",
+    "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\n1 × 1\nНастройки отображения\n\nОбласть 1 · Временная область\n\nОтображение\nВремя\nИзмерения\nПрименить\nСигналы\nИзмерения\nПики",
+    "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/"
+  },
+  "app_error": {
+    "visible": false,
+    "text": "Повторить",
+    "html": "<div data-testid=\"app-error\" role=\"alert\" hidden=\"\"><span data-error-text=\"\"></span><button type=\"button\" data-retry=\"\">Повторить</button></div>",
+    "role": "alert",
+    "ariaLive": null
+  },
+  "bootstrap_terminal": {
+    "loader_present": true,
+    "plotly_hosts": 1,
+    "plot_grid_present": true
+  },
+  "availability": "passed",
+  "production_1024x768": {
+    "shell": {
+      "x": 0,
+      "y": 0,
+      "w": 1024,
+      "h": 768,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "grid": {
+      "x": 1,
+      "y": 127,
+      "w": 714,
+      "h": 434.390625,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settings": {
+      "x": 724,
+      "y": 52,
+      "w": 300,
+      "h": 510.390625,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "x": 0,
+      "y": 570.390625,
+      "w": 1024,
+      "h": 197.59375,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "toolbar": {
+      "x": 0,
+      "y": 0,
+      "w": 1024,
+      "h": 44,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "layout": {
+      "x": 624.84375,
+      "y": 95,
+      "w": 90.15625,
+      "h": 32,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "apply": {
+      "x": 904.515625,
+      "y": 516.953125,
+      "w": 108.484375,
+      "h": 34.890625,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "6px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "sw": 1024,
+      "sh": 768,
+      "cw": 1024,
+      "ch": 768
+    },
+    "texts": [
+      "Анализатор сигналов",
+      "Версия 0.1.0",
+      "Отображение сигналов",
+      "Экран 1",
+      "1 × 1",
+      "Область 1",
+      "Временная область",
+      "Спектр",
+      "Спектрограмма",
+      "Спектр персистентности",
+      "Настройки отображения",
+      "Область 1 · Временная область",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Отображение",
+      "Показывать легенду",
+      "Время",
+      "Нормировать Y",
+      "Показывать маркеры",
+      "Единицы времени",
+      "ps",
+      "ns",
+      "μs",
+      "ms",
+      "s",
+      "мин",
+      "ч",
+      "дни",
+      "годы",
+      "Пределы X",
+      "s",
+      "Пределы Y",
+      "Применить",
+      "Сигналы",
+      "Измерения",
+      "Пики",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Гармонический сигнал",
+      "2048",
+      "512",
+      "0.24951171875",
+      "Вещественный",
+      "Сигналы не найдены",
+      "Очистить область",
+      "Управление графиком",
+      "Перетаскивать график: Shift + ЛКМ",
+      "Автомасштабирование: двойной клик",
+      "Зум: зажать ЛКМ и выделить область",
+      "Видимость столбцов",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Макет экрана",
+      
+      "Строки",
+      "Столбцы",
+      "Макет не рекомендуется",
+      "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+      "Отмена",
+      "Применить",
+      "Настройки применены",
+      "×",
+      "Загрузка…",
+      "Повторить"
+    ],
+    "font": "Roboto, Arial, sans-serif",
+    "displays": [
+      "Экран 1",
+      "Экран 1",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Сигналы",
+      "Измерения",
+      "Пики"
+    ],
+    "signals": [
+      "Гармонический сигнал20485120.24951171875Вещественный"
+    ],
+    "plots": [
+      {
+        "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности",
+        "box": {
+          "w": 698,
+          "h": 418.390625
+        }
+      }
+    ],
+    "plotly": 0,
+    "modebar": 0
+  },
+  "production_1280x720": {
+    "shell": {
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 720,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "grid": {
+      "x": 1,
+      "y": 127,
+      "w": 952,
+      "h": 396,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settings": {
+      "x": 962,
+      "y": 52,
+      "w": 318,
+      "h": 472,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "x": 0,
+      "y": 532,
+      "w": 1280,
+      "h": 188,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "toolbar": {
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 44,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "layout": {
+      "x": 862.84375,
+      "y": 95,
+      "w": 90.15625,
+      "h": 32,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "apply": {
+      "x": 1160.515625,
+      "y": 478.5625,
+      "w": 108.484375,
+      "h": 34.890625,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "6px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "sw": 1280,
+      "sh": 720,
+      "cw": 1280,
+      "ch": 720
+    },
+    "texts": [
+      "Анализатор сигналов",
+      "Версия 0.1.0",
+      "Отображение сигналов",
+      "Экран 1",
+      "1 × 1",
+      "Область 1",
+      "Временная область",
+      "Спектр",
+      "Спектрограмма",
+      "Спектр персистентности",
+      "Настройки отображения",
+      "Область 1 · Временная область",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Отображение",
+      "Показывать легенду",
+      "Время",
+      "Нормировать Y",
+      "Показывать маркеры",
+      "Единицы времени",
+      "ps",
+      "ns",
+      "μs",
+      "ms",
+      "s",
+      "мин",
+      "ч",
+      "дни",
+      "годы",
+      "Пределы X",
+      "s",
+      "Пределы Y",
+      "Применить",
+      "Сигналы",
+      "Измерения",
+      "Пики",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Гармонический сигнал",
+      "2048",
+      "512",
+      "0.24951171875",
+      "Вещественный",
+      "Сигналы не найдены",
+      "Очистить область",
+      "Управление графиком",
+      "Перетаскивать график: Shift + ЛКМ",
+      "Автомасштабирование: двойной клик",
+      "Зум: зажать ЛКМ и выделить область",
+      "Видимость столбцов",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Макет экрана",
+      
+      "Строки",
+      "Столбцы",
+      "Макет не рекомендуется",
+      "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+      "Отмена",
+      "Применить",
+      "Настройки применены",
+      "×",
+      "Загрузка…",
+      "Повторить"
+    ],
+    "font": "Roboto, Arial, sans-serif",
+    "displays": [
+      "Экран 1",
+      "Экран 1",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Сигналы",
+      "Измерения",
+      "Пики"
+    ],
+    "signals": [
+      "Гармонический сигнал20485120.24951171875Вещественный"
+    ],
+    "plots": [
+      {
+        "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности",
+        "box": {
+          "w": 936,
+          "h": 380
+        }
+      }
+    ],
+    "plotly": 0,
+    "modebar": 0
+  },
+  "production_1440x900": {
+    "shell": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "grid": {
+      "x": 1,
+      "y": 127,
+      "w": 1072,
+      "h": 540,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settings": {
+      "x": 1082,
+      "y": 52,
+      "w": 358,
+      "h": 616,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "x": 0,
+      "y": 676,
+      "w": 1440,
+      "h": 224,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "toolbar": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 44,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "layout": {
+      "x": 982.84375,
+      "y": 95,
+      "w": 90.15625,
+      "h": 32,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "apply": {
+      "x": 1320.515625,
+      "y": 622.5625,
+      "w": 108.484375,
+      "h": 34.890625,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "6px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "sw": 1440,
+      "sh": 900,
+      "cw": 1440,
+      "ch": 900
+    },
+    "texts": [
+      "Анализатор сигналов",
+      "Версия 0.1.0",
+      "Отображение сигналов",
+      "Экран 1",
+      "1 × 1",
+      "Область 1",
+      "Временная область",
+      "Спектр",
+      "Спектрограмма",
+      "Спектр персистентности",
+      "0",
+      "0.05",
+      "0.1",
+      "0.15",
+      "0.2",
+      "−1",
+      "−0.5",
+      "0",
+      "0.5",
+      "1",
+      "Время, с",
+      "Амплитуда",
+      "Настройки отображения",
+      "Область 1 · Временная область",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Отображение",
+      "Показывать легенду",
+      "Время",
+      "Нормировать Y",
+      "Показывать маркеры",
+      "Единицы времени",
+      "ps",
+      "ns",
+      "μs",
+      "ms",
+      "s",
+      "мин",
+      "ч",
+      "дни",
+      "годы",
+      "Пределы X",
+      "s",
+      "Пределы Y",
+      "Применить",
+      "Сигналы",
+      "Измерения",
+      "Пики",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Гармонический сигнал",
+      "2048",
+      "512",
+      "0.24951171875",
+      "Вещественный",
+      "Сигналы не найдены",
+      "Очистить область",
+      "Управление графиком",
+      "Перетаскивать график: Shift + ЛКМ",
+      "Автомасштабирование: двойной клик",
+      "Зум: зажать ЛКМ и выделить область",
+      "Видимость столбцов",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Макет экрана",
+      
+      "Строки",
+      "Столбцы",
+      "Макет не рекомендуется",
+      "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+      "Отмена",
+      "Применить",
+      "Настройки применены",
+      "×",
+      "Загрузка…",
+      "Повторить"
+    ],
+    "font": "Roboto, Arial, sans-serif",
+    "displays": [
+      "Экран 1",
+      "Экран 1",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Сигналы",
+      "Измерения",
+      "Пики"
+    ],
+    "signals": [
+      "Гармонический сигнал20485120.24951171875Вещественный"
+    ],
+    "plots": [
+      {
+        "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности00.050.10.150.2−1−0.500.51Время, сАмплитуда",
+        "box": {
+          "w": 1056,
+          "h": 524
+        }
+      }
+    ],
+    "plotly": 1,
+    "modebar": 0
+  },
+  "production_920x680": {
+    "shell": {
+      "x": 0,
+      "y": 0,
+      "w": 920,
+      "h": 680,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "grid": {
+      "x": 1,
+      "y": 127,
+      "w": 610,
+      "h": 364,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settings": {
+      "x": 620,
+      "y": 52,
+      "w": 300,
+      "h": 440,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "x": 0,
+      "y": 500,
+      "w": 920,
+      "h": 180,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "toolbar": {
+      "x": 0,
+      "y": 0,
+      "w": 920,
+      "h": 44,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "layout": {
+      "x": 520.84375,
+      "y": 95,
+      "w": 90.15625,
+      "h": 32,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "apply": {
+      "x": 800.515625,
+      "y": 446.5625,
+      "w": 108.484375,
+      "h": 34.890625,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "6px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "sw": 920,
+      "sh": 680,
+      "cw": 920,
+      "ch": 680
+    },
+    "texts": [
+      "Анализатор сигналов",
+      "Версия 0.1.0",
+      "Отображение сигналов",
+      "Экран 1",
+      "1 × 1",
+      "Область 1",
+      "Временная область",
+      "Спектр",
+      "Спектрограмма",
+      "Спектр персистентности",
+      "0",
+      "0.05",
+      "0.1",
+      "0.15",
+      "0.2",
+      "−1",
+      "−0.5",
+      "0",
+      "0.5",
+      "1",
+      "Время, с",
+      "Амплитуда",
+      "Настройки отображения",
+      "Область 1 · Временная область",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Отображение",
+      "Показывать легенду",
+      "Время",
+      "Нормировать Y",
+      "Показывать маркеры",
+      "Единицы времени",
+      "ps",
+      "ns",
+      "μs",
+      "ms",
+      "s",
+      "мин",
+      "ч",
+      "дни",
+      "годы",
+      "Пределы X",
+      "s",
+      "Пределы Y",
+      "Применить",
+      "Сигналы",
+      "Измерения",
+      "Пики",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Гармонический сигнал",
+      "2048",
+      "512",
+      "0.24951171875",
+      "Вещественный",
+      "Сигналы не найдены",
+      "Очистить область",
+      "Управление графиком",
+      "Перетаскивать график: Shift + ЛКМ",
+      "Автомасштабирование: двойной клик",
+      "Зум: зажать ЛКМ и выделить область",
+      "Видимость столбцов",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Макет экрана",
+      
+      "Строки",
+      "Столбцы",
+      "Макет не рекомендуется",
+      "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+      "Отмена",
+      "Применить",
+      "Настройки применены",
+      "×",
+      "Загрузка…",
+      "Повторить"
+    ],
+    "font": "Roboto, Arial, sans-serif",
+    "displays": [
+      "Экран 1",
+      "Экран 1",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Сигналы",
+      "Измерения",
+      "Пики"
+    ],
+    "signals": [
+      "Гармонический сигнал20485120.24951171875Вещественный"
+    ],
+    "plots": [
+      {
+        "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности00.050.10.150.2−1−0.500.51Время, сАмплитуда",
+        "box": {
+          "w": 594,
+          "h": 348
+        }
+      }
+    ],
+    "plotly": 1,
+    "modebar": 0
+  },
+  "production_840x620": {
+    "shell": {
+      "x": 0,
+      "y": 0,
+      "w": 920,
+      "h": 680,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "grid": {
+      "x": 1,
+      "y": 127,
+      "w": 610,
+      "h": 364,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settings": {
+      "x": 620,
+      "y": 52,
+      "w": 300,
+      "h": 440,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "x": 0,
+      "y": 500,
+      "w": 920,
+      "h": 180,
+      "display": "grid",
+      "position": "static",
+      "overflowX": "hidden",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "toolbar": {
+      "x": 0,
+      "y": 0,
+      "w": 920,
+      "h": 44,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "layout": {
+      "x": 520.84375,
+      "y": 95,
+      "w": 90.15625,
+      "h": 32,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "0px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "apply": {
+      "x": 800.515625,
+      "y": 446.5625,
+      "w": 108.484375,
+      "h": 34.890625,
+      "display": "flex",
+      "position": "static",
+      "overflowX": "visible",
+      "overflowY": "visible",
+      "borderRadius": "6px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "body": {
+      "sw": 920,
+      "sh": 680,
+      "cw": 840,
+      "ch": 620
+    },
+    "texts": [
+      "Анализатор сигналов",
+      "Версия 0.1.0",
+      "Отображение сигналов",
+      "Экран 1",
+      "1 × 1",
+      "Область 1",
+      "Временная область",
+      "Спектр",
+      "Спектрограмма",
+      "Спектр персистентности",
+      "0",
+      "0.05",
+      "0.1",
+      "0.15",
+      "0.2",
+      "−1",
+      "−0.5",
+      "0",
+      "0.5",
+      "1",
+      "Время, с",
+      "Амплитуда",
+      "Настройки отображения",
+      "Область 1 · Временная область",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Отображение",
+      "Показывать легенду",
+      "Время",
+      "Нормировать Y",
+      "Показывать маркеры",
+      "Единицы времени",
+      "ps",
+      "ns",
+      "μs",
+      "ms",
+      "s",
+      "мин",
+      "ч",
+      "дни",
+      "годы",
+      "Пределы X",
+      "s",
+      "Пределы Y",
+      "Применить",
+      "Сигналы",
+      "Измерения",
+      "Пики",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Гармонический сигнал",
+      "2048",
+      "512",
+      "0.24951171875",
+      "Вещественный",
+      "Сигналы не найдены",
+      "Очистить область",
+      "Управление графиком",
+      "Перетаскивать график: Shift + ЛКМ",
+      "Автомасштабирование: двойной клик",
+      "Зум: зажать ЛКМ и выделить область",
+      "Видимость столбцов",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      "Макет экрана",
+      
+      "Строки",
+      "Столбцы",
+      "Макет не рекомендуется",
+      "Для читаемости используйте не более 4 × 4. Выбранный макет можно применить.",
+      "Отмена",
+      "Применить",
+      "Настройки применены",
+      "×",
+      "Загрузка…",
+      "Повторить"
+    ],
+    "font": "Roboto, Arial, sans-serif",
+    "displays": [
+      "Экран 1",
+      "Экран 1",
+      "Отображение",
+      "Время",
+      "Измерения",
+      "Сигналы",
+      "Измерения",
+      "Пики"
+    ],
+    "signals": [
+      "Гармонический сигнал20485120.24951171875Вещественный"
+    ],
+    "plots": [
+      {
+        "text": "Область 1Временная областьСпектрСпектрограммаСпектр персистентности00.050.10.150.2−1−0.500.51Время, сАмплитуда",
+        "box": {
+          "w": 594,
+          "h": 348
+        }
+      }
+    ],
+    "plotly": 1,
+    "modebar": 0
+  },
+  "settings_and_inspector": {
+    "settings": {
+      "w": 358,
+      "h": 616,
+      "x": 1082,
+      "y": 52,
+      "display": "grid",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "inspector": {
+      "w": 1440,
+      "h": 224,
+      "x": 0,
+      "y": 676,
+      "display": "grid",
+      "overflowY": "hidden",
+      "borderRadius": "8px",
+      "fontFamily": "Roboto, Arial, sans-serif"
+    },
+    "settingsParts": [
+      {
+        "id": "settings-heading",
+        "count": 1,
+        "box": {
+          "w": 356,
+          "h": 42,
+          "x": 1083,
+          "y": 53,
+          "display": "flex",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "id": "settings-tabs",
+        "count": 1,
+        "box": {
+          "w": 356,
+          "h": 32,
+          "x": 1083,
+          "y": 95,
+          "display": "flex",
+          "overflowY": "auto",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "id": "settings-content",
+        "count": 1,
+        "box": {
+          "w": 356,
+          "h": 486,
+          "x": 1083,
+          "y": 127,
+          "display": "block",
+          "overflowY": "auto",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "id": "settings-footer",
+        "count": 1,
+        "box": {
+          "w": 356,
+          "h": 54,
+          "x": 1083,
+          "y": 613,
+          "display": "flex",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      }
+    ],
+    "settingTabs": [
+      {
+        "label": "Отображение",
+        "count": 1,
+        "nodes": [
+          {
+            "w": 113.765625,
+            "h": 32,
+            "x": 1083,
+            "y": 95,
+            "display": "block",
+            "overflowY": "visible",
+            "borderRadius": "0px",
+            "fontFamily": "Roboto, Arial, sans-serif"
+          }
+        ]
+      },
+      {
+        "label": "Время",
+        "count": 1,
+        "nodes": [
+          {
+            "w": 112,
+            "h": 32,
+            "x": 1196.765625,
+            "y": 95,
+            "display": "block",
+            "overflowY": "visible",
+            "borderRadius": "0px",
+            "fontFamily": "Roboto, Arial, sans-serif"
+          }
+        ]
+      },
+      {
+        "label": "Измерения",
+        "count": 1,
+        "nodes": [
+          {
+            "w": 112,
+            "h": 32,
+            "x": 1308.765625,
+            "y": 95,
+            "display": "block",
+            "overflowY": "visible",
+            "borderRadius": "0px",
+            "fontFamily": "Roboto, Arial, sans-serif"
+          }
+        ]
+      }
+    ],
+    "controls": [
+      {
+        "tag": "BUTTON",
+        "type": "button",
+        "text": "Отображение",
+        "value": null,
+        "box": {
+          "w": 113.765625,
+          "h": 32,
+          "x": 1083,
+          "y": 95,
+          "display": "block",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "button",
+        "text": "Время",
+        "value": null,
+        "box": {
+          "w": 112,
+          "h": 32,
+          "x": 1196.765625,
+          "y": 95,
+          "display": "block",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "button",
+        "text": "Измерения",
+        "value": null,
+        "box": {
+          "w": 112,
+          "h": 32,
+          "x": 1308.765625,
+          "y": 95,
+          "display": "block",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "text": "",
+        "value": "on",
+        "box": {
+          "w": 16,
+          "h": 16,
+          "x": 1287,
+          "y": 189,
+          "display": "block",
+          "overflowY": "visible",
+          "borderRadius": "2px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "text": "",
+        "value": "on",
+        "box": {
+          "w": 16,
+          "h": 16,
+          "x": 1287,
+          "y": 277,
+          "display": "block",
+          "overflowY": "visible",
+          "borderRadius": "2px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "checkbox",
+        "text": "",
+        "value": "on",
+        "box": {
+          "w": 16,
+          "h": 16,
+          "x": 1287,
+          "y": 321,
+          "display": "block",
+          "overflowY": "visible",
+          "borderRadius": "2px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "SELECT",
+        "type": "select-one",
+        "text": "psnsμsmssминчднигоды",
+        "value": "seconds",
+        "box": {
+          "w": 146,
+          "h": 32,
+          "x": 1279,
+          "y": 357,
+          "display": "inline-block",
+          "overflowY": "clip",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "text",
+        "text": "",
+        "value": "0",
+        "box": {
+          "w": 70,
+          "h": 32,
+          "x": 1280,
+          "y": 402,
+          "display": "block",
+          "overflowY": "clip",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "text",
+        "text": "",
+        "value": "0.24951171875",
+        "box": {
+          "w": 70,
+          "h": 32,
+          "x": 1354,
+          "y": 402,
+          "display": "block",
+          "overflowY": "clip",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "text",
+        "text": "",
+        "value": null,
+        "box": {
+          "w": 70,
+          "h": 32,
+          "x": 1280,
+          "y": 446,
+          "display": "block",
+          "overflowY": "clip",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "INPUT",
+        "type": "text",
+        "text": "",
+        "value": null,
+        "box": {
+          "w": 70,
+          "h": 32,
+          "x": 1354,
+          "y": 446,
+          "display": "block",
+          "overflowY": "clip",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      },
+      {
+        "tag": "BUTTON",
+        "type": "button",
+        "text": "Применить",
+        "value": null,
+        "box": {
+          "w": 108.484375,
+          "h": 34.890625,
+          "x": 1320.515625,
+          "y": 622.5625,
+          "display": "flex",
+          "overflowY": "visible",
+          "borderRadius": "6px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        }
+      }
+    ],
+    "rows": [
+      {
+        "text": "Гармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный",
+        "box": {
+          "w": 1420,
+          "h": 32,
+          "x": 10,
+          "y": 783,
+          "display": "table-row",
+          "overflowY": "visible",
+          "borderRadius": "0px",
+          "fontFamily": "Roboto, Arial, sans-serif"
+        },
+        "html": "<tr data-testid=\"signal-row-Гармонический сигнал\" class=\"is-selected\"><td><input class=\"ui-checkbox\" type=\"checkbox\" data-visible-signal=\"Гармонический сигнал\" aria-label=\"Показывать Гармонический сигнал\" checked=\"\" style=\"\"></td><td><span class=\"signal-cell-value\">Гармонический сигнал</span></td><td class=\"color-cell\"><span class=\"signal-cell-value\"><span class=\"color-swatch\" data-testid=\"signal-color-Гармонический сигнал\" style=\"--swatch:#2563eb\" aria-label=\"Цвет Гармонический сигнал\"></span></span></td><td class=\"\"><span class=\"signal-cell-value\">2048</span></td><td class=\"\"><span class=\"signal-cell-value\">512</span></td><td class=\"\"><span class=\"signal-cell-value\">0.24951171875</span></td><td class=\"\"><span class=\"signal-cell-value\">Вещественный</span></td><td class=\"is-actions-host\"><span class=\"signal-row-actions\"><button type=\"button\" class=\"signal-row-action\" data-signal-duplicate=\"Гармонический сигнал\" data-testid=\"signal-duplicate-Гармонический сигнал\" aria-label=\"Копировать Гармонический сигнал\"><img src=\"./icons/copy.svg\" alt=\"\"></button><button type=\"button\" class=\"signal-row-action is-danger\" data-signal-delete=\"Гармонический сигнал\" data-testid=\"signal-delete-Гармони"
+      }
+    ],
+    "headers": [
+      "",
+      "Имя",
+      "Цвет",
+      "Частота дискретизации",
+      "Отсчёты",
+      "Длительность",
+      "Тип",
+      ""
+    ],
+    "swatches": [
+      {
+        "w": 16,
+        "h": 16,
+        "x": 522.78125,
+        "y": 791.140625,
+        "display": "inline-block",
+        "overflowY": "visible",
+        "borderRadius": "2px",
+        "fontFamily": "Roboto, Arial, sans-serif"
+      }
+    ],
+    "rowActions": 2,
+    "hasObjectObject": false,
+    "rawSettingsText": "Настройки отображения\n\nОбласть 1 · Временная область\n\nОтображение\nВремя\nИзмерения\nОтображение\nПоказывать легенду\nВремя\nНормировать Y\nПоказывать маркеры\nЕдиницы времени\nps\nns\nμs\nms\ns\nмин\nч\nдни\nгоды\nПределы X\ns\nПределы Y\nПрименить",
+    "rawInspectorText": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\t\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный\n\t"
+  },
+  "inspector_tab_Измерения": {
+    "label": "Измерения",
+    "found": true,
+    "before": null,
+    "after": "true",
+    "active": false,
+    "panels": [
+      {
+        "id": "",
+        "testid": "inspector-pane-measurements",
+        "text": "Измерения для активной области пока не рассчитаны"
+      },
+      {
+        "id": "",
+        "testid": "inspector-pane-measurements",
+        "text": "Измерения для активной области пока не рассчитаны"
+      }
+    ],
+    "beforeContext": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\t\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный\n\t",
+    "context": "Сигналы\nИзмерения\nПики\nИзмерения для активной области пока не рассчитаны",
+    "contentChanged": true
+  },
+  "inspector_tab_Пики": {
+    "label": "Пики",
+    "found": true,
+    "before": null,
+    "after": "true",
+    "active": false,
+    "panels": [
+      {
+        "id": "",
+        "testid": "inspector-pane-peaks",
+        "text": "Пики для активной области пока не рассчитаны"
+      },
+      {
+        "id": "",
+        "testid": "inspector-pane-peaks",
+        "text": "Пики для активной области пока не рассчитаны"
+      }
+    ],
+    "beforeContext": "Сигналы\nИзмерения\nПики\nИзмерения для активной области пока не рассчитаны",
+    "context": "Сигналы\nИзмерения\nПики\nПики для активной области пока не рассчитаны",
+    "contentChanged": true
+  },
+  "inspector_tab_signals": {
+    "label": "Сигналы",
+    "found": true,
+    "before": null,
+    "after": "true",
+    "active": false,
+    "panels": [
+      {
+        "id": "",
+        "testid": "inspector-pane-signals",
+        "text": "Имя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\t\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный"
+      }
+    ],
+    "beforeContext": "Сигналы\nИзмерения\nПики\nПики для активной области пока не рассчитаны",
+    "context": "Сигналы\nИзмерения\nПики\n\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\t\n\t\nГармонический сигнал\n\t\n\t\n2048\n\t\n512\n\t\n0.24951171875\n\t\nВещественный",
+    "contentChanged": true
+  },
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 24,
+    "passed": 24,
+    "failed": 0,
+    "not_run": 0,
+    "success_rate": 100,
+    "operational": true
+  }
+}

@@ -1,4 +1,5 @@
 const SIGNAL_SETTINGS_FIELD_KINDS = Set([
+    "text",
     "boolean",
     "enum",
     "number",
@@ -29,6 +30,7 @@ const SIGNAL_SETTINGS_EFFECT_REASONS = Set([
 ])
 
 const SIGNAL_SETTINGS_CONTROL_KINDS = Set([
+    "text",
     "checkbox",
     "combobox",
     "number",
@@ -39,6 +41,7 @@ const SIGNAL_SETTINGS_CONTROL_KINDS = Set([
 ])
 
 @enum SignalTimeUnitPreference begin
+    AUTO_TIME_UNIT
     PICOSECONDS_TIME_UNIT
     NANOSECONDS_TIME_UNIT
     MICROSECONDS_TIME_UNIT
@@ -48,6 +51,48 @@ const SIGNAL_SETTINGS_CONTROL_KINDS = Set([
     HOURS_TIME_UNIT
     DAYS_TIME_UNIT
     YEARS_TIME_UNIT
+end
+
+"""Resolve automatic time units so the largest displayed value stays in [1, 1000)."""
+function signal_resolved_time_unit(
+    unit::SignalTimeUnitPreference,
+    maximum_seconds::Real,
+)::SignalTimeUnitPreference
+    unit != AUTO_TIME_UNIT && return unit
+    value = abs(Float64(maximum_seconds))
+    isfinite(value) && value > 0 || return SECONDS_TIME_UNIT
+    candidates = (
+        (PICOSECONDS_TIME_UNIT, 1.0e-12),
+        (NANOSECONDS_TIME_UNIT, 1.0e-9),
+        (MICROSECONDS_TIME_UNIT, 1.0e-6),
+        (MILLISECONDS_TIME_UNIT, 1.0e-3),
+        (SECONDS_TIME_UNIT, 1.0),
+        (MINUTES_TIME_UNIT, 60.0),
+        (HOURS_TIME_UNIT, 3600.0),
+        (DAYS_TIME_UNIT, 86400.0),
+        (YEARS_TIME_UNIT, 31557600.0),
+    )
+    for (candidate, seconds_per_unit) in candidates
+        rendered = value / seconds_per_unit
+        1.0 <= rendered < 1000.0 && return candidate
+    end
+    value < 1.0e-12 ? PICOSECONDS_TIME_UNIT : YEARS_TIME_UNIT
+end
+
+function signal_seconds_per_time_unit(
+    unit::SignalTimeUnitPreference,
+    maximum_seconds::Real = 1.0,
+)::Float64
+    resolved = signal_resolved_time_unit(unit, maximum_seconds)
+    resolved == PICOSECONDS_TIME_UNIT && return 1.0e-12
+    resolved == NANOSECONDS_TIME_UNIT && return 1.0e-9
+    resolved == MICROSECONDS_TIME_UNIT && return 1.0e-6
+    resolved == MILLISECONDS_TIME_UNIT && return 1.0e-3
+    resolved == SECONDS_TIME_UNIT && return 1.0
+    resolved == MINUTES_TIME_UNIT && return 60.0
+    resolved == HOURS_TIME_UNIT && return 3600.0
+    resolved == DAYS_TIME_UNIT && return 86400.0
+    31557600.0
 end
 
 @enum SignalFrequencyUnitPreference begin
@@ -61,6 +106,19 @@ end
     MEGAHERTZ_FREQUENCY_UNIT
     GIGAHERTZ_FREQUENCY_UNIT
     TERAHERTZ_FREQUENCY_UNIT
+end
+
+function signal_hertz_per_frequency_unit(unit::SignalFrequencyUnitPreference)::Float64
+    unit == CYCLES_PER_YEAR_FREQUENCY_UNIT && return 1.0 / 31557600.0
+    unit == CYCLES_PER_DAY_FREQUENCY_UNIT && return 1.0 / 86400.0
+    unit == CYCLES_PER_HOUR_FREQUENCY_UNIT && return 1.0 / 3600.0
+    unit == CYCLES_PER_MINUTE_FREQUENCY_UNIT && return 1.0 / 60.0
+    unit == MILLIHERTZ_FREQUENCY_UNIT && return 1.0e-3
+    unit == HERTZ_FREQUENCY_UNIT && return 1.0
+    unit == KILOHERTZ_FREQUENCY_UNIT && return 1.0e3
+    unit == MEGAHERTZ_FREQUENCY_UNIT && return 1.0e6
+    unit == GIGAHERTZ_FREQUENCY_UNIT && return 1.0e9
+    1.0e12
 end
 
 @enum SignalSpectrumResolutionType begin
@@ -253,11 +311,14 @@ Base.:(==)(left::SignalPowerBinsPreference, right::SignalPowerBinsPreference) =
 
 struct SignalDisplayPreferences
     show_legend::Bool
+    show_axis_labels::Bool
 end
 
-SignalDisplayPreferences() = SignalDisplayPreferences(true)
+SignalDisplayPreferences(show_legend::Bool) = SignalDisplayPreferences(show_legend, true)
+SignalDisplayPreferences() = SignalDisplayPreferences(true, true)
 Base.:(==)(left::SignalDisplayPreferences, right::SignalDisplayPreferences) =
-    left.show_legend == right.show_legend
+    left.show_legend == right.show_legend &&
+    left.show_axis_labels == right.show_axis_labels
 
 struct SignalTimePreferences
     normalize_y::Bool
@@ -265,6 +326,7 @@ struct SignalTimePreferences
     units::SignalTimeUnitPreference
     y_limits::Union{Nothing,SignalSettingRange}
     link_time::Bool
+    link_amplitude::Bool
 end
 
 SignalTimePreferences() = SignalTimePreferences(
@@ -273,13 +335,15 @@ SignalTimePreferences() = SignalTimePreferences(
     SECONDS_TIME_UNIT,
     nothing,
     false,
+    false,
 )
 Base.:(==)(left::SignalTimePreferences, right::SignalTimePreferences) =
     left.normalize_y == right.normalize_y &&
     left.show_markers == right.show_markers &&
     left.units == right.units &&
     left.y_limits == right.y_limits &&
-    left.link_time == right.link_time
+    left.link_time == right.link_time &&
+    left.link_amplitude == right.link_amplitude
 
 struct SignalSpectrumPreferences
     frequency_units::SignalFrequencyUnitPreference
@@ -291,6 +355,8 @@ struct SignalSpectrumPreferences
     sidelobe_attenuation_db::Float64
     overlap_percent::Float64
     nfft::SignalNfftResolution
+    link_frequency::Bool
+    link_magnitude::Bool
 
     function SignalSpectrumPreferences(
         frequency_units::SignalFrequencyUnitPreference,
@@ -302,6 +368,8 @@ struct SignalSpectrumPreferences
         sidelobe_attenuation_db::Real,
         overlap_percent::Real,
         nfft::SignalNfftResolution,
+        link_frequency::Bool,
+        link_magnitude::Bool,
     )
         sidelobe_attenuation_db isa Bool && throw(ArgumentError(
             "Sidelobe attenuation должна быть числом, но не Bool",
@@ -340,9 +408,35 @@ struct SignalSpectrumPreferences
             attenuation == 0.0 ? 0.0 : attenuation,
             overlap == 0.0 ? 0.0 : overlap,
             nfft,
+            link_frequency,
+            link_magnitude,
         )
     end
 end
+
+SignalSpectrumPreferences(
+    frequency_units::SignalFrequencyUnitPreference,
+    y_limits::Union{Nothing,SignalSettingRange},
+    resolution_type::SignalSpectrumResolutionType,
+    rbw::SignalHertzResolution,
+    window_length::SignalSamplesResolution,
+    window::SignalSpectrumWindow,
+    sidelobe_attenuation_db::Real,
+    overlap_percent::Real,
+    nfft::SignalNfftResolution,
+) = SignalSpectrumPreferences(
+    frequency_units,
+    y_limits,
+    resolution_type,
+    rbw,
+    window_length,
+    window,
+    sidelobe_attenuation_db,
+    overlap_percent,
+    nfft,
+    false,
+    false,
+)
 
 SignalSpectrumPreferences(
     frequency_units::SignalFrequencyUnitPreference,
@@ -385,7 +479,9 @@ Base.:(==)(left::SignalSpectrumPreferences, right::SignalSpectrumPreferences) =
     left.window == right.window &&
     left.sidelobe_attenuation_db == right.sidelobe_attenuation_db &&
     left.overlap_percent == right.overlap_percent &&
-    left.nfft == right.nfft
+    left.nfft == right.nfft &&
+    left.link_frequency == right.link_frequency &&
+    left.link_magnitude == right.link_magnitude
 
 struct SignalSpectrogramPreferences
     time_units::SignalTimeUnitPreference

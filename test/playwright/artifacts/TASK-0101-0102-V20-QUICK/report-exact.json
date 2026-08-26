@@ -1,0 +1,81 @@
+{
+  "id": "TASK-0101-0102-V20-QUICK",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "mode": "quick_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "01d0c431f2a24bc03f24900d633218f660262f6a",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "api_status_exact_revision",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "01d0c431f2a24bc03f24900d633218f660262f6a",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "production_root",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "lower_control_surface",
+      "status": "passed",
+      "detail": {
+        "header": "rgb(255, 255, 255)",
+        "group": "rgb(255, 255, 255)",
+        "groupBorder": "0px",
+        "buttons": [
+          {
+            "background": "rgb(255, 255, 255)",
+            "border": "0px"
+          },
+          {
+            "background": "rgb(255, 255, 255)",
+            "border": "0px"
+          }
+        ]
+      }
+    },
+    {
+      "name": "dropdown_anchor_width_and_frame",
+      "status": "passed",
+      "detail": {
+        "anchor": 212,
+        "popup": 212,
+        "border": "0px",
+        "padding": "0px",
+        "focused": true
+      }
+    },
+    {
+      "name": "no_non_product_404",
+      "status": "passed",
+      "detail": {
+        "not_found": [],
+        "non_favicon_404": []
+      }
+    }
+  ],
+  "not_found": [],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "passed",
+  "screenshot": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0101-0102-V20-QUICK/v20-exact-1024x768.png",
+  "non_favicon_404": [],
+  "planned": 5,
+  "passed": 5,
+  "failed": 0,
+  "success_rate": 100
+}

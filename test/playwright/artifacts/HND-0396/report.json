@@ -1,0 +1,92 @@
+{
+  "handoff_id": "HND-0396",
+  "mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "76cb9c6a360ed6d852203f9be0ed7a1a4003e156",
+  "design_ref": "architecture/design/TASK-0057-ui-overlay-refinement/DESIGN.md",
+  "design_version": 2,
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "started_at": "2026-08-06T12:50:55.168Z",
+  "checks": [
+    {
+      "suite": "quick_regression",
+      "name": "availability-exact-revision",
+      "pass": false,
+      "actual": "main-document navigation timed out before DOM readiness; HTTP status and runtime SHA unavailable",
+      "expected": "HTTP 2xx, ready/ok, exact SHA 76cb9c6a360ed6d852203f9be0ed7a1a4003e156"
+    }
+  ],
+  "prototype_checks": [
+    {
+      "viewport": "1024x768",
+      "pass": true,
+      "actual": {
+        "shell": true,
+        "close": true,
+        "add": true,
+        "layout": true,
+        "settings": true,
+        "legend": true,
+        "checkbox": true,
+        "rowActions": true,
+        "search": true
+      }
+    },
+    {
+      "viewport": "1440x900",
+      "pass": true,
+      "actual": {
+        "shell": true,
+        "close": true,
+        "add": true,
+        "layout": true,
+        "settings": true,
+        "legend": true,
+        "checkbox": true,
+        "rowActions": true,
+        "search": true
+      }
+    }
+  ],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0396/prototype-final-1024x768.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0396/prototype-final-1440x900.png"
+  ],
+  "page_errors": [],
+  "console_errors": [],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "tab_cleanup_status": "pass",
+  "run_error": "page.goto: net::ERR_TIMED_OUT at https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\nCall log:\n\u001b[2m  - navigating to \"https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/hnd0396_final_design_readiness_smoke.js:230:37",
+  "availability": {
+    "pass": false,
+    "exact_url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+    "main_document_status": null,
+    "runtime_revision": null,
+    "observed_at": "2026-08-06T12:51:28.215Z",
+    "failure": "net::ERR_TIMED_OUT before DOM readiness"
+  },
+  "new_functionality": {
+    "planned": 16,
+    "passed": 0,
+    "failed": 0,
+    "not_run": 16,
+    "success_rate": 0
+  },
+  "quick_regression": {
+    "planned": 4,
+    "passed": 0,
+    "failed": 1,
+    "not_run": 3,
+    "success_rate": 0
+  },
+  "completed_at": "2026-08-06T12:51:28.215Z",
+  "verdict": "fail"
+}

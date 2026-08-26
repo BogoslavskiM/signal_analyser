@@ -1,0 +1,22 @@
+"use strict";
+
+const fs = require("fs");
+const path = require("path");
+
+module.exports = async function task0126IntegratedRegression(assert) {
+  const root = path.resolve(__dirname, "../../../..");
+  const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
+  const settings = fs.readFileSync(path.join(root, "public/js/settings.js"), "utf8");
+  const expectedPalette = ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04", "#db2777"];
+
+  const paletteLiterals = app.match(/var (?:signalPalette|palette) = \[([^\]]+)\]/g) || [];
+  assert(paletteLiterals.length >= 2 && paletteLiterals.every((literal) => expectedPalette.every((color) => literal.includes(`"${color}"`)) && (literal.match(/#[0-9a-f]{6}/gi) || []).length === expectedPalette.length), "the Signal settings picker and its fallback must use the exact original eight-color identity");
+  assert(/var summaryFields = \[[\s\S]*?\["sample_count", "Отсчёты"\][\s\S]*?\["region_start", "Начало области"\][\s\S]*?\["minimum_position", "Время минимума"\][\s\S]*?\["maximum_position", "Время максимума"\][\s\S]*?\["median", "Медиана"\][\s\S]*?\["peak_to_peak", "Размах"\][\s\S]*?\["rms", "СКЗ"\]/.test(app) && /function signalSummaryMetrics\([\s\S]*?minimum_sample_index[\s\S]*?maximum_sample_index[\s\S]*?summary\.peak_to_peak == null \? summary\.range/.test(app), "Signal summary must render complete returned metrics, positions/indices and range fallback");
+  assert(/\.summary-grid\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)/.test(fs.readFileSync(path.join(root, "public/css/app.css"), "utf8")) && !/summaryBody=[^\n]*signal-values-action/.test(app), "Signal summary must be a single column and must not own the Values action inside its scroll content");
+  assert(/data-testid="signal-values-action"[^>]*>Значения</.test(fs.readFileSync(path.join(root, "public/index.html"), "utf8")) && /model\.settingsPage === "signal"[\s\S]*?signalValues\.hidden = false/.test(app), "Signal Values must use the shared settings footer like Extrema Calculate");
+  assert(/var noHistory=" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'"/.test(app) && /data-signal-metadata='name'"\+noHistory[\s\S]*?data-signal-metadata='color'[\s\S]*?data-signal-metadata='sample_rate_hz'/.test(app) && /function decorateNoHistory\(root\)[\s\S]*?input\.setAttribute\("autocomplete", "off"\)/.test(app), "Signal inputs must opt out of autocomplete/history both explicitly and after dynamic render");
+  assert(/function projectNamePreview\(detail\)[\s\S]*?model\.namePreview\.displays[\s\S]*?model\.namePreview\.panes/.test(app) && /signal-settings-name-preview/.test(app) && /signal-settings-save-failed[\s\S]*?clearNamePreview/.test(app) && /reconcileNamePreviews\(snapshot\)/.test(app), "Screen and Area names must render optimistically then reconcile accepted snapshots or revert failures");
+  assert(/function canonicalFromVisible\(value, unit\)[\s\S]*?helper\.toCanonical/.test(settings) && /function visibleFromCanonical\(value, unit\)[\s\S]*?helper\.projectCanonical/.test(settings) && /reprojectRangeForUnitChange[\s\S]*?current\.min == null \? ""[\s\S]*?current\.max == null \? ""/.test(settings), "unit changes must preserve canonical bounds, round-trip projected inputs, and retain empty automatic endpoints");
+  assert(app.includes("function currentPeaksVisibleRange") && app.includes("host._fullLayout.xaxis.range") && app.includes("task0126.effectiveViewport") && app.includes("min_s:canonical[0]") && app.includes("max_s:canonical[1]") && app.includes("min_hz:canonical[0]") && app.includes("max_hz:canonical[1]") && app.includes("var payload={ state_revision:model.revision, display_id:displayId, pane_id:paneId };") && app.includes("if (visibleRange) payload.visible_range=visibleRange;") && app.includes("api.calculateActivePeaks(payload)"), "TIME and SPECTRUM extrema requests must send the current Plotly X viewport as canonical visible_range");
+  assert(/function setBusyPreservingCheckboxes\(root, busy\)[\s\S]*?input\[type='checkbox'\][\s\S]*?checkbox\.disabled=true[\s\S]*?wasDisabledBeforeBusy/.test(app) && /function setCheckboxRegionBusy\(root, busy\)[\s\S]*?task0126\.setBusyPreservingCheckboxes/.test(app) && /setCheckboxRegionBusy\(region, busy\)/.test(app) && /setCheckboxRegionBusy\(layer\.querySelector\("\[data-testid='signal-add-variables'\]"\), true\)/.test(app), "Signal and Engee-add checked controls must remain rendered/checked while loading or mutating");
+};

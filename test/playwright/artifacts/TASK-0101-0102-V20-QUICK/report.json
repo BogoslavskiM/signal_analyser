@@ -1,0 +1,44 @@
+{
+  "id": "TASK-0101-0102-V20-QUICK",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "mode": "quick_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "6b13ec9e394b6145683cef58fb0fac42cd7b4c14",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "availability",
+      "status": "passed",
+      "detail": {
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+        "title": "Анализатор сигналов"
+      }
+    },
+    {
+      "name": "root_and_default_split",
+      "status": "passed",
+      "detail": {
+        "app": true,
+        "stack": "split",
+        "revision": null
+      }
+    }
+  ],
+  "requests": [],
+  "screenshots": [],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "passed",
+  "errors": [],
+  "failure": "page.evaluate: TypeError: Failed to execute 'getComputedStyle' on 'Window': parameter 1 is not of type 'Element'.\n    at eval (eval at evaluate (:311:30), <anonymous>:1:820)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+  "planned": 10,
+  "passed": 2,
+  "failed": 0,
+  "not_run": 8,
+  "success_rate": 20
+}

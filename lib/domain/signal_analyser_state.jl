@@ -17,13 +17,63 @@ const SIGNAL_ANALYSER_PLOT_NAMES = Dict(
 const SIGNAL_ANALYSER_PLOTS_BY_NAME = Dict(value => key for (key, value) in SIGNAL_ANALYSER_PLOT_NAMES)
 
 struct AnalysedSignal
+    id::String
     name::String
     color::String
     sample_rate_hz::Float64
     values::Vector{ComplexF64}
     is_complex::Bool
     visible::Bool
+
+    function AnalysedSignal(
+        id::AbstractString,
+        name::AbstractString,
+        color::AbstractString,
+        sample_rate_hz::Real,
+        values::AbstractVector{<:Number},
+        is_complex::Bool,
+        visible::Bool,
+    )
+        signal_id = String(id)
+        isempty(strip(signal_id)) && throw(ArgumentError("Signal id не может быть пустым"))
+        signal_name = String(name)
+        isempty(strip(signal_name)) && throw(ArgumentError("Имя сигнала не может быть пустым"))
+        signal_color = String(color)
+        isempty(strip(signal_color)) && throw(ArgumentError("Цвет сигнала не может быть пустым"))
+        rate = Float64(sample_rate_hz)
+        isfinite(rate) && rate > 0 || throw(ArgumentError(
+            "Частота дискретизации должна быть положительной и конечной",
+        ))
+        samples = ComplexF64.(values)
+        !isempty(samples) || throw(ArgumentError("Сигнал должен содержать хотя бы один отсчёт"))
+        all(value -> !isinf(real(value)) && !isinf(imag(value)), samples) || throw(
+            ArgumentError("Отсчёты сигнала не должны содержать бесконечные значения"),
+        )
+        !is_complex && any(value -> !iszero(imag(value)), samples) && throw(ArgumentError(
+            "Вещественный сигнал не может содержать комплексные отсчёты",
+        ))
+        new(signal_id, signal_name, signal_color, rate, samples, is_complex, visible)
+    end
 end
+
+signal_analyser_new_signal_id()::String = "signal-$(lowercase(string(UUIDs.uuid4())))"
+
+AnalysedSignal(
+    name::AbstractString,
+    color::AbstractString,
+    sample_rate_hz::Real,
+    values::AbstractVector{<:Number},
+    is_complex::Bool,
+    visible::Bool,
+) = AnalysedSignal(
+    signal_analyser_new_signal_id(),
+    name,
+    color,
+    sample_rate_hz,
+    values,
+    is_complex,
+    visible,
+)
 
 """Authoritative per-Display Time region in seconds."""
 struct SignalTimeLimits
@@ -1277,6 +1327,155 @@ end
 
 Base.showerror(io::IO, err::SignalPeaksCapabilityError) = print(io, err.message)
 
+const SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS::Int = 1_000
+
+@enum SignalExtremaMode begin
+    MAXIMA_EXTREMA_MODE
+    MINIMA_EXTREMA_MODE
+    ALL_EXTREMA_MODE
+end
+
+const SIGNAL_EXTREMA_MODE_NAMES = Dict{SignalExtremaMode,String}(
+    MAXIMA_EXTREMA_MODE => "maxima",
+    MINIMA_EXTREMA_MODE => "minima",
+    ALL_EXTREMA_MODE => "all",
+)
+const SIGNAL_EXTREMA_MODES_BY_NAME = Dict{String,SignalExtremaMode}(
+    name => mode for (mode, name) in SIGNAL_EXTREMA_MODE_NAMES
+)
+
+@enum SignalPeakKind begin
+    MAXIMUM_PEAK
+    MINIMUM_PEAK
+end
+
+
+const SIGNAL_PEAK_KIND_NAMES = Dict{SignalPeakKind,String}(
+    MAXIMUM_PEAK => "maximum",
+    MINIMUM_PEAK => "minimum",
+)
+
+signal_extrema_mode_name(mode::SignalExtremaMode)::String = SIGNAL_EXTREMA_MODE_NAMES[mode]
+signal_peak_kind_name(kind::SignalPeakKind)::String = SIGNAL_PEAK_KIND_NAMES[kind]
+signal_peak_kind_order(kind::SignalPeakKind)::Int = kind == MAXIMUM_PEAK ? 0 : 1
+
+"""Provider-affecting Extrema settings on the compatibility Peaks boundary."""
+struct SignalPeaksSettings
+    mode::SignalExtremaMode
+    number_of_peaks::Int
+    maximum_cutoff::Union{Nothing,Float64}
+    minimum_cutoff::Union{Nothing,Float64}
+    minimum_distance_samples::Int
+    threshold::Float64
+
+    function SignalPeaksSettings(
+        mode::SignalExtremaMode,
+        number_of_peaks::Int,
+        maximum_cutoff::Union{Nothing,Real},
+        minimum_cutoff::Union{Nothing,Real},
+        minimum_distance_samples::Int,
+        threshold::Real,
+    )
+        1 <= number_of_peaks <= SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS || throw(ArgumentError(
+            "Количество экстремумов должно быть целым числом от 1 до $(SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS)",
+        ))
+        maximum = maximum_cutoff === nothing ? nothing : Float64(maximum_cutoff)
+        maximum === nothing || isfinite(maximum) || throw(ArgumentError(
+            "Отсечка максимума должна быть конечным числом или null",
+        ))
+        minimum = minimum_cutoff === nothing ? nothing : Float64(minimum_cutoff)
+        minimum === nothing || isfinite(minimum) || throw(ArgumentError(
+            "Отсечка минимума должна быть конечным числом или null",
+        ))
+        minimum_distance_samples >= 1 || throw(ArgumentError(
+            "Минимальное расстояние должно быть положительным целым числом отсчётов",
+        ))
+        threshold_value = Float64(threshold)
+        isfinite(threshold_value) && threshold_value >= 0 || throw(ArgumentError(
+            "Порог должен быть неотрицательным конечным числом",
+        ))
+        new(
+            mode,
+            number_of_peaks,
+            maximum,
+            minimum,
+            minimum_distance_samples,
+            threshold_value == 0.0 ? 0.0 : threshold_value,
+        )
+    end
+end
+
+SignalPeaksSettings(
+    mode::SignalExtremaMode,
+    number_of_peaks::Int,
+    minimum_height::Union{Nothing,Real},
+    minimum_distance_samples::Int,
+    threshold::Real,
+) = SignalPeaksSettings(
+    mode,
+    number_of_peaks,
+    mode == MINIMA_EXTREMA_MODE ? nothing : minimum_height,
+    mode == MAXIMA_EXTREMA_MODE || minimum_height === nothing ? nothing : -minimum_height,
+    minimum_distance_samples,
+    threshold,
+)
+
+SignalPeaksSettings(
+    number_of_peaks::Int,
+    minimum_height::Union{Nothing,Real},
+    minimum_distance_samples::Int,
+    threshold::Real,
+) = SignalPeaksSettings(
+    MAXIMA_EXTREMA_MODE,
+    number_of_peaks,
+    minimum_height,
+    minimum_distance_samples,
+    threshold,
+)
+
+SignalPeaksSettings() = SignalPeaksSettings(MAXIMA_EXTREMA_MODE, 5, nothing, nothing, 1, 0.0)
+
+"""Transient canonical viewport used only by an explicit TIME extrema calculation."""
+struct SignalTimePeaksVisibleRange
+    min_s::Float64
+    max_s::Float64
+
+    function SignalTimePeaksVisibleRange(min_s::Real, max_s::Real)
+        minimum_value = Float64(min_s)
+        maximum_value = Float64(max_s)
+        isfinite(minimum_value) && isfinite(maximum_value) || throw(ArgumentError(
+            "Visible TIME range должен содержать конечные числа",
+        ))
+        minimum_value < maximum_value || throw(ArgumentError(
+            "Минимум visible TIME range должен быть меньше максимума",
+        ))
+        new(minimum_value, maximum_value)
+    end
+end
+
+"""Transient canonical viewport used only by an explicit SPECTRUM extrema calculation."""
+struct SignalSpectrumPeaksVisibleRange
+    min_hz::Float64
+    max_hz::Float64
+
+    function SignalSpectrumPeaksVisibleRange(min_hz::Real, max_hz::Real)
+        minimum_value = Float64(min_hz)
+        maximum_value = Float64(max_hz)
+        isfinite(minimum_value) && isfinite(maximum_value) || throw(ArgumentError(
+            "Visible SPECTRUM range должен содержать конечные числа",
+        ))
+        minimum_value < maximum_value || throw(ArgumentError(
+            "Минимум visible SPECTRUM range должен быть меньше максимума",
+        ))
+        new(minimum_value, maximum_value)
+    end
+end
+
+const SignalPeaksVisibleRange = Union{
+    SignalTimePeaksVisibleRange,
+    SignalSpectrumPeaksVisibleRange,
+}
+
 struct SignalPeaksQuery
     state_revision::Int
     display_id::String
@@ -1285,6 +1484,7 @@ struct SignalPeaksQuery
     values::Tuple{Vararg{Float64}}
     sample_rate_hz::Float64
     sample_offset::Int
+    settings::SignalPeaksSettings
 
     function SignalPeaksQuery(
         state_revision::Int,
@@ -1294,11 +1494,12 @@ struct SignalPeaksQuery
         values::AbstractVector{<:Real},
         sample_rate_hz::Real,
         sample_offset::Int,
+        settings::SignalPeaksSettings,
     )
         state_revision >= 0 || throw(ArgumentError("Ревизия peaks query не может быть отрицательной"))
         isempty(display_id) && throw(ArgumentError("Идентификатор Display peaks query не может быть пустым"))
         isempty(signal_name) && throw(ArgumentError("Имя сигнала peaks query не может быть пустым"))
-        length(values) >= 3 || throw(ArgumentError("Для поиска пиков нужно не менее трёх отсчётов"))
+        length(values) >= 3 || throw(ArgumentError("Для расчёта экстремумов нужно не менее трёх отсчётов"))
         peak_values = Float64.(values)
         all(isfinite, peak_values) || throw(ArgumentError("Отсчёты peaks query должны быть конечными"))
         isfinite(sample_rate_hz) && sample_rate_hz > 0 || throw(ArgumentError(
@@ -1315,9 +1516,29 @@ struct SignalPeaksQuery
             Tuple(peak_values),
             Float64(sample_rate_hz),
             sample_offset,
+            settings,
         )
     end
 end
+
+SignalPeaksQuery(
+    state_revision::Int,
+    display_id::AbstractString,
+    signal_name::AbstractString,
+    ordinate::SignalMeasurementOrdinate,
+    values::AbstractVector{<:Real},
+    sample_rate_hz::Real,
+    sample_offset::Int,
+) = SignalPeaksQuery(
+    state_revision,
+    display_id,
+    signal_name,
+    ordinate,
+    values,
+    sample_rate_hz,
+    sample_offset,
+    SignalPeaksSettings(),
+)
 
 SignalPeaksQuery(
     state_revision::Int,
@@ -1334,6 +1555,7 @@ SignalPeaksQuery(
     values,
     sample_rate_hz,
     0,
+    SignalPeaksSettings(),
 )
 
 struct SignalPeaksProviderResult
@@ -1341,18 +1563,20 @@ struct SignalPeaksProviderResult
     locations_1based::Tuple{Vararg{Int}}
     widths_samples::Tuple{Vararg{Float64}}
     prominences::Tuple{Vararg{Float64}}
+    kinds::Tuple{Vararg{SignalPeakKind}}
 
     function SignalPeaksProviderResult(
         peak_values::AbstractVector{<:Real},
         locations_1based::AbstractVector{<:Integer},
         widths_samples::AbstractVector{<:Real},
         prominences::AbstractVector{<:Real},
+        kinds::AbstractVector{SignalPeakKind},
         sample_count::Int,
     )
         sample_count >= 3 || throw(ArgumentError("Результат peaks требует не менее трёх исходных отсчётов"))
         count = length(peak_values)
-        count == length(locations_1based) == length(widths_samples) == length(prominences) || throw(
-            DimensionMismatch("Массивы Ypk, Xpk, Wpk и Ppk должны иметь одинаковую длину"),
+        count == length(locations_1based) == length(widths_samples) == length(prominences) == length(kinds) || throw(
+            DimensionMismatch("Массивы Ypk, Xpk, Wpk, Ppk и kinds должны иметь одинаковую длину"),
         )
         values = Float64.(peak_values)
         locations = Int.(locations_1based)
@@ -1362,8 +1586,11 @@ struct SignalPeaksProviderResult
         all(location -> 1 <= location <= sample_count, locations) || throw(ArgumentError(
             "Индексы Xpk должны находиться внутри исходного сигнала",
         ))
-        issorted(locations) && allunique(locations) || throw(ArgumentError(
-            "Индексы Xpk должны быть уникальными и следовать в порядке появления",
+        extrema_keys = [
+            (locations[index], signal_peak_kind_order(kinds[index])) for index in eachindex(locations)
+        ]
+        issorted(extrema_keys) && allunique(extrema_keys) || throw(ArgumentError(
+            "Экстремумы должны быть уникальными и следовать в хронологическом порядке",
         ))
         all(value -> isfinite(value) && value >= 0, widths) || throw(ArgumentError(
             "Значения Wpk должны быть неотрицательными и конечными",
@@ -1371,40 +1598,159 @@ struct SignalPeaksProviderResult
         all(value -> isfinite(value) && value >= 0, peak_prominences) || throw(ArgumentError(
             "Значения Ppk должны быть неотрицательными и конечными",
         ))
-        new(Tuple(values), Tuple(locations), Tuple(widths), Tuple(peak_prominences))
+        new(
+            Tuple(values),
+            Tuple(locations),
+            Tuple(widths),
+            Tuple(peak_prominences),
+            Tuple(kinds),
+        )
     end
 end
 
-struct SignalPeakItem
-    id::String
+SignalPeaksProviderResult(
+    peak_values::AbstractVector{<:Real},
+    locations_1based::AbstractVector{<:Integer},
+    widths_samples::AbstractVector{<:Real},
+    prominences::AbstractVector{<:Real},
+    sample_count::Int,
+) = SignalPeaksProviderResult(
+    peak_values,
+    locations_1based,
+    widths_samples,
+    prominences,
+    fill(MAXIMUM_PEAK, length(peak_values)),
+    sample_count,
+)
+
+"""One typed directional candidate used to rank combined extrema."""
+struct SignalPeakProviderCandidate
+    kind::SignalPeakKind
     value::Float64
-    sample_index::Int
-    time_s::Float64
+    location_1based::Int
     width_samples::Float64
     prominence::Float64
 
-    function SignalPeakItem(
+    function SignalPeakProviderCandidate(
+        kind::SignalPeakKind,
         value::Real,
-        sample_index::Int,
-        time_s::Real,
+        location_1based::Int,
         width_samples::Real,
         prominence::Real,
     )
-        isfinite(value) || throw(ArgumentError("Значение пика должно быть конечным"))
-        sample_index >= 0 || throw(ArgumentError("Индекс пика не может быть отрицательным"))
-        isfinite(time_s) && time_s >= 0 || throw(ArgumentError("Время пика должно быть неотрицательным и конечным"))
-        isfinite(width_samples) && width_samples >= 0 || throw(ArgumentError("Ширина пика должна быть неотрицательной и конечной"))
-        isfinite(prominence) && prominence >= 0 || throw(ArgumentError("Высота выступа пика должна быть неотрицательной и конечной"))
+        isfinite(value) || throw(ArgumentError("Значение extrema candidate должно быть конечным"))
+        location_1based >= 1 || throw(ArgumentError("Индекс extrema candidate должен быть положительным"))
+        isfinite(width_samples) && width_samples >= 0 || throw(ArgumentError(
+            "Ширина extrema candidate должна быть неотрицательной и конечной",
+        ))
+        isfinite(prominence) && prominence >= 0 || throw(ArgumentError(
+            "Prominence extrema candidate должен быть неотрицательным и конечным",
+        ))
         new(
-            "peak-$sample_index",
+            kind,
             Float64(value),
-            sample_index,
-            Float64(time_s),
+            location_1based,
             Float64(width_samples),
             Float64(prominence),
         )
     end
 end
+
+abstract type AbstractSignalPeakPosition end
+
+struct SignalTimePeakPosition <: AbstractSignalPeakPosition
+    sample_index::Int
+    time_s::Float64
+
+    function SignalTimePeakPosition(sample_index::Int, time_s::Real)
+        sample_index >= 0 || throw(ArgumentError("Индекс экстремума не может быть отрицательным"))
+        value = Float64(time_s)
+        isfinite(value) && value >= 0 || throw(ArgumentError(
+            "Время экстремума должно быть неотрицательным и конечным",
+        ))
+        new(sample_index, value)
+    end
+end
+
+struct SignalSpectrumPeakPosition <: AbstractSignalPeakPosition
+    bin_index::Int
+    frequency_hz::Float64
+
+    function SignalSpectrumPeakPosition(bin_index::Int, frequency_hz::Real)
+        bin_index >= 1 || throw(ArgumentError("Индекс спектрального бина должен быть положительным"))
+        value = Float64(frequency_hz)
+        isfinite(value) || throw(ArgumentError("Частота экстремума должна быть конечной"))
+        new(bin_index, value == 0.0 ? 0.0 : value)
+    end
+end
+
+signal_peak_position_order(position::SignalTimePeakPosition) =
+    (position.time_s, position.sample_index)
+signal_peak_position_order(position::SignalSpectrumPeakPosition) =
+    (position.frequency_hz, position.bin_index)
+
+struct SignalPeakItem
+    id::String
+    kind::SignalPeakKind
+    value::Float64
+    position::AbstractSignalPeakPosition
+    width_samples::Float64
+    prominence::Float64
+
+    function SignalPeakItem(
+        kind::SignalPeakKind,
+        value::Real,
+        position::AbstractSignalPeakPosition,
+        width_samples::Real,
+        prominence::Real,
+    )
+        isfinite(value) || throw(ArgumentError("Значение экстремума должно быть конечным"))
+        isfinite(width_samples) && width_samples >= 0 || throw(ArgumentError("Ширина экстремума должна быть неотрицательной и конечной"))
+        isfinite(prominence) && prominence >= 0 || throw(ArgumentError("Prominence экстремума должен быть неотрицательным и конечным"))
+        coordinate = position isa SignalTimePeakPosition ?
+            "sample-$((position::SignalTimePeakPosition).sample_index)" :
+            "bin-$((position::SignalSpectrumPeakPosition).bin_index)"
+        new(
+            kind == MAXIMUM_PEAK ? "peak-$coordinate" : "peak-minimum-$coordinate",
+            kind,
+            Float64(value),
+            position,
+            Float64(width_samples),
+            Float64(prominence),
+        )
+    end
+end
+
+SignalPeakItem(
+    kind::SignalPeakKind,
+    value::Real,
+    sample_index::Int,
+    time_s::Real,
+    width_samples::Real,
+    prominence::Real,
+) = SignalPeakItem(
+    kind,
+    value,
+    SignalTimePeakPosition(sample_index, time_s),
+    width_samples,
+    prominence,
+)
+
+
+SignalPeakItem(
+    value::Real,
+    sample_index::Int,
+    time_s::Real,
+    width_samples::Real,
+    prominence::Real,
+) = SignalPeakItem(
+    MAXIMUM_PEAK,
+    value,
+    sample_index,
+    time_s,
+    width_samples,
+    prominence,
+)
 
 struct SignalPeaksUnits
     value::String
@@ -1418,17 +1764,20 @@ struct SignalPeaksUnits
         width::AbstractString,
         prominence::AbstractString,
     )
-        (value, time, width, prominence) == ("1", "s", "samples", "1") || throw(ArgumentError(
-            "Peaks P0 использует фиксированные единицы value/time/width/prominence",
-        ))
+        value == "1" || throw(ArgumentError("Extrema value unit должна быть 1"))
+        time in ("s", "Hz") || throw(ArgumentError("Extrema position unit должна быть s или Hz"))
+        width == "samples" || throw(ArgumentError("Extrema width unit должна быть samples"))
+        prominence == "1" || throw(ArgumentError("Extrema prominence unit должна быть 1"))
         new(String(value), String(time), String(width), String(prominence))
     end
 end
 
 SignalPeaksUnits() = SignalPeaksUnits("1", "s", "samples", "1")
+signal_spectrum_peaks_units() = SignalPeaksUnits("1", "Hz", "samples", "1")
 
 struct SignalPeaksSnapshot
     enabled::Bool
+    mode::SignalExtremaMode
     state_revision::Int
     display_id::String
     signal_name::Union{Nothing,String}
@@ -1438,6 +1787,7 @@ struct SignalPeaksSnapshot
 
     function SignalPeaksSnapshot(
         enabled::Bool,
+        mode::SignalExtremaMode,
         state_revision::Int,
         display_id::AbstractString,
         signal_name::Union{Nothing,AbstractString},
@@ -1455,18 +1805,161 @@ struct SignalPeaksSnapshot
         !enabled && !isempty(peak_items) && throw(ArgumentError("Выключенный peaks snapshot не может содержать items"))
         signal_name === nothing && enabled && throw(ArgumentError("Пустой peaks snapshot не может быть enabled"))
         signal_name === nothing && !isempty(peak_items) && throw(ArgumentError("Пустой peaks snapshot не может содержать items"))
-        indices = [item.sample_index for item in peak_items]
-        issorted(indices) && allunique(indices) || throw(ArgumentError(
-            "Peaks items должны быть уникальными и следовать в порядке появления",
+        position_types = unique(typeof(item.position) for item in peak_items)
+        length(position_types) <= 1 || throw(ArgumentError(
+            "Extrema snapshot не может смешивать временные и спектральные позиции",
         ))
+        item_keys = [
+            (signal_peak_position_order(item.position)..., signal_peak_kind_order(item.kind))
+            for item in peak_items
+        ]
+        issorted(item_keys) && allunique(item_keys) || throw(ArgumentError(
+            "Extrema items должны быть уникальными и следовать в порядке появления",
+        ))
+        mode == MAXIMA_EXTREMA_MODE && any(item -> item.kind != MAXIMUM_PEAK, peak_items) &&
+            throw(ArgumentError("Режим maxima не может содержать minima items"))
+        mode == MINIMA_EXTREMA_MODE && any(item -> item.kind != MINIMUM_PEAK, peak_items) &&
+            throw(ArgumentError("Режим minima не может содержать maxima items"))
         new(
             enabled,
+            mode,
             state_revision,
             String(display_id),
             signal_name === nothing ? nothing : String(signal_name),
             ordinate,
             units,
             Tuple(peak_items),
+        )
+    end
+end
+
+
+SignalPeaksSnapshot(
+    enabled::Bool,
+    state_revision::Int,
+    display_id::AbstractString,
+    signal_name::Union{Nothing,AbstractString},
+    ordinate::Union{Nothing,SignalMeasurementOrdinate},
+    units::SignalPeaksUnits,
+    items::AbstractVector{SignalPeakItem},
+) = SignalPeaksSnapshot(
+    enabled,
+    MAXIMA_EXTREMA_MODE,
+    state_revision,
+    display_id,
+    signal_name,
+    ordinate,
+    units,
+    items,
+)
+
+"""One flattened Peaks table row for one signal bound to the active TIME pane."""
+struct SignalPeaksTableRow
+    row_number::Int
+    signal_name::String
+    signal_color::String
+    graph_number::Int
+    peak::SignalPeakItem
+
+    function SignalPeaksTableRow(
+        row_number::Int,
+        signal_name::AbstractString,
+        signal_color::AbstractString,
+        graph_number::Int,
+        peak::SignalPeakItem,
+    )
+        row_number >= 1 || throw(ArgumentError("Номер строки Peaks должен быть положительным"))
+        isempty(signal_name) && throw(ArgumentError("Имя сигнала Peaks row не может быть пустым"))
+        isempty(signal_color) && throw(ArgumentError("Цвет сигнала Peaks row не может быть пустым"))
+        graph_number >= 1 || throw(ArgumentError("Номер метки Peaks должен быть положительным"))
+        new(row_number, String(signal_name), String(signal_color), graph_number, peak)
+    end
+end
+
+"""Backend-authored flattened Peaks table for one authoritative TIME pane."""
+struct SignalPeaksTableSnapshot
+    enabled::Bool
+    state_revision::Int
+    display_id::String
+    pane_id::String
+    settings::SignalPeaksSettings
+    signal_colors::Tuple{Vararg{String}}
+    signals::Tuple{Vararg{SignalPeaksSnapshot}}
+    rows::Tuple{Vararg{SignalPeaksTableRow}}
+
+    function SignalPeaksTableSnapshot(
+        enabled::Bool,
+        state_revision::Int,
+        display_id::AbstractString,
+        pane_id::AbstractString,
+        settings::SignalPeaksSettings,
+        signal_colors::AbstractVector{<:AbstractString},
+        signals::AbstractVector{SignalPeaksSnapshot},
+        rows::AbstractVector{SignalPeaksTableRow},
+    )
+        state_revision >= 0 || throw(ArgumentError(
+            "Ревизия Peaks table snapshot не может быть отрицательной",
+        ))
+        isempty(display_id) && throw(ArgumentError(
+            "Идентификатор Display Peaks table не может быть пустым",
+        ))
+        isempty(pane_id) && throw(ArgumentError(
+            "Идентификатор pane Peaks table не может быть пустым",
+        ))
+        signal_snapshots = collect(signals)
+        signal_names = String[
+            snapshot.signal_name::String for snapshot in signal_snapshots
+        ]
+        allunique(signal_names) || throw(ArgumentError(
+            "Сигналы Peaks table не должны повторяться",
+        ))
+        all(snapshot -> snapshot.display_id == display_id, signal_snapshots) || throw(
+            ArgumentError("Display сигналов Peaks table не совпадает со snapshot"),
+        )
+        all(snapshot -> snapshot.enabled == enabled, signal_snapshots) || throw(
+            ArgumentError("Статус сигналов Peaks table не совпадает со snapshot"),
+        )
+        all(snapshot -> snapshot.mode == settings.mode, signal_snapshots) || throw(
+            ArgumentError("Режим сигналов Extrema table не совпадает с settings"),
+        )
+        colors = String.(signal_colors)
+        length(colors) == length(signal_snapshots) || throw(DimensionMismatch(
+            "Число цветов Peaks table должно совпадать с числом сигналов",
+        ))
+        all(color -> !isempty(color), colors) || throw(ArgumentError(
+            "Цвета сигналов Peaks table не могут быть пустыми",
+        ))
+        !enabled && (!isempty(signal_snapshots) || !isempty(rows)) && throw(ArgumentError(
+            "Выключенный Peaks table snapshot должен быть пустым",
+        ))
+        table_rows = collect(rows)
+        Int[row.row_number for row in table_rows] == collect(eachindex(table_rows)) || throw(
+            ArgumentError("Номера строк Peaks table должны быть последовательными"),
+        )
+        all(row -> row.signal_name in signal_names, table_rows) || throw(ArgumentError(
+            "Строка Peaks table ссылается на сигнал вне pane bindings",
+        ))
+        color_by_name = Dict(signal_names[index] => colors[index] for index in eachindex(signal_names))
+        all(row -> row.signal_color == color_by_name[row.signal_name], table_rows) || throw(
+            ArgumentError("Цвет строки Peaks table не совпадает с сигналом"),
+        )
+        binding_order = Dict(name => index for (index, name) in enumerate(signal_names))
+        issorted(table_rows; by = row -> (
+            signal_peak_position_order(row.peak.position)...,
+            binding_order[row.signal_name],
+            signal_peak_kind_order(row.peak.kind),
+        )) || throw(ArgumentError(
+            "Строки Peaks table должны быть отсортированы по времени, binding и sample index",
+        ))
+        new(
+            enabled,
+            state_revision,
+            String(display_id),
+            String(pane_id),
+            settings,
+            Tuple(colors),
+            Tuple(signal_snapshots),
+            Tuple(table_rows),
         )
     end
 end
@@ -1529,7 +2022,7 @@ include(joinpath(@__DIR__, "signal_settings.jl"))
 
 const SIGNAL_DISPLAY_LAYOUT_VERSION = 1
 const SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION = 1
-const SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION = 4
+const SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION = 10
 const SIGNAL_DISPLAY_PANE_ID_REGEX = r"^pane-[1-9][0-9]*$"
 const SIGNAL_DISPLAY_LAYOUT_VARIANTS = (
     "single",
@@ -1545,6 +2038,7 @@ const SIGNAL_DISPLAY_LAYOUT_VARIANTS = (
 """One stable plot aggregate inside a Display layout."""
 struct SignalDisplayPaneState
     id::String
+    name::String
     plot_type::SignalAnalyserPlot
     membership::SignalDisplayMembership
     analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource}
@@ -1555,9 +2049,11 @@ struct SignalDisplayPaneState
     persistence_settings::SignalPersistenceSettings
     stored_settings::SignalDisplayStoredSettings
     peaks_enabled::Bool
+    peaks_settings::SignalPeaksSettings
 
     function SignalDisplayPaneState(
         id::AbstractString,
+        name::AbstractString,
         plot_type::SignalAnalyserPlot,
         membership::SignalDisplayMembership,
         analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
@@ -1568,29 +2064,27 @@ struct SignalDisplayPaneState
         persistence_settings::SignalPersistenceSettings,
         stored_settings::SignalDisplayStoredSettings,
         peaks_enabled::Bool,
+        peaks_settings::SignalPeaksSettings,
     )
         pane_id = String(id)
         occursin(SIGNAL_DISPLAY_PANE_ID_REGEX, pane_id) || throw(ArgumentError(
             "Идентификатор pane должен иметь формат pane-N",
         ))
+        pane_name = String(name)
+        isempty(strip(pane_name)) && throw(ArgumentError("Имя pane не может быть пустым"))
         analysis_name = signal_analysis_name(analysis_source)
-        isempty(membership.signal_names) == (analysis_name === nothing) || throw(ArgumentError(
-            "Analysis source должна отсутствовать только у пустой pane",
-        ))
-        analysis_name === nothing || analysis_name in membership.signal_names || throw(ArgumentError(
-            "Analysis source должна входить в signal bindings pane",
-        ))
-        (analysis_name === nothing) == (time_limits === nothing) || throw(ArgumentError(
-            "Time Limits должны отсутствовать только у пустой pane",
-        ))
-        peaks_enabled && plot_type != TIME_PLOT && throw(ArgumentError(
-            "Поиск пиков доступен только для Time pane",
+        # Legacy/current state is normalized at calculation and persistence
+        # boundaries. Keep construction permissive so an old occupied pane can
+        # be represented and repaired atomically instead of failing mid-route.
+        peaks_enabled && !(plot_type in (TIME_PLOT, SPECTRUM_PLOT)) && throw(ArgumentError(
+            "Экстремумы доступны только для Time или Spectrum pane",
         ))
         peaks_enabled && analysis_name === nothing && throw(ArgumentError(
-            "Поиск пиков требует analysis source pane",
+            "Экстремумы требуют analysis source pane",
         ))
         new(
             pane_id,
+            pane_name,
             plot_type,
             membership,
             analysis_source,
@@ -1601,12 +2095,51 @@ struct SignalDisplayPaneState
             persistence_settings,
             stored_settings,
             peaks_enabled,
+            peaks_settings,
         )
     end
 end
 
+
+function signal_display_default_pane_name(id::AbstractString)::String
+    pane_id = String(id)
+    matched = match(SIGNAL_DISPLAY_PANE_ID_REGEX, pane_id)
+    matched === nothing && throw(ArgumentError("Идентификатор pane должен иметь формат pane-N"))
+    "Область $(split(pane_id, '-')[2])"
+end
+
+SignalDisplayPaneState(
+    id::AbstractString,
+    plot_type::SignalAnalyserPlot,
+    membership::SignalDisplayMembership,
+    analysis_source::Union{NoSignalAnalysisSource,SignalAnalysisSource},
+    time_limits::Union{Nothing,SignalTimeLimits},
+    measurement_selection::SignalMeasurementSelection,
+    spectrum_settings::SignalSpectrumSettings,
+    spectrogram_settings::SignalSpectrogramSettings,
+    persistence_settings::SignalPersistenceSettings,
+    stored_settings::SignalDisplayStoredSettings,
+    peaks_enabled::Bool,
+    peaks_settings::SignalPeaksSettings,
+) = SignalDisplayPaneState(
+    id,
+    signal_display_default_pane_name(id),
+    plot_type,
+    membership,
+    analysis_source,
+    time_limits,
+    measurement_selection,
+    spectrum_settings,
+    spectrogram_settings,
+    persistence_settings,
+    stored_settings,
+    peaks_enabled,
+    peaks_settings,
+)
+
 Base.:(==)(left::SignalDisplayPaneState, right::SignalDisplayPaneState) =
     left.id == right.id &&
+    left.name == right.name &&
     left.plot_type == right.plot_type &&
     left.membership.signal_names == right.membership.signal_names &&
     isequal(signal_analysis_name(left.analysis_source), signal_analysis_name(right.analysis_source)) &&
@@ -1616,10 +2149,12 @@ Base.:(==)(left::SignalDisplayPaneState, right::SignalDisplayPaneState) =
     left.spectrogram_settings == right.spectrogram_settings &&
     left.persistence_settings == right.persistence_settings &&
     left.stored_settings == right.stored_settings &&
-    left.peaks_enabled == right.peaks_enabled
+    left.peaks_enabled == right.peaks_enabled &&
+    left.peaks_settings == right.peaks_settings
 Base.isequal(left::SignalDisplayPaneState, right::SignalDisplayPaneState) = left == right
 Base.copy(pane::SignalDisplayPaneState) = SignalDisplayPaneState(
     pane.id,
+    pane.name,
     pane.plot_type,
     pane.membership,
     pane.analysis_source,
@@ -1630,7 +2165,179 @@ Base.copy(pane::SignalDisplayPaneState) = SignalDisplayPaneState(
     pane.persistence_settings,
     pane.stored_settings,
     pane.peaks_enabled,
+    pane.peaks_settings,
 )
+
+function signal_display_pane_with_id(
+    pane::SignalDisplayPaneState,
+    id::AbstractString,
+)::SignalDisplayPaneState
+    SignalDisplayPaneState(
+        id,
+        pane.name,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+        pane.peaks_settings,
+    )
+end
+
+function signal_display_pane_with_time_links(
+    pane::SignalDisplayPaneState,
+    link_time::Bool,
+    link_amplitude::Bool,
+)::SignalDisplayPaneState
+    time = pane.stored_settings.time
+    stored = SignalDisplayStoredSettings(
+        pane.stored_settings.display,
+        SignalTimePreferences(
+            time.normalize_y,
+            time.show_markers,
+            time.units,
+            time.y_limits,
+            link_time,
+            link_amplitude,
+        ),
+        pane.stored_settings.spectrum,
+        pane.stored_settings.spectrogram,
+        pane.stored_settings.persistence,
+    )
+    SignalDisplayPaneState(
+        pane.id,
+        pane.name,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        stored,
+        pane.peaks_enabled,
+        pane.peaks_settings,
+    )
+end
+
+signal_display_pane_with_time_link(
+    pane::SignalDisplayPaneState,
+    link_time::Bool,
+)::SignalDisplayPaneState = signal_display_pane_with_time_links(
+    pane,
+    link_time,
+    pane.stored_settings.time.link_amplitude,
+)
+
+function signal_display_pane_with_spectrum_links(
+    pane::SignalDisplayPaneState,
+    link_frequency::Bool,
+    link_magnitude::Bool,
+)::SignalDisplayPaneState
+    stored = SignalDisplayStoredSettings(
+        pane.stored_settings.display,
+        pane.stored_settings.time,
+        SignalSpectrumPreferences(
+            pane.stored_settings.spectrum.frequency_units,
+            pane.stored_settings.spectrum.y_limits,
+            pane.stored_settings.spectrum.resolution_type,
+            pane.stored_settings.spectrum.rbw,
+            pane.stored_settings.spectrum.window_length,
+            pane.stored_settings.spectrum.window,
+            pane.stored_settings.spectrum.sidelobe_attenuation_db,
+            pane.stored_settings.spectrum.overlap_percent,
+            pane.stored_settings.spectrum.nfft,
+            link_frequency,
+            link_magnitude,
+        ),
+        pane.stored_settings.spectrogram,
+        pane.stored_settings.persistence,
+    )
+    SignalDisplayPaneState(
+        pane.id,
+        pane.name,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        stored,
+        pane.peaks_enabled,
+        pane.peaks_settings,
+    )
+end
+
+function signal_display_pane_with_time_limits(
+    pane::SignalDisplayPaneState,
+    time_limits::Union{Nothing,SignalTimeLimits},
+)::SignalDisplayPaneState
+    SignalDisplayPaneState(
+        pane.id,
+        pane.name,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+        pane.peaks_settings,
+    )
+end
+
+function signal_display_pane_with_peaks_settings(
+    pane::SignalDisplayPaneState,
+    peaks_settings::SignalPeaksSettings,
+)::SignalDisplayPaneState
+    SignalDisplayPaneState(
+        pane.id,
+        pane.name,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+        peaks_settings,
+    )
+end
+
+function signal_display_pane_with_name(
+    pane::SignalDisplayPaneState,
+    name::AbstractString,
+)::SignalDisplayPaneState
+    SignalDisplayPaneState(
+        pane.id,
+        name,
+        pane.plot_type,
+        pane.membership,
+        pane.analysis_source,
+        pane.time_limits,
+        pane.measurement_selection,
+        pane.spectrum_settings,
+        pane.spectrogram_settings,
+        pane.persistence_settings,
+        pane.stored_settings,
+        pane.peaks_enabled,
+        pane.peaks_settings,
+    )
+end
 
 signal_display_pane_members(pane::SignalDisplayPaneState)::Vector{String} =
     collect(pane.membership.signal_names)
@@ -1650,10 +2357,25 @@ function signal_display_empty_pane(id::AbstractString)::SignalDisplayPaneState
         SignalPersistenceSettings(),
         SignalDisplayStoredSettings(),
         false,
+        SignalPeaksSettings(),
     )
 end
 
 signal_display_layout_variant(rows::Int, columns::Int)::String = "$(rows)x$(columns)"
+
+function signal_display_layout_validate_dimensions(rows::Int, columns::Int)::Nothing
+    SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= rows <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
+        throw(ArgumentError(
+            "Число строк layout должно быть от $(SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION) " *
+            "до $(SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION)",
+        ))
+    SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= columns <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
+        throw(ArgumentError(
+            "Число столбцов layout должно быть от $(SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION) " *
+            "до $(SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION)",
+        ))
+    nothing
+end
 
 """Versioned rectangular topology and ordered pane configuration for one Display."""
 struct SignalDisplayLayoutState
@@ -1677,10 +2399,7 @@ struct SignalDisplayLayoutState
         version == SIGNAL_DISPLAY_LAYOUT_VERSION || throw(ArgumentError(
             "Неподдерживаемая версия layout: $version",
         ))
-        SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= rows <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
-            throw(ArgumentError("Число строк layout должно быть от 1 до 4"))
-        SIGNAL_DISPLAY_LAYOUT_MIN_DIMENSION <= columns <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION ||
-            throw(ArgumentError("Число столбцов layout должно быть от 1 до 4"))
+        signal_display_layout_validate_dimensions(rows, columns)
         canonical_variant = signal_display_layout_variant(rows, columns)
         String(variant) == canonical_variant || throw(ArgumentError(
             "Variant layout должен быть равен $canonical_variant",
@@ -1697,6 +2416,49 @@ struct SignalDisplayLayoutState
         active_id in pane_ids || throw(ArgumentError(
             "Active pane должна входить в panes layout",
         ))
+        active_index = findfirst(==(active_id), pane_ids)::Int
+        time_link_source = pane_values[active_index].plot_type in (TIME_PLOT, SPECTROGRAM_PLOT) ?
+            pane_values[active_index] : begin
+                first_time_index = findfirst(
+                    pane -> pane.plot_type in (TIME_PLOT, SPECTROGRAM_PLOT),
+                    pane_values,
+                )
+                first_time_index === nothing ? nothing : pane_values[first_time_index]
+            end
+        if time_link_source !== nothing
+            link_time = (time_link_source::SignalDisplayPaneState).stored_settings.time.link_time
+            link_amplitude = (time_link_source::SignalDisplayPaneState).stored_settings.time.link_amplitude
+            pane_values = SignalDisplayPaneState[
+                (
+                    pane.stored_settings.time.link_time != link_time ||
+                    pane.stored_settings.time.link_amplitude != link_amplitude
+                ) ? signal_display_pane_with_time_links(pane, link_time, link_amplitude) : pane
+                for pane in pane_values
+            ]
+        end
+        spectrum_link_source_index = pane_values[active_index].plot_type in (
+            SPECTRUM_PLOT,
+            PERSISTENCE_PLOT,
+        ) ? active_index : findfirst(
+            pane -> pane.plot_type in (SPECTRUM_PLOT, PERSISTENCE_PLOT),
+            pane_values,
+        )
+        if spectrum_link_source_index !== nothing
+            source = pane_values[spectrum_link_source_index::Int]
+            link_frequency = source.stored_settings.spectrum.link_frequency
+            link_magnitude = source.stored_settings.spectrum.link_magnitude
+            pane_values = SignalDisplayPaneState[
+                (
+                    pane.stored_settings.spectrum.link_frequency != link_frequency ||
+                    pane.stored_settings.spectrum.link_magnitude != link_magnitude
+                ) ? signal_display_pane_with_spectrum_links(
+                    pane,
+                    link_frequency,
+                    link_magnitude,
+                ) : pane
+                for pane in pane_values
+            ]
+        end
         pane_numbers = Int[parse(Int, split(id, '-')[2]) for id in pane_ids]
         next_pane_number > maximum(pane_numbers) || throw(ArgumentError(
             "Следующий номер pane должен быть больше всех сохранённых номеров",
@@ -1732,7 +2494,7 @@ Base.copy(layout::SignalDisplayLayoutState) = SignalDisplayLayoutState(
     layout.next_pane_number,
 )
 
-function signal_display_default_layout(
+function signal_display_legacy_single_pane_layout(
     pane::SignalDisplayPaneState,
 )::SignalDisplayLayoutState
     SignalDisplayLayoutState(
@@ -1743,6 +2505,28 @@ function signal_display_default_layout(
         SignalDisplayPaneState[pane],
         pane.id,
         2,
+    )
+end
+
+function signal_display_default_layout(
+    pane::SignalDisplayPaneState,
+)::SignalDisplayLayoutState
+    pane.id == "pane-1" || throw(ArgumentError(
+        "Fresh layout должен начинаться с pane-1",
+    ))
+    SignalDisplayLayoutState(
+        SIGNAL_DISPLAY_LAYOUT_VERSION,
+        "2x2",
+        2,
+        2,
+        SignalDisplayPaneState[
+            pane,
+            signal_display_empty_pane("pane-2"),
+            signal_display_empty_pane("pane-3"),
+            signal_display_empty_pane("pane-4"),
+        ],
+        "pane-1",
+        5,
     )
 end
 
@@ -1760,6 +2544,187 @@ function signal_display_layout_replace_pane(
 )::SignalDisplayLayoutState
     index = findfirst(pane -> pane.id == replacement.id, layout.panes)
     index === nothing && throw(ArgumentError("Pane не найдена: $(replacement.id)"))
+    link_time = any(pane -> pane.stored_settings.time.link_time, layout.panes)
+    link_amplitude = any(pane -> pane.stored_settings.time.link_amplitude, layout.panes)
+    time_source_index = findfirst(
+        pane -> pane.id != replacement.id && pane.stored_settings.time.link_time &&
+            pane.plot_type in (TIME_PLOT, SPECTROGRAM_PLOT) &&
+            signal_display_pane_analysis_name(pane) !== nothing,
+        layout.panes,
+    )
+    amplitude_source_index = findfirst(
+        pane -> pane.id != replacement.id && pane.stored_settings.time.link_amplitude &&
+            pane.plot_type == TIME_PLOT && signal_display_pane_analysis_name(pane) !== nothing,
+        layout.panes,
+    )
+    time_source = time_source_index === nothing ? nothing : layout.panes[time_source_index::Int]
+    amplitude_source = amplitude_source_index === nothing ? nothing :
+        layout.panes[amplitude_source_index::Int]
+    if link_time || link_amplitude
+        current_time = replacement.stored_settings.time
+        time_units = link_time && time_source !== nothing ?
+            (time_source::SignalDisplayPaneState).plot_type == SPECTROGRAM_PLOT ?
+                (time_source::SignalDisplayPaneState).stored_settings.spectrogram.time_units :
+                (time_source::SignalDisplayPaneState).stored_settings.time.units :
+            current_time.units
+        y_limits = link_amplitude && replacement.plot_type == TIME_PLOT &&
+            amplitude_source !== nothing ?
+                (amplitude_source::SignalDisplayPaneState).stored_settings.time.y_limits :
+                current_time.y_limits
+        time = SignalTimePreferences(
+            current_time.normalize_y,
+            current_time.show_markers,
+            time_units,
+            y_limits,
+            link_time,
+            link_amplitude,
+        )
+        current_spectrogram = replacement.stored_settings.spectrogram
+        spectrogram = SignalSpectrogramPreferences(
+            link_time && replacement.plot_type == SPECTROGRAM_PLOT ?
+                time_units : current_spectrogram.time_units,
+            current_spectrogram.frequency_units,
+            current_spectrogram.scale,
+            current_spectrogram.time_resolution,
+            current_spectrogram.reassign,
+        )
+        stored = SignalDisplayStoredSettings(
+            replacement.stored_settings.display,
+            time,
+            replacement.stored_settings.spectrum,
+            spectrogram,
+            replacement.stored_settings.persistence,
+        )
+        linked_limits = link_time && time_source !== nothing &&
+            replacement.plot_type in (TIME_PLOT, SPECTROGRAM_PLOT) &&
+            signal_display_pane_analysis_name(replacement) !== nothing ?
+                (time_source::SignalDisplayPaneState).time_limits : replacement.time_limits
+        replacement = SignalDisplayPaneState(
+            replacement.id,
+            replacement.name,
+            replacement.plot_type,
+            replacement.membership,
+            replacement.analysis_source,
+            linked_limits,
+            replacement.measurement_selection,
+            replacement.spectrum_settings,
+            replacement.spectrogram_settings,
+            replacement.persistence_settings,
+            stored,
+            replacement.peaks_enabled,
+            replacement.peaks_settings,
+        )
+    end
+    link_frequency = any(pane -> pane.stored_settings.spectrum.link_frequency, layout.panes)
+    link_magnitude = any(pane -> pane.stored_settings.spectrum.link_magnitude, layout.panes)
+    spectrum_source_index = findfirst(
+        pane -> pane.id != replacement.id &&
+            pane.plot_type in (SPECTRUM_PLOT, PERSISTENCE_PLOT) &&
+            signal_display_pane_analysis_name(pane) !== nothing,
+        layout.panes,
+    )
+    spectrum_source = spectrum_source_index === nothing ? nothing :
+        layout.panes[spectrum_source_index::Int]
+    if link_frequency || link_magnitude
+        current = replacement.stored_settings.spectrum
+        source_preferences = spectrum_source === nothing ? current :
+            (spectrum_source::SignalDisplayPaneState).stored_settings.spectrum
+        source_frequency_units = if spectrum_source === nothing ||
+            (spectrum_source::SignalDisplayPaneState).plot_type == SPECTRUM_PLOT
+            source_preferences.frequency_units
+        else
+            (spectrum_source::SignalDisplayPaneState).stored_settings.persistence.frequency_units
+        end
+        source_magnitude_limits = if spectrum_source === nothing ||
+            (spectrum_source::SignalDisplayPaneState).plot_type == SPECTRUM_PLOT
+            source_preferences.y_limits
+        else
+            (spectrum_source::SignalDisplayPaneState).stored_settings.persistence.power_limits
+        end
+        spectrum_preferences = SignalSpectrumPreferences(
+            link_frequency && replacement.plot_type == SPECTRUM_PLOT ?
+                source_frequency_units : current.frequency_units,
+            link_magnitude && replacement.plot_type == SPECTRUM_PLOT ?
+                source_magnitude_limits : current.y_limits,
+            current.resolution_type,
+            current.rbw,
+            current.window_length,
+            current.window,
+            current.sidelobe_attenuation_db,
+            current.overlap_percent,
+            current.nfft,
+            link_frequency,
+            link_magnitude,
+        )
+        current_persistence = replacement.stored_settings.persistence
+        source_frequency_limits = if spectrum_source === nothing
+            replacement.spectrum_settings.frequency_limits
+        elseif (spectrum_source::SignalDisplayPaneState).plot_type == SPECTRUM_PLOT
+            (spectrum_source::SignalDisplayPaneState).spectrum_settings.frequency_limits
+        else
+            limits = (spectrum_source::SignalDisplayPaneState).stored_settings.persistence.frequency_limits
+            limits === nothing ? AutomaticSignalSpectrumFrequencyLimits() :
+                ExplicitSignalSpectrumFrequencyLimits(limits.minimum, limits.maximum)
+        end
+        source_frequency_scale = if spectrum_source === nothing ||
+            (spectrum_source::SignalDisplayPaneState).plot_type == SPECTRUM_PLOT
+            spectrum_source === nothing ? replacement.spectrum_settings.frequency_scale :
+                (spectrum_source::SignalDisplayPaneState).spectrum_settings.frequency_scale
+        else
+            (spectrum_source::SignalDisplayPaneState).stored_settings.persistence.frequency_scale
+        end
+        persistence_frequency_limits = source_frequency_limits isa ExplicitSignalSpectrumFrequencyLimits ?
+            SignalSettingRange(
+                (source_frequency_limits::ExplicitSignalSpectrumFrequencyLimits).min_hz,
+                (source_frequency_limits::ExplicitSignalSpectrumFrequencyLimits).max_hz,
+            ) : nothing
+        persistence_preferences = replacement.plot_type == PERSISTENCE_PLOT ?
+            SignalPersistencePreferences(
+                current_persistence.time_units,
+                link_frequency ? source_frequency_units : current_persistence.frequency_units,
+                link_frequency ? persistence_frequency_limits : current_persistence.frequency_limits,
+                link_magnitude ? source_magnitude_limits : current_persistence.power_limits,
+                current_persistence.density_limits,
+                link_frequency ? source_frequency_scale : current_persistence.frequency_scale,
+                current_persistence.scale,
+                current_persistence.time_resolution,
+                current_persistence.overlap_percent,
+                current_persistence.power_bins,
+            ) : current_persistence
+        stored = SignalDisplayStoredSettings(
+            replacement.stored_settings.display,
+            replacement.stored_settings.time,
+            spectrum_preferences,
+            replacement.stored_settings.spectrogram,
+            persistence_preferences,
+        )
+        spectrum_settings = if link_frequency && replacement.plot_type == SPECTRUM_PLOT &&
+            spectrum_source !== nothing
+            SignalSpectrumSettings(
+                replacement.spectrum_settings.scale,
+                source_frequency_scale,
+                replacement.spectrum_settings.leakage,
+                source_frequency_limits,
+            )
+        else
+            replacement.spectrum_settings
+        end
+        replacement = SignalDisplayPaneState(
+            replacement.id,
+            replacement.name,
+            replacement.plot_type,
+            replacement.membership,
+            replacement.analysis_source,
+            replacement.time_limits,
+            replacement.measurement_selection,
+            spectrum_settings,
+            replacement.spectrogram_settings,
+            replacement.persistence_settings,
+            stored,
+            replacement.peaks_enabled,
+            replacement.peaks_settings,
+        )
+    end
     panes = copy(layout.panes)
     panes[index] = replacement
     SignalDisplayLayoutState(
@@ -1806,18 +2771,38 @@ function signal_display_layout_select_pane(
     )
 end
 
-"""Resize preserves the ordered prefix, drops only its suffix, and never reuses IDs."""
+function signal_display_next_pane_number(
+    panes::AbstractVector{SignalDisplayPaneState},
+)::Int
+    maximum(
+        parse(Int, split(pane.id, '-')[2])
+        for pane in panes
+    ) + 1
+end
+
+"""Resize preserves configured panes; every newly created pane starts empty."""
 function signal_display_layout_resize(
     layout::SignalDisplayLayoutState,
     rows::Int,
     columns::Int,
+    new_pane_template::SignalDisplayPaneState,
 )::SignalDisplayLayoutState
+    signal_display_layout_validate_dimensions(rows, columns)
     requested_count = rows * columns
     surviving_count = min(length(layout.panes), requested_count)
     panes = SignalDisplayPaneState[copy(layout.panes[index]) for index in 1:surviving_count]
-    next_pane_number = layout.next_pane_number
+    # `next_pane_number` used to be a monotonic high-water mark.  A transient
+    # large layout therefore made a later 1x4 -> 1x5 resize jump from pane-4
+    # straight to pane-17.  Derive allocation from the stable panes that still
+    # occupy this layout: removed/transient panes must not consume user-visible
+    # ids or default names, while every surviving pane keeps its exact id/name.
+    next_pane_number = signal_display_next_pane_number(panes)
     while length(panes) < requested_count
-        push!(panes, signal_display_empty_pane("pane-$next_pane_number"))
+        pane_id = "pane-$next_pane_number"
+        push!(panes, signal_display_pane_with_name(
+            signal_display_pane_with_id(new_pane_template, pane_id),
+            signal_display_default_pane_name(pane_id),
+        ))
         next_pane_number += 1
     end
     active_pane_id = any(pane -> pane.id == layout.active_pane_id, panes) ?
@@ -1830,6 +2815,19 @@ function signal_display_layout_resize(
         panes,
         active_pane_id,
         next_pane_number,
+    )
+end
+
+function signal_display_layout_resize(
+    layout::SignalDisplayLayoutState,
+    rows::Int,
+    columns::Int,
+)::SignalDisplayLayoutState
+    signal_display_layout_resize(
+        layout,
+        rows,
+        columns,
+        signal_display_empty_pane(layout.active_pane_id),
     )
 end
 
@@ -1861,15 +2859,10 @@ function signal_display_pane_without_signal(
         if name != signal_name
     ]
     current_analysis = signal_display_pane_analysis_name(pane)
-    analysis_name = if isempty(members)
-        nothing
-    elseif current_analysis !== nothing && current_analysis in members
-        current_analysis
-    else
-        first(members)
-    end
+    analysis_name = current_analysis == signal_name ? nothing : current_analysis
     SignalDisplayPaneState(
         pane.id,
+        pane.name,
         pane.plot_type,
         SignalDisplayMembership(members),
         signal_analysis_source(analysis_name),
@@ -1879,7 +2872,9 @@ function signal_display_pane_without_signal(
         pane.spectrogram_settings,
         pane.persistence_settings,
         pane.stored_settings,
-        analysis_name !== nothing && pane.plot_type == TIME_PLOT && pane.peaks_enabled,
+        analysis_name !== nothing && !isempty(members) &&
+            pane.plot_type in (TIME_PLOT, SPECTRUM_PLOT) && pane.peaks_enabled,
+        pane.peaks_settings,
     )
 end
 
@@ -1912,20 +2907,13 @@ mutable struct SignalAnalyserDisplayState
         peaks_enabled::Bool,
     )
         analysis_name = signal_analysis_name(analysis_source)
-        isempty(membership.signal_names) == (analysis_name === nothing) || throw(ArgumentError(
-            "Analysis source должен отсутствовать только у пустого Display",
-        ))
-        analysis_name === nothing || analysis_name in membership.signal_names || throw(ArgumentError(
-            "Analysis source должен входить в membership Display",
-        ))
-        (analysis_name === nothing) == (time_limits === nothing) || throw(ArgumentError(
-            "Time Limits должны отсутствовать только у пустого Display",
-        ))
-        peaks_enabled && active_plot != TIME_PLOT && throw(ArgumentError(
-            "Поиск пиков доступен только для Time plot",
+        # The mutable legacy Display projection is normalized from its
+        # authoritative active pane at service boundaries.
+        peaks_enabled && !(active_plot in (TIME_PLOT, SPECTRUM_PLOT)) && throw(ArgumentError(
+            "Экстремумы доступны только для Time или Spectrum plot",
         ))
         peaks_enabled && analysis_name === nothing && throw(ArgumentError(
-            "Поиск пиков требует analysis source",
+            "Экстремумы требуют analysis source",
         ))
         new(
             String(id),
@@ -2202,9 +3190,11 @@ signal_analyser_display_analysis_name(display::SignalAnalyserDisplayState) =
 function signal_display_pane_from_display(
     id::AbstractString,
     display::SignalAnalyserDisplayState,
+    name::AbstractString = signal_display_default_pane_name(id),
 )::SignalDisplayPaneState
     SignalDisplayPaneState(
         id,
+        name,
         display.active_plot,
         display.membership,
         display.analysis_source,
@@ -2215,12 +3205,19 @@ function signal_display_pane_from_display(
         display.persistence_settings,
         display.stored_settings,
         display.peaks_enabled,
+        SignalPeaksSettings(),
     )
 end
 
 signal_display_default_layout(
     display::SignalAnalyserDisplayState,
 )::SignalDisplayLayoutState = signal_display_default_layout(
+    signal_display_pane_from_display("pane-1", display),
+)
+
+signal_display_legacy_single_pane_layout(
+    display::SignalAnalyserDisplayState,
+)::SignalDisplayLayoutState = signal_display_legacy_single_pane_layout(
     signal_display_pane_from_display("pane-1", display),
 )
 
@@ -2241,6 +3238,290 @@ function signal_analyser_publish_display_state!(
     display.stored_settings = prospective.stored_settings
     display.peaks_enabled = prospective.peaks_enabled
     nothing
+end
+
+"""Stable identity of one pane output calculation and its cache generation."""
+struct SignalAnalyserOutputContextKey
+    display_id::String
+    pane_id::String
+    plot_type::SignalAnalyserPlot
+    calculation_revision::Int
+
+    function SignalAnalyserOutputContextKey(
+        display_id::AbstractString,
+        pane_id::AbstractString,
+        plot_type::SignalAnalyserPlot,
+        calculation_revision::Int,
+    )
+        isempty(display_id) && throw(ArgumentError("Display id output context не может быть пустым"))
+        isempty(pane_id) && throw(ArgumentError("Pane id output context не может быть пустым"))
+        calculation_revision >= 0 || throw(ArgumentError(
+            "Calculation revision output context не может быть отрицательной",
+        ))
+        new(String(display_id), String(pane_id), plot_type, calculation_revision)
+    end
+end
+
+"""Provider-affecting Peaks request context for one active TIME pane."""
+struct SignalAnalyserPeaksContextKey
+    display_id::String
+    pane_id::String
+    plot_type::SignalAnalyserPlot
+    signal_names::Tuple{Vararg{String}}
+    time_limits::Union{Nothing,SignalTimeLimits}
+    spectrum_settings::Union{Nothing,SignalSpectrumSettings}
+    visible_range::Union{Nothing,SignalPeaksVisibleRange}
+    settings::SignalPeaksSettings
+    calculation_revision::Int
+
+    function SignalAnalyserPeaksContextKey(
+        display_id::AbstractString,
+        pane_id::AbstractString,
+        plot_type::SignalAnalyserPlot,
+        signal_names::AbstractVector{<:AbstractString},
+        time_limits::Union{Nothing,SignalTimeLimits},
+        spectrum_settings::Union{Nothing,SignalSpectrumSettings},
+        visible_range::Union{Nothing,SignalPeaksVisibleRange},
+        settings::SignalPeaksSettings,
+        calculation_revision::Int,
+    )
+        isempty(display_id) && throw(ArgumentError("Display id Peaks context не может быть пустым"))
+        isempty(pane_id) && throw(ArgumentError("Pane id Peaks context не может быть пустым"))
+        names = String.(signal_names)
+        allunique(names) || throw(ArgumentError("Signal names Peaks context не должны повторяться"))
+        calculation_revision >= 0 || throw(ArgumentError(
+            "Calculation revision Peaks context не может быть отрицательной",
+        ))
+        plot_type in (TIME_PLOT, SPECTRUM_PLOT) || throw(ArgumentError(
+            "Extrema context поддерживает только TIME или SPECTRUM pane",
+        ))
+        plot_type == TIME_PLOT && spectrum_settings !== nothing && throw(ArgumentError(
+            "TIME extrema context не должен содержать Spectrum settings",
+        ))
+        plot_type == SPECTRUM_PLOT && spectrum_settings === nothing && throw(ArgumentError(
+            "SPECTRUM extrema context требует Spectrum settings",
+        ))
+        plot_type == TIME_PLOT && visible_range isa SignalSpectrumPeaksVisibleRange && throw(
+            ArgumentError("TIME extrema context не принимает частотный visible range"),
+        )
+        plot_type == SPECTRUM_PLOT && visible_range isa SignalTimePeaksVisibleRange && throw(
+            ArgumentError("SPECTRUM extrema context не принимает временной visible range"),
+        )
+        new(
+            String(display_id),
+            String(pane_id),
+            plot_type,
+            Tuple(names),
+            time_limits,
+            spectrum_settings,
+            visible_range,
+            settings,
+            calculation_revision,
+        )
+    end
+end
+
+Base.:(==)(left::SignalAnalyserPeaksContextKey, right::SignalAnalyserPeaksContextKey) =
+    left.display_id == right.display_id &&
+    left.pane_id == right.pane_id &&
+    left.plot_type == right.plot_type &&
+    left.signal_names == right.signal_names &&
+    isequal(left.time_limits, right.time_limits) &&
+    isequal(left.spectrum_settings, right.spectrum_settings) &&
+    isequal(left.visible_range, right.visible_range) &&
+    left.settings == right.settings &&
+    left.calculation_revision == right.calculation_revision
+Base.isequal(left::SignalAnalyserPeaksContextKey, right::SignalAnalyserPeaksContextKey) =
+    left == right
+Base.hash(key::SignalAnalyserPeaksContextKey, seed::UInt) = hash(
+    (
+        key.display_id,
+        key.pane_id,
+        key.plot_type,
+        key.signal_names,
+        key.time_limits,
+        key.spectrum_settings,
+        key.visible_range,
+        key.settings,
+        key.calculation_revision,
+    ),
+    seed,
+)
+
+"""Cache identity for one signal inside one pane Peaks calculation."""
+struct SignalAnalyserPeaksSignalContextKey
+    display_id::String
+    pane_id::String
+    plot_type::SignalAnalyserPlot
+    signal_name::String
+    time_limits::Union{Nothing,SignalTimeLimits}
+    spectrum_settings::Union{Nothing,SignalSpectrumSettings}
+    visible_range::Union{Nothing,SignalPeaksVisibleRange}
+    settings::SignalPeaksSettings
+    calculation_revision::Int
+
+    function SignalAnalyserPeaksSignalContextKey(
+        context::SignalAnalyserPeaksContextKey,
+        signal_name::AbstractString,
+    )
+        name = String(signal_name)
+        name in context.signal_names || throw(ArgumentError(
+            "Сигнал Peaks cache отсутствует в pane context",
+        ))
+        new(
+            context.display_id,
+            context.pane_id,
+            context.plot_type,
+            name,
+            context.time_limits,
+            context.spectrum_settings,
+            context.visible_range,
+            context.settings,
+            context.calculation_revision,
+        )
+    end
+end
+
+Base.:(==)(
+    left::SignalAnalyserPeaksSignalContextKey,
+    right::SignalAnalyserPeaksSignalContextKey,
+) =
+    left.display_id == right.display_id &&
+    left.pane_id == right.pane_id &&
+    left.plot_type == right.plot_type &&
+    left.signal_name == right.signal_name &&
+    isequal(left.time_limits, right.time_limits) &&
+    isequal(left.spectrum_settings, right.spectrum_settings) &&
+    isequal(left.visible_range, right.visible_range) &&
+    left.settings == right.settings &&
+    left.calculation_revision == right.calculation_revision
+
+Base.:(==)(left::SignalAnalyserOutputContextKey, right::SignalAnalyserOutputContextKey) =
+    left.display_id == right.display_id &&
+    left.pane_id == right.pane_id &&
+    left.plot_type == right.plot_type &&
+    left.calculation_revision == right.calculation_revision
+Base.isequal(left::SignalAnalyserOutputContextKey, right::SignalAnalyserOutputContextKey) =
+    left == right
+Base.hash(key::SignalAnalyserOutputContextKey, seed::UInt) = hash(
+    (key.display_id, key.pane_id, key.plot_type, key.calculation_revision),
+    seed,
+)
+
+"""Last fully published Plotly payload for one pane; stale entries remain last-good."""
+struct SignalAnalyserPlotCacheEntry
+    context::SignalAnalyserOutputContextKey
+    plots::Vector{Dict{String,Any}}
+end
+
+"""Last fully published Peaks result for one pane/signal; stale entries remain last-good."""
+struct SignalAnalyserPeaksCacheEntry
+    context::SignalAnalyserPeaksSignalContextKey
+    peaks::SignalPeaksSnapshot
+end
+
+"""API-visible Peaks table readiness kept independently from graph output."""
+struct SignalAnalyserPeaksStatus
+    context::SignalAnalyserPeaksContextKey
+    isready::Bool
+    success::Bool
+    error::String
+end
+
+"""API-visible readiness state kept separately from stale/dirty state."""
+struct SignalAnalyserOutputStatus
+    context::SignalAnalyserOutputContextKey
+    isready::Bool
+    success::Bool
+    error::String
+end
+
+"""Cooperative cancellation flag shared with the one currently running calculation."""
+mutable struct SignalAnalyserCancellationToken
+    cancelled::Threads.Atomic{Bool}
+end
+
+SignalAnalyserCancellationToken() = SignalAnalyserCancellationToken(Threads.Atomic{Bool}(false))
+
+"""Runtime-only bounded visible-pane scheduler state; it is never session-serialized."""
+mutable struct SignalAnalyserCalculationManager
+    calculation_revision::Int
+    page_calculation_revisions::Dict{String,Int}
+    peaks_calculation_revision::Int
+    peaks_page_calculation_revisions::Dict{String,Int}
+    plot_cache::Dict{String,SignalAnalyserPlotCacheEntry}
+    peaks_cache::Dict{String,SignalAnalyserPeaksCacheEntry}
+    need_update_pages::Dict{String,Bool}
+    peaks_need_update_pages::Dict{String,Bool}
+    output_statuses::Dict{String,SignalAnalyserOutputStatus}
+    peaks_statuses::Dict{String,SignalAnalyserPeaksStatus}
+    active_page_id::Union{Nothing,String}
+    active_context::Union{Nothing,SignalAnalyserOutputContextKey}
+    active_peaks_context::Union{Nothing,SignalAnalyserPeaksContextKey}
+    active_task::Union{Nothing,Task}
+    active_poll_count::Int
+    cancellation_token::Union{Nothing,SignalAnalyserCancellationToken}
+    queued_contexts::Vector{SignalAnalyserOutputContextKey}
+    queued_peaks_contexts::Vector{SignalAnalyserPeaksContextKey}
+    output_poll_counts::Dict{String,Int}
+    peaks_poll_counts::Dict{String,Int}
+    active_task_is_worker::Bool
+end
+
+function SignalAnalyserCalculationManager(page_ids::AbstractVector{<:AbstractString})
+    ids = String.(page_ids)
+    allunique(ids) || throw(ArgumentError("Page ids calculation manager не должны повторяться"))
+    SignalAnalyserCalculationManager(
+        0,
+        Dict(id => 0 for id in ids),
+        0,
+        Dict(id => 0 for id in ids),
+        Dict{String,SignalAnalyserPlotCacheEntry}(),
+        Dict{String,SignalAnalyserPeaksCacheEntry}(),
+        Dict(id => true for id in ids),
+        Dict(id => true for id in ids),
+        Dict{String,SignalAnalyserOutputStatus}(),
+        Dict{String,SignalAnalyserPeaksStatus}(),
+        nothing,
+        nothing,
+        nothing,
+        nothing,
+        0,
+        nothing,
+        SignalAnalyserOutputContextKey[],
+        SignalAnalyserPeaksContextKey[],
+        Dict{String,Int}(),
+        Dict{String,Int}(),
+        false,
+    )
+end
+
+function signal_analyser_clone_calculation_manager(
+    manager::SignalAnalyserCalculationManager,
+)::SignalAnalyserCalculationManager
+    SignalAnalyserCalculationManager(
+        manager.calculation_revision,
+        copy(manager.page_calculation_revisions),
+        manager.peaks_calculation_revision,
+        copy(manager.peaks_page_calculation_revisions),
+        copy(manager.plot_cache),
+        copy(manager.peaks_cache),
+        copy(manager.need_update_pages),
+        copy(manager.peaks_need_update_pages),
+        copy(manager.output_statuses),
+        copy(manager.peaks_statuses),
+        manager.active_page_id,
+        nothing,
+        nothing,
+        nothing,
+        0,
+        nothing,
+        SignalAnalyserOutputContextKey[],
+        SignalAnalyserPeaksContextKey[],
+        Dict{String,Int}(),
+        Dict{String,Int}(),
+        false,
+    )
 end
 
 mutable struct SignalAnalyserState{
@@ -2265,6 +3546,7 @@ mutable struct SignalAnalyserState{
     spectrum_service::SignalSpectrumService{S}
     spectrogram_service::SignalSpectrogramService{G}
     persistence_service::SignalPersistenceService{R}
+    output_manager::SignalAnalyserCalculationManager
     lock::ReentrantLock
 end
 
@@ -2280,30 +3562,38 @@ function SignalAnalyserState(
     persistence_provider::AbstractSignalPersistenceProvider = EngeeDSPPersistenceProvider(),
 )
     isempty(signals) && throw(ArgumentError("Signal Analyser требует хотя бы один сигнал в global inventory"))
+    # A fresh analyser starts with no signal bound to its only pane.  Visibility
+    # mirrors the active Display membership, so it must start clear as well.
+    signals = AnalysedSignal[
+        AnalysedSignal(
+            signal.id,
+            signal.name,
+            signal.color,
+            signal.sample_rate_hz,
+            copy(signal.values),
+            signal.is_complex,
+            false,
+        ) for signal in signals
+    ]
+    allunique(signal.id for signal in signals) || throw(ArgumentError(
+        "Signal ids в global inventory должны быть уникальны",
+    ))
     known_names = [signal.name for signal in signals]
-    visible_signals = [signal.name for signal in signals if signal.visible]
+    allunique(known_names) || throw(ArgumentError(
+        "Signal names в global inventory должны быть уникальны",
+    ))
     row_selected_signal = view.selected_signal === nothing ? first(known_names) : view.selected_signal
     row_selected_signal in known_names || throw(ArgumentError("Глобально выбранный сигнал отсутствует в inventory"))
-    analysis_name = if view.selected_signal !== nothing && view.selected_signal in visible_signals
-        view.selected_signal
-    elseif isempty(visible_signals)
-        nothing
-    else
-        first(visible_signals)
-    end
     display = SignalAnalyserDisplayState(
         "display-1",
-        "Display 1",
+        "Экран 1",
         view.active_plot,
-        analysis_name,
-        visible_signals,
-        analysis_name === nothing ? nothing : SignalTimeLimits(
-            0.0,
-            signal_duration_s(signals[findfirst(signal -> signal.name == analysis_name, signals)::Int]),
-        ),
+        SignalDisplayMembership(String[]),
+        NoSignalAnalysisSource(),
+        nothing,
         false,
     )
-    view.selected_signal = analysis_name
+    view.selected_signal = nothing
     SignalAnalyserState(
         signals,
         view,
@@ -2321,6 +3611,9 @@ function SignalAnalyserState(
         SignalSpectrumService(spectrum_provider),
         SignalSpectrogramService(spectrogram_provider),
         SignalPersistenceService(persistence_provider),
+        SignalAnalyserCalculationManager([
+            "$(display.id)::pane-$pane_number" for pane_number in 1:4
+        ]),
         lock,
     )
 end
@@ -2363,9 +3656,7 @@ function default_signal_catalog()::Vector{AnalysedSignal}
     sample_count = 512
     time = collect(0:(sample_count - 1)) ./ sample_rate_hz
 
-    harmonic = @. 0.82 * sin(2pi * 180.0 * time) + 0.28 * sin(2pi * 420.0 * time + 0.35)
-    chirp_phase = @. 2pi * (90.0 * time + 0.5 * 1100.0 * time^2)
-    complex_chirp = @. cis(chirp_phase) + 0.22 * cis(2pi * 510.0 * time)
+    harmonic = @. sin(2pi * 180.0 * time)
 
     AnalysedSignal[
         AnalysedSignal(
@@ -2374,14 +3665,6 @@ function default_signal_catalog()::Vector{AnalysedSignal}
             sample_rate_hz,
             ComplexF64.(harmonic),
             false,
-            true,
-        ),
-        AnalysedSignal(
-            "Комплексный ЛЧМ-сигнал",
-            "#dc2626",
-            sample_rate_hz,
-            ComplexF64.(complex_chirp),
-            true,
             true,
         ),
     ]
@@ -2409,6 +3692,12 @@ end
 function signal_by_name(state::SignalAnalyserState, name::AbstractString)::AnalysedSignal
     index = findfirst(signal -> signal.name == name, state.signals)
     index === nothing && throw(ArgumentError("Сигнал не найден: $name"))
+    state.signals[index]
+end
+
+function signal_by_id(state::SignalAnalyserState, id::AbstractString)::AnalysedSignal
+    index = findfirst(signal -> signal.id == id, state.signals)
+    index === nothing && throw(ArgumentError("Сигнал не найден: $id"))
     state.signals[index]
 end
 

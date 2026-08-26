@@ -1,0 +1,12 @@
+{
+  "design_version": 42,
+  "status": "passed",
+  "checks": [
+    {"id":"single-end-action","passed":true,"detail":"The sample search row has one final standard 32px inspector action: vertical three dots. The standalone search action is absent."},
+    {"id":"enter-submit","passed":true,"detail":"Enter on the point input is the only submit gesture; empty Enter resets the first page."},
+    {"id":"error-only-feedback","passed":true,"detail":"Successful point loads do not leave persistent copy. Only compact validation/provider errors may render inline."},
+    {"id":"visibility-menu","passed":true,"detail":"The final three-dot trigger opens the existing 244px eye/eye-off menu and keeps the v41 optional-column inventory."},
+    {"id":"authoritative-offsets","passed":true,"detail":"Mocks and the design renderer use start_offset, end_offset, next_cursor and total as the authoritative page fields."},
+    {"id":"scope","passed":true,"detail":"Multiply and Custom are not added; FFT remains excluded; production, backend, tests, Git and runtime are untouched."}
+  ]
+}

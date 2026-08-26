@@ -1,0 +1,23 @@
+"use strict";
+const fs = require("fs");
+const path = require("path");
+module.exports = async function task0104PackageToolbarStatic(assert) {
+  const root = path.resolve(__dirname, "../../../..");
+  const html = fs.readFileSync(path.join(root, "public/index.html"), "utf8");
+  const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
+  const api = fs.readFileSync(path.join(root, "public/js/api.js"), "utf8");
+  const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8");
+  assert(/data-testid="toolbar-import"[\s\S]*Импортировать пакет/.test(html) && /data-testid="toolbar-save"[\s\S]*Сохранить пакет/.test(html), "v21 keeps visible Import and Save actions");
+  assert(/id="session-file-input"[^>]*accept="\.sazip,application\/vnd\.engee\.signal-analyser-package\+zip"[^>]*data-testid="native-local-file-input"[^>]*data-legacy-testid="session-package-file-input"/.test(html), "local Import exposes only the .sazip picker and retains the legacy test alias");
+  assert(/function packageRows\(\)[\s\S]*Сессия и настройки[\s\S]*Исходные данные сигналов[\s\S]*Снимки готовых графиков[\s\S]*reproduce\.jl[\s\S]*Метаданные зависимостей/.test(app), "Save has exactly five fixed contents");
+  assert(/exportPackage: function \(\) \{ return binaryRequest\("\.\/api\/session\/package"/.test(api) && /application\/vnd\.engee\.signal-analyser-package\+zip/.test(api), "Save uses package binary endpoint and MIME");
+  assert(/bytesToBase64[\s\S]*step = 0x8000[\s\S]*window\.btoa/.test(app), "file encoding is chunked base64");
+  assert(/validatePackage\(\{archive_base64:c\.archiveBase64\}/.test(app) && /c\.phase="summary"/.test(app) && /importPackage\(payload\)/.test(app), "validate precedes import");
+  assert(/publish:false, prefix:"imported_"/.test(app) && /workspace-publish[\s\S]*scheduleWorkspacePreflight/.test(app), "workspace publication defaults OFF");
+  assert(/window\.setTimeout[\s\S]*\},150\)/.test(app) && /preflightToken/.test(app), "preflight is 150 ms latest-only");
+  assert(/payload=\{ state_revision:model\.revision, archive_base64:current\.archiveBase64 \}/.test(app) && /payload\.publish_workspace=true; payload\.workspace_prefix=current\.prefix/.test(app), "import has exact minimal/full payloads");
+  assert(/error && error\.status === 409[\s\S]*refreshSnapshot\(render\)/.test(app), "409 refreshes without replay");
+  assert(/\.key==="Escape"&&!c\.busy[\s\S]*closeSessionImport\(true\)/.test(app) && /session-import-error/.test(app) && /role='alert'/.test(app), "Escape and visible error contracts remain");
+  assert(/reproduce\.jl[\s\S]*никогда не выполняется/.test(app) && !/eval\s*\(/.test(app), "uploaded scripts are never executed");
+  assert(/width:\s*560px/.test(css) && /border-radius:\s*12px/.test(css), "modal geometry is 560px/12px");
+};

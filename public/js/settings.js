@@ -1,89 +1,913 @@
-(function signalAnalyserSettings(window, document) {
+(function registerSignalAnalyserTask0142(window) {
+  "use strict";
+
+  var MESSAGES = {
+    min: {
+      number:"Введите число для минимума.",
+      finite:"Минимум должен быть конечным.",
+      domain:"Минимум вне допустимого диапазона.",
+      order:"Минимум должен быть меньше максимума.",
+      unit:"Минимум нельзя представить в выбранных единицах."
+    },
+    max: {
+      number:"Введите число для максимума.",
+      finite:"Максимум должен быть конечным.",
+      domain:"Максимум вне допустимого диапазона.",
+      order:"Максимум должен быть больше минимума.",
+      unit:"Максимум нельзя представить в выбранных единицах."
+    }
+  };
+
+  function boundaryName(value) { return value === "max" ? "max" : "min"; }
+
+  function boundaryResult(boundary, result) {
+    boundary=boundaryName(boundary);
+    result=result || { valid:true };
+    var invalid=result.valid === false;
+    var reason=invalid && MESSAGES[boundary][result.reason] ? result.reason : invalid ? "number" : "";
+    return {
+      boundary:boundary,
+      invalid:invalid,
+      ariaInvalid:String(invalid),
+      reason:reason,
+      message:invalid ? MESSAGES[boundary][reason] : ""
+    };
+  }
+
+  function projectPair(results) {
+    results=results || {};
+    var minimum=boundaryResult("min", results.min);
+    var maximum=boundaryResult("max", results.max);
+    var first=minimum.invalid ? minimum : maximum.invalid ? maximum : null;
+    return {
+      min:minimum,
+      max:maximum,
+      message:first ? first.message : "",
+      messageBoundary:first ? first.boundary : "",
+      hasError:!!first,
+      pairBorder:false,
+      rowBorder:false
+    };
+  }
+
+  function endpointDisabled(state) {
+    state=state || {};
+    return state.applicable === false || state.busy === true;
+  }
+
+  function enabledContract(state) {
+    state=state || {};
+    return {
+      minDisabled:endpointDisabled(state),
+      maxDisabled:endpointDisabled(state),
+      ignoredDisableReasons:["automatic", "slider", "linked"]
+    };
+  }
+
+  window.SignalAnalyserTask0142 = {
+    messages:MESSAGES,
+    boundaryResult:boundaryResult,
+    projectPair:projectPair,
+    endpointDisabled:endpointDisabled,
+    enabledContract:enabledContract,
+    contract: {
+      validationInput:"Existing production numeric/unit/domain/order validators return only {valid, reason}; raw provider/backend exception text is never accepted as a field message.",
+      priority:"Both boundaries keep independent invalid state and red borders. One message is rendered: minimum first, otherwise maximum.",
+      enabled:"Visible applicable range inputs stay editable in automatic mode and regardless of slider/link state; only true inapplicability or current settings busy state disables them.",
+      blank:"An untouched blank endpoint remains valid automatic state and retains its placeholder."
+    }
+  };
+}(window));
+
+(function registerSignalAnalyserRussianLocalization(window) {
+  "use strict";
+
+  var SETTINGS_LABELS=Object.freeze({
+    "display.name":"Имя экрана",
+    "display.plot_type":"Тип графика",
+    "pane.name":"Имя области",
+    "display.show_legend":"Показывать легенду",
+    "display.show_axis_labels":"Подписывать оси",
+    "time.normalize_y":"Нормировать Y",
+    "time.show_markers":"Показывать маркеры",
+    "time.units":"Единицы времени",
+    "time.x_limits":"Пределы X",
+    "time.y_limits":"Пределы Y",
+    "time.link_time":"Связать время",
+    "time.link_amplitude":"Связать амплитуду",
+    "spectrum.frequency_units":"Единицы частоты",
+    "spectrum.frequency_limits":"Пределы частоты",
+    "spectrum.y_limits":"Пределы магнитуды",
+    "spectrum.frequency_scale":"Шкала частоты",
+    "spectrum.scale":"Спектр в дБ",
+    "spectrum.resolution_type":"Тип разрешения",
+    "spectrum.leakage":"Утечка",
+    "spectrum.rbw":"Полоса разрешения",
+    "spectrum.window_length":"Длина окна",
+    "spectrum.window":"Окно",
+    "spectrum.sidelobe_attenuation_db":"Подавление боковых лепестков",
+    "spectrum.overlap_percent":"Перекрытие",
+    "spectrum.nfft":"Точки ДПФ",
+    "spectrum.link_frequency":"Связать частоты",
+    "spectrum.link_magnitude":"Связать магнитуды",
+    "spectrum.frequency_resolution":"Частотное разрешение",
+    "spectrogram.time_units":"Единицы времени",
+    "spectrogram.frequency_units":"Единицы частоты",
+    "spectrogram.frequency_limits":"Пределы частоты",
+    "spectrogram.power_limits":"Пределы мощности",
+    "spectrogram.frequency_scale":"Шкала частоты",
+    "spectrogram.frequency_scale":"Шкала частоты",
+    "spectrogram.scale":"Спектр в дБ",
+    "spectrogram.leakage":"Утечка",
+    "spectrogram.time_resolution":"Разрешение по времени",
+    "spectrogram.overlap_percent":"Перекрытие",
+    "spectrogram.reassign":"Переназначение",
+    "spectrogram.actual_rbw":"Фактическая полоса разрешения",
+    "spectrogram.frequency_resolution":"Частотное разрешение",
+    "persistence.time_units":"Единицы времени",
+    "persistence.frequency_units":"Единицы частоты",
+    "persistence.frequency_limits":"Пределы частоты",
+    "persistence.power_limits":"Пределы мощности",
+    "persistence.density_limits":"Пределы плотности",
+    "persistence.frequency_scale":"Шкала частоты",
+    "persistence.scale":"Спектр в дБ",
+    "persistence.leakage":"Утечка",
+    "persistence.time_resolution":"Разрешение по времени",
+    "persistence.overlap_percent":"Перекрытие",
+    "persistence.power_bins":"Интервалы мощности",
+    "persistence.rbw":"Полоса разрешения"
+    ,"persistence.frequency_resolution":"Частотное разрешение"
+  });
+
+  var GROUP_LABELS=Object.freeze({
+    display:"Отображение",time:"Время",spectrum:"Спектр",
+    spectrogram:"Спектрограмма",persistence:"Спектр персистентности"
+  });
+  var SECTION_LABELS=Object.freeze({
+    "display.view":"График",
+    "time.options":"Параметры",
+    "time.time_limits":"Диапазоны",
+    "time.y_axis_limits":"Диапазоны",
+    "time.linking":"Связь областей",
+    "spectrum.frequency_limits":"Диапазоны",
+    "spectrum.y_axis_limits":"Диапазоны",
+    "spectrum.scale":"Шкала",
+    "spectrum.resolution_type":"Тип разрешения",
+    "spectrum.leakage":"Утечка",
+    "spectrum.rbw":"Полоса разрешения",
+    "spectrum.window_options":"Параметры окна",
+    "spectrum.frequency_resolution":"Частотное разрешение",
+    "spectrum.linking":"Связь спектров",
+    "spectrogram.time_limits":"Диапазоны",
+    "spectrogram.frequency_limits":"Диапазоны",
+    "spectrogram.power_limits":"Диапазоны",
+    "spectrogram.scale":"Шкала",
+    "spectrogram.leakage":"Утечка",
+    "spectrogram.time_resolution":"Разрешение по времени",
+    "spectrogram.frequency_resolution":"Частотное разрешение",
+    "spectrogram.options":"Параметры",
+    "persistence.frequency_limits":"Диапазоны",
+    "persistence.power_limits":"Диапазоны",
+    "persistence.density_limits":"Диапазоны",
+    "persistence.scale":"Шкала",
+    "persistence.leakage":"Утечка",
+    "persistence.time_resolution":"Разрешение по времени",
+    "persistence.power_bins":"Интервалы мощности",
+    "persistence.frequency_resolution":"Частотное разрешение"
+  });
+
+  var UNIT_LABELS=Object.freeze({
+    auto:"Авто",Auto:"Авто",
+    ps:"пс",picoseconds:"пс",
+    ns:"нс",nanoseconds:"нс",
+    "μs":"мкс","µs":"мкс",us:"мкс",microseconds:"мкс",
+    ms:"мс",milliseconds:"мс",
+    s:"с",sec:"с",seconds:"с",
+    minutes:"мин",hours:"ч",days:"дн",years:"г",
+    "cycles/year":"циклов/год","cycles/day":"циклов/день",
+    "cycles/hour":"циклов/час","cycles/minute":"циклов/мин",
+    cycles_per_year:"циклов/год",cycles_per_day:"циклов/день",
+    cycles_per_hour:"циклов/час",cycles_per_minute:"циклов/мин",
+    mHz:"мГц",Hz:"Гц",kHz:"кГц",MHz:"МГц",GHz:"ГГц",THz:"ТГц",
+    hertz:"Гц",kilohertz:"кГц",megahertz:"МГц",gigahertz:"ГГц",terahertz:"ТГц",millihertz:"мГц",
+    dB:"дБ",db:"дБ",percent:"%",samples:"отсчёты",sample:"отсчёт",
+    "rad/sample":"рад/отсчёт","radians/sample":"рад/отсчёт","x pi radians/sample":"× π рад/отсчёт",normalized_pi:"× π рад/отсчёт",
+    power:"отн. ед."
+  });
+
+  var VALUE_LABELS=Object.freeze({
+    auto:"Авто",
+    leakage:"По утечке",rbw:"По полосе разрешения",window_length:"По длине окна",
+    blackman_harris:"Блэкмана — Харриса",chebyshev:"Чебышёва",flat_top:"Плосковершинное",
+    hamming:"Хэмминга",hann:"Ханна",kaiser:"Кайзера",rectangular:"Прямоугольное",
+    db:"дБ",linear:"Линейная",log:"Логарифмическая",
+    time:"Временная область",spectrum:"Спектр",spectrogram:"Спектрограмма",persistence:"Спектр персистентности"
+  });
+
+  var EXACT_VISIBLE_TEXT=Object.freeze({
+    "Auto":"Авто","auto":"Авто","ps":"пс","ns":"нс","μs":"мкс","µs":"мкс","us":"мкс","ms":"мс","s":"с",
+    "minutes":"мин","hours":"ч","days":"дн","years":"г",
+    "cycles/year":"циклов/год","cycles/day":"циклов/день","cycles/hour":"циклов/час","cycles/minute":"циклов/мин",
+    "cycles_per_year":"циклов/год","cycles_per_day":"циклов/день","cycles_per_hour":"циклов/час","cycles_per_minute":"циклов/мин",
+    "mHz":"мГц","Hz":"Гц","kHz":"кГц","MHz":"МГц","GHz":"ГГц","THz":"ТГц","dB":"дБ","db":"дБ","samples":"отсчёты","sample":"отсчёт","percent":"%",
+    "Leakage":"Утечка","RBW":"Полоса разрешения","Window Length":"Длина окна",
+    "Blackman-Harris":"Блэкмана — Харриса","Chebyshev":"Чебышёва","Flat-top":"Плосковершинное",
+    "Hamming":"Хэмминга","Hann":"Ханна","Kaiser":"Кайзера","Rectangular":"Прямоугольное",
+    "Linear":"Линейная","Log":"Логарифмическая",
+    "Display":"Отображение","Time":"Время","Spectrum":"Спектр","Spectrogram":"Спектрограмма","Persistence":"Спектр персистентности",
+    "View":"График","Options":"Параметры","Time Limits":"Диапазоны","Y-axis Limits":"Диапазоны",
+    "Frequency Limits":"Диапазоны","Power Limits":"Диапазоны","Density Limits":"Диапазоны","Link Time":"Связь областей","Spectrum links":"Связь спектров",
+    "Scale":"Шкала","Resolution Type":"Тип разрешения","Window Options":"Параметры окна",
+    "Frequency Resolution":"Частотное разрешение","Actual RBW":"Фактическая полоса разрешения","Фактическая RBW":"Фактическая полоса разрешения",
+    "Screen name":"Имя экрана","Area name":"Имя области","Show legend":"Показывать легенду",
+    "Show axis labels":"Подписывать оси","Normalize Y":"Нормировать Y","Show markers":"Показывать маркеры",
+    "Time units":"Единицы времени","Frequency units":"Единицы частоты","X limits":"Пределы X","Y limits":"Пределы Y",
+    "Link time":"Связать время","Link amplitude":"Связать амплитуду","Frequency scale":"Шкала частоты",
+    "Spectrum in dB":"Спектр в дБ","Спектр в dB":"Спектр в дБ","Resolution type":"Тип разрешения","Window length":"Длина окна","По RBW":"По полосе разрешения",
+    "Sidelobe attenuation":"Подавление боковых лепестков","Overlap":"Перекрытие","DFT Points":"Точки ДПФ","Точки DFT":"Точки ДПФ",
+    "Link spectrum frequencies":"Связать частоты","Link spectrum magnitudes":"Связать магнитуды",
+    "Time resolution":"Разрешение по времени","Reassign":"Переназначение","Power bins":"Интервалы мощности",
+    "Amplitude":"Амплитуда","Frequency":"Частота","Magnitude":"Магнитуда","Power":"Мощность",
+    "Probability":"Вероятность","Occurrence":"Встречаемость",
+    "Magnitude, dB":"Магнитуда, дБ","Power, dB":"Мощность, дБ",
+    "Frequency, Hz":"Частота, Гц","Time, s":"Время, с"
+  });
+
+  function own(map,key) { return Object.prototype.hasOwnProperty.call(map,key); }
+  function text(value) { return String(value == null ? "" : value).trim(); }
+  function unitLabel(value) { var key=text(value); return own(UNIT_LABELS,key) ? UNIT_LABELS[key] : key; }
+  function settingLabel(fieldId,fallback) { return own(SETTINGS_LABELS,fieldId) ? SETTINGS_LABELS[fieldId] : knownText(fallback); }
+  function groupLabel(groupId,fallback) { return own(GROUP_LABELS,groupId) ? GROUP_LABELS[groupId] : knownText(fallback); }
+  function sectionLabel(sectionId,fallback) { return own(SECTION_LABELS,sectionId) ? SECTION_LABELS[sectionId] : knownText(fallback); }
+  function optionLabel(fieldId,value,fallback) {
+    var key=text(value);
+    if (/units$/.test(fieldId || "")) return unitLabel(key || fallback);
+    if (own(VALUE_LABELS,key)) return VALUE_LABELS[key];
+    return knownText(fallback || key);
+  }
+  function knownText(value) { var key=text(value); return own(EXACT_VISIBLE_TEXT,key) ? EXACT_VISIBLE_TEXT[key] : key; }
+  function axisTitle(label,unit) {
+    var localizedLabel=knownText(label),localizedUnit=unitLabel(unit);
+    return localizedUnit ? localizedLabel+", "+localizedUnit : localizedLabel;
+  }
+  function colorbarTitle(label) { return knownText(label); }
+  function localizeItem(item) {
+    var result=Object.assign({},item),id=text(item && item.id);
+    result.label=settingLabel(id,item && item.label);
+    if (item && item.units != null) result.units=unitLabel(item.units);
+    if (Array.isArray(item && item.options)) result.options=item.options.map(function (option) {
+      return Object.assign({},option,{label:optionLabel(id,option.value,option.label)});
+    });
+    return result;
+  }
+  function localizeSettingsDocument(source) {
+    var result=Object.assign({},source);
+    result.groups=(source && source.groups || []).map(function (group) {
+      var groupResult=Object.assign({},group,{label:groupLabel(group.id,group.label)});
+      groupResult.sections=(group.sections || []).map(function (section) {
+        var sectionResult=Object.assign({},section,{label:sectionLabel(section.id,section.label)});
+        sectionResult.items=(section.items || []).map(localizeItem);
+        return sectionResult;
+      });
+      return groupResult;
+    });
+    if (Array.isArray(source && source.readouts)) result.readouts=source.readouts.map(localizeItem);
+    return result;
+  }
+
+  window.SignalAnalyserRussianLocalization={
+    settingsLabels:SETTINGS_LABELS,
+    groupLabels:GROUP_LABELS,
+    sectionLabels:SECTION_LABELS,
+    unitLabels:UNIT_LABELS,
+    valueLabels:VALUE_LABELS,
+    exactVisibleText:EXACT_VISIBLE_TEXT,
+    settingLabel:settingLabel,
+    groupLabel:groupLabel,
+    sectionLabel:sectionLabel,
+    optionLabel:optionLabel,
+    unitLabel:unitLabel,
+    knownText:knownText,
+    axisTitle:axisTitle,
+    colorbarTitle:colorbarTitle,
+    localizeItem:localizeItem,
+    localizeSettingsDocument:localizeSettingsDocument,
+    contract:Object.freeze({
+      wireValues:"All API ids and values remain unchanged; localization is applied only while producing visible UI text.",
+      userValues:"Signal names, custom code and other user-authored values are never translated.",
+      auto:"Every visible Auto/auto is rendered exactly as Авто; internal value remains auto or null.",
+      fallback:"Unknown provider labels are not machine-translated and must not be shown on production surfaces until an explicit mapping exists."
+    })
+  };
+}(window));
+
+(function registerSignalAnalyserSettings(window, document) {
   "use strict";
 
   var api = window.SignalAnalyserApi;
-  var root = document.querySelector("[data-testid='app-shell']");
-  var host = document.querySelector("[data-testid='settings-catalog-panel']");
-  var entries = {}, activeDisplayId = null, activeRevision = null;
-  var GROUP_ORDER = ["display", "time", "spectrum", "spectrogram", "persistence"];
-  var FIELD_ORDER = {
-    display:["display.show_legend"],
-    time:["time.normalize_y", "time.show_markers", "time.units", "time.x_limits", "time.y_limits", "time.link_time"],
-    spectrum:["spectrum.frequency_units", "spectrum.frequency_limits", "spectrum.y_limits", "spectrum.frequency_scale", "spectrum.scale", "spectrum.resolution_type", "spectrum.leakage", "spectrum.rbw", "spectrum.window_length", "spectrum.nfft", "spectrum.window", "spectrum.sidelobe_attenuation_db", "spectrum.overlap_percent"],
-    spectrogram:["spectrogram.time_units", "time.x_limits", "spectrogram.frequency_units", "spectrogram.frequency_limits", "spectrogram.power_limits", "spectrogram.frequency_scale", "spectrogram.scale", "spectrogram.leakage", "spectrogram.time_resolution", "spectrogram.overlap_percent", "spectrogram.reassign"],
-    persistence:["persistence.time_units", "persistence.frequency_units", "persistence.frequency_limits", "persistence.power_limits", "persistence.density_limits", "persistence.frequency_scale", "persistence.scale", "persistence.leakage", "persistence.time_resolution", "persistence.overlap_percent", "persistence.power_bins"]
+  var valueSelect = window.SignalAnalyserValueSelect;
+  var numeric = window.SignalAnalyserNumeric;
+  var context = {
+    displayId: "", revision: 0, document: null, drafts: {}, pending: {}, timers: {}, requestQueue: Promise.resolve(), intent: 0, contextToken: 0, loadToken: 0,
+    page: "display", plotType: "time", collapsed: {}, renderedFields: {}, linkPreview: null, extraVisible: {}, extraItems: {}, rangeDomains: {}, busy: false, renderGuard: null
   };
-  var UNIT_DEFINITIONS = {
-    time:{ picoseconds:{ factor:1e-12, label:"ps" }, nanoseconds:{ factor:1e-9, label:"ns" }, microseconds:{ factor:1e-6, label:"μs" }, milliseconds:{ factor:1e-3, label:"ms" }, seconds:{ factor:1, label:"s" }, minutes:{ factor:60, label:"minutes" }, hours:{ factor:3600, label:"hours" }, days:{ factor:86400, label:"days" }, years:{ factor:31556952, label:"years" } },
-    frequency:{ cycles_per_year:{ factor:1 / 31556952, label:"cycles/year" }, cycles_per_day:{ factor:1 / 86400, label:"cycles/day" }, cycles_per_hour:{ factor:1 / 3600, label:"cycles/hour" }, cycles_per_minute:{ factor:1 / 60, label:"cycles/minute" }, millihertz:{ factor:1e-3, label:"mHz" }, hertz:{ factor:1, label:"Hz" }, kilohertz:{ factor:1e3, label:"kHz" }, megahertz:{ factor:1e6, label:"MHz" }, gigahertz:{ factor:1e9, label:"GHz" }, terahertz:{ factor:1e12, label:"THz" } }
+  var plotOptions = [
+    { value: "time", label: "Временная область" },
+    { value: "spectrum", label: "Спектр" },
+    { value: "spectrogram", label: "Спектрограмма" },
+    { value: "persistence", label: "Спектр персистентности" }
+  ];
+  var ru = {
+    "display.plot_type": "Тип графика", "display.show_legend": "Показывать легенду", "display.show_axis_labels":"Подписывать оси", "display.name":"Имя экрана", "pane.name":"Имя области",
+    "time.normalize_y": "Нормировать Y", "time.show_markers": "Показывать маркеры", "time.units": "Единицы времени", "time.x_limits": "Пределы X", "time.y_limits": "Пределы Y", "time.link_time": "Связать время", "time.link_amplitude": "Связать амплитуду",
+    "spectrum.frequency_units": "Единицы частоты", "spectrum.frequency_limits": "Пределы частоты", "spectrum.y_limits": "Пределы магнитуды", "spectrum.link_frequency":"Связать частоты", "spectrum.link_magnitude":"Связать магнитуды", "spectrum.frequency_scale": "Шкала частоты", "spectrum.scale": "Спектр в dB", "spectrum.resolution_type": "Тип разрешения", "spectrum.leakage": "Утечка", "spectrum.rbw": "Полоса разрешения", "spectrum.window_length": "Длина окна", "spectrum.window": "Окно", "spectrum.sidelobe_attenuation_db": "Подавление боковых лепестков", "spectrum.overlap_percent": "Перекрытие", "spectrum.nfft": "Точки DFT", "spectrum.frequency_resolution": "Частотное разрешение",
+    "spectrogram.time_units": "Единицы времени", "spectrogram.frequency_units": "Единицы частоты", "spectrogram.frequency_limits": "Пределы частоты", "spectrogram.power_limits": "Пределы мощности", "spectrogram.frequency_scale": "Шкала частоты", "spectrogram.scale": "Спектр в dB", "spectrogram.leakage": "Утечка", "spectrogram.time_resolution": "Разрешение по времени", "spectrogram.overlap_percent": "Перекрытие", "spectrogram.reassign": "Переназначение", "spectrogram.actual_rbw": "Фактическая RBW",
+    "persistence.time_units": "Единицы времени", "persistence.frequency_units": "Единицы частоты", "persistence.frequency_limits": "Пределы частоты", "persistence.power_limits": "Пределы мощности", "persistence.density_limits": "Пределы плотности", "persistence.frequency_scale": "Шкала частоты", "persistence.scale": "Спектр в dB", "persistence.leakage": "Утечка", "persistence.time_resolution": "Разрешение по времени", "persistence.overlap_percent": "Перекрытие", "persistence.power_bins": "Интервалы мощности", "persistence.rbw": "RBW"
   };
-  var UNIT_FIELDS = { "time.units":"time", "spectrum.frequency_units":"frequency", "spectrogram.time_units":"time", "spectrogram.frequency_units":"frequency", "persistence.time_units":"time", "persistence.frequency_units":"frequency" };
 
-  function key(id) { return String(id || ""); }
-  function selectorId(id) { return "setting-" + String(id).replace(/[^A-Za-z0-9_-]/g, "-"); }
-  function esc(value) { return String(value == null ? "" : value).replace(/[&<>\"']/g, function (ch) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[ch]; }); }
-  function own(value, name) { return Object.prototype.hasOwnProperty.call(value || {}, name); }
-  function isObject(value) { return value && typeof value === "object" && !Array.isArray(value); }
-  function entry(displayId) { var id = key(displayId); if (!entries[id]) entries[id] = { document:null, drafts:{}, pending:{}, inFlight:false, sequence:0, context:0, replayed:{}, loadId:0 }; return entries[id]; }
-  function currentField(id) { var item = entry(activeDisplayId), fields = item.document && item.document.fields || []; return fields.filter(function (field) { return field.id === id; })[0] || null; }
-  function unitByValue(fieldId, value) { var kind = UNIT_FIELDS[fieldId]; return kind && UNIT_DEFINITIONS[kind][value] || null; }
-  function unitDefinition(fieldId, item) { var field = currentField(fieldId), value = field && fieldValue(field, item || entry(activeDisplayId)); return unitByValue(fieldId, value); }
-  function projectionUnit(field, section, item) { var id = field.id, unitFieldId = null, documentValue = item && item.document, spectrogramVisible = documentValue && (documentValue.groups || []).some(function (group) { return group.id === "spectrogram" && group.visible !== false; }); if (id === "time.x_limits") unitFieldId = section && section.id === "spectrogram.time_limits" || !section && spectrogramVisible ? "spectrogram.time_units" : "time.units"; else if (id === "spectrogram.time_resolution") unitFieldId = "spectrogram.time_units"; else if (id === "persistence.time_resolution") unitFieldId = "persistence.time_units"; else if (id === "spectrum.frequency_limits" || id === "spectrum.rbw") unitFieldId = "spectrum.frequency_units"; else if (id === "spectrogram.frequency_limits") unitFieldId = "spectrogram.frequency_units"; else if (id === "persistence.frequency_limits") unitFieldId = "persistence.frequency_units"; return unitFieldId ? unitDefinition(unitFieldId, item) : null; }
-  function readoutUnit(readout, item) { var id = readout.id, unitFieldId = id === "spectrum.frequency_resolution" ? "spectrum.frequency_units" : id === "spectrogram.actual_rbw" ? "spectrogram.frequency_units" : id === "persistence.rbw" ? "persistence.frequency_units" : null; return unitFieldId ? unitDefinition(unitFieldId, item) : null; }
-  function normalizeZero(value) { return value === 0 ? 0 : value; }
-  function formatProjected(value, unit) { var display, parts; if (typeof value !== "number" || !isFinite(value)) return value == null ? "" : String(value); display = normalizeZero(value / unit.factor); parts = display.toPrecision(12).split("e"); parts[0] = parts[0].replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, ""); return parts.join(parts.length > 1 ? "e" : ""); }
-  function canonicalValue(value, unit) { return normalizeZero(value * unit.factor); }
-  function fieldValue(field, item) { return own(item.drafts, field.id) ? item.drafts[field.id].value : field.value; }
-  function fieldText(field, item, part, unit) { var draft = item.drafts[field.id], value; if (draft && draft.text && own(draft.text, part || "value")) return draft.text[part || "value"]; value = fieldValue(field, item); if (part && isObject(value)) return value[part] == null ? "" : unit && (part === "min" || part === "max" || part === "seconds" || part === "hz") ? formatProjected(value[part], unit) : String(value[part]); return value == null ? "" : String(value); }
-  function fieldVisible(field) { return field.visible !== false || ["spectrum.leakage", "spectrogram.leakage", "persistence.leakage"].indexOf(field.id) >= 0; }
-  function fieldOrder(field) { var order = FIELD_ORDER[field.group] || [], index = order.indexOf(field.id); return index < 0 ? order.length : index; }
-  function isStorageOnly(field) { return field.effect_status === "stored_only" || String(field.effect_status || "").indexOf("blocked") === 0; }
-  function isPlotEffective(field) { return field.effect_status === "effective"; }
-  function isPresentationEffective(field) { return field.effect_status === "effective_presentation"; }
-  function isAppPresentationField(field) { return field && ["display.show_legend", "time.normalize_y", "time.show_markers"].indexOf(field.id) >= 0; }
-  function setRevision(revision) { if (typeof revision === "number" && (activeRevision == null || revision >= activeRevision)) activeRevision = revision; }
-  function statusText(field, item) { if (item.pending[field.id]) return "Сохранение…"; if (isStorageOnly(field)) return "Сохранено — пока не применяется" + (field.effect_reason ? ": " + field.effect_reason : ""); return ""; }
-  function localError(field, item) { var draft = item.drafts[field.id]; return draft && draft.error || field.error || ""; }
-  function optionLabel(field, value) { var option = (field.options || []).filter(function (item) { return item.value === value; })[0]; return option ? option.label : value; }
-  function inputAttrs(field, suffix) { var id = selectorId(field.id) + (suffix ? "-" + suffix : ""), errorId = selectorId(field.id) + "-error", statusId = selectorId(field.id) + "-effect-status"; return " id='" + id + "' data-testid='" + id + "' data-setting-field='" + esc(field.id) + "'" + (suffix ? " data-setting-part='" + suffix + "'" : "") + " aria-describedby='" + errorId + " " + statusId + "'" + (field.enabled === false || field.readonly ? " disabled" : ""); }
-  function renderEnum(field, item) { var value = fieldValue(field, item), base = selectorId(field.id), disabled = field.enabled === false || field.readonly, options = (field.options || []).filter(function (option) { return option.disabled !== true; }), checkedValue = field.checked_value; if (field.control_kind === "checkbox" && checkedValue != null) return "<label class='checkbox-setting'><input type='checkbox' data-setting-checkbox-enum='true' data-checked-value='" + esc(checkedValue) + "' data-unchecked-value='" + esc(field.unchecked_value) + "'" + inputAttrs(field) + (value === checkedValue ? " checked" : "") + "> " + esc(field.label) + "</label>"; return "<div class='settings-enum' data-settings-enum='" + esc(field.id) + "'><label for='" + base + "'>" + esc(field.label) + "</label><input type='text' role='combobox' autocomplete='off' aria-autocomplete='list' aria-expanded='false' aria-controls='" + base + "-options' value='" + esc(optionLabel(field, value)) + "'" + inputAttrs(field) + (disabled ? "" : "") + "><div id='" + base + "-options' class='settings-enum-options' role='listbox' hidden>" + options.map(function (option) { return "<button type='button' role='option' data-setting-option='" + esc(option.value) + "' aria-selected='" + (option.value === value ? "true" : "false") + "'>" + esc(option.label) + "</button>"; }).join("") + "</div></div>"; }
-  function renderRange(field, item, unit) { var suffix = unit ? unit.label : field.units, minLabel = suffix ? "Min (" + suffix + ")" : "Min", maxLabel = suffix ? "Max (" + suffix + ")" : "Max"; return "<fieldset class='settings-range'><legend>" + esc(field.label) + (suffix ? " (" + esc(suffix) + ")" : "") + "</legend><label>" + esc(minLabel) + "<input type='text' inputmode='decimal'" + inputAttrs(field, "min") + " aria-label='" + esc(minLabel) + "' value='" + esc(fieldText(field, item, "min", unit)) + "'></label><label>" + esc(maxLabel) + "<input type='text' inputmode='decimal'" + inputAttrs(field, "max") + " aria-label='" + esc(maxLabel) + "' value='" + esc(fieldText(field, item, "max", unit)) + "'></label></fieldset>"; }
-  function renderResolution(field, item, unit) { var value = fieldValue(field, item) || { mode:"auto" }, measure = own(value, "seconds") ? "seconds" : own(value, "hz") ? "hz" : own(value, "samples") ? "samples" : own(value, "nfft") ? "nfft" : own(value, "count") ? "count" : "value", valueLabel = unit && (measure === "seconds" || measure === "hz") ? "Value (" + unit.label + ")" : "Value"; return "<fieldset class='settings-resolution'><legend>" + esc(field.label) + "</legend><label><input type='radio' name='" + selectorId(field.id) + "-mode' value='auto' data-setting-field='" + esc(field.id) + "' data-setting-mode='auto'" + (value.mode === "auto" ? " checked" : "") + (field.enabled === false ? " disabled" : "") + "> Auto</label><label><input type='radio' name='" + selectorId(field.id) + "-mode' value='specified' data-setting-field='" + esc(field.id) + "' data-setting-mode='specified'" + (value.mode === "specified" ? " checked" : "") + (field.enabled === false ? " disabled" : "") + "> Specify</label><label>" + esc(valueLabel) + "<input type='text' inputmode='decimal'" + inputAttrs(field, measure) + " value='" + esc(fieldText(field, item, measure, unit)) + "'" + (value.mode === "specified" ? "" : " disabled") + "></label></fieldset>"; }
-  function renderField(field, item, section) { var control, id = selectorId(field.id), error = localError(field, item), status = statusText(field, item), warning = field.warning && field.warning !== status ? field.warning : "", unit = projectionUnit(field, section, item); if (field.readonly) control = "<div class='settings-readonly'><span>" + esc(field.label) + "</span><output>" + esc(fieldText(field, item)) + "</output></div>"; else if (field.kind === "boolean") control = "<label class='checkbox-setting'><input type='checkbox'" + inputAttrs(field) + (fieldValue(field, item) ? " checked" : "") + "> " + esc(field.label) + "</label>"; else if (field.kind === "enum") control = renderEnum(field, item); else if (field.kind === "optional_range") control = renderRange(field, item, unit); else if (field.kind === "resolution" || field.kind === "power_bins") control = renderResolution(field, item, unit); else control = "<label class='settings-scalar'>" + esc(field.label) + (field.units ? " (" + esc(field.units) + ")" : "") + "<input type='text' inputmode='decimal'" + inputAttrs(field) + " value='" + esc(fieldText(field, item)) + "'></label>"; return "<div class='settings-field' data-testid='" + id + "-field' data-field-kind='" + esc(field.kind) + "'>" + control + "<p id='" + id + "-effect-status' data-testid='" + id + "-effect-status' class='settings-effect-status'" + (status ? "" : " hidden") + ">" + esc(status) + "</p><p id='" + id + "-error' data-testid='" + id + "-error' class='settings-field-error' role='alert'" + (error ? "" : " hidden") + ">" + esc(error) + "</p>" + (warning ? "<p class='settings-field-warning'>" + esc(warning) + "</p>" : "") + "</div>"; }
-  function renderReadout(readout, item) { var id = "settings-readout-" + String(readout.id).replace(/[^A-Za-z0-9_-]/g, "-"), unavailable = readout.status !== "available", unit = readoutUnit(readout, item), value = unit ? formatProjected(readout.value, unit) : readout.value, suffix = unit ? unit.label : readout.units; return "<div class='settings-readout' data-testid='" + id + "'><span>" + esc(readout.label) + "</span><output>" + (unavailable ? "Доступно после подключения расчёта" : esc(value) + (suffix ? " " + esc(suffix) : "")) + "</output></div>"; }
-  function render() { var item = entry(activeDisplayId), doc = item.document, groups, sections; if (!host) return; if (!doc) { host.hidden = true; return; } groups = (doc.groups || []).slice().sort(function (left, right) { var a = GROUP_ORDER.indexOf(left.id), b = GROUP_ORDER.indexOf(right.id); return (a < 0 ? GROUP_ORDER.length : a) - (b < 0 ? GROUP_ORDER.length : b); }); sections = Array.isArray(doc.sections) ? doc.sections : groups.map(function (group, index) { return { id:group.id, group:group.id, label:group.label, order:index, visible:group.visible }; }); host.hidden = false; host.innerHTML = groups.filter(function (group) { return group.visible !== false; }).map(function (group) { var groupSections = sections.filter(function (section) { return section.group === group.id && section.visible !== false; }).sort(function (left, right) { return left.order - right.order; }); var body = groupSections.map(function (section) { var fields = (doc.fields || []).filter(function (field) { return (field.section === section.id || (!field.section && field.group === group.id) || (section.id === "spectrogram.time_limits" && field.id === "time.x_limits")) && fieldVisible(field); }).sort(function (left, right) { return fieldOrder(left) - fieldOrder(right); }), readouts = (doc.readouts || []).filter(function (readout) { return readout.section === section.id && readout.visible !== false; }); if (!fields.length && !readouts.length) return ""; return "<section class='settings-section' data-testid='settings-section-" + esc(section.id).replace(/\./g, "-") + "'><h4>" + esc(section.label) + "</h4>" + fields.map(function (field) { return renderField(field, item, section); }).join("") + readouts.map(function (readout) { return renderReadout(readout, item); }).join("") + "</section>"; }).join(""); return body ? "<section class='settings-group' data-testid='settings-group-" + esc(group.id) + "'><h3>" + esc(group.label) + "</h3>" + body + "</section>" : ""; }).join(""); }
-  function numeric(text, integer) { var value; if (text === "" || text === "+" || text === "-" || /^[+-]?(?:\d+\.?\d*|\.\d+)[eE][+-]?$/.test(text)) return { pending:true }; if (!/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) return { error:"Введите число с точкой как десятичным разделителем." }; value = Number(text); if (!isFinite(value) || (integer && (!Number.isSafeInteger(value)))) return { error:integer ? "Введите безопасное целое число." : "Введите конечное число." }; return { value:value }; }
-  function setDraft(field, value, text, error) { var item = entry(activeDisplayId); item.drafts[field.id] = { value:value, text:text || {}, error:error || "" }; }
-  function clearDraft(field, displayId) { delete entry(displayId).drafts[field.id]; }
-  function parseInput(field, node) { var text = node.value.trim(), parsed; if (node.dataset.settingCheckboxEnum === "true") return { value:node.checked ? node.dataset.checkedValue : node.dataset.uncheckedValue, text:{ value:node.checked ? "true" : "false" } }; if (field.kind === "boolean") return { value:node.checked, text:{ value:node.checked ? "true" : "false" } }; if (field.kind === "enum") return null; parsed = numeric(text, field.kind === "integer"); if (parsed.pending) return { pending:true, text:{ value:node.value } }; if (parsed.error) return { error:parsed.error, text:{ value:node.value } }; return { value:parsed.value, text:{ value:node.value } }; }
-  function parseRange(field) { var base = selectorId(field.id), min = document.querySelector("#" + base + "-min"), max = document.querySelector("#" + base + "-max"), a = numeric(min.value.trim()), b = numeric(max.value.trim()), text = { min:min.value, max:max.value }, unit = projectionUnit(field, null, entry(activeDisplayId)); if (!min.value.trim() && !max.value.trim()) return { value:null, text:text }; if (a.pending || b.pending) return { pending:true, text:text }; if (a.error || b.error || !(a.value < b.value)) return { error:"Введите две конечные строго возрастающие границы.", text:text }; return { value:{ min:unit ? canonicalValue(a.value, unit) : a.value, max:unit ? canonicalValue(b.value, unit) : b.value }, text:text }; }
-  function parseResolution(field) { var base = selectorId(field.id), mode = document.querySelector("input[name='" + base + "-mode']:checked"), unit = field.kind === "power_bins" ? "count" : field.id.indexOf("window_length") >= 0 ? "samples" : field.id.indexOf("nfft") >= 0 ? "nfft" : field.id.indexOf("rbw") >= 0 ? "hz" : "seconds", node = document.querySelector("#" + base + "-" + unit), integer = field.kind === "power_bins" || unit === "samples" || unit === "nfft", projection = (unit === "seconds" || unit === "hz") ? projectionUnit(field, null, entry(activeDisplayId)) : null; if (!mode || mode.value === "auto") { var automatic = { mode:"auto" }; automatic[unit] = null; return { value:automatic, text:{} }; } if (!node) return { error:"Укажите значение.", text:{} }; var parsed = numeric(node.value.trim(), integer); if (parsed.pending) return { pending:true, text:{ value:node.value } }; if (parsed.error || !(parsed.value > 0)) return { error:"Введите допустимое положительное значение.", text:{ value:node.value } }; var value = { mode:"specified" }; value[unit] = projection ? canonicalValue(parsed.value, projection) : parsed.value; return { value:value, text:{ value:node.value } }; }
-  function applySettings(doc, displayId, changedField) { var item = entry(displayId); setRevision(doc && doc.state_revision); if (doc && typeof doc.state_revision === "number") window.dispatchEvent(new window.CustomEvent("signal-analyser-settings-revision", { detail:{ displayId:displayId, revision:doc.state_revision } })); item.document = doc; (doc.fields || []).forEach(function (field) { if (!item.drafts[field.id]) return; if (!item.pending[field.id]) return; }); if (doc && isAppPresentationField(changedField)) window.dispatchEvent(new window.CustomEvent("signal-analyser-settings-presentation", { detail:doc })); if (displayId === activeDisplayId) render(); }
-  function isActivePersistenceTarget(response, displayId) { var snapshot = response && response.state, displays = snapshot && snapshot.displays || [], target = displays.filter(function (display) { return display && display.id === displayId; })[0]; return !!(snapshot && snapshot.active_display_id === displayId && target && target.active_plot === "persistence"); }
-  function dispatchState(response, field, displayId) { var backendSnapshotPresentation = field && field.id === "persistence.density_limits" && isActivePersistenceTarget(response, displayId); if (!response || !response.state) return; if ((!isPlotEffective(field) && !backendSnapshotPresentation) || displayId !== activeDisplayId) { window.dispatchEvent(new window.CustomEvent("signal-analyser-settings-revision", { detail:{ displayId:displayId, revision:response.state.state_revision } })); return; } window.dispatchEvent(new window.CustomEvent("signal-analyser-settings-state", { detail:response.state })); }
-  function settingsErrorMessage(error) { var nested = error && error.payload && error.payload.error; return nested && typeof nested.message === "string" && nested.message ? nested.message : "Не удалось сохранить настройку."; }
-  function isStaleSettingsError(error) { var payload = error && error.payload, nested = payload && payload.error; return !!(error && error.status === 409 && payload && payload.ok === false && payload.code === "stale_state" && nested && nested.code === "stale_state"); }
-  function send(displayId, field, value, retry) { var item = entry(displayId), requestId = ++item.sequence, context = item.context; item.pending[field.id] = requestId; render(); return api.updateSetting({ state_revision:activeRevision, display_id:displayId, field_id:field.id, value:value }).then(function (response) { var globalRevision = response && response.state && response.state.state_revision; setRevision(globalRevision); if (!isPlotEffective(field) && typeof globalRevision === "number") window.dispatchEvent(new window.CustomEvent("signal-analyser-settings-revision", { detail:{ displayId:displayId, revision:globalRevision } })); if (item.context !== context || item.pending[field.id] !== requestId) { if (item.pending[field.id] === requestId) delete item.pending[field.id]; return; } delete item.pending[field.id]; clearDraft(field, displayId); if (response.settings) applySettings(response.settings, displayId, field); if (isPlotEffective(field)) dispatchState(response, field, displayId); }).catch(function (error) { var payload = error && error.payload, revision = payload && payload.state && payload.state.state_revision; if (isStaleSettingsError(error) && typeof revision === "number") { setRevision(revision); window.dispatchEvent(new window.CustomEvent("signal-analyser-settings-revision", { detail:{ displayId:displayId, revision:revision } })); } if (item.context !== context || item.pending[field.id] !== requestId) { if (item.pending[field.id] === requestId) delete item.pending[field.id]; return; } delete item.pending[field.id]; if (isStaleSettingsError(error) && !retry) { if (payload.settings) applySettings(payload.settings, displayId); return api.settings(displayId).then(function (doc) { if (item.context !== context) return; applySettings(doc, displayId); return send(displayId, field, value, true); }); } if (payload && payload.settings) applySettings(payload.settings, displayId); var draft = item.drafts[field.id] || { value:value, text:{} }; draft.error = settingsErrorMessage(error); item.drafts[field.id] = draft; if (displayId === activeDisplayId) render(); }); }
-  function commit(field, parsed) { var item = entry(activeDisplayId); if (parsed.pending) { setDraft(field, fieldValue(field, item), parsed.text, ""); render(); return; } if (parsed.error) { setDraft(field, fieldValue(field, item), parsed.text, parsed.error); render(); return; } setDraft(field, parsed.value, parsed.text, ""); send(activeDisplayId, field, parsed.value, false); }
-  function openEnum(container, open) { var input = container.querySelector("input[role='combobox']"), list = container.querySelector("[role='listbox']"); if (!input || !list) return; list.hidden = !open; input.setAttribute("aria-expanded", open ? "true" : "false"); }
-  function chooseEnum(field, option, box) { setDraft(field, option.dataset.settingOption, { value:option.textContent }, ""); openEnum(box, false); send(activeDisplayId, field, option.dataset.settingOption, false); }
-  function bind() { if (!host) return; host.addEventListener("input", function (event) { var node = event.target, field = currentField(node.dataset.settingField); if (!field) return; if (field.kind === "enum") { var box = node.closest("[data-settings-enum]"), query = node.value.toLowerCase(); box.querySelectorAll("[data-setting-option]").forEach(function (option) { option.hidden = option.textContent.toLowerCase().indexOf(query) < 0; }); openEnum(box, true); return; } if (field.kind === "optional_range") { var parsed = parseRange(field); if (parsed.error || parsed.pending) commit(field, parsed); } else if (field.kind !== "boolean") { var parsed = parseInput(field, node); if (parsed.error || parsed.pending) commit(field, parsed); } }); host.addEventListener("change", function (event) { var node = event.target, field = currentField(node.dataset.settingField); if (!field) return; if (node.dataset.settingMode) { commit(field, parseResolution(field)); return; } if (field.kind === "optional_range") return; if (field.kind === "resolution" || field.kind === "power_bins") { commit(field, parseResolution(field)); return; } commit(field, parseInput(field, node)); }); host.addEventListener("focusout", function (event) { var node = event.target, field = currentField(node.dataset.settingField); if (!field || field.kind !== "optional_range") return; var fieldNode = node.closest(".settings-field"); window.setTimeout(function () { if (fieldNode && fieldNode.contains(document.activeElement)) return; commit(field, parseRange(field)); }, 0); }); host.addEventListener("keydown", function (event) { var node = event.target, option = node.closest("[data-setting-option]"), box = node.closest("[data-settings-enum]"), field = option && box ? currentField(box.dataset.settingsEnum) : currentField(node.dataset.settingField), options, index, next; if (option && field) { options = Array.prototype.slice.call(box.querySelectorAll("[data-setting-option]")).filter(function (item) { return !item.hidden; }); index = options.indexOf(option); if (event.key === "Enter") { event.preventDefault(); chooseEnum(field, option, box); return; } if (event.key === "Escape") { event.preventDefault(); openEnum(box, false); box.querySelector("input[role='combobox']").focus(); return; } if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); next = options[(index + (event.key === "ArrowDown" ? 1 : options.length - 1)) % options.length]; if (next) next.focus(); return; } }
-      if (!field) return; if (field.kind === "enum") { box = node.closest("[data-settings-enum]"); if (event.key === "Escape") { openEnum(box, false); return; } if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); openEnum(box, true); options = Array.prototype.slice.call(box.querySelectorAll("[data-setting-option]")).filter(function (item) { return !item.hidden; }); next = event.key === "ArrowDown" ? options[0] : options[options.length - 1]; if (next) next.focus(); } return; } if (event.key === "Enter") { event.preventDefault(); commit(field, field.kind === "optional_range" ? parseRange(field) : (field.kind === "resolution" || field.kind === "power_bins") ? parseResolution(field) : parseInput(field, node)); } }); host.addEventListener("click", function (event) { var option = event.target.closest("[data-setting-option]"); if (!option) return; var box = option.closest("[data-settings-enum]"), field = currentField(box.dataset.settingsEnum); if (field) chooseEnum(field, option, box); }); }
-  function load(displayId, revision) { if (!api || typeof api.settings !== "function") return; var item = entry(displayId), loadId = ++item.loadId, context = item.context; api.settings(displayId).then(function (doc) { if (item.loadId !== loadId || item.context !== context) return; applySettings(doc, displayId); }).catch(function () { /* Existing controls continue to work while a Backend without DEC-040 routes is deployed. */ }); setRevision(revision); }
-  function context(detail) { var displayId = key(detail && detail.displayId); if (!displayId || displayId === activeDisplayId) { setRevision(detail && detail.revision); return; } if (activeDisplayId) entry(activeDisplayId).context += 1; activeDisplayId = displayId; setRevision(detail.revision); load(displayId, activeRevision); }
-  window.addEventListener("signal-analyser-settings-context", function (event) { context(event.detail || {}); });
-  bind();
-  window.SignalAnalyserSettings = {
-    refresh:function (displayId, revision) { activeDisplayId = key(displayId); activeRevision = revision; load(activeDisplayId, revision); },
-    __test:{
-      setApi:function (value) { api = value; },
-      context:function (displayId, revision) { context({ displayId:displayId, revision:revision }); },
-      seed:function (displayId, revision, documentValue) { activeDisplayId = key(displayId); setRevision(revision); entry(displayId).document = documentValue || null; },
-      save:function (displayId, field, value) { return send(key(displayId), field, value, false); },
-      unit:function (fieldId, value) { var unit = unitByValue(fieldId, value); return unit && { factor:unit.factor, label:unit.label }; },
-      project:function (fieldId, value, unitValue) { var unit = unitByValue(fieldId, unitValue); return unit ? value == null ? value : formatProjected(value, unit) : null; },
-      canonical:function (fieldId, value, unitValue) { var unit = unitByValue(fieldId, unitValue); return unit ? canonicalValue(value, unit) : null; },
-      inspect:function (displayId) { var item = entry(displayId); return { activeDisplayId:activeDisplayId, globalRevision:activeRevision, document:item.document, pending:Object.assign({}, item.pending), contextEpoch:item.context }; }
+  function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[character]; }); }
+  function nameField(id) { return id === "display.name" || id === "pane.name"; }
+  function activeNameEditor() {
+    var node=document.activeElement;
+    var id=node && node.dataset && node.dataset.settingId;
+    if (!nameField(id) || !context.renderedFields[id]) return null;
+    return { node:node, fieldId:id, intent:context.drafts[id] && context.drafts[id].intent || 0 };
+  }
+  function noHistory() { return " autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'"; }
+  function decorateNoHistory(root) {
+    var helper=window.SignalAnalyserTask0126;
+    var target=root || document;
+    if (target && typeof target.querySelectorAll === "function" && helper && typeof helper.decorateNoHistory === "function") helper.decorateNoHistory(target);
+  }
+  function fields() { return context.document && Array.isArray(context.document.fields) ? context.document.fields : []; }
+  function readouts() { return context.document && Array.isArray(context.document.readouts) ? context.document.readouts : []; }
+  function sourceItem(id) {
+    if (context.extraItems[id]) return context.extraItems[id];
+    var found = fields().filter(function (item) { return item.id === id; })[0];
+    if (found) return found;
+    var readout = readouts().filter(function (item) { return item.id === id; })[0];
+    return readout ? Object.assign({}, readout, { kind:"readout", readonly:true, enabled:false }) : null;
+  }
+  function rangeItem(item) { return !!item && (item.kind === "range" || item.kind === "optional_range"); }
+  function rangeApplicable(item) { return !rangeItem(item) || item.enabled !== false; }
+  function screenValue(item) {
+    if (context.drafts[item.id] && context.drafts[item.id].value !== undefined) return context.drafts[item.id].value;
+    var screen = context.document && context.document.screen;
+    return screen && Object.prototype.hasOwnProperty.call(screen, item.id) ? screen[item.id] : item.value;
+  }
+  function value(item) { return context.page === "screen" ? screenValue(item) : context.drafts[item.id] && context.drafts[item.id].value !== undefined ? context.drafts[item.id].value : item.value; }
+  function booleanValue(id) { var item = sourceItem(id); return !!(item && value(item)); }
+  function russianPresenter() { return window.SignalAnalyserRussianLocalization || null; }
+  function label(item) {
+    var presenter=russianPresenter(),fallback=ru[item.id] || item.label || item.id;
+    return presenter && typeof presenter.settingLabel === "function" ? presenter.settingLabel(item.id,fallback) : fallback;
+  }
+  function unitLabel(unit) {
+    var presenter=russianPresenter();
+    return presenter && typeof presenter.unitLabel === "function" ? presenter.unitLabel(unit) : unit;
+  }
+  function visibleGroupTitle(item) {
+    var presenter=russianPresenter();
+    return presenter && typeof presenter.knownText === "function" ? presenter.knownText(item.title) : item.title;
+  }
+  function isApply(item) { return item && !item.pseudo && item.effect_status === "requires_apply"; }
+  function optionLabel(option,fieldId) {
+    var raw = typeof option === "object" ? option.value : option;
+    var fallback={ auto:"Авто", seconds:"с", milliseconds:"мс", microseconds:"мкс", nanoseconds:"нс", picoseconds:"пс", minutes:"мин", hours:"ч", days:"дн", years:"г", hertz:"Гц", kilohertz:"кГц", megahertz:"МГц", gigahertz:"ГГц", terahertz:"ТГц", linear:"Линейная", log:"Логарифмическая", db:"дБ", leakage:"По утечке", rbw:"По полосе разрешения", window_length:"По длине окна" }[raw] || (typeof option === "object" && option.label) || raw;
+    var presenter=russianPresenter();
+    return presenter && typeof presenter.optionLabel === "function" ? presenter.optionLabel(fieldId,raw,fallback) : fallback;
+  }
+  function rangeForUnitField(id) {
+    return { "time.units":"time.x_limits", "spectrum.frequency_units":"spectrum.frequency_limits", "spectrogram.frequency_units":"spectrogram.frequency_limits", "persistence.frequency_units":"persistence.frequency_limits" }[id] || "";
+  }
+  function unitScale(unit) {
+    return {
+      picoseconds:1e-12, nanoseconds:1e-9, microseconds:1e-6, milliseconds:1e-3, seconds:1, minutes:60, hours:3600, days:86400, years:31557600,
+      cycles_per_year:1/31557600, cycles_per_day:1/86400, cycles_per_hour:1/3600, cycles_per_minute:1/60, millihertz:1e-3,
+      hertz:1, kilohertz:1e3, megahertz:1e6, gigahertz:1e9, terahertz:1e12
+    }[unit] || 1;
+  }
+  function helperUnitSupported(unit) { return ["seconds", "milliseconds", "microseconds", "nanoseconds", "hertz", "kilohertz", "megahertz", "gigahertz"].indexOf(unit) >= 0; }
+  function canonicalFromVisible(value, unit) {
+    if (value === null || value === undefined || value === "") return null;
+    var helper=window.SignalAnalyserTask0126;
+    if (helper && helperUnitSupported(unit)) return helper.toCanonical(value, unit);
+    return Number(value) * unitScale(unit);
+  }
+  function visibleFromCanonical(value, unit) {
+    if (value === null || value === undefined || value === "") return "";
+    var helper=window.SignalAnalyserTask0126;
+    if (helper && helperUnitSupported(unit)) return helper.projectCanonical(value, unit);
+    return Number(value) / unitScale(unit);
+  }
+  function unitFromRenderedLabel(labelValue, fallback) {
+    var key=String(labelValue || "").trim();
+    return { ps:"picoseconds", ns:"nanoseconds", "μs":"microseconds", us:"microseconds", ms:"milliseconds", s:"seconds", Hz:"hertz", kHz:"kilohertz", MHz:"megahertz", GHz:"gigahertz", THz:"terahertz" }[key] || fallback;
+  }
+  function automaticTimeUnit(maximumSeconds) {
+    var value=Math.abs(Number(maximumSeconds));
+    var choices=[["picoseconds",1e-12],["nanoseconds",1e-9],["microseconds",1e-6],["milliseconds",1e-3],["seconds",1],["minutes",60],["hours",3600],["days",86400],["years",31557600]];
+    for (var index=0; index<choices.length; index++) { var rendered=value/choices[index][1]; if (rendered >= 1 && rendered < 1000) return choices[index][0]; }
+    return value > 0 && value < 1e-12 ? "picoseconds" : value > 0 ? "years" : "seconds";
+  }
+  function reprojectRangeForUnitChange(item, nextUnit, previousUnit) {
+    var rangeId=rangeForUnitField(item.id), rangeItem=rangeId && sourceItem(rangeId);
+    if (!rangeItem) return Promise.resolve();
+    var current=value(rangeItem);
+    if (!current || typeof current !== "object" || current.min == null && current.max == null) return Promise.resolve();
+    var currentUnit=String(previousUnit || value(item) || ""), renderedUnit=currentUnit === "auto" ? unitFromRenderedLabel(rangeItem.units, "seconds") : currentUnit;
+    var canonical={ min:canonicalFromVisible(current.min, renderedUnit), max:canonicalFromVisible(current.max, renderedUnit) };
+    var projectedUnit=nextUnit === "auto" ? automaticTimeUnit(Math.max(Math.abs(canonical.min || 0), Math.abs(canonical.max || 0))) : nextUnit;
+    return update(rangeItem, {
+      min:current.min == null ? "" : String(visibleFromCanonical(canonical.min, projectedUnit)),
+      max:current.max == null ? "" : String(visibleFromCanonical(canonical.max, projectedUnit))
+    });
+  }
+  function pseudo(id, kind, current, extra) { return Object.assign({ id:id, kind:kind, value:current, enabled:true, visible:true, pseudo:true }, extra || {}); }
+  function actual(id) {
+    var item = sourceItem(id);
+    if (!item || item.visible === false || !rangeApplicable(item)) return null;
+    return item;
+  }
+  function group(key, title, items) { return { key:key, title:title, items:items.filter(Boolean) }; }
+  function displayInventory(type) {
+    var linkFrequency = context.linkPreview ? context.linkPreview.linkFrequency : booleanValue("spectrum.link_frequency");
+    var linkMagnitude = context.linkPreview ? context.linkPreview.linkMagnitude : booleanValue("spectrum.link_magnitude");
+    var graphItems = [
+      actual("pane.name"), pseudo("display.plot_type", "enum", type, { action:"plot-type", options:plotOptions }),
+      actual("display.show_legend", true), actual("display.show_axis_labels", true)
+    ];
+    var axisLabels=window.SignalAnalyserAxisLabelsAndHover;
+    if (axisLabels) graphItems=axisLabels.insertAfterLegend(graphItems);
+    var graph = group("graph", "График", graphItems);
+    if (type === "time") return [graph];
+    if (type === "spectrum") {
+      return [
+        graph,
+        group("parameters", "Параметры", [actual("spectrum.frequency_units", true)]),
+        group("frequency-axis", "Частотная ось", [actual("spectrum.frequency_scale", true)]),
+        group("spectrum-analysis", "Спектральный анализ", [actual("spectrum.scale", true), actual("spectrum.resolution_type", true), actual("spectrum.leakage"), actual("spectrum.rbw"), actual("spectrum.window_length"), actual("spectrum.window"), actual("spectrum.sidelobe_attenuation_db"), actual("spectrum.overlap_percent"), actual("spectrum.nfft"), actual("spectrum.frequency_resolution")]),
+        group("ranges", "Диапазоны", [linkFrequency ? null : actual("spectrum.frequency_limits", true), linkMagnitude ? null : actual("spectrum.y_limits", true)])
+      ];
     }
+    if (type === "spectrogram") {
+      return [
+        graph,
+        group("parameters", "Параметры", [actual("spectrogram.time_units", true), actual("spectrogram.frequency_units", true)]),
+        group("frequency-axis", "Частотная ось", [actual("spectrogram.frequency_scale", true)]),
+        group("power", "Мощность", [actual("spectrogram.scale", true), actual("spectrogram.leakage", true), actual("spectrogram.time_resolution", true), actual("spectrogram.overlap_percent", true), actual("spectrogram.reassign", true), actual("spectrogram.actual_rbw")]),
+        group("ranges", "Диапазоны", [actual("spectrogram.frequency_limits", true), actual("spectrogram.power_limits", true)])
+      ];
+    }
+    return [
+      graph,
+      group("parameters", "Параметры", [actual("persistence.time_units", true), actual("persistence.frequency_units", true)]),
+      group("frequency-axis", "Частотная ось", [actual("persistence.frequency_scale", true)]),
+      group("density-power", "Плотность и мощность", [actual("persistence.scale", true), actual("persistence.leakage", true), actual("persistence.time_resolution", true), actual("persistence.overlap_percent", true), actual("persistence.power_bins", true), actual("persistence.rbw")]),
+      group("ranges", "Диапазоны", [linkFrequency ? null : actual("persistence.frequency_limits", true), linkMagnitude ? null : actual("persistence.power_limits", true), actual("persistence.density_limits", true)])
+    ];
+  }
+
+  function timeInventory(type) {
+    var linkTime = context.linkPreview ? context.linkPreview.linkTime : booleanValue("time.link_time");
+    var linkAmplitude = context.linkPreview ? context.linkPreview.linkAmplitude : booleanValue("time.link_amplitude");
+    if (type === "time") {
+      return [
+        group("parameters", "Параметры", [actual("time.units"), actual("time.normalize_y"), actual("time.show_markers")]),
+        group("ranges", "Диапазоны", [linkTime ? null : actual("time.x_limits"), linkAmplitude ? null : actual("time.y_limits")])
+      ].filter(Boolean);
+    }
+    if (type === "spectrogram" && !linkTime) return [group("ranges", "Диапазоны", [actual("time.x_limits")])];
+    return [];
+  }
+
+  function inventory() {
+    var type = context.plotType;
+    var result=displayInventory(type).concat(timeInventory(type)).reduce(function (result, section) {
+      var existing=result.filter(function (candidate) { return candidate.key === section.key; })[0];
+      if (existing) existing.items=existing.items.concat(section.items);
+      else result.push(section);
+      return result;
+    }, []);
+    var helper=window.SignalAnalyserSynchronizedRanges, ranges=result.filter(function (section) { return section.key === "ranges"; })[0];
+    if (helper && ranges) {
+      var order=helper.descriptors(type).map(function (item) { return item.fieldId; });
+      ranges.items.sort(function (left,right) { return order.indexOf(left.id)-order.indexOf(right.id); });
+    }
+    return result;
+  }
+
+  function visibleItems() {
+    var items=inventory().reduce(function (items, section) {
+      return items.concat(section.items.filter(function (item) { return item && !item.pseudo && item.visible !== false; }));
+    }, []);
+    Object.keys(context.extraVisible).forEach(function (id) { var item=sourceItem(id); if (item && item.visible !== false && rangeApplicable(item) && !items.some(function (candidate) { return candidate.id === id; })) items.push(item); });
+    return items;
+  }
+
+  function numericKind(item, key) {
+    return item.kind === "integer" || item.kind === "power_bins" || ["count", "nfft", "samples"].indexOf(key) >= 0 ? "integer" : "decimal";
+  }
+  function numericResult(item, raw, key) { return numeric.parse(raw, numericKind(item, key)); }
+  function rangeBoundaryValidation(item, boundary, raw) {
+    var automatic=item.kind === "optional_range" && (raw === "" || raw == null);
+    if (automatic) return { valid:true, value:null };
+    var parsed=numericResult(item, raw);
+    if (!parsed.valid) return { valid:false, reason:/конеч|Специальн/i.test(parsed.error || "") ? "finite" : "number", value:null };
+    var unitField=item.id === "time.x_limits" ? "time.units" : /frequency_limits$/.test(item.id) ? item.id.replace(/frequency_limits$/, "frequency_units") : "";
+    var unitItem=unitField && sourceItem(unitField), unit=unitItem && value(unitItem);
+    if (unit && unit !== "auto" && !Number.isFinite(canonicalFromVisible(parsed.value, unit))) return { valid:false, reason:"unit", value:parsed.value };
+    var domain=context.rangeDomains[item.id], lower=domain && Number(domain[0]), upper=domain && Number(domain[1]);
+    var definitionMinimum=Number(item.min), definitionMaximum=Number(item.max);
+    if (item.min != null && Number.isFinite(definitionMinimum) && parsed.value < definitionMinimum || item.max != null && Number.isFinite(definitionMaximum) && parsed.value > definitionMaximum) return { valid:false, reason:"domain", value:parsed.value };
+    if (domain && Number.isFinite(lower) && Number.isFinite(upper) && (parsed.value < lower || parsed.value > upper)) return { valid:false, reason:"domain", value:parsed.value };
+    return { valid:true, value:parsed.value };
+  }
+  function rangeValidation(item, raw) {
+    var helper=window.SignalAnalyserTask0142;
+    var minimum=rangeBoundaryValidation(item, "min", raw && raw.min), maximum=rangeBoundaryValidation(item, "max", raw && raw.max);
+    if (minimum.valid && maximum.valid && minimum.value !== null && maximum.value !== null && minimum.value >= maximum.value) {
+      minimum={ valid:false, reason:"order", value:minimum.value };
+      maximum={ valid:false, reason:"order", value:maximum.value };
+    }
+    return helper.projectPair({ min:minimum, max:maximum });
+  }
+  function numericError(item, raw) {
+    var values = item.kind === "range" || item.kind === "optional_range" ? [raw && raw.min, raw && raw.max] :
+      item.kind === "resolution" || item.kind === "power_bins" ? [raw && raw.value] : [raw];
+    for (var index=0; index<values.length; index++) {
+      if ((item.kind === "optional_range") && (values[index] === "" || values[index] == null)) continue;
+      var result = numericResult(item, values[index], raw && raw.key);
+      if (!result.valid) return result.error;
+    }
+    return "Введите корректное значение.";
+  }
+  function parse(item, raw) {
+    if (item.kind === "boolean") return !!raw;
+    if (item.kind === "enum") return raw;
+    if (item.kind === "range" || item.kind === "optional_range") {
+      var minimum = raw && raw.min, maximum = raw && raw.max;
+      if (minimum === "" && maximum === "" && item.kind === "optional_range") return null;
+      var minimumResult = minimum === "" && item.kind === "optional_range" ? { valid:true, value:null } : numericResult(item, minimum);
+      var maximumResult = maximum === "" && item.kind === "optional_range" ? { valid:true, value:null } : numericResult(item, maximum);
+      if (!minimumResult.valid || !maximumResult.valid) return null;
+      if (minimumResult.value !== null && maximumResult.value !== null && minimumResult.value >= maximumResult.value) return null;
+      return { min:minimumResult.value, max:maximumResult.value };
+    }
+    if (item.kind === "number" || item.kind === "integer") {
+      var number = numericResult(item, raw);
+      return number.valid ? number.value : null;
+    }
+    if (item.kind === "resolution" || item.kind === "power_bins") {
+      if (!raw || raw.mode === "auto") { var automatic = { mode:"auto" }; automatic[raw.key] = null; return automatic; }
+      var specified = numericResult(item, raw.value, raw.key);
+      if (!specified.valid) return null;
+      var resolution = { mode:"specified" }; resolution[raw.key] = specified.value; return resolution;
+    }
+    return String(raw);
+  }
+
+  function resolutionKey(item, current) {
+    var existing = current && Object.keys(current).filter(function (key) { return key !== "mode"; })[0];
+    if (existing) return existing;
+    return item.id === "spectrum.rbw" ? "hz" : item.id === "spectrum.window_length" ? "samples" : item.id === "spectrum.nfft" ? "nfft" : item.id === "persistence.power_bins" ? "count" : "seconds";
+  }
+
+  function control(item, current, id, rangeState) {
+    var disabled = item.enabled === false ? " disabled" : "";
+    var checkbox = item.kind === "boolean" || item.control_kind === "checkbox";
+    if (checkbox) {
+      var checked = item.kind === "enum" ? current === item.checked_value : !!current;
+      return "<span class='checkbox-control'><input id='"+id+"' data-setting-id='"+esc(item.id)+"' type='checkbox'"+(checked ? " checked" : "")+disabled+"></span>";
+    }
+    if (item.kind === "enum") {
+      var enumOptions=(item.options || []).map(function (option) { return { value:typeof option === "object" ? option.value : option, label:optionLabel(option,item.id), disabled:typeof option === "object" && option.disabled }; });
+      var enumCurrent=String(current == null ? "" : current);
+      var enumSelected=enumOptions.filter(function (option) { return String(option.value) === enumCurrent; })[0];
+      var enumKey="setting::" + context.displayId + "::" + item.id;
+      return valueSelect.markup({
+        key:enumKey,
+        value:enumCurrent,
+        label:enumSelected ? enumSelected.label : optionLabel(current,item.id),
+        options:enumOptions,
+        disabled:item.enabled === false,
+        className:"settings-value-select",
+        testId:"setting-select-" + item.id.replace(/[^a-zA-Z0-9_-]/g, "-"),
+        ariaLabel:label(item),
+        onSelect:function (selected) {
+          if (selected === enumCurrent) return;
+          update(item, selected);
+          var reproject=rangeForUnitField(item.id) ? reprojectRangeForUnitChange(item, selected, enumCurrent) : Promise.resolve();
+          reproject.catch(function () {});
+        }
+      });
+    }
+    if (item.kind === "range" || item.kind === "optional_range") {
+      var range = current && typeof current === "object" ? current : {};
+      var enablement=window.SignalAnalyserTask0142.enabledContract({ applicable:item.enabled !== false, busy:context.busy || !!context.pending[item.id] });
+      var projected=rangeState || window.SignalAnalyserTask0142.projectPair();
+      return "<span class='range-control' data-range-boundary-validation><input class='control' type='text' inputmode='decimal'"+noHistory()+" step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='min' placeholder='Мин.' aria-label='"+esc(label(item))+": минимум' aria-invalid='"+projected.min.ariaInvalid+"' value='"+esc(range.min == null ? "" : range.min)+"'"+(enablement.minDisabled ? " disabled" : "")+"><input class='control' type='text' inputmode='decimal'"+noHistory()+" step='"+esc(item.step == null ? "any" : item.step)+"' data-setting-id='"+esc(item.id)+"' data-range-part='max' placeholder='Макс.' aria-label='"+esc(label(item))+": максимум' aria-invalid='"+projected.max.ariaInvalid+"' value='"+esc(range.max == null ? "" : range.max)+"'"+(enablement.maxDisabled ? " disabled" : "")+"></span>";
+    }
+    if (item.kind === "resolution" || item.kind === "power_bins") {
+      var resolution = current && typeof current === "object" ? current : { mode:"auto" };
+      var mode = resolution.mode || "auto", key = resolutionKey(item, resolution), amount = resolution[key];
+      var normalizedMode=mode === "auto" ? "auto" : "specified";
+      var resolutionSelectKey="setting::" + context.displayId + "::" + item.id + "::mode";
+      var resolutionMarkup=valueSelect.markup({
+        key:resolutionSelectKey,
+        value:normalizedMode,
+        label:normalizedMode === "auto" ? "Авто" : "Задать",
+        options:[{ value:"auto", label:"Авто" }, { value:"specified", label:"Задать" }],
+        disabled:item.enabled === false,
+        className:"resolution-mode settings-value-select",
+        testId:"setting-resolution-mode-" + item.id.replace(/[^a-zA-Z0-9_-]/g, "-"),
+        ariaLabel:label(item) + ": режим",
+        onSelect:function (selected) {
+          if (selected === normalizedMode) return;
+          var trigger=Array.prototype.slice.call(document.querySelectorAll("[data-value-select-key]")).filter(function (node) { return node.dataset.valueSelectKey === resolutionSelectKey; })[0];
+          var resolutionNode=trigger && trigger.closest(".resolution-control");
+          var valueNode=resolutionNode && resolutionNode.querySelector("[data-resolution-value]");
+          update(item, { mode:selected, value:valueNode ? valueNode.value : (amount == null ? "" : amount), key:key });
+        }
+      });
+      var resolutionNumericKind=numericKind(item, key);
+      return "<span class='resolution-control' data-resolution-current-mode='"+esc(normalizedMode)+"'>"+resolutionMarkup+"<input class='control' type='text' inputmode='"+(resolutionNumericKind === "integer" ? "numeric" : "decimal")+"'"+noHistory()+" step='"+(resolutionNumericKind === "integer" ? "1" : esc(item.step == null ? "any" : item.step))+"' data-setting-id='"+esc(item.id)+"' data-resolution-value data-resolution-key='"+esc(key)+"' value='"+esc(amount == null ? "" : amount)+"'"+(disabled || normalizedMode === "auto" ? " disabled" : "")+"></span>";
+    }
+    if (item.kind === "readout" || item.readonly) return "<span class='readonly-control'>"+esc(current == null || current === "" ? "—" : current)+(item.units ? " "+esc(unitLabel(item.units)) : "")+"</span>";
+    var scalarKind=numericKind(item);
+    return "<input class='control' id='"+id+"' data-setting-id='"+esc(item.id)+"' type='text' inputmode='"+(scalarKind === "integer" ? "numeric" : "decimal")+"'"+noHistory()+" step='"+(scalarKind === "integer" ? "1" : esc(item.step == null ? "any" : item.step))+"' value='"+esc(current == null ? "" : current)+"'"+disabled+">";
+  }
+
+  function renderField(item) {
+    var draft = context.drafts[item.id], isRange=rangeItem(item), rangeState=isRange && draft && draft.rangeValidation || isRange && window.SignalAnalyserTask0142.projectPair(), invalid = draft && draft.error;
+    var warning = item.warning || item.message || "";
+    var id = "setting-" + item.id.replace(/[^a-zA-Z0-9_-]/g, "-");
+    var current = value(item);
+    context.renderedFields[item.id] = item;
+    return "<label class='settings-field-row"+(invalid ? isRange ? " has-range-error" : " has-error" : "")+(warning ? " has-warning" : "")+"'"+(isRange ? " data-range-boundary-validation" : "")+" data-testid='settings-field-"+esc(item.id)+"'><span class='settings-label'><span>"+esc(label(item))+"</span>"+(item.units ? "<span class='unit'>"+esc(unitLabel(item.units))+"</span>" : "")+"</span><span class='settings-control-wrap'>"+control(item, current, id, rangeState)+"</span>"+(invalid ? "<small class='"+(isRange ? "range-boundary-message" : "field-message is-error")+"' role='alert'>"+esc(draft.error)+"</small>" : warning ? "<small class='field-message is-warning'>"+esc(warning)+"</small>" : "")+"</label>";
+  }
+
+  function render(force) {
+    if (typeof context.renderGuard === "function" && context.renderGuard()) return;
+    if (!force && activeNameEditor()) return;
+    if (context.page === "screen") return;
+    var host = document.querySelector("[data-testid='settings-content']") || document.querySelector("[data-settings-content]");
+    if (!host) return;
+    /* Pane-scoped Peaks is owned by app.js: it uses its independent GET/POST
+       lifecycle and must not be replaced by this display-settings inventory. */
+    if (context.page === "peaks") return;
+    if (!context.document) { host.innerHTML = ""; valueSelect.reconcile(); return; }
+    context.renderedFields = {};
+    host.innerHTML = inventory().filter(function (item) { return item.items.length; }).map(function (item) {
+      var collapseKey = context.page + "|" + context.plotType + "|" + item.key;
+      var collapsed = !!context.collapsed[collapseKey];
+      var bodyId = "settings-group-" + collapseKey.replace(/[^a-zA-Z0-9_-]/g, "-");
+      return "<section class='settings-group"+(collapsed ? " is-collapsed" : "")+"' data-settings-group='"+esc(item.key)+"'><button class='settings-group-title' type='button' data-settings-group-toggle='"+esc(collapseKey)+"' aria-expanded='"+String(!collapsed)+"' aria-controls='"+esc(bodyId)+"'><span>"+esc(visibleGroupTitle(item))+"</span></button><div class='settings-group-fields' id='"+esc(bodyId)+"'"+(collapsed ? " hidden" : "")+">"+item.items.map(renderField).join("")+"</div></section>";
+    }).join("");
+    valueSelect.reconcile();
+    decorateNoHistory(host);
+  }
+
+  function rawFor(item, node) {
+    if (item.kind === "range" || item.kind === "optional_range") {
+      var row = node.closest(".settings-field-row");
+      return { min:row.querySelector("[data-range-part='min']").value, max:row.querySelector("[data-range-part='max']").value };
+    }
+    if (item.kind === "resolution" || item.kind === "power_bins") {
+      var resolution = node.closest(".resolution-control");
+      var valueNode = resolution.querySelector("[data-resolution-value]");
+      return { mode:resolution.dataset.resolutionCurrentMode, value:valueNode.value, key:valueNode.dataset.resolutionKey };
+    }
+    if (node.type === "checkbox") return item.kind === "enum" ? (node.checked ? item.checked_value : item.unchecked_value) : node.checked;
+    return node.value;
+  }
+
+  function updatePseudo(item, raw) {
+    if (item.action === "plot-type") {
+      context.plotType = raw;
+      render();
+      window.dispatchEvent(new CustomEvent("signal-settings-plot-type", { detail:{ plotType:raw } }));
+      return;
+    }
+  }
+
+  function update(item, raw, options) {
+    options=options || {};
+    if (item.pseudo) { updatePseudo(item, raw); return Promise.resolve(); }
+    var parsed = parse(item, raw), draft = context.drafts[item.id] || {}, validation=rangeItem(item) ? rangeValidation(item, raw) : null;
+    if (validation && validation.hasError || parsed === null && !(item.kind === "optional_range" && raw.min === "" && raw.max === "")) {
+      clearTimeout(context.timers[item.id]); delete context.timers[item.id];
+      draft.value = raw; draft.rangeValidation=validation; draft.error = validation && validation.message || numericError(item, raw); context.drafts[item.id] = draft;
+      if (context.page === "screen") window.dispatchEvent(new CustomEvent("signal-settings-state")); else render();
+      window.dispatchEvent(new CustomEvent("signal-apply-state")); return Promise.resolve();
+    }
+    draft.value = parsed; draft.rangeValidation=validation; draft.error = ""; draft.intent = ++context.intent; context.drafts[item.id] = draft;
+    if (rangeItem(item)) window.dispatchEvent(new CustomEvent("signal-settings-range-preview", { detail:{ field_id:item.id, value:parsed, source:options.source || "settings" } }));
+    if (item.id === "display.name" || item.id === "pane.name") window.dispatchEvent(new CustomEvent("signal-settings-name-preview", { detail:{ field_id:item.id, value:parsed, display_id:context.displayId, intent:draft.intent } }));
+    if (item.kind === "resolution" || item.kind === "power_bins") render();
+    window.dispatchEvent(new CustomEvent("signal-apply-state"));
+    if (options.preview) return Promise.resolve(parsed);
+    if (options.immediate) return send(item);
+    if (rangeItem(item)) return Promise.resolve(parsed);
+    if (isApply(item)) {
+      clearTimeout(context.timers[item.id]);
+      context.timers[item.id] = window.setTimeout(function () { send(item); }, 150);
+      return Promise.resolve();
+    }
+    return send(item);
+  }
+
+  function sameContext(token, displayId) { return token === context.contextToken && displayId === context.displayId; }
+  function responseRevision(response) {
+    var state = response && response.state;
+    return state && typeof state.state_revision === "number" ? state.state_revision : response && typeof response.state_revision === "number" ? response.state_revision : null;
+  }
+  function adoptAuthoritative(response, token, displayId) {
+    if (!sameContext(token, displayId)) return false;
+    var revision = responseRevision(response);
+    if (revision !== null && revision < context.revision) return false;
+    if (response && response.settings) context.document = response.settings;
+    if (revision !== null) context.revision = revision;
+    return true;
+  }
+  function rebaseConflict(error, token, displayId) {
+    var payload = error && error.payload || {}, current = payload.current || payload.state;
+    if (!sameContext(token, displayId)) return false;
+    if (payload.settings) context.document = payload.settings;
+    var revision = current && typeof current.state_revision === "number" ? current.state_revision : null;
+    if (revision !== null) context.revision = Math.max(context.revision, revision);
+    return revision !== null;
+  }
+  function enqueue(task) {
+    var queued = context.requestQueue.catch(function () {}).then(task);
+    context.requestQueue = queued.catch(function () {});
+    return queued;
+  }
+
+  function validVisibleDraftItems() {
+    return visibleItems().filter(function (item) {
+      var draft = context.drafts[item.id];
+      return !!draft && !draft.error && !rangeItem(item);
+    });
+  }
+
+  function clearCommittedDrafts(capturedIntents) {
+    Object.keys(capturedIntents || {}).forEach(function (id) {
+      var draft = context.drafts[id];
+      if (draft && !draft.error && draft.intent <= capturedIntents[id]) delete context.drafts[id];
+    });
+  }
+
+  function flushVisibleDrafts() {
+    Object.keys(context.timers).forEach(function (key) { clearTimeout(context.timers[key]); delete context.timers[key]; });
+    return Promise.all(validVisibleDraftItems().map(send));
+  }
+
+  function send(item) {
+    if (!item || item.pseudo || rangeItem(item) || item.visible === false || !context.displayId || !context.drafts[item.id] || context.drafts[item.id].error) return Promise.resolve();
+    clearTimeout(context.timers[item.id]);
+    delete context.timers[item.id];
+    if (context.pending[item.id]) return context.pending[item.id];
+    var displayId = context.displayId, token = context.contextToken;
+    function persistLatest(retries) {
+      var draft = context.drafts[item.id];
+      if (!sameContext(token, displayId) || !draft || draft.error) return Promise.resolve();
+      var intent = draft.intent || 0, value = draft.value, revision = context.revision;
+      return api.updateSetting({ state_revision:revision, display_id:displayId, field_id:item.id, value:value }).then(function (response) {
+        if (!sameContext(token, displayId)) return response;
+        adoptAuthoritative(response, token, displayId);
+        var latest = context.drafts[item.id];
+        if (latest && !latest.error && (latest.intent || 0) > intent) return persistLatest(0);
+        if (!rangeItem(item)) render();
+        window.dispatchEvent(new CustomEvent("signal-settings-saved", { detail:Object.assign({}, response || {}, { field_id:item.id, value:value, display_id:displayId, intent:intent }) }));
+        return response;
+      }).catch(function (error) {
+        if (!sameContext(token, displayId)) return;
+        var latest = context.drafts[item.id];
+        if (error && error.status === 409 && retries < 1 && rebaseConflict(error, token, displayId)) return persistLatest(retries + 1);
+        if (latest && !latest.error && (latest.intent || 0) > intent) return persistLatest(0);
+        if (latest && !rangeItem(item)) {
+          var providerMessage=(error.payload && (error.payload.message || error.payload.error && error.payload.error.message)) || error.message || "";
+          latest.error=/ArgumentError|TypeError|MethodError|Stacktrace|Settings Signal Analyser|\bat\s+\S+\s*\(/i.test(String(providerMessage)) ? "Не удалось сохранить черновик." : providerMessage || "Не удалось сохранить черновик.";
+        }
+        render(true);
+        window.dispatchEvent(new CustomEvent("signal-settings-save-failed", { detail:{ field_id:item.id, display_id:displayId, intent:intent, error:error } }));
+        throw error;
+      });
+    }
+    var pending = enqueue(function () { return persistLatest(0); });
+    context.pending[item.id] = pending;
+    return pending.finally(function () { if (context.pending[item.id] === pending) delete context.pending[item.id]; });
+  }
+
+  document.addEventListener("click", function (event) {
+    var toggle = event.target.closest && event.target.closest("[data-settings-group-toggle]");
+    if (!toggle) return;
+    var key = toggle.dataset.settingsGroupToggle;
+    context.collapsed[key] = toggle.getAttribute("aria-expanded") === "true";
+    render();
+    window.requestAnimationFrame(function () {
+      var restored = Array.prototype.slice.call(document.querySelectorAll("[data-settings-group-toggle]")).filter(function (candidate) { return candidate.dataset.settingsGroupToggle === key; })[0];
+      if (restored) restored.focus();
+    });
+  });
+  document.addEventListener("change", function (event) {
+    var node = event.target;
+    var item = node && node.dataset && context.renderedFields[node.dataset.settingId];
+    if (item && ["display.name", "pane.name"].indexOf(item.id) < 0) update(item, rawFor(item, node));
+  });
+  document.addEventListener("input", function (event) {
+    var node=event.target, item=node && node.dataset && context.renderedFields[node.dataset.settingId];
+    if (item && ["display.name", "pane.name"].indexOf(item.id) >= 0) update(item, rawFor(item, node));
+  });
+
+  window.SignalAnalyserSettings = {
+    setContext:function (id, revision) {
+      if (context.displayId && context.displayId !== id) {
+        Object.keys(context.timers).forEach(function (key) { clearTimeout(context.timers[key]); });
+        context.contextToken++; context.drafts={}; context.pending={}; context.timers={}; context.document=null; context.linkPreview=null;
+      }
+      context.displayId=id; context.revision=Math.max(context.revision, revision || 0);
+    },
+    setView:function (page, plotType) {
+      context.page=page || "display"; context.plotType=plotType || "time";
+    },
+    setRangeDomains:function (domains) { context.rangeDomains=domains || {}; },
+    setBusy:function (busy) { context.busy=!!busy; },
+    setRenderGuard:function (guard) { context.renderGuard=typeof guard === "function" ? guard : null; },
+    clearRangeDraft:function (id) { clearTimeout(context.timers[id]); delete context.timers[id]; delete context.drafts[id]; },
+    previewRange:function (id, raw) { var item=sourceItem(id); return item && rangeItem(item) ? update(item, raw, { preview:true, source:"plot" }) : Promise.resolve(); },
+    publishRange:function () { return Promise.resolve(); },
+    setExtraVisible:function (ids) { context.extraVisible={}; (ids || []).forEach(function (id) { context.extraVisible[id]=true; }); },
+    setExtraItems:function (items) { context.extraItems={}; (items || []).forEach(function (item) { if (item && item.id) context.extraItems[item.id]=item; }); },
+    setLinkPreview:function (linkTime, linkAmplitude, linkFrequency, linkMagnitude) {
+      context.linkPreview = typeof linkTime === "boolean" && typeof linkAmplitude === "boolean" ? { linkTime:linkTime, linkAmplitude:linkAmplitude, linkFrequency:!!linkFrequency, linkMagnitude:!!linkMagnitude } : null;
+    },
+    beginCustomRender:function () { context.renderedFields={}; },
+    renderRows:function (ids) {
+      return (ids || []).map(function (id) { var item=sourceItem(id); return item ? Object.assign({}, item, { visible:true }) : null; }).filter(function (item) { return !!item && rangeApplicable(item); }).map(renderField).join("");
+    },
+    stateFor:function (ids) {
+      var drafts=(ids || []).map(function (id) { var item=sourceItem(id); return item && rangeItem(item) ? null : context.drafts[id]; }).filter(Boolean);
+      return { dirty:drafts.some(function (draft) { return !draft.error; }), invalid:drafts.some(function (draft) { return !!draft.error; }), revision:context.revision };
+    },
+    flushFields:function (ids) {
+      return Promise.all((ids || []).map(function (id) { var item=sourceItem(id); return item ? Object.assign({}, item, { visible:true }) : null; }).filter(function (item) { return !rangeItem(item) && isApply(item); }).map(send));
+    },
+    load:function () {
+      var id=context.displayId, token=++context.loadToken;
+      return api.settings(id).then(function (documentValue) {
+        if (token !== context.loadToken || id !== context.displayId || (typeof documentValue.state_revision === "number" && documentValue.state_revision < context.revision)) return context.document;
+        context.document=documentValue; context.revision=documentValue.state_revision || context.revision; render(); window.dispatchEvent(new CustomEvent("signal-settings-loaded", { detail:{ displayId:id, stateRevision:context.revision } })); return documentValue;
+      });
+    },
+    accept:function (documentValue) {
+      if (!documentValue || documentValue.display_id !== context.displayId || (typeof documentValue.state_revision === "number" && documentValue.state_revision < context.revision)) return false;
+      context.document=documentValue;
+      context.revision=documentValue.state_revision || context.revision;
+      render();
+      window.dispatchEvent(new CustomEvent("signal-settings-loaded", { detail:{ displayId:context.displayId, stateRevision:context.revision } }));
+      return true;
+    },
+    render:render,
+    flush:function () {
+      return flushVisibleDrafts();
+    },
+    commit:function () {
+      var displayId=context.displayId, token=context.contextToken;
+      function publish(retries) {
+        if (!sameContext(token, displayId)) return Promise.resolve();
+        return api.applySettings({ state_revision:context.revision, display_id:displayId }).then(function (response) {
+          adoptAuthoritative(response, token, displayId);
+          return response;
+        }).catch(function (error) {
+          if (error && error.status === 409 && retries < 1 && rebaseConflict(error, token, displayId)) return publish(retries + 1);
+          throw error;
+        });
+      }
+      return flushVisibleDrafts().then(function () {
+        if (!sameContext(token, displayId)) return;
+        var capturedIntents={};
+        validVisibleDraftItems().forEach(function (item) { capturedIntents[item.id]=context.drafts[item.id].intent || 0; });
+        return enqueue(function () {
+          return publish(0).then(function (response) {
+            if (response && response.success === false) return response;
+            if (sameContext(token, displayId)) {
+              clearCommittedDrafts(capturedIntents);
+              render();
+            }
+            return response;
+          });
+        });
+      });
+    },
+    markApplied:function () { context.drafts={}; render(); },
+    state:function () { var visible=visibleItems().reduce(function(ids,item){if(!rangeItem(item))ids[item.id]=true;return ids;},{}), all=Object.keys(context.drafts).filter(function(key){return visible[key];}).map(function (key) { return context.drafts[key]; }); return { dirty:all.some(function (draft) { return !draft.error; }), invalid:all.some(function (draft) { return draft.error; }), displayId:context.displayId, revision:context.revision }; },
+    value:function (id) { var item=sourceItem(id); return item ? value(item) : undefined; },
+    screenValue:function (id) { var item=sourceItem(id); return item ? screenValue(item) : undefined; },
+    setValue:function (id, raw) { var item=sourceItem(id); return item ? update(Object.assign({}, item, { visible:true }), raw) : Promise.reject(new Error("Настройка недоступна: " + id)); },
+    setRevision:function (revision) { if (typeof revision === "number" && revision >= context.revision) context.revision=revision; },
+    activeNameEditor:activeNameEditor,
+    releaseActiveNameEditor:function () { var editor=activeNameEditor(); if (editor && editor.node && typeof editor.node.blur === "function") editor.node.blur(); }
   };
 })(window, document);

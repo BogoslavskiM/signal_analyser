@@ -1,0 +1,11 @@
+{
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('layout-popover') to be visible\u001b[22m\n\u001b[2m    64 × locator resolved to hidden <section hidden=\"\" role=\"dialog\" aria-modal=\"false\" id=\"layout-popover\" class=\"layout-popover\" data-testid=\"layout-popover\" aria-labelledby=\"layout-title\">…</section>\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0088_restore_1x1.js:4:728",
+  "tab_cleanup_status": "passed"
+}

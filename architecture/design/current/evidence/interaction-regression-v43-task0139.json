@@ -1,0 +1,53 @@
+{
+  "design_version": 43,
+  "method": "bounded source/controller regression; browser launch unavailable in sandbox",
+  "passed": 5,
+  "failed": 0,
+  "results": [
+    {
+      "id": "64-values-default-base-only",
+      "passed": true,
+      "detail": {
+        "magnitude": false,
+        "square": false,
+        "signed_square_root_magnitude": false
+      }
+    },
+    {
+      "id": "65-square-root-removed-and-three-optionals",
+      "passed": true,
+      "detail": [
+        "magnitude",
+        "square",
+        "signed_square_root_magnitude"
+      ]
+    },
+    {
+      "id": "66-fft-removed-from-operation-ui",
+      "passed": true,
+      "detail": [
+        "abs",
+        "custom"
+      ]
+    },
+    {
+      "id": "67-scoped-loader-terminals-and-stale-guards",
+      "passed": true,
+      "detail": {
+        "paneBegin": "accepted pane type change or valid Area settings commit immediately before mutation/output request",
+        "paneEnd": "matching current output reaches ready, empty or error; stale completions do not dismiss",
+        "layoutBegin": "display layout add/remove/rows/columns mutation start before pane DOM reconciliation",
+        "layoutEnd": "matching accepted layout and every initial pane output reach ready, empty or error",
+        "priority": "layout overlay suppresses every pane overlay beneath it"
+      }
+    },
+    {
+      "id": "68-display-priority-and-existing-loader-visual",
+      "passed": true,
+      "detail": {
+        "priority": "layout overlay suppresses every pane overlay beneath it",
+        "spinner": "64x64 existing tokens"
+      }
+    }
+  ]
+}

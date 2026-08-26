@@ -1,0 +1,56 @@
+/* TASK-0135: compact server point search and TIME extrema marker projection. */
+.inspector-body[data-testid="inspector-pane-samples"] {
+  grid-template-rows: 32px minmax(0, 1fr);
+}
+
+.samples-point-search-row {
+  min-width: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.samples-point-search-row .inspector-search-field {
+  min-width: 220px;
+  flex: 1 1 auto;
+}
+
+.samples-point-search-status {
+  max-width: 280px;
+  flex: 0 1 auto;
+  overflow: hidden;
+  padding: 0 8px;
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.samples-point-search-status[data-state="error"] { color: var(--danger); }
+
+/* Auto layout plus a 1% preferred width keeps this column at its content
+   minimum. 112px fits the full eight-digit 100m-scale point number first,
+   followed by one canonical marker, at the inherited metrics/padding. */
+.sample-table { table-layout: auto; }
+.sample-table th:first-child,
+.sample-table td:first-child {
+  width: 1%;
+  min-width: 112px;
+  text-align: left;
+}
+
+.sample-point-cell-content {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sample-point-cell-content .extrema-table-marker { flex: 0 0 auto; }
+.sample-point-cell-number { flex: 0 0 auto; }

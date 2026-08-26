@@ -1,0 +1,23 @@
+{
+  "design_version": 37,
+  "prototype_entry": "prototype/index.html",
+  "protocol": "file://",
+  "passed": 1,
+  "failed": 0,
+  "runtime_errors": [],
+  "results": [
+    {
+      "id": "01-zero-remains-nearest-across-heterogeneous-traces",
+      "passed": true,
+      "detail": {
+        "target": 0,
+        "snapped": 0,
+        "trace_candidates": [
+          0,
+          0.7
+        ]
+      },
+      "screenshot": null
+    }
+  ]
+}

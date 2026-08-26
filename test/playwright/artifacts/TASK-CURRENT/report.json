@@ -1,0 +1,9 @@
+{
+  "revision": "050247c77b2af425e32fca1836780dab2d0c1ee3",
+  "checks": [],
+  "opened": 1,
+  "closed": 1,
+  "outputRequests": 0,
+  "error": "page.goto: net::ERR_TIMED_OUT at https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\nCall log:\n\u001b[2m  - navigating to \"https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\", waiting until \"commit\"\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task_current_measurement_peaks.js:28:16",
+  "tabCleanup": true
+}

@@ -1,5 +1,8 @@
 const SIGNAL_ANALYSER_SESSION_SCHEMA = "signal-analyser-session"
-const SIGNAL_ANALYSER_SESSION_VERSION = 1
+const SIGNAL_ANALYSER_SESSION_VERSION = 4
+const SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION = 3
+const SIGNAL_ANALYSER_LEGACY_SESSION_VERSION = 1
+const SIGNAL_ANALYSER_EXTREMA_SESSION_VERSION = 2
 
 """Validated, versioned snapshot of the server-owned session aggregate."""
 struct SignalAnalyserSessionDocument

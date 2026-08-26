@@ -1,0 +1,42 @@
+{
+  "design_version": 41,
+  "prototype_entry": "prototype/index.html",
+  "protocol": "file://",
+  "passed": 2,
+  "failed": 1,
+  "runtime_errors": [],
+  "screenshot": "screenshots/v41--values-column-visibility-menu--1440x900.png",
+  "results": [
+    {
+      "id": "57-base-and-deterministic-optional-columns",
+      "passed": false,
+      "error": "first row not populated across seven columns"
+    },
+    {
+      "id": "58-menu-eye-toggle-and-reflow",
+      "passed": true,
+      "detail": {
+        "hidden": "square_root",
+        "visible_headers": [
+          "№ точки",
+          "Время",
+          "Значение",
+          "Модуль",
+          "Квадрат",
+          "Корень из модуля × знак"
+        ],
+        "menu_remains_open": true
+      }
+    },
+    {
+      "id": "59-keyboard-escape-focus-and-no-network",
+      "passed": true,
+      "detail": {
+        "escape": "closed and trigger focused",
+        "outside": "contracted without forced focus",
+        "network_requests": 0,
+        "runtime_errors": 0
+      }
+    }
+  ]
+}

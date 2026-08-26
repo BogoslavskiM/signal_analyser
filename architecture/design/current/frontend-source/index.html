@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Анализатор сигналов — design v54</title>
+  <link rel="stylesheet" href="./css/theme.css">
+  <link rel="stylesheet" href="./css/app-shell.css">
+  <link rel="stylesheet" href="./css/components/value-select.css">
+  <link rel="stylesheet" href="./css/zones/toolbar/style.css">
+  <link rel="stylesheet" href="./css/zones/workspace/style.css">
+  <link rel="stylesheet" href="./css/zones/settings/style.css">
+  <link rel="stylesheet" href="./css/zones/inspector/style.css">
+  <link rel="stylesheet" href="./css/dialogs/signal-operation.css">
+  <link rel="stylesheet" href="./integration/css/task-0118-color-picker.css">
+  <link rel="stylesheet" href="./integration/css/task-0130-graph-cursors.css">
+  <link rel="stylesheet" href="./integration/css/task-0135-sample-search-markers.css">
+  <link rel="stylesheet" href="./integration/css/task-0138-values-columns.css">
+  <link rel="stylesheet" href="./integration/css/task-0139-loading-overlays.css">
+  <link rel="stylesheet" href="./integration/css/task-0142-range-boundary-validation.css">
+  <link rel="stylesheet" href="./integration/css/task-0143-bootstrap-loader.css">
+  <link rel="stylesheet" href="./integration/css/task-0145-standard-busy-cursor.css">
+  <link rel="stylesheet" href="./integration/css/task-0148-measurement-cursor-columns.css">
+</head>
+<body>
+  <main id="app" class="app-shell" data-testid="app-shell" aria-label="Анализатор сигналов">
+    <div data-zone-slot="toolbar"></div>
+    <div class="workspace-inspector-stack" data-testid="workspace-inspector-stack">
+      <section class="main-stage" aria-label="Рабочая область и настройки">
+        <div data-zone-slot="workspace"></div>
+        <div data-zone-slot="settings"></div>
+      </section>
+      <div class="workspace-inspector-splitter" aria-hidden="true"></div>
+      <div data-zone-slot="inspector"></div>
+    </div>
+    <div data-dialog-slot="signal-operation"></div>
+  </main>
+  <footer class="app-status" aria-live="polite" hidden>
+    <div data-testid="app-loading" role="status" hidden><span data-loading-text>Загрузка данных…</span></div>
+    <div data-testid="app-error" role="alert" hidden><span data-error-text></span><button type="button" data-retry>Повторить</button></div>
+  </footer>
+  <div id="value-select-popup" class="value-select-popup" data-value-select-popup data-testid="select-menu" hidden></div>
+  <div id="sample-columns-menu" class="menu inspector-menu sample-columns-menu" role="menu" data-testid="sample-columns-menu" aria-label="Видимость столбцов значений сигнала" hidden></div>
+  <script>window.SignalAnalyserUIDesign = window.SignalAnalyserUIDesign || { assetBase: "." };</script>
+  <script src="./integration/js/task-0143-bootstrap-loader.js"></script>
+  <script src="./integration/js/task-0144-synchronized-ranges.js"></script>
+  <script src="./integration/js/task-0146-range-lifecycle.js"></script>
+  <script src="./integration/js/task-0148-measurement-cursor-columns.js"></script>
+  <script src="./integration/js/task-0150-0151-axis-labels-hover.js"></script>
+  <script src="./integration/js/task-0152-cursor-trim-signal.js"></script>
+  <script src="./js/ui/loader.js"></script>
+  <script src="./integration/js/task-0118-color-picker.js"></script>
+  <script src="./integration/js/task-0119-context-and-samples-intent.js"></script>
+  <script src="./integration/js/task-0126-summary-units-continuity.js"></script>
+  <script src="./integration/js/task-0130-graph-cursors.js"></script>
+  <script src="./integration/js/task-0134-sample-row-window.js"></script>
+  <script src="./integration/js/task-0135-sample-search-markers.js"></script>
+  <script src="./integration/js/task-0138-values-columns.js"></script>
+  <script src="./integration/js/task-0139-ui-inventory.js"></script>
+  <script src="./integration/js/task-0139-loading-overlays.js"></script>
+  <script src="./integration/js/task-0140-plot-autoscale.js"></script>
+  <script src="./integration/js/task-0141-linked-axes-area-sliders.js"></script>
+  <script src="./integration/js/task-0142-range-boundary-validation.js"></script>
+</body>
+</html>

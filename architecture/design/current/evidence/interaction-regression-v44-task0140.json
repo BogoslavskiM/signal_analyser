@@ -1,0 +1,167 @@
+{
+  "design_version": 44,
+  "method": "bounded source/contract regression; no new visual component or screenshot",
+  "passed": 6,
+  "failed": 0,
+  "results": [
+    {
+      "id": "69-scoped-spinners-use-defined-rotation",
+      "passed": true,
+      "detail": {
+        "normal": "loader-rotate 800ms linear infinite",
+        "reduced_motion": "loader-rotate 1600ms linear infinite"
+      }
+    },
+    {
+      "id": "70-time-authoritative-default",
+      "passed": true,
+      "detail": {
+        "axes": {
+          "xaxis": {
+            "semantic": "time",
+            "type": "linear",
+            "mode": "provider_default",
+            "range": [
+              0,
+              250
+            ]
+          },
+          "yaxis": {
+            "semantic": "amplitude",
+            "type": "linear",
+            "mode": "automatic_full_domain",
+            "range": [
+              -1.1,
+              1.1
+            ]
+          }
+        },
+        "update": {
+          "autosize": true,
+          "xaxis.range[0]": 0,
+          "xaxis.range[1]": 250,
+          "xaxis.autorange": false,
+          "yaxis.range[0]": -1.1,
+          "yaxis.range[1]": 1.1,
+          "yaxis.autorange": false
+        }
+      }
+    },
+    {
+      "id": "71-spectrum-preserves-log-coordinates-and-units",
+      "passed": true,
+      "detail": {
+        "axes": {
+          "xaxis": {
+            "semantic": "frequency",
+            "type": "log",
+            "mode": "automatic_full_domain",
+            "range": [
+              -1,
+              3
+            ]
+          },
+          "yaxis": {
+            "semantic": "magnitude",
+            "type": "linear",
+            "mode": "provider_default",
+            "range": [
+              -120,
+              0
+            ]
+          }
+        },
+        "update": {
+          "autosize": true,
+          "xaxis.range[0]": -1,
+          "xaxis.range[1]": 3,
+          "xaxis.autorange": false,
+          "yaxis.range[0]": -120,
+          "yaxis.range[1]": 0,
+          "yaxis.autorange": false
+        }
+      }
+    },
+    {
+      "id": "72-spectrogram-resets-time-and-log-frequency-only",
+      "passed": true,
+      "detail": {
+        "axes": {
+          "xaxis": {
+            "semantic": "time",
+            "type": "linear",
+            "mode": "automatic_full_domain",
+            "range": [
+              0,
+              0.5
+            ]
+          },
+          "yaxis": {
+            "semantic": "frequency",
+            "type": "log",
+            "mode": "automatic_full_domain",
+            "range": [
+              1,
+              6
+            ]
+          }
+        },
+        "update": {
+          "autosize": true,
+          "xaxis.range[0]": 0,
+          "xaxis.range[1]": 0.5,
+          "xaxis.autorange": false,
+          "yaxis.range[0]": 1,
+          "yaxis.range[1]": 6,
+          "yaxis.autorange": false
+        }
+      }
+    },
+    {
+      "id": "73-persistence-resets-frequency-and-power-only",
+      "passed": true,
+      "detail": {
+        "axes": {
+          "xaxis": {
+            "semantic": "frequency",
+            "type": "log",
+            "mode": "automatic_full_domain",
+            "range": [
+              0,
+              5
+            ]
+          },
+          "yaxis": {
+            "semantic": "power",
+            "type": "linear",
+            "mode": "automatic_full_domain",
+            "range": [
+              -100,
+              -5
+            ]
+          }
+        },
+        "update": {
+          "autosize": true,
+          "xaxis.range[0]": 0,
+          "xaxis.range[1]": 5,
+          "xaxis.autorange": false,
+          "yaxis.range[0]": -100,
+          "yaxis.range[1]": -5,
+          "yaxis.autorange": false
+        }
+      }
+    },
+    {
+      "id": "74-autoscale-is-pane-local-ui-only",
+      "passed": true,
+      "detail": {
+        "trigger": "double-click on the clicked ready Plotly graph surface",
+        "baseline": "capture after each accepted current Plotly.react; provider explicit range wins, otherwise rendered automatic full-domain range",
+        "logSemantics": "captured Plotly log-axis ranges remain Plotly coordinates; never linearly reproject, clamp or infer them from raw samples",
+        "isolation": "relayout only the clicked pane; do not propagate linked axes, publish settings, change main signal or request backend/DSP",
+        "heatmapColor": "spectrogram power and persistence density color ranges remain unchanged"
+      }
+    }
+  ]
+}

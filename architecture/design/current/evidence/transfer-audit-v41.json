@@ -1,0 +1,14 @@
+{
+  "design_version": 41,
+  "status": "passed",
+  "checks": [
+    {"id":"base-column-invariant","passed":true,"detail":"№ точки, Время and Значение are fixed first, always visible and absent from the visibility menu."},
+    {"id":"deterministic-optional-inventory","passed":true,"detail":"Модуль, Квадрат, Корень and Корень из модуля × знак use fixed order, provider fields and independent initial visible state."},
+    {"id":"production-eye-menu","passed":true,"detail":"One 32px three-dot trigger opens the existing 244px Видимость столбцов pattern; eye means visible and eye-off means hidden."},
+    {"id":"focus-and-dismissal","passed":true,"detail":"Roving Arrow/Home/End focus, same-row focus after toggle, Escape restoration, Tab/outside close and trigger-repeat close are explicit."},
+    {"id":"scroll-and-reflow","passed":true,"detail":"Only optional header/cells reflow; sample window, rows, offsets, footer and scroll position remain. The existing table owns x/y overflow."},
+    {"id":"provider-boundary","passed":true,"detail":"UI projects magnitude/square/square_root/signed_square_root_magnitude and performs no derived math or visibility API call."},
+    {"id":"unresolved-products","passed":true,"detail":"Multiply and Custom remain absent pending parameter/lifecycle decisions; FFT is explicitly excluded."},
+    {"id":"immutable-production","passed":true,"detail":"No production, backend, test, Git or runtime file changed; two additive design fragments integrate into existing app.css/app.js."}
+  ]
+}

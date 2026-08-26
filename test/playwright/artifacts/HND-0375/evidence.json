@@ -1,0 +1,542 @@
+{
+  "handoff_id": "HND-0375",
+  "mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "545bef2d6f5fbf76f32f6afb4bfe88f6a962e48c",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "started_at": "2026-08-06T10:50:24.574Z",
+  "prototype": {
+    "checks": [
+      {
+        "name": "design-map-1024x768",
+        "pass": true,
+        "actual": {
+          "count": 41
+        },
+        "expected": "core design controls exist"
+      },
+      {
+        "name": "design-layout-popover-1024x768",
+        "pass": true,
+        "actual": null,
+        "expected": "layout popover opens"
+      },
+      {
+        "name": "design-add-dialog-1024x768",
+        "pass": true,
+        "actual": null,
+        "expected": "add dialog opens"
+      },
+      {
+        "name": "design-graph-help-1024x768",
+        "pass": true,
+        "actual": null,
+        "expected": "graph help opens above menu"
+      },
+      {
+        "name": "design-map-1280x720",
+        "pass": true,
+        "actual": {
+          "count": 41
+        },
+        "expected": "core design controls exist"
+      },
+      {
+        "name": "design-layout-popover-1280x720",
+        "pass": true,
+        "actual": null,
+        "expected": "layout popover opens"
+      },
+      {
+        "name": "design-add-dialog-1280x720",
+        "pass": true,
+        "actual": null,
+        "expected": "add dialog opens"
+      },
+      {
+        "name": "design-graph-help-1280x720",
+        "pass": true,
+        "actual": null,
+        "expected": "graph help opens above menu"
+      },
+      {
+        "name": "design-map-1440x900",
+        "pass": true,
+        "actual": {
+          "count": 41
+        },
+        "expected": "core design controls exist"
+      },
+      {
+        "name": "design-layout-popover-1440x900",
+        "pass": true,
+        "actual": null,
+        "expected": "layout popover opens"
+      },
+      {
+        "name": "design-add-dialog-1440x900",
+        "pass": true,
+        "actual": null,
+        "expected": "add dialog opens"
+      },
+      {
+        "name": "design-graph-help-1440x900",
+        "pass": true,
+        "actual": null,
+        "expected": "graph help opens above menu"
+      }
+    ],
+    "screenshots": [
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/prototype-default-1024x768.png",
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/prototype-graph-help-1024x768.png",
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/prototype-default-1280x720.png",
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/prototype-graph-help-1280x720.png",
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/prototype-default-1440x900.png",
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/prototype-graph-help-1440x900.png"
+    ]
+  },
+  "production": {
+    "checks": [
+      {
+        "name": "availability-and-exact-revision",
+        "pass": true,
+        "actual": {
+          "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+          "http_status": 200,
+          "body": {
+            "runtime_revision": "545bef2d6f5fbf76f32f6afb4bfe88f6a962e48c",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        },
+        "expected": "200 ready/ok and exact runtime SHA"
+      },
+      {
+        "name": "live-local-plotly",
+        "pass": false,
+        "actual": {
+          "fullLayout": true,
+          "fullData": true,
+          "staticPlot": false,
+          "fixedrange": false,
+          "svg": true,
+          "modebar": true
+        },
+        "expected": "interactive Plotly without visible modebar"
+      },
+      {
+        "name": "five-zone-layout-1024x768",
+        "pass": true,
+        "actual": [
+          {
+            "id": "app-shell",
+            "box": {
+              "x": 6,
+              "y": 6,
+              "width": 1012,
+              "height": 756,
+              "top": 6,
+              "right": 1018,
+              "bottom": 762,
+              "left": 6
+            },
+            "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВ"
+          },
+          {
+            "id": "display-workspace",
+            "box": {
+              "x": 6,
+              "y": 56,
+              "width": 706,
+              "height": 435.5234375,
+              "top": 56,
+              "right": 712,
+              "bottom": 491.5234375,
+              "left": 6
+            },
+            "text": "Отображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпектр\nСпектрогр"
+          },
+          {
+            "id": "display-canvas",
+            "box": {
+              "x": 7,
+              "y": 131,
+              "width": 704,
+              "height": 359.5234375,
+              "top": 131,
+              "right": 711,
+              "bottom": 490.5234375,
+              "left": 7
+            },
+            "text": "Область 1\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\n0\n0.05\n0.1\n0.15\n"
+          },
+          {
+            "id": "display-settings",
+            "box": {
+              "x": 718,
+              "y": 56,
+              "width": 300,
+              "height": 435.5234375,
+              "top": 56,
+              "right": 1018,
+              "bottom": 491.5234375,
+              "left": 718
+            },
+            "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nСпектр\nСпектр"
+          },
+          {
+            "id": "bottom-panel-signals",
+            "box": {
+              "x": 7,
+              "y": 540.5234375,
+              "width": 1010,
+              "height": 214.4765625,
+              "top": 540.5234375,
+              "right": 1017,
+              "bottom": 755,
+              "left": 7
+            },
+            "text": "\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951"
+          }
+        ],
+        "expected": "five visible nonzero zones"
+      },
+      {
+        "name": "russian-settings-1024x768",
+        "pass": true,
+        "actual": "ru",
+        "expected": "required Russian UI labels"
+      },
+      {
+        "name": "five-zone-layout-1280x720",
+        "pass": true,
+        "actual": [
+          {
+            "id": "app-shell",
+            "box": {
+              "x": 8,
+              "y": 8,
+              "width": 1264,
+              "height": 704,
+              "top": 8,
+              "right": 1272,
+              "bottom": 712,
+              "left": 8
+            },
+            "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВ"
+          },
+          {
+            "id": "display-workspace",
+            "box": {
+              "x": 8,
+              "y": 60,
+              "width": 916,
+              "height": 384,
+              "top": 60,
+              "right": 924,
+              "bottom": 444,
+              "left": 8
+            },
+            "text": "Отображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпектр\nСпектрогр"
+          },
+          {
+            "id": "display-canvas",
+            "box": {
+              "x": 9,
+              "y": 135,
+              "width": 914,
+              "height": 308,
+              "top": 135,
+              "right": 923,
+              "bottom": 443,
+              "left": 9
+            },
+            "text": "Область 1\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\n0\n0.05\n0.1\n0.15\n"
+          },
+          {
+            "id": "display-settings",
+            "box": {
+              "x": 932,
+              "y": 60,
+              "width": 340,
+              "height": 384,
+              "top": 60,
+              "right": 1272,
+              "bottom": 444,
+              "left": 932
+            },
+            "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nСпектр\nСпектр"
+          },
+          {
+            "id": "bottom-panel-signals",
+            "box": {
+              "x": 9,
+              "y": 495,
+              "width": 1262,
+              "height": 208,
+              "top": 495,
+              "right": 1271,
+              "bottom": 703,
+              "left": 9
+            },
+            "text": "\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951"
+          }
+        ],
+        "expected": "five visible nonzero zones"
+      },
+      {
+        "name": "russian-settings-1280x720",
+        "pass": true,
+        "actual": "ru",
+        "expected": "required Russian UI labels"
+      },
+      {
+        "name": "five-zone-layout-1440x900",
+        "pass": true,
+        "actual": [
+          {
+            "id": "app-shell",
+            "box": {
+              "x": 8,
+              "y": 8,
+              "width": 1424,
+              "height": 884,
+              "top": 8,
+              "right": 1432,
+              "bottom": 892,
+              "left": 8
+            },
+            "text": "Анализатор сигналов\nВерсия 0.1.0\nОтображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВ"
+          },
+          {
+            "id": "display-workspace",
+            "box": {
+              "x": 8,
+              "y": 60,
+              "width": 1046,
+              "height": 510,
+              "top": 60,
+              "right": 1054,
+              "bottom": 570,
+              "left": 8
+            },
+            "text": "Отображение сигналов\nЭкран 1\nИзменить макет\nОбласть 1\nТип графика\nВременная область\nСпектр\nСпектрогр"
+          },
+          {
+            "id": "display-canvas",
+            "box": {
+              "x": 9,
+              "y": 135,
+              "width": 1044,
+              "height": 434,
+              "top": 135,
+              "right": 1053,
+              "bottom": 569,
+              "left": 9
+            },
+            "text": "Область 1\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\n0\n0.05\n0.1\n0.15\n"
+          },
+          {
+            "id": "display-settings",
+            "box": {
+              "x": 1062,
+              "y": 60,
+              "width": 370,
+              "height": 510,
+              "top": 60,
+              "right": 1432,
+              "bottom": 570,
+              "left": 1062
+            },
+            "text": "Настройки отображения\nОтображение\nВремя\nИзмерения\nГрафик\nТип графика\nВременная область\nСпектр\nСпектр"
+          },
+          {
+            "id": "bottom-panel-signals",
+            "box": {
+              "x": 9,
+              "y": 621,
+              "width": 1422,
+              "height": 262,
+              "top": 621,
+              "right": 1431,
+              "bottom": 883,
+              "left": 9
+            },
+            "text": "\tИмя\tЦвет\tЧастота дискретизации\tОтсчёты\tДлительность\tТип\n\tГармонический сигнал\t\n\t2048 Hz\t512\t0.24951"
+          }
+        ],
+        "expected": "five visible nonzero zones"
+      },
+      {
+        "name": "russian-settings-1440x900",
+        "pass": true,
+        "actual": "ru",
+        "expected": "required Russian UI labels"
+      },
+      {
+        "name": "plotly-lmb-zoom",
+        "pass": true,
+        "actual": {
+          "initial": {
+            "x": [
+              0,
+              0.24951171875
+            ],
+            "y": [
+              -1.2223572036715844,
+              1.3485451159827149
+            ]
+          },
+          "zoomed": {
+            "x": [
+              0.08532348965429155,
+              0.22503645478542234
+            ],
+            "y": [
+              -0.6599723212472064,
+              0.4165930251080312
+            ]
+          }
+        },
+        "expected": "both-axis range changes after LMB drag"
+      },
+      {
+        "name": "plotly-double-click-autoscale",
+        "pass": true,
+        "actual": {
+          "initial": {
+            "x": [
+              0,
+              0.24951171875
+            ],
+            "y": [
+              -1.2223572036715844,
+              1.3485451159827149
+            ]
+          },
+          "reset": {
+            "x": [
+              0,
+              0.24951171875
+            ],
+            "y": [
+              -1.2223572036715844,
+              1.3485451159827149
+            ]
+          }
+        },
+        "expected": "ranges reset to original extent"
+      },
+      {
+        "name": "plotly-shift-lmb-pan",
+        "pass": true,
+        "actual": {
+          "reset": {
+            "x": [
+              0,
+              0.24951171875
+            ],
+            "y": [
+              -1.2223572036715844,
+              1.3485451159827149
+            ]
+          },
+          "panned": {
+            "x": [
+              -0.03501322483821526,
+              0.21449849391178474
+            ],
+            "y": [
+              -1.005437320450753,
+              1.5654649992035463
+            ]
+          }
+        },
+        "expected": "range translates after Shift+LMB drag"
+      },
+      {
+        "name": "popup-pane-menu",
+        "pass": true,
+        "actual": null,
+        "expected": "pane menu visible"
+      },
+      {
+        "name": "popup-graph-help-hit-focus-no-shift",
+        "pass": true,
+        "actual": {
+          "beforeHelp": {
+            "x": 18,
+            "y": 176,
+            "width": 1026,
+            "height": 384
+          },
+          "afterHelp": {
+            "x": 18,
+            "y": 176,
+            "width": 1026,
+            "height": 384
+          },
+          "helpHit": true
+        },
+        "expected": "help owns hit testing and plot rectangle is unchanged"
+      },
+      {
+        "name": "popup-workspace-dialog-focus-trap",
+        "pass": true,
+        "actual": {
+          "workspaceVisible": true,
+          "activeInDialog": true
+        },
+        "expected": "blocking workspace dialog owns focus"
+      },
+      {
+        "name": "popup-escape-focus-restoration",
+        "pass": false,
+        "actual": "signals-workspace-title",
+        "expected": "Escape restores Signals + focus"
+      }
+    ],
+    "screenshots": [
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-default-1024x768.png",
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-default-1280x720.png",
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-default-1440x900.png",
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-plotly-gestures-1440x900.png",
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-pane-menu-graph-help-1440x900.png",
+      "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0375/production-workspace-dialog-1440x900.png"
+    ],
+    "console": [
+      "Failed to load resource: the server responded with a status of 502 ()"
+    ],
+    "pageerrors": [],
+    "network": [
+      {
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+        "status": 200
+      }
+    ],
+    "open_pages_before_prototype": [
+      "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/"
+    ],
+    "status": {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "http_status": 200,
+      "body": {
+        "runtime_revision": "545bef2d6f5fbf76f32f6afb4bfe88f6a962e48c",
+        "project": "example_project",
+        "ready": true,
+        "ok": true
+      }
+    }
+  },
+  "completed_at": "2026-08-06T10:51:16.156Z",
+  "summary": {
+    "passed": 13,
+    "failed": 2,
+    "planned": 15,
+    "success_rate": 86.66666666666667
+  }
+}

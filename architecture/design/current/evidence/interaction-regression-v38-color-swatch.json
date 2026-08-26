@@ -1,0 +1,26 @@
+{
+  "design_version": 38,
+  "prototype_entry": "prototype/index.html",
+  "protocol": "file://",
+  "viewport": {"width": 1440, "height": 900, "device_scale_factor": 2},
+  "passed": 1,
+  "failed": 0,
+  "runtime_errors": [],
+  "http_resources": [],
+  "results": [
+    {
+      "id": "53-selected-color-swatch-uniform-halo-centered-tick",
+      "passed": true,
+      "detail": {
+        "popover_width": 284,
+        "palette_columns": 6,
+        "target": {"width": 32, "height": 32},
+        "color_square": {"width": 24, "height": 24, "box_sizing": "border-box", "insets": {"top": 4, "right": 4, "bottom": 4, "left": 4}},
+        "tick": {"width": 15, "height": 12, "object_fit": "contain", "anchor": "50% 50%", "optical_offset_px": {"x": 0.5, "y": 0.8}},
+        "palette_unchanged": ["#2563eb", "#dc2626", "#16a34a", "#9333ea", "#ea580c", "#0891b2", "#ca8a04", "#db2777"],
+        "js_delta": "none"
+      },
+      "screenshot": "screenshots/v38--selected-color-swatch-detail--284x278@2x.png"
+    }
+  ]
+}

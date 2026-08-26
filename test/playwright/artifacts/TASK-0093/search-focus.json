@@ -1,0 +1,55 @@
+{
+  "checks": [
+    {
+      "n": "revision",
+      "p": true,
+      "d": {
+        "runtime_revision": "cdd0342cb1b2a1057d8c98650d673a4cd97384ae",
+        "project": "example_project",
+        "ready": true,
+        "ok": true
+      }
+    },
+    {
+      "n": "focus only field/excludes actions",
+      "p": false,
+      "d": {
+        "field": {
+          "x": 10,
+          "y": 573,
+          "width": 1195,
+          "height": 31,
+          "top": 573,
+          "right": 1205,
+          "bottom": 604,
+          "left": 10
+        },
+        "actions": {
+          "x": 1205,
+          "y": 573,
+          "width": 65,
+          "height": 31,
+          "top": 573,
+          "right": 1270,
+          "bottom": 604,
+          "left": 1205
+        },
+        "button": {
+          "x": 1206,
+          "y": 573,
+          "width": 32,
+          "height": 31,
+          "top": 573,
+          "right": 1238,
+          "bottom": 604,
+          "left": 1206
+        },
+        "fieldShadow": "none",
+        "rowShadow": "none"
+      }
+    }
+  ],
+  "opened": 1,
+  "closed": 1,
+  "cleanup": true
+}

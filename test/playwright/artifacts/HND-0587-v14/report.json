@@ -1,0 +1,327 @@
+{
+  "id": "HND-0587",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "cf6147886c51d8c36017e4fa5a6378483f5fb12e",
+  "design_ref": "architecture/design/TASK-0080-explicit-apply-flow/DESIGN.md",
+  "design_version": 14,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "prototype start 1024x768",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "start": "Рассчитать экстремумы для области 1\nРассчитать\nНастроить рассчет",
+        "viewport": {
+          "width": 1024,
+          "height": 768
+        }
+      }
+    },
+    {
+      "name": "prototype configure/footer 1024x768",
+      "scope": "design",
+      "status": "failed",
+      "detail": {
+        "settingsSelected": "true",
+        "targetCount": 1,
+        "footerButtons": [],
+        "statusPosition": "absolute"
+      }
+    },
+    {
+      "name": "prototype Values 1024x768",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "lowerSelected": "true",
+        "targetCount": 1
+      }
+    },
+    {
+      "name": "prototype start 1440x900",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "start": "Рассчитать экстремумы для области 1\nРассчитать\nНастроить рассчет",
+        "viewport": {
+          "width": 1440,
+          "height": 900
+        }
+      }
+    },
+    {
+      "name": "prototype configure/footer 1440x900",
+      "scope": "design",
+      "status": "failed",
+      "detail": {
+        "settingsSelected": "true",
+        "targetCount": 1,
+        "footerButtons": [],
+        "statusPosition": "absolute"
+      }
+    },
+    {
+      "name": "prototype Values 1440x900",
+      "scope": "design",
+      "status": "passed",
+      "detail": {
+        "lowerSelected": "true",
+        "targetCount": 1
+      }
+    },
+    {
+      "name": "production availability and exact revision",
+      "scope": "quick",
+      "status": "passed",
+      "detail": {
+        "rootStatus": 200,
+        "status": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "cf6147886c51d8c36017e4fa5a6378483f5fb12e",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      }
+    },
+    {
+      "name": "fresh 1x1 pane is exact empty state",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "baselineBindings": [],
+        "layout": {
+          "variant": "1x1",
+          "rows": 1,
+          "next_pane_number": 2,
+          "panes": [
+            {
+              "signal_bindings": [],
+              "id": "pane-1",
+              "plot_type": "time",
+              "peaks_settings": {
+                "minimum_distance_samples": 1,
+                "threshold": 0,
+                "mode": "maxima",
+                "maximum_cutoff": null,
+                "minimum_cutoff": null,
+                "number_of_peaks": 5
+              }
+            }
+          ],
+          "version": 1,
+          "columns": 1,
+          "active_pane_id": "pane-1"
+        },
+        "emptyUi": {
+          "exact": "Выберете сигнал для отображения",
+          "plotHosts": 0,
+          "loaders": 0,
+          "panes": 1
+        }
+      }
+    },
+    {
+      "name": "opening application does not request outputs or Extrema",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": []
+    },
+    {
+      "name": "signal bound through UI",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "signal": "Гармонический сигнал",
+        "status": 200
+      }
+    },
+    {
+      "name": "Extrema first-open is explicit start without calculation",
+      "scope": "new_functionality",
+      "status": "passed",
+      "detail": {
+        "firstOpen": {
+          "text": "Рассчитать экстремумы для области 1\nРассчитать\nНастроить рассчет",
+          "table": 0,
+          "loader": 0
+        },
+        "openRequests": []
+      }
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:02:03.193Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:02:03.295Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:02:08.678Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "method": "POST",
+      "status": 200,
+      "at": "2026-08-12T12:02:17.095Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:02:17.675Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:02:18.070Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:02:18.464Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:02:19.383Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/view",
+      "method": "POST",
+      "status": 200,
+      "at": "2026-08-12T12:02:21.010Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:02:22.383Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/peaks/active?display_id=display-1&pane_id=pane-1",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:02:22.385Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/layouts",
+      "method": "POST",
+      "status": 200,
+      "at": "2026-08-12T12:03:20.695Z"
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/state-lite",
+      "method": "GET",
+      "status": 200,
+      "at": "2026-08-12T12:03:20.734Z"
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0587-v14/prototype-start-1024x768.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-12T12:01:57.945Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0587-v14/prototype-configure-1024x768.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-12T12:01:58.032Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0587-v14/prototype-start-1440x900.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "at": "2026-08-12T12:01:58.644Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0587-v14/prototype-configure-1440x900.png",
+      "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/TASK-0080-explicit-apply-flow/prototype/index.html",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "at": "2026-08-12T12:01:58.739Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0587-v14/production-empty-1024x768.png",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-12T12:02:08.774Z"
+    },
+    {
+      "file": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0587-v14/production-extrema-start-1024x768.png",
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "at": "2026-08-12T12:02:20.150Z"
+    }
+  ],
+  "errors": [
+    "console: Failed to load resource: the server responded with a status of 404 ()",
+    "locator.waitFor: Timeout 60000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByTestId('extrema-mode-trigger') to be visible\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/hnd0587_v14_production.js:214:62"
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "preexisting_page_urls": [],
+  "baseline": {
+    "state_revision": 0,
+    "displayId": "display-1",
+    "paneId": "pane-1",
+    "bindings": [],
+    "rows": 1,
+    "columns": 1
+  },
+  "restoration": {
+    "status": "verified-in-finally",
+    "baselineBindings": [],
+    "finalBindings": []
+  },
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 11,
+    "passed": 9,
+    "failed": 2,
+    "success_rate": 81.8
+  }
+}

@@ -12,6 +12,7 @@ const SIGNAL_ANALYSER_SESSION_STATE_FIELDS = Set([
     "next_display_number",
 ])
 const SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS = Set([
+    "id",
     "name",
     "color",
     "sample_rate_hz",
@@ -19,6 +20,8 @@ const SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS = Set([
     "visible",
     "values",
 ])
+const SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS_V3 =
+    setdiff(SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS, Set(["id"]))
 const SIGNAL_ANALYSER_SESSION_VALUES_FIELDS = Set(["real", "imag"])
 const SIGNAL_ANALYSER_SESSION_DISPLAY_FIELDS = Set([
     "id",
@@ -47,17 +50,52 @@ const SIGNAL_ANALYSER_SESSION_LAYOUT_FIELDS = Set([
 ])
 const SIGNAL_ANALYSER_SESSION_PANE_FIELDS = Set([
     "id",
+    "name",
     "plot_type",
     "signal_bindings",
+    "analysis_signal",
+    "peaks_settings",
+    "show_axis_labels",
+])
+const SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_WITHOUT_AXIS_LABELS =
+    setdiff(SIGNAL_ANALYSER_SESSION_PANE_FIELDS, Set(["show_axis_labels"]))
+const SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY = setdiff(
+    SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_WITHOUT_AXIS_LABELS,
+    Set(["analysis_signal"]),
+)
+const SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V3 =
+    setdiff(SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY, Set(["name"]))
+const SIGNAL_ANALYSER_SESSION_LEGACY_PANE_FIELDS = Set([
+    "id",
+    "plot_type",
+    "signal_bindings",
+])
+const SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS_V1 = Set([
+    "number_of_peaks",
+    "minimum_height",
+    "minimum_distance_samples",
+    "threshold",
+])
+const SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS_V2 =
+    union(SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS_V1, Set(["mode"]))
+const SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS = Set([
+    "mode",
+    "number_of_peaks",
+    "maximum_cutoff",
+    "minimum_cutoff",
+    "minimum_distance_samples",
+    "threshold",
 ])
 const SIGNAL_ANALYSER_SESSION_REQUEST_FIELDS = Set(["state_revision", "document"])
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
     "display.show_legend",
+    "display.show_axis_labels",
     "time.normalize_y",
     "time.show_markers",
     "time.units",
     "time.y_limits",
     "time.link_time",
+    "time.link_amplitude",
     "spectrum.frequency_units",
     "spectrum.y_limits",
     "spectrum.resolution_type",
@@ -67,6 +105,8 @@ const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
     "spectrum.sidelobe_attenuation_db",
     "spectrum.overlap_percent",
     "spectrum.nfft",
+    "spectrum.link_frequency",
+    "spectrum.link_magnitude",
     "spectrogram.time_units",
     "spectrogram.frequency_units",
     "spectrogram.scale",
@@ -85,6 +125,16 @@ const SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS = (
 )
 const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS =
     Set(SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS)
+const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V4_LEGACY = setdiff(
+    SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS,
+    Set(["display.show_axis_labels"]),
+)
+const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V3 = setdiff(
+    SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V4_LEGACY,
+    Set(["spectrum.link_frequency", "spectrum.link_magnitude"]),
+)
+const SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_LEGACY =
+    setdiff(SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V3, Set(["time.link_amplitude"]))
 const SIGNAL_ANALYSER_SESSION_MAX_SIGNALS = 256
 const SIGNAL_ANALYSER_SESSION_MAX_DISPLAYS = 128
 const SIGNAL_ANALYSER_SESSION_MAX_TOTAL_SAMPLES = 5_000_000
@@ -182,6 +232,7 @@ end
 
 function signal_analyser_session_signal_payload(signal::AnalysedSignal)::Dict{String,Any}
     Dict{String,Any}(
+        "id" => signal.id,
         "name" => signal.name,
         "color" => signal.color,
         "sample_rate_hz" => signal.sample_rate_hz,
@@ -212,8 +263,11 @@ function signal_analyser_session_display_payload(
         "stored_settings" => signal_analyser_session_settings_payload(display),
         "peaks_enabled" => display.peaks_enabled,
     )
-    legacy_layout = signal_display_default_layout(display)
-    layout == legacy_layout || (payload["layout"] = signal_display_layout_payload(layout))
+    layout_payload = signal_display_layout_payload(layout)
+    for (pane_payload, pane) in zip(layout_payload["panes"], layout.panes)
+        pane_payload["show_axis_labels"] = pane.stored_settings.display.show_axis_labels
+    end
+    payload["layout"] = layout_payload
     payload
 end
 
@@ -265,6 +319,8 @@ function export_signal_analyser_session(
     state::SignalAnalyserState,
 )::Dict{String,Any}
     lock(state.lock) do
+        signal_analyser_recover_membership_order_unlocked!(state)
+        signal_analyser_recover_time_limits_unlocked!(state)
         document = signal_analyser_session_document_unlocked(state)
         Dict{String,Any}(
             "ok" => true,
@@ -277,13 +333,18 @@ function signal_analyser_session_parse_signal(
     value,
     index::Int,
     maximum_samples::Int,
+    session_version::Int,
 )::AnalysedSignal
     path = "document.state.signals[$index]"
     data = signal_analyser_session_exact_object(
         value,
-        SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS,
+        session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+            SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS : SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS_V3,
         path,
     )
+    id = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+        signal_analyser_session_string(signal_analyser_payload_value(data, "id"), "$path.id") :
+        signal_analyser_new_signal_id()
     name = signal_analyser_session_string(signal_analyser_payload_value(data, "name"), "$path.name")
     color = signal_analyser_session_string(signal_analyser_payload_value(data, "color"), "$path.color")
     sample_rate_hz = signal_analyser_session_float(
@@ -311,9 +372,9 @@ function signal_analyser_session_parse_signal(
         "$path.values",
         "Массивы real и imag должны иметь одинаковую длину",
     ))
-    length(real_values) >= 2 || throw(signal_analyser_session_error(
+    !isempty(real_values) || throw(signal_analyser_session_error(
         "$path.values",
-        "Сигнал должен содержать не менее двух отсчётов",
+        "Сигнал должен содержать хотя бы один отсчёт",
     ))
     length(real_values) <= maximum_samples || throw(signal_analyser_session_error(
         "$path.values",
@@ -335,14 +396,15 @@ function signal_analyser_session_parse_signal(
         ))
         samples[sample_index] = ComplexF64(real_part, imag_part)
     end
-    AnalysedSignal(name, color, sample_rate_hz, samples, is_complex, visible)
+    AnalysedSignal(id, name, color, sample_rate_hz, samples, is_complex, visible)
 end
 
-signal_analyser_session_parse_signal(value, index::Int)::AnalysedSignal =
+signal_analyser_session_parse_signal(value, index::Int, session_version::Int)::AnalysedSignal =
     signal_analyser_session_parse_signal(
         value,
         index,
         SIGNAL_ANALYSER_SESSION_MAX_TOTAL_SAMPLES,
+        session_version,
     )
 
 function signal_analyser_session_parse_stored_settings(
@@ -350,11 +412,19 @@ function signal_analyser_session_parse_stored_settings(
     display::SignalAnalyserDisplayState,
 )::SignalDisplayStoredSettings
     path = "document.state.displays.$(display.id).stored_settings"
-    data = signal_analyser_session_exact_object(
+    value isa AbstractDict || throw(signal_analyser_session_error(path, "Требуется JSON-объект"))
+    actual_fields = signal_analyser_payload_keys(value)
+    actual_fields in (
+        SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS,
+        SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V4_LEGACY,
+        SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_V3,
+        SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS_LEGACY,
+    ) || signal_analyser_session_exact_object(
         value,
         SIGNAL_ANALYSER_SESSION_STORED_SETTING_FIELDS,
         path,
     )
+    data = value
     stored = SignalDisplayStoredSettings()
     for field_id in SIGNAL_ANALYSER_SESSION_STORED_SETTING_IDS
         definition = signal_settings_field(SIGNAL_SETTINGS_CATALOG, field_id)::SignalSettingsFieldDefinition
@@ -363,7 +433,10 @@ function signal_analyser_session_parse_stored_settings(
                 definition,
                 display.id,
                 field_id,
-                signal_analyser_payload_value(data, field_id),
+                field_id == "display.show_axis_labels" && !(field_id in actual_fields) ? true :
+                    field_id in ("time.link_amplitude", "spectrum.link_frequency", "spectrum.link_magnitude") &&
+                        !(field_id in actual_fields) ? false :
+                    signal_analyser_payload_value(data, field_id),
             )
         catch err
             err isa SignalSettingValidationError || rethrow()
@@ -493,13 +566,25 @@ function signal_analyser_session_parse_layout_pane(
     signals::AbstractVector{AnalysedSignal},
     display_index::Int,
     pane_index::Int,
+    session_version::Int,
 )::SignalDisplayPaneState
     path = "document.state.displays[$display_index].layout.panes[$pane_index]"
-    data = signal_analyser_session_exact_object(
-        value,
-        SIGNAL_ANALYSER_SESSION_PANE_FIELDS,
-        path,
+    value isa AbstractDict || throw(signal_analyser_session_error(path, "Требуется JSON-объект"))
+    pane_fields = signal_analyser_payload_keys(value)
+    is_legacy_pane = pane_fields == SIGNAL_ANALYSER_SESSION_LEGACY_PANE_FIELDS
+    is_legacy_pane && session_version != SIGNAL_ANALYSER_LEGACY_SESSION_VERSION && throw(
+        signal_analyser_session_error(path, "Session v2+ требует peaks_settings для каждой pane"),
     )
+    is_v4_without_main = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
+        pane_fields == SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY
+    is_v4_without_axis_labels = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
+        pane_fields == SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_WITHOUT_AXIS_LABELS
+    expected_pane_fields = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+        (is_v4_without_main ? SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY :
+            is_v4_without_axis_labels ? SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_WITHOUT_AXIS_LABELS :
+            SIGNAL_ANALYSER_SESSION_PANE_FIELDS) : SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V3
+    data = is_legacy_pane ? value :
+        signal_analyser_session_exact_object(value, expected_pane_fields, path)
     pane_id = signal_analyser_session_string(
         signal_analyser_payload_value(data, "id"),
         "$path.id",
@@ -507,6 +592,11 @@ function signal_analyser_session_parse_layout_pane(
     occursin(SIGNAL_DISPLAY_PANE_ID_REGEX, pane_id) || throw(
         signal_analyser_session_error("$path.id", "Ожидался идентификатор pane-N"),
     )
+    pane_name = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+        signal_analyser_session_string(
+            signal_analyser_payload_value(data, "name"),
+            "$path.name",
+        ) : signal_display_default_pane_name(pane_id)
     plot_value = signal_analyser_payload_value(data, "plot_type")
     plot_value isa AbstractString && haskey(SIGNAL_ANALYSER_PLOTS_BY_NAME, String(plot_value)) ||
         throw(signal_analyser_session_error(
@@ -529,26 +619,170 @@ function signal_analyser_session_parse_layout_pane(
         "$path.signal_bindings",
         "Имена сигналов не должны повторяться",
     ))
-    plot_type = SIGNAL_ANALYSER_PLOTS_BY_NAME[String(plot_value)]
-    if pane_id == active_pane_id && plot_type == display.active_plot &&
-        bindings == signal_analyser_display_members(display)
-        return signal_display_pane_from_display(pane_id, display)
-    end
     known_names = Set(signal.name for signal in signals)
     unknown_name = findfirst(name -> !(name in known_names), bindings)
     unknown_name === nothing || throw(signal_analyser_session_error(
         "$path.signal_bindings[$unknown_name]",
         "Pane ссылается на неизвестный сигнал",
     ))
-    analysis_signal = isempty(bindings) ? nothing : signals[
-        findfirst(signal -> signal.name == first(bindings), signals)::Int
+    has_explicit_main = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
+        "analysis_signal" in pane_fields
+    explicit_main = if has_explicit_main
+        value = signal_analyser_payload_value(data, "analysis_signal")
+        value === nothing ? nothing :
+            signal_analyser_session_string(value, "$path.analysis_signal")
+    else
+        nothing
+    end
+    explicit_main === nothing || explicit_main in known_names || throw(
+        signal_analyser_session_error(
+            "$path.analysis_signal",
+            "Main signal pane отсутствует в inventory",
+        ),
+    )
+    show_axis_labels = if "show_axis_labels" in pane_fields
+        value = signal_analyser_payload_value(data, "show_axis_labels")
+        value isa Bool || throw(signal_analyser_session_error(
+            "$path.show_axis_labels",
+            "Требуется boolean",
+        ))
+        value
+    elseif pane_id == active_pane_id
+        display.stored_settings.display.show_axis_labels
+    else
+        true
+    end
+    pane_stored_settings = signal_settings_replace(
+        display.stored_settings;
+        display = SignalDisplayPreferences(
+            display.stored_settings.display.show_legend,
+            show_axis_labels,
+        ),
+    )
+    plot_type = SIGNAL_ANALYSER_PLOTS_BY_NAME[String(plot_value)]
+    peaks_settings = if is_legacy_pane
+        SignalPeaksSettings()
+    else
+        expected_settings_fields = session_version == SIGNAL_ANALYSER_LEGACY_SESSION_VERSION ?
+            SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS_V1 :
+            session_version == SIGNAL_ANALYSER_EXTREMA_SESSION_VERSION ?
+                SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS_V2 :
+                SIGNAL_ANALYSER_SESSION_PEAKS_SETTINGS_FIELDS
+        peaks_settings_data = signal_analyser_session_exact_object(
+            signal_analyser_payload_value(data, "peaks_settings"),
+            expected_settings_fields,
+            "$path.peaks_settings",
+        )
+        mode = if session_version == SIGNAL_ANALYSER_LEGACY_SESSION_VERSION
+            MAXIMA_EXTREMA_MODE
+        else
+            mode_value = signal_analyser_session_string(
+                signal_analyser_payload_value(peaks_settings_data, "mode"),
+                "$path.peaks_settings.mode",
+            )
+            haskey(SIGNAL_EXTREMA_MODES_BY_NAME, mode_value) || throw(
+                signal_analyser_session_error(
+                    "$path.peaks_settings.mode",
+                    "Допустимо: maxima, minima, all",
+                ),
+            )
+            SIGNAL_EXTREMA_MODES_BY_NAME[mode_value]
+        end
+        number_of_peaks = signal_analyser_session_integer(
+            signal_analyser_payload_value(peaks_settings_data, "number_of_peaks"),
+            "$path.peaks_settings.number_of_peaks",
+            minimum = 1,
+        )
+        number_of_peaks <= SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS || throw(
+            signal_analyser_session_error(
+                "$path.peaks_settings.number_of_peaks",
+                "Максимальное значение: $(SIGNAL_PEAKS_MAX_NUMBER_OF_PEAKS)",
+            ),
+        )
+        parse_cutoff = function (field_id::String)
+            value = signal_analyser_payload_value(peaks_settings_data, field_id)
+            value === nothing ? nothing : signal_analyser_session_float(
+                value,
+                "$path.peaks_settings.$field_id",
+            )
+        end
+        maximum_cutoff, minimum_cutoff = if session_version >= SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION
+            parse_cutoff("maximum_cutoff"), parse_cutoff("minimum_cutoff")
+        else
+            legacy_height = parse_cutoff("minimum_height")
+            mode == MINIMA_EXTREMA_MODE ?
+                (nothing, legacy_height === nothing ? nothing : -legacy_height) :
+                mode == ALL_EXTREMA_MODE ?
+                    (legacy_height, legacy_height === nothing ? nothing : -legacy_height) :
+                    (legacy_height, nothing)
+        end
+        minimum_distance_samples = signal_analyser_session_integer(
+            signal_analyser_payload_value(peaks_settings_data, "minimum_distance_samples"),
+            "$path.peaks_settings.minimum_distance_samples",
+            minimum = 1,
+        )
+        threshold = signal_analyser_session_float(
+            signal_analyser_payload_value(peaks_settings_data, "threshold"),
+            "$path.peaks_settings.threshold",
+        )
+        threshold >= 0 || throw(signal_analyser_session_error(
+            "$path.peaks_settings.threshold",
+            "Требуется неотрицательное число",
+        ))
+        SignalPeaksSettings(
+            mode,
+            number_of_peaks,
+            maximum_cutoff,
+            minimum_cutoff,
+            minimum_distance_samples,
+            threshold,
+        )
+    end
+    display_members = signal_analyser_display_members(display)
+    analysis_name = if has_explicit_main
+        explicit_main
+    elseif pane_id == active_pane_id
+        signal_analyser_display_analysis_name(display)
+    elseif isempty(bindings)
+        nothing
+    else
+        # v1-v3 and the original v4 format had no per-pane main field.
+        # Only those legacy documents receive the deterministic fallback.
+        first(bindings)
+    end
+    if pane_id == active_pane_id && plot_type == display.active_plot &&
+        Set(bindings) == Set(display_members)
+        return try
+            SignalDisplayPaneState(
+                pane_id,
+                pane_name,
+                plot_type,
+                SignalDisplayMembership(bindings),
+                signal_analysis_source(analysis_name),
+                analysis_name === nothing ? nothing : display.time_limits,
+                display.measurement_selection,
+                display.spectrum_settings,
+                display.spectrogram_settings,
+                display.persistence_settings,
+                pane_stored_settings,
+                display.peaks_enabled,
+                peaks_settings,
+            )
+        catch err
+            err isa ArgumentError || rethrow()
+            throw(signal_analyser_session_error(path, sprint(showerror, err)))
+        end
+    end
+    analysis_signal = analysis_name === nothing ? nothing : signals[
+        findfirst(signal -> signal.name == analysis_name, signals)::Int
     ]
     try
         SignalDisplayPaneState(
             pane_id,
+            pane_name,
             plot_type,
             SignalDisplayMembership(bindings),
-            signal_analysis_source(analysis_signal === nothing ? nothing : analysis_signal.name),
+            signal_analysis_source(analysis_name),
             analysis_signal === nothing ? nothing : signal_full_time_limits(
                 SignalMeasurementsService(),
                 analysis_signal,
@@ -557,8 +791,12 @@ function signal_analyser_session_parse_layout_pane(
             SignalSpectrumSettings(),
             SignalSpectrogramSettings(),
             SignalPersistenceSettings(),
-            SignalDisplayStoredSettings(),
+            signal_settings_replace(
+                SignalDisplayStoredSettings();
+                display = SignalDisplayPreferences(true, show_axis_labels),
+            ),
             false,
+            peaks_settings,
         )
     catch err
         err isa ArgumentError || rethrow()
@@ -571,20 +809,21 @@ function signal_analyser_session_parse_layout(
     display::SignalAnalyserDisplayState,
     signals::AbstractVector{AnalysedSignal},
     display_index::Int,
+    session_version::Int,
 )::SignalDisplayLayoutState
-    value === nothing && return signal_display_default_layout(display)
+    value === nothing && return signal_display_legacy_single_pane_layout(display)
     path = "document.state.displays[$display_index].layout"
     data = signal_analyser_session_exact_object(
         value,
         SIGNAL_ANALYSER_SESSION_LAYOUT_FIELDS,
         path,
     )
-    version = signal_analyser_session_integer(
+    layout_version = signal_analyser_session_integer(
         signal_analyser_payload_value(data, "version"),
         "$path.version",
         minimum = 1,
     )
-    version == SIGNAL_DISPLAY_LAYOUT_VERSION || throw(signal_analyser_session_error(
+    layout_version == SIGNAL_DISPLAY_LAYOUT_VERSION || throw(signal_analyser_session_error(
         "$path.version",
         "Поддерживается только layout version 1",
     ))
@@ -595,7 +834,7 @@ function signal_analyser_session_parse_layout(
     )
     rows <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION || throw(signal_analyser_session_error(
         "$path.rows",
-        "Максимальное значение: 4",
+        "Максимальное значение: $(SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION)",
     ))
     columns = signal_analyser_session_integer(
         signal_analyser_payload_value(data, "columns"),
@@ -604,7 +843,7 @@ function signal_analyser_session_parse_layout(
     )
     columns <= SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION || throw(signal_analyser_session_error(
         "$path.columns",
-        "Максимальное значение: 4",
+        "Максимальное значение: $(SIGNAL_DISPLAY_LAYOUT_MAX_DIMENSION)",
     ))
     variant = signal_analyser_session_string(
         signal_analyser_payload_value(data, "variant"),
@@ -637,6 +876,7 @@ function signal_analyser_session_parse_layout(
             signals,
             display_index,
             pane_index,
+            session_version,
         )
         for (pane_index, item) in enumerate(panes_value)
     ]
@@ -647,7 +887,7 @@ function signal_analyser_session_parse_layout(
     )
     try
         SignalDisplayLayoutState(
-            version,
+            layout_version,
             variant,
             rows,
             columns,
@@ -708,36 +948,68 @@ function signal_analyser_session_validate_candidate!(
                     "Pane ссылается на неизвестный сигнал",
                 ),
             )
+            pane_main = signal_display_pane_analysis_name(pane)
+            pane_main === nothing || pane_main in known_names || throw(
+                signal_analyser_session_error(
+                    "$path.layout.panes.$(pane.id).analysis_signal",
+                    "Main signal pane отсутствует в inventory",
+                ),
+            )
         end
         active_pane = signal_display_active_pane(layout)
         members = signal_analyser_display_members(display)
+        all(name -> name in known_names, members) || throw(signal_analyser_session_error(
+            "$path.visible_signals",
+            "Display ссылается на неизвестный сигнал",
+        ))
+        members == signal_analyser_inventory_ordered_names(state, members) || throw(
+            signal_analyser_session_error(
+                "$path.visible_signals",
+                "Порядок должен совпадать с authoritative inventory",
+            ),
+        )
         active_pane.plot_type == display.active_plot || throw(
             signal_analyser_session_error(
                 "$path.layout.active_pane_id",
                 "Plot type active pane не совпадает с legacy Display projection",
             ),
         )
-        signal_display_pane_members(active_pane) == members || throw(
+        Set(signal_display_pane_members(active_pane)) == Set(members) || throw(
             signal_analyser_session_error(
                 "$path.layout.active_pane_id",
-                "Bindings active pane не совпадают с legacy Display projection",
+                "Состав bindings active pane не совпадает с legacy Display projection",
             ),
         )
-        all(name -> name in known_names, members) || throw(signal_analyser_session_error(
-            "$path.visible_signals",
-            "Display ссылается на неизвестный сигнал",
-        ))
         analysis_name = signal_analyser_display_analysis_name(display)
+        analysis_name === nothing || analysis_name in known_names || throw(
+            signal_analyser_session_error(
+                "$path.analysis_signal",
+                "Main signal Display отсутствует в inventory",
+            ),
+        )
+        isequal(signal_display_pane_analysis_name(active_pane), analysis_name) || throw(
+            signal_analyser_session_error(
+                "$path.layout.active_pane_id",
+                "Main signal active pane не совпадает с legacy Display projection",
+            ),
+        )
         analysis_signal = analysis_name === nothing ? nothing : signal_by_name(state, analysis_name)
-        if analysis_signal !== nothing
-            signal_time_limits_are_valid(
-                state.measurements_service,
-                analysis_signal,
-                display.time_limits::SignalTimeLimits,
-            ) || throw(signal_analyser_session_error(
+        if analysis_signal !== nothing && display.active_plot in SIGNAL_ANALYSER_TIME_LIMIT_PLOTS
+            display.time_limits isa SignalTimeLimits || throw(signal_analyser_session_error(
                 "$path.time_limits",
-                "Интервал должен содержать отсчёт и лежать в домене analysis source",
+                "Для этого типа графика требуется полный временной домен analysis source",
             ))
+            expected_time_limits = signal_analyser_full_bound_time_limits(
+                state,
+                display.id,
+                active_pane,
+            )
+            display.time_limits == expected_time_limits || throw(signal_analyser_session_error(
+                "$path.time_limits",
+                "Требуется полный временной домен всех bindings pane",
+            ))
+        end
+        if analysis_signal !== nothing
             for (settings_path, limits) in (
                 ("spectrum_settings.frequency_limits", display.spectrum_settings.frequency_limits),
                 ("spectrogram_settings.frequency_limits", display.spectrogram_settings.frequency_limits),
@@ -843,7 +1115,12 @@ function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDoc
         "document.version",
         minimum = 1,
     )
-    version == SIGNAL_ANALYSER_SESSION_VERSION || throw(signal_analyser_session_error(
+    version in (
+        SIGNAL_ANALYSER_LEGACY_SESSION_VERSION,
+        SIGNAL_ANALYSER_EXTREMA_SESSION_VERSION,
+        SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION,
+        SIGNAL_ANALYSER_SESSION_VERSION,
+    ) || throw(signal_analyser_session_error(
         "document.version",
         "Неподдерживаемая версия: $version";
         code = "unsupported_session_version",
@@ -871,13 +1148,17 @@ function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDoc
     signals = AnalysedSignal[]
     remaining_samples = SIGNAL_ANALYSER_SESSION_MAX_TOTAL_SAMPLES
     for (index, value) in enumerate(signal_values)
-        signal = signal_analyser_session_parse_signal(value, index, remaining_samples)
+        signal = signal_analyser_session_parse_signal(value, index, remaining_samples, version)
         push!(signals, signal)
         remaining_samples -= length(signal.values)
     end
     allunique(signal.name for signal in signals) || throw(signal_analyser_session_error(
         "document.state.signals",
         "Имена сигналов не должны повторяться",
+    ))
+    allunique(signal.id for signal in signals) || throw(signal_analyser_session_error(
+        "document.state.signals",
+        "Идентификаторы сигналов не должны повторяться",
     ))
     row_selection = GlobalSignalSelection(signal_analyser_session_string(
         signal_analyser_payload_value(state_data, "row_selected_signal"),
@@ -906,6 +1187,7 @@ function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDoc
             display,
             signals,
             index,
+            version,
         )
     end
     active_display_id = signal_analyser_session_string(
@@ -987,8 +1269,20 @@ function signal_analyser_session_candidate(
     )
     candidate.active_display_id = document.active_display_id
     candidate.next_display_number = document.next_display_number
-    candidate.view.active_plot = active_display.active_plot
-    candidate.view.selected_signal = signal_analyser_display_analysis_name(active_display)
+    # Session import restores authoritative bindings, then migrates legacy
+    # ordering and runtime calculation domains. Legacy persisted viewport
+    # mirrors are intentionally discarded by the same recovery pass.
+    signal_analyser_recover_membership_order_unlocked!(
+        candidate;
+        invalidate_outputs = false,
+        increment_state_revision = false,
+    )
+    signal_analyser_recover_time_limits_unlocked!(
+        candidate;
+        invalidate_outputs = false,
+        increment_state_revision = false,
+    )
+    signal_analyser_sync_active_display!(candidate, signal_analyser_active_display(candidate))
     signal_analyser_session_validate_candidate!(candidate)
     candidate
 end
@@ -997,6 +1291,7 @@ function signal_analyser_publish_session!(
     state::SignalAnalyserState,
     candidate::SignalAnalyserState,
 )::Nothing
+    signal_analyser_cancel_active_output_unlocked!(state)
     state.signals = candidate.signals
     state.view = candidate.view
     state.row_selection = candidate.row_selection
@@ -1008,6 +1303,8 @@ function signal_analyser_publish_session!(
     state.spectrum_cache = candidate.spectrum_cache
     state.spectrogram_cache = candidate.spectrogram_cache
     state.persistence_cache = candidate.persistence_cache
+    signal_analyser_sync_output_pages_unlocked!(state)
+    signal_analyser_invalidate_all_outputs_unlocked!(state)
     nothing
 end
 

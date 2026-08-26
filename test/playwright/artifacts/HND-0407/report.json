@@ -1,0 +1,271 @@
+{
+  "id": "HND-0407",
+  "mode": "quick_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "bba7f2528abccf14dcdd313681c8fd8bf538d40c",
+  "design_ref": "architecture/design/TASK-0057-ui-overlay-refinement/DESIGN.md",
+  "design_version": 2,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "started_at": "2026-08-06T14:19:14.042Z",
+  "planned": 8,
+  "checks": [
+    {
+      "name": "prototype-contract-shell-1024x768",
+      "pass": true,
+      "evidence": {
+        "shell": true,
+        "add": true,
+        "settings": true
+      }
+    },
+    {
+      "name": "prototype-contract-shell-1440x900",
+      "pass": true,
+      "evidence": {
+        "shell": true,
+        "add": true,
+        "settings": true
+      }
+    },
+    {
+      "name": "availability-root",
+      "pass": true,
+      "evidence": {
+        "status": 200,
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+        "maintenance": false,
+        "observed_at": "2026-08-06T14:19:52.370Z"
+      }
+    },
+    {
+      "name": "no-maintenance-screen",
+      "pass": true,
+      "evidence": {
+        "title": "Анализатор сигналов",
+        "app_shell": true
+      }
+    },
+    {
+      "name": "readiness-exact-revision",
+      "pass": true,
+      "evidence": {
+        "status": 200,
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+        "body": {
+          "runtime_revision": "bba7f2528abccf14dcdd313681c8fd8bf538d40c",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "deployed-settings-150ms-contract",
+      "pass": true,
+      "evidence": {
+        "status": 200,
+        "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js",
+        "content_length_bytes": 40065,
+        "loaded": [
+          "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js"
+        ],
+        "debounce150": true,
+        "scheduled": true
+      }
+    },
+    {
+      "name": "usable-shell-1024x768",
+      "pass": true,
+      "evidence": {
+        "viewport": {
+          "width": 1024,
+          "height": 768,
+          "scrollWidth": 1024,
+          "scrollHeight": 768
+        },
+        "nodes": {
+          "app-shell": {
+            "x": 6,
+            "y": 6,
+            "right": 1018,
+            "bottom": 762,
+            "width": 1012,
+            "height": 756,
+            "visible": true
+          },
+          "display-workspace": {
+            "x": 6,
+            "y": 58,
+            "right": 712,
+            "bottom": 487.5234375,
+            "width": 706,
+            "height": 429.5234375,
+            "visible": true
+          },
+          "display-settings": {
+            "x": 718,
+            "y": 58,
+            "right": 1018,
+            "bottom": 487.5234375,
+            "width": 300,
+            "height": 429.5234375,
+            "visible": true
+          },
+          "bottom-panel-signals": {
+            "x": 7,
+            "y": 538.5234375,
+            "right": 1017,
+            "bottom": 753,
+            "width": 1010,
+            "height": 214.4765625,
+            "visible": true
+          }
+        }
+      }
+    },
+    {
+      "name": "usable-shell-1440x900",
+      "pass": true,
+      "evidence": {
+        "viewport": {
+          "width": 1440,
+          "height": 900,
+          "scrollWidth": 1440,
+          "scrollHeight": 900
+        },
+        "nodes": {
+          "app-shell": {
+            "x": 8,
+            "y": 8,
+            "right": 1432,
+            "bottom": 892,
+            "width": 1424,
+            "height": 884,
+            "visible": true
+          },
+          "display-workspace": {
+            "x": 8,
+            "y": 60,
+            "right": 1054,
+            "bottom": 570,
+            "width": 1046,
+            "height": 510,
+            "visible": true
+          },
+          "display-settings": {
+            "x": 1062,
+            "y": 60,
+            "right": 1432,
+            "bottom": 570,
+            "width": 370,
+            "height": 510,
+            "visible": true
+          },
+          "bottom-panel-signals": {
+            "x": 9,
+            "y": 621,
+            "right": 1431,
+            "bottom": 883,
+            "width": 1422,
+            "height": 262,
+            "visible": true
+          }
+        }
+      }
+    },
+    {
+      "name": "continuous-input-debounce",
+      "pass": true,
+      "evidence": {
+        "applicable": false,
+        "reason": "No enabled numeric settings input exposed by production."
+      }
+    },
+    {
+      "name": "no-page-exception-or-http-500",
+      "pass": true,
+      "evidence": {
+        "page_errors": [],
+        "responses_500": []
+      }
+    }
+  ],
+  "page_errors": [],
+  "console_errors": [
+    {
+      "message": "Failed to load resource: the server responded with a status of 404 ()",
+      "classification": "non-blocking resource-console evidence; it is neither an uncaught page exception nor HTTP 500. The earlier /public/js/settings.js 404 was an E2E path error and is not a product finding."
+    }
+  ],
+  "responses_500": [],
+  "screenshots": [
+    {
+      "kind": "prototype-shell",
+      "viewport": "1024x768",
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0407/prototype-shell-1024x768.png"
+    },
+    {
+      "kind": "prototype-shell",
+      "viewport": "1440x900",
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0407/prototype-shell-1440x900.png"
+    },
+    {
+      "kind": "production-shell",
+      "viewport": "1024x768",
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0407/production-shell-1024x768.png"
+    },
+    {
+      "kind": "production-shell",
+      "viewport": "1440x900",
+      "path": "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/HND-0407/production-shell-1440x900.png"
+    }
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "tab_cleanup_status": "passed",
+  "preexisting_page_count": 0,
+  "root": {
+    "status": 200,
+    "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+    "maintenance": false,
+    "observed_at": "2026-08-06T14:19:52.370Z"
+  },
+  "status": {
+    "status": 200,
+    "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+    "body": {
+      "runtime_revision": "bba7f2528abccf14dcdd313681c8fd8bf538d40c",
+      "project": "example_project",
+      "ready": true,
+      "ok": true
+    }
+  },
+  "asset": {
+    "status": 200,
+    "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js",
+    "content_length_bytes": 40065,
+    "loaded": [
+      "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/js/settings.js"
+    ],
+    "debounce150": true,
+    "scheduled": true
+  },
+  "probe": {
+    "applicable": false,
+    "reason": "No enabled numeric settings input exposed by production."
+  },
+  "finished_at": "2026-08-06T14:19:56.547Z",
+  "passed": 8,
+  "failed": 0,
+  "not_run": 0,
+  "success_rate_percent": 100,
+  "availability": true,
+  "operational": true
+}

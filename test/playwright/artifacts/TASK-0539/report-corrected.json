@@ -1,0 +1,142 @@
+{
+  "id": "HND-0539-REWRITE-RERUN",
+  "checks": [
+    {
+      "name": "exact v8 status",
+      "status": "passed",
+      "detail": {
+        "code": 200,
+        "body": {
+          "runtime_revision": "28110971cb1f7a176e0d8702b817025b95e7b4b9",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "v8 merged logical rows 1024x768",
+      "status": "passed",
+      "detail": {
+        "tabs": [
+          {
+            "text": "Отображение",
+            "width": 149,
+            "selected": "true",
+            "tabindex": 0
+          },
+          {
+            "text": "Пики",
+            "width": 149,
+            "selected": "false",
+            "tabindex": -1
+          }
+        ],
+        "text": "График\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nПараметры\nНормировать Y\nПоказывать маркеры\nПределы времени\nЕдиницы времени\nps\nns\nμs\nms\ns\nмин\nч\nдн\nг\nПределы X\ns\nПределы оси Y\nПределы Y\nСвязь областей\nСвязать время",
+        "scroll": 1,
+        "footer": 1,
+        "apply": 1,
+        "rowIds": [
+          "settings-field-display.plot_type",
+          "settings-field-display.show_legend",
+          "settings-field-time.normalize_y",
+          "settings-field-time.show_markers",
+          "settings-field-time.units",
+          "settings-field-time.x_limits",
+          "settings-field-time.y_limits",
+          "settings-field-time.link_time"
+        ],
+        "rowUnique": true,
+        "x": [
+          "max",
+          "min"
+        ],
+        "y": [
+          "max",
+          "min"
+        ]
+      }
+    },
+    {
+      "name": "v8 roving 1024x768",
+      "status": "passed",
+      "detail": {
+        "end": "true",
+        "home": "true"
+      }
+    },
+    {
+      "name": "v8 merged logical rows 1440x900",
+      "status": "passed",
+      "detail": {
+        "tabs": [
+          {
+            "text": "Отображение",
+            "width": 178,
+            "selected": "true",
+            "tabindex": 0
+          },
+          {
+            "text": "Пики",
+            "width": 178,
+            "selected": "false",
+            "tabindex": -1
+          }
+        ],
+        "text": "График\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nПараметры\nНормировать Y\nПоказывать маркеры\nПределы времени\nЕдиницы времени\nps\nns\nμs\nms\ns\nмин\nч\nдн\nг\nПределы X\ns\nПределы оси Y\nПределы Y\nСвязь областей\nСвязать время",
+        "scroll": 1,
+        "footer": 1,
+        "apply": 1,
+        "rowIds": [
+          "settings-field-display.plot_type",
+          "settings-field-display.show_legend",
+          "settings-field-time.normalize_y",
+          "settings-field-time.show_markers",
+          "settings-field-time.units",
+          "settings-field-time.x_limits",
+          "settings-field-time.y_limits",
+          "settings-field-time.link_time"
+        ],
+        "rowUnique": true,
+        "x": [
+          "max",
+          "min"
+        ],
+        "y": [
+          "max",
+          "min"
+        ]
+      }
+    },
+    {
+      "name": "v8 roving 1440x900",
+      "status": "passed",
+      "detail": {
+        "end": "true",
+        "home": "true"
+      }
+    },
+    {
+      "name": "no output refetch",
+      "status": "passed",
+      "detail": {
+        "out0": 1,
+        "out1": 1
+      }
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200
+    }
+  ],
+  "errors": [],
+  "opened": 1,
+  "closed": 1,
+  "cleanup": "passed"
+}

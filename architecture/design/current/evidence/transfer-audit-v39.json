@@ -1,0 +1,14 @@
+{
+  "design_version": 39,
+  "status": "passed",
+  "checks": [
+    {"id":"sample-window-controller-declared","passed":true,"detail":"TASK-0134 has one UI-only transferable controller and no CSS, markup, endpoint or backend mutation."},
+    {"id":"constants-exact","passed":true,"detail":"API batch 500, DOM cap 1000 and prefetch threshold 100 rows are exported constants."},
+    {"id":"bidirectional-window-exact","passed":true,"detail":"Ranges progress 1–500, 1–1000, 501–1500 downward and return to 1–1000 upward."},
+    {"id":"scroll-anchor-preserved","passed":true,"detail":"Downward front trim returns -500 rows; upward prepend returns +500 rows; Frontend multiplies by measured rendered row height."},
+    {"id":"authoritative-offsets-and-footer","passed":true,"detail":"Provider half-open start/end offsets drive the DOM window and exact one-based footer {start}–{end} из {total}."},
+    {"id":"guards-and-scale","passed":true,"detail":"Stable signal/token guards reject stale responses, same-direction requests deduplicate and total 100000001 never allocates a full array."},
+    {"id":"existing-table-preserved","passed":true,"detail":"Columns, row styles, scroll owner, footer placement, Values action and loading/empty/error visuals are unchanged."},
+    {"id":"immutable-production-document","passed":true,"detail":"public/index.html and existing module identities remain unchanged; controller integrates into public/js/app.js in place."}
+  ]
+}

@@ -26,9 +26,9 @@ function pane_output_by_id(snapshot, pane_id::AbstractString)
     ))
 end
 
-@testset "TASK-0046 ordered real renderer outputs for all pane types" begin
+@testset "TASK-0068 active pane is the only calculated and returned output" begin
     reset_pane_output_doubles!()
-    state = PANE_OUTPUTS.default_signal_analyser_state()
+    state = PANE_OUTPUTS.test_state_with_complex_signal()
     first_name, second_name = [signal.name for signal in state.signals]
 
     response = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
@@ -64,52 +64,47 @@ end
     outputs = entry["outputs"]
 
     @test Set(keys(entry)) == Set(["display_id", "layout", "outputs"])
-    @test pane_output_ids(snapshot) == ["pane-1", "pane-2", "pane-3", "pane-4"]
-    @test [output["plot_type"] for output in outputs] == [
-        "time", "spectrum", "spectrogram", "persistence",
-    ]
-    @test all(Set(keys(output)) == Set([
+    @test pane_output_ids(snapshot) == ["pane-1"]
+    @test only(outputs)["plot_type"] == "time"
+    @test Set(keys(only(outputs))) == Set([
         "pane_id", "plot_type", "signal_bindings", "analysis_signal", "output",
-    ]) for output in outputs)
-    @test all(Set(keys(output["output"])) == Set([
+    ])
+    @test Set(keys(only(outputs)["output"])) == Set([
         "isready", "success", "error", "data",
-    ]) for output in outputs)
-    @test all(output["output"]["isready"] === true for output in outputs)
-    @test all(output["output"]["success"] === true for output in outputs)
-    @test all(isempty(output["output"]["error"]) for output in outputs)
+    ])
+    @test only(outputs)["output"]["isready"] === true
+    @test only(outputs)["output"]["success"] === true
+    @test isempty(only(outputs)["output"]["error"])
+    @test isempty(PANE_OUTPUTS.SPECTRUM_CALLS)
+    @test isempty(PANE_OUTPUTS.SPECTROGRAM_CALLS)
+    @test isempty(PANE_OUTPUTS.PERSISTENCE_CALLS)
 
-    time_output = outputs[1]
-    spectrum_output = outputs[2]
-    spectrogram_output = outputs[3]
-    persistence_output = outputs[4]
-    @test time_output["signal_bindings"] == [second_name, first_name]
-    @test [trace["signal"] for trace in time_output["output"]["data"]] == [second_name, first_name]
-    @test spectrum_output["signal_bindings"] == [second_name, first_name]
-    @test [trace["signal"] for trace in spectrum_output["output"]["data"]] == [second_name, first_name]
-    @test all(trace["frequency_scale"] == "linear" for trace in spectrum_output["output"]["data"])
-    @test spectrogram_output["analysis_signal"] == second_name
-    @test spectrogram_output["output"]["data"]["type"] == "heatmap"
-    @test spectrogram_output["output"]["data"]["signal"] == second_name
-    @test !isempty(spectrogram_output["output"]["data"]["z"])
-    @test persistence_output["analysis_signal"] == first_name
-    @test persistence_output["output"]["data"]["type"] == "heatmap"
-    @test persistence_output["output"]["data"]["signal"] == first_name
-    @test !isempty(persistence_output["output"]["data"]["z"])
+    time_output = only(outputs)
+    @test time_output["signal_bindings"] == [first_name, second_name]
+    @test [(trace["signal"], trace["component"]) for trace in time_output["output"]["data"]] == [
+        (first_name, ""),
+        (second_name, "real"), (second_name, "imaginary"),
+    ]
     @test state.view.state_revision == revision
     @test state.display_layouts["display-1"].active_pane_id == active_pane_id
 
-    calls = (
-        length(PANE_OUTPUTS.SPECTRUM_CALLS),
-        length(PANE_OUTPUTS.SPECTROGRAM_CALLS),
-        length(PANE_OUTPUTS.PERSISTENCE_CALLS),
+    for (pane_id, expected_calls) in (
+        ("pane-2", (2, 0, 0)),
+        ("pane-3", (2, 1, 0)),
+        ("pane-4", (2, 1, 1)),
     )
-    repeated = PANE_OUTPUTS.signal_analyser_layouts_snapshot(state)
-    @test repeated == snapshot
-    @test calls == (
-        length(PANE_OUTPUTS.SPECTRUM_CALLS),
-        length(PANE_OUTPUTS.SPECTROGRAM_CALLS),
-        length(PANE_OUTPUTS.PERSISTENCE_CALLS),
-    )
+        response = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
+            "state_revision" => state.view.state_revision,
+            "operation" => "select_pane",
+            "display_id" => "display-1",
+            "version" => 1,
+            "pane_id" => pane_id,
+        ))
+        output = only(only(response["layouts"])["outputs"])
+        @test output["pane_id"] == pane_id
+        @test output["output"]["success"] === true
+        @test (length(PANE_OUTPUTS.SPECTRUM_CALLS), length(PANE_OUTPUTS.SPECTROGRAM_CALLS), length(PANE_OUTPUTS.PERSISTENCE_CALLS)) == expected_calls
+    end
 
     service = PANE_OUTPUTS.SignalAnalyserSessionService()
     document = PANE_OUTPUTS.export_signal_analyser_session(service, state)["document"]
@@ -122,10 +117,49 @@ end
         "document" => document,
     ))
     imported_snapshot = PANE_OUTPUTS.signal_analyser_layouts_snapshot(imported)
-    @test pane_output_ids(imported_snapshot) == ["pane-1", "pane-2", "pane-3", "pane-4"]
-    @test [output["plot_type"] for output in only(imported_snapshot["layouts"])["outputs"]] == [
-        "time", "spectrum", "spectrogram", "persistence",
-    ]
+    @test pane_output_ids(imported_snapshot) == ["pane-4"]
+    @test only(only(imported_snapshot["layouts"])["outputs"])["plot_type"] == "persistence"
+    @test PANE_OUTPUTS.export_signal_analyser_session(service, imported)["document"]["state"] == document["state"]
+end
+
+@testset "TASK-0068 inactive Displays publish no outputs and call no providers" begin
+    reset_pane_output_doubles!()
+    state = PANE_OUTPUTS.test_state_with_complex_signal()
+    signal_name = first(state.signals).name
+    resized = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => 0, "operation" => "resize", "display_id" => "display-1",
+        "version" => 1, "variant" => "2x2", "rows" => 2, "columns" => 2,
+    ))
+    configured = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => resized["state_revision"], "operation" => "update_pane",
+        "display_id" => "display-1", "version" => 1, "pane_id" => "pane-2",
+        "plot_type" => "spectrum", "signal_bindings" => [signal_name],
+    ))
+    created = PANE_OUTPUTS.apply_signal_analyser_display!(state, Dict(
+        "state_revision" => configured["state_revision"], "operation" => "create",
+    ))
+    entries = PANE_OUTPUTS.signal_analyser_layouts_snapshot(state)["layouts"]
+    @test [entry["display_id"] for entry in entries] == ["display-1", "display-2"]
+    @test isempty(entries[1]["outputs"])
+    @test length(entries[2]["outputs"]) == 1
+    @test state.output_manager.active_page_id == "display-2::pane-1"
+    @test state.output_manager.need_update_pages["display-1::pane-2"]
+    @test isempty(PANE_OUTPUTS.PERSISTENCE_CALLS)
+
+    selected_display = PANE_OUTPUTS.apply_signal_analyser_display!(state, Dict(
+        "state_revision" => created["state_revision"], "operation" => "select",
+        "display_id" => "display-1",
+    ))
+    active = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => selected_display["state_revision"], "operation" => "select_pane",
+        "display_id" => "display-1", "version" => 1, "pane_id" => "pane-2",
+    ))
+    @test active["layouts"][1]["display_id"] == "display-1"
+    @test only(active["layouts"][1]["outputs"])["pane_id"] == "pane-2"
+    @test isempty(active["layouts"][2]["outputs"])
+    @test state.output_manager.active_page_id == "display-1::pane-2"
+    @test state.output_manager.need_update_pages["display-1::pane-2"]
+    @test isempty(PANE_OUTPUTS.PERSISTENCE_CALLS)
 end
 
 @testset "TASK-0046 inactive Spectrum frequency scale survives session derivation" begin
@@ -167,32 +201,45 @@ end
         "version" => 1,
         "pane_id" => "pane-2",
     ))
-    logged = PANE_OUTPUTS.apply_signal_analyser_view!(state, Dict(
+    # Frequency scale is an immediate provider-free presentation setting.
+    # Grouped settings snapshots through /api/view are no longer accepted.
+    settings_service = PANE_OUTPUTS.SignalSettingsService()
+    provider_counts = (
+        length(PANE_OUTPUTS.SPECTRUM_CALLS), length(PANE_OUTPUTS.SPECTROGRAM_CALLS),
+        length(PANE_OUTPUTS.PERSISTENCE_CALLS), length(PANE_OUTPUTS.PSPECTRUM_CALLS),
+    )
+    need_update_before = copy(state.output_manager.need_update_pages)
+    logged = PANE_OUTPUTS.apply_signal_setting!(settings_service, state, Dict(
         "state_revision" => response["state_revision"],
-        "spectrum_settings" => Dict(
-            "scale" => "db",
-            "frequency_scale" => "log",
-            "leakage" => 0.5,
-            "frequency_limits" => nothing,
-        ),
+        "display_id" => "display-1",
+        "field_id" => "spectrum.frequency_scale",
+        "value" => "log",
     ))
+    @test (
+        length(PANE_OUTPUTS.SPECTRUM_CALLS), length(PANE_OUTPUTS.SPECTROGRAM_CALLS),
+        length(PANE_OUTPUTS.PERSISTENCE_CALLS), length(PANE_OUTPUTS.PSPECTRUM_CALLS),
+    ) == provider_counts
+    @test state.output_manager.need_update_pages == need_update_before
     service = PANE_OUTPUTS.SignalAnalyserSessionService()
     document = PANE_OUTPUTS.export_signal_analyser_session(service, state)["document"]
     inactive = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
-        "state_revision" => logged["state_revision"],
+        "state_revision" => logged["state"]["state_revision"],
         "operation" => "select_pane",
         "display_id" => "display-1",
         "version" => 1,
         "pane_id" => "pane-1",
     ))
 
-    log_output = pane_output_by_id(inactive, "pane-2")
+    @test pane_output_ids(inactive) == ["pane-1"]
     @test only(inactive["layouts"])["layout"]["active_pane_id"] == "pane-1"
     @test state.display_layouts["display-1"].panes[2].spectrum_settings.frequency_scale ==
         PANE_OUTPUTS.LOG_SPECTRUM_FREQUENCY_SCALE
-    @test all(trace["frequency_scale"] == "log" for trace in log_output["output"]["data"])
+    active_log = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => inactive["state_revision"], "operation" => "select_pane",
+        "display_id" => "display-1", "version" => 1, "pane_id" => "pane-2",
+    ))
     @test all(trace["frequency_scale"] == "log" for trace in
-        pane_output_by_id(PANE_OUTPUTS.signal_analyser_layouts_snapshot(state), "pane-2")["output"]["data"])
+        only(only(active_log["layouts"])["outputs"])["output"]["data"])
 
     imported = PANE_OUTPUTS.default_signal_analyser_state()
     imported_response = PANE_OUTPUTS.import_signal_analyser_session!(service, imported, Dict(
@@ -206,14 +253,19 @@ end
         "version" => 1,
         "pane_id" => "pane-1",
     ))
-    imported_output = pane_output_by_id(imported_inactive, "pane-2")
+    @test pane_output_ids(imported_inactive) == ["pane-1"]
     @test only(imported_inactive["layouts"])["layout"]["active_pane_id"] == "pane-1"
     @test imported.display_layouts["display-1"].panes[2].spectrum_settings.frequency_scale ==
         PANE_OUTPUTS.LOG_SPECTRUM_FREQUENCY_SCALE
-    @test all(trace["frequency_scale"] == "log" for trace in imported_output["output"]["data"])
+    imported_active_log = PANE_OUTPUTS.apply_signal_analyser_layout!(imported, Dict(
+        "state_revision" => imported_inactive["state_revision"], "operation" => "select_pane",
+        "display_id" => "display-1", "version" => 1, "pane_id" => "pane-2",
+    ))
+    @test all(trace["frequency_scale"] == "log" for trace in
+        only(only(imported_active_log["layouts"])["outputs"])["output"]["data"])
 end
 
-@testset "TASK-0046 empty panes and bounded 16-pane topology" begin
+@testset "TASK-0068 empty panes and bounded 100-pane metadata topology" begin
     reset_pane_output_doubles!()
     state = PANE_OUTPUTS.default_signal_analyser_state()
     response = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
@@ -236,7 +288,11 @@ end
             "plot_type" => plot_type,
             "signal_bindings" => String[],
         ))
-        empty_output = pane_output_by_id(response, "pane-2")
+        response = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
+            "state_revision" => response["state_revision"], "operation" => "select_pane",
+            "display_id" => "display-1", "version" => 1, "pane_id" => "pane-2",
+        ))
+        empty_output = only(only(response["layouts"])["outputs"])
         output = empty_output["output"]
         @test empty_output["analysis_signal"] === nothing
         @test output["isready"] === true
@@ -251,31 +307,40 @@ end
             @test isempty(output["data"]["y"])
             @test isempty(output["data"]["z"])
         end
+        response = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
+            "state_revision" => response["state_revision"], "operation" => "select_pane",
+            "display_id" => "display-1", "version" => 1, "pane_id" => "pane-1",
+        ))
     end
 
     bounded = PANE_OUTPUTS.default_signal_analyser_state()
+    reset_pane_output_doubles!()
     max_response = PANE_OUTPUTS.apply_signal_analyser_layout!(bounded, Dict(
         "state_revision" => 0,
         "operation" => "resize",
         "display_id" => "display-1",
         "version" => 1,
-        "variant" => "4x4",
-        "rows" => 4,
-        "columns" => 4,
+        "variant" => "10x10",
+        "rows" => 10,
+        "columns" => 10,
     ))
     max_entry = only(max_response["layouts"])
-    @test length(max_entry["layout"]["panes"]) == 16
-    @test length(max_entry["outputs"]) == 16
-    @test [pane["id"] for pane in max_entry["layout"]["panes"]] == [
-        output["pane_id"] for output in max_entry["outputs"]
-    ]
-    @test count(output -> isempty(output["signal_bindings"]), max_entry["outputs"]) == 15
-    @test all(output["output"]["success"] === true for output in max_entry["outputs"])
+    @test length(max_entry["layout"]["panes"]) == 100
+    @test pane_output_ids(max_response) == ["pane-1"]
+    @test all(
+        pane -> pane["signal_bindings"] == String[],
+        max_entry["layout"]["panes"],
+    )
+    @test Set(keys(bounded.output_manager.need_update_pages)) == Set(
+        "display-1::pane-$index" for index in 1:100
+    )
+    @test only(max_entry["outputs"])["output"]["success"] === true
+    @test isempty(PANE_OUTPUTS.SPECTRUM_CALLS) && isempty(PANE_OUTPUTS.SPECTROGRAM_CALLS) && isempty(PANE_OUTPUTS.PERSISTENCE_CALLS)
 end
 
 @testset "TASK-0046 pane calculation error isolation and GET POST 409 parity" begin
     reset_pane_output_doubles!()
-    state = PANE_OUTPUTS.default_signal_analyser_state()
+    state = PANE_OUTPUTS.test_state_with_complex_signal()
     _, second_name = [signal.name for signal in state.signals]
     resized = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
         "state_revision" => 0,
@@ -286,7 +351,6 @@ end
         "rows" => 1,
         "columns" => 2,
     ))
-    PANE_OUTPUTS.SPECTROGRAM_FAILURE[] = true
     failed = PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
         "state_revision" => resized["state_revision"],
         "operation" => "update_pane",
@@ -296,24 +360,37 @@ end
         "plot_type" => "spectrogram",
         "signal_bindings" => [second_name],
     ))
-    first_output = pane_output_by_id(failed, "pane-1")
-    failed_output = pane_output_by_id(failed, "pane-2")
-    @test first_output["output"]["success"] === true
-    @test failed_output["output"]["isready"] === true
-    @test failed_output["output"]["success"] === false
-    @test occursin("deterministic Spectrogram provider failure", failed_output["output"]["error"])
-    @test failed_output["output"]["data"]["type"] == "heatmap"
-    @test isempty(failed_output["output"]["data"]["z"])
+    PANE_OUTPUTS.SPECTROGRAM_FAILURE[] = true
+    failed = try
+        PANE_OUTPUTS.apply_signal_analyser_layout!(state, Dict(
+            "state_revision" => failed["state_revision"], "operation" => "select_pane",
+            "display_id" => "display-1", "version" => 1, "pane_id" => "pane-2",
+        ))
+    catch caught
+        caught
+    finally
+        PANE_OUTPUTS.SPECTROGRAM_FAILURE[] = false
+    end
+    @test failed isa Dict{String,Any}
+    if failed isa Dict{String,Any}
+        failed_output = only(only(failed["layouts"])["outputs"])
+        @test failed_output["output"]["isready"] === true
+        @test failed_output["output"]["success"] === false
+        @test occursin("deterministic Spectrogram provider failure", failed_output["output"]["error"])
+        @test failed_output["output"]["data"]["type"] == "heatmap"
+        @test isempty(failed_output["output"]["data"]["z"])
+    end
     @test state.display_layouts["display-1"].panes[2].plot_type == PANE_OUTPUTS.SPECTROGRAM_PLOT
 
-    PANE_OUTPUTS.SPECTROGRAM_FAILURE[] = false
     revision = state.view.state_revision
     active_pane_id = state.display_layouts["display-1"].active_pane_id
     recovered = PANE_OUTPUTS.signal_analyser_layouts_snapshot(state)
-    recovered_output = pane_output_by_id(recovered, "pane-2")
+    recovered_output = only(only(recovered["layouts"])["outputs"])
     @test recovered_output["output"]["success"] === true
     @test recovered_output["output"]["error"] == ""
-    @test !isempty(recovered_output["output"]["data"]["z"])
+    recovered_output["output"]["data"] isa AbstractDict && @test !isempty(
+        recovered_output["output"]["data"]["z"],
+    )
     @test state.view.state_revision == revision
     @test state.display_layouts["display-1"].active_pane_id == active_pane_id
 
@@ -322,11 +399,31 @@ end
         PANE_OUTPUTS.SignalAnalyserStaleStateError(revision - 1, revision),
     )
     @test stale.status == 409
-    @test Set(keys(stale.body["current"])) == Set(keys(recovered))
+    @test Set(keys(stale.body["current"])) == Set([
+        "ok", "state_revision", "calculation_revision", "active_display_id", "layouts", "state",
+    ])
     @test Set(keys(only(stale.body["current"]["layouts"]))) == Set([
         "display_id", "layout", "outputs",
     ])
-    @test pane_output_ids(stale.body["current"]) == pane_output_ids(recovered)
+    # Stale envelopes carry the state-lite contract: one status per pane of
+    # the active Display, while the intentionally eager legacy snapshot above
+    # contains only the selected pane's full output data.
+    stale_outputs = only(stale.body["current"]["layouts"])["outputs"]
+    @test [output["pane_id"] for output in stale_outputs] == ["pane-1", "pane-2"]
+    @test stale_outputs[1]["output"] == Dict{String,Any}(
+        "isready" => true,
+        "success" => true,
+        "error" => "",
+        "data" => Any[],
+    )
+    @test stale_outputs[1]["need_update"] === false
+    @test stale_outputs[2]["output"] == Dict{String,Any}(
+        "isready" => false,
+        "success" => false,
+        "error" => "",
+        "data" => Any[],
+    )
+    @test stale_outputs[2]["need_update"] === true
     @test state.view.state_revision == revision
     @test state.display_layouts["display-1"].active_pane_id == active_pane_id
     reset_pane_output_doubles!()

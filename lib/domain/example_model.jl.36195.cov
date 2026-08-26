@@ -1,0 +1,10 @@
+        - struct ExampleItem
+        1     id::String
+        -     title::String
+        -     value::Float64
+        - end
+        - 
+        - function item_score(item::ExampleItem)
+        2     clamp01(item.value)
+        - end
+        - 

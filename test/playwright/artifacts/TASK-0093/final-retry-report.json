@@ -1,0 +1,117 @@
+{
+  "id": "HND-TASK-0093-E2E-FINAL-RETRY",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "bd427671d3b791339250a7d351ce854ea4e5d1e0",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "exact revision and semantic readiness",
+      "status": "passed",
+      "detail": {
+        "nav": 200,
+        "status": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "bd427671d3b791339250a7d351ce854ea4e5d1e0",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      }
+    },
+    {
+      "name": "draft 2x3 preview is 6 cells, 3 columns × 2 rows",
+      "status": "passed",
+      "detail": {
+        "cells": 6,
+        "visible": true,
+        "cols": "106.656px 106.672px 106.656px",
+        "rows": "49px 49px"
+      }
+    },
+    {
+      "name": "Cancel preserves layout state",
+      "status": "passed",
+      "detail": {}
+    },
+    {
+      "name": "Measurements loads on demand with search/no checkboxes/exact 12 headers",
+      "status": "failed",
+      "detail": {
+        "gets": 1,
+        "m": {
+          "search": true,
+          "checks": 0,
+          "headers": [],
+          "rows": []
+        }
+      }
+    },
+    {
+      "name": "Measurements search hides/restores rows",
+      "status": "passed",
+      "detail": {
+        "empty": "Загрузка измерений…"
+      }
+    },
+    {
+      "name": "Color swatch is left-aligned with ~8px padding",
+      "status": "passed",
+      "detail": {
+        "color": {
+          "header": {
+            "x": 449.59375,
+            "y": 741,
+            "width": 196.078125,
+            "height": 32,
+            "top": 741,
+            "right": 645.671875,
+            "bottom": 773,
+            "left": 449.59375
+          },
+          "cell": {
+            "x": 449.59375,
+            "y": 773,
+            "width": 196.078125,
+            "height": 32,
+            "top": 773,
+            "right": 645.671875,
+            "bottom": 805,
+            "left": 449.59375
+          },
+          "swatch": {
+            "x": 457.59375,
+            "y": 781.140625,
+            "width": 16,
+            "height": 16,
+            "top": 781.140625,
+            "right": 473.59375,
+            "bottom": 797.140625,
+            "left": 457.59375
+          }
+        }
+      }
+    }
+  ],
+  "screenshots": [
+    "final-layout-draft-2x3.png",
+    "final-measurements.png",
+    "final-color-alignment.png"
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "preexisting_page_count": 0,
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 6,
+    "passed": 5,
+    "failed": 1
+  }
+}

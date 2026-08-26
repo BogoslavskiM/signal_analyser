@@ -1,0 +1,129 @@
+{
+  "id": "HND-TASK-0092-E2E-MENU-RECHECK",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "c9b05036edb44f23c514bd950024bbe676e6538f",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "exact ready revision",
+      "status": "passed",
+      "detail": {
+        "main": 200,
+        "status": {
+          "status": 200,
+          "body": {
+            "runtime_revision": "c9b05036edb44f23c514bd950024bbe676e6538f",
+            "project": "example_project",
+            "ready": true,
+            "ok": true
+          }
+        }
+      }
+    },
+    {
+      "name": "menu is fully in viewport and flips above trigger",
+      "status": "failed",
+      "detail": {
+        "open": {
+          "menu": {
+            "x": 1187,
+            "y": 713,
+            "width": 244,
+            "height": 182,
+            "top": 713,
+            "right": 1431,
+            "bottom": 895,
+            "left": 1187
+          },
+          "trigger": {
+            "x": 1399,
+            "y": 678,
+            "width": 32,
+            "height": 31,
+            "top": 678,
+            "right": 1431,
+            "bottom": 709,
+            "left": 1399
+          },
+          "headers": [
+            "",
+            "Имя",
+            "Цвет",
+            "Частота дискретизации",
+            "Отсчёты",
+            "Длительность",
+            "Тип"
+          ],
+          "lastText": "Вещественный",
+          "actionsInLast": true
+        }
+      }
+    },
+    {
+      "name": "hiding Type moves actions into Duration",
+      "status": "passed",
+      "detail": {
+        "hidden": {
+          "headers": [
+            "",
+            "Имя",
+            "Цвет",
+            "Частота дискретизации",
+            "Отсчёты",
+            "Длительность"
+          ],
+          "lastText": "0.24951171875",
+          "actionsInLast": true
+        }
+      }
+    },
+    {
+      "name": "restoring Type moves actions back into Type",
+      "status": "passed",
+      "detail": {
+        "restored": {
+          "headers": [
+            "",
+            "Имя",
+            "Цвет",
+            "Частота дискретизации",
+            "Отсчёты",
+            "Длительность",
+            "Тип"
+          ],
+          "lastText": "Вещественный",
+          "actionsInLast": true
+        }
+      }
+    },
+    {
+      "name": "outside click closes menu and restores trigger focus",
+      "status": "failed",
+      "detail": {}
+    },
+    {
+      "name": "Escape closes menu and restores trigger focus",
+      "status": "passed",
+      "detail": {}
+    }
+  ],
+  "screenshots": [
+    "menu-recheck-open.png"
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "residual_mutations": [],
+  "preexisting_page_count": 0,
+  "tab_cleanup_status": "passed",
+  "summary": {
+    "planned": 6,
+    "passed": 4,
+    "failed": 2
+  }
+}

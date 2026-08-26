@@ -1,0 +1,124 @@
+{
+  "id": "HND-0539",
+  "checks": [
+    {
+      "name": "exact v8 status",
+      "status": "passed",
+      "detail": {
+        "c": 200,
+        "b": {
+          "runtime_revision": "28110971cb1f7a176e0d8702b817025b95e7b4b9",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "v8 merged Display 1024x768",
+      "status": "failed",
+      "detail": {
+        "tabs": [
+          {
+            "t": "Отображение",
+            "b": {
+              "w": 149,
+              "h": 32
+            },
+            "sel": "true",
+            "i": 0
+          },
+          {
+            "t": "Пики",
+            "b": {
+              "w": 149,
+              "h": 32
+            },
+            "sel": "false",
+            "i": -1
+          }
+        ],
+        "txt": "График\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nПараметры\nНормировать Y\nПоказывать маркеры\nПределы времени\nЕдиницы времени\nps\nns\nμs\nms\ns\nмин\nч\nдн\nг\nПределы X\ns\nПределы оси Y\nПределы Y\nСвязь областей\nСвязать время",
+        "scroll": 1,
+        "footer": 1,
+        "apply": 1,
+        "dupes": [
+          "time.x_limits",
+          "time.y_limits"
+        ]
+      }
+    },
+    {
+      "name": "v8 roving 1024x768",
+      "status": "passed",
+      "detail": {
+        "end": "true",
+        "home": "true"
+      }
+    },
+    {
+      "name": "v8 merged Display 1440x900",
+      "status": "failed",
+      "detail": {
+        "tabs": [
+          {
+            "t": "Отображение",
+            "b": {
+              "w": 178,
+              "h": 32
+            },
+            "sel": "true",
+            "i": 0
+          },
+          {
+            "t": "Пики",
+            "b": {
+              "w": 178,
+              "h": 32
+            },
+            "sel": "false",
+            "i": -1
+          }
+        ],
+        "txt": "График\nТип графика\nВременная область\nСпектр\nСпектрограмма\nСпектр персистентности\nПоказывать легенду\nПараметры\nНормировать Y\nПоказывать маркеры\nПределы времени\nЕдиницы времени\nps\nns\nμs\nms\ns\nмин\nч\nдн\nг\nПределы X\ns\nПределы оси Y\nПределы Y\nСвязь областей\nСвязать время",
+        "scroll": 1,
+        "footer": 1,
+        "apply": 1,
+        "dupes": [
+          "time.x_limits",
+          "time.y_limits"
+        ]
+      }
+    },
+    {
+      "name": "v8 roving 1440x900",
+      "status": "passed",
+      "detail": {
+        "end": "true",
+        "home": "true"
+      }
+    },
+    {
+      "name": "v8 tabs no output refetch",
+      "status": "passed",
+      "detail": {
+        "o0": 1,
+        "o1": 1
+      }
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/status",
+      "status": 200
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/outputs/active?display_id=display-1&pane_id=pane-1",
+      "status": 200
+    }
+  ],
+  "opened": 1,
+  "closed": 1,
+  "errors": [],
+  "cleanup": "passed"
+}

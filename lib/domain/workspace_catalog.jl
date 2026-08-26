@@ -115,20 +115,25 @@ end
 struct WorkspaceCatalogEnumeration
     variables::Tuple{Vararg{WorkspaceVariableMetadata}}
     truncated::Bool
+    filtered::Int
     total::Int
 
     function WorkspaceCatalogEnumeration(
         variables::AbstractVector{WorkspaceVariableMetadata},
         truncated::Bool,
+        filtered::Integer,
         total::Integer,
     )
         0 <= total <= WORKSPACE_CATALOG_JSON_SAFE_INTEGER || throw(ArgumentError(
             "Некорректное total enumeration рабочей области",
         ))
-        total >= length(variables) || throw(ArgumentError(
-            "Total enumeration меньше числа переменных",
+        0 <= filtered <= total || throw(ArgumentError(
+            "Некорректное filtered enumeration рабочей области",
         ))
-        truncated == (total > length(variables)) || throw(ArgumentError(
+        total >= length(variables) + filtered || throw(ArgumentError(
+            "Total enumeration меньше числа опубликованных и отфильтрованных переменных",
+        ))
+        truncated == (total > length(variables) + filtered) || throw(ArgumentError(
             "Флаг truncated enumeration не согласован с total",
         ))
         length(variables) <= WORKSPACE_CATALOG_MAX_ENTRIES || throw(ArgumentError(
@@ -136,9 +141,15 @@ struct WorkspaceCatalogEnumeration
         ))
         names = [metadata.name for metadata in variables]
         allunique(names) || throw(ArgumentError("Имена enumeration должны быть уникальными"))
-        new(Tuple(variables), truncated, Int(total))
+        new(Tuple(variables), truncated, Int(filtered), Int(total))
     end
 end
+
+WorkspaceCatalogEnumeration(
+    variables::AbstractVector{WorkspaceVariableMetadata},
+    truncated::Bool,
+    total::Integer,
+) = WorkspaceCatalogEnumeration(variables, truncated, 0, total)
 
 struct WorkspaceCatalogEntry
     variable_id::String
@@ -176,6 +187,7 @@ struct WorkspaceCatalogSnapshot
     created_at::Dates.DateTime
     expires_at::Dates.DateTime
     truncated::Bool
+    filtered::Int
     total::Int
     variables::Tuple{Vararg{WorkspaceCatalogEntry}}
     variable_index::Tuple{Vararg{Pair{String,Int}}}
@@ -185,6 +197,7 @@ struct WorkspaceCatalogSnapshot
         created_at::Dates.DateTime,
         expires_at::Dates.DateTime,
         truncated::Bool,
+        filtered::Integer,
         total::Integer,
         variables::AbstractVector{WorkspaceCatalogEntry},
     )
@@ -198,10 +211,13 @@ struct WorkspaceCatalogSnapshot
         0 <= total <= WORKSPACE_CATALOG_JSON_SAFE_INTEGER || throw(ArgumentError(
             "Некорректное total каталога рабочей области",
         ))
-        total >= length(variables) || throw(ArgumentError(
-            "Total каталога меньше числа опубликованных переменных",
+        0 <= filtered <= total || throw(ArgumentError(
+            "Некорректное filtered каталога рабочей области",
         ))
-        truncated == (total > length(variables)) || throw(ArgumentError(
+        total >= length(variables) + filtered || throw(ArgumentError(
+            "Total каталога меньше числа опубликованных и отфильтрованных переменных",
+        ))
+        truncated == (total > length(variables) + filtered) || throw(ArgumentError(
             "Флаг truncated не согласован с total каталога",
         ))
         length(variables) <= WORKSPACE_CATALOG_MAX_ENTRIES || throw(ArgumentError(
@@ -217,12 +233,31 @@ struct WorkspaceCatalogSnapshot
             created_at,
             expires_at,
             truncated,
+            Int(filtered),
             Int(total),
             Tuple(variables),
             Tuple(index),
         )
     end
 end
+
+
+WorkspaceCatalogSnapshot(
+    catalog_revision::AbstractString,
+    created_at::Dates.DateTime,
+    expires_at::Dates.DateTime,
+    truncated::Bool,
+    total::Integer,
+    variables::AbstractVector{WorkspaceCatalogEntry},
+) = WorkspaceCatalogSnapshot(
+    catalog_revision,
+    created_at,
+    expires_at,
+    truncated,
+    0,
+    total,
+    variables,
+)
 
 struct WorkspaceCatalogRegistry
     snapshots::Tuple{Vararg{WorkspaceCatalogSnapshot}}

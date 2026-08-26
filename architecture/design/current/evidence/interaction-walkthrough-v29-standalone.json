@@ -1,0 +1,133 @@
+{
+  "design_version": 29,
+  "prototype_entry": "prototype/index.html",
+  "protocol": "file://",
+  "production_base": [
+    "public/index.html",
+    "public/css/theme.css",
+    "public/css/app.css",
+    "public/js/api.js",
+    "public/js/value-select.js",
+    "public/js/numeric.js",
+    "public/js/settings.js",
+    "public/js/layouts.js",
+    "public/vendor/vue/3.5.41/vue.global.prod.js",
+    "public/js/components/explicit-apply.js",
+    "public/js/native-session-io.js",
+    "public/js/app.js"
+  ],
+  "generated_at": "2026-08-19T08:39:28.905Z",
+  "passed": 18,
+  "failed": 0,
+  "runtime_errors": [],
+  "results": [
+    {
+      "id": "01-standalone-file-no-network-no-cors",
+      "passed": true,
+      "detail": "{\"protocol\":\"file:\",\"network\":[],\"zones\":[{\"slot\":\"toolbar\",\"children\":2,\"text\":171},{\"slot\":\"workspace\",\"children\":3,\"text\":407},{\"slot\":\"settings\",\"children\":4,\"text\":414},{\"slot\":\"inspector\",\"children\":2,\"text\":594}],\"errorHidden\":true}",
+      "screenshot": "screenshots/v29--standalone-production-signal--1440x900.png"
+    },
+    {
+      "id": "02-production-shell-and-components",
+      "passed": true,
+      "detail": "{\"toolbar\":true,\"workspace\":true,\"settings\":true,\"inspector\":true,\"plots\":2,\"css\":[\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/public/css/theme.css\",\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/public/css/app.css\",\"file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/current/frontend-source/integration/css/task-0112-0115-additions.css\"]}",
+      "screenshot": "screenshots/v29--standalone-production-signal--1440x900.png"
+    },
+    {
+      "id": "03-signal-first-selected-summary",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-signal--1440x900.png"
+    },
+    {
+      "id": "04-values-focus-dynamic-five-column-table",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-samples--1440x900.png"
+    },
+    {
+      "id": "05-spectrum-area-sliders-and-local-magnitude",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-spectrum-area--1440x900.png"
+    },
+    {
+      "id": "06-pane-menu-spectrum-slider-projections",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-spectrum-area--1440x900.png"
+    },
+    {
+      "id": "07-screen-four-links-and-frequency-range",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-screen-links--1440x900.png"
+    },
+    {
+      "id": "08-linked-magnitude-relocates-immediately",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": null
+    },
+    {
+      "id": "09-spectrum-extrema-table-and-markers",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-spectrum-extrema--1440x900.png"
+    },
+    {
+      "id": "10-operation-dialog-production-style",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-operation-default--1440x900.png"
+    },
+    {
+      "id": "11-operation-select-closed-shared-contract",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-operation-default--1440x900.png"
+    },
+    {
+      "id": "12-operation-menu-seven-options-production-value-select",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-operation-menu--1440x900.png"
+    },
+    {
+      "id": "13-operation-menu-search-escape-tab-outside",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": null
+    },
+    {
+      "id": "14-custom-body-only-hidden-envelope",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-operation-custom--1440x900.png"
+    },
+    {
+      "id": "15-custom-operation-engee-error",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-operation-error--1440x900.png"
+    },
+    {
+      "id": "16-operation-progress-blocks-close-then-success",
+      "passed": true,
+      "detail": "passed",
+      "screenshot": "screenshots/v29--standalone-production-operation-progress--1440x900.png"
+    },
+    {
+      "id": "17-undersized-keeps-production-minimum-canvas",
+      "passed": true,
+      "detail": "{\"sw\":920,\"sh\":680,\"iw\":840,\"ih\":620}",
+      "screenshot": "screenshots/v29--standalone-production-undersized--840x620.png"
+    },
+    {
+      "id": "18-stable-display-names-and-ordinals",
+      "passed": true,
+      "detail": "ВЧ-контроль\nЭкран 4",
+      "screenshot": null
+    }
+  ]
+}

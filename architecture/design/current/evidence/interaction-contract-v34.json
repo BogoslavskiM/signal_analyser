@@ -1,0 +1,18 @@
+{
+  "design_version": 34,
+  "task": "TASK-0126",
+  "visual_baseline_changed": false,
+  "checks": [
+    {"id":"summary-complete", "status":"pass", "evidence":"13 provider-authored Summary metrics independent of Measurements column visibility"},
+    {"id":"values-deterministic", "status":"pass", "evidence":"Values contract expands inspector, guarantees/selects/focuses named tab and loads missing page 1"},
+    {"id":"name-preview", "status":"pass", "evidence":"display/pane input hooks target existing tab/header and settings context before autosave"},
+    {"id":"input-history-opt-out", "status":"pass", "evidence":"autocomplete/spellcheck/autocapitalize/autocorrect disabled; semantic name removed"},
+    {"id":"axis-unit-projection", "status":"pass", "evidence":"visible bounds are selected-unit values; canonical seconds/Hz remain provider state; empty stays empty"},
+    {"id":"jet-identity", "status":"pass", "evidence":"automatic assignment and picker share one exact ordered 15-entry Jet list"},
+    {"id":"visible-range-extrema", "status":"pass", "evidence":"optional TIME {min_s,max_s} or SPECTRUM {min_hz,max_hz}; absent full range; Y ignored"},
+    {"id":"checkbox-continuity", "status":"pass", "evidence":"signal/catalog busy state retains node and checked state; disabled plus aria-busy only"}
+  ],
+  "syntax": {"javascript":"pass", "yaml":"pass"},
+  "screenshots": "carried_forward; no visual geometry changed",
+  "status": "ready"
+}

@@ -1,0 +1,14 @@
+{
+  "design_version": 40,
+  "status": "passed",
+  "checks": [
+    {"id":"server-point-jump","passed":true,"detail":"Exact zero-based integer 0..total-1 requests one 500-row page at clamp(target-250,0,total-500); no client scan or full payload."},
+    {"id":"search-clear-and-status","passed":true,"detail":"Clearing alone only clears value/validation; explicit empty Enter/action resets page 1; typed inline status owns invalid/loading/success/error."},
+    {"id":"replace-focus-and-resume","passed":true,"detail":"Jump increments the stable window token, replaces rows, focuses and scrolls target to center without selection/highlight; v39 sliding resumes."},
+    {"id":"time-marker-eligibility","passed":true,"detail":"Only successful calculated TIME record for exact record.displayId/paneId contributes rows matching signal_name through existing signalNameMatches and containing sample_index."},
+    {"id":"marker-semantics","passed":true,"detail":"Point number remains first/left; existing extrema marker follows with row.signal_color; lowest finite graph_number wins, response order breaks ties."},
+    {"id":"spectrum-excluded","passed":true,"detail":"Spectrum extrema bins are never projected onto raw TIME sample indices."},
+    {"id":"compact-column","passed":true,"detail":"Sample table uses auto layout; first column prefers 1% with exact 112px minimum; other column declarations and row styles are unchanged."},
+    {"id":"immutable-production","passed":true,"detail":"No production, backend, test, Git or runtime file changed; two additive fragments integrate into existing app.css/app.js."}
+  ]
+}

@@ -9,6 +9,7 @@ end
 module AppTestContext
 
 using Test
+using UUIDs
 
 const PROJECT_ROOT = normpath(joinpath(@__DIR__, "..", "..", ".."))
 
@@ -42,9 +43,18 @@ function signal_analyser_pspectrum(
     throw(ArgumentError("unsupported deterministic pspectrum representation: $representation"))
 end
 
+include(joinpath(PROJECT_ROOT, "lib", "helpers.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "domain", "example_model.jl"))
 include(joinpath(PROJECT_ROOT, "lib", "domain", "signal_analyser_state.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "domain", "signal_session.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "persistence", "storage.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "persistence", "signal_package_archive.jl"))
 include(joinpath(PROJECT_ROOT, "lib", "services", "signal_analyser_math.jl"))
 include(joinpath(PROJECT_ROOT, "lib", "services", "signal_analyser_service.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "services", "signal_session_service.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "services", "signal_package_service.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "adapters", "engee_native_io.jl"))
+include(joinpath(PROJECT_ROOT, "lib", "services", "native_session_io_service.jl"))
 
 """Deterministic Spectrum provider used by unit/API tests; real EngeeDSP stays in test/engee."""
 const SPECTRUM_CALLS = Any[]
@@ -117,5 +127,43 @@ source(parts::AbstractString...) = read(joinpath(PROJECT_ROOT, parts...), String
 snapshot_keyset(snapshot) = Set(keys(snapshot))
 all_finite(values) = all(isfinite, values)
 all_finite_matrix(rows) = all(row -> all(isfinite, row), rows)
+
+"""Build the explicit real-plus-complex fixture required by tests of complex behavior.
+
+Production bootstrap deliberately contains one real sine only.  Tests which
+exercise ordering, complex rendering, or complex-only validation must opt in
+to this inventory instead of restoring a second default signal.
+"""
+function test_state_with_complex_signal(;
+    peaks_provider::AbstractPeaksProvider = EngeeDSPPeaksProvider(),
+    spectrum_provider::AbstractSignalSpectrumProvider = EngeeDSPSpectrumProvider(),
+    spectrogram_provider::AbstractSignalSpectrogramProvider = EngeeDSPSpectrogramProvider(),
+    persistence_provider::AbstractSignalPersistenceProvider = EngeeDSPPersistenceProvider(),
+)
+    signals = default_signal_catalog()
+    real_signal = only(signals)
+    sample_count = length(real_signal.values)
+    time = collect(0:(sample_count - 1)) ./ real_signal.sample_rate_hz
+    chirp_phase = @. 2pi * (90.0 * time + 0.5 * 1100.0 * time^2)
+    complex_chirp = @. cis(chirp_phase) + 0.22 * cis(2pi * 510.0 * time)
+    push!(signals, AnalysedSignal(
+        "Комплексный ЛЧМ-сигнал",
+        "#dc2626",
+        real_signal.sample_rate_hz,
+        ComplexF64.(complex_chirp),
+        true,
+        true,
+    ))
+    SignalAnalyserState(
+        signals,
+        SignalAnalyserViewState(0, TIME_PLOT, real_signal.name),
+        Dict{String,Dict{String,Any}}(),
+        ReentrantLock();
+        peaks_provider = peaks_provider,
+        spectrum_provider = spectrum_provider,
+        spectrogram_provider = spectrogram_provider,
+        persistence_provider = persistence_provider,
+    )
+end
 
 end
