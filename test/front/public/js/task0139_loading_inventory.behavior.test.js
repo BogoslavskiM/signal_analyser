@@ -50,10 +50,10 @@ module.exports=async function(assert){
   vm.runInNewContext(inventoryBlock,{window:inventoryWindow,Object,String,Array},{filename:"task0139-inventory"});
   const inventory=inventoryWindow.SignalAnalyserTask0139Inventory;
   assert(inventory.sampleOptionalDefaultVisibility==="all_hidden"&&inventory.sampleOptionalColumns.join(",")==="magnitude,square,signed_square_root_magnitude"&&inventory.sampleColumnRemoved==="square_root","Values inventory must keep all three optional columns hidden by default and omit Root");
-  const intended=["abs","square","sqrt","signed-sqrt","multiply","custom"].map(value=>({value}));
-  assert(inventory.withoutFft(intended).map(item=>item.value).join(",")==="abs,square,sqrt,signed-sqrt,multiply,custom","the V58 math inventory must preserve exactly the supported mathematical operations");
-  assert(!/value:\s*["']fft["']/.test(app),"the operation dialog must not reintroduce FFT as a selectable operation");
-  assert(/registerSignalAnalyserPreprocessOperation[\s\S]*?MATH_OPERATIONS[\s\S]*?PREPROCESS_OPERATIONS[\s\S]*?window\.SignalAnalyserPreprocessOperation/.test(app),"the operation dialog must be hosted by the V58 typed math/preprocess state seam");
+  const intended=["bandpass","fft","smooth","custom-preprocess"].map(value=>({value}));
+  assert(inventory.withoutFft(intended).map(item=>item.value).join(",")==="bandpass,smooth,custom-preprocess","the generic inventory helper may remove FFT without restoring a math-operation list");
+  assert(!/value:\s*["'](?:fft|abs|square|sqrt|signed-sqrt|multiply|denoise|knn)["']/.test(app),"the operation dialog must expose none of the removed operation choices");
+  assert(/registerSignalAnalyserPreprocessOperation[\s\S]*?var OPERATIONS=Object\.freeze[\s\S]*?window\.SignalAnalyserPreprocessOperation/.test(app),"the operation dialog must be hosted by the V59 typed preprocessing seam");
 
   assert(/var paneLoadingToken=mutationOptions\.focusAreaAfterPlotTypeChange \? beginPaneLoading\(targetDisplayId, payload\.pane_id, "plot-type"\) : null;[\s\S]*?var layoutLoadingToken=payload\.operation === "resize" \? beginLayoutLoading\(targetDisplayId\) : null;[\s\S]*?return mutate/.test(app),"plot-type and layout loaders must start before their accepted mutation request");
   assert(/if \(!publication\.areaOutput[\s\S]*?areaLoads\.push\(\{ displayId:publication\.displayId, paneId:publication\.paneId, token:beginPaneLoading\(publication\.displayId, publication\.paneId, "area-settings"\) \}\);[\s\S]*?boundedApply\(settings\.commit\(\)/.test(app),"only valid Area settings publications may start a pane loader immediately before commit");

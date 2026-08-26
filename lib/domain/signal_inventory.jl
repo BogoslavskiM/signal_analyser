@@ -153,13 +153,6 @@ struct UpdateSignalMetadataCommand <: AbstractSignalInventoryCommand
 end
 
 const SIGNAL_DERIVED_OPERATION_NAMES = Set([
-    "abs",
-    "square",
-    "sqrt",
-    "signed_sqrt_abs",
-    "multiply",
-    "fft",
-    "custom",
     "bandpass",
     "bandstop",
     "highpass",
@@ -168,19 +161,12 @@ const SIGNAL_DERIVED_OPERATION_NAMES = Set([
     "fill-missing",
     "smooth",
     "envelope",
-    "denoise",
     "resample",
     "custom-preprocess",
 ])
 const SIGNAL_DERIVED_MAX_SAMPLES = 5_000_000
 
 abstract type AbstractSignalOperationParameters end
-
-struct NoSignalOperationParameters <: AbstractSignalOperationParameters end
-
-struct MultiplySignalOperationParameters <: AbstractSignalOperationParameters
-    multiplier::Float64
-end
 
 struct CustomSignalOperationParameters <: AbstractSignalOperationParameters
     body::String
@@ -191,6 +177,7 @@ struct FilterSignalOperationParameters <: AbstractSignalOperationParameters
     lower_passband::Union{Nothing,Float64}
     upper_passband::Union{Nothing,Float64}
     passband::Union{Nothing,Float64}
+    impulse_response::String
     steepness::Float64
     stopband_attenuation_db::Float64
 end
@@ -198,15 +185,14 @@ end
 struct DetrendSignalOperationParameters <: AbstractSignalOperationParameters
     method::String
     breakpoints::Vector{Int}
+    nan_policy::String
 end
 
 struct FillMissingSignalOperationParameters <: AbstractSignalOperationParameters
     method::String
     end_method::String
     constant_value::Union{Nothing,Float64}
-    end_constant_value::Union{Nothing,Float64}
     window_length::Union{Nothing,Int}
-    neighbors::Union{Nothing,Int}
     ar_order::Union{Nothing,Int}
 end
 
@@ -229,16 +215,6 @@ struct EnvelopeSignalOperationParameters <: AbstractSignalOperationParameters
     maxima_separation::Union{Nothing,Float64}
 end
 
-struct DenoiseSignalOperationParameters <: AbstractSignalOperationParameters
-    wavelet_family::String
-    wavelet_number::Int
-    method::String
-    levels::Union{Nothing,Int}
-    rule::Union{Nothing,String}
-    noise_estimate::Union{Nothing,String}
-    fdr_q::Union{Nothing,Float64}
-end
-
 struct ResampleSignalOperationParameters <: AbstractSignalOperationParameters
     mode::String
     target_sample_rate_hz::Union{Nothing,Float64}
@@ -248,36 +224,20 @@ struct ResampleSignalOperationParameters <: AbstractSignalOperationParameters
 end
 
 const SignalOperationParameters = Union{
-    NoSignalOperationParameters,
-    MultiplySignalOperationParameters,
     CustomSignalOperationParameters,
     FilterSignalOperationParameters,
     DetrendSignalOperationParameters,
     FillMissingSignalOperationParameters,
     SmoothSignalOperationParameters,
     EnvelopeSignalOperationParameters,
-    DenoiseSignalOperationParameters,
     ResampleSignalOperationParameters,
 }
-
-const SIGNAL_MATH_OPERATION_NAMES = Set([
-    "abs",
-    "square",
-    "sqrt",
-    "signed_sqrt_abs",
-    "multiply",
-    "fft",
-    "custom",
-])
 
 function signal_operation_parameters_match(
     operation::String,
     parameters::SignalOperationParameters,
 )::Bool
-    operation in ("abs", "square", "sqrt", "signed_sqrt_abs", "fft") &&
-        return parameters isa NoSignalOperationParameters
-    operation == "multiply" && return parameters isa MultiplySignalOperationParameters
-    operation in ("custom", "custom-preprocess") &&
+    operation == "custom-preprocess" &&
         return parameters isa CustomSignalOperationParameters
     operation in ("bandpass", "bandstop", "highpass", "lowpass") &&
         return parameters isa FilterSignalOperationParameters
@@ -285,7 +245,6 @@ function signal_operation_parameters_match(
     operation == "fill-missing" && return parameters isa FillMissingSignalOperationParameters
     operation == "smooth" && return parameters isa SmoothSignalOperationParameters
     operation == "envelope" && return parameters isa EnvelopeSignalOperationParameters
-    operation == "denoise" && return parameters isa DenoiseSignalOperationParameters
     operation == "resample" && return parameters isa ResampleSignalOperationParameters
     false
 end
@@ -298,7 +257,6 @@ struct DeriveSignalCommand <: AbstractSignalInventoryCommand
     parameters::SignalOperationParameters
     target_name::String
     overwrite::Bool
-    multiplier::Union{Nothing,Float64}
     body::Union{Nothing,String}
 
     function DeriveSignalCommand(
@@ -314,17 +272,13 @@ struct DeriveSignalCommand <: AbstractSignalInventoryCommand
         source_id = String(strip(String(source_signal_id)))
         isempty(source_id) && throw(ArgumentError("Source signal id не может быть пустым"))
         kind = String(operation_kind)
-        kind in ("math", "preprocess") || throw(ArgumentError(
-            "Раздел операции должен быть math или preprocess",
+        kind == "preprocess" || throw(ArgumentError(
+            "Раздел операции должен быть preprocess",
         ))
-        operation_name = String(operation) == "signed-sqrt" ?
-            "signed_sqrt_abs" : String(operation)
+        operation_name = String(operation)
         operation_name in SIGNAL_DERIVED_OPERATION_NAMES || throw(ArgumentError(
             "Неподдерживаемая операция над сигналом",
         ))
-        (operation_name in SIGNAL_MATH_OPERATION_NAMES) == (kind == "math") || throw(
-            ArgumentError("Операция не входит в выбранный раздел"),
-        )
         signal_operation_parameters_match(operation_name, parameters) || throw(
             ArgumentError("Параметры не соответствуют выбранной операции"),
         )
@@ -333,8 +287,6 @@ struct DeriveSignalCommand <: AbstractSignalInventoryCommand
         ncodeunits(name) <= 128 || throw(ArgumentError(
             "Имя производного сигнала не может быть длиннее 128 байт",
         ))
-        typed_multiplier = parameters isa MultiplySignalOperationParameters ?
-            parameters.multiplier : nothing
         operation_body = parameters isa CustomSignalOperationParameters ?
             parameters.body : nothing
         new(
@@ -345,62 +297,9 @@ struct DeriveSignalCommand <: AbstractSignalInventoryCommand
             parameters,
             name,
             overwrite,
-            typed_multiplier,
             operation_body,
         )
     end
-end
-
-"""Legacy constructor retained for the existing mathematical-operation clients."""
-function DeriveSignalCommand(
-    revision::Int,
-    source_signal_id::AbstractString,
-    operation::AbstractString,
-    target_name::AbstractString,
-    overwrite::Bool,
-    multiplier::Union{Nothing,Real},
-    body::Union{Nothing,AbstractString},
-)
-    operation_name = String(operation)
-    parameters = if operation_name == "multiply"
-        multiplier === nothing && throw(ArgumentError("Для операции multiply требуется множитель"))
-        multiplier isa Bool && throw(ArgumentError("Множитель должен быть числом, но не Bool"))
-        value = Float64(multiplier)
-        isfinite(value) || throw(ArgumentError("Множитель должен быть конечным числом"))
-        body === nothing || throw(ArgumentError(
-            "Тело допустимо только для пользовательской операции",
-        ))
-        MultiplySignalOperationParameters(value)
-    elseif operation_name == "custom"
-        multiplier === nothing || throw(ArgumentError(
-            "Множитель допустим только для операции multiply",
-        ))
-        operation_body = body === nothing ? "" : String(body)
-        isempty(strip(operation_body)) && throw(ArgumentError(
-            "Для пользовательской операции требуется непустое тело",
-        ))
-        ncodeunits(operation_body) <= 16_384 || throw(ArgumentError(
-            "Тело пользовательской операции не может быть длиннее 16384 байт",
-        ))
-        CustomSignalOperationParameters(operation_body)
-    else
-        multiplier === nothing || throw(ArgumentError(
-            "Множитель допустим только для операции multiply",
-        ))
-        body === nothing || throw(ArgumentError(
-            "Тело допустимо только для пользовательской операции",
-        ))
-        NoSignalOperationParameters()
-    end
-    DeriveSignalCommand(
-        revision,
-        source_signal_id,
-        "math",
-        operation_name,
-        parameters,
-        target_name,
-        overwrite,
-    )
 end
 
 """Create a new zero-origin signal from an inclusive source-time interval."""

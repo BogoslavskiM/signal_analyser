@@ -3375,20 +3375,14 @@ function signal_peaks_detect_direction(
     raw_values = vec(collect(raw_result.Ypk))
     widths = vec(collect(raw_result.Wpk))
     prominences = vec(collect(raw_result.Ppk))
-    directional = SignalPeaksProviderResult(
-        raw_values,
+    original_ordinate_values = kind == MAXIMUM_PEAK ?
+        Float64.(raw_values) : -Float64.(raw_values)
+    SignalPeaksProviderResult(
+        original_ordinate_values,
         typed_locations,
         widths,
         prominences,
         fill(kind, length(typed_locations)),
-        length(query.values),
-    )
-    SignalPeaksProviderResult(
-        Float64[query.values[location] for location in directional.locations_1based],
-        Int[directional.locations_1based...],
-        Float64[directional.widths_samples...],
-        Float64[directional.prominences...],
-        SignalPeakKind[directional.kinds...],
         length(query.values),
     )
 end

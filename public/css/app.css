@@ -3943,7 +3943,7 @@ body {
   height: 32px;
 }
 
-/* V58: preprocessing inside the existing signal-operation dialog. */
+/* V59: Engee-supported preprocessing-only operation dialog. */
 .signal-operation-dialog {
   width: min(740px, calc(100vw - 32px));
   min-width: 0;
@@ -4072,23 +4072,6 @@ body {
 
 .signal-operation-field-hint {
   color: var(--muted);
-}
-
-.signal-operation-parameters-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 4px 0 0;
-  color: var(--text);
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.signal-operation-parameters-title::after {
-  height: 1px;
-  flex: 1 1 auto;
-  background: var(--line);
-  content: "";
 }
 
 .signal-operation-availability {

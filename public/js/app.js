@@ -325,54 +325,38 @@
 (function registerSignalAnalyserPreprocessOperation(window) {
   "use strict";
 
-  var SECTIONS=Object.freeze([
-    {value:"math",label:"Математическое преобразование"},
-    {value:"preprocess",label:"Предобработка"}
-  ]);
   var HOST_COMMAND=Object.freeze({
     eventName:"signal-analyser:host-command",
     command:"preprocess",
     accepts:function (event) { return !!event && !!event.detail && event.detail.command === "preprocess"; },
     sourcePolicy:"Resolve the current accepted main_signal by stable id when the event is handled; ignore any source id/name supplied by event.detail."
   });
-  var MATH_OPERATIONS=Object.freeze([
-    {value:"abs",label:"Модуль"},
-    {value:"square",label:"Квадрат"},
-    {value:"sqrt",label:"Квадратный корень"},
-    {value:"signed-sqrt",label:"Корень из модуля × знак"},
-    {value:"multiply",label:"Умножение"},
-    {value:"custom",label:"Пользовательская операция",backendOnly:true}
+  var OPERATIONS=Object.freeze([
+    {value:"bandpass",label:"Полосовой фильтр",engee:"EngeeDSP.Functions.bandpass"},
+    {value:"bandstop",label:"Режекторный фильтр",engee:"EngeeDSP.Functions.bandstop"},
+    {value:"highpass",label:"Фильтр высоких частот",engee:"EngeeDSP.Functions.highpass"},
+    {value:"lowpass",label:"Фильтр низких частот",engee:"EngeeDSP.Functions.lowpass"},
+    {value:"detrend",label:"Удаление тренда",engee:"EngeeDSP.Functions.detrend"},
+    {value:"fill-missing",label:"Заполнение пропущенных значений",engee:"EngeeDSP.Functions.interp1/movmean/movmedian/fillgaps"},
+    {value:"smooth",label:"Сглаживание",engee:"EngeeDSP.Functions.smoothdata"},
+    {value:"envelope",label:"Огибающая",engee:"EngeeDSP.Functions.envelope"},
+    {value:"resample",label:"Передискретизация",engee:"EngeeDSP.Functions.resample"},
+    {value:"custom-preprocess",label:"Пользовательская операция",engee:"engee.genie.recv context=Main"}
   ]);
-  var PREPROCESS_OPERATIONS=Object.freeze([
-    {value:"bandpass",label:"Полосовой фильтр",phase:"A"},
-    {value:"bandstop",label:"Полосно-заграждающий фильтр",phase:"A"},
-    {value:"highpass",label:"Фильтр верхних частот",phase:"A"},
-    {value:"lowpass",label:"Фильтр нижних частот",phase:"A"},
-    {value:"detrend",label:"Удаление тренда",phase:"A"},
-    {value:"fill-missing",label:"Заполнение пропусков",phase:"A"},
-    {value:"smooth",label:"Сглаживание",phase:"A"},
-    {value:"envelope",label:"Огибающая",phase:"A"},
-    {value:"denoise",label:"Подавление шума",capability:"denoise"},
-    {value:"resample",label:"Передискретизация",capability:"resample"},
-    {value:"custom-preprocess",label:"Пользовательская предобработка",backendOnly:true,capability:"customPreprocess"}
-  ]);
-
   var OPTIONS=Object.freeze({
     frequencyUnits:[{value:"hertz",label:"Гц"},{value:"normalized_pi",label:"× π рад/отсчёт"}],
+    impulseResponse:[{value:"auto",label:"Авто"},{value:"fir",label:"КИХ"},{value:"iir",label:"БИХ"}],
     detrendMethod:[{value:"constant",label:"Постоянный"},{value:"linear",label:"Линейный"},{value:"piecewise_linear",label:"Кусочно-линейный"}],
+    nanPolicy:[{value:"includenan",label:"Учитывать пропуски"},{value:"omitnan",label:"Игнорировать пропуски"}],
     fillMethod:[
       {value:"constant",label:"Постоянное значение"},{value:"previous",label:"Предыдущее значение"},
       {value:"next",label:"Следующее значение"},{value:"nearest",label:"Ближайшее значение"},
       {value:"linear",label:"Линейная интерполяция"},{value:"spline",label:"Сплайн-интерполяция"},
       {value:"pchip",label:"Кубическая интерполяция с сохранением формы"},{value:"makima",label:"Модифицированная кубическая интерполяция Акимы"},
       {value:"moving_mean",label:"Скользящее среднее"},{value:"moving_median",label:"Скользящая медиана"},
-      {value:"knn",label:"K ближайших соседей"},{value:"autoregressive",label:"Авторегрессионная модель"}
+      {value:"autoregressive",label:"Авторегрессионная модель"}
     ],
-    fillEndMethod:[
-      {value:"same",label:"Как основной метод"},{value:"previous",label:"Предыдущее значение"},
-      {value:"next",label:"Следующее значение"},{value:"nearest",label:"Ближайшее значение"},
-      {value:"constant",label:"Постоянное значение"}
-    ],
+    fillEndMethod:[{value:"same",label:"Как основной метод"},{value:"nearest",label:"Ближайшее значение"}],
     smoothMethod:[
       {value:"moving_mean",label:"Скользящее среднее"},{value:"moving_median",label:"Скользящая медиана"},
       {value:"gaussian",label:"Гауссово сглаживание"},{value:"linear_regression",label:"Линейная регрессия"},
@@ -390,22 +374,12 @@
       {value:"linear",label:"Линейная интерполяция"},
       {value:"pchip",label:"Кусочно-кубическая интерполяция с сохранением формы"},
       {value:"spline",label:"Кубический сплайн с условием «не узел»"}
-    ],
-    denoiseMethod:[
-      {value:"bayes",label:"Байесовский"},{value:"blockjs",label:"Блочное правило Джеймса — Стейна (BlockJS)"},
-      {value:"fdr",label:"Контроль доли ложных обнаружений (FDR)"},{value:"minimax",label:"Минимакс"},
-      {value:"sure",label:"Несмещённая оценка риска Стейна (SURE)"},{value:"universal",label:"Универсальный порог"}
-    ],
-    denoiseRule:[{value:"median",label:"Медиана"},{value:"mean",label:"Среднее"},{value:"soft",label:"Мягкое"},{value:"hard",label:"Жёсткое"}],
-    noiseEstimate:[{value:"level_independent",label:"Единая для всех уровней"},{value:"level_dependent",label:"Отдельная для каждого уровня"}]
+    ]
   });
-
   var SUFFIXES=Object.freeze({
-    abs:"abs",square:"square",sqrt:"sqrt","signed-sqrt":"signed_sqrt",
-    multiply:"multiply",custom:"custom",
     bandpass:"bandpass",bandstop:"bandstop",highpass:"highpass",lowpass:"lowpass",
     detrend:"detrend","fill-missing":"filled",smooth:"smooth",envelope:"envelope",
-    denoise:"denoise",resample:"resample","custom-preprocess":"preprocess"
+    resample:"resample","custom-preprocess":"preprocess"
   });
 
   function copy(value) { return JSON.parse(JSON.stringify(value)); }
@@ -414,44 +388,27 @@
   function integer(value) { return finite(value) && Number.isSafeInteger(Number(value)); }
   function sourceName(source) { return String(source && source.name || ""); }
   function sampleRate(source) { var value=Number(source && (source.sampleRateHz == null ? source.sample_rate_hz : source.sampleRateHz)); return Number.isFinite(value) && value > 0 ? value : null; }
+  function sampleCount(source) { var value=Number(source && (source.sampleCount == null ? source.sample_count : source.sampleCount)); return Number.isSafeInteger(value) && value > 0 ? value : null; }
   function samplingKind(source) { return String(source && (source.samplingKind || source.sampling_kind) || "samples"); }
   function hasTime(source) { return samplingKind(source) !== "samples" || sampleRate(source) != null; }
   function frequencyDefault(source,fraction) { var rate=sampleRate(source); return rate == null ? fraction : rate * 0.5 * fraction; }
   function frequencyUnit(source) { return sampleRate(source) == null ? "normalized_pi" : "hertz"; }
   function defaultName(source,operation) { return sourceName(source) + "_" + (SUFFIXES[operation] || String(operation).replace(/-/g,"_")); }
-  function option(value,options) { return (options || []).filter(function (item) { return item.value === value; })[0] || options[0]; }
-  function operationFor(section,value) { return option(value,section === "preprocess" ? PREPROCESS_OPERATIONS : MATH_OPERATIONS); }
-  function capabilities(raw) { return Object.assign({denoise:false,resample:true,customPreprocess:true},raw || {}); }
-  function operationOptions(section,rawCapabilities) {
-    var caps=capabilities(rawCapabilities);
-    return (section === "preprocess" ? PREPROCESS_OPERATIONS : MATH_OPERATIONS).map(function (item) {
-      var enabled=!item.capability || caps[item.capability] === true;
-      return Object.assign({},item,{disabled:!enabled,label:item.label + (enabled ? "" : " — недоступно")});
-    });
-  }
+  function operationOptions() { return OPERATIONS.map(function (item) { return Object.assign({},item,{disabled:false}); }); }
   function initialParameters(operation,source) {
-    if (operation === "multiply") return {multiplier:1};
-    if (operation === "custom") return {body:"init_signal"};
-    if (operation === "bandpass" || operation === "bandstop") return {frequency_units:frequencyUnit(source),lower_passband:frequencyDefault(source,0.25),upper_passband:frequencyDefault(source,0.75),steepness:0.85,stopband_attenuation_db:60};
-    if (operation === "highpass" || operation === "lowpass") return {frequency_units:frequencyUnit(source),passband:frequencyDefault(source,0.5),steepness:0.85,stopband_attenuation_db:60};
-    if (operation === "detrend") return {method:"linear",breakpoints:""};
-    if (operation === "fill-missing") return {method:"constant",constant_value:0,end_method:"same",end_constant_value:0,window_length:"",neighbors:1,ar_order:""};
-    if (operation === "smooth") return {method:"moving_mean",window_type:"duration",duration_units:samplingKind(source) === "samples" ? "samples" : "seconds",window_duration:null,smoothing_factor:null,polynomial_degree:null};
+    if (operation === "bandpass" || operation === "bandstop") return {frequency_units:frequencyUnit(source),lower_passband:frequencyDefault(source,0.25),upper_passband:frequencyDefault(source,0.75),impulse_response:"auto",steepness:0.85,stopband_attenuation_db:60};
+    if (operation === "highpass" || operation === "lowpass") return {frequency_units:frequencyUnit(source),passband:frequencyDefault(source,0.5),impulse_response:"auto",steepness:0.85,stopband_attenuation_db:60};
+    if (operation === "detrend") return {method:"linear",breakpoints:"",nan_policy:"includenan"};
+    if (operation === "fill-missing") return {method:"constant",constant_value:0,end_method:"same",window_length:"",ar_order:""};
+    if (operation === "smooth") return {method:"moving_mean",window_type:"duration",duration_units:samplingKind(source) === "samples" ? "samples" : "seconds",window_duration:null,smoothing_factor:0.25,polynomial_degree:null};
     if (operation === "envelope") return {side:"upper",method:"hilbert",filter_order:null,window_length:null,maxima_separation:null,length_units:samplingKind(source) === "samples" ? "samples" : "seconds",separation_units:samplingKind(source) === "samples" ? "samples" : "seconds"};
-    if (operation === "denoise") return {wavelet_family:"sym",wavelet_number:4,method:"bayes",levels:null,rule:"median",noise_estimate:"level_independent",fdr_q:0.05};
     if (operation === "resample") return {mode:"rate",target_sample_rate_hz:null,upsample_factor:null,downsample_factor:null,interpolation:"linear"};
     if (operation === "custom-preprocess") return {body:"init_signal"};
     return {};
   }
-  function createState(source,rawCapabilities,initialSection) {
-    var section=initialSection === "preprocess" ? "preprocess" : "math",operation=section === "preprocess" ? "bandpass" : "abs";
-    return {section:section,operation:operation,source:copy(source || {}),capabilities:capabilities(rawCapabilities),parameters:initialParameters(operation,source || {}),targetName:defaultName(source || {},operation),nameDirty:false,overwrite:false};
-  }
-  function switchSection(state,section) {
-    var next=copy(state),first=section === "preprocess" ? "bandpass" : "abs";
-    next.section=section; next.operation=first; next.parameters=initialParameters(first,next.source);
-    if (!next.nameDirty) next.targetName=defaultName(next.source,first);
-    return next;
+  function createState(source) {
+    var operation="bandpass";
+    return {operation:operation,source:copy(source || {}),parameters:initialParameters(operation,source || {}),targetName:defaultName(source || {},operation),nameDirty:false,overwrite:false};
   }
   function switchOperation(state,operation) {
     var next=copy(state); next.operation=operation; next.parameters=initialParameters(operation,next.source);
@@ -459,67 +416,50 @@
     return next;
   }
   function updateParameter(state,id,value) {
-    var next=copy(state); next.parameters=next.parameters || {}; next.parameters[id]=value;
-    if (next.operation === "denoise" && id === "method") {
-      if (value === "blockjs") next.parameters.rule="";
-      else if (value === "fdr") next.parameters.rule="";
-      else if (value === "bayes" && ["median","mean","soft","hard"].indexOf(next.parameters.rule) < 0) next.parameters.rule="median";
-      else if (["bayes","blockjs","fdr"].indexOf(value) < 0 && ["soft","hard"].indexOf(next.parameters.rule) < 0) next.parameters.rule="soft";
-    }
-    return next;
+    var next=copy(state); next.parameters=next.parameters || {}; next.parameters[id]=value; return next;
   }
   function field(id,label,type,value,extra) { return Object.assign({id:id,label:label,type:type,value:value,testid:"signal-operation-parameter-"+id.replace(/_/g,"-"),visible:true,disabled:false,required:false,unit:""},extra || {}); }
+  function unitOptions(source) { return samplingKind(source) === "samples" ? [{value:"samples",label:"отсчёты"}] : [{value:"seconds",label:"с"},{value:"samples",label:"отсчёты"}]; }
   function schema(state) {
     var p=state.parameters || {},source=state.source || {},op=state.operation,fields=[];
-    if (op === "multiply") fields.push(field("multiplier","Множитель","number",p.multiplier,{required:true}));
-    if (op === "custom") fields.push(field("body","Тело операции","textarea",p.body,{required:true,hint:"Код выполняется только в Engee; входной сигнал доступен как init_signal."}));
     if (op === "bandpass" || op === "bandstop" || op === "highpass" || op === "lowpass") {
       fields.push(field("frequency_units","Единицы частоты","select",p.frequency_units,{options:OPTIONS.frequencyUnits,disabled:true}));
       if (op === "bandpass" || op === "bandstop") {
-        fields.push(field("lower_passband","Нижняя граница полосы пропускания","number",p.lower_passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
-        fields.push(field("upper_passband","Верхняя граница полосы пропускания","number",p.upper_passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
-      } else fields.push(field("passband","Граница полосы пропускания","number",p.passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
-      fields.push(field("steepness","Крутизна","number",p.steepness,{required:true,hint:"От 0,5 включительно до 1,0 исключительно"}));
+        fields.push(field("lower_passband","Нижняя граница полосы","number",p.lower_passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
+        fields.push(field("upper_passband","Верхняя граница полосы","number",p.upper_passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
+      } else fields.push(field("passband","Граница полосы","number",p.passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
+      fields.push(field("impulse_response","Тип импульсной характеристики","select",p.impulse_response,{options:OPTIONS.impulseResponse,required:true}));
+      fields.push(field("steepness","Крутизна","number",p.steepness,{required:true,hint:"От 0,5 включительно до 1 исключительно"}));
       fields.push(field("stopband_attenuation_db","Подавление в полосе задерживания","number",p.stopband_attenuation_db,{required:true,unit:"дБ"}));
     }
     if (op === "detrend") {
       fields.push(field("method","Метод удаления тренда","select",p.method,{options:OPTIONS.detrendMethod,required:true}));
-      fields.push(field("breakpoints","Точки разбиения","text",p.breakpoints,{visible:p.method === "piecewise_linear",required:p.method === "piecewise_linear",hint:"Номера отсчётов через запятую"}));
+      fields.push(field("breakpoints","Точки разбиения","text",p.breakpoints,{visible:p.method === "piecewise_linear",required:p.method === "piecewise_linear",hint:"Положительные номера отсчётов через запятую"}));
+      fields.push(field("nan_policy","Обработка пропусков","select",p.nan_policy,{options:OPTIONS.nanPolicy,required:true}));
     }
     if (op === "fill-missing") {
       fields.push(field("method","Метод заполнения","select",p.method,{options:OPTIONS.fillMethod,required:true}));
       fields.push(field("constant_value","Постоянное значение","number",p.constant_value,{visible:p.method === "constant",required:p.method === "constant"}));
-      fields.push(field("window_length","Длина окна","number",p.window_length,{visible:p.method === "moving_mean" || p.method === "moving_median",required:true,unit:"отсчёты"}));
-      fields.push(field("neighbors","Количество соседей K","number",p.neighbors,{visible:p.method === "knn",required:true,integer:true}));
+      fields.push(field("window_length","Длина окна","number",p.window_length,{visible:p.method === "moving_mean" || p.method === "moving_median",required:true,integer:true,unit:"отсчёты"}));
       fields.push(field("ar_order","Порядок модели","number",p.ar_order,{visible:p.method === "autoregressive",required:true,integer:true}));
       fields.push(field("end_method","Заполнение на границах","select",p.end_method,{options:OPTIONS.fillEndMethod,required:true}));
-      fields.push(field("end_constant_value","Постоянное значение на границах","number",p.end_constant_value,{visible:p.end_method === "constant",required:true}));
     }
     if (op === "smooth") {
       fields.push(field("method","Метод сглаживания","select",p.method,{options:OPTIONS.smoothMethod,required:true}));
       fields.push(field("window_type","Способ задания окна","select",p.window_type,{options:OPTIONS.windowType,required:true}));
-      fields.push(field("duration_units","Единицы длительности","select",p.duration_units,{visible:p.window_type === "duration",options:samplingKind(source) === "samples" ? [{value:"samples",label:"отсчёты"}] : [{value:"seconds",label:"с"},{value:"samples",label:"отсчёты"}],required:true}));
+      fields.push(field("duration_units","Единицы длительности","select",p.duration_units,{visible:p.window_type === "duration",options:unitOptions(source),required:true}));
       fields.push(field("window_duration","Длительность окна","number",p.window_duration,{visible:p.window_type === "duration",unit:p.duration_units === "samples" ? "отсчёты" : "с",placeholder:"Авто",nullableAuto:true}));
-      fields.push(field("smoothing_factor","Коэффициент сглаживания","number",p.smoothing_factor,{visible:p.window_type === "factor",required:true,hint:"От 0 до 1"}));
-      fields.push(field("polynomial_degree","Степень полинома","number",p.polynomial_degree,{visible:p.method === "savitzky_golay",placeholder:"Авто",nullableAuto:true,integer:true}));
+      fields.push(field("smoothing_factor","Коэффициент сглаживания","number",p.smoothing_factor,{visible:p.window_type === "factor",required:true,hint:"Строго больше 0 и меньше 1"}));
+      fields.push(field("polynomial_degree","Степень полинома","number",p.polynomial_degree,{visible:p.method === "savitzky_golay",placeholder:"Авто",nullableAuto:true,integer:true,allowZero:true,hint:"Авто соответствует степени 2"}));
     }
     if (op === "envelope") {
       fields.push(field("side","Сторона огибающей","select",p.side,{options:OPTIONS.envelopeSide,required:true}));
       fields.push(field("method","Метод","select",p.method,{options:OPTIONS.envelopeMethod,required:true}));
-      fields.push(field("filter_order","Порядок фильтра","number",p.filter_order,{visible:p.method === "fir",placeholder:"Авто",nullableAuto:true,integer:true}));
-      fields.push(field("length_units","Единицы длины","select",p.length_units,{visible:p.method === "rms",options:samplingKind(source) === "samples" ? [{value:"samples",label:"отсчёты"}] : [{value:"seconds",label:"с"},{value:"samples",label:"отсчёты"}],required:true}));
-      fields.push(field("window_length","Длина окна","number",p.window_length,{visible:p.method === "rms",placeholder:"Авто",nullableAuto:true,integer:p.length_units === "samples",unit:p.length_units === "samples" ? "отсчёты" : "с"}));
-      fields.push(field("separation_units","Единицы расстояния","select",p.separation_units,{visible:p.method === "peak",options:samplingKind(source) === "samples" ? [{value:"samples",label:"отсчёты"}] : [{value:"seconds",label:"с"},{value:"samples",label:"отсчёты"}],required:true}));
-      fields.push(field("maxima_separation","Расстояние между максимумами","number",p.maxima_separation,{visible:p.method === "peak",placeholder:"Авто",nullableAuto:true,integer:p.separation_units === "samples",unit:p.separation_units === "samples" ? "отсчёты" : "с"}));
-    }
-    if (op === "denoise") {
-      fields.push(field("wavelet_family","Семейство вейвлета","text",p.wavelet_family,{required:true}));
-      fields.push(field("wavelet_number","Номер вейвлета","number",p.wavelet_number,{required:true,integer:true}));
-      fields.push(field("method","Метод","select",p.method,{options:OPTIONS.denoiseMethod,required:true}));
-      fields.push(field("levels","Количество уровней","number",p.levels,{placeholder:"Авто",nullableAuto:true,integer:true}));
-      fields.push(field("rule","Правило","select",p.rule,{options:OPTIONS.denoiseRule.filter(function (item) { return p.method === "bayes" ? true : p.method === "blockjs" ? false : item.value === "soft" || item.value === "hard"; }),visible:p.method !== "blockjs" && p.method !== "fdr",required:true}));
-      fields.push(field("noise_estimate","Оценка шума","select",p.noise_estimate,{options:OPTIONS.noiseEstimate,visible:p.method !== "blockjs",required:true}));
-      fields.push(field("fdr_q","Уровень Q","number",p.fdr_q,{visible:p.method === "fdr",required:true,hint:"Больше 0 и не больше 0,5"}));
+      fields.push(field("filter_order","Порядок фильтра","number",p.filter_order,{visible:p.method === "fir",required:true,integer:true}));
+      fields.push(field("length_units","Единицы длины","select",p.length_units,{visible:p.method === "rms",options:unitOptions(source),required:true}));
+      fields.push(field("window_length","Длина окна","number",p.window_length,{visible:p.method === "rms",required:true,integer:p.length_units === "samples",unit:p.length_units === "samples" ? "отсчёты" : "с"}));
+      fields.push(field("separation_units","Единицы расстояния","select",p.separation_units,{visible:p.method === "peak",options:unitOptions(source),required:true}));
+      fields.push(field("maxima_separation","Расстояние между максимумами","number",p.maxima_separation,{visible:p.method === "peak",required:true,integer:p.separation_units === "samples",unit:p.separation_units === "samples" ? "отсчёты" : "с"}));
     }
     if (op === "resample") {
       var kind=samplingKind(source),uniform=kind === "uniform" || kind === "samples" && sampleRate(source) != null;
@@ -529,36 +469,47 @@
       fields.push(field("downsample_factor","Коэффициент децимации","number",p.downsample_factor,{visible:uniform && p.mode === "factor",required:true,integer:true}));
       fields.push(field("interpolation","Метод интерполяции","select",p.interpolation,{options:OPTIONS.interpolation,visible:kind === "nonuniform",required:kind === "nonuniform"}));
     }
-    if (op === "custom-preprocess") fields.push(field("body","Тело операции","textarea",p.body,{required:true,hint:"Код выполняется только в Engee; входной сигнал доступен как init_signal."}));
+    if (op === "custom-preprocess") fields.push(field("body","Тело операции","textarea",p.body,{required:true,hint:"Код выполняется в Engee; входной сигнал доступен как init_signal. Результатом должно быть выражение, возвращающее новый вектор."}));
     return fields.filter(function (item) { return item.visible; });
   }
   function availability(state) {
-    var op=operationFor(state.section,state.operation),caps=capabilities(state.capabilities);
-    if (op.capability && caps[op.capability] !== true) return {available:false,code:op.capability === "denoise" ? "denoise_unavailable" : "provider_unavailable",message:op.capability === "denoise" ? "Подавление шума недоступно: в Engee не подключена необходимая поддержка вейвлетов." : "Эта операция пока недоступна в Engee."};
     if (state.operation === "resample" && !hasTime(state.source)) return {available:false,code:"time_required",message:"Для передискретизации задайте частоту дискретизации или временные координаты исходного сигнала."};
-    if (state.operation === "envelope" && state.source && state.source.complex) return {available:false,code:"real_required",message:"Огибающая доступна только для вещественного сигнала."};
+    if ((state.operation === "envelope" || state.operation === "detrend") && state.source && state.source.complex) return {available:false,code:"real_required",message:"Выбранная операция доступна только для вещественного сигнала."};
+    if (state.operation === "fill-missing" && state.parameters && state.parameters.method === "moving_median" && state.source && state.source.complex) return {available:false,code:"real_required",message:"Заполнение скользящей медианой доступно только для вещественного сигнала."};
     return {available:true,code:"",message:""};
   }
   function validate(state) {
-    var fields=schema(state),errors={},p=state.parameters || {},op=state.operation,available=availability(state);
+    var fields=schema(state),errors={},p=state.parameters || {},op=state.operation,available=availability(state),count=sampleCount(state.source);
     if (blank(state.targetName)) errors.target_name="Введите имя нового сигнала.";
     fields.forEach(function (item) {
       var value=p[item.id];
       if (item.required && blank(value)) errors[item.id]="Заполните поле.";
       else if (!blank(value) && item.type === "number" && !finite(value)) errors[item.id]="Введите число.";
-      else if (!blank(value) && item.integer && (!integer(value) || Number(value) <= 0)) errors[item.id]="Введите целое число больше нуля.";
+      else if (!blank(value) && item.integer && (!integer(value) || (item.allowZero ? Number(value) < 0 : Number(value) <= 0))) errors[item.id]=item.allowZero ? "Введите целое число не меньше нуля." : "Введите целое число больше нуля.";
     });
     var nyquist=sampleRate(state.source) == null ? 1 : sampleRate(state.source)/2;
     function frequency(id) { var value=Number(p[id]); if (finite(value) && (value <= 0 || value >= nyquist)) errors[id]="Значение должно быть больше нуля и меньше частоты Найквиста."; }
     if (/^(bandpass|bandstop)$/.test(op)) { frequency("lower_passband"); frequency("upper_passband"); if (!errors.lower_passband && !errors.upper_passband && Number(p.lower_passband) >= Number(p.upper_passband)) errors.lower_passband="Нижняя граница должна быть меньше верхней."; }
     if (/^(highpass|lowpass)$/.test(op)) frequency("passband");
     if (/pass|stop/.test(op)) {
-      if (finite(p.steepness) && (Number(p.steepness) < 0.5 || Number(p.steepness) >= 1)) errors.steepness="Введите значение от 0,5 включительно до 1,0 исключительно.";
+      if (finite(p.steepness) && (Number(p.steepness) < 0.5 || Number(p.steepness) >= 1)) errors.steepness="Введите значение от 0,5 включительно до 1 исключительно.";
       if (finite(p.stopband_attenuation_db) && Number(p.stopband_attenuation_db) <= 0) errors.stopband_attenuation_db="Введите значение больше нуля.";
     }
-    if (op === "detrend" && p.method === "piecewise_linear" && !/^\s*\d+(?:\s*,\s*\d+)*\s*$/.test(String(p.breakpoints || ""))) errors.breakpoints="Введите возрастающие номера отсчётов через запятую.";
-    if (op === "smooth" && p.window_type === "factor" && finite(p.smoothing_factor) && (Number(p.smoothing_factor) < 0 || Number(p.smoothing_factor) > 1)) errors.smoothing_factor="Введите значение от 0 до 1.";
-    if (op === "denoise" && p.method === "fdr" && finite(p.fdr_q) && (Number(p.fdr_q) <= 0 || Number(p.fdr_q) > 0.5)) errors.fdr_q="Введите значение больше 0 и не больше 0,5.";
+    if (op === "detrend" && p.method === "piecewise_linear") {
+      var validText=/^\s*\d+(?:\s*,\s*\d+)*\s*$/.test(String(p.breakpoints || ""));
+      var points=validText ? String(p.breakpoints).split(",").map(function (value) { return Number(String(value).trim()); }) : [];
+      if (!validText || points.some(function (value,index) { return value <= 0 || index > 0 && value <= points[index-1] || count != null && value > count; })) errors.breakpoints="Введите строго возрастающие номера отсчётов в пределах сигнала.";
+    }
+    if (op === "fill-missing") {
+      if ((p.method === "moving_mean" || p.method === "moving_median") && count != null && integer(p.window_length) && Number(p.window_length) > count) errors.window_length="Длина окна не должна превышать длину сигнала.";
+      if (p.method === "autoregressive" && count != null && integer(p.ar_order) && Number(p.ar_order) >= count) errors.ar_order="Порядок модели должен быть меньше числа конечных отсчётов.";
+    }
+    if (op === "smooth") {
+      if (p.window_type === "duration" && !blank(p.window_duration) && Number(p.window_duration) <= 0) errors.window_duration="Введите значение больше нуля.";
+      if (p.window_type === "factor" && finite(p.smoothing_factor) && (Number(p.smoothing_factor) <= 0 || Number(p.smoothing_factor) >= 1)) errors.smoothing_factor="Введите значение строго больше 0 и меньше 1.";
+      if (p.method === "savitzky_golay" && !blank(p.polynomial_degree) && p.window_type === "duration" && p.duration_units === "samples" && !blank(p.window_duration) && Number(p.polynomial_degree) >= Number(p.window_duration)) errors.polynomial_degree="Степень полинома должна быть меньше длины окна.";
+    }
+    ["filter_order","window_length","maxima_separation","target_sample_rate_hz"].forEach(function (id) { if (!errors[id] && !blank(p[id]) && finite(p[id]) && Number(p[id]) <= 0) errors[id]="Введите значение больше нуля."; });
     return {valid:available.available && Object.keys(errors).length === 0,errors:errors,availability:available};
   }
   function payload(state) {
@@ -568,26 +519,28 @@
       var value=state.parameters[key];
       parameters[key]=blank(value) ? null : visible[key].type === "number" ? Number(value) : value;
     });
-    return {source_signal_id:state.source && state.source.id,operation_kind:state.section,operation:state.operation,parameters:parameters,target_name:state.targetName,overwrite:!!state.overwrite};
+    return {source_signal_id:state.source && state.source.id,operation_kind:"preprocess",operation:state.operation,parameters:parameters,target_name:state.targetName,overwrite:!!state.overwrite};
   }
 
   window.SignalAnalyserPreprocessOperation={
-    sections:SECTIONS,mathOperations:MATH_OPERATIONS,preprocessOperations:PREPROCESS_OPERATIONS,options:OPTIONS,hostCommand:HOST_COMMAND,
-    createState:createState,switchSection:switchSection,switchOperation:switchOperation,updateParameter:updateParameter,operationOptions:operationOptions,
+    preprocessOperations:OPERATIONS,options:OPTIONS,hostCommand:HOST_COMMAND,
+    createState:createState,switchOperation:switchOperation,updateParameter:updateParameter,operationOptions:operationOptions,
     schema:schema,availability:availability,validate:validate,payload:payload,defaultName:defaultName,
     contract:Object.freeze({
-      entry:"The existing Операция над сигналом action always uses the signal selected by plain LMB as its source; checkbox-only visibility does not change the source.",
-      externalEntry:"The external Analyser menu dispatches window event signal-analyser:host-command with detail.command=preprocess. The application adds no visible in-app button and resolves the current main_signal itself.",
-      phaseA:["bandpass","bandstop","highpass","lowpass","detrend","fill-missing","smooth","envelope"],
-      denoise:"Visible in the selector but disabled with a Russian reason until the backend reports denoise=true; when enabled, the dependent schema is fixed by this module.",
-      resample:"No time metadata blocks submit with an operation-level compatibility message; uniform and nonuniform sources expose different field branches.",
-      custom:"Custom bodies are sent unchanged to the backend and are never evaluated, parsed or wrapped by frontend code.",
-      output:"The product keeps its existing derived-signal transaction: source is unchanged; target name and overwrite remain explicit even though MATLAB preprocessing itself overwrites selected data.",
-      auto:"Every nullable automatic parameter renders an empty numeric value with placeholder Авто; null and numeric zero are distinct.",
-      errors:"Typed constraints are field-local. Compatibility, license and runtime failures use the standard sanitized alertdialog and never show raw Engee or Julia text."
+      entry:"Every entry uses the current accepted signal selected by plain LMB as the immutable source.",
+      supported:["bandpass","bandstop","highpass","lowpass","detrend","fill-missing","smooth","envelope","resample","custom-preprocess"],
+      removed:["abs","square","sqrt","signed-sqrt","multiply","fft","denoise","knn"],
+      denoise:"Absent from the UI because EngeeDSP.Functions.wdenoise and denoise are not public symbols; this is an availability gap, not a product operation or fake disabled row.",
+      fill:"Every non-constant method maps to a confirmed public EngeeDSP function; KNN is absent because a public Engee function/object was not found.",
+      smooth:"SmoothingFactor is restricted to 0<x<1 until the confirmed Engee endpoint defect is fixed.",
+      envelope:"FIR order, RMS window and peak separation are required because the selected public Engee overloads have no automatic form.",
+      custom:"Custom bodies are sent unchanged and are never evaluated, parsed or wrapped by frontend code.",
+      output:"The source is unchanged; target name and overwrite are explicit and the provider publishes one validated derived signal.",
+      errors:"Field constraints are local. Compatibility and runtime failures use the standard sanitized alertdialog and never show raw Engee or Julia text."
     })
   };
 }(window));
+
 
 (function registerSignalAnalyserTask0153(window) {
   "use strict";
@@ -5788,7 +5741,10 @@
   function preprocessOperation() { return window.SignalAnalyserPreprocessOperation || null; }
   function selectedOperationLabel(options,value) {
     var selected=(options || []).filter(function (option) { return option.value === value; })[0];
-    return selected ? selected.label.replace(/ — недоступно$/,"") : "";
+    return selected ? selected.label : "";
+  }
+  function signalOperationSupported(helper,operation) {
+    return !!helper && helper.operationOptions().some(function (option) { return option.value === operation; });
   }
   function signalOperationStatusMarkup(state) {
     if (state.busy) return "<div class='operation-status status-note info operation-progress' role='status'><img src='./icons/Spinner.svg' alt=''><span>Выполняется преобразование и проверка результата…</span></div>";
@@ -5810,19 +5766,20 @@
   function renderSignalOperation() {
     var state=model.signalOperation, layer=ensureSignalOperationDialog(), form=layer.querySelector("[data-signal-operation-form]"), helper=preprocessOperation(), operationState=state.operationState;
     if (!helper || !operationState) { layer.hidden=!state.open; return; }
-    var busy=state.busy,sectionOptions=helper.sections,operationOptions=helper.operationOptions(operationState.section,operationState.capabilities);
-    var sectionSelect=valueSelect.markup({
-      key:"signal-operation-section",value:operationState.section,label:selectedOperationLabel(sectionOptions,operationState.section),options:sectionOptions,
-      testId:"signal-operation-section-select",ariaLabel:"Раздел операции",disabled:busy,className:"settings-value-select",
-      onSelect:function (value) { state.operationState=helper.switchSection(operationState,value); state.success=false; state.validation=null; renderSignalOperation(); }
-    });
+    var busy=state.busy,operationOptions=helper.operationOptions();
+    if (!signalOperationSupported(helper,operationState.operation)) {
+      operationState=helper.createState(operationState.source);
+      state.operationState=operationState;
+      state.validation=null;
+      state.success=false;
+    }
     var operationSelect=valueSelect.markup({
       key:"signal-operation-type",value:operationState.operation,label:selectedOperationLabel(operationOptions,operationState.operation),options:operationOptions,
       testId:"signal-operation-select",ariaLabel:"Операция",disabled:busy,className:"settings-value-select",
       onSelect:function (value) { state.operationState=helper.switchOperation(operationState,value); state.success=false; state.validation=null; renderSignalOperation(); }
     });
     var validation=state.validation || {errors:{},availability:helper.availability(operationState)},fields=helper.schema(operationState);
-    form.innerHTML="<div class='signal-operation-form' data-operation-section='"+esc(operationState.section)+"'><div class='signal-operation-row'><span class='signal-operation-label'>Исходный сигнал</span><input class='signal-operation-control' value='"+esc(operationState.source && operationState.source.name)+"' readonly></div><div class='signal-operation-row'><span class='signal-operation-label'>Раздел</span><div>"+sectionSelect+"</div></div><div class='signal-operation-row'><span class='signal-operation-label'>Операция</span><div>"+operationSelect+"</div></div>"+(operationState.section === "preprocess" ? "<h3 class='signal-operation-parameters-title'>Параметры предобработки</h3>" : "")+"<div class='signal-operation-parameter-list'>"+fields.map(function (field) { return signalOperationFieldMarkup(field,validation.errors[field.id],busy); }).join("")+"</div>"+(!validation.availability.available ? "<div class='signal-operation-availability' role='status'>"+esc(validation.availability.message)+"</div>" : "")+(fields.some(function (field) { return field.nullableAuto; }) ? "<p class='signal-operation-auto-note'>Пустое поле со значением «Авто» передаётся как автоматический параметр, а не как ноль.</p>" : "")+"<div class='signal-operation-row"+(validation.errors.target_name ? " has-error" : "")+"'><label for='signal-operation-name'>Имя нового сигнала</label><input id='signal-operation-name' class='signal-operation-control' data-signal-operation-name value='"+esc(operationState.targetName)+"' aria-invalid='"+String(!!validation.errors.target_name)+"'"+(busy ? " disabled" : "")+" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'>"+(validation.errors.target_name ? "<p class='signal-operation-field-message' role='alert'>"+esc(validation.errors.target_name)+"</p>" : "")+"</div><div class='signal-operation-row signal-operation-overwrite-row'><span class='signal-operation-label'></span><label class='checkbox-field'><input type='checkbox' data-signal-operation-overwrite"+(operationState.overwrite ? " checked" : "")+(busy ? " disabled" : "")+"><span>Затирать сигнал с таким именем</span></label></div>"+signalOperationStatusMarkup(state)+"</div>";
+    form.innerHTML="<div class='signal-operation-form' data-operation-section='preprocess'><div class='signal-operation-row'><span class='signal-operation-label'>Исходный сигнал</span><input class='signal-operation-control' data-testid='signal-operation-source' value='"+esc(operationState.source && operationState.source.name)+"' readonly></div><div class='signal-operation-row'><span class='signal-operation-label'>Операция</span><div>"+operationSelect+"</div></div><div class='signal-operation-parameter-list'>"+fields.map(function (field) { return signalOperationFieldMarkup(field,validation.errors[field.id],busy); }).join("")+"</div>"+(!validation.availability.available ? "<div class='signal-operation-availability' role='status'>"+esc(validation.availability.message)+"</div>" : "")+(fields.some(function (field) { return field.nullableAuto; }) ? "<p class='signal-operation-auto-note'>Пустое поле со значением «Авто» передаётся как автоматический параметр, а не как ноль.</p>" : "")+"<div class='signal-operation-row"+(validation.errors.target_name ? " has-error" : "")+"'><label for='signal-operation-name'>Имя нового сигнала</label><input id='signal-operation-name' class='signal-operation-control' data-signal-operation-name value='"+esc(operationState.targetName)+"' aria-invalid='"+String(!!validation.errors.target_name)+"'"+(busy ? " disabled" : "")+" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'>"+(validation.errors.target_name ? "<p class='signal-operation-field-message' role='alert'>"+esc(validation.errors.target_name)+"</p>" : "")+"</div><div class='signal-operation-row signal-operation-overwrite-row'><span class='signal-operation-label'></span><label class='checkbox-field'><input type='checkbox' data-signal-operation-overwrite"+(operationState.overwrite ? " checked" : "")+(busy ? " disabled" : "")+"><span>Затирать сигнал с таким именем</span></label></div>"+signalOperationStatusMarkup(state)+"</div>";
     decorateNoHistory(form);
     layer.hidden=!state.open;
     var shell=q("[data-testid='app-shell']"); if (shell) shell.inert=state.open;
@@ -5832,19 +5789,16 @@
     valueSelect.reconcile();
   }
 
-  function signalOperationCapabilities() {
-    var raw=model.state && model.state.capabilities || {};
-    return {denoise:raw.signal_preprocess_denoise === true,resample:raw.signal_preprocess_resample !== false,customPreprocess:raw.signal_preprocess_custom !== false};
-  }
-  function openSignalOperation(signalId,section,trigger) {
-    var helper=preprocessOperation(),source=(model.state && model.state.signals || []).filter(function (signal) { return stableSignalId(signal) === String(signalId); })[0];
+  function openSignalOperation(trigger) {
+    var helper=preprocessOperation(),selected=mainSignalForPane(paneById(model.activePane)),signalId=stableSignalId(selected);
+    var source=(model.state && model.state.signals || []).filter(function (signal) { return stableSignalId(signal) === String(signalId); })[0];
     if (!helper || !source) return false;
     if (window.SignalAnalyserOperationErrorDialog) window.SignalAnalyserOperationErrorDialog.close();
     var restore=trigger && trigger.isConnected ? trigger : document.activeElement && document.activeElement.isConnected ? document.activeElement : q("[data-testid='app-shell']");
     var operationSource=Object.assign({},source,{sampling_kind:"uniform",complex:/комплекс|complex/i.test(String(source.data_type || ""))});
-    model.signalOperation={open:true,source:source,operationState:helper.createState(operationSource,signalOperationCapabilities(),section === "preprocess" ? "preprocess" : "math"),busy:false,success:false,validation:null,trigger:restore};
+    model.signalOperation={open:true,source:source,operationState:helper.createState(operationSource),busy:false,success:false,validation:null,trigger:restore};
     renderSignalOperation();
-    window.requestAnimationFrame(function () { var input=q("[data-testid='signal-operation-section-select-input']"); if (input) input.focus(); });
+    window.requestAnimationFrame(function () { var input=q("[data-testid='signal-operation-select-input']"); if (input) input.focus(); });
     return true;
   }
 
@@ -5863,6 +5817,13 @@
   function submitSignalOperation() {
     var state=model.signalOperation,layer=q("[data-testid='signal-operation-layer']"),helper=preprocessOperation();
     if (!state.open || state.busy || !layer || !helper || !state.operationState) return;
+    if (!signalOperationSupported(helper,state.operationState.operation)) {
+      state.operationState=helper.createState(state.operationState.source);
+      state.validation=null;
+      state.success=false;
+      renderSignalOperation();
+      return;
+    }
     var validation=helper.validate(state.operationState);
     state.validation=validation;
     if (!validation.valid) {
@@ -5902,7 +5863,7 @@
       if (!model.signalOperation.open) showToast("Предобработка недоступна: выберите сигнал в таблице.",true);
       return;
     }
-    openSignalOperation(stableSignalId(source),"preprocess",document.activeElement);
+    openSignalOperation(document.activeElement);
   }
   window.addEventListener("signal-analyser:host-command",openPreprocessFromHost);
   document.addEventListener("keydown",function (event) {
@@ -6014,7 +5975,7 @@
     if (button.dataset.signalAddSubmit !== undefined) return void submitSignalAddDialog();
     if (button.dataset.signalDelete) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "delete", signal_name: button.dataset.signalDelete }); });
     if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });
-    if (button.dataset.signalOperation) return void openSignalOperation(button.dataset.signalOperation,"math",button);
+    if (button.dataset.signalOperation) return void openSignalOperation(button);
     if (button.dataset.signalOperationClose !== undefined || button.dataset.signalOperationCancel !== undefined) return void closeSignalOperation();
     if (button.dataset.signalOperationSubmit !== undefined) return void submitSignalOperation();
     if (button.dataset.settingsPage) {

@@ -548,7 +548,6 @@ function signal_analyser_state_lite_unlocked(state::SignalAnalyserState)::Dict{S
             "state_lite" => true,
             "active_output" => true,
             "background_calculation" => true,
-            "signal_preprocess_denoise" => false,
             "signal_preprocess_resample" => true,
             "signal_preprocess_custom" => true,
         ),

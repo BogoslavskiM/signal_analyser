@@ -102,7 +102,7 @@ function signal_operation_filter_body(command::DeriveSignalCommand)::String
         repr(parameters.steepness)
     "vec(EngeeDSP.Functions.$(function_name)(" *
         "init_signal, $(frequency_call), " *
-        "\"ImpulseResponse\", \"auto\", " *
+        "\"ImpulseResponse\", $(signal_operation_julia_string(parameters.impulse_response)), " *
         "\"Steepness\", $(steepness), " *
         "\"StopbandAttenuation\", $(repr(parameters.stopband_attenuation_db))))"
 end
@@ -110,10 +110,10 @@ end
 function signal_operation_detrend_body(command::DeriveSignalCommand)::String
     parameters = command.parameters::DetrendSignalOperationParameters
     degree = parameters.method == "constant" ? 0 : 1
-    isempty(parameters.breakpoints) &&
-        return "vec(EngeeDSP.Functions.detrend(init_signal, $(degree)))"
+    breakpoints = Float64.(parameters.breakpoints)
     "vec(EngeeDSP.Functions.detrend(init_signal, $(degree), " *
-        "$(repr(parameters.breakpoints))))"
+        "$(repr(breakpoints)), " *
+        "$(signal_operation_julia_string(parameters.nan_policy))))"
 end
 
 function signal_operation_fill_missing_body(command::DeriveSignalCommand)::String
@@ -130,11 +130,6 @@ function signal_operation_fill_missing_body(command::DeriveSignalCommand)::Strin
         "replacement = EngeeDSP.Functions.$(function_name)(filled, " *
             "$(parameters.window_length::Int), \"omitnan\"); " *
             "filled[missing_indices] = replacement[missing_indices]"
-    elseif method == "knn"
-        "for missing_index in missing_indices; " *
-            "ordered = sort(finite_indices; by = index -> abs(index - missing_index)); " *
-            "chosen = ordered[1:$(parameters.neighbors::Int)]; " *
-            "filled[missing_index] = sum(filled[chosen]) / length(chosen); end"
     elseif method == "autoregressive"
         "filled = vec(EngeeDSP.Functions.fillgaps(" *
             "filled, length(filled), $(parameters.ar_order::Int)))"
@@ -147,8 +142,6 @@ function signal_operation_fill_missing_body(command::DeriveSignalCommand)::Strin
     edge_method = parameters.end_method
     edge_override = if edge_method == "same" || method == "autoregressive"
         "nothing"
-    elseif edge_method == "constant"
-        "filled[edge_indices] .= $(repr(parameters.end_constant_value::Float64))"
     else
         "isempty(edge_indices) || (filled[edge_indices] = EngeeDSP.Functions.interp1(" *
             "Float64.(finite_indices), filled[finite_indices], Float64.(edge_indices), " *
@@ -165,10 +158,6 @@ function signal_operation_fill_missing_body(command::DeriveSignalCommand)::Strin
         (minimum_finite = max(minimum_finite, 2))
     edge_setup = if edge_method == "same" || method == "autoregressive"
         "edge_indices = Int[]"
-    elseif edge_method == "constant"
-        "edge_indices = isempty(finite_indices) ? copy(missing_indices) : " *
-            "filter(index -> index < first(finite_indices) || " *
-            "index > last(finite_indices), missing_indices)"
     else
         "edge_indices = filter(index -> index < first(finite_indices) || " *
             "index > last(finite_indices), missing_indices)"
@@ -417,27 +406,14 @@ function signal_operation_send_chunked!(
     nothing
 end
 
-function signal_operation_builtin_body(command::DeriveSignalCommand)::String
-    command.operation == "abs" && return "abs.(init_signal)"
-    command.operation == "square" && return "init_signal .^ 2"
-    command.operation == "sqrt" && return "sqrt.(init_signal)"
-    command.operation == "signed_sqrt_abs" &&
-        return "all(item -> item isa Real, init_signal) || " *
-            "throw(ArgumentError(\"signed_sqrt_abs requires a real signal\")); " *
-            "sqrt.(abs.(init_signal)) .* sign.(init_signal)"
-    command.operation == "multiply" &&
-        return "init_signal .* $(repr(command.multiplier::Float64))"
-    command.operation == "fft" &&
-        return "ComplexF64.(EngeeDSP.Functions.fft(init_signal))"
-    command.operation in ("custom", "custom-preprocess") && return command.body::String
-    throw(SignalOperationProviderError("invalid_operation", "Неподдерживаемая операция"))
-end
-
 function signal_operation_body(
     source::AnalysedSignal,
     command::DeriveSignalCommand,
 )::String
-    command.operation_kind == "math" && return signal_operation_builtin_body(command)
+    command.operation_kind == "preprocess" || throw(SignalOperationProviderError(
+        "invalid_operation",
+        "Неподдерживаемый раздел операции",
+    ))
     command.operation in ("bandpass", "bandstop", "highpass", "lowpass") &&
         return signal_operation_filter_body(command)
     command.operation == "detrend" && return signal_operation_detrend_body(command)
@@ -445,11 +421,7 @@ function signal_operation_body(
     command.operation == "smooth" && return signal_operation_smooth_body(source, command)
     command.operation == "envelope" && return signal_operation_envelope_body(source, command)
     command.operation == "resample" && return signal_operation_resample_body(source, command)
-    command.operation == "custom-preprocess" && return signal_operation_builtin_body(command)
-    command.operation == "denoise" && throw(SignalOperationProviderError(
-        "operation_unavailable",
-        "Подавление шума недоступно: в EngeeDSP нет необходимой функции",
-    ))
+    command.operation == "custom-preprocess" && return command.body::String
     throw(SignalOperationProviderError("invalid_operation", "Неподдерживаемая операция"))
 end
 
@@ -463,23 +435,9 @@ function signal_operation_validate_source(
     source::AnalysedSignal,
     command::DeriveSignalCommand,
 )::Nothing
-    if command.operation == "signed_sqrt_abs" && source.is_complex
-        throw(SignalOperationProviderError(
-            "incompatible_signal_type",
-            "Операция signed_sqrt_abs доступна только для вещественного сигнала",
-        ))
-    end
-    if command.operation == "sqrt" && !source.is_complex &&
-        any(value -> real(value) < 0.0, source.values)
-        throw(SignalOperationProviderError(
-            "incompatible_signal_values",
-            "Обычный корень требует неотрицательных значений вещественного сигнала",
-        ))
-    end
-    command.operation_kind == "preprocess" || return nothing
-    command.operation == "denoise" && throw(SignalOperationProviderError(
-        "operation_unavailable",
-        "Подавление шума недоступно: в EngeeDSP нет необходимой функции",
+    command.operation_kind == "preprocess" || throw(SignalOperationProviderError(
+        "invalid_operation",
+        "Неподдерживаемый раздел операции",
     ))
     if command.operation in ("envelope", "detrend") && source.is_complex
         throw(SignalOperationProviderError(
@@ -511,13 +469,6 @@ function signal_operation_validate_source(
                 "invalid_operation_parameters",
                 "Длина окна не должна превышать длину сигнала",
                 "window_length",
-            ))
-        elseif parameters.method == "knn" &&
-            (parameters.neighbors::Int) > finite_count
-            throw(SignalOperationProviderError(
-                "invalid_operation_parameters",
-                "Количество соседей не должно превышать число конечных отсчётов",
-                "neighbors",
             ))
         elseif parameters.method == "autoregressive" &&
             (parameters.ar_order::Int) >= finite_count
@@ -758,8 +709,7 @@ function signal_operation_execute(
             input_name,
             output_name,
             operation_body;
-            import_engee_dsp = command.operation == "fft" ||
-                command.operation_kind == "preprocess" && command.operation != "custom-preprocess",
+            import_engee_dsp = command.operation != "custom-preprocess",
             sample_rate_hz = source.sample_rate_hz,
         )
         signal_operation_preflight_wrapper(wrapper)
@@ -802,7 +752,7 @@ function signal_operation_execute(
             metadata.is_complex,
             signal_operation_result_sample_rate(source, command),
         )
-        if command.operation in ("custom", "custom-preprocess") &&
+        if command.operation == "custom-preprocess" &&
             result.is_complex != source.is_complex
             throw(SignalOperationProviderError(
                 "invalid_operation_result",

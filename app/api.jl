@@ -797,22 +797,7 @@ function parse_signal_operation_parameters(
     parameters = raw::AbstractDict
     errors = Dict{String,String}()
 
-    if operation in ("abs", "square", "sqrt", "signed_sqrt_abs", "fft")
-        signal_operation_parameter_exact_fields!(errors, parameters, Set{String}())
-        isempty(errors) || throw(SignalAnalyserValidationError(
-            "Некорректные параметры операции над сигналом",
-            errors,
-        ))
-        return NoSignalOperationParameters()
-    elseif operation == "multiply"
-        signal_operation_parameter_exact_fields!(errors, parameters, Set(["multiplier"]))
-        multiplier = signal_operation_parameter_number!(errors, parameters, "multiplier")
-        isempty(errors) || throw(SignalAnalyserValidationError(
-            "Некорректные параметры операции над сигналом",
-            errors,
-        ))
-        return MultiplySignalOperationParameters(multiplier::Float64)
-    elseif operation in ("custom", "custom-preprocess")
+    if operation == "custom-preprocess"
         signal_operation_parameter_exact_fields!(errors, parameters, Set(["body"]))
         body = signal_operation_parameter_text!(errors, parameters, "body")
         isempty(errors) || throw(SignalAnalyserValidationError(
@@ -826,11 +811,13 @@ function parse_signal_operation_parameters(
             "frequency_units",
             "lower_passband",
             "upper_passband",
+            "impulse_response",
             "steepness",
             "stopband_attenuation_db",
         ]) : Set([
             "frequency_units",
             "passband",
+            "impulse_response",
             "steepness",
             "stopband_attenuation_db",
         ])
@@ -840,6 +827,12 @@ function parse_signal_operation_parameters(
             parameters,
             "frequency_units",
             Set(["hertz", "normalized_pi"]),
+        )
+        impulse_response = signal_operation_parameter_enum!(
+            errors,
+            parameters,
+            "impulse_response",
+            Set(["auto", "fir", "iir"]),
         )
         lower = band ? signal_operation_parameter_number!(
             errors,
@@ -890,6 +883,7 @@ function parse_signal_operation_parameters(
             lower,
             upper,
             passband,
+            impulse_response::String,
             steepness::Float64,
             attenuation::Float64,
         )
@@ -897,13 +891,19 @@ function parse_signal_operation_parameters(
         method_raw = signal_analyser_payload_value(parameters, "method")
         method_hint = method_raw isa AbstractString ? String(method_raw) : ""
         expected = method_hint == "piecewise_linear" ?
-            Set(["method", "breakpoints"]) : Set(["method"])
+            Set(["method", "breakpoints", "nan_policy"]) : Set(["method", "nan_policy"])
         signal_operation_parameter_exact_fields!(errors, parameters, expected)
         method = signal_operation_parameter_enum!(
             errors,
             parameters,
             "method",
             Set(["constant", "linear", "piecewise_linear"]),
+        )
+        nan_policy = signal_operation_parameter_enum!(
+            errors,
+            parameters,
+            "nan_policy",
+            Set(["includenan", "omitnan"]),
         )
         breakpoints = Int[]
         if method == "piecewise_linear"
@@ -928,47 +928,40 @@ function parse_signal_operation_parameters(
             "Некорректные параметры операции над сигналом",
             errors,
         ))
-        return DetrendSignalOperationParameters(method::String, breakpoints)
+        return DetrendSignalOperationParameters(
+            method::String,
+            breakpoints,
+            nan_policy::String,
+        )
     elseif operation == "fill-missing"
         method_raw = signal_analyser_payload_value(parameters, "method")
-        end_raw = signal_analyser_payload_value(parameters, "end_method")
         method_hint = method_raw isa AbstractString ? String(method_raw) : ""
-        end_hint = end_raw isa AbstractString ? String(end_raw) : ""
         expected = Set(["method", "end_method"])
         dependency = Dict(
             "constant" => "constant_value",
             "moving_mean" => "window_length",
             "moving_median" => "window_length",
-            "knn" => "neighbors",
             "autoregressive" => "ar_order",
         )
         haskey(dependency, method_hint) && push!(expected, dependency[method_hint])
-        end_hint == "constant" && push!(expected, "end_constant_value")
         signal_operation_parameter_exact_fields!(errors, parameters, expected)
         method = signal_operation_parameter_enum!(errors, parameters, "method", Set([
             "constant", "previous", "next", "nearest", "linear", "spline", "pchip",
-            "makima", "moving_mean", "moving_median", "knn", "autoregressive",
+            "makima", "moving_mean", "moving_median", "autoregressive",
         ]))
         end_method = signal_operation_parameter_enum!(
             errors,
             parameters,
             "end_method",
-            Set(["same", "previous", "next", "nearest", "constant"]),
+            Set(["same", "nearest"]),
         )
         constant_value = method == "constant" ? signal_operation_parameter_number!(
             errors,
             parameters,
             "constant_value",
         ) : nothing
-        end_constant_value = end_method == "constant" ? signal_operation_parameter_number!(
-            errors,
-            parameters,
-            "end_constant_value",
-        ) : nothing
         window_length = method in ("moving_mean", "moving_median") ?
             signal_operation_parameter_integer!(errors, parameters, "window_length") : nothing
-        neighbors = method == "knn" ?
-            signal_operation_parameter_integer!(errors, parameters, "neighbors") : nothing
         ar_order = method == "autoregressive" ?
             signal_operation_parameter_integer!(errors, parameters, "ar_order") : nothing
         isempty(errors) || throw(SignalAnalyserValidationError(
@@ -979,9 +972,7 @@ function parse_signal_operation_parameters(
             method::String,
             end_method::String,
             constant_value,
-            end_constant_value,
             window_length,
-            neighbors,
             ar_order,
         )
     elseif operation == "smooth"
@@ -1026,8 +1017,8 @@ function parse_signal_operation_parameters(
             parameters,
             "smoothing_factor",
         ) : nothing
-        if smoothing_factor !== nothing && !(0.0 <= smoothing_factor <= 1.0)
-            errors["smoothing_factor"] = "Введите значение от 0 до 1"
+        if smoothing_factor !== nothing && !(0.0 < smoothing_factor < 1.0)
+            errors["smoothing_factor"] = "Введите значение строго больше 0 и меньше 1"
         end
         polynomial_degree = method == "savitzky_golay" ?
             signal_operation_parameter_integer!(
@@ -1077,8 +1068,7 @@ function parse_signal_operation_parameters(
         filter_order = method == "fir" ? signal_operation_parameter_integer!(
             errors,
             parameters,
-            "filter_order";
-            nullable = true,
+            "filter_order",
         ) : nothing
         length_units = method == "rms" ? signal_operation_parameter_enum!(
             errors,
@@ -1090,7 +1080,6 @@ function parse_signal_operation_parameters(
             errors,
             parameters,
             "window_length";
-            nullable = true,
             positive = true,
         ) : nothing
         separation_units = method == "peak" ? signal_operation_parameter_enum!(
@@ -1103,7 +1092,6 @@ function parse_signal_operation_parameters(
             errors,
             parameters,
             "maxima_separation";
-            nullable = true,
             positive = true,
         ) : nothing
         isempty(errors) || throw(SignalAnalyserValidationError(
@@ -1118,70 +1106,6 @@ function parse_signal_operation_parameters(
             window_length,
             separation_units,
             maxima_separation,
-        )
-    elseif operation == "denoise"
-        method_raw = signal_analyser_payload_value(parameters, "method")
-        method_hint = method_raw isa AbstractString ? String(method_raw) : ""
-        expected = Set(["wavelet_family", "wavelet_number", "method", "levels"])
-        method_hint == "bayes" && union!(expected, Set(["rule", "noise_estimate"]))
-        method_hint == "fdr" && union!(expected, Set(["noise_estimate", "fdr_q"]))
-        method_hint in ("minimax", "sure", "universal") &&
-            union!(expected, Set(["rule", "noise_estimate"]))
-        signal_operation_parameter_exact_fields!(errors, parameters, expected)
-        family = signal_operation_parameter_text!(
-            errors,
-            parameters,
-            "wavelet_family";
-            max_bytes = 64,
-        )
-        wavelet_number = signal_operation_parameter_integer!(
-            errors,
-            parameters,
-            "wavelet_number",
-        )
-        method = signal_operation_parameter_enum!(errors, parameters, "method", Set([
-            "bayes", "blockjs", "fdr", "minimax", "sure", "universal",
-        ]))
-        levels = signal_operation_parameter_integer!(
-            errors,
-            parameters,
-            "levels";
-            nullable = true,
-        )
-        rule = method in ("bayes", "minimax", "sure", "universal") ?
-            signal_operation_parameter_enum!(
-                errors,
-                parameters,
-                "rule",
-                method == "bayes" ? Set(["median", "mean", "soft", "hard"]) :
-                    Set(["soft", "hard"]),
-            ) : nothing
-        noise_estimate = method != "blockjs" ? signal_operation_parameter_enum!(
-            errors,
-            parameters,
-            "noise_estimate",
-            Set(["level_independent", "level_dependent"]),
-        ) : nothing
-        fdr_q = method == "fdr" ? signal_operation_parameter_number!(
-            errors,
-            parameters,
-            "fdr_q";
-            positive = true,
-        ) : nothing
-        fdr_q !== nothing && fdr_q > 0.5 &&
-            (errors["fdr_q"] = "Введите значение не больше 0,5")
-        isempty(errors) || throw(SignalAnalyserValidationError(
-            "Некорректные параметры операции над сигналом",
-            errors,
-        ))
-        return DenoiseSignalOperationParameters(
-            family::String,
-            wavelet_number::Int,
-            method::String,
-            levels,
-            rule,
-            noise_estimate,
-            fdr_q,
         )
     elseif operation == "resample"
         mode_raw = signal_analyser_payload_value(parameters, "mode")
@@ -1237,7 +1161,7 @@ function parse_signal_operation_parameters(
     throw(signal_inventory_validation_error("operation", "Неподдерживаемая операция"))
 end
 
-function parse_derive_signal_command_v58(data::AbstractDict)::DeriveSignalCommand
+function parse_derive_signal_command_v59(data::AbstractDict)::DeriveSignalCommand
     expected = Set([
         "state_revision",
         "source_signal_id",
@@ -1255,13 +1179,12 @@ function parse_derive_signal_command_v58(data::AbstractDict)::DeriveSignalComman
         String(strip(String(source_value))) : nothing
     source_id === nothing && (errors["source_signal_id"] = "Требуется непустая строка")
     kind_value = signal_analyser_payload_value(data, "operation_kind")
-    operation_kind = kind_value isa AbstractString && String(kind_value) in ("math", "preprocess") ?
+    operation_kind = kind_value isa AbstractString && String(kind_value) == "preprocess" ?
         String(kind_value) : nothing
-    operation_kind === nothing && (errors["operation_kind"] = "Допустимо: math, preprocess")
+    operation_kind === nothing && (errors["operation_kind"] = "Допустимо: preprocess")
     operation_value = signal_analyser_payload_value(data, "operation")
     operation = if operation_value isa AbstractString
-        value = String(operation_value) == "signed-sqrt" ?
-            "signed_sqrt_abs" : String(operation_value)
+        value = String(operation_value)
         value in SIGNAL_DERIVED_OPERATION_NAMES ? value : nothing
     else
         nothing
@@ -1302,88 +1225,12 @@ function parse_derive_signal_command_v58(data::AbstractDict)::DeriveSignalComman
     end
 end
 
-function parse_derive_signal_command_legacy(data::AbstractDict)::DeriveSignalCommand
-    data isa AbstractDict || throw(signal_inventory_validation_error(
-        "body",
-        "Ожидался JSON-объект",
-    ))
-    expected = Set([
-        "state_revision",
-        "source_signal_id",
-        "operation",
-        "target_name",
-        "overwrite",
-        "multiplier",
-        "body",
-    ])
-    errors = Dict{String,String}()
-    signal_inventory_request_exact_fields!(errors, data, expected)
-    revision = signal_inventory_request_revision!(errors, data)
-    source_value = signal_analyser_payload_value(data, "source_signal_id")
-    source_id = source_value isa AbstractString && !isempty(strip(String(source_value))) ?
-        String(strip(String(source_value))) : nothing
-    source_id === nothing && (errors["source_signal_id"] = "Требуется непустая строка")
-    operation_value = signal_analyser_payload_value(data, "operation")
-    operation = operation_value isa AbstractString &&
-        String(operation_value) in SIGNAL_DERIVED_OPERATION_NAMES ? String(operation_value) : nothing
-    operation === nothing && (errors["operation"] =
-        "Допустимо: abs, square, sqrt, signed_sqrt_abs, multiply, fft, custom")
-    target_value = signal_analyser_payload_value(data, "target_name")
-    target_name = target_value isa AbstractString && !isempty(strip(String(target_value))) ?
-        String(strip(String(target_value))) : nothing
-    target_name === nothing && (errors["target_name"] = "Требуется непустая строка")
-    overwrite_value = signal_analyser_payload_value(data, "overwrite")
-    overwrite = overwrite_value isa Bool ? overwrite_value : nothing
-    overwrite === nothing && (errors["overwrite"] = "Требуется boolean")
-    multiplier_value = signal_analyser_payload_value(data, "multiplier")
-    multiplier = if multiplier_value === nothing
-        nothing
-    elseif multiplier_value isa Real && !(multiplier_value isa Bool)
-        converted = try
-            Float64(multiplier_value)
-        catch err
-            (err isa InexactError || err isa OverflowError) || rethrow()
-            NaN
-        end
-        isfinite(converted) ? converted : nothing
-    else
-        nothing
-    end
-    multiplier_value !== nothing && multiplier === nothing &&
-        (errors["multiplier"] = "Требуется null или конечное число")
-    body_value = signal_analyser_payload_value(data, "body")
-    body = body_value === nothing ? nothing :
-        body_value isa AbstractString ? String(body_value) : nothing
-    body_value !== nothing && body === nothing &&
-        (errors["body"] = "Требуется null или строка")
-    isempty(errors) || throw(SignalAnalyserValidationError(
-        "Некорректный запрос операции над сигналом",
-        errors,
-    ))
-    try
-        DeriveSignalCommand(
-            revision::Int,
-            source_id::String,
-            operation::String,
-            target_name::String,
-            overwrite::Bool,
-            multiplier,
-            body,
-        )
-    catch err
-        err isa ArgumentError || rethrow()
-        throw(signal_inventory_validation_error("operation", sprint(showerror, err)))
-    end
-end
-
 function parse_derive_signal_command(data)::DeriveSignalCommand
     data isa AbstractDict || throw(signal_inventory_validation_error(
         "body",
         "Ожидался JSON-объект",
     ))
-    keys = signal_analyser_payload_keys(data)
-    ("operation_kind" in keys || "parameters" in keys) ?
-        parse_derive_signal_command_v58(data) : parse_derive_signal_command_legacy(data)
+    parse_derive_signal_command_v59(data)
 end
 
 function parse_crop_signal_command(data)::CropSignalCommand

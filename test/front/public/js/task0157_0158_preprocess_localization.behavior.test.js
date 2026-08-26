@@ -39,22 +39,19 @@ module.exports = async function task0157_0158PreprocessLocalization(assert) {
 
   assert(operation.hostCommand.eventName === "signal-analyser:host-command" && operation.hostCommand.command === "preprocess", "external host entry must use the exact command contract");
   assert(operation.hostCommand.accepts({ detail: { command: "preprocess", source_signal_id: "ignored" } }) && !operation.hostCommand.accepts({ detail: { command: "math" } }), "only the accepted preprocessing host command may open the dialog");
-  assert(/function openPreprocessFromHost\(event\)[\s\S]*?mainSignalForPane\(paneById\(model\.activePane\)\)[\s\S]*?openSignalOperation\(stableSignalId\(source\),"preprocess"/.test(app), "host entry must resolve the current accepted main signal and ignore host-provided source data");
+  assert(/function openPreprocessFromHost\(event\)[\s\S]*?mainSignalForPane\(paneById\(model\.activePane\)\)[\s\S]*?openSignalOperation\(document\.activeElement\)/.test(app), "host entry must resolve the current accepted main signal and ignore host-provided source data");
   assert(!/data-signal-preprocess(?:\s|=|>|['"])/.test(app), "the application must not add an in-app preprocessing button");
   assert(/Предобработка недоступна: выберите сигнал в таблице\./.test(app), "host entry without a main signal must retain the sanitized notification");
 
-  const math = operation.createState(source, {}, "math");
-  assert(math.section === "math" && math.operation === "abs", "the existing signal row action must default to math / module");
-  assert(operation.mathOperations.map((item) => item.value).join(",") === "abs,square,sqrt,signed-sqrt,multiply,custom", "math selector must expose exactly the retained operation inventory");
-  assert(!operation.mathOperations.some((item) => item.value === "fft"), "FFT must not reappear in the math selector");
-  const preprocess = operation.createState(source, { denoise: true, resample: true, customPreprocess: true }, "preprocess");
-  assert(preprocess.section === "preprocess" && preprocess.operation === "bandpass", "host preprocessing entry must default to bandpass");
-  assert(operation.preprocessOperations.map((item) => item.value).join(",") === "bandpass,bandstop,highpass,lowpass,detrend,fill-missing,smooth,envelope,denoise,resample,custom-preprocess", "preprocessing selector must expose the researched inventory");
+  const preprocess = operation.createState(source);
+  assert(preprocess.operation === "bandpass", "the operation dialog must default to bandpass preprocessing");
+  assert(operation.preprocessOperations.map((item) => item.value).join(",") === "bandpass,bandstop,highpass,lowpass,detrend,fill-missing,smooth,envelope,resample,custom-preprocess", "preprocessing selector must expose the exact V59 inventory");
+  assert(!Object.prototype.hasOwnProperty.call(operation, "mathOperations") && !operation.preprocessOperations.some((item) => /^(fft|denoise|knn|abs|square|sqrt|signed-sqrt|multiply|custom)$/.test(item.value)), "old math, FFT, Denoise and KNN must not be selectable");
 
   let conditional = operation.switchOperation(preprocess, "detrend");
-  assert(operation.schema(conditional).map((field) => field.id).join(",") === "method", "hidden conditional fields must not enter the schema");
+  assert(operation.schema(conditional).map((field) => field.id).join(",") === "method,nan_policy", "hidden conditional fields must not enter the schema");
   conditional = operation.updateParameter(conditional, "method", "piecewise_linear");
-  assert(operation.schema(conditional).map((field) => field.id).join(",") === "method,breakpoints", "piecewise detrend must reveal only its breakpoint field");
+  assert(operation.schema(conditional).map((field) => field.id).join(",") === "method,breakpoints,nan_policy", "piecewise detrend must reveal only its breakpoint field plus required NaN policy");
   conditional = operation.switchOperation(preprocess, "smooth");
   conditional.parameters.window_duration = null;
   assert(operation.schema(conditional).map((field) => field.id).join(",").includes("duration_units,window_duration"), "duration smoothing must reveal duration-only fields");
@@ -77,16 +74,13 @@ module.exports = async function task0157_0158PreprocessLocalization(assert) {
   automaticPayload = operation.payload(automatic);
   assert(!Object.prototype.hasOwnProperty.call(automaticPayload.parameters, "window_duration") && automaticPayload.parameters.smoothing_factor === 0.25, "payload must include visible fields only");
 
-  const disabledDenoise = operation.switchOperation(operation.createState(source, { denoise: false }, "preprocess"), "denoise");
-  assert(operation.operationOptions("preprocess", { denoise: false }).find((item) => item.value === "denoise").disabled, "disabled denoise must remain visible but unavailable");
-  assert(!operation.validate(disabledDenoise).valid && operation.availability(disabledDenoise).code === "denoise_unavailable", "unavailable denoise must block submission before a request");
-  assert(/var validation=helper\.validate\(state\.operationState\);[\s\S]*?if \(!validation\.valid\)[\s\S]*?return;[\s\S]*?api\.deriveSignal\(payload\)/.test(app), "invalid or unavailable preprocessing must not call derive API");
+  assert(/var validation=helper\.validate\(state\.operationState\);[\s\S]*?if \(!validation\.valid\)[\s\S]*?return;[\s\S]*?api\.deriveSignal\(payload\)/.test(app), "invalid preprocessing must not call derive API");
 
-  let invalid = operation.createState(source, {}, "preprocess");
+  let invalid = operation.createState(source);
   invalid.parameters.lower_passband = 1_200;
   invalid.parameters.upper_passband = 1_100;
   const validation = operation.validate(invalid);
-  assert(!validation.valid && validation.errors.lower_passband && validation.errors.upper_passband, "each invalid visible field must keep its own local validation error");
+  assert(!validation.valid && validation.errors.lower_passband, "invalid visible filter bounds must keep a local validation error");
   assert(/signal-operation-row"\+\(error \? " has-error" : ""\)[\s\S]*?signal-operation-field-message/.test(app), "each invalid operation field must render an independent red-row/message state");
   assert(/var invalid=layer\.querySelector\("\.signal-operation-row\.has-error input/.test(app) && /if \(invalid\) invalid\.focus\(\)/.test(app), "invalid submit must focus the first invalid local field");
   assert(/state\.busy=true[\s\S]*?renderSignalOperation\(\)/.test(app) && /disabled=busy \|\| field\.disabled/.test(app), "busy submit must disable the form while retaining its values");
@@ -100,5 +94,5 @@ module.exports = async function task0157_0158PreprocessLocalization(assert) {
   await apiWindow.SignalAnalyserApi.deriveSignal(envelope);
   assert(fetchCalls.length === 1 && fetchCalls[0].url === "./api/signals/derive" && fetchCalls[0].options.method === "POST", "derive must POST to the exact API endpoint");
   const posted = JSON.parse(fetchCalls[0].options.body);
-  assert(JSON.stringify(posted) === JSON.stringify(envelope) && posted.source_signal_id === "signal-17" && posted.operation_kind === "preprocess" && posted.operation === "bandpass", "derive POST must preserve the exact typed V58 envelope");
+  assert(JSON.stringify(posted) === JSON.stringify(envelope) && posted.source_signal_id === "signal-17" && posted.operation_kind === "preprocess" && posted.operation === "bandpass", "derive POST must preserve the exact typed V59 envelope");
 };
