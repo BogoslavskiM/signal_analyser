@@ -332,16 +332,16 @@
     sourcePolicy:"Resolve the current accepted main_signal by stable id when the event is handled; ignore any source id/name supplied by event.detail."
   });
   var OPERATIONS=Object.freeze([
-    {value:"bandpass",label:"Полосовой фильтр",engee:"EngeeDSP.Functions.bandpass"},
-    {value:"bandstop",label:"Режекторный фильтр",engee:"EngeeDSP.Functions.bandstop"},
-    {value:"highpass",label:"Фильтр высоких частот",engee:"EngeeDSP.Functions.highpass"},
-    {value:"lowpass",label:"Фильтр низких частот",engee:"EngeeDSP.Functions.lowpass"},
-    {value:"detrend",label:"Удаление тренда",engee:"EngeeDSP.Functions.detrend"},
-    {value:"fill-missing",label:"Заполнение пропущенных значений",engee:"EngeeDSP.Functions.interp1/movmean/movmedian/fillgaps"},
-    {value:"smooth",label:"Сглаживание",engee:"EngeeDSP.Functions.smoothdata"},
-    {value:"envelope",label:"Огибающая",engee:"EngeeDSP.Functions.envelope"},
-    {value:"resample",label:"Передискретизация",engee:"EngeeDSP.Functions.resample"},
-    {value:"custom-preprocess",label:"Пользовательская операция",engee:"engee.genie.recv context=Main"}
+    {value:"bandpass",label:"Полосовой фильтр",engee:"EngeeDSP.Functions.bandpass",iconAsset:"operation-filter.svg"},
+    {value:"bandstop",label:"Режекторный фильтр",engee:"EngeeDSP.Functions.bandstop",iconAsset:"operation-filter.svg"},
+    {value:"highpass",label:"Фильтр высоких частот",engee:"EngeeDSP.Functions.highpass",iconAsset:"operation-filter.svg"},
+    {value:"lowpass",label:"Фильтр низких частот",engee:"EngeeDSP.Functions.lowpass",iconAsset:"operation-filter.svg"},
+    {value:"detrend",label:"Удаление тренда",engee:"EngeeDSP.Functions.detrend",iconAsset:"operation-detrend.svg"},
+    {value:"fill-missing",label:"Заполнение пропущенных значений",engee:"EngeeDSP.Functions.interp1/movmean/movmedian/fillgaps",iconAsset:"operation-fill-missing.svg"},
+    {value:"smooth",label:"Сглаживание",engee:"EngeeDSP.Functions.smoothdata",iconAsset:"operation-smooth.svg"},
+    {value:"envelope",label:"Огибающая",engee:"EngeeDSP.Functions.envelope",iconAsset:"operation-envelope.svg"},
+    {value:"resample",label:"Передискретизация",engee:"EngeeDSP.Functions.resample",iconAsset:"operation-resample.svg"},
+    {value:"custom-preprocess",label:"Пользовательская операция",engee:"engee.genie.recv context=Main",iconAsset:"function.svg"}
   ]);
   var OPTIONS=Object.freeze({
     frequencyUnits:[{value:"hertz",label:"Гц"},{value:"normalized_pi",label:"× π рад/отсчёт"}],
@@ -394,7 +394,8 @@
   function frequencyDefault(source,fraction) { var rate=sampleRate(source); return rate == null ? fraction : rate * 0.5 * fraction; }
   function frequencyUnit(source) { return sampleRate(source) == null ? "normalized_pi" : "hertz"; }
   function defaultName(source,operation) { return sourceName(source) + "_" + (SUFFIXES[operation] || String(operation).replace(/-/g,"_")); }
-  function operationOptions() { return OPERATIONS.map(function (item) { return Object.assign({},item,{disabled:false}); }); }
+  function operationIconBase() { return String(window.SignalAnalyserOperationIconBase || window.SignalAnalyserUIBase || ".").replace(/\/$/,""); }
+  function operationOptions() { return OPERATIONS.map(function (item) { return Object.assign({},item,{disabled:false,icon:operationIconBase()+"/icons/"+item.iconAsset}); }); }
   function initialParameters(operation,source) {
     if (operation === "bandpass" || operation === "bandstop") return {frequency_units:frequencyUnit(source),lower_passband:frequencyDefault(source,0.25),upper_passband:frequencyDefault(source,0.75),impulse_response:"auto",steepness:0.85,stopband_attenuation_db:60};
     if (operation === "highpass" || operation === "lowpass") return {frequency_units:frequencyUnit(source),passband:frequencyDefault(source,0.5),impulse_response:"auto",steepness:0.85,stopband_attenuation_db:60};

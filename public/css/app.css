@@ -3943,7 +3943,7 @@ body {
   height: 32px;
 }
 
-/* V59: Engee-supported preprocessing-only operation dialog. */
+/* V60: Engee-supported preprocessing-only operation dialog with canonical operation icons. */
 .signal-operation-dialog {
   width: min(740px, calc(100vw - 32px));
   min-width: 0;
@@ -4009,6 +4009,27 @@ body {
 .signal-operation-row select {
   height: 40px;
   padding: 10px 16px;
+}
+
+.signal-operation-row .value-select-trigger.has-leading-icon .select-trigger-input {
+  padding: 10px 32px 10px 4px;
+}
+
+.signal-operation-row .select-trigger-icon,
+.value-select-popup .select-option-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.signal-operation-row .select-trigger-icon {
+  margin-left: 8px;
+}
+
+.value-select-popup .select-option.has-leading-icon {
+  gap: 8px;
 }
 
 .signal-operation-row select {

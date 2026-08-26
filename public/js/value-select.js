@@ -50,8 +50,9 @@
         return typeof option === "object" ? {
           value:String(option.value == null ? "" : option.value),
           label:String(option.label == null ? option.value : option.label),
-          disabled:!!option.disabled
-        } : { value:String(option), label:String(option), disabled:false };
+          disabled:!!option.disabled,
+          icon:String(option.icon == null ? "" : option.icon)
+        } : { value:String(option), label:String(option), disabled:false, icon:"" };
       }),
       disabled:!!config.disabled,
       className:config.className || "",
@@ -75,12 +76,22 @@
       " data-value-select-input data-testid='" + esc(config.testId) + "-input'>";
   }
 
+  function selectedOption(config) {
+    var index=optionIndex(config,config.selectedValue);
+    return index >= 0 ? config.options[index] : null;
+  }
+
+  function iconMarkup(source,className,attribute,value) {
+    if (!source) return "";
+    return "<img class='" + esc(className) + "' src='" + esc(source) + "' alt='' aria-hidden='true' " + attribute + "='" + esc(value) + "'>";
+  }
+
   function triggerMarkup(config) {
-    var open=state.logicalKey === config.logicalKey;
-    return "<div class='value-select-trigger select-trigger " + esc(config.className) + (open ? " is-open" : "") + "'" +
+    var open=state.logicalKey === config.logicalKey, selected=selectedOption(config), icon=selected && selected.icon;
+    return "<div class='value-select-trigger select-trigger " + esc(config.className) + (icon ? " has-leading-icon" : "") + (open ? " is-open" : "") + "'" +
       " data-value-select-key='" + esc(config.logicalKey) + "' data-value-select-disabled='" + String(config.disabled) + "'" +
       " data-testid='" + esc(config.testId) + "' aria-expanded='" + String(open) + "' aria-disabled='" + String(config.disabled) + "'" +
-      " title='" + esc(config.selectedLabel) + "'>" + inputMarkup(config, open) +
+      " title='" + esc(config.selectedLabel) + "'>" + iconMarkup(icon,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") + inputMarkup(config, open) +
       "<button class='select-trigger-arrow' type='button' tabindex='-1' aria-label='" + esc((open ? "Закрыть список: " : "Открыть список: ") + config.ariaLabel) + "'" +
       " aria-expanded='" + String(open) + "' aria-controls='value-select-listbox' data-value-select-arrow data-testid='" + esc(config.testId) + "-arrow'" +
       (config.disabled ? " disabled" : "") + "></button></div>";
@@ -98,8 +109,8 @@
       node.parentNode.replaceChild(replacement, node);
       node=replacement;
     }
-    var open=state.logicalKey === config.logicalKey;
-    node.className=("value-select-trigger select-trigger " + (config.className || "") + (open ? " is-open" : "")).trim();
+    var open=state.logicalKey === config.logicalKey, selected=selectedOption(config), iconSource=selected && selected.icon;
+    node.className=("value-select-trigger select-trigger " + (config.className || "") + (iconSource ? " has-leading-icon" : "") + (open ? " is-open" : "")).trim();
     node.dataset.valueSelectKey=config.logicalKey;
     node.dataset.valueSelectDisabled=String(config.disabled);
     node.dataset.testid=config.testId;
@@ -110,10 +121,25 @@
     var input=node.querySelector && node.querySelector("[data-value-select-input]");
     var arrow=node.querySelector && node.querySelector("[data-value-select-arrow]");
     if (!input || !arrow) {
-      node.innerHTML=inputMarkup(config, open) + "<button class='select-trigger-arrow' type='button' tabindex='-1' data-value-select-arrow></button>";
+      node.innerHTML=iconMarkup(iconSource,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") + inputMarkup(config, open) + "<button class='select-trigger-arrow' type='button' tabindex='-1' data-value-select-arrow></button>";
       input=node.querySelector("[data-value-select-input]");
       arrow=node.querySelector("[data-value-select-arrow]");
     }
+    var icon=node.querySelector && node.querySelector("[data-value-select-trigger-icon]");
+    if (iconSource && !icon && document.createElement) {
+      icon=document.createElement("img");
+      icon.className="select-trigger-icon";
+      icon.alt="";
+      icon.setAttribute("aria-hidden","true");
+      icon.setAttribute("data-value-select-trigger-icon",selected ? selected.value : "");
+      node.insertBefore(icon,input);
+    }
+    if (iconSource && icon) {
+      icon.src=iconSource;
+      icon.alt="";
+      icon.setAttribute("aria-hidden","true");
+      icon.setAttribute("data-value-select-trigger-icon",selected ? selected.value : "");
+    } else if (!iconSource && icon && icon.parentNode) icon.parentNode.removeChild(icon);
     if (input) {
       var displayed=open ? state.query : config.selectedLabel;
       input.className="select-trigger-input value-select-input";
@@ -193,12 +219,12 @@
     if (!activeVisible) state.activeValue=enabled[0] ? enabled[0].option.value : null;
     host.innerHTML=entries.map(function (entry) {
       var option=entry.option, selected=option.value === config.selectedValue;
-      return "<button class='select-option" + (selected ? " is-selected" : "") + (option.value === state.activeValue ? " is-active" : "") + "'" +
+      return "<button class='select-option" + (option.icon ? " has-leading-icon" : "") + (selected ? " is-selected" : "") + (option.value === state.activeValue ? " is-active" : "") + "'" +
         " type='button' role='option' tabindex='-1' id='" + optionId(config.logicalKey, entry.index) + "'" +
         " data-value-select-option-index='" + entry.index + "' data-testid='value-select-option-" + entry.index + "'" +
         " aria-selected='" + String(selected) + "' title='" + esc(option.label) + "'" +
         (option.disabled ? " disabled aria-disabled='true'" : "") +
-        "><span class='select-option-check' aria-hidden='true'></span><span class='select-option-label'>" + esc(option.label) + "</span></button>";
+        "><span class='select-option-check' aria-hidden='true'></span>" + iconMarkup(option.icon,"select-option-icon","data-value-select-option-icon",option.value) + "<span class='select-option-label'>" + esc(option.label) + "</span></button>";
     }).join("");
     setActive(state.activeValue, false);
   }
