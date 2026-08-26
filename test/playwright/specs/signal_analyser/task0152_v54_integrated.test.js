@@ -79,7 +79,7 @@ async function deleteTaskSignal(page, config, name, progress) {
   const button = page.locator(`[data-signal-delete=${JSON.stringify(name)}]`);
   if (!await button.count()) return false;
   const response = page.waitForResponse(function (item) {
-    return item.request().method() === "POST" && new URL(item.url()).pathname === "/api/signals";
+    return item.request().method() === "POST" && new URL(item.url()).pathname.endsWith("/api/signals");
   }, { timeout: 30000 });
   await button.click();
   const result = await response;
@@ -275,7 +275,7 @@ async function task0152V54({ appUrl, assert, config, log, page, step }) {
         await trimDialog.locator("[data-signal-trim-name]").fill(cropName);
         let cropBody = null;
         const cropResponse = page.waitForResponse(async function (item) {
-          if (item.request().method() !== "POST" || new URL(item.url()).pathname !== "/api/signals/crop") return false;
+          if (item.request().method() !== "POST" || !new URL(item.url()).pathname.endsWith("/api/signals/crop")) return false;
           cropBody = item.request().postDataJSON(); return true;
         }, { timeout:30000 });
         await trimDialog.locator("[data-signal-trim-submit]").click();
@@ -298,7 +298,7 @@ async function task0152V54({ appUrl, assert, config, log, page, step }) {
         ownedSignals.push(customName);
         await customBody.fill("begin\n  init_signal .* 1.0\nend");
         await operationDialog.locator("#signal-operation-name").fill(customName);
-        const deriveResponse = page.waitForResponse(function (item) { return item.request().method() === "POST" && new URL(item.url()).pathname === "/api/signals/derive"; }, { timeout:30000 });
+        const deriveResponse = page.waitForResponse(function (item) { return item.request().method() === "POST" && new URL(item.url()).pathname.endsWith("/api/signals/derive"); }, { timeout:30000 });
         await operationDialog.locator("[data-signal-operation-submit]").click();
         const derived = await deriveResponse;
         assert(derived.status() === 200, `custom operation must return 200, got ${derived.status()}`);
