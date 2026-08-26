@@ -29,3 +29,60 @@ end
     @test occursin("signal_operation_validate_source(source, command)", source)
     @test occursin("signal_operation_preflight_wrapper(wrapper)", source)
 end
+
+@testset "TASK-0154 502 retry is read-only, bounded and sanitized" begin
+    calls = Ref(0)
+    read_once_then_value = function (_; context)
+        calls[] += 1
+        calls[] == 1 ? ErrorException("temporary recv response") : :confirmed
+    end
+    @test TASK0154_PROVIDER.signal_operation_recv(read_once_then_value, "read"; retry_safe = true) === :confirmed
+    @test calls[] == 2
+
+    calls[] = 0
+    always_exception = function (_; context)
+        calls[] += 1
+        ErrorException("persistent recv response")
+    end
+    error = try
+        TASK0154_PROVIDER.signal_operation_recv(always_exception, "read"; retry_safe = true)
+        nothing
+    catch caught
+        caught
+    end
+    @test error isa TASK0154_PROVIDER.SignalOperationProviderError
+    @test error.code == "engee_transport_error" && calls[] == 2
+
+    calls[] = 0
+    thrown_transport = function (_; context)
+        calls[] += 1
+        throw(ErrorException("transport threw"))
+    end
+    thrown = try
+        TASK0154_PROVIDER.signal_operation_recv(thrown_transport, "read"; retry_safe = true)
+        nothing
+    catch caught
+        caught
+    end
+    @test thrown isa TASK0154_PROVIDER.SignalOperationProviderError
+    @test thrown.code == "engee_transport_error" && calls[] == 1
+
+    calls[] = 0
+    default_read = function (_; context)
+        calls[] += 1
+        ErrorException("default is one-shot")
+    end
+    default_error = try
+        TASK0154_PROVIDER.signal_operation_recv(default_read, "write-or-wrapper")
+        nothing
+    catch caught
+        caught
+    end
+    @test default_error isa TASK0154_PROVIDER.SignalOperationProviderError
+    @test calls[] == 1
+
+    source = TASK0154_PROVIDER.source("lib", "adapters", "engee_signal_operation_provider.jl")
+    @test occursin("signal_operation_recv(receive, assignment) == last_index", source)
+    @test occursin("metadata = signal_operation_recv(receive, wrapper)", source)
+    @test occursin("retry_safe = true", source)
+end

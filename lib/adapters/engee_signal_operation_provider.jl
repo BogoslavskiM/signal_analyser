@@ -24,25 +24,41 @@ function signal_operation_genie_functions()
     send_value, receive
 end
 
-function signal_operation_recv(receive, code::AbstractString)
-    result = try
-        Base.invokelatest(receive, String(code); context = Main)
-    catch err
-        @error "Engee signal operation receive failed" exception = (err, catch_backtrace())
-        throw(SignalOperationProviderError(
-            "engee_transport_error",
-            "Не удалось связаться с вычислительным окружением Engee",
-        ))
+function signal_operation_recv(
+    receive,
+    code::AbstractString;
+    retry_safe::Bool = false,
+)
+    attempts = retry_safe ? 2 : 1
+    for attempt in 1:attempts
+        result = try
+            Base.invokelatest(receive, String(code); context = Main)
+        catch err
+            @error "Engee signal operation receive failed" exception = (err, catch_backtrace())
+            throw(SignalOperationProviderError(
+                "engee_transport_error",
+                "Не удалось связаться с вычислительным окружением Engee",
+            ))
+        end
+        if result isa Exception && attempt < attempts
+            @warn "Engee read-only signal operation receive returned an exception; retrying once" attempt returned_error =
+                sprint(showerror, result)
+            yield()
+            continue
+        elseif result isa Exception
+            @error "Engee signal operation returned an exception" returned_error =
+                sprint(showerror, result)
+            throw(SignalOperationProviderError(
+                "engee_transport_error",
+                "Вычислительное окружение Engee не выполнило операцию",
+            ))
+        end
+        return result
     end
-    if result isa Exception
-        @error "Engee signal operation returned an exception" returned_error =
-            sprint(showerror, result)
-    end
-    result isa Exception && throw(SignalOperationProviderError(
+    throw(SignalOperationProviderError(
         "engee_transport_error",
         "Вычислительное окружение Engee не выполнило операцию",
     ))
-    result
 end
 
 function signal_operation_send_checked(send_value, receive, name::String, value)::Nothing
@@ -74,6 +90,7 @@ function signal_operation_send_checked(send_value, receive, name::String, value)
     remote = signal_operation_recv(
         receive,
         "getfield(Main, Symbol($(signal_operation_quoted(name))))",
+        retry_safe = true,
     )
     typeof(remote) == typeof(value) && remote == value || throw(
         SignalOperationProviderError(
@@ -334,6 +351,7 @@ function signal_operation_remote_defined(receive, name::String)::Bool
     value = signal_operation_recv(
         receive,
         "isdefined(Main, Symbol($(signal_operation_quoted(name))))",
+        retry_safe = true,
     )
     value isa Bool || throw(SignalOperationProviderError(
         "engee_transport_error",
@@ -399,6 +417,7 @@ function signal_operation_send_chunked!(
     signal_operation_recv(
         receive,
         "length(getfield(Main, Symbol($(signal_operation_quoted(input_name)))))",
+        retry_safe = true,
     ) == total || throw(SignalOperationProviderError(
         "engee_transport_error",
         "Engee собрал входной сигнал неверной длины",
@@ -643,6 +662,7 @@ function signal_operation_receive_chunked(
             receive,
             "getfield(Main, Symbol($(signal_operation_quoted(output_name))))" *
                 "[$(first_index):$(last_index)]",
+            retry_safe = true,
         )
         chunk isa AbstractVector || throw(SignalOperationProviderError(
             "engee_transport_error",
@@ -682,6 +702,7 @@ function signal_operation_cleanup!(send_value, receive, names)::Nothing
             signal_operation_recv(
                 receive,
                 "getfield(Main, Symbol($(signal_operation_quoted(name)))) === nothing",
+                retry_safe = true,
             ) === true || error("cleanup value was not released")
         catch err
             @error "Engee signal operation scratch cleanup failed" scratch_name = name exception = (
