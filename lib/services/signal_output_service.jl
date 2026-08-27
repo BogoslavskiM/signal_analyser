@@ -1692,7 +1692,7 @@ function signal_analyser_start_peaks_worker_unlocked!(
         manager.active_peaks_context = context
         manager.active_poll_count = get(manager.peaks_poll_counts, page_id, 1)
         manager.cancellation_token = token
-        snapshot = signal_analyser_clone_state_for_layout(state)
+        snapshot = signal_analyser_clone_state_for_peaks(state)
         manager.active_task = Threads.@spawn signal_analyser_run_peaks_worker!(
             state,
             manager,
@@ -1814,6 +1814,21 @@ function signal_analyser_calculate_active_peaks!(
 
         dirty = manager.peaks_need_update_pages[page_id]
         status = get(manager.peaks_statuses, page_id, nothing)
+        if !dirty && status !== nothing &&
+            (status::SignalAnalyserPeaksStatus).context == context && status.isready
+            # POST is explicit user intent. A terminal success or failure must
+            # never be reused as the result of a new calculation action.
+            signal_analyser_invalidate_peaks_pages_unlocked!(state, String[page_id])
+            context = signal_analyser_peaks_context_unlocked(
+                state,
+                display_id,
+                pane_id,
+                visible_range,
+            )
+            passive = signal_analyser_passive_peaks_snapshot_unlocked(state, context)
+            dirty = manager.peaks_need_update_pages[page_id]
+            status = get(manager.peaks_statuses, page_id, nothing)
+        end
         cached = signal_analyser_cached_peaks_table_unlocked(state, context)
         if !dirty && status !== nothing &&
             (status::SignalAnalyserPeaksStatus).context == context && status.isready

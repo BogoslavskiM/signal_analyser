@@ -2341,14 +2341,67 @@ function signal_ordinate_roi(
     signal::AnalysedSignal,
     limits::SignalTimeLimits,
 )::SignalOrdinateRoi
-    ordinate_kind, ordinate = signal_measurement_ordinates(service, signal)
     sample_range = signal_time_sample_range(service, signal, limits)
+    signal_ordinate_roi(service, signal, sample_range)
+end
+
+function signal_ordinate_roi(
+    ::SignalTimeRoiService,
+    signal::AnalysedSignal,
+    sample_range::SignalTimeSampleRange,
+)::SignalOrdinateRoi
+    ordinate_kind = signal_measurement_ordinate(signal)
+    values = Vector{Float64}(undef, length(sample_range))
+    source_offset = sample_range.first_index - 1
+    @inbounds for destination_index in eachindex(values)
+        source_value = signal.values[source_offset + destination_index]
+        values[destination_index] = ordinate_kind == MAGNITUDE_ORDINATE ?
+            abs(source_value) : real(source_value)
+    end
     SignalOrdinateRoi(
         ordinate_kind,
-        @view(ordinate[sample_range.first_index:sample_range.last_index]),
+        values,
         sample_range.first_index - 1,
         signal.sample_rate_hz,
     )
+end
+
+"""Resolve an inclusive Time ROI in O(1), returning `nothing` for no overlap."""
+function signal_time_sample_range_or_nothing(
+    ::SignalTimeRoiService,
+    signal::AnalysedSignal,
+    limits::SignalTimeLimits,
+)::Union{Nothing,SignalTimeSampleRange}
+    sample_count = length(signal.values)
+    sample_count >= 1 || throw(ArgumentError("Сигнал не содержит отсчётов"))
+    sample_rate_hz = signal.sample_rate_hz
+    isfinite(sample_rate_hz) && sample_rate_hz > 0 || throw(ArgumentError(
+        "Частота дискретизации сигнала должна быть положительным конечным числом",
+    ))
+    limits.min_s >= 0.0 || throw(ArgumentError("Минимальная Time Limit не может быть отрицательной"))
+
+    last_sample_time_s = (sample_count - 1) / sample_rate_hz
+    limits.min_s <= last_sample_time_s || return nothing
+    effective_max_s = min(limits.max_s, last_sample_time_s)
+    limits.min_s <= effective_max_s || return nothing
+
+    first_zero_based = clamp(ceil(Int, limits.min_s * sample_rate_hz), 0, sample_count - 1)
+    if first_zero_based > 0 && (first_zero_based - 1) / sample_rate_hz >= limits.min_s
+        first_zero_based -= 1
+    elseif first_zero_based / sample_rate_hz < limits.min_s
+        first_zero_based += 1
+    end
+    first_zero_based < sample_count || return nothing
+
+    last_zero_based = clamp(floor(Int, effective_max_s * sample_rate_hz), 0, sample_count - 1)
+    if last_zero_based + 1 < sample_count &&
+        (last_zero_based + 1) / sample_rate_hz <= effective_max_s
+        last_zero_based += 1
+    elseif last_zero_based / sample_rate_hz > effective_max_s
+        last_zero_based -= 1
+    end
+    first_zero_based <= last_zero_based || return nothing
+    SignalTimeSampleRange(first_zero_based + 1, last_zero_based + 1)
 end
 
 function signal_time_sample_range(
@@ -2356,23 +2409,9 @@ function signal_time_sample_range(
     signal::AnalysedSignal,
     limits::SignalTimeLimits,
 )::SignalTimeSampleRange
-    _, ordinate = signal_measurement_ordinates(service, signal)
-    duration_s = signal_duration_s(signal)
-    limits.min_s >= 0.0 || throw(ArgumentError("Минимальная Time Limit не может быть отрицательной"))
-    effective_max_s = min(limits.max_s, duration_s)
-
-    first_position = findfirst(eachindex(ordinate)) do index
-        time_s = (index - 1) / signal.sample_rate_hz
-        limits.min_s <= time_s <= effective_max_s
-    end
-    last_position = findlast(eachindex(ordinate)) do index
-        time_s = (index - 1) / signal.sample_rate_hz
-        limits.min_s <= time_s <= effective_max_s
-    end
-    first_position === nothing && throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
-    last_position === nothing && throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
-    first_position <= last_position || throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
-    SignalTimeSampleRange(first_position, last_position)
+    sample_range = signal_time_sample_range_or_nothing(service, signal, limits)
+    sample_range === nothing && throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
+    sample_range
 end
 
 signal_ordinate_roi(
@@ -2604,24 +2643,11 @@ end
 """Intersect a Display Time ROI with one visible signal without resampling it."""
 function signal_spectrum_sample_range(
     ::SignalSpectrumService,
-    ::SignalTimeRoiService,
+    roi_service::SignalTimeRoiService,
     signal::AnalysedSignal,
     limits::SignalTimeLimits,
 )::Union{Nothing,SignalTimeSampleRange}
-    isempty(signal.values) && throw(ArgumentError("Сигнал не содержит отсчётов"))
-    isfinite(signal.sample_rate_hz) && signal.sample_rate_hz > 0 || throw(ArgumentError(
-        "Частота дискретизации сигнала должна быть положительным конечным числом",
-    ))
-    limits.min_s >= 0.0 || throw(ArgumentError("Минимальная Time Limit не может быть отрицательной"))
-    first_position = findfirst(eachindex(signal.values)) do index
-        limits.min_s <= (index - 1) / signal.sample_rate_hz <= limits.max_s
-    end
-    first_position === nothing && return nothing
-    last_position = findlast(eachindex(signal.values)) do index
-        limits.min_s <= (index - 1) / signal.sample_rate_hz <= limits.max_s
-    end
-    last_position === nothing && return nothing
-    SignalTimeSampleRange(first_position, last_position)
+    signal_time_sample_range_or_nothing(roi_service, signal, limits)
 end
 
 function signal_spectrum_cache_key(
@@ -3352,7 +3378,7 @@ function signal_peaks_detect_direction(
     kind::SignalPeakKind,
 )::SignalPeaksProviderResult
     settings = query.settings
-    direction_values = kind == MAXIMUM_PEAK ? collect(query.values) : -collect(query.values)
+    direction_values = kind == MAXIMUM_PEAK ? query.values : .-query.values
     direction_cutoff = kind == MAXIMUM_PEAK ?
         settings.maximum_cutoff : settings.minimum_cutoff
     raw_result = Base.invokelatest(
@@ -3516,25 +3542,30 @@ function signal_peaks_snapshot(
         end
         SignalTimeLimits(minimum_value, maximum_value)
     end
-    roi = signal_ordinate_roi(service.ordinate_service, signal, effective_limits)
-    if length(roi.values) < 3
+    sample_range = signal_time_sample_range_or_nothing(
+        service.ordinate_service.roi_service,
+        signal,
+        effective_limits,
+    )
+    if sample_range === nothing || length(sample_range) < 3
         return SignalPeaksSnapshot(
             true,
             settings.mode,
             state_revision,
             display.id,
             signal.name,
-            roi.ordinate,
+            ordinate_kind,
             units,
             SignalPeakItem[],
         )
     end
+    roi = signal_ordinate_roi(service.ordinate_service.roi_service, signal, sample_range)
     query = SignalPeaksQuery(
         state_revision,
         display.id,
         signal.name,
         roi.ordinate,
-        collect(roi.values),
+        roi.values,
         roi.sample_rate_hz,
         roi.sample_offset,
         settings,
@@ -5852,6 +5883,38 @@ function signal_analyser_clone_state_for_layout(
             for (display_id, layout) in state.display_layouts
         ),
         deepcopy(state.plot_cache),
+        copy(state.spectrum_cache),
+        copy(state.spectrogram_cache),
+        copy(state.persistence_cache),
+        state.measurements_service,
+        state.peaks_service,
+        state.spectrum_service,
+        state.spectrogram_service,
+        state.persistence_service,
+        signal_analyser_clone_calculation_manager(state.output_manager),
+        ReentrantLock(),
+    )
+end
+
+"""Immutable calculation snapshot without cloning rendered Plotly arrays."""
+function signal_analyser_clone_state_for_peaks(
+    state::SignalAnalyserState,
+)::SignalAnalyserState
+    typeof(state)(
+        copy(state.signals),
+        SignalAnalyserViewState(
+            state.view.state_revision,
+            state.view.active_plot,
+            state.view.selected_signal,
+        ),
+        state.row_selection,
+        SignalAnalyserDisplayState[
+            signal_analyser_clone_display(display) for display in state.displays
+        ],
+        state.active_display_id,
+        state.next_display_number,
+        Dict(display_id => copy(layout) for (display_id, layout) in state.display_layouts),
+        copy(state.plot_cache),
         copy(state.spectrum_cache),
         copy(state.spectrogram_cache),
         copy(state.persistence_cache),

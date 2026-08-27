@@ -1134,7 +1134,7 @@ end
 """Finite raw ordinate samples inside an inclusive Time ROI."""
 struct SignalOrdinateRoi
     ordinate::SignalMeasurementOrdinate
-    values::Tuple{Vararg{Float64}}
+    values::Vector{Float64}
     sample_offset::Int
     sample_rate_hz::Float64
 
@@ -1144,14 +1144,14 @@ struct SignalOrdinateRoi
         sample_offset::Int,
         sample_rate_hz::Real,
     )
-        roi_values = Float64.(values)
+        roi_values = values isa Vector{Float64} ? values : Float64.(values)
         isempty(roi_values) && throw(ArgumentError("Time Limits не содержат ни одного отсчёта"))
         all(isfinite, roi_values) || throw(ArgumentError("ROI сигнала содержит нечисловые отсчёты"))
         sample_offset >= 0 || throw(ArgumentError("Смещение ROI не может быть отрицательным"))
         isfinite(sample_rate_hz) && sample_rate_hz > 0 || throw(ArgumentError(
             "Частота дискретизации ROI должна быть положительной и конечной",
         ))
-        new(ordinate, Tuple(roi_values), sample_offset, Float64(sample_rate_hz))
+        new(ordinate, roi_values, sample_offset, Float64(sample_rate_hz))
     end
 end
 
@@ -1481,7 +1481,7 @@ struct SignalPeaksQuery
     display_id::String
     signal_name::String
     ordinate::SignalMeasurementOrdinate
-    values::Tuple{Vararg{Float64}}
+    values::Vector{Float64}
     sample_rate_hz::Float64
     sample_offset::Int
     settings::SignalPeaksSettings
@@ -1500,7 +1500,7 @@ struct SignalPeaksQuery
         isempty(display_id) && throw(ArgumentError("Идентификатор Display peaks query не может быть пустым"))
         isempty(signal_name) && throw(ArgumentError("Имя сигнала peaks query не может быть пустым"))
         length(values) >= 3 || throw(ArgumentError("Для расчёта экстремумов нужно не менее трёх отсчётов"))
-        peak_values = Float64.(values)
+        peak_values = values isa Vector{Float64} ? values : Float64.(values)
         all(isfinite, peak_values) || throw(ArgumentError("Отсчёты peaks query должны быть конечными"))
         isfinite(sample_rate_hz) && sample_rate_hz > 0 || throw(ArgumentError(
             "Частота дискретизации peaks query должна быть положительной и конечной",
@@ -1513,7 +1513,7 @@ struct SignalPeaksQuery
             String(display_id),
             String(signal_name),
             ordinate,
-            Tuple(peak_values),
+            peak_values,
             Float64(sample_rate_hz),
             sample_offset,
             settings,
