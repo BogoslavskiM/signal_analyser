@@ -1197,7 +1197,24 @@
         active.timer=null;
         patch(active.nodes,active.projection,active.context.fullDomain,generation,"committed");
         if (typeof options.commitViewport === "function") options.commitViewport(payload,{key:keyValue,generation:generation,mode:active.mode,frontendOnly:true});
+        if (records[keyValue] === active) delete records[keyValue];
       },settleDelay);
+    }
+    function finish(token) {
+      var record=current(token);
+      if (!record) return false;
+      if (record.timer != null) window.clearTimeout(record.timer);
+      record.timer=null;
+      if (!stable(record)) {
+        delete records[record.key];
+        return false;
+      }
+      if (record.projection) {
+        patch(record.nodes,record.projection,record.context.fullDomain,record.generation,"committed");
+        if (typeof options.commitViewport === "function") options.commitViewport({fieldId:record.context.fieldId,min:record.projection.min,max:record.projection.max,auto:!!record.projection.auto,generation:record.generation},{key:record.key,generation:record.generation,mode:record.mode,frontendOnly:true,navigation:true});
+      }
+      if (records[record.key] === record) delete records[record.key];
+      return true;
     }
     function previewSettings(token,range,projectionOptions) {
       return guarded(token,function (record) {
@@ -1253,6 +1270,7 @@
         if (stableRecords.length !== created.length) return;
         stableRecords.forEach(function (record) { record.timer=null; patch(record.nodes,record.projection,record.context.fullDomain,generation,"committed"); });
         if (typeof options.commitViewport === "function") options.commitViewport({ranges:created.map(function (record) { return {fieldId:record.context.fieldId,min:null,max:null,auto:true}; }),auto:true,generation:generation},{generation:generation,mode:"auto",atomic:true,frontendOnly:true});
+        stableRecords.forEach(function (record) { if (records[record.key] === record) delete records[record.key]; });
       },settleDelay);
       created.forEach(function (record) { record.timer=timer; });
       return {generation:generation,tokens:created.map(function (record) { return {key:record.key,generation:generation}; })};
@@ -1297,7 +1315,7 @@
       });
     }
 
-    return {beginSettingsDrag:function (context) { return begin(context,"settings","explicit"); },previewSettings:previewSettings,settleSettings:settleSettings,beginGraph:beginGraph,projectGraph:projectGraph,reset:reset,resetMany:resetMany,acceptViewport:acceptViewport,syncState:syncState,inspect:inspect,clear:clear,clearPane:clearPane};
+    return {beginSettingsDrag:function (context) { return begin(context,"settings","explicit"); },previewSettings:previewSettings,settleSettings:settleSettings,finish:finish,beginGraph:beginGraph,projectGraph:projectGraph,reset:reset,resetMany:resetMany,acceptViewport:acceptViewport,syncState:syncState,inspect:inspect,clear:clear,clearPane:clearPane};
   }
 
   window.SignalAnalyserRangeLifecycle={
@@ -1437,11 +1455,29 @@
   function extremaActionController() { return window.SignalAnalyserExtremaAction || null; }
   function synchronizedRangeController() { return window.SignalAnalyserSynchronizedRanges || null; }
   function rangeLifecycleKey(displayId, paneId, fieldId) { return [displayId || "", paneId || "", fieldId || ""].join("::"); }
+  var RANGE_LIFECYCLE_MAX_ACTIVE_MS=30000;
   function rangeLifecycleRecordLive(record) {
     var nodes=record && record.context && record.context.nodes || {};
-    return (!nodes.plot || nodes.plot.isConnected !== false) && (!nodes.row || nodes.row.isConnected !== false) && (!nodes.slider || nodes.slider.isConnected !== false);
+    var startedAt=Number(record && record.startedAt);
+    return (!startedAt || Date.now()-startedAt < RANGE_LIFECYCLE_MAX_ACTIVE_MS) && (!nodes.plot || nodes.plot.isConnected !== false) && (!nodes.row || nodes.row.isConnected !== false) && (!nodes.slider || nodes.slider.isConnected !== false);
+  }
+  function completeRangeLifecycleKey(key,state,clearController) {
+    var active=model.rangeLifecycleActive[key], controller=rangeLifecycleController();
+    if (active && controller) {
+      controller.syncState(active.context,state || "ready");
+      if (clearController !== false) controller.clear(active.context);
+    }
+    delete model.rangeLifecycleActive[key];
+    delete model.rangeLifecycleTokens[key];
+    if (!Object.keys(model.rangeLifecycleActive).length) model.rangeLifecycleScrollTop=null;
+  }
+  function pruneRangeLifecycles() {
+    Object.keys(model.rangeLifecycleActive).forEach(function (key) {
+      if (!rangeLifecycleRecordLive(model.rangeLifecycleActive[key])) completeRangeLifecycleKey(key,"cancelled",true);
+    });
   }
   function rangeLifecycleCurrentActive() {
+    pruneRangeLifecycles();
     var display=activeDisplay(), prefix=display ? model.settingsPage === "screen" ? String(display.id)+"::" : model.activePane ? rangeLifecycleKey(display.id,model.activePane,"") : "" : "";
     return !!prefix && Object.keys(model.rangeLifecycleActive).some(function (key) { return key.indexOf(prefix) === 0 && rangeLifecycleRecordLive(model.rangeLifecycleActive[key]); });
   }
@@ -1454,7 +1490,7 @@
     if (!context || !token) return;
     var key=rangeLifecycleKey(context.displayId,context.paneId,context.fieldId), content=q("[data-testid='settings-content']");
     model.rangeLifecycleTokens[key]=token;
-    model.rangeLifecycleActive[key]={generation:token.generation,context:context};
+    model.rangeLifecycleActive[key]={generation:token.generation,context:context,startedAt:Date.now()};
     if (content && model.rangeLifecycleScrollTop === null) model.rangeLifecycleScrollTop=content.scrollTop;
   }
   function restoreRangeLifecycleScroll() {
@@ -1470,13 +1506,19 @@
     selection.style.right=((context.fullDomain[1]-Number(maximum.value))/span*100)+"%";
   }
   function releaseRangeLifecycle(displayId,paneId,state) {
-    var prefix=rangeLifecycleKey(displayId,paneId,""), controller=rangeLifecycleController();
+    var prefix=paneId ? rangeLifecycleKey(displayId,paneId,"") : String(displayId || "")+"::";
     Object.keys(model.rangeLifecycleActive).forEach(function (key) {
       if (key.indexOf(prefix) !== 0) return;
-      var active=model.rangeLifecycleActive[key];
-      if (controller) controller.syncState(active.context,state || "ready");
-      delete model.rangeLifecycleActive[key];
-      delete model.rangeLifecycleTokens[key];
+      completeRangeLifecycleKey(key,state || "ready",true);
+    });
+    restoreRangeLifecycleScroll();
+    if (!Object.keys(model.rangeLifecycleActive).length) model.rangeLifecycleScrollTop=null;
+  }
+  function finishRangeLifecycleForNavigation(displayId,paneId) {
+    var prefix=paneId ? rangeLifecycleKey(displayId,paneId,"") : String(displayId || "")+"::", controller=rangeLifecycleController();
+    Object.keys(model.rangeLifecycleActive).filter(function (key) { return key.indexOf(prefix) === 0; }).forEach(function (key) {
+      var token=model.rangeLifecycleTokens[key], finished=!!(controller && token && typeof controller.finish === "function" && controller.finish(token));
+      if (model.rangeLifecycleActive[key]) completeRangeLifecycleKey(key,finished ? "committed" : "cancelled",!finished);
     });
     restoreRangeLifecycleScroll();
     if (!Object.keys(model.rangeLifecycleActive).length) model.rangeLifecycleScrollTop=null;
@@ -1525,6 +1567,7 @@
       else model.viewportRanges[viewportKey]={min:range.min,max:range.max,generation:metadata && metadata.generation || range.generation || 0};
       rememberRangeBoundaryIntent(range.fieldId,"min",raw.min);
       rememberRangeBoundaryIntent(range.fieldId,"max",raw.max);
+      completeRangeLifecycleKey(key,"committed",false);
     });
   }
   function rangeLifecycleController() {
@@ -3025,7 +3068,6 @@
       if (!token) { token=lifecycle.beginGraph(context); rememberRangeLifecycle(context,token); }
       lifecycle.projectGraph(token,eventData,terminal,synchronizedRangeOptions(descriptor));
       syncRangeLifecycleSelection(context);
-      if (terminal) delete model.rangeLifecycleTokens[key];
     });
   }
 
@@ -5692,6 +5734,8 @@
   function focusAreaSettings(paneId) {
     var pane = paneById(paneId);
     if (!pane) return;
+    var display=activeDisplay();
+    if (display && model.activePane) finishRangeLifecycleForNavigation(display.id,model.activePane);
     model.settingsPage = "display";
     if (pane.id === model.activePane) {
       renderSettings(activeDisplay());
@@ -6104,7 +6148,7 @@
     if (button.dataset.inspectorStateAction) return void changeWorkspaceInspectorState(button);
     if (button.dataset.testid === "display-scroll-left") return void scrollDisplayTabs(-1);
     if (button.dataset.testid === "display-scroll-right") return void scrollDisplayTabs(1);
-    if (button.dataset.displaySelect) { model.settingsPage="screen"; renderSettings(activeDisplay()); return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "select", display_id: button.dataset.displaySelect }); }); }
+    if (button.dataset.displaySelect) { var selectedFrom=activeDisplay(); if (selectedFrom) finishRangeLifecycleForNavigation(selectedFrom.id,null); model.settingsPage="screen"; renderSettings(activeDisplay()); return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "select", display_id: button.dataset.displaySelect }); }); }
     if (button.dataset.displayClose) return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "close", display_id: button.dataset.displayClose }); });
     if (button.dataset.testid === "add-display") { model.settingsPage="screen"; renderSettings(activeDisplay()); return void mutate(function () { return api.displays({ state_revision: model.revision, operation: "create" }); }); }
     if (button.dataset.testid === "layout-trigger") return void openLayout(button);
@@ -6154,6 +6198,8 @@
       var requestedPage=button.dataset.settingsPage, available=contextTabAvailable(requestedPage,paneById(model.activePane)), regression=task0153Controller();
       var intent=regression && typeof regression.settingsTabIntent === "function" ? regression.settingsTabIntent(requestedPage,{available:available,applying:model.screenApplying,currentPage:model.settingsPage,activationToken:model.settingsPageActivationToken}) : {accepted:available,page:requestedPage,activationToken:model.settingsPageActivationToken + (available ? 1 : 0)};
       if (!intent.accepted) return;
+      var settingsDisplay=activeDisplay();
+      if (settingsDisplay) finishRangeLifecycleForNavigation(settingsDisplay.id,null);
       model.settingsPage=intent.page;
       model.settingsPageActivationToken=intent.activationToken;
       renderSettings(activeDisplay());
