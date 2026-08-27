@@ -259,9 +259,9 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   flow.test.model.inspectorPage = "peaks";
   await flow.test.loadPeaks();
   assert(flow.activeCalls.length === 1 && flow.calculateCalls.length === 0, "opening Extrema must make one passive GET and no calculation POST");
-  assert(/Рассчитать экстремумы для области (?:Область|Область 1)/.test(flow.peaksHost.innerHTML) && flow.peaksHost.innerHTML.includes("extrema-calculate") && flow.peaksHost.innerHTML.includes("extrema-configure"), "passive first-open must use the persisted area label and show both actions");
+  assert(/Рассчитать экстремумы для области (?:Область|Область 1)/.test(flow.peaksHost.innerHTML) && flow.peaksHost.innerHTML.includes("extrema-configure"), "passive first-open must use the persisted area label and retain the configure action while Calculate lives in the inspector header");
 
-  flow.click(element({ dataset: { testid: "extrema-calculate" } }));
+  flow.click(element({ dataset: { extremaAction: "" } }));
   await settle();
   assert(flow.calculateCalls.length === 1, "delegated click on Calculate must issue exactly one explicit POST");
   assert(JSON.stringify(flow.calculateCalls[0]) === JSON.stringify({ state_revision: 3, display_id: "display-1", pane_id: "pane-1" }), "Calculate POST must contain only the current revision, Display and pane identifiers");
@@ -323,12 +323,12 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
     } : { settings: {}, signals: [], rows: [] }
   });
   const race = createHarness({
-    activeResponses: [peaksResponse(), racePending(3, false), racePending(4, true)],
+    activeResponses: [peaksResponse(), racePending(3, false), racePending(3, true)],
     calculateResponses: [racePost]
   });
   race.test.model.inspectorPage = "peaks";
   await race.test.loadPeaks();
-  race.click(element({ dataset: { testid: "extrema-calculate" } }));
+  race.click(element({ dataset: { extremaAction: "" } }));
   await settle();
   racePost.resolve(racePending(3, false));
   await settle();
@@ -339,7 +339,7 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   assert(race.timers.length === 1 && race.test.model.peaksRecords["display-1::pane-1"].pending, "older-revision GET for the same active context/calculation must remain pending and schedule its next poll");
   race.timers.shift()();
   await settle();
-  assert(race.peaksHost.innerHTML.includes("data-testid='peaks-table'") && race.test.model.peaksRecords["display-1::pane-1"].calculation_revision === 9, "fresh ready GET after the revision race must render the table for the same calculation");
+  assert(race.peaksHost.innerHTML.includes("data-testid='peaks-table'") && race.test.model.peaksRecords["display-1::pane-1"].calculation_revision === 9, "ready GET for the same calculation must render without reload even when its global state revision trails an unrelated accepted snapshot");
 
   // The stale-revision recovery must be narrow: one guarded follow-up timer,
   // never a duplicate timer and never a retry for a mismatched calculation
@@ -351,7 +351,7 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   });
   mismatch.test.model.inspectorPage = "peaks";
   await mismatch.test.loadPeaks();
-  mismatch.click(element({ dataset: { testid: "extrema-calculate" } }));
+  mismatch.click(element({ dataset: { extremaAction: "" } }));
   await settle();
   mismatchPost.resolve(racePending(3, false));
   await settle();
@@ -462,6 +462,9 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   readyEmptyValues.test.showActivePeaksValues();
   await settle();
   assert(readyEmptyValues.calculateCalls.length === 0, "Values must not recalculate a current successful empty result");
+  readyEmptyValues.test.model.inspectorPage = "peaks";
+  readyEmptyValues.test.renderPeaksInspector(readyEmptyValues.body);
+  assert(readyEmptyValues.peaksHost.innerHTML.includes("data-testid='peaks-empty'") && !readyEmptyValues.peaksHost.innerHTML.includes("peaks-no-signals"), "a calculated empty result for a pane that still has signals must show no extrema, never ask to select a signal");
 
   const pendingValues = createHarness({});
   putCurrentRecord(pendingValues, currentPeaksRecord({ calculated: false, pending: true, data: null }));
@@ -476,7 +479,7 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   empty.test.calculatePeaks();
   await settle();
   assert(empty.activeCalls.length === 0 && empty.calculateCalls.length === 0, "an empty pane must make neither Extrema GET nor POST requests");
-  assert(empty.peaksHost.innerHTML.includes("Выберете сигнал для отображения") && !empty.peaksHost.innerHTML.includes("extrema-calculate"), "an empty pane must keep the exact signal guidance without a calculation CTA");
+  assert(empty.peaksHost.innerHTML.includes("Выберите сигнал для отображения") && !empty.peaksHost.innerHTML.includes("extrema-calculate"), "an empty pane must keep the exact signal guidance without a calculation CTA");
 
   const spectrogram = createHarness({ plotType:"spectrogram" });
   spectrogram.test.model.settingsPage = "peaks";

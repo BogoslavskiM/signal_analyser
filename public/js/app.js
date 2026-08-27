@@ -4729,7 +4729,7 @@
       body.innerHTML = "<div class='signal-table-scroll peaks-table-scroll' data-testid='peaks-table-scroll'></div>";
       host = body.querySelector("[data-testid='peaks-table-scroll']");
     }
-    if (pane && !paneHasSignals(pane)) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберете сигнал для отображения</strong></div>"; return; }
+    if (pane && !paneHasSignals(pane)) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберите сигнал для отображения</strong></div>"; return; }
     if (!extremaTabsAvailable(pane)) { host.innerHTML = "<div class='inspector-empty' role='status'>Экстремумы доступны для временной области и спектра</div>"; return; }
     if (!current || (!record.pending && !record.error && !record.calculated)) {
       var paneName = panePreviewName(display.id, pane);
@@ -4745,7 +4745,6 @@
     }
     if (record.error) { host.innerHTML = "<div class='peaks-state peaks-error' data-testid='peaks-error' data-extrema-state='error' role='alert'><strong>Не удалось рассчитать экстремумы</strong><p>" + esc(record.error) + "</p></div>"; return; }
     var data = record.data || {}, rows = Array.isArray(data.rows) ? data.rows : [];
-    if (!data.signals || !data.signals.length) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберете сигнал для отображения</strong></div>"; return; }
     if (!rows.length) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-empty' data-extrema-state='empty' role='status'><strong>Экстремумы не найдены</strong><p>Для активной области нет значений, соответствующих настройкам.</p></div>"; return; }
     var spectrum = pane.plot_type === "spectrum";
     var colgroup = "<colgroup><col style='width:4.8%'><col style='width:28.4%'><col style='width:9.1%'><col style='width:12.3%'><col style='width:12.5%'><col style='width:12.5%'><col style='width:20.4%'></colgroup>";
@@ -4964,7 +4963,12 @@
 
   function peaksResponseIsCurrent(response, displayId, paneId, token) {
     var revision=stateRevision(response);
-    return peaksResponseContextIsCurrent(response, displayId, paneId, token) && (revision === null || revision >= model.revision);
+    if (!peaksResponseContextIsCurrent(response, displayId, paneId, token)) return false;
+    if (revision === null || revision >= model.revision) return true;
+    var prior=model.peaksRecords[paneRuntimeKey(displayId,paneId)];
+    return !!(prior && prior.calculationRequested &&
+      prior.context_key === response.context_key &&
+      prior.calculation_revision === response.calculation_revision);
   }
 
   function schedulePeaksPoll(displayId, paneId) {
