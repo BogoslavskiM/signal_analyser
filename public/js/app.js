@@ -332,16 +332,16 @@
     sourcePolicy:"Resolve the current accepted main_signal by stable id when the event is handled; ignore any source id/name supplied by event.detail."
   });
   var OPERATIONS=Object.freeze([
-    {value:"bandpass",label:"Полосовой фильтр",engee:"EngeeDSP.Functions.bandpass",iconAsset:"operation-filter.svg"},
-    {value:"bandstop",label:"Режекторный фильтр",engee:"EngeeDSP.Functions.bandstop",iconAsset:"operation-filter.svg"},
-    {value:"highpass",label:"Фильтр высоких частот",engee:"EngeeDSP.Functions.highpass",iconAsset:"operation-filter.svg"},
-    {value:"lowpass",label:"Фильтр низких частот",engee:"EngeeDSP.Functions.lowpass",iconAsset:"operation-filter.svg"},
+    {value:"bandpass",label:"Полосовой фильтр",engee:"EngeeDSP.Functions.bandpass",iconAsset:"operation-bandpass.svg"},
+    {value:"bandstop",label:"Режекторный фильтр",engee:"EngeeDSP.Functions.bandstop",iconAsset:"operation-bandstop.svg"},
+    {value:"highpass",label:"Фильтр высоких частот",engee:"EngeeDSP.Functions.highpass",iconAsset:"operation-highpass.svg"},
+    {value:"lowpass",label:"Фильтр низких частот",engee:"EngeeDSP.Functions.lowpass",iconAsset:"operation-lowpass.svg"},
     {value:"detrend",label:"Удаление тренда",engee:"EngeeDSP.Functions.detrend",iconAsset:"operation-detrend.svg"},
     {value:"fill-missing",label:"Заполнение пропущенных значений",engee:"EngeeDSP.Functions.interp1/movmean/movmedian/fillgaps",iconAsset:"operation-fill-missing.svg"},
     {value:"smooth",label:"Сглаживание",engee:"EngeeDSP.Functions.smoothdata",iconAsset:"operation-smooth.svg"},
     {value:"envelope",label:"Огибающая",engee:"EngeeDSP.Functions.envelope",iconAsset:"operation-envelope.svg"},
     {value:"resample",label:"Передискретизация",engee:"EngeeDSP.Functions.resample",iconAsset:"operation-resample.svg"},
-    {value:"custom-preprocess",label:"Пользовательская операция",engee:"engee.genie.recv context=Main",iconAsset:"function.svg"}
+    {value:"custom-preprocess",label:"Пользовательская операция",engee:"engee.genie.recv context=Main",iconAsset:"operation-custom.svg"}
   ]);
   var OPTIONS=Object.freeze({
     frequencyUnits:[{value:"hertz",label:"Гц"},{value:"normalized_pi",label:"× π рад/отсчёт"}],
@@ -602,17 +602,40 @@
   }
 
   function plotDoubleClickProjection(state) {
-    state=state || {};
-    return {
+    var visibility=paneSliderProjection(state,{kind:"graph_autoscale"});
+    return Object.assign({},visibility,{
       action:"plot_autoscale",
       trueAutorange:true,
-      xRangeSliderVisible:!!state.xRangeSliderVisible,
-      yRangeSliderVisible:!!state.yRangeSliderVisible,
-      sliderVisibilityMutation:false,
       paneMenuMutation:false,
       settingsPageMutation:false,
       backendMutation:false
+    });
+  }
+
+  function paneSliderProjection(state,event) {
+    state=state || {}; event=event || {};
+    var xVisible=!!state.xRangeSliderVisible,yVisible=!!state.yRangeSliderVisible;
+    var explicit=event.kind === "explicit_slider_toggle";
+    if (explicit && event.axis === "x") xVisible=!!event.checked;
+    if (explicit && event.axis === "y") yVisible=!!event.checked;
+    return {
+      xRangeSliderVisible:xVisible,
+      yRangeSliderVisible:yVisible,
+      mountHorizontalPaneSlider:xVisible,
+      mountVerticalPaneSlider:yVisible,
+      sliderVisibilityMutation:explicit,
+      visibilityOwner:"explicit_pane_tool_or_matching_checkbox"
     };
+  }
+
+  function settingsRangeProjection(state,phase) {
+    var projection=paneSliderProjection(state,{kind:"settings_range_"+String(phase || "edit")});
+    return Object.assign({},projection,{
+      action:phase === "apply" ? "settings_apply" : "settings_numeric_edit",
+      viewportProjectionMutation:true,
+      rangeValueMutation:true,
+      backendMutation:false
+    });
   }
 
   function settingsTabIntent(page, state) {
@@ -641,10 +664,13 @@
     areaRanges:areaRanges,
     doubleClickIntent:doubleClickIntent,
     plotDoubleClickProjection:plotDoubleClickProjection,
+    paneSliderProjection:paneSliderProjection,
+    settingsRangeProjection:settingsRangeProjection,
     settingsTabIntent:settingsTabIntent,
     decorateFooter:decorateFooter,
     contract:{
       doubleClick:"A double-click on the ready graph surface performs true X/Y autoscale only. It never enables, opens or hides the in-plot time/frequency/amplitude slider, never opens the pane menu and never changes Settings page. Double-click on an already visible in-plot slider remains that slider's local reset; settings range-row double-click remains that field's local Auto reset.",
+      paneSliderVisibility:"Horizontal and vertical pane sliders mount only from their explicit pane menu tool or the matching explicit Area checkbox. Settings numeric edit, Apply, Plotly relayout and graph autoscale preserve the existing visibility intent and cannot infer, enable or mount either pane slider.",
       tab:"Every visible Settings tab, including Экран, activates synchronously by pointer or keyboard even while a prior settings autosave/apply is pending. The prior request may finish in the background, but its late render must be ignored unless its page activation token is still current.",
       areaRanges:"Every applicable range row in Область → Диапазоны is followed by exactly one mounted dual-thumb slider. Linked-axis state changes propagation only and never hides Time/Frequency/Magnitude/Power/Density controls or their sliders.",
       footer:"Значения and Рассчитать are canonical Primary MD blue actions in the shared settings footer, with the existing 32px geometry and normal disabled state."
@@ -945,7 +971,7 @@
       !!mainId && sources.some(function (signal) { return signalId(signal) === mainId; }) && !!canonicalSeconds(context);
   }
   function actionMarkup() {
-    return "<button class='pane-action button pane-trim-action' type='button' data-testid='pane-trim-signal' data-pane-trim-signal data-pane-trim-eligible='true' aria-label='Обрезать сигнал по курсорам'>Обрезать</button>";
+    return "<button class='pane-action button pane-trim-action' type='button' data-testid='pane-trim-signal' data-pane-trim-signal data-pane-control-cluster-cell='start' data-pane-trim-eligible='true' aria-label='Обрезать сигнал по курсорам'>Обрезать</button>";
   }
   function projectAction(button,context) {
     var visible=eligibility(context);
@@ -2540,13 +2566,15 @@
 
   function plotLayoutWithRangeSlider(layout, runtimeKey, host) {
     var source = layout || {};
-    var enabled = !!model.rangeSliderByPane[runtimeKey], amplitudeEnabled = !!model.amplitudeSliderByPane[runtimeKey];
+    var regression=task0153Controller(), projection=regression && typeof regression.paneSliderProjection === "function" ? regression.paneSliderProjection({xRangeSliderVisible:!!model.rangeSliderByPane[runtimeKey],yRangeSliderVisible:!!model.amplitudeSliderByPane[runtimeKey]},{kind:"plot_render"}) : null;
+    var enabled = projection ? projection.mountHorizontalPaneSlider : !!model.rangeSliderByPane[runtimeKey], amplitudeEnabled = projection ? projection.mountVerticalPaneSlider : !!model.amplitudeSliderByPane[runtimeKey];
     var result = Object.assign({ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", showlegend:true }, source, { hovermode:false });
     result.legend = Object.assign({}, source.legend || {}, { x:0.99, xanchor:"right", y:0.99, yanchor:"top", bgcolor:"rgba(255,255,255,0.82)", bordercolor:"#e1e1e1", borderwidth:1 });
     result.margin = Object.assign({ l:44, r:12, t:12, b:enabled ? 34 : 30 }, source.margin || {}, { r:amplitudeEnabled ? 48 : 12, b:enabled ? 34 : 30 });
+    result.xaxis = Object.assign({}, source.xaxis || {});
+    result.xaxis.rangeslider = Object.assign({}, (source.xaxis && source.xaxis.rangeslider) || {}, { visible:enabled });
     if (enabled) {
-      result.xaxis = Object.assign({}, source.xaxis || {});
-      result.xaxis.rangeslider = Object.assign({}, (source.xaxis && source.xaxis.rangeslider) || {}, { visible:true, thickness:0.15, bgcolor:"#ffffff", bordercolor:"#e1e1e1", borderwidth:1 });
+      result.xaxis.rangeslider = Object.assign({}, result.xaxis.rangeslider, { thickness:0.15, bgcolor:"#ffffff", bordercolor:"#e1e1e1", borderwidth:1 });
       var dataRange = model.rangeSliderDataRangeByPane[runtimeKey];
       var currentRange = host && host._fullLayout && host._fullLayout.xaxis && Array.isArray(host._fullLayout.xaxis.range) ? host._fullLayout.xaxis.range : null;
       var fullRange = rangeSliderFullRange(dataRange, currentRange);
@@ -3512,7 +3540,8 @@
         else { delete model.rangeSliderDataRangeByPane[runtimeKey]; delete model.rangeSliderFullRangeByPane[runtimeKey]; }
         if (amplitudeDataRange) model.amplitudeDataRangeByPane[runtimeKey] = amplitudeDataRange;
         else { delete model.amplitudeDataRangeByPane[runtimeKey]; delete model.amplitudeFullRangeByPane[runtimeKey]; delete model.amplitudeSelectedRangeByPane[runtimeKey]; }
-        return Plotly.react(host, traces, plotLayoutWithRangeSlider(sourceLayout, runtimeKey, defaultChanged ? null : host), Object.assign({}, payload.config || {}, { displayModeBar:false, displaylogo:false, responsive:true, doubleClick:false })).then(function () {
+        var renderLayout=plotLayoutWithRangeSlider(sourceLayout, runtimeKey, defaultChanged ? null : host);
+        return Plotly.react(host, traces, renderLayout, Object.assign({}, payload.config || {}, { displayModeBar:false, displaylogo:false, responsive:true, doubleClick:false })).then(function () {
           var currentPane=paneById(pane.id), currentRecord=model.outputs[runtimeKey], currentOutputIdentity=plotOutputIdentity(currentPane, currentRecord);
           if (currentPane && currentPane.plot_type === pane.plot_type && currentOutputIdentity === outputIdentity && (defaultChanged || !model.graphDefaultRangeByPane[runtimeKey] || !model.plotAutoscaleByPane[runtimeKey])) {
             var fullLayout = host._fullLayout || {}, xaxis = fullLayout.xaxis, yaxis = fullLayout.yaxis, autoscale=plotAutoscaleController();
@@ -3520,7 +3549,7 @@
               x:xaxis && Array.isArray(xaxis.range) ? xaxis.range.slice() : dataRange && dataRange.slice(),
               y:yaxis && Array.isArray(yaxis.range) ? yaxis.range.slice() : amplitudeDataRange && amplitudeDataRange.slice()
             };
-            if (autoscale) model.plotAutoscaleByPane[runtimeKey]=autoscale.capture({ plotType:pane.plot_type, sourceLayout:sourceLayout, fullLayout:fullLayout, outputIdentity:outputIdentity });
+            if (autoscale) model.plotAutoscaleByPane[runtimeKey]=autoscale.capture({ plotType:pane.plot_type, sourceLayout:renderLayout, fullLayout:fullLayout, outputIdentity:outputIdentity });
           }
           host.dataset.plotReady = "true"; host.dataset.rangeSliderVisible = String(rangeSliderEnabled(displayId, pane.id)); host.dataset.amplitudeSliderVisible = String(amplitudeSliderEnabled(displayId, pane.id)); bindLinkedTimeHost(host, displayId, pane.id); bindRangeSliderDoubleClick(host, runtimeKey); syncAmplitudeSlider(host, runtimeKey); updatePeaksMarkers(displayId, pane.id, model.peaksRecords[paneRuntimeKey(displayId, pane.id)]);
           var cursors=paneGraphCursorController();
