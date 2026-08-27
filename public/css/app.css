@@ -4189,3 +4189,47 @@ body {
     width: calc(100vw - 32px);
   }
 }
+
+/* V63: compact inspector extrema action and one-element operation trigger. */
+.inspector-extrema-action {
+  height: 31px;
+  min-width: 96px;
+  max-width: 208px;
+  flex: 0 0 auto;
+  align-self: stretch;
+  padding: 0 12px;
+  overflow: hidden;
+  border-width: 0 0 1px 1px;
+  border-style: solid;
+  border-color: var(--accent);
+  border-radius: 0;
+  font-size: 13px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector-extrema-action[hidden] { display: none; }
+.inspector-extrema-action:focus-visible { outline-offset: -3px; }
+
+.signal-operation-row .value-select-trigger.is-button-trigger {
+  appearance: none;
+  text-align: left;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger .select-trigger-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 10px 32px 10px 0;
+  overflow: hidden;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger:disabled .select-trigger-label {
+  color: var(--muted);
+}

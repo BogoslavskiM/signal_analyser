@@ -1322,9 +1322,16 @@
   var LABELS = {
     idle: "Рассчитать",
     error: "Рассчитать ещё раз",
-    ready: "Пересчитать для актуальных диапазонов",
-    empty: "Пересчитать для актуальных диапазонов",
+    ready: "Пересчитать",
+    empty: "Пересчитать",
     pending: "Рассчитывается…"
+  };
+  var TOOLTIPS = {
+    idle:"Рассчитать экстремумы",
+    error:"Повторить расчёт экстремумов",
+    ready:"Пересчитать для актуальных диапазонов",
+    empty:"Пересчитать для актуальных диапазонов",
+    pending:"Расчёт экстремумов выполняется"
   };
 
   function normalize(status) {
@@ -1338,7 +1345,7 @@
 
   function presentation(status) {
     var state=normalize(status);
-    return { state:state, label:LABELS[state], disabled:state === "pending", busy:state === "pending" };
+    return { state:state, label:LABELS[state], tooltip:TOOLTIPS[state], disabled:state === "pending", busy:state === "pending" };
   }
 
   function project(button, status) {
@@ -1348,7 +1355,25 @@
     button.disabled=view.disabled;
     button.dataset.extremaActionState=view.state;
     button.setAttribute("aria-busy", String(view.busy));
+    button.setAttribute("title", view.tooltip);
+    button.setAttribute("aria-label", view.tooltip);
     return view;
+  }
+
+  function context(displayId,paneId) {
+    var display=String(displayId || ""), pane=String(paneId || "");
+    return { displayId:display, paneId:pane, key:display+"::"+pane };
+  }
+
+  function providerRequest(provider, request, onSettled) {
+    if (!provider || typeof provider.onCalculateExtrema !== "function") return Promise.resolve(null);
+    return Promise.resolve(provider.onCalculateExtrema(request)).then(function (result) {
+      if (typeof onSettled === "function") onSettled(result,request);
+      return result;
+    },function (error) {
+      if (typeof onSettled === "function") onSettled({status:"error",error:error},request);
+      return null;
+    });
   }
 
   function activation(status, readCurrentViewport) {
@@ -1362,7 +1387,9 @@
     normalize:normalize,
     presentation:presentation,
     project:project,
-    activation:activation
+    activation:activation,
+    context:context,
+    providerRequest:providerRequest
   };
 }(typeof window !== "undefined" ? window : globalThis));
 
@@ -1768,7 +1795,7 @@
     var display = activeDisplay();
     if (display) {
       cancelInactiveDisplayWork(display.id);
-      stopPeaksPolling(peaksSurfaceActive() && model.activePane ? paneRuntimeKey(display.id, model.activePane) : "");
+      stopPeaksPolling(model.activePane ? paneRuntimeKey(display.id, model.activePane) : "");
       settings.setContext(display.id, r);
     }
     return true;
@@ -4448,6 +4475,7 @@
     if (typeof syncSignalSamplesWithMain === "function") syncSignalSamplesWithMain();
     reconcileContextTabs(pane);
     qa("[data-bottom-tab]").forEach(function (tab) { var available = contextTabAvailable(tab.dataset.bottomTab, pane), active = available && tab.dataset.bottomTab === model.inspectorPage; tab.hidden = !available; tab.setAttribute("aria-hidden", String(!available)); tab.setAttribute("aria-selected", String(active)); tab.tabIndex = active ? 0 : -1; });
+    renderInspectorExtremaAction(pane);
     body.setAttribute("aria-labelledby", model.inspectorPage === "signals" ? "signals-tab" : model.inspectorPage === "measurements" ? "measurements-tab" : model.inspectorPage === "samples" ? "inspector-tab-samples" : "peaks-tab");
     body.dataset.testid = "inspector-pane-" + model.inspectorPage;
     body.classList.toggle("is-table-only", model.inspectorPage === "peaks");
@@ -4612,19 +4640,43 @@
     var helper=extremaActionController(), state=extremaActionState(record);
     return helper && typeof helper.presentation === "function" ? helper.presentation(state) : {
       state:state,
-      label:state === "pending" ? "Рассчитывается…" : state === "error" ? "Рассчитать ещё раз" : state === "ready" || state === "empty" ? "Пересчитать для актуальных диапазонов" : "Рассчитать",
+      label:state === "pending" ? "Рассчитывается…" : state === "error" ? "Рассчитать ещё раз" : state === "ready" || state === "empty" ? "Пересчитать" : "Рассчитать",
+      tooltip:state === "pending" ? "Расчёт экстремумов выполняется" : state === "error" ? "Повторить расчёт экстремумов" : state === "ready" || state === "empty" ? "Пересчитать для актуальных диапазонов" : "Рассчитать экстремумы",
       disabled:state === "pending",
       busy:state === "pending"
     };
   }
 
-  function extremaActionMarkup(record, testId) {
-    var view=extremaActionView(record);
-    return "<button class='button button-primary' type='button' data-testid='" + esc(testId) + "' data-extrema-action-state='" + esc(view.state) + "' aria-busy='" + String(view.busy) + "'" + (view.disabled ? " disabled" : "") + ">" + esc(view.label) + "</button>";
+  var inspectorExtremaActionMarkup = `<button class="button button-primary inspector-extrema-action" type="button"
+        data-extrema-action data-testid="extrema-header-action"
+        data-extrema-action-state="idle" aria-busy="false"
+        title="Рассчитать экстремумы" aria-label="Рассчитать экстремумы" hidden>Рассчитать</button>`;
+
+  function ensureInspectorExtremaAction() {
+    var button=q("[data-testid='extrema-header-action']");
+    if (button) return button;
+    var controls=q("[data-testid='inspector-state-controls']");
+    if (!controls || !controls.parentNode) return null;
+    controls.insertAdjacentHTML("beforebegin",inspectorExtremaActionMarkup);
+    return q("[data-testid='extrema-header-action']");
   }
 
-  function inspectorExtremaAction(record) {
-    return "<div class='peaks-start-actions'>" + extremaActionMarkup(record, "extrema-calculate") + "</div>";
+  function renderInspectorExtremaAction(pane) {
+    var button=ensureInspectorExtremaAction();
+    if (!button) return;
+    var visible=model.inspectorPage === "peaks" && extremaTabsAvailable(pane);
+    button.hidden=!visible;
+    if (!visible) return;
+    var display=activeDisplay(), record=display && pane && model.peaksRecords[paneRuntimeKey(display.id,pane.id)];
+    var helper=extremaActionController(), state=extremaActionState(record), view=helper && typeof helper.project === "function" ? helper.project(button,state) : extremaActionView(record);
+    if (!helper || typeof helper.project !== "function") {
+      button.textContent=view.label;
+      button.disabled=view.disabled;
+      button.dataset.extremaActionState=view.state;
+      button.setAttribute("aria-busy",String(view.busy));
+      button.setAttribute("title",view.tooltip);
+      button.setAttribute("aria-label",view.tooltip);
+    }
   }
 
   function renderPeaksInspector(body) {
@@ -4639,20 +4691,20 @@
     if (!extremaTabsAvailable(pane)) { host.innerHTML = "<div class='inspector-empty' role='status'>Экстремумы доступны для временной области и спектра</div>"; return; }
     if (!current || (!record.pending && !record.error && !record.calculated)) {
       var paneName = panePreviewName(display.id, pane);
-      host.innerHTML = "<div class='peaks-state peaks-start' data-testid='extrema-start' data-extrema-state='start' role='status'><strong>Рассчитать экстремумы для области " + esc(paneName) + "</strong><div class='peaks-start-actions'><button class='button' type='button' data-testid='extrema-configure'>Настроить рассчет</button>" + extremaActionMarkup(record, "extrema-calculate") + "</div></div>";
+      host.innerHTML = "<div class='peaks-state peaks-start' data-testid='extrema-start' data-extrema-state='start' role='status'><strong>Рассчитать экстремумы для области " + esc(paneName) + "</strong><div class='peaks-start-actions'><button class='button' type='button' data-testid='extrema-configure'>Настроить рассчет</button></div></div>";
       return;
     }
     if (record.pending) {
       var episodeKey = record.loading_episode || ("extrema::" + paneRuntimeKey(display.id, pane.id) + "::" + String(record.context_key == null ? "awaiting" : record.context_key) + "::" + String(record.calculation_revision == null ? "awaiting" : record.calculation_revision));
       var loading = host.firstElementChild;
       if (loading && loading.dataset.extremaState === "loading" && loading.dataset.loaderEpisodeKey === episodeKey) return;
-      host.innerHTML = "<div class='peaks-state peaks-loading' data-testid='peaks-loader' data-extrema-state='loading' data-loader-episode-key='" + esc(episodeKey) + "' role='status' aria-live='polite'><span class='spinner' data-loader-spinner data-loader-episode-key='" + esc(episodeKey) + "' aria-hidden='true'></span><strong>Расчёт экстремумов…</strong></div>" + inspectorExtremaAction(record);
+      host.innerHTML = "<div class='peaks-state peaks-loading' data-testid='peaks-loader' data-extrema-state='loading' data-loader-episode-key='" + esc(episodeKey) + "' role='status' aria-live='polite'><span class='spinner' data-loader-spinner data-loader-episode-key='" + esc(episodeKey) + "' aria-hidden='true'></span><strong>Расчёт экстремумов…</strong></div>";
       return;
     }
-    if (record.error) { host.innerHTML = "<div class='peaks-state peaks-error' data-testid='peaks-error' data-extrema-state='error' role='alert'><strong>Не удалось рассчитать экстремумы</strong><p>" + esc(record.error) + "</p></div>" + inspectorExtremaAction(record); return; }
+    if (record.error) { host.innerHTML = "<div class='peaks-state peaks-error' data-testid='peaks-error' data-extrema-state='error' role='alert'><strong>Не удалось рассчитать экстремумы</strong><p>" + esc(record.error) + "</p></div>"; return; }
     var data = record.data || {}, rows = Array.isArray(data.rows) ? data.rows : [];
-    if (!data.signals || !data.signals.length) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберете сигнал для отображения</strong></div>" + inspectorExtremaAction(record); return; }
-    if (!rows.length) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-empty' data-extrema-state='empty' role='status'><strong>Экстремумы не найдены</strong><p>Для активной области нет значений, соответствующих настройкам.</p></div>" + inspectorExtremaAction(record); return; }
+    if (!data.signals || !data.signals.length) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберете сигнал для отображения</strong></div>"; return; }
+    if (!rows.length) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-empty' data-extrema-state='empty' role='status'><strong>Экстремумы не найдены</strong><p>Для активной области нет значений, соответствующих настройкам.</p></div>"; return; }
     var spectrum = pane.plot_type === "spectrum";
     var colgroup = "<colgroup><col style='width:4.8%'><col style='width:28.4%'><col style='width:9.1%'><col style='width:12.3%'><col style='width:12.5%'><col style='width:12.5%'><col style='width:20.4%'></colgroup>";
     host.innerHTML = "<table class='signal-table peaks-table' data-testid='peaks-table' data-extrema-table='true'>" + colgroup + "<thead><tr><th>№</th><th>Сигнал</th><th>Цвет</th><th>Тип</th><th>" + (spectrum ? "Магнитуда" : "Значение") + "</th><th>" + (spectrum ? "Частота" : "Время") + "</th><th>Метка на графике</th></tr></thead><tbody>" + rows.map(function (row, index) {
@@ -4662,7 +4714,7 @@
       var rowSignal=(model.state.signals || []).filter(function (signal) { return signalNameMatches(signal, row.signal_name); })[0];
       var rowColor=row.signal_color || signalColor(rowSignal);
       return "<tr data-testid='extrema-row-" + esc(row.row_number == null ? index + 1 : row.row_number) + "'><td>" + esc(row.row_number == null ? index + 1 : row.row_number) + "</td><td>" + esc(row.signal_name || "") + "</td><td class='color-cell'><span class='peaks-color-swatch' style='--swatch:" + esc(rowColor) + "' aria-label='Цвет " + esc(row.signal_name || "") + "'></span></td><td data-testid='extrema-type-" + esc(row.row_number == null ? index + 1 : row.row_number) + "'>" + typeLabel + "</td><td>" + esc(measurementValue(row, "value")) + "</td><td>" + esc(coordinate == null ? "—" : coordinate) + "</td><td><span class='extrema-table-marker is-" + type + "' style='--marker-color:" + esc(rowColor) + "' data-marker-symbol='" + (type === "minimum" ? "triangle-down" : "triangle-up") + "' aria-label='" + typeLabel + ", метка " + esc(number) + "'><i aria-hidden='true'></i><b>" + esc(number) + "</b></span></td></tr>";
-    }).join("") + "</tbody></table>" + inspectorExtremaAction(record);
+    }).join("") + "</tbody></table>";
   }
 
   function peaksSettingsKey(display, pane) { return display && pane ? paneRuntimeKey(display.id, pane.id) : ""; }
@@ -4861,7 +4913,7 @@
 
   function peaksResponseContextIsCurrent(response, displayId, paneId, token) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
-    if (token !== model.peaksTokens[runtimeKey] || !peaksSurfaceActive() || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return false;
+    if (token !== model.peaksTokens[runtimeKey] || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return false;
     if (!response || response.display_id !== displayId || response.pane_id !== paneId) return false;
     var prior = model.peaksRecords[runtimeKey];
     if (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision <= prior.calculation_revision) return false;
@@ -4878,7 +4930,7 @@
     window.clearTimeout(model.peaksPollByPane[runtimeKey]);
     model.peaksPollByPane[runtimeKey]=window.setTimeout(function () {
       delete model.peaksPollByPane[runtimeKey];
-      if (!peaksSurfaceActive() || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
       fetchActivePeaks(displayId, paneId, true, true);
     }, 350);
   }
@@ -4926,7 +4978,7 @@
     return api.activePeaks(displayId, paneId).then(function (response) {
       return acceptPeaksPayload(response, displayId, paneId, token, calculationRequested, poll);
     }).catch(function (error) {
-      if (token !== model.peaksTokens[runtimeKey] || !peaksSurfaceActive() || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return null;
+      if (token !== model.peaksTokens[runtimeKey] || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return null;
       var record = { displayId:displayId, paneId:paneId, calculationRequested:!!calculationRequested, calculated:false, error:safeErrorText(error, "Не удалось загрузить экстремумы."), pending:false };
       model.peaksRecords[runtimeKey] = record;
       model.peaksRecord = record;
@@ -5019,7 +5071,7 @@
     renderInspector();
     if (model.settingsPage === "peaks") renderApply();
     ensurePeaksEnabled(displayId, paneId).then(function () {
-      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId || !peaksSurfaceActive()) return null;
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return null;
       token = (model.peaksTokens[runtimeKey] || 0) + 1;
       model.peaksTokens[runtimeKey] = token;
       function requestCalculation(retries) {
@@ -5040,7 +5092,7 @@
         return acceptPeaksPayload(response, displayId, paneId, token, true, true);
       });
     }).catch(function (error) {
-      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId || !peaksSurfaceActive()) return;
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
       model.peaksRecords[runtimeKey] = { displayId:displayId, paneId:paneId, calculationRequested:true, calculated:false, pending:false, error:safeErrorText(error, "Не удалось рассчитать экстремумы."), data:prior && prior.data || null };
       renderInspector();
       if (model.settingsPage === "peaks") renderApply();
@@ -5641,7 +5693,6 @@
     var pane = paneById(paneId);
     if (!pane) return;
     model.settingsPage = "display";
-    if (!peaksSurfaceActive()) stopPeaksPolling("");
     if (pane.id === model.activePane) {
       renderSettings(activeDisplay());
       return;
@@ -5919,7 +5970,7 @@
     var operationSource=Object.assign({},source,{sampling_kind:"uniform",complex:/комплекс|complex/i.test(String(source.data_type || ""))});
     model.signalOperation={open:true,source:source,operationState:helper.createState(operationSource),busy:false,success:false,validation:null,trigger:restore};
     renderSignalOperation();
-    window.requestAnimationFrame(function () { var input=q("[data-testid='signal-operation-select-input']"); if (input) input.focus(); });
+    window.requestAnimationFrame(function () { var trigger=q("[data-testid='signal-operation-select']"); if (trigger) trigger.focus(); });
     return true;
   }
 
@@ -6084,7 +6135,7 @@
       }
       return;
     }
-    if (button.dataset.testid === "extrema-calculate") return void calculatePeaks();
+    if (button.dataset.extremaAction !== undefined) return void calculatePeaks();
     if (button.dataset.testid === "extrema-configure") return void configureActivePeaks();
     if (button.dataset.testid === "extrema-values") return void calculatePeaks();
     if (button.dataset.testid === "signal-values-action") return void showSignalSamples();
@@ -6105,7 +6156,6 @@
       if (!intent.accepted) return;
       model.settingsPage=intent.page;
       model.settingsPageActivationToken=intent.activationToken;
-      if (!peaksSurfaceActive()) stopPeaksPolling("");
       renderSettings(activeDisplay());
       if (model.settingsPage === "peaks") loadPeaks();
       return;
@@ -6149,7 +6199,7 @@
         if (restored) restored.focus();
       }).catch(function (error) { measurementMenu.classList.remove("is-stale"); showToast(safeErrorText(error, "Не удалось изменить измерения."), true); });
     }
-    if (button.dataset.bottomTab) { if (!contextTabAvailable(button.dataset.bottomTab, paneById(model.activePane))) return; closeColumnMenu(false); closeMeasurementMenu(false); closeSampleColumnsMenu(false); model.inspectorPage = button.dataset.bottomTab; if (!peaksSurfaceActive()) stopPeaksPolling(""); if (model.inspectorPage === "samples") syncSignalSamplesWithMain({ retry:true }); renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); if (model.inspectorPage === "peaks") loadPeaks(); return; }
+    if (button.dataset.bottomTab) { if (!contextTabAvailable(button.dataset.bottomTab, paneById(model.activePane))) return; closeColumnMenu(false); closeMeasurementMenu(false); closeSampleColumnsMenu(false); model.inspectorPage = button.dataset.bottomTab; if (model.inspectorPage === "samples") syncSignalSamplesWithMain({ retry:true }); renderInspector(); if (model.inspectorPage === "measurements") loadMeasurements(); if (model.inspectorPage === "peaks") loadPeaks(); return; }
     if (button.dataset.toastClose !== undefined) q("[data-testid='layout-toast']").hidden = true;
   });
   document.addEventListener("click", function (event) {

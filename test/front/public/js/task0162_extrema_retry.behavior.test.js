@@ -4,79 +4,71 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
-function functionBlock(source, name, nextName) {
-  const start = source.indexOf("  function " + name + "(");
-  const end = source.indexOf("\n  function " + nextName + "(", start);
-  if (start < 0 || end < 0) throw new Error("missing production function " + name);
+function block(source, startMarker, endMarker) {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start);
+  if (start < 0 || end < 0) throw new Error(`missing production block: ${startMarker}`);
   return source.slice(start, end);
 }
 
-module.exports = async function task0162ExtremaRetryBehavior(assert) {
+function actionController(app, assert) {
+  const start = app.indexOf("(function (root) {\n  \"use strict\";\n\n  var LABELS");
+  const end = app.indexOf("}(typeof window !== \"undefined\" ? window : globalThis));", start);
+  assert(start >= 0 && end >= 0, "shared extrema action controller must be registered");
+  const window = {};
+  vm.runInNewContext(app.slice(start, end) + "}(window));", { window, String, Object, Boolean, Promise }, { filename:"public/js/app.js:extrema-action" });
+  return window.SignalAnalyserExtremaAction;
+}
+
+module.exports = async function task0162ExtremaRetryV63(assert) {
   const root = path.resolve(__dirname, "../../../..");
-  const source = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
-  const actionStart = source.indexOf("(function (root) {\n  \"use strict\";\n\n  var LABELS");
-  const actionEnd = source.indexOf("}(typeof window !== \"undefined\" ? window : globalThis));", actionStart);
-  assert(actionStart >= 0 && actionEnd >= 0, "the shared extrema action controller must be present");
-  const actionSource = source.slice(actionStart, actionEnd) + "}(window));";
-  const controls = {};
-  vm.runInNewContext(actionSource, { window: controls, String, Object, Boolean }, { filename: "public/js/app.js:extrema-action" });
-  const action = controls.SignalAnalyserExtremaAction;
+  const app = fs.readFileSync(path.join(root, "public/js/app.js"), "utf8");
+  const valueSelect = fs.readFileSync(path.join(root, "public/js/value-select.js"), "utf8");
+  const action = actionController(app, assert);
+
   [
-    ["error", "Рассчитать ещё раз", false],
-    ["ready", "Пересчитать для актуальных диапазонов", false],
-    ["empty", "Пересчитать для актуальных диапазонов", false],
-    ["pending", "Рассчитывается…", true]
-  ].forEach(([state, label, disabled]) => {
+    ["idle", "Рассчитать", "Рассчитать экстремумы", false],
+    ["error", "Рассчитать ещё раз", "Повторить расчёт экстремумов", false],
+    ["ready", "Пересчитать", "Пересчитать для актуальных диапазонов", false],
+    ["empty", "Пересчитать", "Пересчитать для актуальных диапазонов", false],
+    ["pending", "Рассчитывается…", "Расчёт экстремумов выполняется", true]
+  ].forEach(([state, label, tooltip, disabled]) => {
     const view = action.presentation(state);
-    assert(view.label === label && view.disabled === disabled, `action ${state} must have the exact label and pending-only disabled state`);
+    assert(view.label === label && view.tooltip === tooltip && view.disabled === disabled, `V63 ${state} action must retain exact short label, full tooltip and pending-only disabled state`);
+    const button = { textContent:"", disabled:false, dataset:{}, attributes:{}, setAttribute(name, value) { this.attributes[name] = value; } };
+    action.project(button, state);
+    assert(button.textContent === label && button.attributes.title === tooltip && button.attributes["aria-label"] === tooltip && button.disabled === disabled, `V63 ${state} action projection must update its existing button node`);
   });
-  let readCount = 0;
-  assert(action.activation("pending", () => { readCount += 1; return {}; }) === null && readCount === 0, "pending activation must not read or submit a viewport");
-  assert(JSON.stringify(action.activation("error", () => ({ min_s: ++readCount, max_s: 2 }))) === JSON.stringify({ visible_range:{ min_s:1, max_s:2 } }), "retry must read the current viewport");
-  assert(JSON.stringify(action.activation("ready", () => ({ min_s: ++readCount, max_s: 3 }))) === JSON.stringify({ visible_range:{ min_s:2, max_s:3 } }), "recalculate must reread instead of retaining the prior viewport");
 
-  const calculate = functionBlock(source, "calculatePeaks", "loadPeaks");
-  const calls = [], ranges = [];
-  const model = {
-    activePane:"pane-1", revision:7, settingsPage:"peaks", peaksRecords:{
-      "display-1::pane-1": { displayId:"display-1", paneId:"pane-1", calculated:true, pending:false, error:null, data:{ rows:[{}] } }
-    }, peaksTokens:{}, peaksPollByPane:{}
-  };
-  const context = {
-    model,
-    Promise,
-    Error,
-    activeDisplay() { return { id:"display-1", peaks_enabled:true }; },
-    paneById() { return { id:"pane-1", plot_type:"time", signal_bindings:["Сигнал"] }; },
-    extremaTabsAvailable() { return true; },
-    paneHasSignals() { return true; },
-    paneRuntimeKey(displayId, paneId) { return displayId + "::" + paneId; },
-    extremaActionState(record) { return record && record.pending ? "pending" : record && record.error ? "error" : record && record.calculated ? (record.data && record.data.rows && record.data.rows.length ? "ready" : "empty") : "idle"; },
-    extremaActionController() { return action; },
-    currentPeaksVisibleRange() { const n = ranges.length + 1; const range = { min_s:n, max_s:n + 0.5 }; ranges.push(range); return range; },
-    stopPeaksPolling() {}, renderInspector() {}, renderApply() {},
-    ensurePeaksEnabled() { return Promise.resolve(); },
-    peaksSurfaceActive() { return true; },
-    api:{ calculateActivePeaks(payload) { calls.push(payload); return Promise.resolve({ state_revision:7, display_id:"display-1", pane_id:"pane-1", context_key:"r" + calls.length, calculation_revision:calls.length, isready:false, success:false, data:{ signals:[], rows:[] } }); } },
-    acceptPeaksPayload() { return null; },
-    safeErrorText(error) { return String(error && error.message || error); },
-    refreshSnapshot() { return Promise.resolve(); }, accept() { return false; }
-  };
-  vm.runInNewContext(calculate + "\nthis.__calculatePeaks=calculatePeaks;", context, { filename:"public/js/app.js:calculatePeaks" });
-  context.__calculatePeaks();
-  await Promise.resolve(); await Promise.resolve();
-  model.peaksRecords["display-1::pane-1"] = { displayId:"display-1", paneId:"pane-1", calculated:true, pending:false, error:null, data:{ rows:[{}] } };
-  context.__calculatePeaks();
-  await Promise.resolve(); await Promise.resolve();
-  assert(ranges.length === 2 && calls.length === 2, "each allowed recalculate click must recompute and post exactly one current viewport");
-  assert(JSON.stringify(calls.map((call) => call.visible_range)) === JSON.stringify([{ min_s:1, max_s:1.5 }, { min_s:2, max_s:2.5 }]), "two recalculations must submit two distinct current viewport ranges");
-  model.peaksRecords["display-1::pane-1"].pending = true;
-  context.__calculatePeaks();
-  await Promise.resolve();
-  assert(ranges.length === 2 && calls.length === 2, "pending is the only action state that must suppress both viewport reading and POST");
+  const header = block(app, "  var inspectorExtremaActionMarkup", "\n  function renderPeaksInspector");
+  const inspector = block(app, "  function renderPeaksInspector", "\n  function peaksSettingsKey");
+  assert(/data-testid="extrema-header-action"/.test(header) && /data-extrema-action/.test(header), "one semantic extrema action must be declared for the inspector header");
+  assert(/controls\.insertAdjacentHTML\("beforebegin",inspectorExtremaActionMarkup\)/.test(header), "header action must be immediately before inspector collapse/state controls");
+  assert(/model\.inspectorPage === "peaks" && extremaTabsAvailable\(pane\)/.test(header) && /button\.hidden=!visible/.test(header), "header action must be visible only on the available Extrema inspector page");
+  assert(/function renderInspector\(\)[\s\S]*?renderInspectorExtremaAction\(pane\)/.test(app), "inspector refresh must project header action state without moving it into the body");
+  assert(!/data-extrema-action|extrema-header-action|inspectorExtremaAction/.test(inspector), "Extrema table body must not render a duplicate calculation action");
+  assert(/button\.dataset\.extremaAction !== undefined\) return void calculatePeaks\(\)/.test(app), "the header action must be handled by the normal clickable extrema calculation path");
 
-  const inspector = functionBlock(source, "renderPeaksInspector", "peaksSettingsKey");
-  const footer = functionBlock(source, "renderPeaksApply", "applyPeaksSettings");
-  assert(/inspectorExtremaAction\(record\)/.test(inspector) && /extremaActionMarkup\(record, "extrema-calculate"\)/.test(inspector), "inspector ready, empty and error branches must retain the shared extrema action");
-  assert(/actionHelper\.project\(button, actionState\)/.test(footer) && /values\.disabled = !display \|\| !pane/.test(footer), "Settings footer must project the exact shared retry/recalculate state without disabling non-pending actions");
+  const responseGuard = block(app, "  function peaksResponseContextIsCurrent", "\n  function peaksResponseIsCurrent");
+  const revisionGuard = block(app, "  function peaksResponseIsCurrent", "\n  function schedulePeaksPoll");
+  const schedule = block(app, "  function schedulePeaksPoll", "\n  function acceptPeaksPayload");
+  const fetch = block(app, "  function fetchActivePeaks", "\n  function ensurePeaksEnabled");
+  const settingsTab = block(app, "    if (button.dataset.settingsPage)", "\n    if (button.dataset.paneMenu)");
+  const inspectorTab = block(app, "    if (button.dataset.bottomTab)", "\n    if (button.dataset.toastClose");
+  [responseGuard, schedule, fetch].forEach((source) => assert(!/peaksSurfaceActive/.test(source), "background extrema guards must not depend on the visible Settings/Inspector page"));
+  assert(/token !== model\.peaksTokens\[runtimeKey\]/.test(responseGuard) && /activeDisplay\(\)\.id !== displayId/.test(responseGuard) && /model\.activePane !== paneId/.test(responseGuard), "background extrema response guard must retain token, display and pane identity checks");
+  assert(/stateRevision\(response\)[\s\S]*?model\.revision/.test(revisionGuard), "background extrema response guard must retain state-revision protection");
+  assert(/fetchActivePeaks\(displayId, paneId, true, true\)/.test(schedule), "pending context must continue passive polling by its immutable display/pane key");
+  assert(!/stopPeaksPolling/.test(settingsTab) && !/stopPeaksPolling/.test(inspectorTab), "Settings and inspector tab activation must not cancel a pending extrema poll");
+
+  const triggerMarkup = block(valueSelect, "  function triggerMarkup(config)", "\n  function setAttribute");
+  const buttonBranch = block(triggerMarkup, "    if (config.buttonTrigger)", "\n    return \"<div class='value-select-trigger");
+  const keyboard = block(valueSelect, "  document.addEventListener(\"keydown\"", "\n  window.addEventListener(\"resize\"");
+  const choose = block(valueSelect, "  function choose(index)", "\n  document.addEventListener(\"click\"");
+  assert(/buttonTrigger:config\.buttonTrigger === true \|\| key === "signal-operation-type"/.test(valueSelect), "only the operation selector must opt into the button trigger variant");
+  assert(/return "<button class='value-select-trigger/.test(buttonBranch) && /role='combobox'/.test(buttonBranch) && /select-trigger-label/.test(buttonBranch) && /select-trigger-arrow/.test(buttonBranch), "operation selector must be one outer combobox button with label and decorative arrow");
+  assert(!/<input|<button[^>]*select-trigger-arrow/.test(buttonBranch), "operation selector outer trigger must contain neither an input nor nested button");
+  assert(/focusTargetFor\(key\)/.test(valueSelect) && /config && config\.buttonTrigger \? trigger : inputFor\(key\)/.test(valueSelect), "button trigger focus target must be the outer operation button");
+  assert(/\["Enter", " ", "ArrowDown", "ArrowUp"\]/.test(keyboard) && /event\.key === "Escape"/.test(keyboard) && /event\.key === "Tab"/.test(keyboard), "operation trigger must retain keyboard open/select/close/Tab behavior");
+  assert(/var original=focusTargetFor\(key\)/.test(choose) && /var replacement=focusTargetFor\(key\)/.test(choose) && /replacement\.focus\(\)/.test(choose), "operation selection must restore focus to the outer trigger");
 };
