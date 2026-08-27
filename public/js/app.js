@@ -5016,8 +5016,9 @@
     return record;
   }
 
-  function fetchActivePeaks(displayId, paneId, poll, calculationRequested) {
+  function fetchActivePeaks(displayId, paneId, poll, calculationRequested, conflictRetries) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
+    var rebaseAttempts = Number(conflictRetries) || 0;
     var token = (model.peaksTokens[runtimeKey] || 0) + 1;
     model.peaksTokens[runtimeKey] = token;
     window.clearTimeout(model.peaksPollByPane[runtimeKey]);
@@ -5025,6 +5026,15 @@
       return acceptPeaksPayload(response, displayId, paneId, token, calculationRequested, poll);
     }).catch(function (error) {
       if (token !== model.peaksTokens[runtimeKey] || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return null;
+      var conflictState=error && error.status === 409 && error.payload && (error.payload.current && (error.payload.current.state || error.payload.current) || error.payload.state);
+      if (conflictState && rebaseAttempts < 1) {
+        var rebased=accept(conflictState) ? Promise.resolve(conflictState) : refreshSnapshot(renderActivePaneContext);
+        return rebased.then(function () {
+          renderActivePaneContext();
+          if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return null;
+          return fetchActivePeaks(displayId, paneId, poll, calculationRequested, rebaseAttempts + 1);
+        });
+      }
       var record = { displayId:displayId, paneId:paneId, calculationRequested:!!calculationRequested, calculated:false, error:safeErrorText(error, "Не удалось загрузить экстремумы."), pending:false };
       model.peaksRecords[runtimeKey] = record;
       model.peaksRecord = record;

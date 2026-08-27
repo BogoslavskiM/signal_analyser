@@ -136,7 +136,7 @@ function createHarness(options) {
     activePeaks(displayId, paneId) {
       activeCalls.push({ displayId, paneId });
       const response = activeResponses.shift();
-      return response && response.promise ? response.promise : Promise.resolve(response || peaksResponse());
+      return response && response.promise ? response.promise : response instanceof Error ? Promise.reject(response) : Promise.resolve(response || peaksResponse());
     },
     calculateActivePeaks(payload) {
       calculateCalls.push(payload);
@@ -359,6 +359,29 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   mismatch.timers.shift()();
   await settle();
   assert(mismatch.timers.length === 0 && mismatch.calculateCalls.length === 1, "context-mismatched polling response must not schedule a recovery timer or duplicate the calculation POST");
+
+  // Selecting another pane can race the backend active-pane snapshot. One 409
+  // must rebase the current pane and resume the existing GET chain; it must not
+  // issue another calculation POST or leave the accepted terminal result behind
+  // the loader.
+  const conflictPost = deferred();
+  const conflict = new Error("Активная область изменилась");
+  conflict.status = 409;
+  conflict.payload = { state: snapshot(["Сигнал 1"]) };
+  const rebase = createHarness({
+    activeResponses: [peaksResponse(), conflict, readyResponse],
+    calculateResponses: [conflictPost]
+  });
+  rebase.test.model.inspectorPage = "peaks";
+  await rebase.test.loadPeaks();
+  rebase.click(element({ dataset: { extremaAction: "" } }));
+  await settle();
+  conflictPost.resolve(pendingResponse(41));
+  await settle();
+  rebase.timers.shift()();
+  await settle();
+  assert(rebase.activeCalls.length === 3 && rebase.calculateCalls.length === 1, "one active-pane 409 must rebase and retry only the passive GET, never the calculation POST");
+  assert(rebase.peaksHost.innerHTML.includes("data-testid='peaks-table'") && !rebase.peaksHost.innerHTML.includes("peaks-loader"), "terminal extrema after the active-pane rebase must replace the loader without a page reload");
 
   // TASK-0137: the production input delegation and 150ms autosave must keep
   // the actual focused name node alive across applying, accepted and final
