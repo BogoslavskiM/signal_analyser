@@ -7,3 +7,5 @@ node_modules/
 architecture/
 .codex/
 AGENTS.md
+
+/architecture/workflow-decisions.yaml
