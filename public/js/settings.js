@@ -326,6 +326,7 @@
   };
 
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[character]; }); }
+  function reconcileDropdownTooltip(root) { var audit=window.SignalAnalyserDropdownTooltipAudit; if (audit) audit.reconcile(root || document); }
   function nameField(id) { return id === "display.name" || id === "pane.name"; }
   function activeNameEditor() {
     var node=document.activeElement;
@@ -656,7 +657,7 @@
     /* Pane-scoped Peaks is owned by app.js: it uses its independent GET/POST
        lifecycle and must not be replaced by this display-settings inventory. */
     if (context.page === "peaks") return;
-    if (!context.document) { host.innerHTML = ""; valueSelect.reconcile(); return; }
+    if (!context.document) { host.innerHTML = ""; valueSelect.reconcile(); reconcileDropdownTooltip(host); return; }
     context.renderedFields = {};
     host.innerHTML = inventory().filter(function (item) { return item.items.length; }).map(function (item) {
       var collapseKey = context.page + "|" + context.plotType + "|" + item.key;
@@ -666,6 +667,7 @@
     }).join("");
     valueSelect.reconcile();
     decorateNoHistory(host);
+    reconcileDropdownTooltip(host);
   }
 
   function rawFor(item, node) {

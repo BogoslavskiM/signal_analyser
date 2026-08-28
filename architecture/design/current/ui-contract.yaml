@@ -1,8 +1,8 @@
 schema_version: 1
-design_version: 56
+design_version: 70
 status: ready
 application_spec: ../../application-spec.yaml
-design_tasks: [TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132, TASK-0134, TASK-0135, TASK-0138, TASK-0139, TASK-0140, TASK-0141, TASK-0142, TASK-0143, TASK-0144, TASK-0145, TASK-0146, TASK-0148, TASK-0150, TASK-0151, TASK-0152, TASK-0153]
+design_tasks: [TASK-0064, TASK-0111, TASK-0112, TASK-0113, TASK-0114, TASK-0115, TASK-0116, TASK-0117, TASK-0118, TASK-0119, TASK-0124, TASK-0126, TASK-0130, TASK-0132, TASK-0134, TASK-0135, TASK-0138, TASK-0139, TASK-0140, TASK-0141, TASK-0142, TASK-0143, TASK-0144, TASK-0145, TASK-0146, TASK-0148, TASK-0150, TASK-0151, TASK-0152, TASK-0153, TASK-0154, HND-0731, HND-0752, HND-0769, HND-0793, HND-0796, HND-0804, HND-0818]
 visual_profile: analytical-dense
 visual_baseline_version: 28
 
@@ -45,10 +45,27 @@ production_integration_contract:
     - frontend-source/integration/css/task-0148-measurement-cursor-columns.css
     - frontend-source/integration/js/task-0148-measurement-cursor-columns.js
     - frontend-source/integration/js/task-0150-0151-axis-labels-hover.js
+    - frontend-source/integration/css/task-0154-trim-and-operation-error.css
     - frontend-source/integration/js/task-0152-cursor-trim-signal.js
+    - frontend-source/integration/js/task-0154-operation-error-dialog.js
+    - frontend-source/integration/css/task-0157-preprocess-operation.css
+    - frontend-source/integration/js/task-0157-preprocess-operation.js
+    - frontend-source/js/ui/components/value-select.js
+    - frontend-source/integration/js/task-0158-russian-localization.js
+    - frontend-source/integration/js/task-0162-extrema-retry.js
+    - frontend-source/integration/css/task-0164-dropdown-tooltip-audit.css
+    - frontend-source/integration/js/task-0164-dropdown-tooltip-audit.js
+    - frontend-source/integration/css/task-0165-pane-extrema-clear.css
+    - frontend-source/integration/js/task-0165-pane-extrema-clear.js
+    - frontend-source/integration/html/inspector-extrema-header-action.fragment.html
+    - frontend-source/integration/css/task-0167-pane-header-nested-dropdown.css
+    - frontend-source/integration/css/task-0168-extrema-table-actions.css
+    - frontend-source/integration/js/task-0168-extrema-table-actions.js
+    - frontend-source/integration/css/task-0169-primary-processing-hover-operation-validation.css
+    - frontend-source/integration/js/task-0169-primary-processing-operation-validation.js
     - frontend-source/integration/html/dialogs/signal-operation.fragment.html
     - frontend-source/integration/html/dialogs/signal-trim.fragment.html
-  mock_only_roots: [frontend-source/index.html, frontend-source/js/ui, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
+  mock_only_roots: [frontend-source/index.html, frontend-source/js/ui/loader.js, frontend-source/js/ui/app.js, frontend-source/js/ui/zones, frontend-source/js/ui/dialogs, frontend-source/html/zones, frontend-source/css/zones, mock, prototype]
 
 prototype_contract:
   entry: prototype/index.html
@@ -60,7 +77,7 @@ prototype_contract:
     - public/css/theme.css
     - public/css/app.css
     - public/js/api.js
-    - public/js/value-select.js
+    - frontend-source/js/ui/components/value-select.js
     - public/js/numeric.js
     - public/js/settings.js
     - public/js/layouts.js
@@ -69,7 +86,7 @@ prototype_contract:
     - public/js/native-session-io.js
     - public/js/app.js
   deterministic_provider: prototype/mock-fetch.js
-  interaction_bridges: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js, prototype/task-0130-graph-cursors-bridge.js, prototype/task-0138-values-columns-bridge.js, prototype/task-0139-loading-overlays-bridge.js, prototype/task-0143-bootstrap-loader-bridge.js]
+  interaction_bridges: [prototype/task-0117-interaction-bridge.js, prototype/task-0119-interaction-bridge.js, prototype/task-0126-interaction-bridge.js, prototype/task-0130-graph-cursors-bridge.js, prototype/task-0138-values-columns-bridge.js, prototype/task-0139-loading-overlays-bridge.js, prototype/task-0143-bootstrap-loader-bridge.js, prototype/task-0158-russian-localization-bridge.js, prototype/task-0163-extrema-background-header-selector-bridge.js, prototype/task-0165-pane-extrema-clear-bridge.js, prototype/task-0168-extrema-table-actions-bridge.js]
   production_baseline_evidence: evidence/production-baseline-v32.json
   required_nonempty_zone_slots: [toolbar, workspace, settings, inspector]
   forbidden: [fetch_html_partials, http_server, network_api, cors_dependency, alternative_mock_shell]
@@ -85,6 +102,18 @@ prototype_contract:
   task_0148_source_result: {delta_checks: 6, passed: 6, failed: 0, method: bounded_cursor_column_eligibility_intent_trace_menu, new_visual_component: false, new_screenshot: false}
   task_0150_0151_source_result: {delta_checks: 6, passed: 6, failed: 0, method: bounded_title_only_persistence_and_hover_suppression, new_visual_component: false, new_screenshot: false}
   task_0152_source_result: {delta_checks: 6, passed: 6, failed: 0, method: bounded_dual_cursor_time_crop_exact_canonical_seconds_provider, new_visual_component: false, new_screenshot: false}
+  task_0154_source_result: {delta_checks: 9, passed: 9, failed: 0, method: bounded_trim_source_name_intent_no_readout_sanitized_alertdialog, new_visual_component: true, exact_figma_components: 6, new_screenshot: false}
+  task_0157_0158_source_result: {delta_checks: 26, passed: 26, failed: 0, method: bounded_engee_supported_preprocess_only_state_schema_and_external_host_command, new_visual_component: false, exact_figma_components: 0, new_screenshot: false}
+  task_0160_source_result: {delta_checks: 12, passed: 12, failed: 0, method: bounded_operation_icon_inventory_markup_accessibility_geometry, new_visual_component: true, exact_figma_components: 11, new_screenshot: false}
+  task_0161_source_result: {delta_checks: 13, passed: 13, failed: 0, method: combined_targeted_joined_header_explicit_slider_lifecycle_unified_semantic_operation_selector, new_visual_component: true, exact_figma_components: 0, new_screenshot: false}
+  task_0162_source_result: {delta_checks: 8, passed: 8, failed: 0, method: focused_extrema_footer_state_and_current_viewport_activation, new_visual_component: false, exact_figma_components: 0, new_screenshot: false}
+  task_0163_source_result: {delta_checks: 6, passed: 6, failed: 0, method: focused_extrema_background_header_and_single_operation_trigger_contract, new_visual_component: false, exact_figma_components: 0, new_screenshot: false}
+  task_0164_source_result: {delta_checks: 7, passed: 7, failed: 0, method: scoped_complete_dropdown_inventory_and_delayed_tooltip_contract, new_visual_component: true, exact_figma_components: 4, browser_launch: unavailable_in_sandbox_SIGABRT, new_screenshot: false}
+  task_0165_source_result: {delta_checks: 8, passed: 8, failed: 0, method: focused_pane_owned_extrema_clear_and_render_projection_contract, new_visual_component: false, exact_figma_components: 0, new_screenshot: false}
+  task_0166_source_result: {delta_checks: 8, passed: 8, failed: 0, method: focused_pane_header_source_geometry_and_analytical_track_regression, new_visual_component: false, exact_figma_components: 2, new_screenshot: false}
+  task_0167_source_result: {delta_checks: 10, passed: 10, failed: 0, method: focused_centered_trim_and_outer_only_pane_selector_chrome, new_visual_component: false, exact_figma_components: 0, new_screenshot: false}
+  task_0168_source_result: {delta_checks: 12, passed: 12, failed: 0, method: focused_clickable_extrema_table_action_and_no_table_state_regression, new_visual_component: true, exact_figma_components: 5, browser_launch: unavailable_in_sandbox_SIGABRT, new_screenshot: false}
+  task_0170_source_result: {delta_checks: 8, passed: 8, failed: 0, method: focused_schema_payload_and_canonical_control_geometry_contract, new_visual_component: false, exact_figma_components: 2, new_screenshot: false}
 
 screens:
   - id: main
@@ -148,17 +177,17 @@ screens:
         states: [split, expanded, collapsed, ready, loading_page, loading_up, loading_down, window_shift_up, window_shift_down, search_typing, search_invalid, search_loading, end_of_data, empty, error]
       - id: signal-operation-dialog
         type: dialog
-        purpose: "Create one derived signal using a built-in operation or a user operation body executed by Engee"
+        purpose: "Create one derived signal using only PROD-confirmed Engee preprocessing operations"
         parent: main
         slot: signal-operation
         repeated: false
         production_host: "document.body singleton [data-testid='signal-operation-layer']"
-        transfer: {markup: frontend-source/integration/html/dialogs/signal-operation.fragment.html, css: frontend-source/integration/css/task-0112-0115-additions.css, ui: public/js/app.js additive state machine}
+        transfer: {markup: frontend-source/integration/html/dialogs/signal-operation.fragment.html, css: [frontend-source/integration/css/task-0112-0115-additions.css, frontend-source/integration/css/task-0157-preprocess-operation.css], ui: [frontend-source/integration/js/task-0157-preprocess-operation.js, frontend-source/js/ui/components/value-select.js, public/js/app.js additive state machine]}
         design_mock: {html: frontend-source/html/dialogs/signal-operation/view.html, css: frontend-source/css/dialogs/signal-operation.css, ui_js: frontend-source/js/ui/dialogs/signal-operation.js}
-        sizing: {min_width: 660, min_height: 300, width_growth_ratio: 0, height_growth_ratio: 0}
+        sizing: {min_width: 480, min_height: 300, width_growth_ratio: 0, height_growth_ratio: 0, viewport_gutter: 16, responsive_stack_below: 512}
         scroll: {owner: dialog-body, axes: y, sticky: [dialog-titlebar, dialog-actions]}
         collapse: {allowed: false, initial: expanded, direction: null, reason: null}
-        states: [closed, built_in, menu_open, custom, busy, error, success]
+        states: [closed, preprocess_default, menu_open, conditional_fields, incompatible, live_valid, live_field_error, busy, runtime_error_alert, success]
       - id: signal-trim-dialog
         type: dialog
         purpose: "Create a new signal from the inclusive interval between two Time-pane cursors"
@@ -167,7 +196,7 @@ screens:
         repeated: false
         production_host: "document.body singleton [data-testid='signal-trim-layer']"
         transfer: {markup: frontend-source/integration/html/dialogs/signal-trim.fragment.html, css: frontend-source/integration/css/task-0112-0115-additions.css, ui: frontend-source/integration/js/task-0152-cursor-trim-signal.js}
-        sizing: {min_width: 660, min_height: 300, width_growth_ratio: 0, height_growth_ratio: 0}
+        sizing: {min_width: 480, min_height: 260, width_growth_ratio: 0, height_growth_ratio: 0}
         scroll: {owner: dialog-body, axes: y, sticky: [dialog-titlebar, dialog-actions]}
         collapse: {allowed: false, initial: expanded, direction: null, reason: null}
         states: [closed, ready, invalid_name, busy, typed_error, success]
@@ -336,13 +365,27 @@ settings_tabs:
     label: "Экстремумы"
     testid: settings-tab-peaks
     visibility: "time and spectrum only; hidden otherwise"
+    activation: {pointer: synchronous, keyboard: synchronous, blocked_by_extrema_pending: false, request_ownership: provider_display_pane_context}
     groups:
       - id: extrema-calculation
         fields: [mode, count, cutoff, minimum-distance, threshold]
       - id: extrema-presentation
         fields: [show-markers, projected-coordinate-note]
     actions:
-      - {id: show-extrema-values, label: "Рассчитать", testid: extrema-values, visual_variant: primary_md_blue}
+      - id: clear-extrema-values
+        testid: extrema-clear
+        visual_variant: secondary_md
+        label: "Очистить"
+        tooltip_by_state: {enabled: "Очистить экстремумы текущей области", empty: "Нет рассчитанных экстремумов", pending: "Дождитесь завершения расчёта экстремумов"}
+        disabled_when: "current pane has no stored extrema result OR current pane calculation is pending"
+        effect: "clear only the current pane result; table and markers become empty; calculate returns to idle"
+      - id: show-extrema-values
+        testid: extrema-values
+        visual_variant: primary_md_blue
+        labels_by_state: {idle: "Рассчитать", error: "Рассчитать ещё раз", ready: "Пересчитать", empty: "Пересчитать", pending: "Рассчитывается…"}
+        tooltip_by_state: {idle: "Рассчитать экстремумы", error: "Повторить расчёт экстремумов", ready: "Пересчитать для актуальных диапазонов", empty: "Пересчитать для актуальных диапазонов", pending: "Расчёт экстремумов выполняется"}
+        disabled_only_when: pending
+        activation_range: active_plot_current_visible_x_interval
 
 components:
   axis-limits:
@@ -467,6 +510,14 @@ tables:
     tab: peaks
     columns: [number, signal, color, type, magnitude, frequency, marker]
     coordinate_projection: "frequency displayed in the pane-selected unit"
+    pane_owned_source: {dictionary_key: stable_signal_id, item_fields: [sample, x, y, is_maximum], is_maximum_type: boolean, forbidden_persisted_fields: [kind_string, width, prominence]}
+    marker_projection:
+      lifecycle: "rebuild from current pane dictionary after initial plot, Plotly.react, unit projection, layout resize and return navigation, independent of active inspector/settings tab"
+      matching: "stable signal id must exist among current pane graph traces"
+      zoom: "clip outside viewport without deleting marker records"
+      stale_or_error: "retain stored markers while need_update=true or recalculation error preserves the dictionary"
+      graph_removed: "remove only that graph's projected markers immediately"
+      clear: "remove current-pane markers and table rows after clear succeeds"
   - id: main-signal-samples-table
     tab: dynamic-main-signal
     tab_label: main_signal.name
@@ -582,7 +633,7 @@ graphs:
     layout: {hovermode: false}
     traces: {hoverinfo: skip, hovertemplate: null}
     apply_when: [before_every_plotly_react, after_every_overlay_trace_addition]
-    preserved_interactions: [dragmode_zoom, pointer_pan_when_available, range_slider, graph_cursor_pointer, graph_cursor_keyboard, graph_cursor_readout, measurements_cursor_columns]
+    preserved_interactions: [dragmode_zoom, pointer_pan_when_available, range_slider, graph_cursor_pointer, graph_cursor_keyboard, graph_cursor_numeric_badges, measurements_cursor_columns]
   - id: plot-autoscale-contract
     trigger: double_click_on_clicked_ready_plot_surface
     baseline_capture: "retain current pane/output identity and slider visibility only; ignore provider/mirrored numeric ranges"
@@ -611,49 +662,186 @@ dialogs:
     figma_deviation: "Palette contents use the restored original eight Signal Analyser colors by explicit user request."
     selected_swatch_geometry: {target: 32, color_square: 24, color_square_box_sizing: border_box, halo_inset_all_sides: 4, tick_box: [15, 12], tick_optical_offset: [0.5, 0.8]}
   - id: signal-operation
-    trigger: "row operation button adjacent to duplicate"
+    trigger: "The internal operation action and external Engee host menu Analyser → Предобработка both resolve the current accepted plain-LMB main signal and open the same preprocessing-only dialog."
     testid: signal-operation-dialog
-    width: 660
+    width: 480
     title: "Операция над сигналом"
+    figma_sources:
+      action_list_parent: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=316-24742&p=f"
+      action_list_default_left_icon: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=316-27122&p=f"
+      action_list_hover_left_icon: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=927-6592&p=f"
+      inputs_parent: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=316-38487&p=f"
+      dropdown_icon_typed: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=316-40182&p=f"
+      dropdown_icon_open: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=2343-11971&p=f"
+      icon_library_parent: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=320-607&p=f"
+      filter: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=320-1830&p=f"
+      detrend: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=320-3070&p=f"
+      fill_missing: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=320-2021&p=f"
+      smooth: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=320-2365&p=f"
+      envelope: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=320-4109&p=f"
+      resample: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=393-1283&p=f"
+      custom: "https://www.figma.com/design/bE3Xjcryw7JdpoLVekeLUX/Engee-Component-Library?node-id=320-4991&p=f"
     fields:
-      - {id: source, label: "Исходный сигнал", type: readonly_text}
-      - {id: operation, label: "Операция", type: shared_value_select, implementation: SignalAnalyserValueSelect, options: [abs, square, sqrt, signed_sqrt_abs, multiply, custom], removed_options: [fft]}
-      - {id: multiplier, label: "Множитель", type: numeric, visible_when: "operation=multiply"}
-      - {id: custom-operation-body, label: "Тело операции", type: code_editor, visible_when: "operation=custom", input_name: init_signal}
+      - {id: source, label: "Исходный сигнал", type: readonly_text, testid: signal-operation-source, source: current_accepted_plain_lmb_main_signal}
+      - {id: operation, label: "Операция", type: shared_value_select_single_button_trigger, implementation: SignalAnalyserValueSelect, testid: signal-operation-select, options: [bandpass, bandstop, highpass, lowpass, detrend, fill-missing, smooth, envelope, resample, custom-preprocess], trigger_children: [decorative_icon, text_span, decorative_arrow_span], nested_input: forbidden, nested_button: forbidden, leading_icon: "mapped per option in closed trigger and expanded list", icon_semantics: decorative, removed_options: [abs, square, sqrt, signed-sqrt, multiply, fft, denoise]}
       - {id: target-name, label: "Имя нового сигнала", type: text}
       - {id: overwrite, label: "Затирать сигнал с таким именем", type: standard_checkbox_row, checkbox_size: 16, label_clipping: forbidden}
     actions: [cancel, create-signal, close]
-    states: [default, menu_open, custom, busy, error, success]
+    states: [preprocess_default, menu_open, conditional_fields, compatibility_message, busy, field_error, runtime_error_alert, success]
+    operation_icons:
+      mapping: {bandpass: operation-bandpass.svg, bandstop: operation-bandstop.svg, highpass: operation-highpass.svg, lowpass: operation-lowpass.svg, detrend: operation-detrend.svg, fill-missing: operation-fill-missing.svg, smooth: operation-smooth.svg, envelope: operation-envelope.svg, resample: operation-resample.svg, custom-preprocess: operation-custom.svg}
+      semantic_matrix: {bandpass: central_plateau_low_edges, bandstop: central_notch_high_edges, highpass: left_to_right_rise, lowpass: left_to_right_fall, detrend: centered_wave_and_dashed_sloped_trend, fill-missing: broken_wave_dashed_bridge_and_point, smooth: angular_noise_and_smooth_line, envelope: carrier_under_upper_envelope, resample: one_curve_sparse_to_dense_points, custom-preprocess: function_fx}
+      closed_trigger: {selector: "[data-testid='signal-operation-select'] [data-value-select-trigger-icon]", placement: inline_before_selected_text_inside_single_field_border, size_px: 16, left_padding_px: 12, text_gap_px: 8, detached_icon_cell: forbidden, internal_divider: forbidden}
+      expanded_rows: {selector: "[data-value-select-popup] [data-value-select-option-icon]", placement: immediately_before_option_text_after_existing_check_slot, size_px: 16, text_gap_px: 8}
+      accessibility: {element: img, alt: "", aria_hidden: true, text_accessible_name_preserved: true}
+      invariants: [dialog_width_480, single_line_control_height_32, one_outer_border_owner, popup_anchor_width_unchanged, option_height_34_unchanged, popup_keyboard_focus_unchanged, trim_dialog_unchanged]
+    entry:
+      signal_operation_action: {operation: bandpass, source: current_accepted_plain_lmb_main_signal_by_stable_id}
+      analyser_preprocess_action: {owner: external_engee_host_menu, target: window, event: "signal-analyser:host-command", detail: {command: preprocess}, application_dom_selector: none, visible_in_app_control: false, operation: bandpass, source: current_accepted_plain_lmb_main_signal_by_stable_id}
+    preprocess_parameter_matrix:
+      bandpass: [lower_passband, upper_passband, impulse_response, steepness, stopband_attenuation_db]
+      bandstop: [lower_passband, upper_passband, impulse_response, steepness, stopband_attenuation_db]
+      highpass: [passband, impulse_response, steepness, stopband_attenuation_db]
+      lowpass: [passband, impulse_response, steepness, stopband_attenuation_db]
+      detrend:
+        always: [method, nan_policy]
+        piecewise_linear: [breakpoints]
+      fill_missing:
+        always: [method, end_method]
+        constant: [constant_value]
+        moving_mean_or_median: [window_length]
+        autoregressive: [ar_order]
+      smooth:
+        always: [method, window_type]
+        duration: [duration_units, window_duration_nullable_auto]
+        factor: [smoothing_factor_strictly_between_zero_and_one]
+        savitzky_golay: [polynomial_degree_nullable_auto_default_two]
+      envelope:
+        always: [side, method]
+        hilbert: []
+        fir: [filter_order_positive_required]
+        rms: [length_units, window_length_positive_required]
+        peak: [separation_units, maxima_separation_positive_required]
+      resample:
+        uniform_rate: [mode, target_sample_rate_hz]
+        uniform_factor: [mode, upsample_factor, downsample_factor]
+        nonuniform: [target_sample_rate_hz, interpolation]
+        no_time_metadata: compatibility_block
+      custom_preprocess: [body]
+    operation_system_functions:
+      filters: [EngeeDSP.Functions.bandpass, EngeeDSP.Functions.bandstop, EngeeDSP.Functions.highpass, EngeeDSP.Functions.lowpass]
+      detrend: [EngeeDSP.Functions.detrend]
+      fill_missing: [EngeeDSP.Functions.interp1, EngeeDSP.Functions.movmean, EngeeDSP.Functions.movmedian, EngeeDSP.Functions.fillgaps]
+      smooth: [EngeeDSP.Functions.smoothdata]
+      envelope: [EngeeDSP.Functions.envelope]
+      resample: [EngeeDSP.Functions.resample]
+      custom_preprocess: [engee.genie.recv]
+    absent_operations:
+      denoise: "EngeeDSP.Functions.wdenoise and denoise are absent public symbols; no disabled row or fake output is shown."
+      knn: "No public Engee KNN/fillmissing function or object was found; the former manual implementation is forbidden."
+      former_math: [abs, square, sqrt, signed-sqrt, multiply, fft]
+    automatic_values: "Only smooth window duration and Savitzky–Golay degree use blank Авто/null. FIR order, RMS window, peak distance and target sample rate are required and never present a fabricated automatic value."
+    validation: "Only visible fields validate. Every invalid field owns its own 2px red border and local Russian message; compatibility is operation-level and sanitized runtime errors use the stacked alertdialog."
+    capabilities: {supported_prod: [bandpass, bandstop, highpass, lowpass, detrend, fill-missing, smooth, envelope, resample, custom-preprocess], supported_contract: "141/141", inventory_gate: "51/51"}
+    internal_derived_parameters:
+      frequency_units: {visible_row: absent, state: preserved, payload: preserved_for_filters, derivation: "hertz when source sample rate is available; normalized_pi otherwise", visible_projection: "unit suffix in affected frequency-bound labels only"}
+    provider_payload: [source_signal_id, operation_kind, operation, visible_parameters_plus_internal_derived_frequency_units, target_name, overwrite]
     custom_copy: "Код выполняется в Engee. Входной сигнал доступен как init_signal; результатом должно быть выражение, возвращающее новый вектор."
     custom_integration: "UI sends only the user operation body. Backend provider owns engee.genie.recv execution envelope, temporary binding and cleanup; none is generated or rendered by UI."
     operation_select_contract:
       component: SignalAnalyserValueSelect
-      closed: "readonly selected-value input plus 24px down arrow"
-      open: "same editable input, placeholder Поиск, 24px up arrow"
+      closed: "one button[role=combobox] containing decorative icon, selected text span and decorative 24px down arrow span"
+      open: "the same outer button with up arrow; no nested input/button; trigger retains keyboard focus"
       popup: "options-only; no search row; border/padding 0; width equals anchor border-box except viewport clamp"
       option_height: 34
       selected_check: true
       closes_on: [selection, escape, tab, outside_click]
       modal_owned: true
+    component_geometry:
+      modal: {width: 480, header_height: 48, body_padding: 16, footer_height: 56, radius: 12}
+      label_column_width: 152
+      input_dropdown_height: 32
+      input_dropdown_width: full_control_track
+      input_dropdown_border: {width: 1, radius: 6, owner: outer_control_only}
+      buttons_height: 32
+      checkbox: 16
   - id: signal-trim
     trigger: "eligible active Time-pane header action immediately before plot-type selector/overflow"
     testid: signal-trim-dialog
-    width: 660
-    title: "Обрезать сигнал по курсорам"
+    width: 480
+    title: "Обрезать сигнал"
     fields:
-      - {id: source, label: "Исходный сигнал", type: readonly_text}
+      - {id: source, label: "Исходный сигнал", type: standard_select, options_source: eligible_active_time_pane_signals, initial: current_main_signal, required: true}
       - {id: interval, label: "Интервал курсоров", type: readonly_text, boundary: inclusive, order: sorted}
-      - {id: target-name, label: "Имя нового сигнала", type: text, required: true, autocomplete: off, max_length: 128}
-      - {id: overwrite, label: "Затирать сигнал с таким именем", type: standard_checkbox_row, checkbox_size: 16, label_clipping: forbidden}
+      - {id: target-name, label: "Имя нового сигнала", type: text, required: true, autocomplete: off, max_length: 128, initial: "<source>_фрагмент with lowest free _N suffix", update_on_source_change: while_name_not_user_edited}
+      - {id: overwrite, label: "Заменить сигнал с таким именем", type: standard_checkbox_row, checkbox_size: 16, visible_when: target_name_conflicts, initial: unchecked, label_clipping: forbidden}
     actions: [cancel, create, close]
     states: [default, name_invalid, busy, conflict, unavailable_source, empty_interval, provider_error, success]
     focus: {open: target-name, trapped: true, escape_while_idle: close_and_restore_trigger, close_while_busy: blocked, success: close_without_return_focus}
+    submit_disabled_when: [no_eligible_source, no_selected_source, invalid_name, unchecked_name_conflict, invalid_cursor_interval, busy]
     semantics: "inclusive samples between sorted X1/X2; preserve source sample rate and data type; returned signal time origin is zero; original signal remains unchanged"
+  - id: signal-operation-error
+    trigger: "provider/runtime operation failure after busy is ended"
+    testid: signal-operation-error-dialog
+    width: 480
+    title: "Операция не выполнена"
+    role: alertdialog
+    message: sanitized_actionable_russian_only
+    raw_provider_error: forbidden
+    actions: [understand, close]
+    states: [open, focus_trapped, closing]
+    stacking: above_preserved_signal_operation_dialog
+    focus: {open: understand, trapped: true, escape: close, close_restore: first_invalid_field_or_operation_submit}
+
+russian_localization:
+  scope: "Every product-owned visible setting, group, section, option, unit, readout, axis title and colorbar title."
+  presenter: frontend-source/integration/js/task-0158-russian-localization.js
+  wire_values: unchanged
+  user_authored_values: unchanged
+  visible_auto: "Авто"
+  physical_units: {hertz: "Гц", seconds: "с", decibels: "дБ", percent: "%", samples: "отсчёты"}
+  unknown_provider_copy: forbidden_until_explicit_mapping
+  plot_titles: {Amplitude: "Амплитуда", Time: "Время", Frequency: "Частота", Magnitude: "Магнитуда", Power: "Мощность", Probability: "Вероятность", Occurrence: "Встречаемость"}
 
 elements:
   - {id: settings-show-axis-labels, zone: display-settings, type: checkbox, label: "Подписывать оси", field: display.show_axis_labels, testid: settings-show-axis-labels, selector: "[data-setting-id='display.show_axis_labels']", default: checked, position: immediately_after_display_show_legend, states: [default_checked, hover, focus_visible, unchecked, applying_disabled]}
-  - {id: pane-trim-signal, zone: plot-workspace, type: compact_icon_button, label: "Обрезать сигнал по курсорам", testid: pane-trim-signal, selector: "[data-testid='pane-trim-signal']", icon: function.svg, position: immediately_before_plot_type_selector_and_overflow, visibility: "Time + dual cursor + valid main signal + two finite snapped cursors", states: [hidden_ineligible, default, hover, pressed, focus_visible, busy_disabled]}
-  - {id: extrema-calculate, zone: display-settings, type: primary_button, label: "Рассчитать", testid: extrema-values, visibility: extrema_only, states: [default, hover, pressed, focus_visible, busy, disabled_invalid]}
+  - {id: pane-trim-signal, zone: plot-workspace, type: joined_control_cluster_text_cell, visual_variant: pane_header_cluster_start, label: "Обрезать", testid: pane-trim-signal, selector: "[data-testid='pane-trim-signal']", icon: none, position: independent_intrinsic_grid_cell_immediately_left_of_unchanged_plot_type_selector, geometry: {header_tracks: "minmax(0,1fr) max-content minmax(148px,212px) 32px", title_min_width: 0, title_control_gap: 6, trim_width: max-content, selector_width: "minmax(148px,212px) independent_of_trim_visibility", cluster_height: 28, cell_height: 28, header_height: 32, vertical_inset: 2, horizontal_padding: 12, line_height: 18, radius: "6px 0 0 6px", right_border: 0, shared_divider_owner: adjacent_plot_type_selector_left_border}, state_styles: {default: surface, hover: surface_muted_only, pressed: button_active_only, focus_visible: "accent border + 2px inset outline", busy_disabled: "surface_muted + muted text + opacity .72"}, geometry_invariant_across_states: true, visibility: "Time + dual cursor + valid main signal + two finite snapped cursors", states: [hidden_ineligible, default, hover, pressed, focus_visible_inset, busy_disabled]}
+  - id: extrema-calculate
+    zone: display-settings-footer
+    type: primary_button
+    visual_variant: primary_md_blue
+    testid: extrema-values
+    visibility: extrema_only
+    labels_by_state: {idle: "Рассчитать", error: "Рассчитать ещё раз", ready: "Пересчитать", empty: "Пересчитать", pending: "Рассчитывается…"}
+    tooltip_by_state: {idle: "Рассчитать экстремумы", error: "Повторить расчёт экстремумов", ready: "Пересчитать для актуальных диапазонов", empty: "Пересчитать для актуальных диапазонов", pending: "Расчёт экстремумов выполняется"}
+    states: [idle_enabled, hover, pressed, focus_visible, pending_disabled_busy, error_enabled, ready_enabled, empty_enabled]
+    disabled_only_when: pending
+    node_identity_across_states: preserved
+  - {id: extrema-clear, zone: display-settings-footer, type: secondary_button, visual_variant: secondary_md, label: "Очистить", testid: extrema-clear, position: immediately_before_extrema_calculate, visibility: extrema_only, states: [enabled_with_stored_result, hover, pressed, focus_visible, disabled_no_result, disabled_pending], disabled_when: "no current-pane stored result OR current-pane calculation pending", confirmation_dialog: forbidden}
+  - id: extrema-table-actions
+    zone: lower-inspector
+    type: table_header_icon_action_group
+    testid: extrema-table-actions
+    position: final_right_table_header_cell
+    visibility: "ready or stale-ready with at least one row"
+    order: [extrema-table-clear, extrema-table-recalculate]
+    geometry: {cell_width: 64, header_track: 32, group_height: 31, action_width: 32, action_height: 31, icon: 16, divider: "one 1px shared grid divider"}
+    states: [default, hover, pressed, focus_visible_inset, disabled]
+    tab_row_projection: forbidden
+  - {id: extrema-table-clear, zone: lower-inspector-table-header, type: icon_button, testid: extrema-table-clear, selector: "[data-testid='extrema-table-clear']", icon: icons/trash-16.svg, accessible_name: "Очистить экстремумы", tooltip: "Очистить экстремумы", tooltip_delay_ms: 1500, position: left, confirmation_dialog: forbidden}
+  - {id: extrema-table-recalculate, zone: lower-inspector-table-header, type: icon_button, testid: extrema-table-recalculate, selector: "[data-testid='extrema-table-recalculate']", icon: icons/refresh-16.svg, accessible_name: "Пересчитать для актуальных диапазонов", tooltip: "Пересчитать для актуальных диапазонов", tooltip_delay_ms: 1500, position: right, disabled_only_when: pending}
+  - id: extrema-no-table-calculate
+    zone: lower-inspector-content
+    type: primary_button
+    visual_variant: primary_md_blue
+    testid: extrema-calculate
+    selector: "[data-testid='extrema-calculate']"
+    position: centered_in_white_no_table_surface
+    label_all_states: "Рассчитать"
+    visibility: "idle, cleared, empty, error and pending; never beside a ready table"
+    states: [enabled_idle, enabled_cleared, enabled_empty, enabled_error, hover, pressed, focus_visible, pending_disabled_busy]
+    pending: {same_node_and_location: true, disabled: true, aria_busy: true, spinner: "canonical light 16px", duplicate_activation: forbidden}
+  - {id: extrema-configure, zone: lower-inspector-content, type: secondary_button, label: "Настроить расчёт", testid: extrema-configure, selector: "[data-testid='extrema-configure']", position: centered_below_extrema_calculate, visibility: all_no_table_states, behavior: focus_existing_extrema_settings, replacement_for_calculate: forbidden}
   - {id: signal-values, zone: display-settings-footer, type: primary_button, visual_variant: primary_md_blue, label: "Значения", testid: signal-values-action, visibility: signal_only, states: [default, hover, pressed, focus_visible, disabled]}
   - {id: pane-frequency-slider, zone: plot-workspace, type: dual_thumb_slider, label: "Слайдер частоты", testid: pane-frequency-slider, states: [default, hover, drag, focus_visible]}
   - {id: pane-magnitude-slider, zone: plot-workspace, type: dual_thumb_slider, label: "Слайдер магнитуды", testid: pane-magnitude-slider, states: [default, hover, drag, focus_visible]}
@@ -662,7 +850,6 @@ elements:
   - {id: pane-menu-single-cursor, zone: plot-workspace, type: menuitemcheckbox, label: "Курсор", testid: pane-menu-cursor, selector: "[data-plot-cursor-mode='single']", states: [default, hover, checked, disabled, focus_visible]}
   - {id: pane-menu-dual-cursor, zone: plot-workspace, type: menuitemcheckbox, label: "Два курсора", testid: pane-menu-dual-cursor, selector: "[data-plot-cursor-mode='dual']", states: [default, hover, checked, disabled, focus_visible]}
   - {id: graph-cursor-line, zone: graph-cursor-overlay, type: draggable_vertical_slider, label: "Курсор X", selector: ".plot-cursor-line", states: [default, hover, focus_visible, dragging, clamped]}
-  - {id: graph-cursor-readout, zone: graph-cursor-overlay, type: nonblocking_graph_readout, label: "Координаты курсоров", selector: ".plot-cursor-readout", states: [single_values, dual_values_delta]}
   - {id: measurement-columns-menu-trigger, zone: lower-inspector, type: icon_button, label: "Видимость измерений", testid: measurement-columns-menu-trigger, selector: "[data-testid='measurement-columns-menu-trigger']", icon: more-vertical.svg, states: [default, hover, pressed, focus_visible, expanded]}
   - {id: measurement-cursor-column-item, zone: measurement-columns-menu, type: menuitemcheckbox, label_source: "X1/Y1/X2/Y2/ΔX/ΔY", selector: "[data-measurement-cursor-column]", icon_states: {visible: eye.svg, hidden: eye-off.svg}, states: [default, hover, focus_visible, checked_visible, unchecked_hidden, disabled_ineligible]}
   - {id: sample-columns-menu-trigger, zone: lower-inspector, type: icon_button, label: "Видимость столбцов", testid: sample-columns-menu-trigger, selector: "[data-testid='sample-columns-menu-trigger']", icon: more-vertical.svg, states: [default, hover, pressed, focus_visible, expanded]}
@@ -762,6 +949,22 @@ interactions:
     trigger: {element: show-extrema-values, action: click}
     visible_result: "calculation uses only the active time plot's current visible X interval; Y zoom never constrains extrema"
     seam: viewport-extrema-provider
+  - id: retry-or-recalculate-extrema
+    trigger: {element: show-extrema-values, action: click_in_idle_error_ready_or_empty}
+    visible_result: "active contextual action enters disabled pending, resolves the active plot current visible X interval at this activation, and provider continues by display/pane context while Settings tabs remain immediate; ready/empty returns as Пересчитать with the full hover title"
+    preserved: [existing_extrema_rows, existing_extrema_error, extrema_settings_validation, focus_contract, graph]
+    skip: "pending click causes no viewport read and no duplicate provider call"
+    seam: repeatable-viewport-extrema
+  - id: clear-current-pane-extrema
+    trigger: {element: "extrema-clear or extrema-table-clear", action: click_when_enabled}
+    visible_result: "without confirmation, current pane extrema table and graph markers clear together; table is replaced by the centered enabled Рассчитать and secondary Настроить расчёт controls"
+    preserved: [other_pane_extrema_results, other_pane_queue_positions, plot_traces, viewport, active_settings_tab, active_inspector_tab]
+    seam: pane-owned-extrema
+  - id: restore-pane-extrema-markers
+    trigger: {element: plot_pane, action: "initial_render, rerender, return_navigation, unit_projection, layout_resize"}
+    visible_result: "stored extrema for every existing graph stable SignalId are projected with their number and boolean maximum/minimum direction"
+    independent_of: [active_settings_tab, active_inspector_tab, extrema_table_mount]
+    seam: pane-owned-extrema
   - id: toggle-spectrum-frequency-slider-from-menu
     trigger: {element: pane-menu-frequency-slider, action: click}
     visible_result: "horizontal spectrum slider and Area checkbox update from the same active-pane state"
@@ -784,11 +987,11 @@ interactions:
     seam: pane-graph-cursors
   - id: toggle-dual-graph-cursors
     trigger: {element: pane-menu-dual-cursor, action: click}
-    visible_result: "off/single -> two snapped draggable vertical cursors with X1, X2, ΔX and per-visible-trace Y1/Y2; selecting Два курсора again -> off"
+    visible_result: "off/single -> two snapped draggable vertical cursors with numeric 1/2 badges; selecting Два курсора again -> off; no coordinate readout card or tooltip is created"
     seam: pane-graph-cursors
   - id: drag-or-keyboard-move-graph-cursor
     trigger: {element: graph-cursor-line, action: pointer_drag_or_arrow_home_end}
-    visible_result: "cursor stays inside current visible X domain, snaps to nearest available X sample/bin (including finite X=0 across heterogeneous traces) and updates only this pane readout without starting Plotly zoom or axis linking"
+    visible_result: "cursor stays inside current visible X domain, snaps to nearest available X sample/bin (including finite X=0 across heterogeneous traces) and updates Measurements cursor values without starting Plotly zoom or axis linking; no graph readout DOM exists"
     seam: pane-graph-cursors
   - id: reconcile-cursor-after-plot-relayout
     trigger: {element: plot-host, action: plotly_relayout_or_plot_refresh}
@@ -816,20 +1019,28 @@ interactions:
     seam: pane-axis-labels-and-hover-policy
   - id: suppress-native-plotly-hover
     trigger: {element: accepted-plot-payload-or-overlay-trace, action: before_plotly_react_or_after_overlay_add}
-    visible_result: "no unified-X/closest Plotly tooltip or hover popover is rendered on any plot type while zoom/pan/cursors/readouts remain interactive"
+    visible_result: "no unified-X/closest Plotly tooltip or custom cursor readout/popover is rendered on any plot type while zoom/pan/cursor lines and Measurements values remain interactive"
     seam: pane-axis-labels-and-hover-policy
   - id: open-cursor-trim
     trigger: {element: pane-trim-signal, action: click_or_enter_space}
-    visible_result: "existing-style modal opens with source and sorted inclusive cursor interval read-only, empty required target name focused and overwrite unchecked"
+    visible_result: "standard 480px modal opens; eligible-source dropdown starts at current main signal, sorted inclusive interval is read-only, collision-neutral suggested target name is focused and overwrite is hidden unless that name conflicts"
     seam: cursor-trim-signal
   - id: submit-cursor-trim
     trigger: {element: signal-trim-create, action: click}
-    visible_result: "valid submit keeps every control node/value visible while busy; typed recoverable error stays open; success closes only after the returned signal appears in Signals"
+    visible_result: "valid submit uses the selected source_signal_id, keeps every control node/value visible while busy; sanitized recoverable error stays open; success closes only after the returned signal appears in Signals"
     seam: cursor-trim-signal
+  - id: show-operation-provider-error
+    trigger: {element: signal-operation-submit, action: provider_or_runtime_failure}
+    visible_result: "busy ends, operation form and all values remain mounted, and a standard alertdialog titled Операция не выполнена opens above it with sanitized Russian guidance and no raw Engee/Julia/TypeError text"
+    seam: signal-operation-error-alert
   - id: autoscale-clicked-plot
     trigger: {element: ready-plot-host-graph-surface, action: double_click}
-    visible_result: "only the clicked Time/Spectrum/Spectrogram/Persistence pane returns to its current output's authoritative default/full-domain X and Y ranges; current units and linear/log semantics remain unchanged"
+    visible_result: "only the clicked Time/Spectrum/Spectrogram/Persistence pane returns to its current output's authoritative default/full-domain X and Y ranges; current units and linear/log semantics remain unchanged; pane-slider visibility is read-only and an initially hidden horizontal pane slider stays unmounted"
     seam: pane-plot-autoscale
+  - id: edit-or-apply-settings-range-with-pane-sliders-off
+    trigger: {element: settings-range-number-or-apply-lifecycle, action: input_change_or_apply}
+    visible_result: "Settings viewport values/handles update through the existing projection while both pane-slider visibility bits remain false; no vertical or horizontal pane slider is mounted"
+    seam: pane-slider-visibility
   - id: open-operation
     trigger: {element: signal-operation, action: click}
     visible_result: signal-operation
@@ -860,18 +1071,50 @@ interactions:
     seam: workspace-state-provider
 
 dropdown_contract:
-  settings_open_on: click
-  settings_search_inside_control: false
+  canonical_component: SignalAnalyserValueSelect
+  closed_trigger: {height: 32, radius: 6, border: line, horizontal_padding: 8, chevron_box: 24, semantic_interactive_elements: 1}
+  operation_dialog_override: {height: 40, reason: accepted_LG_dialog_form_rhythm}
+  listbox: {option_height: 34, radius: 6, selected_check: true, max_height: 240, overflow: vertical}
+  action_menu: {item_height: 28, surface_padding: 4, radius: 6, max_height: 360}
+  states: [default, hover, focus_visible, open, active_option, selected, disabled, error]
+  settings_open_on: click_or_enter_space_arrow_down
+  settings_search_inside_control: true
   lmb_selection_closes_popup_and_sets_not_active: true
   lmb_selection_forces_dom_blur: false
   outside_canvas_click_closes_all: true
   another_dropdown_closes_previous: true
+  trigger_rule: "Exactly one semantic control owns focus and aria-expanded; chevron and leading icon are decorative spans/images and never nested buttons."
+  viewport_rule: "Body-portal surfaces use an 8px viewport/app-shell inset, 4px anchor gap, prefer below, flip above, clamp horizontally, reposition on resize/capture-scroll and close when the anchor disconnects."
+  inventory:
+    - {id: settings_value_selects, zones: [settings], kind: searchable_combobox, implementation: SignalAnalyserValueSelect, status: canonical}
+    - {id: pane_type_select, zones: [pane_header], kind: searchable_combobox, implementation: SignalAnalyserValueSelect, status: canonical}
+    - {id: signal_operation_select, zones: [signal_operation_dialog], kind: icon_button_combobox, implementation: SignalAnalyserValueSelect, status: canonical}
+    - {id: operation_parameter_enums, zones: [signal_operation_dialog], kind: searchable_combobox, implementation: SignalAnalyserValueSelect, status: migrate_from_native_select}
+    - {id: trim_source_select, zones: [signal_trim_dialog], kind: searchable_combobox, implementation: SignalAnalyserValueSelect, status: migrate_from_native_select}
+    - {id: native_session_multiselect, zones: [native_import], kind: searchable_multiselect, implementation: SignalAnalyserValueSelect_visual_contract, status: canonical}
+    - {id: toolbar_import_menu, zones: [toolbar], kind: action_menu, status: canonical_action_menu}
+    - {id: pane_overflow_menu, zones: [pane_header], kind: action_menu, status: canonical_action_menu}
+    - {id: column_visibility_menus, zones: [signals, measurements, samples], kind: action_menu, status: canonical_action_menu}
+  native_select_policy: "No product-owned native select remains after transfer: operation parameter enums and trim source are configured through SignalAnalyserValueSelect with unchanged wire values and provider behavior."
+
+tooltip_contract:
+  singleton: "body > [data-testid='overlay-tooltip'][role='tooltip']"
+  eligible: [explicit_data_tooltip, icon_only_button, symbol_only_button, abbreviated_control, visibly_truncated_control]
+  excluded: [obvious_untruncated_text_button, plotly_hover, graph_cursor_readout, disabled_without_accessible_name]
+  delay_ms: 1500
+  activation: [pointer_hover, keyboard_focus]
+  accessible_name: "Every eligible control keeps a non-empty aria-label or visible name; the shown tooltip id is appended to aria-describedby only while visible and previous descriptions are restored on close."
+  surface: {background: surface, text: text, radius: 4, padding: [8, 12], font_size: 12, line_height: 14, max_width: 260, shadow: dialog, tail: false}
+  positioning: {portal: body, anchor_gap: 4, viewport_inset: 8, preferred: bottom_center, fallback: top_center, horizontal_clamp: true, geometry_shift: forbidden}
+  suppress_when: [any_menu_or_listbox_open, top_modal_does_not_own_anchor, bootstrap_loader_visible]
+  close_when: [pointer_leave, blur, pointer_down, escape, tab, enter, space, scroll, resize, visual_viewport_change, visibility_hidden, rerender, overlay_open, anchor_disconnected]
+  dynamic_reconciliation: "Transferable controller audits newly rendered controls and renderer integrations may also dispatch signal-analyser:ui-rendered."
 
 operation_menu_contract:
   component: SignalAnalyserValueSelect
   trigger: "click anywhere on selected-value field or its 24px arrow"
-  closed: "readonly selected-value input plus down arrow"
-  open: "same editable input with placeholder Поиск plus up arrow"
+  closed: "single button[role=combobox] with decorative operation icon, selected label and decorative down arrow"
+  open: "same button trigger plus body-portal options; no nested input or nested arrow button"
   popup: "options only; no separate search row; border/padding 0; anchor border-box width except viewport clamp"
   option_height: 34
   selected_check: true
@@ -889,12 +1132,24 @@ dialog_contract:
 
 overlays:
   combinations:
+    - id: canonical-dropdown-and-tooltip
+      bottom_to_top: [application, anchored_dropdown_or_action_menu, tooltip]
+      pointer_owner: open_dropdown_or_action_menu
+      focus_owner: active_option_or_menuitem
+      tooltip_policy: "Tooltip is suppressed while any menu/listbox is open; after close it may be scheduled again for the restored trigger, never retained underneath."
+      restore_target: originating_trigger
     - id: plot-with-legend-cursors-and-sliders
-      bottom_to_top: [plotly_graph, plotly_legend, plot_sliders, graph_cursor_layer, graph_cursor_readout]
+      bottom_to_top: [plotly_graph, plotly_legend, plot_sliders, graph_cursor_layer]
       pointer_owner: "cursor line only while hovered/focused/dragged; otherwise Plotly graph"
       focus_owner: focused_cursor_or_plot
       inert_layers: []
       restore_target: pane-menu-trigger
+    - id: operation-with-provider-error
+      bottom_to_top: [signal_operation_dialog, signal_operation_error_backdrop, signal_operation_error_alertdialog]
+      pointer_owner: signal_operation_error_alertdialog
+      focus_owner: signal_operation_error_alertdialog
+      inert_layers: [signal_operation_dialog]
+      restore_target: first_invalid_operation_field_or_signal_operation_submit
     - id: pane-output-reconciliation
       bottom_to_top: [pane_header_and_plot, pane_output_loading_overlay]
       anchor: "exact [data-pane-id] pane, never [data-pane-host] descendants"
@@ -987,12 +1242,19 @@ e2e_visibility_contract:
     trim_action_eligibility: "[data-pane-trim-eligible]"
     trim_layer: "[data-testid='signal-trim-layer']"
     trim_dialog: "[data-testid='signal-trim-dialog']"
+    trim_source: "[data-signal-trim-source]"
+    trim_interval: "[data-signal-trim-interval]"
     trim_name: "[data-signal-trim-name]"
+    trim_overwrite_row: "[data-signal-trim-overwrite-row]"
     trim_overwrite: "[data-signal-trim-overwrite]"
     trim_submit: "[data-signal-trim-submit]"
     trim_cancel: "[data-signal-trim-cancel]"
     trim_close: "[data-signal-trim-close]"
     trim_status: "[data-signal-trim-status]"
+    operation_error_layer: "[data-testid='signal-operation-error-layer']"
+    operation_error_dialog: "[data-testid='signal-operation-error-dialog']"
+    operation_error_message: "[data-signal-operation-error-message]"
+    operation_error_confirm: "[data-signal-operation-error-confirm]"
   observable_assertions:
     - "range row/inputs/slider/handles/plot strictEqual before, during and after pointer drag"
     - "no pane or plot clientWidth/clientHeight/scrollWidth/scrollHeight/overflow change during viewport preview"
@@ -1000,16 +1262,19 @@ e2e_visibility_contract:
     - "Plotly double-click sets true autorange and leaves corresponding inputs blank/full-domain handles after all queued work"
     - "measurement item disabled/visible state follows off/single/dual and cursor cells update without table remount"
     - "every .hoverlayer .hovertext count remains zero after pointer movement for all four plot types"
+    - "single and dual cursor modes create no .plot-cursor-readout or equivalent custom coordinate popup DOM while cursor lines/badges and Measurements values remain available"
     - "axis checkbox changes title text only and persists once per pane without output request"
     - "trim action is absent/hidden for non-Time, off, single, missing-main or nonfinite context and visible only for eligible dual Time"
-    - "trim modal controls retain strict node identity and values through pending; typed error stays open; success closes after Signals contains returned id"
+    - "trim source starts at main signal, source changes update the Unicode-safe suggested name only while untouched, payload source_signal_id equals selection and all controls retain strict node identity through pending"
+    - "operation provider failure ends busy before an alertdialog appears above the preserved form; its text never contains raw error.message, Engee, Julia or TypeError"
   cleanup_hooks:
     range: "SignalAnalyserRangeLifecycle.clear(context) / clearPane(displayId,paneId)"
     cursor: "SignalAnalyserGraphCursorUI controller.clear(paneRuntimeKey) plus unsubscribe()"
     measurements: "SignalAnalyserMeasurementCursorColumns controller.clear(paneRuntimeKey)"
     titles: "SignalAnalyserAxisLabelsAndHover controller.clear(paneRuntimeKey)"
     trim: "SignalAnalyserCursorTrimSignal controller.destroy()"
-  after_each: "close body portals; clear pane-scoped controllers/timers/subscriptions; restore cursor mode off and Plotly autorange; assert no trim/status/hover overlay leaks"
+    operation_error: "SignalAnalyserOperationErrorDialog.close()"
+  after_each: "close body portals; clear pane-scoped controllers/timers/subscriptions; restore cursor mode off and Plotly autorange; assert no trim/error/hover/readout overlay leaks"
 
 integration_seams:
   - id: signal-membership-main
@@ -1047,11 +1312,14 @@ integration_seams:
     excluded_frontend_only_fields: [all_axis_limit_numeric_inputs, all_axis_limit_sliders]
     deprecated_interface: settings.publishRange
   - id: pane-slider-visibility
-    ui_contract: "one active-pane x/y visibility draft projected synchronously into existing pane menu and settings checkboxes"
+    ui_contract: "one active-pane x/y visibility draft changes only from the matching explicit pane-menu tool or Area checkbox and projects synchronously into both; Settings numeric edit/Apply, Plotly relayout and graph autoscale preserve the draft and cannot enable or mount either pane slider"
     mock_provider: frontend-source/js/ui/app.js
     production_provider: public/js/app.js
     settings_inventory: public/js/settings.js
     hosts: ["[data-plot-range-slider]", "[data-plot-amplitude-slider]", "[data-settings-content]", "[data-pane-host]"]
+    explicit_mutation_sources: [matching_pane_menu_tool, matching_area_checkbox]
+    read_only_sources: [settings_numeric_edit, settings_apply, plotly_relayout, graph_autoscale]
+    settings_dual_thumb_controls_are_not_pane_sliders: true
   - id: pane-graph-cursors
     ui_contract: "two existing-style pane-menu checks select one pane-local off/single/dual mode; vertical overlay cursors snap to visible X samples/bins and report X/ΔX plus visible-trace values"
     mock_provider: "frontend-source/integration/js/task-0130-graph-cursors.js plus prototype/task-0130-graph-cursors-bridge.js"
@@ -1090,26 +1358,54 @@ integration_seams:
     semantic_titles: {time: [time, amplitude], spectrum: [frequency, current_magnitude_or_power], spectrogram: [time, frequency, power_colorbar], persistence: [frequency, power, probability_colorbar]}
     unchecked: "clear only xaxis.title.text, yaxis.title.text and applicable trace colorbar.title.text; retain axes, ticks, grid, colorbar, margins, traces and viewport"
     hover_policy: {layout_hovermode: false, trace_hoverinfo: skip, trace_hovertemplate: null, apply: [before_every_plotly_react, after_every_overlay_trace_addition]}
-    preserves: [drag_zoom, pan_when_available, in_plot_sliders, graph_cursor_pointer, graph_cursor_keyboard, graph_cursor_readout, measurements_cursor_columns]
+    preserves: [drag_zoom, pan_when_available, in_plot_sliders, graph_cursor_pointer, graph_cursor_keyboard, graph_cursor_numeric_badges, measurements_cursor_columns]
     title_output_invalidation_forbidden: true
     title_dsp_recalculation_forbidden: true
   - id: cursor-trim-signal
-    ui_contract: "Only an active Time pane with dual finite snapped cursors and a valid main signal shows one compact header action; it creates a new rebased signal from the inclusive cursor sample interval through the normal signal mutation lifecycle."
+    ui_contract: "Only an active Time pane with dual finite snapped cursors and a valid main signal shows Обрезать as the 28px joined start cell of the existing pane-header plot-type/overflow cluster; the unchanged 480px modal selects any eligible pane signal and creates a new rebased signal from the inclusive cursor sample interval through the normal signal mutation lifecycle."
     helper: frontend-source/integration/js/task-0152-cursor-trim-signal.js
+    pane_header_css_delta: frontend-source/integration/css/task-0167-pane-header-nested-dropdown.css
     markup: frontend-source/integration/html/dialogs/signal-trim.fragment.html
     production_consumers: [public/js/app.js]
     production_provider: public/js/api.js
     hosts: ["[data-pane-id] .pane-header", "document.body > [data-testid='signal-trim-layer']", "[data-signal-rows]"]
-    selectors: {action: "[data-testid='pane-trim-signal']", dialog: "[data-testid='signal-trim-dialog']", name: "[data-signal-trim-name]", overwrite: "[data-signal-trim-overwrite]", submit: "[data-signal-trim-submit]"}
-    action: {icon: function.svg, label: "Обрезать сигнал по курсорам", placement: immediately_before_plot_type_selector_and_overflow, ineligible: hidden_no_reserved_width}
+    selectors: {action: "[data-testid='pane-trim-signal']", dialog: "[data-testid='signal-trim-dialog']", source: "[data-signal-trim-source]", interval: "[data-signal-trim-interval]", name: "[data-signal-trim-name]", overwrite_row: "[data-signal-trim-overwrite-row]", overwrite: "[data-signal-trim-overwrite]", submit: "[data-signal-trim-submit]"}
+    action: {variant: joined_pane_control_cluster_start_text_cell, icon: none, label: "Обрезать", placement: independent_max_content_header_grid_cell_immediately_before_plot_type_selector_and_overflow, geometry: {header_tracks: "minmax(0,1fr) max-content minmax(148px,212px) 32px", title_min_width: 0, title_control_gap: 6, height: 28, header_height: 32, align_self: center, vertical_insets: {top: 2, bottom: 2}, padding: "4px 12px", line_height: 18, border: 1, border_right: 0, radius: "6px 0 0 6px", focus_outline: "2px inset"}, joined_selector: {width: "minmax(148px,212px) unchanged by trim visibility", height: 28, left_radius: 0, existing_left_border_is_single_divider: true, chrome_owner: outer_pane_select_only, inner_readonly_combobox: {width: 100%, height: 100%, min_height: 0, border: 0, radius: 0, background: transparent, outline: none, shadow: none, states: [default, hover, focus_visible]}, focus_outline: "2px inset; no outer shadow"}, overflow: {width: 32, height: 28, left_border: 0}, ineligible: hidden_max_content_track_collapses_selector_and_overflow_unchanged}
     eligibility: {plot_type: time_only, cursor_mode: dual, cursor_values: exactly_two_finite_snapped, main_signal: valid_active_pane_signal}
+    source_select: {inventory: eligible_active_time_pane_signals, initial: current_main_signal, empty: submit_disabled, keyboard: native_select}
+    default_name: {formula: "<selected source name>_фрагмент, then lowest free _2/_3/... suffix", unicode: preserve_and_compare_NFC, on_source_change: update_only_while_nameDirty_false, user_edit_sets_nameDirty: true}
+    interval_output: {readonly: true, range_fields: forbidden, representation: sorted_current_time_units}
+    overwrite: {visible: target_name_conflict_only, initial: unchecked, unchecked_conflict: submit_disabled, payload: always_boolean}
     request: {method: POST, path: /api/signals/crop, queue: existing_revision_safe_signal_mutation, exact_fields: [state_revision, source_signal_id, min_s, max_s, target_name, overwrite], extra_fields: forbidden}
     frontend_projection: "sort the two finite snapped cursor X values and convert current Time-axis units to canonical seconds as min_s/max_s; never send sample indices"
     backend_semantics: {validation_and_clamp: backend_owned, boundary: inclusive, sample_rate: preserve, data_type: preserve, output_time_origin: zero, source_mutation: forbidden}
     response: "accept returned signal/inventory into the authoritative Signals renderer before success close"
     validation: {target_name: [required, max_128], typed_statuses: {400: invalid_request, 404: source_unavailable, 409: duplicate_or_stale, 422: empty_interval, other: sanitized_provider_error}, raw_error: forbidden}
     busy: "same modal, fields, checkbox and buttons stay mounted with values intact; controls disable in place, dialog aria-busy=true, Close/Escape/Cancel blocked"
-    focus: {open: "[data-signal-trim-name]", trap: dialog, idle_close_restore: "[data-testid='pane-trim-signal']", success_close_restore: none}
+    focus: {open: "[data-signal-trim-name]", trap: dialog, source_dropdown: native_keyboard_and_escape_first_closes_dropdown, idle_close_restore: "[data-testid='pane-trim-signal']", success_close_restore: none}
+  - id: pane-graph-cursor-no-readout
+    ui_contract: "Single/dual modes retain draggable vertical cursor lines, numeric badges and Measurements X1/Y1/X2/Y2/ΔX/ΔY projection, but never create any graph coordinate readout card, tooltip or popover; native Plotly hover also remains disabled."
+    helper: frontend-source/integration/js/task-0130-graph-cursors.js
+    styles: frontend-source/integration/css/task-0130-graph-cursors.css
+    production_consumer: public/js/app.js
+    hosts: ["[data-pane-id] .graph-cursor-layer", "[data-testid='measurement-table']"]
+    required_dom: [".plot-cursor-line", ".plot-cursor-badge"]
+    forbidden_dom: [".plot-cursor-readout", "[data-graph-cursor-readout]"]
+    no_replacement_tooltip: true
+  - id: signal-operation-error-alert
+    ui_contract: "A provider/runtime operation failure ends busy and opens a standard 480px aria-modal alertdialog above the still-mounted operation form; values remain unchanged and only sanitized actionable Russian copy is exposed."
+    helper: frontend-source/integration/js/task-0154-operation-error-dialog.js
+    markup: frontend-source/integration/html/dialogs/signal-operation.fragment.html
+    styles: frontend-source/integration/css/task-0154-trim-and-operation-error.css
+    production_consumers: [public/js/app.js]
+    production_provider: public/js/api.js
+    hosts: ["body > [data-testid='signal-operation-layer']", "body > [data-testid='signal-operation-error-layer']"]
+    selectors: {layer: "[data-testid='signal-operation-error-layer']", dialog: "[data-testid='signal-operation-error-dialog']", message: "[data-signal-operation-error-message]", close: "[data-signal-operation-error-close]", confirm: "[data-signal-operation-error-confirm]"}
+    role: alertdialog
+    raw_error_fields_forbidden: [message, stack, julia_type, engee_binding, provider_payload]
+    message_mapping: status_or_stable_code_only
+    lifecycle: {busy_ends_before_open: true, operation_form_preserved: true, form_values_preserved: true, close_methods: [close_button, understand_button, escape], backdrop_close: false}
+    focus: {open: understand_button, trap: true, restore: first_invalid_field_else_operation_submit}
   - id: linked-axis-draft
     ui_contract: "move identical range controls by linked scope; live frequency zoom synchronizes Spectrum↔Persistence through canonical Hz across selected units and linear/log axes; live magnitude synchronizes Spectrum dB↔Persistence power dB only"
     helper: frontend-source/integration/js/task-0141-linked-axes-area-sliders.js
@@ -1184,13 +1480,18 @@ integration_seams:
     ui_derived_math_forbidden: true
     api_call_on_visibility_toggle_forbidden: true
     hosts: ["[data-testid='inspector-pane-samples']", ".samples-point-search-row", ".sample-table", body]
-    unresolved: [multiply_parameter_semantics, custom_body_name_lifecycle]
+    unresolved: []
   - id: operation-ui-inventory
-    ui_contract: "signal operation ValueSelect omits FFT; all remaining accepted operations retain existing order and behavior"
-    helper: frontend-source/integration/js/task-0139-ui-inventory.js
+    ui_contract: "signal operation ValueSelect contains exactly the ten PROD-confirmed Engee preprocessing operations; every row and the closed selected-value trigger show the mapped canonical decorative icon; former math, FFT, denoise and Fill Missing KNN are absent"
+    helper: frontend-source/integration/js/task-0157-preprocess-operation.js
+    shared_component: frontend-source/js/ui/components/value-select.js
     production_consumer: public/js/app.js
     host: "[data-testid='signal-operation-dialog'] [data-testid='signal-operation-select']"
-    backend_fft_removal_required: false
+    icon_selectors: {closed_selected: "[data-testid='signal-operation-select'] [data-value-select-trigger-icon]", expanded_option: "[data-value-select-popup] [data-value-select-option-icon]"}
+    icon_mapping: {bandpass: operation-bandpass.svg, bandstop: operation-bandstop.svg, highpass: operation-highpass.svg, lowpass: operation-lowpass.svg, detrend: operation-detrend.svg, fill-missing: operation-fill-missing.svg, smooth: operation-smooth.svg, envelope: operation-envelope.svg, resample: operation-resample.svg, custom-preprocess: operation-custom.svg}
+    accessibility: {icons: "decorative img, alt empty, aria-hidden true", accessible_name: "unchanged Russian operation text in the combobox/option"}
+    geometry: {icon_box_px: 16, trigger_left_px: 12, trigger_icon_text_gap_px: 8, option_horizontal_padding_px: 12, option_icon_text_gap_px: 8, trigger_height: unchanged, option_height: unchanged, popup_width: unchanged, one_outer_border: required, one_interactive_trigger: required, nested_input: forbidden, nested_button: forbidden, detached_icon_cell: forbidden, internal_divider: forbidden}
+    backend_legacy_compatibility_outside_visible_ui: allowed
   - id: scoped-output-loading
     ui_contract: "pane type/Area output refresh uses one immediate exact-pane overlay; display layout mutation uses one canvas overlay and suppresses pane overlays until accepted layout plus initial output reconciliation reaches terminal state"
     controller: frontend-source/integration/js/task-0139-loading-overlays.js
@@ -1297,12 +1598,83 @@ integration_seams:
     mock_provider: frontend-source/integration/js/task-0126-summary-units-continuity.js
     production_consumers: [public/js/app.js, public/js/api.js]
     host: "[data-pane-host]"
+  - id: repeatable-viewport-extrema
+    ui_contract: "keep the existing Settings/footer action; in Inspector project ready/stale-ready rows into a final 64px table-header action cell, and project idle/cleared/empty/error/pending into one centered white no-table surface; only pending disables the same Рассчитать button; every non-pending activation reads the current active-pane X viewport; provider polling belongs to immutable display/pane context"
+    helper: frontend-source/integration/js/task-0162-extrema-retry.js
+    production_consumers: [public/js/app.js, public/js/api.js]
+    hosts: ["[data-testid='extrema-values']", "[data-testid='extrema-table-actions']", "[data-testid='extrema-calculate']", "[data-inspector-content]", "[data-settings-content]"]
+    labels: {idle: "Рассчитать", error: "Рассчитать ещё раз", ready: "Пересчитать", empty: "Пересчитать", pending: "Рассчитывается…"}
+    ready_empty_tooltip: "Пересчитать для актуальных диапазонов"
+    settings_navigation_during_pending: enabled
+    provider_context_key: "display_id::pane_id"
+    disabled_only_when: pending
+    current_viewport_read_timing: activation
+    provider_empty_signal_policy: zero_rows_not_error
+    replacement_forbidden: true
+  - id: pane-owned-extrema
+    ui_contract: "read current pane extrema by stable SignalId; project markers on every plot construction independently of inspector selection; clear only this pane through the Settings secondary action or the ready-table trash action"
+    helper: frontend-source/integration/js/task-0165-pane-extrema-clear.js
+    production_consumers: [public/js/app.js, public/js/api.js]
+    hosts: ["[data-pane-host]", "[data-testid='extrema-clear']", "[data-testid='extrema-table-clear']", "[data-inspector-content]"]
+    provider_state_fields: [extrema_by_signal, is_extrema_ready, success, error, need_update]
+    extrema_item_fields: [sample, x, y, is_maximum]
+    stable_signal_identity_required: true
+    active_tab_dependency_forbidden: true
+    clear_confirmation_forbidden: true
+    clear_other_panes_forbidden: true
   - id: signal-operation-provider
-    ui_contract: "send user operation body unchanged with source/target metadata; backend owns Engee execution envelope"
+    ui_contract: "send the typed preprocessing-only envelope with visible parameters plus the derived internal frequency_units value for filter operations; frequency_units has no rendered row and is projected only through the affected parameter labels; backend owns confirmed EngeeDSP execution and four required provider guards; provider/runtime failures project through signal-operation-error-alert, never inline raw text"
     mock_provider: mock/mock-provider.js
     production_provider: public/js/api.js
     production_consumer: public/js/app.js
     portal: body
+    failure_projection: {component: signal-operation-error-alert, busy_ends_before_open: true, preserved_form: true, raw_error: forbidden}
+  - id: signal-operation-single-trigger
+    ui_contract: "Only signal-operation-type renders one button[role=combobox] containing decorative operation icon, label span and decorative arrow span; no nested input/button. Existing body popup, ten option buttons/icons, selection, keyboard navigation, outside close and focus restoration target the outer trigger."
+    component: frontend-source/js/ui/components/value-select.js
+    production_consumers: [public/js/value-select.js, public/js/app.js]
+    selector: "[data-testid='signal-operation-select']"
+    nested_interactive_elements: forbidden
+    non_operation_value_selects: unchanged_searchable_input_trigger
+  - id: signal-preprocess-provider
+    ui_contract: "Every entry resolves the accepted plain-LMB main_signal by stable id at handling time, renders exactly the V59 ten-operation Engee-supported schema with the V61 unified semantic operation-icon projection, and creates a derived signal without changing its source. The external host command remains supported without adding another in-app control."
+    helper: frontend-source/integration/js/task-0157-preprocess-operation.js
+    production_provider: public/js/api.js
+    production_consumer: public/js/app.js
+    schema_source: prod_engee_user_141_of_141_supported_and_51_of_51_inventory
+    capability_policy: unsupported_operations_absent_not_disabled
+    raw_runtime_error: forbidden
+  - id: russian-settings-presentation
+    ui_contract: "Map accepted provider ids/values to Russian visible text at render time; all Auto/auto labels become Авто and internal values remain unchanged."
+    helper: frontend-source/integration/js/task-0158-russian-localization.js
+    production_consumers: [public/js/settings.js, public/js/app.js]
+    immutable: [field_ids, option_values, units_on_wire, signal_names, custom_code, numeric_values]
+
+external_host_commands:
+  - id: analyser-preprocess
+    owner: external_engee_analyser_menu
+    host_label_path: "Analyser → Предобработка"
+    application_dom_selector: none
+    visible_in_app_control: false
+    global_target: window
+    event_name: "signal-analyser:host-command"
+    event_detail: {command: preprocess}
+    accepted_when: "event.detail.command === 'preprocess'"
+    ignored_detail_fields: [source_signal_id, source_signal_name]
+    listener_owner: public/js/app.js
+    helper: frontend-source/integration/js/task-0157-preprocess-operation.js
+    source_selection:
+      resolve_when: event_handling_time
+      model_field: main_signal
+      identity: stable_signal_id
+      inventory: current_accepted_signal_inventory
+      selected_by: plain_lmb_signal_row
+      visibility_checkbox_changes_selection: false
+      hidden_current_main_signal_eligible: true
+      host_supplied_source_forbidden: true
+    accepted_action: "Open the existing body singleton [data-testid='signal-operation-layer'] directly with operation=bandpass; no section selector exists."
+    unavailable_action: "Do not open the operation dialog; use the existing sanitized application notification with exact copy: Предобработка недоступна: выберите сигнал в таблице."
+    focus: {capture: current_connected_document_active_element, fallback: "[data-testid='app-shell']", restore_on_idle_close: true}
 
 engee_unavailable_states:
   - id: spectrum-provider-gap
@@ -1322,17 +1694,26 @@ page_sizing_contract:
     - {id: plot-workspace, min_width: 612, min_height: 440, width_growth_ratio: 3, height_growth_ratio: 4, scroll_owner: none, scroll_axes: none, sticky_parts: [titlebar, tabs], collapse_allowed: false}
     - {id: display-settings, min_width: 300, min_height: 440, width_growth_ratio: 1, height_growth_ratio: 4, scroll_owner: settings-scroll, scroll_axes: y, sticky_parts: [heading, tabs, footer], collapse_allowed: false}
     - {id: lower-inspector, min_width: 920, min_height: 180, width_growth_ratio: 1, height_growth_ratio: 1, scroll_owner: inspector-body, scroll_axes: both, sticky_parts: [tabs, table-header, samples-footer], collapse_allowed: true}
-    - {id: signal-operation-dialog, min_width: 660, min_height: 300, width_growth_ratio: 0, height_growth_ratio: 0, scroll_owner: dialog-body, scroll_axes: y, sticky_parts: [titlebar, actions], collapse_allowed: false}
-    - {id: signal-trim-dialog, min_width: 660, min_height: 300, width_growth_ratio: 0, height_growth_ratio: 0, scroll_owner: dialog-body, scroll_axes: y, sticky_parts: [titlebar, actions], collapse_allowed: false}
+    - {id: signal-operation-dialog, min_width: 480, min_height: 300, width_growth_ratio: 0, height_growth_ratio: 0, viewport_gutter: 16, responsive_stack_below: 512, scroll_owner: dialog-body, scroll_axes: y, sticky_parts: [titlebar, actions], collapse_allowed: false}
+    - {id: signal-trim-dialog, min_width: 480, min_height: 260, width_growth_ratio: 0, height_growth_ratio: 0, scroll_owner: dialog-body, scroll_axes: y, sticky_parts: [titlebar, actions], collapse_allowed: false}
+    - {id: signal-operation-error-dialog, min_width: 480, min_height: 180, width_growth_ratio: 0, height_growth_ratio: 0, scroll_owner: dialog-body, scroll_axes: y, sticky_parts: [titlebar, actions], collapse_allowed: false}
   fixed_template_controls:
     - {id: toolbar-icon-button, width: 36, height: 32}
     - {id: settings-control, width: intrinsic, height: 32}
     - {id: tab-row, width: intrinsic, height: 32}
     - {id: checkbox, width: 16, height: 16}
+    - {id: pane-header, width: stretch, height: 32}
+    - {id: pane-header-title-track, width: "minmax(0,1fr)", height: 32}
+    - {id: pane-header-trim-cell, width: max-content, height: 28, align_self: center, vertical_insets: {top: 2, bottom: 2}}
+    - {id: pane-header-type-selector, width: "minmax(148px,212px)", height: 28, chrome_owner: outer_pane_select_only, inner_readonly_combobox_chrome: none}
+    - {id: pane-header-overflow, width: 32, height: 28}
+    - {id: operation-semantic-icon, width: 16, height: 16}
+    - {id: extrema-table-header-actions, width: 64, height: 31, slot_width: 32, icon: 16, align: final_right_header_cell}
+    - {id: extrema-no-table-center, width: stretch, height: stretch, align: center, background: white}
 
 evidence:
   visual_baseline_version: 28
-  carry_forward_reason: "V56 preserves the existing analytical-dense shell, 244px eye-menu geometry and all states; only the redundant cursor subgroup heading is removed, covered by bounded source/contract evidence without a new screenshot or Figma lookup."
+  carry_forward_reason: "V68 preserves V67 pane-header geometry/chrome and every provider/API seam. It moves only Inspector extrema actions: ready rows use the final table-header cell; every no-table state uses the same centered Calculate control and secondary Configure. Focused regressions pass."
   viewports: ["1440x900", "840x620"]
   prototype_steps:
     - 01-standalone-file-no-network-no-cors
@@ -1387,6 +1768,13 @@ evidence:
     - 50-time-spectrum-cursors-pane-local
     - 51-cursor-file-prototype-no-network-errors
     - 52-zero-remains-nearest-across-heterogeneous-traces
+    - 58-exact-ten-operation-engee-inventory
+    - 59-former-math-fft-denoise-knn-absent
+    - 60-both-entries-use-current-lmb-main-signal
+    - 61-preprocess-conditional-field-matrix
+    - 62-nullable-auto-only-where-engee-supports-auto
+    - 63-wire-values-and-user-data-stay-unchanged
+    - 64-all-visible-settings-units-options-russian
     - 53-selected-color-swatch-uniform-halo-centered-tick
     - 54-sample-window-constants-and-bidirectional-sliding
     - 55-exact-server-point-search
@@ -1436,6 +1824,21 @@ evidence:
     - 99-linked-axis-never-hides-area-slider
     - 100-values-and-calculate-primary-md-blue
     - 101-measurements-visibility-one-flat-list-no-redundant-header
+    - 102-trim-secondary-text-action-and-standard-480-modal
+    - 103-trim-eligible-source-main-default-and-selected-payload
+    - 104-trim-unicode-collision-neutral-name-and-dirty-intent
+    - 105-trim-readonly-interval-and-conditional-overwrite
+    - 106-single-dual-cursor-no-coordinate-readout-dom
+    - 107-operation-runtime-failure-stacked-sanitized-alertdialog
+    - 108-operation-error-focus-trap-escape-and-restore
+    - 109-operation-closed-trigger-selected-icon
+    - 110-operation-expanded-list-ten-decorative-icons
+    - 111-extrema-error-enables-calculate-again
+    - 112-extrema-ready-empty-enable-current-range-recalculate
+    - 113-extrema-pending-only-disabled-and-current-viewport-per-activation
+    - 114-extrema-ready-table-trash-left-reload-right
+    - 115-extrema-clear-centers-enabled-calculate-and-configure
+    - 116-extrema-pending-keeps-centered-disabled-calculate-with-loader
   screenshots:
     - screenshots/v31--standalone-production-signal--1440x900.png
     - screenshots/v31--standalone-production-samples--1440x900.png
@@ -1466,6 +1869,30 @@ evidence:
     - screenshots/v36--pane-menu-cursor-options--1440x900.png
     - screenshots/v38--selected-color-swatch-detail--284x278@2x.png
     - screenshots/v41--values-column-visibility-menu--1440x900.png
-  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json, evidence/interaction-regression-v46-task0142.json, evidence/interaction-regression-v52-task0143-0146.json, evidence/interaction-regression-v52-task0148.json, evidence/interaction-regression-v52-task0150-0151.json, evidence/interaction-regression-v54-task0152.json]
+  interaction_reports: [evidence/interaction-walkthrough-v31-standalone.json, evidence/interaction-walkthrough-v32-standalone.json, evidence/interaction-contract-v34.json, evidence/interaction-walkthrough-v36-graph-cursors.json, evidence/interaction-regression-v37-zero-snap.json, evidence/interaction-regression-v38-color-swatch.json, evidence/interaction-regression-v39-sample-row-window.json, evidence/interaction-regression-v40-sample-search-markers.json, evidence/interaction-regression-v41-values-columns.json, evidence/interaction-regression-v42-sample-search-row.json, evidence/interaction-regression-v43-task0139.json, evidence/interaction-regression-v44-task0140.json, evidence/interaction-regression-v45-task0141.json, evidence/interaction-regression-v46-task0142.json, evidence/interaction-regression-v52-task0143-0146.json, evidence/interaction-regression-v52-task0148.json, evidence/interaction-regression-v52-task0150-0151.json, evidence/interaction-regression-v54-task0152.json, evidence/interaction-regression-v57-task0154.json, evidence/interaction-regression-v58-preprocess-localization.json, evidence/interaction-regression-v59-engee-preprocess-only.json, evidence/interaction-regression-v60-operation-icons.json, evidence/interaction-regression-v61-header-selector-slider.json, evidence/interaction-regression-v62-extrema-retry.json, evidence/interaction-regression-v63-extrema-background-header-selector.json, evidence/interaction-regression-v64-dropdown-tooltip-audit.json, evidence/interaction-regression-v65-pane-extrema-clear.json, evidence/interaction-regression-v66-pane-header-geometry.json, evidence/interaction-regression-v67-pane-header-nested-dropdown.json, evidence/interaction-regression-v68-extrema-table-actions.json, evidence/interaction-regression-v69-primary-processing-operation-validation.json]
   production_baseline: evidence/production-baseline-v32.json
   transfer_audit: evidence/transfer-audit-v46.json
+
+primary_processing_contract:
+  selectors: [".button-primary[aria-busy='true']", ".ui-button-primary[aria-busy='true']", ".signal-color-picker-action.is-primary[aria-busy='true']"]
+  parent_busy_selector_forbidden: true
+  tokens: {background: "#75b5d4", border: "#75b5d4", text: "#ffffff", spinner_size_px: 16, spinner_stroke_px: 2, gap_px: 8, animation_ms: 900, reduced_motion_ms: 1600}
+  geometry: {idle_width_locked_before_busy: true, label_unchanged: true, height_unchanged: true}
+  normal_disabled: {loader: absent, inherited_neutral_design: true}
+  duplicate_spinner: forbidden
+  color_picker_busy_projection: "existing color-picker busy seam sets aria-busy on signal-color-picker-apply itself"
+  production_inventory: [pane-clear-confirm, signal-add-submit, layout-apply, signal-values-action, extrema-values, extrema-calculate, native-file-browser-select, native-save-submit, native-import-submit, native-message-close, import-error-details, import-success, import-validate, import-commit, session-package-save-create, session-package-save-download, signal-trim-submit, signal-operation-submit, signal-operation-error-confirm, signal-color-picker-apply]
+
+analytical_header_hover_contract:
+  reference: inspector-state-toggle
+  targets: [add-display, layout-trigger]
+  hover: {background: "var(--button-active)", foreground: "var(--accent)", geometry_change: false}
+  icon_projection: {plus: current_color_mask, grid: currentColor_stroke, chevron: current_color_mask}
+  expanded_layout: {persistent_state_independent: true, background: "var(--surface)", foreground: "var(--text)", chevron_rotation_deg: 180}
+
+signal_operation_live_validation_contract:
+  modal: {figma_size: MD, width_px: 480, viewport_gutter_px: 16, control_height_px: 32, responsive_stack_below_px: 512}
+  units: {placement: label_suffix, delimiter: ", ", trailing_adornment: forbidden}
+  validator_source: SignalAnalyserPreprocessOperation.validate
+  triggers: [operation_change, parameter_input, parameter_change, target_name_input, overwrite_change]
+  projection: {field_message: immediate, aria_invalid: immediate, submit_enabled: "valid && availability && !busy", input_remount_on_typing: forbidden, focus_and_caret_preserved: true}

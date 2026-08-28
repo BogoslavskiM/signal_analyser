@@ -1,0 +1,28 @@
+{
+  "id": "HND-TASK-0119-FAST-MAIN",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "e2e_mode": "quick_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "796ad62a3bed0a648a5cfb53cd18f71b1b30dfa3",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [],
+  "api": [],
+  "errors": [
+    "page.goto: net::ERR_TIMED_OUT at https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\nCall log:\n\u001b[2m  - navigating to \"https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0119_fast_main_signal_e2e.js:26:16"
+  ],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "passed",
+  "started_at": "2026-08-19T11:55:26.977Z",
+  "preexisting_page_count": 0,
+  "finished_at": "2026-08-19T11:56:00.595Z",
+  "planned": 0,
+  "passed": 0,
+  "failed": 0,
+  "success_rate": 0
+}

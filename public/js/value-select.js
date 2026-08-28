@@ -31,6 +31,10 @@
     var trigger=triggerFor(key);
     return trigger && trigger.querySelector("[data-value-select-input]");
   }
+  function focusTargetFor(key) {
+    var config=registry[key], trigger=triggerFor(key);
+    return config && config.buttonTrigger ? trigger : inputFor(key);
+  }
   function optionIndex(config, value) {
     if (!config || value == null) return -1;
     for (var index=0; index<config.options.length; index++) {
@@ -55,6 +59,7 @@
         } : { value:String(option), label:String(option), disabled:false, icon:"" };
       }),
       disabled:!!config.disabled,
+      buttonTrigger:config.buttonTrigger === true || key === "signal-operation-type",
       className:config.className || "",
       testId:config.testId || ("value-select-trigger-" + stableId(key)),
       ariaLabel:config.ariaLabel || config.label || "Выбор значения",
@@ -72,7 +77,7 @@
       " autocomplete='off' spellcheck='false' role='combobox' aria-autocomplete='list' aria-haspopup='listbox'" +
       " aria-expanded='" + String(open) + "' aria-controls='value-select-listbox'" +
       (open && activeIndex >= 0 ? " aria-activedescendant='" + optionId(config.logicalKey, activeIndex) + "'" : "") +
-      " aria-label='" + esc(config.ariaLabel) + "' title='" + esc(config.selectedLabel) + "'" +
+      " aria-label='" + esc(config.ariaLabel) + "' data-tooltip-overflow='value' data-tooltip-text='" + esc(config.selectedLabel) + "'" +
       " data-value-select-input data-testid='" + esc(config.testId) + "-input'>";
   }
 
@@ -88,13 +93,23 @@
 
   function triggerMarkup(config) {
     var open=state.logicalKey === config.logicalKey, selected=selectedOption(config), icon=selected && selected.icon;
+    if (config.buttonTrigger) {
+      var activeIndex=state.activeValue == null ? -1 : optionIndex(config, state.activeValue);
+      return "<button class='value-select-trigger select-trigger is-button-trigger " + esc(config.className) + (icon ? " has-leading-icon" : "") + (open ? " is-open" : "") + "' type='button'" +
+        " data-value-select-key='" + esc(config.logicalKey) + "' data-value-select-disabled='" + String(config.disabled) + "'" +
+        " data-testid='" + esc(config.testId) + "' role='combobox' aria-haspopup='listbox' aria-expanded='" + String(open) + "'" +
+        " aria-controls='value-select-listbox' aria-label='" + esc(config.ariaLabel) + "' aria-disabled='" + String(config.disabled) + "'" +
+        (open && activeIndex >= 0 ? " aria-activedescendant='" + optionId(config.logicalKey, activeIndex) + "'" : "") +
+        " data-tooltip-overflow='label' data-tooltip-text='" + esc(config.selectedLabel) + "'" + (config.disabled ? " disabled" : "") + ">" +
+        iconMarkup(icon,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") +
+        "<span class='select-trigger-label' data-value-select-trigger-label>" + esc(config.selectedLabel) + "</span>" +
+        "<span class='select-trigger-arrow' aria-hidden='true' data-value-select-arrow></span></button>";
+    }
     return "<div class='value-select-trigger select-trigger " + esc(config.className) + (icon ? " has-leading-icon" : "") + (open ? " is-open" : "") + "'" +
       " data-value-select-key='" + esc(config.logicalKey) + "' data-value-select-disabled='" + String(config.disabled) + "'" +
       " data-testid='" + esc(config.testId) + "' aria-expanded='" + String(open) + "' aria-disabled='" + String(config.disabled) + "'" +
-      " title='" + esc(config.selectedLabel) + "'>" + iconMarkup(icon,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") + inputMarkup(config, open) +
-      "<button class='select-trigger-arrow' type='button' tabindex='-1' aria-label='" + esc((open ? "Закрыть список: " : "Открыть список: ") + config.ariaLabel) + "'" +
-      " aria-expanded='" + String(open) + "' aria-controls='value-select-listbox' data-value-select-arrow data-testid='" + esc(config.testId) + "-arrow'" +
-      (config.disabled ? " disabled" : "") + "></button></div>";
+      " data-tooltip-overflow='value' data-tooltip-text='" + esc(config.selectedLabel) + "'>" + iconMarkup(icon,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") + inputMarkup(config, open) +
+      "<span class='select-trigger-arrow' aria-hidden='true' data-value-select-arrow data-testid='" + esc(config.testId) + "-arrow'></span></div>";
   }
 
   function setAttribute(node, name, value) {
@@ -104,6 +119,35 @@
 
   function applyTrigger(node, config) {
     if (!node) return node;
+    if (config.buttonTrigger) {
+      if (String(node.tagName || "").toLowerCase() !== "button" && document.createElement && node.parentNode) {
+        var buttonReplacement=document.createElement("button");
+        node.parentNode.replaceChild(buttonReplacement, node);
+        node=buttonReplacement;
+      }
+      var buttonOpen=state.logicalKey === config.logicalKey, buttonSelected=selectedOption(config), buttonIcon=buttonSelected && buttonSelected.icon;
+      node.className=("value-select-trigger select-trigger is-button-trigger " + (config.className || "") + (buttonIcon ? " has-leading-icon" : "") + (buttonOpen ? " is-open" : "")).trim();
+      node.type="button";
+      node.disabled=config.disabled;
+      node.dataset.valueSelectKey=config.logicalKey;
+      node.dataset.valueSelectDisabled=String(config.disabled);
+      node.setAttribute("data-testid", config.testId);
+      node.setAttribute("role", "combobox");
+      node.setAttribute("aria-haspopup", "listbox");
+      node.setAttribute("aria-expanded", String(buttonOpen));
+      node.setAttribute("aria-controls", "value-select-listbox");
+      node.setAttribute("aria-label", config.ariaLabel);
+      node.setAttribute("aria-disabled", String(config.disabled));
+      node.removeAttribute("title");
+      node.dataset.tooltipOverflow="label";
+      node.dataset.tooltipText=config.selectedLabel;
+      var buttonActiveIndex=state.activeValue == null ? -1 : optionIndex(config, state.activeValue);
+      setAttribute(node, "aria-activedescendant", buttonOpen && buttonActiveIndex >= 0 ? optionId(config.logicalKey, buttonActiveIndex) : null);
+      node.innerHTML=iconMarkup(buttonIcon,"select-trigger-icon","data-value-select-trigger-icon",buttonSelected ? buttonSelected.value : "") +
+        "<span class='select-trigger-label' data-value-select-trigger-label>" + esc(config.selectedLabel) + "</span>" +
+        "<span class='select-trigger-arrow' aria-hidden='true' data-value-select-arrow></span>";
+      return node;
+    }
     if (String(node.tagName || "").toLowerCase() === "button" && document.createElement && node.parentNode) {
       var replacement=document.createElement("div");
       node.parentNode.replaceChild(replacement, node);
@@ -117,11 +161,13 @@
     node.setAttribute("data-testid", config.testId);
     node.setAttribute("aria-expanded", String(open));
     node.setAttribute("aria-disabled", String(config.disabled));
-    node.title=config.selectedLabel;
+    node.removeAttribute("title");
+    node.dataset.tooltipOverflow="value";
+    node.dataset.tooltipText=config.selectedLabel;
     var input=node.querySelector && node.querySelector("[data-value-select-input]");
     var arrow=node.querySelector && node.querySelector("[data-value-select-arrow]");
     if (!input || !arrow) {
-      node.innerHTML=iconMarkup(iconSource,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") + inputMarkup(config, open) + "<button class='select-trigger-arrow' type='button' tabindex='-1' data-value-select-arrow></button>";
+      node.innerHTML=iconMarkup(iconSource,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") + inputMarkup(config, open) + "<span class='select-trigger-arrow' aria-hidden='true' data-value-select-arrow></span>";
       input=node.querySelector("[data-value-select-input]");
       arrow=node.querySelector("[data-value-select-arrow]");
     }
@@ -155,22 +201,25 @@
       input.setAttribute("aria-expanded", String(open));
       input.setAttribute("aria-controls", "value-select-listbox");
       input.setAttribute("aria-label", config.ariaLabel);
-      input.title=config.selectedLabel;
+      input.removeAttribute("title");
+      input.dataset.tooltipOverflow="value";
+      input.dataset.tooltipText=config.selectedLabel;
       setAttribute(input, "placeholder", open ? "Поиск" : null);
       var activeIndex=state.activeValue == null ? -1 : optionIndex(config, state.activeValue);
       setAttribute(input, "aria-activedescendant", open && activeIndex >= 0 ? optionId(config.logicalKey, activeIndex) : null);
       if (input.value !== displayed) input.value=displayed;
     }
     if (arrow) {
+      if (String(arrow.tagName || "").toLowerCase() !== "span" && document.createElement && arrow.parentNode) {
+        var arrowReplacement=document.createElement("span");
+        arrow.parentNode.replaceChild(arrowReplacement,arrow);
+        arrow=arrowReplacement;
+      }
       arrow.className="select-trigger-arrow";
-      arrow.type="button";
-      arrow.tabIndex=-1;
-      arrow.disabled=config.disabled;
       arrow.dataset.testid=config.testId + "-arrow";
       arrow.setAttribute("data-testid", config.testId + "-arrow");
-      arrow.setAttribute("aria-label", (open ? "Закрыть список: " : "Открыть список: ") + config.ariaLabel);
-      arrow.setAttribute("aria-expanded", String(open));
-      arrow.setAttribute("aria-controls", "value-select-listbox");
+      arrow.setAttribute("aria-hidden", "true");
+      arrow.setAttribute("data-value-select-arrow", "");
     }
     return node;
   }
@@ -193,7 +242,7 @@
 
   function setActive(value, scroll) {
     state.activeValue=value == null ? null : String(value);
-    var config=currentConfig(), input=state.logicalKey && inputFor(state.logicalKey), host=optionsHost();
+    var config=currentConfig(), input=state.logicalKey && focusTargetFor(state.logicalKey), host=optionsHost();
     var activeIndex=optionIndex(config, state.activeValue);
     if (input) setAttribute(input, "aria-activedescendant", activeIndex >= 0 ? optionId(config.logicalKey, activeIndex) : null);
     if (!host) return;
@@ -222,7 +271,7 @@
       return "<button class='select-option" + (option.icon ? " has-leading-icon" : "") + (selected ? " is-selected" : "") + (option.value === state.activeValue ? " is-active" : "") + "'" +
         " type='button' role='option' tabindex='-1' id='" + optionId(config.logicalKey, entry.index) + "'" +
         " data-value-select-option-index='" + entry.index + "' data-testid='value-select-option-" + entry.index + "'" +
-        " aria-selected='" + String(selected) + "' title='" + esc(option.label) + "'" +
+        " aria-selected='" + String(selected) + "' aria-label='" + esc(option.label) + "'" +
         (option.disabled ? " disabled aria-disabled='true'" : "") +
         "><span class='select-option-check' aria-hidden='true'></span>" + iconMarkup(option.icon,"select-option-icon","data-value-select-option-icon",option.value) + "<span class='select-option-label'>" + esc(option.label) + "</span></button>";
     }).join("");
@@ -251,7 +300,7 @@
   }
 
   function focusInput(key, clearRestore) {
-    var input=inputFor(key);
+    var input=focusTargetFor(key);
     if (!input) return false;
     input.focus();
     if (typeof input.setSelectionRange === "function" && state.logicalKey === key) input.setSelectionRange(input.value.length, input.value.length);
@@ -299,14 +348,14 @@
     menu.hidden=false;
     renderOptions();
     position();
-    var input=inputFor(key);
+    var input=focusTargetFor(key);
     if (input) {
       input.focus();
       if (typeof input.setSelectionRange === "function") input.setSelectionRange(0, 0);
     }
     window.requestAnimationFrame(function () {
       if (state.logicalKey !== key) return;
-      var current=inputFor(key);
+      var current=focusTargetFor(key);
       if (current && document.activeElement !== current) current.focus();
       if (current && typeof current.setSelectionRange === "function") current.setSelectionRange(0, 0);
     });
@@ -327,7 +376,7 @@
     var config=currentConfig(), option=config && config.options[index];
     if (!config || !option || option.disabled) return;
     var key=config.logicalKey, value=option.value;
-    var original=inputFor(key);
+    var original=focusTargetFor(key);
     config.selectedValue=value;
     config.selectedLabel=option.label;
     state.restoreKey=key;
@@ -338,7 +387,7 @@
     } finally {
       window.requestAnimationFrame(function () {
         if (state.restoreKey !== key) return;
-        var replacement=inputFor(key);
+        var replacement=focusTargetFor(key);
         if (!replacement) return;
         replacement.focus();
         if (replacement !== state.restoreNode) { state.restoreKey=null; state.restoreNode=null; }
@@ -357,7 +406,7 @@
     if (!trigger) return;
     var config=registry[trigger.dataset.valueSelectKey];
     if (!config || config.disabled) return;
-    if (event.target.closest("[data-value-select-arrow]")) {
+    if (config.buttonTrigger) {
       event.preventDefault();
       if (state.logicalKey === config.logicalKey) close({ restoreFocus:true });
       else open(trigger, "down");
@@ -397,7 +446,10 @@
   document.addEventListener("keydown", function (event) {
     var input=event.target.matches && event.target.matches("[data-value-select-input]") ? event.target : null;
     var trigger=input && input.closest("[data-value-select-key]");
-    if (!input || !trigger) return;
+    if (!trigger && event.target.matches && event.target.matches("[data-value-select-key].is-button-trigger")) trigger=event.target;
+    if (!trigger) return;
+    var configForTrigger=registry[trigger.dataset.valueSelectKey];
+    if (!input && !(configForTrigger && configForTrigger.buttonTrigger)) return;
     var key=trigger.dataset.valueSelectKey;
     if (state.restoreKey && state.restoreKey !== key) { state.restoreKey=null; state.restoreNode=null; }
     if (state.logicalKey !== key) {
@@ -413,7 +465,7 @@
     } else if (event.key === "Home" || event.key === "End") {
       event.preventDefault();
       move(event.key.toLowerCase());
-    } else if (event.key === "Enter") {
+    } else if (event.key === "Enter" || (event.key === " " && configForTrigger && configForTrigger.buttonTrigger)) {
       event.preventDefault();
       var config=currentConfig(), index=optionIndex(config, state.activeValue);
       if (index >= 0) choose(index);
@@ -447,7 +499,7 @@
       });
       if (state.logicalKey) { renderOptions(); position(); }
       if (state.restoreKey) {
-        var replacement=inputFor(state.restoreKey);
+        var replacement=focusTargetFor(state.restoreKey);
         if (replacement && replacement !== state.restoreNode) {
           replacement.focus();
           state.restoreKey=null;

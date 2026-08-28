@@ -8,8 +8,8 @@
   function row(label, control, title) { return "<div class='settings-row'><label class='settings-label'" + (title ? " title='" + title + "'" : "") + ">" + label + "</label><div>" + control + "</div></div>"; }
   function check(id, label, checked) { return "<label class='checkbox-field'><input type='checkbox' data-setting-toggle='" + id + "' " + (checked ? "checked" : "") + "><span>" + label + "</span></label>"; }
   function unitRow(kind) {
-    if (kind === "frequency") return row("Единицы частоты", "<select class='field'><option>auto</option><option>Гц</option><option selected>кГц</option><option>МГц</option></select>");
-    return row("Единицы времени", "<select class='field'><option>auto</option><option>с</option><option selected>мс</option><option>мкс</option><option>нс</option></select>");
+    if (kind === "frequency") return row("Единицы частоты", "<select class='field'><option value='auto'>Авто</option><option>Гц</option><option selected>кГц</option><option>МГц</option></select>");
+    return row("Единицы времени", "<select class='field'><option value='auto'>Авто</option><option>с</option><option selected>мс</option><option>мкс</option><option>нс</option></select>");
   }
   function limits(id, title, unit, min, max) {
     var canonical = id.indexOf("frequency") >= 0 ? "hertz" : id.indexOf("time") >= 0 ? "seconds" : "axis";
@@ -38,9 +38,9 @@
     var rangeBody="";
     if (spectrum) {
       if (!state.links.spectrumFrequency) rangeBody += limits("area-frequency", "Пределы частоты", "кГц", "", "");
-      if (!state.links.spectrumMagnitude) rangeBody += limits("area-magnitude", "Пределы магнитуды", "dB", "−120", "");
+      if (!state.links.spectrumMagnitude) rangeBody += limits("area-magnitude", "Пределы магнитуды", "дБ", "−120", "");
       if (rangeBody) result += group("area-ranges", "Диапазоны", rangeBody);
-      result += group("spectrum-analysis", "Спектральный анализ", row("Шкала", "<select class='field'><option>Децибелы</option><option>Линейная</option></select>") + row("Частотная шкала", "<select class='field'><option>Линейная</option><option>Логарифмическая</option></select>") + row("Окно", "<select class='field'><option>Хэнна</option><option>Хэмминга</option><option>Блэкмана</option></select>") + row("Точки DFT", "<input class='field' type='number' value='4096'>") + row("Перекрытие", "<div class='unit-control'><input class='field' type='number' value='50'><span class='unit'>%</span></div>"), true);
+      result += group("spectrum-analysis", "Спектральный анализ", row("Шкала", "<select class='field'><option>Децибелы</option><option>Линейная</option></select>") + row("Частотная шкала", "<select class='field'><option>Линейная</option><option>Логарифмическая</option></select>") + row("Окно", "<select class='field'><option>Ханна</option><option>Хэмминга</option><option>Блэкмана</option></select>") + row("Точки ДПФ", "<input class='field' type='number' value='4096'>") + row("Перекрытие", "<div class='unit-control'><input class='field' type='number' value='50'><span class='unit'>%</span></div>"), true);
     } else {
       if (!state.links.time) rangeBody += limits("area-time", "Пределы времени", "мс", "", "");
       if (!state.links.amplitude) rangeBody += limits("area-amplitude", "Пределы амплитуды", "", "−1", "1");
@@ -57,12 +57,12 @@
     if (state.links.time) rangeBody += limits("screen-time", "Пределы времени", "мс", "", "");
     if (state.links.amplitude) rangeBody += limits("screen-amplitude", "Пределы амплитуды", "", "−1", "1");
     if (state.links.spectrumFrequency) rangeBody += limits("screen-frequency", "Пределы частоты", "кГц", "0", "800");
-    if (state.links.spectrumMagnitude) rangeBody += limits("screen-magnitude", "Пределы магнитуды", "dB", "−120", "");
+    if (state.links.spectrumMagnitude) rangeBody += limits("screen-magnitude", "Пределы магнитуды", "дБ", "−120", "");
     if (rangeBody) result += group("screen-ranges", "Диапазоны", rangeBody);
     return result;
   }
   function peaksPage() {
-    return group("peaks-calculation", "Расчёт экстремумов", row("Режим расчёта", "<select class='field'><option>Максимумы</option><option>Минимумы</option><option>Все экстремумы</option></select>") + row("Количество", "<input class='field' type='number' value='5'>") + row("Отсечка", "<div class='unit-control'><input class='field' type='text' value='−90'><span class='unit'>dB</span></div>") + row("Мин. расстояние", "<div class='unit-control'><input class='field' type='text' value='12'><span class='unit'>бин</span></div>") + row("Порог", "<div class='unit-control'><input class='field' type='text' value='0'><span class='unit'>dB</span></div>")) + group("peaks-presentation", "Отображение", row("Метки на графике", check("showPeakMarkers", "", true)) + "<div class='settings-row'><span class='settings-label'>Координата</span><span class='helper'>Частота выводится в выбранных единицах оси.</span></div>");
+    return group("peaks-calculation", "Расчёт экстремумов", row("Режим расчёта", "<select class='field'><option>Максимумы</option><option>Минимумы</option><option>Все экстремумы</option></select>") + row("Количество", "<input class='field' type='number' value='5'>") + row("Отсечка", "<div class='unit-control'><input class='field' type='text' value='−90'><span class='unit'>дБ</span></div>") + row("Мин. расстояние", "<div class='unit-control'><input class='field' type='text' value='12'><span class='unit'>бин</span></div>") + row("Порог", "<div class='unit-control'><input class='field' type='text' value='0'><span class='unit'>дБ</span></div>")) + group("peaks-presentation", "Отображение", row("Метки на графике", check("showPeakMarkers", "", true)) + "<div class='settings-row'><span class='settings-label'>Координата</span><span class='helper'>Частота выводится в выбранных единицах оси.</span></div>");
   }
   function render(state) {
     var display = window.SignalAnalyserZones.workspace.activeDisplay(state);
@@ -76,7 +76,16 @@
     else if (state.settingsPage === "screen") content.innerHTML = screenPage(state, display);
     else content.innerHTML = peaksPage();
     document.querySelector("[data-testid='signal-values-action']").hidden = state.settingsPage !== "signal";
-    document.querySelector("[data-testid='extrema-values']").hidden = state.settingsPage !== "peaks";
+    var extremaActions=document.querySelector("[data-testid='settings-extrema-actions']");
+    var extremaAction=document.querySelector("[data-testid='extrema-values']");
+    var extremaClear=document.querySelector("[data-testid='extrema-clear']");
+    extremaActions.hidden = state.settingsPage !== "peaks";
+    if (window.SignalAnalyserExtremaAction) {
+      window.SignalAnalyserExtremaAction.project(extremaAction, state.extremaCalculationStatus || (state.extrema && state.extrema.length ? "ready" : "idle"));
+    }
+    if (window.SignalAnalyserPaneExtrema) {
+      window.SignalAnalyserPaneExtrema.projectClear(extremaClear,pane,state.extremaCalculationStatus === "pending");
+    }
     document.querySelector("[data-testid='settings-footer']").hidden = state.settingsPage !== "peaks" && state.settingsPage !== "signal";
     document.querySelector("[data-testid='settings-panel']").dataset.applyState = state.dirty ? "dirty" : "pristine";
   }

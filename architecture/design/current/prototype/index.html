@@ -19,6 +19,13 @@
   <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0145-standard-busy-cursor.css">
   <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0148-measurement-cursor-columns.css">
   <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0153-ui-regressions.css">
+  <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0154-trim-and-operation-error.css">
+  <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0157-preprocess-operation.css">
+  <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0163-extrema-background-header-selector.css">
+  <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0164-dropdown-tooltip-audit.css">
+  <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0165-pane-extrema-clear.css">
+  <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0167-pane-header-nested-dropdown.css">
+  <link rel="stylesheet" href="../architecture/design/current/frontend-source/integration/css/task-0168-extrema-table-actions.css">
 </head>
 <body>
   <main class="app-shell" data-testid="app-shell" aria-label="Анализатор сигналов">
@@ -102,7 +109,10 @@
         <footer class="settings-apply-block" data-testid="settings-footer" data-apply-root="true">
           <span class="settings-status visually-hidden" role="status" aria-live="polite" data-settings-status></span>
           <button class="button button-primary" type="button" data-testid="signal-values-action" hidden>Значения</button>
-          <button class="button button-primary" type="button" data-testid="extrema-values" hidden>Рассчитать</button>
+          <div class="settings-extrema-actions" data-testid="settings-extrema-actions" hidden>
+            <button class="button settings-extrema-clear" type="button" data-extrema-clear data-testid="extrema-clear" title="Нет рассчитанных экстремумов" aria-label="Нет рассчитанных экстремумов" aria-disabled="true" disabled>Очистить</button>
+            <button class="button button-primary" type="button" data-testid="extrema-values" data-extrema-action data-extrema-action-state="idle" aria-busy="false">Рассчитать</button>
+          </div>
           <span id="settings-apply-status" class="visually-hidden" data-apply-announcement aria-live="assertive"></span>
         </footer>
       </aside>
@@ -116,6 +126,10 @@
           <button id="signals-tab" type="button" role="tab" aria-selected="true" tabindex="0" data-bottom-tab="signals" data-testid="inspector-tab-signals">Сигналы</button>
           <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="measurements" data-testid="inspector-tab-measurements">Измерения</button>
           <button type="button" role="tab" aria-selected="false" tabindex="-1" data-bottom-tab="peaks" data-testid="inspector-tab-peaks">Экстремумы</button>
+        </div>
+        <div class="inspector-extrema-actions" data-testid="extrema-header-actions" hidden>
+          <button class="button inspector-extrema-clear" type="button" data-extrema-clear data-testid="extrema-header-clear" title="Нет рассчитанных экстремумов" aria-label="Нет рассчитанных экстремумов" aria-disabled="true" disabled>Очистить</button>
+          <button class="button button-primary inspector-extrema-action" type="button" data-extrema-action data-testid="extrema-header-action" data-extrema-action-state="idle" aria-busy="false" title="Рассчитать экстремумы" aria-label="Рассчитать экстремумы">Рассчитать</button>
         </div>
         <div class="inspector-state-controls" role="group" data-testid="inspector-state-controls" aria-label="Размер нижней зоны">
           <button class="inspector-state-toggle header-chrome-button" type="button" data-inspector-state-action="up" data-testid="inspector-state-up" data-tooltip="Развернуть нижнюю зону" title="Развернуть нижнюю зону" aria-label="Нижняя зона: средний размер. Развернуть полностью" aria-controls="inspector-content">
@@ -216,7 +230,7 @@
       </div>
       <div class="workspace-list" role="group" tabindex="0" aria-label="Поддерживаемые переменные" data-testid="signal-add-variables"></div>
       <div class="dialog-field-row">
-        <label for="signal-add-sample-rate">Частота дискретизации <span>Hz</span></label>
+        <label for="signal-add-sample-rate">Частота дискретизации <span>Гц</span></label>
         <input id="signal-add-sample-rate" class="control" type="text" inputmode="decimal" step="any" value="2048" data-signal-add-sample-rate aria-describedby="signal-add-sample-rate-hint signal-add-rate-error" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off">
         <small id="signal-add-rate-error" class="signal-add-rate-error" role="alert" hidden></small>
       </div>
@@ -281,8 +295,15 @@
   <script src="../architecture/design/current/frontend-source/integration/js/task-0150-0151-axis-labels-hover.js"></script>
   <script src="../architecture/design/current/frontend-source/integration/js/task-0152-cursor-trim-signal.js"></script>
   <script src="../architecture/design/current/frontend-source/integration/js/task-0153-ui-regressions.js"></script>
+  <script src="../architecture/design/current/frontend-source/integration/js/task-0154-operation-error-dialog.js"></script>
+  <script src="../architecture/design/current/frontend-source/integration/js/task-0158-russian-localization.js"></script>
+  <script>window.SignalAnalyserOperationIconBase = "../architecture/design/current/frontend-source";</script>
+  <script src="../architecture/design/current/frontend-source/integration/js/task-0157-preprocess-operation.js"></script>
+  <script src="../architecture/design/current/frontend-source/integration/js/task-0162-extrema-retry.js"></script>
+  <script src="../architecture/design/current/frontend-source/integration/js/task-0165-pane-extrema-clear.js"></script>
+  <script src="../architecture/design/current/frontend-source/integration/js/task-0168-extrema-table-actions.js"></script>
   <script src="./js/api.js"></script>
-  <script src="./js/value-select.js"></script>
+  <script src="../architecture/design/current/frontend-source/js/ui/components/value-select.js"></script>
   <script src="./js/numeric.js"></script>
   <script src="./js/settings.js"></script>
   <script src="../architecture/design/current/prototype/task-0143-bootstrap-loader-bridge.js"></script>
@@ -300,5 +321,10 @@
   <script src="../architecture/design/current/prototype/task-0130-graph-cursors-bridge.js"></script>
   <script src="../architecture/design/current/prototype/task-0138-values-columns-bridge.js"></script>
   <script src="../architecture/design/current/prototype/task-0139-loading-overlays-bridge.js"></script>
+  <script src="../architecture/design/current/prototype/task-0158-russian-localization-bridge.js"></script>
+  <script src="../architecture/design/current/prototype/task-0163-extrema-background-header-selector-bridge.js"></script>
+  <script src="../architecture/design/current/prototype/task-0165-pane-extrema-clear-bridge.js"></script>
+  <script src="../architecture/design/current/prototype/task-0168-extrema-table-actions-bridge.js"></script>
+  <script src="../architecture/design/current/frontend-source/integration/js/task-0164-dropdown-tooltip-audit.js"></script>
 </body>
 </html>

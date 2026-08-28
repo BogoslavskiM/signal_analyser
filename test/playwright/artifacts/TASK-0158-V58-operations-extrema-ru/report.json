@@ -1,0 +1,11 @@
+{
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "startedAt": "2026-08-27T13:43:29.022Z",
+  "checks": [
+    {
+      "name": "prototype Russian interaction",
+      "result": "passed"
+    }
+  ],
+  "finishedAt": "2026-08-27T13:44:02.015Z"
+}

@@ -38,6 +38,42 @@
     }, 150);
   }
 
+  function calculateExtrema() {
+    var helper=window.SignalAnalyserExtremaAction, display=activeDisplay(), pane=activePane();
+    if (!helper || !display || !pane) return;
+    var activation=helper.activation(state.extremaCalculationStatus,function () { return state.currentExtremaViewport || null; });
+    if (!activation) return;
+    var context=helper.context(display.id,pane.id);
+    var request={displayId:context.displayId,paneId:context.paneId,contextKey:context.key,visibleRange:activation.visible_range};
+    state.extremaCalculationStatus="pending";
+    render();
+    helper.providerRequest(provider,request,function (result,settledRequest) {
+      if (!result || settledRequest.contextKey !== request.contextKey) return;
+      if (Array.isArray(result.rows)) state.extrema=result.rows;
+      if (result.paneExtrema && typeof result.paneExtrema === "object") Object.assign(pane,result.paneExtrema);
+      state.extremaCalculationStatus=result.status || (state.extrema.length ? "ready" : "empty");
+      render();
+    });
+  }
+
+  function clearExtrema() {
+    var helper=window.SignalAnalyserPaneExtrema, display=activeDisplay(), pane=activePane();
+    if (!helper || !display || !pane) return;
+    if (helper.clearPresentation(pane,state.extremaCalculationStatus === "pending").disabled) return;
+    var request={displayId:String(display.id),paneId:String(pane.id)};
+    helper.providerClear(provider,request,function (result) {
+      if (!result || result.success === false) return;
+      pane.extremaBySignal={};
+      pane.isExtremaReady=false;
+      pane.success=false;
+      pane.error="";
+      pane.needUpdate=true;
+      state.extrema=[];
+      state.extremaCalculationStatus="cleared";
+      render();
+    });
+  }
+
   function bind() {
     window.addEventListener("signal-analyser:pane-type", function (event) {
       var detail=event.detail || {};
@@ -88,9 +124,11 @@
       if (toggle) { var section = toggle.closest(".settings-group"); section.classList.toggle("is-collapsed"); toggle.setAttribute("aria-expanded", String(!section.classList.contains("is-collapsed"))); return; }
       var values = target.closest("[data-testid='signal-values-action']");
       if (values) { state.inspectorPage = "samples"; render(); document.querySelector("[data-inspector-page='samples']").focus(); return; }
-      if (target.closest("[data-testid='extrema-values']")) { state.inspectorPage = "peaks"; render(); document.querySelector("[data-inspector-page='peaks']").focus(); return; }
+      if (target.closest("[data-extrema-clear]")) { clearExtrema(); return; }
+      if (target.closest("[data-extrema-action]")) { state.inspectorPage = "peaks"; calculateExtrema(); var extremaTab=document.querySelector("[data-inspector-page='peaks']"); if (extremaTab) extremaTab.focus(); return; }
+      if (target.closest("[data-extrema-configure]")) { state.settingsPage="peaks"; render(); var settingsTab=document.querySelector("[data-settings-page='peaks']"); if(settingsTab) settingsTab.focus(); return; }
       var operation = target.closest("[data-signal-operation]");
-      if (operation) { window.SignalAnalyserDialogs.signalOperation.open(operation.dataset.signalOperation); return; }
+      if (operation) { window.SignalAnalyserDialogs.signalOperation.open({id:state.mainSignalName,name:state.mainSignalName,samplingKind:"uniform",sampleRateHz:Number(state.signal.sampleRate) || null,sampleCount:Number(state.signal.samples) || null,complex:state.signal.type === "Комплексный"}); return; }
     });
     document.addEventListener("change", function (event) {
       var signalVisibility = event.target.closest("[data-signal-visible]");
@@ -125,7 +163,7 @@
   function init(nextProvider, initialState) {
     provider = nextProvider || {};
     return Promise.resolve(initialState !== undefined ? initialState : (provider.getState ? provider.getState() : null)).then(function (nextState) {
-      state = nextState || { activeDisplayId: "display-1", activePaneId: "", settingsPage: "screen", inspectorPage: "signals", dynamicSamplesOpen: false, dirty: false, displays: [{ id: "display-1", name: "Экран 1", panes: [] }], links: { time:false, amplitude:false, spectrumFrequency:false, spectrumMagnitude:false }, signal: { name:"", color:"#2563eb", sampleRate:"", samples:0, duration:"—", regionStart:"—", regionEnd:"—", minimum:"—", minimumTime:"—", maximum:"—", maximumTime:"—", rms:"—", mean:"—", median:"—", peakToPeak:"—", type:"—" }, signals:[], extrema:[], sampleRows:[] };
+      state = nextState || { activeDisplayId: "display-1", activePaneId: "", settingsPage: "screen", inspectorPage: "signals", dynamicSamplesOpen: false, dirty: false, extremaCalculationStatus:"idle", displays: [{ id: "display-1", name: "Экран 1", panes: [] }], links: { time:false, amplitude:false, spectrumFrequency:false, spectrumMagnitude:false }, signal: { name:"", color:"#2563eb", sampleRate:"", samples:0, duration:"—", regionStart:"—", regionEnd:"—", minimum:"—", minimumTime:"—", maximum:"—", maximumTime:"—", rms:"—", mean:"—", median:"—", peakToPeak:"—", type:"—" }, signals:[], extrema:[], sampleRows:[] };
       bind(); render();
       window.SignalAnalyserDesignReview = {
         getState: function () { return state; },
@@ -135,7 +173,7 @@
           if (surface === "screen") state.settingsPage = "screen";
           if (surface === "extrema") { state.settingsPage = "peaks"; state.inspectorPage = "peaks"; }
           if (surface === "samples") state.inspectorPage = "samples";
-          if (surface === "operation") { state.inspectorPage = "signals"; render(); window.SignalAnalyserDialogs.signalOperation.open(state.signal.name); return; }
+          if (surface === "operation" || surface === "preprocess") { state.inspectorPage = "signals"; render(); window.SignalAnalyserDialogs.signalOperation.open({id:state.mainSignalName,name:state.mainSignalName,samplingKind:"uniform",sampleRateHz:Number(state.signal.sampleRate) || null,sampleCount:Number(state.signal.samples) || null,complex:state.signal.type === "Комплексный"}); return; }
           render();
         }
       };

@@ -127,17 +127,6 @@
     var second=previous && finite(previous[1]) ? snapWithin(host,previous[1]) : snapWithin(host,domain[0]+(domain[1]-domain[0])*2/3);
     return [first,second];
   }
-  function readoutMarkup(host, values) {
-    var axis=fullAxis(host), unit=axisUnit(axis), x=function (value) { return formatNumber(value)+(unit ? " "+unit : ""); };
-    var header=values.length === 1 ? "<span>X: "+x(values[0])+"</span>" : "<span>X1: "+x(values[0])+"</span><span>X2: "+x(values[1])+"</span><span>ΔX: "+x(Math.abs(values[1]-values[0]))+"</span>";
-    var rows=visibleTraces(host).map(function (trace) {
-      var points=values.map(function (value) { return nearestPoint(trace,value); });
-      var valueText=points.map(function (point,index) { return (values.length > 1 ? "Y"+(index+1)+": " : "")+formatNumber(point && point.y); }).join(" · ");
-      return "<div class='plot-cursor-readout-row'><span>"+String(trace.name || "Сигнал").replace(/[&<>\"]/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"})[c];})+"</span><span class='plot-cursor-readout-values'>"+valueText+"</span></div>";
-    }).join("");
-    return "<div class='plot-cursor-readout-header'>"+header+"</div>"+rows;
-  }
-
   function createController() {
     var records={},listeners=[];
     function record(key) { return records[key] || (records[key]={mode:MODE_OFF,values:[],host:null,overlay:null}); }
@@ -161,10 +150,10 @@
         entry.overlay=overlay;
       }
       overlay.dataset.cursorMode=entry.mode;
-      if (overlay.querySelectorAll(".plot-cursor-line").length !== entry.values.length || !overlay.querySelector(".plot-cursor-readout")) {
+      if (overlay.querySelectorAll(".plot-cursor-line").length !== entry.values.length) {
         overlay.innerHTML=entry.values.map(function (_,index) {
           return "<button class='plot-cursor-line' type='button' role='slider' data-cursor-index='"+index+"' data-cursor-label='"+(index+1)+"' aria-label='Курсор "+(index+1)+"'></button>";
-        }).join("")+"<div class='plot-cursor-readout' role='status' aria-live='polite'></div>";
+        }).join("");
       }
       entry.values.forEach(function (value,index) {
         var line=overlay.querySelector("[data-cursor-index='"+index+"']");
@@ -176,10 +165,6 @@
         line.setAttribute("aria-valuenow",String(value));
         line.setAttribute("aria-valuetext",formatNumber(value)+(axisUnit(fullAxis(host)) ? " "+axisUnit(fullAxis(host)) : ""));
       });
-      var readout=overlay.querySelector(".plot-cursor-readout");
-      readout.style.left=(box.left+8)+"px";
-      readout.style.top=(box.top+8)+"px";
-      readout.innerHTML=readoutMarkup(host,entry.values);
       notify(key);
     }
     function setMode(key, host, mode) {

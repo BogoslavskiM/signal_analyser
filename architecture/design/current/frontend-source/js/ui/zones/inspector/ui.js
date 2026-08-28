@@ -18,7 +18,12 @@
     return "<div class='data-table-wrap' style='height:100%'><table class='data-table'><thead><tr><th>Имя</th><th>Цвет</th><th>Начало области</th><th>Конец области</th><th>Минимум</th><th>Время минимума</th><th>Максимум</th><th>Время максимума</th><th>Среднее</th><th>Медиана</th><th>Размах</th><th>СКЗ</th></tr></thead><tbody><tr><td>" + esc(state.signal.name) + "</td><td><i class='table-swatch' style='background:" + esc(state.signal.color) + "'></i></td><td>" + state.signal.regionStart + "</td><td>" + state.signal.regionEnd + "</td><td>" + state.signal.minimum + "</td><td>" + state.signal.minimumTime + "</td><td>" + state.signal.maximum + "</td><td>" + state.signal.maximumTime + "</td><td>" + state.signal.mean + "</td><td>" + state.signal.median + "</td><td>" + state.signal.peakToPeak + "</td><td>" + state.signal.rms + "</td></tr></tbody></table></div>";
   }
   function peaks(state) {
-    return "<div class='data-table-wrap' style='height:100%'><table class='data-table'><thead><tr><th style='width:6%'>№</th><th style='width:24%'>Сигнал</th><th style='width:8%'>Цвет</th><th style='width:14%'>Тип</th><th style='width:16%'>Магнитуда</th><th style='width:18%'>Частота</th><th style='width:14%'>Метка</th></tr></thead><tbody>" + state.extrema.map(function (x) { return "<tr><td>" + x.n + "</td><td>" + x.signal + "</td><td><i class='table-swatch' style='background:" + x.color + "'></i></td><td>" + x.type + "</td><td>" + x.value + "</td><td>" + x.position + "</td><td class='extrema-marker-cell'>" + x.marker + "</td></tr>"; }).join("") + "</tbody></table></div>";
+    var helper=window.SignalAnalyserExtremaTableActions;
+    var status=state.extremaCalculationStatus || (state.extrema.length ? "ready" : "idle");
+    var view=helper ? helper.presentation(status,state.extrema.length) : {layout:state.extrema.length?"table":"surface"};
+    if (view.layout === "surface") return helper ? helper.surfaceMarkup(status,true) : "";
+    var actions=helper ? helper.headerActionsMarkup(base()+"/icons") : "";
+    return "<div class='data-table-wrap extrema-table-wrap' style='height:100%' data-testid='peaks-table'><table class='data-table'><thead><tr><th style='width:6%'>№</th><th style='width:24%'>Сигнал</th><th style='width:8%'>Цвет</th><th style='width:14%'>Тип</th><th style='width:16%'>Магнитуда</th><th style='width:18%'>Частота</th><th style='width:14%'>Метка</th>"+actions+"</tr></thead><tbody>" + state.extrema.map(function (x) { return "<tr><td>" + x.n + "</td><td>" + x.signal + "</td><td><i class='table-swatch' style='background:" + x.color + "'></i></td><td>" + x.type + "</td><td>" + x.value + "</td><td>" + x.position + "</td><td class='extrema-marker-cell'>" + x.marker + "</td><td aria-hidden='true'></td></tr>"; }).join("") + "</tbody></table></div>";
   }
   function samples(state) {
     var page=state.samplePage || { start_offset:0, end_offset:state.sampleRows.length, next_cursor:null, total:state.sampleRows.length };
@@ -33,6 +38,8 @@
   }
   function render(state) {
     document.querySelector("[data-testid='inspector-tabs']").innerHTML = tabs(state);
+    var display=window.SignalAnalyserZones.workspace.activeDisplay(state);
+    var activePane=display && (display.panes.find(function (item) { return item.id === state.activePaneId; }) || display.panes[0]);
     var body = document.querySelector("[data-testid='inspector-content']");
     if (state.inspectorPage === "signals" && body.dataset.inspectorPage === "signals" && state.signalMembershipBusy) {
       var stable=body.querySelector("[data-preserve-checkboxes]");

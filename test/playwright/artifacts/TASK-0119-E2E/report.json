@@ -1,0 +1,205 @@
+{
+  "id": "HND-TASK-0119-E2E",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "e2e_mode": "quick_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "cd5c1c6b7d6cbb13e1e44671c89f30e578d79785",
+  "design_ref": "architecture/design/current/DESIGN.md",
+  "design_version": 32,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "prototype v32 shell is directly usable over file://",
+      "status": "passed",
+      "detail": {
+        "url": "file:///Users/makar/work/Genie_Tests/SignalAnalyser/architecture/design/current/prototype/index.html"
+      }
+    },
+    {
+      "name": "availability and exact production revision",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "cd5c1c6b7d6cbb13e1e44671c89f30e578d79785",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "operation overwrite control exposes box and complete visible label",
+      "status": "passed",
+      "detail": {
+        "label": "Затирать сигнал с таким именем"
+      }
+    },
+    {
+      "name": "read-only regression left workspace state unchanged",
+      "status": "passed",
+      "detail": {
+        "before_revision": 0,
+        "after_revision": 0
+      }
+    },
+    {
+      "name": "no HTTP 500 or page errors",
+      "status": "passed",
+      "detail": {
+        "responses_500": [],
+        "page_errors": [],
+        "console_errors": [
+          "Failed to load resource: the server responded with a status of 404 ()"
+        ]
+      }
+    }
+  ],
+  "skipped_or_not_run": [
+    {
+      "name": "automatic samples / Values focus / editable sample rate / Jet picker",
+      "detail": "The existing production session has no main_signal. E2E did not mutate a user workspace merely to create a binding."
+    },
+    {
+      "name": "spectrum extrema",
+      "detail": "The existing production session has no bound signal; changing plot type would produce an untestable empty spectrum."
+    }
+  ],
+  "errors": [],
+  "page_errors": [],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 404 ()"
+  ],
+  "responses_500": [],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0119-E2E/prototype-v32-initial.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0119-E2E/production-operation-overwrite.png",
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0119-E2E/production-final.png"
+  ],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "tab_cleanup_status": "passed",
+  "started_at": "2026-08-19T11:31:23.028Z",
+  "preexisting_page_urls": [],
+  "preexisting_page_count": 0,
+  "initial_state": {
+    "state_revision": 0,
+    "signals": [
+      {
+        "visible": false,
+        "name": "Гармонический сигнал",
+        "data_type": "Вещественный",
+        "duration_s": 0.24951171875,
+        "id": "signal-150519e6-c2d9-47e4-8148-c9592bb3dff0",
+        "color": "#2563eb",
+        "sample_rate_hz": 2048,
+        "sample_count": 512
+      }
+    ],
+    "displays": [
+      {
+        "peaks_enabled": false,
+        "active_plot": "time",
+        "name": "Экран 1",
+        "spectrum_settings": {
+          "frequency_scale": "linear",
+          "leakage": 0.5,
+          "frequency_limits": null,
+          "scale": "db"
+        },
+        "id": "display-1",
+        "analysis_signal": null,
+        "visible_signals": [],
+        "spectrogram_settings": {
+          "leakage": 0.5,
+          "overlap_percent": 50,
+          "frequency_limits": null,
+          "frequency_scale": "linear",
+          "power_limits": null
+        },
+        "selected_signal": null,
+        "persistence_settings": {
+          "leakage": 0.5
+        },
+        "time_limits": null,
+        "measurement_kinds": [
+          "minimum",
+          "maximum",
+          "mean"
+        ]
+      }
+    ],
+    "layouts": [
+      {
+        "display_id": "display-1",
+        "outputs": [
+          {
+            "pane_id": "pane-1",
+            "signal_bindings": [],
+            "output": {
+              "isready": true,
+              "error": "",
+              "success": true,
+              "data": []
+            },
+            "need_update": false,
+            "isready": true,
+            "analysis_signal": null,
+            "context_key": "display-1::pane-1::time::r0",
+            "error": "",
+            "success": true,
+            "calculation_revision": 0,
+            "page_id": "display-1::pane-1",
+            "display_id": "display-1",
+            "plot_type": "time"
+          }
+        ],
+        "layout": {
+          "variant": "1x1",
+          "rows": 1,
+          "next_pane_number": 2,
+          "panes": [
+            {
+              "name": "Область 1",
+              "signal_bindings": [],
+              "id": "pane-1",
+              "plot_type": "time",
+              "peaks_settings": {
+                "minimum_distance_samples": 1,
+                "threshold": 0,
+                "mode": "maxima",
+                "maximum_cutoff": null,
+                "minimum_cutoff": null,
+                "number_of_peaks": 5
+              }
+            }
+          ],
+          "version": 1,
+          "columns": 1,
+          "active_pane_id": "pane-1"
+        }
+      }
+    ]
+  },
+  "preconditions": {
+    "display_id": "display-1",
+    "pane_id": "pane-1",
+    "plot_type": "time",
+    "main_signal": null,
+    "bindings": []
+  },
+  "finished_at": "2026-08-19T11:31:27.076Z",
+  "planned": 5,
+  "passed": 5,
+  "failed": 0,
+  "success_rate": 100
+}

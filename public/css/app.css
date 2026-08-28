@@ -1644,7 +1644,6 @@ body.is-resizing-workspace * {
 .header-chrome-button[aria-expanded="true"] {
   background: var(--header-chrome-hover-bg);
   color: var(--text);
-  .display-add:hover { background: var(--button-hover); }
 }
 
 .header-chrome-button:not(:disabled):active {
@@ -3807,25 +3806,114 @@ body {
 
 /* TASK-0154 canonical trim form and stacked operation failure alertdialog. */
 .pane-trim-action {
+  box-sizing: border-box;
   width: auto;
   min-width: 0;
-  height: 32px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
   flex: 0 0 auto;
-  padding: 6px 12px;
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 4px 12px;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-right: 0;
+  border-radius: var(--control-radius, 6px) 0 0 var(--control-radius, 6px);
+  outline: 0;
   background: var(--surface);
   color: var(--text);
   font: inherit;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 18px;
   white-space: nowrap;
 }
 
 .pane-trim-action:hover:not(:disabled) { background: var(--surface-muted); }
 .pane-trim-action:active:not(:disabled) { background: var(--button-active, #f2f2f2); }
-.pane-trim-action:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.pane-trim-action:disabled { color: var(--muted); cursor: default; opacity: .62; }
+.pane-trim-action:focus-visible {
+  position: relative;
+  z-index: 2;
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.pane-trim-action:disabled {
+  background: var(--surface-muted);
+  color: var(--muted);
+  cursor: default;
+  opacity: .72;
+}
+
+.plot-control-cluster > .pane-trim-action:not([hidden]) + .pane-select {
+  border-left-color: var(--line);
+  border-radius: 0;
+}
+
+/* V66 pane-header geometry.
+   The cluster's children participate in the header grid as independent cells,
+   so adding the intrinsic-width trim action reduces only the title track. The
+   selector and overflow tracks keep exactly the same width with or without
+   trim. */
+.plot-pane-header {
+  grid-template-columns: minmax(0, 1fr) max-content minmax(148px, 212px) 32px;
+  column-gap: 0;
+}
+
+.plot-pane-header > .plot-pane-title {
+  grid-column: 1;
+  margin-right: 6px;
+}
+
+.plot-pane-header > .plot-control-cluster {
+  display: contents;
+}
+
+.plot-control-cluster > .pane-trim-action {
+  grid-column: 2;
+}
+
+.plot-control-cluster > .pane-select {
+  box-sizing: border-box;
+  grid-column: 3;
+  width: 100%;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  align-self: center;
+}
+
+.plot-control-cluster > .pane-select .select-trigger-input,
+.plot-control-cluster > .pane-select .select-trigger-label,
+.plot-control-cluster > .pane-select .select-trigger-arrow {
+  min-height: 0;
+  height: 100%;
+}
+
+.plot-control-cluster > .pane-select:focus-within,
+.plot-control-cluster > .pane-select.is-open {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.plot-control-cluster > .plot-more {
+  box-sizing: border-box;
+  grid-column: 4;
+  width: 32px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  align-self: center;
+}
+
+.plot-control-cluster > .plot-more:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
 
 .signal-trim-dialog,
 .signal-operation-error-dialog {
@@ -4012,7 +4100,7 @@ body {
 }
 
 .signal-operation-row .value-select-trigger.has-leading-icon .select-trigger-input {
-  padding: 10px 32px 10px 4px;
+  padding: 10px 32px 10px 0;
 }
 
 .signal-operation-row .select-trigger-icon,
@@ -4025,7 +4113,28 @@ body {
 }
 
 .signal-operation-row .select-trigger-icon {
-  margin-left: 8px;
+  box-sizing: border-box;
+  margin: 0 8px 0 12px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.signal-operation-row .value-select-trigger.has-leading-icon {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 0;
+}
+
+.signal-operation-row .value-select-trigger.has-leading-icon::before,
+.signal-operation-row .value-select-trigger.has-leading-icon .select-trigger-icon::before,
+.signal-operation-row .value-select-trigger.has-leading-icon .select-trigger-icon::after {
+  display: none;
+  content: none;
 }
 
 .value-select-popup .select-option.has-leading-icon {
@@ -4141,4 +4250,600 @@ body {
   .signal-operation-dialog {
     width: calc(100vw - 32px);
   }
+}
+
+/* V63: compact inspector extrema action and one-element operation trigger. */
+.inspector-extrema-action {
+  height: 31px;
+  min-width: 96px;
+  max-width: 208px;
+  flex: 0 0 auto;
+  align-self: stretch;
+  padding: 0 12px;
+  overflow: hidden;
+  border-width: 0 0 1px 1px;
+  border-style: solid;
+  border-color: var(--accent);
+  border-radius: 0;
+  font-size: 13px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector-extrema-action[hidden] { display: none; }
+.inspector-extrema-action:focus-visible { outline-offset: -3px; }
+
+.signal-operation-row .value-select-trigger.is-button-trigger {
+  appearance: none;
+  text-align: left;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger .select-trigger-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  padding: 10px 32px 10px 0;
+  overflow: hidden;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger:disabled .select-trigger-label {
+  color: var(--muted);
+}
+/* TASK-0164 canonical dropdown surfaces and delayed hover/focus tooltips. */
+:root {
+  --signal-analyser-tooltip-delay: 1500ms;
+  --signal-analyser-overlay-inset: 8px;
+  --signal-analyser-overlay-gap: 4px;
+}
+
+select[data-dropdown-trigger],
+.value-select-trigger,
+[data-dropdown-trigger][role="combobox"] {
+  box-sizing: border-box;
+  min-width: 0;
+  height: 32px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius, 6px);
+  background-color: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+select[data-dropdown-trigger] {
+  width: 100%;
+  appearance: none;
+  padding: 6px 28px 6px 8px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%236b6b6b' d='M3.3 5.5 8 10.2l4.7-4.7z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 4px center;
+  background-size: 16px 16px;
+}
+
+select[data-dropdown-trigger]:hover:not(:disabled),
+.value-select-trigger:hover:not([data-value-select-disabled="true"]),
+[data-dropdown-trigger][role="combobox"]:hover:not([aria-disabled="true"]) {
+  border-color: var(--line-strong, var(--muted));
+}
+
+select[data-dropdown-trigger]:focus-visible,
+.value-select-trigger:focus-within,
+[data-dropdown-trigger][role="combobox"]:focus-visible,
+.value-select-trigger.is-open,
+[data-dropdown-trigger][role="combobox"][aria-expanded="true"] {
+  border-color: var(--accent);
+  outline: 0;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+select[data-dropdown-trigger]:disabled,
+.value-select-trigger[data-value-select-disabled="true"],
+[data-dropdown-trigger][role="combobox"][aria-disabled="true"] {
+  background-color: var(--surface-muted);
+  color: var(--muted);
+  cursor: default;
+  opacity: .72;
+}
+
+.signal-operation-row select[data-dropdown-trigger],
+.signal-operation-row [data-dropdown-trigger][role="combobox"],
+.signal-operation-row .value-select-trigger {
+  height: 40px;
+  min-height: 40px;
+}
+
+[data-dropdown-surface][role="listbox"],
+.value-select-popup[data-dropdown-surface] {
+  max-height: min(240px, calc(100vh - 16px));
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: var(--control-radius, 6px);
+  background: var(--surface);
+  box-shadow: var(--shadow-dialog);
+}
+
+[data-dropdown-surface][role="menu"] {
+  box-sizing: border-box;
+  max-height: min(360px, calc(100vh - 16px));
+  overflow: auto;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--control-radius, 6px);
+  background: var(--surface);
+  box-shadow: var(--shadow-dialog);
+}
+
+[data-dropdown-surface][role="listbox"] [role="option"] {
+  min-height: 34px;
+}
+
+[data-dropdown-surface][role="menu"] [role^="menuitem"] {
+  min-height: 28px;
+}
+
+[data-dropdown-option] {
+  box-sizing: border-box;
+  border: 0;
+  background: var(--surface);
+  color: var(--text);
+}
+
+[data-dropdown-option]:not(:disabled):hover,
+[data-dropdown-option].is-active {
+  background: var(--option-hover, var(--surface-muted));
+}
+
+[data-dropdown-option]:not(:disabled):active {
+  background: var(--button-active);
+}
+
+[data-dropdown-option].is-selected,
+[data-dropdown-option][aria-selected="true"] {
+  color: var(--text);
+}
+
+[data-dropdown-option]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+[data-dropdown-option]:disabled,
+[data-dropdown-option][aria-disabled="true"] {
+  color: var(--muted);
+  cursor: default;
+  opacity: .72;
+}
+
+.tooltip[data-canonical-tooltip],
+.ui-tooltip[data-canonical-tooltip] {
+  position: fixed;
+  z-index: var(--layer-tooltip, var(--z-tooltip, 10000));
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(260px, calc(100vw - 16px));
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--surface);
+  box-shadow: var(--shadow-dialog);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 14px;
+  text-align: center;
+  overflow-wrap: anywhere;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-4px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.tooltip[data-canonical-tooltip][hidden],
+.ui-tooltip[data-canonical-tooltip][hidden] {
+  display: none;
+}
+
+.tooltip[data-canonical-tooltip].is-visible,
+.ui-tooltip[data-canonical-tooltip].is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tooltip[data-canonical-tooltip]::before,
+.ui-tooltip[data-canonical-tooltip]::before {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip[data-canonical-tooltip],
+  .ui-tooltip[data-canonical-tooltip] { transition: none; }
+}
+
+/* V67: centered trim and one visual pane-selector chrome owner. */
+.plot-control-cluster > .pane-trim-action {
+  align-self: center;
+}
+
+/* The pane-select is the sole visual control. Its readonly combobox child is
+   semantic content only and must not receive the generic standalone dropdown
+   chrome in any pointer or keyboard state. */
+.plot-control-cluster > .pane-select > .select-trigger-input[data-dropdown-trigger][role="combobox"],
+.plot-control-cluster > .pane-select > .select-trigger-input[data-dropdown-trigger][role="combobox"]:hover,
+.plot-control-cluster > .pane-select > .select-trigger-input[data-dropdown-trigger][role="combobox"]:focus-visible {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* V65: pane-owned extrema actions and persistent marker projection. */
+.settings-extrema-actions,
+.inspector-extrema-actions {
+  display: flex;
+  align-items: stretch;
+}
+
+.settings-extrema-actions {
+  gap: 8px;
+}
+
+.settings-extrema-actions[hidden],
+.inspector-extrema-actions[hidden] {
+  display: none;
+}
+
+.settings-extrema-clear {
+  min-width: 80px;
+}
+
+.inspector-extrema-actions {
+  height: 31px;
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+.inspector-extrema-actions .inspector-extrema-action {
+  align-self: stretch;
+}
+
+.inspector-extrema-clear {
+  min-width: 80px;
+  max-width: 128px;
+  height: 31px;
+  padding: 0 12px;
+  overflow: hidden;
+  border-width: 0 0 1px 1px;
+  border-style: solid;
+  border-color: var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector-extrema-clear:not(:disabled):hover {
+  background: var(--surface-muted);
+}
+
+.inspector-extrema-clear:not(:disabled):active {
+  background: var(--button-active);
+}
+
+.inspector-extrema-clear:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.inspector-extrema-clear:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+
+/* V68: extrema actions belong to the ready table or centered no-table surface. */
+.inspector-header > .inspector-extrema-actions { display: none !important; }
+
+.extrema-table-actions-cell {
+  box-sizing: border-box;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+  height: 32px;
+  padding: 0 !important;
+}
+
+.extrema-table-actions {
+  width: 64px;
+  height: 31px;
+  display: grid;
+  grid-template-columns: repeat(2, 32px);
+  margin-left: auto;
+}
+
+.extrema-table-icon-action {
+  box-sizing: border-box;
+  width: 32px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.extrema-table-icon-action + .extrema-table-icon-action { border-left: 1px solid var(--line); }
+.extrema-table-icon-action:not(:disabled):hover { background: var(--surface); }
+.extrema-table-icon-action:not(:disabled):active { background: var(--button-active); }
+.extrema-table-icon-action:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.extrema-table-icon-action:disabled { color: var(--muted); cursor: default; opacity: .72; }
+.extrema-table-icon-action img { width: 16px; height: 16px; display: block; }
+
+.extrema-no-table-state {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--surface);
+}
+
+.extrema-no-table-content {
+  max-width: 360px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.extrema-no-table-copy { margin: 0; color: var(--muted); font-size: 13px; line-height: 18px; }
+.extrema-no-table-copy[role="alert"] { color: var(--danger); }
+.extrema-no-table-actions { display: grid; justify-items: center; gap: 8px; }
+.extrema-surface-calculate,
+.extrema-surface-configure { min-height: 32px; }
+
+.extrema-surface-calculate { min-width: 112px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.extrema-surface-configure { min-width: 144px; }
+.extrema-calculate-spinner {
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,.42);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: loader-rotate 800ms linear infinite;
+}
+.extrema-calculate-spinner[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .extrema-calculate-spinner { animation-duration: 1600ms; } }
+
+/* V69 — global Primary processing state, analytical header hover and compact operation form. */
+:root {
+  --primary-processing: #75b5d4;
+  --primary-processing-spinner: #ffffff;
+}
+
+.button-primary[aria-busy="true"],
+.ui-button-primary[aria-busy="true"],
+.signal-color-picker-action.is-primary[aria-busy="true"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-color: var(--primary-processing);
+  background: var(--primary-processing);
+  color: var(--primary-processing-spinner);
+  opacity: 1;
+  cursor: default;
+}
+
+.button-primary[aria-busy="true"]::before,
+.ui-button-primary[aria-busy="true"]::before,
+.signal-color-picker-action.is-primary[aria-busy="true"]::before {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  box-sizing: border-box;
+  border: 2px solid rgba(255,255,255,.38);
+  border-top-color: var(--primary-processing-spinner);
+  border-radius: 50%;
+  content: "";
+  animation: primary-processing-spin 900ms linear infinite;
+}
+
+.button-primary[aria-busy="true"]:hover,
+.button-primary[aria-busy="true"]:active,
+.ui-button-primary[aria-busy="true"]:hover,
+.ui-button-primary[aria-busy="true"]:active,
+.signal-color-picker-action.is-primary[aria-busy="true"]:hover,
+.signal-color-picker-action.is-primary[aria-busy="true"]:active {
+  border-color: var(--primary-processing);
+  background: var(--primary-processing);
+  color: var(--primary-processing-spinner);
+}
+
+/* One spinner owner per Primary control. */
+.button-primary[aria-busy="true"] .extrema-calculate-spinner,
+.ui-button-primary[aria-busy="true"] .extrema-calculate-spinner { display: none; }
+
+@keyframes primary-processing-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .button-primary[aria-busy="true"]::before,
+  .ui-button-primary[aria-busy="true"]::before,
+  .signal-color-picker-action.is-primary[aria-busy="true"]::before { animation-duration: 1600ms; }
+}
+
+/* Exact inspector-state-toggle hover for workspace header controls. */
+.display-add.header-chrome-button:not(:disabled):hover,
+.layout-trigger.header-chrome-button:not(:disabled):hover {
+  background: var(--button-active);
+  color: var(--accent);
+}
+
+.display-add.header-chrome-button > img,
+.layout-trigger.header-chrome-button > .layout-chevron { display: none; }
+
+.display-add.header-chrome-button::before,
+.layout-trigger.header-chrome-button::after {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  background: currentColor;
+  content: "";
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.display-add.header-chrome-button::before {
+  -webkit-mask-image: url("../icons/plus.svg");
+  mask-image: url("../icons/plus.svg");
+}
+
+.layout-trigger.header-chrome-button::after {
+  -webkit-mask-image: url("../icons/chevron-down-fill-16.svg");
+  mask-image: url("../icons/chevron-down-fill-16.svg");
+  transition: transform var(--duration-fast) ease;
+}
+
+.layout-trigger.header-chrome-button[aria-expanded="true"] {
+  background: var(--surface);
+  color: var(--text);
+}
+.layout-trigger.header-chrome-button[aria-expanded="true"]::after { transform: rotate(180deg); }
+.layout-trigger.header-chrome-button[aria-expanded="true"]:hover {
+  background: var(--button-active);
+  color: var(--accent);
+}
+
+/* V70: Figma Modal MD with one canonical 32px outer track for every
+   single-line input and dropdown. */
+.signal-operation-dialog {
+  width: 480px;
+  min-width: 0;
+  max-width: calc(100vw - 32px);
+}
+
+.signal-operation-row {
+  grid-template-columns: 152px minmax(0, 1fr);
+  column-gap: 12px;
+  min-height: 32px;
+  gap: 12px;
+}
+
+.signal-operation-control,
+.signal-operation-row .value-select-trigger,
+.signal-operation-row .value-select-trigger[data-value-select-key],
+.signal-operation-row [data-dropdown-trigger][role="combobox"],
+.signal-operation-row select[data-dropdown-trigger],
+.signal-operation-row select,
+.signal-operation-row input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  line-height: 18px;
+}
+
+.signal-operation-control-wrap {
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.signal-operation-row input:not([type="checkbox"]),
+.signal-operation-row select { padding: 6px 12px; }
+
+/* A ValueSelect owns one outer border. Its semantic input is content, not a
+   second control nested inside the field. */
+.signal-operation-row .value-select-trigger:not(.is-button-trigger) > .select-trigger-input,
+.signal-operation-row.has-error .value-select-trigger:not(.is-button-trigger) > .select-trigger-input {
+  height: 30px;
+  min-height: 30px;
+  padding: 5px 32px 5px 12px;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 12px;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger .select-trigger-icon {
+  margin: 0;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger .select-trigger-label {
+  padding: 0;
+  line-height: 18px;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger .select-trigger-arrow {
+  margin-left: auto;
+}
+
+.signal-operation-row .value-select-trigger[aria-invalid="true"] {
+  border: 2px solid var(--danger);
+}
+
+.signal-operation-row.has-error input:not([type="checkbox"]),
+.signal-operation-row.has-error select { padding: 5px 11px; }
+
+.signal-operation-row textarea { min-height: 120px; }
+.signal-operation-unit { display: none; }
+.signal-operation-row > label,
+.signal-operation-row > .signal-operation-label {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+
+.signal-operation-availability,
+.signal-operation-auto-note { margin-left: 164px; }
+
+@media (max-width: 511px) {
+  .signal-operation-row { grid-template-columns: 1fr; row-gap: 4px; }
+  .signal-operation-row > label,
+  .signal-operation-row > .signal-operation-label { min-height: auto; }
+  .signal-operation-field-message,
+  .signal-operation-field-hint,
+  .signal-operation-availability,
+  .signal-operation-auto-note { grid-column: 1; margin-left: 0; }
+  .signal-operation-overwrite-row .checkbox-field { grid-column: 1; }
 }

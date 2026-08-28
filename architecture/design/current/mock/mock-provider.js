@@ -11,24 +11,25 @@
         dynamicSamplesOpen: false,
         mainSignalName: "radarPulse",
         dirty: false,
+        extremaCalculationStatus: "success",
         displays: [
           { id: "display-1", name: "Экран 1", panes: [
-            { id: "pane-spectrum", name: "Спектр приёмника", type: "spectrum", frequencySlider: true, magnitudeSlider: true },
-            { id: "pane-time", name: "Импульс во времени", type: "time", frequencySlider: false, magnitudeSlider: false }
+            { id: "pane-spectrum", name: "Спектр приёмника", type: "spectrum", frequencySlider: true, magnitudeSlider: true, graphSignalIds:["signal-radar-pulse","signal-echo-complex"], extremaBySignal:{ "signal-radar-pulse":[{ sample:184200, x:184.2, y:-3.18, is_maximum:true },{ sample:368400, x:368.4, y:-18.42, is_maximum:true }], "signal-echo-complex":[{ sample:552700, x:552.7, y:-24.10, is_maximum:true }] }, isExtremaReady:true, success:true, error:"", needUpdate:false },
+            { id: "pane-time", name: "Импульс во времени", type: "time", frequencySlider: false, magnitudeSlider: false, graphSignalIds:["signal-radar-pulse","signal-echo-complex"], extremaBySignal:{}, isExtremaReady:false, success:false, error:"", needUpdate:true }
           ] },
           { id: "display-3", name: "ВЧ-контроль", panes: [] }
         ],
         links: { time: false, amplitude: false, spectrumFrequency: true, spectrumMagnitude: false },
         signal: { name: "radarPulse", color: "#2563eb", sampleRate: "1000000", samples: 400000, duration: "399,999 мс", regionStart: "0 мс", regionEnd: "399,999 мс", minimum: "−0,984", minimumTime: "291,503 мс", maximum: "1,000", maximumTime: "386,230 мс", rms: "0,516", mean: "0,008", median: "0,006", peakToPeak: "1,984", type: "Вещественный" },
         signals: [
-          { name: "radarPulse", color: "#2563eb", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный", visible:true },
-          { name: "echoComplex", color: "#dc2626", sampleRate: "1 МГц", count: "348 000", duration: "347,999 мс", type: "Комплексный", visible:true },
-          { name: "noiseFloor", color: "#16a34a", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный", visible:false }
+          { id:"signal-radar-pulse", name: "radarPulse", color: "#2563eb", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный", visible:true },
+          { id:"signal-echo-complex", name: "echoComplex", color: "#dc2626", sampleRate: "1 МГц", count: "348 000", duration: "347,999 мс", type: "Комплексный", visible:true },
+          { id:"signal-noise-floor", name: "noiseFloor", color: "#16a34a", sampleRate: "1 МГц", count: "400 000", duration: "399,999 мс", type: "Вещественный", visible:false }
         ],
         extrema: [
-          { n: 1, signal: "radarPulse", color: "#2563eb", type: "Максимум", value: "−3,18 dB", position: "184,2 кГц", marker: "▲ 1" },
-          { n: 2, signal: "radarPulse", color: "#2563eb", type: "Максимум", value: "−18,42 dB", position: "368,4 кГц", marker: "▲ 2" },
-          { n: 3, signal: "echoComplex", color: "#dc2626", type: "Максимум", value: "−24,10 dB", position: "552,7 кГц", marker: "▲ 3" }
+          { n: 1, signal: "radarPulse", color: "#2563eb", type: "Максимум", value: "−3,18 дБ", position: "184,2 кГц", marker: "▲ 1" },
+          { n: 2, signal: "radarPulse", color: "#2563eb", type: "Максимум", value: "−18,42 дБ", position: "368,4 кГц", marker: "▲ 2" },
+          { n: 3, signal: "echoComplex", color: "#dc2626", type: "Максимум", value: "−24,10 дБ", position: "552,7 кГц", marker: "▲ 3" }
         ],
         samplePage: { start_offset:0, end_offset:12, next_cursor:12, total:400000 },
         sampleColumnVisibility: { magnitude:false, square:false, signed_square_root_magnitude:false },
@@ -52,6 +53,25 @@
       return Promise.resolve({ displayId:displayId, stateRevision:30, accepted:true });
     },
     onApply: function () { return new Promise(function (resolve) { window.setTimeout(resolve, 260); }); },
-    onOperation: function (payload) { return new Promise(function (resolve, reject) { window.setTimeout(function () { if (payload && /missing_variable/.test(payload.body || "")) reject(new Error("Engee: имя missing_variable не определено.")); else resolve(); }, 620); }); }
+    onCalculateExtrema: function (request) {
+      return new Promise(function (resolve) {
+        window.setTimeout(function () {
+          resolve({
+            status:"ready",
+            contextKey:request.contextKey,
+            paneExtrema:{ extremaBySignal:{ "signal-radar-pulse":[{ sample:184200, x:184.2, y:-3.18, is_maximum:true },{ sample:368400, x:368.4, y:-18.42, is_maximum:true }], "signal-echo-complex":[{ sample:552700, x:552.7, y:-24.10, is_maximum:true }] }, isExtremaReady:true, success:true, error:"", needUpdate:false },
+            rows:[
+              { n:1, signal:"radarPulse", color:"#2563eb", type:"Максимум", value:"−3,18 дБ", position:"184,2 кГц", marker:"▲ 1" },
+              { n:2, signal:"radarPulse", color:"#2563eb", type:"Максимум", value:"−18,42 дБ", position:"368,4 кГц", marker:"▲ 2" },
+              { n:3, signal:"echoComplex", color:"#dc2626", type:"Максимум", value:"−24,10 дБ", position:"552,7 кГц", marker:"▲ 3" }
+            ]
+          });
+        },420);
+      });
+    },
+    onClearExtrema: function () {
+      return Promise.resolve({success:true});
+    },
+    onOperation: function (payload) { return new Promise(function (resolve, reject) { window.setTimeout(function () { if (payload && /missing_variable/.test(payload.parameters && payload.parameters.body || "")) reject(new Error("Engee: имя missing_variable не определено.")); else resolve(); }, 620); }); }
   };
 }());

@@ -3,11 +3,22 @@
   var base = function () { return window.SignalAnalyserUIBase; };
   function esc(value) { return String(value).replace(/[&<>"']/g, function (c) { return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]; }); }
   function activeDisplay(state) { return state.displays.find(function (item) { return item.id === state.activeDisplayId; }) || state.displays[0]; }
-  function spectrumSvg() {
-    return "<svg class='plot-svg' viewBox='0 0 100 60' preserveAspectRatio='none' aria-label='Спектр с тремя отмеченными экстремумами'>" +
+  function extremaSvg(pane) {
+    var helper=window.SignalAnalyserPaneExtrema;
+    var records=helper ? helper.markerRecords(pane,pane.graphSignalIds || []) : [];
+    var positions=[[39,8],[62,46.5],[82,50]];
+    return records.map(function (item,index) {
+      var point=positions[index % positions.length], x=point[0], y=point[1];
+      var path=item.isMaximum ? "M0 -2.2 L2 1.4 L-2 1.4 Z" : "M0 2.2 L2 -1.4 L-2 -1.4 Z";
+      return "<g class='extrema-marker' data-signal-id='"+esc(item.signalId)+"' data-is-maximum='"+String(item.isMaximum)+"' transform='translate("+x+" "+y+")'><path class='plot-peak extrema-marker-symbol' d='"+path+"'/><text class='plot-peak-label' x='2' y='-1.5'>"+(index+1)+"</text></g>";
+    }).join("");
+  }
+  function spectrumSvg(pane) {
+    var markers=extremaSvg(pane);
+    return "<svg class='plot-svg' viewBox='0 0 100 60' preserveAspectRatio='none' aria-label='Спектр" + (markers ? " с рассчитанными экстремумами" : "") + "'>" +
       "<path class='plot-gridline' d='M0 15H100M0 30H100M0 45H100M25 0V60M50 0V60M75 0V60'/><path class='plot-axis' d='M0 0V60H100'/>" +
       "<path class='plot-line' d='M0 54 L6 51 L11 49 L18 46 L25 44 L31 40 L35 34 L39 8 L42 30 L46 41 L52 44 L58 46 L64 47 L70 48 L76 49 L82 50 L88 51 L94 51 L100 52'/>" +
-      "<circle class='plot-peak' cx='39' cy='8' r='1.8'/><text class='plot-peak-label' x='41' y='7'>1</text><circle class='plot-peak' cx='62' cy='46.5' r='1.8'/><text class='plot-peak-label' x='64' y='45'>2</text><circle class='plot-peak' cx='82' cy='50' r='1.8'/><text class='plot-peak-label' x='84' y='48.5'>3</text></svg>";
+      markers + "</svg>";
   }
   function timeSvg() {
     return "<svg class='plot-svg' viewBox='0 0 100 60' preserveAspectRatio='none' aria-label='Временная область'>" +
@@ -35,8 +46,8 @@
     });
     return "<article class='plot-pane" + (active ? " is-active" : "") + "' data-pane-id='" + esc(pane.id) + "' data-testid='plot-pane-" + esc(pane.id) + "' tabindex='0'>" +
       "<header class='plot-pane-header'><span class='plot-pane-name'>" + esc(pane.name) + "</span>" + paneType + "<button class='header-chrome-button' type='button' aria-label='Меню области'><img src='" + base() + "/icons/more-vertical.svg' alt=''></button></header>" +
-      "<div class='plot-canvas'>" + (spectrum ? spectrumSvg() : timeSvg()) +
-      "<span class='plot-axis-label x'>" + (spectrum ? "Частота, кГц" : "Время, мс") + "</span><span class='plot-axis-label y'>" + (spectrum ? "Магнитуда, dB" : "Амплитуда") + "</span>" +
+      "<div class='plot-canvas'>" + (spectrum ? spectrumSvg(pane) : timeSvg()) +
+      "<span class='plot-axis-label x'>" + (spectrum ? "Частота, кГц" : "Время, мс") + "</span><span class='plot-axis-label y'>" + (spectrum ? "Магнитуда, дБ" : "Амплитуда") + "</span>" +
       "<div class='plot-legend'><div class='legend-row'><i class='legend-line'></i><span>radarPulse</span></div></div>" +
       (spectrum && pane.frequencySlider ? "<div class='plot-horizontal-slider' data-testid='pane-frequency-slider'><i class='slider-track'></i><i class='slider-window'></i><button class='slider-handle min' aria-label='Минимальная частота'></button><button class='slider-handle max' aria-label='Максимальная частота'></button></div>" : "") +
       (spectrum && pane.magnitudeSlider ? "<div class='plot-vertical-slider' data-testid='pane-magnitude-slider'><i class='slider-track'></i><i class='slider-window'></i><button class='slider-handle max' aria-label='Максимальная магнитуда'></button><button class='slider-handle min' aria-label='Минимальная магнитуда'></button></div>" : "") +

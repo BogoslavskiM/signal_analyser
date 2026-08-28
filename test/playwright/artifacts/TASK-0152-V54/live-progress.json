@@ -1,0 +1,232 @@
+[
+  {
+    "at": "2026-08-24T19:57:48.356Z",
+    "step": "temporary-display-deleted",
+    "displayId": "display-6"
+  },
+  {
+    "at": "2026-08-24T19:57:48.414Z",
+    "step": "cleanup-tabs-verified",
+    "displays": [
+      {
+        "id": "display-1",
+        "active": true
+      }
+    ]
+  },
+  {
+    "at": "2026-08-24T19:58:52.775Z",
+    "step": "temporary-display-created",
+    "displayId": "display-7",
+    "source": "Гармонический сигнал"
+  },
+  {
+    "at": "2026-08-24T19:58:56.243Z",
+    "step": "time-plot-ready",
+    "displayId": "display-7",
+    "paneHost": "display-7::pane-1"
+  },
+  {
+    "at": "2026-08-24T19:58:56.358Z",
+    "step": "dual-cursor-enabled"
+  },
+  {
+    "at": "2026-08-24T19:58:57.040Z",
+    "step": "temporary-display-deleted",
+    "displayId": "display-7"
+  },
+  {
+    "at": "2026-08-24T19:58:57.088Z",
+    "step": "cleanup-tabs-verified",
+    "displays": [
+      {
+        "id": "display-1",
+        "active": true
+      }
+    ]
+  },
+  {
+    "at": "2026-08-24T20:00:01.982Z",
+    "step": "temporary-display-created",
+    "displayId": "display-8",
+    "source": "Гармонический сигнал"
+  },
+  {
+    "at": "2026-08-24T20:00:02.378Z",
+    "step": "time-plot-ready",
+    "displayId": "display-8",
+    "paneHost": "display-8::pane-1"
+  },
+  {
+    "at": "2026-08-24T20:00:02.475Z",
+    "step": "dual-cursor-enabled"
+  },
+  {
+    "at": "2026-08-24T20:00:02.939Z",
+    "step": "measurement-cursor-columns",
+    "forbiddenRequests": []
+  },
+  {
+    "at": "2026-08-24T20:00:03.258Z",
+    "step": "temporary-display-deleted",
+    "displayId": "display-8"
+  },
+  {
+    "at": "2026-08-24T20:00:03.309Z",
+    "step": "cleanup-tabs-verified",
+    "displays": [
+      {
+        "id": "display-1",
+        "active": true
+      }
+    ]
+  },
+  {
+    "at": "2026-08-26T12:45:20.545Z",
+    "step": "temporary-display-created",
+    "displayId": "display-3",
+    "source": "Гармонический сигнал"
+  },
+  {
+    "at": "2026-08-26T12:45:22.960Z",
+    "step": "time-plot-ready",
+    "displayId": "display-3",
+    "paneHost": "display-3::pane-1"
+  },
+  {
+    "at": "2026-08-26T12:45:23.073Z",
+    "step": "dual-cursor-enabled"
+  },
+  {
+    "at": "2026-08-26T12:45:23.709Z",
+    "step": "measurement-cursor-columns",
+    "forbiddenRequests": []
+  },
+  {
+    "at": "2026-08-26T12:45:34.172Z",
+    "step": "temporary-display-deleted",
+    "displayId": "display-3"
+  },
+  {
+    "at": "2026-08-26T12:45:34.238Z",
+    "step": "cleanup-tabs-verified",
+    "displays": [
+      {
+        "id": "display-1",
+        "active": false
+      },
+      {
+        "id": "display-2",
+        "active": true
+      }
+    ]
+  },
+  {
+    "at": "2026-08-26T12:55:36.360Z",
+    "step": "temporary-display-created",
+    "displayId": "display-4",
+    "source": "Гармонический сигнал"
+  },
+  {
+    "at": "2026-08-26T12:55:37.380Z",
+    "step": "time-plot-ready",
+    "displayId": "display-4",
+    "paneHost": "display-4::pane-1"
+  },
+  {
+    "at": "2026-08-26T12:55:37.527Z",
+    "step": "dual-cursor-enabled"
+  },
+  {
+    "at": "2026-08-26T12:55:38.376Z",
+    "step": "measurement-cursor-columns",
+    "forbiddenRequests": []
+  },
+  {
+    "at": "2026-08-26T13:32:50.189Z",
+    "step": "temporary-display-created",
+    "displayId": "display-2",
+    "source": "Гармонический сигнал"
+  },
+  {
+    "at": "2026-08-26T13:32:52.719Z",
+    "step": "time-plot-ready",
+    "displayId": "display-2",
+    "paneHost": "display-2::pane-1"
+  },
+  {
+    "at": "2026-08-26T13:32:52.973Z",
+    "step": "dual-cursor-enabled"
+  },
+  {
+    "at": "2026-08-26T13:32:53.683Z",
+    "step": "measurement-cursor-columns",
+    "forbiddenRequests": []
+  },
+  {
+    "at": "2026-08-26T13:33:24.435Z",
+    "step": "temporary-display-deleted",
+    "displayId": "display-2"
+  },
+  {
+    "at": "2026-08-26T13:33:24.528Z",
+    "step": "cleanup-tabs-verified",
+    "displays": [
+      {
+        "id": "display-1",
+        "active": true
+      }
+    ]
+  },
+  {
+    "at": "2026-08-26T13:35:06.884Z",
+    "step": "temporary-display-created",
+    "displayId": "display-3",
+    "source": "Гармонический сигнал"
+  },
+  {
+    "at": "2026-08-26T13:35:07.269Z",
+    "step": "time-plot-ready",
+    "displayId": "display-3",
+    "paneHost": "display-3::pane-1"
+  },
+  {
+    "at": "2026-08-26T13:35:07.468Z",
+    "step": "dual-cursor-enabled"
+  },
+  {
+    "at": "2026-08-26T13:35:08.036Z",
+    "step": "measurement-cursor-columns",
+    "forbiddenRequests": []
+  },
+  {
+    "at": "2026-08-26T13:35:18.232Z",
+    "step": "temporary-display-deleted",
+    "displayId": "display-3"
+  },
+  {
+    "at": "2026-08-26T13:35:18.332Z",
+    "step": "cleanup-tabs-verified",
+    "displays": [
+      {
+        "id": "display-1",
+        "active": true
+      }
+    ]
+  },
+  {
+    "at": "2026-08-27T13:42:52.435Z",
+    "step": "temporary-display-deleted",
+    "displayId": "display-3"
+  },
+  {
+    "at": "2026-08-27T13:42:52.634Z",
+    "step": "cleanup-tabs-verified",
+    "displays": [
+      {
+        "id": "display-1",
+        "active": true
+      }
+    ]
+  }
+]

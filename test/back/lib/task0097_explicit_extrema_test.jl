@@ -32,22 +32,53 @@ function task0097_explicit_provider()
     )
 end
 
+"""Spectrum double that parks only the graph's first provider call."""
+mutable struct Task0755BlockingSpectrumProvider <: TASK0097_EXPLICIT_EXTREMA.AbstractSignalSpectrumProvider
+    calls::Threads.Atomic{Int}
+    started::Channel{Nothing}
+    release::Channel{Nothing}
+end
+
+function TASK0097_EXPLICIT_EXTREMA.signal_spectrum_calculate(
+    provider::Task0755BlockingSpectrumProvider,
+    query::TASK0097_EXPLICIT_EXTREMA.SignalSpectrumQuery,
+)::TASK0097_EXPLICIT_EXTREMA.SignalSpectrumData
+    call_number = Threads.atomic_add!(provider.calls, 1) + 1
+    if call_number == 1
+        put!(provider.started, nothing)
+        take!(provider.release)
+    end
+    TASK0097_EXPLICIT_EXTREMA.SignalSpectrumData(
+        [0.0, query.sample_rate_hz / 2],
+        [1.0, 4.0],
+        query.topology,
+    )
+end
+
+struct Task0755ReadyPeaksProvider <: TASK0097_EXPLICIT_EXTREMA.AbstractPeaksProvider end
+
+function TASK0097_EXPLICIT_EXTREMA.signal_peaks_detect(
+    ::Task0755ReadyPeaksProvider,
+    query::TASK0097_EXPLICIT_EXTREMA.SignalPeaksQuery,
+)
+    TASK0097_EXPLICIT_EXTREMA.SignalPeaksProviderResult(
+        [4.0], [2], [1.0], [1.0], length(query.values),
+    )
+end
+
 function task0097_bind_and_enable_extrema!(state)
     signal_name = only(state.signals).name
     pane_id = state.display_layouts[state.active_display_id].active_pane_id
-    TASK0097_EXPLICIT_EXTREMA.apply_signal_analyser_layout!(state, Dict(
-        "state_revision" => state.view.state_revision,
-        "operation" => "update_pane",
-        "display_id" => state.active_display_id,
-        "version" => 1,
-        "pane_id" => pane_id,
-        "plot_type" => "time",
-        "signal_bindings" => [signal_name],
-    ); lightweight = true)
     TASK0097_EXPLICIT_EXTREMA.apply_signal_analyser_view!(state, Dict(
         "state_revision" => state.view.state_revision,
+        "active_plot" => "time",
+        "row_selected_signal" => signal_name,
+        "analysis_signal" => signal_name,
+        "selected_signal" => signal_name,
+        "visible_signals" => [signal_name],
+        "measurement_kinds" => String[],
         "peaks_enabled" => true,
-    ))
+    ); lightweight = true)
     pane_id
 end
 
@@ -147,7 +178,7 @@ end
     @test length(ready["data"]["rows"]) == 1
     @test length(provider.calls) == 1
 
-    cached = TASK0097_EXPLICIT_EXTREMA.calculate_signal_analyser_active_peaks!(
+    recalculation = TASK0097_EXPLICIT_EXTREMA.calculate_signal_analyser_active_peaks!(
         state,
         Dict(
             "state_revision" => state.view.state_revision,
@@ -155,9 +186,85 @@ end
             "pane_id" => pane_id,
         ),
     )
-    @test cached["isready"] === true && cached["success"] === true
-    @test length(provider.calls) == 1
-    @test manager.active_task === nothing
+    @test recalculation["isready"] === false && recalculation["success"] === false
+    take!(provider.started)
+    recalculate_worker = manager.peaks_task
+    @test recalculate_worker isa Task
+    @test length(provider.calls) == 2
+    put!(provider.release, nothing)
+    wait(recalculate_worker::Task)
+    recalculated = TASK0097_EXPLICIT_EXTREMA.signal_analyser_active_peaks(
+        state, "display-1", pane_id,
+    )
+    @test recalculated["isready"] === true && recalculated["success"] === true
+    @test manager.peaks_task === nothing
+end
+
+@testset "HND-0755 extrema worker completes while an independent graph worker is busy" begin
+    spectrum = Task0755BlockingSpectrumProvider(
+        Threads.Atomic{Int}(0), Channel{Nothing}(1), Channel{Nothing}(1),
+    )
+    state = TASK0097_EXPLICIT_EXTREMA.default_signal_analyser_state(
+        peaks_provider = Task0755ReadyPeaksProvider(),
+        spectrum_provider = spectrum,
+    )
+    display_id = state.active_display_id
+    pane_id = state.display_layouts[display_id].active_pane_id
+    signal_name = only(state.signals).name
+    TASK0097_EXPLICIT_EXTREMA.apply_signal_analyser_view!(state, Dict(
+        "state_revision" => state.view.state_revision,
+        "active_plot" => "spectrum",
+        "row_selected_signal" => signal_name,
+        "analysis_signal" => signal_name,
+        "selected_signal" => signal_name,
+        "visible_signals" => [signal_name],
+        "measurement_kinds" => String[],
+        "peaks_enabled" => true,
+    ); lightweight = true)
+
+    graph_worker = nothing
+    graph_released = false
+    try
+        graph_pending = TASK0097_EXPLICIT_EXTREMA.signal_analyser_active_output(
+            state, display_id, pane_id,
+        )
+        @test graph_pending["isready"] === false && graph_pending["success"] === false
+        take!(spectrum.started)
+        graph_worker = state.output_manager.active_task
+        @test graph_worker isa Task && !istaskdone(graph_worker::Task)
+
+        peaks_pending = TASK0097_EXPLICIT_EXTREMA.calculate_signal_analyser_active_peaks!(
+            state,
+            Dict(
+                "state_revision" => state.view.state_revision,
+                "display_id" => display_id,
+                "pane_id" => pane_id,
+            ),
+        )
+        @test peaks_pending["isready"] === false && peaks_pending["success"] === false
+        peaks_worker = state.output_manager.peaks_task
+        @test peaks_worker isa Task && peaks_worker !== graph_worker
+        wait(peaks_worker::Task)
+
+        peaks_ready = TASK0097_EXPLICIT_EXTREMA.signal_analyser_active_peaks(
+            state, display_id, pane_id,
+        )
+        @test peaks_ready["isready"] === true && peaks_ready["success"] === true
+        @test !istaskdone(graph_worker::Task)
+        @test state.output_manager.active_task === graph_worker
+
+        put!(spectrum.release, nothing)
+        graph_released = true
+        wait(graph_worker::Task)
+        graph_ready = TASK0097_EXPLICIT_EXTREMA.signal_analyser_active_output(
+            state, display_id, pane_id,
+        )
+        @test graph_ready["isready"] === true && graph_ready["success"] === true
+        @test spectrum.calls[] == 2
+    finally
+        graph_released || put!(spectrum.release, nothing)
+        graph_worker isa Task && wait(graph_worker::Task)
+    end
 end
 
 @testset "HND-0581 explicit Extrema rejects stale, inactive, invalid and empty contexts atomically" begin

@@ -24,6 +24,10 @@ module.exports = async function (assert) {
   assert(feature.doubleClickIntent({ closest: (selector) => selector === ".nsewdrag, .plotly, .plot-container, .svg-container" ? {} : null }, { contains: () => true }) === "plot_autoscale", "a graph surface double-click must remain a graph autoscale gesture");
   assert(feature.doubleClickIntent({ closest: (selector) => selector === "[data-screen-range-slider], .settings-field-row[data-range-boundary-validation]" ? {} : null }, { contains: () => true }) === "settings_range_reset", "a settings range double-click must stay a local range reset");
   assert(feature.settingsTabIntent("display", { applying: true, activationToken: 4 }).accepted && feature.settingsTabIntent("display", { applying: true, activationToken: 4 }).blockedByApply === false, "the Screen settings tab must activate while a prior save is applying");
+  const settingsTabClick = app.slice(app.indexOf("if (button.dataset.settingsPage)"), app.indexOf("if (button.dataset.paneMenu)"));
+  assert(/finishRangeLifecycleForNavigation\(settingsDisplay\.id,null\)[\s\S]*?model\.settingsPage=intent\.page[\s\S]*?renderSettings\(activeDisplay\(\)\)/.test(settingsTabClick), "explicit Settings tab navigation must finish the current range lifecycle before synchronously rendering the requested page");
+  assert(/function commitRangeLifecycle[\s\S]*?completeRangeLifecycleKey\(key,"committed",false\)/.test(app), "a local range viewport commit must release its render guard without waiting for a backend output terminal");
+  assert(/RANGE_LIFECYCLE_MAX_ACTIVE_MS=30000[\s\S]*?pruneRangeLifecycles\(\)/.test(app), "disconnected or abandoned range interactions require a bounded frontend-only cleanup guard");
 
   assert(!/inspector-menu-title[^]*?Видимость столбцов/.test(app.slice(app.indexOf("function menuMarkup"), app.indexOf("function menuMarkup") + 900)), "cursor measurement columns must be appended to the existing flat visibility menu without a second heading");
   assert(/aria-disabled='"\+\(!item\.enabled\)\+"'[^]*?disabled/.test(app), "unavailable cursor columns must remain explicitly disabled rather than disappear");

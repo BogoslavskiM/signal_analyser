@@ -1,0 +1,128 @@
+[
+  {
+    "at": "2026-08-25T08:17:37.626Z",
+    "step": "prototype-open"
+  },
+  {
+    "at": "2026-08-25T08:17:38.575Z",
+    "step": "production-ready",
+    "display": "display-1"
+  },
+  {
+    "at": "2026-08-25T08:18:13.405Z",
+    "step": "cleanup-display",
+    "id": "display-2"
+  },
+  {
+    "at": "2026-08-25T08:19:44.782Z",
+    "step": "prototype-open"
+  },
+  {
+    "at": "2026-08-25T08:19:45.670Z",
+    "step": "production-ready",
+    "display": "display-1"
+  },
+  {
+    "at": "2026-08-25T08:20:16.161Z",
+    "step": "finally-entered",
+    "temporary": "display-3",
+    "original": "display-1",
+    "networkCount": 0
+  },
+  {
+    "at": "2026-08-25T08:20:16.282Z",
+    "step": "cleanup-display",
+    "id": "display-3"
+  },
+  {
+    "at": "2026-08-25T08:20:16.324Z",
+    "step": "finally-complete",
+    "temporary": "display-3",
+    "restored": "display-1",
+    "networkCount": 0
+  },
+  {
+    "at": "2026-08-26T12:56:40.386Z",
+    "step": "prototype-open"
+  },
+  {
+    "at": "2026-08-26T12:56:41.370Z",
+    "step": "production-ready",
+    "display": "display-4"
+  },
+  {
+    "at": "2026-08-26T12:57:12.106Z",
+    "step": "finally-entered",
+    "temporary": "display-5",
+    "original": "display-4",
+    "networkCount": 0
+  },
+  {
+    "at": "2026-08-26T12:57:12.325Z",
+    "step": "cleanup-display",
+    "id": "display-5"
+  },
+  {
+    "at": "2026-08-26T12:57:12.380Z",
+    "step": "finally-complete",
+    "temporary": "display-5",
+    "restored": "display-4",
+    "networkCount": 0
+  },
+  {
+    "at": "2026-08-26T13:45:17.343Z",
+    "step": "prototype-open"
+  },
+  {
+    "at": "2026-08-26T13:45:18.338Z",
+    "step": "production-ready",
+    "display": "display-7"
+  },
+  {
+    "at": "2026-08-26T13:45:48.745Z",
+    "step": "finally-entered",
+    "temporary": "display-9",
+    "original": "display-7",
+    "networkCount": 0
+  },
+  {
+    "at": "2026-08-26T13:45:49.165Z",
+    "step": "cleanup-display",
+    "id": "display-9"
+  },
+  {
+    "at": "2026-08-26T13:45:49.254Z",
+    "step": "finally-complete",
+    "temporary": "display-9",
+    "restored": "display-7",
+    "networkCount": 0
+  },
+  {
+    "at": "2026-08-27T13:42:54.738Z",
+    "step": "prototype-open"
+  },
+  {
+    "at": "2026-08-27T13:42:55.524Z",
+    "step": "production-ready",
+    "display": "display-1"
+  },
+  {
+    "at": "2026-08-27T13:43:25.867Z",
+    "step": "finally-entered",
+    "temporary": "display-4",
+    "original": "display-1",
+    "networkCount": 0
+  },
+  {
+    "at": "2026-08-27T13:43:26.190Z",
+    "step": "cleanup-display",
+    "id": "display-4"
+  },
+  {
+    "at": "2026-08-27T13:43:26.213Z",
+    "step": "finally-complete",
+    "temporary": "display-4",
+    "restored": "display-1",
+    "networkCount": 0
+  }
+]

@@ -1,5 +1,7 @@
 schema_version: 1
 flags:
+  - id: TASK-0153-V56
+    description: "Visible V56 quick regression: autoscale, settings activation, area ranges, footer actions and Persistence readiness."
   - id: TASK-0152-V54
     description: "Visible integrated V54 regression: bootstrap, viewport mirrors, cursors, labels, hover, custom operation and trim contract."
   - id: TASK-0152-V54-READONLY

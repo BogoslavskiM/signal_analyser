@@ -17,10 +17,15 @@ include("support/test_context.jl")
     include("lib/example_service_test.jl")
 end
 
+test_filter = strip(get(ENV, "TEST_FILTER", ""))
+selected_test_file(path::AbstractString) = isempty(test_filter) || occursin(test_filter, relpath(path, @__DIR__))
+
 for test_file in sort(filter(name -> endswith(name, "_test.jl"), readdir(joinpath(@__DIR__, "lib"); join = true)))
+    selected_test_file(test_file) || continue
     basename(test_file) == "example_service_test.jl" || include(test_file)
 end
 
 for test_file in sort(filter(name -> endswith(name, "_test.jl"), readdir(joinpath(@__DIR__, "app"); join = true)))
+    selected_test_file(test_file) || continue
     include(test_file)
 end

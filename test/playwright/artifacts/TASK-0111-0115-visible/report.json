@@ -1,0 +1,52 @@
+{
+  "id": "TASK-0111-0115-VISIBLE-PRODUCTION",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "e2e_mode": "new_functionality_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "158e5810a04cfec61cdef1a2c81aca22c66df227",
+  "design_ref": "architecture/design/current",
+  "design_version": 29,
+  "applied_skills": [
+    "e2e/e2e-workflow",
+    "e2e/visual-analysis"
+  ],
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "preexisting_pages": [],
+  "opened_tab_count": 2,
+  "closed_tab_count": 2,
+  "checks": [
+    {
+      "name": "prototype v29 interaction map: Signal/Values/operation",
+      "status": "failed",
+      "detail": {
+        "designSignal": false,
+        "designValues": false,
+        "designOperation": false
+      }
+    }
+  ],
+  "screenshots": [
+    "/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/artifacts/TASK-0111-0115-visible/prototype-contract.png"
+  ],
+  "console_errors": [],
+  "page_errors": [],
+  "responses_500": [],
+  "network": [],
+  "findings": [],
+  "cleanup": [],
+  "started_at": "2026-08-19T08:17:40.130Z",
+  "fatal": "page.goto: net::ERR_TIMED_OUT at https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\nCall log:\n\u001b[2m  - navigating to \"https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/\", waiting until \"domcontentloaded\"\u001b[22m\n\n    at /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/task0111_0115_visible_production.cjs:74:28",
+  "tab_cleanup_status": "passed",
+  "finished_at": "2026-08-19T08:18:14.446Z",
+  "planned": 1,
+  "passed": 0,
+  "failed": 1,
+  "not_run": 0,
+  "success_rate": 0,
+  "network_500_count": 0
+}

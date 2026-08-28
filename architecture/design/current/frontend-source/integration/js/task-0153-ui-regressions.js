@@ -57,17 +57,40 @@
   }
 
   function plotDoubleClickProjection(state) {
-    state=state || {};
-    return {
+    var visibility=paneSliderProjection(state,{kind:"graph_autoscale"});
+    return Object.assign({},visibility,{
       action:"plot_autoscale",
       trueAutorange:true,
-      xRangeSliderVisible:!!state.xRangeSliderVisible,
-      yRangeSliderVisible:!!state.yRangeSliderVisible,
-      sliderVisibilityMutation:false,
       paneMenuMutation:false,
       settingsPageMutation:false,
       backendMutation:false
+    });
+  }
+
+  function paneSliderProjection(state,event) {
+    state=state || {}; event=event || {};
+    var xVisible=!!state.xRangeSliderVisible,yVisible=!!state.yRangeSliderVisible;
+    var explicit=event.kind === "explicit_slider_toggle";
+    if (explicit && event.axis === "x") xVisible=!!event.checked;
+    if (explicit && event.axis === "y") yVisible=!!event.checked;
+    return {
+      xRangeSliderVisible:xVisible,
+      yRangeSliderVisible:yVisible,
+      mountHorizontalPaneSlider:xVisible,
+      mountVerticalPaneSlider:yVisible,
+      sliderVisibilityMutation:explicit,
+      visibilityOwner:"explicit_pane_tool_or_matching_checkbox"
     };
+  }
+
+  function settingsRangeProjection(state,phase) {
+    var projection=paneSliderProjection(state,{kind:"settings_range_"+String(phase || "edit")});
+    return Object.assign({},projection,{
+      action:phase === "apply" ? "settings_apply" : "settings_numeric_edit",
+      viewportProjectionMutation:true,
+      rangeValueMutation:true,
+      backendMutation:false
+    });
   }
 
   function settingsTabIntent(page, state) {
@@ -96,10 +119,13 @@
     areaRanges:areaRanges,
     doubleClickIntent:doubleClickIntent,
     plotDoubleClickProjection:plotDoubleClickProjection,
+    paneSliderProjection:paneSliderProjection,
+    settingsRangeProjection:settingsRangeProjection,
     settingsTabIntent:settingsTabIntent,
     decorateFooter:decorateFooter,
     contract:{
       doubleClick:"A double-click on the ready graph surface performs true X/Y autoscale only. It never enables, opens or hides the in-plot time/frequency/amplitude slider, never opens the pane menu and never changes Settings page. Double-click on an already visible in-plot slider remains that slider's local reset; settings range-row double-click remains that field's local Auto reset.",
+      paneSliderVisibility:"Horizontal and vertical pane sliders mount only from their explicit pane menu tool or the matching explicit Area checkbox. Settings numeric edit, Apply, Plotly relayout and graph autoscale preserve the existing visibility intent and cannot infer, enable or mount either pane slider.",
       tab:"Every visible Settings tab, including Экран, activates synchronously by pointer or keyboard even while a prior settings autosave/apply is pending. The prior request may finish in the background, but its late render must be ignored unless its page activation token is still current.",
       areaRanges:"Every applicable range row in Область → Диапазоны is followed by exactly one mounted dual-thumb slider. Linked-axis state changes propagation only and never hides Time/Frequency/Magnitude/Power/Density controls or their sliders.",
       footer:"Значения and Рассчитать are canonical Primary MD blue actions in the shared settings footer, with the existing 32px geometry and normal disabled state."

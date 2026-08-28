@@ -62,6 +62,16 @@ function signal_analyser_peaks_context_id(context::SignalAnalyserPeaksContextKey
     )
 end
 
+"""Emit one bounded structured record for a Peaks calculation transition."""
+function signal_analyser_log_peaks_lifecycle(
+    event::AbstractString,
+    context::SignalAnalyserPeaksContextKey;
+    reason::AbstractString = "",
+)::Nothing
+    @info "signal_analyser_peaks_lifecycle" event = String(event) display_id = context.display_id pane_id = context.pane_id context_key = signal_analyser_peaks_context_id(context) calculation_revision = context.calculation_revision reason = String(reason)
+    nothing
+end
+
 function signal_analyser_output_page_ids(state::SignalAnalyserState)::Vector{String}
     String[
         signal_analyser_output_page_id(display.id, pane.id)
@@ -184,10 +194,24 @@ function signal_analyser_sync_output_pages_unlocked!(state::SignalAnalyserState)
         context -> signal_analyser_output_context_is_current_unlocked(state, context),
         manager.queued_contexts,
     )
-    filter!(
-        context -> signal_analyser_peaks_context_is_current_unlocked(state, context),
-        manager.queued_peaks_contexts,
-    )
+    queued_peaks_contexts = copy(manager.queued_peaks_contexts)
+    empty!(manager.queued_peaks_contexts)
+    for context in queued_peaks_contexts
+        if signal_analyser_peaks_context_is_current_unlocked(state, context)
+            push!(manager.queued_peaks_contexts, context)
+        else
+            signal_analyser_terminalize_peaks_error_unlocked!(
+                state,
+                context,
+                "Расчёт экстремумов отменён: контекст области изменился";
+                lifecycle_event = "cancel",
+            ) || signal_analyser_log_peaks_lifecycle(
+                "cancel",
+                context;
+                reason = "queued_context_superseded",
+            )
+        end
+    end
     if manager.active_context !== nothing
         running_context = manager.active_context::SignalAnalyserOutputContextKey
         if !signal_analyser_output_context_is_current_unlocked(state, running_context)
@@ -201,11 +225,23 @@ function signal_analyser_sync_output_pages_unlocked!(state::SignalAnalyserState)
     if manager.active_peaks_context !== nothing
         running_context = manager.active_peaks_context::SignalAnalyserPeaksContextKey
         if !signal_analyser_peaks_context_is_current_unlocked(state, running_context)
-            token = manager.cancellation_token
+            token = manager.peaks_cancellation_token
             token === nothing || (token.cancelled[] = true)
-            manager.active_peaks_context = nothing
-            manager.active_poll_count = 0
-            manager.cancellation_token = nothing
+            signal_analyser_terminalize_peaks_error_unlocked!(
+                state,
+                running_context,
+                "Расчёт экстремумов отменён: контекст области изменился";
+                lifecycle_event = "cancel",
+            ) || begin
+                manager.active_peaks_context = nothing
+                manager.peaks_active_poll_count = 0
+                manager.peaks_cancellation_token = nothing
+                signal_analyser_log_peaks_lifecycle(
+                    "cancel",
+                    running_context;
+                    reason = "active_context_superseded",
+                )
+            end
         end
     end
     nothing
@@ -215,10 +251,28 @@ function signal_analyser_cancel_active_output_unlocked!(state::SignalAnalyserSta
     manager = state.output_manager
     token = manager.cancellation_token
     token === nothing || (token.cancelled[] = true)
+    peaks_token = manager.peaks_cancellation_token
+    peaks_token === nothing || (peaks_token.cancelled[] = true)
+    if manager.active_peaks_context !== nothing
+        signal_analyser_log_peaks_lifecycle(
+            "cancel",
+            manager.active_peaks_context::SignalAnalyserPeaksContextKey;
+            reason = "calculation_manager_replaced",
+        )
+    end
+    for context in manager.queued_peaks_contexts
+        signal_analyser_log_peaks_lifecycle(
+            "cancel",
+            context;
+            reason = "queued_calculation_manager_replaced",
+        )
+    end
     manager.active_context = nothing
     manager.active_peaks_context = nothing
     manager.active_poll_count = 0
     manager.cancellation_token = nothing
+    manager.peaks_active_poll_count = 0
+    manager.peaks_cancellation_token = nothing
     if !manager.active_task_is_worker
         manager.active_task = nothing
     end
@@ -235,9 +289,19 @@ function signal_analyser_cancel_peaks_pages_unlocked!(
 )::Nothing
     manager = state.output_manager
     requested = Set(String.(page_ids))
-    filter!(context -> !(
-        signal_analyser_output_page_id(context.display_id, context.pane_id) in requested
-    ), manager.queued_peaks_contexts)
+    retained_contexts = SignalAnalyserPeaksContextKey[]
+    for context in manager.queued_peaks_contexts
+        if signal_analyser_output_page_id(context.display_id, context.pane_id) in requested
+            signal_analyser_log_peaks_lifecycle(
+                "cancel",
+                context;
+                reason = "queued_calculation_revision_invalidated",
+            )
+        else
+            push!(retained_contexts, context)
+        end
+    end
+    manager.queued_peaks_contexts = retained_contexts
     for page_id in requested
         delete!(manager.peaks_poll_counts, page_id)
     end
@@ -245,11 +309,16 @@ function signal_analyser_cancel_peaks_pages_unlocked!(
         context = manager.active_peaks_context::SignalAnalyserPeaksContextKey
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
         if page_id in requested
-            token = manager.cancellation_token
+            token = manager.peaks_cancellation_token
             token === nothing || (token.cancelled[] = true)
             manager.active_peaks_context = nothing
-            manager.active_poll_count = 0
-            manager.cancellation_token = nothing
+            manager.peaks_active_poll_count = 0
+            manager.peaks_cancellation_token = nothing
+            signal_analyser_log_peaks_lifecycle(
+                "cancel",
+                context;
+                reason = "calculation_revision_invalidated",
+            )
         end
     end
     nothing
@@ -262,6 +331,20 @@ function signal_analyser_invalidate_peaks_pages_unlocked!(
     signal_analyser_sync_output_pages_unlocked!(state)
     manager = state.output_manager
     requested = Set(String.(page_ids))
+    for display in state.displays
+        layout = signal_analyser_layout_by_display_id(state, display.id)
+        for pane in layout.panes
+            page_id = signal_analyser_output_page_id(display.id, pane.id)
+            page_id in requested || continue
+            pane.extrema_state.need_update = true
+            signal_ids_by_name = Dict(signal.name => signal.id for signal in state.signals)
+            valid_signal_ids = Set(
+                signal_ids_by_name[name] for name in signal_display_pane_members(pane)
+                if haskey(signal_ids_by_name, name)
+            )
+            filter!(pair -> first(pair) in valid_signal_ids, pane.extrema_by_signal)
+        end
+    end
     affected = String[
         page_id for page_id in keys(manager.peaks_need_update_pages)
         if page_id in requested
@@ -1520,16 +1603,54 @@ function signal_analyser_publish_peaks_task!(
     token::SignalAnalyserCancellationToken,
     snapshots::Vector{SignalPeaksSnapshot},
 )::Nothing
-    token.cancelled[] && return nothing
+    if token.cancelled[]
+        signal_analyser_log_peaks_lifecycle(
+            "publish_refused",
+            context;
+            reason = "cancellation_token_set_before_publish",
+        )
+        return nothing
+    end
     lock(state.lock) do
         manager = state.output_manager
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
-        token.cancelled[] && return nothing
-        manager.active_peaks_context == context || return nothing
-        signal_analyser_peaks_context_is_current_unlocked(state, context) || return nothing
-        get(manager.peaks_need_update_pages, page_id, true) || return nothing
-        String[snapshot.signal_name::String for snapshot in snapshots] ==
-            collect(context.signal_names) || return nothing
+        if token.cancelled[]
+            signal_analyser_log_peaks_lifecycle(
+                "publish_refused",
+                context;
+                reason = "cancellation_token_set",
+            )
+            return nothing
+        elseif manager.active_peaks_context != context
+            signal_analyser_log_peaks_lifecycle(
+                "publish_refused",
+                context;
+                reason = "active_context_changed",
+            )
+            return nothing
+        elseif !signal_analyser_peaks_context_is_current_unlocked(state, context)
+            signal_analyser_log_peaks_lifecycle(
+                "publish_refused",
+                context;
+                reason = "context_superseded",
+            )
+            return nothing
+        elseif !get(manager.peaks_need_update_pages, page_id, true)
+            signal_analyser_log_peaks_lifecycle(
+                "publish_refused",
+                context;
+                reason = "page_no_longer_dirty",
+            )
+            return nothing
+        elseif String[snapshot.signal_name::String for snapshot in snapshots] !=
+            collect(context.signal_names)
+            signal_analyser_log_peaks_lifecycle(
+                "publish_refused",
+                context;
+                reason = "snapshot_membership_mismatch",
+            )
+            return nothing
+        end
 
         for snapshot in snapshots
             signal_name = snapshot.signal_name::String
@@ -1551,10 +1672,11 @@ function signal_analyser_publish_peaks_task!(
         )
         manager.peaks_need_update_pages[page_id] = false
         manager.active_peaks_context = nothing
-        manager.active_poll_count = 0
-        manager.cancellation_token = nothing
+        manager.peaks_active_poll_count = 0
+        manager.peaks_cancellation_token = nothing
         delete!(manager.peaks_poll_counts, page_id)
         state.view.state_revision += 1
+        signal_analyser_log_peaks_lifecycle("publish", context)
     end
     nothing
 end
@@ -1563,15 +1685,24 @@ function signal_analyser_terminalize_peaks_error_unlocked!(
     state::SignalAnalyserState,
     context::SignalAnalyserPeaksContextKey,
     error::AbstractString,
+    ;
+    lifecycle_event::AbstractString = "error",
 )::Bool
     manager = state.output_manager
-    manager.active_peaks_context == context || return false
     page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
-    signal_analyser_peaks_context_is_current_unlocked(state, context) || return false
+    status = get(manager.peaks_statuses, page_id, nothing)
+    owns_active_context = manager.active_peaks_context == context
+    owns_pending_status = status !== nothing &&
+        (status::SignalAnalyserPeaksStatus).context == context && !status.isready
+    (owns_active_context || owns_pending_status) || return false
+    get(manager.peaks_page_calculation_revisions, page_id, -1) ==
+        context.calculation_revision || return false
     get(manager.peaks_need_update_pages, page_id, true) || return false
 
-    token = manager.cancellation_token
-    token === nothing || (token.cancelled[] = true)
+    if owns_active_context
+        token = manager.peaks_cancellation_token
+        token === nothing || (token.cancelled[] = true)
+    end
     manager.peaks_statuses[page_id] = SignalAnalyserPeaksStatus(
         context,
         true,
@@ -1579,11 +1710,51 @@ function signal_analyser_terminalize_peaks_error_unlocked!(
         String(error),
     )
     manager.peaks_need_update_pages[page_id] = false
-    manager.active_peaks_context = nothing
-    manager.active_poll_count = 0
-    manager.cancellation_token = nothing
+    filter!(queued_context -> queued_context != context, manager.queued_peaks_contexts)
+    if owns_active_context
+        manager.active_peaks_context = nothing
+        manager.peaks_active_poll_count = 0
+        manager.peaks_cancellation_token = nothing
+    end
     delete!(manager.peaks_poll_counts, page_id)
     state.view.state_revision += 1
+    signal_analyser_log_peaks_lifecycle(
+        lifecycle_event,
+        context;
+        reason = String(error),
+    )
+    true
+end
+
+"""Recover a completed Peaks task which escaped its normal finally cleanup."""
+function signal_analyser_reap_completed_peaks_task_unlocked!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+)::Bool
+    worker = manager.peaks_task
+    worker === nothing && return false
+    istaskdone(worker::Task) || return false
+    context = manager.active_peaks_context
+    if context !== nothing
+        typed_context = context::SignalAnalyserPeaksContextKey
+        error = istaskfailed(worker) ?
+            "Фоновый расчёт экстремумов завершился с ошибкой" :
+            "Фоновый расчёт экстремумов завершился без публикации результата"
+        signal_analyser_terminalize_peaks_error_unlocked!(state, typed_context, error) ||
+            signal_analyser_log_peaks_lifecycle(
+                "publish_refused",
+                typed_context;
+                reason = "completed_task_context_superseded",
+            )
+    end
+    if manager.peaks_task === worker
+        manager.peaks_task = nothing
+    end
+    if manager.active_task === worker
+        manager.active_task = nothing
+        manager.active_task_is_worker = false
+    end
+    signal_analyser_start_peaks_worker_unlocked!(state, manager)
     true
 end
 
@@ -1664,13 +1835,43 @@ function signal_analyser_run_peaks_worker!(
         signal_analyser_run_peaks_task!(state, snapshot, context, token)
     finally
         lock(state.lock) do
-            if state.output_manager === manager && manager.active_task === current_task()
+            if state.output_manager === manager && manager.peaks_task === current_task()
+                page_id = signal_analyser_output_page_id(
+                    context.display_id,
+                    context.pane_id,
+                )
+                status = get(manager.peaks_statuses, page_id, nothing)
+                has_terminal_status = status !== nothing &&
+                    (status::SignalAnalyserPeaksStatus).context == context && status.isready
+                if !has_terminal_status
+                    terminal_error = token.cancelled[] ?
+                        "Расчёт экстремумов отменён до публикации результата" :
+                        "Фоновый расчёт экстремумов завершился без публикации результата"
+                    terminalized = signal_analyser_terminalize_peaks_error_unlocked!(
+                        state,
+                        context,
+                        terminal_error;
+                        lifecycle_event = token.cancelled[] ? "cancel" : "error",
+                    )
+                    terminalized || signal_analyser_log_peaks_lifecycle(
+                        token.cancelled[] ? "cancel" : "publish_refused",
+                        context;
+                        reason = "worker_context_superseded_before_terminal_publish",
+                    )
+                end
                 token.cancelled[] = true
-                manager.active_peaks_context = nothing
-                manager.active_task = nothing
-                manager.active_task_is_worker = false
-                manager.active_poll_count = 0
-                manager.cancellation_token = nothing
+                if manager.active_peaks_context == context
+                    manager.active_peaks_context = nothing
+                end
+                manager.peaks_task = nothing
+                manager.peaks_active_poll_count = 0
+                if manager.peaks_cancellation_token === token
+                    manager.peaks_cancellation_token = nothing
+                end
+                if manager.active_task === current_task()
+                    manager.active_task = nothing
+                    manager.active_task_is_worker = false
+                end
                 signal_analyser_start_peaks_worker_unlocked!(state, manager)
             end
         end
@@ -1682,25 +1883,53 @@ function signal_analyser_start_peaks_worker_unlocked!(
     state::SignalAnalyserState,
     manager::SignalAnalyserCalculationManager,
 )::Bool
-    manager.active_task === nothing || return false
+    manager.peaks_task === nothing || return false
+    # A reserved non-worker task remains an exclusive control boundary. A real
+    # output worker no longer blocks the explicit extrema lane.
+    manager.active_task !== nothing && !manager.active_task_is_worker && return false
     while !isempty(manager.queued_peaks_contexts)
         context = popfirst!(manager.queued_peaks_contexts)
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
-        signal_analyser_peaks_context_is_current_unlocked(state, context) || continue
-        get(manager.peaks_need_update_pages, page_id, true) || continue
+        if !signal_analyser_peaks_context_is_current_unlocked(state, context)
+            signal_analyser_terminalize_peaks_error_unlocked!(
+                state,
+                context,
+                "Расчёт экстремумов отменён: контекст области изменился";
+                lifecycle_event = "cancel",
+            ) || signal_analyser_log_peaks_lifecycle(
+                "cancel",
+                context;
+                reason = "queued_context_superseded_before_start",
+            )
+            continue
+        elseif !get(manager.peaks_need_update_pages, page_id, true)
+            signal_analyser_log_peaks_lifecycle(
+                "cancel",
+                context;
+                reason = "queued_page_no_longer_dirty",
+            )
+            continue
+        end
         token = SignalAnalyserCancellationToken()
         manager.active_peaks_context = context
-        manager.active_poll_count = get(manager.peaks_poll_counts, page_id, 1)
-        manager.cancellation_token = token
-        snapshot = signal_analyser_clone_state_for_layout(state)
-        manager.active_task = Threads.@spawn signal_analyser_run_peaks_worker!(
-            state,
-            manager,
-            context,
-            token,
-            snapshot,
-        )
-        manager.active_task_is_worker = true
+        manager.peaks_active_poll_count = get(manager.peaks_poll_counts, page_id, 1)
+        manager.peaks_cancellation_token = token
+        snapshot = signal_analyser_clone_state_for_peaks(state)
+        start_gate = Channel{Nothing}(1)
+        worker = Threads.@spawn begin
+            take!(start_gate)
+            signal_analyser_run_peaks_worker!(state, manager, context, token, snapshot)
+        end
+        manager.peaks_task = worker
+        # Keep the aggregate's current-task observable when no graph worker
+        # exists. During contention `active_task` identifies the graph worker
+        # while `peaks_task` progresses independently.
+        if manager.active_task === nothing
+            manager.active_task = worker
+            manager.active_task_is_worker = true
+        end
+        signal_analyser_log_peaks_lifecycle("start", context)
+        put!(start_gate, nothing)
         return true
     end
     isempty(manager.queued_contexts) || return signal_analyser_start_output_worker_unlocked!(
@@ -1793,27 +2022,25 @@ function signal_analyser_calculate_active_peaks!(
             ), false
         end
 
-        current_task = manager.active_task
-        if current_task !== nothing && istaskdone(current_task::Task)
-            if manager.active_context !== nothing
-                signal_analyser_terminalize_output_error_unlocked!(
-                    state,
-                    manager.active_context::SignalAnalyserOutputContextKey,
-                    "Фоновый расчёт активного графика завершился без публикации результата",
-                )
-            elseif manager.active_peaks_context !== nothing
-                signal_analyser_terminalize_peaks_error_unlocked!(
-                    state,
-                    manager.active_peaks_context::SignalAnalyserPeaksContextKey,
-                    "Фоновый расчёт экстремумов завершился без публикации результата",
-                )
-            end
-            manager.active_task = nothing
-            manager.active_task_is_worker = false
-        end
+        signal_analyser_reap_completed_peaks_task_unlocked!(state, manager)
 
         dirty = manager.peaks_need_update_pages[page_id]
         status = get(manager.peaks_statuses, page_id, nothing)
+        if !dirty && status !== nothing &&
+            (status::SignalAnalyserPeaksStatus).context == context && status.isready
+            # POST is explicit user intent. A terminal success or failure must
+            # never be reused as the result of a new calculation action.
+            signal_analyser_invalidate_peaks_pages_unlocked!(state, String[page_id])
+            context = signal_analyser_peaks_context_unlocked(
+                state,
+                display_id,
+                pane_id,
+                visible_range,
+            )
+            passive = signal_analyser_passive_peaks_snapshot_unlocked(state, context)
+            dirty = manager.peaks_need_update_pages[page_id]
+            status = get(manager.peaks_statuses, page_id, nothing)
+        end
         cached = signal_analyser_cached_peaks_table_unlocked(state, context)
         if !dirty && status !== nothing &&
             (status::SignalAnalyserPeaksStatus).context == context && status.isready
@@ -1842,7 +2069,7 @@ function signal_analyser_calculate_active_peaks!(
             is_queued && signal_analyser_start_peaks_worker_unlocked!(state, manager)
             poll_count = get(manager.peaks_poll_counts, page_id, 1) + 1
             manager.peaks_poll_counts[page_id] = poll_count
-            is_running && (manager.active_poll_count = poll_count)
+            is_running && (manager.peaks_active_poll_count = poll_count)
             if is_running && poll_count >= SIGNAL_ANALYSER_ACTIVE_PEAKS_MAX_PENDING_POLLS
                 signal_analyser_terminalize_peaks_error_unlocked!(
                     state,
@@ -1880,6 +2107,7 @@ function signal_analyser_calculate_active_peaks!(
             false,
             "",
         )
+        signal_analyser_log_peaks_lifecycle("queue", context)
         signal_analyser_start_peaks_worker_unlocked!(state, manager)
         table = signal_analyser_empty_peaks_table_unlocked(state, context, true)
         signal_analyser_active_peaks_response_unlocked(
@@ -1902,7 +2130,7 @@ function signal_analyser_active_peaks(
     display_id::AbstractString,
     pane_id::AbstractString,
 )::Dict{String,Any}
-    lock(state.lock) do
+    response = lock(state.lock) do
         signal_analyser_recover_membership_order_unlocked!(
             state;
             display_ids = String[String(display_id)],
@@ -1942,6 +2170,7 @@ function signal_analyser_active_peaks(
             )
         end
 
+        signal_analyser_reap_completed_peaks_task_unlocked!(state, manager)
         dirty = manager.peaks_need_update_pages[page_id]
         status = get(manager.peaks_statuses, page_id, nothing)
         cached = signal_analyser_cached_peaks_table_unlocked(state, context)
@@ -1963,6 +2192,53 @@ function signal_analyser_active_peaks(
             )
         end
 
+        has_pending_status = status !== nothing &&
+            (status::SignalAnalyserPeaksStatus).context == context && !status.isready
+        if has_pending_status
+            is_running = manager.active_peaks_context == context
+            is_queued = any(queued -> queued == context, manager.queued_peaks_contexts)
+            if is_queued
+                signal_analyser_start_peaks_worker_unlocked!(state, manager)
+                is_running = manager.active_peaks_context == context
+                is_queued = any(queued -> queued == context, manager.queued_peaks_contexts)
+            end
+            if !is_running && !is_queued
+                error = "Фоновый расчёт экстремумов потерял задачу до публикации результата"
+                signal_analyser_terminalize_peaks_error_unlocked!(state, context, error)
+                table = signal_analyser_empty_peaks_table_unlocked(state, context, true)
+                return signal_analyser_active_peaks_response_unlocked(
+                    state,
+                    context,
+                    table,
+                    passive,
+                    true,
+                    false,
+                    error,
+                )
+            end
+
+            poll_count = get(manager.peaks_poll_counts, page_id, 1) + 1
+            manager.peaks_poll_counts[page_id] = poll_count
+            is_running && (manager.peaks_active_poll_count = poll_count)
+            if poll_count >= SIGNAL_ANALYSER_ACTIVE_PEAKS_MAX_PENDING_POLLS
+                signal_analyser_terminalize_peaks_error_unlocked!(
+                    state,
+                    context,
+                    SIGNAL_ANALYSER_ACTIVE_PEAKS_POLL_LIMIT_ERROR,
+                )
+                table = signal_analyser_empty_peaks_table_unlocked(state, context, true)
+                return signal_analyser_active_peaks_response_unlocked(
+                    state,
+                    context,
+                    table,
+                    passive,
+                    true,
+                    false,
+                    SIGNAL_ANALYSER_ACTIVE_PEAKS_POLL_LIMIT_ERROR,
+                )
+            end
+        end
+
         table = signal_analyser_empty_peaks_table_unlocked(state, context, true)
         signal_analyser_active_peaks_response_unlocked(
             state,
@@ -1973,5 +2249,467 @@ function signal_analyser_active_peaks(
             false,
             "",
         )
+    end
+    yield()
+    response
+end
+
+"""Prepared independent X/Y input for one stable signal id."""
+struct SignalAnalyserPaneExtremaSignalWork
+    signal_id::String
+    signal_name::String
+    ordinate::SignalMeasurementOrdinate
+    samples::Vector{Int}
+    x::Vector{Float64}
+    y::Vector{Float64}
+
+    function SignalAnalyserPaneExtremaSignalWork(
+        signal_id::AbstractString,
+        signal_name::AbstractString,
+        ordinate::SignalMeasurementOrdinate,
+        samples::AbstractVector{<:Integer},
+        x::AbstractVector{<:Real},
+        y::AbstractVector{<:Real},
+    )
+        length(samples) == length(x) == length(y) || throw(DimensionMismatch(
+            "Extrema X/Y/sample vectors должны иметь одинаковую длину",
+        ))
+        new(
+            String(signal_id),
+            String(signal_name),
+            ordinate,
+            Int.(samples),
+            Float64.(x),
+            Float64.(y),
+        )
+    end
+end
+
+"""Immutable provider input for one pane-owned extrema worker pass."""
+struct SignalAnalyserPaneExtremaWork{P<:AbstractPeaksProvider}
+    key::SignalAnalyserExtremaPaneKey
+    settings::SignalPeaksSettings
+    provider::P
+    signals::Vector{SignalAnalyserPaneExtremaSignalWork}
+end
+
+function signal_analyser_extrema_pane_unlocked(
+    state::SignalAnalyserState,
+    key::SignalAnalyserExtremaPaneKey,
+)::SignalDisplayPaneState
+    layout = signal_analyser_layout_by_display_id(state, key.display_id)
+    signal_analyser_layout_pane_by_id(layout, key.pane_id)
+end
+
+signal_analyser_pane_extremum_payload(item::SignalPaneExtremum)::Dict{String,Any} =
+    Dict{String,Any}(
+        "sample" => item.sample,
+        "x" => item.x,
+        "y" => item.y,
+        "is_maximum" => item.is_maximum,
+    )
+
+function signal_analyser_pane_extrema_payload_unlocked(
+    state::SignalAnalyserState,
+    key::SignalAnalyserExtremaPaneKey,
+)::Dict{String,Any}
+    pane = signal_analyser_extrema_pane_unlocked(state, key)
+    members = signal_display_pane_members(pane)
+    signals = AnalysedSignal[signal_by_name(state, name) for name in members]
+    by_signal = Dict{String,Any}()
+    signal_payloads = Dict{String,Any}[]
+    rows = Dict{String,Any}[]
+    row_number = 0
+    for signal in signals
+        items = get(pane.extrema_by_signal, signal.id, SignalPaneExtremum[])
+        item_payloads = Dict{String,Any}[
+            signal_analyser_pane_extremum_payload(item) for item in items
+        ]
+        signal_payload = Dict{String,Any}(
+            "signal_id" => signal.id,
+            "signal_name" => signal.name,
+            "signal_color" => signal.color,
+            "items" => item_payloads,
+        )
+        haskey(pane.extrema_by_signal, signal.id) && (by_signal[signal.id] = signal_payload)
+        push!(signal_payloads, signal_payload)
+        for (graph_number, item_payload) in enumerate(item_payloads)
+            row_number += 1
+            push!(rows, merge(
+                item_payload,
+                Dict{String,Any}(
+                    "row_number" => row_number,
+                    "graph_number" => graph_number,
+                    "signal_id" => signal.id,
+                    "signal_name" => signal.name,
+                    "signal_color" => signal.color,
+                ),
+            ))
+        end
+    end
+    Dict{String,Any}(
+        "display_id" => key.display_id,
+        "pane_id" => key.pane_id,
+        "plot_type" => signal_analyser_plot_name(pane.plot_type),
+        "has_signals" => !isempty(signals),
+        "x_unit" => pane.plot_type == SPECTRUM_PLOT ? "Hz" : "s",
+        "extrema_by_signal" => by_signal,
+        "data" => Dict{String,Any}(
+            "signals" => signal_payloads,
+            "rows" => rows,
+        ),
+        "is_extrema_ready" => pane.is_extrema_ready,
+        "isready" => pane.is_extrema_ready,
+        "success" => pane.success,
+        "error" => pane.error,
+        "need_update" => pane.need_update,
+        "state_revision" => state.view.state_revision,
+    )
+end
+
+function signal_analyser_prepare_time_extrema_signal_unlocked(
+    state::SignalAnalyserState,
+    pane::SignalDisplayPaneState,
+    signal::AnalysedSignal,
+    visible_range::Union{Nothing,SignalPeaksVisibleRange},
+)::SignalAnalyserPaneExtremaSignalWork
+    ordinate = signal_measurement_ordinate(signal)
+    limits = pane.time_limits
+    empty_intersection = false
+    effective_limits = if limits === nothing && visible_range === nothing
+        nothing
+    elseif limits === nothing
+        visible = visible_range::SignalTimePeaksVisibleRange
+        SignalTimeLimits(visible.min_s, visible.max_s)
+    elseif visible_range === nothing
+        limits
+    else
+        visible = visible_range::SignalTimePeaksVisibleRange
+        minimum_value = max((limits::SignalTimeLimits).min_s, visible.min_s)
+        maximum_value = min((limits::SignalTimeLimits).max_s, visible.max_s)
+        if minimum_value < maximum_value
+            SignalTimeLimits(minimum_value, maximum_value)
+        else
+            empty_intersection = true
+            nothing
+        end
+    end
+    sample_range = if empty_intersection
+        nothing
+    elseif effective_limits === nothing
+        SignalTimeSampleRange(1, length(signal.values))
+    else
+        signal_time_sample_range_or_nothing(
+            state.measurements_service.roi_service,
+            signal,
+            effective_limits,
+        )
+    end
+    sample_range === nothing && return SignalAnalyserPaneExtremaSignalWork(
+        signal.id,
+        signal.name,
+        ordinate,
+        Int[],
+        Float64[],
+        Float64[],
+    )
+    roi = signal_ordinate_roi(state.measurements_service.roi_service, signal, sample_range)
+    samples = collect(roi.sample_offset:(roi.sample_offset + length(roi.values) - 1))
+    x = Float64[sample / roi.sample_rate_hz for sample in samples]
+    SignalAnalyserPaneExtremaSignalWork(
+        signal.id,
+        signal.name,
+        roi.ordinate,
+        samples,
+        x,
+        roi.values,
+    )
+end
+
+function signal_analyser_prepare_spectrum_extrema_signal_unlocked(
+    state::SignalAnalyserState,
+    pane::SignalDisplayPaneState,
+    pane_display::SignalAnalyserDisplayState,
+    signal::AnalysedSignal,
+    visible_range::Union{Nothing,SignalPeaksVisibleRange},
+)::SignalAnalyserPaneExtremaSignalWork
+    data = signal_analyser_cached_spectrum_data!(
+        state,
+        pane_display,
+        signal;
+        materialize_missing = true,
+    )
+    frequencies = Float64[data.frequencies_hz...]
+    values = signal_spectrum_extrema_ordinate(data, pane.spectrum_settings.scale)
+    source_indices = if visible_range === nothing
+        collect(eachindex(frequencies))
+    else
+        visible = visible_range::SignalSpectrumPeaksVisibleRange
+        findall(frequency -> visible.min_hz <= frequency <= visible.max_hz, frequencies)
+    end
+    SignalAnalyserPaneExtremaSignalWork(
+        signal.id,
+        signal.name,
+        MAGNITUDE_ORDINATE,
+        source_indices,
+        frequencies[source_indices],
+        values[source_indices],
+    )
+end
+
+function signal_analyser_prepare_pane_extrema_work_unlocked(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+    key::SignalAnalyserExtremaPaneKey,
+)::SignalAnalyserPaneExtremaWork
+    display = signal_analyser_display_by_id(state, key.display_id)
+    pane = signal_analyser_extrema_pane_unlocked(state, key)
+    pane.extrema_state.need_update = false
+    visible_range = pop!(manager.extrema_visible_ranges, key, nothing)
+    pane_display = signal_analyser_display_for_pane(display, pane)
+    prepared = SignalAnalyserPaneExtremaSignalWork[]
+    for signal_name in signal_display_pane_members(pane)
+        signal = signal_by_name(state, signal_name)
+        push!(
+            prepared,
+            pane.plot_type == SPECTRUM_PLOT ?
+                signal_analyser_prepare_spectrum_extrema_signal_unlocked(
+                    state,
+                    pane,
+                    pane_display,
+                    signal,
+                    visible_range,
+                ) :
+                signal_analyser_prepare_time_extrema_signal_unlocked(
+                    state,
+                    pane,
+                    signal,
+                    visible_range,
+                ),
+        )
+    end
+    SignalAnalyserPaneExtremaWork(
+        key,
+        pane.peaks_settings,
+        state.peaks_service.provider,
+        prepared,
+    )
+end
+
+function signal_analyser_calculate_pane_extrema(
+    work::SignalAnalyserPaneExtremaWork,
+)::Dict{String,Vector{SignalPaneExtremum}}
+    result = Dict{String,Vector{SignalPaneExtremum}}()
+    for signal in work.signals
+        if length(signal.y) < 3
+            result[signal.signal_id] = SignalPaneExtremum[]
+            continue
+        end
+        query = SignalPeaksQuery(
+            0,
+            work.key.display_id,
+            signal.signal_name,
+            signal.ordinate,
+            signal.y,
+            1.0,
+            0,
+            work.settings,
+        )
+        peaks = signal_peaks_detect(work.provider, query)
+        result[signal.signal_id] = SignalPaneExtremum[
+            SignalPaneExtremum(
+                signal.samples[peaks.locations_1based[index]],
+                signal.x[peaks.locations_1based[index]],
+                peaks.peak_values[index],
+                peaks.kinds[index] == MAXIMUM_PEAK,
+            )
+            for index in eachindex(peaks.peak_values)
+        ]
+    end
+    result
+end
+
+function signal_analyser_publish_pane_extrema!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+    work::SignalAnalyserPaneExtremaWork,
+    result::Dict{String,Vector{SignalPaneExtremum}},
+)::Nothing
+    lock(state.lock) do
+        state.output_manager === manager || return nothing
+        pane = try
+            signal_analyser_extrema_pane_unlocked(state, work.key)
+        catch err
+            err isa ArgumentError || rethrow()
+            return nothing
+        end
+        extrema = pane.extrema_state
+        extrema.need_update && return nothing
+        extrema.extrema_by_signal = result
+        extrema.need_update = false
+        extrema.is_extrema_ready = true
+        extrema.success = true
+        extrema.error = ""
+        state.view.state_revision += 1
+    end
+    nothing
+end
+
+function signal_analyser_publish_pane_extrema_error!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+    key::SignalAnalyserExtremaPaneKey,
+    err,
+)::Nothing
+    lock(state.lock) do
+        state.output_manager === manager || return nothing
+        pane = try
+            signal_analyser_extrema_pane_unlocked(state, key)
+        catch lookup_error
+            lookup_error isa ArgumentError || rethrow()
+            return nothing
+        end
+        extrema = pane.extrema_state
+        extrema.need_update && return nothing
+        extrema.is_extrema_ready = true
+        extrema.success = false
+        extrema.error = signal_analyser_pane_output_error(err)
+        extrema.need_update = true
+        state.view.state_revision += 1
+    end
+    nothing
+end
+
+function signal_analyser_run_pane_extrema_worker!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+    work::SignalAnalyserPaneExtremaWork,
+)::Nothing
+    try
+        result = signal_analyser_calculate_pane_extrema(work)
+        signal_analyser_publish_pane_extrema!(state, manager, work, result)
+    catch err
+        signal_analyser_publish_pane_extrema_error!(state, manager, work.key, err)
+    finally
+        lock(state.lock) do
+            if state.output_manager === manager && manager.extrema_task === current_task()
+                manager.extrema_task = nothing
+                manager.active_extrema_pane = nothing
+                signal_analyser_start_pane_extrema_worker_unlocked!(state, manager)
+            end
+        end
+    end
+    nothing
+end
+
+function signal_analyser_start_pane_extrema_worker_unlocked!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+)::Bool
+    manager.extrema_task === nothing || return false
+    while !isempty(manager.extrema_queue)
+        key = popfirst!(manager.extrema_queue)
+        work = try
+            signal_analyser_prepare_pane_extrema_work_unlocked(state, manager, key)
+        catch err
+            if err isa ArgumentError
+                delete!(manager.extrema_visible_ranges, key)
+                continue
+            end
+            rethrow()
+        end
+        manager.active_extrema_pane = key
+        start_gate = Channel{Nothing}(1)
+        worker = Threads.@spawn begin
+            take!(start_gate)
+            signal_analyser_run_pane_extrema_worker!(state, manager, work)
+        end
+        manager.extrema_task = worker
+        put!(start_gate, nothing)
+        return true
+    end
+    false
+end
+
+"""Read one pane-owned extrema state without active-pane checks or scheduling."""
+function signal_analyser_pane_extrema(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString,
+)::Dict{String,Any}
+    lock(state.lock) do
+        signal_analyser_pane_extrema_payload_unlocked(
+            state,
+            SignalAnalyserExtremaPaneKey(display_id, pane_id),
+        )
+    end
+end
+
+"""Move one explicit pane request to the front of the waiting queue."""
+function signal_analyser_calculate_pane_extrema!(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString;
+    visible_range::Union{Nothing,SignalPeaksVisibleRange} = nothing,
+)::Dict{String,Any}
+    response = lock(state.lock) do
+        key = SignalAnalyserExtremaPaneKey(display_id, pane_id)
+        pane = signal_analyser_extrema_pane_unlocked(state, key)
+        pane.plot_type in (TIME_PLOT, SPECTRUM_PLOT) || throw(SignalAnalyserValidationError(
+            "Некорректный запрос расчёта экстремумов",
+            Dict("pane_id" => "Экстремумы доступны только для TIME или SPECTRUM области"),
+        ))
+        members = signal_display_pane_members(pane)
+        isempty(members) && throw(SignalAnalyserValidationError(
+            "Некорректный запрос расчёта экстремумов",
+            Dict("pane_id" => "В области нет сигналов для расчёта"),
+        ))
+        pane.plot_type == TIME_PLOT && visible_range isa SignalSpectrumPeaksVisibleRange &&
+            throw(SignalAnalyserValidationError(
+                "Некорректный диапазон экстремумов",
+                Dict("visible_range" => "TIME область требует {min_s,max_s}"),
+            ))
+        pane.plot_type == SPECTRUM_PLOT && visible_range isa SignalTimePeaksVisibleRange &&
+            throw(SignalAnalyserValidationError(
+                "Некорректный диапазон экстремумов",
+                Dict("visible_range" => "SPECTRUM область требует {min_hz,max_hz}"),
+            ))
+
+        extrema = pane.extrema_state
+        extrema.need_update = true
+        extrema.is_extrema_ready = false
+        extrema.success = false
+        extrema.error = ""
+        manager = state.output_manager
+        filter!(queued -> queued != key, manager.extrema_queue)
+        pushfirst!(manager.extrema_queue, key)
+        manager.extrema_visible_ranges[key] = visible_range
+        state.view.state_revision += 1
+        signal_analyser_start_pane_extrema_worker_unlocked!(state, manager)
+        signal_analyser_pane_extrema_payload_unlocked(state, key)
+    end
+    yield()
+    response
+end
+
+"""Clear only one pane's extrema and remove only its waiting occurrence."""
+function signal_analyser_clear_pane_extrema!(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString,
+)::Dict{String,Any}
+    lock(state.lock) do
+        key = SignalAnalyserExtremaPaneKey(display_id, pane_id)
+        pane = signal_analyser_extrema_pane_unlocked(state, key)
+        empty!(pane.extrema_by_signal)
+        pane.extrema_state.is_extrema_ready = false
+        pane.extrema_state.success = false
+        pane.extrema_state.error = ""
+        pane.extrema_state.need_update = true
+        manager = state.output_manager
+        filter!(queued -> queued != key, manager.extrema_queue)
+        delete!(manager.extrema_visible_ranges, key)
+        state.view.state_revision += 1
+        signal_analyser_pane_extrema_payload_unlocked(state, key)
     end
 end

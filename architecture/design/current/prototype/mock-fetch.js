@@ -115,7 +115,7 @@
       { type:"scatter", mode:"lines", name:"echoComplex", x:x, y:b, line:{ color:"#dc2626", width:2 } }
     ];
     var bindings=Array.isArray(pane && pane.signal_bindings) ? pane.signal_bindings : [];
-    return { data:data.filter(function (trace) { return bindings.indexOf(trace.name) >= 0; }), layout:{ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", margin:{ l:58, r:22, t:24, b:56 }, xaxis:{ title:{ text:"Частота, кГц" }, range:[0,500], rangeslider:{ visible:true } }, yaxis:{ title:{ text:"Магнитуда, dB" }, range:[-120,0] }, legend:{ x:0.98, y:0.98, xanchor:"right", yanchor:"top", bgcolor:"rgba(255,255,255,0.88)" }, showlegend:true }, config:{ displayModeBar:false } };
+    return { data:data.filter(function (trace) { return bindings.indexOf(trace.name) >= 0; }), layout:{ paper_bgcolor:"#ffffff", plot_bgcolor:"#ffffff", margin:{ l:58, r:22, t:24, b:56 }, xaxis:{ title:{ text:"Частота, кГц" }, range:[0,500], rangeslider:{ visible:true } }, yaxis:{ title:{ text:"Магнитуда, дБ" }, range:[-120,0] }, legend:{ x:0.98, y:0.98, xanchor:"right", yanchor:"top", bgcolor:"rgba(255,255,255,0.88)" }, showlegend:true }, config:{ displayModeBar:false } };
   }
   function timeEnvelope(pane) {
     var x=[], y=[];

@@ -1,0 +1,25 @@
+{
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expectedRevision": "ac403346d771ef258b09067a95e2916892cebbad",
+  "startedAt": "2026-08-27T13:43:26.215Z",
+  "checks": [
+    {
+      "name": "prototype shell/operation trigger",
+      "result": "passed",
+      "evidence": {
+        "source": "radarPulse",
+        "triggerIcon": {
+          "width": 16,
+          "height": 16,
+          "src": "../architecture/design/current/frontend-source/icons/operation-bandpass.svg",
+          "alt": "",
+          "ariaHidden": "true"
+        }
+      }
+    }
+  ],
+  "openedTabs": 1,
+  "closedTabs": 1,
+  "error": "Error: specs/signal_analyser/task0158_revision_smoke.test.js: operation dialog must retain the exact existing row as its source\n    at assert (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/run_playwright_tests.js:39:13)\n    at openExistingSignalOperation (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/specs/signal_analyser/task0158_revision_smoke.test.js:38:3)\n    at async /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/specs/signal_analyser/task0158_revision_smoke.test.js:83:24\n    at async step (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/support/logger.js:16:22)\n    at async task0158RevisionSmoke (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/specs/signal_analyser/task0158_revision_smoke.test.js:73:5)\n    at async /Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/run_playwright_tests.js:244:11\n    at async Object.step (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/support/logger.js:16:22)\n    at async run (/Users/makar/work/Genie_Tests/SignalAnalyser/test/playwright/run_playwright_tests.js:243:9)",
+  "finishedAt": "2026-08-27T13:43:27.806Z"
+}
