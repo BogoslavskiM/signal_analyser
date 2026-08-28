@@ -92,3 +92,98 @@ end
     @test pane_3.extrema_by_signal[signal.id][1].is_maximum === true
     @test pane_3.is_extrema_ready === true && pane_3.success === true && pane_3.need_update === false
 end
+
+@testset "HND-0782 plot type change resets pane extrema and rejects stale publish" begin
+    state, display_id, _, signal_name = pane_owned_extrema_state()
+    pane_id = "pane-2"
+    pane = pane_owned_extrema_pane(state, display_id, pane_id)
+    signal = only(state.signals)
+    item = PANE_OWNED_EXTREMA.SignalPaneExtremum(5, 0.5, 2.0, true)
+    pane.extrema_by_signal[signal.id] = [item]
+    pane.extrema_state.is_extrema_ready = true
+    pane.extrema_state.success = true
+    pane.extrema_state.error = ""
+    pane.extrema_state.need_update = false
+    old_extrema_state = pane.extrema_state
+
+    key = PANE_OWNED_EXTREMA.SignalAnalyserExtremaPaneKey(display_id, pane_id)
+    manager = state.output_manager
+    manager.extrema_queue = [key]
+    manager.extrema_visible_ranges[key] = nothing
+    work = PANE_OWNED_EXTREMA.SignalAnalyserPaneExtremaWork(
+        key,
+        pane.peaks_settings,
+        state.peaks_service.provider,
+        PANE_OWNED_EXTREMA.SignalAnalyserPaneExtremaSignalWork[],
+    )
+
+    PANE_OWNED_EXTREMA.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => state.view.state_revision,
+        "operation" => "update_pane",
+        "display_id" => display_id,
+        "version" => 1,
+        "pane_id" => pane_id,
+        "plot_type" => "spectrum",
+        "signal_bindings" => [signal_name],
+    ); lightweight = true)
+
+    changed = pane_owned_extrema_pane(state, display_id, pane_id)
+    @test changed.plot_type == PANE_OWNED_EXTREMA.SPECTRUM_PLOT
+    @test changed.extrema_state !== old_extrema_state
+    @test isempty(changed.extrema_by_signal)
+    @test changed.is_extrema_ready === false
+    @test changed.success === false
+    @test changed.error == ""
+    @test changed.need_update === true
+    @test !(key in manager.extrema_queue)
+    @test !haskey(manager.extrema_visible_ranges, key)
+
+    revision_after_change = state.view.state_revision
+    stale_result = Dict(signal.id => [item])
+    PANE_OWNED_EXTREMA.signal_analyser_publish_pane_extrema!(
+        state,
+        manager,
+        work,
+        stale_result,
+    )
+    PANE_OWNED_EXTREMA.signal_analyser_publish_pane_extrema_error!(
+        state,
+        manager,
+        key,
+        ErrorException("stale failure"),
+    )
+    @test isempty(changed.extrema_by_signal)
+    @test changed.is_extrema_ready === false
+    @test changed.success === false
+    @test changed.error == ""
+    @test changed.need_update === true
+    @test state.view.state_revision == revision_after_change
+
+    changed.extrema_by_signal[signal.id] = [item]
+    changed.extrema_state.is_extrema_ready = true
+    changed.extrema_state.success = true
+    changed.extrema_state.error = ""
+    changed.extrema_state.need_update = false
+    same_type_extrema_state = changed.extrema_state
+    manager.extrema_queue = [key]
+    manager.extrema_visible_ranges[key] = nothing
+
+    PANE_OWNED_EXTREMA.apply_signal_analyser_layout!(state, Dict(
+        "state_revision" => state.view.state_revision,
+        "operation" => "update_pane",
+        "display_id" => display_id,
+        "version" => 1,
+        "pane_id" => pane_id,
+        "plot_type" => "spectrum",
+        "signal_bindings" => [signal_name],
+    ); lightweight = true)
+
+    unchanged = pane_owned_extrema_pane(state, display_id, pane_id)
+    @test unchanged.extrema_state === same_type_extrema_state
+    @test unchanged.extrema_by_signal[signal.id] == [item]
+    @test unchanged.is_extrema_ready === true
+    @test unchanged.success === true
+    @test unchanged.need_update === false
+    @test manager.extrema_queue == [key]
+    @test haskey(manager.extrema_visible_ranges, key)
+end

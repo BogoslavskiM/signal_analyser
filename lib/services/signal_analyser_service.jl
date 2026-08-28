@@ -2603,6 +2603,7 @@ function signal_display_pane_reconfigured(
     plot_type::SignalAnalyserPlot,
     signal_bindings::AbstractVector{<:AbstractString},
 )::SignalDisplayPaneState
+    extrema_state = plot_type == pane.plot_type ? pane.extrema_state : SignalPaneExtremaState()
     membership = SignalDisplayMembership(
         signal_analyser_inventory_ordered_names(state, signal_bindings),
     )
@@ -2640,7 +2641,7 @@ function signal_display_pane_reconfigured(
         analysis_signal !== nothing && !isempty(members) &&
             plot_type in (TIME_PLOT, SPECTRUM_PLOT) && pane.peaks_enabled,
         pane.peaks_settings,
-        pane.extrema_state,
+        extrema_state,
     )
 end
 
@@ -6180,6 +6181,11 @@ function apply_signal_analyser_layout!(
         current_layout = signal_analyser_layout_by_display_id(state, requested.display_id)
         layout_changed = requested.layout != current_layout
         current_panes = Dict(pane.id => pane for pane in current_layout.panes)
+        plot_type_changed_pane_ids = String[
+            pane.id for pane in requested.layout.panes
+            if haskey(current_panes, pane.id) &&
+                current_panes[pane.id].plot_type != pane.plot_type
+        ]
         affected_output_pages = String[
             signal_analyser_output_page_id(requested.display_id, pane.id)
             for pane in requested.layout.panes
@@ -6234,6 +6240,12 @@ function apply_signal_analyser_layout!(
                 candidate;
                 preserve_output_runtime = true,
             )
+            manager = state.output_manager
+            for pane_id in plot_type_changed_pane_ids
+                key = SignalAnalyserExtremaPaneKey(requested.display_id, pane_id)
+                filter!(queued -> queued != key, manager.extrema_queue)
+                delete!(manager.extrema_visible_ranges, key)
+            end
             isempty(affected_output_pages) || signal_analyser_invalidate_output_pages_unlocked!(
                 state,
                 affected_output_pages,

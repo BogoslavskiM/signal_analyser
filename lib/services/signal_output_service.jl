@@ -2544,10 +2544,9 @@ function signal_analyser_publish_pane_extrema!(
             return nothing
         end
         extrema = pane.extrema_state
-        if !extrema.need_update
-            extrema.extrema_by_signal = result
-            extrema.need_update = false
-        end
+        extrema.need_update && return nothing
+        extrema.extrema_by_signal = result
+        extrema.need_update = false
         extrema.is_extrema_ready = true
         extrema.success = true
         extrema.error = ""
@@ -2570,10 +2569,12 @@ function signal_analyser_publish_pane_extrema_error!(
             lookup_error isa ArgumentError || rethrow()
             return nothing
         end
-        pane.extrema_state.is_extrema_ready = true
-        pane.extrema_state.success = false
-        pane.extrema_state.error = signal_analyser_pane_output_error(err)
-        pane.extrema_state.need_update = true
+        extrema = pane.extrema_state
+        extrema.need_update && return nothing
+        extrema.is_extrema_ready = true
+        extrema.success = false
+        extrema.error = signal_analyser_pane_output_error(err)
+        extrema.need_update = true
         state.view.state_revision += 1
     end
     nothing

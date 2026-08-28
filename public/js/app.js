@@ -1709,6 +1709,61 @@
     });
   }
 
+  function traceBounds(traces,axis,positiveOnly,includeOwnedOverlay,initialBounds) {
+    var minimum=initialBounds && initialBounds[0], maximum=initialBounds && initialBounds[1];
+    (traces || []).forEach(function (trace) {
+      if (!trace || trace.visible === false || trace.visible === "legendonly" || (!includeOwnedOverlay && trace.meta && trace.meta.signal_analyser_peaks_overlay)) return;
+      var coordinates=trace[axis];
+      if (!coordinates || typeof coordinates.length !== "number") return;
+      for (var index=0;index<coordinates.length;index+=1) {
+        var number=Number(coordinates[index]);
+        if (!Number.isFinite(number) || (positiveOnly && number <= 0)) continue;
+        if (!Number.isFinite(minimum) || number < minimum) minimum=number;
+        if (!Number.isFinite(maximum) || number > maximum) maximum=number;
+      }
+    });
+    return Number.isFinite(minimum) && Number.isFinite(maximum) ? [minimum,maximum] : null;
+  }
+
+  function paddedBounds(bounds,axisType,lowerFraction,upperFraction) {
+    var logarithmic=String(axisType || "linear").toLowerCase() === "log";
+    if (!bounds || !Number.isFinite(bounds[0]) || !Number.isFinite(bounds[1]) || (logarithmic && bounds[0] <= 0)) return null;
+    var minimum=bounds[0], maximum=bounds[1];
+    if (logarithmic) {
+      var logMinimum=Math.log10(minimum), logMaximum=Math.log10(maximum), logSpan=logMaximum-logMinimum;
+      var lowerLogPadding=Math.max(logSpan*lowerFraction,Math.log10(1.05));
+      var upperLogPadding=Math.max(logSpan*upperFraction,Math.log10(1.05));
+      return [Math.pow(10,logMinimum-lowerLogPadding),Math.pow(10,logMaximum+upperLogPadding)];
+    }
+    var span=maximum-minimum;
+    if (!(span > 0)) span=Math.max(Math.abs(minimum),1);
+    return [minimum-span*lowerFraction,maximum+span*upperFraction];
+  }
+
+  function autoscaleEnvelopeTrace(graphTraces,markerTraces,axisTypes) {
+    if (!markerTraces || !markerTraces.length) return null;
+    var axes=axisTypes || {}, xLog=String(axes.x || "linear").toLowerCase() === "log", yLog=String(axes.y || "linear").toLowerCase() === "log";
+    var xSource=traceBounds(graphTraces,"x",xLog,false);
+    var ySource=traceBounds(graphTraces,"y",yLog,false);
+    xSource=traceBounds(markerTraces,"x",xLog,true,xSource);
+    ySource=traceBounds(markerTraces,"y",yLog,true,ySource);
+    var xBounds=paddedBounds(xSource,axes.x,0.025,0.025);
+    var yBounds=paddedBounds(ySource,axes.y,0.04,0.14);
+    if (!xBounds || !yBounds) return null;
+    return {
+      type:"scatter",
+      mode:"markers",
+      x:[xBounds[0],xBounds[0],xBounds[1],xBounds[1]],
+      y:[yBounds[0],yBounds[1],yBounds[0],yBounds[1]],
+      marker:{size:1,color:"rgba(0,0,0,0)"},
+      opacity:0,
+      hoverinfo:"skip",
+      hovertemplate:null,
+      showlegend:false,
+      meta:{signal_analyser_peaks_overlay:true,signal_analyser_peaks_autoscale_envelope:true}
+    };
+  }
+
   function providerClear(provider, request, onSettled) {
     if (!provider || typeof provider.onClearExtrema !== "function") return Promise.resolve(null);
     return Promise.resolve(provider.onClearExtrema(request)).then(function (result) {
@@ -1726,6 +1781,7 @@
     clearPresentation:clearPresentation,
     projectClear:projectClear,
     markerRecords:markerRecords,
+    autoscaleEnvelopeTrace:autoscaleEnvelopeTrace,
     providerClear:providerClear
   };
 }(typeof window !== "undefined" ? window : globalThis));
@@ -5365,8 +5421,19 @@
   function clearPeaksMarkersForPane(displayId, paneId) {
     if (!window.Plotly) return;
     var host = q("[data-pane-host='" + CSS.escape(paneRuntimeKey(displayId, paneId)) + "']");
+    if (host) host._paneExtremaProjectionToken=(host._paneExtremaProjectionToken || 0) + 1;
     var indexes = ownedPeakTraceIndexes(host);
     if (indexes.length) Promise.resolve(window.Plotly.deleteTraces(host, indexes)).catch(function () {});
+  }
+
+  function clearCachedPeaksAfterPlotTypeChange(displayId,paneId) {
+    var runtimeKey=paneRuntimeKey(displayId,paneId);
+    window.clearTimeout(model.peaksPollByPane[runtimeKey]);
+    delete model.peaksPollByPane[runtimeKey];
+    model.peaksTokens[runtimeKey]=(model.peaksTokens[runtimeKey] || 0) + 1;
+    delete model.peaksRecords[runtimeKey];
+    if (model.peaksRecord && model.peaksRecord.displayId === displayId && model.peaksRecord.paneId === paneId) model.peaksRecord=null;
+    clearPeaksMarkersForPane(displayId,paneId);
   }
 
   function paneGraphSignalIds(pane) {
@@ -5407,7 +5474,7 @@
     var graphSignalIds=paneGraphSignalIds(pane), records=helper.markerRecords(state,graphSignalIds), grouped={};
     records.forEach(function (item) { (grouped[item.signalId] || (grouped[item.signalId]=[])).push(item); });
     var xFactor=extremaXProjectionFactor(host,pane);
-    return Object.keys(grouped).map(function (signalId) {
+    var markerTraces=Object.keys(grouped).map(function (signalId) {
       var signal=paneSignalById(signalId), rows=grouped[signalId], color=signalColor(signal);
       return {
         type:"scatter",
@@ -5424,6 +5491,13 @@
         meta:{signal_analyser_peaks_overlay:true,signal_id:signalId}
       };
     });
+    var fullLayout=host && host._fullLayout || {};
+    var envelope=helper.autoscaleEnvelopeTrace(host && host.data || [],markerTraces,{
+      x:fullLayout.xaxis && fullLayout.xaxis.type,
+      y:fullLayout.yaxis && fullLayout.yaxis.type
+    });
+    if (envelope) markerTraces.push(envelope);
+    return markerTraces;
   }
 
   function updatePeaksMarkers(displayId, paneId, record) {
@@ -6134,6 +6208,7 @@
          flight.  Area becomes active only after its authoritative snapshot
          has been accepted. */
       mutationOptions.focusAreaAfterPlotTypeChange = plotTypeChanged;
+      mutationOptions.clearExtremaAfterPlotTypeChange = plotTypeChanged;
     }
     var paneLoadingToken=mutationOptions.focusAreaAfterPlotTypeChange ? beginPaneLoading(targetDisplayId, payload.pane_id, "plot-type") : null;
     var layoutLoadingToken=payload.operation === "resize" ? beginLayoutLoading(targetDisplayId) : null;
@@ -6153,6 +6228,7 @@
       if (mutationOptions.focusAreaAfterPlotTypeChange) {
         var currentDisplay = activeDisplay(), currentPane = paneById(payload.pane_id);
         if (currentDisplay && currentPane && currentPane.plot_type === payload.plot_type) {
+          if (mutationOptions.clearExtremaAfterPlotTypeChange) clearCachedPeaksAfterPlotTypeChange(targetDisplayId,payload.pane_id);
           model.settingsPage = "display";
           renderSettings(currentDisplay);
         }
