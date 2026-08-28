@@ -1800,6 +1800,67 @@
   root.SignalAnalyserExtremaTableActions={normalize:normalize,presentation:presentation,headerActionsMarkup:headerActionsMarkup,surfaceMarkup:surfaceMarkup,activation:activation,bind:bind,contract:{tabRowActions:false,headerOrder:["clear","recalculate"],tooltipDelayMs:1500}};
 }(typeof window!=="undefined"?window:globalThis));
 
+(function registerPrimaryProcessingAndOperationValidation(window) {
+  "use strict";
+
+  var PRIMARY_INVENTORY=Object.freeze([
+    "pane-clear-confirm","signal-add-submit","layout-apply","signal-values-action","extrema-values","extrema-calculate",
+    "native-file-browser-select","native-save-submit","native-import-submit","native-message-close",
+    "import-error-details","import-success","import-validate","import-commit","session-package-save-create","session-package-save-download",
+    "signal-trim-submit","signal-operation-submit","signal-operation-error-confirm","signal-color-picker-apply"
+  ]);
+
+  function setBusy(button,busy) {
+    if (!button) return null;
+    if (busy) {
+      if (!button.dataset.primaryIdleWidth && button.getBoundingClientRect) button.dataset.primaryIdleWidth=String(button.getBoundingClientRect().width || "");
+      if (button.dataset.primaryIdleWidth) button.style.width=button.dataset.primaryIdleWidth+"px";
+      button.setAttribute("aria-busy","true");
+      button.disabled=true;
+    } else {
+      button.setAttribute("aria-busy","false");
+      button.style.removeProperty("width");
+      delete button.dataset.primaryIdleWidth;
+    }
+    return button;
+  }
+
+  function label(field) { return String(field.label || "")+(field.unit ? ", "+String(field.unit) : ""); }
+
+  function projectField(form,id,message) {
+    var row=form && form.querySelector("[data-signal-operation-field='"+CSS.escape(String(id))+"']");
+    if (!row) return;
+    var control=row.querySelector("input,select,textarea,[role='combobox']"), old=row.querySelector(".signal-operation-field-message"), error=String(message || "");
+    row.classList.toggle("has-error",!!error);
+    if (control) control.setAttribute("aria-invalid",String(!!error));
+    if (error) {
+      if (!old) { old=document.createElement("p"); old.className="signal-operation-field-message"; old.setAttribute("role","alert"); row.appendChild(old); }
+      old.textContent=error;
+    } else if (old) old.remove();
+  }
+
+  function project(form,state,validation,busy) {
+    if (!form || !validation) return validation;
+    form.querySelectorAll("[data-signal-operation-field]").forEach(function (row) { projectField(form,row.dataset.signalOperationField,validation.errors[row.dataset.signalOperationField]); });
+    var name=form.querySelector("[data-operation-name]");
+    if (name) {
+      name.setAttribute("aria-invalid",String(!!validation.errors.target_name));
+      var nameRow=name.closest(".signal-operation-row"), old=nameRow && nameRow.querySelector(".signal-operation-field-message");
+      if (validation.errors.target_name) {
+        nameRow.classList.add("has-error");
+        if (!old) { old=document.createElement("p"); old.className="signal-operation-field-message"; old.setAttribute("role","alert"); nameRow.appendChild(old); }
+        old.textContent=validation.errors.target_name;
+      } else { if (nameRow) nameRow.classList.remove("has-error"); if (old) old.remove(); }
+    }
+    var submit=document.querySelector("[data-signal-operation-submit],[data-operation-submit]");
+    if (submit) { submit.disabled=!!busy || !validation.valid; submit.setAttribute("aria-disabled",String(submit.disabled)); setBusy(submit,!!busy); }
+    return validation;
+  }
+
+  window.SignalAnalyserPrimaryProcessing=Object.freeze({inventory:PRIMARY_INVENTORY,setBusy:setBusy});
+  window.SignalAnalyserOperationLiveValidation=Object.freeze({label:label,project:project,projectField:projectField});
+}(window));
+
 (function signalAnalyserApp(window, document) {
   "use strict";
 
@@ -1851,6 +1912,8 @@
   function extremaActionController() { return window.SignalAnalyserExtremaAction || null; }
   function paneExtremaController() { return window.SignalAnalyserPaneExtrema || null; }
   function extremaTableActionsController() { return window.SignalAnalyserExtremaTableActions || null; }
+  function primaryProcessingController() { return window.SignalAnalyserPrimaryProcessing || null; }
+  function setPrimaryBusy(button,busy) { var helper=primaryProcessingController(); if (helper) helper.setBusy(button,!!busy); else if (button) button.setAttribute("aria-busy",String(!!busy)); return button; }
   function synchronizedRangeController() { return window.SignalAnalyserSynchronizedRanges || null; }
   function rangeLifecycleKey(displayId, paneId, fieldId) { return [displayId || "", paneId || "", fieldId || ""].join("::"); }
   var RANGE_LIFECYCLE_MAX_ACTIVE_MS=30000;
@@ -2783,15 +2846,17 @@
     if (!current.open) { if(dialog) dialog.remove(); if(!model.sessionSave.open) setSessionImportModalBackground(false); return; }
     if (!dialog) { dialog=document.createElement("div"); dialog.className="modal-layer primary-modal-layer package-modal"; dialog.dataset.testid="session-package-import-dialog"; document.body.appendChild(dialog); }
     setSessionImportModalBackground(true); dialog.setAttribute("aria-busy", String(current.busy));
-    if (current.phase==="validate") { body=packageProgress("Проверяем пакет","Структура, версия, ограничения и контрольные суммы…"); footer="<button class='button' data-package-cancel>Отменить проверку</button>"; }
+    if (current.phase==="validate") { body=packageProgress("Проверяем пакет","Структура, версия, ограничения и контрольные суммы…"); footer="<button class='button' data-package-cancel>Отменить проверку</button><button class='button button-primary' data-testid='import-validate' disabled>Проверить пакет</button>"; }
     else if (current.phase==="error") { body="<div class='alert alert-error' data-testid='import-error' role='alert'><strong>Этот файл нельзя импортировать</strong><p>Текущая сессия не изменена и ни один загруженный скрипт не был запущен.</p><p>"+esc(current.error)+"</p></div>"; footer="<button class='button' data-package-close>Закрыть</button><button class='button' data-package-reselect>Выбрать другой файл</button><button class='button button-primary' data-testid='import-error-details'>Подробности проверки</button>"; }
-    else if (current.phase==="commit") { body=packageProgress("Восстанавливаем сессию","Применяем проверенный пакет и обновляем состояние приложения."); footer="<button class='button' disabled>Восстановление…</button>"; }
+    else if (current.phase==="commit") { body=packageProgress("Восстанавливаем сессию","Применяем проверенный пакет и обновляем состояние приложения."); footer="<button class='button button-primary' data-testid='import-commit' disabled>Восстановить сессию</button>"; }
     else if (current.phase==="success") { var w=current.result&&current.result.workspace; body="<div class='result-heading' data-testid='import-success'><img class='result-icon' src='./icons/tick-figma.svg' alt=''><div><h3>Сессия восстановлена</h3><p>"+esc(w&&w.requested ? (w.success ? "Публикация в рабочую область завершена." : "Сессия восстановлена; проверьте отчёт публикации.") : "Рабочая область Engee не изменена.")+"</p></div></div>"+(w&&w.requested?"<details data-testid='session-package-details'><summary>Отчёт публикации</summary><p>"+esc(w.error||((w.items||[]).map(function(i){return i.variable_name+": "+i.action;}).join(", ")||"Нет опубликованных имён."))+"</p></details>":""); footer="<button class='button button-primary' data-testid='import-success' data-package-close>Готово</button>"; }
     else { body="<p class='dialog-intro'>Перед восстановлением приложение проверит структуру, версию, ограничения и контрольные суммы.</p><div class='selected-file'><img src='./icons/file.svg' alt=''><div><strong>"+esc(current.file&&current.file.name)+"</strong><small>.sazip</small></div></div><div class='alert alert-warning'><strong>Безопасный импорт</strong><p>Скрипт reproduce.jl будет сохранён как файл пакета и никогда не выполняется при импорте.</p></div>"; footer="<button class='button' data-package-close>Отмена</button><button class='button button-primary' data-testid='import-validate'>Проверить пакет</button>"; }
     if(current.phase==="summary") { body="<div class='result-heading'><img class='result-icon' src='./icons/tick-figma.svg' alt=''><div><h3>Пакет проверен</h3><p>.sazip v"+esc(v.version)+" · контрольных сумм: "+esc(v.contents&&v.contents.checksum_count)+"</p></div></div><dl class='summary-grid'><dt>Сигналы</dt><dd>"+esc(v.contents&&v.contents.signals)+"</dd><dt>Экраны</dt><dd>"+esc(v.contents&&v.contents.displays)+"</dd><dt>Готовые графики</dt><dd>"+esc(v.contents&&v.contents.graph_snapshots)+"</dd><dt>Отсчёты</dt><dd>"+esc(v.limits&&v.limits.total_samples)+" / "+esc(v.limits&&v.limits.max_total_samples)+"</dd></dl><details data-testid='package-contents'><summary>Состав пакета</summary><ul><li>Сессия и настройки</li><li>Исходные данные сигналов</li><li>Готовые снимки графиков</li><li>reproduce.jl · не будет выполнен</li><li>Метаданные зависимостей</li></ul></details><label class='package-checkbox'><input type='checkbox' data-testid='workspace-publish'"+(current.publish?" checked":"")+"> Опубликовать сигналы в рабочую область Engee<small>Выключено по умолчию. Без публикации сигналы остаются только внутри приложения.</small></label>"+(current.publish?"<label class='field-label'>Префикс имён<input class='text-input' data-testid='workspace-prefix' value='"+esc(current.prefix)+"'><small>Префикс добавляется к именам публикуемых переменных.</small></label>"+(current.preflightLoading?"<p class='muted-copy' role='status'>Проверяем имена рабочей области…</p>":"")+(current.preflightError?"<p class='session-import-error' role='alert'>"+esc(current.preflightError)+"</p>":"")+(collisions.length?"<div class='alert alert-warning' data-testid='workspace-collision-warning'><strong>Обнаружены совпадения имён</strong><p>"+esc(collisions.join(", "))+"</p><p>Проверьте префикс перед импортом.</p></div>":"")+"<div class='alert alert-warning'><strong>Публикация не входит в атомарную замену</strong><p>При сбое часть переменных может быть создана. После импорта проверьте итоговый отчёт.</p></div>":"")+"<label class='package-checkbox'><input type='checkbox' data-testid='replace-confirm'"+(current.replace?" checked":"")+"> Я подтверждаю замену текущей сессии</label>"; footer="<button class='button' data-package-close>Отмена</button><button class='button button-primary' data-testid='import-commit'"+(current.replace?"":" disabled")+">Восстановить сессию</button>"; }
     dialog.innerHTML=modalLayer("session-package-import", "Импортировать переносимый пакет", body, footer, current.busy);
     decorateNoHistory(dialog);
     bindPackageDialog(dialog);
+    setPrimaryBusy(dialog.querySelector("[data-testid='import-validate']"),current.busy && current.phase === "validate");
+    setPrimaryBusy(dialog.querySelector("[data-testid='import-commit']"),current.busy && current.phase === "commit");
   }
   function closeSessionImport(restoreFocus) {
     var current = model.sessionImport, trigger = current.trigger;
@@ -2880,9 +2945,9 @@
       if (current.open) renderSessionImportDialog();
     });
   }
-  function renderSessionSaveDialog() { var s=model.sessionSave, dialog=q("[data-testid='session-package-save-dialog']"), rows=packageRows().map(function(row){return "<div class='content-row'><span class='included-mark'>✓</span><div><strong>"+row[0]+"</strong><small>"+row[1]+"</small></div></div>";}).join(""), body,footer; if(!s.open){if(dialog)dialog.remove();if(!model.sessionImport.open)setSessionImportModalBackground(false);return;} if(!dialog){dialog=document.createElement("div");dialog.className="modal-layer primary-modal-layer package-modal";dialog.dataset.testid="session-package-save-dialog";document.body.appendChild(dialog);}setSessionImportModalBackground(true);if(s.phase==="progress"){body=packageProgress("Подготавливаем сессию","Экспортируем сигналы и графики");footer="<button class='button' disabled>Проверяем архив и контрольные суммы</button>";}else if(s.phase==="error"){body="<div class='alert alert-error' role='alert'><strong>Не удалось создать пакет</strong><p>"+esc(s.error||"Не удалось сохранить снимки графиков. Данные сессии не были скачаны.")+"</p></div>";footer="<button class='button' data-package-save-close>Закрыть</button><button class='button button-primary' data-package-save-create>Повторить</button>";}else if(s.phase==="ready"){body="<div class='result-heading' data-testid='save-ready'><img class='result-icon' src='./icons/tick-figma.svg' alt=''><div><h3>Пакет успешно создан</h3><p>Файл готов к скачиванию.</p></div></div>";footer="<button class='button' data-package-save-close>Закрыть</button><button class='button button-primary' data-testid='session-package-save-download' data-package-save-download>Скачать .sazip</button>";}else{body="<p class='dialog-intro'>Проверьте состав переносимого пакета Engee. Все перечисленные материалы включаются всегда.</p><h3 class='section-title'>Состав пакета</h3><div class='content-list' data-testid='save-content-list'>"+rows+"</div>";footer="<button class='button' data-package-save-close>Отмена</button><button class='button button-primary' data-testid='session-package-save-create' data-package-save-create>Сохранить пакет</button>";}dialog.innerHTML=modalLayer("session-package-save","Сохранить переносимый пакет",body,footer,s.busy);decorateNoHistory(dialog);bindSaveDialog(dialog); }
+  function renderSessionSaveDialog() { var s=model.sessionSave, dialog=q("[data-testid='session-package-save-dialog']"), rows=packageRows().map(function(row){return "<div class='content-row'><span class='included-mark'>✓</span><div><strong>"+row[0]+"</strong><small>"+row[1]+"</small></div></div>";}).join(""), body,footer; if(!s.open){if(dialog)dialog.remove();if(!model.sessionImport.open)setSessionImportModalBackground(false);return;} if(!dialog){dialog=document.createElement("div");dialog.className="modal-layer primary-modal-layer package-modal";dialog.dataset.testid="session-package-save-dialog";document.body.appendChild(dialog);}setSessionImportModalBackground(true);if(s.phase==="progress"){body=packageProgress("Подготавливаем сессию","Экспортируем сигналы и графики");footer="<button class='button button-primary' data-testid='session-package-save-create' data-package-save-create disabled>Сохранить пакет</button>";}else if(s.phase==="error"){body="<div class='alert alert-error' role='alert'><strong>Не удалось создать пакет</strong><p>"+esc(s.error||"Не удалось сохранить снимки графиков. Данные сессии не были скачаны.")+"</p></div>";footer="<button class='button' data-package-save-close>Закрыть</button><button class='button button-primary' data-testid='session-package-save-create' data-package-save-create>Повторить</button>";}else if(s.phase==="ready"){body="<div class='result-heading' data-testid='save-ready'><img class='result-icon' src='./icons/tick-figma.svg' alt=''><div><h3>Пакет успешно создан</h3><p>Файл готов к скачиванию.</p></div></div>";footer="<button class='button' data-package-save-close>Закрыть</button><button class='button button-primary' data-testid='session-package-save-download' data-package-save-download>Скачать .sazip</button>";}else{body="<p class='dialog-intro'>Проверьте состав переносимого пакета Engee. Все перечисленные материалы включаются всегда.</p><h3 class='section-title'>Состав пакета</h3><div class='content-list' data-testid='save-content-list'>"+rows+"</div>";footer="<button class='button' data-package-save-close>Отмена</button><button class='button button-primary' data-testid='session-package-save-create' data-package-save-create>Сохранить пакет</button>";}dialog.innerHTML=modalLayer("session-package-save","Сохранить переносимый пакет",body,footer,s.busy);decorateNoHistory(dialog);bindSaveDialog(dialog);setPrimaryBusy(dialog.querySelector("[data-testid='session-package-save-create']"),s.busy && s.phase==="progress"); }
   function openSessionSave(trigger) { var s=model.sessionSave; if(s.busy)return; s.open=true;s.phase="summary";s.error="";s.package=null;s.trigger=trigger;renderSessionSaveDialog();window.requestAnimationFrame(function(){var n=q("[data-testid='session-package-save-create']");if(n)n.focus();}); }
-  function downloadSessionDocument(trigger) { var s=model.sessionSave; if(s.busy)return; s.open=true;s.phase="progress";s.busy=true;s.error="";s.trigger=trigger||s.trigger;renderSessionSaveDialog();api.exportPackage().then(function(result){s.package=result;s.phase="ready";}).catch(function(error){s.error=packageError(error,"Не удалось сохранить снимки графиков. Данные сессии не были скачаны.");s.phase="error";}).finally(function(){s.busy=false;renderSessionSaveDialog();}); }
+  function downloadSessionDocument(trigger) { var s=model.sessionSave; if(s.busy)return; var action=q("[data-package-save-create]");s.primaryIdleLabel=action&&action.textContent||"Сохранить пакет";s.open=true;s.phase="progress";s.busy=true;s.error="";s.trigger=trigger||s.trigger;renderSessionSaveDialog();api.exportPackage().then(function(result){s.package=result;s.phase="ready";}).catch(function(error){s.error=packageError(error,"Не удалось сохранить снимки графиков. Данные сессии не были скачаны.");s.phase="error";}).finally(function(){s.busy=false;renderSessionSaveDialog();}); }
   function closePackageDetails() { var layer=q("[data-testid='session-package-details-dialog']"); if(layer)layer.remove(); var target=q("[data-testid='import-error-details']"); if(target)target.focus(); }
   function openPackageDetails() { var c=model.sessionImport, layer=document.createElement("div"); layer.className="modal-layer nested-modal-layer package-modal";layer.dataset.testid="session-package-details-dialog";layer.innerHTML=modalLayer("session-package-details","Подробности проверки","<div class='alert alert-error'><strong>Файл отклонён</strong><p>"+esc(c.error)+"</p></div><p class='muted-copy'>Текущая сессия не изменена. Содержимое пакета и скрипты не запускались.</p>","<button class='button button-primary' data-package-details-close>Понятно</button>",false);document.body.appendChild(layer);layer.querySelectorAll("[data-package-details-close],[data-package-close]").forEach(function(n){n.addEventListener("click",closePackageDetails);});layer.addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefault();e.stopPropagation();closePackageDetails();}});window.requestAnimationFrame(function(){var n=layer.querySelector("h2");if(n)n.focus();}); }
   function scheduleWorkspacePreflight() { var c=model.sessionImport, token=++c.preflightToken; if(c.preflightTimer)window.clearTimeout(c.preflightTimer); if(!c.publish)return; c.preflightLoading=true;c.preflightError="";c.preflight=null;renderSessionImportDialog();c.preflightTimer=window.setTimeout(function(){api.packageWorkspacePreflight({archive_base64:c.archiveBase64,workspace_prefix:c.prefix}).then(function(result){if(token===c.preflightToken)c.preflight=result;}).catch(function(error){if(token===c.preflightToken)c.preflightError=packageError(error,"Не удалось проверить имена рабочей области.");}).finally(function(){if(token===c.preflightToken){c.preflightLoading=false;renderSessionImportDialog();}});},150); }
@@ -3700,7 +3765,7 @@
     <div class="dialog-body signal-trim-body" data-signal-trim-form></div>
     <footer class="dialog-footer">
       <button class="button" type="button" data-signal-trim-cancel>Отмена</button>
-      <button class="button button-primary" type="button" data-signal-trim-submit disabled>Создать сигнал</button>
+      <button class="button button-primary" type="button" data-signal-trim-submit data-testid="signal-trim-submit" disabled>Создать сигнал</button>
     </footer>
   </section>
 </div>`;
@@ -3757,7 +3822,7 @@
         if (submit) submit.disabled=!!state.submitDisabled;
       },
       close:function (meta) { var layer=q(helper.selectors.layer); if (layer) { layer.hidden=true; layer.setAttribute("aria-busy","false"); } q("[data-testid='app-shell']").inert=false; if (meta && meta.restoreFocus && meta.restoreFocus.isConnected) meta.restoreFocus.focus(); },
-      setBusy:function (busy) { var layer=q(helper.selectors.layer); if (!layer) return; layer.setAttribute("aria-busy",String(!!busy)); Array.prototype.slice.call(layer.querySelectorAll("input,select,button")).forEach(function (node) { node.disabled=!!busy; }); if (!busy) { var snapshot=model.signalTrimController && model.signalTrimController.snapshot(); var submit=layer.querySelector(helper.selectors.submit); if (submit) submit.disabled=!!(snapshot && snapshot.validation && !snapshot.validation.valid); } },
+      setBusy:function (busy) { var layer=q(helper.selectors.layer); if (!layer) return; layer.setAttribute("aria-busy",String(!!busy)); Array.prototype.slice.call(layer.querySelectorAll("input,select,button")).forEach(function (node) { node.disabled=!!busy; }); var submit=layer.querySelector(helper.selectors.submit); setPrimaryBusy(submit,busy); if (!busy && submit) { var snapshot=model.signalTrimController && model.signalTrimController.snapshot(); submit.disabled=!!(snapshot && snapshot.validation && !snapshot.validation.valid); submit.setAttribute("aria-disabled",String(submit.disabled)); } },
       error:function (message,meta) { var layer=q(helper.selectors.layer), status=layer && layer.querySelector(helper.selectors.status), field=meta && meta.field && layer.querySelector(meta.field); if (!field && model.signalTrimLastError) { var typedFields=model.signalTrimLastError.payload && model.signalTrimLastError.payload.error && model.signalTrimLastError.payload.error.fields || {}; field=typedFields.target_name ? layer.querySelector(helper.selectors.name) : typedFields.source_signal_id ? layer.querySelector(helper.selectors.source) : null; } if (status) { status.hidden=false; status.textContent=message; } if (field) { field.setAttribute("aria-invalid","true"); var focus=field.querySelector && field.querySelector("[data-value-select-input]") || field; if (focus && typeof focus.focus === "function") focus.focus(); } },
       createSignal:function (payload) { model.signalTrimLastError=null; return mutate(function () { return api.cropSignal(payload); },{preservePlots:true,skipSettings:true,skipOutput:true}).catch(function (error) { model.signalTrimLastError=error; throw error; }); },
       acceptSignal:function () { renderActivePaneContext(); }
@@ -4029,6 +4094,7 @@
   function confirmPaneClear() {
     var context = model.paneClearContext, display = activeDisplay(), pane = context && paneById(context.paneId);
     if (!context || !display || display.id !== context.displayId || !pane) return closePaneClearConfirm(true);
+    var confirm=q("[data-testid='pane-clear-confirm']"); setPrimaryBusy(confirm,true);
     closePaneClearConfirm(false);
     postLayout({ operation:"update_pane", pane_id:pane.id, plot_type:pane.plot_type, signal_bindings:[] }).then(function () {
       var runtimeKey = paneRuntimeKey(context.displayId, context.paneId);
@@ -4044,7 +4110,7 @@
       showToast("Область очищена", false);
       var target = q("[data-pane-id='" + CSS.escape(context.paneId) + "']");
       if (target) target.focus();
-    }).catch(function (error) { showToast(safeErrorText(error, "Не удалось очистить область."), true); });
+    }).catch(function (error) { showToast(safeErrorText(error, "Не удалось очистить область."), true); }).finally(function () { setPrimaryBusy(confirm,false); if (confirm) confirm.disabled=false; });
   }
 
   function enqueuePlot(displayId, pane, record) {
@@ -4926,11 +4992,11 @@
       var key = episodeKey || "settings::pending";
       footer.dataset.loaderEpisodeKey = key;
       button.dataset.loaderEpisodeKey = key;
-      button.setAttribute("aria-busy", "true");
+      setPrimaryBusy(button,true);
     } else {
       delete footer.dataset.loaderEpisodeKey;
       delete button.dataset.loaderEpisodeKey;
-      button.removeAttribute("aria-busy");
+      setPrimaryBusy(button,false);
     }
   }
 
@@ -5197,6 +5263,7 @@
     var presentation = tableActions && tableActions.presentation(status,rows.length);
     if (!presentation || presentation.layout === "surface") {
       host.innerHTML = tableActions ? tableActions.surfaceMarkup(status,true) : "";
+      setPrimaryBusy(host.querySelector("[data-testid='extrema-calculate']"),status === "pending");
       reconcileDropdownTooltip(host);
       return;
     }
@@ -5302,6 +5369,8 @@
     var record = display && pane ? model.peaksRecords[paneRuntimeKey(display.id, pane.id)] : null;
     var actionState=extremaActionState(record), actionHelper=extremaActionController();
     var actionView=actionHelper && typeof actionHelper.project === "function" ? actionHelper.project(button, actionState) : extremaActionView(record);
+    if (actionState === "pending") button.textContent=button.dataset.primaryIdleLabel || "Рассчитать";
+    else button.dataset.primaryIdleLabel=button.textContent;
     var parsed = draft && draft.key === peaksSettingsKey(display, pane) ? parsePeaksSettings(draft) : null;
     var invalid = !!draft && !parsed;
     var unavailable = !extremaTabsAvailable(pane) || !draft;
@@ -5761,7 +5830,7 @@
       rate.setAttribute("aria-invalid", String(invalidRate));
     }
     if (rateError) { rateError.hidden = !invalidRate; rateError.textContent = invalidRate ? (rateResult.valid ? "Введите число больше 0." : rateResult.error) : ""; }
-    if (submit) submit.disabled = model.signalAddLoading || model.signalAddSubmitting || !selected.length || invalidRate;
+    if (submit) { setPrimaryBusy(submit,model.signalAddSubmitting); submit.disabled = model.signalAddLoading || model.signalAddSubmitting || !selected.length || invalidRate; submit.setAttribute("aria-disabled",String(submit.disabled)); }
     qa("[data-signal-add-variable], [data-signal-add-search], [data-signal-add-close], [data-signal-add-cancel]").forEach(function (control) { control.disabled = model.signalAddSubmitting || (control.dataset.signalAddSearch !== undefined && model.signalAddLoading); });
   }
 
@@ -5896,7 +5965,6 @@
     model.signalAddSubmitting = true;
     var submit = layer.querySelector("[data-signal-add-submit]");
     var error = layer.querySelector("[data-testid='signal-add-error']");
-    submit.textContent = "Добавление…";
     error.hidden = true;
     setCheckboxRegionBusy(layer.querySelector("[data-testid='signal-add-variables']"), true);
     updateSignalAddControls();
@@ -5908,7 +5976,6 @@
     }).catch(function (caught) {
       model.signalAddSubmitting = false;
       setCheckboxRegionBusy(layer.querySelector("[data-testid='signal-add-variables']"), false);
-      submit.textContent = "Добавить";
       error.hidden = false;
       error.textContent = safeErrorText(caught, "Не удалось добавить выбранные сигналы.");
       updateSignalAddControls();
@@ -6473,7 +6540,7 @@
     <div class="dialog-body" data-signal-operation-form></div>
     <footer class="dialog-footer">
       <button class="button" type="button" data-signal-operation-cancel>Отмена</button>
-      <button class="button button-primary" type="button" data-signal-operation-submit>Создать сигнал</button>
+      <button class="button button-primary" type="button" data-signal-operation-submit data-testid="signal-operation-submit">Создать сигнал</button>
     </footer>
   </section>
 </div>
@@ -6487,7 +6554,7 @@
       <p id="signal-operation-error-message" class="signal-operation-error-message" data-signal-operation-error-message></p>
     </div>
     <footer class="dialog-footer">
-      <button class="button button-primary" type="button" data-signal-operation-error-confirm>Понятно</button>
+      <button class="button button-primary" type="button" data-signal-operation-error-confirm data-testid="signal-operation-error-confirm">Понятно</button>
     </footer>
   </section>
 </div>`;
@@ -6499,6 +6566,7 @@
   }
 
   function preprocessOperation() { return window.SignalAnalyserPreprocessOperation || null; }
+  function operationLiveValidation() { return window.SignalAnalyserOperationLiveValidation || null; }
   function selectedOperationLabel(options,value) {
     var selected=(options || []).filter(function (option) { return option.value === value; })[0];
     return selected ? selected.label : "";
@@ -6515,7 +6583,7 @@
     var state=model.signalOperation,helper=preprocessOperation();
     if (!helper || !state.operationState) return;
     state.operationState=helper.updateParameter(state.operationState,fieldId,value);
-    state.validation=null;
+    state.validation=helper.validate(state.operationState);
     state.success=false;
     renderSignalOperation();
   }
@@ -6529,7 +6597,8 @@
     } else {
       control="<input class='signal-operation-control' type='text' inputmode='"+(field.type === "number" ? "decimal" : "text")+"' value='"+esc(value)+"' data-signal-operation-parameter='"+esc(field.id)+"' data-testid='"+esc(field.testid)+"' aria-invalid='"+String(!!error)+"'"+(field.placeholder ? " placeholder='"+esc(field.placeholder)+"'" : "")+(disabled ? " disabled" : "")+" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'>";
     }
-    return "<div class='signal-operation-row"+(error ? " has-error" : "")+"' data-signal-operation-field='"+esc(field.id)+"'><label>"+esc(field.label)+"</label><div class='signal-operation-control-wrap'>"+control+(field.unit ? "<span class='signal-operation-unit'>"+esc(field.unit)+"</span>" : "")+"</div>"+(error ? "<p class='signal-operation-field-message' role='alert'>"+esc(error)+"</p>" : field.hint ? "<p class='signal-operation-field-hint'>"+esc(field.hint)+"</p>" : "")+"</div>";
+    var live=operationLiveValidation(),label=live ? live.label(field) : field.label;
+    return "<div class='signal-operation-row"+(error ? " has-error" : "")+"' data-signal-operation-field='"+esc(field.id)+"'><label>"+esc(label)+"</label><div class='signal-operation-control-wrap'>"+control+"</div>"+(error ? "<p class='signal-operation-field-message' role='alert'>"+esc(error)+"</p>" : field.hint ? "<p class='signal-operation-field-hint'>"+esc(field.hint)+"</p>" : "")+"</div>";
   }
 
   function renderSignalOperation() {
@@ -6545,19 +6614,30 @@
     var operationSelect=valueSelect.markup({
       key:"signal-operation-type",value:operationState.operation,label:selectedOperationLabel(operationOptions,operationState.operation),options:operationOptions,
       testId:"signal-operation-select",ariaLabel:"Операция",disabled:busy,className:"settings-value-select",
-      onSelect:function (value) { state.operationState=helper.switchOperation(operationState,value); state.success=false; state.validation=null; renderSignalOperation(); }
+      onSelect:function (value) { state.operationState=helper.switchOperation(operationState,value); state.success=false; state.validation=helper.validate(state.operationState); renderSignalOperation(); }
     });
-    var validation=state.validation || {errors:{},availability:helper.availability(operationState)},fields=helper.schema(operationState);
-    form.innerHTML="<div class='signal-operation-form' data-operation-section='preprocess'><div class='signal-operation-row'><span class='signal-operation-label'>Исходный сигнал</span><input class='signal-operation-control' data-testid='signal-operation-source' value='"+esc(operationState.source && operationState.source.name)+"' readonly></div><div class='signal-operation-row'><span class='signal-operation-label'>Операция</span><div>"+operationSelect+"</div></div><div class='signal-operation-parameter-list'>"+fields.map(function (field) { return signalOperationFieldMarkup(field,validation.errors[field.id],busy); }).join("")+"</div>"+(!validation.availability.available ? "<div class='signal-operation-availability' role='status'>"+esc(validation.availability.message)+"</div>" : "")+(fields.some(function (field) { return field.nullableAuto; }) ? "<p class='signal-operation-auto-note'>Пустое поле со значением «Авто» передаётся как автоматический параметр, а не как ноль.</p>" : "")+"<div class='signal-operation-row"+(validation.errors.target_name ? " has-error" : "")+"'><label for='signal-operation-name'>Имя нового сигнала</label><input id='signal-operation-name' class='signal-operation-control' data-signal-operation-name value='"+esc(operationState.targetName)+"' aria-invalid='"+String(!!validation.errors.target_name)+"'"+(busy ? " disabled" : "")+" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'>"+(validation.errors.target_name ? "<p class='signal-operation-field-message' role='alert'>"+esc(validation.errors.target_name)+"</p>" : "")+"</div><div class='signal-operation-row signal-operation-overwrite-row'><span class='signal-operation-label'></span><label class='checkbox-field'><input type='checkbox' data-signal-operation-overwrite"+(operationState.overwrite ? " checked" : "")+(busy ? " disabled" : "")+"><span>Затирать сигнал с таким именем</span></label></div>"+signalOperationStatusMarkup(state)+"</div>";
+    var validation=state.validation || helper.validate(operationState),fields=helper.schema(operationState); state.validation=validation;
+    form.innerHTML="<div class='signal-operation-form' data-operation-section='preprocess'><div class='signal-operation-row'><span class='signal-operation-label'>Исходный сигнал</span><input class='signal-operation-control' data-testid='signal-operation-source' value='"+esc(operationState.source && operationState.source.name)+"' readonly></div><div class='signal-operation-row'><span class='signal-operation-label'>Операция</span><div>"+operationSelect+"</div></div><div class='signal-operation-parameter-list'>"+fields.map(function (field) { return signalOperationFieldMarkup(field,validation.errors[field.id],busy); }).join("")+"</div>"+(!validation.availability.available ? "<div class='signal-operation-availability' role='status'>"+esc(validation.availability.message)+"</div>" : "")+(fields.some(function (field) { return field.nullableAuto; }) ? "<p class='signal-operation-auto-note'>Пустое поле со значением «Авто» передаётся как автоматический параметр, а не как ноль.</p>" : "")+"<div class='signal-operation-row"+(validation.errors.target_name ? " has-error" : "")+"'><label for='signal-operation-name'>Имя нового сигнала</label><input id='signal-operation-name' class='signal-operation-control' data-operation-name data-signal-operation-name value='"+esc(operationState.targetName)+"' aria-invalid='"+String(!!validation.errors.target_name)+"'"+(busy ? " disabled" : "")+" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'>"+(validation.errors.target_name ? "<p class='signal-operation-field-message' role='alert'>"+esc(validation.errors.target_name)+"</p>" : "")+"</div><div class='signal-operation-row signal-operation-overwrite-row'><span class='signal-operation-label'></span><label class='checkbox-field'><input type='checkbox' data-signal-operation-overwrite"+(operationState.overwrite ? " checked" : "")+(busy ? " disabled" : "")+"><span>Затирать сигнал с таким именем</span></label></div>"+signalOperationStatusMarkup(state)+"</div>";
     decorateNoHistory(form);
     layer.hidden=!state.open;
     var shell=q("[data-testid='app-shell']"); if (shell) shell.inert=state.open;
-    layer.querySelector("[data-signal-operation-submit]").disabled=busy || state.success || !validation.availability.available;
+    var live=operationLiveValidation(); if (live) live.project(form,operationState,validation,busy);
+    var submit=layer.querySelector("[data-signal-operation-submit]"); submit.disabled=busy || state.success || !validation.valid; submit.setAttribute("aria-disabled",String(submit.disabled));
     layer.querySelector("[data-signal-operation-cancel]").disabled=busy;
     layer.querySelector("[data-signal-operation-close]").disabled=busy;
     valueSelect.reconcile();
     fields.filter(function (field) { return field.type === "select"; }).forEach(function (field) { var trigger=form.querySelector("[data-value-select-key='signal-operation-parameter::"+CSS.escape(field.id)+"']"); if (!trigger) return; var input=trigger.querySelector("[data-value-select-input]"); trigger.dataset.signalOperationParameter=field.id; trigger.setAttribute("aria-invalid",String(!!validation.errors[field.id])); if (input) input.setAttribute("aria-invalid",String(!!validation.errors[field.id])); });
     reconcileDropdownTooltip(layer);
+  }
+
+  function projectSignalOperationValidation() {
+    var state=model.signalOperation,helper=preprocessOperation(),live=operationLiveValidation(),layer=q("[data-testid='signal-operation-layer']"),form=layer && layer.querySelector("[data-signal-operation-form]");
+    if (!helper || !live || !state.operationState || !form) return null;
+    state.validation=helper.validate(state.operationState);
+    live.project(form,state.operationState,state.validation,state.busy);
+    var submit=layer.querySelector("[data-signal-operation-submit]");
+    if (submit && state.success) { submit.disabled=true; submit.setAttribute("aria-disabled","true"); }
+    return state.validation;
   }
 
   function openSignalOperation(trigger) {
@@ -6711,7 +6791,7 @@
     if (button.dataset.layoutClose !== undefined || button.dataset.layoutCancel !== undefined) return void closeLayout();
     if (button.dataset.layoutRows || button.dataset.layoutColumns) { model.layoutDraft[button.dataset.layoutRows ? "rows" : "columns"] = Number(button.dataset.layoutRows || button.dataset.layoutColumns); return void renderLayoutDraft(); }
     if (button.dataset.layoutScreenSettings !== undefined) return void openScreenSettingsFromLayout();
-    if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { if (model.screenDraft && model.screenDraft.displayId === displayId) { model.screenDraft.rows = draft.rows; model.screenDraft.columns = draft.columns; model.screenDraft.initialRows = draft.rows; model.screenDraft.initialColumns = draft.columns; } else model.screenDraft = null; if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }); }
+    if (button.dataset.layoutApply !== undefined) { var draft = model.layoutDraft; var displayId = activeDisplay() && activeDisplay().id; setPrimaryBusy(button,true); closeLayout(); return void postLayout({ operation: "resize", variant: draft.rows + "x" + draft.columns, rows: draft.rows, columns: draft.columns }).then(function () { if (model.screenDraft && model.screenDraft.displayId === displayId) { model.screenDraft.rows = draft.rows; model.screenDraft.columns = draft.columns; model.screenDraft.initialRows = draft.rows; model.screenDraft.initialColumns = draft.columns; } else model.screenDraft = null; if (activeDisplay() && activeDisplay().id === displayId) showToast("Макет " + draft.rows + " × " + draft.columns + " применён", false); }).catch(function (error) { showToast(error.message || "Не удалось применить макет.", true); }).finally(function () { setPrimaryBusy(button,false); button.disabled=false; }); }
     if (button.dataset.screenLayoutRows !== undefined || button.dataset.screenLayoutColumns !== undefined) {
       var screenAxis = button.dataset.screenLayoutRows !== undefined ? "rows" : "columns";
       var screenValue = Number(button.dataset.screenLayoutRows !== undefined ? button.dataset.screenLayoutRows : button.dataset.screenLayoutColumns);
@@ -6855,8 +6935,8 @@
     var node = event.target;
     if (node.dataset.signalTrimSource !== undefined) { var trimSourceController=signalTrimController(); if (trimSourceController) trimSourceController.selectSource(node.value); return; }
     if (node.dataset.signalTrimOverwrite !== undefined) { var trimOverwriteController=signalTrimController(); if (trimOverwriteController) trimOverwriteController.setOverwrite(node.checked); return; }
-    if (node.dataset.signalOperationOverwrite !== undefined && model.signalOperation.operationState) { model.signalOperation.operationState.overwrite=node.checked; model.signalOperation.validation=null; return; }
-    if (node.dataset.signalOperationParameter !== undefined && model.signalOperation.operationState) { var operationHelper=preprocessOperation(); if (operationHelper) { model.signalOperation.operationState=operationHelper.updateParameter(model.signalOperation.operationState,node.dataset.signalOperationParameter,node.value); model.signalOperation.validation=null; model.signalOperation.success=false; renderSignalOperation(); } return; }
+    if (node.dataset.signalOperationOverwrite !== undefined && model.signalOperation.operationState) { model.signalOperation.operationState.overwrite=node.checked; model.signalOperation.success=false; projectSignalOperationValidation(); return; }
+    if (node.dataset.signalOperationParameter !== undefined && model.signalOperation.operationState) { var operationHelper=preprocessOperation(); if (operationHelper) { model.signalOperation.operationState=operationHelper.updateParameter(model.signalOperation.operationState,node.dataset.signalOperationParameter,node.value); model.signalOperation.validation=operationHelper.validate(model.signalOperation.operationState); model.signalOperation.success=false; renderSignalOperation(); } return; }
     if (node.dataset.settingId === "display.show_axis_labels") { var labelsDisplay=activeDisplay(), labelsPane=paneById(model.activePane), labelsController=axisLabelsController(); if (labelsDisplay && labelsPane && labelsController) labelsController.setVisible(paneRuntimeKey(labelsDisplay.id,labelsPane.id),node.checked); }
     if (node.dataset.spectrumSliderAxis) { var currentDisplay=activeDisplay(), currentPane=paneById(model.activePane); if (currentDisplay && currentPane) setPaneSliderVisibility(currentDisplay.id, currentPane.id, node.dataset.spectrumSliderAxis, node.checked); return; }
     if (node.dataset.screenLinkTime !== undefined && model.screenDraft) { model.screenDraft.linkTime = node.checked; model.screenDraft.error = ""; previewScreenLinks(model.screenDraft); renderScreenSettings(activeDisplay()); scheduleScreenSettingsApply(); window.requestAnimationFrame(function () { var restored=q("[data-testid='screen-link-time']"); if(restored)restored.focus(); }); return; }
@@ -6887,7 +6967,7 @@
     var pane = target.closest("[data-pane-id]");
     if (pane) focusAreaSettings(pane.dataset.paneId);
   });
-  document.addEventListener("input", function (event) { if (event.target.dataset.signalTrimName !== undefined) { var trimNameController=signalTrimController(); if (trimNameController) trimNameController.editName(event.target.value); return; } if (model.signalOperation.operationState && event.target.dataset.signalOperationName !== undefined) { model.signalOperation.operationState.targetName=event.target.value; model.signalOperation.operationState.nameDirty=true; model.signalOperation.validation=null; model.signalOperation.success=false; return; } if (model.signalOperation.operationState && event.target.dataset.signalOperationParameter !== undefined && event.target.tagName !== "SELECT") { var operationHelper=preprocessOperation(); if (operationHelper) { model.signalOperation.operationState=operationHelper.updateParameter(model.signalOperation.operationState,event.target.dataset.signalOperationParameter,event.target.value); model.signalOperation.validation=null; model.signalOperation.success=false; } return; } if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; model.signalEditor.intent=(model.signalEditor.intent || 0) + 1; if (model.signalEditor.applying) model.signalEditor.saveQueued=true; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; scheduleSignalMetadataSave(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
+  document.addEventListener("input", function (event) { if (event.target.dataset.signalTrimName !== undefined) { var trimNameController=signalTrimController(); if (trimNameController) trimNameController.editName(event.target.value); return; } if (model.signalOperation.operationState && event.target.dataset.signalOperationName !== undefined) { model.signalOperation.operationState.targetName=event.target.value; model.signalOperation.operationState.nameDirty=true; model.signalOperation.success=false; projectSignalOperationValidation(); return; } if (model.signalOperation.operationState && event.target.dataset.signalOperationParameter !== undefined && event.target.tagName !== "SELECT") { var operationHelper=preprocessOperation(); if (operationHelper) { model.signalOperation.operationState=operationHelper.updateParameter(model.signalOperation.operationState,event.target.dataset.signalOperationParameter,event.target.value); model.signalOperation.success=false; projectSignalOperationValidation(); } return; } if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; model.signalEditor.intent=(model.signalEditor.intent || 0) + 1; if (model.signalEditor.applying) model.signalEditor.saveQueued=true; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; scheduleSignalMetadataSave(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
   document.addEventListener("input", function (event) { if (!event.target || event.target.dataset.testid !== "sample-point-search-input") return; var state=model.signalSamples; state.searchValue=event.target.value; state.searchState=""; state.searchMessage=""; var status=q("[data-testid='sample-point-search-status']"); if (status) { status.dataset.state=""; status.textContent=""; } });
   document.addEventListener("input", function (event) {
     var input=event.target;
@@ -7083,7 +7163,7 @@
   function ensure() { if (!picker) { document.body.insertAdjacentHTML("beforeend", markup()); picker = document.querySelector("[data-testid='signal-color-picker']"); } return picker; }
   function provider() { return window.SignalColorPickerProvider || {}; }
   function preview(color, source) { picker.style.setProperty("--draft-color", color || initialColor); var chip = trigger && trigger.querySelector("i"); if (chip) { chip.style.background = color || initialColor; chip.style.setProperty("--signal-color", color || initialColor); } if (typeof provider().preview === "function") provider().preview({ color:color || initialColor, source:source || "picker" }); }
-  function render() { var input = picker.querySelector("[data-testid='signal-color-picker-hex']"), valid = !!normalize(input.value); picker.dataset.invalid = String(!valid); picker.dataset.busy = String(busy); picker.querySelector("[data-color-picker-apply]").disabled = !valid || busy; picker.querySelector("[data-color-picker-cancel]").disabled = busy; picker.querySelector(".signal-color-picker-error").textContent = valid ? "" : "Введите HEX в формате #RRGGBB."; picker.querySelectorAll("[data-color]").forEach(function (swatch) { var selected = valid && swatch.dataset.color === normalize(input.value); swatch.classList.toggle("is-selected", selected); swatch.setAttribute("aria-selected", String(selected)); swatch.disabled = busy; }); }
+  function render() { var input = picker.querySelector("[data-testid='signal-color-picker-hex']"), valid = !!normalize(input.value), apply=picker.querySelector("[data-color-picker-apply]"), primary=window.SignalAnalyserPrimaryProcessing; picker.dataset.invalid = String(!valid); picker.dataset.busy = String(busy); if (primary) primary.setBusy(apply,busy); else apply.setAttribute("aria-busy",String(busy)); apply.disabled = !valid || busy; apply.setAttribute("aria-disabled",String(apply.disabled)); picker.querySelector("[data-color-picker-cancel]").disabled = busy; picker.querySelector(".signal-color-picker-error").textContent = valid ? "" : "Введите HEX в формате #RRGGBB."; picker.querySelectorAll("[data-color]").forEach(function (swatch) { var selected = valid && swatch.dataset.color === normalize(input.value); swatch.classList.toggle("is-selected", selected); swatch.setAttribute("aria-selected", String(selected)); swatch.disabled = busy; }); }
   function position() { if (!picker || picker.hidden || !trigger) return; var rect = trigger.getBoundingClientRect(), left = Math.max(8, Math.min(window.innerWidth - picker.offsetWidth - 8, rect.right - picker.offsetWidth)), below = rect.bottom + 6, top = below + picker.offsetHeight <= window.innerHeight - 8 ? below : rect.top - picker.offsetHeight - 6; picker.style.left = left + "px"; picker.style.top = Math.max(8, Math.min(window.innerHeight - picker.offsetHeight - 8, top)) + "px"; }
   function close(commit) { if (!picker || picker.hidden || busy) return; if (!commit) { preview(initialColor, "cancel"); if (typeof provider().cancel === "function") provider().cancel({ color:initialColor }); } picker.hidden = true; if (trigger) trigger.setAttribute("aria-expanded", "false"); var restore = trigger; trigger = null; sourceInput = null; window.requestAnimationFrame(function () { if (restore && restore.isConnected) restore.focus(); }); }
   function open(control, input) { ensure(); if (!picker.hidden && trigger === control) return close(false); if (!picker.hidden) close(false); trigger = control; sourceInput = input; initialColor = colorFrom(control, input); busy = false; trigger.setAttribute("aria-haspopup", "dialog"); trigger.setAttribute("aria-expanded", "true"); picker.hidden = false; var hex = picker.querySelector("[data-testid='signal-color-picker-hex']"); hex.value = initialColor; preview(initialColor, "open"); render(); position(); window.requestAnimationFrame(function () { hex.focus(); hex.select(); }); }

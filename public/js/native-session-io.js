@@ -25,6 +25,7 @@
       mode: "file",
       allowed_extensions: [".jld2"],
       busy: false,
+      busy_action: "",
       error: ""
     },
     requestToken: 0,
@@ -45,6 +46,7 @@
 
   function q(selector) { return document.querySelector(selector); }
   function qa(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
+  function setPrimaryBusy(button,busy) { var helper=window.SignalAnalyserPrimaryProcessing; if (helper) helper.setBusy(button,!!busy); else if (button) button.setAttribute("aria-busy",String(!!busy)); return button; }
   function dropdownTooltipAudit() { return window.SignalAnalyserDropdownTooltipAudit || null; }
   function reconcileDropdownTooltip(root) { var audit=dropdownTooltipAudit(); if (audit) audit.reconcile(root || document); }
   function esc(value) {
@@ -83,6 +85,7 @@
     state.message = null;
     state.busy = false;
     state.browserState.busy = false;
+    state.browserState.busy_action = "";
     state.browserState.error = "";
     return state.flowGeneration;
   }
@@ -336,12 +339,12 @@
         (state.saveType === "session" || names.length > 0);
       html += layer("native-save", "Сохранение", "<div class='native-form'><div class='native-dialog-row'><span class='native-label'>Тип</span>" + saveTypeSelect() + "</div>" +
         (state.saveType === "session" ? "" : "<div class='native-dialog-row native-signals-row'><label class='native-label' for='native-save-signals-input'>Сигнал(ы)</label>" + signalPickerMarkup() + "</div>" + (names.length ? "" : "<small class='native-field-error native-signal-error' data-testid='save-signals-error'>Выберите хотя бы один сигнал.</small>")) +
-        typeFields() + "</div>", "<button class='button' data-native-close data-testid='native-save-cancel'>Отмена</button><button class='button button-primary'" + (!saveReady || state.busy ? " disabled" : "") + " data-testid='native-save-submit'>" + (state.busy ? "Сохранение…" : "Сохранить") + "</button>", "native-save-dialog");
+        typeFields() + "</div>", "<button class='button' data-native-close data-testid='native-save-cancel'>Отмена</button><button class='button button-primary'" + (!saveReady || state.busy ? " disabled" : "") + " data-testid='native-save-submit'>Сохранить</button>", "native-save-dialog");
     }
     if (state.import) {
       var importReady = /\.jld2$/i.test(state.importDraft.path) && state.importDraft.replace;
       html += layer("native-import", "Импорт", "<div class='native-dialog-row native-import-path'><label for='native-import-file-path'>Файл</label><div class='native-path'><input id='native-import-file-path' class='control native-field' data-testid='native-import-path' value='" + esc(state.importDraft.path) + "'><button type='button' class='icon-button' data-native-browser-open='native-import-file' data-testid='native-import-path-browse' aria-label='Выбрать файл'><img src='./icons/folder-browser.svg' alt=''></button></div></div><label class='native-check'><input type='checkbox'" + (state.importDraft.replace ? " checked" : "") + " data-native-replace data-testid='native-import-replace'> Заменить текущую сессию</label>",
-        "<button class='button' data-native-close data-testid='native-import-cancel'>Отмена</button><button class='button button-primary'" + (!importReady || state.busy ? " disabled" : "") + " data-testid='native-import-submit'>" + (state.busy ? "Импорт…" : "Импортировать") + "</button>", "native-import-dialog");
+        "<button class='button' data-native-close data-testid='native-import-cancel'>Отмена</button><button class='button button-primary'" + (!importReady || state.busy ? " disabled" : "") + " data-testid='native-import-submit'>Импортировать</button>", "native-import-dialog");
     }
     if (state.browserState.open) html += browserMarkup();
     if (state.message && text(state.message.title) && text(state.message.text)) {
@@ -349,6 +352,9 @@
     }
     if (html) document.dispatchEvent(new CustomEvent("signal-analyser:overlay-open"));
     root.innerHTML = html;
+    setPrimaryBusy(q("[data-testid='native-file-browser-select']"),state.browserState.busy && state.browserState.busy_action === "select");
+    setPrimaryBusy(q("[data-testid='native-save-submit']"),state.save && state.busy);
+    setPrimaryBusy(q("[data-testid='native-import-submit']"),state.import && state.busy);
     if (window.SignalAnalyserTask0126 && typeof window.SignalAnalyserTask0126.decorateNoHistory === "function") window.SignalAnalyserTask0126.decorateNoHistory(root);
     var parent = q("[data-testid='native-save-dialog'], [data-testid='native-import-dialog']");
     if (parent && (state.browserState.open || (state.message && text(state.message.title) && text(state.message.text)))) {
@@ -407,6 +413,7 @@
     var token = ++state.requestToken;
     var generation = state.flowGeneration;
     browser.busy = true;
+    browser.busy_action = action;
     browser.error = "";
     render();
     return api.nativeFileBrowserAction(fileBrowserPayload(action, patch)).then(function (payload) {
@@ -421,6 +428,7 @@
     }).finally(function () {
       if (token === state.requestToken && active(generation)) {
         browser.busy = false;
+        browser.busy_action = "";
         render();
       }
     });

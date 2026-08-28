@@ -1644,7 +1644,6 @@ body.is-resizing-workspace * {
 .header-chrome-button[aria-expanded="true"] {
   background: var(--header-chrome-hover-bg);
   color: var(--text);
-  .display-add:hover { background: var(--button-hover); }
 }
 
 .header-chrome-button:not(:disabled):active {
@@ -4640,3 +4639,141 @@ select[data-dropdown-trigger]:disabled,
 }
 .extrema-calculate-spinner[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .extrema-calculate-spinner { animation-duration: 1600ms; } }
+
+/* V69 — global Primary processing state, analytical header hover and compact operation form. */
+:root {
+  --primary-processing: #75b5d4;
+  --primary-processing-spinner: #ffffff;
+}
+
+.button-primary[aria-busy="true"],
+.ui-button-primary[aria-busy="true"],
+.signal-color-picker-action.is-primary[aria-busy="true"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-color: var(--primary-processing);
+  background: var(--primary-processing);
+  color: var(--primary-processing-spinner);
+  opacity: 1;
+  cursor: default;
+}
+
+.button-primary[aria-busy="true"]::before,
+.ui-button-primary[aria-busy="true"]::before,
+.signal-color-picker-action.is-primary[aria-busy="true"]::before {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  box-sizing: border-box;
+  border: 2px solid rgba(255,255,255,.38);
+  border-top-color: var(--primary-processing-spinner);
+  border-radius: 50%;
+  content: "";
+  animation: primary-processing-spin 900ms linear infinite;
+}
+
+.button-primary[aria-busy="true"]:hover,
+.button-primary[aria-busy="true"]:active,
+.ui-button-primary[aria-busy="true"]:hover,
+.ui-button-primary[aria-busy="true"]:active,
+.signal-color-picker-action.is-primary[aria-busy="true"]:hover,
+.signal-color-picker-action.is-primary[aria-busy="true"]:active {
+  border-color: var(--primary-processing);
+  background: var(--primary-processing);
+  color: var(--primary-processing-spinner);
+}
+
+/* One spinner owner per Primary control. */
+.button-primary[aria-busy="true"] .extrema-calculate-spinner,
+.ui-button-primary[aria-busy="true"] .extrema-calculate-spinner { display: none; }
+
+@keyframes primary-processing-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .button-primary[aria-busy="true"]::before,
+  .ui-button-primary[aria-busy="true"]::before,
+  .signal-color-picker-action.is-primary[aria-busy="true"]::before { animation-duration: 1600ms; }
+}
+
+/* Exact inspector-state-toggle hover for workspace header controls. */
+.display-add.header-chrome-button:not(:disabled):hover,
+.layout-trigger.header-chrome-button:not(:disabled):hover {
+  background: var(--button-active);
+  color: var(--accent);
+}
+
+.display-add.header-chrome-button > img,
+.layout-trigger.header-chrome-button > .layout-chevron { display: none; }
+
+.display-add.header-chrome-button::before,
+.layout-trigger.header-chrome-button::after {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  background: currentColor;
+  content: "";
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+
+.display-add.header-chrome-button::before {
+  -webkit-mask-image: url("../icons/plus.svg");
+  mask-image: url("../icons/plus.svg");
+}
+
+.layout-trigger.header-chrome-button::after {
+  -webkit-mask-image: url("../icons/chevron-down-fill-16.svg");
+  mask-image: url("../icons/chevron-down-fill-16.svg");
+  transition: transform var(--duration-fast) ease;
+}
+
+.layout-trigger.header-chrome-button[aria-expanded="true"] {
+  background: var(--surface);
+  color: var(--text);
+}
+.layout-trigger.header-chrome-button[aria-expanded="true"]::after { transform: rotate(180deg); }
+.layout-trigger.header-chrome-button[aria-expanded="true"]:hover {
+  background: var(--button-active);
+  color: var(--accent);
+}
+
+/* Figma Modal MD: 480px. Controls return to the canonical analytical 32px track. */
+.signal-operation-dialog {
+  width: 480px;
+  min-width: 0;
+  max-width: calc(100vw - 32px);
+}
+
+.signal-operation-row {
+  grid-template-columns: 152px minmax(0, 1fr);
+  column-gap: 12px;
+}
+
+.signal-operation-control,
+.signal-operation-row .value-select-trigger,
+.signal-operation-row select,
+.signal-operation-row input {
+  min-height: 32px;
+  height: 32px;
+}
+
+.signal-operation-row textarea { min-height: 120px; }
+.signal-operation-unit { display: none; }
+.signal-operation-row > label,
+.signal-operation-row > .signal-operation-label { overflow-wrap: anywhere; }
+
+@media (max-width: 511px) {
+  .signal-operation-row { grid-template-columns: 1fr; row-gap: 4px; }
+  .signal-operation-row > label,
+  .signal-operation-row > .signal-operation-label { min-height: auto; }
+  .signal-operation-field-message,
+  .signal-operation-field-hint,
+  .signal-operation-availability,
+  .signal-operation-auto-note { grid-column: 1; margin-left: 0; }
+  .signal-operation-overwrite-row .checkbox-field { grid-column: 1; }
+}
