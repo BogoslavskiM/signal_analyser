@@ -2035,6 +2035,48 @@ const SIGNAL_DISPLAY_LAYOUT_VARIANTS = (
     "left-emphasis",
 )
 
+"""Persisted extrema marker owned by one pane and one stable signal id."""
+struct SignalPaneExtremum
+    sample::Int
+    x::Float64
+    y::Float64
+    is_maximum::Bool
+
+    function SignalPaneExtremum(sample::Int, x::Real, y::Real, is_maximum::Bool)
+        sample >= 0 || throw(ArgumentError("Индекс экстремума не может быть отрицательным"))
+        x_value = Float64(x)
+        y_value = Float64(y)
+        isfinite(x_value) || throw(ArgumentError("Координата X экстремума должна быть конечной"))
+        isfinite(y_value) || throw(ArgumentError("Координата Y экстремума должна быть конечной"))
+        new(sample, x_value, y_value, is_maximum)
+    end
+end
+
+"""Last fully published extrema dictionary and readiness for one pane."""
+mutable struct SignalPaneExtremaState
+    extrema_by_signal::Dict{String,Vector{SignalPaneExtremum}}
+    is_extrema_ready::Bool
+    success::Bool
+    error::String
+    need_update::Bool
+end
+
+SignalPaneExtremaState() = SignalPaneExtremaState(
+    Dict{String,Vector{SignalPaneExtremum}}(),
+    false,
+    false,
+    "",
+    true,
+)
+
+Base.copy(state::SignalPaneExtremaState) = SignalPaneExtremaState(
+    Dict(signal_id => copy(items) for (signal_id, items) in state.extrema_by_signal),
+    state.is_extrema_ready,
+    state.success,
+    state.error,
+    state.need_update,
+)
+
 """One stable plot aggregate inside a Display layout."""
 struct SignalDisplayPaneState
     id::String
@@ -2050,6 +2092,7 @@ struct SignalDisplayPaneState
     stored_settings::SignalDisplayStoredSettings
     peaks_enabled::Bool
     peaks_settings::SignalPeaksSettings
+    extrema_state::SignalPaneExtremaState
 
     function SignalDisplayPaneState(
         id::AbstractString,
@@ -2065,6 +2108,7 @@ struct SignalDisplayPaneState
         stored_settings::SignalDisplayStoredSettings,
         peaks_enabled::Bool,
         peaks_settings::SignalPeaksSettings,
+        extrema_state::SignalPaneExtremaState = SignalPaneExtremaState(),
     )
         pane_id = String(id)
         occursin(SIGNAL_DISPLAY_PANE_ID_REGEX, pane_id) || throw(ArgumentError(
@@ -2096,9 +2140,28 @@ struct SignalDisplayPaneState
             stored_settings,
             peaks_enabled,
             peaks_settings,
+            extrema_state,
         )
     end
 end
+
+function Base.getproperty(pane::SignalDisplayPaneState, name::Symbol)
+    name === :extrema_by_signal && return getfield(pane, :extrema_state).extrema_by_signal
+    name === :is_extrema_ready && return getfield(pane, :extrema_state).is_extrema_ready
+    name === :success && return getfield(pane, :extrema_state).success
+    name === :error && return getfield(pane, :extrema_state).error
+    name === :need_update && return getfield(pane, :extrema_state).need_update
+    getfield(pane, name)
+end
+
+Base.propertynames(::SignalDisplayPaneState, private::Bool = false) = (
+    fieldnames(SignalDisplayPaneState)...,
+    :extrema_by_signal,
+    :is_extrema_ready,
+    :success,
+    :error,
+    :need_update,
+)
 
 
 function signal_display_default_pane_name(id::AbstractString)::String
@@ -2150,7 +2213,12 @@ Base.:(==)(left::SignalDisplayPaneState, right::SignalDisplayPaneState) =
     left.persistence_settings == right.persistence_settings &&
     left.stored_settings == right.stored_settings &&
     left.peaks_enabled == right.peaks_enabled &&
-    left.peaks_settings == right.peaks_settings
+    left.peaks_settings == right.peaks_settings &&
+    left.extrema_by_signal == right.extrema_by_signal &&
+    left.is_extrema_ready == right.is_extrema_ready &&
+    left.success == right.success &&
+    left.error == right.error &&
+    left.need_update == right.need_update
 Base.isequal(left::SignalDisplayPaneState, right::SignalDisplayPaneState) = left == right
 Base.copy(pane::SignalDisplayPaneState) = SignalDisplayPaneState(
     pane.id,
@@ -2166,6 +2234,7 @@ Base.copy(pane::SignalDisplayPaneState) = SignalDisplayPaneState(
     pane.stored_settings,
     pane.peaks_enabled,
     pane.peaks_settings,
+    copy(pane.extrema_state),
 )
 
 function signal_display_pane_with_id(
@@ -2186,6 +2255,7 @@ function signal_display_pane_with_id(
         pane.stored_settings,
         pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -2223,6 +2293,7 @@ function signal_display_pane_with_time_links(
         stored,
         pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -2273,6 +2344,7 @@ function signal_display_pane_with_spectrum_links(
         stored,
         pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -2294,6 +2366,7 @@ function signal_display_pane_with_time_limits(
         pane.stored_settings,
         pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -2315,6 +2388,7 @@ function signal_display_pane_with_peaks_settings(
         pane.stored_settings,
         pane.peaks_enabled,
         peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -2336,6 +2410,7 @@ function signal_display_pane_with_name(
         pane.stored_settings,
         pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -2613,6 +2688,7 @@ function signal_display_layout_replace_pane(
             stored,
             replacement.peaks_enabled,
             replacement.peaks_settings,
+            replacement.extrema_state,
         )
     end
     link_frequency = any(pane -> pane.stored_settings.spectrum.link_frequency, layout.panes)
@@ -2723,6 +2799,7 @@ function signal_display_layout_replace_pane(
             stored,
             replacement.peaks_enabled,
             replacement.peaks_settings,
+            replacement.extrema_state,
         )
     end
     panes = copy(layout.panes)
@@ -2873,8 +2950,9 @@ function signal_display_pane_without_signal(
         pane.persistence_settings,
         pane.stored_settings,
         analysis_name !== nothing && !isempty(members) &&
-            pane.plot_type in (TIME_PLOT, SPECTRUM_PLOT) && pane.peaks_enabled,
+        pane.plot_type in (TIME_PLOT, SPECTRUM_PLOT) && pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -3191,6 +3269,7 @@ function signal_display_pane_from_display(
     id::AbstractString,
     display::SignalAnalyserDisplayState,
     name::AbstractString = signal_display_default_pane_name(id),
+    extrema_state::SignalPaneExtremaState = SignalPaneExtremaState(),
 )::SignalDisplayPaneState
     SignalDisplayPaneState(
         id,
@@ -3206,6 +3285,7 @@ function signal_display_pane_from_display(
         display.stored_settings,
         display.peaks_enabled,
         SignalPeaksSettings(),
+        extrema_state,
     )
 end
 
@@ -3443,6 +3523,30 @@ end
 
 SignalAnalyserCancellationToken() = SignalAnalyserCancellationToken(Threads.Atomic{Bool}(false))
 
+"""Stable queue identity of one pane; pane ids are only unique inside a Display."""
+struct SignalAnalyserExtremaPaneKey
+    display_id::String
+    pane_id::String
+
+    function SignalAnalyserExtremaPaneKey(
+        display_id::AbstractString,
+        pane_id::AbstractString,
+    )
+        display = String(display_id)
+        pane = String(pane_id)
+        isempty(display) && throw(ArgumentError("Display id extrema queue не может быть пустым"))
+        isempty(pane) && throw(ArgumentError("Pane id extrema queue не может быть пустым"))
+        new(display, pane)
+    end
+end
+
+Base.:(==)(left::SignalAnalyserExtremaPaneKey, right::SignalAnalyserExtremaPaneKey) =
+    left.display_id == right.display_id && left.pane_id == right.pane_id
+Base.isequal(left::SignalAnalyserExtremaPaneKey, right::SignalAnalyserExtremaPaneKey) =
+    left == right
+Base.hash(key::SignalAnalyserExtremaPaneKey, seed::UInt) =
+    hash((key.display_id, key.pane_id), seed)
+
 """Runtime-only bounded visible-pane scheduler state; it is never session-serialized."""
 mutable struct SignalAnalyserCalculationManager
     calculation_revision::Int
@@ -3469,6 +3573,10 @@ mutable struct SignalAnalyserCalculationManager
     output_poll_counts::Dict{String,Int}
     peaks_poll_counts::Dict{String,Int}
     active_task_is_worker::Bool
+    extrema_task::Union{Nothing,Task}
+    active_extrema_pane::Union{Nothing,SignalAnalyserExtremaPaneKey}
+    extrema_queue::Vector{SignalAnalyserExtremaPaneKey}
+    extrema_visible_ranges::Dict{SignalAnalyserExtremaPaneKey,Union{Nothing,SignalPeaksVisibleRange}}
 end
 
 function SignalAnalyserCalculationManager(page_ids::AbstractVector{<:AbstractString})
@@ -3499,6 +3607,10 @@ function SignalAnalyserCalculationManager(page_ids::AbstractVector{<:AbstractStr
         Dict{String,Int}(),
         Dict{String,Int}(),
         false,
+        nothing,
+        nothing,
+        SignalAnalyserExtremaPaneKey[],
+        Dict{SignalAnalyserExtremaPaneKey,Union{Nothing,SignalPeaksVisibleRange}}(),
     )
 end
 
@@ -3530,6 +3642,10 @@ function signal_analyser_clone_calculation_manager(
         Dict{String,Int}(),
         Dict{String,Int}(),
         false,
+        nothing,
+        nothing,
+        SignalAnalyserExtremaPaneKey[],
+        Dict{SignalAnalyserExtremaPaneKey,Union{Nothing,SignalPeaksVisibleRange}}(),
     )
 end
 

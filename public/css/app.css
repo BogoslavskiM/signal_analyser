@@ -4410,3 +4410,69 @@ select[data-dropdown-trigger]:disabled,
   .tooltip[data-canonical-tooltip],
   .ui-tooltip[data-canonical-tooltip] { transition: none; }
 }
+
+/* V65: pane-owned extrema actions and persistent marker projection. */
+.settings-extrema-actions,
+.inspector-extrema-actions {
+  display: flex;
+  align-items: stretch;
+}
+
+.settings-extrema-actions {
+  gap: 8px;
+}
+
+.settings-extrema-actions[hidden],
+.inspector-extrema-actions[hidden] {
+  display: none;
+}
+
+.settings-extrema-clear {
+  min-width: 80px;
+}
+
+.inspector-extrema-actions {
+  height: 31px;
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+.inspector-extrema-actions .inspector-extrema-action {
+  align-self: stretch;
+}
+
+.inspector-extrema-clear {
+  min-width: 80px;
+  max-width: 128px;
+  height: 31px;
+  padding: 0 12px;
+  overflow: hidden;
+  border-width: 0 0 1px 1px;
+  border-style: solid;
+  border-color: var(--line);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inspector-extrema-clear:not(:disabled):hover {
+  background: var(--surface-muted);
+}
+
+.inspector-extrema-clear:not(:disabled):active {
+  background: var(--button-active);
+}
+
+.inspector-extrema-clear:disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.inspector-extrema-clear:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}

@@ -56,6 +56,23 @@
         body: JSON.stringify(payload),
       });
     },
+    panePeaks: function (displayId, paneId) {
+      return request("./api/peaks/pane?display_id=" + encodeURIComponent(displayId) + "&pane_id=" + encodeURIComponent(paneId), { headers: { Accept: "application/json", "Cache-Control": "no-cache" }, cache: "no-store" });
+    },
+    calculatePanePeaks: function (payload) {
+      return request("./api/peaks/pane", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    },
+    clearPanePeaks: function (payload) {
+      return request("./api/peaks/pane/clear", {
+        method: "POST",
+        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    },
     updatePeaksSettings: function (payload) {
       return request("./api/peaks/settings", {
         method: "POST",

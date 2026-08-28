@@ -229,6 +229,116 @@ route("/api/peaks/active", method = POST) do
     end
 end
 
+# Pane-owned extrema API. Reading is passive; calculation and clear are
+# explicit mutations and never depend on the active display/pane.
+route("/api/peaks/pane", method = GET) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        display_id = try
+            params(:display_id)
+        catch err
+            err isa KeyError || rethrow()
+            nothing
+        end
+        pane_id = try
+            params(:pane_id)
+        catch err
+            err isa KeyError || rethrow()
+            nothing
+        end
+        display_id isa AbstractString && !isempty(String(display_id)) || throw(
+            SignalAnalyserValidationError(
+                "Некорректный запрос экстремумов",
+                Dict("display_id" => "Требуется непустой идентификатор Display"),
+            ),
+        )
+        pane_id isa AbstractString && !isempty(String(pane_id)) || throw(
+            SignalAnalyserValidationError(
+                "Некорректный запрос экстремумов",
+                Dict("pane_id" => "Требуется непустой идентификатор pane"),
+            ),
+        )
+        api_json(
+            signal_analyser_pane_extrema(
+                SIGNAL_ANALYSER_STATE,
+                String(display_id),
+                String(pane_id),
+            );
+            headers = response_headers,
+        )
+    catch err
+        err isa SignalAnalyserValidationError ? signal_analyser_validation_response(err) :
+            api_error_response(
+                "Не удалось получить экстремумы области Signal Analyser",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+    end
+end
+
+route("/api/peaks/pane", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        api_json(
+            calculate_signal_analyser_pane_extrema_request!(
+                SIGNAL_ANALYSER_STATE,
+                jsonpayload(),
+            );
+            headers = response_headers,
+        )
+    catch err
+        err isa SignalAnalyserValidationError ? signal_analyser_validation_response(err) :
+            api_error_response(
+                "Не удалось рассчитать экстремумы области Signal Analyser",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+    end
+end
+
+route("/api/peaks/pane/clear", method = POST) do
+    response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
+    try
+        data = jsonpayload()
+        data isa AbstractDict || throw(SignalAnalyserValidationError(
+            "Некорректный запрос очистки экстремумов",
+            Dict("request" => "Требуется JSON-объект"),
+        ))
+        display_id = signal_analyser_payload_value(data, "display_id")
+        pane_id = signal_analyser_payload_value(data, "pane_id")
+        display_id isa AbstractString && !isempty(String(display_id)) || throw(
+            SignalAnalyserValidationError(
+                "Некорректный запрос очистки экстремумов",
+                Dict("display_id" => "Требуется непустой идентификатор Display"),
+            ),
+        )
+        pane_id isa AbstractString && !isempty(String(pane_id)) || throw(
+            SignalAnalyserValidationError(
+                "Некорректный запрос очистки экстремумов",
+                Dict("pane_id" => "Требуется непустой идентификатор pane"),
+            ),
+        )
+        api_json(
+            signal_analyser_clear_pane_extrema!(
+                SIGNAL_ANALYSER_STATE,
+                String(display_id),
+                String(pane_id),
+            );
+            headers = response_headers,
+        )
+    catch err
+        err isa SignalAnalyserValidationError ? signal_analyser_validation_response(err) :
+            api_error_response(
+                "Не удалось очистить экстремумы области Signal Analyser",
+                err;
+                status = 500,
+                headers = response_headers,
+            )
+    end
+end
+
 route("/api/peaks/settings", method = POST) do
     response_headers = Genie.Renderer.HTTPHeaders(["Cache-Control" => "no-store"])
     try

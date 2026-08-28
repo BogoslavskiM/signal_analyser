@@ -1686,6 +1686,7 @@ function signal_analyser_new_pane_template(
         stored,
         empty.peaks_enabled,
         empty.peaks_settings,
+        empty.extrema_state,
     )
 end
 
@@ -1999,6 +2000,7 @@ function signal_analyser_pane_with_inventory_ordered_membership(
         pane.stored_settings,
         pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -2262,6 +2264,7 @@ function signal_analyser_pane_with_recovered_time_limits(
         stored_settings,
         pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -2637,6 +2640,7 @@ function signal_display_pane_reconfigured(
         analysis_signal !== nothing && !isempty(members) &&
             plot_type in (TIME_PLOT, SPECTRUM_PLOT) && pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -4491,19 +4495,31 @@ function apply_signal_peaks_settings!(
     end
 end
 
-"""Validate explicit user intent, then schedule only the current active pane extrema."""
+"""Validate explicit user intent, then prioritize that pane independently of navigation."""
 function calculate_signal_analyser_active_peaks!(
     state::SignalAnalyserState,
     data,
 )::Dict{String,Any}
     requested = validate_signal_peaks_calculation_request(data)
-    signal_analyser_calculate_active_peaks!(
+    signal_analyser_calculate_pane_extrema!(
         state,
         requested.display_id,
         requested.pane_id;
-        expected_state_revision = requested.state_revision,
         visible_range = requested.visible_range,
     )
+end
+
+function calculate_signal_analyser_pane_extrema_request!(
+    state::SignalAnalyserState,
+    data,
+)::Dict{String,Any}
+    data isa AbstractDict || throw(SignalAnalyserValidationError(
+        "Некорректный запрос расчёта экстремумов",
+        Dict("request" => "Требуется JSON-объект"),
+    ))
+    normalized = Dict{String,Any}(String(key) => value for (key, value) in pairs(data))
+    get!(normalized, "state_revision", 0)
+    calculate_signal_analyser_active_peaks!(state, normalized)
 end
 
 function signal_peaks_table_payload(
@@ -5568,6 +5584,7 @@ function apply_signal_analyser_view!(
             active_pane.id,
             prospective_display,
             active_pane.name,
+            active_pane.extrema_state,
         )
         if !changes.membership || !changes.analysis_source
             prospective_pane = SignalDisplayPaneState(
@@ -5584,6 +5601,7 @@ function apply_signal_analyser_view!(
                 prospective_pane.stored_settings,
                 prospective_pane.peaks_enabled,
                 active_pane.peaks_settings,
+                active_pane.extrema_state,
             )
         end
         prospective_pane = signal_display_pane_with_peaks_settings(

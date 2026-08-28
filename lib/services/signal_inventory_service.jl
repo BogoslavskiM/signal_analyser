@@ -472,7 +472,12 @@ function signal_inventory_add_candidates!(
     )
     state.display_layouts[active_display.id] = signal_display_layout_replace_active_pane(
         signal_analyser_layout_by_display_id(state, active_display.id),
-        signal_display_pane_from_display(active_pane.id, prospective_display, active_pane.name),
+        signal_display_pane_from_display(
+            active_pane.id,
+            prospective_display,
+            active_pane.name,
+            active_pane.extrema_state,
+        ),
     )
     state.row_selection = GlobalSignalSelection(first_added)
     signal_analyser_sync_active_display!(state, prospective_display)
@@ -681,6 +686,7 @@ function signal_inventory_rebind_pane(
         pane.stored_settings,
         pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
     signal_display_pane_reconfigured(state, rebound, rebound.plot_type, members)
 end

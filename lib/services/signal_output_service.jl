@@ -331,6 +331,20 @@ function signal_analyser_invalidate_peaks_pages_unlocked!(
     signal_analyser_sync_output_pages_unlocked!(state)
     manager = state.output_manager
     requested = Set(String.(page_ids))
+    for display in state.displays
+        layout = signal_analyser_layout_by_display_id(state, display.id)
+        for pane in layout.panes
+            page_id = signal_analyser_output_page_id(display.id, pane.id)
+            page_id in requested || continue
+            pane.extrema_state.need_update = true
+            signal_ids_by_name = Dict(signal.name => signal.id for signal in state.signals)
+            valid_signal_ids = Set(
+                signal_ids_by_name[name] for name in signal_display_pane_members(pane)
+                if haskey(signal_ids_by_name, name)
+            )
+            filter!(pair -> first(pair) in valid_signal_ids, pane.extrema_by_signal)
+        end
+    end
     affected = String[
         page_id for page_id in keys(manager.peaks_need_update_pages)
         if page_id in requested
@@ -2238,4 +2252,463 @@ function signal_analyser_active_peaks(
     end
     yield()
     response
+end
+
+"""Prepared independent X/Y input for one stable signal id."""
+struct SignalAnalyserPaneExtremaSignalWork
+    signal_id::String
+    signal_name::String
+    ordinate::SignalMeasurementOrdinate
+    samples::Vector{Int}
+    x::Vector{Float64}
+    y::Vector{Float64}
+
+    function SignalAnalyserPaneExtremaSignalWork(
+        signal_id::AbstractString,
+        signal_name::AbstractString,
+        ordinate::SignalMeasurementOrdinate,
+        samples::AbstractVector{<:Integer},
+        x::AbstractVector{<:Real},
+        y::AbstractVector{<:Real},
+    )
+        length(samples) == length(x) == length(y) || throw(DimensionMismatch(
+            "Extrema X/Y/sample vectors должны иметь одинаковую длину",
+        ))
+        new(
+            String(signal_id),
+            String(signal_name),
+            ordinate,
+            Int.(samples),
+            Float64.(x),
+            Float64.(y),
+        )
+    end
+end
+
+"""Immutable provider input for one pane-owned extrema worker pass."""
+struct SignalAnalyserPaneExtremaWork{P<:AbstractPeaksProvider}
+    key::SignalAnalyserExtremaPaneKey
+    settings::SignalPeaksSettings
+    provider::P
+    signals::Vector{SignalAnalyserPaneExtremaSignalWork}
+end
+
+function signal_analyser_extrema_pane_unlocked(
+    state::SignalAnalyserState,
+    key::SignalAnalyserExtremaPaneKey,
+)::SignalDisplayPaneState
+    layout = signal_analyser_layout_by_display_id(state, key.display_id)
+    signal_analyser_layout_pane_by_id(layout, key.pane_id)
+end
+
+signal_analyser_pane_extremum_payload(item::SignalPaneExtremum)::Dict{String,Any} =
+    Dict{String,Any}(
+        "sample" => item.sample,
+        "x" => item.x,
+        "y" => item.y,
+        "is_maximum" => item.is_maximum,
+    )
+
+function signal_analyser_pane_extrema_payload_unlocked(
+    state::SignalAnalyserState,
+    key::SignalAnalyserExtremaPaneKey,
+)::Dict{String,Any}
+    pane = signal_analyser_extrema_pane_unlocked(state, key)
+    members = signal_display_pane_members(pane)
+    signals = AnalysedSignal[signal_by_name(state, name) for name in members]
+    by_signal = Dict{String,Any}()
+    signal_payloads = Dict{String,Any}[]
+    rows = Dict{String,Any}[]
+    row_number = 0
+    for signal in signals
+        items = get(pane.extrema_by_signal, signal.id, SignalPaneExtremum[])
+        item_payloads = Dict{String,Any}[
+            signal_analyser_pane_extremum_payload(item) for item in items
+        ]
+        signal_payload = Dict{String,Any}(
+            "signal_id" => signal.id,
+            "signal_name" => signal.name,
+            "signal_color" => signal.color,
+            "items" => item_payloads,
+        )
+        haskey(pane.extrema_by_signal, signal.id) && (by_signal[signal.id] = signal_payload)
+        push!(signal_payloads, signal_payload)
+        for (graph_number, item_payload) in enumerate(item_payloads)
+            row_number += 1
+            push!(rows, merge(
+                item_payload,
+                Dict{String,Any}(
+                    "row_number" => row_number,
+                    "graph_number" => graph_number,
+                    "signal_id" => signal.id,
+                    "signal_name" => signal.name,
+                    "signal_color" => signal.color,
+                ),
+            ))
+        end
+    end
+    Dict{String,Any}(
+        "display_id" => key.display_id,
+        "pane_id" => key.pane_id,
+        "plot_type" => signal_analyser_plot_name(pane.plot_type),
+        "has_signals" => !isempty(signals),
+        "x_unit" => pane.plot_type == SPECTRUM_PLOT ? "Hz" : "s",
+        "extrema_by_signal" => by_signal,
+        "data" => Dict{String,Any}(
+            "signals" => signal_payloads,
+            "rows" => rows,
+        ),
+        "is_extrema_ready" => pane.is_extrema_ready,
+        "isready" => pane.is_extrema_ready,
+        "success" => pane.success,
+        "error" => pane.error,
+        "need_update" => pane.need_update,
+        "state_revision" => state.view.state_revision,
+    )
+end
+
+function signal_analyser_prepare_time_extrema_signal_unlocked(
+    state::SignalAnalyserState,
+    pane::SignalDisplayPaneState,
+    signal::AnalysedSignal,
+    visible_range::Union{Nothing,SignalPeaksVisibleRange},
+)::SignalAnalyserPaneExtremaSignalWork
+    ordinate = signal_measurement_ordinate(signal)
+    limits = pane.time_limits
+    empty_intersection = false
+    effective_limits = if limits === nothing && visible_range === nothing
+        nothing
+    elseif limits === nothing
+        visible = visible_range::SignalTimePeaksVisibleRange
+        SignalTimeLimits(visible.min_s, visible.max_s)
+    elseif visible_range === nothing
+        limits
+    else
+        visible = visible_range::SignalTimePeaksVisibleRange
+        minimum_value = max((limits::SignalTimeLimits).min_s, visible.min_s)
+        maximum_value = min((limits::SignalTimeLimits).max_s, visible.max_s)
+        if minimum_value < maximum_value
+            SignalTimeLimits(minimum_value, maximum_value)
+        else
+            empty_intersection = true
+            nothing
+        end
+    end
+    sample_range = if empty_intersection
+        nothing
+    elseif effective_limits === nothing
+        SignalTimeSampleRange(1, length(signal.values))
+    else
+        signal_time_sample_range_or_nothing(
+            state.measurements_service.roi_service,
+            signal,
+            effective_limits,
+        )
+    end
+    sample_range === nothing && return SignalAnalyserPaneExtremaSignalWork(
+        signal.id,
+        signal.name,
+        ordinate,
+        Int[],
+        Float64[],
+        Float64[],
+    )
+    roi = signal_ordinate_roi(state.measurements_service.roi_service, signal, sample_range)
+    samples = collect(roi.sample_offset:(roi.sample_offset + length(roi.values) - 1))
+    x = Float64[sample / roi.sample_rate_hz for sample in samples]
+    SignalAnalyserPaneExtremaSignalWork(
+        signal.id,
+        signal.name,
+        roi.ordinate,
+        samples,
+        x,
+        roi.values,
+    )
+end
+
+function signal_analyser_prepare_spectrum_extrema_signal_unlocked(
+    state::SignalAnalyserState,
+    pane::SignalDisplayPaneState,
+    pane_display::SignalAnalyserDisplayState,
+    signal::AnalysedSignal,
+    visible_range::Union{Nothing,SignalPeaksVisibleRange},
+)::SignalAnalyserPaneExtremaSignalWork
+    data = signal_analyser_cached_spectrum_data!(
+        state,
+        pane_display,
+        signal;
+        materialize_missing = true,
+    )
+    frequencies = Float64[data.frequencies_hz...]
+    values = signal_spectrum_extrema_ordinate(data, pane.spectrum_settings.scale)
+    source_indices = if visible_range === nothing
+        collect(eachindex(frequencies))
+    else
+        visible = visible_range::SignalSpectrumPeaksVisibleRange
+        findall(frequency -> visible.min_hz <= frequency <= visible.max_hz, frequencies)
+    end
+    SignalAnalyserPaneExtremaSignalWork(
+        signal.id,
+        signal.name,
+        MAGNITUDE_ORDINATE,
+        source_indices,
+        frequencies[source_indices],
+        values[source_indices],
+    )
+end
+
+function signal_analyser_prepare_pane_extrema_work_unlocked(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+    key::SignalAnalyserExtremaPaneKey,
+)::SignalAnalyserPaneExtremaWork
+    display = signal_analyser_display_by_id(state, key.display_id)
+    pane = signal_analyser_extrema_pane_unlocked(state, key)
+    pane.extrema_state.need_update = false
+    visible_range = pop!(manager.extrema_visible_ranges, key, nothing)
+    pane_display = signal_analyser_display_for_pane(display, pane)
+    prepared = SignalAnalyserPaneExtremaSignalWork[]
+    for signal_name in signal_display_pane_members(pane)
+        signal = signal_by_name(state, signal_name)
+        push!(
+            prepared,
+            pane.plot_type == SPECTRUM_PLOT ?
+                signal_analyser_prepare_spectrum_extrema_signal_unlocked(
+                    state,
+                    pane,
+                    pane_display,
+                    signal,
+                    visible_range,
+                ) :
+                signal_analyser_prepare_time_extrema_signal_unlocked(
+                    state,
+                    pane,
+                    signal,
+                    visible_range,
+                ),
+        )
+    end
+    SignalAnalyserPaneExtremaWork(
+        key,
+        pane.peaks_settings,
+        state.peaks_service.provider,
+        prepared,
+    )
+end
+
+function signal_analyser_calculate_pane_extrema(
+    work::SignalAnalyserPaneExtremaWork,
+)::Dict{String,Vector{SignalPaneExtremum}}
+    result = Dict{String,Vector{SignalPaneExtremum}}()
+    for signal in work.signals
+        if length(signal.y) < 3
+            result[signal.signal_id] = SignalPaneExtremum[]
+            continue
+        end
+        query = SignalPeaksQuery(
+            0,
+            work.key.display_id,
+            signal.signal_name,
+            signal.ordinate,
+            signal.y,
+            1.0,
+            0,
+            work.settings,
+        )
+        peaks = signal_peaks_detect(work.provider, query)
+        result[signal.signal_id] = SignalPaneExtremum[
+            SignalPaneExtremum(
+                signal.samples[peaks.locations_1based[index]],
+                signal.x[peaks.locations_1based[index]],
+                peaks.peak_values[index],
+                peaks.kinds[index] == MAXIMUM_PEAK,
+            )
+            for index in eachindex(peaks.peak_values)
+        ]
+    end
+    result
+end
+
+function signal_analyser_publish_pane_extrema!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+    work::SignalAnalyserPaneExtremaWork,
+    result::Dict{String,Vector{SignalPaneExtremum}},
+)::Nothing
+    lock(state.lock) do
+        state.output_manager === manager || return nothing
+        pane = try
+            signal_analyser_extrema_pane_unlocked(state, work.key)
+        catch err
+            err isa ArgumentError || rethrow()
+            return nothing
+        end
+        extrema = pane.extrema_state
+        if !extrema.need_update
+            extrema.extrema_by_signal = result
+            extrema.need_update = false
+        end
+        extrema.is_extrema_ready = true
+        extrema.success = true
+        extrema.error = ""
+        state.view.state_revision += 1
+    end
+    nothing
+end
+
+function signal_analyser_publish_pane_extrema_error!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+    key::SignalAnalyserExtremaPaneKey,
+    err,
+)::Nothing
+    lock(state.lock) do
+        state.output_manager === manager || return nothing
+        pane = try
+            signal_analyser_extrema_pane_unlocked(state, key)
+        catch lookup_error
+            lookup_error isa ArgumentError || rethrow()
+            return nothing
+        end
+        pane.extrema_state.is_extrema_ready = true
+        pane.extrema_state.success = false
+        pane.extrema_state.error = signal_analyser_pane_output_error(err)
+        pane.extrema_state.need_update = true
+        state.view.state_revision += 1
+    end
+    nothing
+end
+
+function signal_analyser_run_pane_extrema_worker!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+    work::SignalAnalyserPaneExtremaWork,
+)::Nothing
+    try
+        result = signal_analyser_calculate_pane_extrema(work)
+        signal_analyser_publish_pane_extrema!(state, manager, work, result)
+    catch err
+        signal_analyser_publish_pane_extrema_error!(state, manager, work.key, err)
+    finally
+        lock(state.lock) do
+            if state.output_manager === manager && manager.extrema_task === current_task()
+                manager.extrema_task = nothing
+                manager.active_extrema_pane = nothing
+                signal_analyser_start_pane_extrema_worker_unlocked!(state, manager)
+            end
+        end
+    end
+    nothing
+end
+
+function signal_analyser_start_pane_extrema_worker_unlocked!(
+    state::SignalAnalyserState,
+    manager::SignalAnalyserCalculationManager,
+)::Bool
+    manager.extrema_task === nothing || return false
+    while !isempty(manager.extrema_queue)
+        key = popfirst!(manager.extrema_queue)
+        work = try
+            signal_analyser_prepare_pane_extrema_work_unlocked(state, manager, key)
+        catch err
+            if err isa ArgumentError
+                delete!(manager.extrema_visible_ranges, key)
+                continue
+            end
+            rethrow()
+        end
+        manager.active_extrema_pane = key
+        start_gate = Channel{Nothing}(1)
+        worker = Threads.@spawn begin
+            take!(start_gate)
+            signal_analyser_run_pane_extrema_worker!(state, manager, work)
+        end
+        manager.extrema_task = worker
+        put!(start_gate, nothing)
+        return true
+    end
+    false
+end
+
+"""Read one pane-owned extrema state without active-pane checks or scheduling."""
+function signal_analyser_pane_extrema(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString,
+)::Dict{String,Any}
+    lock(state.lock) do
+        signal_analyser_pane_extrema_payload_unlocked(
+            state,
+            SignalAnalyserExtremaPaneKey(display_id, pane_id),
+        )
+    end
+end
+
+"""Move one explicit pane request to the front of the waiting queue."""
+function signal_analyser_calculate_pane_extrema!(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString;
+    visible_range::Union{Nothing,SignalPeaksVisibleRange} = nothing,
+)::Dict{String,Any}
+    response = lock(state.lock) do
+        key = SignalAnalyserExtremaPaneKey(display_id, pane_id)
+        pane = signal_analyser_extrema_pane_unlocked(state, key)
+        pane.plot_type in (TIME_PLOT, SPECTRUM_PLOT) || throw(SignalAnalyserValidationError(
+            "Некорректный запрос расчёта экстремумов",
+            Dict("pane_id" => "Экстремумы доступны только для TIME или SPECTRUM области"),
+        ))
+        members = signal_display_pane_members(pane)
+        isempty(members) && throw(SignalAnalyserValidationError(
+            "Некорректный запрос расчёта экстремумов",
+            Dict("pane_id" => "В области нет сигналов для расчёта"),
+        ))
+        pane.plot_type == TIME_PLOT && visible_range isa SignalSpectrumPeaksVisibleRange &&
+            throw(SignalAnalyserValidationError(
+                "Некорректный диапазон экстремумов",
+                Dict("visible_range" => "TIME область требует {min_s,max_s}"),
+            ))
+        pane.plot_type == SPECTRUM_PLOT && visible_range isa SignalTimePeaksVisibleRange &&
+            throw(SignalAnalyserValidationError(
+                "Некорректный диапазон экстремумов",
+                Dict("visible_range" => "SPECTRUM область требует {min_hz,max_hz}"),
+            ))
+
+        extrema = pane.extrema_state
+        extrema.need_update = true
+        extrema.is_extrema_ready = false
+        extrema.success = false
+        extrema.error = ""
+        manager = state.output_manager
+        filter!(queued -> queued != key, manager.extrema_queue)
+        pushfirst!(manager.extrema_queue, key)
+        manager.extrema_visible_ranges[key] = visible_range
+        state.view.state_revision += 1
+        signal_analyser_start_pane_extrema_worker_unlocked!(state, manager)
+        signal_analyser_pane_extrema_payload_unlocked(state, key)
+    end
+    yield()
+    response
+end
+
+"""Clear only one pane's extrema and remove only its waiting occurrence."""
+function signal_analyser_clear_pane_extrema!(
+    state::SignalAnalyserState,
+    display_id::AbstractString,
+    pane_id::AbstractString,
+)::Dict{String,Any}
+    lock(state.lock) do
+        key = SignalAnalyserExtremaPaneKey(display_id, pane_id)
+        pane = signal_analyser_extrema_pane_unlocked(state, key)
+        empty!(pane.extrema_by_signal)
+        pane.extrema_state.is_extrema_ready = false
+        pane.extrema_state.success = false
+        pane.extrema_state.error = ""
+        pane.extrema_state.need_update = true
+        manager = state.output_manager
+        filter!(queued -> queued != key, manager.extrema_queue)
+        delete!(manager.extrema_visible_ranges, key)
+        state.view.state_revision += 1
+        signal_analyser_pane_extrema_payload_unlocked(state, key)
+    end
 end

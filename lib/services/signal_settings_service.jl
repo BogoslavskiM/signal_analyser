@@ -3252,7 +3252,12 @@ function signal_settings_publish_display_unlocked!(
     active_pane = signal_display_active_pane(layout)
     state.display_layouts[prospective.id] = signal_display_layout_replace_active_pane(
         layout,
-        signal_display_pane_from_display(active_pane.id, prospective, active_pane.name),
+        signal_display_pane_from_display(
+            active_pane.id,
+            prospective,
+            active_pane.name,
+            active_pane.extrema_state,
+        ),
     )
     signal_settings_replace_display_unlocked!(state, prospective)
     prospective.id == state.active_display_id &&
@@ -3333,6 +3338,7 @@ function signal_settings_pane_with_screen_axes(
         stored,
         pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -3396,6 +3402,7 @@ function signal_settings_pane_with_screen_spectrum_axes(
         stored,
         pane.peaks_enabled,
         pane.peaks_settings,
+        pane.extrema_state,
     )
 end
 
@@ -3541,6 +3548,7 @@ function signal_settings_prepare_cached_presentation_unlocked(
         display.stored_settings,
         display.peaks_enabled,
         current_pane.peaks_settings,
+        current_pane.extrema_state,
     )
     analysis_name = signal_display_pane_analysis_name(pane)
     signal_bindings = signal_display_pane_members(pane)
