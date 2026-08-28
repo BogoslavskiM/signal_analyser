@@ -1882,7 +1882,7 @@
     layoutDraft: null, screenDraft: null, screenApplying: false, screenApplyToken: 0, screenApplyTimer: null, settingsPageActivationToken: 0, settingsPublishTimer: null, settingsPublishing: false, settingsPublishWanted: -1, settingsPublishPublished: -1, settingsCommittedRevision: -1, screenCollapsed: { layout:true }, renderFrame: null, plotlyPromise: null,
     displayTabsFrame: null, revealDisplayTab: false, renderedDisplayId: null, displayTabsObserver: null,
     workspaceInspectorState: "split", workspaceSplitRatio: null, workspaceSplitDrag: null, workspaceSplitAutoscaleFrame: null, workspaceSplitAutoscaleToken: 0,
-    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksMessage: "", extremaTargetKey: null,
+    measurementSearch: "", measurementsRecord: null, measurementsToken: 0, peaksRecord: null, peaksToken: 0, peaksRecords: {}, peaksTokens: {}, peaksPollByPane: {}, peaksEnableByPane: {}, peaksDraft: null, peaksApplying: false, peaksApplyQueued: false, peaksApplyEpisodeKey: null, peaksApplyTimer:null, peaksApplyPromise:null, peaksApplyGeneration:0, peaksMessage: "", extremaTargetKey: null,
     signalAddCatalog: null, signalAddTrigger: null, signalAddToken: 0, signalAddLoading: false, signalAddSubmitting: false, signalAddSearch:"", signalAddSelection:{}, signalAddCatalogError:"", signalAddResetScroll:false,
     paneMenuTrigger: null, graphHelpRestoreTarget: null, paneClearContext: null,
     sessionImport: { open:false, busy:false, phase:"file", file:null, archiveBase64:"", validation:null, error:"", details:"", publish:false, prefix:"imported_", preflight:null, preflightLoading:false, preflightError:"", preflightTimer:null, preflightToken:0, replace:false, result:null, trigger:null, controller:null },
@@ -2908,7 +2908,8 @@
     Object.keys(model.peaksPollByPane).forEach(function (key) { window.clearTimeout(model.peaksPollByPane[key]); });
     model.outputs = {}; model.outputTokens = {}; model.pollByPane = {}; model.plotQueue = {};
     model.peaksRecord = null; model.peaksRecords = {}; model.peaksTokens = {}; model.peaksPollByPane = {}; model.peaksEnableByPane = {};
-    model.peaksDraft = null; model.peaksApplying = false; model.peaksApplyQueued = false; model.peaksMessage = ""; model.extremaTargetKey = null;
+    if (model.peaksApplyTimer) window.clearTimeout(model.peaksApplyTimer);
+    model.peaksDraft = null; model.peaksApplying = false; model.peaksApplyQueued = false; model.peaksApplyTimer=null; model.peaksApplyPromise=null; model.peaksApplyGeneration+=1; model.peaksMessage = ""; model.extremaTargetKey = null;
     model.measurementsRecord = null; model.measurementsToken += 1;
     model.layoutDraft = null;
     model.rangeBoundaryIntents = {};
@@ -5293,7 +5294,7 @@
   function defaultPeaksSettings(settings) { return Object.assign({ mode:"maxima", number_of_peaks:5, maximum_cutoff:null, minimum_cutoff:null, minimum_distance_samples:1, threshold:0 }, settings || {}); }
   function activePeaksSettings(pane, record) {
     var responseSettings = record && record.data && record.data.settings;
-    return defaultPeaksSettings(responseSettings || (pane && pane.peaks_settings));
+    return defaultPeaksSettings(pane && pane.peaks_settings || responseSettings);
   }
   function extremaModeLabel(mode) { return mode === "minima" ? "Минимумы" : mode === "all" ? "Все экстремумы" : "Максимумы"; }
   function activeExtremaHasComplexSignal(pane, record) {
@@ -5387,67 +5388,115 @@
     status.textContent = model.peaksMessage;
   }
 
+  function currentPeaksSettingsContext() {
+    var display=activeDisplay(),pane=paneById(model.activePane),draft=model.peaksDraft;
+    if (!display || !pane || !draft || draft.key !== peaksSettingsKey(display,pane)) return null;
+    var settingsPayload=parsePeaksSettings(draft);
+    return {displayId:display.id,paneId:pane.id,key:draft.key,intent:draft.intent || 0,draft:draft,settings:settingsPayload,valid:!!settingsPayload,dirty:!!settingsPayload && peaksSettingsDirty(draft,settingsPayload)};
+  }
+
+  function projectPeaksSettingsSaved(context) {
+    var draft=model.peaksDraft;
+    if (draft && draft.key === context.key) draft.source=defaultPeaksSettings(context.settings);
+    var record=model.peaksRecords[context.key];
+    if (record) record.needUpdate=true;
+    model.peaksMessage="Настройки экстремумов применены";
+    if (model.inspectorPage === "peaks") renderInspector();
+    if (model.settingsPage === "peaks") renderApply();
+  }
+
   function applyPeaksSettings() {
-    var display = activeDisplay(), pane = paneById(model.activePane), draft = model.peaksDraft;
-    if (!display || !pane || !draft || draft.key !== peaksSettingsKey(display, pane) || model.settingsPage !== "peaks") return Promise.resolve();
-    if (model.peaksApplying) { model.peaksApplyQueued = true; return; }
-    var settingsPayload = parsePeaksSettings(draft);
-    if (!settingsPayload || !peaksSettingsDirty(draft, settingsPayload)) return Promise.resolve();
-    var displayId = display.id, paneId = pane.id;
-    model.peaksApplying = true;
-    model.peaksApplyQueued = false;
-    model.peaksApplyEpisodeKey = "settings-extrema::" + paneRuntimeKey(displayId, paneId) + "::" + String(draft.intent || 0) + "::" + String(model.revision);
-    model.peaksMessage = "Применяются настройки экстремумов";
+    if (model.peaksApplyTimer) { window.clearTimeout(model.peaksApplyTimer); model.peaksApplyTimer=null; }
+    var context=currentPeaksSettingsContext();
+    if (!context || !context.valid || !context.dirty) return Promise.resolve({saved:false,valid:!context || context.valid});
+    if (model.peaksApplying) {
+      model.peaksApplyQueued=true;
+      return (model.peaksApplyPromise || Promise.resolve({saved:false,valid:true})).then(function () {
+        var latest=currentPeaksSettingsContext();
+        if (!latest || !latest.valid || !latest.dirty) return {saved:false,valid:!latest || latest.valid};
+        return applyPeaksSettings();
+      });
+    }
+    var generation=model.peaksApplyGeneration;
+    model.peaksApplying=true;
+    model.peaksApplyQueued=false;
+    model.peaksApplyEpisodeKey="settings-extrema::"+context.key+"::"+String(context.intent)+"::"+String(model.revision);
+    model.peaksMessage="Применяются настройки экстремумов";
     closeExtremaModeMenu(false);
-    renderSettings(display);
-    function samePeaksContext() { return activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId && model.settingsPage === "peaks"; }
+    if (model.settingsPage === "peaks") renderApply();
     function acceptPeaksResponse(response) {
-      var snapshot = response && response.state ? response.state : response;
-      if (!accept(snapshot)) return refreshSnapshot(renderActivePaneContext);
-      renderActivePaneContext();
-      return Promise.resolve(snapshot);
+      if (generation !== model.peaksApplyGeneration) return Promise.resolve(null);
+      var snapshot=response && response.state ? response.state : response;
+      if (accept(snapshot)) return Promise.resolve(snapshot);
+      return refreshSnapshot(function () {});
     }
     function rebasePeaksConflict(error) {
-      var current = error && error.payload && (error.payload.current || error.payload.state);
-      if (!current) return Promise.reject(error);
-      if (accept(current)) { renderActivePaneContext(); return Promise.resolve(current); }
-      return refreshSnapshot(renderActivePaneContext);
+      var current=error && error.payload && (error.payload.current || error.payload.state);
+      if (current && accept(current)) return Promise.resolve(current);
+      return refreshSnapshot(function () {});
     }
-    function persistLatest(retries) {
-      if (!samePeaksContext() || !model.peaksDraft || model.peaksDraft.key !== peaksSettingsKey(activeDisplay(), paneById(paneId))) return Promise.reject(new Error("Контекст области изменился; повторите действие."));
-      var currentDraft = model.peaksDraft, currentPayload = parsePeaksSettings(currentDraft);
-      if (!currentPayload) return Promise.reject(new Error("Исправьте выделенные поля."));
-      var intent = currentDraft.intent || 0;
-      return api.updatePeaksSettings({ state_revision:model.revision, display_id:displayId, pane_id:paneId, settings:currentPayload }).then(function (response) {
-        return acceptPeaksResponse(response).then(function () {
-          var latest = model.peaksDraft;
-          if (samePeaksContext() && latest && latest.key === currentDraft.key && ((latest.intent || 0) > intent || model.peaksApplyQueued)) {
-            model.peaksApplyQueued = false;
-            return persistLatest(0);
-          }
-          return response;
-        });
+    function persist(retries) {
+      if (generation !== model.peaksApplyGeneration) return Promise.resolve({saved:false,stale:true});
+      return api.updatePeaksSettings({state_revision:model.revision,display_id:context.displayId,pane_id:context.paneId,settings:context.settings}).then(function (response) {
+        return acceptPeaksResponse(response).then(function () { return {saved:true,valid:true,context:context}; });
       }).catch(function (error) {
-        var latest = model.peaksDraft;
-        if (samePeaksContext() && error && error.status === 409 && retries < 1) return rebasePeaksConflict(error).then(function () { return persistLatest(retries + 1); });
-        if (samePeaksContext() && latest && latest.key === currentDraft.key && (latest.intent || 0) > intent) return persistLatest(0);
+        if (generation === model.peaksApplyGeneration && error && error.status === 409 && retries < 1) return rebasePeaksConflict(error).then(function () { return persist(retries+1); });
         throw error;
       });
     }
-    return persistLatest(0).then(function () {
-      if (!samePeaksContext()) return;
-      model.peaksDraft = null;
-      model.peaksMessage = "Настройки экстремумов применены";
-      renderInspector();
-      return fetchActivePeaks(displayId, paneId, false, false);
+    var job=persist(0).then(function (result) {
+      if (result && result.saved && generation === model.peaksApplyGeneration) projectPeaksSettingsSaved(context);
+      return result;
     }).catch(function (error) {
-      model.peaksMessage = safeErrorText(error, "Не удалось применить настройки экстремумов.");
-      showToast(safeErrorText(error, "Не удалось применить настройки экстремумов."), true);
+      if (generation === model.peaksApplyGeneration) {
+        model.peaksMessage=safeErrorText(error,"Не удалось применить настройки экстремумов.");
+        showToast(model.peaksMessage,true);
+      }
       throw error;
-    }).finally(function () {
-      model.peaksApplying = false;
-      model.peaksApplyEpisodeKey = null;
-      if (activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId && model.settingsPage === "peaks") renderSettings(activeDisplay());
+    });
+    model.peaksApplyPromise=job;
+    return job.then(function (result) {
+      if (model.peaksApplyPromise === job) model.peaksApplyPromise=null;
+      model.peaksApplying=false;
+      model.peaksApplyEpisodeKey=null;
+      var continueWithLatest=model.peaksApplyQueued;
+      model.peaksApplyQueued=false;
+      if (model.settingsPage === "peaks") renderApply();
+      var latest=currentPeaksSettingsContext();
+      if (generation === model.peaksApplyGeneration && latest && latest.valid && latest.dirty && (continueWithLatest || latest.intent > context.intent)) return applyPeaksSettings();
+      return result;
+    },function (error) {
+      if (model.peaksApplyPromise === job) model.peaksApplyPromise=null;
+      model.peaksApplying=false;
+      model.peaksApplyQueued=false;
+      model.peaksApplyEpisodeKey=null;
+      if (model.settingsPage === "peaks") renderApply();
+      throw error;
+    });
+  }
+
+  function schedulePeaksSettingsSave() {
+    if (model.peaksApplyTimer) window.clearTimeout(model.peaksApplyTimer);
+    model.peaksApplyTimer=null;
+    var context=currentPeaksSettingsContext();
+    if (!context || !context.valid || !context.dirty) return false;
+    model.peaksApplyTimer=window.setTimeout(function () {
+      model.peaksApplyTimer=null;
+      applyPeaksSettings().catch(function () {});
+    },150);
+    return true;
+  }
+
+  function persistPeaksSettingsBeforeCalculate(display,pane) {
+    if (!display || !pane) return Promise.resolve(false);
+    if (model.peaksApplyTimer) { window.clearTimeout(model.peaksApplyTimer); model.peaksApplyTimer=null; }
+    var context=currentPeaksSettingsContext();
+    if (!context || context.key !== peaksSettingsKey(display,pane)) return Promise.resolve(true);
+    if (!context.valid) return Promise.resolve(false);
+    if (!context.dirty) return Promise.resolve(true);
+    return applyPeaksSettings().then(function () {
+      var latest=currentPeaksSettingsContext();
+      return !!latest && latest.key === context.key && latest.valid && !latest.dirty;
     });
   }
 
@@ -5707,9 +5756,7 @@
     });
   }
 
-  function calculatePeaks() {
-    var display = activeDisplay(), pane = paneById(model.activePane);
-    if (!display || !pane || !extremaTabsAvailable(pane) || !paneHasSignals(pane)) return;
+  function enqueuePeaksCalculation(display,pane) {
     var displayId = display.id, paneId = pane.id, runtimeKey = paneRuntimeKey(displayId, paneId);
     var existing = model.peaksRecords[runtimeKey];
     var actionHelper=extremaActionController(), actionState=extremaActionState(existing);
@@ -5738,7 +5785,7 @@
     };
     renderInspector();
     if (model.settingsPage === "peaks") renderApply();
-    Promise.resolve().then(function () {
+    return Promise.resolve().then(function () {
       if (token !== model.peaksTokens[runtimeKey]) throw new Error("Расчёт экстремумов был заменён новым запросом.");
       var payload={ display_id:displayId, pane_id:paneId };
       if (visibleRange) payload.visible_range=visibleRange;
@@ -5752,7 +5799,20 @@
         renderInspector();
         if (model.settingsPage === "peaks") renderApply();
       }
+      return null;
     });
+  }
+
+  function calculatePeaks() {
+    var display=activeDisplay(),pane=paneById(model.activePane);
+    if (!display || !pane || !extremaTabsAvailable(pane) || !paneHasSignals(pane)) return Promise.resolve(null);
+    var displayId=display.id,paneId=pane.id;
+    return persistPeaksSettingsBeforeCalculate(display,pane).then(function (canCalculate) {
+      if (!canCalculate) return null;
+      var currentDisplay=activeDisplay(),currentPane=paneById(model.activePane);
+      if (!currentDisplay || currentDisplay.id !== displayId || !currentPane || currentPane.id !== paneId) return null;
+      return enqueuePeaksCalculation(currentDisplay,currentPane);
+    }).catch(function () { return null; });
   }
 
   function loadPeaks() {
@@ -5785,14 +5845,11 @@
     var display = activeDisplay(), pane = paneById(model.activePane);
     var draft = model.peaksDraft, parsed = draft && draft.key === peaksSettingsKey(display, pane) ? parsePeaksSettings(draft) : null;
     if (draft && !parsed) return;
-    if (parsed && peaksSettingsDirty(draft, parsed)) {
-      return void Promise.resolve(applyPeaksSettings()).then(function () { showActivePeaksValues(); }).catch(function () {});
-    }
     var record = display && pane && model.peaksRecords[paneRuntimeKey(display.id, pane.id)];
     var readyForCurrentContext = !!(record && record.displayId === display.id && record.paneId === pane.id &&
       record.calculated && !record.pending && !record.error && !record.needUpdate);
     var pendingForCurrentContext = !!(record && record.displayId === display.id && record.paneId === pane.id && record.pending);
-    if (!readyForCurrentContext && !pendingForCurrentContext) calculatePeaks();
+    if (parsed && peaksSettingsDirty(draft,parsed) || !readyForCurrentContext && !pendingForCurrentContext) calculatePeaks();
     window.requestAnimationFrame(function () { var tab = q("[data-testid='inspector-tab-peaks']"); if (tab) tab.focus(); });
   }
 
@@ -6108,6 +6165,7 @@
     if (model.peaksApplying) model.peaksApplyQueued = true;
     renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))]);
     renderApply();
+    schedulePeaksSettingsSave();
   }
 
   function closeColumnMenu(restoreFocus) {
@@ -6967,7 +7025,7 @@
     var pane = target.closest("[data-pane-id]");
     if (pane) focusAreaSettings(pane.dataset.paneId);
   });
-  document.addEventListener("input", function (event) { if (event.target.dataset.signalTrimName !== undefined) { var trimNameController=signalTrimController(); if (trimNameController) trimNameController.editName(event.target.value); return; } if (model.signalOperation.operationState && event.target.dataset.signalOperationName !== undefined) { model.signalOperation.operationState.targetName=event.target.value; model.signalOperation.operationState.nameDirty=true; model.signalOperation.success=false; projectSignalOperationValidation(); return; } if (model.signalOperation.operationState && event.target.dataset.signalOperationParameter !== undefined && event.target.tagName !== "SELECT") { var operationHelper=preprocessOperation(); if (operationHelper) { model.signalOperation.operationState=operationHelper.updateParameter(model.signalOperation.operationState,event.target.dataset.signalOperationParameter,event.target.value); model.signalOperation.success=false; projectSignalOperationValidation(); } return; } if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; model.signalEditor.intent=(model.signalEditor.intent || 0) + 1; if (model.signalEditor.applying) model.signalEditor.saveQueued=true; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; scheduleSignalMetadataSave(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); } });
+  document.addEventListener("input", function (event) { if (event.target.dataset.signalTrimName !== undefined) { var trimNameController=signalTrimController(); if (trimNameController) trimNameController.editName(event.target.value); return; } if (model.signalOperation.operationState && event.target.dataset.signalOperationName !== undefined) { model.signalOperation.operationState.targetName=event.target.value; model.signalOperation.operationState.nameDirty=true; model.signalOperation.success=false; projectSignalOperationValidation(); return; } if (model.signalOperation.operationState && event.target.dataset.signalOperationParameter !== undefined && event.target.tagName !== "SELECT") { var operationHelper=preprocessOperation(); if (operationHelper) { model.signalOperation.operationState=operationHelper.updateParameter(model.signalOperation.operationState,event.target.dataset.signalOperationParameter,event.target.value); model.signalOperation.success=false; projectSignalOperationValidation(); } return; } if (event.target.dataset.testid === "signal-search-input") { model.inspectorSearch=event.target.value; renderInspector(); } if (event.target.dataset.testid === "measurement-search-input") { model.measurementSearch=event.target.value; renderInspector(); } if (event.target.dataset.signalMetadata && model.signalEditor.draft) { var metadataKey=event.target.dataset.signalMetadata; model.signalEditor.draft[metadataKey]=event.target.value; model.signalEditor.intent=(model.signalEditor.intent || 0) + 1; if (model.signalEditor.applying) model.signalEditor.saveQueued=true; if (metadataKey === "sample_rate_hz") projectSignalSampleRateValidation(event.target); model.signalEditor.dirty=true; scheduleSignalMetadataSave(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName !== "SELECT") { var input=event.target; model.peaksDraft.values[input.dataset.peaksSetting]=input.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:input.dataset.peaksSetting, start:input.selectionStart, end:input.selectionEnd }); renderApply(); schedulePeaksSettingsSave(); } });
   document.addEventListener("input", function (event) { if (!event.target || event.target.dataset.testid !== "sample-point-search-input") return; var state=model.signalSamples; state.searchValue=event.target.value; state.searchState=""; state.searchMessage=""; var status=q("[data-testid='sample-point-search-status']"); if (status) { status.dataset.state=""; status.textContent=""; } });
   document.addEventListener("input", function (event) {
     var input=event.target;
@@ -7029,7 +7087,7 @@
     var display=activeDisplay(), target=rangeLifecycleDescriptor(fieldId);
     if (display && target) resetRangeLifecycle(display.id,target.paneId,[target.descriptor]);
   });
-  document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) { model.signalAddSelection[event.target.value]=event.target.checked; updateSignalAddControls(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName === "SELECT") { var select=event.target; model.peaksDraft.values[select.dataset.peaksSetting]=select.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:select.dataset.peaksSetting }); renderApply(); } });
+  document.addEventListener("change", function (event) { if (event.target.dataset.signalAddVariable !== undefined) { model.signalAddSelection[event.target.value]=event.target.checked; updateSignalAddControls(); } if (event.target.dataset.peaksSetting && model.peaksDraft && event.target.tagName === "SELECT") { var select=event.target; model.peaksDraft.values[select.dataset.peaksSetting]=select.value; model.peaksDraft.intent=(model.peaksDraft.intent || 0) + 1; if (model.peaksApplying) model.peaksApplyQueued=true; renderPeaksSettings(activeDisplay(), paneById(model.activePane), model.peaksRecords[peaksSettingsKey(activeDisplay(), paneById(model.activePane))], { id:select.dataset.peaksSetting }); renderApply(); schedulePeaksSettingsSave(); } });
   document.addEventListener("input", function (event) { if (event.target.dataset.signalAddSampleRate !== undefined) updateSignalAddControls(); if (event.target.dataset.signalAddSearch !== undefined) { model.signalAddSearch=event.target.value; model.signalAddResetScroll=true; renderSignalAddCatalog(); var search=q("[data-signal-add-search]"); if(search){search.focus();search.setSelectionRange(model.signalAddSearch.length,model.signalAddSearch.length);} } });
   window.addEventListener("signal-apply-state", renderApply);
   window.addEventListener("signal-settings-loaded", function (event) { var display = activeDisplay(), detail = event.detail || {}; if (model.settingsPage === "screen" && display && detail.displayId === display.id) renderSettings(display); });
