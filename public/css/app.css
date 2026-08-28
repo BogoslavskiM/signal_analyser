@@ -3853,6 +3853,69 @@ body {
   border-radius: 0;
 }
 
+/* V66 pane-header geometry.
+   The cluster's children participate in the header grid as independent cells,
+   so adding the intrinsic-width trim action reduces only the title track. The
+   selector and overflow tracks keep exactly the same width with or without
+   trim. */
+.plot-pane-header {
+  grid-template-columns: minmax(0, 1fr) max-content minmax(148px, 212px) 32px;
+  column-gap: 0;
+}
+
+.plot-pane-header > .plot-pane-title {
+  grid-column: 1;
+  margin-right: 6px;
+}
+
+.plot-pane-header > .plot-control-cluster {
+  display: contents;
+}
+
+.plot-control-cluster > .pane-trim-action {
+  grid-column: 2;
+}
+
+.plot-control-cluster > .pane-select {
+  box-sizing: border-box;
+  grid-column: 3;
+  width: 100%;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  align-self: center;
+}
+
+.plot-control-cluster > .pane-select .select-trigger-input,
+.plot-control-cluster > .pane-select .select-trigger-label,
+.plot-control-cluster > .pane-select .select-trigger-arrow {
+  min-height: 0;
+  height: 100%;
+}
+
+.plot-control-cluster > .pane-select:focus-within,
+.plot-control-cluster > .pane-select.is-open {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+.plot-control-cluster > .plot-more {
+  box-sizing: border-box;
+  grid-column: 4;
+  width: 32px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  align-self: center;
+}
+
+.plot-control-cluster > .plot-more:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .signal-trim-dialog,
 .signal-operation-error-dialog {
   z-index: var(--layer-modal);
