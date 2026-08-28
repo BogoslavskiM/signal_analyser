@@ -673,7 +673,7 @@
         fields.push(field("upper_passband","Верхняя граница полосы","number",p.upper_passband,{required:true,unit:frequencyUnitLabel(p.frequency_units)}));
       } else fields.push(field("passband","Граница полосы","number",p.passband,{required:true,unit:frequencyUnitLabel(p.frequency_units)}));
       fields.push(field("impulse_response","Тип импульсной характеристики","select",p.impulse_response,{options:OPTIONS.impulseResponse,required:true}));
-      fields.push(field("steepness","Крутизна","number",p.steepness,{required:true,hint:"От 0,5 включительно до 1 исключительно"}));
+      fields.push(field("steepness","Крутизна","number",p.steepness,{required:true}));
       fields.push(field("stopband_attenuation_db","Подавление в полосе задерживания","number",p.stopband_attenuation_db,{required:true,unit:"дБ"}));
     }
     if (op === "detrend") {

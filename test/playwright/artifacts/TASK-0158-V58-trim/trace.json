@@ -1,0 +1,190 @@
+[
+  {
+    "at": "2026-08-26T13:39:28.523Z",
+    "phase": "dialog-defaults",
+    "sourceValue": "signal-bd309617-d195-4417-afd8-5da16ac5f03d",
+    "sourceText": "Гармонический сигнал",
+    "defaultName": "Гармонический сигнал_фрагмент"
+  },
+  {
+    "at": "2026-08-26T13:39:28.628Z",
+    "phase": "name-filled",
+    "name": "E2E обрезка 1787751568613",
+    "submitDisabled": false
+  },
+  {
+    "at": "2026-08-26T13:39:28.682Z",
+    "phase": "crop-submitted"
+  },
+  {
+    "at": "2026-08-26T13:39:58.639Z",
+    "phase": "cleanup-start",
+    "cropName": "E2E обрезка 1787751568613",
+    "temporaryDisplay": "display-6"
+  },
+  {
+    "at": "2026-08-26T13:41:34.385Z",
+    "phase": "dialog-defaults",
+    "sourceValue": "signal-bd309617-d195-4417-afd8-5da16ac5f03d",
+    "sourceText": "Гармонический сигнал",
+    "defaultName": "Гармонический сигнал_фрагмент",
+    "submitDisabled": false,
+    "layerBusy": "false",
+    "layerHidden": false,
+    "nameValue": "Гармонический сигнал_фрагмент",
+    "nameInvalid": "false",
+    "statusHidden": true,
+    "statusText": "",
+    "nameMessageHidden": true,
+    "nameMessageText": "",
+    "overwriteRowHidden": true,
+    "overwriteChecked": false,
+    "controllerUnavailable": false
+  },
+  {
+    "at": "2026-08-26T13:41:34.483Z",
+    "phase": "name-filled",
+    "name": "E2E обрезка 1787751694466",
+    "submitDisabled": false,
+    "layerBusy": "false",
+    "layerHidden": false,
+    "nameValue": "E2E обрезка 1787751694466",
+    "nameInvalid": "false",
+    "sourceValue": "signal-bd309617-d195-4417-afd8-5da16ac5f03d",
+    "statusHidden": true,
+    "statusText": "",
+    "nameMessageHidden": true,
+    "nameMessageText": "",
+    "overwriteRowHidden": true,
+    "overwriteChecked": false,
+    "controllerUnavailable": false
+  },
+  {
+    "at": "2026-08-26T13:41:34.541Z",
+    "phase": "crop-submitted",
+    "submitDisabled": true,
+    "layerBusy": "true",
+    "layerHidden": false,
+    "nameValue": "E2E обрезка 1787751694466",
+    "nameInvalid": "false",
+    "sourceValue": "signal-bd309617-d195-4417-afd8-5da16ac5f03d",
+    "statusHidden": true,
+    "statusText": "",
+    "nameMessageHidden": true,
+    "nameMessageText": "",
+    "overwriteRowHidden": true,
+    "overwriteChecked": false,
+    "controllerUnavailable": false
+  },
+  {
+    "at": "2026-08-26T13:41:44.528Z",
+    "phase": "crop-no-response",
+    "error": "page.waitForResponse: Timeout 10000ms exceeded while waiting for event \"response\"",
+    "submitDisabled": false,
+    "layerBusy": "false",
+    "layerHidden": true,
+    "nameValue": "E2E обрезка 1787751694466",
+    "nameInvalid": "false",
+    "sourceValue": "signal-bd309617-d195-4417-afd8-5da16ac5f03d",
+    "statusHidden": true,
+    "statusText": "",
+    "nameMessageHidden": true,
+    "nameMessageText": "",
+    "overwriteRowHidden": true,
+    "overwriteChecked": false,
+    "controllerUnavailable": false
+  },
+  {
+    "at": "2026-08-26T13:41:44.680Z",
+    "phase": "cleanup-start",
+    "cropName": "E2E обрезка 1787751694466",
+    "temporaryDisplay": "display-7"
+  },
+  {
+    "at": "2026-08-26T13:43:04.709Z",
+    "phase": "dialog-defaults",
+    "sourceValue": "signal-bd309617-d195-4417-afd8-5da16ac5f03d",
+    "sourceText": "Гармонический сигнал",
+    "defaultName": "Гармонический сигнал_фрагмент",
+    "submitDisabled": false,
+    "layerBusy": "false",
+    "layerHidden": false,
+    "nameValue": "Гармонический сигнал_фрагмент",
+    "nameInvalid": "false",
+    "statusHidden": true,
+    "statusText": "",
+    "nameMessageHidden": true,
+    "nameMessageText": "",
+    "overwriteRowHidden": true,
+    "overwriteChecked": false,
+    "controllerUnavailable": false
+  },
+  {
+    "at": "2026-08-26T13:43:04.935Z",
+    "phase": "name-filled",
+    "name": "E2E обрезка 1787751784812",
+    "submitDisabled": false,
+    "layerBusy": "false",
+    "layerHidden": false,
+    "nameValue": "E2E обрезка 1787751784812",
+    "nameInvalid": "false",
+    "sourceValue": "signal-bd309617-d195-4417-afd8-5da16ac5f03d",
+    "statusHidden": true,
+    "statusText": "",
+    "nameMessageHidden": true,
+    "nameMessageText": "",
+    "overwriteRowHidden": true,
+    "overwriteChecked": false,
+    "controllerUnavailable": false
+  },
+  {
+    "at": "2026-08-26T13:43:05.056Z",
+    "phase": "crop-submitted",
+    "submitDisabled": false,
+    "layerBusy": "false",
+    "layerHidden": true,
+    "nameValue": "E2E обрезка 1787751784812",
+    "nameInvalid": "false",
+    "sourceValue": "signal-bd309617-d195-4417-afd8-5da16ac5f03d",
+    "statusHidden": true,
+    "statusText": "",
+    "nameMessageHidden": true,
+    "nameMessageText": "",
+    "overwriteRowHidden": true,
+    "overwriteChecked": false,
+    "controllerUnavailable": false
+  },
+  {
+    "at": "2026-08-26T13:43:05.057Z",
+    "phase": "crop-response",
+    "status": 200,
+    "payload": {
+      "state_revision": 42,
+      "source_signal_id": "signal-bd309617-d195-4417-afd8-5da16ac5f03d",
+      "min_s": 0.0830078125,
+      "max_s": 0.16650390625,
+      "target_name": "E2E обрезка 1787751784812",
+      "overwrite": false
+    }
+  },
+  {
+    "at": "2026-08-26T13:43:05.172Z",
+    "phase": "cleanup-start",
+    "cropName": "E2E обрезка 1787751784812",
+    "temporaryDisplay": "display-8"
+  },
+  {
+    "at": "2026-08-26T13:43:05.635Z",
+    "phase": "cleanup-done"
+  },
+  {
+    "at": "2026-08-27T13:45:04.108Z",
+    "phase": "cleanup-start",
+    "cropName": null,
+    "temporaryDisplay": "display-5"
+  },
+  {
+    "at": "2026-08-27T13:45:04.621Z",
+    "phase": "cleanup-done"
+  }
+]

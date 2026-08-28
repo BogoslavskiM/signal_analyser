@@ -12,6 +12,9 @@
   <div class="settings-scroll" role="tabpanel" data-testid="settings-content"></div>
   <footer class="settings-apply-block" data-testid="settings-footer">
     <button class="ui-button ui-button-primary" type="button" data-testid="signal-values-action" hidden>Значения</button>
-    <button class="ui-button ui-button-primary" type="button" data-testid="extrema-values" hidden>Рассчитать</button>
+    <div class="settings-extrema-actions" data-testid="settings-extrema-actions" hidden>
+      <button class="ui-button settings-extrema-clear" type="button" data-extrema-clear data-testid="extrema-clear" title="Нет рассчитанных экстремумов" aria-label="Нет рассчитанных экстремумов" aria-disabled="true" disabled>Очистить</button>
+      <button class="ui-button ui-button-primary" type="button" data-extrema-action data-testid="extrema-values" data-extrema-action-state="idle" aria-busy="false">Рассчитать</button>
+    </div>
   </footer>
 </aside>

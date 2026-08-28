@@ -25,6 +25,15 @@
   text-align: left;
 }
 
+.select-trigger-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  margin-left: 8px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
 .select-trigger-input {
   width: 100%;
   min-width: 0;
@@ -43,8 +52,23 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.select-trigger-label {
+  width: 100%;
+  min-width: 0;
+  padding: 6px 28px 6px 8px;
+  overflow: hidden;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .select-trigger-input::placeholder { color: var(--muted); opacity: 1; }
 .select-trigger.is-open .select-trigger-input { cursor: text; text-overflow: clip; }
+.select-trigger.has-leading-icon .select-trigger-input { padding-left: 4px; }
+.select-trigger.has-leading-icon .select-trigger-label { padding-left: 4px; }
+.select-trigger.is-button-trigger { appearance: none; }
 
 .select-trigger-arrow {
   position: absolute;
@@ -57,7 +81,8 @@
   border-radius: 0 var(--control-radius) var(--control-radius) 0;
   outline: 0;
   background: transparent;
-  cursor: pointer;
+  cursor: inherit;
+  pointer-events: none;
 }
 .select-trigger-arrow::after {
   position: absolute;
@@ -71,6 +96,7 @@
 }
 .select-trigger.is-open .select-trigger-arrow::after { transform: translateY(-50%) rotate(180deg); }
 .select-trigger[data-value-select-disabled="true"] .select-trigger-input,
+.select-trigger[data-value-select-disabled="true"] .select-trigger-label,
 .select-trigger[data-value-select-disabled="true"] .select-trigger-arrow { color: var(--muted); cursor: not-allowed; }
 
 .value-select-popup {
@@ -123,13 +149,15 @@
 }
 .select-options button.is-selected { background: var(--surface); }
 .select-options button:not(:disabled):hover,
-.select-options button.is-active { background: #f5f5f5; }
+.select-options button.is-active { background: var(--option-hover, #f5f5f5); }
 .select-options button:not(:disabled):active { background: var(--button-active); }
 .select-options button:disabled { color: var(--muted); cursor: not-allowed; opacity: .72; }
+.select-options button.has-leading-icon { gap: 8px; }
 
 .select-option-check { position: relative; width: 16px; height: 16px; flex: 0 0 16px; opacity: 0; }
 .select-option-check::after { position: absolute; top: 2px; left: 5px; width: 5px; height: 9px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); content: ""; transform: rotate(45deg); }
 .select-options button.is-selected .select-option-check { opacity: 1; }
 .select-options button.is-selected .select-option-check::after { border-color: var(--success); }
+.select-option-icon { width: 16px; height: 16px; flex: 0 0 16px; object-fit: contain; pointer-events: none; }
 .select-option-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .value-select-empty { min-height: 64px; display: flex; align-items: center; justify-content: center; padding: 12px; color: var(--muted); text-align: center; }

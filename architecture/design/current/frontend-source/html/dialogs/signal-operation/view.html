@@ -5,3 +5,10 @@
     <footer class="dialog-actions"><button class="ui-button" type="button" data-dialog-cancel>Отмена</button><button class="ui-button ui-button-primary" type="button" data-operation-submit>Создать сигнал</button></footer>
   </section>
 </div>
+<div class="modal-layer native-modal-layer signal-operation-error-layer" data-testid="signal-operation-error-layer" hidden>
+  <section class="signal-operation-error-dialog" role="alertdialog" aria-modal="true" aria-labelledby="signal-operation-error-title" aria-describedby="signal-operation-error-message" data-testid="signal-operation-error-dialog">
+    <header class="dialog-titlebar"><h2 id="signal-operation-error-title" tabindex="-1">Операция не выполнена</h2><button class="dialog-close" type="button" data-signal-operation-error-close aria-label="Закрыть сообщение об ошибке"><img data-asset="icons/close.svg" alt=""></button></header>
+    <div class="dialog-body"><p id="signal-operation-error-message" class="signal-operation-error-message" data-signal-operation-error-message></p></div>
+    <footer class="dialog-actions"><button class="ui-button ui-button-primary" type="button" data-signal-operation-error-confirm>Понятно</button></footer>
+  </section>
+</div>

@@ -1,0 +1,49 @@
+{
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expectedRevision": "ac403346d771ef258b09067a95e2916892cebbad",
+  "scope": "full_diagnostic",
+  "startedAt": "2026-08-27T13:45:37.737Z",
+  "cleanup": [
+    {
+      "name": "Гармонический сигнал_resample",
+      "result": "absent"
+    },
+    {
+      "name": "Гармонический сигнал_resample_preprocess",
+      "result": "absent"
+    },
+    {
+      "name": "V60 E2E crop 1787772480610",
+      "result": "absent"
+    },
+    {
+      "display": "display-6",
+      "result": "closed"
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "time extrema",
+      "result": "failed",
+      "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-signal-row][data-signal-name=\\'Гармонический сигнал\\']') to be visible\u001b[22m\n",
+      "state": [],
+      "classification": "frontend_or_test_selector: control/state unavailable"
+    },
+    {
+      "name": "spectrum extrema",
+      "result": "failed",
+      "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-signal-row][data-signal-name=\\'Гармонический сигнал\\']') to be visible\u001b[22m\n",
+      "state": [],
+      "classification": "frontend_or_test_selector: control/state unavailable"
+    },
+    {
+      "name": "two cursor trim",
+      "result": "failed",
+      "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-signal-row][data-signal-name=\\'Гармонический сигнал\\']') to be visible\u001b[22m\n",
+      "classification": "frontend_or_test_selector: cursor/trim state unavailable"
+    }
+  ],
+  "prototype": "passed",
+  "setupError": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-signal-row][data-signal-name=\\'Гармонический сигнал\\']') to be visible\u001b[22m\n",
+  "finishedAt": "2026-08-27T13:46:11.282Z"
+}

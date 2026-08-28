@@ -1,0 +1,179 @@
+{
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expectedRevision": "198514b597ce59c1104fb18841a92162a24134a2",
+  "startedAt": "2026-08-26T17:31:09.022Z",
+  "checks": [
+    {
+      "name": "prototype: source + preprocess + Авто",
+      "result": "passed"
+    },
+    {
+      "name": "PROD: exact 10 operations / selected LMB source / Russian Авто",
+      "result": "passed"
+    },
+    {
+      "name": "nominal preprocessing execution",
+      "result": "failed",
+      "detail": [
+        {
+          "label": "Полосовой фильтр",
+          "result": "failed",
+          "error": "Полосовой фильтр: HTTP 502",
+          "retried": true
+        },
+        {
+          "label": "Режекторный фильтр",
+          "result": "failed",
+          "error": "Режекторный фильтр: HTTP 502",
+          "retried": false
+        },
+        {
+          "label": "Фильтр высоких частот",
+          "result": "failed",
+          "error": "Фильтр высоких частот: HTTP 502",
+          "retried": false
+        },
+        {
+          "label": "Фильтр низких частот",
+          "result": "failed",
+          "error": "Фильтр низких частот: HTTP 502",
+          "retried": false
+        },
+        {
+          "label": "Удаление тренда",
+          "result": "failed",
+          "error": "Удаление тренда: HTTP 502",
+          "retried": false
+        },
+        {
+          "label": "Заполнение пропущенных значений",
+          "result": "failed",
+          "error": "Заполнение пропущенных значений: HTTP 502",
+          "retried": false
+        },
+        {
+          "label": "Сглаживание",
+          "result": "failed",
+          "error": "Сглаживание: HTTP 502",
+          "retried": false
+        },
+        {
+          "label": "Огибающая",
+          "result": "failed",
+          "error": "Огибающая: HTTP 502",
+          "retried": false
+        },
+        {
+          "label": "Передискретизация",
+          "result": "failed",
+          "error": "Передискретизация: derive payload target does not match the name submitted by the form",
+          "retried": false
+        },
+        {
+          "label": "Пользовательская операция",
+          "result": "failed",
+          "error": "Пользовательская операция: derive payload target does not match the name submitted by the form",
+          "retried": false
+        }
+      ]
+    },
+    {
+      "name": "field-local Russian validation + sanitized alertdialog",
+      "result": "passed",
+      "providerStatus": 422,
+      "providerPayload": {
+        "error": {
+          "fields": {},
+          "message": "Операция не выполнена в Engee",
+          "code": "operation_failed"
+        },
+        "ok": false,
+        "code": "operation_failed"
+      }
+    },
+    {
+      "name": "Time extrema POST → rows + markers",
+      "result": "failed",
+      "error": "page.waitForFunction: Timeout 30000ms exceeded."
+    },
+    {
+      "name": "Spectrum extrema POST → rows + markers",
+      "result": "failed",
+      "error": "page.waitForFunction: Timeout 30000ms exceeded."
+    },
+    {
+      "name": "dual cursor trim: source dropdown/default name/crop",
+      "result": "failed",
+      "error": "page.waitForFunction: Timeout 30000ms exceeded."
+    }
+  ],
+  "operations": [
+    {
+      "label": "Полосовой фильтр",
+      "result": "failed",
+      "error": "Полосовой фильтр: HTTP 502",
+      "retried": true
+    },
+    {
+      "label": "Режекторный фильтр",
+      "result": "failed",
+      "error": "Режекторный фильтр: HTTP 502",
+      "retried": false
+    },
+    {
+      "label": "Фильтр высоких частот",
+      "result": "failed",
+      "error": "Фильтр высоких частот: HTTP 502",
+      "retried": false
+    },
+    {
+      "label": "Фильтр низких частот",
+      "result": "failed",
+      "error": "Фильтр низких частот: HTTP 502",
+      "retried": false
+    },
+    {
+      "label": "Удаление тренда",
+      "result": "failed",
+      "error": "Удаление тренда: HTTP 502",
+      "retried": false
+    },
+    {
+      "label": "Заполнение пропущенных значений",
+      "result": "failed",
+      "error": "Заполнение пропущенных значений: HTTP 502",
+      "retried": false
+    },
+    {
+      "label": "Сглаживание",
+      "result": "failed",
+      "error": "Сглаживание: HTTP 502",
+      "retried": false
+    },
+    {
+      "label": "Огибающая",
+      "result": "failed",
+      "error": "Огибающая: HTTP 502",
+      "retried": false
+    },
+    {
+      "label": "Передискретизация",
+      "result": "failed",
+      "error": "Передискретизация: derive payload target does not match the name submitted by the form",
+      "retried": false
+    },
+    {
+      "label": "Пользовательская операция",
+      "result": "failed",
+      "error": "Пользовательская операция: derive payload target does not match the name submitted by the form",
+      "retried": false
+    }
+  ],
+  "cleanup": [
+    {
+      "display": "display-2",
+      "result": "closed"
+    }
+  ],
+  "finishedAt": "2026-08-26T17:33:11.829Z"
+}

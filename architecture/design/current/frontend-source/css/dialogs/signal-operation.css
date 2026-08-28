@@ -1,5 +1,5 @@
 .modal-layer { position: fixed; inset: 0; z-index: var(--layer-modal-backdrop); display: grid; place-items: center; padding: 16px; background: rgba(33,33,33,.2); }
-.signal-operation-dialog { z-index: var(--layer-modal); width: 660px; min-width: 660px; max-height: calc(100vh - 32px); display: grid; grid-template-rows: 48px minmax(0,1fr) 56px; overflow: hidden; border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-dialog); }
+.signal-operation-dialog { z-index: var(--layer-modal); width: 480px; min-width: 0; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); display: grid; grid-template-rows: 48px minmax(0,1fr) 56px; overflow: hidden; border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-dialog); }
 .dialog-titlebar { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 16px; border-bottom: 1px solid var(--line); }
 .dialog-titlebar h2 { margin: 0; font-size: 16px; }
 .dialog-close { width: 32px; height: 32px; display: grid; place-items: center; padding: 8px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
@@ -21,6 +21,7 @@
 .operation-progress img { width: 20px; height: 20px; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-@media (max-width: 691px) {
-  .signal-operation-dialog { width: 660px; }
+@media (max-width: 511px) {
+  .signal-operation-dialog { width: calc(100vw - 32px); }
+  .dialog-row { grid-template-columns: 1fr; row-gap: 4px; }
 }

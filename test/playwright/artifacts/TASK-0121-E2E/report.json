@@ -1,0 +1,151 @@
+{
+  "id": "HND-TASK-0121-E2E",
+  "type": "report",
+  "from": "E2E",
+  "to": "Orchestrator",
+  "e2e_mode": "quick_regression",
+  "target": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/",
+  "expected_revision": "77000e906f6923d780ea4cd9036be58dcdd427ca",
+  "browser_channel": "chrome",
+  "headless": false,
+  "browser_visibility": "foreground",
+  "worker_count": 1,
+  "checks": [
+    {
+      "name": "exact revision availability",
+      "status": "passed",
+      "detail": {
+        "status": 200,
+        "body": {
+          "runtime_revision": "77000e906f6923d780ea4cd9036be58dcdd427ca",
+          "project": "example_project",
+          "ready": true,
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "catalog request 1 is fresh GET and renders variables",
+      "status": "failed",
+      "detail": {
+        "immediate_state": "Загрузка переменных…",
+        "variables": 0,
+        "contains_cache_text": false
+      }
+    },
+    {
+      "name": "catalog request 2 is fresh GET and renders variables",
+      "status": "failed",
+      "detail": {
+        "immediate_state": "Загрузка переменных…",
+        "variables": 0,
+        "contains_cache_text": false
+      }
+    },
+    {
+      "name": "reopening makes second independent catalog request with distinct revision",
+      "status": "failed",
+      "detail": {
+        "request_count": 2
+      }
+    }
+  ],
+  "requests": [
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/workspace/variables",
+      "method": "GET",
+      "status": 200,
+      "body": {
+        "expires_at": "2026-08-20T09:40:15.381Z",
+        "variables": [
+          {
+            "name": "varibale",
+            "shape": [
+              1001
+            ],
+            "sample_rate_requirement": "required",
+            "variable_id": "wv_2c9f1b78541b4e418f3ca2eb72c7cf6b7e7237d2abf06f16a33dbeea4704796a",
+            "selectable": true,
+            "reason": null,
+            "source_kind": "raw_vector",
+            "type": "Vector{Float64}",
+            "sample_count": 1001,
+            "compatibility": "requires_sample_rate"
+          },
+          {
+            "name": "varibale_2",
+            "shape": [
+              10001
+            ],
+            "sample_rate_requirement": "required",
+            "variable_id": "wv_dc102c188b6626331033848989742c2134f07e4d30e9058a5078bfb1a441b350",
+            "selectable": true,
+            "reason": null,
+            "source_kind": "raw_vector",
+            "type": "Vector{Float64}",
+            "sample_count": 10001,
+            "compatibility": "requires_sample_rate"
+          }
+        ],
+        "total": 5,
+        "truncated": false,
+        "filtered": 3,
+        "catalog_revision": "wc_ff35547d-c813-441d-a2f6-7b9d973991fe"
+      }
+    },
+    {
+      "url": "https://engee.com/prod/user/demo54365638-bogoslm/genie/signal_analyser/api/workspace/variables",
+      "method": "GET",
+      "status": 200,
+      "body": {
+        "expires_at": "2026-08-20T09:40:44.793Z",
+        "variables": [
+          {
+            "name": "varibale",
+            "shape": [
+              1001
+            ],
+            "sample_rate_requirement": "required",
+            "variable_id": "wv_10c8b89e95a4fda4f4e5bb3a45264666a2264b1f9cbdf01322914e1fedc0e987",
+            "selectable": true,
+            "reason": null,
+            "source_kind": "raw_vector",
+            "type": "Vector{Float64}",
+            "sample_count": 1001,
+            "compatibility": "requires_sample_rate"
+          },
+          {
+            "name": "varibale_2",
+            "shape": [
+              10001
+            ],
+            "sample_rate_requirement": "required",
+            "variable_id": "wv_5db15fc58a53bcacb2b11d860607a4c6e0408858bfdaae0ae3c76d31a5ea1257",
+            "selectable": true,
+            "reason": null,
+            "source_kind": "raw_vector",
+            "type": "Vector{Float64}",
+            "sample_count": 10001,
+            "compatibility": "requires_sample_rate"
+          }
+        ],
+        "total": 5,
+        "truncated": false,
+        "filtered": 3,
+        "catalog_revision": "wc_0d396b20-86e1-440f-91ce-d99c778d8a01"
+      }
+    }
+  ],
+  "errors": [],
+  "opened_tab_count": 1,
+  "closed_tab_count": 1,
+  "tab_cleanup_status": "passed",
+  "started_at": "2026-08-20T09:35:08.876Z",
+  "preexisting_page_urls": [],
+  "preexisting_page_count": 0,
+  "finished_at": "2026-08-20T09:36:14.820Z",
+  "planned": 4,
+  "passed": 1,
+  "failed": 3,
+  "success_rate": 25
+}
