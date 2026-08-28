@@ -4474,6 +4474,29 @@ select[data-dropdown-trigger]:disabled,
   .ui-tooltip[data-canonical-tooltip] { transition: none; }
 }
 
+/* V67: centered trim and one visual pane-selector chrome owner. */
+.plot-control-cluster > .pane-trim-action {
+  align-self: center;
+}
+
+/* The pane-select is the sole visual control. Its readonly combobox child is
+   semantic content only and must not receive the generic standalone dropdown
+   chrome in any pointer or keyboard state. */
+.plot-control-cluster > .pane-select > .select-trigger-input[data-dropdown-trigger][role="combobox"],
+.plot-control-cluster > .pane-select > .select-trigger-input[data-dropdown-trigger][role="combobox"]:hover,
+.plot-control-cluster > .pane-select > .select-trigger-input[data-dropdown-trigger][role="combobox"]:focus-visible {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 /* V65: pane-owned extrema actions and persistent marker projection. */
 .settings-extrema-actions,
 .inspector-extrema-actions {
@@ -4539,3 +4562,81 @@ select[data-dropdown-trigger]:disabled,
   outline: 2px solid var(--accent);
   outline-offset: -3px;
 }
+
+/* V68: extrema actions belong to the ready table or centered no-table surface. */
+.inspector-header > .inspector-extrema-actions { display: none !important; }
+
+.extrema-table-actions-cell {
+  box-sizing: border-box;
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+  height: 32px;
+  padding: 0 !important;
+}
+
+.extrema-table-actions {
+  width: 64px;
+  height: 31px;
+  display: grid;
+  grid-template-columns: repeat(2, 32px);
+  margin-left: auto;
+}
+
+.extrema-table-icon-action {
+  box-sizing: border-box;
+  width: 32px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.extrema-table-icon-action + .extrema-table-icon-action { border-left: 1px solid var(--line); }
+.extrema-table-icon-action:not(:disabled):hover { background: var(--surface); }
+.extrema-table-icon-action:not(:disabled):active { background: var(--button-active); }
+.extrema-table-icon-action:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+.extrema-table-icon-action:disabled { color: var(--muted); cursor: default; opacity: .72; }
+.extrema-table-icon-action img { width: 16px; height: 16px; display: block; }
+
+.extrema-no-table-state {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--surface);
+}
+
+.extrema-no-table-content {
+  max-width: 360px;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.extrema-no-table-copy { margin: 0; color: var(--muted); font-size: 13px; line-height: 18px; }
+.extrema-no-table-copy[role="alert"] { color: var(--danger); }
+.extrema-no-table-actions { display: grid; justify-items: center; gap: 8px; }
+.extrema-surface-calculate,
+.extrema-surface-configure { min-height: 32px; }
+
+.extrema-surface-calculate { min-width: 112px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.extrema-surface-configure { min-width: 144px; }
+.extrema-calculate-spinner {
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,.42);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: loader-rotate 800ms linear infinite;
+}
+.extrema-calculate-spinner[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .extrema-calculate-spinner { animation-duration: 1600ms; } }

@@ -31,6 +31,24 @@ module.exports = async function task0724V61UiRegressions(assert) {
   const joinedSelector = cssRule(css, ".plot-control-cluster > .pane-trim-action:not([hidden]) + .pane-select");
   assert(/border-left-color:\s*var\(--line\)/.test(joinedSelector) && /border-radius:\s*0/.test(joinedSelector), "the adjacent type selector must provide the single shared divider and squared join");
 
+  // V67 keeps the crop cell vertically centered and makes the outer pane
+  // selector its only chrome owner, preventing a nested input frame/gap.
+  assert(/\.plot-control-cluster > \.pane-trim-action\s*\{[^}]*align-self:\s*center/.test(css), "trim must be vertically centered in the 32px pane header");
+  const nestedInput = (css.match(/\.plot-control-cluster > \.pane-select > \.select-trigger-input\[data-dropdown-trigger\]\[role="combobox"\][\s\S]*?\n\}/) || [""])[0];
+  assert(nestedInput, "the inner pane combobox neutralization rule must exist");
+  assert(/height:\s*100%/.test(nestedInput) && /min-height:\s*0/.test(nestedInput) && /border:\s*0/.test(nestedInput) && /border-radius:\s*0/.test(nestedInput) && /outline:\s*0/.test(nestedInput) && /box-shadow:\s*none/.test(nestedInput), "the inner readonly pane combobox must be neutral semantic content without a second frame or rounding");
+
+  // V68 removes tab-row text actions. Ready extrema rows reserve the final
+  // table cell for icon-only clear/recalculate; no-table states stay centered.
+  assert(!/extrema-header-actions|header-clear|header-action/.test(app), "legacy inspector tab-row Extrema actions must be absent");
+  assert(/<col style='width:64px'><\/colgroup>/.test(app) && /var actions = tableActions\.headerActionsMarkup\("\.\/icons"\)/.test(app) && /<td aria-hidden='true'><\/td>/.test(app), "ready extrema tables must reserve a final 64px header/cell column for alignment");
+  assert(/data-testid='extrema-table-clear'[\s\S]*?data-tooltip='Очистить экстремумы'[\s\S]*?trash-16\.svg[\s\S]*?data-testid='extrema-table-recalculate'[\s\S]*?data-tooltip='Пересчитать для актуальных диапазонов'[\s\S]*?refresh-16\.svg/.test(app), "ready extrema actions must be exact trash-left and reload-right icon controls");
+  const actionCell = cssRule(css, ".extrema-table-actions-cell");
+  const actionGroup = cssRule(css, ".extrema-table-actions");
+  const actionButton = cssRule(css, ".extrema-table-icon-action");
+  assert(/width:\s*64px/.test(actionCell) && /width:\s*64px/.test(actionGroup) && /grid-template-columns:\s*repeat\(2, 32px\)/.test(actionGroup) && /width:\s*32px/.test(actionButton) && /height:\s*31px/.test(actionButton) && /\.extrema-table-icon-action img\s*\{[^}]*width:\s*16px/.test(css), "V68 action geometry must be one 64px cell with two 32×31 targets and 16px icons");
+  assert(/\.extrema-no-table-state\s*\{[^}]*place-items:\s*center[\s\S]*?\.extrema-surface-calculate\s*\{[^}]*display:\s*inline-flex[\s\S]*?\.extrema-calculate-spinner\[hidden\]/.test(css), "all no-table states must center the stable Calculate control and hide its spinner until pending");
+
   // Settings work only projects ranges; it can never create either in-plot slider.
   const window = {};
   require("vm").runInNewContext(registeredBlock(app, "registerSignalAnalyserTask0153"), { window, Object, String, Array, Number, Math, JSON });

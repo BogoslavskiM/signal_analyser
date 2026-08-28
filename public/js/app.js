@@ -1786,6 +1786,20 @@
   };
 }(typeof window !== "undefined" ? window : globalThis));
 
+(function (root) {
+  "use strict";
+
+  var COPY={idle:"Экстремумы ещё не рассчитаны.",cleared:"Результат очищен.",empty:"Экстремумы не найдены.",error:"Не удалось рассчитать экстремумы.",pending:"Расчёт выполняется…"};
+  function esc(value){return String(value).replace(/[&<>"']/g,function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c];});}
+  function normalize(status){var value=String(status||"idle").toLowerCase();if(value==="loading"||value==="busy")return "pending";if(value==="success"||value==="calculated")return "ready";if(value==="stale")return "stale-ready";if(["idle","cleared","empty","error","pending","ready","stale-ready"].indexOf(value)>=0)return value;return "idle";}
+  function presentation(status,rowCount){var state=normalize(status),hasRows=Number(rowCount)>0;var table=(state==="ready"||state==="stale-ready")&&hasRows;return {state:state,layout:table?"table":"surface",calculateDisabled:state==="pending",calculateBusy:state==="pending",copy:COPY[state]||COPY.idle};}
+  function headerActionsMarkup(iconBase){var base=String(iconBase||"./icons").replace(/\/$/,"");return "<th class='extrema-table-actions-cell' data-testid='extrema-table-actions-cell' aria-label='Действия с экстремумами'><div class='extrema-table-actions' data-testid='extrema-table-actions' role='group' aria-label='Действия с экстремумами'><button class='extrema-table-icon-action' type='button' data-extrema-clear data-testid='extrema-table-clear' data-tooltip='Очистить экстремумы' aria-label='Очистить экстремумы'><img src='"+esc(base)+"/trash-16.svg' alt=''></button><button class='extrema-table-icon-action' type='button' data-extrema-action data-testid='extrema-table-recalculate' data-tooltip='Пересчитать для актуальных диапазонов' aria-label='Пересчитать для актуальных диапазонов'><img src='"+esc(base)+"/refresh-16.svg' alt=''></button></div></th>";}
+  function surfaceMarkup(status,configureAvailable){var view=presentation(status,0),pending=view.calculateBusy;var copyRole=view.state==="error"?" role='alert'":" role='status'";return "<div class='extrema-no-table-state' data-testid='extrema-no-table-state' data-extrema-empty-state='"+view.state+"'><div class='extrema-no-table-content'><p class='extrema-no-table-copy'"+copyRole+">"+esc(view.copy)+"</p><div class='extrema-no-table-actions'><button class='button button-primary extrema-surface-calculate' type='button' data-extrema-action data-testid='extrema-calculate' aria-busy='"+pending+"'"+(pending?" aria-disabled='true' disabled":"")+"><span class='extrema-calculate-spinner' data-testid='extrema-calculate-spinner' aria-hidden='true'"+(pending?"":" hidden")+"></span><span>Рассчитать</span></button>"+(configureAvailable===false?"":"<button class='button extrema-surface-configure' type='button' data-extrema-configure data-testid='extrema-configure'>Настроить расчёт</button>")+"</div></div></div>";}
+  function activation(status){return normalize(status)==="pending"?null:{action:"calculate"};}
+  function bind(host,callbacks){var target=host||root.document,handlers=callbacks||{};function click(event){var node=event.target.closest&&event.target.closest("[data-extrema-clear],[data-extrema-action],[data-extrema-configure]");if(!node||node.disabled)return;if(node.matches("[data-extrema-clear]")&&handlers.onClear)handlers.onClear(node);else if(node.matches("[data-extrema-configure]")&&handlers.onConfigure)handlers.onConfigure(node);else if(node.matches("[data-extrema-action]")&&handlers.onCalculate)handlers.onCalculate(node);}target.addEventListener("click",click);return function(){target.removeEventListener("click",click);};}
+  root.SignalAnalyserExtremaTableActions={normalize:normalize,presentation:presentation,headerActionsMarkup:headerActionsMarkup,surfaceMarkup:surfaceMarkup,activation:activation,bind:bind,contract:{tabRowActions:false,headerOrder:["clear","recalculate"],tooltipDelayMs:1500}};
+}(typeof window!=="undefined"?window:globalThis));
+
 (function signalAnalyserApp(window, document) {
   "use strict";
 
@@ -1836,6 +1850,7 @@
   function task0153Controller() { return window.SignalAnalyserTask0153 || null; }
   function extremaActionController() { return window.SignalAnalyserExtremaAction || null; }
   function paneExtremaController() { return window.SignalAnalyserPaneExtrema || null; }
+  function extremaTableActionsController() { return window.SignalAnalyserExtremaTableActions || null; }
   function synchronizedRangeController() { return window.SignalAnalyserSynchronizedRanges || null; }
   function rangeLifecycleKey(displayId, paneId, fieldId) { return [displayId || "", paneId || "", fieldId || ""].join("::"); }
   var RANGE_LIFECYCLE_MAX_ACTIVE_MS=30000;
@@ -4929,7 +4944,6 @@
     if (typeof syncSignalSamplesWithMain === "function") syncSignalSamplesWithMain();
     reconcileContextTabs(pane);
     qa("[data-bottom-tab]").forEach(function (tab) { var available = contextTabAvailable(tab.dataset.bottomTab, pane), active = available && tab.dataset.bottomTab === model.inspectorPage; tab.hidden = !available; tab.setAttribute("aria-hidden", String(!available)); tab.setAttribute("aria-selected", String(active)); tab.tabIndex = active ? 0 : -1; });
-    renderInspectorExtremaAction(pane);
     body.setAttribute("aria-labelledby", model.inspectorPage === "signals" ? "signals-tab" : model.inspectorPage === "measurements" ? "measurements-tab" : model.inspectorPage === "samples" ? "inspector-tab-samples" : "peaks-tab");
     body.dataset.testid = "inspector-pane-" + model.inspectorPage;
     body.classList.toggle("is-table-only", model.inspectorPage === "peaks");
@@ -5135,17 +5149,6 @@
     };
   }
 
-  var inspectorExtremaActionMarkup = `<div class="inspector-extrema-actions" data-testid="extrema-header-actions" hidden>
-  <button class="button inspector-extrema-clear" type="button"
-          data-extrema-clear data-testid="extrema-header-clear"
-          title="Нет рассчитанных экстремумов" aria-label="Нет рассчитанных экстремумов"
-          aria-disabled="true" disabled>Очистить</button>
-  <button class="button button-primary inspector-extrema-action" type="button"
-          data-extrema-action data-testid="extrema-header-action"
-          data-extrema-action-state="idle" aria-busy="false"
-          title="Рассчитать экстремумы" aria-label="Рассчитать экстремумы">Рассчитать</button>
-</div>`;
-
   function ensureSettingsExtremaActions() {
     var actions=q("[data-testid='settings-extrema-actions']"), button=q("[data-testid='extrema-values']");
     if (!button) return null;
@@ -5178,40 +5181,10 @@
     return { root:actions, clear:clear, action:button };
   }
 
-  function ensureInspectorExtremaAction() {
-    var actions=q("[data-testid='extrema-header-actions']"), button=q("[data-testid='extrema-header-action']");
-    if (actions && button) return button;
-    var controls=q("[data-testid='inspector-state-controls']");
-    if (!controls || !controls.parentNode) return null;
-    if (button) button.remove();
-    controls.insertAdjacentHTML("beforebegin",inspectorExtremaActionMarkup);
-    return q("[data-testid='extrema-header-action']");
-  }
-
-  function renderInspectorExtremaAction(pane) {
-    var button=ensureInspectorExtremaAction();
-    if (!button) return;
-    var visible=model.inspectorPage === "peaks" && extremaTabsAvailable(pane);
-    var actions=button.closest("[data-testid='extrema-header-actions']"), clear=actions && actions.querySelector("[data-testid='extrema-header-clear']");
-    if (actions) actions.hidden=!visible;
-    if (!visible) return;
-    var display=activeDisplay(), record=display && pane && model.peaksRecords[paneRuntimeKey(display.id,pane.id)];
-    var helper=extremaActionController(), state=extremaActionState(record), view=helper && typeof helper.project === "function" ? helper.project(button,state) : extremaActionView(record);
-    if (!helper || typeof helper.project !== "function") {
-      button.textContent=view.label;
-      button.disabled=view.disabled;
-      button.dataset.extremaActionState=view.state;
-      button.setAttribute("aria-busy",String(view.busy));
-      button.setAttribute("title",view.tooltip);
-      button.setAttribute("aria-label",view.tooltip);
-    }
-    var paneHelper=paneExtremaController();
-    if (paneHelper && clear) paneHelper.projectClear(clear,record && record.paneState,!!(record && (record.pending || record.clearing)));
-  }
-
   function renderPeaksInspector(body) {
     var display = activeDisplay(), pane = paneById(model.activePane), record = display && pane && model.peaksRecords[paneRuntimeKey(display.id, pane.id)];
     var current = record && display && pane && record.displayId === display.id && record.paneId === pane.id;
+    var tableActions = extremaTableActionsController();
     var host = body.querySelector("[data-testid='peaks-table-scroll']");
     if (!host || host.parentElement !== body) {
       body.innerHTML = "<div class='signal-table-scroll peaks-table-scroll' data-testid='peaks-table-scroll'></div>";
@@ -5219,33 +5192,34 @@
     }
     if (pane && !paneHasSignals(pane)) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-no-signals' data-extrema-state='no-signals' role='status'><strong>Выберите сигнал для отображения</strong></div>"; return; }
     if (!extremaTabsAvailable(pane)) { host.innerHTML = "<div class='inspector-empty' role='status'>Экстремумы доступны для временной области и спектра</div>"; return; }
-    if (!current || (!record.pending && !record.error && !record.calculated)) {
-      var paneName = panePreviewName(display.id, pane);
-      host.innerHTML = "<div class='peaks-state peaks-start' data-testid='extrema-start' data-extrema-state='start' role='status'><strong>Рассчитать экстремумы для области " + esc(paneName) + "</strong><div class='peaks-start-actions'><button class='button' type='button' data-testid='extrema-configure'>Настроить рассчет</button></div></div>";
+    var data = record && record.data || {}, rows = Array.isArray(data.rows) ? data.rows : [];
+    var status = !current ? "idle" : record.pending ? "pending" : record.error ? "error" : record.calculated && rows.length ? (record.needUpdate ? "stale-ready" : "ready") : record.calculated ? "empty" : "idle";
+    var presentation = tableActions && tableActions.presentation(status,rows.length);
+    if (!presentation || presentation.layout === "surface") {
+      host.innerHTML = tableActions ? tableActions.surfaceMarkup(status,true) : "";
+      reconcileDropdownTooltip(host);
       return;
     }
-    if (record.pending) {
-      var episodeKey = record.loading_episode || ("extrema::" + paneRuntimeKey(display.id, pane.id) + "::pane");
-      var loading = host.firstElementChild;
-      if (loading && loading.dataset.extremaState === "loading" && loading.dataset.loaderEpisodeKey === episodeKey) return;
-      host.innerHTML = "<div class='peaks-state peaks-loading' data-testid='peaks-loader' data-extrema-state='loading' data-loader-episode-key='" + esc(episodeKey) + "' role='status' aria-live='polite'><span class='spinner' data-loader-spinner data-loader-episode-key='" + esc(episodeKey) + "' aria-hidden='true'></span><strong>Расчёт экстремумов…</strong></div>";
-      return;
-    }
-    if (record.error) { host.innerHTML = "<div class='peaks-state peaks-error' data-testid='peaks-error' data-extrema-state='error' role='alert'><strong>Не удалось рассчитать экстремумы</strong><p>" + esc(record.error) + "</p></div>"; return; }
-    var data = record.data || {}, rows = Array.isArray(data.rows) ? data.rows : [];
-    if (!rows.length) { host.innerHTML = "<div class='peaks-state' data-testid='peaks-empty' data-extrema-state='empty' role='status'><strong>Экстремумы не найдены</strong><p>Для активной области нет значений, соответствующих настройкам.</p></div>"; return; }
     var spectrum = pane.plot_type === "spectrum";
     var plotHost=q("[data-pane-host='" + CSS.escape(paneRuntimeKey(display.id,pane.id)) + "']"), extremaXFactor=extremaXProjectionFactor(plotHost,pane);
-    var colgroup = "<colgroup><col style='width:4.8%'><col style='width:28.4%'><col style='width:9.1%'><col style='width:12.3%'><col style='width:12.5%'><col style='width:12.5%'><col style='width:20.4%'></colgroup>";
-    host.innerHTML = "<table class='signal-table peaks-table' data-testid='peaks-table' data-extrema-table='true'>" + colgroup + "<thead><tr><th>№</th><th>Сигнал</th><th>Цвет</th><th>Тип</th><th>" + (spectrum ? "Магнитуда" : "Значение") + "</th><th>" + (spectrum ? "Частота" : "Время") + "</th><th>Метка на графике</th></tr></thead><tbody>" + rows.map(function (row, index) {
+    var actions = tableActions.headerActionsMarkup("./icons");
+    var colgroup = "<colgroup><col style='width:4.8%'><col style='width:28.4%'><col style='width:9.1%'><col style='width:12.3%'><col style='width:12.5%'><col style='width:12.5%'><col style='width:20.4%'><col style='width:64px'></colgroup>";
+    host.innerHTML = "<table class='signal-table peaks-table' data-testid='peaks-table' data-extrema-table='true'>" + colgroup + "<thead><tr><th>№</th><th>Сигнал</th><th>Цвет</th><th>Тип</th><th>" + (spectrum ? "Магнитуда" : "Значение") + "</th><th>" + (spectrum ? "Частота" : "Время") + "</th><th>Метка на графике</th>" + actions + "</tr></thead><tbody>" + rows.map(function (row, index) {
       var type = row.type === "minimum" ? "minimum" : "maximum", typeLabel = type === "minimum" ? "Минимум" : "Максимум";
       var number = row.graph_number == null ? "" : row.graph_number;
       var coordinate = spectrum ? (row.frequency == null ? row.frequency_hz : row.frequency) : (row.time == null ? row.time_s : row.time);
       if (coordinate != null && Number.isFinite(Number(coordinate))) coordinate=Number(coordinate) * extremaXFactor;
       var rowSignal=(model.state.signals || []).filter(function (signal) { return signalNameMatches(signal, row.signal_name); })[0];
       var rowColor=row.signal_color || signalColor(rowSignal);
-      return "<tr data-testid='extrema-row-" + esc(row.row_number == null ? index + 1 : row.row_number) + "'><td>" + esc(row.row_number == null ? index + 1 : row.row_number) + "</td><td>" + esc(row.signal_name || "") + "</td><td class='color-cell'><span class='peaks-color-swatch' style='--swatch:" + esc(rowColor) + "' aria-label='Цвет " + esc(row.signal_name || "") + "'></span></td><td data-testid='extrema-type-" + esc(row.row_number == null ? index + 1 : row.row_number) + "'>" + typeLabel + "</td><td>" + esc(measurementValue(row, "value")) + "</td><td>" + esc(coordinate == null ? "—" : coordinate) + "</td><td><span class='extrema-table-marker is-" + type + "' style='--marker-color:" + esc(rowColor) + "' data-marker-symbol='" + (type === "minimum" ? "triangle-down" : "triangle-up") + "' aria-label='" + typeLabel + ", метка " + esc(number) + "'><i aria-hidden='true'></i><b>" + esc(number) + "</b></span></td></tr>";
+      return "<tr data-testid='extrema-row-" + esc(row.row_number == null ? index + 1 : row.row_number) + "'><td>" + esc(row.row_number == null ? index + 1 : row.row_number) + "</td><td>" + esc(row.signal_name || "") + "</td><td class='color-cell'><span class='peaks-color-swatch' style='--swatch:" + esc(rowColor) + "' aria-label='Цвет " + esc(row.signal_name || "") + "'></span></td><td data-testid='extrema-type-" + esc(row.row_number == null ? index + 1 : row.row_number) + "'>" + typeLabel + "</td><td>" + esc(measurementValue(row, "value")) + "</td><td>" + esc(coordinate == null ? "—" : coordinate) + "</td><td><span class='extrema-table-marker is-" + type + "' style='--marker-color:" + esc(rowColor) + "' data-marker-symbol='" + (type === "minimum" ? "triangle-down" : "triangle-up") + "' aria-label='" + typeLabel + ", метка " + esc(number) + "'><i aria-hidden='true'></i><b>" + esc(number) + "</b></span></td><td aria-hidden='true'></td></tr>";
     }).join("") + "</tbody></table>";
+    var clear = host.querySelector("[data-testid='extrema-table-clear']"), paneHelper = paneExtremaController();
+    if (paneHelper && clear) {
+      var clearView = paneHelper.clearPresentation(record && record.paneState,!!(record && (record.pending || record.clearing)));
+      clear.disabled=clearView.disabled;
+      clear.setAttribute("aria-disabled",String(clearView.disabled));
+    }
+    reconcileDropdownTooltip(host);
   }
 
   function peaksSettingsKey(display, pane) { return display && pane ? paneRuntimeKey(display.id, pane.id) : ""; }

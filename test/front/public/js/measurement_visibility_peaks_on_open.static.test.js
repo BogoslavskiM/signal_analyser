@@ -28,15 +28,10 @@ module.exports = async function testMeasurementVisibilityAndPeaksOnOpen(assert) 
 
   assert(/model\.inspectorPage === "peaks"\) loadPeaks\(\)/.test(app), "opening the bottom Extrema page must hydrate only its passive pane state");
   const loadPeaks = (app.match(/function loadPeaks\(\)[\s\S]*?\n  \}/) || [""])[0];
-  const enablePeaks = (app.match(/function ensurePeaksEnabled\(displayId, paneId\)[\s\S]*?\n  \}/) || [""])[0];
-  assert(/display\.peaks_enabled\) return Promise\.resolve\(\)/.test(enablePeaks), "Extrema must reuse an already enabled active pane");
-  assert(/peaks_enabled:true/.test(enablePeaks) && /preservePlots:true, skipOutput:true/.test(enablePeaks), "passive Extrema enablement must not reload graph output");
-  assert(/fetchActivePeaks\(displayId, paneId, false, false\)/.test(loadPeaks), "Extrema on-open must perform passive GET without polling");
-  assert(!/calculateActivePeaks|fetchActivePeaks\(displayId, paneId, true/.test(loadPeaks), "Extrema on-open must not calculate");
-  const peaksInspector = (app.match(/function renderPeaksInspector\(body\)[\s\S]*?\n  \}/) || [""])[0];
-  assert(/data-testid='extrema-start'[\s\S]*Рассчитать экстремумы для области /.test(peaksInspector), "Extrema must render its exact area start state");
-  const calculateIndex = peaksInspector.indexOf("data-testid='extrema-calculate'");
-  const configureIndex = peaksInspector.indexOf("data-testid='extrema-configure'");
-  const tableIndex = peaksInspector.indexOf("data-testid='peaks-table'");
-  assert(configureIndex >= 0 && calculateIndex > configureIndex && tableIndex > calculateIndex, "Extrema rendered markup must order Configure then Calculate before the full-width result table");
+  assert(/fetchActivePeaks\(display\.id, pane\.id, false, false\)/.test(loadPeaks), "Extrema on-open must perform passive GET without polling");
+  assert(!/calculatePanePeaks|fetchActivePeaks\([^)]*,[^)]*, true/.test(loadPeaks), "Extrema on-open must not calculate");
+  const tableActions = (app.match(/function headerActionsMarkup\(iconBase\)[\s\S]*?\n  function surfaceMarkup/) || [""])[0];
+  assert(!/extrema-header-actions|header-clear|header-action/.test(app), "the inspector tab row must not retain legacy Extrema actions");
+  assert(/extrema-table-actions-cell[\s\S]*?data-testid='extrema-table-clear'[\s\S]*?trash-16\.svg[\s\S]*?data-testid='extrema-table-recalculate'[\s\S]*?refresh-16\.svg/.test(tableActions), "a ready table must put trash left and reload right in its final action header cell");
+  assert(/data-testid='extrema-no-table-state'[\s\S]*?data-testid='extrema-calculate'[\s\S]*?data-testid='extrema-configure'/.test(app), "every no-table Extrema state must retain the centered Calculate and Configure controls");
 };
