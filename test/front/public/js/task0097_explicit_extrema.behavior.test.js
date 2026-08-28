@@ -41,6 +41,7 @@ function element(extra) {
     matches() { return false; },
     addEventListener() {},
     querySelector() { return null; },
+    querySelectorAll() { return []; },
     focus() {}
   }, extra || {});
 }
@@ -101,6 +102,10 @@ function createHarness(options) {
   source = source.replace("})(window, document);", "window.__explicitExtrema = { model:model, accept:accept, loadPeaks:loadPeaks, calculatePeaks:calculatePeaks, configureActivePeaks:configureActivePeaks, showActivePeaksValues:showActivePeaksValues, renderPeaksInspector:renderPeaksInspector, renderPeaksApply:renderPeaksApply, renderContext:renderActivePaneContext, renderSettings:renderSettings, extremaTabsAvailable:extremaTabsAvailable }; })(window, document);");
 
   const body = element();
+  // V64 installs the global dropdown/tooltip controller at module boot.  This
+  // Extrema-only VM fixture has no real DOM, but it must still provide the
+  // minimal body insertion seam used for the inert overlay host.
+  body.appendChild = function () {};
   const peaksHost = element();
   peaksHost.parentElement = body;
   body.querySelector = function (selector) { return selector === "[data-testid='peaks-table-scroll']" ? peaksHost : null; };
@@ -189,6 +194,7 @@ function createHarness(options) {
   let settingsMarkup = "", metadataNameNode = null;
   const document = {
     activeElement: null,
+    body,
     querySelector(selector) { return selector === "[data-signal-metadata='name']" ? metadataNameNode : nodes[selector] || null; },
     querySelectorAll(selector) {
       if (selector === "[data-settings-page]") return [settingsDisplayTab, settingsPeaksTab];

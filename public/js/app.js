@@ -2072,16 +2072,11 @@
       }
     });
     Object.keys(model.plotQueue).forEach(function (key) { if (key.indexOf(String(activeDisplayId) + "::") !== 0) delete model.plotQueue[key]; });
-    Object.keys(model.peaksPollByPane).forEach(function (key) {
-      if (key.indexOf(String(activeDisplayId) + "::") !== 0) { window.clearTimeout(model.peaksPollByPane[key]); delete model.peaksPollByPane[key]; }
-    });
   }
 
   function accept(snapshot) {
     var r = stateRevision(snapshot);
     if (!snapshot || r === null || r<model.revision || !Array.isArray(snapshot.displays) || !snapshot.displays.length) return false;
-    var previousDisplay = activeDisplay();
-    var previousPeaksKey = previousDisplay && model.activePane ? paneRuntimeKey(previousDisplay.id, model.activePane) : "";
     model.state = snapshot;
     model.revision = r;
     reconcileNamePreviews(snapshot);
@@ -2090,9 +2085,6 @@
     var display = activeDisplay();
     if (display) {
       cancelInactiveDisplayWork(display.id);
-      var activePeaksKey = model.activePane ? paneRuntimeKey(display.id, model.activePane) : "";
-      if (previousPeaksKey && previousPeaksKey !== activePeaksKey) releasePendingPeaksContext(previousPeaksKey);
-      stopPeaksPolling(activePeaksKey);
       settings.setContext(display.id, r);
     }
     return true;
@@ -4689,11 +4681,10 @@
 
   function reconcileContextTabs(pane) {
     if (extremaTabsAvailable(pane)) return false;
-    var wasPeaksActive = peaksSurfaceActive(), changed = false;
+    var changed = false;
     if (model.settingsPage === "peaks") { model.settingsPage = "display"; changed = true; }
     if (model.inspectorPage === "peaks") { model.inspectorPage = "signals"; changed = true; }
     if (model.extremaTargetKey) { model.extremaTargetKey = null; changed = true; }
-    if (wasPeaksActive) stopPeaksPolling("");
     return changed;
   }
 
@@ -5230,35 +5221,18 @@
     Promise.resolve(remove).then(function () { if (traces.length && activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId) return window.Plotly.addTraces(host, traces); }).catch(function () {});
   }
 
-  function stopPeaksPolling(exceptKey) {
-    Object.keys(model.peaksPollByPane).forEach(function (key) {
-      if (key !== exceptKey) { window.clearTimeout(model.peaksPollByPane[key]); delete model.peaksPollByPane[key]; }
-    });
-  }
-
   function clearPeaksPoll(runtimeKey) {
     window.clearTimeout(model.peaksPollByPane[runtimeKey]);
     delete model.peaksPollByPane[runtimeKey];
   }
 
-  function releasePendingPeaksContext(runtimeKey) {
-    clearPeaksPoll(runtimeKey);
-    var record=model.peaksRecords[runtimeKey];
-    if (!record || !record.pending) return;
-    model.peaksTokens[runtimeKey]=(model.peaksTokens[runtimeKey] || 0) + 1;
-    model.peaksRecords[runtimeKey]=Object.assign({},record,{
-      calculated:false,
-      pending:false,
-      loading_episode:null,
-      error:"Расчёт остановлен после смены области. Нажмите «Рассчитать ещё раз»."
-    });
-  }
-
   function peaksResponseContextIsCurrent(response, displayId, paneId, token) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
-    if (token !== model.peaksTokens[runtimeKey] || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return false;
+    if (token !== model.peaksTokens[runtimeKey]) return false;
     if (!response || response.display_id !== displayId || response.pane_id !== paneId) return false;
     var prior = model.peaksRecords[runtimeKey];
+    var outsideActiveContext=!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId;
+    if (outsideActiveContext && !(prior && prior.calculationRequested)) return false;
     if (prior && prior.context_key && response.context_key !== prior.context_key && response.calculation_revision <= prior.calculation_revision) return false;
     return !(prior && typeof prior.calculation_revision === "number" && typeof response.calculation_revision === "number" && response.calculation_revision < prior.calculation_revision);
   }
@@ -5278,7 +5252,6 @@
     window.clearTimeout(model.peaksPollByPane[runtimeKey]);
     model.peaksPollByPane[runtimeKey]=window.setTimeout(function () {
       delete model.peaksPollByPane[runtimeKey];
-      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
       fetchActivePeaks(displayId, paneId, true, true);
     }, 350);
   }
@@ -5288,8 +5261,20 @@
     var prior = model.peaksRecords[runtimeKey];
     var requested = !!calculationRequested || !!(prior && prior.calculationRequested);
     if (!peaksResponseIsCurrent(response, displayId, paneId, token)) {
-      var revision=stateRevision(response);
-      if (poll && requested && revision !== null && revision < model.revision && peaksResponseContextIsCurrent(response, displayId, paneId, token)) schedulePeaksPoll(displayId, paneId);
+      /* A current transport may still return a stale calculation snapshot.
+         The explicit request remains authoritative until its own terminal
+         payload arrives, so a stale GET/refresh must not consume the only
+         timer and strand the recorded pending context. */
+      var samePendingCalculation=!!(prior && prior.pending && response &&
+        response.context_key === prior.context_key &&
+        response.calculation_revision === prior.calculation_revision);
+      var newerCalculation=!!(prior && prior.pending && response &&
+        typeof prior.calculation_revision === "number" &&
+        typeof response.calculation_revision === "number" &&
+        response.calculation_revision > prior.calculation_revision);
+      if (requested && token === model.peaksTokens[runtimeKey] && response &&
+          response.display_id === displayId && response.pane_id === paneId &&
+          (samePendingCalculation || newerCalculation)) schedulePeaksPoll(displayId, paneId);
       return null;
     }
     var pending = !response.isready && requested;
@@ -5309,9 +5294,10 @@
       peaks:response.peaks || null
     };
     model.peaksRecords[runtimeKey] = record;
-    model.peaksRecord = record;
-    if (model.inspectorPage === "peaks") renderInspector();
-    if (model.settingsPage === "peaks") renderSettings(activeDisplay());
+    var projectsActiveContext=!!activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId;
+    if (projectsActiveContext) model.peaksRecord = record;
+    if (projectsActiveContext && model.inspectorPage === "peaks") renderInspector();
+    if (projectsActiveContext && model.settingsPage === "peaks") renderSettings(activeDisplay());
     if (response.isready && response.success !== false) updatePeaksMarkers(displayId, paneId, record);
     if (!response.isready && !requested) clearPeaksMarkersForPane(displayId, paneId);
     /* A passive refresh can overtake the calculation POST and become the
@@ -5328,24 +5314,25 @@
     var token = (model.peaksTokens[runtimeKey] || 0) + 1;
     model.peaksTokens[runtimeKey] = token;
     window.clearTimeout(model.peaksPollByPane[runtimeKey]);
-    return api.activePeaks(displayId, paneId).then(function (response) {
+    return boundedRequest(api.activePeaks(displayId, paneId), 20000).then(function (response) {
       return acceptPeaksPayload(response, displayId, paneId, token, calculationRequested, poll);
     }).catch(function (error) {
-      if (token !== model.peaksTokens[runtimeKey] || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return null;
+      if (token !== model.peaksTokens[runtimeKey]) return null;
       var conflictState=error && error.status === 409 && error.payload && (error.payload.current && (error.payload.current.state || error.payload.current) || error.payload.state);
       if (conflictState && rebaseAttempts < 1) {
         var rebased=accept(conflictState) ? Promise.resolve(conflictState) : refreshSnapshot(renderActivePaneContext);
         return rebased.then(function () {
           renderActivePaneContext();
-          if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return null;
           return fetchActivePeaks(displayId, paneId, poll, calculationRequested, rebaseAttempts + 1);
         });
       }
-      var record = { displayId:displayId, paneId:paneId, calculationRequested:!!calculationRequested, calculated:false, error:safeErrorText(error, "Не удалось загрузить экстремумы."), pending:false };
+      var prior=model.peaksRecords[runtimeKey];
+      var record = { displayId:displayId, paneId:paneId, calculationRequested:!!calculationRequested || !!(prior && prior.calculationRequested), calculated:false, error:safeErrorText(error, "Не удалось загрузить экстремумы."), pending:false, data:prior && prior.data || null };
       model.peaksRecords[runtimeKey] = record;
-      model.peaksRecord = record;
-      if (model.inspectorPage === "peaks") renderInspector();
-      if (model.settingsPage === "peaks") renderSettings(activeDisplay());
+      var projectsActiveContext=!!activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId;
+      if (projectsActiveContext) model.peaksRecord = record;
+      if (projectsActiveContext && model.inspectorPage === "peaks") renderInspector();
+      if (projectsActiveContext && model.settingsPage === "peaks") renderSettings(activeDisplay());
       return record;
     });
   }
@@ -5415,7 +5402,6 @@
     if (!activation) return;
     var visibleRange=activation.visible_range;
     clearPeaksPoll(runtimeKey);
-    stopPeaksPolling(runtimeKey);
     var token = (model.peaksTokens[runtimeKey] || 0) + 1;
     model.peaksTokens[runtimeKey] = token;
     var prior = model.peaksRecords[runtimeKey];
@@ -5434,14 +5420,14 @@
     renderInspector();
     if (model.settingsPage === "peaks") renderApply();
     ensurePeaksEnabled(displayId, paneId).then(function () {
-      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) throw new Error("Контекст области изменился; повторите действие.");
+      if (token !== model.peaksTokens[runtimeKey]) throw new Error("Расчёт экстремумов был заменён новым запросом.");
       token = (model.peaksTokens[runtimeKey] || 0) + 1;
       model.peaksTokens[runtimeKey] = token;
       var payload={ state_revision:model.revision, display_id:displayId, pane_id:paneId };
       if (visibleRange) payload.visible_range=visibleRange;
       return api.calculateActivePeaks(payload).catch(function (error) {
         var current = error && error.status === 409 && error.payload && (error.payload.current || error.payload.state);
-        if (!current || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) throw error;
+        if (!current) throw error;
         var snapshot = current.state || current;
         return (accept(snapshot) ? Promise.resolve(snapshot) : refreshSnapshot(renderActivePaneContext)).then(function () {
           renderActivePaneContext();
@@ -5465,9 +5451,8 @@
   function loadPeaks() {
     if (!peaksSurfaceActive()) return Promise.resolve();
     var display = activeDisplay(), pane = paneById(model.activePane);
-    if (!display || !pane || !extremaTabsAvailable(pane) || !paneHasSignals(pane)) { stopPeaksPolling(""); model.peaksRecord = null; renderInspector(); return Promise.resolve(); }
+    if (!display || !pane || !extremaTabsAvailable(pane) || !paneHasSignals(pane)) { model.peaksRecord = null; renderInspector(); return Promise.resolve(); }
     var displayId = display.id, paneId = pane.id, runtimeKey = paneRuntimeKey(displayId, paneId);
-    stopPeaksPolling(runtimeKey);
     if (display.peaks_enabled) return fetchActivePeaks(displayId, paneId, false, false);
     return ensurePeaksEnabled(displayId, paneId).then(function () { return fetchActivePeaks(displayId, paneId, false, false); });
   }
