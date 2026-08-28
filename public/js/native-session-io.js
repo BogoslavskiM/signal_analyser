@@ -45,6 +45,8 @@
 
   function q(selector) { return document.querySelector(selector); }
   function qa(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
+  function dropdownTooltipAudit() { return window.SignalAnalyserDropdownTooltipAudit || null; }
+  function reconcileDropdownTooltip(root) { var audit=dropdownTooltipAudit(); if (audit) audit.reconcile(root || document); }
   function esc(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) {
       return { "&":"&amp;", "<":"&lt;", ">":"&gt;", "\"":"&quot;", "'":"&#39;" }[character];
@@ -122,6 +124,8 @@
   function positionImportMenu() {
     var parts = importMenuParts();
     if (!importMenuOpen || !parts.trigger || !parts.menu) return;
+    var audit=dropdownTooltipAudit();
+    if (audit) return void audit.positionPopup(parts.trigger,parts.menu,196);
     var rect = parts.trigger.getBoundingClientRect();
     var width = 196;
     parts.menu.style.left = Math.min(window.innerWidth - width - 8, Math.max(8, rect.right - width)) + "px";
@@ -136,6 +140,7 @@
       item.tabIndex = importMenuOpen && index === importMenuActiveIndex ? 0 : -1;
     });
     if (importMenuOpen) {
+      document.dispatchEvent(new CustomEvent("signal-analyser:overlay-open"));
       dismissTransient();
       positionImportMenu();
     }
@@ -243,6 +248,8 @@
     var popup = q("[data-native-signals-popup]");
     var trigger = q("[data-testid='native-save-signals']");
     if (!popup || !trigger) return;
+    var audit=dropdownTooltipAudit();
+    if (audit) return void audit.positionPopup(trigger,popup,trigger.getBoundingClientRect().width);
     var rect = trigger.getBoundingClientRect();
     var inset = 8;
     var width = Math.min(rect.width, Math.max(0, window.innerWidth - inset * 2));
@@ -340,6 +347,7 @@
     if (state.message && text(state.message.title) && text(state.message.text)) {
       html += layer("native-message", state.message.title, "<div class='alert " + state.message.kind + "'><p>" + esc(state.message.text) + "</p></div>", "<button class='button button-primary' data-native-message-close data-testid='native-message-close'>Понятно</button>", "native-message-dialog", state.message.code ? " data-error-code='" + esc(state.message.code) + "'" : "");
     }
+    if (html) document.dispatchEvent(new CustomEvent("signal-analyser:overlay-open"));
     root.innerHTML = html;
     if (window.SignalAnalyserTask0126 && typeof window.SignalAnalyserTask0126.decorateNoHistory === "function") window.SignalAnalyserTask0126.decorateNoHistory(root);
     var parent = q("[data-testid='native-save-dialog'], [data-testid='native-import-dialog']");
@@ -350,6 +358,7 @@
     }
     bind(root);
     positionSignalPicker();
+    reconcileDropdownTooltip(root);
     if (previousBrowser && state.browserState.open) {
       var nextList = q("[data-testid='native-file-browser-list']");
       if (nextList) nextList.scrollTop = previousScroll;

@@ -77,7 +77,7 @@
       " autocomplete='off' spellcheck='false' role='combobox' aria-autocomplete='list' aria-haspopup='listbox'" +
       " aria-expanded='" + String(open) + "' aria-controls='value-select-listbox'" +
       (open && activeIndex >= 0 ? " aria-activedescendant='" + optionId(config.logicalKey, activeIndex) + "'" : "") +
-      " aria-label='" + esc(config.ariaLabel) + "' title='" + esc(config.selectedLabel) + "'" +
+      " aria-label='" + esc(config.ariaLabel) + "' data-tooltip-overflow='value' data-tooltip-text='" + esc(config.selectedLabel) + "'" +
       " data-value-select-input data-testid='" + esc(config.testId) + "-input'>";
   }
 
@@ -100,7 +100,7 @@
         " data-testid='" + esc(config.testId) + "' role='combobox' aria-haspopup='listbox' aria-expanded='" + String(open) + "'" +
         " aria-controls='value-select-listbox' aria-label='" + esc(config.ariaLabel) + "' aria-disabled='" + String(config.disabled) + "'" +
         (open && activeIndex >= 0 ? " aria-activedescendant='" + optionId(config.logicalKey, activeIndex) + "'" : "") +
-        " title='" + esc(config.selectedLabel) + "'" + (config.disabled ? " disabled" : "") + ">" +
+        " data-tooltip-overflow='label' data-tooltip-text='" + esc(config.selectedLabel) + "'" + (config.disabled ? " disabled" : "") + ">" +
         iconMarkup(icon,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") +
         "<span class='select-trigger-label' data-value-select-trigger-label>" + esc(config.selectedLabel) + "</span>" +
         "<span class='select-trigger-arrow' aria-hidden='true' data-value-select-arrow></span></button>";
@@ -108,10 +108,8 @@
     return "<div class='value-select-trigger select-trigger " + esc(config.className) + (icon ? " has-leading-icon" : "") + (open ? " is-open" : "") + "'" +
       " data-value-select-key='" + esc(config.logicalKey) + "' data-value-select-disabled='" + String(config.disabled) + "'" +
       " data-testid='" + esc(config.testId) + "' aria-expanded='" + String(open) + "' aria-disabled='" + String(config.disabled) + "'" +
-      " title='" + esc(config.selectedLabel) + "'>" + iconMarkup(icon,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") + inputMarkup(config, open) +
-      "<button class='select-trigger-arrow' type='button' tabindex='-1' aria-label='" + esc((open ? "Закрыть список: " : "Открыть список: ") + config.ariaLabel) + "'" +
-      " aria-expanded='" + String(open) + "' aria-controls='value-select-listbox' data-value-select-arrow data-testid='" + esc(config.testId) + "-arrow'" +
-      (config.disabled ? " disabled" : "") + "></button></div>";
+      " data-tooltip-overflow='value' data-tooltip-text='" + esc(config.selectedLabel) + "'>" + iconMarkup(icon,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") + inputMarkup(config, open) +
+      "<span class='select-trigger-arrow' aria-hidden='true' data-value-select-arrow data-testid='" + esc(config.testId) + "-arrow'></span></div>";
   }
 
   function setAttribute(node, name, value) {
@@ -140,7 +138,9 @@
       node.setAttribute("aria-controls", "value-select-listbox");
       node.setAttribute("aria-label", config.ariaLabel);
       node.setAttribute("aria-disabled", String(config.disabled));
-      node.title=config.selectedLabel;
+      node.removeAttribute("title");
+      node.dataset.tooltipOverflow="label";
+      node.dataset.tooltipText=config.selectedLabel;
       var buttonActiveIndex=state.activeValue == null ? -1 : optionIndex(config, state.activeValue);
       setAttribute(node, "aria-activedescendant", buttonOpen && buttonActiveIndex >= 0 ? optionId(config.logicalKey, buttonActiveIndex) : null);
       node.innerHTML=iconMarkup(buttonIcon,"select-trigger-icon","data-value-select-trigger-icon",buttonSelected ? buttonSelected.value : "") +
@@ -161,11 +161,13 @@
     node.setAttribute("data-testid", config.testId);
     node.setAttribute("aria-expanded", String(open));
     node.setAttribute("aria-disabled", String(config.disabled));
-    node.title=config.selectedLabel;
+    node.removeAttribute("title");
+    node.dataset.tooltipOverflow="value";
+    node.dataset.tooltipText=config.selectedLabel;
     var input=node.querySelector && node.querySelector("[data-value-select-input]");
     var arrow=node.querySelector && node.querySelector("[data-value-select-arrow]");
     if (!input || !arrow) {
-      node.innerHTML=iconMarkup(iconSource,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") + inputMarkup(config, open) + "<button class='select-trigger-arrow' type='button' tabindex='-1' data-value-select-arrow></button>";
+      node.innerHTML=iconMarkup(iconSource,"select-trigger-icon","data-value-select-trigger-icon",selected ? selected.value : "") + inputMarkup(config, open) + "<span class='select-trigger-arrow' aria-hidden='true' data-value-select-arrow></span>";
       input=node.querySelector("[data-value-select-input]");
       arrow=node.querySelector("[data-value-select-arrow]");
     }
@@ -199,22 +201,25 @@
       input.setAttribute("aria-expanded", String(open));
       input.setAttribute("aria-controls", "value-select-listbox");
       input.setAttribute("aria-label", config.ariaLabel);
-      input.title=config.selectedLabel;
+      input.removeAttribute("title");
+      input.dataset.tooltipOverflow="value";
+      input.dataset.tooltipText=config.selectedLabel;
       setAttribute(input, "placeholder", open ? "Поиск" : null);
       var activeIndex=state.activeValue == null ? -1 : optionIndex(config, state.activeValue);
       setAttribute(input, "aria-activedescendant", open && activeIndex >= 0 ? optionId(config.logicalKey, activeIndex) : null);
       if (input.value !== displayed) input.value=displayed;
     }
     if (arrow) {
+      if (String(arrow.tagName || "").toLowerCase() !== "span" && document.createElement && arrow.parentNode) {
+        var arrowReplacement=document.createElement("span");
+        arrow.parentNode.replaceChild(arrowReplacement,arrow);
+        arrow=arrowReplacement;
+      }
       arrow.className="select-trigger-arrow";
-      arrow.type="button";
-      arrow.tabIndex=-1;
-      arrow.disabled=config.disabled;
       arrow.dataset.testid=config.testId + "-arrow";
       arrow.setAttribute("data-testid", config.testId + "-arrow");
-      arrow.setAttribute("aria-label", (open ? "Закрыть список: " : "Открыть список: ") + config.ariaLabel);
-      arrow.setAttribute("aria-expanded", String(open));
-      arrow.setAttribute("aria-controls", "value-select-listbox");
+      arrow.setAttribute("aria-hidden", "true");
+      arrow.setAttribute("data-value-select-arrow", "");
     }
     return node;
   }
@@ -266,7 +271,7 @@
       return "<button class='select-option" + (option.icon ? " has-leading-icon" : "") + (selected ? " is-selected" : "") + (option.value === state.activeValue ? " is-active" : "") + "'" +
         " type='button' role='option' tabindex='-1' id='" + optionId(config.logicalKey, entry.index) + "'" +
         " data-value-select-option-index='" + entry.index + "' data-testid='value-select-option-" + entry.index + "'" +
-        " aria-selected='" + String(selected) + "' title='" + esc(option.label) + "'" +
+        " aria-selected='" + String(selected) + "' aria-label='" + esc(option.label) + "'" +
         (option.disabled ? " disabled aria-disabled='true'" : "") +
         "><span class='select-option-check' aria-hidden='true'></span>" + iconMarkup(option.icon,"select-option-icon","data-value-select-option-icon",option.value) + "<span class='select-option-label'>" + esc(option.label) + "</span></button>";
     }).join("");
@@ -402,12 +407,6 @@
     var config=registry[trigger.dataset.valueSelectKey];
     if (!config || config.disabled) return;
     if (config.buttonTrigger) {
-      event.preventDefault();
-      if (state.logicalKey === config.logicalKey) close({ restoreFocus:true });
-      else open(trigger, "down");
-      return;
-    }
-    if (event.target.closest("[data-value-select-arrow]")) {
       event.preventDefault();
       if (state.logicalKey === config.logicalKey) close({ restoreFocus:true });
       else open(trigger, "down");

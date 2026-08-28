@@ -201,11 +201,11 @@ function signal_analyser_sync_output_pages_unlocked!(state::SignalAnalyserState)
     if manager.active_peaks_context !== nothing
         running_context = manager.active_peaks_context::SignalAnalyserPeaksContextKey
         if !signal_analyser_peaks_context_is_current_unlocked(state, running_context)
-            token = manager.cancellation_token
+            token = manager.peaks_cancellation_token
             token === nothing || (token.cancelled[] = true)
             manager.active_peaks_context = nothing
-            manager.active_poll_count = 0
-            manager.cancellation_token = nothing
+            manager.peaks_active_poll_count = 0
+            manager.peaks_cancellation_token = nothing
         end
     end
     nothing
@@ -215,10 +215,14 @@ function signal_analyser_cancel_active_output_unlocked!(state::SignalAnalyserSta
     manager = state.output_manager
     token = manager.cancellation_token
     token === nothing || (token.cancelled[] = true)
+    peaks_token = manager.peaks_cancellation_token
+    peaks_token === nothing || (peaks_token.cancelled[] = true)
     manager.active_context = nothing
     manager.active_peaks_context = nothing
     manager.active_poll_count = 0
     manager.cancellation_token = nothing
+    manager.peaks_active_poll_count = 0
+    manager.peaks_cancellation_token = nothing
     if !manager.active_task_is_worker
         manager.active_task = nothing
     end
@@ -245,11 +249,11 @@ function signal_analyser_cancel_peaks_pages_unlocked!(
         context = manager.active_peaks_context::SignalAnalyserPeaksContextKey
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
         if page_id in requested
-            token = manager.cancellation_token
+            token = manager.peaks_cancellation_token
             token === nothing || (token.cancelled[] = true)
             manager.active_peaks_context = nothing
-            manager.active_poll_count = 0
-            manager.cancellation_token = nothing
+            manager.peaks_active_poll_count = 0
+            manager.peaks_cancellation_token = nothing
         end
     end
     nothing
@@ -1551,8 +1555,8 @@ function signal_analyser_publish_peaks_task!(
         )
         manager.peaks_need_update_pages[page_id] = false
         manager.active_peaks_context = nothing
-        manager.active_poll_count = 0
-        manager.cancellation_token = nothing
+        manager.peaks_active_poll_count = 0
+        manager.peaks_cancellation_token = nothing
         delete!(manager.peaks_poll_counts, page_id)
         state.view.state_revision += 1
     end
@@ -1570,7 +1574,7 @@ function signal_analyser_terminalize_peaks_error_unlocked!(
     signal_analyser_peaks_context_is_current_unlocked(state, context) || return false
     get(manager.peaks_need_update_pages, page_id, true) || return false
 
-    token = manager.cancellation_token
+    token = manager.peaks_cancellation_token
     token === nothing || (token.cancelled[] = true)
     manager.peaks_statuses[page_id] = SignalAnalyserPeaksStatus(
         context,
@@ -1580,8 +1584,8 @@ function signal_analyser_terminalize_peaks_error_unlocked!(
     )
     manager.peaks_need_update_pages[page_id] = false
     manager.active_peaks_context = nothing
-    manager.active_poll_count = 0
-    manager.cancellation_token = nothing
+    manager.peaks_active_poll_count = 0
+    manager.peaks_cancellation_token = nothing
     delete!(manager.peaks_poll_counts, page_id)
     state.view.state_revision += 1
     true
@@ -1664,13 +1668,16 @@ function signal_analyser_run_peaks_worker!(
         signal_analyser_run_peaks_task!(state, snapshot, context, token)
     finally
         lock(state.lock) do
-            if state.output_manager === manager && manager.active_task === current_task()
+            if state.output_manager === manager && manager.peaks_task === current_task()
                 token.cancelled[] = true
                 manager.active_peaks_context = nothing
-                manager.active_task = nothing
-                manager.active_task_is_worker = false
-                manager.active_poll_count = 0
-                manager.cancellation_token = nothing
+                manager.peaks_task = nothing
+                manager.peaks_active_poll_count = 0
+                manager.peaks_cancellation_token = nothing
+                if manager.active_task === current_task()
+                    manager.active_task = nothing
+                    manager.active_task_is_worker = false
+                end
                 signal_analyser_start_peaks_worker_unlocked!(state, manager)
             end
         end
@@ -1682,7 +1689,10 @@ function signal_analyser_start_peaks_worker_unlocked!(
     state::SignalAnalyserState,
     manager::SignalAnalyserCalculationManager,
 )::Bool
-    manager.active_task === nothing || return false
+    manager.peaks_task === nothing || return false
+    # A reserved non-worker task remains an exclusive control boundary. A real
+    # output worker no longer blocks the explicit extrema lane.
+    manager.active_task !== nothing && !manager.active_task_is_worker && return false
     while !isempty(manager.queued_peaks_contexts)
         context = popfirst!(manager.queued_peaks_contexts)
         page_id = signal_analyser_output_page_id(context.display_id, context.pane_id)
@@ -1690,17 +1700,24 @@ function signal_analyser_start_peaks_worker_unlocked!(
         get(manager.peaks_need_update_pages, page_id, true) || continue
         token = SignalAnalyserCancellationToken()
         manager.active_peaks_context = context
-        manager.active_poll_count = get(manager.peaks_poll_counts, page_id, 1)
-        manager.cancellation_token = token
+        manager.peaks_active_poll_count = get(manager.peaks_poll_counts, page_id, 1)
+        manager.peaks_cancellation_token = token
         snapshot = signal_analyser_clone_state_for_peaks(state)
-        manager.active_task = Threads.@spawn signal_analyser_run_peaks_worker!(
+        worker = Threads.@spawn signal_analyser_run_peaks_worker!(
             state,
             manager,
             context,
             token,
             snapshot,
         )
-        manager.active_task_is_worker = true
+        manager.peaks_task = worker
+        # Keep the aggregate's current-task observable when no graph worker
+        # exists. During contention `active_task` identifies the graph worker
+        # while `peaks_task` progresses independently.
+        if manager.active_task === nothing
+            manager.active_task = worker
+            manager.active_task_is_worker = true
+        end
         return true
     end
     isempty(manager.queued_contexts) || return signal_analyser_start_output_worker_unlocked!(
@@ -1793,23 +1810,20 @@ function signal_analyser_calculate_active_peaks!(
             ), false
         end
 
-        current_task = manager.active_task
+        current_task = manager.peaks_task
         if current_task !== nothing && istaskdone(current_task::Task)
-            if manager.active_context !== nothing
-                signal_analyser_terminalize_output_error_unlocked!(
-                    state,
-                    manager.active_context::SignalAnalyserOutputContextKey,
-                    "Фоновый расчёт активного графика завершился без публикации результата",
-                )
-            elseif manager.active_peaks_context !== nothing
+            if manager.active_peaks_context !== nothing
                 signal_analyser_terminalize_peaks_error_unlocked!(
                     state,
                     manager.active_peaks_context::SignalAnalyserPeaksContextKey,
                     "Фоновый расчёт экстремумов завершился без публикации результата",
                 )
             end
-            manager.active_task = nothing
-            manager.active_task_is_worker = false
+            manager.peaks_task = nothing
+            if manager.active_task === current_task
+                manager.active_task = nothing
+                manager.active_task_is_worker = false
+            end
         end
 
         dirty = manager.peaks_need_update_pages[page_id]
@@ -1857,7 +1871,7 @@ function signal_analyser_calculate_active_peaks!(
             is_queued && signal_analyser_start_peaks_worker_unlocked!(state, manager)
             poll_count = get(manager.peaks_poll_counts, page_id, 1) + 1
             manager.peaks_poll_counts[page_id] = poll_count
-            is_running && (manager.active_poll_count = poll_count)
+            is_running && (manager.peaks_active_poll_count = poll_count)
             if is_running && poll_count >= SIGNAL_ANALYSER_ACTIVE_PEAKS_MAX_PENDING_POLLS
                 signal_analyser_terminalize_peaks_error_unlocked!(
                     state,

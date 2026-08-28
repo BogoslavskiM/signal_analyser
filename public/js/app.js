@@ -321,6 +321,249 @@
     }
   };
 }(window));
+(function installSignalAnalyserDropdownTooltipAudit(window, document) {
+  "use strict";
+
+  var TOOLTIP_DELAY_MS=1500;
+  var VIEWPORT_INSET_PX=8;
+  var OVERLAY_GAP_PX=4;
+  var tooltipId="signal-analyser-tooltip";
+  var timer=0;
+  var hideTimer=0;
+  var anchor=null;
+  var describedByBefore="";
+
+  function visible(node) {
+    return !!node && !node.hidden && node.getAttribute("aria-hidden") !== "true" &&
+      !(node.closest && node.closest("[hidden], [aria-hidden='true']"));
+  }
+  function text(node) { return String(node && node.textContent || "").replace(/\s+/g," ").trim(); }
+  function selectorHost(target) {
+    return target && target.closest && target.closest("[data-tooltip], [data-tooltip-overflow], button, [role='button'], [role='tab'], th, .settings-label");
+  }
+  function iconOnly(node) {
+    if (!node || !node.matches("button, [role='button']")) return false;
+    var clone=node.cloneNode(true);
+    Array.prototype.forEach.call(clone.querySelectorAll("img,svg,i,[aria-hidden='true']"),function (child) { child.remove(); });
+    return !text(clone);
+  }
+  function symbolic(node) {
+    var value=text(node);
+    return !!value && value.length <= 2 && !/[\p{L}\p{N}]{2}/u.test(value);
+  }
+  function abbreviated(node) {
+    var value=text(node);
+    return !!value && value.length <= 6 && (/^[A-ZА-ЯЁΔ№][A-ZА-ЯЁ0-9Δ№._-]*$/u.test(value) || /^[XY]\d$/u.test(value));
+  }
+  function overflowNode(node) {
+    var mode=node && node.dataset.tooltipOverflow;
+    if (mode === "label") return node.querySelector("[data-value-select-trigger-label], .select-trigger-label") || node;
+    if (mode === "value") return node.querySelector("[data-value-select-input], input, .select-trigger-label") || node;
+    return node;
+  }
+  function truncated(node) {
+    var subject=overflowNode(node);
+    return !!subject && (subject.scrollWidth > subject.clientWidth + 1 || subject.scrollHeight > subject.clientHeight + 1);
+  }
+  function tooltipCopy(node) {
+    if (!node) return "";
+    var explicit=String(node.dataset.tooltip || "").trim();
+    if (explicit) return explicit;
+    var overflow=String(node.dataset.tooltipText || "").trim();
+    if (overflow && truncated(node)) return overflow;
+    var title=String(node.getAttribute("title") || "").trim();
+    var label=String(node.getAttribute("aria-label") || "").trim();
+    if (iconOnly(node) || symbolic(node) || abbreviated(node)) return label || title;
+    if (truncated(node)) return label || title || text(node);
+    return "";
+  }
+  function openMenus() {
+    return Array.prototype.filter.call(document.querySelectorAll("[role='menu'], [role='listbox'], [data-dropdown-surface]"),visible);
+  }
+  function modalOwners() {
+    return Array.prototype.filter.call(document.querySelectorAll("[aria-modal='true'], .modal-layer:not([hidden]), .native-modal-layer:not([hidden])"),visible);
+  }
+  function topModal() {
+    var nodes=modalOwners();
+    if (!nodes.length) return null;
+    return nodes[nodes.length-1];
+  }
+  function blocked(node) {
+    if (!node || openMenus().length) return true;
+    var modal=topModal();
+    if (modal && !modal.contains(node)) return true;
+    var loader=document.querySelector("[data-testid='app-loading']:not([hidden]), [data-testid='app-bootstrap-overlay']:not([hidden])");
+    return !!loader;
+  }
+  function ensureTooltip() {
+    var node=document.querySelector("[data-testid='overlay-tooltip'], [data-canonical-tooltip]");
+    if (!node) {
+      node=document.createElement("div");
+      node.className="tooltip";
+      node.setAttribute("role","tooltip");
+      node.setAttribute("data-testid","overlay-tooltip");
+      document.body.appendChild(node);
+    }
+    node.id=tooltipId;
+    node.dataset.canonicalTooltip="true";
+    if (!node.classList.contains("is-visible")) node.hidden=true;
+    return node;
+  }
+  function viewport() {
+    var visual=window.visualViewport;
+    return visual ? {left:visual.offsetLeft,top:visual.offsetTop,width:visual.width,height:visual.height} : {
+      left:0,top:0,width:Math.min(window.innerWidth,document.documentElement.clientWidth || window.innerWidth),height:Math.min(window.innerHeight,document.documentElement.clientHeight || window.innerHeight)
+    };
+  }
+  function position(node,target) {
+    var box=target.getBoundingClientRect(), tip=node.getBoundingClientRect(), view=viewport();
+    var left=box.left+(box.width-tip.width)/2;
+    var minLeft=view.left+VIEWPORT_INSET_PX,maxLeft=view.left+view.width-VIEWPORT_INSET_PX-tip.width;
+    left=Math.min(Math.max(left,minLeft),Math.max(minLeft,maxLeft));
+    var below=box.bottom+OVERLAY_GAP_PX,above=box.top-OVERLAY_GAP_PX-tip.height;
+    var bottom=view.top+view.height-VIEWPORT_INSET_PX;
+    var top=below+tip.height <= bottom ? below : above >= view.top+VIEWPORT_INSET_PX ? above : Math.max(view.top+VIEWPORT_INSET_PX,Math.min(below,bottom-tip.height));
+    node.style.left=Math.round(left)+"px";
+    node.style.top=Math.round(top)+"px";
+    node.dataset.placement=top < box.top ? "top" : "bottom";
+  }
+  function clearDescription(target) {
+    if (!target) return;
+    if (describedByBefore) target.setAttribute("aria-describedby",describedByBefore);
+    else target.removeAttribute("aria-describedby");
+    describedByBefore="";
+  }
+  function hide(immediate) {
+    window.clearTimeout(timer); timer=0;
+    window.clearTimeout(hideTimer); hideTimer=0;
+    var node=document.querySelector("[data-canonical-tooltip]");
+    var previous=anchor; anchor=null;
+    clearDescription(previous);
+    if (!node) return;
+    node.classList.remove("is-visible");
+    node.setAttribute("aria-hidden","true");
+    if (immediate) node.hidden=true;
+    else hideTimer=window.setTimeout(function () { node.hidden=true; },160);
+  }
+  function reveal(target,copy) {
+    if (blocked(target) || !target.isConnected) return hide(true);
+    var node=ensureTooltip();
+    window.clearTimeout(hideTimer); hideTimer=0;
+    anchor=target;
+    node.textContent=copy;
+    node.hidden=false;
+    node.setAttribute("aria-hidden","false");
+    describedByBefore=target.getAttribute("aria-describedby") || "";
+    var ids=describedByBefore.split(/\s+/).filter(Boolean);
+    if (ids.indexOf(tooltipId) < 0) ids.push(tooltipId);
+    target.setAttribute("aria-describedby",ids.join(" "));
+    position(node,target);
+    window.requestAnimationFrame(function () { if (anchor === target && !blocked(target)) node.classList.add("is-visible"); });
+  }
+  function schedule(target) {
+    hide(true);
+    var host=selectorHost(target),copy=tooltipCopy(host);
+    if (!host || !copy || blocked(host)) return;
+    var title=host.getAttribute("title");
+    if (title && !host.dataset.tooltip) { host.dataset.tooltipNativeTitle=title; host.removeAttribute("title"); }
+    timer=window.setTimeout(function () { timer=0; reveal(host,copy); },TOOLTIP_DELAY_MS);
+    anchor=host;
+  }
+  function canonicalize(root) {
+    root=root || document;
+    Array.prototype.forEach.call(root.querySelectorAll("select"),function (node) { node.dataset.dropdownTrigger="native"; });
+    Array.prototype.forEach.call(root.querySelectorAll("[data-value-select-key], [aria-haspopup='listbox']"),function (node) { node.dataset.dropdownTrigger="combobox"; });
+    Array.prototype.forEach.call(root.querySelectorAll("[aria-haspopup='menu'], [data-pane-menu]"),function (node) { node.dataset.dropdownTrigger="menu"; });
+    Array.prototype.forEach.call(root.querySelectorAll("[role='menu'], [role='listbox'], [data-value-select-popup]"),function (node) {
+      node.dataset.dropdownSurface=node.getAttribute("role") || (node.hasAttribute("data-value-select-popup") ? "listbox" : "menu");
+      Array.prototype.forEach.call(node.querySelectorAll("[role='option'], [role^='menuitem']"),function (option) { option.dataset.dropdownOption="true"; });
+    });
+    Array.prototype.forEach.call(root.querySelectorAll("button, [role='button']"),function (node) {
+      if (!node.dataset.tooltip && (iconOnly(node) || symbolic(node) || abbreviated(node))) {
+        var label=String(node.getAttribute("aria-label") || node.getAttribute("title") || "").trim();
+        if (label) node.dataset.tooltip=label;
+        else node.dataset.tooltipAuditMissingName="true";
+      }
+    });
+    return inventory(root);
+  }
+  function inventory(root) {
+    root=root || document;
+    return {
+      triggers:root.querySelectorAll("[data-dropdown-trigger]").length,
+      surfaces:root.querySelectorAll("[data-dropdown-surface]").length,
+      tooltipTargets:root.querySelectorAll("[data-tooltip], [data-tooltip-overflow]").length,
+      missingAccessibleNames:root.querySelectorAll("[data-tooltip-audit-missing-name='true']").length
+    };
+  }
+  function positionPopup(trigger,popup,width) {
+    if (!trigger || !popup) return null;
+    var rect=trigger.getBoundingClientRect(),view=viewport(),natural=Number(width) || rect.width;
+    var popupWidth=Math.min(natural,view.width-VIEWPORT_INSET_PX*2);
+    popup.style.width=popupWidth+"px";
+    popup.style.left=Math.min(Math.max(rect.right-popupWidth,view.left+VIEWPORT_INSET_PX),view.left+view.width-VIEWPORT_INSET_PX-popupWidth)+"px";
+    popup.style.top=rect.bottom+OVERLAY_GAP_PX+"px";
+    var measured=popup.getBoundingClientRect(),below=rect.bottom+OVERLAY_GAP_PX,above=rect.top-OVERLAY_GAP_PX-measured.height;
+    var top=below+measured.height <= view.top+view.height-VIEWPORT_INSET_PX ? below : Math.max(view.top+VIEWPORT_INSET_PX,above);
+    popup.style.top=top+"px";
+    hide(true);
+    return {left:Number.parseFloat(popup.style.left),top:top,width:popupWidth,placement:top < rect.top ? "top" : "bottom"};
+  }
+
+  document.addEventListener("pointerover",function (event) {
+    var host=selectorHost(event.target);
+    if (!host || host === anchor && timer) return;
+    schedule(host);
+  },true);
+  document.addEventListener("pointerout",function (event) {
+    var host=selectorHost(event.target),next=event.relatedTarget;
+    if (host && (!next || !host.contains(next))) hide(false);
+  },true);
+  document.addEventListener("focusin",function (event) { schedule(event.target); },true);
+  document.addEventListener("focusout",function (event) { if (anchor && (!event.relatedTarget || !anchor.contains(event.relatedTarget))) hide(false); },true);
+  document.addEventListener("pointerdown",function () { hide(true); },true);
+  document.addEventListener("keydown",function (event) { if (event.key === "Escape" || event.key === "Tab" || event.key === "Enter" || event.key === " ") hide(true); },true);
+  document.addEventListener("signal-analyser:ui-rendered",function () { canonicalize(document); hide(true); });
+  document.addEventListener("signal-analyser:overlay-open",function () { hide(true); });
+  window.addEventListener("resize",function () { hide(true); });
+  window.addEventListener("scroll",function () { hide(true); },true);
+  document.addEventListener("visibilitychange",function () { if (document.hidden) hide(true); });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize",function () { hide(true); });
+    window.visualViewport.addEventListener("scroll",function () { hide(true); });
+  }
+
+  function boot() {
+    ensureTooltip();
+    canonicalize(document);
+    if (window.MutationObserver) {
+      new window.MutationObserver(function (records) {
+        records.forEach(function (record) {
+          Array.prototype.forEach.call(record.addedNodes || [],function (node) {
+            if (node.nodeType !== 1) return;
+            canonicalize(node.matches && node.matches("select, [data-value-select-key], [aria-haspopup], [role='menu'], [role='listbox'], button, [role='button']") ? node.parentNode || node : node);
+          });
+        });
+      }).observe(document.body,{childList:true,subtree:true});
+    }
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",boot,{once:true});
+  else boot();
+
+  window.SignalAnalyserDropdownTooltipAudit={
+    delayMs:TOOLTIP_DELAY_MS,
+    reconcile:canonicalize,
+    inventory:inventory,
+    positionPopup:positionPopup,
+    hideTooltip:function () { hide(true); },
+    contract:{
+      dropdown:"One canonical 32px trigger, 34px listbox option or 28px action-menu item; no nested interactive arrow; selected, active and focus-visible are distinct states.",
+      tooltip:"White 4px-radius surface, 8px by 12px padding, 12/14 text, standard shadow, no tail, 4px anchor gap and 1500ms hover/focus delay.",
+      eligibility:"Explicit data-tooltip, icon-only, symbol-only, abbreviated or visibly truncated control; obvious untruncated text buttons are excluded.",
+      cleanup:"Any pointer action, Escape/Tab/Enter/Space, scroll, resize, visibility change, rerender or overlay/menu open removes the tooltip; a top modal suppresses anchors below it."
+    }
+  };
+}(window,document));
 
 (function registerSignalAnalyserPreprocessOperation(window) {
   "use strict";
@@ -1448,6 +1691,13 @@
   function q(selector) { return document.querySelector(selector); }
   function qa(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
   function esc(value) { return String(value == null ? "" : value).replace(/[&<>"']/g, function (character) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]; }); }
+  function dropdownTooltipAudit() { return window.SignalAnalyserDropdownTooltipAudit || null; }
+  function reconcileDropdownTooltip(root) { var audit=dropdownTooltipAudit(); if (audit) audit.reconcile(root || document); }
+  function announceOverlayOpen(trigger,surface,width) {
+    document.dispatchEvent(new CustomEvent("signal-analyser:overlay-open",{detail:{trigger:trigger || null,surface:surface || null}}));
+    if (!trigger) return;
+    window.requestAnimationFrame(function () { var audit=dropdownTooltipAudit(),target=surface || trigger.dataset.valueSelectKey && q("[data-value-select-popup]"); if (audit && target && trigger.isConnected && target.isConnected && !target.hidden) audit.positionPopup(trigger,target,width || trigger.getBoundingClientRect().width); });
+  }
   function scopedLoadingController() { return window.SignalAnalyserScopedLoading || null; }
   function plotAutoscaleController() { return window.SignalAnalyserPlotAutoscale || null; }
   function task0141Controller() { return window.SignalAnalyserTask0141 || null; }
@@ -1830,6 +2080,8 @@
   function accept(snapshot) {
     var r = stateRevision(snapshot);
     if (!snapshot || r === null || r<model.revision || !Array.isArray(snapshot.displays) || !snapshot.displays.length) return false;
+    var previousDisplay = activeDisplay();
+    var previousPeaksKey = previousDisplay && model.activePane ? paneRuntimeKey(previousDisplay.id, model.activePane) : "";
     model.state = snapshot;
     model.revision = r;
     reconcileNamePreviews(snapshot);
@@ -1838,7 +2090,9 @@
     var display = activeDisplay();
     if (display) {
       cancelInactiveDisplayWork(display.id);
-      stopPeaksPolling(model.activePane ? paneRuntimeKey(display.id, model.activePane) : "");
+      var activePeaksKey = model.activePane ? paneRuntimeKey(display.id, model.activePane) : "";
+      if (previousPeaksKey && previousPeaksKey !== activePeaksKey) releasePendingPeaksContext(previousPeaksKey);
+      stopPeaksPolling(activePeaksKey);
       settings.setContext(display.id, r);
     }
     return true;
@@ -1927,6 +2181,7 @@
     renderColumnMenu();
     renderMeasurementMenu();
     decorateNoHistory(document);
+    reconcileDropdownTooltip(document);
   }
 
   function renderTabs() {
@@ -2335,6 +2590,7 @@
       if (record && record.output && record.output.isready && record.output.success && hasPlotData(record.output.data)) enqueuePlot(display.id, pane, record);
     });
     valueSelect.reconcile();
+    reconcileDropdownTooltip(grid);
     var loading=scopedLoadingController();
     if (loading) loading.sync();
   }
@@ -3318,15 +3574,41 @@
     var eligibleSignals=inventory.filter(function (signal) { return bindings.some(function (binding) { return signalNameMatches(signal,binding); }); });
     return {displayId:displayId,paneId:pane.id,plotType:pane.plot_type,cursorSnapshot:snapshot,mainSignal:mainSignalForPane(pane),eligibleSignals:eligibleSignals,signalInventory:inventory,xUnit:parts.length>1 ? parts.slice(1).join(",").trim() : "с",stateRevision:model.revision,trimBusy:!!(model.signalTrimController && model.signalTrimController.isBusy()),helper:helper};
   }
+  function signalTrimSourceOptions(form) {
+    var nativeSelect=form && form.querySelector("select[data-signal-trim-source]");
+    if (nativeSelect) return Array.prototype.map.call(nativeSelect.options,function (option) { return {value:String(option.value),label:String(option.textContent || option.value)}; });
+    var display=activeDisplay(),pane=paneById(model.activePane);
+    if (!display || !pane) return [];
+    return signalTrimContext(display.id,pane).eligibleSignals.map(function (signal) { return {value:String(stableSignalId(signal)),label:String(signal.name || signal.signal_name || stableSignalId(signal))}; });
+  }
+  function projectSignalTrimSourceSelect(form,draft,busy) {
+    if (!form) return;
+    var nativeSelect=form.querySelector("select[data-signal-trim-source]"),options=nativeSelect ? signalTrimSourceOptions(form) : form._signalTrimSourceOptions || signalTrimSourceOptions(form),selected=String(draft && draft.sourceId || nativeSelect && nativeSelect.value || "");
+    form._signalTrimSourceOptions=options;
+    var selectedOption=options.filter(function (option) { return option.value === selected; })[0] || options[0] || {value:"",label:""};
+    var config={key:"signal-trim-source",value:selectedOption.value,label:selectedOption.label,options:options,disabled:!!busy,className:"signal-trim-select settings-value-select",testId:"signal-trim-source",ariaLabel:"Исходный сигнал",onSelect:function (value) { var controller=model.signalTrimController; if (controller) controller.selectSource(value); }};
+    var trigger=form.querySelector("[data-value-select-key='signal-trim-source']");
+    if (nativeSelect) {
+      var holder=nativeSelect.closest(".signal-trim-select") || nativeSelect;
+      holder.outerHTML=valueSelect.markup(config);
+      trigger=form.querySelector("[data-value-select-key='signal-trim-source']");
+    } else if (trigger) valueSelect.configure(trigger,config);
+    if (!trigger) return;
+    trigger.dataset.signalTrimSource="";
+    var input=trigger.querySelector("[data-value-select-input]");
+    if (input) input.id="signal-trim-source";
+    valueSelect.reconcile();
+    reconcileDropdownTooltip(form);
+  }
   function signalTrimController() {
     var helper=signalTrimHelper();
     if (!model.signalTrimController && helper) model.signalTrimController=helper.createController({
-      mount:function (markup,meta) { var layer=ensureSignalTrimLayer(), form=layer && layer.querySelector(helper.selectors.form), submit=layer && layer.querySelector(helper.selectors.submit); if (!layer || !form) return; form.innerHTML=markup; if (submit) submit.disabled=!!meta.submitDisabled; layer.hidden=false; q("[data-testid='app-shell']").inert=true; layer.setAttribute("aria-busy","false"); window.requestAnimationFrame(function () { var focus=layer.querySelector(meta.initialFocus); if (focus) focus.focus(); }); },
+      mount:function (markup,meta) { var layer=ensureSignalTrimLayer(), form=layer && layer.querySelector(helper.selectors.form), submit=layer && layer.querySelector(helper.selectors.submit); if (!layer || !form) return; form.innerHTML=markup; var snapshot=model.signalTrimController && model.signalTrimController.snapshot(); projectSignalTrimSourceSelect(form,snapshot && snapshot.draft,false); if (submit) submit.disabled=!!meta.submitDisabled; announceOverlayOpen(null,layer); layer.hidden=false; q("[data-testid='app-shell']").inert=true; layer.setAttribute("aria-busy","false"); window.requestAnimationFrame(function () { var focus=layer.querySelector(meta.initialFocus); if (focus) focus.focus(); }); },
       sync:function (state) {
         var layer=q(helper.selectors.layer), form=layer && layer.querySelector(helper.selectors.form);
         if (!layer || !form) return;
+        projectSignalTrimSourceSelect(form,state.draft,model.signalTrimController && model.signalTrimController.isBusy());
         var source=form.querySelector(helper.selectors.source), name=form.querySelector(helper.selectors.name), overwriteRow=form.querySelector(helper.selectors.overwriteRow), overwrite=form.querySelector(helper.selectors.overwrite), message=form.querySelector("[data-signal-trim-name-message]"), submit=layer.querySelector(helper.selectors.submit);
-        if (source && source.value !== state.draft.sourceId) source.value=state.draft.sourceId;
         if (name && document.activeElement !== name && name.value !== state.draft.name) name.value=state.draft.name;
         if (name) name.setAttribute("aria-invalid",String(["required","too_long","conflict"].indexOf(state.validation.reason) >= 0));
         if (message) { message.textContent=state.validation.reason === "source" || state.validation.reason === "interval" ? "" : state.validation.message; message.hidden=!message.textContent; }
@@ -3336,7 +3618,7 @@
       },
       close:function (meta) { var layer=q(helper.selectors.layer); if (layer) { layer.hidden=true; layer.setAttribute("aria-busy","false"); } q("[data-testid='app-shell']").inert=false; if (meta && meta.restoreFocus && meta.restoreFocus.isConnected) meta.restoreFocus.focus(); },
       setBusy:function (busy) { var layer=q(helper.selectors.layer); if (!layer) return; layer.setAttribute("aria-busy",String(!!busy)); Array.prototype.slice.call(layer.querySelectorAll("input,select,button")).forEach(function (node) { node.disabled=!!busy; }); if (!busy) { var snapshot=model.signalTrimController && model.signalTrimController.snapshot(); var submit=layer.querySelector(helper.selectors.submit); if (submit) submit.disabled=!!(snapshot && snapshot.validation && !snapshot.validation.valid); } },
-      error:function (message,meta) { var layer=q(helper.selectors.layer), status=layer && layer.querySelector(helper.selectors.status), field=meta && meta.field && layer.querySelector(meta.field); if (!field && model.signalTrimLastError) { var typedFields=model.signalTrimLastError.payload && model.signalTrimLastError.payload.error && model.signalTrimLastError.payload.error.fields || {}; field=typedFields.target_name ? layer.querySelector(helper.selectors.name) : typedFields.source_signal_id ? layer.querySelector(helper.selectors.source) : null; } if (status) { status.hidden=false; status.textContent=message; } if (field) { field.setAttribute("aria-invalid","true"); field.focus(); } },
+      error:function (message,meta) { var layer=q(helper.selectors.layer), status=layer && layer.querySelector(helper.selectors.status), field=meta && meta.field && layer.querySelector(meta.field); if (!field && model.signalTrimLastError) { var typedFields=model.signalTrimLastError.payload && model.signalTrimLastError.payload.error && model.signalTrimLastError.payload.error.fields || {}; field=typedFields.target_name ? layer.querySelector(helper.selectors.name) : typedFields.source_signal_id ? layer.querySelector(helper.selectors.source) : null; } if (status) { status.hidden=false; status.textContent=message; } if (field) { field.setAttribute("aria-invalid","true"); var focus=field.querySelector && field.querySelector("[data-value-select-input]") || field; if (focus && typeof focus.focus === "function") focus.focus(); } },
       createSignal:function (payload) { model.signalTrimLastError=null; return mutate(function () { return api.cropSignal(payload); },{preservePlots:true,skipSettings:true,skipOutput:true}).catch(function (error) { model.signalTrimLastError=error; throw error; }); },
       acceptSignal:function () { renderActivePaneContext(); }
     });
@@ -4402,6 +4684,7 @@
     keepVisibleAutomaticRangeInputsEmpty(draft);
     valueSelect.reconcile();
     decorateNoHistory(content);
+    reconcileDropdownTooltip(content);
   }
 
   function reconcileContextTabs(pane) {
@@ -4802,7 +5085,7 @@
   function renderPeaksSettings(display, pane, record, restoreFocus) {
     var host = q("[data-testid='settings-content']");
     if (!host) return;
-    if (!display || !extremaTabsAvailable(pane)) { host.innerHTML = "<div class='inspector-empty' role='status'>Настройки доступны для временной области и спектра</div>"; valueSelect.reconcile(); return; }
+    if (!display || !extremaTabsAvailable(pane)) { host.innerHTML = "<div class='inspector-empty' role='status'>Настройки доступны для временной области и спектра</div>"; valueSelect.reconcile(); reconcileDropdownTooltip(host); return; }
     var settings = activePeaksSettings(pane, record);
     var key = peaksSettingsKey(display, pane);
     if (!model.peaksDraft || model.peaksDraft.key !== key) model.peaksDraft = createPeaksDraft(display, pane, settings);
@@ -4828,6 +5111,7 @@
     host.innerHTML = "<section class='settings-group' data-testid='extrema-settings-group'><button class='settings-group-title' type='button' aria-expanded='true' disabled><span>Расчёт экстремумов</span></button><div class='settings-group-fields'>" + modeControl + labels.map(function (field) { var id=field[0], error=draft.invalid[id], integer=id === "number_of_peaks" || id === "minimum_distance_samples", helper=field[2] ? "<small class='field-message extrema-field-helper'>" + esc(field[2]) + "</small>" : ""; return "<label class='settings-field-row" + (error ? " has-error" : "") + "' data-testid='settings-field-" + id + "'><span class='settings-label' title='" + esc(field[1]) + "'><span>" + field[1] + "</span></span><span class='settings-control-wrap'><input class='control' type='text' inputmode='" + (integer ? "numeric" : "decimal") + "' step='" + (integer ? "1" : "any") + "' data-peaks-setting='" + id + "' value='" + esc(draft.values[id]) + "' aria-invalid='" + String(!!error) + "' aria-label='" + field[1] + "'" + disabled + "></span>" + (error ? "<small class='field-message is-error' role='alert'>" + esc(error) + "</small>" : "") + helper + "</label>"; }).join("") + "</div></section>";
     valueSelect.reconcile();
     decorateNoHistory(host);
+    reconcileDropdownTooltip(host);
     if (restoreFocus) { var input = host.querySelector("[data-peaks-setting='" + restoreFocus.id + "']"); if (input) { input.focus(); if (typeof input.setSelectionRange === "function") input.setSelectionRange(restoreFocus.start, restoreFocus.end); } }
   }
 
@@ -4952,6 +5236,24 @@
     });
   }
 
+  function clearPeaksPoll(runtimeKey) {
+    window.clearTimeout(model.peaksPollByPane[runtimeKey]);
+    delete model.peaksPollByPane[runtimeKey];
+  }
+
+  function releasePendingPeaksContext(runtimeKey) {
+    clearPeaksPoll(runtimeKey);
+    var record=model.peaksRecords[runtimeKey];
+    if (!record || !record.pending) return;
+    model.peaksTokens[runtimeKey]=(model.peaksTokens[runtimeKey] || 0) + 1;
+    model.peaksRecords[runtimeKey]=Object.assign({},record,{
+      calculated:false,
+      pending:false,
+      loading_episode:null,
+      error:"Расчёт остановлен после смены области. Нажмите «Рассчитать ещё раз»."
+    });
+  }
+
   function peaksResponseContextIsCurrent(response, displayId, paneId, token) {
     var runtimeKey = paneRuntimeKey(displayId, paneId);
     if (token !== model.peaksTokens[runtimeKey] || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return false;
@@ -5012,7 +5314,11 @@
     if (model.settingsPage === "peaks") renderSettings(activeDisplay());
     if (response.isready && response.success !== false) updatePeaksMarkers(displayId, paneId, record);
     if (!response.isready && !requested) clearPeaksMarkersForPane(displayId, paneId);
-    if (!response.isready && requested && poll) schedulePeaksPoll(displayId, paneId);
+    /* A passive refresh can overtake the calculation POST and become the
+       newest request token.  Preserve the already-recorded calculation intent
+       in that case: every current pending response must keep the GET chain
+       alive, even when this particular GET was opened with poll=false. */
+    if (!response.isready && requested) schedulePeaksPoll(displayId, paneId);
     return record;
   }
 
@@ -5108,6 +5414,7 @@
     }
     if (!activation) return;
     var visibleRange=activation.visible_range;
+    clearPeaksPoll(runtimeKey);
     stopPeaksPolling(runtimeKey);
     var token = (model.peaksTokens[runtimeKey] || 0) + 1;
     model.peaksTokens[runtimeKey] = token;
@@ -5127,31 +5434,31 @@
     renderInspector();
     if (model.settingsPage === "peaks") renderApply();
     ensurePeaksEnabled(displayId, paneId).then(function () {
-      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return null;
+      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) throw new Error("Контекст области изменился; повторите действие.");
       token = (model.peaksTokens[runtimeKey] || 0) + 1;
       model.peaksTokens[runtimeKey] = token;
-      function requestCalculation(retries) {
-        var payload={ state_revision:model.revision, display_id:displayId, pane_id:paneId };
-        if (visibleRange) payload.visible_range=visibleRange;
-        return api.calculateActivePeaks(payload).catch(function (error) {
-          var current = error && error.payload && (error.payload.current || error.payload.state);
-          if (!current || error.status !== 409 || retries >= 1 || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) throw error;
-          var snapshot = current.state || current;
-          return (accept(snapshot) ? Promise.resolve(snapshot) : refreshSnapshot(renderActivePaneContext)).then(function () {
-            if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) throw new Error("Контекст области изменился; повторите действие.");
-            renderActivePaneContext();
-            return requestCalculation(retries + 1);
-          });
+      var payload={ state_revision:model.revision, display_id:displayId, pane_id:paneId };
+      if (visibleRange) payload.visible_range=visibleRange;
+      return api.calculateActivePeaks(payload).catch(function (error) {
+        var current = error && error.status === 409 && error.payload && (error.payload.current || error.payload.state);
+        if (!current || !activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) throw error;
+        var snapshot = current.state || current;
+        return (accept(snapshot) ? Promise.resolve(snapshot) : refreshSnapshot(renderActivePaneContext)).then(function () {
+          renderActivePaneContext();
+          var conflict = new Error("Данные области изменились. Нажмите «Рассчитать ещё раз».");
+          conflict.status = 409;
+          throw conflict;
         });
-      }
-      return requestCalculation(0).then(function (response) {
+      }).then(function (response) {
         return acceptPeaksPayload(response, displayId, paneId, token, true, true);
       });
     }).catch(function (error) {
-      if (!activeDisplay() || activeDisplay().id !== displayId || model.activePane !== paneId) return;
+      if (token !== model.peaksTokens[runtimeKey]) return;
       model.peaksRecords[runtimeKey] = { displayId:displayId, paneId:paneId, calculationRequested:true, calculated:false, pending:false, error:safeErrorText(error, "Не удалось рассчитать экстремумы."), data:prior && prior.data || null };
-      renderInspector();
-      if (model.settingsPage === "peaks") renderApply();
+      if (activeDisplay() && activeDisplay().id === displayId && model.activePane === paneId) {
+        renderInspector();
+        if (model.settingsPage === "peaks") renderApply();
+      }
     });
   }
 
@@ -5488,6 +5795,8 @@
 
   function positionMenu(menu, trigger, width) {
     if (!menu || !trigger || menu.hidden) return;
+    var audit=dropdownTooltipAudit();
+    if (audit) return void audit.positionPopup(trigger,menu,width);
     var rect = trigger.getBoundingClientRect();
     var viewportWidth = Math.min(window.innerWidth, document.documentElement.clientWidth || window.innerWidth);
     var viewportHeight = Math.min(window.innerHeight, document.documentElement.clientHeight || window.innerHeight, window.visualViewport ? window.visualViewport.height : window.innerHeight);
@@ -5981,10 +6290,19 @@
     if (state.success) return "<div class='operation-status status-note success' role='status'><strong>Сигнал создан.</strong> Результат прошёл проверку и добавлен одной операцией.</div>";
     return "";
   }
+  function chooseSignalOperationParameter(fieldId,value) {
+    var state=model.signalOperation,helper=preprocessOperation();
+    if (!helper || !state.operationState) return;
+    state.operationState=helper.updateParameter(state.operationState,fieldId,value);
+    state.validation=null;
+    state.success=false;
+    renderSignalOperation();
+  }
   function signalOperationFieldMarkup(field,error,busy) {
     var value=field.value == null ? "" : field.value,disabled=busy || field.disabled,control;
     if (field.type === "select") {
-      control="<select class='signal-operation-control' data-signal-operation-parameter='"+esc(field.id)+"' data-testid='"+esc(field.testid)+"' aria-invalid='"+String(!!error)+"'"+(disabled ? " disabled" : "")+">"+(field.options || []).map(function (option) { return "<option value='"+esc(option.value)+"'"+(option.value === value ? " selected" : "")+">"+esc(option.label)+"</option>"; }).join("")+"</select>";
+      var options=(field.options || []).map(function (option) { return {value:String(option.value),label:String(option.label)}; });
+      control=valueSelect.markup({key:"signal-operation-parameter::"+field.id,value:String(value),label:selectedOperationLabel(options,String(value)),options:options,disabled:disabled,className:"signal-operation-control settings-value-select",testId:field.testid,ariaLabel:field.label,onSelect:function (selected) { chooseSignalOperationParameter(field.id,selected); }});
     } else if (field.type === "textarea") {
       control="<textarea class='signal-operation-control' data-signal-operation-parameter='"+esc(field.id)+"' data-testid='"+esc(field.testid)+"' aria-invalid='"+String(!!error)+"' placeholder='Введите выражение' spellcheck='false'"+(disabled ? " disabled" : "")+">"+esc(value)+"</textarea>";
     } else {
@@ -6017,6 +6335,8 @@
     layer.querySelector("[data-signal-operation-cancel]").disabled=busy;
     layer.querySelector("[data-signal-operation-close]").disabled=busy;
     valueSelect.reconcile();
+    fields.filter(function (field) { return field.type === "select"; }).forEach(function (field) { var trigger=form.querySelector("[data-value-select-key='signal-operation-parameter::"+CSS.escape(field.id)+"']"); if (!trigger) return; var input=trigger.querySelector("[data-value-select-input]"); trigger.dataset.signalOperationParameter=field.id; trigger.setAttribute("aria-invalid",String(!!validation.errors[field.id])); if (input) input.setAttribute("aria-invalid",String(!!validation.errors[field.id])); });
+    reconcileDropdownTooltip(layer);
   }
 
   function openSignalOperation(trigger) {
@@ -6027,6 +6347,7 @@
     var restore=trigger && trigger.isConnected ? trigger : document.activeElement && document.activeElement.isConnected ? document.activeElement : q("[data-testid='app-shell']");
     var operationSource=Object.assign({},source,{sampling_kind:"uniform",complex:/комплекс|complex/i.test(String(source.data_type || ""))});
     model.signalOperation={open:true,source:source,operationState:helper.createState(operationSource),busy:false,success:false,validation:null,trigger:restore};
+    announceOverlayOpen(null,ensureSignalOperationDialog());
     renderSignalOperation();
     window.requestAnimationFrame(function () { var trigger=q("[data-testid='signal-operation-select']"); if (trigger) trigger.focus(); });
     return true;
@@ -6278,6 +6599,8 @@
   document.addEventListener("click", function (event) { var menu=q("[data-testid='signal-columns-menu']"),trigger=q("[data-testid='signal-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeColumnMenu(false); });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='measurement-columns-menu']"),trigger=q("[data-testid='measurement-columns-menu-trigger']");if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeMeasurementMenu(false); });
   document.addEventListener("click", function (event) { var menu=q("[data-testid='sample-columns-menu']"),trigger=q("[data-testid='sample-columns-menu-trigger']") || model.sampleColumnsMenuTrigger;if(!menu||menu.hidden||!trigger)return;var path=typeof event.composedPath==="function"?event.composedPath():null;var inside=path?path.indexOf(menu)>=0||path.indexOf(trigger)>=0:menu.contains(event.target)||trigger.contains(event.target);if(!inside)closeSampleColumnsMenu(false); });
+  document.addEventListener("pointerdown",function (event) { var trigger=event.target.closest && event.target.closest("[data-value-select-key], [aria-haspopup='menu'], [aria-haspopup='dialog']"); if (trigger) announceOverlayOpen(trigger,null); },true);
+  document.addEventListener("keydown",function (event) { if (["Enter"," ","ArrowDown","ArrowUp"].indexOf(event.key) < 0) return; var trigger=event.target.closest && event.target.closest("[data-value-select-key], [aria-haspopup='menu'], [aria-haspopup='dialog']"); if (trigger) announceOverlayOpen(trigger,null); },true);
   document.addEventListener("keydown", function (event) {
     var helper=signalTrimHelper(), layer=helper && q(helper.selectors.layer), controller=model.signalTrimController;
     if (!layer || layer.hidden || !controller) return;

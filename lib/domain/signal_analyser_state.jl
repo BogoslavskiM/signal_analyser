@@ -3461,6 +3461,9 @@ mutable struct SignalAnalyserCalculationManager
     active_task::Union{Nothing,Task}
     active_poll_count::Int
     cancellation_token::Union{Nothing,SignalAnalyserCancellationToken}
+    peaks_task::Union{Nothing,Task}
+    peaks_active_poll_count::Int
+    peaks_cancellation_token::Union{Nothing,SignalAnalyserCancellationToken}
     queued_contexts::Vector{SignalAnalyserOutputContextKey}
     queued_peaks_contexts::Vector{SignalAnalyserPeaksContextKey}
     output_poll_counts::Dict{String,Int}
@@ -3484,6 +3487,9 @@ function SignalAnalyserCalculationManager(page_ids::AbstractVector{<:AbstractStr
         Dict{String,SignalAnalyserPeaksStatus}(),
         nothing,
         nothing,
+        nothing,
+        nothing,
+        0,
         nothing,
         nothing,
         0,
@@ -3512,6 +3518,9 @@ function signal_analyser_clone_calculation_manager(
         copy(manager.peaks_statuses),
         manager.active_page_id,
         nothing,
+        nothing,
+        nothing,
+        0,
         nothing,
         nothing,
         0,

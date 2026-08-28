@@ -64,6 +64,17 @@ function snapshot(bindings, plotType) {
   };
 }
 
+function twoPaneSnapshot(activePaneId) {
+  const state = snapshot(["Сигнал 1"]);
+  state.layouts[0].layout.columns = 2;
+  state.layouts[0].layout.active_pane_id = activePaneId;
+  state.layouts[0].layout.panes = [
+    { id: "pane-1", plot_type: "time", signal_bindings: ["Сигнал 1"] },
+    { id: "pane-2", plot_type: "time", signal_bindings: ["Сигнал 1"] }
+  ];
+  return state;
+}
+
 function peaksResponse(overrides) {
   return Object.assign({
     state_revision: 3,
@@ -141,7 +152,7 @@ function createHarness(options) {
     calculateActivePeaks(payload) {
       calculateCalls.push(payload);
       const response = calculateResponses.shift();
-      return response && response.promise ? response.promise : Promise.resolve(response || peaksResponse());
+      return response && response.promise ? response.promise : response instanceof Error ? Promise.reject(response) : Promise.resolve(response || peaksResponse());
     },
     updateSignalMetadata(payload) {
       metadataCalls.push(payload);
@@ -382,6 +393,60 @@ module.exports = async function testExplicitExtremaBehavior(assert) {
   await settle();
   assert(rebase.activeCalls.length === 3 && rebase.calculateCalls.length === 1, "one active-pane 409 must rebase and retry only the passive GET, never the calculation POST");
   assert(rebase.peaksHost.innerHTML.includes("data-testid='peaks-table'") && !rebase.peaksHost.innerHTML.includes("peaks-loader"), "terminal extrema after the active-pane rebase must replace the loader without a page reload");
+
+  // A second pane calculation can overlap a passive refresh triggered by the
+  // same Extrema surface. The refresh owns the newest token, but it must inherit
+  // the recorded calculation intent and continue GET polling to terminal ready.
+  const paneResponse = (paneId, revision, ready) => peaksResponse({
+    display_id: "display-1",
+    pane_id: paneId,
+    context_key: `display-1::${paneId}::peaks::r${revision}`,
+    calculation_revision: revision,
+    isready: ready,
+    success: ready,
+    data: ready ? {
+      settings: {},
+      signals: [{ signal_name: "Сигнал 1", signal_color: "#2563eb", peak_count: 1 }],
+      rows: [{ row_number: 1, signal_name: "Сигнал 1", signal_color: "#2563eb", type: "maximum", value: revision, time_s: 0.2, graph_number: 1 }]
+    } : { settings: {}, signals: [], rows: [] }
+  });
+  const secondPanePost = deferred();
+  const sequential = createHarness({
+    activeResponses: [paneResponse("pane-2", 52, false), paneResponse("pane-2", 52, true)],
+    calculateResponses: [paneResponse("pane-1", 51, true), secondPanePost]
+  });
+  sequential.test.model.inspectorPage = "peaks";
+  sequential.test.calculatePeaks();
+  await settle();
+  assert(sequential.calculateCalls.length === 1 && sequential.test.model.peaksRecords["display-1::pane-1"].calculated, "the first pane must reach terminal ready with one calculation POST");
+  sequential.test.accept(twoPaneSnapshot("pane-2"));
+  sequential.test.renderContext();
+  sequential.test.calculatePeaks();
+  await settle();
+  assert(sequential.calculateCalls.length === 2, "the second pane click must issue exactly one additional calculation POST");
+  await sequential.test.loadPeaks();
+  assert(sequential.activeCalls.length === 1 && sequential.timers.length === 1, "an overlapping passive GET for pane 2 must retain pending intent and schedule polling");
+  secondPanePost.resolve(paneResponse("pane-2", 52, false));
+  await settle();
+  assert(sequential.calculateCalls.length === 2 && sequential.timers.length === 1, "the stale pending POST completion must not duplicate POST or timer state");
+  sequential.timers.shift()();
+  await settle();
+  assert(sequential.activeCalls.length === 2 && sequential.calculateCalls.length === 2, "pane 2 terminal state must arrive through passive GET only");
+  assert(sequential.test.model.peaksRecords["display-1::pane-2"].calculated && !sequential.test.model.peaksRecords["display-1::pane-2"].pending && sequential.peaksHost.innerHTML.includes("data-testid='peaks-table'"), "pane 2 terminal ready must replace its loader without reloading the page");
+
+  // A stale calculation request may rebase state, but one user activation is
+  // never allowed to replay POST automatically. The explicit retry action is
+  // restored instead of leaving the pane pending.
+  const postConflict = new Error("Устаревшее состояние");
+  postConflict.status = 409;
+  postConflict.payload = { current: snapshot(["Сигнал 1"]) };
+  const singlePost = createHarness({ calculateResponses: [postConflict] });
+  singlePost.test.model.inspectorPage = "peaks";
+  singlePost.test.calculatePeaks();
+  await settle();
+  const conflictedRecord = singlePost.test.model.peaksRecords["display-1::pane-1"];
+  assert(singlePost.calculateCalls.length === 1, "one Calculate activation must never repeat its POST after a 409 rebase");
+  assert(conflictedRecord && !conflictedRecord.pending && conflictedRecord.error, "a rebased calculation conflict must release pending and expose the retry action");
 
   // TASK-0137: the production input delegation and 150ms autosave must keep
   // the actual focused name node alive across applying, accepted and final
