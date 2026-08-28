@@ -4742,7 +4742,8 @@ select[data-dropdown-trigger]:disabled,
   color: var(--accent);
 }
 
-/* Figma Modal MD: 480px. Controls return to the canonical analytical 32px track. */
+/* V70: Figma Modal MD with one canonical 32px outer track for every
+   single-line input and dropdown. */
 .signal-operation-dialog {
   width: 480px;
   min-width: 0;
@@ -4752,20 +4753,89 @@ select[data-dropdown-trigger]:disabled,
 .signal-operation-row {
   grid-template-columns: 152px minmax(0, 1fr);
   column-gap: 12px;
+  min-height: 32px;
+  gap: 12px;
 }
 
 .signal-operation-control,
 .signal-operation-row .value-select-trigger,
+.signal-operation-row .value-select-trigger[data-value-select-key],
+.signal-operation-row [data-dropdown-trigger][role="combobox"],
+.signal-operation-row select[data-dropdown-trigger],
 .signal-operation-row select,
 .signal-operation-row input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   min-height: 32px;
   height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  line-height: 18px;
 }
+
+.signal-operation-control-wrap {
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.signal-operation-row input:not([type="checkbox"]),
+.signal-operation-row select { padding: 6px 12px; }
+
+/* A ValueSelect owns one outer border. Its semantic input is content, not a
+   second control nested inside the field. */
+.signal-operation-row .value-select-trigger:not(.is-button-trigger) > .select-trigger-input,
+.signal-operation-row.has-error .value-select-trigger:not(.is-button-trigger) > .select-trigger-input {
+  height: 30px;
+  min-height: 30px;
+  padding: 5px 32px 5px 12px;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px 0 12px;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger .select-trigger-icon {
+  margin: 0;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger .select-trigger-label {
+  padding: 0;
+  line-height: 18px;
+}
+
+.signal-operation-row .value-select-trigger.is-button-trigger .select-trigger-arrow {
+  margin-left: auto;
+}
+
+.signal-operation-row .value-select-trigger[aria-invalid="true"] {
+  border: 2px solid var(--danger);
+}
+
+.signal-operation-row.has-error input:not([type="checkbox"]),
+.signal-operation-row.has-error select { padding: 5px 11px; }
 
 .signal-operation-row textarea { min-height: 120px; }
 .signal-operation-unit { display: none; }
 .signal-operation-row > label,
-.signal-operation-row > .signal-operation-label { overflow-wrap: anywhere; }
+.signal-operation-row > .signal-operation-label {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  overflow-wrap: anywhere;
+}
+
+.signal-operation-availability,
+.signal-operation-auto-note { margin-left: 164px; }
 
 @media (max-width: 511px) {
   .signal-operation-row { grid-template-columns: 1fr; row-gap: 4px; }

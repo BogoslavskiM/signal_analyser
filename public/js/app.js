@@ -636,6 +636,7 @@
   function hasTime(source) { return samplingKind(source) !== "samples" || sampleRate(source) != null; }
   function frequencyDefault(source,fraction) { var rate=sampleRate(source); return rate == null ? fraction : rate * 0.5 * fraction; }
   function frequencyUnit(source) { return sampleRate(source) == null ? "normalized_pi" : "hertz"; }
+  function frequencyUnitLabel(value) { return value === "normalized_pi" ? "× π рад/отсчёт" : "Гц"; }
   function defaultName(source,operation) { return sourceName(source) + "_" + (SUFFIXES[operation] || String(operation).replace(/-/g,"_")); }
   function operationIconBase() { return String(window.SignalAnalyserOperationIconBase || window.SignalAnalyserUIBase || ".").replace(/\/$/,""); }
   function operationOptions() { return OPERATIONS.map(function (item) { return Object.assign({},item,{disabled:false,icon:operationIconBase()+"/icons/"+item.iconAsset}); }); }
@@ -667,11 +668,10 @@
   function schema(state) {
     var p=state.parameters || {},source=state.source || {},op=state.operation,fields=[];
     if (op === "bandpass" || op === "bandstop" || op === "highpass" || op === "lowpass") {
-      fields.push(field("frequency_units","Единицы частоты","select",p.frequency_units,{options:OPTIONS.frequencyUnits,disabled:true}));
       if (op === "bandpass" || op === "bandstop") {
-        fields.push(field("lower_passband","Нижняя граница полосы","number",p.lower_passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
-        fields.push(field("upper_passband","Верхняя граница полосы","number",p.upper_passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
-      } else fields.push(field("passband","Граница полосы","number",p.passband,{required:true,unit:p.frequency_units === "hertz" ? "Гц" : "× π рад/отсчёт"}));
+        fields.push(field("lower_passband","Нижняя граница полосы","number",p.lower_passband,{required:true,unit:frequencyUnitLabel(p.frequency_units)}));
+        fields.push(field("upper_passband","Верхняя граница полосы","number",p.upper_passband,{required:true,unit:frequencyUnitLabel(p.frequency_units)}));
+      } else fields.push(field("passband","Граница полосы","number",p.passband,{required:true,unit:frequencyUnitLabel(p.frequency_units)}));
       fields.push(field("impulse_response","Тип импульсной характеристики","select",p.impulse_response,{options:OPTIONS.impulseResponse,required:true}));
       fields.push(field("steepness","Крутизна","number",p.steepness,{required:true,hint:"От 0,5 включительно до 1 исключительно"}));
       fields.push(field("stopband_attenuation_db","Подавление в полосе задерживания","number",p.stopband_attenuation_db,{required:true,unit:"дБ"}));
@@ -759,9 +759,10 @@
   function payload(state) {
     var visible={}; schema(state).forEach(function (item) { visible[item.id]=item; });
     var parameters={}; Object.keys(state.parameters || {}).forEach(function (key) {
-      if (!visible[key]) return;
+      var derivedFrequencyUnit=key === "frequency_units" && /^(bandpass|bandstop|highpass|lowpass)$/.test(state.operation);
+      if (!visible[key] && !derivedFrequencyUnit) return;
       var value=state.parameters[key];
-      parameters[key]=blank(value) ? null : visible[key].type === "number" ? Number(value) : value;
+      parameters[key]=blank(value) ? null : visible[key] && visible[key].type === "number" ? Number(value) : value;
     });
     return {source_signal_id:state.source && state.source.id,operation_kind:"preprocess",operation:state.operation,parameters:parameters,target_name:state.targetName,overwrite:!!state.overwrite};
   }

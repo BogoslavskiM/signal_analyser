@@ -45,6 +45,10 @@ module.exports = async function task0157_0158PreprocessLocalization(assert) {
 
   const preprocess = operation.createState(source);
   assert(preprocess.operation === "bandpass", "the operation dialog must default to bandpass preprocessing");
+  const filterSchema = operation.schema(preprocess);
+  assert(!filterSchema.some((field) => field.id === "frequency_units"), "derived filter frequency unit must not render as a separate control");
+  assert(filterSchema.filter((field) => /passband/.test(field.id)).every((field) => field.unit === "Гц"), "visible filter frequency labels must carry their derived unit");
+  assert(operation.payload(preprocess).parameters.frequency_units === "hertz", "hidden derived filter frequency unit must remain in the typed payload");
   assert(operation.preprocessOperations.map((item) => item.value).join(",") === "bandpass,bandstop,highpass,lowpass,detrend,fill-missing,smooth,envelope,resample,custom-preprocess", "preprocessing selector must expose the exact V59 inventory");
   assert(!Object.prototype.hasOwnProperty.call(operation, "mathOperations") && !operation.preprocessOperations.some((item) => /^(fft|denoise|knn|abs|square|sqrt|signed-sqrt|multiply|custom)$/.test(item.value)), "old math, FFT, Denoise and KNN must not be selectable");
 
@@ -95,4 +99,10 @@ module.exports = async function task0157_0158PreprocessLocalization(assert) {
   assert(fetchCalls.length === 1 && fetchCalls[0].url === "./api/signals/derive" && fetchCalls[0].options.method === "POST", "derive must POST to the exact API endpoint");
   const posted = JSON.parse(fetchCalls[0].options.body);
   assert(JSON.stringify(posted) === JSON.stringify(envelope) && posted.source_signal_id === "signal-17" && posted.operation_kind === "preprocess" && posted.operation === "bandpass", "derive POST must preserve the exact typed V59 envelope");
+
+  const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8");
+  const outerTrack = (css.match(/\.signal-operation-control,[\s\S]*?\.signal-operation-row input\s*\{[\s\S]*?\n\}/) || [""])[0];
+  const nestedSelect = (css.match(/\.signal-operation-row \.value-select-trigger:not\(\.is-button-trigger\) > \.select-trigger-input,[\s\S]*?\n\}/) || [""])[0];
+  assert(/width:\s*100%/.test(outerTrack) && /height:\s*32px/.test(outerTrack) && /border:\s*1px solid var\(--line\)/.test(outerTrack) && /border-radius:\s*6px/.test(outerTrack), "operation single-line inputs and dropdowns must share one full-width 32px 1px/6px outer track");
+  assert(/height:\s*30px/.test(nestedSelect) && /border:\s*0/.test(nestedSelect) && /border-radius:\s*0/.test(nestedSelect) && /outline:\s*0/.test(nestedSelect) && /box-shadow:\s*none/.test(nestedSelect), "nested ValueSelect input must be neutralized so the outer track is the only chrome");
 };
