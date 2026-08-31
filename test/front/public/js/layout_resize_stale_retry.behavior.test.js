@@ -55,6 +55,7 @@ function createApp(layoutResponses) {
     clearTimeout() {}, setTimeout() { return 0; }, requestAnimationFrame() { return 0; }
   };
   const document = {
+    readyState: "loading",
     querySelector(selector) { return nodes[selector] || null; },
     querySelectorAll() { return []; },
     addEventListener(type, listener) { if (type === "click") clicks.push(listener); },
@@ -68,7 +69,12 @@ function createApp(layoutResponses) {
 }
 
 function applyEvent() {
-  return { target: { closest() { return { dataset: { layoutApply: "" } }; } } };
+  const style={ removeProperty() {} };
+  const button={
+    dataset:{ layoutApply:"" },style,disabled:false,
+    setAttribute() {},getBoundingClientRect() { return {width:96}; }
+  };
+  return { target: { closest() { return button; } } };
 }
 
 async function settle() {

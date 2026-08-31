@@ -3669,6 +3669,12 @@
         syncPaneMenuState();
       });
     });
+    host.on("plotly_afterplot", function () {
+      window.requestAnimationFrame(function () {
+        var cursors=paneGraphCursorController();
+        if (cursors && graphCursorEligible(displayId,paneId)) cursors.attach(runtimeKey,host);
+      });
+    });
     host.dataset.axisLinkBound = runtimeKey;
   }
 
@@ -7336,6 +7342,23 @@
         Array.isArray(trace.x) && Array.isArray(trace.y) && trace.x.length && trace.y.length;
     });
   }
+  function traceIndex(host, trace) { return host && Array.isArray(host.data) ? host.data.indexOf(trace) : -1; }
+  function resolvedTrace(host, trace) {
+    var index=traceIndex(host,trace), full=index >= 0 && host && Array.isArray(host._fullData) ? host._fullData[index] : null;
+    return {index:index,source:trace,full:full || trace};
+  }
+  function traceColor(host, trace, fallbackIndex) {
+    var resolved=resolvedTrace(host,trace), full=resolved.full || {}, source=resolved.source || {};
+    var color=full.line && full.line.color || source.line && source.line.color || full.marker && full.marker.color || source.marker && source.marker.color;
+    if (Array.isArray(color) || typeof color !== "string" || !color.trim()) {
+      color=["#2563eb","#dc2626","#16a34a","#9333ea","#ea580c","#0891b2","#ca8a04","#db2777"][Math.max(0,resolved.index >= 0 ? resolved.index : fallbackIndex || 0)%8];
+    }
+    return color;
+  }
+  function traceName(host, trace, fallbackIndex) {
+    var resolved=resolvedTrace(host,trace), full=resolved.full || {}, source=resolved.source || {};
+    return String(source.name || full.name || "Сигнал "+((resolved.index >= 0 ? resolved.index : fallbackIndex || 0)+1));
+  }
   function closestIndex(values, target) {
     var low=0, high=values.length-1;
     if (!values.length) return -1;
@@ -7350,6 +7373,24 @@
   function nearestPoint(trace, target) {
     var index=closestIndex(trace.x || [], target);
     return index < 0 ? null : { index:index, x:Number(trace.x[index]), y:trace.y[index] };
+  }
+  function interpolatedTraceValue(trace, target) {
+    var xs=trace && trace.x || [], ys=trace && trace.y || [], length=Math.min(xs.length,ys.length);
+    if (!length || !finite(target)) return null;
+    var firstX=Number(xs[0]), lastX=Number(xs[length-1]);
+    if (!finite(firstX) || !finite(lastX) || target < Math.min(firstX,lastX) || target > Math.max(firstX,lastX)) return null;
+    if (length === 1 || target === firstX) return finite(ys[0]) ? Number(ys[0]) : null;
+    if (target === lastX) return finite(ys[length-1]) ? Number(ys[length-1]) : null;
+    var low=0, high=length-1, ascending=lastX >= firstX;
+    while (high-low > 1) {
+      var middle=(low+high)>>1, middleX=Number(xs[middle]);
+      if (!finite(middleX)) return null;
+      if (ascending ? middleX < target : middleX > target) low=middle; else high=middle;
+    }
+    var x0=Number(xs[low]), x1=Number(xs[high]), y0=Number(ys[low]), y1=Number(ys[high]);
+    if (!finite(x0) || !finite(x1) || !finite(y0) || !finite(y1)) return null;
+    if (x1 === x0) return y0;
+    return y0+(y1-y0)*(target-x0)/(x1-x0);
   }
   function nearestX(host, target) {
     var best=null;
@@ -7381,6 +7422,11 @@
     return finite(best) ? best : current;
   }
   function fullAxis(host) { return host && host._fullLayout && host._fullLayout.xaxis || host && host.layout && host.layout.xaxis || {}; }
+  function fullYAxis(host, trace) {
+    var resolved=resolvedTrace(host,trace), axisName=String(resolved.full && resolved.full.yaxis || resolved.source && resolved.source.yaxis || "y");
+    var key=axisName === "y" ? "yaxis" : "yaxis"+axisName.replace(/^y/,"");
+    return host && host._fullLayout && host._fullLayout[key] || host && host.layout && host.layout[key] || host && host._fullLayout && host._fullLayout.yaxis || {};
+  }
   function visibleDomain(host) {
     var axis=fullAxis(host), range=Array.isArray(axis.range) ? axis.range.slice(0,2).map(Number) : null;
     if (range && axis.type === "log") range=range.map(function (value) { return Math.pow(10,value); });
@@ -7423,6 +7469,22 @@
     if (axis.type === "log") return Math.pow(10,Math.log10(domain[0])+(Math.log10(domain[1])-Math.log10(domain[0]))*ratio);
     return domain[0]+(domain[1]-domain[0])*ratio;
   }
+  function yValueToPixel(host, trace, value, box) {
+    var axis=fullYAxis(host,trace);
+    if (axis && typeof axis.d2p === "function") {
+      var nativePixel=Number(axis.d2p(value));
+      if (finite(nativePixel)) return box.top+nativePixel;
+    }
+    var range=Array.isArray(axis.range) ? axis.range.slice(0,2).map(Number) : null;
+    if (!range || !finite(range[0]) || !finite(range[1])) {
+      var values=(trace && trace.y || []).map(Number).filter(finite);
+      if (!values.length) return box.top+box.height/2;
+      range=[Math.min.apply(Math,values),Math.max.apply(Math,values)];
+    }
+    var start=range[0], end=range[1], transformed=Number(value);
+    if (axis.type === "log") transformed=Math.log10(transformed);
+    return box.top+clamp(1-(transformed-start)/(end-start || 1),0,1)*box.height;
+  }
   function snapWithin(host, target) {
     var domain=visibleDomain(host);
     if (!domain) return null;
@@ -7437,13 +7499,114 @@
     var second=previous && finite(previous[1]) ? snapWithin(host,previous[1]) : snapWithin(host,domain[0]+(domain[1]-domain[0])*2/3);
     return [first,second];
   }
+  function ensureCoordinateLabelNodes(line) {
+    if (!line || typeof line.querySelector !== "function" || typeof line.appendChild !== "function") return null;
+    var xLabel=line.querySelector("[data-cursor-x-label]");
+    if (!xLabel) {
+      xLabel=document.createElement("span");
+      xLabel.className="plot-cursor-x-label";
+      xLabel.dataset.cursorXLabel="";
+      xLabel.dataset.testid="graph-cursor-x-label";
+      xLabel.setAttribute("aria-hidden","true");
+      line.appendChild(xLabel);
+    }
+    var yLabels=line.querySelector("[data-cursor-y-labels]");
+    if (!yLabels) {
+      yLabels=document.createElement("span");
+      yLabels.className="plot-cursor-y-labels";
+      yLabels.dataset.cursorYLabels="";
+      yLabels.setAttribute("aria-hidden","true");
+      line.appendChild(yLabels);
+    }
+    return {x:xLabel,y:yLabels};
+  }
+  function separateVerticalLabels(items, height) {
+    var gap=20, minimum=9, maximum=Math.max(minimum,height-9);
+    items.sort(function (a,b) { return a.desired-b.desired; });
+    items.forEach(function (item,index) { item.position=clamp(Math.max(item.desired,index ? items[index-1].position+gap : minimum),minimum,maximum); });
+    for (var index=items.length-1; index>0; index-=1) {
+      if (items[index].position > maximum) items[index].position=maximum;
+      items[index-1].position=Math.min(items[index-1].position,items[index].position-gap);
+    }
+    if (items.length && items[0].position < minimum) {
+      var shift=minimum-items[0].position;
+      items.forEach(function (item) { item.position=Math.min(maximum,item.position+shift); });
+    }
+    return items;
+  }
+  function renderCoordinateLabels(host, line, value, box, side) {
+    var nodes=ensureCoordinateLabelNodes(line);
+    if (!nodes) return;
+    var unit=axisUnit(fullAxis(host));
+    nodes.x.textContent=formatNumber(value)+(unit ? " "+unit : "");
+    var hostHeight=host.getBoundingClientRect().height, labelHeight=nodes.x.offsetHeight || 20;
+    var bottomSpace=Math.max(0,hostHeight-box.top-box.height), labelOffset=Math.min(7,bottomSpace-labelHeight);
+    nodes.x.style.top=(box.height+labelOffset)+"px";
+    line.classList.toggle("labels-left",side === "left");
+    var items=[];
+    visibleTraces(host).forEach(function (trace,index) {
+      var y=interpolatedTraceValue(trace,value), pixel=finite(y) ? yValueToPixel(host,trace,y,box) : null;
+      if (!finite(y) || !finite(pixel)) return;
+      items.push({trace:trace,index:index,value:Number(y),desired:clamp(pixel-box.top,0,box.height)});
+    });
+    separateVerticalLabels(items,box.height);
+    nodes.y.innerHTML="";
+    items.forEach(function (item) {
+      var label=document.createElement("span"), color=traceColor(host,item.trace,item.index), text="Y: "+formatNumber(item.value);
+      label.className="plot-cursor-y-label";
+      label.dataset.cursorYLabel="";
+      label.dataset.testid="graph-cursor-y-label";
+      label.dataset.traceIndex=String(traceIndex(host,item.trace));
+      label.style.top=item.position+"px";
+      label.style.color=color;
+      label.style.setProperty("--cursor-trace-color",color);
+      label.textContent=text;
+      label.setAttribute("aria-label",traceName(host,item.trace,item.index)+": "+text);
+      nodes.y.appendChild(label);
+    });
+  }
+  function placeXLabels(overlay, box) {
+    if (!overlay || typeof overlay.querySelectorAll !== "function") return;
+    var items=Array.prototype.map.call(overlay.querySelectorAll(".plot-cursor-line"),function (line) {
+      if (typeof line.querySelector !== "function") return null;
+      var label=line.querySelector("[data-cursor-x-label]");
+      if (!label) return null;
+      var center=parseFloat(line.style.left), width=label.offsetWidth || Math.max(44,label.textContent.length*6+10);
+      return {line:line,label:label,desired:center,center:clamp(center,box.left+width/2,box.left+box.width-width/2),width:width};
+    }).filter(Boolean).sort(function (a,b) { return a.desired-b.desired; });
+    items.forEach(function (item,index) {
+      if (!index) return;
+      var minimum=items[index-1].center+(items[index-1].width+item.width)/2+4;
+      item.center=Math.max(item.center,minimum);
+    });
+    for (var index=items.length-1; index>=0; index-=1) {
+      var item=items[index], maximum=box.left+box.width-item.width/2;
+      item.center=Math.min(item.center,maximum);
+      if (index) items[index-1].center=Math.min(items[index-1].center,item.center-(items[index-1].width+item.width)/2-4);
+    }
+    items.forEach(function (item) {
+      item.center=clamp(item.center,box.left+item.width/2,box.left+box.width-item.width/2);
+      item.label.style.setProperty("--cursor-x-label-shift",(item.center-item.desired)+"px");
+    });
+  }
   function createController() {
     var records={},listeners=[];
-    function record(key) { return records[key] || (records[key]={mode:MODE_OFF,values:[],host:null,overlay:null}); }
+    function record(key) { return records[key] || (records[key]={mode:MODE_OFF,values:[],host:null,overlay:null,resizeObserver:null,updateFrame:null}); }
     function snapshot(key) { var entry=record(key); return {key:key,mode:entry.mode,values:entry.values.slice(),host:entry.host,eligible:entry.mode !== MODE_OFF && !!entry.host && visibleTraces(entry.host).length > 0}; }
     function notify(key) { var value=snapshot(key); listeners.slice().forEach(function (listener) { listener(value); }); }
     function subscribe(listener) { if (typeof listener !== "function") return function () {}; listeners.push(listener); return function () { listeners=listeners.filter(function (candidate) { return candidate !== listener; }); }; }
-    function removeOverlay(entry) { if (entry.overlay && entry.overlay.isConnected) entry.overlay.remove(); entry.overlay=null; entry.host=null; }
+    function stopResize(entry) { if (entry.resizeObserver) entry.resizeObserver.disconnect(); entry.resizeObserver=null; if (entry.updateFrame !== null && typeof window.cancelAnimationFrame === "function") window.cancelAnimationFrame(entry.updateFrame); entry.updateFrame=null; }
+    function removeOverlay(entry) { stopResize(entry); if (entry.overlay && entry.overlay.isConnected) entry.overlay.remove(); entry.overlay=null; entry.host=null; }
+    function scheduleUpdate(key) {
+      var entry=record(key);
+      if (entry.updateFrame !== null) return;
+      entry.updateFrame=window.requestAnimationFrame(function () { entry.updateFrame=null; update(key); });
+    }
+    function observeResize(key, entry) {
+      if (entry.resizeObserver || !entry.host || typeof window.ResizeObserver !== "function") return;
+      entry.resizeObserver=new window.ResizeObserver(function () { scheduleUpdate(key); });
+      entry.resizeObserver.observe(entry.host);
+    }
     function update(key) {
       var entry=record(key), host=entry.host;
       if (!host || !host.isConnected || entry.mode === MODE_OFF || !visibleTraces(host).length) { removeOverlay(entry); notify(key); return; }
@@ -7474,7 +7637,15 @@
         line.setAttribute("aria-valuemax",String(domain[1]));
         line.setAttribute("aria-valuenow",String(value));
         line.setAttribute("aria-valuetext",formatNumber(value)+(axisUnit(fullAxis(host)) ? " "+axisUnit(fullAxis(host)) : ""));
+        var pixel=valueToPixel(host,value), otherPixel=entry.values.length > 1 ? valueToPixel(host,entry.values[index ? 0 : 1]) : null;
+        var side=pixel > box.left+box.width*.66 ? "left" : "right";
+        if (finite(otherPixel) && Math.abs(pixel-otherPixel) < 116) side=pixel < otherPixel ? "left" : "right";
+        if (pixel < box.left+96) side="right";
+        if (pixel > box.left+box.width-96) side="left";
+        renderCoordinateLabels(host,line,value,box,side);
       });
+      placeXLabels(overlay,box);
+      observeResize(key,entry);
       notify(key);
     }
     function setMode(key, host, mode) {
@@ -7485,7 +7656,7 @@
       else { entry.values=initialValues(entry.host,next,entry.values); update(key); }
       return next;
     }
-    function attach(key,host) { var entry=record(key); entry.host=host; if (entry.mode !== MODE_OFF) update(key); }
+    function attach(key,host) { var entry=record(key); if (entry.host && entry.host !== host) removeOverlay(entry); entry.host=host; if (entry.mode !== MODE_OFF) update(key); }
     function clear(key) { var entry=record(key); entry.mode=MODE_OFF; entry.values=[]; removeOverlay(entry); notify(key); }
     function mode(key) { return record(key).mode; }
     function syncMenu(menu,key,eligible) {

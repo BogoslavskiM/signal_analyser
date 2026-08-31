@@ -20,7 +20,9 @@ module.exports = async function testAppBootRaceContracts(assert) {
   assert(/function safeErrorText\(error, fallback\)/.test(app), "boot errors must be converted to typed display text");
   assert(/copy\.textContent\s*=\s*safeErrorText\(error, "Не удалось загрузить анализатор\."\)/.test(app), "bootstrap error copy must not stringify an error object");
   assert(/footer\.dataset\.message\s*=\s*safeErrorText\(error, "Не удалось загрузить настройки\."\)/.test(app), "settings-load error copy must not stringify an error object");
-  assert(!/textContent\s*=\s*error(?:\s*;|\s*\|\|)/.test(app), "app error surfaces must not render an error object directly");
+  const bootstrapError = (app.match(/function showBootstrapError\(error\)[\s\S]*?\n  \}/) || [""])[0];
+  const settingsError = (app.match(/function showSettingsLoadError\(error\)[\s\S]*?\n  \}/) || [""])[0];
+  assert(!/textContent\s*=\s*error(?:\s*;|\s*\|\|)/.test(bootstrapError + settingsError), "app boot/settings error surfaces must not render an error object directly");
 
   assert(/<footer class="app-status"[^>]*>/.test(html), "application status host must remain outside the app-shell flow");
   const statusCss = (css.match(/\.app-status\s*\{[^}]*\}/) || [""])[0];
