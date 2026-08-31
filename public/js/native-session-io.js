@@ -1,3 +1,58 @@
+(function registerSignalAnalyserImportMenuLifecycle(window,document) {
+  "use strict";
+
+  var silentFocusTrigger=null;
+
+  function isExplicitIntent(kind) {
+    return kind === "pointerenter" || kind === "click" || kind === "keyboard";
+  }
+
+  function closeImmediately(parts,setOpen,sync) {
+    if (typeof setOpen === "function") setOpen(false);
+    if (typeof sync === "function") sync();
+    if (parts && parts.menu) parts.menu.hidden=true;
+    if (parts && parts.trigger) parts.trigger.setAttribute("aria-expanded","false");
+  }
+
+  function beforeRelatedOverlay(parts,clearTimers,setOpen,sync) {
+    if (typeof clearTimers === "function") clearTimers();
+    closeImmediately(parts,setOpen,sync);
+    silentFocusTrigger=parts && parts.trigger || null;
+  }
+
+  function restoreTriggerSilently(trigger,focus) {
+    silentFocusTrigger=trigger || null;
+    if (typeof focus === "function") focus(trigger);
+    else if (trigger && typeof trigger.focus === "function") trigger.focus();
+  }
+
+  function acceptsOpenIntent(kind,trigger,overlayOpen) {
+    if (overlayOpen) return false;
+    if (kind === "focus" && trigger && trigger === silentFocusTrigger) return false;
+    if (!isExplicitIntent(kind) && kind !== "focus") return false;
+    if (isExplicitIntent(kind)) silentFocusTrigger=null;
+    return true;
+  }
+
+  function onTriggerBlur(trigger) {
+    if (trigger && trigger === silentFocusTrigger) silentFocusTrigger=null;
+  }
+
+  window.SignalAnalyserImportMenuLifecycle=Object.freeze({
+    beforeRelatedOverlay:beforeRelatedOverlay,
+    restoreTriggerSilently:restoreTriggerSilently,
+    acceptsOpenIntent:acceptsOpenIntent,
+    onTriggerBlur:onTriggerBlur,
+    contract:Object.freeze({
+      selectors:Object.freeze({control:"[data-native-import-control]",trigger:"[data-testid='toolbar-import']",menu:"[data-testid='toolbar-import-menu']",item:"[data-native-import-source]"}),
+      geometry:Object.freeze({width:196,padding:4,border:1,radius:6,itemHeight:32,itemPaddingX:8,gap:4}),
+      opensOn:Object.freeze(["pointerenter","click","keyboard Enter/Space/ArrowDown/ArrowUp","ordinary non-restoration focus"]),
+      closesOn:Object.freeze(["selection-before-child-open","related popup/dialog open","outside pointerdown","Escape","scroll","focus leaves control"]),
+      restoration:"Closing any related popup/dialog restores only trigger focus. It never restores menu-open state; reopening requires a new explicit hover/click/keyboard intent."
+    })
+  });
+}(window,document));
+
 (function registerNativeSessionIo(window, document) {
   "use strict";
 
@@ -42,7 +97,9 @@
   var importMenuActiveIndex = 0;
   var importMenuOpenTimer = 0;
   var importMenuCloseTimer = 0;
-  var suppressImportFocusOpen = false;
+  var importChildActive = false;
+  var localPickerPending = false;
+  var sessionImportDialogWasOpen = false;
 
   function q(selector) { return document.querySelector(selector); }
   function qa(selector) { return Array.prototype.slice.call(document.querySelectorAll(selector)); }
@@ -103,7 +160,10 @@
   function restore() {
     var target = state.trigger;
     state.trigger = null;
-    focus(target);
+    if (target && target.matches && target.matches("[data-testid='toolbar-import']")) {
+      importChildActive = false;
+      window.SignalAnalyserImportMenuLifecycle.restoreTriggerSilently(target, focus);
+    } else focus(target);
   }
   function topOpen() {
     return (state.message && text(state.message.title) && text(state.message.text)) ||
@@ -124,6 +184,19 @@
     importMenuOpenTimer = 0;
     importMenuCloseTimer = 0;
   }
+  function setImportMenuOpen(value) { importMenuOpen = value === true; }
+  function beginImportChild(trigger) {
+    importChildActive = true;
+    window.SignalAnalyserImportMenuLifecycle.beforeRelatedOverlay(
+      importMenuParts(), clearImportMenuTimers, setImportMenuOpen, syncImportMenu
+    );
+    state.trigger = trigger || null;
+  }
+  function finishImportChild(trigger) {
+    importChildActive = false;
+    localPickerPending = false;
+    window.SignalAnalyserImportMenuLifecycle.restoreTriggerSilently(trigger || state.trigger, focus);
+  }
   function positionImportMenu() {
     var parts = importMenuParts();
     if (!importMenuOpen || !parts.trigger || !parts.menu) return;
@@ -132,7 +205,9 @@
     var rect = parts.trigger.getBoundingClientRect();
     var width = 196;
     parts.menu.style.left = Math.min(window.innerWidth - width - 8, Math.max(8, rect.right - width)) + "px";
-    parts.menu.style.top = Math.min(window.innerHeight - parts.menu.offsetHeight - 8, rect.bottom + 8) + "px";
+    var below = rect.bottom + 4;
+    var above = rect.top - parts.menu.offsetHeight - 4;
+    parts.menu.style.top = Math.max(8, below + parts.menu.offsetHeight <= window.innerHeight - 8 ? below : above) + "px";
   }
   function syncImportMenu() {
     var parts = importMenuParts();
@@ -148,11 +223,14 @@
       positionImportMenu();
     }
   }
-  function openImportMenu(delay) {
+  function openImportMenu(delay, intent) {
+    var parts = importMenuParts();
+    if (!window.SignalAnalyserImportMenuLifecycle.acceptsOpenIntent(intent || "focus", parts.trigger, importChildActive || topOpen())) return;
     window.clearTimeout(importMenuCloseTimer);
     if (importMenuOpen) return;
     window.clearTimeout(importMenuOpenTimer);
     importMenuOpenTimer = window.setTimeout(function () {
+      if (!window.SignalAnalyserImportMenuLifecycle.acceptsOpenIntent(intent || "focus", parts.trigger, importChildActive || topOpen())) return;
       importMenuOpen = true;
       importMenuActiveIndex = 0;
       syncImportMenu();
@@ -166,9 +244,7 @@
       importMenuOpen = false;
       syncImportMenu();
       if (restoreFocus && parts.trigger) {
-        suppressImportFocusOpen = true;
-        focus(parts.trigger);
-        window.setTimeout(function () { suppressImportFocusOpen = false; }, 80);
+        window.SignalAnalyserImportMenuLifecycle.restoreTriggerSilently(parts.trigger, focus);
       }
     }, Math.max(0, delay || 0));
   }
@@ -181,9 +257,7 @@
   }
   function focusImportTriggerSilently(trigger) {
     if (!trigger) return;
-    suppressImportFocusOpen = true;
-    trigger.focus();
-    window.setTimeout(function () { suppressImportFocusOpen = false; }, 80);
+    window.SignalAnalyserImportMenuLifecycle.restoreTriggerSilently(trigger);
   }
 
   function saveTypeSelect() {
@@ -629,7 +703,12 @@
       });
     };
     var close = q("[data-native-message-close]");
-    if (close) close.onclick = function () { state.message = null; render(); };
+    if (close) close.onclick = function () {
+      state.message = null;
+      var restoreImportTrigger = !state.save && !state.import && !state.browserState.open && importChildActive;
+      render();
+      if (restoreImportTrigger) restore();
+    };
   }
 
   function acceptOptions(data) {
@@ -657,6 +736,7 @@
     });
   }
   function openEngeeImport(trigger) {
+    beginImportChild(trigger);
     beginFlow();
     state.trigger = trigger;
     state.save = false;
@@ -683,13 +763,20 @@
     });
   }
   function openLocalImport(trigger) {
+    beginImportChild(trigger);
     beginFlow();
     state.trigger = trigger;
     state.save = false;
     state.import = false;
     state.browserState.open = false;
     render();
-    focusImportTriggerSilently(trigger);
+    localPickerPending = true;
+    window.addEventListener("focus", function settleLocalPickerReturn() {
+      window.setTimeout(function () {
+        var dialog = q("[data-testid='session-package-import-dialog']");
+        if (localPickerPending && !dialog) finishImportChild(trigger);
+      }, 0);
+    }, { once:true });
     if (typeof window.SignalAnalyserOpenSessionFilePicker === "function") {
       window.SignalAnalyserOpenSessionFilePicker(trigger);
       return;
@@ -719,7 +806,7 @@
 
   document.addEventListener("pointerenter", function (event) {
     if (event.pointerType === "touch") return;
-    if (event.target.closest && event.target.closest("[data-native-import-control]")) openImportMenu(120);
+    if (event.target.closest && event.target.closest("[data-native-import-control]")) openImportMenu(120, "pointerenter");
   }, true);
   document.addEventListener("pointerleave", function (event) {
     if (event.pointerType === "touch") return;
@@ -727,15 +814,31 @@
     if (control && (!event.relatedTarget || !control.contains(event.relatedTarget))) closeImportMenu(false, 180);
   }, true);
   document.addEventListener("focusin", function (event) {
-    if (!suppressImportFocusOpen && event.target.closest && event.target.closest("[data-testid='toolbar-import']")) openImportMenu(0);
+    if (event.target.closest && event.target.closest("[data-testid='toolbar-import']")) openImportMenu(0, "focus");
   }, true);
   document.addEventListener("focusout", function (event) {
     var control = event.target.closest && event.target.closest("[data-native-import-control]");
-    if (control && (!event.relatedTarget || !control.contains(event.relatedTarget))) closeImportMenu(false, 0);
+    if (control && (!event.relatedTarget || !control.contains(event.relatedTarget))) {
+      closeImportMenu(false, 0);
+      if (!importChildActive) window.SignalAnalyserImportMenuLifecycle.onTriggerBlur(importMenuParts().trigger);
+    }
   }, true);
   document.addEventListener("pointerdown", function (event) {
     if (state.signalPicker.open && !event.target.closest("[data-testid='native-save-signals'], [data-native-signals-popup]")) closeSignalPicker(false);
     if (importMenuOpen && !event.target.closest("[data-native-import-control]")) closeImportMenu(false, 0);
+  }, true);
+  document.addEventListener("change", function (event) {
+    var input = event.target && event.target.closest && event.target.closest("[data-testid='native-local-file-input'],[data-testid='session-package-file-input']");
+    if (!input || !localPickerPending) return;
+    localPickerPending = false;
+    importChildActive = true;
+    window.SignalAnalyserImportMenuLifecycle.beforeRelatedOverlay(
+      importMenuParts(), clearImportMenuTimers, setImportMenuOpen, syncImportMenu
+    );
+  }, true);
+  document.addEventListener("cancel", function (event) {
+    var input = event.target && event.target.closest && event.target.closest("[data-testid='native-local-file-input'],[data-testid='session-package-file-input']");
+    if (input && localPickerPending) finishImportChild(state.trigger || importMenuParts().trigger);
   }, true);
   document.addEventListener("click", function (event) {
     var source = event.target.closest && event.target.closest("[data-native-import-source]");
@@ -743,9 +846,6 @@
       event.preventDefault();
       event.stopImmediatePropagation();
       var trigger = q("[data-testid='toolbar-import']");
-      clearImportMenuTimers();
-      importMenuOpen = false;
-      syncImportMenu();
       if (source.dataset.nativeImportSource === "engee") openEngeeImport(trigger);
       else openLocalImport(trigger);
       return;
@@ -756,9 +856,11 @@
     event.stopImmediatePropagation();
     if (button.dataset.testid === "toolbar-import") {
       clearImportMenuTimers();
-      importMenuOpen = false;
+      if (!window.SignalAnalyserImportMenuLifecycle.acceptsOpenIntent("click", button, importChildActive || topOpen())) return;
+      importMenuOpen = true;
+      importMenuActiveIndex = 0;
       syncImportMenu();
-      openEngeeImport(button);
+      focusImportMenuItem(0);
       return;
     }
     closeImportMenu(false, 0);
@@ -783,10 +885,22 @@
         closeImportMenu(true, 0);
         return;
       }
+      if (event.target === parts.trigger && ["Enter", " "].indexOf(event.key) >= 0) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        if (!window.SignalAnalyserImportMenuLifecycle.acceptsOpenIntent("keyboard", parts.trigger, importChildActive || topOpen())) return;
+        clearImportMenuTimers();
+        importMenuOpen = true;
+        importMenuActiveIndex = 0;
+        syncImportMenu();
+        focusImportMenuItem(0);
+        return;
+      }
       if (["ArrowDown", "ArrowUp", "Home", "End"].indexOf(event.key) >= 0) {
         event.preventDefault();
         event.stopImmediatePropagation();
         if (!importMenuOpen) {
+          if (!window.SignalAnalyserImportMenuLifecycle.acceptsOpenIntent("keyboard", parts.trigger, importChildActive || topOpen())) return;
           clearImportMenuTimers();
           importMenuOpen = true;
           importMenuActiveIndex = event.key === "ArrowUp" || event.key === "End" ? 1 : 0;
@@ -823,6 +937,19 @@
   window.addEventListener("resize", function () { positionSignalPicker(); positionImportMenu(); });
   window.addEventListener("scroll", function () { positionSignalPicker(); if (importMenuOpen) closeImportMenu(false, 0); }, true);
   syncImportMenu();
+  if (window.MutationObserver) {
+    new window.MutationObserver(function () {
+      var dialogOpen = !!q("[data-testid='session-package-import-dialog']");
+      if (dialogOpen) {
+        localPickerPending = false;
+        importChildActive = true;
+        window.SignalAnalyserImportMenuLifecycle.beforeRelatedOverlay(
+          importMenuParts(), clearImportMenuTimers, setImportMenuOpen, syncImportMenu
+        );
+      } else if (sessionImportDialogWasOpen) finishImportChild(state.trigger || importMenuParts().trigger);
+      sessionImportDialogWasOpen = dialogOpen;
+    }).observe(document.body, { childList:true, subtree:true });
+  }
   window.SignalAnalyserNativeSessionIo = {
     state: state,
     render: render,

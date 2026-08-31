@@ -38,13 +38,18 @@ module.exports = async function task0106NativeSessionIoStatic(assert) {
   assert(/function openLocalImport\(trigger\)[\s\S]*SignalAnalyserOpenSessionFilePicker/.test(native), "local action must invoke the local .sazip picker directly");
   assert(!/state\.source|data-native-source|native-import-source-switch/.test(native), "the parent Import dialog must not retain a duplicate source switch");
 
-  assert(/pointerenter[\s\S]*pointerType === "touch"[\s\S]*openImportMenu\(120\)/.test(native), "mouse hover must use the 120ms open delay while touch hover is ignored");
+  assert(/pointerenter[\s\S]*pointerType === "touch"[\s\S]*openImportMenu\(120, "pointerenter"\)/.test(native), "mouse hover must use the 120ms open delay and explicit pointer intent while touch hover is ignored");
   assert(/pointerleave[\s\S]*closeImportMenu\(false, 180\)/.test(native), "pointer leave must use the 180ms close grace period");
-  assert(/focusin[\s\S]*openImportMenu\(0\)/.test(native), "keyboard focus must open the Import menu immediately");
+  assert(/focusin[\s\S]*openImportMenu\(0, "focus"\)/.test(native), "ordinary keyboard focus must open the Import menu immediately");
   assert(/event\.key === "Escape"[\s\S]*closeImportMenu\(true, 0\)/.test(native), "Escape must close the menu and restore the trigger");
   assert(/\["ArrowDown", "ArrowUp", "Home", "End"\][\s\S]*focusImportMenuItem/.test(native), "Import menu must support arrows and Home/End keyboard navigation");
-  assert(/button\.dataset\.testid === "toolbar-import"[\s\S]*importMenuOpen = false[\s\S]*openEngeeImport\(button\)/.test(native), "direct Import click must open the Engee session form while hover and keyboard retain the source menu");
-  assert(/\.menu\.toolbar-import-menu\s*\{[^}]*width:\s*196px[^}]*border:\s*0[^}]*box-shadow:\s*var\(--shadow-menu\)/.test(css), "Import menu must keep the compact borderless 196px visual contract");
+  assert(/button\.dataset\.testid === "toolbar-import"[\s\S]*acceptsOpenIntent\("click"[\s\S]*importMenuOpen = true[\s\S]*focusImportMenuItem\(0\)/.test(native), "direct Import click must open the source menu instead of implicitly choosing Engee");
+  assert(/function beginImportChild\(trigger\)[\s\S]*beforeRelatedOverlay[\s\S]*state\.trigger = trigger/.test(native), "every related child flow must synchronously close and lock the source menu before opening");
+  assert(/function restoreTriggerSilently\(trigger,focus\)[\s\S]*silentFocusTrigger=trigger/.test(native) && /kind === "focus"[\s\S]*trigger === silentFocusTrigger[\s\S]*return false/.test(native), "restored trigger focus must be silent and unable to reopen the source menu");
+  assert(/acceptsOpenIntent\(kind,trigger,overlayOpen\)[\s\S]*if \(overlayOpen\) return false/.test(native), "an active related child must block every menu-open intent");
+  const canonicalMenuCss = css.slice(css.indexOf("/* V71 — toolbar import source uses the canonical compact Action List menu. */"));
+  assert(/\.menu\.toolbar-import-menu\s*\{[^}]*width:\s*196px[^}]*padding:\s*4px[^}]*border:\s*1px solid var\(--line\)[^}]*border-radius:\s*6px[^}]*box-shadow:\s*var\(--shadow-menu\)/.test(canonicalMenuCss), "Import menu must use the canonical 196px, 4px padding, 1px border and 6px radius surface");
+  assert(/\.menu\.toolbar-import-menu \[role="menuitem"\]\s*\{[^}]*height:\s*32px[^}]*padding:\s*0 8px[^}]*border-radius:\s*4px/.test(canonicalMenuCss), "Import actions must use canonical 32px rows with 8px horizontal padding");
   assert(/\.native-dialog\s*\{[^}]*grid-template-rows:\s*48px auto 56px/.test(css), "native dialogs must size their body to content instead of reserving a blank flexible track");
   assert(/\.native-save-dialog,\s*\n\.native-import-dialog\s*\{[^}]*height:\s*auto[^}]*min-height:\s*0[^}]*max-height:\s*calc\(100vh - 32px\)/.test(css), "Save and Import must remove fixed empty height while retaining the viewport cap");
   assert(!/\.native-save-dialog\s*\{[^}]*height:\s*568px/.test(css) && !/\.native-import-dialog\s*\{[^}]*height:\s*360px/.test(css), "native dialogs must not retain the obsolete fixed blank heights");

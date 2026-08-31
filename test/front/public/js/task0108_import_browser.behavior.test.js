@@ -30,12 +30,14 @@ module.exports = async function task0108ImportBrowserBehavior(assert) {
     getAttribute(name) { return this.attributes[name]; }
     getBoundingClientRect() { return { left: 800, right: 836, top: 8, bottom: 40, width: 36, height: 32 }; }
     focus() { document.activeElement = this; }
+    matches(selector) { return selector.includes("[data-testid='toolbar-import']") && this.kind === "trigger"; }
     contains(node) { return node === this || (node && node.parentControl === this); }
     querySelector(selector) { return selector === "h2" ? new FakeElement("heading") : null; }
     closest(selector) {
       if (selector.includes("[data-native-import-control]") && ["control", "trigger", "menu", "source"].includes(this.kind)) return control;
       if (selector.includes("[data-testid='toolbar-import']") && this.kind === "trigger") return this;
       if (selector.includes("[data-native-import-source]") && this.kind === "source") return this;
+      if (selector.includes("native-local-file-input") && this.kind === "local-file") return this;
       if (selector.includes("[data-testid='toolbar-save']") && this.kind === "save") return this;
       if (selector.includes("[data-testid='toolbar-import']") && selector.includes("[data-testid='toolbar-save']") && ["trigger", "save"].includes(this.kind)) return this;
       return null;
@@ -48,6 +50,7 @@ module.exports = async function task0108ImportBrowserBehavior(assert) {
   const menu = new FakeElement("menu", { testid: "toolbar-import-menu" });
   const engeeSource = new FakeElement("source", { nativeImportSource: "engee" });
   const localSource = new FakeElement("source", { nativeImportSource: "local" });
+  const localFileInput = new FakeElement("local-file", { testid: "native-local-file-input" });
   [trigger, menu, engeeSource, localSource].forEach((node) => { node.parentControl = control; });
 
   class RuntimeRoot extends FakeElement {
@@ -127,6 +130,7 @@ module.exports = async function task0108ImportBrowserBehavior(assert) {
       if (selector === "[data-testid='toolbar-import']") return trigger;
       if (selector === "[data-testid='toolbar-import-menu']") return menu;
       if (selector === "[data-testid='runtime-dialog-root']") return runtimeRoot;
+      if (selector.includes("native-local-file-input") || selector.includes("session-package-file-input")) return localFileInput;
       if (selector.includes("overlay-tooltip") || selector.includes("display-overflow-menu") || selector.includes("columns-menu")) return null;
       return runtimeRoot.querySelector(selector);
     },
@@ -190,6 +194,12 @@ module.exports = async function task0108ImportBrowserBehavior(assert) {
   const fire = (type, event) => (listeners[type] || []).forEach((callback) => callback(event));
   const eventFor = (target, extra = {}) => Object.assign({ target, relatedTarget:null, pointerType:"mouse", key:"", preventDefault() {}, stopImmediatePropagation() {} }, extra);
   const flush = async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); };
+  const runTimers = (delay) => {
+    timers.filter((timer) => !timer.cleared && (delay == null || timer.delay === delay)).forEach((timer) => {
+      timer.cleared = true;
+      timer.callback();
+    });
+  };
 
   fire("pointerenter", eventFor(trigger, { pointerType:"touch" }));
   assert(timers.length === 0, "touch pointerenter must not synthesize hover menu work");
@@ -204,12 +214,13 @@ module.exports = async function task0108ImportBrowserBehavior(assert) {
 
   fire("click", eventFor(trigger));
   await flush();
-  assert(optionsCalls === 1 && state.import === true, "direct Import click must open the Engee session form by default");
-  assert(browserCalls.length === 0 && state.importDraft.path === "/user/signal-analyser-session.jld2", "direct Import click must keep the browser closed and show the authoritative Engee path");
+  assert(menu.hidden === false && trigger.getAttribute("aria-expanded") === "true", "direct Import click must explicitly open the source menu");
+  assert(optionsCalls === 0 && state.import === false && browserCalls.length === 0, "opening the source menu must not implicitly choose Engee or call an API");
 
   fire("click", eventFor(engeeSource));
+  assert(menu.hidden === true && trigger.getAttribute("aria-expanded") === "false", "Engee selection must synchronously close the source menu before child work starts");
   await flush();
-  assert(optionsCalls === 2, "explicit Engee source must fetch authoritative defaults once for its own flow");
+  assert(optionsCalls === 1, "explicit Engee source must fetch authoritative defaults once for its own flow");
   assert(browserCalls.length === 0, "Engee source must not call a file-browser action before the folder button");
   assert(state.import === true && state.browserState.open === false, "Engee source must open only the parent Import dialog");
   assert(state.importDraft.path === "/user/signal-analyser-session.jld2", "Import path must be initialized from import_session_target");
@@ -240,20 +251,63 @@ module.exports = async function task0108ImportBrowserBehavior(assert) {
   assert(browserCalls.at(-1).action === "cancel", "Cancel must use the backend action contract");
   assert(state.importDraft.path === initialPath, "Cancel must not mutate the Import path field");
 
+  fire("click", eventFor(trigger));
+  fire("keydown", eventFor(trigger, { key:"Enter" }));
+  fire("pointerenter", eventFor(trigger));
+  assert(menu.hidden === true && trigger.getAttribute("aria-expanded") === "false", "an active Engee child dialog must block click, keyboard and hover reopen attempts");
+  assert(optionsCalls === 1, "blocked reopen attempts must not restart the Engee flow");
+
+  fire("keydown", eventFor(runtimeRoot.single["[data-testid='native-import-dialog']"], { key:"Escape" }));
+  await flush();
+  assert(state.import === false && document.activeElement === trigger, "closing the Engee child must restore focus to the Import trigger");
+  fire("focusin", eventFor(trigger));
+  runTimers(0);
+  assert(menu.hidden === true && trigger.getAttribute("aria-expanded") === "false", "restored trigger focus must leave the source menu closed");
+  fire("click", eventFor(trigger));
+  assert(menu.hidden === false && trigger.getAttribute("aria-expanded") === "true", "a fresh explicit click after child close must reopen the source menu");
+
+  fire("keydown", eventFor(trigger, { key:"Escape" }));
+  runTimers(0);
+  assert(menu.hidden === true && document.activeElement === trigger, "Escape must close the menu and restore trigger focus");
+  fire("keydown", eventFor(trigger, { key:"Enter" }));
+  assert(menu.hidden === false && document.activeElement === engeeSource && engeeSource.tabIndex === 0, "Enter must open the menu with the first action active");
+  fire("keydown", eventFor(engeeSource, { key:"End" }));
+  assert(document.activeElement === localSource && localSource.tabIndex === 0 && engeeSource.tabIndex === -1, "End must move roving focus to the last action");
+  fire("keydown", eventFor(localSource, { key:"Home" }));
+  assert(document.activeElement === engeeSource && engeeSource.tabIndex === 0, "Home must move roving focus to the first action");
+  fire("keydown", eventFor(engeeSource, { key:"ArrowDown" }));
+  assert(document.activeElement === localSource && localSource.tabIndex === 0, "ArrowDown must move focus to the next action");
+  fire("keydown", eventFor(localSource, { key:"ArrowUp" }));
+  assert(document.activeElement === engeeSource && engeeSource.tabIndex === 0, "ArrowUp must move focus to the previous action");
+
+  fire("click", eventFor(trigger));
+  assert(menu.hidden === false, "fresh explicit intent must reopen the menu before choosing local import");
   fire("click", eventFor(localSource));
+  assert(menu.hidden === true && trigger.getAttribute("aria-expanded") === "false", "local selection must synchronously close the menu before opening the picker");
   assert(localPickerCalls === 1, "local source must invoke the .sazip file picker directly");
-  assert(optionsCalls === 2 && browserCalls.at(-1).action === "cancel", "local source must not load Engee options or browser data");
+  assert(optionsCalls === 1 && browserCalls.at(-1).action === "cancel", "local source must not load Engee options or browser data");
+  fire("click", eventFor(trigger));
+  assert(menu.hidden === true, "an active local picker must block source-menu reopen attempts");
+  fire("cancel", eventFor(localFileInput));
+  assert(document.activeElement === trigger && menu.hidden === true, "canceling the local picker must silently restore trigger focus with the menu closed");
+  fire("focusin", eventFor(trigger));
+  runTimers(0);
+  assert(menu.hidden === true, "focus restoration after local picker cancel must not reopen the source menu");
+  fire("keydown", eventFor(trigger, { key:" " }));
+  assert(menu.hidden === false && trigger.getAttribute("aria-expanded") === "true", "a fresh Space key intent must reopen the source menu after local picker cancel");
+  fire("keydown", eventFor(trigger, { key:"Escape" }));
+  runTimers(0);
 
   fire("click", eventFor(saveTrigger));
   await flush();
-  assert(optionsCalls === 3 && state.save, "Save must still load typed options and open its dialog");
+  assert(optionsCalls === 2 && state.save, "Save must still load typed options and open its dialog");
   const saveTarget = runtimeRoot.single["[data-testid='native-save-variable-name']"];
   saveTarget.value = "existing_signal";
   runtimeRoot.single["[data-testid='native-save-overwrite']"].checked = false;
   saveFailure = { status:409, payload:{ code:"target_exists", error:{ code:"target_exists", message:"already exists" } } };
   runtimeRoot.single["[data-testid='native-save-submit']"].onclick();
   await flush();
-  assert(optionsCalls === 3, "target_exists must not reload options or reset the form");
+  assert(optionsCalls === 2, "target_exists must not reload options or reset the form");
   assert(state.saveDraft.target === "existing_signal" && state.saveDraft.overwrite === false, "target_exists must preserve the attempted target and overwrite choice");
   assert(state.message && state.message.code === "target_exists" && state.message.title === "Переменная уже существует", "workspace conflict must show the explicit variable-exists message");
   assert(state.message.text.includes("включите перезапись"), "workspace conflict must tell the user how to enable overwrite");
@@ -264,6 +318,6 @@ module.exports = async function task0108ImportBrowserBehavior(assert) {
   saveFailure = { status:409, payload:{ code:"stale_state", error:{ code:"stale_state", message:"stale" } } };
   runtimeRoot.single["[data-testid='native-save-submit']"].onclick();
   await flush();
-  assert(optionsCalls === 4, "stale_state, unlike target_exists, must refresh authoritative options");
+  assert(optionsCalls === 3, "stale_state, unlike target_exists, must refresh authoritative options");
   assert(state.message && state.message.code === "stale_state" && state.message.title === "Состояние обновлено", "stale_state must retain its distinct refresh warning");
 };
