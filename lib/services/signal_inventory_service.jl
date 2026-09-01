@@ -529,7 +529,19 @@ function signal_inventory_execute!(
     series = WorkspaceSignalSeries[
         WorkspaceSignalSeries(copy(source.values), source.sample_rate_hz, source.is_complex),
     ]
-    signal_inventory_add_series!(service, state, series, base_name, source.color)
+    added_name = only(signal_inventory_add_series!(service, state, series, base_name, source.color))
+    added_index = findfirst(signal -> signal.name == added_name, state.signals)::Int
+    added = state.signals[added_index]
+    state.signals[added_index] = AnalysedSignal(
+        added.id,
+        added.name,
+        added.color,
+        added.sample_rate_hz,
+        added.values,
+        added.is_complex,
+        added.visible,
+        source.operations,
+    )
 end
 
 function signal_inventory_execute!(
@@ -738,6 +750,7 @@ function signal_inventory_execute!(
             copy(source.values),
             source.is_complex,
             source.visible,
+            source.operations,
         )
     catch err
         err isa ArgumentError || rethrow()
@@ -895,6 +908,35 @@ function signal_inventory_operation_source_copy(
         copy(source.values),
         source.is_complex,
         source.visible,
+        source.operations,
+    )
+end
+
+function signal_inventory_operation_recipe(
+    source::AnalysedSignal,
+    command::DeriveSignalCommand,
+    result::SignalOperationProviderResult,
+)::SignalOperationRecipe
+    output_rate = result.sample_rate_hz === nothing ?
+        source.sample_rate_hz : result.sample_rate_hz::Float64
+    SignalOperationRecipe(
+        command.operation,
+        signal_operation_body(source, command),
+        source.sample_rate_hz,
+        output_rate,
+    )
+end
+
+function signal_inventory_operation_recipe(
+    source::AnalysedSignal,
+    ::CropSignalCommand,
+    result::CroppedSignalResult,
+)::SignalOperationRecipe
+    SignalOperationRecipe(
+        "crop",
+        "copy(init_signal[$(result.first_index):$(result.last_index)])",
+        source.sample_rate_hz,
+        source.sample_rate_hz,
     )
 end
 
@@ -908,6 +950,8 @@ function signal_inventory_replace_operation_target!(
     result_sample_rate_hz = result isa SignalOperationProviderResult &&
         result.sample_rate_hz !== nothing ? result.sample_rate_hz::Float64 : source.sample_rate_hz
     target_index = findfirst(signal -> signal.name == command.target_name, state.signals)
+    operation_recipe = signal_inventory_operation_recipe(source, command, result)
+    target_operations = vcat(source.operations, SignalOperationRecipe[operation_recipe])
     if target_index === nothing
         series = result isa CroppedSignalResult ?
             WorkspaceSignalSeries(
@@ -931,7 +975,20 @@ function signal_inventory_replace_operation_target!(
                 ),
             ],
         )
-        return signal_by_name(state, only(added_names))
+        added_index = findfirst(signal -> signal.name == only(added_names), state.signals)::Int
+        added = state.signals[added_index]
+        replacement = AnalysedSignal(
+            added.id,
+            added.name,
+            added.color,
+            added.sample_rate_hz,
+            added.values,
+            added.is_complex,
+            added.visible,
+            target_operations,
+        )
+        state.signals[added_index] = replacement
+        return replacement
     end
     command.overwrite || throw(signal_inventory_validation_error(
         "target_name",
@@ -946,6 +1003,7 @@ function signal_inventory_replace_operation_target!(
         result.values,
         result.is_complex,
         target.visible,
+        target_operations,
     )
     state.signals[target_index] = replacement
     state.display_layouts = Dict(
@@ -1013,7 +1071,7 @@ function signal_inventory_crop_result(
         ),
     )
     values = copy(source.values[(first_index::Int):(last_index::Int)])
-    source, CroppedSignalResult(values, source.is_complex)
+    source, CroppedSignalResult(values, source.is_complex, first_index, last_index)
 end
 
 function signal_inventory_execute!(

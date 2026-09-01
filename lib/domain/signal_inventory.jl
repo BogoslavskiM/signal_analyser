@@ -390,8 +390,15 @@ end
 struct CroppedSignalResult
     values::Vector{ComplexF64}
     is_complex::Bool
+    first_index::Int
+    last_index::Int
 
-    function CroppedSignalResult(values::AbstractVector, is_complex::Bool)
+    function CroppedSignalResult(
+        values::AbstractVector,
+        is_complex::Bool,
+        first_index::Integer = 1,
+        last_index::Integer = length(values),
+    )
         samples = ComplexF64.(values)
         !isempty(samples) || throw(ArgumentError(
             "Выбранный диапазон должен содержать хотя бы один отсчёт",
@@ -402,7 +409,13 @@ struct CroppedSignalResult
         !is_complex && any(value -> !iszero(imag(value)), samples) && throw(ArgumentError(
             "Вещественный результат crop содержит комплексные отсчёты",
         ))
-        new(samples, is_complex)
+        first = Int(first_index)
+        last = Int(last_index)
+        1 <= first <= last || throw(ArgumentError("Некорректные индексы результата crop"))
+        length(samples) == last - first + 1 || throw(ArgumentError(
+            "Длина результата crop не соответствует сохранённому диапазону",
+        ))
+        new(samples, is_complex, first, last)
     end
 end
 

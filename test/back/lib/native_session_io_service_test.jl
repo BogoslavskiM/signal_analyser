@@ -96,10 +96,16 @@ const NIO = Main.AppTestContext
         "signal_names" => ["one", "two"], "target" => "signal_library", "overwrite" => false,
     ))
     @test single.scope == "signal" && multiple.scope == "library"
+    function_save = NIO.parse_native_save_command(Dict(
+        "state_revision" => 3, "operation" => "function", "scope" => "signal",
+        "signal_names" => ["one"], "target" => "/user/transform_one.jl", "overwrite" => false,
+    ))
+    @test function_save.operation == "function" && function_save.scope == "signal"
     for invalid in (
         Dict("state_revision" => 3, "operation" => "session", "scope" => "signal", "signal_names" => ["x"], "target" => "/user/x.jld2", "overwrite" => false),
         Dict("state_revision" => 3, "operation" => "workspace", "scope" => "signal", "signal_names" => String[], "target" => "x", "overwrite" => false),
         Dict("state_revision" => 3, "operation" => "workspace", "scope" => "signal", "signal_names" => ["x"], "target" => "x", "overwrite" => false, "extra" => true),
+        Dict("state_revision" => 3, "operation" => "function", "scope" => "library", "signal_names" => ["x", "y"], "target" => "/user/x.jl", "overwrite" => false),
     )
         @test_throws NIO.NativeEngeeIOError NIO.parse_native_save_command(invalid)
     end
@@ -123,6 +129,30 @@ const NIO = Main.AppTestContext
     @test library_value isa Dict{String,Any}
     @test library_value["one"] == [1.0, 2.0]
     @test library_value["two"] == ComplexF64[3 + 4im, 5 + 6im]
+
+    recipe_signal = NIO.AnalysedSignal(
+        "filtered",
+        "#333333",
+        20.0,
+        ComplexF64[1, 2],
+        false,
+        true,
+        NIO.SignalOperationRecipe[
+            NIO.SignalOperationRecipe("custom-preprocess", "init_signal .* 2", 10.0, 10.0),
+            NIO.SignalOperationRecipe("crop", "copy(init_signal[1:2])", 10.0, 10.0),
+            NIO.SignalOperationRecipe("resample", "copy(init_signal)", 10.0, 20.0),
+        ],
+    )
+    generated = NIO.native_reproducer_script(NIO.AnalysedSignal[recipe_signal])
+    @test occursin("function transform_filtered(input_signal)", generated)
+    @test occursin("init_signal .* 2", generated)
+    @test occursin("copy(init_signal[1:2])", generated)
+    @test occursin("import EngeeDSP\n\nfunction", generated)
+    @test occursin("return (values = init_signal, sample_rate_hz =", generated)
+    @test !occursin("engee.genie", generated)
+    @test !occursin("SIGNAL_ANALYSER_SIGNALS", generated)
+    @test !NIO.signal_operation_parse_has_error(Meta.parseall(generated))
+    @test_throws NIO.NativeEngeeIOError NIO.native_reproducer_script(NIO.AnalysedSignal[real_signal])
 
     source = NIO.source("lib", "services", "native_session_io_service.jl")
     @test occursin("root_real = realpath", source) && occursin("child_real = try\n                realpath(child)", source)
@@ -209,6 +239,8 @@ const NIO = Main.AppTestContext
     options = NIO.native_save_options(NIO.NativeSessionIOService(), NIO.default_signal_analyser_state())
     @test options["defaults"]["import_session_target"] == "/user/signal-analyser-session.jld2"
     @test options["defaults"]["replace"] === true
+    @test all(item["id"] != "function" for item in options["operations"])
+    @test endswith(options["defaults"]["function_signal_target"], ".jl")
 
     routes = NIO.source("app", "routes.jl")
     for route in ("/api/save/options", "/api/file-browser/list", "/api/file-browser/action", "/api/save", "/api/import/session")

@@ -89,9 +89,9 @@
   };
   var labels = {
     workspace: "В рабочую область Engee",
-    script: "Julia Script .jl",
-    signal_jld2: "Данные сигнала JLD2 .jld2",
-    session_jld2: "Полная сессия JLD2 .jld2"
+    function: "Julia-функция .jl",
+    jld2: "Данные сигнала JLD2 .jld2",
+    session: "Полная сессия JLD2 .jld2"
   };
   var importMenuOpen = false;
   var importMenuActiveIndex = 0;
@@ -266,7 +266,7 @@
       return { value:item.id, label:item.label };
     });
     if (!options.length) {
-      options = Object.keys(labels).map(function (key) { return { value:key, label:labels[key] }; });
+      options = Object.keys(labels).filter(function (key) { return key !== "function"; }).map(function (key) { return { value:key, label:labels[key] }; });
     }
     return select && select.markup ? select.markup({
       key: "native-save-type",
@@ -409,11 +409,13 @@
     var html = "";
     if (state.save) {
       var names = state.saveDraft.signalNames || [];
+      var functionMode = state.saveType === "function";
       var saveReady = typeof state.revision === "number" && !!String(state.saveDraft.target || "").trim() &&
         (state.saveType === "session" || names.length > 0);
-      html += layer("native-save", "Сохранение", "<div class='native-form'><div class='native-dialog-row'><span class='native-label'>Тип</span>" + saveTypeSelect() + "</div>" +
-        (state.saveType === "session" ? "" : "<div class='native-dialog-row native-signals-row'><label class='native-label' for='native-save-signals-input'>Сигнал(ы)</label>" + signalPickerMarkup() + "</div>" + (names.length ? "" : "<small class='native-field-error native-signal-error' data-testid='save-signals-error'>Выберите хотя бы один сигнал.</small>")) +
-        typeFields() + "</div>", "<button class='button' data-native-close data-testid='native-save-cancel'>Отмена</button><button class='button button-primary'" + (!saveReady || state.busy ? " disabled" : "") + " data-testid='native-save-submit'>Сохранить</button>", "native-save-dialog");
+      html += layer("native-save", functionMode ? "Генерация функции" : "Сохранение", "<div class='native-form'>" +
+        (functionMode ? "" : "<div class='native-dialog-row'><span class='native-label'>Тип</span>" + saveTypeSelect() + "</div>") +
+        (state.saveType === "session" || functionMode ? "" : "<div class='native-dialog-row native-signals-row'><label class='native-label' for='native-save-signals-input'>Сигнал(ы)</label>" + signalPickerMarkup() + "</div>" + (names.length ? "" : "<small class='native-field-error native-signal-error' data-testid='save-signals-error'>Выберите хотя бы один сигнал.</small>")) +
+        typeFields() + "</div>", "<button class='button' data-native-close data-testid='native-save-cancel'>Отмена</button><button class='button button-primary'" + (!saveReady || state.busy ? " disabled" : "") + " data-testid='native-save-submit'>" + (functionMode ? "Сгенерировать" : "Сохранить") + "</button>", "native-save-dialog");
     }
     if (state.import) {
       var importReady = /\.jld2$/i.test(state.importDraft.path) && state.importDraft.replace;
@@ -672,8 +674,9 @@
         overwrite: state.saveDraft.overwrite
       }).then(function (data) {
         if (!active(generation)) return;
+        var generatedFunction = state.saveType === "function";
         state.save = false;
-        setMessage("Сохранение завершено", text(data && data.message) || text(data && data.target) || "Операция выполнена.", "alert-success");
+        setMessage(generatedFunction ? "Функция сгенерирована" : "Сохранение завершено", text(data && data.message) || text(data && data.target) || "Операция выполнена.", "alert-success");
       }).catch(function (error) {
         if (active(generation)) handleError(error, generation);
       }).finally(function () {
@@ -759,6 +762,34 @@
     }).catch(function (error) {
       if (token !== state.optionsToken || !active(generation)) return;
       setMessage("Ошибка", errorText(error, "Не удалось загрузить параметры импорта."), "alert-error");
+      render();
+    });
+  }
+  function openSignalFunction(signalName, trigger) {
+    beginFlow();
+    state.trigger = trigger || null;
+    state.save = true;
+    state.import = false;
+    state.browserState.open = false;
+    state.signalPicker.open = false;
+    state.signalPicker.query = "";
+    state.saveType = "function";
+    render();
+    var token = ++state.optionsToken;
+    var generation = state.flowGeneration;
+    var api = window.SignalAnalyserApi;
+    if (!api) return;
+    api.nativeSaveOptions().then(function (data) {
+      if (token !== state.optionsToken || !active(generation)) return;
+      acceptOptions(data);
+      if ((data.signal_names || []).indexOf(signalName) < 0) throw new Error("Сигнал не найден");
+      state.saveType = "function";
+      state.saveDraft.signalNames = [signalName];
+      applySaveDefaults();
+      render();
+    }).catch(function (error) {
+      if (token !== state.optionsToken || !active(generation)) return;
+      setMessage("Ошибка", errorText(error, "Не удалось открыть генерацию функции."), "alert-error");
       render();
     });
   }
@@ -953,6 +984,7 @@
   window.SignalAnalyserNativeSessionIo = {
     state: state,
     render: render,
+    openSignalFunction: openSignalFunction,
     showMessage: function (title, value, kind) { setMessage(title, value, kind); render(); }
   };
 })(window, document);

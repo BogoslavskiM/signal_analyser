@@ -5057,7 +5057,7 @@
       var selected = bindings.indexOf(signal.name) >= 0;
       var main = !!mainSignal && mainSignal.name === signal.name;
       var signalId = typeof signal.id === "string" && signal.id.trim() ? signal.id : null;
-      var actions = "<span class='signal-row-actions" + (model.pendingMainSignal === signal.name ? " is-pinned" : "") + "'><button type='button' class='signal-row-action' data-signal-duplicate='" + esc(signal.name) + "' data-testid='signal-duplicate-" + esc(signal.name) + "' aria-label='Копировать " + esc(signal.name) + "'><img src='./icons/copy.svg' alt=''></button><button type='button' class='signal-row-action'" + (signalId ? " data-signal-operation='" + esc(signalId) + "'" : " disabled") + " data-testid='signal-operation-" + esc(signal.name) + "' aria-label='Операция над " + esc(signal.name) + "'><img src='./icons/function.svg' alt=''></button><button type='button' class='signal-row-action is-danger' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "' aria-label='Удалить " + esc(signal.name) + "'><img src='./icons/trash.svg' alt=''></button></span>";
+      var actions = "<span class='signal-row-actions" + (model.pendingMainSignal === signal.name ? " is-pinned" : "") + "'><button type='button' class='signal-row-action' data-signal-duplicate='" + esc(signal.name) + "' data-testid='signal-duplicate-" + esc(signal.name) + "' aria-label='Копировать " + esc(signal.name) + "'><img src='./icons/copy.svg' alt=''></button><button type='button' class='signal-row-action'" + (signalId ? " data-signal-operation='" + esc(signalId) + "'" : " disabled") + " data-testid='signal-operation-" + esc(signal.name) + "' aria-label='Операция над " + esc(signal.name) + "'><img src='./icons/function.svg' alt=''></button><button type='button' class='signal-row-action'" + (signal.has_operations ? " data-signal-generate-function='" + esc(signal.name) + "'" : " disabled") + " data-testid='signal-generate-function-" + esc(signal.name) + "' data-tooltip='Сгенерировать функцию' aria-label='Сгенерировать функцию преобразования " + esc(signal.name) + "'><img src='./icons/script.svg' alt=''></button><button type='button' class='signal-row-action is-danger' data-signal-delete='" + esc(signal.name) + "' data-testid='signal-delete-" + esc(signal.name) + "' aria-label='Удалить " + esc(signal.name) + "'><img src='./icons/trash.svg' alt=''></button></span>";
       var cells = renderedColumns.map(function (column, index) {
         var last = index === renderedColumns.length - 1;
         var classes = (column.id === "color" ? "color-cell " : "") + (last ? "is-actions-host" : "");
@@ -6893,6 +6893,11 @@
     if (button.dataset.signalAddSubmit !== undefined) return void submitSignalAddDialog();
     if (button.dataset.signalDelete) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "delete", signal_name: button.dataset.signalDelete }); });
     if (button.dataset.signalDuplicate) return void mutate(function () { return api.signals({ state_revision: model.revision, operation: "duplicate", signal_name: button.dataset.signalDuplicate }); });
+    if (button.dataset.signalGenerateFunction) {
+      var nativeIo = window.SignalAnalyserNativeSessionIo;
+      if (nativeIo && typeof nativeIo.openSignalFunction === "function") nativeIo.openSignalFunction(button.dataset.signalGenerateFunction, button);
+      return;
+    }
     if (button.dataset.signalOperation) return void openSignalOperation(button);
     if (button.dataset.signalOperationClose !== undefined || button.dataset.signalOperationCancel !== undefined) return void closeSignalOperation();
     if (button.dataset.signalOperationSubmit !== undefined) return void submitSignalOperation();

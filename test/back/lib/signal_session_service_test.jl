@@ -111,8 +111,11 @@ end
         SS.test_state_with_complex_signal(),
     )["document"]
     document["version"] = SS.SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION
+    delete!(document, "format")
+    delete!(document, "application_id")
     for signal in document["state"]["signals"]
         delete!(signal, "id")
+        delete!(signal, "operations")
     end
     for display in document["state"]["displays"]
         for pane in display["layout"]["panes"]
@@ -143,7 +146,7 @@ end
 
     for (mutate, code) in (
         (value -> (value["schema"] = "unknown"), "unsupported_session_schema"),
-        (value -> (value["version"] = 4), "unsupported_session_version"),
+        (value -> (value["version"] = 99), "unsupported_session_version"),
         (value -> (value["unexpected"] = true), "invalid_session"),
         (value -> delete!(value["state"], "next_display_number"), "invalid_session"),
     )

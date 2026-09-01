@@ -101,6 +101,8 @@ function signal_analyser_signal_payload(signal::AnalysedSignal)::Dict{String,Any
         "duration_s" => signal_duration_s(signal),
         "data_type" => signal_data_type(signal),
         "visible" => signal.visible,
+        "has_operations" => !isempty(signal.operations),
+        "operation_count" => length(signal.operations),
     )
 end
 
@@ -1717,6 +1719,7 @@ function signal_analyser_with_visibility(signal::AnalysedSignal, visible::Bool):
         signal.values,
         signal.is_complex,
         visible,
+        signal.operations,
     )
 end
 

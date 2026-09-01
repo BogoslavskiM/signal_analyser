@@ -1,9 +1,13 @@
 const SIGNAL_ANALYSER_SESSION_DOCUMENT_FIELDS = Set([
+    "format",
+    "application_id",
     "schema",
     "version",
     "source_revision",
     "state",
 ])
+const SIGNAL_ANALYSER_SESSION_DOCUMENT_FIELDS_V4 =
+    setdiff(SIGNAL_ANALYSER_SESSION_DOCUMENT_FIELDS, Set(["format", "application_id"]))
 const SIGNAL_ANALYSER_SESSION_STATE_FIELDS = Set([
     "signals",
     "row_selected_signal",
@@ -19,9 +23,18 @@ const SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS = Set([
     "is_complex",
     "visible",
     "values",
+    "operations",
 ])
+const SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS_V4 =
+    setdiff(SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS, Set(["operations"]))
 const SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS_V3 =
-    setdiff(SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS, Set(["id"]))
+    setdiff(SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS_V4, Set(["id"]))
+const SIGNAL_ANALYSER_SESSION_OPERATION_FIELDS = Set([
+    "operation",
+    "body",
+    "input_sample_rate_hz",
+    "output_sample_rate_hz",
+])
 const SIGNAL_ANALYSER_SESSION_VALUES_FIELDS = Set(["real", "imag"])
 const SIGNAL_ANALYSER_SESSION_DISPLAY_FIELDS = Set([
     "id",
@@ -238,6 +251,14 @@ function signal_analyser_session_signal_payload(signal::AnalysedSignal)::Dict{St
         "sample_rate_hz" => signal.sample_rate_hz,
         "is_complex" => signal.is_complex,
         "visible" => signal.visible,
+        "operations" => Dict{String,Any}[
+            Dict{String,Any}(
+                "operation" => operation.operation,
+                "body" => operation.body,
+                "input_sample_rate_hz" => operation.input_sample_rate_hz,
+                "output_sample_rate_hz" => operation.output_sample_rate_hz,
+            ) for operation in signal.operations
+        ],
         "values" => Dict{String,Any}(
             "real" => Float64[real(value) for value in signal.values],
             "imag" => Float64[imag(value) for value in signal.values],
@@ -275,6 +296,8 @@ function signal_analyser_session_document_unlocked(
     state::SignalAnalyserState,
 )::SignalAnalyserSessionDocument
     SignalAnalyserSessionDocument(
+        SIGNAL_ANALYSER_SESSION_FORMAT,
+        SIGNAL_ANALYSER_APPLICATION_ID,
         SIGNAL_ANALYSER_SESSION_SCHEMA,
         SIGNAL_ANALYSER_SESSION_VERSION,
         state.view.state_revision,
@@ -294,6 +317,8 @@ function signal_analyser_session_payload(
     document::SignalAnalyserSessionDocument,
 )::Dict{String,Any}
     Dict{String,Any}(
+        "format" => document.format,
+        "application_id" => document.application_id,
         "schema" => document.schema,
         "version" => document.version,
         "source_revision" => document.source_revision,
@@ -336,13 +361,12 @@ function signal_analyser_session_parse_signal(
     session_version::Int,
 )::AnalysedSignal
     path = "document.state.signals[$index]"
-    data = signal_analyser_session_exact_object(
-        value,
-        session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
-            SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS : SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS_V3,
-        path,
-    )
-    id = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+    expected_fields = session_version >= SIGNAL_ANALYSER_OPERATION_HISTORY_SESSION_VERSION ?
+        SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS :
+        session_version >= SIGNAL_ANALYSER_IDENTITY_SESSION_VERSION ?
+            SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS_V4 : SIGNAL_ANALYSER_SESSION_SIGNAL_FIELDS_V3
+    data = signal_analyser_session_exact_object(value, expected_fields, path)
+    id = session_version >= SIGNAL_ANALYSER_IDENTITY_SESSION_VERSION ?
         signal_analyser_session_string(signal_analyser_payload_value(data, "id"), "$path.id") :
         signal_analyser_new_signal_id()
     name = signal_analyser_session_string(signal_analyser_payload_value(data, "name"), "$path.name")
@@ -396,7 +420,58 @@ function signal_analyser_session_parse_signal(
         ))
         samples[sample_index] = ComplexF64(real_part, imag_part)
     end
-    AnalysedSignal(id, name, color, sample_rate_hz, samples, is_complex, visible)
+    operations = SignalOperationRecipe[]
+    if session_version >= SIGNAL_ANALYSER_OPERATION_HISTORY_SESSION_VERSION
+        operation_values = signal_analyser_payload_value(data, "operations")
+        operation_values isa AbstractVector || throw(signal_analyser_session_error(
+            "$path.operations",
+            "Требуется массив",
+        ))
+        length(operation_values) <= SIGNAL_OPERATION_RECIPE_MAX_STEPS || throw(signal_analyser_session_error(
+            "$path.operations",
+            "Допустимо не более $(SIGNAL_OPERATION_RECIPE_MAX_STEPS) операций",
+        ))
+        for (operation_index, operation_value) in enumerate(operation_values)
+            operation_path = "$path.operations[$operation_index]"
+            operation_data = signal_analyser_session_exact_object(
+                operation_value,
+                SIGNAL_ANALYSER_SESSION_OPERATION_FIELDS,
+                operation_path,
+            )
+            operation_name = signal_analyser_session_string(
+                signal_analyser_payload_value(operation_data, "operation"),
+                "$operation_path.operation",
+            )
+            body_value = signal_analyser_payload_value(operation_data, "body")
+            body_value isa AbstractString || throw(signal_analyser_session_error(
+                "$operation_path.body",
+                "Требуется строка",
+            ))
+            body = String(body_value)
+            isempty(strip(body)) && throw(signal_analyser_session_error(
+                "$operation_path.body",
+                "Строка не может быть пустой",
+            ))
+            ncodeunits(body) <= SIGNAL_OPERATION_RECIPE_MAX_BYTES || throw(
+                signal_analyser_session_error("$operation_path.body", "Тело операции слишком длинное"),
+            )
+            input_rate = signal_analyser_session_float(
+                signal_analyser_payload_value(operation_data, "input_sample_rate_hz"),
+                "$operation_path.input_sample_rate_hz",
+            )
+            output_rate = signal_analyser_session_float(
+                signal_analyser_payload_value(operation_data, "output_sample_rate_hz"),
+                "$operation_path.output_sample_rate_hz",
+            )
+            try
+                push!(operations, SignalOperationRecipe(operation_name, body, input_rate, output_rate))
+            catch err
+                err isa ArgumentError || rethrow()
+                throw(signal_analyser_session_error(operation_path, sprint(showerror, err)))
+            end
+        end
+    end
+    AnalysedSignal(id, name, color, sample_rate_hz, samples, is_complex, visible, operations)
 end
 
 signal_analyser_session_parse_signal(value, index::Int, session_version::Int)::AnalysedSignal =
@@ -575,11 +650,11 @@ function signal_analyser_session_parse_layout_pane(
     is_legacy_pane && session_version != SIGNAL_ANALYSER_LEGACY_SESSION_VERSION && throw(
         signal_analyser_session_error(path, "Session v2+ требует peaks_settings для каждой pane"),
     )
-    is_v4_without_main = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
+    is_v4_without_main = session_version >= SIGNAL_ANALYSER_IDENTITY_SESSION_VERSION &&
         pane_fields == SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY
-    is_v4_without_axis_labels = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
+    is_v4_without_axis_labels = session_version >= SIGNAL_ANALYSER_IDENTITY_SESSION_VERSION &&
         pane_fields == SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_WITHOUT_AXIS_LABELS
-    expected_pane_fields = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+    expected_pane_fields = session_version >= SIGNAL_ANALYSER_IDENTITY_SESSION_VERSION ?
         (is_v4_without_main ? SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_LEGACY :
             is_v4_without_axis_labels ? SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V4_WITHOUT_AXIS_LABELS :
             SIGNAL_ANALYSER_SESSION_PANE_FIELDS) : SIGNAL_ANALYSER_SESSION_PANE_FIELDS_V3
@@ -592,7 +667,7 @@ function signal_analyser_session_parse_layout_pane(
     occursin(SIGNAL_DISPLAY_PANE_ID_REGEX, pane_id) || throw(
         signal_analyser_session_error("$path.id", "Ожидался идентификатор pane-N"),
     )
-    pane_name = session_version == SIGNAL_ANALYSER_SESSION_VERSION ?
+    pane_name = session_version >= SIGNAL_ANALYSER_IDENTITY_SESSION_VERSION ?
         signal_analyser_session_string(
             signal_analyser_payload_value(data, "name"),
             "$path.name",
@@ -625,7 +700,7 @@ function signal_analyser_session_parse_layout_pane(
         "$path.signal_bindings[$unknown_name]",
         "Pane ссылается на неизвестный сигнал",
     ))
-    has_explicit_main = session_version == SIGNAL_ANALYSER_SESSION_VERSION &&
+    has_explicit_main = session_version >= SIGNAL_ANALYSER_IDENTITY_SESSION_VERSION &&
         "analysis_signal" in pane_fields
     explicit_main = if has_explicit_main
         value = signal_analyser_payload_value(data, "analysis_signal")
@@ -706,7 +781,7 @@ function signal_analyser_session_parse_layout_pane(
                 "$path.peaks_settings.$field_id",
             )
         end
-        maximum_cutoff, minimum_cutoff = if session_version >= SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION
+        maximum_cutoff, minimum_cutoff = if session_version >= SIGNAL_ANALYSER_CUTOFF_SESSION_VERSION
             parse_cutoff("maximum_cutoff"), parse_cutoff("minimum_cutoff")
         else
             legacy_height = parse_cutoff("minimum_height")
@@ -1096,11 +1171,44 @@ function signal_analyser_session_validate_candidate!(
 end
 
 function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDocument
-    data = signal_analyser_session_exact_object(
-        value,
-        SIGNAL_ANALYSER_SESSION_DOCUMENT_FIELDS,
+    value isa AbstractDict || throw(signal_analyser_session_error(
         "document",
+        "Требуется JSON-объект",
+    ))
+    version = signal_analyser_session_integer(
+        signal_analyser_payload_value(value, "version"),
+        "document.version",
+        minimum = 1,
     )
+    expected_document_fields = version >= SIGNAL_ANALYSER_OPERATION_HISTORY_SESSION_VERSION ?
+        SIGNAL_ANALYSER_SESSION_DOCUMENT_FIELDS : SIGNAL_ANALYSER_SESSION_DOCUMENT_FIELDS_V4
+    data = signal_analyser_session_exact_object(value, expected_document_fields, "document")
+    format = if version >= SIGNAL_ANALYSER_OPERATION_HISTORY_SESSION_VERSION
+        signal_analyser_session_string(
+            signal_analyser_payload_value(data, "format"),
+            "document.format",
+        )
+    else
+        SIGNAL_ANALYSER_SESSION_FORMAT
+    end
+    format == SIGNAL_ANALYSER_SESSION_FORMAT || throw(signal_analyser_session_error(
+        "document.format",
+        "Неподдерживаемый формат: $format";
+        code = "unsupported_session_schema",
+    ))
+    application_id = if version >= SIGNAL_ANALYSER_OPERATION_HISTORY_SESSION_VERSION
+        signal_analyser_session_string(
+            signal_analyser_payload_value(data, "application_id"),
+            "document.application_id",
+        )
+    else
+        SIGNAL_ANALYSER_APPLICATION_ID
+    end
+    application_id == SIGNAL_ANALYSER_APPLICATION_ID || throw(signal_analyser_session_error(
+        "document.application_id",
+        "Сессия принадлежит другому приложению: $application_id";
+        code = "unsupported_session_schema",
+    ))
     schema = signal_analyser_session_string(
         signal_analyser_payload_value(data, "schema"),
         "document.schema",
@@ -1110,15 +1218,12 @@ function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDoc
         "Неподдерживаемая schema: $schema";
         code = "unsupported_session_schema",
     ))
-    version = signal_analyser_session_integer(
-        signal_analyser_payload_value(data, "version"),
-        "document.version",
-        minimum = 1,
-    )
     version in (
         SIGNAL_ANALYSER_LEGACY_SESSION_VERSION,
         SIGNAL_ANALYSER_EXTREMA_SESSION_VERSION,
+        SIGNAL_ANALYSER_CUTOFF_SESSION_VERSION,
         SIGNAL_ANALYSER_PREVIOUS_SESSION_VERSION,
+        SIGNAL_ANALYSER_IDENTITY_SESSION_VERSION,
         SIGNAL_ANALYSER_SESSION_VERSION,
     ) || throw(signal_analyser_session_error(
         "document.version",
@@ -1200,6 +1305,8 @@ function parse_signal_analyser_session_document(value)::SignalAnalyserSessionDoc
         minimum = 2,
     )
     SignalAnalyserSessionDocument(
+        format,
+        application_id,
         schema,
         version,
         source_revision,

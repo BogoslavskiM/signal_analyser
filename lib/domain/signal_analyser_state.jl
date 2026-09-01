@@ -16,6 +16,61 @@ const SIGNAL_ANALYSER_PLOT_NAMES = Dict(
 )
 const SIGNAL_ANALYSER_PLOTS_BY_NAME = Dict(value => key for (key, value) in SIGNAL_ANALYSER_PLOT_NAMES)
 
+const SIGNAL_OPERATION_RECIPE_MAX_BYTES = 65_536
+const SIGNAL_OPERATION_RECIPE_MAX_STEPS = 256
+
+"""One already validated transformation in a signal's reproducible operation chain.
+
+`body` is pure Julia computation over `init_signal` and
+`__signal_sample_rate_hz__`. It is never executed while loading a session.
+"""
+struct SignalOperationRecipe
+    operation::String
+    body::String
+    input_sample_rate_hz::Float64
+    output_sample_rate_hz::Float64
+
+    function SignalOperationRecipe(
+        operation::AbstractString,
+        body::AbstractString,
+        input_sample_rate_hz::Real,
+        output_sample_rate_hz::Real,
+    )
+        operation_name = String(strip(String(operation)))
+        isempty(operation_name) && throw(ArgumentError("Имя операции не может быть пустым"))
+        ncodeunits(operation_name) <= 128 || throw(ArgumentError("Имя операции слишком длинное"))
+        operation_body = String(body)
+        isempty(strip(operation_body)) && throw(ArgumentError("Тело операции не может быть пустым"))
+        ncodeunits(operation_body) <= SIGNAL_OPERATION_RECIPE_MAX_BYTES || throw(
+            ArgumentError("Тело операции слишком длинное"),
+        )
+        input_rate = Float64(input_sample_rate_hz)
+        output_rate = Float64(output_sample_rate_hz)
+        isfinite(input_rate) && input_rate > 0 || throw(ArgumentError(
+            "Входная частота дискретизации операции должна быть положительной и конечной",
+        ))
+        isfinite(output_rate) && output_rate > 0 || throw(ArgumentError(
+            "Выходная частота дискретизации операции должна быть положительной и конечной",
+        ))
+        new(operation_name, operation_body, input_rate, output_rate)
+    end
+end
+
+Base.:(==)(left::SignalOperationRecipe, right::SignalOperationRecipe) =
+    left.operation == right.operation && left.body == right.body &&
+    left.input_sample_rate_hz == right.input_sample_rate_hz &&
+    left.output_sample_rate_hz == right.output_sample_rate_hz
+Base.isequal(left::SignalOperationRecipe, right::SignalOperationRecipe) = left == right
+Base.hash(recipe::SignalOperationRecipe, seed::UInt) = hash(
+    (
+        recipe.operation,
+        recipe.body,
+        recipe.input_sample_rate_hz,
+        recipe.output_sample_rate_hz,
+    ),
+    seed,
+)
+
 struct AnalysedSignal
     id::String
     name::String
@@ -24,6 +79,7 @@ struct AnalysedSignal
     values::Vector{ComplexF64}
     is_complex::Bool
     visible::Bool
+    operations::Vector{SignalOperationRecipe}
 
     function AnalysedSignal(
         id::AbstractString,
@@ -33,6 +89,7 @@ struct AnalysedSignal
         values::AbstractVector{<:Number},
         is_complex::Bool,
         visible::Bool,
+        operations::AbstractVector{SignalOperationRecipe} = SignalOperationRecipe[],
     )
         signal_id = String(id)
         isempty(strip(signal_id)) && throw(ArgumentError("Signal id не может быть пустым"))
@@ -52,7 +109,19 @@ struct AnalysedSignal
         !is_complex && any(value -> !iszero(imag(value)), samples) && throw(ArgumentError(
             "Вещественный сигнал не может содержать комплексные отсчёты",
         ))
-        new(signal_id, signal_name, signal_color, rate, samples, is_complex, visible)
+        length(operations) <= SIGNAL_OPERATION_RECIPE_MAX_STEPS || throw(ArgumentError(
+            "История сигнала не может содержать более $(SIGNAL_OPERATION_RECIPE_MAX_STEPS) операций",
+        ))
+        new(
+            signal_id,
+            signal_name,
+            signal_color,
+            rate,
+            samples,
+            is_complex,
+            visible,
+            copy(operations),
+        )
     end
 end
 
@@ -65,6 +134,7 @@ AnalysedSignal(
     values::AbstractVector{<:Number},
     is_complex::Bool,
     visible::Bool,
+    operations::AbstractVector{SignalOperationRecipe} = SignalOperationRecipe[],
 ) = AnalysedSignal(
     signal_analyser_new_signal_id(),
     name,
@@ -73,6 +143,7 @@ AnalysedSignal(
     values,
     is_complex,
     visible,
+    operations,
 )
 
 """Authoritative per-Display Time region in seconds."""
@@ -3698,6 +3769,7 @@ function SignalAnalyserState(
             copy(signal.values),
             signal.is_complex,
             false,
+            signal.operations,
         ) for signal in signals
     ]
     allunique(signal.id for signal in signals) || throw(ArgumentError(
