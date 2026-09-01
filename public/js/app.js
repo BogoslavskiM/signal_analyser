@@ -6885,7 +6885,6 @@
     if (button.dataset.signalTrimSubmit !== undefined) return void submitSignalTrim();
     if (button.dataset.signalTrimCancel !== undefined || button.dataset.signalTrimClose !== undefined) { var trimController=signalTrimController(); if (trimController) trimController.close(); return; }
     if (button.dataset.testid === "toolbar-import") return void openSessionFilePicker(button);
-    if (button.dataset.testid === "toolbar-save") return void openSessionSave(button);
     if (button.dataset.inspectorStateAction) return void changeWorkspaceInspectorState(button);
     if (button.dataset.testid === "display-scroll-left") return void scrollDisplayTabs(-1);
     if (button.dataset.testid === "display-scroll-right") return void scrollDisplayTabs(1);

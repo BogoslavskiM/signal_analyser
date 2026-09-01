@@ -81,6 +81,9 @@ module.exports = async function task0106NativeSessionIoStatic(assert) {
   assert(/data-error-code='" \+ esc\(state\.message\.code\)/.test(native), "typed errors must remain inspectable on the visible message dialog");
 
   assert(/SignalAnalyserValueSelect/.test(native) && !/<select\b/i.test(native), "save type must use the shared custom select");
+  assert(/function loadOptions\(openSaveAfterLoad\)[\s\S]*if \(openSaveAfterLoad\) state\.save = true;[\s\S]*loadOptions\(true\)/.test(native), "the first Save click must open the dialog only after current options are loaded");
+  assert(!/state\.save = true;[\s\S]{0,400}render\(\);[\s\S]{0,100}loadOptions\(true\)/.test(native), "Save must not render a provisional Workspace dialog before loading options");
+  assert(!/button\.dataset\.testid === "toolbar-save"\) return void openSessionSave/.test(app), "the toolbar Save button must not retain the obsolete portable-package dialog handler");
   assert(/data-testid='save-signals-input'/.test(native) && /data-testid='save-signals-menu'/.test(native), "Save must retain the searchable signal multi-select");
   assert(/nativeSave\(\{[\s\S]*state_revision:[\s\S]*operation:[\s\S]*scope:[\s\S]*signal_names:[\s\S]*target:[\s\S]*overwrite:/.test(native), "Save must send the complete typed payload");
   assert(/var sessionMode = state\.saveType === "session";[\s\S]*scope: sessionMode \? "session" : state\.saveDraft\.scope,[\s\S]*signal_names: sessionMode \? \[\] : state\.saveDraft\.signalNames/.test(native), "full-session Save must ignore stale signal and scope controls in its wire payload");

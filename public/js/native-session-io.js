@@ -726,7 +726,7 @@
     state.options = data;
     state.revision = data.state_revision;
   }
-  function loadOptions() {
+  function loadOptions(openSaveAfterLoad) {
     var api = window.SignalAnalyserApi;
     var token = ++state.optionsToken;
     var generation = state.flowGeneration;
@@ -738,6 +738,7 @@
       state.functionDedicated = false;
       state.saveDraft.signalNames = data.selected_signal ? [data.selected_signal] : [];
       applySaveDefaults();
+      if (openSaveAfterLoad) state.save = true;
       render();
       return data;
     }).catch(function (error) {
@@ -908,15 +909,14 @@
     closeImportMenu(false, 0);
     beginFlow();
     state.trigger = button;
-    state.save = true;
+    state.save = false;
     state.import = false;
     state.browserState.open = false;
-    state.saveType = "workspace";
     state.functionDedicated = false;
     state.signalPicker.open = false;
     state.signalPicker.query = "";
     render();
-    loadOptions();
+    loadOptions(true);
   }, true);
   document.addEventListener("keydown", function (event) {
     var parts = importMenuParts();
