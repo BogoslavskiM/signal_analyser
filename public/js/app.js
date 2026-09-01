@@ -4306,7 +4306,9 @@
     }
     var d=editor.draft, rate=signalSampleRateValidation(d.sample_rate_hz), disabled=editor.applying ? " disabled" : "", s=(editor.summary && editor.summary.summary) || editor.summary || {}, metrics=signalSummaryMetrics(pane, signal, s);
     var noHistory=" autocomplete='off' spellcheck='false' autocapitalize='off' autocorrect='off'";
-    var mainBody="<label class='settings-field-row'><span class='settings-label'>Имя</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='name'"+noHistory+" value='"+esc(d.name)+"'"+disabled+"></span></label><label class='settings-field-row'><span class='settings-label'>Цвет</span><span class='settings-control-wrap color-field'><button class='color-swatch-button' type='button' data-signal-color-trigger aria-label='Цвет сигнала'"+disabled+"><i style='--signal-color:"+esc(d.color)+"'></i></button><input class='control' data-signal-metadata='color' data-signal-color-input"+noHistory+" value='"+esc(d.color)+"'"+disabled+"></span></label><label class='settings-field-row"+(rate.error ? " has-error" : "")+"' data-signal-metadata-row='sample_rate_hz'><span class='settings-label'>Дискретизация, Гц</span><span class='settings-control-wrap'><input class='control' type='text' data-signal-metadata='sample_rate_hz' inputmode='decimal'"+noHistory+" value='"+esc(d.sample_rate_hz)+"' aria-invalid='"+String(!!rate.error)+"'"+disabled+"></span><small class='field-message is-error' data-signal-metadata-error='sample_rate_hz'"+(rate.error ? "" : " hidden")+">"+esc(rate.error)+"</small></label>";
+    var operationHistory=(editor.summary && editor.summary.operation_history) || [],operationCalls=operationHistory.map(function (operation) { return "init_signal = " + String(operation.body || ""); }).join("\n");
+    var operationField=operationCalls ? "<label class='settings-field-row signal-operation-history-row'><span class='settings-label'>Преобразование</span><span class='settings-control-wrap'><textarea class='control signal-operation-history' data-testid='signal-operation-history' readonly spellcheck='false'>"+esc(operationCalls)+"</textarea></span></label>" : "";
+    var mainBody="<label class='settings-field-row'><span class='settings-label'>Имя</span><span class='settings-control-wrap'><input class='control' data-signal-metadata='name'"+noHistory+" value='"+esc(d.name)+"'"+disabled+"></span></label><label class='settings-field-row'><span class='settings-label'>Цвет</span><span class='settings-control-wrap color-field'><button class='color-swatch-button' type='button' data-signal-color-trigger aria-label='Цвет сигнала'"+disabled+"><i style='--signal-color:"+esc(d.color)+"'></i></button><input class='control' data-signal-metadata='color' data-signal-color-input"+noHistory+" value='"+esc(d.color)+"'"+disabled+"></span></label><label class='settings-field-row"+(rate.error ? " has-error" : "")+"' data-signal-metadata-row='sample_rate_hz'><span class='settings-label'>Дискретизация, Гц</span><span class='settings-control-wrap'><input class='control' type='text' data-signal-metadata='sample_rate_hz' inputmode='decimal'"+noHistory+" value='"+esc(d.sample_rate_hz)+"' aria-invalid='"+String(!!rate.error)+"'"+disabled+"></span><small class='field-message is-error' data-signal-metadata-error='sample_rate_hz'"+(rate.error ? "" : " hidden")+">"+esc(rate.error)+"</small></label>"+operationField;
     var summaryBody="<div class='summary-grid'>"+metrics.map(function (item) { return "<div class='summary-item'><span>"+item[0]+"</span><strong>"+esc(item[1] == null ? "—" : item[1])+"</strong></div>"; }).join("")+"</div>"+(editor.loading ? "<p class='status-note info'>Загрузка сводки…</p>" : editor.error ? "<p class='status-note error'>"+esc(editor.error)+"</p>" : "");
     host.innerHTML=signalSettingsGroup(editor, "main", "Основное", mainBody) + signalSettingsGroup(editor, "summary", "Сводка", summaryBody);
     decorateNoHistory(host);
@@ -6622,6 +6624,20 @@
       <button class="button button-primary" type="button" data-signal-operation-error-confirm data-testid="signal-operation-error-confirm">Понятно</button>
     </footer>
   </section>
+</div>
+<div class="modal-layer native-modal-layer signal-operation-success-layer" data-testid="signal-operation-success-layer" hidden>
+  <section class="dialog-card signal-operation-success-dialog" role="dialog" aria-modal="true" aria-labelledby="signal-operation-success-title" aria-describedby="signal-operation-success-message" data-testid="signal-operation-success-dialog">
+    <header class="dialog-titlebar">
+      <h2 id="signal-operation-success-title" tabindex="-1">Сигнал создан</h2>
+      <button class="icon-button dialog-close" type="button" data-signal-operation-success-close aria-label="Закрыть сообщение"><img src="./icons/close.svg" alt=""></button>
+    </header>
+    <div class="dialog-body">
+      <p id="signal-operation-success-message" class="signal-operation-success-message" data-signal-operation-success-message></p>
+    </div>
+    <footer class="dialog-footer">
+      <button class="button button-primary" type="button" data-signal-operation-success-confirm data-testid="signal-operation-success-confirm">Понятно</button>
+    </footer>
+  </section>
 </div>`;
   function ensureSignalOperationDialog() {
     var layer = q("[data-testid='signal-operation-layer']");
@@ -6641,7 +6657,6 @@
   }
   function signalOperationStatusMarkup(state) {
     if (state.busy) return "<div class='operation-status status-note info operation-progress' role='status'><img src='./icons/Spinner.svg' alt=''><span>Выполняется преобразование и проверка результата…</span></div>";
-    if (state.success) return "<div class='operation-status status-note success' role='status'><strong>Сигнал создан.</strong> Результат прошёл проверку и добавлен одной операцией.</div>";
     return "";
   }
   function chooseSignalOperationParameter(fieldId,value) {
@@ -6731,6 +6746,29 @@
     return true;
   }
 
+  function openSignalOperationSuccess(signalName) {
+    var state=model.signalOperation,layer=q("[data-testid='signal-operation-success-layer']"),message=q("[data-signal-operation-success-message]");
+    if (!layer || !message) return void showToast("Сигнал «" + signalName + "» создан",false);
+    state.open=false;
+    state.success=false;
+    valueSelect.close(false);
+    renderSignalOperation();
+    message.textContent="Сигнал «" + signalName + "» создан и добавлен в таблицу сигналов.";
+    layer.hidden=false;
+    var shell=q("[data-testid='app-shell']"); if (shell) shell.inert=true;
+    window.requestAnimationFrame(function () { var button=q("[data-signal-operation-success-confirm]"); if (button) button.focus(); });
+  }
+
+  function closeSignalOperationSuccess() {
+    var state=model.signalOperation,layer=q("[data-testid='signal-operation-success-layer']");
+    if (!layer || layer.hidden) return false;
+    layer.hidden=true;
+    var shell=q("[data-testid='app-shell']"); if (shell) shell.inert=false;
+    var restore=state.trigger; state.trigger=null;
+    window.requestAnimationFrame(function () { if (restore && restore.isConnected && typeof restore.focus === "function") restore.focus(); });
+    return true;
+  }
+
   function submitSignalOperation() {
     var state=model.signalOperation,layer=q("[data-testid='signal-operation-layer']"),helper=preprocessOperation();
     if (!state.open || state.busy || !layer || !helper || !state.operationState) return;
@@ -6752,8 +6790,9 @@
     var payload=Object.assign({state_revision:model.revision},helper.payload(state.operationState));
     state.busy=true; state.success=false; state.validation=null; renderSignalOperation();
     api.deriveSignal(payload).then(function (response) {
+      var createdName=state.operationState.targetName;
       var snapshot=response && (response.state || response); if (snapshot && snapshot.displays) accept(snapshot);
-      state.busy=false; state.success=true; renderSignalOperation(); render();
+      state.busy=false; state.success=false; render(); openSignalOperationSuccess(createdName);
     }).catch(function (error) {
       state.busy=false;
       var payloadError=error && error.payload && error.payload.error || {},fieldErrors=payloadError && payloadError.fields,visibleFields={target_name:true},localErrors={};
@@ -6784,7 +6823,8 @@
   }
   window.addEventListener("signal-analyser:host-command",openPreprocessFromHost);
   document.addEventListener("keydown",function (event) {
-    var state=model.signalOperation,layer=q("[data-testid='signal-operation-layer']"),errorLayer=q("[data-testid='signal-operation-error-layer']");
+    var state=model.signalOperation,layer=q("[data-testid='signal-operation-layer']"),errorLayer=q("[data-testid='signal-operation-error-layer']"),successLayer=q("[data-testid='signal-operation-success-layer']");
+    if (successLayer && !successLayer.hidden) { if (event.key === "Escape") { event.preventDefault(); closeSignalOperationSuccess(); } return; }
     if (!state.open || !layer || layer.hidden || errorLayer && !errorLayer.hidden || event.defaultPrevented) return;
     if (event.key === "Escape" && !state.busy) { event.preventDefault(); closeSignalOperation(); return; }
     if (event.key !== "Tab") return;
@@ -6901,6 +6941,7 @@
     if (button.dataset.signalOperation) return void openSignalOperation(button);
     if (button.dataset.signalOperationClose !== undefined || button.dataset.signalOperationCancel !== undefined) return void closeSignalOperation();
     if (button.dataset.signalOperationSubmit !== undefined) return void submitSignalOperation();
+    if (button.dataset.signalOperationSuccessClose !== undefined || button.dataset.signalOperationSuccessConfirm !== undefined) return void closeSignalOperationSuccess();
     if (button.dataset.settingsPage) {
       var requestedPage=button.dataset.settingsPage, available=contextTabAvailable(requestedPage,paneById(model.activePane)), regression=task0153Controller();
       var intent=regression && typeof regression.settingsTabIntent === "function" ? regression.settingsTabIntent(requestedPage,{available:available,applying:model.screenApplying,currentPage:model.settingsPage,activationToken:model.settingsPageActivationToken}) : {accepted:available,page:requestedPage,activationToken:model.settingsPageActivationToken + (available ? 1 : 0)};

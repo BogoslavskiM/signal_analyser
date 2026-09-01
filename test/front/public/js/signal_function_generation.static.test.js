@@ -15,7 +15,18 @@ module.exports = async function signalFunctionGeneration(assert) {
   assert(/function openSignalFunction\(signalName, trigger\)/.test(nativeIo) &&
     /state\.saveType = "function"/.test(nativeIo),
     "native I/O must expose a dedicated one-signal function dialog");
-  assert(/functionMode \? "Генерация функции" : "Сохранение"/.test(nativeIo) &&
-    /functionMode \? "Сгенерировать" : "Сохранить"/.test(nativeIo),
-    "function generation must not be presented as the generic Save type");
+  assert(/functionDedicated:\s*false/.test(nativeIo) &&
+    /dedicatedFunction \? "Генерация функции" : "Сохранение"/.test(nativeIo) &&
+    /dedicatedFunction \? "Сгенерировать" : "Сохранить"/.test(nativeIo),
+    "the row action must keep its dedicated flow while generic Save retains its type selector");
+  assert(/Dict\("id" => "function", "label" => "Julia-функция"/.test(fs.readFileSync(path.join(root, "lib/services/native_session_io_service.jl"), "utf8")) &&
+    /state\.saveType === "function"\) names = at >= 0 \? \[\] : \[name\]/.test(nativeIo),
+    "generic Save must expose Julia function generation and constrain it to one signal");
+  assert(/signal-operation-success-layer/.test(app) &&
+    /openSignalOperationSuccess\(createdName\)/.test(app) &&
+    !/Результат прошёл проверку и добавлен одной операцией/.test(app),
+    "successful signal operations must close the form and open a separate success dialog");
+  assert(/operation_history/.test(fs.readFileSync(path.join(root, "lib/services/signal_inventory_service.jl"), "utf8")) &&
+    /data-testid='signal-operation-history'/.test(app),
+    "Signal settings must show the backend-owned transformation history");
 };

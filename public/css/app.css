@@ -4029,7 +4029,8 @@ body {
 }
 
 .signal-trim-dialog,
-.signal-operation-error-dialog {
+.signal-operation-error-dialog,
+.signal-operation-success-dialog {
   z-index: var(--layer-modal);
   width: min(480px, calc(100vw - 32px));
   min-width: 0;
@@ -4043,7 +4044,8 @@ body {
 }
 
 .signal-trim-dialog .dialog-titlebar h2,
-.signal-operation-error-dialog .dialog-titlebar h2 {
+.signal-operation-error-dialog .dialog-titlebar h2,
+.signal-operation-success-dialog .dialog-titlebar h2 {
   font-size: 20px;
   font-weight: 500;
   line-height: 1.2;
@@ -4124,13 +4126,26 @@ body {
 
 .signal-operation-error-layer { z-index: calc(var(--layer-modal-backdrop) + 20); }
 .signal-operation-error-dialog { z-index: calc(var(--layer-modal) + 20); }
-.signal-operation-error-message {
+.signal-operation-success-layer { z-index: calc(var(--layer-modal-backdrop) + 20); }
+.signal-operation-success-dialog { z-index: calc(var(--layer-modal) + 20); }
+.signal-operation-error-message,
+.signal-operation-success-message {
   margin: 0;
   color: var(--text);
   font-size: 14px;
   line-height: 1.4;
   overflow-wrap: anywhere;
   white-space: pre-line;
+}
+
+.signal-operation-history-row { align-items: start; }
+.signal-operation-history {
+  min-height: 72px;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre;
 }
 
 [data-testid="signal-operation-dialog"] .operation-status.error { display: none !important; }

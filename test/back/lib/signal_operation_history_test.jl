@@ -44,6 +44,10 @@ end
     cropped = OP_HISTORY.signal_by_name(state, "doubled_crop")
     @test [step.operation for step in cropped.operations] == ["custom-preprocess", "crop"]
     @test occursin("copy(init_signal[1:2])", cropped.operations[2].body)
+    summary = OP_HISTORY.signal_inventory_summary_payload(state, cropped.id)
+    @test [step["operation"] for step in summary["operation_history"]] ==
+        ["custom-preprocess", "crop"]
+    @test summary["operation_history"][1]["body"] == "init_signal .* 2"
 
     OP_HISTORY.apply_signal_inventory!(
         inventory,

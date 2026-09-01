@@ -383,7 +383,7 @@ function signal_analyser_state_lite_api_payload(
             "disabled" => false,
             "icon" => "download",
             "default_operation" => "workspace",
-            "operations" => String["workspace", "script", "jld2", "session"],
+            "operations" => String["workspace", "function", "jld2", "session"],
         ),
         "other" => Dict{String,Any}(
             "visible" => false,

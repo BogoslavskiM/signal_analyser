@@ -62,6 +62,7 @@
     message: null,
     trigger: null,
     saveType: "workspace",
+    functionDedicated: false,
     busy: false,
     options: null,
     revision: null,
@@ -277,6 +278,10 @@
       ariaLabel: "Тип сохранения",
       onSelect: function (value) {
         state.saveType = value;
+        state.functionDedicated = false;
+        if (value === "function" && state.saveDraft.signalNames.length > 1) {
+          state.saveDraft.signalNames = [state.saveDraft.signalNames[0]];
+        }
         state.signalPicker.open = false;
         state.signalPicker.query = "";
         applySaveDefaults();
@@ -410,12 +415,13 @@
     if (state.save) {
       var names = state.saveDraft.signalNames || [];
       var functionMode = state.saveType === "function";
+      var dedicatedFunction = functionMode && state.functionDedicated;
       var saveReady = typeof state.revision === "number" && !!String(state.saveDraft.target || "").trim() &&
-        (state.saveType === "session" || names.length > 0);
-      html += layer("native-save", functionMode ? "Генерация функции" : "Сохранение", "<div class='native-form'>" +
-        (functionMode ? "" : "<div class='native-dialog-row'><span class='native-label'>Тип</span>" + saveTypeSelect() + "</div>") +
-        (state.saveType === "session" || functionMode ? "" : "<div class='native-dialog-row native-signals-row'><label class='native-label' for='native-save-signals-input'>Сигнал(ы)</label>" + signalPickerMarkup() + "</div>" + (names.length ? "" : "<small class='native-field-error native-signal-error' data-testid='save-signals-error'>Выберите хотя бы один сигнал.</small>")) +
-        typeFields() + "</div>", "<button class='button' data-native-close data-testid='native-save-cancel'>Отмена</button><button class='button button-primary'" + (!saveReady || state.busy ? " disabled" : "") + " data-testid='native-save-submit'>" + (functionMode ? "Сгенерировать" : "Сохранить") + "</button>", "native-save-dialog");
+        (state.saveType === "session" || (functionMode ? names.length === 1 : names.length > 0));
+      html += layer("native-save", dedicatedFunction ? "Генерация функции" : "Сохранение", "<div class='native-form'>" +
+        (dedicatedFunction ? "" : "<div class='native-dialog-row'><span class='native-label'>Тип</span>" + saveTypeSelect() + "</div>") +
+        (state.saveType === "session" || dedicatedFunction ? "" : "<div class='native-dialog-row native-signals-row'><label class='native-label' for='native-save-signals-input'>" + (functionMode ? "Сигнал" : "Сигнал(ы)") + "</label>" + signalPickerMarkup() + "</div>" + (names.length ? "" : "<small class='native-field-error native-signal-error' data-testid='save-signals-error'>Выберите хотя бы один сигнал.</small>")) +
+        typeFields() + "</div>", "<button class='button' data-native-close data-testid='native-save-cancel'>Отмена</button><button class='button button-primary'" + (!saveReady || state.busy ? " disabled" : "") + " data-testid='native-save-submit'>" + (dedicatedFunction ? "Сгенерировать" : "Сохранить") + "</button>", "native-save-dialog");
     }
     if (state.import) {
       var importReady = /\.jld2$/i.test(state.importDraft.path) && state.importDraft.replace;
@@ -594,7 +600,8 @@
       var name = (state.options && state.options.signal_names || [])[index];
       var names = state.saveDraft.signalNames || [];
       var at = names.indexOf(name);
-      if (at >= 0) names.splice(at, 1); else names.push(name);
+      if (state.saveType === "function") names = at >= 0 ? [] : [name];
+      else if (at >= 0) names.splice(at, 1); else names.push(name);
       state.saveDraft.signalNames = names;
       applySaveDefaults();
       render();
@@ -727,6 +734,7 @@
       if (token !== state.optionsToken || !active(generation)) return null;
       acceptOptions(data);
       state.saveType = data.default_operation || "workspace";
+      state.functionDedicated = false;
       state.saveDraft.signalNames = data.selected_signal ? [data.selected_signal] : [];
       applySaveDefaults();
       render();
@@ -774,6 +782,7 @@
     state.signalPicker.open = false;
     state.signalPicker.query = "";
     state.saveType = "function";
+    state.functionDedicated = true;
     render();
     var token = ++state.optionsToken;
     var generation = state.flowGeneration;
@@ -784,6 +793,7 @@
       acceptOptions(data);
       if ((data.signal_names || []).indexOf(signalName) < 0) throw new Error("Сигнал не найден");
       state.saveType = "function";
+      state.functionDedicated = true;
       state.saveDraft.signalNames = [signalName];
       applySaveDefaults();
       render();
@@ -901,6 +911,7 @@
     state.import = false;
     state.browserState.open = false;
     state.saveType = "workspace";
+    state.functionDedicated = false;
     state.signalPicker.open = false;
     state.signalPicker.query = "";
     render();

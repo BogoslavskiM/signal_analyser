@@ -1288,6 +1288,7 @@ function native_save_options(
             "root" => NATIVE_ENGEE_USER_ROOT,
             "operations" => Dict{String,Any}[
                 Dict("id" => "workspace", "label" => "Workspace", "file_extension" => nothing),
+                Dict("id" => "function", "label" => "Julia-функция", "file_extension" => ".jl"),
                 Dict("id" => "jld2", "label" => "JLD2", "file_extension" => ".jld2"),
                 Dict("id" => "session", "label" => "Session JLD2", "file_extension" => ".jld2"),
             ],

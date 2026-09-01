@@ -239,7 +239,9 @@ const NIO = Main.AppTestContext
     options = NIO.native_save_options(NIO.NativeSessionIOService(), NIO.default_signal_analyser_state())
     @test options["defaults"]["import_session_target"] == "/user/signal-analyser-session.jld2"
     @test options["defaults"]["replace"] === true
-    @test all(item["id"] != "function" for item in options["operations"])
+    function_option = only(filter(item -> item["id"] == "function", options["operations"]))
+    @test function_option["label"] == "Julia-функция"
+    @test function_option["file_extension"] == ".jl"
     @test endswith(options["defaults"]["function_signal_target"], ".jl")
 
     routes = NIO.source("app", "routes.jl")

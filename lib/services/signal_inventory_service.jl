@@ -78,6 +78,14 @@ function signal_inventory_summary_payload(
             "ok" => true,
             "state_revision" => state.view.state_revision,
             "signal" => signal_analyser_signal_payload(signal),
+            "operation_history" => Dict{String,Any}[
+                Dict{String,Any}(
+                    "operation" => operation.operation,
+                    "body" => operation.body,
+                    "input_sample_rate_hz" => operation.input_sample_rate_hz,
+                    "output_sample_rate_hz" => operation.output_sample_rate_hz,
+                ) for operation in signal.operations
+            ],
             "summary" => Dict{String,Any}(
                 "sample_count" => length(signal.values),
                 "duration_s" => signal_duration_s(signal),
