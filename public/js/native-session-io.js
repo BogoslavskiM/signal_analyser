@@ -668,6 +668,7 @@
     if (submit) submit.onclick = function () {
       var target = q("[data-testid='native-save-variable-name'],[data-testid='native-save-directory']");
       var generation = state.flowGeneration;
+      var sessionMode = state.saveType === "session";
       if (target) state.saveDraft.target = target.value;
       state.saveDraft.overwrite = !!q("[data-testid='native-save-overwrite']").checked;
       state.busy = true;
@@ -675,8 +676,8 @@
       window.SignalAnalyserApi.nativeSave({
         state_revision: state.revision,
         operation: state.saveType,
-        scope: state.saveDraft.scope,
-        signal_names: state.saveDraft.signalNames,
+        scope: sessionMode ? "session" : state.saveDraft.scope,
+        signal_names: sessionMode ? [] : state.saveDraft.signalNames,
         target: state.saveDraft.target,
         overwrite: state.saveDraft.overwrite
       }).then(function (data) {

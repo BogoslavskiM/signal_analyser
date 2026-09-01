@@ -783,15 +783,6 @@ function parse_native_save_command(data)::NativeSaveCommand
         "operation должен быть workspace, function, jld2 или session";
         field = "operation",
     ))
-    # Keep scope in the exact wire contract, but derive the authoritative
-    # non-session scope from the selected signal count.
-    requested_scope = native_request_string(request, "scope")
-    requested_scope in NATIVE_SAVE_SCOPES || throw(native_io_error(
-        "invalid_request",
-        "scope должен быть signal, library или session";
-        field = "scope",
-    ))
-    names = native_signal_names(signal_analyser_payload_value(request, "signal_names"))
     target = native_request_string(request, "target")
     overwrite = signal_analyser_payload_value(request, "overwrite")
     overwrite isa Bool || throw(native_io_error(
@@ -799,27 +790,37 @@ function parse_native_save_command(data)::NativeSaveCommand
         "overwrite должен быть boolean";
         field = "overwrite",
     ))
+    # A full-session save is deliberately independent of signal selection and
+    # every signal/library control retained by the client.  Normalize those
+    # wire fields instead of exposing an internal contract error to the user.
     if operation == "session"
-        requested_scope == "session" && isempty(names) || throw(native_io_error(
-            "invalid_request",
-            "Session save требует scope=session и пустой signal_names";
-            field = "scope",
-        ))
         scope = "session"
-    elseif operation == "function"
-        requested_scope == "signal" && length(names) == 1 || throw(native_io_error(
+        names = String[]
+    else
+        # Keep scope in the exact wire contract, but derive the authoritative
+        # non-session scope from the selected signal count.
+        requested_scope = native_request_string(request, "scope")
+        requested_scope in NATIVE_SAVE_SCOPES || throw(native_io_error(
             "invalid_request",
-            "Генерация функции требует ровно один сигнал и scope=signal";
+            "scope должен быть signal, library или session";
             field = "scope",
         ))
-        scope = "signal"
-    else
-        isempty(names) && throw(native_io_error(
-            "invalid_request",
-            "Выберите хотя бы один сигнал";
-            field = "signal_names",
-        ))
-        scope = length(names) == 1 ? "signal" : "library"
+        names = native_signal_names(signal_analyser_payload_value(request, "signal_names"))
+        if operation == "function"
+            requested_scope == "signal" && length(names) == 1 || throw(native_io_error(
+                "invalid_request",
+                "Генерация функции требует ровно один сигнал и scope=signal";
+                field = "scope",
+            ))
+            scope = "signal"
+        else
+            isempty(names) && throw(native_io_error(
+                "invalid_request",
+                "Выберите хотя бы один сигнал";
+                field = "signal_names",
+            ))
+            scope = length(names) == 1 ? "signal" : "library"
+        end
     end
     NativeSaveCommand(revision, operation, scope, names, target, overwrite)
 end

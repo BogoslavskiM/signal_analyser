@@ -87,6 +87,13 @@ const NIO = Main.AppTestContext
     ))
     @test session.operation == "session" && isempty(session.signal_names)
     @test session.scope == "session"
+    stale_session_controls = NIO.parse_native_save_command(Dict(
+        "state_revision" => 3, "operation" => "session", "scope" => "signal",
+        "signal_names" => ["stale-selected-signal"], "target" => "/user/session.jld2",
+        "overwrite" => false,
+    ))
+    @test stale_session_controls.scope == "session"
+    @test isempty(stale_session_controls.signal_names)
     single = NIO.parse_native_save_command(Dict(
         "state_revision" => 3, "operation" => "workspace", "scope" => "library",
         "signal_names" => ["one"], "target" => "one_signal", "overwrite" => false,
@@ -102,7 +109,6 @@ const NIO = Main.AppTestContext
     ))
     @test function_save.operation == "function" && function_save.scope == "signal"
     for invalid in (
-        Dict("state_revision" => 3, "operation" => "session", "scope" => "signal", "signal_names" => ["x"], "target" => "/user/x.jld2", "overwrite" => false),
         Dict("state_revision" => 3, "operation" => "workspace", "scope" => "signal", "signal_names" => String[], "target" => "x", "overwrite" => false),
         Dict("state_revision" => 3, "operation" => "workspace", "scope" => "signal", "signal_names" => ["x"], "target" => "x", "overwrite" => false, "extra" => true),
         Dict("state_revision" => 3, "operation" => "function", "scope" => "library", "signal_names" => ["x", "y"], "target" => "/user/x.jl", "overwrite" => false),

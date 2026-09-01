@@ -83,6 +83,7 @@ module.exports = async function task0106NativeSessionIoStatic(assert) {
   assert(/SignalAnalyserValueSelect/.test(native) && !/<select\b/i.test(native), "save type must use the shared custom select");
   assert(/data-testid='save-signals-input'/.test(native) && /data-testid='save-signals-menu'/.test(native), "Save must retain the searchable signal multi-select");
   assert(/nativeSave\(\{[\s\S]*state_revision:[\s\S]*operation:[\s\S]*scope:[\s\S]*signal_names:[\s\S]*target:[\s\S]*overwrite:/.test(native), "Save must send the complete typed payload");
+  assert(/var sessionMode = state\.saveType === "session";[\s\S]*scope: sessionMode \? "session" : state\.saveDraft\.scope,[\s\S]*signal_names: sessionMode \? \[\] : state\.saveDraft\.signalNames/.test(native), "full-session Save must ignore stale signal and scope controls in its wire payload");
   assert(/nativeImportSession\(\{[\s\S]*state_revision:[\s\S]*path:[\s\S]*replace: true/.test(native), "Import must send the typed replacement payload");
   assert(/native-session-imported/.test(native) && /native-session-imported/.test(app), "successful native import must refresh the application snapshot");
 };
